@@ -1,0 +1,1292 @@
+/**
+ * @file rohc_comp.c
+ * @brief ROHC compression routines
+ * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author The hackers from ROHC for Linux
+ */
+
+#include "rohc_comp.h"
+
+
+extern struct c_profile c_uncompressed_profile, c_udp_profile, c_ip_profile, c_udp_lite_profile;
+
+/**
+ * @brief The compression parts of the ROHC profiles.
+ */
+struct c_profile *c_profiles[C_NUM_PROFILES] =
+{
+	&c_uncompressed_profile,
+	&c_udp_profile,
+	&c_ip_profile,
+	&c_udp_lite_profile,
+};
+
+
+/*
+ * Function prototypes:
+ */
+
+void c_piggyback_destroy(struct rohc_comp *comp);
+int c_piggyback_get(struct rohc_comp *comp, unsigned char *buf);
+
+void c_destroy_contexts(struct rohc_comp *comp);
+int c_create_contexts(struct rohc_comp *comp);
+int c_alloc_contexts(struct rohc_comp *comp, int num);
+
+
+/**
+ * @brief Create one ROHC compressor
+ *
+ * @param max_cid The maximal CID value the compressor should use for contexts
+ * @return        The newly-created compressor if successful,
+ *                NULL otherwise
+ */
+struct rohc_comp *rohc_alloc_compressor(int max_cid)
+{
+	struct rohc_comp *comp;
+	int i;
+	
+	rohc_debugf(1, "creating compressor\n");
+
+	comp = malloc(sizeof(struct rohc_comp));
+	if(comp == NULL)
+	{
+	  rohc_debugf(0, "cannot allocate memory for the compressor\n");
+	  goto error;
+	}
+	bzero(comp, sizeof(struct rohc_comp));
+
+	comp->enabled = 1;
+	comp->feedback_pointer = 0;
+	comp->medium.max_cid = max_cid;
+	comp->medium.cid_type = SMALL_CID;
+	comp->mrru = 0;
+
+	for(i = 0; i < C_NUM_PROFILES; i++)
+		comp->profiles[i] = 0;
+
+	comp->num_packets = 0;
+	comp->total_compressed_size = 0;
+	comp->total_uncompressed_size = 0;
+
+	for(i = 0; i < FEEDBACK_BUFFER_SIZE; i++)
+	{
+	  comp->feedback_buffer[i] = NULL;
+	  comp->feedback_size[i] = 0;
+	}
+
+	if(!c_create_contexts(comp))
+		goto destroy_comp;
+
+	return comp;
+
+destroy_comp:
+	zfree(comp);
+error:
+	return NULL;
+}
+
+
+/**
+ * @brief Destroy one ROHC compressor.
+ *
+ * @param comp The compressor to destroy
+ */
+void rohc_free_compressor(struct rohc_comp *comp)
+{
+	if(comp != NULL)
+	{
+		/* free memory used by contexts */
+		rohc_debugf(2, "free contexts\n");
+		c_destroy_contexts(comp);
+
+		/* destroy unsent piggybacked feedback */
+		rohc_debugf(2, "free feedback buffer\n");
+		c_piggyback_destroy(comp);
+
+		/* free the compressor */
+		zfree(comp);
+	}
+}
+
+
+/**
+ * @brief Compress a ROHC packet.
+ *
+ * @param comp   The ROHC compressor
+ * @param ibuf   The uncompressed packet to compress
+ * @param isize  The size of the uncompressed packet
+ * @param obuf   The buffer where to store the ROHC packet
+ * @param osize  The size of the buffer for the ROHC packet
+ * @return       The size of the ROHC packet
+ */
+int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
+                  unsigned char *obuf, int osize)
+{
+	struct iphdr *ip = (struct iphdr *) ibuf;
+	struct iphdr *ip2;
+	int proto;
+	struct c_profile *p;
+	struct c_context *c;
+	int feedback_size, payload_size, payload_offset;
+	int size, esize;
+
+	if(comp == 0)
+	{
+		rohc_debugf(0, "compressor not valid\n");
+		return 0;
+	}
+
+	if(ip->version != 4)
+	{
+		rohc_debugf(0, "wrong IP version (%d)\n", ip->version);
+		return 0;
+	}
+
+	if(ip->ihl * 4 != 20)
+	{
+		rohc_debugf(0, "wrong IP header size (%d)\n", ip->ihl);
+		return 0;
+	}
+
+	proto = ip->protocol;
+	if(proto == IPPROTO_IPIP)
+	{
+		ip2 = ip + 1;
+		proto = ip2->protocol;
+	}
+
+	/* get the profile based on the IP protocol */
+	rohc_debugf(2, "IP protocol = %d\n", proto);
+	p = c_get_profile_from_protocol(comp, proto);
+
+ 	/* use the IP profile if no profile was found based on the protocol */
+	if(p == 0)
+	{
+		rohc_debugf(2, "no profile found, using default IP profile\n");
+		p = c_get_profile_from_id(comp, ROHC_PROFILE_IP);
+
+		/* use the uncompressed profile if IP profile was not found */
+		if(p == 0)
+		{
+			rohc_debugf(0, "IP profile not found, using uncompressed profile\n");
+			p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
+
+			if(p == 0)
+			{
+				rohc_debugf(0, "uncompressed profile not found, giving up\n");
+				return 0;
+			}
+		}
+	}
+
+	/* get the context using help from the profiles */
+	c = c_find_context(comp, p, ip);
+
+	if(c == 0)
+	{
+		/* context not found, create a new one */
+		c = c_create_context(comp, p, ip);
+		if(c == 0)
+		{
+			rohc_debugf(0, "failed to create a new context\n");
+			return 0;
+		}
+	}
+	else if(c == (struct c_context*) -1)
+	{ 
+		/* the profile detected anomalities in IP packet (such as fragments)
+		 * that made it not compressible -> switch to uncompressed profile */
+		
+		rohc_debugf(0, "error while finding context, using uncompressed profile\n");
+
+		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
+		if(p == 0)
+		{
+			rohc_debugf(0, "uncompressed profile not found, giving up\n");
+			return 0;
+		}
+
+		/* find the context or create a new one */
+		c = c_find_context(comp, p, ip);
+		if(c == 0)
+		{
+			c = c_create_context(comp, p, ip);
+			if(c == 0)
+			{
+				rohc_debugf(0, "failed to create an uncompressed context\n");
+				return 0;
+			}
+		}
+		else if(c == (struct c_context*)-1)
+		{
+			rohc_debugf(0, "error while finding context in uncompressed profile, "
+			               "giving up\n");
+			return 0;
+		}
+	}
+
+	c->latest_used = get_milliseconds();
+
+	rohc_debugf(0, "selected compression profile = 0x%04x\n", p->id);
+
+	/* create the ROHC packet: */
+	size = 0;
+
+	/* 1. add feedback */
+	feedback_size = c_piggyback_get(comp, obuf);
+	obuf += feedback_size;
+	size += feedback_size;
+
+	/* 2. use profile to compress packet */
+	esize = p->encode(c, ip, isize, obuf, osize - size, &payload_offset);
+
+	if(esize < 0)
+	{
+		/* error while compressing, use uncompressed */
+		rohc_debugf(0, "error while compressing with the profile, "
+		               "using uncompressed profile\n");
+
+		/* free context if it was just created */
+		if(c->num_sent_packets <= 1)
+		{
+			c->profile->destroy(c);
+			c->used = 0;
+			comp->num_contexts_used--;
+		}
+
+		/* get uncompressed profile */
+		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
+		if(p == 0)
+		{
+			rohc_debugf(0, "uncompressed profile not found, giving up\n");
+			return 0;
+		}
+
+		/* find the context or create a new one */
+		c = c_find_context(comp, p,  ip);
+		if(c == 0)
+		{
+			c = c_create_context(comp, p, ip);
+			if(c == 0)
+			{
+				rohc_debugf(0, "failed to create an uncompressed context\n");
+				return 0;
+			}
+		}
+		else if(c == (struct c_context*)-1)
+		{
+			rohc_debugf(0, "error while finding context in uncompressed profile, "
+			               "giving up\n");
+			return 0;
+		}
+		
+		esize = p->encode(c, ip, isize, obuf, osize - size, &payload_offset);
+
+		if(esize < 0)
+		{
+			rohc_debugf(0, "error while compressing with uncompressed profile, "
+			               "giving up\n");
+			return 0;
+		}
+	}
+
+	size += esize;
+	obuf += esize;
+
+	payload_size = ntohs(ip->tot_len) - payload_offset;
+
+	rohc_debugf(2, "ROHC size = %d, payload size = %d (totlen = %d, ihl = %d), "
+	            "output buffer size = %d\n", size, payload_size,
+	            ntohs(ip->tot_len), ip->ihl * 4, osize);
+
+	/* is packet too large? */
+	if(size + payload_size > osize)
+	{
+		/* TODO: should use uncompressed profile */
+		rohc_debugf(0, "ROHC packet to large (osize = %d, isize = %d)\n",
+		            size + payload_size, isize);
+		return 0;
+	}
+
+	/* copy payload to rohc packet */
+	memcpy(obuf, ((unsigned char *) ip) + payload_offset, payload_size);
+	obuf += payload_size;
+	size += payload_size;
+
+	/* update some statistics */
+	comp->num_packets++;
+	comp->total_uncompressed_size += isize;
+	comp->total_compressed_size += size;
+
+	c->total_uncompressed_size += isize;
+	c->total_compressed_size += size;
+	c->header_uncompressed_size += payload_offset;
+	c->header_compressed_size += esize;
+	c->num_sent_packets ++;
+	c_add_wlsb(c->total_16_uncompressed, 0, 0, isize);
+	c_add_wlsb(c->total_16_compressed, 0, 0, size);
+	c_add_wlsb(c->header_16_uncompressed, 0, 0, payload_offset);
+	c_add_wlsb(c->header_16_compressed, 0, 0, esize);
+
+	/* return the size of the ROHC packet */
+	return size;
+}
+
+
+/**
+ * @brief Activate a profile for a compressor
+ *
+ * @param comp    The ROHC compressor
+ * @param profile The ID of the profile to activate
+ */
+void rohc_activate_profile(struct rohc_comp *comp, int profile)
+{
+	int i;
+
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		if(c_profiles[i]->id == profile)
+		{
+			/* mark the profile as activated */
+			comp->profiles[i] = 1;
+			return;
+		}
+	}
+
+	rohc_debugf(0, "unknown ROHC profile (ID = %d)\n", profile);
+}
+
+
+/**
+ * @brief Whether the compressor uses small CID or not
+ *
+ * @param comp The ROHC compressor
+ * @return     Whether the compressor uses small CID or not
+ */
+int rohc_c_using_small_cid(struct rohc_comp *comp)
+{
+	return (comp->medium.cid_type == SMALL_CID);
+}
+
+
+/**
+ * @brief Set the maximal header size. The maximal header size is ignored
+ *        for the moment.
+ *
+ * @param comp   The ROHC compressor
+ * @param header The maximal header size
+ */
+void rohc_c_set_header(struct rohc_comp *comp, int header)
+{
+	comp->max_header_size = header;
+}
+
+
+/**
+ * @brief Set the Maximum Reconstructed Reception Unit (MRRU). The MRRU is
+ *        ignored for the moment.
+ *
+ * @param comp  The ROHC compressor
+ * @param value The new MRRU value
+ */
+void rohc_c_set_mrru(struct rohc_comp *comp, int value)
+{
+	comp->mrru = value;
+}
+
+
+/**
+ * @brief Set the maximal CID value the compressor should use
+ *
+ * @param comp  The ROHC compressor
+ * @param value The new maximal CID value
+ */
+void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
+{
+	/* large CID */
+	if(comp->medium.cid_type == LARGE_CID)
+	{
+		if(value > 0 && value < 65536)
+			comp->medium.max_cid = value;
+	}
+	else /* small CID */
+	{
+		if(value > 0 && value < 16)
+			comp->medium.max_cid = value;
+	}
+}
+
+
+/**
+ * @brief Tell the compressor to use large CIDs
+ *
+ * @param comp      The ROHC compressor
+ * @param large_cid Whether to use large CIDs or not
+ */
+void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
+{
+	if(large_cid)
+		comp->medium.cid_type = LARGE_CID;
+	else
+	{
+		comp->medium.cid_type = SMALL_CID;
+		if(comp->medium.max_cid > 15)
+			comp->medium.max_cid = 15;
+	}
+}
+
+
+/**
+ * @brief Set the connection type
+ *
+ * @param comp  The ROHC compressor
+ * @param value The new connection type
+ */
+void rohc_c_set_connection_type(struct rohc_comp *comp, int value)
+{
+	comp->connection_type = value;
+}
+
+
+/**
+ * @brief Enable the ROHC compressor
+ *
+ * @param comp   The ROHC compressor
+ * @param enable Whether to enable the compressor or not
+ */
+void rohc_c_set_enable(struct rohc_comp *comp, int enable)
+{
+	comp->enabled = enable;
+}
+
+
+/**
+ * @brief Whether the ROHC compressor is enabled or not
+ *
+ * @param comp The ROHC compressor
+ * @return      Whether the compressor is enabled or not
+ */
+int rohc_c_is_enabled(struct rohc_comp *comp)
+{
+	return comp->enabled;
+}
+
+
+/**
+ * @brief Get information about available compression profiles
+ *
+ * This function outputs XML.
+ *
+ * @param buffer The buffer where to store profile information
+ * @return       The length of the data stored in the buffer
+ */
+int rohc_c_info(char *buffer)
+{
+	char *save;
+	int i;
+
+	save = buffer;
+	buffer += strlen(buffer);
+
+	sprintf(buffer, "<profiles>\n");
+	buffer += strlen(buffer);
+
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		sprintf(buffer, "\t<profile id=\"%d\" ", c_profiles[i]->id);
+		buffer += strlen(buffer);
+		sprintf(buffer, "name=\"%s\" ", c_profiles[i]->description);
+		buffer += strlen(buffer);
+		sprintf(buffer, "version=\"%s\" ", c_profiles[i]->version);
+		buffer += strlen(buffer);
+		sprintf(buffer, "/>\n");
+		buffer += strlen(buffer);
+	}
+
+	sprintf(buffer, "</profiles>\n");
+	buffer += strlen(buffer);
+
+	return strlen(save);
+}
+
+
+/**
+ * @brief Get information about a ROHC compressor
+ *
+ * This function outputs XML.
+ *
+ * @param comp   The ROHC compressor
+ * @param indent The indent level to beautify the XML output
+ * @param buffer The buffer where to store the information
+ * @return       The length of the data stored in the buffer if successful,
+ *               -1 if an error occurs
+ */
+int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
+{
+	struct c_profile *p;
+	char *prefix;
+	char *save;
+	int i,v;
+
+	/* compute the indent prefix */
+	prefix = calloc(indent + 1, sizeof(char));
+	if(prefix == NULL)
+		return -1;
+
+	memset(prefix, '\t', indent);
+	prefix[indent] = '\0';
+
+	/* compute instance info */
+	save = buffer;
+	buffer += strlen(buffer);
+
+	sprintf(buffer, "%s<instance>\n", prefix);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<creator>%s</creator>\n", prefix, "LULEA/SMD143/2003");
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<version>%s</version>\n", prefix, "1.0");
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<status>%s</status>\n", prefix, comp->enabled ? "enabled" : "disabled");
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<flows>%d</flows>\n", prefix, comp->num_contexts_used);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<packets>%d</packets>\n", prefix, comp->num_packets);
+	buffer += strlen(buffer);
+
+	if (comp->total_uncompressed_size != 0)
+		v = (100 * comp->total_compressed_size) / comp->total_uncompressed_size;
+	else
+		v = 0;
+	sprintf(buffer, "%s\t<compression_ratio>%d%%</compression_ratio>\n", prefix, v);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<max_cid>%d</max_cid>\n", prefix, comp->medium.max_cid);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<mrru>%d</mrru>\n", prefix, comp->mrru);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<large_cid>%s</large_cid>\n", prefix,
+	        comp->medium.cid_type == LARGE_CID ? "yes" : "no");
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<connection_type>%d</connection_type>\n", prefix, 3);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<feedback_freq>%d</feedback_freq>\n\n", prefix, 7); // comp-> ??
+	buffer += strlen(buffer);
+
+	/* profiles part */
+	sprintf(buffer, "%s\t<profiles>\n", prefix);
+	buffer += strlen(buffer);
+
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		p = c_profiles[i];
+
+		sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
+		buffer += strlen(buffer);
+		sprintf(buffer, "name=\"%s\" ", p->description);
+		buffer += strlen(buffer);
+		sprintf(buffer, "version=\"%s\" ", p->version);
+		buffer += strlen(buffer);
+		sprintf(buffer, "active=\"%s\" ", comp->profiles[i] ? "yes" : "no");
+		buffer += strlen(buffer);
+		sprintf(buffer, "/>\n");
+		buffer += strlen(buffer);
+	}
+
+	sprintf(buffer, "%s\t</profiles>\n", prefix);
+	buffer += strlen(buffer);
+
+	/* contexts part */
+	i = 0;
+	while(rohc_c_context(comp, i, indent + 1, buffer) != -2)
+		i++;
+	buffer += strlen(buffer);
+	
+	sprintf(buffer, "%s</instance>\n\n", prefix);
+	buffer += strlen(buffer);
+
+	/* clean the indent prefix */
+	zfree(prefix);
+
+	return strlen(save);
+}
+
+
+/**
+ * @brief Get information about a compression context
+ *
+ * This function outputs XML.
+ *
+ * @param comp   The ROHC compressor
+ * @param cid    The CID of the compressor context to output information about
+ * @param indent The indent level to beautify the XML output
+ * @param buffer The buffer where to store the information
+ * @return       The length of the data stored in the buffer if successful,
+ *               -2 if the given CID is too large,
+ *               -1 if the given CID is unused or an error occurs
+ */
+int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *buffer)
+{
+	char *modes[4] = { "error", "U-mode", "O-mode", "R-mode" };
+	char *states[4] = { "error", "IR", "FO", "SO" };
+	struct c_context *c;
+	char *prefix;
+	char *save;
+	int v;
+
+	if(cid >= comp->num_contexts)
+		return -2;
+
+	c = &comp->contexts[cid];
+	if(!c->used)
+		return -1;
+
+	/* compute the line prefix */
+	prefix = calloc(indent + 1, sizeof(char));
+	if(prefix == NULL)
+		return -1;
+
+	memset(prefix, '\t', indent);
+	prefix[indent] = '\0';
+
+	/* compute context info */
+	save = buffer;
+	buffer += strlen(buffer);
+
+	sprintf(buffer, "\n%s<context type=\"compressor\" cid=\"%d\">\n", prefix, c->cid);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<cid_state>%s</cid_state>\n", prefix, c->used ? "USED" : "UNUSED");
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
+	        (c->state < 0 || c->state >= sizeof(states)) ? states[0] : states[c->state]);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<mode>%s</mode>\n",
+	        prefix, (c->mode < 0 || c->mode >= sizeof(modes)) ? modes[0] : modes[c->mode]);
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
+	buffer += strlen(buffer);
+
+	/* compression ratio */
+	sprintf(buffer, "%s\t<ratio>\n", prefix);
+	buffer += strlen(buffer);
+
+	if(c->total_uncompressed_size != 0)
+		v = (100*c->total_compressed_size) / c->total_uncompressed_size;
+	else
+		v = 0;
+	sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	if (c->header_uncompressed_size != 0)
+		v = (100*c->header_compressed_size) / c->header_uncompressed_size;
+	else
+		v = 0;
+	sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
+	buffer += strlen(buffer);
+	
+	v = c_sum_wlsb(c->total_16_uncompressed);
+	if (v != 0)
+		v = (100*c_sum_wlsb(c->total_16_compressed)) / v;
+	sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	v = c_sum_wlsb(c->header_16_uncompressed);
+	if (v != 0)
+		v = (100*c_sum_wlsb(c->header_16_compressed)) / v;
+	sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	sprintf(buffer, "%s\t</ratio>\n", prefix);
+	buffer += strlen(buffer);
+
+	/* compression mean */
+	sprintf(buffer, "%s\t<mean>\n", prefix);
+	buffer += strlen(buffer);
+	
+	if (c->num_sent_packets != 0)
+		v = c->total_compressed_size / c->num_sent_packets;
+	else
+		v = 0;
+	sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	if (c->num_sent_packets != 0)
+		v = c->header_compressed_size / c->num_sent_packets;
+	else
+		v = 0;
+	sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	v = c_mean_wlsb(c->total_16_compressed);
+	sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	v = c_mean_wlsb(c->header_16_compressed);
+	sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
+	buffer += strlen(buffer);
+
+	sprintf(buffer, "%s\t</mean>\n", prefix);
+	buffer += strlen(buffer);
+
+	/* times */
+	sprintf(buffer, "%s\t<activation_time>%d</activation_time>\n",
+	        prefix, (get_milliseconds() - c->first_used) / 1000 );
+	buffer += strlen(buffer);
+	sprintf(buffer, "%s\t<idle_time>%d</idle_time>\n",
+	        prefix, (get_milliseconds() - c->latest_used) / 1000);
+	buffer += strlen(buffer);
+
+	/* packets */
+	sprintf(buffer, "%s\t<packets sent_total=\"%d\" ", prefix, c->num_sent_packets);
+	buffer += strlen(buffer);
+	sprintf(buffer, "sent_ir=\"%d\" ", c->num_sent_ir);
+	buffer += strlen(buffer);
+	sprintf(buffer, "sent_irdyn=\"%d\" ", c->num_sent_ir_dyn);
+	buffer += strlen(buffer);
+	sprintf(buffer, "recv_feedback=\"%d\" />\n", c->num_recv_feedbacks);
+	buffer += strlen(buffer);
+
+	sprintf(buffer, "%s</context>\n", prefix);
+	buffer += strlen(buffer);
+
+	free(prefix);
+	return strlen(save);
+}
+
+
+/**
+ * @brief Find out a ROHC profile given a profile ID
+ *
+ * @param comp       The ROHC compressor
+ * @param profile_id The ID of the ROHC profile to find out
+ * @return           The ROHC profile if found, NULL otherwise
+ */
+struct c_profile *c_get_profile_from_id(struct rohc_comp *comp, int profile_id)
+{
+	int i;
+
+	/* test all compression profiles */
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		/* if the profile IDs match and the profile is enabled */
+		if(c_profiles[i]->id == profile_id && comp->profiles[i] == 1)
+			return c_profiles[i];
+	}
+
+	return NULL;
+}
+
+
+/**
+ * @brief Find out a ROHC profile given an IP protocol ID
+ *
+ * @param comp     The ROHC compressor
+ * @param protocol The IP protocol ID
+ * @return         The ROHC profile if found, NULL otherwise
+ */
+struct c_profile *c_get_profile_from_protocol(struct rohc_comp *comp, int protocol)
+{
+	int i;
+
+	/* test all compression profiles */
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		/* if the profile protocol IDs match and the profile is enabled */
+		if(c_profiles[i]->protocol == protocol && comp->profiles[i] == 1)
+			return c_profiles[i];
+	}
+
+	return NULL;
+}
+
+
+/**
+ * @brief Allocate memory for the array of compression contexts
+ *
+ * @param comp The ROHC compressor
+ * @param size The size of the context array (maximum: comp->medium.max_cid + 1)
+ * @return     1 if the creation is successful, 0 otherwise
+ */
+int c_alloc_contexts(struct rohc_comp *comp, int size)
+{
+	/* the array size must not be greater than comp->medium.max_cid,
+	 * it would be a waste of memory */
+	if(size > comp->medium.max_cid + 1)
+		size = comp->medium.max_cid + 1;
+
+	/* The current context array is too small, replace it with a larger one */
+	if(comp->num_contexts < size)
+	{
+		struct c_context *new_contexts;
+		int i;
+
+		new_contexts = calloc(size, sizeof(struct c_context));
+		if(new_contexts == NULL)
+		{
+			rohc_debugf(0, "cannot allocate memory for contexts\n");
+			return 0;
+		}
+		bzero(new_contexts, sizeof(struct c_context) * size);
+
+		/* move already-created contexts from the current array to the new one if any
+		 * and then destroy the current context array */
+		if(comp->num_contexts > 0 && comp->contexts != NULL)
+		{
+			memcpy(new_contexts, comp->contexts, comp->num_contexts * sizeof(struct c_context));
+			zfree(comp->contexts);
+		}
+
+		/* initialize the other contexts in the context array */
+		for(i = comp->num_contexts; i < size; i++)
+		{
+			/* create windows with 16 entries */
+			new_contexts[i].total_16_uncompressed = c_create_wlsb(32, 16, 0);
+			new_contexts[i].total_16_compressed = c_create_wlsb(32, 16, 0);
+			new_contexts[i].header_16_uncompressed = c_create_wlsb(32, 16, 0);
+			new_contexts[i].header_16_compressed = c_create_wlsb(32, 16, 0);
+		}
+		
+		comp->contexts = new_contexts;
+		comp->num_contexts = size;
+	}
+
+	return 1;
+}
+
+
+/**
+ * @brief Create a compression context
+ *
+ * @param comp    The ROHC compressor
+ * @param profile The profile to associate the context with
+ * @param ip      The IP packet to initialize the context
+ * @return        The compression context if successful, NULL otherwise
+ */
+struct c_context * c_create_context(struct rohc_comp *comp,
+                                    struct c_profile *profile,
+                                    struct iphdr *ip)
+{
+	struct c_context *c;
+	int index, i;
+	int oldest;
+
+	index = 0;
+
+	/* first case:
+	 *      all the contexts in the array are used
+	 *  AND the array fails to be enlarged (size was not increased)
+	 *  => recycle the oldest context to make room
+	 *
+	 * second case:
+	 *     at least one context in the array is not used
+	 *  OR the array is successfully enlarged (size was increased)
+	 *  => pick the first unused context
+	 */
+	if(comp->num_contexts_used >= comp->num_contexts &&
+	   (!c_alloc_contexts(comp, comp->num_contexts * 2) ||
+	    comp->num_contexts_used >= comp->num_contexts))
+	{
+		/* all the contexts in the array were used and the enlargement failed,
+		 * recycle the oldest context to make room */
+		
+		/* find the oldest context */
+		index = 0;
+		oldest = 0x7fffffff;
+		for(i = 0; i < comp->num_contexts; i++)
+		{
+			if(comp->contexts[i].latest_used < oldest)
+			{
+				oldest = comp->contexts[i].latest_used;
+				index = i;
+			}
+		}
+
+		/* destroy the oldest context before replacing it with a new one */
+		rohc_debugf(2, "recycle oldest context (CID = %d)\n", index);
+		comp->contexts[index].profile->destroy(&comp->contexts[index]);
+		comp->contexts[index].used = 0;
+		comp->num_contexts_used--;
+	}
+	else
+	{
+		/* there was at least one unused context in the array
+		 * OR the array of contexts was successfully enlarged,
+		 * pick the first unused context in the context array */
+		
+		/* find the first unused context */
+		for(i = 0; i < comp->num_contexts; i++)
+		{
+			if(comp->contexts[i].used == 0)
+			{
+				index = i;
+				break;
+			}
+		}
+
+		rohc_debugf(2, "take the first unused context (CID = %d)\n", index);
+	}
+
+	/* initialize the previously found context */
+	c = &comp->contexts[index];
+
+	c->total_uncompressed_size = 0;
+	c->total_compressed_size = 0;
+	c->header_uncompressed_size = 0;
+	c->header_compressed_size = 0;
+	c->num_sent_packets = 0;
+	c->num_sent_ir = 0;
+	c->num_sent_ir_dyn = 0;
+	c->num_recv_feedbacks = 0;
+
+	c->cid = index;
+	c->profile = profile;
+
+	c->mode = U_MODE;
+	c->state = IR;
+
+	c->compressor = comp;
+	c->latest_used = get_milliseconds();
+
+	/* create profile-specific context */
+	if(!profile->create(c, ip))
+		return NULL;
+
+	/* if creation is successful, mark the context as used */
+	c->used = 1;
+	c->first_used = get_milliseconds();
+	c->latest_used = get_milliseconds();
+	comp->num_contexts_used++;
+
+	rohc_debugf(1, "context (CID = %d) created (num_used = %d)\n",
+	            c->cid, comp->num_contexts_used);
+
+	return c;
+}
+
+
+/**
+ * @brief Find a compression context given a profile and an IP packet
+ *
+ * @param comp    The ROHC compressor
+ * @param profile The profile the context must be associated with
+ * @param ip      The IP packet that must be accepted by the context
+ * @return        The compression context if found,
+ *                NULL if not found,
+ *                -1 if an error occurs
+ */
+struct c_context * c_find_context(struct rohc_comp *comp,
+                                  struct c_profile *profile,
+                                  struct iphdr *ip)
+{
+	struct c_context *c = NULL;
+	int i;
+	int ret;
+
+	for(i = 0; i < comp->num_contexts; i++)
+	{
+		c = &comp->contexts[i];
+
+		if(c && c->used && c->profile->id == profile->id)
+		{
+			ret = c->profile->check_context(c, ip);
+
+			if(ret == -1)
+			{
+				c = (struct c_context*) -1;
+				break;
+			}
+			else if(ret)
+			{
+				rohc_debugf(1, "using context CID = %d\n", c->cid);
+				break;
+			}
+		}
+	}
+
+	if(c == NULL || i == comp->num_contexts)
+	{
+		rohc_debugf(2, "no context was found\n");
+		c = NULL;
+	}
+
+	return c;
+}
+
+
+/**
+ * @brief Find out a context given its CID
+ *
+ * @param comp The ROHC compressor
+ * @param cid  The CID of the context to find
+ * @return     The context with the given CID if found, NULL otherwise
+ */
+struct c_context * c_get_context(struct rohc_comp *comp, int cid)
+{
+	/* the CID must not be larger than the context array */
+	if(cid >= comp->num_contexts)
+		goto not_found;
+	
+	/* the context with the given CID must be in use */
+	if(comp->contexts[cid].used == 0)
+		goto not_found;
+	
+	return &comp->contexts[cid];
+
+not_found:
+	return NULL;
+}
+
+
+/**
+ * @brief Create the array of compression contexts
+ *
+ * @param comp The ROHC compressor
+ * @return     1 if the creation is successful, 0 otherwise
+ */
+int c_create_contexts(struct rohc_comp *comp)
+{
+	comp->contexts = NULL;
+	comp->num_contexts = 0;
+	comp->num_contexts_used = 0;
+
+	return c_alloc_contexts(comp, 4); /* start with 4 contexts at the beginning */
+}
+
+
+/**
+ * @brief Destroy all the compression contexts in the context array
+ *
+ * The profile-specific contexts are also destroyed.
+ *
+ * @param comp The ROHC compressor
+ */
+void c_destroy_contexts(struct rohc_comp *comp)
+{
+	int i;
+
+	if(comp->num_contexts > 0)
+	{
+		for(i = 0; i < comp->num_contexts; i++)
+		{
+			if(comp->contexts[i].used && comp->contexts[i].profile != 0)
+				comp->contexts[i].profile->destroy(&comp->contexts[i]);
+
+			c_destroy_wlsb(comp->contexts[i].total_16_uncompressed);
+			c_destroy_wlsb(comp->contexts[i].total_16_compressed);
+			c_destroy_wlsb(comp->contexts[i].header_16_uncompressed);
+			c_destroy_wlsb(comp->contexts[i].header_16_compressed);
+
+			comp->contexts[i].used = 0;
+			comp->num_contexts_used--;
+		}
+
+		zfree(comp->contexts);
+	}
+}
+
+
+/**
+ * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
+ *
+ * @param comp     The ROHC compressor
+ * @param feedback The feedback data
+ * @param size     The length of the feedback packet
+ */
+void c_piggyback_feedback(struct rohc_comp *comp,
+                          unsigned char *feedback,
+                          int size)
+{
+	if(comp == NULL)
+	{
+		rohc_debugf(0, "no compressor associated with the decompressor, "
+		               "cannot deliver feedback\n");
+		return;
+	}
+
+	rohc_debugf(2, "add %d byte(s) of feedback to the next outgoing ROHC "
+	               "packet\n", size);
+
+	if(comp->feedback_pointer >= FEEDBACK_BUFFER_SIZE)
+	{
+		rohc_debugf(0, "no place in buffer for feedback data\n");
+		return;
+	}
+
+	comp->feedback_buffer[comp->feedback_pointer] = malloc(size);
+	if(comp->feedback_buffer[comp->feedback_pointer] == NULL)
+	{
+	  rohc_debugf(0, "no memory for feedback data\n");
+	  return;
+	}
+
+	memcpy(comp->feedback_buffer[comp->feedback_pointer], feedback, size);
+	comp->feedback_size[comp->feedback_pointer] = size;
+
+	comp->feedback_pointer++;
+}
+
+
+/**
+ * @brief Retrieve one feedback packet and store it in the given buffer
+ *
+ * @param comp   The ROHC compressor
+ * @param buffer The buffer to store the feedback packet
+ * @return       The length of the feedback packet if any, 0 otherwise
+ */
+int c_piggyback_get(struct rohc_comp *comp, unsigned char *buffer)
+{
+	int i;
+	int size = 0;
+	int index = 0;
+
+	/* are there some feedback data to send with the next outgoing packet? */
+	if(comp->feedback_pointer > 0)
+	{
+		comp->feedback_pointer--;
+		size = comp->feedback_size[comp->feedback_pointer];
+
+		/* the size can be encoded either in the last 3 bits of the first byte
+		 * or in the 2nd byte */
+		if(size < 8)
+		{
+			/* size is small, use only 3 bits to code it */
+			buffer[index] = 0xf0 | size;
+			rohc_debugf(3, "feedback size = 0x%02x\n", buffer[index]);
+			index++;
+		}
+		else
+		{
+			/* size is large, use 8 bits to code it */
+			buffer[index] = 0xf0;
+			rohc_debugf(3, "feedback size = 0x%02x ", buffer[index]);
+			index++;
+			buffer[index] = size;
+			rohc_debugf_(3, "0x%02x\n", buffer[index]);
+			index++;
+		}
+
+		/* copy feedback data in the buffer */
+		memcpy(buffer + index, comp->feedback_buffer[comp->feedback_pointer], size);
+
+		/* free unused memory */
+		zfree(comp->feedback_buffer[comp->feedback_pointer]);
+		comp->feedback_size[comp->feedback_pointer] = 0;
+	}
+
+	rohc_debugf(2, "add %d byte(s) of feedback data", size);
+	rohc_debugf_(3, ": ");
+	for(i = 0; i < size; i++)
+		rohc_debugf_(3, "0x%02x ", buffer[index + i]);
+	rohc_debugf_(2, "\n");
+
+	/* return the length of the feedback header/data,
+	 * or zero if no feedback */
+	return index + size;
+}
+
+
+/**
+ * @brief Destroy memory allocated for the feedback packets
+ *
+ * @param comp   The ROHC compressor
+ */
+void c_piggyback_destroy(struct rohc_comp *comp)
+{
+	int i;
+
+	for(i = 0; i < FEEDBACK_BUFFER_SIZE; i++)
+	{
+		if(comp->feedback_size[i] > 0 && comp->feedback_buffer[i] != NULL)
+			zfree(comp->feedback_buffer[i]);
+	}
+}
+
+
+/**
+ *	@brief Callback called by a decompressor to deliver a feedback packet to the
+ *	       compressor
+ *
+ * When feedback is received by the decompressor, this function is called and
+ * delivers the feedback to the right profile/context of the compressor.
+ *
+ * @param comp   The ROHC compressor
+ * @param packet The feedback data
+ * @param size   The length of the feedback packet
+ */
+void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
+{
+	struct c_context *c;
+	struct c_feedback feedback;
+	unsigned char *p = packet;
+	
+	if(comp == NULL)
+	{
+		rohc_debugf(0, "no compressor associated with the decompressor, "
+		               "cannot deliver feedback\n");
+		goto quit;
+	}
+
+	rohc_debugf(2, "deliver %d byte(s) of feedback to the right context\n",
+	            size);
+
+	feedback.size = size;
+
+	/* decode CID */
+	if(comp->medium.cid_type == LARGE_CID)
+	{
+		/* decode large cid at p[0..3] */
+		feedback.cid =  d_sdvalue_decode(p);
+		p += d_sdvalue_size(p);
+	}
+	else
+	{
+		/* decode small CID */
+		if(d_is_add_cid(p))
+		{
+			feedback.cid = d_decode_add_cid(p);
+			p++;
+		}
+		else
+			feedback.cid = 0;
+	}
+
+	feedback.specific_size = size - (p - packet);
+	rohc_debugf(2, "feedback size = %d\n", feedback.specific_size);
+
+	if(feedback.specific_size == 1)
+		feedback.type = 1; /* FEEDBACK-1 */
+	else
+	{
+		feedback.type = 2; /* FEEDBACK-2 */
+		feedback.acktype = p[0] >> 6;
+	}
+
+	feedback.specific_offset = p - packet;
+	feedback.data = malloc(feedback.size);
+	if(feedback.data == NULL)
+	{
+	  rohc_debugf(0, "no memory for feedback data\n");
+	  goto quit;
+	}
+
+	memcpy(feedback.data, packet, feedback.size);
+
+	/* find context */
+	c = c_get_context(comp, feedback.cid);
+	if(c == 0)
+	{
+		/* context was not found */
+		rohc_debugf(0, "context not found (CID = %d)\n", feedback.cid);
+		goto clean;
+	}
+
+	c->num_recv_feedbacks++;
+
+	/* deliver feedback to profile with the context */
+	c->profile->feedback(c, &feedback);
+
+clean:
+	zfree(feedback.data);
+quit:
+	;
+}
+

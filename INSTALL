@@ -1,0 +1,69 @@
+Libraries
+---------
+
+Configure the libraries:
+
+ $ ./configure
+
+Build the libraries:
+
+ $ make
+
+Install the libraries:
+
+ $ make install
+
+The libraries are now located in the lib directory and the header files in the
+include directory.
+
+Test application
+----------------
+
+Build the test application:
+
+ $ make test
+
+Specify the directory where the ROHC libraries are located:
+
+ $ export LD_LIBRARY_PATH=lib
+
+Run the test application:
+
+ $ ./test/test <source PCAP file>
+
+The application:
+ - outputs the results (status & logs) in XML on stdout,
+ - optionally outputs the ROHC packets in a PCAP file,
+ - optionally compares the generated ROHC packets with ROHC packets given as
+   input.
+
+For usage details, run:
+
+ $ ./test/test -h
+
+HTML report
+-----------
+
+To generate an HTML report of several predefined tests:
+
+1. For each predefined test, create an new directory in the test/report/samples/
+   directory and put the source.pcap (= IP flow) and the rohc.pcap (= dump of
+   previously generated ROHC packets) into it. The report script will call the
+   test application with the source.pcap and rohc.pcap files as input.
+
+2. Edit the report configuration file to point to the directories defined in
+   step 1. The configuration format is easy to understand.
+
+ $ vim test/report/report.conf
+
+3. Generate the HTML report:
+
+ $ make report
+
+4. Load the test/report/report.html file in your favorite browser and watch the
+   results. In case of failure, the HTML page shows the logs, so you can find
+   out the problem.
+
+IMPORTANT: Run the report script after every library modification to avoid
+           regressions.
+

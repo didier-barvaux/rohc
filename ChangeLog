@@ -1,0 +1,4 @@
+10 jan 2007:
+Initial version with the Uncompressed, IP-only, UDP and UDP-Lite
+version. No IPv6 nor RTP support.
+
