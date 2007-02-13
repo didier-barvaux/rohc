@@ -8,6 +8,119 @@
 #ifndef ROHC_H
 #define ROHC_H
 
+/**
+ * \mainpage
+ *
+ * <h2>Introduction</h2>
+ * 
+ * <p>
+ * This piece of software is an implementation of RObust Header Compression for
+ * Linux (or other Unix-compatible OS). The library can be used to add ROHC
+ * compression/decompression capabilities to an application.
+ * </p>
+ * 
+ * <h2>License</h2>
+ * 
+ * <p>
+ * The project is licensed under GPL, see the COPYING file for details.
+ * </p>
+ * 
+ * <h2>Libraries</h2>
+ * 
+ * <p>
+ * The sources are in the src subdirectory. The sources are separated into three
+ * libraries:
+ *  <ul>
+ *   <li>a library that contains the routines used for both the compression and the
+ *       decompression processes</li>
+ *   <li>a library that handles the compression process</li>
+ *   <li>a library that handles the decompression process</li>
+ *  </ul>
+ * </p>
+ * 
+ * <p>See the INSTALL file to learn to build the libraries.</p>
+ * 
+ * <h2>Tests</h2>
+ * 
+ * <p>
+ * The test subdirectory contains a test application. See the header of the test.c
+ * file for details. There is also a report.sh script that tests the ROHC libraries
+ * with several IP flows and outputs an HTML page with the test results.
+ * </p>
+ * 
+ * <p>
+ * See the INSTALL file to learn how to use the test application and the report.sh
+ * script.
+ * </p>
+ * 
+ * <h2>References</h2>
+ * 
+ * <table style="border-collapse: collapse; border: solid thin black;">
+ *  <tr>
+ *   <td>RFC 3095</td>
+ *   <td>
+ *    <p>
+ *     RObust Header Compression (ROHC): Framework and four profiles: RTP,
+ *     UDP, ESP, and uncompressed.<br>
+ * 	 <a href="http://www.ietf.org/rfc/rfc3095.txt">
+ * 	 http://www.ietf.org/rfc/rfc3095.txt</a>
+ * 	</p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>RFC 3843
+ *   <td>
+ *    <p>
+ *     RObust Header Compression (ROHC): A Compression Profile for IP.<br>
+ *     <a href="http://www.ietf.org/rfc/rfc3843.txt">
+ *     http://www.ietf.org/rfc/rfc3843.txt</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>RFC 4019</td>
+ *   <td>
+ *    <p>
+ *     RObust Header Compression (ROHC): Profiles for User Datagram Protocol
+ *     (UDP) Lite.<br>
+ *     <a href="http://www.ietf.org/rfc/rfc4019.txt">
+ *     http://www.ietf.org/rfc/rfc4019.txt</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>ROHC Linux</td>
+ *   <td>
+ *    <p>
+ *     A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
+ *     kernel. The project is mainly based on this software.<br>
+ *     <a href="http://rohc.sourceforge.net/">http://rohc.sourceforge.net/</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>RFC 3828</td>
+ *   <td>
+ *    <p>
+ *     The Lightweight User Datagram Protocol (UDP-Lite).<br>
+ *     <a href="http://www.ietf.org/rfc/rfc3828.txt">
+ *     http://www.ietf.org/rfc/rfc3828.txt</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>UDP-Lite</td>
+ *   <td>
+ *    <p>
+ *     UDP-Lite implementation for the Linux kernel.<br>
+ *     <a href="http://erg.abdn.ac.uk/users/gerrit/udp-lite/">
+ *     http://erg.abdn.ac.uk/users/gerrit/udp-lite/</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ * </table>
+ */
+
 
 /**
  * @brief Determine the level of output produced by the ROHC library

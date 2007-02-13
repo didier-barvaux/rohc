@@ -16,6 +16,15 @@ Install the libraries:
 The libraries are now located in the lib directory and the header files in the
 include directory.
 
+Documentation
+-------------
+
+HTML documentation can be generated from the source code thanks to Doxygen:
+
+ $ make doc
+
+Open the doc/html/index.html file in your favorite web browser.
+
 Test application
 ----------------
 
