@@ -158,7 +158,7 @@ while [ $i -le $nb_lines ] ; do
 	fi
 
 	print_result $comp_result "comp_details_$i"
-	print_result $cmp_rohc_result "cmp_ip_details_$i"
+	print_result $cmp_rohc_result "cmp_rohc_details_$i"
 	print_result $decomp_result "decomp_details_$i"
 	print_result $cmp_ip_result "cmp_ip_details_$i"
 	html="$html\t\t\t</tr>\n"
