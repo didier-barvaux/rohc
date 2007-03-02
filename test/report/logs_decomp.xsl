@@ -3,7 +3,7 @@
 
 	<xsl:output method="xml" encoding="ISO-8859-15" indent="yes"/>
 
-	<xsl:template match="test/startuplog">
+	<xsl:template match="test/startup">
 	</xsl:template>
 
 	<xsl:template match="test/packet">
@@ -35,7 +35,7 @@
 	<xsl:template match="test/infos">
 	</xsl:template>
 
-	<xsl:template match="test/shutdownlog">
+	<xsl:template match="test/shutdown">
 	</xsl:template>
 
 </xsl:stylesheet>

@@ -512,14 +512,17 @@ void test_comp_and_decomp(char *src_filename,
 
 	printf("<?xml version=\"1.0\" encoding=\"ISO-8859-15\"?>\n");
 	printf("<test>\n");
-	printf("\t<startuplog>\n");
+	printf("\t<startup>\n");
+	printf("\t\t<log>\n");
 
 	/* open the source dump file */
 	handle = pcap_open_offline(src_filename, errbuf);
 	if(handle == NULL)
 	{
 		printf("failed to open the source pcap file: %s\n", errbuf);
-		printf("\t</startuplog>\n\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
 		goto exit;
 	}
 
@@ -529,7 +532,9 @@ void test_comp_and_decomp(char *src_filename,
 	{
 		printf("link layer type %d not supported in source dump (supported = "
 		       "%d, %d)\n", link_layer_type_src, DLT_EN10MB, DLT_RAW);
-		printf("\t</startuplog>\n\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
 		goto close_input;
 	}
 
@@ -545,7 +550,9 @@ void test_comp_and_decomp(char *src_filename,
 		if(dumper == NULL)
 		{
 			printf("failed to open dump file: %s\n", errbuf);
-			printf("\t</startuplog>\n\n");
+			printf("\t\t</log>\n");
+			printf("\t\t<status>failed</status>\n");
+			printf("\t</startup>\n\n");
 			goto close_input;
 		}
 	}
@@ -559,7 +566,9 @@ void test_comp_and_decomp(char *src_filename,
 		if(cmp_handle == NULL)
 		{
 			printf("failed to open the comparison pcap file: %s\n", errbuf);
-			printf("\t</startuplog>\n\n");
+			printf("\t\t</log>\n");
+			printf("\t\t<status>failed</status>\n");
+			printf("\t</startup>\n\n");
 			goto close_output;
 		}
 
@@ -570,7 +579,9 @@ void test_comp_and_decomp(char *src_filename,
 			printf("link layer type %d not supported in comparision dump "
 			       "(supported = %d, %d)\n", link_layer_type_cmp, DLT_EN10MB,
 			       DLT_RAW);
-			printf("\t</startuplog>\n\n");
+			printf("\t\t</log>\n");
+			printf("\t\t<status>failed</status>\n");
+			printf("\t</startup>\n\n");
 			goto close_comparison;
 		}
 
@@ -587,7 +598,9 @@ void test_comp_and_decomp(char *src_filename,
 	if(comp1 == NULL)
 	{
 		printf("cannot create the compressor 1\n");
-		printf("\t</startuplog>\n\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
 		goto close_comparison;
 	}
 	rohc_activate_profile(comp1, ROHC_PROFILE_UNCOMPRESSED);
@@ -600,8 +613,11 @@ void test_comp_and_decomp(char *src_filename,
 	if(comp2 == NULL)
 	{
 		printf("cannot create the compressor 2\n");
-		printf("\t</startuplog>\n\n");
-		printf("\t<shutdownlog>\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
 		goto destroy_comp1;
 	}
 	rohc_activate_profile(comp2, ROHC_PROFILE_UNCOMPRESSED);
@@ -614,8 +630,11 @@ void test_comp_and_decomp(char *src_filename,
 	if(decomp1 == NULL)
 	{
 		printf("cannot create the decompressor 1\n");
-		printf("\t</startuplog>\n\n");
-		printf("\t<shutdownlog>\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
 		goto destroy_comp2;
 	}
 
@@ -624,12 +643,17 @@ void test_comp_and_decomp(char *src_filename,
 	if(decomp2 == NULL)
 	{
 		printf("cannot create the decompressor 2\n");
-		printf("\t</startuplog>\n\n");
-		printf("\t<shutdownlog>\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
 		goto destroy_decomp1;
 	}
 	
-	printf("\t</startuplog>\n\n");
+	printf("\t\t</log>\n");
+	printf("\t\t<status>ok</status>\n");
+	printf("\t</startup>\n\n");
 
 	/* for each packet in the dump */
 	counter = 0;
@@ -690,7 +714,8 @@ void test_comp_and_decomp(char *src_filename,
 	printf("\t</infos>\n\n");
 	
 	/* destroy the compressors and decompressors */
-	printf("\t<shutdownlog>\n");
+	printf("\t<shutdown>\n");
+	printf("\t\t<log>\n\n");
 
 	rohc_free_decompressor(decomp2);
 destroy_decomp1:
@@ -699,7 +724,9 @@ destroy_comp2:
 	rohc_free_compressor(comp2);
 destroy_comp1:
 	rohc_free_compressor(comp1);
-	printf("\t</shutdownlog>\n\n");
+	printf("\t\t</log>\n");
+	printf("\t\t<status>ok</status>\n");
+	printf("\t</shutdown>\n\n");
 close_comparison:
 	if(cmp_handle != NULL)
 		pcap_close(cmp_handle);

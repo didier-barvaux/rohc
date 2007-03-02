@@ -44,10 +44,15 @@ get_num_at_line()
 print_result()
 {
 	html="$html\t\t\t\t<td"
-	if [ "$1" != "PASS" ] ; then
-		html="$html class=\"fail\"><a href=\"#$2\">$1</a>"
+	if [ "$2" != "PASS" ] ; then
+		html="$html class=\"fail\">"
+		if [ "$1" = "PASS" ] ; then
+			html="$html<a href=\"#$3\">$2</a>"
+		else
+			html="${html}$2"
+		fi
 	else
-		html="${html} class=\"pass\">$1"
+		html="${html} class=\"pass\">$2"
 	fi
 	html="$html</td>\n"
 }
@@ -73,6 +78,7 @@ html="$html\t\t<h1>ROHC Test Results</h1>\n"
 html="$html\t\t<table>\n"
 html="$html\t\t\t<tr>\n"
 html="$html\t\t\t\t<td>Test name</td>\n"
+html="$html\t\t\t\t<td>Startup</td>\n"
 html="$html\t\t\t\t<td>Compression process</td>\n"
 html="$html\t\t\t\t<td>ROHC packets match reference packets</td>\n"
 html="$html\t\t\t\t<td>Decompression process</td>\n"
@@ -125,74 +131,90 @@ while [ $i -le $nb_lines ] ; do
 	report="`$APP -c ${DIRNAME}/$dir/rohc.pcap ${DIRNAME}/$dir/source.pcap`"
 
 	if [ $? -ne 0 ] ; then
+		startup_result="FAIL"
 		comp_result="FAIL"
 		cmp_rohc_result="FAIL"
 		decomp_result="FAIL"
 		cmp_ip_result="FAIL"
 	else
+		logs_startup="`echo \"$report\" | xsltproc ${DIRNAME}/logs_startup.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 		logs_comp="`echo \"$report\" | xsltproc ${DIRNAME}/logs_comp.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 		logs_cmp_rohc="`echo \"$report\" | xsltproc ${DIRNAME}/logs_cmp_rohc.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 		logs_decomp="`echo \"$report\" | xsltproc ${DIRNAME}/logs_decomp.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 		logs_cmp_ip="`echo \"$report\" | xsltproc ${DIRNAME}/logs_cmp_ip.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 
-		if [ -z "$logs_comp" ] ; then
+		if [ -z "$logs_startup" ] ; then
+			startup_result="PASS"
+		else
+			startup_result="FAIL"
+		fi
+
+		if [ "$startup_result" = "PASS" ] && [ -z "$logs_comp" ] ; then
 			comp_result="PASS"
 		else
 			comp_result="FAIL"
 		fi
 
-		if [ -z "$logs_cmp_rohc" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ -z "$logs_cmp_rohc" ] ; then
 			cmp_rohc_result="PASS"
 		else
 			cmp_rohc_result="FAIL"
 		fi
 
-		if [ -z "$logs_decomp" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ -z "$logs_decomp" ] ; then
 			decomp_result="PASS"
 		else
 			decomp_result="FAIL"
 		fi
 
-		if [ -z "$logs_cmp_ip" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ -z "$logs_cmp_ip" ] ; then
 			cmp_ip_result="PASS"
 		else
 			cmp_ip_result="FAIL"
 		fi
 	fi
 
-	print_result $comp_result "comp_details_$i"
-	print_result $cmp_rohc_result "cmp_rohc_details_$i"
-	print_result $decomp_result "decomp_details_$i"
-	print_result $cmp_ip_result "cmp_ip_details_$i"
+	print_result "PASS"          $startup_result  "startup_details_$i"
+	print_result $startup_result $comp_result     "comp_details_$i"
+	print_result $startup_result $cmp_rohc_result "cmp_rohc_details_$i"
+	print_result $startup_result $decomp_result   "decomp_details_$i"
+	print_result $startup_result $cmp_ip_result   "cmp_ip_details_$i"
 	html="$html\t\t\t</tr>\n"
 
-	if [ "$comp_result" != "PASS" ] || [ "$cmp_rohc_result" != "PASS" ] || [ "$decomp_result" != "PASS" ] || [ "$cmp_ip_result" != "PASS" ] ; then
+	if [ "$startup_result" != "PASS" ] || [ "$comp_result" != "PASS" ] || [ "$cmp_rohc_result" != "PASS" ] || [ "$decomp_result" != "PASS" ] || [ "$cmp_ip_result" != "PASS" ] ; then
 
 		details="$details\t\t<div>\n"
 		details="$details\t\t\t<h2>Details about the '$name' test</h2>\n"
 
-		if [ "$comp_result" != "PASS" ] ; then
+		if [ "$startup_result" != "PASS" ] ; then
+			details="$details\t\t\t<div>\n"
+			details="$details\t\t\t\t<h3><a name=\"startup_details_$i\">Details about the test startup</a></h3>\n"
+			details="$details\n$logs_startup\n"
+			details="$details\t\t\t</div>\n"
+		fi
+
+		if [ "$startup_result" = "PASS" ] && [ "$comp_result" != "PASS" ] ; then
 			details="$details\t\t\t<div>\n"
 			details="$details\t\t\t\t<h3><a name=\"comp_details_$i\">Details about the compression process</a></h3>\n"
 			details="$details\n$logs_comp\n"
 			details="$details\t\t\t</div>\n"
 		fi
 
-		if [ "$rohc_cmp_result" != "PASS" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ "$rohc_cmp_result" != "PASS" ] ; then
 			details="$details\t\t\t<div>\n"
 			details="$details\t\t\t\t<h3><a name=\"cmp_rohc_details_$i\">Details about the comparison between created ROHC packets and reference packets</a></h3>\n"
 			details="$details\n$logs_cmp_rohc\n"
 			details="$details\t\t\t</div>\n"
 		fi
 
-		if [ "$decomp_result" != "PASS" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ "$decomp_result" != "PASS" ] ; then
 			details="$details\t\t\t<div>\n"
 			details="$details\t\t\t\t<h3><a name=\"decomp_details_$i\">Details about the decompression process</a></h3>\n"
 			details="$details\n$logs_decomp\n"
 			details="$details\t\t\t</div>\n"
 		fi
 
-		if [ "$packets_result" != "PASS" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ "$packets_result" != "PASS" ] ; then
 			details="$details\t\t\t<div>\n"
 			details="$details\t\t\t\t<h3><a name=\"cmp_ip_details_$i\">Details about the comparison between decompressed and original packets</a></h3>\n"
 			details="$details\n$logs_cmp_ip\n"

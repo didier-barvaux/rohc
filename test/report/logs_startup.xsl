@@ -4,19 +4,15 @@
 	<xsl:output method="xml" encoding="ISO-8859-15" indent="yes"/>
 
 	<xsl:template match="test/startup">
-	</xsl:template>
-
-	<xsl:template match="test/packet">
-		<xsl:apply-templates select="compression"/>
-	</xsl:template>
-
-	<xsl:template match="compression">
 		<xsl:if test="status != 'ok'">
 			<div>
-				<h4>Compression of packet #<xsl:value-of select="../@id"/> failed:</h4>
+				<h4>Problem during startup:</h4>
 				<p><pre><xsl:value-of select="log"/></pre></p>
 			</div>
 		</xsl:if>
+	</xsl:template>
+
+	<xsl:template match="test/packet">
 	</xsl:template>
 
 	<xsl:template match="test/summary">
