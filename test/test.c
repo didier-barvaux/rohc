@@ -267,26 +267,35 @@ void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
  * @brief Compress and decompress one uncompressed IP packet with the given
  *        compressor and decompressor
  *
- * @param comp       The compressor to use to compress the IP packet
- * @param decomp     The decompressor to use to decompress the IP packet
- * @param num_comp   The ID of the compressor/decompressor
- * @param num_packet A number affected to the IP packet to compress/decompress
- * @param header     The PCAP header for the packet
- * @param packet     The packet to compress/decompress (link layer included)
- * @param dumper     The PCAP output dump file
- * @param cmp_packet The ROHC packet for comparison purpose
- * @param cmp_size   The size of the ROHC packet used for comparison purpose
- * @return           1 if the process is successful
- *                   0 if the decompressed packet doesn't match the original one
- *                   -1 if an error occurs while compressing
- *                   -2 if an error occurs while decompressing
- *                   -3 if the link layer is not Ethernet
+ * @param comp          The compressor to use to compress the IP packet
+ * @param decomp        The decompressor to use to decompress the IP packet
+ * @param num_comp      The ID of the compressor/decompressor
+ * @param num_packet    A number affected to the IP packet to compress/decompress
+ * @param header        The PCAP header for the packet
+ * @param packet        The packet to compress/decompress (link layer included)
+ * @param link_len_src  The length of the link layer header before IP data
+ * @param dumper        The PCAP output dump file
+ * @param cmp_packet    The ROHC packet for comparison purpose
+ * @param cmp_size      The size of the ROHC packet used for comparison purpose
+ * @param link_len_cmp  The length of the link layer header before ROHC data
+ * @return              1 if the process is successful
+ *                      0 if the decompressed packet doesn't match the original
+ *                      one
+ *                      -1 if an error occurs while compressing
+ *                      -2 if an error occurs while decompressing
+ *                      -3 if the link layer is not Ethernet
  */
-int compress_decompress(struct rohc_comp *comp, struct rohc_decomp *decomp,
-                        int num_comp, int num_packet,
-								struct pcap_pkthdr header, unsigned char *packet,
+int compress_decompress(struct rohc_comp *comp,
+                        struct rohc_decomp *decomp,
+                        int num_comp,
+                        int num_packet,
+                        struct pcap_pkthdr header,
+                        unsigned char *packet,
+                        int link_len_src,
                         pcap_dumper_t *dumper,
-                        unsigned char *cmp_packet, int cmp_size)
+                        unsigned char *cmp_packet,
+                        int cmp_size,
+                        int link_len_cmp)
 {
 	unsigned char *ip_packet;
 	int ip_size;
@@ -297,11 +306,11 @@ int compress_decompress(struct rohc_comp *comp, struct rohc_decomp *decomp,
 	int decomp_size;
 	struct ether_header *eth_header;
 	int ret = 1;
-	
+
 	printf("\t<packet id=\"%d\" comp=\"%d\">\n", num_packet, num_comp);
 
 	/* check Ethernet frame length */
-	if(header.len <= ETHER_HDR_LEN || header.len != header.caplen)
+	if(header.len <= link_len_src || header.len != header.caplen)
 	{
 		printf("\t\t<compression>\n");
 		printf("\t\t\t<log>\n");
@@ -328,9 +337,9 @@ int compress_decompress(struct rohc_comp *comp, struct rohc_decomp *decomp,
 		goto exit;
 	}
 
-	ip_packet = packet + ETHER_HDR_LEN;
-	ip_size = header.len - ETHER_HDR_LEN;
-	rohc_packet = output_packet + ETHER_HDR_LEN;
+	ip_packet = packet + link_len_src;
+	ip_size = header.len - link_len_src;
+	rohc_packet = output_packet + link_len_src;
 
 	/* compress the IP packet */
 	printf("\t\t<compression>\n");
@@ -375,20 +384,26 @@ int compress_decompress(struct rohc_comp *comp, struct rohc_decomp *decomp,
 	/* output the ROHC packet to the PCAP dump file if asked */
 	if(dumper != NULL)
 	{
-		header.len = ETHER_HDR_LEN + rohc_size;
+		header.len = link_len_src + rohc_size;
 		header.caplen = header.len;
-		memcpy(output_packet, packet, ETHER_HDR_LEN); /* add the Ethernet header */
-		eth_header = (struct ether_header *) output_packet;
-		eth_header->ether_type = 0x162f; /* unused Ethernet ID ? */
+		if(link_len_src != 0)
+		{
+			memcpy(output_packet, packet, link_len_src); /* add the link layer header */
+			if(link_len_src == ETHER_HDR_LEN) /* Ethernet only */
+			{
+				eth_header = (struct ether_header *) output_packet;
+				eth_header->ether_type = 0x162f; /* unused Ethernet ID ? */
+			}
+		}
 		pcap_dump((u_char *) dumper, &header, output_packet);
 	}
 	
 	/* compare the ROHC packets with the ones given by the user if asked */
 	printf("\t\t<rohc_comparison>\n");
 	printf("\t\t\t<log>\n");
-	if(cmp_packet != NULL && cmp_size > ETHER_HDR_LEN)
+	if(cmp_packet != NULL && cmp_size > link_len_cmp)
 	{
-		if(!compare_packets(cmp_packet + ETHER_HDR_LEN, cmp_size - ETHER_HDR_LEN,
+		if(!compare_packets(cmp_packet + link_len_cmp, cmp_size - link_len_cmp,
 		                    rohc_packet, rohc_size))
 		{
 			printf("\t\t\t</log>\n");
@@ -476,7 +491,8 @@ void test_comp_and_decomp(char *src_filename,
 	pcap_t *handle;
 	pcap_t *cmp_handle;
 	pcap_dumper_t *dumper;
-	int link_layer_type;
+	int link_layer_type_src, link_layer_type_cmp;
+	int link_len_src, link_len_cmp = 0;
 	struct pcap_pkthdr header;
 	struct pcap_pkthdr cmp_header;
 
@@ -508,14 +524,19 @@ void test_comp_and_decomp(char *src_filename,
 	}
 
 	/* link layer in the source dump must be Ethernet */
-	link_layer_type = pcap_datalink(handle);
-	if(link_layer_type != DLT_EN10MB)
+	link_layer_type_src = pcap_datalink(handle);
+	if(link_layer_type_src != DLT_EN10MB && link_layer_type_src != DLT_RAW)
 	{
-		printf("link layer type not supported (%d)\n",
-		       link_layer_type);
+		printf("link layer type %d not supported in source dump (supported = "
+		       "%d, %d)\n", link_layer_type_src, DLT_EN10MB, DLT_RAW);
 		printf("\t</startuplog>\n\n");
 		goto close_input;
 	}
+
+	if(link_layer_type_src == DLT_EN10MB)
+		link_len_src = ETHER_HDR_LEN;
+	else /* DLT_RAW */
+		link_len_src = 0;
 
 	/* open the network dump file for ROHC storage if asked */
 	if(ofilename != NULL)
@@ -543,14 +564,20 @@ void test_comp_and_decomp(char *src_filename,
 		}
 
 		/* link layer in the rohc_comparison dump must be Ethernet */
-		link_layer_type = pcap_datalink(cmp_handle);
-		if(link_layer_type != DLT_EN10MB)
+		link_layer_type_cmp = pcap_datalink(cmp_handle);
+		if(link_layer_type_cmp != DLT_EN10MB && link_layer_type_cmp != DLT_RAW)
 		{
-			printf("link layer type not supported (%d)\n",
-			       link_layer_type);
+			printf("link layer type %d not supported in comparision dump "
+			       "(supported = %d, %d)\n", link_layer_type_cmp, DLT_EN10MB,
+			       DLT_RAW);
 			printf("\t</startuplog>\n\n");
 			goto close_comparison;
 		}
+
+		if(link_layer_type_cmp == DLT_EN10MB)
+			link_len_cmp = ETHER_HDR_LEN;
+		else /* DLT_RAW */
+			link_len_cmp = 0;
 	}
 	else
 		cmp_handle = NULL;
@@ -617,8 +644,9 @@ void test_comp_and_decomp(char *src_filename,
 			cmp_packet = NULL;
 
 		/* compress & decompress from 1 to 2 */
-		ret = compress_decompress(comp1, decomp2, 1, counter, header,
-		                          packet, dumper, cmp_packet, cmp_header.caplen);
+		ret = compress_decompress(comp1, decomp2, 1, counter, header, packet,
+		                          link_len_src, dumper, cmp_packet,
+		                          cmp_header.caplen, link_len_cmp);
 		if(ret == -1)
 			err_comp++;
 		else if(ret == -2)
@@ -635,8 +663,9 @@ void test_comp_and_decomp(char *src_filename,
 			cmp_packet = NULL;
 
 		/* compress & decompress from 2 to 1 */
-		ret = compress_decompress(comp2, decomp1, 2, counter, header,
-		                          packet, dumper, cmp_packet, cmp_header.caplen);
+		ret = compress_decompress(comp2, decomp1, 2, counter, header, packet,
+		                          link_len_src, dumper, cmp_packet,
+		                          cmp_header.caplen, link_len_cmp);
 		if(ret == -1)
 			err_comp++;
 		else if(ret == -2)
