@@ -8,6 +8,16 @@
 
 	<xsl:template match="test/packet">
 		<xsl:apply-templates select="ip_comparison"/>
+		<xsl:apply-templates select="decompression"/>
+	</xsl:template>
+
+	<xsl:template match="decompression">
+		<xsl:if test="../ip_comparison/status != 'ok'">
+			<div class="optional">
+				<h5>Log of decompression of packet #<xsl:value-of select="../@id"/>:</h5>
+				<p><pre><xsl:value-of select="log"/></pre></p>
+			</div>
+		</xsl:if>
 	</xsl:template>
 
 	<xsl:template match="ip_comparison">

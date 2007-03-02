@@ -13,7 +13,7 @@
 
 	<xsl:template match="compression">
 		<xsl:if test="../rohc_comparison/status != 'ok'">
-			<div>
+			<div class="optional">
 				<h5>Log of compression of packet #<xsl:value-of select="../@id"/>:</h5>
 				<p><pre><xsl:value-of select="log"/></pre></p>
 			</div>
