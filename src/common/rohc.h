@@ -362,7 +362,9 @@ struct medium
 /// @brief Print information depending on the debug level and prefixed
 ///        with the function name
 #define rohc_debugf(level, format, ...) \
-	rohc_debugf_(level, "%s: " format, __FUNCTION__, ##__VA_ARGS__);
+	rohc_debugf_(level, "%s[%s:%d %s()] " format, \
+	             (level == 0 ? "[ERROR] " : ""), \
+	             __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)
 
 /// Print information depending on the debug level
 #define rohc_debugf_(level, format, ...) \
