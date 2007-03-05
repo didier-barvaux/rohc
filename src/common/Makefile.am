@@ -12,7 +12,8 @@ sources = \
 	ip_id.c \
 	lsb.c \
 	sdvl.c \
-	wlsb.c
+	wlsb.c \
+	ip.c
 
 headers = \
 	rohc.h \
@@ -22,6 +23,7 @@ headers = \
 	lsb.h \
 	sdvl.h \
 	wlsb.h \
+	ip.h \
 	udp_lite.h
 
 librohc_common_la_SOURCES = $(sources) $(headers)

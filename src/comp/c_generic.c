@@ -2338,9 +2338,9 @@ int header_flags(struct c_context *context,
 	if(is_changed(changed_f, MOD_PROTOCOL) || header_info->protocol_count < MAX_FO_COUNT)
 		flags |= 0x10;
 
-	rohc_debugf(1, "DF = %d\n", GET_DF(ip->frag_off));
+	rohc_debugf(1, "DF = %d\n", IPV4_GET_DF(*ip));
 	header_info->df_count++;
-	flags |= GET_DF(ip->frag_off) << 5;
+	flags |= IPV4_GET_DF(*ip) << 5;
 
 	header_info->nbo_count++;
 	flags |= header_info->nbo << 2;
@@ -2673,10 +2673,10 @@ int changed_dynamic_one_hdr(unsigned short changed_fields,
 		nb_fields += 1;
 	}
 
-	if(GET_DF(ip->frag_off) != GET_DF(header_info->old_ip.frag_off) ||
+	if(IPV4_GET_DF(*ip) != IPV4_GET_DF(header_info->old_ip) ||
 	   header_info->df_count < MAX_FO_COUNT)
 	{
-		if(GET_DF(ip->frag_off) != GET_DF(header_info->old_ip.frag_off))
+		if(IPV4_GET_DF(*ip) != IPV4_GET_DF(header_info->old_ip))
 		{
 			header_info->ttl_count = 0;
 			g_context->fo_count = 0;

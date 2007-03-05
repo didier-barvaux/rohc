@@ -308,9 +308,6 @@ struct medium
 /// Convert GET_BIT_x values to 0 or 1, ex: GET_REAL(GET_BIT_5(data_ptr));
 #define GET_REAL(x)	( (x) ? 1 : 0 )
 
-/// Get the IPv4 Don't Fragment (DF) bit from the iphdr->frag_off variable
-#define GET_DF(x) ((ntohs(x) & IP_DF) >> 14)
-
 
 /*
  * The flags for the IPv4 changed fields:
@@ -477,6 +474,7 @@ static inline unsigned int get_milliseconds(void)
 #include "lsb.h"
 #include "sdvl.h"
 #include "wlsb.h"
+#include "ip.h"
 
 
 #endif
