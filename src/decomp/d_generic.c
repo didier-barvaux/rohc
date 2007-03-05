@@ -1774,7 +1774,8 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
                        int ext)
 {
 	struct d_generic_context *g_context = context->specific;
-	int sn_ref = 0, interval = 0;
+	unsigned int interval = 0;
+	int sn_ref = 0;
 	int sn_curr2 = 0, sn_curr1 = 0;
 	int sn_update = 0;
 
@@ -1802,7 +1803,7 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 	{
 		/* SN LSB wraparound, compute a new SN reference and try to decode SN */
 		rohc_debugf(0, "repair with the assumption: SN LSB wraparound\n");
-		rohc_debugf(2, "inter_arrival_time = %d and current interval is = %d\n",
+		rohc_debugf(2, "inter_arrival_time = %u and current interval is = %u\n",
 		            g_context->inter_arrival_time, interval);
 		rohc_debugf(2, "add %d to SN\n", 1 << sn_size);
 
@@ -1821,7 +1822,7 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 	{
 		/* no SN LSB wraparound, try to sync SN with the old sn_ref value */
 		rohc_debugf(0, "repair with the assumption: incorrect SN-updates\n");
-		rohc_debugf(2, "inter_arrival_time = %d and current interval is = %d\n",
+		rohc_debugf(2, "inter_arrival_time = %u and current interval is = %u\n",
 		            g_context->inter_arrival_time, interval);
 
 		/* save current SN reference */
