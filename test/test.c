@@ -299,7 +299,7 @@ int compress_decompress(struct rohc_comp *comp,
 {
 	unsigned char *ip_packet;
 	int ip_size;
-	static unsigned char output_packet[ETHER_HDR_LEN + MAX_ROHC_SIZE];
+	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
 	unsigned char *rohc_packet;
 	int rohc_size;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
@@ -393,6 +393,11 @@ int compress_decompress(struct rohc_comp *comp,
 			{
 				eth_header = (struct ether_header *) output_packet;
 				eth_header->ether_type = 0x162f; /* unused Ethernet ID ? */
+			}
+			else if(link_len_src == LINUX_COOKED_HDR_LEN) /* Linux Cooked Sockets only */
+			{
+				output_packet[LINUX_COOKED_HDR_LEN - 2] = 0x16;
+				output_packet[LINUX_COOKED_HDR_LEN - 1] = 0x2f;
 			}
 		}
 		pcap_dump((u_char *) dumper, &header, output_packet);
@@ -528,10 +533,13 @@ void test_comp_and_decomp(char *src_filename,
 
 	/* link layer in the source dump must be Ethernet */
 	link_layer_type_src = pcap_datalink(handle);
-	if(link_layer_type_src != DLT_EN10MB && link_layer_type_src != DLT_RAW)
+	if(link_layer_type_src != DLT_EN10MB &&
+	   link_layer_type_src != DLT_LINUX_SLL &&
+	   link_layer_type_src != DLT_RAW)
 	{
 		printf("link layer type %d not supported in source dump (supported = "
-		       "%d, %d)\n", link_layer_type_src, DLT_EN10MB, DLT_RAW);
+		       "%d, %d, %d)\n", link_layer_type_src, DLT_EN10MB, DLT_LINUX_SLL,
+		       DLT_RAW);
 		printf("\t\t</log>\n");
 		printf("\t\t<status>failed</status>\n");
 		printf("\t</startup>\n\n");
@@ -540,6 +548,8 @@ void test_comp_and_decomp(char *src_filename,
 
 	if(link_layer_type_src == DLT_EN10MB)
 		link_len_src = ETHER_HDR_LEN;
+	else if(link_layer_type_src == DLT_LINUX_SLL)
+		link_len_src = LINUX_COOKED_HDR_LEN;
 	else /* DLT_RAW */
 		link_len_src = 0;
 
@@ -574,11 +584,13 @@ void test_comp_and_decomp(char *src_filename,
 
 		/* link layer in the rohc_comparison dump must be Ethernet */
 		link_layer_type_cmp = pcap_datalink(cmp_handle);
-		if(link_layer_type_cmp != DLT_EN10MB && link_layer_type_cmp != DLT_RAW)
+		if(link_layer_type_cmp != DLT_EN10MB &&
+		   link_layer_type_cmp != DLT_LINUX_SLL &&
+		   link_layer_type_cmp != DLT_RAW)
 		{
 			printf("link layer type %d not supported in comparision dump "
-			       "(supported = %d, %d)\n", link_layer_type_cmp, DLT_EN10MB,
-			       DLT_RAW);
+			       "(supported = %d, %d, %d)\n", link_layer_type_cmp, DLT_EN10MB,
+			       DLT_LINUX_SLL, DLT_RAW);
 			printf("\t\t</log>\n");
 			printf("\t\t<status>failed</status>\n");
 			printf("\t</startup>\n\n");
@@ -587,6 +599,8 @@ void test_comp_and_decomp(char *src_filename,
 
 		if(link_layer_type_cmp == DLT_EN10MB)
 			link_len_cmp = ETHER_HDR_LEN;
+		else if(link_layer_type_cmp == DLT_LINUX_SLL)
+			link_len_cmp = LINUX_COOKED_HDR_LEN;
 		else /* DLT_RAW */
 			link_len_cmp = 0;
 	}
