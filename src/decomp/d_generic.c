@@ -288,6 +288,9 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	rohc_debugf(2, "decode an IR packet\n");
 
+	/* set the packet type */
+	g_context->packet_type = PACKET_IR;
+
 	g_context->current_packet_time = get_microseconds();
 
 	/* decode the static part of the outer header */
