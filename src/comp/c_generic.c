@@ -2117,7 +2117,7 @@ int code_UO2_packet(struct c_context *context,
 		counter = g_context->code_UO_packet_head(context, next_header,
 		                                         dest, counter, &first_position);
 
-	/* part 2: to be continued, we need to add the 4 bits of SN */
+	/* part 2: to be continued, we need to add the 5 bits of SN */
 	f_byte = 0xc0;
 
 	/* part 4: partially calculate the s-byte value, then remember the position
