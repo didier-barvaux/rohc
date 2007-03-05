@@ -140,7 +140,7 @@ int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner)
 
 	/* get the next header data in the IP packet */
 	next_header = ip_get_next_header(outer);
-	
+
 	/* create an IP packet with the next header data */
 	return ip_create(inner, next_header, ip_get_plen(outer));
 }
@@ -182,7 +182,7 @@ int ip_is_fragment(struct ip_packet ip)
 	if(ip.version == IPV4)
 		is_fragment = ((ntohs(ip.header.v4.frag_off) & (~IP_DF)) != 0);
 	else /* IPV6 */
-		is_fragment = 0; // TODO: ip_is_fragment: IPV6 ?
+		is_fragment = 0;
 
 	return is_fragment;
 }
@@ -499,8 +499,7 @@ uint32_t ipv4_get_saddr(struct ip_packet ip)
 {
 	if(ip.version == IPV4)
 		return ip.header.v4.saddr;
-//	else /* IPV6 */
-	 // TODO: ipv4_get_saddr: IPV6 ?
+
 	return 0;
 }
 
@@ -515,8 +514,7 @@ uint32_t ipv4_get_daddr(struct ip_packet ip)
 {
 	if(ip.version == IPV4)
 		return ip.header.v4.daddr;
-//	else /* IPV6 */
-	 // TODO: ipv4_get_daddr: IPV6 ?
+
 	return 0;
 }
 
@@ -555,7 +553,6 @@ uint32_t ipv6_get_flow_label(struct ip_packet ip)
 {
 	if(ip.version == IPV6)
 		return IPV6_GET_FLOW_LABEL(ip.header.v6);
-	// TODO: ipv6_get_flow_label: IPV4 ?
 
 	return 0;
 }
@@ -584,8 +581,7 @@ struct in6_addr * ipv6_get_saddr(struct ip_packet *ip)
 {
 	if(ip->version == IPV6)
 		return &ip->header.v6.ip6_src;
-//	else /* IPV4 */
-	 // TODO: ipv6_get_saddr: IPV4 ?
+
 	return NULL;
 }
 
@@ -600,8 +596,7 @@ struct in6_addr * ipv6_get_daddr(struct ip_packet *ip)
 {
 	if(ip->version == IPV6)
 		return &ip->header.v6.ip6_dst;
-//	else /* IPV4 */
-	 // TODO: ipv6_get_daddr: IPV4 ?
+
 	return NULL;
 }
 
