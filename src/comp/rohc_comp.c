@@ -123,37 +123,43 @@ void rohc_free_compressor(struct rohc_comp *comp)
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
                   unsigned char *obuf, int osize)
 {
-	struct iphdr *ip = (struct iphdr *) ibuf;
-	struct iphdr *ip2;
+	struct ip_packet ip;
+	struct ip_packet ip2;
 	int proto;
 	struct c_profile *p;
 	struct c_context *c;
 	int feedback_size, payload_size, payload_offset;
 	int size, esize;
+	unsigned char *ip_raw_data;
 
+	/* check compressor validity */
 	if(comp == 0)
 	{
 		rohc_debugf(0, "compressor not valid\n");
 		return 0;
 	}
 
-	if(ip->version != 4)
+	/* create the IP packet from raw data */
+	if(!ip_create(&ip, ibuf, isize))
 	{
-		rohc_debugf(0, "wrong IP version (%d)\n", ip->version);
+		rohc_debugf(0, "cannot create the outer IP header\n");
 		return 0;
 	}
 
-	if(ip->ihl * 4 != 20)
+	/* get the transport protocol in the IP packet (skip the second IP header
+	 * if present) */
+	proto = ip_get_protocol(ip);
+	if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 	{
-		rohc_debugf(0, "wrong IP header size (%d)\n", ip->ihl);
-		return 0;
-	}
+		/* create the second IP header */
+		if(!ip_get_inner_packet(ip, &ip2))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			return 0;
+		}
 
-	proto = ip->protocol;
-	if(proto == IPPROTO_IPIP)
-	{
-		ip2 = ip + 1;
-		proto = ip2->protocol;
+		/* get the transport protocol */
+		proto = ip_get_protocol(ip2);
 	}
 
 	/* get the profile based on the IP protocol */
@@ -228,7 +234,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	c->latest_used = get_milliseconds();
 
-	rohc_debugf(0, "selected compression profile = 0x%04x\n", p->id);
+	rohc_debugf(1, "selected compression profile = 0x%04x\n", p->id);
 
 	/* create the ROHC packet: */
 	size = 0;
@@ -294,11 +300,11 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	size += esize;
 	obuf += esize;
 
-	payload_size = ntohs(ip->tot_len) - payload_offset;
+	payload_size = ip_get_totlen(ip) - payload_offset;
 
 	rohc_debugf(2, "ROHC size = %d, payload size = %d (totlen = %d, ihl = %d), "
 	            "output buffer size = %d\n", size, payload_size,
-	            ntohs(ip->tot_len), ip->ihl * 4, osize);
+	            ip_get_totlen(ip), ip_get_hdrlen(ip), osize);
 
 	/* is packet too large? */
 	if(size + payload_size > osize)
@@ -310,7 +316,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	}
 
 	/* copy payload to rohc packet */
-	memcpy(obuf, ((unsigned char *) ip) + payload_offset, payload_size);
+	ip_raw_data = ip_get_raw_data(ip);
+	memcpy(obuf, ip_raw_data + payload_offset, payload_size);
 	obuf += payload_size;
 	size += payload_size;
 
@@ -863,7 +870,7 @@ int c_alloc_contexts(struct rohc_comp *comp, int size)
  */
 struct c_context * c_create_context(struct rohc_comp *comp,
                                     struct c_profile *profile,
-                                    struct iphdr *ip)
+                                    struct ip_packet ip)
 {
 	struct c_context *c;
 	int index, i;
@@ -974,7 +981,7 @@ struct c_context * c_create_context(struct rohc_comp *comp,
  */
 struct c_context * c_find_context(struct rohc_comp *comp,
                                   struct c_profile *profile,
-                                  struct iphdr *ip)
+                                  struct ip_packet ip)
 {
 	struct c_context *c = NULL;
 	int i;
@@ -1172,9 +1179,12 @@ int c_piggyback_get(struct rohc_comp *comp, unsigned char *buffer)
 	}
 
 	rohc_debugf(2, "add %d byte(s) of feedback data", size);
-	rohc_debugf_(3, ": ");
-	for(i = 0; i < size; i++)
-		rohc_debugf_(3, "0x%02x ", buffer[index + i]);
+	if(size > 0)
+	{
+		rohc_debugf_(3, ": ");
+		for(i = 0; i < size; i++)
+			rohc_debugf_(3, "0x%02x ", buffer[index + i]);
+	}
 	rohc_debugf_(2, "\n");
 
 	/* return the length of the feedback header/data,

@@ -310,7 +310,7 @@ struct medium
 
 
 /*
- * The flags for the IPv4 changed fields:
+ * The flags for the IP changed fields:
  */
 
 /// Indicates that the IPv4 Type Of Service field changed

@@ -55,12 +55,12 @@ struct sc_udp_context
  * Function prototypes.
  */
 
-int c_udp_create(struct c_context *context, const struct iphdr *ip);
+int c_udp_create(struct c_context *context, const struct ip_packet ip);
 
-int c_udp_check_context(struct c_context *context, const struct iphdr *ip);
+int c_udp_check_context(struct c_context *context, const struct ip_packet ip);
 
 int c_udp_encode(struct c_context *context,
-                 const struct iphdr *ip,
+                 const struct ip_packet ip,
                  int packet_size,
                  unsigned char *dest,
                  int dest_size,

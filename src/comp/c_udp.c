@@ -42,12 +42,13 @@ int udp_changed_udp_dynamic(struct c_context *context,
  * @param ip      The IP/UDP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_udp_create(struct c_context *context, const struct iphdr *ip)
+int c_udp_create(struct c_context *context, const struct ip_packet ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
 	struct udphdr *udp;
-	struct iphdr *last_ip_header;
+	struct ip_packet last_ip_header;
+	unsigned int ip_proto;
 
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ip))
@@ -58,19 +59,33 @@ int c_udp_create(struct c_context *context, const struct iphdr *ip)
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* check if packet is IP/UDP or IP/IP/UDP */
-	if(ip->protocol == IPPROTO_IPIP)
-		last_ip_header = (struct iphdr *) (ip + 1);
-	else
-		last_ip_header = (struct iphdr *) ip;
-		
-	if(last_ip_header->protocol == IPPROTO_UDP)
-		udp = (struct udphdr *) (last_ip_header + 1);
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	{
+		/* get the last IP header */
+  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			goto quit;
+		}
+
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(last_ip_header);
+	}
 	else
 	{
+		/* only one single IP header, the last IP header is the first one */
+		last_ip_header = ip;
+	}
+
+	if(ip_proto != IPPROTO_UDP)
+	{
 		rohc_debugf(0, "next header is not UDP (%d), cannot use this profile\n",
-		            last_ip_header->protocol);
+		            ip_proto);
 		goto clean;
 	}
+
+	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
 
 	/* create the UDP part of the profile context */
 	udp_context = malloc(sizeof(struct sc_udp_context));
@@ -111,11 +126,16 @@ quit:
  * @brief Check if the IP/UDP packet belongs to the context
  *
  * Conditions are:
- *  - IP packet must not be fragmented
+ *  - the number of IP headers must be the same as in context
+ *  - IP version of the two IP headers must be the same as in context
+ *  - IP packets must not be fragmented
  *  - the source and destination addresses of the two IP headers must match the
  *    ones in the context
+ *  - the transport protocol must be UDP
  *  - the source and destination ports of the UDP header must match the ones in
  *    the context
+ *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
+ *    context
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -126,65 +146,121 @@ quit:
  *                0 if it does not belong to the context and
  *                -1 if an error occurs
  */
-int c_udp_check_context(struct c_context *context, const struct iphdr *ip)
+int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
-	struct iphdr *ip2, *last_ip_header;
+	struct ip_header_info *ip_flags;
+	struct ip_header_info *ip2_flags;
+	struct ip_packet ip2, last_ip_header;
 	struct udphdr *udp;
+	unsigned int ip_proto;
 	boolean is_ip_same, is_ip2_same, is_udp_same;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_context = (struct sc_udp_context *) g_context->specific;
+	ip_flags = &g_context->ip_flags;
+	ip2_flags = &g_context->ip2_flags;
 
-	/* discard IP fragments:
-	 *  - the R (Reserved) and MF (More Fragments) bits must be zero
-	 *  - the Fragment Offset field must be zero
-	 *  => ip->frag_off must be zero except the DF (Don't Fragment) bit
-	 */
-	if((ntohs(ip->frag_off) & (~IP_DF)) != 0)
+	/* check the IP version of the first header */
+	if(ip_get_version(ip) != ip_flags->version)
+		goto bad;
+
+	/* check if the first header is a fragment */
+	if(ip_is_fragment(ip))
+		goto bad;
+
+	/* compare the addresses of the first header */
+	if(ip_get_version(ip) == IPV4)
 	{
-		rohc_debugf(0, "fragment error in outer IP header (0x%04x)\n", ntohs(ip->frag_off));
-		goto error;
+		is_ip_same = ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip) &&
+		             ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip);
+	}
+	else /* IPV6 */
+	{
+		is_ip_same =
+			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_src, ipv6_get_saddr(&ip)) &&
+			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_dst, ipv6_get_daddr(&ip));
 	}
 
-	is_ip_same = (g_context->ip_flags.old_ip.saddr == ip->saddr &&
-	              g_context->ip_flags.old_ip.daddr == ip->daddr);
+	if(!is_ip_same)
+		goto bad;
 
-	if(ip->protocol == IPPROTO_IPIP)
+	/* compare the Flow Label of the first header if IPv6 */
+	if(ip_get_version(ip) == IPV6 && ipv6_get_flow_label(ip) !=
+	   IPV6_GET_FLOW_LABEL(ip_flags->info.v6.old_ip))
+		goto bad;
+
+	/* check the second IP header */
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
-		ip2 = (struct iphdr *) (ip + 1);
+		/* check if the context used to have a second IP header */
+		if(!g_context->is_ip2_initialized)
+			goto bad;
+
+		/* get the second IP header */
+  		if(!ip_get_inner_packet(ip, &ip2))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			goto error;
+		}
+
+		/* check the IP version of the second header */
+		if(ip_get_version(ip2) != ip2_flags->version)
+			goto bad;
+
+		/* check if the second header is a fragment */
+		if(ip_is_fragment(ip2))
+			goto bad;
+
+		/* compare the addresses of the second header */
+		if(ip_get_version(ip2) == IPV4)
+		{
+			is_ip2_same = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip2) &&
+			              ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip2);
+		}
+		else /* IPV6 */
+		{
+			is_ip2_same = IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_src,
+			                            ipv6_get_saddr(&ip2)) &&
+			              IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_dst,
+			                            ipv6_get_daddr(&ip2));
+		}
+
+		if(!is_ip2_same)
+			goto bad;
+
+		/* compare the Flow Label of the second header if IPv6 */
+		if(ip_get_version(ip2) == IPV6 && ipv6_get_flow_label(ip2) !=
+		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
+			goto bad;
+
+		/* get the last IP header */
 		last_ip_header = ip2;
 
-		is_ip2_same = (g_context->ip2_flags.old_ip.saddr == ip2->saddr &&
-		               g_context->ip2_flags.old_ip.daddr == ip2->daddr);
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(ip2);
 	}
 	else
 	{
-		ip2 = NULL;
-		last_ip_header = (struct iphdr *) ip;
-		is_ip2_same = 1;
+		/* only one single IP header, the last IP header is the first one */
+		last_ip_header = ip;
 	}
 
-	if(ip2 != NULL && (ntohs(ip2->frag_off) & (~IP_DF)) != 0)
-	{
-		rohc_debugf(0, "fragment error in inner IP header (0x%04x)\n", ntohs(ip2->frag_off));
-		goto error;
-	}
+	/* check the transport protocol */
+	if(ip_proto != IPPROTO_UDP)
+		goto bad;
+	
+	/* check UDP ports */
+	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	is_udp_same = udp_context->old_udp.source == udp->source &&
+		           udp_context->old_udp.dest == udp->dest;
 
-	if(last_ip_header->protocol == IPPROTO_UDP)
-	{
-		udp = (struct udphdr *) (last_ip_header + 1);
-		is_udp_same = (udp_context->old_udp.source == udp->source &&
-		               udp_context->old_udp.dest == udp->dest);
-	}
-	else
-	{
-		is_udp_same = 0;
-	}
+	return is_udp_same;
 
-	return (is_ip_same && is_ip2_same && is_udp_same);
-
+bad:
+	return 0;
 error:
 	return -1;
 }
@@ -203,7 +279,7 @@ error:
  * @return               The length of the created ROHC packet
  */
 int c_udp_encode(struct c_context *context,
-                 const struct iphdr *ip,
+                 const struct ip_packet ip,
                  int packet_size,
                  unsigned char *dest,
                  int dest_size,
@@ -211,8 +287,9 @@ int c_udp_encode(struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
-	struct iphdr *last_ip_header;
+	struct ip_packet last_ip_header;
 	struct udphdr *udp;
+	unsigned int ip_proto;
 	int size;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -229,17 +306,31 @@ int c_udp_encode(struct c_context *context,
 		return 0;
 	}
 
-	if(ip->protocol == IPPROTO_IPIP)
-		last_ip_header = (struct iphdr *) (ip + 1);
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	{
+		/* get the last IP header */
+  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			return 0;
+		}
+		
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(last_ip_header);
+	}
 	else
-		last_ip_header = (struct iphdr *) ip;
+	{
+		/* only one single IP header, the last IP header is the first one */
+		last_ip_header = ip;
+	}
 
-	if(last_ip_header->protocol != IPPROTO_UDP)
+	if(ip_proto != IPPROTO_UDP)
 	{
 		rohc_debugf(0, "packet is not an UDP packet\n");
 		return 0;
 	}
-	udp = (struct udphdr *) (last_ip_header + 1);
+	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
 
 	/* how many UDP fields changed? */
 	udp_context->tmp_variables.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);

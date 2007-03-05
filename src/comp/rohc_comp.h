@@ -168,7 +168,7 @@ struct c_profile
 
 	/// @brief The handler used to create the profile-specific part of the
 	///        compression context
-	int (*create)(struct c_context *context, const struct iphdr *packet);
+	int (*create)(struct c_context *context, const struct ip_packet packet);
 
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        compression context
@@ -176,10 +176,10 @@ struct c_profile
 
 	/// @brief The handler used to check whether an uncompressed IP packet
 	///        belongs to a context or not
-	int (*check_context)(struct c_context *context, const struct iphdr *packet);
+	int (*check_context)(struct c_context *context, struct ip_packet packet);
 
 	/// The handler used to encode uncompressed IP packets
-	int (*encode)(struct c_context *context, const struct iphdr *packet,
+	int (*encode)(struct c_context *context, const struct ip_packet packet,
 	              int packet_size, unsigned char *dest, int dest_size,
 	              int *payload_offset);
 
@@ -250,8 +250,8 @@ int rohc_c_using_small_cid(struct rohc_comp *comp);
  * Functions related to context:
  */
 
-struct c_context *c_create_context(struct rohc_comp *, struct c_profile *profile, struct iphdr *ip);
-struct c_context *c_find_context(struct rohc_comp *, struct c_profile *profile, struct iphdr *ip);
+struct c_context *c_create_context(struct rohc_comp *, struct c_profile *profile, struct ip_packet ip);
+struct c_context *c_find_context(struct rohc_comp *, struct c_profile *profile, struct ip_packet ip);
 struct c_context *c_get_context(struct rohc_comp *, int cid);
 
 

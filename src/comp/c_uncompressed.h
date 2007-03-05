@@ -43,19 +43,19 @@ void uncompressed_change_mode(struct c_context *c, rohc_mode new_mode);
 void uncompressed_change_state(struct c_context *c, rohc_c_state new_state);
 
 int uncompressed_code_packet(struct c_context *context,
-                             const struct iphdr *ip,
+                             const struct ip_packet ip,
                              unsigned char *dest,
                              int *payload_offset,
                              int dest_size);
 
 int uncompressed_code_IR_packet(struct c_context *context,
-                                const struct iphdr *ip,
+                                const struct ip_packet ip,
                                 unsigned char *dest,
                                 int *payload_offset,
                                 int dest_size);
 
 int uncompressed_code_normal_packet(struct c_context *context,
-                                    const struct iphdr *ip,
+                                    const struct ip_packet ip,
                                     unsigned char *dest,
                                     int *payload_offset,
                                     int dest_size);

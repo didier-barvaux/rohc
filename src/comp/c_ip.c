@@ -12,9 +12,13 @@
  * @brief Check if an IP packet belongs to the context.
  *
  * Conditions are:
- *  - IP packet must not be fragmented
+ *  - the number of IP headers must be the same as in context
+ *  - IP version of the two IP headers must be the same as in context
+ *  - IP packets must not be fragmented
  *  - the source and destination addresses of the two IP headers must match the
  *    ones in the context
+ *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
+ *    context
  * 
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -25,55 +29,100 @@
  *                0 if it does not belong to the context and
  *                -1 if an error occurs
  */
-int c_ip_check_context(struct c_context *context, const struct iphdr *ip)
+int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 {
 	struct c_generic_context *g_context;
-  	struct iphdr *ip2;
+	struct ip_header_info *ip_flags;
+	struct ip_header_info *ip2_flags;
+  	struct ip_packet ip2;
+	unsigned int ip_proto;
 	boolean same_src, same_dest;
 	boolean same_src2, same_dest2;
 
 	g_context = (struct c_generic_context *) context->specific;
+	ip_flags = &g_context->ip_flags;
+	ip2_flags = &g_context->ip2_flags;
 
-	/* discard IP fragments:
-	 *  - the R (Reserved) and MF (More Fragments) bits must be zero
-	 *  - the Fragment Offset field must be zero
-	 *  => ip->frag_off must be zero except the DF (Don't Fragment) bit
-	 */
-	if((ntohs(ip->frag_off) & (~IP_DF)) != 0)
+	/* check the IP version of the first header */
+	if(ip_get_version(ip) != ip_flags->version)
+		goto bad;
+
+	/* check if the first header is a fragment */
+	if(ip_is_fragment(ip))
+		goto bad;
+
+	/* compare the addresses of the first header */
+	if(ip_get_version(ip) == IPV4)
 	{
-		rohc_debugf(0, "Fragment error in outer IP header (0x%04x)\n", ntohs(ip->frag_off));
-		goto error;
+		same_src = ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip);
+		same_dest = ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip);
 	}
+	else /* IPV6 */
+	{
+		same_src = IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_src,
+		                         ipv6_get_saddr(&ip));
+		same_dest = IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_dst,
+		                          ipv6_get_daddr(&ip));
+	}
+
+	if(!same_src || !same_dest)
+	 goto bad;
+
+	/* compare the Flow Label of the first header if IPv6 */
+	if(ip_get_version(ip) == IPV6 && ipv6_get_flow_label(ip) !=
+	   IPV6_GET_FLOW_LABEL(ip_flags->info.v6.old_ip))
+		goto bad;
+
+	/* check the second IP header */
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	{
+		/* check if the context used to have a second IP header */
+		if(!g_context->is_ip2_initialized)
+			goto bad;
+
+		/* get the second IP header */
+  		if(!ip_get_inner_packet(ip, &ip2))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			goto error;
+		}
+
+		/* check the IP version of the second header */
+		if(ip_get_version(ip2) != ip2_flags->version)
+			goto bad;
+
+		/* check if the second header is a fragment */
+		if(ip_is_fragment(ip2))
+			goto bad;
+
+		/* compare the addresses of the second header */
+		if(ip_get_version(ip2) == IPV4)
+		{
+			same_src2 = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip2);
+			same_dest2 = ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip2);
+		}
+		else /* IPV6 */
+		{
+			same_src2 = IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_src,
+			                          ipv6_get_saddr(&ip2));
+			same_dest2 = IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_dst,
+			                           ipv6_get_daddr(&ip2));
+		}
 	
-	if(ip->protocol == IPPROTO_IPIP)
-	{
-  		ip2 = (struct iphdr *) (ip + 1);
+		if(!same_src2 || !same_dest2)
+	 		goto bad;
 
-		same_src = g_context->ip_flags.old_ip.saddr == ip->saddr;
-		same_dest = g_context->ip_flags.old_ip.daddr == ip->daddr;
-
-		same_src2 = g_context->ip2_flags.old_ip.saddr == ip2->saddr;
-		same_dest2 = g_context->ip2_flags.old_ip.daddr == ip2->daddr;
-	}
-	else
-	{
-		ip2 = NULL;
-
-		same_src = g_context->ip_flags.old_ip.saddr == ip->saddr;
-		same_dest = g_context->ip_flags.old_ip.daddr == ip->daddr;
-
-		same_src2 = 1;
-		same_dest2 = 1;
+		/* compare the Flow Label of the second header if IPv6 */
+		if(ip_get_version(ip2) == IPV6 && ipv6_get_flow_label(ip2) !=
+		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
+			goto bad;
 	}
 
-	if(ip2 != NULL && (ntohs(ip2->frag_off) & (~IP_DF)) != 0)
-	{
-		rohc_debugf(0, "Fragment error in inner IP header (0x%04x)\n", ntohs(ip2->frag_off));
-		goto error;
-	}
+	return 1;
 
-	return (same_src && same_dest && same_src2 && same_dest2);
-
+bad:
+	return 0;
 error:
 	return -1;
 }

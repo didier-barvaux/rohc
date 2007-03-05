@@ -16,22 +16,22 @@
 
 
 /**
- * @brief The maximal delta accepted between two consecutive IP-ID so that it
+ * @brief The maximal delta accepted between two consecutive IPv4 ID so that it
  *        can be considered as coded in Network Byte Order (NBO)
  */
 #define IPID_MAX_DELTA  20
 
 
 /**
- * @brief Store information about an IP header between the different
+ * @brief Store information about an IPv4 header between the different
  *        compressions of IP packets.
  *
  * Defines an object that contains counters, flags and structures related to an
- * IP header and that need to be saved between the different compressions of
+ * IPv4 header and that need to be saved between the different compressions of
  * packets. A compression context owns objects like this for the two first
- * IP headers.
+ * IPv4 headers.
  */
-struct ip_header_info
+struct ipv4_header_info
 {
 	/// A window to store the IP-ID
 	struct c_wlsb *ip_id_window;
@@ -39,14 +39,8 @@ struct ip_header_info
 	/// The previous IP header
 	struct iphdr old_ip;
 
-	/// The number of times the TOS field was added to the compressed header
-	int tos_count;
-	/// The number of times the TTL field was added to the compressed header
-	int ttl_count;
 	/// The number of times the DF field was added to the compressed header
 	int df_count;
-	/// The number of times the Protocol field was added to the compressed header
-	int protocol_count;
 	/// @brief The number of times the IP-ID is specified as random in the
 	///        compressed header
 	int rnd_count;
@@ -67,6 +61,46 @@ struct ip_header_info
 
 	/// The delta between the IP-ID and the current Sequence Number (SN)
 	int id_delta;
+};
+
+
+/**
+ * @brief Store information about an IPv6 header between the different
+ *        compressions of IP packets.
+ *
+ * Defines an object that contains counters, flags and structures related to an
+ * IPv6 header and that need to be saved between the different compressions of
+ * packets. A compression context owns objects like this for the two first
+ * IPv6 headers.
+ */
+struct ipv6_header_info
+{
+	/// The previous IPv6 header
+	struct ip6_hdr old_ip;
+};
+
+
+/**
+ * @brief Store information about an IP (IPv4 or IPv6) header between the
+ *        different compressions of IP packets.
+ */
+struct ip_header_info
+{
+	ip_version  version;           ///< The version of the IP header
+
+	/// The number of times the TOS/TC field was added to the compressed header
+	int tos_count;
+	/// The number of times the TTL/HL field was added to the compressed header
+	int ttl_count;
+	/// @brief The number of times the Protocol/Next Header field was added to
+	///        the compressed header
+	int protocol_count;
+
+	union
+	{
+		struct ipv4_header_info v4; ///< The IPv4-specific header info
+		struct ipv6_header_info v6; ///< The IPv6-specific header info
+	} info;                        ///< The version specific header info
 };
 
 
@@ -202,14 +236,14 @@ struct c_generic_context
  * Function prototypes.
  */
 
-int c_generic_create(struct c_context *context, const struct iphdr *ip);
+int c_generic_create(struct c_context *context, const struct ip_packet ip);
 void c_generic_destroy(struct c_context *context);
 
 void change_mode(struct c_context *context, rohc_mode new_mode);
 void change_state(struct c_context *context, rohc_c_state new_state);
 
 int c_generic_encode(struct c_context *context,
-                     const struct iphdr *ip,
+                     const struct ip_packet ip,
                      int packet_size,
                      unsigned char *dest,
                      int dest_size,

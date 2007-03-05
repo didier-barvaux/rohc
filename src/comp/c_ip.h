@@ -17,7 +17,7 @@
  * Function prototypes.
  */
 
-int c_ip_check_context(struct c_context *context, const struct iphdr *ip);
+int c_ip_check_context(struct c_context *context, const struct ip_packet ip);
 
 
 #endif

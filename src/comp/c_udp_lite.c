@@ -46,12 +46,13 @@ void udp_lite_init_cc(struct c_context *context,
  * @param ip      The IP/UDP-Lite packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_udp_lite_create(struct c_context *context, const struct iphdr *ip)
+int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
 	struct udphdr *udp_lite;
-	struct iphdr *last_ip_header;
+	struct ip_packet last_ip_header;
+	unsigned int ip_proto;
 
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ip))
@@ -62,19 +63,33 @@ int c_udp_lite_create(struct c_context *context, const struct iphdr *ip)
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* check if packet is IP/UDP-Lite or IP/IP/UDP-Lite */
-	if(ip->protocol == IPPROTO_IPIP)
-		last_ip_header = (struct iphdr *) (ip + 1);
-	else
-		last_ip_header = (struct iphdr *) ip;
-		
-	if(last_ip_header->protocol == IPPROTO_UDPLITE)
-		udp_lite = (struct udphdr *) (last_ip_header + 1);
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	{
+		/* get the last IP header */
+  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			goto quit;
+		}
+
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(last_ip_header);
+	}
 	else
 	{
+		/* only one single IP header, the last IP header is the first one */
+		last_ip_header = ip;
+	}
+		
+	if(ip_proto != IPPROTO_UDPLITE)
+	{
 		rohc_debugf(0, "next header is not UDP-Lite (%d), cannot use this "
-		            "profile\n", last_ip_header->protocol);
+		            "profile\n", ip_proto);
 		goto clean;
 	}
+	
+	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
 
 	/* create the UDP-Lite part of the profile context */
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
@@ -122,11 +137,16 @@ quit:
  * @brief Check if the IP/UDP-Lite packet belongs to the context
  *
  * Conditions are:
- *  - IP packet must not be fragmented
+ *  - the number of IP headers must be the same as in context
+ *  - IP version of the two IP headers must be the same as in context
+ *  - IP packets must not be fragmented
  *  - the source and destination addresses of the two IP headers must match the
  *    ones in the context
+ *  - the transport protocol must be UDP-Lite
  *  - the source and destination ports of the UDP-Lite header must match the
  *    ones in the context
+ *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
+ *    context
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -137,67 +157,122 @@ quit:
  *                0 if it does not belong to the context and
  *                -1 if an error occurs
  */
-int c_udp_lite_check_context(struct c_context *context, const struct iphdr *ip)
+int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct iphdr *ip2, *last_ip_header;
+	struct ip_header_info *ip_flags;
+	struct ip_header_info *ip2_flags;
+	struct ip_packet ip2, last_ip_header;
 	struct udphdr *udp_lite;
+	unsigned int ip_proto;
 	boolean is_ip_same, is_ip2_same, is_udp_lite_same;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
+	ip_flags = &g_context->ip_flags;
+	ip2_flags = &g_context->ip2_flags;
 
-	/* discard IP fragments:
-	 *  - the R (Reserved) and MF (More Fragments) bits must be zero
-	 *  - the Fragment Offset field must be zero
-	 *  => ip->frag_off must be zero except the DF (Don't Fragment) bit
-	 */
-	if((ntohs(ip->frag_off) & (~IP_DF)) != 0)
+	/* check the IP version of the first header */
+	if(ip_get_version(ip) != ip_flags->version)
+		goto bad;
+
+	/* check if the first header is a fragment */
+	if(ip_is_fragment(ip))
+		goto bad;
+
+	/* compare the addresses of the first header */
+	if(ip_get_version(ip) == IPV4)
 	{
-		rohc_debugf(0, "fragment error in outer IP header (0x%04x)\n",
-		            ntohs(ip->frag_off));
-		goto error;
+		is_ip_same = ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip) &&
+		             ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip);
+	}
+	else /* IPV6 */
+	{
+		is_ip_same =
+			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_src, ipv6_get_saddr(&ip)) &&
+			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_dst, ipv6_get_daddr(&ip));
 	}
 
-	is_ip_same = (g_context->ip_flags.old_ip.saddr == ip->saddr &&
-	              g_context->ip_flags.old_ip.daddr == ip->daddr);
+	if(!is_ip_same)
+		goto bad;
 
-	if(ip->protocol == IPPROTO_IPIP)
+	/* compare the Flow Label of the first header if IPv6 */
+	if(ip_get_version(ip) == IPV6 && ipv6_get_flow_label(ip) !=
+	   IPV6_GET_FLOW_LABEL(ip_flags->info.v6.old_ip))
+		goto bad;
+
+	/* check the second IP header */
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
-		ip2 = (struct iphdr *) (ip + 1);
+		/* check if the context used to have a second IP header */
+		if(!g_context->is_ip2_initialized)
+			goto bad;
+
+		/* get the second IP header */
+  		if(!ip_get_inner_packet(ip, &ip2))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			goto error;
+		}
+
+		/* check the IP version of the second header */
+		if(ip_get_version(ip2) != ip2_flags->version)
+			goto bad;
+
+		/* check if the second header is a fragment */
+		if(ip_is_fragment(ip2))
+			goto bad;
+
+		/* compare the addresses of the second header */
+		if(ip_get_version(ip2) == IPV4)
+		{
+			is_ip2_same = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip2) &&
+			              ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip2);
+		}
+		else /* IPV6 */
+		{
+			is_ip2_same = IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_src,
+			                            ipv6_get_saddr(&ip2)) &&
+			              IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_dst,
+			                            ipv6_get_daddr(&ip2));
+		}
+
+		if(!is_ip2_same)
+			goto bad;
+
+		/* compare the Flow Label of the second header if IPv6 */
+		if(ip_get_version(ip2) == IPV6 && ipv6_get_flow_label(ip2) !=
+		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
+			goto bad;
+
+		/* get the last IP header */
 		last_ip_header = ip2;
 
-		is_ip2_same = (g_context->ip2_flags.old_ip.saddr == ip2->saddr &&
-		               g_context->ip2_flags.old_ip.daddr == ip2->daddr);
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(ip2);
 	}
 	else
 	{
-		ip2 = NULL;
-		last_ip_header = (struct iphdr *) ip;
-		is_ip2_same = 1;
+		/* only one single IP header, the last IP header is the first one */
+		last_ip_header = ip;
 	}
 
-	if(ip2 != NULL && (ntohs(ip2->frag_off) & (~IP_DF)) != 0)
-	{
-		rohc_debugf(0, "fragment error in inner IP header (0x%04x)\n", ntohs(ip2->frag_off));
-		goto error;
-	}
+	/* check the transport protocol */
+	if(ip_proto != IPPROTO_UDPLITE)
+		goto bad;
+	
+	/* check UDP-Lite ports */
+	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
+	is_udp_lite_same =
+		udp_lite_context->old_udp_lite.source == udp_lite->source &&
+		udp_lite_context->old_udp_lite.dest == udp_lite->dest;
 
-	if(last_ip_header->protocol == IPPROTO_UDPLITE)
-	{
-		udp_lite = (struct udphdr *) (last_ip_header + 1);
-		is_udp_lite_same =
-			(udp_lite_context->old_udp_lite.source == udp_lite->source &&
-			 udp_lite_context->old_udp_lite.dest == udp_lite->dest);
-	}
-	else
-	{
-		is_udp_lite_same = 0;
-	}
+	return is_udp_lite_same;
 
-	return (is_ip_same && is_ip2_same && is_udp_lite_same);
-
+bad:
+	return 0;
 error:
 	return -1;
 }
@@ -216,7 +291,7 @@ error:
  * @return               The length of the created ROHC packet
  */
 int c_udp_lite_encode(struct c_context *context,
-                      const struct iphdr *ip,
+                      const struct ip_packet ip,
                       int packet_size,
                       unsigned char *dest,
                       int dest_size,
@@ -224,8 +299,9 @@ int c_udp_lite_encode(struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct iphdr *last_ip_header;
+	struct ip_packet last_ip_header;
 	struct udphdr *udp_lite;
+	unsigned int ip_proto;
 	int size;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -242,23 +318,36 @@ int c_udp_lite_encode(struct c_context *context,
 		return 0;
 	}
 
-	if(ip->protocol == IPPROTO_IPIP)
+	udp_lite_context->tmp_variables.udp_size = packet_size - ip_get_hdrlen(ip);
+
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
-		last_ip_header = (struct iphdr *) (ip + 1);
-		udp_lite_context->tmp_variables.udp_size = packet_size - 2 * sizeof(struct iphdr);
+		/* get the last IP header */
+		if(!ip_get_inner_packet(ip, &last_ip_header))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			return 0;
+		}
+
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(last_ip_header);
+		
+		/* update the UDP-Lite payload size */
+		udp_lite_context->tmp_variables.udp_size -= ip_get_hdrlen(last_ip_header);
 	}
 	else
 	{
-		udp_lite_context->tmp_variables.udp_size = packet_size - sizeof(struct iphdr);
-		last_ip_header = (struct iphdr *) ip;
+		/* only one single IP header, the last IP header is the first one */
+		last_ip_header = ip;
 	}
 
-	if(last_ip_header->protocol != IPPROTO_UDPLITE)
+	if(ip_proto != IPPROTO_UDPLITE)
 	{
 		rohc_debugf(0, "packet is not an UDP-Lite packet\n");
 		return 0;
 	}
-	udp_lite = (struct udphdr *) (last_ip_header + 1);
+	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size, payload_offset);
@@ -395,13 +484,14 @@ int udp_lite_code_UO_packet_tail(struct c_context *context,
 	if(udp_lite_context->cfp == 1 ||
 	   udp_lite_send_cce_packet(context, udp_lite))
 	{
-		rohc_debugf(3, "UDP-Lite checksum coverage = 0x%x\n", udp_lite->len);
+		rohc_debugf(3, "UDP-Lite checksum coverage = 0x%04x\n",
+		            ntohs(udp_lite->len));
 		memcpy(&dest[counter], &udp_lite->len, 2);
 		counter += 2;
 	}
 
 	/* part 2 */
-	rohc_debugf(3, "UDP-Lite checksum = 0x%x\n", udp_lite->check);
+	rohc_debugf(3, "UDP-Lite checksum = 0x%04x\n", ntohs(udp_lite->check));
 	memcpy(&dest[counter], &udp_lite->check, 2);
 	counter += 2;
 
@@ -445,12 +535,13 @@ int udp_lite_code_dynamic_udp_lite_part(struct c_context *context,
 	udp_lite = (struct udphdr *) next_header;
 
 	/* part 1 */
-	rohc_debugf(3, "UDP-Lite checksum coverage = 0x%x\n", udp_lite->len);
+	rohc_debugf(3, "UDP-Lite checksum coverage = 0x%04x\n",
+	            ntohs(udp_lite->len));
 	memcpy(&dest[counter], &udp_lite->len, 2);
 	counter += 2;
 
 	/* part 2 */
-	rohc_debugf(3, "UDP-Lite checksum = 0x%x\n", udp_lite->check);
+	rohc_debugf(3, "UDP-Lite checksum = 0x%04x\n", ntohs(udp_lite->check));
 	memcpy(&dest[counter], &udp_lite->check, 2);
 	counter += 2;
 
@@ -485,8 +576,8 @@ void udp_lite_init_cc(struct c_context *context,
 		udp_lite_context->cfi = 1;
 	}
 
-	rohc_debugf(2, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
-	            udp_lite_context->cfi);
+	rohc_debugf(2, "CFP = %d, CFI = %d (ir_count = %d)\n", udp_lite_context->cfp,
+	            udp_lite_context->cfi, g_context->ir_count);
 
 	udp_lite_context->cfp = (ntohs(udp_lite->len) != packet_length) || udp_lite_context->cfp;
 	udp_lite_context->cfi = (ntohs(udp_lite->len) == packet_length) && udp_lite_context->cfi;

@@ -19,7 +19,7 @@
  * @param ip      The IP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_uncompressed_create(struct c_context *context, const struct iphdr *ip)
+int c_uncompressed_create(struct c_context *context, const struct ip_packet ip)
 {
 	struct sc_uncompressed_context *uncomp_context;
 	int success = 0;
@@ -70,7 +70,7 @@ void c_uncompressed_destroy(struct c_context *context)
  *                to the context
  */
 int c_uncompressed_check_context(struct c_context *context,
-                                 const struct iphdr *ip)
+                                 const struct ip_packet ip)
 {
 	return 1;
 }
@@ -94,7 +94,7 @@ int c_uncompressed_check_context(struct c_context *context,
  * @return               The length of the created ROHC packet
  */
 int c_uncompressed_encode(struct c_context *context,
-                          const struct iphdr *ip,
+                          const struct ip_packet ip,
                           int packet_size,
                           unsigned char *dest,
                           int dest_size,
@@ -305,12 +305,12 @@ void uncompressed_change_state(struct c_context *context,
  *                       if successful, -1 otherwise
  */
 int uncompressed_code_packet(struct c_context *context,
-                             const struct iphdr *ip,
+                             const struct ip_packet ip,
                              unsigned char *dest,
                              int *payload_offset,
                              int dest_size)
 {
-	int (*code_packet)(struct c_context *context, const struct iphdr *ip,
+	int (*code_packet)(struct c_context *context, const struct ip_packet ip,
 	                   unsigned char *dest, int *payload_offset, int dest_size);
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -381,7 +381,7 @@ int uncompressed_code_packet(struct c_context *context,
  *                       if successful, -1 otherwise
  */
 int uncompressed_code_IR_packet(struct c_context *context,
-                                const struct iphdr *ip,
+                                const struct ip_packet ip,
                                 unsigned char *dest,
                                 int *payload_offset,
                                 int dest_size)
@@ -449,7 +449,7 @@ int uncompressed_code_IR_packet(struct c_context *context,
  *                       if successful, -1 otherwise
  */
 int uncompressed_code_normal_packet(struct c_context *context,
-                                    const struct iphdr *ip,
+                                    const struct ip_packet ip,
                                     unsigned char *dest,
                                     int *payload_offset,
                                     int dest_size)
@@ -466,7 +466,7 @@ int uncompressed_code_normal_packet(struct c_context *context,
 	counter = code_cid_values(context, dest, dest_size, &first_position);
 
 	/* part 2 */
-	dest[first_position] = ((unsigned char *) ip)[0];
+	dest[first_position] = (ip_get_raw_data(ip))[0];
 
 	*payload_offset = 1;
 	return counter;
