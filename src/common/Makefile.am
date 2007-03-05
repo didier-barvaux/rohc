@@ -21,7 +21,8 @@ headers = \
 	ip_id.h \
 	lsb.h \
 	sdvl.h \
-	wlsb.h
+	wlsb.h \
+	udp_lite.h
 
 librohc_common_la_SOURCES = $(sources) $(headers)
 

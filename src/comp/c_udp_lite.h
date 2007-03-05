@@ -13,13 +13,8 @@
 #include "rohc_comp.h"
 #include "c_generic.h"
 #include "c_udp.h"
+#include "udp_lite.h"
 
-
-#ifndef IPPROTO_UDPLITE
-/// define UDP-Lite protocol number if not defined by the system
-#define IPPROTO_UDPLITE  136
-#warning "UDP-Lite not defined on the system, define the protocol number"
-#endif
 
 /// @brief The maximal number of times the checksum coverage dit not change
 ///        or may be inferred
