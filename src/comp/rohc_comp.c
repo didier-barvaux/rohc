@@ -728,10 +728,10 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	buffer += strlen(buffer);
 
 	/* times */
-	sprintf(buffer, "%s\t<activation_time>%d</activation_time>\n",
+	sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
 	        prefix, (get_milliseconds() - c->first_used) / 1000 );
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<idle_time>%d</idle_time>\n",
+	sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
 	        prefix, (get_milliseconds() - c->latest_used) / 1000);
 	buffer += strlen(buffer);
 
@@ -867,7 +867,7 @@ struct c_context * c_create_context(struct rohc_comp *comp,
 {
 	struct c_context *c;
 	int index, i;
-	int oldest;
+	unsigned int oldest;
 
 	index = 0;
 
@@ -890,7 +890,7 @@ struct c_context * c_create_context(struct rohc_comp *comp,
 		
 		/* find the oldest context */
 		index = 0;
-		oldest = 0x7fffffff;
+		oldest = 0xffffffff;
 		for(i = 0; i < comp->num_contexts; i++)
 		{
 			if(comp->contexts[i].latest_used < oldest)
@@ -944,7 +944,6 @@ struct c_context * c_create_context(struct rohc_comp *comp,
 	c->state = IR;
 
 	c->compressor = comp;
-	c->latest_used = get_milliseconds();
 
 	/* create profile-specific context */
 	if(!profile->create(c, ip))

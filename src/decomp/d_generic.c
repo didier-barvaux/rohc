@@ -1976,10 +1976,10 @@ int cmp_generic_changes(struct d_generic_changes *first,
  */
 void update_inter_packet(struct d_generic_context *context)
 {
-	int last_time = context->last_packet_time;
+	unsigned int last_time = context->last_packet_time;
 	int delta = 0;
 
-	rohc_debugf(2, "current time = %d and last time = %d\n",
+	rohc_debugf(2, "current time = %u and last time = %u\n",
 	            context->current_packet_time, last_time);
 
 	if(last_time)
@@ -1993,7 +1993,7 @@ void update_inter_packet(struct d_generic_context *context)
 	else
 		context->inter_arrival_time = delta;
 
-	rohc_debugf(2, "inter_arrival_time = %d and current arrival delta is = %d\n",
+	rohc_debugf(2, "inter_arrival_time = %u and current arrival delta is = %d\n",
 	            context->inter_arrival_time, delta);
 }
 

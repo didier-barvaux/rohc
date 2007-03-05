@@ -95,9 +95,9 @@ struct c_context
 	/// Whether the context is in use or not
 	int used;
 	/// The time when the context was created
-	int latest_used;
+	unsigned int latest_used;
 	/// The time when the context was last used
-	int first_used;
+	unsigned int first_used;
 
 	/// The context unique ID (CID)
 	int cid;

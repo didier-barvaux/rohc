@@ -120,9 +120,9 @@ struct d_context
 	rohc_d_state state;
 
 	/// Usage timestamp
-	int latest_used;
+	unsigned int latest_used;
 	/// Usage timestamp
-	int first_used;
+	unsigned int first_used;
 
 	/// Variable related to feedback interval
 	int curval;

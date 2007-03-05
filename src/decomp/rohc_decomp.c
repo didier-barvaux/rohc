@@ -1214,10 +1214,10 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	buffer += strlen(buffer);
 
 	/* times */
-	sprintf(buffer, "%s\t<activation_time>%d</activation_time>\n",
+	sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
 	        prefix, (get_milliseconds() - c->first_used) / 1000 );
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<idle_time>%d</idle_time>\n",
+	sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
 	        prefix, (get_milliseconds() - c->latest_used) / 1000);
 	buffer += strlen(buffer);
 

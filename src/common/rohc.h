@@ -446,7 +446,7 @@ static inline unsigned short ip_fast_csum(unsigned char *iph, unsigned int ihl)
  *
  * @return The current time in microseconds
  */
-static inline int get_microseconds(void)
+static inline unsigned int get_microseconds(void)
 {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -459,7 +459,7 @@ static inline int get_microseconds(void)
  *
  * @return The current time in milliseconds
  */
-static inline int get_milliseconds(void)
+static inline unsigned int get_milliseconds(void)
 {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
