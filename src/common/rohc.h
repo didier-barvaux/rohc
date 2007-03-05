@@ -296,9 +296,6 @@ struct medium
 #define GET_BIT_5_7(x)  ( ((*(x)) & 0xe0) >> 5 )
 #define GET_BIT_6_7(x)  ( ((*(x)) & 0xc0) >> 6 )
 
-#define GET_DUAL_0_4_AND_7(x, y) ( ((*(x)) & 0x1f) << 1 | ( (*(y)) & 0x01 ) )
-#define GET_DUAL_0_2_AND_ALL(x, y) ( ((*(x)) & 0x03) << 1 | ( (*(y)) & 0xff ) )
-
 #define GET_BIT_0(x)  ((*(x)) & 0x01)
 #define GET_BIT_1(x)  ((*(x)) & 0x02)
 #define GET_BIT_2(x)  ((*(x)) & 0x04)
