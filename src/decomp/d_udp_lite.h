@@ -13,6 +13,7 @@
 
 #include "d_generic.h"
 #include "d_udp.h"
+#include "udp_lite.h"
 
 
 /**
@@ -25,9 +26,25 @@
  */
 struct d_udp_lite_context
 {
-	/// Whether the UDP-Lite checksum coverage field is present or not?
+	/**
+	 * @brief Whether the UDP-Lite checksum coverage field is present or not
+	 *
+	 * Possible values are:
+	 *   -1 if not initialized
+	 *    0 if not present
+	 *    1 if present
+	 */
 	int cfp;
-	/// Whether the UDP-Lite checksum coverage field can be inferred or not?
+
+	/**
+	 * @brief Whether the UDP-Lite checksum coverage field can be inferred
+	 *        or not
+	 *
+	 * Possible values are:
+	 *   -1 if not initialized
+	 *    0 if not present
+	 *    1 if present
+	 */
 	int cfi;
 
 	/**
@@ -48,13 +65,13 @@ struct d_udp_lite_context
 
 int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
                                 const unsigned char *packet,
-                                int payload_size,
+                                unsigned int length,
                                 unsigned char *dest);
 
-void udp_lite_build_uncompressed_udp(struct d_generic_context *context,
-                                     struct d_generic_changes *active,
-								             unsigned char *dest,
-                                     int payload_size);
+int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
+                                    struct d_generic_changes *active,
+                                    unsigned char *dest,
+                                    int payload_size);
 
 
 #endif

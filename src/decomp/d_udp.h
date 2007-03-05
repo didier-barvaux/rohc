@@ -34,24 +34,29 @@ struct d_udp_context
  * Public function prototypes.
  */
 
-int udp_detect_ir_size(unsigned char *packet, int second_byte);
+unsigned int udp_detect_ir_size(unsigned char *packet,
+                                unsigned int plen,
+                                int second_byte,
+                                int profile_id);
 
-int udp_detect_ir_dyn_size(unsigned char *first_byte,
-                           struct d_context *context);
+unsigned int udp_detect_ir_dyn_size(unsigned char *first_byte,
+                                    unsigned int plen,
+                                    struct d_context *context);
 
 int udp_decode_static_udp(struct d_generic_context *context,
                           const unsigned char *packet,
+                          unsigned int length,
                           unsigned char *dest);
 
 int udp_decode_dynamic_udp(struct d_generic_context *context,
                            const unsigned char *packet,
-                           int payload_size,
+                           unsigned int length,
                            unsigned char *dest);
 
-void udp_build_uncompressed_udp(struct d_generic_context *context,
-                                struct d_generic_changes *active,
-                                unsigned char *dest,
-                                int payload_size);
+int udp_build_uncompressed_udp(struct d_generic_context *context,
+                               struct d_generic_changes *active,
+                               unsigned char *dest,
+                               int payload_size);
 
 
 #endif

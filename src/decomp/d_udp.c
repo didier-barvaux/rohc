@@ -90,6 +90,9 @@ void * d_udp_create(void)
 	}
 	bzero(context->active2->next_header, sizeof(struct udphdr));
 
+	/* set next header to UDP */
+	context->next_header_proto = IPPROTO_UDP;
+
 	return context;
 
 free_active1_next_header:
@@ -172,26 +175,74 @@ int d_udp_decode_ir(struct rohc_decomp *decomp,
 
 
 /**
- * @brief Find the length of data in an IR packet.
+ * @brief Find the length of the IR header.
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
+ * \verbatim
+
+ Basic structure of the IR packet (5.7.7.1):
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  |         Add-CID octet         |  if for small CIDs and CID != 0
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   1   1   1   1   1   0 | D |
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 3  /    0-2 octets of CID info     /  1-2 octets if for large CIDs
+    |                               |
+    +---+---+---+---+---+---+---+---+
+ 4  |            Profile            |  1 octet
+    +---+---+---+---+---+---+---+---+
+ 5  |              CRC              |  1 octet
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 6  |         Static chain          |  variable length
+    |                               |
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 7  |         Dynamic chain         |  present if D = 1, variable length
+    |                               |
+    +---+---+---+---+---+---+---+---+
+ 8  |             SN                | 2 octets
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 9  |           Payload             |  variable length
+    |                               |
+     - - - - - - - - - - - - - - - -
+
+\endverbatim
+ *
+ * The function computes the length of the fields 2 + 4-8, ie. the first byte,
+ * the Profile and CRC fields and the static and dynamic chains (outer and inner
+ * IP headers + UDP header).
+ *
  * @param packet          The pointer on the IR packet
+ * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
- * @return                The length of data in the IR packet,
+ *                        (ie. the field 4 in the figure)
+ * @param profile_id      The ID of the decompression profile
+ * @return                The length of the IR header,
  *                        0 if an error occurs
  */
-int udp_detect_ir_size(unsigned char *packet, int second_byte)
+unsigned int udp_detect_ir_size(unsigned char *packet,
+                                unsigned int plen,
+                                int second_byte,
+                                int profile_id)
 {
-	int length, d;
+	unsigned int length, d;
 
-	length = d_generic_detect_ir_size(packet, second_byte);
+	/* Profile and CRC fields + IP static & dynamic chains */
+	length = d_generic_detect_ir_size(packet, plen, second_byte, profile_id);
 
 	if(length != 0)
 	{
+		/* UDP static part (see 5.7.7.5 in RFC 3095) */ 
 		length += 4;
 
+		/* UDP dynamic part if included (see 5.7.7.5 in RFC 3095) */
 		d = GET_BIT_0(packet);
 		if(d)
 			length += 2;
@@ -202,20 +253,65 @@ int udp_detect_ir_size(unsigned char *packet, int second_byte)
 
 
 /**
- * @brief Find the length of data in an IR-DYN packet.
+ * @brief Find the length of the IR-DYN header.
  * 
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
+ * \verbatim
+
+ Basic structure of the IR-DYN packet (5.7.7.2):
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  :         Add-CID octet         : if for small CIDs and CID != 0
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   1   1   1   1   0   0   0 | IR-DYN packet type
+    +---+---+---+---+---+---+---+---+
+    :                               :
+ 3  /     0-2 octets of CID info    / 1-2 octets if for large CIDs
+    :                               :
+    +---+---+---+---+---+---+---+---+
+ 4  |            Profile            | 1 octet
+    +---+---+---+---+---+---+---+---+
+ 5  |              CRC              | 1 octet
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 6  /         Dynamic chain         / variable length
+    |                               |
+    +---+---+---+---+---+---+---+---+
+ 7  |             SN                | 2 octets
+    +---+---+---+---+---+---+---+---+
+    :                               :
+ 8  /           Payload             / variable length
+    :                               :
+     - - - - - - - - - - - - - - - -
+
+\endverbatim
+ *
+ * The function computes the length of the fields 2 + 4-7, ie. the first byte,
+ * the Profile and CRC fields and the dynamic chains (outer and inner IP
+ * headers + UDP header).
+ *
  * @param first_byte The first byte of the IR-DYN packet
+ * @param plen       The length of the IR-DYN packet
  * @param context    The decompression context
- * @return           The length of data in the IR-DYN packet,
+ * @return           The length of the IR-DYN header,
  *                   0 if an error occurs
  */
-int udp_detect_ir_dyn_size(unsigned char *first_byte,
-                           struct d_context *context)
+unsigned int udp_detect_ir_dyn_size(unsigned char *first_byte,
+                                    unsigned int plen,
+                                    struct d_context *context)
 {
-	return d_generic_detect_ir_dyn_size(first_byte, context) + 2;
+	unsigned int length;
+
+	/* Profile and CRC fields + IP dynamic chains */
+	length = d_generic_detect_ir_dyn_size(first_byte, plen, context);
+
+	/* UDP dynamic part (see 5.7.7.5 in RFC 3095) */
+	length += 2;
+
+	return length;
 }
 
 
@@ -224,21 +320,40 @@ int udp_detect_ir_dyn_size(unsigned char *first_byte,
  *
  * @param context The generic decompression context
  * @param packet  The ROHC packet to decode
+ * @param length  The length of the ROHC packet
  * @param dest    The decoded UDP header
- * @return        The number of bytes read from the ROHC packet
+ * @return        The number of bytes read in the ROHC packet,
+ *                -1 in case of failure
  */
 int udp_decode_static_udp(struct d_generic_context *context,
                           const unsigned char *packet,
+                          unsigned int length,
                           unsigned char *dest)
 {
 	struct udphdr *udp = (struct udphdr *) dest;
+	int read = 0; /* number of bytes read from the packet */
+
+	/* check the minimal length to decode the UDP static part */
+	if(length < 4)
+	{
+		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		goto error;
+	}
 
 	udp->source = *((uint16_t *) packet);
+	rohc_debugf(3, "UDP source port = 0x%04x\n", ntohs(udp->source));
 	packet += 2;
+	read += 2;
 
 	udp->dest = *((uint16_t *) packet);
+	rohc_debugf(3, "UDP destination port = 0x%04x\n", ntohs(udp->dest));
+	packet += 2;
+	read += 2;
 
-	return 4;
+	return read;
+
+error:
+	return -1;
 }
 
 
@@ -247,18 +362,19 @@ int udp_decode_static_udp(struct d_generic_context *context,
  *
  * @param context      The generic decompression context
  * @param packet       The ROHC packet to decode
- * @param payload_size The length of the remaining data in the ROHC packet
+ * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP header
- * @return             The number of bytes read from the ROHC packet
+ * @return             The number of bytes read in the ROHC packet,
+ *                     -1 in case of failure
  */
 int udp_decode_dynamic_udp(struct d_generic_context *context,
                            const unsigned char *packet,
-                           int payload_size,
+                           unsigned int length,
                            unsigned char *dest)
 {
 	struct d_udp_context *udp_context;
 	struct udphdr *udp;
-	int length = 0;
+	int read = 0; /* number of bytes read from the packet */
 	
 	udp_context = context->specific;
 	udp = (struct udphdr *) dest;
@@ -269,16 +385,28 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
 	 *  udp_checksum_present > 0 <=> UDP checksum field present */
 	if(udp_context->udp_checksum_present != 0)
 	{
+		/* check the minimal length to decode the UDP dynamic part */
+		if(length < 2)
+		{
+			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			goto error;
+		}
+
 		/* retrieve the UDP checksum from the ROHC packet */
 		udp->check = *((uint16_t *) packet);
-		length += 2;
+		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+		packet += 2;
+		read += 2;
 
 		/* init the UDP context if necessary */
 		if(udp_context->udp_checksum_present < 0)
 			udp_context->udp_checksum_present = udp->check;
 	}
 
-	return length;
+	return read;
+
+error:
+	return -1;
 }
 
 
@@ -290,11 +418,13 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
  * @param dest         The buffer to store the UDP header (MUST be at least
  *                     of sizeof(struct udphdr) length)
  * @param payload_size The length of the UDP payload
+ * @return             The length of the next header (ie. the UDP header),
+ *                     -1 in case of error
  */
-void udp_build_uncompressed_udp(struct d_generic_context *context,
-                                struct d_generic_changes *active,
-                                unsigned char *dest,
-                                int payload_size)
+int udp_build_uncompressed_udp(struct d_generic_context *context,
+                               struct d_generic_changes *active,
+                               unsigned char *dest,
+                               int payload_size)
 {
 	struct d_udp_context *udp_context = context->specific;
 	struct udphdr *udp_active = (struct udphdr *) active->next_header;
@@ -303,19 +433,30 @@ void udp_build_uncompressed_udp(struct d_generic_context *context,
 	/* static + checksum */
 	memcpy(dest, udp_active, sizeof(struct udphdr));
 
-	/* UDP checksum (0 if checksum field not present
-	 * or udp_checksum_present not initialized, swap
-	 * bit order if NBO is not set */
-	if(udp_context->udp_checksum_present)
+	/* UDP checksum:
+	 *  - error if udp_checksum_present not initialized,
+	 *    ie. udp_checksum_present < 0
+	 *  - already copied if checksum is present,
+	 *    ie. udp_checksum_present > 0
+	 *  - set checksum to zero if checksum is not present,
+	 *    ie. udp_checksum_present = 0  */
+	if(udp_context->udp_checksum_present < 0)
 	{
-		if(!active->nbo)
-			udp->check = swab16(udp->check);
+		rohc_debugf(0, "udp_checksum_present not initialized\n");
+		goto error;
 	}
-	else
+	else if(udp_context->udp_checksum_present == 0)
 		udp->check = 0;
+	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 
 	/* interfered fields */
 	udp->len = htons(payload_size + sizeof(struct udphdr));
+	rohc_debugf(3, "UDP length = 0x%04x\n", ntohs(udp->len));
+
+	return sizeof(struct udphdr);
+
+error:
+	return -1;
 }
 
 

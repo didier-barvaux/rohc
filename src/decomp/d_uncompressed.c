@@ -78,18 +78,29 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp, struct d_context *context
  * framework to work.
  *
  * @param packet          The pointer on the IR packet
+ * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
+ * @param profile_id      The ID of the decompression profile
  * @return                The length of data in the IR packet,
  *                        0 if an error occurs
  */
-int uncompressed_detect_ir_size(unsigned char *packet, int second_byte)
+unsigned int uncompressed_detect_ir_size(unsigned char *packet,
+                                         unsigned int plen,
+                                         int second_byte,
+                                         int profile_id)
 {
-	int ret = 10;
-	int d = GET_BIT_0(packet);
+	unsigned int ret = 10;
+	int d;
 
+	/* check if ROHC  packet is large enough */
+	if(second_byte + 2 >= plen)
+		return 0;
+
+	d = GET_BIT_0(packet);
 	if(d)
 		ret += 5 + 2;
 
+	// TODO: is it an IPv4 test ?
 	if(packet[second_byte + 2] != 0x40)
 		return 0;
 
@@ -104,12 +115,14 @@ int uncompressed_detect_ir_size(unsigned char *packet, int second_byte)
  * framework to work.
  *
  * @param first_byte The first byte of the IR-DYN packet
+ * @param plen       The length of the IR-DYN packet
  * @param context    The decompression context
  * @return           The length of data in the IR-DYN packet,
  *                   0 if an error occurs
  */
-int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
-                                    struct d_context *context)
+unsigned int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
+                                             unsigned int plen,
+                                             struct d_context *context)
 {
 	return 7;
 }

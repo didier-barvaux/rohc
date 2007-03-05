@@ -24,12 +24,13 @@
  */
 struct d_generic_changes
 {
-	/// Whether the IP-ID is considered as random or not
-	int rnd;
-	/// Whether the IP-ID is considered as coded in NBO or not
-	int nbo;
 	/// The IP header
-	struct iphdr ip;
+	struct ip_packet ip;
+
+	/// Whether the IP-ID is considered as random or not (IPv4 only)
+	int rnd;
+	/// Whether the IP-ID is considered as coded in NBO or not (IPv4 only)
+	int nbo;
 
 	/// The next header located after the IP header(s)
 	unsigned char *next_header;
@@ -56,6 +57,8 @@ struct d_generic_context
 	/// Information about the current inner IP header
 	struct d_generic_changes *active2;
 
+	int first_packet_processed;
+
 	/// The LSB-encoded Sequence Number (SN)
 	struct d_lsb_decode sn;
 	/// The IP-ID of the outer IP header
@@ -72,26 +75,31 @@ struct d_generic_context
 	/* below are some information and handlers to manage the next header
  	 * (if any) located just after the IP headers (1 or 2 IP headers) */
 
+	/// The IP protocol ID of the protocol the context is able to decompress
+	unsigned short next_header_proto;
+
 	/// The length of the next header
 	unsigned int next_header_len;
 
 	/// @brief The handler used to build the uncompressed next header thanks
 	///        to context information
-	void (*build_next_header)(struct d_generic_context *context,
-	                          struct d_generic_changes *active,
-	                          unsigned char *dest, int payload_sizei);
+	int (*build_next_header)(struct d_generic_context *context,
+	                         struct d_generic_changes *active,
+	                         unsigned char *dest,
+	                         int payload_size);
 
 	/// @brief The handler used to decode the static part of the next header
 	///        in the ROHC packet
 	int (*decode_static_next_header)(struct d_generic_context *context,
 	                                 const unsigned char *packet,
+	                                 unsigned int length,
 	                                 unsigned char *dest);
 
 	/// @brief The handler used to decode the dynamic part of the next header
 	///        in the ROHC packet
 	int (*decode_dynamic_next_header)(struct d_generic_context *context,
 	                                  const unsigned char *packet,
-	                                  int payload_size,
+	                                  unsigned int length,
 	                                  unsigned char *dest);
 
 	/// Profile-specific data
@@ -127,14 +135,18 @@ int d_generic_decode(struct rohc_decomp *decomp,
 int d_generic_decode_ir(struct rohc_decomp *decomp,
                         struct d_context *context,
                         unsigned char *packet,
-                        int payload_size,
+                        int plen,
                         int dynamic_present,
                         unsigned char *dest);
 
-int d_generic_detect_ir_size(unsigned char *packet, int second_byte);
+unsigned int d_generic_detect_ir_size(unsigned char *packet,
+                                      unsigned int plen,
+                                      int second_byte,
+                                      int profile_id);
 
-int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
-                                 struct d_context *context);
+unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
+                                          unsigned int plen,
+                                          struct d_context *context);
 
 int d_generic_get_sn(struct d_context *context);
 

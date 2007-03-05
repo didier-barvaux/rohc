@@ -198,11 +198,15 @@ struct d_profile
 	void (*free_decode_data)(void *);
 
 	/// The handler used to find out the size of IR packets
-	int (*detect_ir_size)(unsigned char *packet, int second_byte);
+	unsigned int (*detect_ir_size)(unsigned char *packet,
+	                               unsigned int plen,
+	                               int second_byte,
+	                               int profile_id);
 
 	/// The handler used to find out the size of IR-DYN packets
-	int (*detect_ir_dyn_size)(unsigned char *first_byte,
-	                          struct d_context *context);
+	unsigned int (*detect_ir_dyn_size)(unsigned char *first_byte,
+	                                   unsigned int plen,
+	                                   struct d_context *context);
 
 	/// The handler used to retrieve the Sequence Number (SN)
 	int (*get_sn)(struct d_context * context);
@@ -254,10 +258,12 @@ void d_change_mode_feedback(struct rohc_decomp *decomp, struct d_context *contex
  * Functions related to CRC of IR and IR-DYN packets:
  */
 
-int rohc_ir_packet_crc_ok(unsigned char *walk, const int largecid,
-                          const int addcidUsed,
+int rohc_ir_packet_crc_ok(unsigned char *walk, unsigned int plen,
+                          const int largecid, const int addcidUsed,
                           const struct d_profile *profile);
-int rohc_ir_dyn_packet_crc_ok(unsigned char *walk, const int largecid,
+int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
+                              unsigned int plen,
+                              const int largecid,
                               const int addcidUsed,
                               const struct d_profile *profile,
                               struct d_context *context);

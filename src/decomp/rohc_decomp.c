@@ -534,6 +534,7 @@ int d_decode_feedback_first(struct rohc_decomp *decomp,
 		i++;
 		(*walk)++;
 	}
+	rohc_debugf(3, "skip %d byte(s) of padding\n", i);
 	
 	while(fbloop)
 	{
@@ -543,6 +544,7 @@ int d_decode_feedback_first(struct rohc_decomp *decomp,
 		if(d_is_add_cid(*walk))
 		{
 			cid = d_decode_add_cid(*walk);
+			rohc_debugf(3, "add-CID present: 0x%x -> CID = %d\n", **walk, cid);
 			(*walk)++;
 		}
 
@@ -597,7 +599,11 @@ int d_decode_header(struct rohc_decomp *decomp,
 
 	/* was add-CID present with feedback? */
 	if(ddata->cid > 0 && decomp->medium->cid_type == SMALL_CID)
+	{
 		ddata->addcidUsed = 1;
+		rohc_debugf(3, "add-CID present: CID = %d (0x%x)\n",
+		            ddata->cid, ddata->cid);
+	}
 	else
 	{
 		/* add-CID not used, check if large CIDs are used */
@@ -609,6 +615,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 			{
 				ddata->cid = d_sdvalue_decode(walk + 1);
 				ddata->largecidUsed = 1;
+				rohc_debugf(3, "large CID present: CID = %d (0x%x)\n",
+				            ddata->cid, ddata->cid);
 			}
 			else
 				return ROHC_ERROR_NO_CONTEXT;
@@ -622,7 +630,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 		profile = find_profile(walk[largecid + 1]);
 
 		/* check the CRC of the IR packet */
-		if(!rohc_ir_packet_crc_ok(walk, largecid, ddata->addcidUsed, profile))
+		if(!rohc_ir_packet_crc_ok(walk, isize - (walk - ibuf),
+		                          largecid, ddata->addcidUsed, profile))
 			return ROHC_ERROR_CRC;
 
 		/* do we need more space in the array of contexts? */
@@ -631,7 +640,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 
 		if(decomp->contexts[ddata->cid] && decomp->contexts[ddata->cid]->profile == profile)
 		{
-			/* the decompression context assoicated with the CID already exists
+			/* the decompression context associated with the CID already exists
 			 * and the context profile and the packet profile match. */
 			ddata->active = decomp->contexts[ddata->cid];
 			decomp->contexts[ddata->cid] = NULL;
@@ -701,7 +710,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 				}
 
 				/* check the CRC of the IR-DYN packet */
-				if(!rohc_ir_dyn_packet_crc_ok(walk, largecid, ddata->addcidUsed,
+				if(!rohc_ir_dyn_packet_crc_ok(walk, isize - (walk - ibuf),
+				                              largecid, ddata->addcidUsed,
 				                              profile, ddata->active))
 					return ROHC_ERROR_CRC;
 
@@ -739,6 +749,9 @@ int d_decode_feedback(struct rohc_decomp * decomp, unsigned char * ibuf)
 	/* extract the size of the feedback header */
 	head = d_feedback_headersize(ibuf);
 	ibuf += head;
+	
+	rohc_debugf(3, "feedback present (header = %d bytes, data = %d bytes)\n",
+	            head, feedbacksize);
 
 	/* deliver the feedback data to the associated compressor */
 	c_deliver_feedback(decomp->compressor, ibuf, feedbacksize);
@@ -771,27 +784,42 @@ struct d_profile * find_profile(int id)
  * @brief Check the CRC of one IR packet.
  *
  * @param walk       The ROHC IR packet
+ * @param plen       The length of the ROHC packet
  * @param largecid   The large CID value
  * @param addcidUsed Whether add-CID is used or not
  * @param profile    The profile associated with the ROHC packet
  * @return           Whether the CRC is ok or not
  */
 int rohc_ir_packet_crc_ok(unsigned char *walk,
+                          unsigned int plen,
                           const int largecid,
                           const int addcidUsed,
                           const struct d_profile *profile)
 {
 	int realcrc, crc;
+	int ir_size;
 
 	/* extract the CRC transmitted in the IR packet */
+	if(largecid + 2 >= plen)
+	{
+		rohc_debugf(0, "ROHC packet too small, cannot read the CRC (len = %d)\n",
+		            plen);
+		goto bad;
+	}
 	realcrc = walk[largecid + 2];
-	
+
+	/* detect the size of the IR header */
+	ir_size = profile->detect_ir_size(walk, plen, largecid + 1, profile->id);
+	if(ir_size == 0)
+	{
+		rohc_debugf(0, "cannot detect the IR size\n");
+		goto bad;
+	}
+
 	/* compute the CRC of the IR packet */
 	walk[largecid + 2] = 0;
 	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    profile->detect_ir_size(walk, largecid + 1) +
-	                    (profile->id == 0 ? 2 : 3) +
-	                    largecid + addcidUsed);
+	                    ir_size + largecid + addcidUsed);
 	walk[largecid + 2] = realcrc;
 
 	/* compare the transmitted CRC and the computed one */
@@ -799,16 +827,18 @@ int rohc_ir_packet_crc_ok(unsigned char *walk,
 	{
 		rohc_debugf(0, "CRC failed (real = 0x%x, calc = 0x%x, profile_id = "
 		            "%d, largecid = %d, addcidUsed = %d, ir_size = %d)\n",
-		            realcrc, crc, profile->id, largecid, addcidUsed,
-		            profile->detect_ir_size(walk, largecid + 1));
-		return 0;
+		            realcrc, crc, profile->id, largecid, addcidUsed, ir_size);
+		goto bad;
 	}
 	
 	rohc_debugf(2, "CRC OK (crc = 0x%x, profile_id = %d, largecid = %d, "
-	            "addcidUsed = %d, ir_size = %d)\n", crc, profile->id, largecid,
-	            addcidUsed, profile->detect_ir_size(walk, largecid + 1));
+	            "addcidUsed = %d, ir_size = %d)\n", crc, profile->id,
+	            largecid, addcidUsed, ir_size);
 
 	return 1;
+
+bad:
+	return 0;
 }
 
 
@@ -816,6 +846,7 @@ int rohc_ir_packet_crc_ok(unsigned char *walk,
  * @brief Check the CRC of one IR-DYN packet.
  *
  * @param walk       The ROHC packet
+ * @param plen       The length of the ROHC packet
  * @param largecid   The large CID value
  * @param addcidUsed Whether add-CID is used or not
  * @param profile    The profile associated with the ROHC packet
@@ -823,20 +854,36 @@ int rohc_ir_packet_crc_ok(unsigned char *walk,
  * @return           Whether the CRC is ok or not
  */
 int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
+                              unsigned int plen,
                               const int largecid,
                               const int addcidUsed,
                               const struct d_profile *profile,
                               struct d_context *context)
 {
 	int realcrc, crc;
+	int irdyn_size;
 
 	/* extract the CRC transmitted in the IR-DYN packet */
+	if(largecid + 2 >= plen)
+	{
+		rohc_debugf(0, "ROHC packet too small, cannot read the CRC (len = %d)\n",
+		            plen);
+		goto bad;
+	}
 	realcrc = walk[largecid + 2];
 	
+	/* detect the size of the IR-DYN header */
+	irdyn_size = profile->detect_ir_dyn_size(walk, plen, context);
+	if(irdyn_size == 0)
+	{
+		rohc_debugf(0, "cannot detect the IR-DYN size\n");
+		goto bad;
+	}
+
 	/* compute the CRC of the IR-DYN packet */
 	walk[largecid + 2] = 0;
 	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    profile->detect_ir_dyn_size(walk, context) + 3 +
+	                    irdyn_size +
 	                    largecid + addcidUsed);
 	walk[largecid + 2] = realcrc;
 
@@ -845,16 +892,17 @@ int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
 	{
 		rohc_debugf(0, "CRC failed (real = 0x%x, calc = 0x%x, largecid = %d, "
 		            "addcidUsed = %d, ir_dyn_size = %d)\n",
-		            realcrc, crc, largecid, addcidUsed,
-		            profile->detect_ir_dyn_size(walk, context));
-		return 0;
+		            realcrc, crc, largecid, addcidUsed, irdyn_size);
+		goto bad;
 	}
 
 	rohc_debugf(2, "CRC OK (crc = 0x%x, largecid = %d, addcidUsed = %d, "
-	            "ir_dyn_size = %d)\n", crc, largecid, addcidUsed,
-	            profile->detect_ir_dyn_size(walk, context));
+	            "ir_dyn_size = %d)\n", crc, largecid, addcidUsed, irdyn_size);
 
 	return 1;
+
+bad:
+	return 0;
 }
 
 
