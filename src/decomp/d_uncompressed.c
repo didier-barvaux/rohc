@@ -144,7 +144,17 @@ int uncompressed_decode(struct rohc_decomp *decomp,
 {
 	/* state must not be No Context */
 	if(context->state == NO_CONTEXT)
-		return ROHC_ERROR;
+	{
+		rohc_debugf(0, "cannot receive Normal packets in No Context state\n");
+		goto error;
+	}
+
+	/* check if the ROHC packet is large enough to read the second byte */
+	if(second_byte >= size)
+	{
+		rohc_debugf(0, "ROHC packet too small (len = %d)\n", size);
+		goto error;
+	}
 
 	/* copy the first byte of the ROHC packet to the decompressed packet */
 	*dest = GET_BIT_0_7(packet);
@@ -156,6 +166,9 @@ int uncompressed_decode(struct rohc_decomp *decomp,
 	memcpy(dest, packet, size - second_byte);
 
 	return size - second_byte + 1;
+
+error:
+	return ROHC_ERROR;
 }
 
 
