@@ -144,7 +144,7 @@ quit:
  * @param ip      The IP/UDP packet to check
  * @return        1 if the IP/UDP packet belongs to the context,
  *                0 if it does not belong to the context and
- *                -1 if an error occurs
+ *                -1 if the profile cannot compress it or an error occurs
  */
 int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 {
@@ -154,6 +154,7 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 	struct ip_header_info *ip2_flags;
 	struct ip_packet ip2, last_ip_header;
 	struct udphdr *udp;
+	ip_version version;
 	unsigned int ip_proto;
 	boolean is_ip_same, is_ip2_same, is_udp_same;
 
@@ -163,15 +164,18 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 	ip2_flags = &g_context->ip2_flags;
 
 	/* check the IP version of the first header */
-	if(ip_get_version(ip) != ip_flags->version)
-		goto bad;
+	version = ip_get_version(ip);
+	if(version != IPV4 && version != IPV6)
+		goto bad_profile;
+	if(version != ip_flags->version)
+		goto bad_context;
 
 	/* check if the first header is a fragment */
 	if(ip_is_fragment(ip))
-		goto bad;
+		goto bad_profile;
 
 	/* compare the addresses of the first header */
-	if(ip_get_version(ip) == IPV4)
+	if(version == IPV4)
 	{
 		is_ip_same = ip_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip) &&
 		             ip_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip);
@@ -184,12 +188,12 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 	}
 
 	if(!is_ip_same)
-		goto bad;
+		goto bad_context;
 
 	/* compare the Flow Label of the first header if IPv6 */
-	if(ip_get_version(ip) == IPV6 && ipv6_get_flow_label(ip) !=
+	if(version == IPV6 && ipv6_get_flow_label(ip) !=
 	   IPV6_GET_FLOW_LABEL(ip_flags->info.v6.old_ip))
-		goto bad;
+		goto bad_context;
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
@@ -197,7 +201,7 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 	{
 		/* check if the context used to have a second IP header */
 		if(!g_context->is_ip2_initialized)
-			goto bad;
+			goto bad_context;
 
 		/* get the second IP header */
   		if(!ip_get_inner_packet(ip, &ip2))
@@ -207,15 +211,18 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 		}
 
 		/* check the IP version of the second header */
-		if(ip_get_version(ip2) != ip2_flags->version)
-			goto bad;
+		version = ip_get_version(ip2);
+		if(version != IPV4 && version != IPV6)
+			goto bad_profile;
+		if(version != ip2_flags->version)
+			goto bad_context;
 
 		/* check if the second header is a fragment */
 		if(ip_is_fragment(ip2))
-			goto bad;
+			goto bad_profile;
 
 		/* compare the addresses of the second header */
-		if(ip_get_version(ip2) == IPV4)
+		if(version == IPV4)
 		{
 			is_ip2_same = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip2) &&
 			              ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip2);
@@ -229,12 +236,12 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 		}
 
 		if(!is_ip2_same)
-			goto bad;
+			goto bad_context;
 
 		/* compare the Flow Label of the second header if IPv6 */
-		if(ip_get_version(ip2) == IPV6 && ipv6_get_flow_label(ip2) !=
+		if(version == IPV6 && ipv6_get_flow_label(ip2) !=
 		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
-			goto bad;
+			goto bad_context;
 
 		/* get the last IP header */
 		last_ip_header = ip2;
@@ -250,7 +257,7 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 
 	/* check the transport protocol */
 	if(ip_proto != IPPROTO_UDP)
-		goto bad;
+		goto bad_context;
 	
 	/* check UDP ports */
 	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
@@ -259,8 +266,9 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 
 	return is_udp_same;
 
-bad:
+bad_context:
 	return 0;
+bad_profile:
 error:
 	return -1;
 }
