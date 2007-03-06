@@ -386,7 +386,7 @@ int uncompressed_code_IR_packet(struct c_context *context,
                                 int *payload_offset,
                                 int dest_size)
 {
-	int counter = 0;
+	int counter;
 	int first_position;
 
 	rohc_debugf(2, "code IR packet (CID = %d)\n", context->cid);
@@ -399,13 +399,17 @@ int uncompressed_code_IR_packet(struct c_context *context,
 
 	/* part 2 */
 	dest[first_position] = 0xfc;
+	rohc_debugf(3, "first byte = 0x%02x\n", dest[first_position]);
 
 	/* part 4 */
 	dest[counter] = ROHC_PROFILE_UNCOMPRESSED;
+	rohc_debugf(3, "Profile ID = 0x%02x\n", dest[counter]);
 	counter++;
 
 	/* part 5 */
-	dest[counter]= crc_calculate(CRC_TYPE_8, dest, counter);
+	dest[counter]= 0;
+	dest[counter]= crc_calculate(CRC_TYPE_8, dest, counter + 1);
+	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter + 1, dest[counter]);
 	counter++;
 
 	*payload_offset = 0;
@@ -454,7 +458,7 @@ int uncompressed_code_normal_packet(struct c_context *context,
                                     int *payload_offset,
                                     int dest_size)
 {
-	int counter = 0;
+	int counter;
 	int first_position;
 
 	rohc_debugf(2, "code normal packet (CID = %d)\n", context->cid);
