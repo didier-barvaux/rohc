@@ -89,22 +89,12 @@ unsigned int uncompressed_detect_ir_size(unsigned char *packet,
                                          int second_byte,
                                          int profile_id)
 {
-	unsigned int ret = 10;
-	int d;
-
 	/* check if ROHC  packet is large enough */
 	if(second_byte + 2 >= plen)
 		return 0;
 
-	d = GET_BIT_0(packet);
-	if(d)
-		ret += 5 + 2;
-
-	// TODO: is it an IPv4 test ?
-	if(packet[second_byte + 2] != 0x40)
-		return 0;
-
-	return ret;
+	/* first byte + Profile ID + CRC */
+	return 3;
 }
 
 
@@ -124,7 +114,8 @@ unsigned int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
                                              unsigned int plen,
                                              struct d_context *context)
 {
-	return 7;
+	rohc_debugf(0, "IR-DYN packet is not defined in uncompressed profile\n");
+	return 0;
 }
 
 
