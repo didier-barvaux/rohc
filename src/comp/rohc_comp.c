@@ -234,7 +234,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	c->latest_used = get_milliseconds();
 
-	rohc_debugf(1, "selected compression profile = 0x%04x\n", p->id);
+	rohc_debugf(1, "selected compression profile = %s (0x%04x)\n",
+	            p->description, p->id);
 
 	/* create the ROHC packet: */
 	size = 0;
@@ -302,10 +303,6 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	payload_size = ip_get_totlen(ip) - payload_offset;
 
-	rohc_debugf(2, "ROHC size = %d, payload size = %d (totlen = %d, ihl = %d), "
-	            "output buffer size = %d\n", size, payload_size,
-	            ip_get_totlen(ip), ip_get_hdrlen(ip), osize);
-
 	/* is packet too large? */
 	if(size + payload_size > osize)
 	{
@@ -320,6 +317,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	memcpy(obuf, ip_raw_data + payload_offset, payload_size);
 	obuf += payload_size;
 	size += payload_size;
+
+	rohc_debugf(2, "ROHC size = %d (feedback = %d, header = %d, payload = %d), "
+	            "output buffer size = %d\n", size, feedback_size, esize,
+	            payload_size, osize);
 
 	/* update some statistics */
 	comp->num_packets++;

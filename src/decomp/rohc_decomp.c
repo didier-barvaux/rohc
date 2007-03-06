@@ -812,7 +812,8 @@ int rohc_ir_packet_crc_ok(unsigned char *walk,
 	ir_size = profile->detect_ir_size(walk, plen, largecid + 1, profile->id);
 	if(ir_size == 0)
 	{
-		rohc_debugf(0, "cannot detect the IR size\n");
+		rohc_debugf(0, "cannot detect the IR size with profile %s (0x%04x)\n",
+		            profile->description, profile->id);
 		goto bad;
 	}
 
