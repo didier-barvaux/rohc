@@ -172,7 +172,7 @@ int compare_packets(unsigned char *pkt1, int pkt1_size,
 	min_size = pkt1_size > pkt2_size ? pkt2_size : pkt1_size;
 	
 	/* if packets are equal, do not print the packets */
-	if(memcmp(pkt1, pkt2, min_size) == 0)
+	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
 		goto skip;
 
 	/* packets are different */

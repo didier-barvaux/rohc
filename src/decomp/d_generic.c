@@ -1181,6 +1181,8 @@ int d_generic_decode(struct rohc_decomp *decomp,
 
 	rohc_debugf(2, "decode the packet (type %d)\n", g_context->packet_type);
 	length = decode_packet(decomp, context, packet, packet + second_byte, dest, size - second_byte);
+	if(length != ROHC_ERROR)
+		rohc_debugf(2, "uncompressed packet length = %d bytes\n", length);
 
 error:
 	return length;
@@ -1784,7 +1786,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	context->header_uncompressed_size += dest - org_dest;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, dest - org_dest);
 
-	return packet - org_packet;
+	return (dest - org_dest) + plen;
 
 no_data:
 	return ROHC_OK_NO_DATA;
