@@ -148,7 +148,8 @@ void d_udp_lite_destroy(void *context)
  * @param context         The decompression context
  * @param packet          The ROHC packet to decode
  * @param copy_size       The length of the ROHC packet to decode
- * @param dynamic_present Whether the IR packet contains a dynamic part or not
+ * @param large_cid_len   The length of the large CID field
+ * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
  *                        or ROHC_OK_NO_DATA if no data is returned
@@ -158,7 +159,8 @@ int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
                          struct d_context *context,
                          unsigned char *packet,
                          int copy_size,
-                         int dynamic_present,
+                         int large_cid_len,
+                         int is_addcid_used,
                          unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
@@ -168,7 +170,7 @@ int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
 	udp_lite_context->cfi = -1;
 
 	return d_generic_decode_ir(decomp, context, packet, copy_size,
-	                           dynamic_present, dest);
+	                           large_cid_len, is_addcid_used, dest);
 }
 
 

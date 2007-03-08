@@ -136,7 +136,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         struct d_context *context,
                         unsigned char *packet,
                         int plen,
-                        int dynamic_present,
+                        int large_cid_len,
+                        int is_addcid_used,
                         unsigned char *dest);
 
 unsigned int d_generic_detect_ir_size(unsigned char *packet,

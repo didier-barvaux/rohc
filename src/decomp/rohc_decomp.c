@@ -659,9 +659,11 @@ int d_decode_header(struct rohc_decomp *decomp,
 
 		/* decode the IR packet thanks to the profile-specific routines */
 		size = ddata->active->profile->decode_ir(decomp, ddata->active,
-		                                         walk + largecid + 3,
-		                                         (isize - (walk - ibuf)) - 3 - largecid,
-		                                         GET_BIT_0(walk), obuf);
+		                                         walk,
+		                                         isize - (walk - ibuf),
+		                                         largecid,
+		                                         ddata->addcidUsed,
+		                                         obuf);
 		if(size > 0)
 		{
 			/* the IR decompression was successful,
@@ -785,7 +787,7 @@ struct d_profile * find_profile(int id)
  *
  * @param walk       The ROHC IR packet
  * @param plen       The length of the ROHC packet
- * @param largecid   The large CID value
+ * @param largecid   The size of the large CID field
  * @param addcidUsed Whether add-CID is used or not
  * @param profile    The profile associated with the ROHC packet
  * @return           Whether the CRC is ok or not

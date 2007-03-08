@@ -260,7 +260,8 @@ void d_generic_destroy(void *context)
  * @param context         The decompression context
  * @param packet          The ROHC packet to decode
  * @param plen            The length of the ROHC packet to decode
- * @param dynamic_present Whether the IR packet contains a dynamic part or not
+ * @param large_cid_len   The length of the large CID field
+ * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
  *                        or ROHC_OK_NO_DATA if no data is returned
@@ -270,7 +271,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         struct d_context *context,
                         unsigned char *packet,
                         int plen,
-                        int dynamic_present,
+                        int large_cid_len,
+                        int is_addcid_used,
                         unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
@@ -282,6 +284,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	unsigned char *org_packet = packet;
 	unsigned char *org_dest = dest;
 
+	int dynamic_present;
 	int size, sn;
 	unsigned int protocol;
 	int multiple_ip;
@@ -292,6 +295,14 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	g_context->packet_type = PACKET_IR;
 
 	g_context->current_packet_time = get_microseconds();
+
+	/* is the dynamic flag set ? */
+	dynamic_present = GET_BIT_0(packet);
+
+	/* skip the first bytes:
+	 * 	IR type + Profile ID + CRC (+ eventually CID bytes) */
+	packet += 3 + large_cid_len;
+	plen -= 3 + large_cid_len;
 
 	/* decode the static part of the outer header */
 	size = d_decode_static_ip(packet, plen, active1);
@@ -493,8 +504,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += packet - org_packet;
-	c_add_wlsb(context->header_16_compressed, 0, 0, packet - org_packet);
+	context->header_compressed_size += is_addcid_used + (packet - org_packet);
+	c_add_wlsb(context->header_16_compressed, 0, 0, is_addcid_used + (packet - org_packet));
 	context->header_uncompressed_size += dest - org_dest;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, dest - org_dest);
 
@@ -1325,14 +1336,14 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, org_plen - plen);
+	            plen, packet - head);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += org_plen - plen;
-	c_add_wlsb(context->header_16_compressed, 0, 0, org_plen - plen);
+	context->header_compressed_size += packet - head;
+	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
 	context->header_uncompressed_size += hlen;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, hlen);
 
@@ -1477,14 +1488,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, org_plen - plen);
+	            plen, packet - head);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += org_plen - plen;
-	c_add_wlsb(context->header_16_compressed, 0, 0, org_plen - plen);
+	context->header_compressed_size += packet - head;
+	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
 	context->header_uncompressed_size += hlen;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, hlen);
 
@@ -1645,14 +1656,14 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, org_plen - plen);
+	            plen, packet - head);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += org_plen - plen;
-	c_add_wlsb(context->header_16_compressed, 0, 0, org_plen - plen);
+	context->header_compressed_size += packet - head;
+	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
 	context->header_uncompressed_size += hlen;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, hlen);
 
@@ -1689,7 +1700,6 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	struct d_generic_context *g_context = context->specific;
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
-	unsigned char *org_packet = packet;
 	unsigned char *org_dest = dest;
 	int sn = 0;
 	int size;
@@ -1775,14 +1785,14 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* copy the payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - org_packet);
+	            plen, packet - head);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += packet - org_packet;
-	c_add_wlsb(context->header_16_compressed, 0, 0, packet - org_packet);
+	context->header_compressed_size += packet - head;
+	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
 	context->header_uncompressed_size += dest - org_dest;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, dest - org_dest);
 

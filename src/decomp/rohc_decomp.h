@@ -186,8 +186,8 @@ struct d_profile
 
 	/// The handler used to decode the IR packets
 	int (*decode_ir)(struct rohc_decomp *decomp, struct d_context *context,
-	                 unsigned char *packet, int size, int last_bit,
-	                 unsigned char *dest);
+	                 unsigned char *packet, int size, int large_cid_len,
+	                 int is_addcid_used, unsigned char *dest);
 
 	/// @brief The handler used to create the profile-specific part of the
 	///        decompression context

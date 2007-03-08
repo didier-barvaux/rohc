@@ -47,15 +47,20 @@ void uncompressed_free_decode_data(void *context)
  * @param context         The decompression context
  * @param packet          The ROHC packet to decode
  * @param payload_size    The length of the ROHC packet to decode
- * @param dynamic_present Whether the IR packet contains a dynamic part or not
+ * @param large_cid_len   The length of the large CID field
+ * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
  *                        or ROHC_OK_NO_DATA if no data is returned
  *                        or ROHC_ERROR if an error occurs
  */
-int uncompressed_decode_ir(struct rohc_decomp *decomp, struct d_context *context,
-                           unsigned char *packet, int payload_size,
-                           int dynamic_present, unsigned char *dest)
+int uncompressed_decode_ir(struct rohc_decomp *decomp,
+                           struct d_context *context,
+                           unsigned char *packet,
+                           int payload_size,
+                           int large_cid_len,
+                           int is_addcid_used,
+                           unsigned char *dest)
 {
 	/* change state to Full Context */
 	context->state = FULL_CONTEXT;
