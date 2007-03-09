@@ -27,7 +27,10 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 
 	/* get the version of the IP packet */
 	if(!get_ip_version(packet, size, &version))
+	{
+		rohc_debugf(1, "bad IP version (%d)\n", version);
 		goto quit;
+	}
 
 	ip->version = version;
 
@@ -39,16 +42,27 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 		 *       packet length must be accurate with the Total Length field */
 
 		if(size < sizeof(struct iphdr))
+		{
+			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
 			goto quit;
+		}
 
 		/* copy the IPv4 header */
 		memcpy(&ip->header.v4, packet, sizeof(struct iphdr));
 
 		if(ip_get_hdrlen(*ip) != sizeof(struct iphdr))
+		{
+			rohc_debugf(1, "bad IP header size (%d bytes)\n",
+			            ip_get_hdrlen(*ip));
 			goto quit;
+		}
 
 		if(ip_get_totlen(*ip) != size)
+		{
+			rohc_debugf(1, "bad IP packet length (%d bytes != %d bytes)\n",
+			            ip_get_totlen(*ip), size);
 			goto quit;
+		}
 
 		/* point to the whole IPv4 packet */
 		ip->data = packet;
@@ -59,13 +73,20 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 		 *       packet length == header length + Payload Length field */
 
 		if(size < sizeof(struct ip6_hdr))
-			 goto quit;
+		{
+			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
+			goto quit;
+		}
 
 		/* copy the IPv6 header */
 		memcpy(&ip->header.v6, packet, sizeof(struct ip6_hdr));
 
 		if(ip_get_totlen(*ip) != size)
+		{
+			rohc_debugf(1, "bad IP packet length (%d bytes != %d bytes)\n",
+			            ip_get_totlen(*ip), size);
 			goto quit;
+		}
 
 		/* point to the whole IPv6 packet */
 		ip->data = packet;

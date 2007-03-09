@@ -11,6 +11,8 @@
 #include <netinet/ip6.h>
 #include <string.h>
 
+#include "rohc.h"
+
 
 /// IP version
 typedef enum
