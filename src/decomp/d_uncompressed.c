@@ -65,6 +65,11 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	/* change state to Full Context */
 	context->state = FULL_CONTEXT;
 
+	/* skip the first bytes:
+	 * 	IR type + Profile ID + CRC (+ eventually CID bytes) */
+	packet += 3 + large_cid_len;
+	payload_size -= 3 + large_cid_len;
+
 	/* check IR packet size */
 	if(payload_size == 0)
 		return ROHC_OK_NO_DATA;
