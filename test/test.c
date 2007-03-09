@@ -341,6 +341,34 @@ int compress_decompress(struct rohc_comp *comp,
 	ip_size = header.len - link_len_src;
 	rohc_packet = output_packet + link_len_src;
 
+	/* check for padding after the IP packet in the Ethernet payload */
+	if(link_len_src == ETHER_HDR_LEN &&
+	   header.len == 60 /* min Ethernet length */ )
+	{
+		int version;
+		int tot_len;
+		
+		version = (ip_packet[0] >> 4) & 0x0f;
+
+		if(version == 4)
+		{
+			struct iphdr *ip = (struct iphdr *) ip_packet;
+			tot_len = ntohs(ip->tot_len);
+		}
+		else
+		{
+			struct ip6_hdr *ip = (struct ip6_hdr *) ip_packet;
+			tot_len = sizeof(struct ip6_hdr) + ntohs(ip->ip6_plen);
+		}
+
+		if(tot_len < ip_size)
+		{
+			printf("The Ethernet frame has %d bytes of padding after the "
+			       "%d byte IP packet!\n", ip_size - tot_len, tot_len);
+			ip_size = tot_len;
+		}
+	}
+
 	/* compress the IP packet */
 	printf("\t\t<compression>\n");
 	printf("\t\t\t<log>\n");
