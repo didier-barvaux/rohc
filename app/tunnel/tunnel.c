@@ -147,7 +147,7 @@ void sighandler(int sig)
  */
 void usage(void)
 {
-	printf("ROHC tunnel: make an ROHC over UDP tunnel\n\n\
+	printf("ROHC tunnel: make a ROHC over UDP tunnel\n\n\
 usage: rohctunnel NAME remote RADDR local LADDR port PORT\n\
   NAME    the name of the tunnel\n\
   RADDR   the IP address of the remote host\n\
