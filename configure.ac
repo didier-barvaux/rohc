@@ -40,6 +40,6 @@ AC_PREFIX_DEFAULT(`pwd`)
 
 AM_DEP_TRACK
 
-AC_CONFIG_FILES([Makefile src/Makefile src/common/Makefile src/comp/Makefile src/decomp/Makefile test/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile src/common/Makefile src/comp/Makefile src/decomp/Makefile test/Makefile app/Makefile app/tunnel/Makefile])
 
 AC_OUTPUT

@@ -30,6 +30,9 @@ test: test/test.c test/test.h all
 report:
 	./test/report/report.sh
 
+tunnel: app/tunnel/tunnel.c
+	$(MAKE) -C app/tunnel
+
 clean-doc:
 	$(RM) -r doc/html
 
