@@ -938,13 +938,16 @@ int decide_FO_packet(struct c_context *context)
 	send_static = g_context->tmp_variables.send_static;
 	send_dynamic = g_context->tmp_variables.send_dynamic;
 
-	if(g_context->ir_dyn_count < MAX_FO_COUNT)
+	if(send_static)
+	{
+		g_context->ir_dyn_count = 0;
+		packet = PACKET_UOR_2;
+	}
+	else if(g_context->ir_dyn_count < MAX_FO_COUNT)
 	{
 		g_context->ir_dyn_count++;
 		packet = PACKET_IR_DYN;
 	}
-	else if(send_static) /* if one of the static fields changed, go back to IR */
-		packet = PACKET_UOR_2;
 	else if(nr_of_ip_hdr == 1 && send_dynamic > 2)
 		packet = PACKET_IR_DYN;
 	else if(nr_of_ip_hdr > 1 && send_dynamic > 4)
