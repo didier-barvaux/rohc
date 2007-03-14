@@ -284,7 +284,6 @@ void rohc_c_set_header(struct rohc_comp *compressor, int value);
 void rohc_c_set_mrru(struct rohc_comp *compressor, int value);
 void rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
 void rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
-void rohc_c_set_connection_type(struct rohc_comp *compressor, int value);
 void rohc_c_set_enable(struct rohc_comp *compressor, int value);
 
 

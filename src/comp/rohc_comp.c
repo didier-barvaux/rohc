@@ -446,18 +446,6 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 
 
 /**
- * @brief Set the connection type
- *
- * @param comp  The ROHC compressor
- * @param value The new connection type
- */
-void rohc_c_set_connection_type(struct rohc_comp *comp, int value)
-{
-	comp->connection_type = value;
-}
-
-
-/**
  * @brief Enable the ROHC compressor
  *
  * @param comp   The ROHC compressor
