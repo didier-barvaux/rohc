@@ -125,6 +125,12 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
 			goto bad_context;
 	}
+	else /* no second IP header */
+	{
+		/* check if the context used not to have a second header */
+		if(g_context->is_ip2_initialized)
+			goto bad_context;
+	}
 
 	return 1;
 

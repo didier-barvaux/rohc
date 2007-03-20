@@ -249,8 +249,12 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 		/* get the transport protocol */
 		ip_proto = ip_get_protocol(ip2);
 	}
-	else
+	else /* no second IP header */
 	{
+		/* check if the context used not to have a second header */
+		if(g_context->is_ip2_initialized)
+			goto bad_context;
+
 		/* only one single IP header, the last IP header is the first one */
 		last_ip_header = ip;
 	}
