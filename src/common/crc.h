@@ -18,11 +18,11 @@
 
 
 /// Table to enable fast CRC-8 computation
-unsigned char crc_table_8[256];
+extern unsigned char crc_table_8[256];
 /// Table to enable fast CRC-7 computation
-unsigned char crc_table_7[256];
+extern unsigned char crc_table_7[256];
 /// Table to enable fast CRC-3 computation
-unsigned char crc_table_3[256];
+extern unsigned char crc_table_3[256];
 
 
 /*

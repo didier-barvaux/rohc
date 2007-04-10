@@ -8,6 +8,11 @@
 #include "crc.h"
 
 
+unsigned char crc_table_8[256];
+unsigned char crc_table_7[256];
+unsigned char crc_table_3[256];
+
+
 /**
  * @brief Get the polynom for the CRC type.
  *
