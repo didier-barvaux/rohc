@@ -264,7 +264,7 @@ void d_generic_destroy(void *context)
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if no data is returned
+ *                        or ROHC_OK_NO_DATA if packet is feedback only
  *                        or ROHC_ERROR if an error occurs
  */
 int d_generic_decode_ir(struct rohc_decomp *decomp,
@@ -1111,7 +1111,9 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
  *                    on the CID encoding)
  * @param dest        The decoded IP packet
  * @return            The length of the uncompressed IP packet
+ *                    or ROHC_OK_NO_DATA if packet is feedback only
  *                    or ROHC_ERROR if an error occurs
+ *                    or ROHC_ERROR_CRC if a CRC error occurs
  */
 int d_generic_decode(struct rohc_decomp *decomp,
                      struct d_context *context,
@@ -1192,7 +1194,9 @@ int d_generic_decode(struct rohc_decomp *decomp,
 
 	rohc_debugf(2, "decode the packet (type %d)\n", g_context->packet_type);
 	length = decode_packet(decomp, context, packet, packet + second_byte, dest, size - second_byte);
-	if(length != ROHC_ERROR)
+	if(length != ROHC_OK_NO_DATA &&
+	   length != ROHC_ERROR &&
+	   length != ROHC_ERROR_CRC)
 		rohc_debugf(2, "uncompressed packet length = %d bytes\n", length);
 
 error:
@@ -1225,8 +1229,10 @@ int d_generic_get_sn(struct d_context *context)
  * @param packet       The end of the ROHC packet to decode
  * @param dest         The decoded IP packet
  * @param plen         The length of the ROHC packet
- * @return             The length of the uncompressed IP packet,
- *                     or ROHC_ERROR in case of error
+ * @return             The length of the uncompressed IP packet
+ *                     or ROHC_OK_NO_DATA if packet is feedback only
+ *                     or ROHC_ERROR if an error occurs
+ *                     or ROHC_ERROR_CRC if a CRC error occurs
  */
 int decode_uo0(struct rohc_decomp *decomp,
                struct d_context *context,
@@ -1368,7 +1374,9 @@ error_crc:
  * @param dest         The decoded IP packet
  * @param plen         The length of the ROHC packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_ERROR in case of error
+ *                     or ROHC_OK_NO_DATA if packet is feedback only
+ *                     or ROHC_ERROR if an error occurs
+ *                     or ROHC_ERROR_CRC if a CRC error occurs
  */
 int decode_uo1(struct rohc_decomp *decomp,
                struct d_context *context,
@@ -1520,7 +1528,9 @@ error_crc:
  * @param dest         The decoded IP packet
  * @param plen         The length of the ROHC packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_ERROR in case of error
+ *                     or ROHC_OK_NO_DATA if packet is feedback only
+ *                     or ROHC_ERROR if an error occurs
+ *                     or ROHC_ERROR_CRC if a CRC error occurs
  */
 int decode_uor2(struct rohc_decomp *decomp,
                 struct d_context *context,
@@ -1688,7 +1698,8 @@ error_crc:
  * @param dest         The decoded IP packet
  * @param plen         The length of the ROHC packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_ERROR in case of error
+ *                     or ROHC_OK_NO_DATA if packet is feedback only
+ *                     or ROHC_ERROR if an error occurs
  */
 int decode_irdyn(struct rohc_decomp *decomp,
                  struct d_context *context,

@@ -152,7 +152,7 @@ void d_udp_lite_destroy(void *context)
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if no data is returned
+ *                        or ROHC_OK_NO_DATA if packet is feedback only
  *                        or ROHC_ERROR if an error occurs
  */
 int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
