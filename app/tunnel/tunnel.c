@@ -97,6 +97,11 @@
 /// The maximal size of a ROHC packet
 #define MAX_ROHC_SIZE	(5 * 1024)
 
+/// Enable debug ?
+#define DEBUG 0
+
+/// Stop on compression/decompression failure
+#define STOP_ON_FAILURE 0
 
 
 /*
@@ -349,16 +354,24 @@ int main(int argc, char *argv[])
 			if(FD_ISSET(tun, &readfds))
 			{
 				failure = tun2udp(comp, tun, udp, raddr, port);
+#if STOP_ON_FAILURE
 				if(failure)
 					alive = 0;
+#endif
 			}
 
 			/* bridge from UDP to TUN */
-			if(!failure && FD_ISSET(udp, &readfds))
+			if(
+#if STOP_ON_FAILURE
+			   !failure &&
+#endif
+			   FD_ISSET(udp, &readfds))
 			{
 				failure = udp2tun(decomp, udp, tun);
+#if STOP_ON_FAILURE
 				if(failure)
 					alive = 0;
+#endif
 			}
 		}
 	}
@@ -456,7 +469,9 @@ int read_from_tun(int fd, unsigned char *buffer, unsigned int *length)
 
 	*length = ret;
 
+#if DEBUG
 	fprintf(stderr, "read %u bytes on fd %d\n", ret, fd);
+#endif
 
 	return 0;
 
@@ -488,7 +503,9 @@ int write_to_tun(int fd, unsigned char *packet, unsigned int length)
 		goto error;
 	}
 
+#if DEBUG
 	fprintf(stderr, "%u bytes written on fd %d\n", length, fd);
+#endif
 
 	return 0;
 
@@ -590,8 +607,10 @@ int read_from_udp(int sock, unsigned char *buffer, unsigned int *length)
 
 	*length = ret;
 
+#if DEBUG
 	fprintf(stderr, "read one %u-byte ROHC packet on UDP sock %d\n",
 	        *length, sock);
+#endif
 
 quit:
 	return 0;
@@ -633,7 +652,9 @@ int write_to_udp(int sock, struct in_addr raddr, int port,
 		goto error;
 	}
 
+#if DEBUG
 	fprintf(stderr, "%u bytes written on socket %d\n", length, sock);
+#endif
 
 	return 0;
 
@@ -675,7 +696,9 @@ int tun2udp(struct rohc_comp *comp,
 	static char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
 	static char *states[] = { "error", "IR", "FO", "SO" };
 	
+#if DEBUG
 	fprintf(stderr, "\n");
+#endif
 
 	/* read the IP packet from the virtual interface */
 	ret = read_from_tun(from, buffer, &buffer_len);
@@ -692,7 +715,9 @@ int tun2udp(struct rohc_comp *comp,
 	packet_len = buffer_len - 4;
 
 	/* compress the IP packet */
+#if DEBUG
 	fprintf(stderr, "compress a %u-byte packet\n", packet_len);
+#endif
 	rohc_size = rohc_compress(comp, packet, packet_len,
 	                          rohc_packet, MAX_ROHC_SIZE);
 	if(rohc_size <= 0)
@@ -765,7 +790,9 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	int decomp_size;
 	int ret;
 
+#if DEBUG
 	fprintf(stderr, "\n");
+#endif
 
 	/* read the ROHC packet from the UDP tunnel */
 	ret = read_from_udp(from, packet, &packet_len);
@@ -779,7 +806,9 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		goto quit;
 
 	/* decompress the ROHC packet */
+#if DEBUG
 	fprintf(stderr, "decompress the %u-byte ROHC packet\n", packet_len);
+#endif
 	decomp_size = rohc_decompress(decomp, packet, packet_len,
 	                              &decomp_packet[4], MAX_ROHC_SIZE);
 	if(decomp_size <= 0)
