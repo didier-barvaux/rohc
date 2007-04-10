@@ -288,6 +288,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			return 0;
 		}
 		
+		rohc_debugf(1, "compress the packet #%d\n", comp->num_packets + 1);
 		esize = p->encode(c, ip, isize, obuf, osize - size, &payload_offset);
 
 		if(esize < 0)

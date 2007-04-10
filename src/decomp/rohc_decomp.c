@@ -377,6 +377,8 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	struct d_decode_data ddata = { -1, 0, 0, NULL };
 
 	decomp->statistics.packets_received++;
+	rohc_debugf(1, "decompress the packet #%u\n",
+	            decomp->statistics.packets_received);
 	
 	ret = d_decode_header(decomp, ibuf, isize, obuf, osize, &ddata);
 	if(ddata.active == NULL &&

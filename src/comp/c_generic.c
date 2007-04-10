@@ -786,12 +786,14 @@ void periodic_down_transition(struct c_context *context)
 
 	if(g_context->go_back_fo_count >= CHANGE_TO_FO_COUNT)
 	{
+		rohc_debugf(1, "periodic change to FO state\n");
 		g_context->go_back_fo_count = 0;
 		g_context->ir_dyn_count = 0;
 		change_state(context, FO);
 	}
 	else if(g_context->go_back_ir_count >= CHANGE_TO_IR_COUNT)
 	{
+		rohc_debugf(1, "periodic change to IR state\n");
 		g_context->go_back_ir_count = 0;
 		change_state(context, IR);
 	}
