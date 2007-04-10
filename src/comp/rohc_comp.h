@@ -75,7 +75,10 @@ struct rohc_comp
 	int total_uncompressed_size;
 	/// The size of all the sent compressed ROHC packets
 	int total_compressed_size;
- 
+
+	/// The last context used by the compressor
+	struct c_context *last_context;
+
 	/* user interaction variables: */
 
 	/// Maximum Reconstructed Reception Unit (currently not used)
@@ -126,6 +129,15 @@ struct c_context
 	/// The average size of the compressed headers
 	int header_compressed_size; 
 
+	/// The total size of the last uncompressed packet
+	int total_last_uncompressed_size;
+	/// The total size of the last compressed packet
+	int total_last_compressed_size;
+	/// The header size of the last uncompressed packet
+	int header_last_uncompressed_size;
+	/// The header size of the last compressed packet
+	int header_last_compressed_size;
+ 
 	/// The number of sent packets
 	int num_sent_packets;
 	/// The number of sent IR packets

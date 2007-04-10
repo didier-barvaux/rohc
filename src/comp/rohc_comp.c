@@ -68,6 +68,7 @@ struct rohc_comp *rohc_alloc_compressor(int max_cid)
 	comp->num_packets = 0;
 	comp->total_compressed_size = 0;
 	comp->total_uncompressed_size = 0;
+	comp->last_context = NULL;
 
 	for(i = 0; i < FEEDBACK_BUFFER_SIZE; i++)
 	{
@@ -323,16 +324,25 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	            "output buffer size = %d\n", size, feedback_size, esize,
 	            payload_size, osize);
 
-	/* update some statistics */
+	/* update some statistics:
+	 *  - compressor statistics
+	 *  - context statistics (global + last packet + last 16 packets) */
 	comp->num_packets++;
 	comp->total_uncompressed_size += isize;
 	comp->total_compressed_size += size;
+	comp->last_context = c;
 
 	c->total_uncompressed_size += isize;
 	c->total_compressed_size += size;
 	c->header_uncompressed_size += payload_offset;
 	c->header_compressed_size += esize;
 	c->num_sent_packets ++;
+
+	c->total_last_uncompressed_size = isize;
+	c->total_last_compressed_size = size;
+	c->header_last_uncompressed_size = payload_offset;
+	c->header_last_compressed_size = esize;
+
 	c_add_wlsb(c->total_16_uncompressed, 0, 0, isize);
 	c_add_wlsb(c->total_16_compressed, 0, 0, size);
 	c_add_wlsb(c->header_16_uncompressed, 0, 0, payload_offset);
@@ -929,6 +939,12 @@ struct c_context * c_create_context(struct rohc_comp *comp,
 	c->total_compressed_size = 0;
 	c->header_uncompressed_size = 0;
 	c->header_compressed_size = 0;
+	
+	c->total_last_uncompressed_size = 0;
+	c->total_last_compressed_size = 0;
+	c->header_last_uncompressed_size = 0;
+	c->header_last_compressed_size = 0;
+	
 	c->num_sent_packets = 0;
 	c->num_sent_ir = 0;
 	c->num_sent_ir_dyn = 0;
