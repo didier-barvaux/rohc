@@ -244,9 +244,16 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	size = 0;
 
 	/* 1. add feedback */
-	feedback_size = c_piggyback_get(comp, obuf, osize - size);
-	obuf += feedback_size;
-	size += feedback_size;
+	do
+	{
+		feedback_size = c_piggyback_get(comp, obuf, osize - size);
+		if(feedback_size > 0)
+		{
+			obuf += feedback_size;
+			size += feedback_size;
+		}
+	}
+	while(feedback_size > 0);
 
 	/* 2. use profile to compress packet */
 	rohc_debugf(1, "compress the packet #%d\n", comp->num_packets + 1);
