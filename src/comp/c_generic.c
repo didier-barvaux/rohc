@@ -834,7 +834,7 @@ void decide_state(struct c_context *context)
 		next_state = FO;
 	else if(curr_state == IR && send_static && ir_count >= MAX_IR_COUNT)
 		next_state = FO;
-	else if(curr_state == IR && g_context->ir_count >= MAX_IR_COUNT)
+	else if(curr_state == IR && ir_count >= MAX_IR_COUNT)
 		next_state = SO;
 	else if(curr_state == FO && send_dynamic && fo_count >= MAX_FO_COUNT)
 		next_state = FO;
