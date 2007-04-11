@@ -162,8 +162,10 @@ example: rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000\n");
 }
 
 
-/// The file descriptor where to write the statistics
-FILE *stats;
+/// The file descriptor where to write the compression statistics
+FILE *stats_comp;
+/// The file descriptor where to write the decompression statistics
+FILE *stats_decomp;
 
 
 /**
@@ -307,13 +309,22 @@ int main(int argc, char *argv[])
 	 * Main program:
 	 */
 
-	/* write the stats to fd 3 */
-	stats = fdopen(3, "a");
-	if(stats == NULL)
+	/* write the compression stats to fd 3 */
+	stats_comp = fdopen(3, "a");
+	if(stats_comp == NULL)
 	{
-		fprintf(stderr, "cannot open fd 3 for stats: %s (%d)\n",
+		fprintf(stderr, "cannot open fd 3 for compression stats: %s (%d)\n",
 		        strerror(errno), errno);
 		goto destroy_decomp;
+	}
+
+	/* write the decompression stats to fd 4 */
+	stats_decomp = fdopen(4, "a");
+	if(stats_decomp == NULL)
+	{
+		fprintf(stderr, "cannot open fd 4 for decompresion stats: %s (%d)\n",
+		        strerror(errno), errno);
+		goto close_stats_comp;
 	}
 
 	/* catch signals to properly shutdown the bridge */
@@ -382,7 +393,9 @@ int main(int argc, char *argv[])
 	 * Cleaning:
 	 */
 
-	fclose(stats);
+	fclose(stats_decomp);
+close_stats_comp:
+	fclose(stats_comp);
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
@@ -753,7 +766,7 @@ int tun2udp(struct rohc_comp *comp,
 		fprintf(stderr, "invalid state\n");
 		goto error;
 	}
-	fprintf(stats, "%d\t%s\t%s\t%d\t%d\t%d\t%d\n",
+	fprintf(stats_comp, "%d\t%s\t%s\t%d\t%d\t%d\t%d\n",
 	        comp->last_context->num_sent_packets,
 	        modes[comp->last_context->mode],
 	        states[comp->last_context->state],
@@ -818,12 +831,6 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		goto error;
 	}
 
-	fprintf(stats, "%d\t%d\t%d\t%d\n",
-	        decomp->statistics.packets_received,
-	        decomp->statistics.packets_failed_crc,
-	        decomp->statistics.packets_failed_no_context,
-	        decomp->statistics.packets_failed_package);
-
 	/* build the TUN header */
 	decomp_packet[0] = 0;
 	decomp_packet[1] = 0;
@@ -852,6 +859,13 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		fprintf(stderr, "write_to_tun failed\n");
 		goto error;
 	}
+
+	/* print packet statistics */
+	fprintf(stats_decomp, "%d\t%d\n",
+	        decomp->statistics.packets_received,
+	        decomp->statistics.packets_failed_crc +
+	        decomp->statistics.packets_failed_no_context +
+	        decomp->statistics.packets_failed_package);
 
 quit:
 	return 0;
