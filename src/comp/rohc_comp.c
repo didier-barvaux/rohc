@@ -27,7 +27,9 @@ struct c_profile *c_profiles[C_NUM_PROFILES] =
  */
 
 void c_piggyback_destroy(struct rohc_comp *comp);
-int c_piggyback_get(struct rohc_comp *comp, unsigned char *buf);
+int c_piggyback_get(struct rohc_comp *comp,
+                    unsigned char *buffer,
+                    unsigned int max);
 
 void c_destroy_contexts(struct rohc_comp *comp);
 int c_create_contexts(struct rohc_comp *comp);
@@ -242,7 +244,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	size = 0;
 
 	/* 1. add feedback */
-	feedback_size = c_piggyback_get(comp, obuf);
+	feedback_size = c_piggyback_get(comp, obuf, osize - size);
 	obuf += feedback_size;
 	size += feedback_size;
 
@@ -1142,9 +1144,14 @@ void c_piggyback_feedback(struct rohc_comp *comp,
  *
  * @param comp   The ROHC compressor
  * @param buffer The buffer to store the feedback packet
- * @return       The length of the feedback packet if any, 0 otherwise
+ * @param max    The size of the buffer
+ * @return       The length of the feedback packet if any,
+ *               0 if no feedback is available,
+ *               -1 if the feedback is too large for the given buffer
  */
-int c_piggyback_get(struct rohc_comp *comp, unsigned char *buffer)
+int c_piggyback_get(struct rohc_comp *comp,
+                    unsigned char *buffer,
+                    unsigned int max)
 {
 	int i;
 	int size = 0;
@@ -1155,6 +1162,14 @@ int c_piggyback_get(struct rohc_comp *comp, unsigned char *buffer)
 	{
 		comp->feedback_pointer--;
 		size = comp->feedback_size[comp->feedback_pointer];
+
+		/* check the buffer size */
+		if(size + 1 + (size < 8 ? 0 : 1) > max)
+		{
+			rohc_debugf(1, "no more place in the buffer for feedback\n");
+			comp->feedback_pointer++;
+			goto full;
+		}
 
 		/* the size can be encoded either in the last 3 bits of the first byte
 		 * or in the 2nd byte */
@@ -1196,6 +1211,9 @@ int c_piggyback_get(struct rohc_comp *comp, unsigned char *buffer)
 	/* return the length of the feedback header/data,
 	 * or zero if no feedback */
 	return index + size;
+
+full:
+	return -1;
 }
 
 
