@@ -405,13 +405,6 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			c->total_uncompressed_size += ret;
 			c->total_compressed_size += isize;
 
-			if(decomp->compressor)
-			{
-				decomp->compressor->num_packets++;
-				decomp->compressor->total_uncompressed_size += ret;
-				decomp->compressor->total_compressed_size += isize;
-			}
-
 			c_add_wlsb(c->total_16_uncompressed, 0, 0, ret);
 			c_add_wlsb(c->total_16_compressed, 0,0, isize);
 		}
