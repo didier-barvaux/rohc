@@ -1242,6 +1242,46 @@ void c_piggyback_destroy(struct rohc_comp *comp)
 
 
 /**
+ * @brief Send as much feedback data as possible
+ *
+ * @param comp   The ROHC compressor
+ * @param obuf   The buffer where to store the feedback-only packet
+ * @param osize  The size of the buffer for the feedback-only packet
+ * @return       The size of the feedback-only packet,
+ *               0 if there is no feedback data to send
+ */
+int rohc_feedback_flush(struct rohc_comp *comp,
+                        unsigned char *obuf,
+                        int osize)
+{
+	unsigned int size;
+	int feedback_size;
+
+	/* check compressor validity */
+	if(comp == 0)
+	{
+		rohc_debugf(0, "compressor not valid\n");
+		return 0;
+	}
+
+	/* build the feedback-only packet */
+	size = 0;
+	do
+	{
+		feedback_size = c_piggyback_get(comp, obuf, osize - size);
+		if(feedback_size > 0)
+		{
+			obuf += feedback_size;
+			size += feedback_size;
+		}
+	}
+	while(feedback_size > 0);
+
+	return size;
+}
+
+
+/**
  *	@brief Callback called by a decompressor to deliver a feedback packet to the
  *	       compressor
  *

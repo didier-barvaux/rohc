@@ -286,6 +286,9 @@ void c_piggyback_feedback(struct rohc_comp *comp, unsigned char *packet,
                           int size);
 void c_deliver_feedback(struct rohc_comp *comp, unsigned char *feedback,
                         int size);
+int rohc_feedback_flush(struct rohc_comp *comp,
+                        unsigned char *obuf,
+                        int osize);
 
 
 /*
