@@ -664,6 +664,7 @@ void c_generic_feedback(struct c_context *context,
 	switch(feedback->type)
 	{
 		case 1: /* FEEDBACK-1 */
+			rohc_debugf(2, "feedback 1\n");
 			sn = p[0];
 		
 			/* ack IP-ID only if IPv4, but always ack SN */
@@ -679,6 +680,8 @@ void c_generic_feedback(struct c_context *context,
 			unsigned char mode = (p[0] >> 4) & 3;
 			int remaining = feedback->specific_size - 2;
 			int opt, optlen;
+			
+			rohc_debugf(2, "feedback 2\n");
 
 			sn = ((p[0] & 15) << 8) + p[1];
 			p += 2;
@@ -731,6 +734,7 @@ void c_generic_feedback(struct c_context *context,
 			switch(feedback->acktype)
 			{
 				case ACK:
+					rohc_debugf(2, "ack\n");
 					if(sn_not_valid == 0)
 					{
 						/* ack IP-ID only if IPv4, but always ack SN */
@@ -741,6 +745,7 @@ void c_generic_feedback(struct c_context *context,
 					break;
 				
 				case NACK:
+					rohc_debugf(2, "nack\n");
 					if(context->state == SO)
 					{
 						change_state(context, FO);
@@ -751,6 +756,7 @@ void c_generic_feedback(struct c_context *context,
 					break;
 					
 				case STATIC_NACK:
+					rohc_debugf(2, "static nack\n");
 					change_state(context, IR);
 					break;
 					
@@ -760,7 +766,7 @@ void c_generic_feedback(struct c_context *context,
 
 				default:
 					/* impossible value */
-					rohc_debugf(2, "unknown ack type\n");
+					rohc_debugf(0, "unknown ack type\n");
 			}	
 		}
 		break;
