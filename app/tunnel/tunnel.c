@@ -121,6 +121,8 @@ int tun2udp(struct rohc_comp *comp,
             int from, int to,
             struct in_addr raddr, int port);
 int udp2tun(struct rohc_decomp *decomp, int from, int to);
+int flush_feedback(struct rohc_comp *comp,
+                   int to, struct in_addr raddr, int port);
 
 void dump_packet(char *descr, unsigned char *packet, unsigned int length);
 
@@ -191,6 +193,9 @@ int main(int argc, char *argv[])
 	fd_set readfds;
 	struct timespec timeout;
 	sigset_t sigmask;
+
+	struct timeval last;
+	struct timeval now;
 
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
@@ -343,6 +348,9 @@ int main(int argc, char *argv[])
 	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGINT);
 
+	/* initialize the last time we sent a packet */
+	gettimeofday(&last, NULL);
+
 	/* tunnel each packet from the UDP socket to the virtual interface
 	 * and from the virtual interface to the UDP socket */
 	do
@@ -365,6 +373,7 @@ int main(int argc, char *argv[])
 			if(FD_ISSET(tun, &readfds))
 			{
 				failure = tun2udp(comp, tun, udp, raddr, port);
+				gettimeofday(&last, NULL);
 #if STOP_ON_FAILURE
 				if(failure)
 					alive = 0;
@@ -384,6 +393,18 @@ int main(int argc, char *argv[])
 					alive = 0;
 #endif
 			}
+		}
+
+		/* flush feedback data if nothing is sent in the tunnel for a moment */
+		gettimeofday(&now, NULL);
+		if(now.tv_sec > last.tv_sec + 1)
+		{
+			failure = flush_feedback(comp, udp, raddr, port);
+			last = now;
+#if STOP_ON_FAILURE
+			if(failure)
+				alive = 0;
+#endif
 		}
 	}
 	while(alive);
@@ -868,6 +889,62 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	        decomp->statistics.packets_failed_package);
 
 quit:
+	return 0;
+
+error:
+	return 1;
+}
+
+
+
+/*
+ * Feedback flushing to the UDP socket
+ */
+
+
+/**
+ * @brief Flush feedback packets stored at the compressor to the UDP socket
+ *
+ * @param comp   The ROHC compressor
+ * @param to     The UDP socket descriptor to write to
+ * @param raddr  The remote address of the tunnel
+ * @param port   The remote port of the tunnel
+ * @return       0 in case of success, a non-null value otherwise
+ */
+int flush_feedback(struct rohc_comp *comp,
+                   int to, struct in_addr raddr, int port)
+{
+	static unsigned char rohc_packet[MAX_ROHC_SIZE];
+	int rohc_size;
+	int ret;
+	
+#if DEBUG
+	fprintf(stderr, "\n");
+#endif
+
+	/* flush feedback data as many times as necessary */
+	do
+	{
+		/* flush feedback data */
+		rohc_size = rohc_feedback_flush(comp, rohc_packet, MAX_ROHC_SIZE);
+
+#if DEBUG
+		fprintf(stderr, "flush %d bytes of feedback data\n", rohc_size);
+#endif
+
+		if(rohc_size > 0)
+		{
+			/* write the ROHC packet in the UDP tunnel */
+			ret = write_to_udp(to, raddr, port, rohc_packet, rohc_size);
+			if(ret != 0)
+			{
+				fprintf(stderr, "write_to_udp failed\n");
+				goto error;
+			}
+		}
+	}
+	while(rohc_size > 0);
+
 	return 0;
 
 error:
