@@ -152,8 +152,6 @@ struct generic_tmp_variables
  */
 struct c_generic_context
 {
-	/// The Sequence Number (SN)
-	unsigned int sn;
 	/// A window used to encode the SN
 	struct c_wlsb *sn_window;
 

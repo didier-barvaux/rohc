@@ -105,6 +105,9 @@ struct c_context
 	/// The context unique ID (CID)
 	int cid;
 
+	/// The Sequence Number (SN)
+	unsigned int sn;
+
 	/// The associated compressor
 	struct rohc_comp *compressor;
 

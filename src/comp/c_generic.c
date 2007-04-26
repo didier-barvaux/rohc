@@ -316,7 +316,7 @@ int c_generic_create(struct c_context *context, const struct ip_packet ip)
 	/* step 1 */
 	// TODO: should be initialized to a random value according
 	//       to 5.11.1 in RFC 3095, but 0 simplifies testing
-	g_context->sn = 0;
+	context->sn = 0;
 
 	/* step 2 */
 	g_context->sn_window = c_create_wlsb(16, C_WINDOW_WIDTH, -1);
@@ -557,7 +557,7 @@ int c_generic_encode(struct c_context *context,
 	 *  - increase the Sequence Number (SN)
 	 *  - find how many static and dynamic IP fields changed
 	 */
-	if(g_context->sn != 0) /* skip first packet (sn == 0) */
+	if(context->sn != 0) /* skip first packet (sn == 0) */
 	{
 		if(ip_get_version(ip) == IPV4)
 			check_ip_identification(&g_context->ip_flags, ip);
@@ -567,8 +567,8 @@ int c_generic_encode(struct c_context *context,
 	}
 
 	/* increase the sequence number every time we encode something */
-	g_context->sn++;
-	rohc_debugf(3, "SN = %d\n", g_context->sn);
+	context->sn++;
+	rohc_debugf(3, "SN = %d\n", context->sn);
 
 	/* find IP fields that changed */
 	g_context->tmp_variables.changed_fields = changed_fields(&g_context->ip_flags, ip);
@@ -590,9 +590,9 @@ int c_generic_encode(struct c_context *context,
 
 	if(ip_get_version(ip) == IPV4)
 		rohc_debugf(2, "ip_id = 0x%04x, context_sn = %d\n",
-		            ntohs(ipv4_get_id(ip)), g_context->sn);
+		            ntohs(ipv4_get_id(ip)), context->sn);
 	else /* IPV6 */
-		rohc_debugf(2, "context_sn = %d\n", g_context->sn);
+		rohc_debugf(2, "context_sn = %d\n", context->sn);
 
 	/* STEP 4:
 	 *  - compute how many bits are needed to send the IP-ID and SN fields
@@ -883,41 +883,41 @@ void update_variables(struct c_context *context,
 	if(ip_get_version(ip) == IPV4)
 	{
 		if(g_context->ip_flags.info.v4.nbo)
-			g_context->ip_flags.info.v4.id_delta = ntohs(ipv4_get_id(ip)) - g_context->sn;
+			g_context->ip_flags.info.v4.id_delta = ntohs(ipv4_get_id(ip)) - context->sn;
 		else
-			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - g_context->sn;
+			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - context->sn;
 
 		g_context->tmp_variables.nr_ip_id_bits =
 			c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
 			             g_context->ip_flags.info.v4.id_delta);
 		rohc_debugf(2, "ip_id bits=%d\n", g_context->tmp_variables.nr_ip_id_bits);
 
-		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, g_context->sn, 0,
+		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, context->sn, 0,
 		           g_context->ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
 		g_context->tmp_variables.nr_ip_id_bits = 0;
 	
 	/* always update the info related to the SN */
-	g_context->tmp_variables.nr_sn_bits = c_get_k_wlsb(g_context->sn_window, g_context->sn);
+	g_context->tmp_variables.nr_sn_bits = c_get_k_wlsb(g_context->sn_window, context->sn);
 	rohc_debugf(2, "sn bits=%d\n", g_context->tmp_variables.nr_sn_bits);
-	c_add_wlsb(g_context->sn_window, g_context->sn, 0, g_context->sn);
+	c_add_wlsb(g_context->sn_window, context->sn, 0, context->sn);
 	
 	/* update info related to the IP-ID of the inner header
 	 * only if header is IPv4 */
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
 	{
 		if(g_context->ip2_flags.info.v4.nbo)
-			g_context->ip2_flags.info.v4.id_delta = ntohs(ipv4_get_id(ip2)) - g_context->sn;
+			g_context->ip2_flags.info.v4.id_delta = ntohs(ipv4_get_id(ip2)) - context->sn;
 		else
-			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
+			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - context->sn;
 
 		g_context->tmp_variables.nr_ip_id_bits2 =
 			c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
 			             g_context->ip2_flags.info.v4.id_delta);
 		rohc_debugf(2, "ip_id bits2=%d\n", g_context->tmp_variables.nr_ip_id_bits2);
 
-		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn, 0,
+		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, context->sn, 0,
 		           g_context->ip2_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
@@ -1291,11 +1291,11 @@ int code_IR_packet(struct c_context *context,
 	}
 
 	/* part 8 */
-	dest[counter] = g_context->sn >> 8;
+	dest[counter] = context->sn >> 8;
 	counter++;
-	dest[counter] = g_context->sn & 0xff;
+	dest[counter] = context->sn & 0xff;
 	counter++;
-	rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", g_context->sn, dest[counter-2], dest[counter-1]);
+	rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", context->sn, dest[counter-2], dest[counter-1]);
 
 	/* part 5 */
 	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter);
@@ -1416,10 +1416,10 @@ int code_IR_DYN_packet(struct c_context *context,
 	}
 
 	/* part 7 */
-	rohc_debugf(3, "SN = %d\n", g_context->sn);
-	dest[counter] = g_context->sn >> 8;
+	rohc_debugf(3, "SN = %d\n", context->sn);
+	dest[counter] = context->sn >> 8;
 	counter++;
-	dest[counter] = g_context->sn & 0xff;
+	dest[counter] = context->sn & 0xff;
 	counter++;
 
 	/* part 5 */
@@ -1935,7 +1935,7 @@ int code_UO0_packet(struct c_context *context,
 		                                         dest, counter, &first_position);
 
 	/* part 2 */
-	f_byte = (g_context->sn & 0x0f) << 3;
+	f_byte = (context->sn & 0x0f) << 3;
 	f_byte |= crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
 	                        (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
 	                        g_context->next_header_len);
@@ -2032,7 +2032,7 @@ int code_UO1_packet(struct c_context *context,
 	dest[first_position] = f_byte;
 
 	/* part 4 */
-	s_byte = (g_context->sn & 0x1f) << 3;
+	s_byte = (context->sn & 0x1f) << 3;
 	s_byte |= crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
 	                        (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
 	                        g_context->next_header_len);
@@ -2142,7 +2142,7 @@ int code_UO2_packet(struct c_context *context,
 		case PACKET_NOEXT:
 			rohc_debugf(1, "no extension\n");
 			/* part 2 */
-			f_byte |= g_context->sn & 0x1f;
+			f_byte |= context->sn & 0x1f;
 			/* part 4: set the X bit to 0 */
 			s_byte &= ~0x80;
 			/* part 5: nothing to do */
@@ -2151,7 +2151,7 @@ int code_UO2_packet(struct c_context *context,
 		case PACKET_EXT_0:
 			rohc_debugf(1, "using extension 0\n");
 			/* part 2 */
-			f_byte |= (g_context->sn & 0xff) >> 3;
+			f_byte |= (context->sn & 0xff) >> 3;
 			/* part 4: set the X bit to 1 */
 			s_byte |= 0x80;
 			/* part 5 */
@@ -2161,7 +2161,7 @@ int code_UO2_packet(struct c_context *context,
 		case PACKET_EXT_1:
 			rohc_debugf(1, "using extension 1\n");
 			/* part 2 */
-			f_byte |= (g_context->sn & 0xff) >> 3;
+			f_byte |= (context->sn & 0xff) >> 3;
 			/* part 4: set the X bit to 1 */
 			s_byte |= 0x80;
 			/* part 5 */
@@ -2171,7 +2171,7 @@ int code_UO2_packet(struct c_context *context,
 		case PACKET_EXT_2:
 			rohc_debugf(1, "using extension 2\n");
 			/* part 2 */
-			f_byte |= (g_context->sn & 0xff) >> 3;
+			f_byte |= (context->sn & 0xff) >> 3;
 			/* part 4: set the X bit to 1 */
 			s_byte |= 0x80;
 			/* part 5 */
@@ -2182,9 +2182,9 @@ int code_UO2_packet(struct c_context *context,
 			rohc_debugf(1, "using extension 3\n");
 			/* part 2: check if the s-field needs to be used */
 			if(nr_sn_bits > 5)
-				f_byte |= g_context->sn >> 8;
+				f_byte |= context->sn >> 8;
 			else
-				f_byte |= g_context->sn & 0x1f;
+				f_byte |= context->sn & 0x1f;
 			/* part 4: set the X bit to 1 */
 			s_byte |= 0x80;
 			/* part 5 */
@@ -2250,7 +2250,7 @@ int code_EXT0_packet(struct c_context *context,
 	}
 
 	/* part 1 */
-	f_byte = (g_context->sn & 0x07) << 3;
+	f_byte = (context->sn & 0x07) << 3;
 	f_byte |= g_context->ip_flags.info.v4.id_delta & 0x07;
 	dest[counter] = f_byte;
 	counter++;
@@ -2300,7 +2300,7 @@ int code_EXT1_packet(struct c_context *context,
 	}
 
 	/* part 1 */
-	f_byte = (g_context->sn & 0x07) << 3;
+	f_byte = (context->sn & 0x07) << 3;
 	f_byte |= (g_context->ip_flags.info.v4.id_delta & 0x0700) >> 8;
 	f_byte |= 0x40;
 	dest[counter] = f_byte;
@@ -2367,7 +2367,7 @@ int code_EXT2_packet(struct c_context *context,
 	 */
 
 	/* part 1 */
-	f_byte = (g_context->sn & 0x07) << 3;
+	f_byte = (context->sn & 0x07) << 3;
 	f_byte |= (g_context->ip_flags.info.v4.id_delta & 0x0700) >> 8;
 	f_byte |= 0x80;
 	dest[counter] = f_byte;
@@ -2525,7 +2525,7 @@ int code_EXT3_packet(struct c_context *context,
 		/* part 4 */
 		if(nr_sn_bits > 5)
 		{
-			dest[counter] = g_context->sn & 0xff;
+			dest[counter] = context->sn & 0xff;
 			rohc_debugf(3, "SN = 0x%02x\n", dest[counter]);
 			counter++;
 		}
@@ -2567,7 +2567,7 @@ int code_EXT3_packet(struct c_context *context,
 		/* part 4 */
 		if(nr_sn_bits > 5)
 		{
-			dest[counter] = g_context->sn & 0xff;
+			dest[counter] = context->sn & 0xff;
 			counter++;
 		}
 

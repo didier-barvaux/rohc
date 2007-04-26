@@ -21,17 +21,24 @@
  * tunnel        +-----------+                          +----------+
  *
  * The program outputs messages from the tunnel application on stderr and
- * messages from the ROHC library on stdout.
+ * messages from the ROHC library on stdout. It outputs compression statistics
+ * on file descriptor 3 and decompression statistics on file descriptor 4.
+ *
+ * The tunnel can emulate a lossy medium with a given error rate. Unidirectional
+ * mode can be forced (no feedback channel).
  *
  * Usage
  * -----
  *
- * rohctunnel NAME remote RADDR local LADDR port PORT
+ * rohctunnel NAME remote RADDR local LADDR port PORT [error RATE [dir DIR]]
  *
  * NAME    the name of the tunnel
  * RADDR   the IP address of the remote host
  * LADDR   the IP address of the local host
  * PORT    the UDP port to use (local and remote)
+ * RATE    the BER (binary error rate) to emulate (error per bit)
+ * DIR     unidirectional or bidirectional mode (default is bidirectional)
+ *
  *
  * Example
  * -------
@@ -66,6 +73,7 @@
 #include <sys/select.h>
 #include <signal.h>
 #include <errno.h>
+#include <math.h> /* for HUGE_VAL */
 
 /* TUN includes */
 #include <net/if.h> /* for IFNAMSIZ */
@@ -119,7 +127,8 @@ int write_to_udp(int sock, struct in_addr raddr, int port,
 
 int tun2udp(struct rohc_comp *comp,
             int from, int to,
-            struct in_addr raddr, int port);
+            struct in_addr raddr, int port,
+            double ber);
 int udp2tun(struct rohc_decomp *decomp, int from, int to);
 int flush_feedback(struct rohc_comp *comp,
                    int to, struct in_addr raddr, int port);
@@ -155,12 +164,14 @@ void sighandler(int sig)
 void usage(void)
 {
 	printf("ROHC tunnel: make a ROHC over UDP tunnel\n\n\
-usage: rohctunnel NAME remote RADDR local LADDR port PORT\n\
+usage: rohctunnel NAME remote RADDR local LADDR port PORT [error RATE [dir DIR]]\n\
   NAME    the name of the tunnel\n\
   RADDR   the IP address of the remote host\n\
   LADDR   the IP address of the local host\n\
-  PORT    the UDP port to use (local and remote)\n\n\
-example: rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000\n");
+  PORT    the UDP port to use (local and remote)\n\
+  RATE    the BER (binary error rate) to emulate (error per bit)\n\
+  DIR     unidirectional or bidirectional mode (default is bidirectional)\n\n\
+example: rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 error 1e-5 dir bidirectional\n");
 }
 
 
@@ -185,6 +196,9 @@ int main(int argc, char *argv[])
 	struct in_addr raddr;
 	struct in_addr laddr;
 	int port;
+	double ber;
+	char *endptr;
+	int is_umode;
 
 	int ret;
 
@@ -205,7 +219,7 @@ int main(int argc, char *argv[])
 	 * Parse arguments:
 	 */
 
-	if(argc != 8)
+	if(argc != 8 && argc != 10 && argc != 12)
 	{
 		usage();
 		goto quit;
@@ -248,9 +262,72 @@ int main(int argc, char *argv[])
 	port = atoi(argv[7]);
 	if(port <= 0 || port >= 0xffff)
 	{
-		usage();
+		fprintf(stderr, "bad port: %s\n", argv[7]);
 		goto quit;
 	}
+
+	/* get the BER if present */
+	if(argc >= 10)
+	{
+		if(strcmp(argv[8], "error") != 0)
+		{
+			usage();
+			goto quit;
+		}
+
+		ber = strtod(argv[9], &endptr);
+		if(ber == 0 && endptr == argv[9])
+		{
+			if(errno == ERANGE)
+				fprintf(stderr, "BER out of range (underflow): %s (%d)\n",
+				        strerror(errno), errno);
+			else
+				fprintf(stderr, "bad BER value\n");
+			goto quit;
+		}
+		if(ber == HUGE_VAL)
+		{
+			fprintf(stderr, "BER out of range (overflow): %s (%d)\n",
+			        strerror(errno), errno);
+			goto quit;
+		}
+		if(ber < 0 || ber > 1)
+		{
+			fprintf(stderr, "BER must not be negative nor greater than 1\n");
+			goto quit;
+		}
+	
+		fprintf(stderr, "emulate lossy medium with %e errors/bit "
+		                "= 1 error every %lu bytes\n",
+		        ber, (unsigned long) (1 / (ber * 8)));
+	}
+	else
+		ber = 0;
+
+	/* get the direction mode if present */
+	if(argc >= 12)
+	{
+		if(strcmp(argv[10], "dir") != 0)
+		{
+			usage();
+			goto quit;
+		}
+
+		if(strcmp(argv[11], "unidirectional") == 0)
+			is_umode = 1;
+		else if(strcmp(argv[11], "bidirectional") == 0)
+			is_umode = 0;
+		else
+		{
+			fprintf(stderr, "bad direction mode: %s\n", argv[11]);
+			goto quit;
+		}
+
+		if(is_umode)
+			fprintf(stderr, "force unidirectional mode\n");
+	}
+	else
+		is_umode = 0;
 
 
 	/*
@@ -302,7 +379,7 @@ int main(int argc, char *argv[])
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 
 	/* create the decompressor (associate it with the compressor) */
-	decomp = rohc_alloc_decompressor(comp);
+	decomp = rohc_alloc_decompressor(is_umode ? NULL : comp);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
@@ -372,7 +449,7 @@ int main(int argc, char *argv[])
 			/* bridge from TUN to UDP */
 			if(FD_ISSET(tun, &readfds))
 			{
-				failure = tun2udp(comp, tun, udp, raddr, port);
+				failure = tun2udp(comp, tun, udp, raddr, port, ber);
 				gettimeofday(&last, NULL);
 #if STOP_ON_FAILURE
 				if(failure)
@@ -596,7 +673,8 @@ int udp_create(struct in_addr laddr, int port)
 	ret = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if(ret < 0)
 	{
-		fprintf(stderr, "cannot bind to UDP socket\n");
+		fprintf(stderr, "cannot bind to UDP socket: %s (%d)\n",
+		        strerror(errno), errno);
 		goto close;
 	}
 	
@@ -714,11 +792,14 @@ error:
  * @param to     The UDP socket descriptor to write to
  * @param raddr  The remote address of the tunnel
  * @param port   The remote port of the tunnel
+ * @param ber    The BER (Binary Error Rate) to emulate (value used on first
+ *               call only)
  * @return       0 in case of success, a non-null value otherwise
  */
 int tun2udp(struct rohc_comp *comp,
             int from, int to,
-            struct in_addr raddr, int port)
+            struct in_addr raddr, int port,
+            double ber)
 {
 	static unsigned char buffer[TUNTAP_BUFSIZE];
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
@@ -727,9 +808,17 @@ int tun2udp(struct rohc_comp *comp,
 	unsigned int packet_len;
 	int rohc_size;
 	int ret;
+	static unsigned long nb_bytes = 0;
+	static unsigned long bytes_without_error = 0;
+	static unsigned int dropped = 0;
+	int to_drop = 0;
 	static char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
 	static char *states[] = { "error", "IR", "FO", "SO" };
-	
+
+	/* init of the static bytes_without_error variable */
+	if(ber > 0 && bytes_without_error == 0)
+		bytes_without_error = (unsigned long) (1 / (ber * 8));
+
 #if DEBUG
 	fprintf(stderr, "\n");
 #endif
@@ -760,13 +849,32 @@ int tun2udp(struct rohc_comp *comp,
 		dump_packet("IP packet:", packet, packet_len);
 		goto error;
 	}
-	
-	/* write the ROHC packet in the UDP tunnel */
-	ret = write_to_udp(to, raddr, port, rohc_packet, rohc_size);
-	if(ret != 0)
+
+	/* emulate lossy medium if asked to do so */
+	if(bytes_without_error > 0)
 	{
-		fprintf(stderr, "write_to_udp failed\n");
-		goto error;
+		if(nb_bytes + rohc_size >= bytes_without_error)
+		{
+			to_drop = 1;
+			dropped++;
+			fprintf(stderr, "error inserted, ROHC packet #%d dropped\n",
+			        comp->last_context != NULL ?
+			        comp->last_context->sn : -1);
+			nb_bytes = rohc_size - (bytes_without_error - nb_bytes);
+		}
+		
+		nb_bytes += rohc_size;
+	}
+
+	/* write the ROHC packet in the UDP tunnel if not dropped */
+	if(!to_drop)
+	{
+		ret = write_to_udp(to, raddr, port, rohc_packet, rohc_size);
+		if(ret != 0)
+		{
+			fprintf(stderr, "write_to_udp failed\n");
+			goto error;
+		}
 	}
 
 	/* print packet statistics */
@@ -787,14 +895,15 @@ int tun2udp(struct rohc_comp *comp,
 		fprintf(stderr, "invalid state\n");
 		goto error;
 	}
-	fprintf(stats_comp, "%d\t%s\t%s\t%d\t%d\t%d\t%d\n",
-	        comp->last_context->num_sent_packets,
+	fprintf(stats_comp, "%d\t%s\t%s\t%d\t%d\t%d\t%d\t%u\n",
+	        comp->last_context->sn,
 	        modes[comp->last_context->mode],
 	        states[comp->last_context->state],
 	        comp->last_context->total_last_uncompressed_size,
 	        comp->last_context->header_last_uncompressed_size,
 	        comp->last_context->total_last_compressed_size,
-	        comp->last_context->header_last_compressed_size);
+	        comp->last_context->header_last_compressed_size,
+	        dropped);
 
 quit:
 	return 0;
@@ -804,8 +913,37 @@ error:
 }
 
 
+/*
+ * @brief Print packet statistics for decompressor
+ *
+ * @param decomp        The ROHC decompressor
+ * @param sn            The Sequence Number
+ * @param lost_packets  The number of lost packets
+ * @return              0 in case of success, 1 otherwise
+ */
+int print_decomp_stats(struct rohc_decomp *decomp,
+                       unsigned int sn,
+                       unsigned int lost_packets)
+{
+	if(decomp->last_context == NULL)
+	{
+		fprintf(stderr, "cannot display stats\n");
+		goto error;
+	}
+
+	fprintf(stats_decomp, "%d\t%d\n", sn,
+	        decomp->last_context->num_decomp_failures +
+	        lost_packets);
+
+	return 0;
+
+error:
+	return 1;
+}
+
+
 /**
- * @brief Forward ROHC packets received on the UDp socket to the TUN interface
+ * @brief Forward ROHC packets received on the UDP socket to the TUN interface
  *
  * The function decompresses the ROHC packets thanks to the ROHC library before
  * sending them on the TUN interface.
@@ -815,7 +953,6 @@ error:
  * @param to      The TUN file descriptor to write to
  * @return        0 in case of success, a non-null value otherwise
  */
-
 int udp2tun(struct rohc_decomp *decomp, int from, int to)
 {
 	static unsigned char packet[TUNTAP_BUFSIZE];
@@ -823,6 +960,9 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	unsigned int packet_len = TUNTAP_BUFSIZE;
 	int decomp_size;
 	int ret;
+	static unsigned int old_sn;
+	unsigned int new_sn = 0;
+	static unsigned long lost_packets = 0;
 
 #if DEBUG
 	fprintf(stderr, "\n");
@@ -849,8 +989,32 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	{
 		fprintf(stderr, "decompression failed\n");
 		dump_packet("ROHC packet:", packet, packet_len);
-		goto error;
+		goto drop;
 	}
+
+	/* find out if some ROHC packets were lost between compressor and
+	 * decompressor (use the Sequence Number) */
+	if(decomp->last_context == NULL)
+	{
+		fprintf(stderr, "cannot find number of lost packets\n");
+		goto drop;
+	}
+	new_sn = decomp->last_context->profile->get_sn(decomp->last_context);
+	if(new_sn > 1 && new_sn != old_sn + 1)
+	{
+		/* some packets were lost, duplicated or reordered */
+		if(new_sn > old_sn + 1)
+		{
+			fprintf(stderr, "ROHC packet(s) lost between SN = %d and SN = %d\n",
+			        old_sn, new_sn);
+			lost_packets += new_sn - (old_sn + 1);
+		}
+		else if(new_sn < old_sn + 1)
+			fprintf(stderr, "reordered ROHC packet with SN = %d\n", new_sn);
+		else /* new_sn == old_sn + 1 */
+			fprintf(stderr, "duplicated ROHC packet with SN = %d\n", new_sn);
+	}
+	old_sn = new_sn;
 
 	/* build the TUN header */
 	decomp_packet[0] = 0;
@@ -870,7 +1034,7 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 			        (decomp_packet[4] >> 4) & 0x0f);
 			dump_packet("ROHC packet:", packet, packet_len);
 			dump_packet("Decompressed packet:", &decomp_packet[4], decomp_size);
-			goto error;
+			goto drop;
 	}
 	
 	/* write the IP packet on the virtual interface */
@@ -882,14 +1046,21 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	}
 
 	/* print packet statistics */
-	fprintf(stats_decomp, "%d\t%d\n",
-	        decomp->statistics.packets_received,
-	        decomp->statistics.packets_failed_crc +
-	        decomp->statistics.packets_failed_no_context +
-	        decomp->statistics.packets_failed_package);
+	ret = print_decomp_stats(decomp, new_sn, lost_packets);
+	if(ret != 0)
+	{
+		fprintf(stderr, "cannot display stats\n");
+		goto error;
+	}
 
 quit:
 	return 0;
+
+drop:
+	/* print packet statistics */
+	ret = print_decomp_stats(decomp, new_sn, lost_packets);
+	if(ret != 0)
+		fprintf(stderr, "cannot display stats\n");
 
 error:
 	return 1;

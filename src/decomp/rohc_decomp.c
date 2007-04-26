@@ -309,6 +309,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	decomp->num_contexts = 0;
 	decomp->contexts = NULL;
 	context_array_increase(decomp, 0);
+	decomp->last_context = NULL;
 
 	decomp->maxval = 300;
 	decomp->errval = 100;
@@ -650,6 +651,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 				return ROHC_ERROR_NO_CONTEXT;
 		}
 
+		decomp->last_context = ddata->active;
 		ddata->active->num_recv_ir++;
 
 		/* decode the IR packet thanks to the profile-specific routines */
@@ -688,6 +690,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		{
 			/* context is valid */
 			ddata->active->latest_used = get_milliseconds();
+			decomp->last_context = ddata->active;
 
 			/* is the ROHC packet an IR-DYN packet? */
 			if(d_is_irdyn(walk))

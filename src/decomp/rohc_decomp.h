@@ -81,6 +81,8 @@ struct rohc_decomp
 	struct d_context **contexts;
 	/// The number of decompression contexts stored in the array
 	int num_contexts;
+	/// The last decompression context used by the decompressor
+	struct d_context *last_context;
 
 	/**
 	 * @brief The feedback interval limits
