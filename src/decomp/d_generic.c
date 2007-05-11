@@ -2518,7 +2518,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 	if(mode != context->mode)
 	{
-		rohc_debugf(2, "mode is not equal on decomp and comp.\n");
+		rohc_debugf(2, "mode different in compressor (%d) and "
+		               "decompressor (%d)\n", mode, context->mode);
 		d_change_mode_feedback(decomp, context);
 	}
 
