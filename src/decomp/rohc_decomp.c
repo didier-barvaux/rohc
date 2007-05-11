@@ -472,7 +472,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 				ddata.active->curval = 0;
 
 			rohc_debugf(2, "feedback curr %d\n", ddata.active->curval);
-			if(ddata.active->mode == U_MODE)
+			if(decomp->compressor != NULL && ddata.active->mode == U_MODE)
 			{
 				/* switch active context to O-mode */
 				ddata.active->mode = O_MODE;
@@ -927,6 +927,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 	unsigned char *feedback;
 	int feedbacksize;
 
+	/* check associated compressor availability */
+	if(decomp->compressor == NULL)
+	{
+		rohc_debugf(1, "no associated compressor, do not sent feedback\n");
+		goto skip;
+	}
+
 	switch(rohc_status)
 	{
 		case ROHC_OK:
@@ -1027,6 +1034,9 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			}
 			break;
 	}
+
+skip:
+	;
 }
 
 
@@ -1311,6 +1321,13 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	int cid, feedbacksize;
 	unsigned char *feedback;
 
+	/* check associated compressor availability */
+	if(decomp->compressor == NULL)
+	{
+		rohc_debugf(1, "no associated compressor, do not sent feedback\n");
+		goto skip;
+	}
+
 	/* check context validity */
 	for(cid = 0; cid < decomp->num_contexts; cid++)
 	{
@@ -1339,6 +1356,9 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 
 	/* destroy the feedback */
 	zfree(feedback);
+
+skip:
+	;
 }
 
 
