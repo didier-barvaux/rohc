@@ -19,7 +19,7 @@ configure_files = \
 
 AM_MAKEFLAGS = -s
 
-.PHONY: doc report
+.PHONY: doc report measures
 
 doc:
 	doxygen doc/doxygen
@@ -32,6 +32,9 @@ report:
 
 tunnel: app/tunnel/tunnel.c
 	$(MAKE) -C app/tunnel
+
+measures:
+	$(MAKE) -C measures
 
 clean-doc:
 	$(RM) -r doc/html
