@@ -153,7 +153,7 @@ int alive;
 /**
  * @brief Catch the INT, TERM and KILL signals to properly shutdown the tunnel
  *
- * @param sig  The signal catched: SIGINT, SIGTERM or SIGKILL
+ * @param sig  The signal catched: SIGINT or SIGTERM
  */
 void sighandler(int sig)
 {
@@ -483,7 +483,6 @@ int main(int argc, char *argv[])
 
 	/* catch signals to properly shutdown the bridge */
 	alive = 1;
-	signal(SIGKILL, sighandler);
 	signal(SIGTERM, sighandler);
 	signal(SIGINT, sighandler);
 
@@ -493,7 +492,6 @@ int main(int argc, char *argv[])
 
 	/* mask signals during interface polling */
 	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGKILL);
 	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGINT);
 
