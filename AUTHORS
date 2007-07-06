@@ -1,11 +1,12 @@
-The ROHC compression/decompression library is written by Didier Barvaux for
-B2i-Toulouse and Alcatel Alenia Space France (AAS-F).
+The ROHC compression/decompression library was written by Didier Barvaux for
+B2i-Toulouse and Thales Alenia Space France (TAS-F). The ROHC RTP profile was
+written by David Moreau.
 
 Contact: Didier Barvaux <didier.barvaux@b2i-toulouse.com>
 B2i-Toulouse: http://www.b2i.fr/
-Alcatel Alenia Space: http://www.alcatel.com/space/
+Thales Alenia Space: http://www.thalesaleniaspace.com/
 
-The library is mainly based on the work of the ROHC Project 2003 at the Lulea
+The library was mainly based on the work of the ROHC Project 2003 at the Lulea
 University of Technology, Sweden (http://rohc.sourceforge.net/). People involved
 were:
 	Andreas Vernersson <andver-8@student.luth.se>
