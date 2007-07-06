@@ -124,7 +124,7 @@ while [ $i -le $nb_lines ] ; do
 		continue
 	fi
 
-	echo -n "Running test '$name'... "
+	echo -n "[$i/$nb_lines] Running test '$name'... "
 	html="$html\t\t\t<tr>\n"
 	html="$html\t\t\t\t<td>$name</td>\n"
 
@@ -200,7 +200,7 @@ while [ $i -le $nb_lines ] ; do
 			details="$details\t\t\t</div>\n"
 		fi
 
-		if [ "$startup_result" = "PASS" ] && [ "$rohc_cmp_result" != "PASS" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ "$cmp_rohc_result" != "PASS" ] ; then
 			details="$details\t\t\t<div>\n"
 			details="$details\t\t\t\t<h3><a name=\"cmp_rohc_details_$i\">Details about the comparison between created ROHC packets and reference packets</a></h3>\n"
 			details="$details\n$logs_cmp_rohc\n"
@@ -214,7 +214,7 @@ while [ $i -le $nb_lines ] ; do
 			details="$details\t\t\t</div>\n"
 		fi
 
-		if [ "$startup_result" = "PASS" ] && [ "$packets_result" != "PASS" ] ; then
+		if [ "$startup_result" = "PASS" ] && [ "$cmp_ip_result" != "PASS" ] ; then
 			details="$details\t\t\t<div>\n"
 			details="$details\t\t\t\t<h3><a name=\"cmp_ip_details_$i\">Details about the comparison between decompressed and original packets</a></h3>\n"
 			details="$details\n$logs_cmp_ip\n"

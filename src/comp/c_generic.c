@@ -1004,6 +1004,8 @@ int decide_SO_packet(const struct c_context *context)
 		if(nr_sn_bits <= 4 &&
 		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
 			packet = PACKET_UO_0;
+		else if(nr_sn_bits == 5 && (!is_ip_v4 || (is_ip_v4 && nr_ip_id_bits == 0)))
+			packet = PACKET_UOR_2;
 		else if(nr_sn_bits <= 5 && (is_ip_v4 && nr_ip_id_bits <= 6))
 			packet = PACKET_UO_1; /* IPv4 only */
 		/* else PACKET_UOR_2 */
@@ -1016,8 +1018,8 @@ int decide_SO_packet(const struct c_context *context)
 		int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
 
 		if(nr_sn_bits <= 4 &&
-		        (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))) &&
-		        (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 ==0))))
+		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))) &&
+		   (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
 			packet = PACKET_UO_0;
 		else if(nr_sn_bits <= 5 && (is_ip_v4 && nr_ip_id_bits <= 6) &&
 		        (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
