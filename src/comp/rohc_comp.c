@@ -3,22 +3,28 @@
  * @brief ROHC compression routines
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
  * @author The hackers from ROHC for Linux
+ * @author David Moreau from TAS
  */
 
 #include "rohc_comp.h"
 
 
-extern struct c_profile c_uncompressed_profile, c_udp_profile, c_ip_profile, c_udp_lite_profile;
+extern struct c_profile c_rtp_profile,
+                        c_udp_profile,
+                        c_udp_lite_profile,
+                        c_ip_profile,
+                        c_uncompressed_profile;
 
 /**
  * @brief The compression parts of the ROHC profiles.
  */
 struct c_profile *c_profiles[C_NUM_PROFILES] =
 {
-	&c_uncompressed_profile,
+	&c_rtp_profile,
 	&c_udp_profile,
-	&c_ip_profile,
 	&c_udp_lite_profile,
+	&c_ip_profile,
+	&c_uncompressed_profile,
 };
 
 
@@ -129,6 +135,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	struct ip_packet ip;
 	struct ip_packet ip2;
 	int proto;
+	struct ip_packet *last_header;
 	struct c_profile *p;
 	struct c_context *c;
 	int feedback_size, payload_size, payload_offset;
@@ -148,6 +155,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		rohc_debugf(0, "cannot create the outer IP header\n");
 		return 0;
 	}
+	rohc_debugf(3, "size of IP packet = %d bytes\n", isize);
 
 	/* get the transport protocol in the IP packet (skip the second IP header
 	 * if present) */
@@ -163,11 +171,15 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 		/* get the transport protocol */
 		proto = ip_get_protocol(ip2);
+	
+		/* last IP header */
+		last_header = &ip2;
 	}
+	else
+		last_header = &ip;
 
-	/* get the profile based on the IP protocol */
 	rohc_debugf(2, "IP protocol = %d\n", proto);
-	p = c_get_profile_from_protocol(comp, proto);
+	p = c_get_profile_from_packet(comp, proto, *last_header);
 
  	/* use the IP profile if no profile was found based on the protocol */
 	if(p == 0)
@@ -318,7 +330,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	if(size + payload_size > osize)
 	{
 		/* TODO: should use uncompressed profile */
-		rohc_debugf(0, "ROHC packet to large (osize = %d, isize = %d)\n",
+		rohc_debugf(0, "ROHC packet too large (osize = %d, isize = %d)\n",
 		            size + payload_size, isize);
 		return 0;
 	}
@@ -793,13 +805,40 @@ struct c_profile *c_get_profile_from_id(struct rohc_comp *comp, int profile_id)
 
 
 /**
+ * @brief Check whether an UDP port is associated with a given profile or not
+ *
+ * @param profile  The ROHC profile
+ * @param port     The UDP port
+ * @return         ROHC_TRUE if UDP is associated with profile,
+ *                 ROHC_FALSE otherwise
+ */
+boolean c_is_in_list(struct c_profile *profile, int port)
+{
+	boolean match = ROHC_FALSE;
+	int i;
+
+	i = 0;
+	while(profile->ports[i] != 0 && !match)
+	{
+		match = port == profile->ports[i];
+		i++;
+	}
+
+	return match;
+}
+
+
+/**
  * @brief Find out a ROHC profile given an IP protocol ID
  *
  * @param comp     The ROHC compressor
  * @param protocol The IP protocol ID
+ * @param ip       An IP packet that will help choosing the best profile
  * @return         The ROHC profile if found, NULL otherwise
  */
-struct c_profile *c_get_profile_from_protocol(struct rohc_comp *comp, int protocol)
+struct c_profile *c_get_profile_from_packet(struct rohc_comp *comp,
+                                            int protocol,
+                                            struct ip_packet ip)
 {
 	int i;
 
@@ -808,7 +847,26 @@ struct c_profile *c_get_profile_from_protocol(struct rohc_comp *comp, int protoc
 	{
 		/* if the profile protocol IDs match and the profile is enabled */
 		if(c_profiles[i]->protocol == protocol && comp->profiles[i] == 1)
-			return c_profiles[i];
+		{
+			/* if profile uses UDP as transport protocol, check UDP ports if any */
+			if(c_profiles[i]->protocol == IPPROTO_UDP &&
+			   c_profiles[i]->ports != NULL &&
+			   c_profiles[i]->ports[0] != 0)
+			{
+				struct udphdr *udp;
+				int port;
+
+				udp = (struct udphdr *) ip_get_next_header(ip);
+				port = ntohs(udp->dest);
+
+				rohc_debugf(3, "UDP port = 0x%x (%u)\n", port, port);
+
+				if(c_is_in_list(c_profiles[i], port))
+					return c_profiles[i];
+			}
+			else
+				return c_profiles[i];
+		}
 	}
 
 	return NULL;
@@ -948,12 +1006,12 @@ struct c_context * c_create_context(struct rohc_comp *comp,
 	c->total_compressed_size = 0;
 	c->header_uncompressed_size = 0;
 	c->header_compressed_size = 0;
-	
+
 	c->total_last_uncompressed_size = 0;
 	c->total_last_compressed_size = 0;
 	c->header_last_uncompressed_size = 0;
 	c->header_last_compressed_size = 0;
-	
+
 	c->num_sent_packets = 0;
 	c->num_sent_ir = 0;
 	c->num_sent_ir_dyn = 0;
@@ -1280,10 +1338,9 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	return size;
 }
 
-
 /**
- *	@brief Callback called by a decompressor to deliver a feedback packet to the
- *	       compressor
+ * @brief Callback called by a decompressor to deliver a feedback packet to the
+ *        compressor
  *
  * When feedback is received by the decompressor, this function is called and
  * delivers the feedback to the right profile/context of the compressor.

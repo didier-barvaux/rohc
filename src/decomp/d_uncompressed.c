@@ -116,12 +116,14 @@ unsigned int uncompressed_detect_ir_size(unsigned char *packet,
  *
  * @param first_byte The first byte of the IR-DYN packet
  * @param plen       The length of the IR-DYN packet
+ * @param largecid   Whether large CIDs are used or not
  * @param context    The decompression context
  * @return           The length of data in the IR-DYN packet,
  *                   0 if an error occurs
  */
 unsigned int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
                                              unsigned int plen,
+                                             int largecid,
                                              struct d_context *context)
 {
 	rohc_debugf(0, "IR-DYN packet is not defined in uncompressed profile\n");

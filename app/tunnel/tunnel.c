@@ -21,24 +21,17 @@
  * tunnel        +-----------+                          +----------+
  *
  * The program outputs messages from the tunnel application on stderr and
- * messages from the ROHC library on stdout. It outputs compression statistics
- * on file descriptor 3 and decompression statistics on file descriptor 4.
- *
- * The tunnel can emulate a lossy medium with a given error rate. Unidirectional
- * mode can be forced (no feedback channel).
+ * messages from the ROHC library on stdout.
  *
  * Usage
  * -----
  *
- * rohctunnel NAME remote RADDR local LADDR port PORT [error RATE [dir DIR]]
+ * rohctunnel NAME remote RADDR local LADDR port PORT
  *
  * NAME    the name of the tunnel
  * RADDR   the IP address of the remote host
  * LADDR   the IP address of the local host
  * PORT    the UDP port to use (local and remote)
- * RATE    the BER (binary error rate) to emulate (error per bit)
- * DIR     unidirectional or bidirectional mode (default is bidirectional)
- *
  *
  * Example
  * -------
@@ -73,7 +66,6 @@
 #include <sys/select.h>
 #include <signal.h>
 #include <errno.h>
-#include <math.h> /* for HUGE_VAL */
 
 /* TUN includes */
 #include <net/if.h> /* for IFNAMSIZ */
@@ -105,11 +97,6 @@
 /// The maximal size of a ROHC packet
 #define MAX_ROHC_SIZE	(5 * 1024)
 
-/// Enable debug ?
-#define DEBUG 0
-
-/// Stop on compression/decompression failure
-#define STOP_ON_FAILURE 0
 
 
 /*
@@ -127,17 +114,10 @@ int write_to_udp(int sock, struct in_addr raddr, int port,
 
 int tun2udp(struct rohc_comp *comp,
             int from, int to,
-            struct in_addr raddr, int port,
-            int error, double ber, double pe2, double p2);
+            struct in_addr raddr, int port);
 int udp2tun(struct rohc_decomp *decomp, int from, int to);
-int flush_feedback(struct rohc_comp *comp,
-                   int to, struct in_addr raddr, int port);
 
 void dump_packet(char *descr, unsigned char *packet, unsigned int length);
-double get_probability(char *arg, int *error);
-int is_timeout(struct timeval first,
-               struct timeval second,
-               unsigned int max);
 
 
 
@@ -153,7 +133,7 @@ int alive;
 /**
  * @brief Catch the INT, TERM and KILL signals to properly shutdown the tunnel
  *
- * @param sig  The signal catched: SIGINT or SIGTERM
+ * @param sig  The signal catched: SIGINT, SIGTERM or SIGKILL
  */
 void sighandler(int sig)
 {
@@ -168,28 +148,13 @@ void sighandler(int sig)
 void usage(void)
 {
 	printf("ROHC tunnel: make a ROHC over UDP tunnel\n\n\
-usage: rohctunnel NAME remote RADDR local LADDR port PORT [error MODEL PARAMS [dir DIR]]\n\
+usage: rohctunnel NAME remote RADDR local LADDR port PORT\n\
   NAME    the name of the tunnel\n\
   RADDR   the IP address of the remote host\n\
   LADDR   the IP address of the local host\n\
-  PORT    the UDP port to use (local and remote)\n\
-  MODEL   the error model to apply (none, uniform, burst)\n\
-  PARAMS  the error model parameters:\n\
-            none     no extra parameter\n\
-            uniform  RATE = the BER (binary error rate) to emulate\n\
-            burst    PE2  = the probability to be in error state\n\
-                     P2   = the probability to stay in error state\n\
-  DIR     unidirectional or bidirectional mode (default is bidirectional)\n\n\
-example: rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 error uniform 1e-5 dir bidirectional\n");
+  PORT    the UDP port to use (local and remote)\n\n\
+example: rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000\n");
 }
-
-
-/// The file descriptor where to write the compression statistics
-FILE *stats_comp;
-/// The file descriptor where to write the decompression statistics
-FILE *stats_decomp;
-/// The sequence number for the UDP tunnel (used to discover lost packets)
-unsigned int seq;
 
 
 /**
@@ -207,13 +172,6 @@ int main(int argc, char *argv[])
 	struct in_addr raddr;
 	struct in_addr laddr;
 	int port;
-	int error_model;
-	int conv_error;
-	double ber = 0;
-	double pe2 = 0;
-	double p2 = 0;
-	int arg_count;
-	int is_umode;
 
 	int ret;
 
@@ -223,9 +181,6 @@ int main(int argc, char *argv[])
 	struct timespec timeout;
 	sigset_t sigmask;
 
-	struct timeval last;
-	struct timeval now;
-
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
 
@@ -234,8 +189,7 @@ int main(int argc, char *argv[])
 	 * Parse arguments:
 	 */
 
-	if(argc != 8 &&
-	   argc < 10 && argc > 14)
+	if(argc != 8)
 	{
 		usage();
 		goto quit;
@@ -278,125 +232,9 @@ int main(int argc, char *argv[])
 	port = atoi(argv[7]);
 	if(port <= 0 || port >= 0xffff)
 	{
-		fprintf(stderr, "bad port: %s\n", argv[7]);
+		usage();
 		goto quit;
 	}
-
-	/* get the error model and its parameters if present */
-	if(argc >= 10)
-	{
-		if(strcmp(argv[8], "error") != 0)
-		{
-			usage();
-			goto quit;
-		}
-
-		arg_count = 9;
-
-		if(strcmp(argv[arg_count], "none") == 0)
-		{
-			/* no error model */
-			fprintf(stderr, "do not emulate lossy medium\n");
-			error_model = 0;
-			arg_count++;
-		}
-		else if(strcmp(argv[arg_count], "uniform") == 0)
-		{
-			/* uniform error model */
-			error_model = 1;
-			arg_count++;
-
-			/* check if parameters are present */
-			if(argc < arg_count + 1)
-			{
-				usage();
-				goto quit;
-			}
-
-			/* get the RATE value */
-			ber = get_probability(argv[arg_count], &conv_error);
-			if(conv_error != 0)
-			{
-				fprintf(stderr, "cannot read the RATE parameter\n");
-				goto quit;
-			}
-			arg_count++;
-	
-			fprintf(stderr, "emulate lossy medium with %e errors/bit "
-			                "= 1 error every %lu bytes\n",
-			        ber, (unsigned long) (1 / (ber * 8)));
-		}
-		else if(strcmp(argv[arg_count], "burst") == 0)
-		{
-			/* non-uniform/burst error model */
-			error_model = 2;
-			arg_count++;
-
-			/* check if parameters are present */
-			if(argc < arg_count + 2)
-			{
-				usage();
-				goto quit;
-			}
-
-			/* get the PE2 probability */
-			pe2 = get_probability(argv[arg_count], &conv_error);
-			if(conv_error != 0)
-			{
-				fprintf(stderr, "cannot read the PE2 parameter\n");
-				goto quit;
-			}
-			arg_count++;
-
-			/* get the P2 probability */
-			p2 = get_probability(argv[arg_count], &conv_error);
-			if(conv_error != 0)
-			{
-				fprintf(stderr, "cannot read the P2 parameter\n");
-				goto quit;
-			}
-			arg_count++;
-
-			fprintf(stderr, "emulate lossy medium with PE2 = %e and P2 = %e\n",
-			        pe2, p2);
-		}
-		else
-		{
-			fprintf(stderr, "bad error model: %s\n", argv[arg_count]);
-			goto quit;
-		}
-	}
-	else
-	{
-		error_model = 0;
-		arg_count = 8;
-	}
-
-	/* get the direction mode if present */
-	if(argc >= arg_count + 2)
-	{
-		if(strcmp(argv[arg_count], "dir") != 0)
-		{
-			usage();
-			goto quit;
-		}
-		arg_count++;
-
-		if(strcmp(argv[arg_count], "unidirectional") == 0)
-			is_umode = 1;
-		else if(strcmp(argv[arg_count], "bidirectional") == 0)
-			is_umode = 0;
-		else
-		{
-			fprintf(stderr, "bad direction mode: %s\n", argv[arg_count]);
-			goto quit;
-		}
-
-		if(is_umode)
-			fprintf(stderr, "force unidirectional mode\n");
-	}
-	else
-		is_umode = 0;
 
 
 	/*
@@ -448,7 +286,7 @@ int main(int argc, char *argv[])
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 
 	/* create the decompressor (associate it with the compressor) */
-	decomp = rohc_alloc_decompressor(is_umode ? NULL : comp);
+	decomp = rohc_alloc_decompressor(comp);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
@@ -460,29 +298,9 @@ int main(int argc, char *argv[])
 	 * Main program:
 	 */
 
-	/* write the compression stats to fd 3 */
-	stats_comp = fdopen(3, "a");
-	if(stats_comp == NULL)
-	{
-		fprintf(stderr, "cannot open fd 3 for compression stats: %s (%d)\n",
-		        strerror(errno), errno);
-		goto destroy_decomp;
-	}
-
-	/* write the decompression stats to fd 4 */
-	stats_decomp = fdopen(4, "a");
-	if(stats_decomp == NULL)
-	{
-		fprintf(stderr, "cannot open fd 4 for decompresion stats: %s (%d)\n",
-		        strerror(errno), errno);
-		goto close_stats_comp;
-	}
-
-	/* init the tunnel sequence number */
-	seq = 0;
-
 	/* catch signals to properly shutdown the bridge */
 	alive = 1;
+	signal(SIGKILL, sighandler);
 	signal(SIGTERM, sighandler);
 	signal(SIGINT, sighandler);
 
@@ -492,11 +310,9 @@ int main(int argc, char *argv[])
 
 	/* mask signals during interface polling */
 	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGKILL);
 	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGINT);
-
-	/* initialize the last time we sent a packet */
-	gettimeofday(&last, NULL);
 
 	/* tunnel each packet from the UDP socket to the virtual interface
 	 * and from the virtual interface to the UDP socket */
@@ -519,40 +335,18 @@ int main(int argc, char *argv[])
 			/* bridge from TUN to UDP */
 			if(FD_ISSET(tun, &readfds))
 			{
-				failure = tun2udp(comp, tun, udp, raddr, port,
-				                  error_model, ber, pe2, p2);
-				gettimeofday(&last, NULL);
-#if STOP_ON_FAILURE
+				failure = tun2udp(comp, tun, udp, raddr, port);
 				if(failure)
 					alive = 0;
-#endif
 			}
 
 			/* bridge from UDP to TUN */
-			if(
-#if STOP_ON_FAILURE
-			   !failure &&
-#endif
-			   FD_ISSET(udp, &readfds))
+			if(!failure && FD_ISSET(udp, &readfds))
 			{
 				failure = udp2tun(decomp, udp, tun);
-#if STOP_ON_FAILURE
 				if(failure)
 					alive = 0;
-#endif
 			}
-		}
-
-		/* flush feedback data if nothing is sent in the tunnel for a moment */
-		gettimeofday(&now, NULL);
-		if(now.tv_sec > last.tv_sec + 1)
-		{
-			failure = flush_feedback(comp, udp, raddr, port);
-			last = now;
-#if STOP_ON_FAILURE
-			if(failure)
-				alive = 0;
-#endif
 		}
 	}
 	while(alive);
@@ -562,10 +356,6 @@ int main(int argc, char *argv[])
 	 * Cleaning:
 	 */
 
-	fclose(stats_decomp);
-close_stats_comp:
-	fclose(stats_comp);
-destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
 	rohc_free_compressor(comp);
@@ -651,9 +441,7 @@ int read_from_tun(int fd, unsigned char *buffer, unsigned int *length)
 
 	*length = ret;
 
-#if DEBUG
 	fprintf(stderr, "read %u bytes on fd %d\n", ret, fd);
-#endif
 
 	return 0;
 
@@ -685,9 +473,7 @@ int write_to_tun(int fd, unsigned char *packet, unsigned int length)
 		goto error;
 	}
 
-#if DEBUG
 	fprintf(stderr, "%u bytes written on fd %d\n", length, fd);
-#endif
 
 	return 0;
 
@@ -744,8 +530,7 @@ int udp_create(struct in_addr laddr, int port)
 	ret = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if(ret < 0)
 	{
-		fprintf(stderr, "cannot bind to UDP socket: %s (%d)\n",
-		        strerror(errno), errno);
+		fprintf(stderr, "cannot bind to UDP socket\n");
 		goto close;
 	}
 	
@@ -790,10 +575,8 @@ int read_from_udp(int sock, unsigned char *buffer, unsigned int *length)
 
 	*length = ret;
 
-#if DEBUG
 	fprintf(stderr, "read one %u-byte ROHC packet on UDP sock %d\n",
-	        *length - 2, sock);
-#endif
+	        *length, sock);
 
 quit:
 	return 0;
@@ -806,12 +589,6 @@ error:
 
 /**
  * @brief Write data to the UDP socket
- *
- * All UDP packets contain a sequence number that identify the UDP packet. It
- * helps discovering lost packets (for statistical purposes). The buffer that
- * contains the ROHC packet must have 2 bytes of free space at the beginning.
- * This allows the write_to_udp function to add the 2-bytes sequence number in
- * the UDP packet without allocating new memory.
  *
  * @param sock    The UDP socket descriptor to write data to
  * @param raddr   The remote address of the tunnel (ie. the address where to
@@ -832,10 +609,6 @@ int write_to_udp(int sock, struct in_addr raddr, int port,
 	addr.sin_addr.s_addr = raddr.s_addr;
 	addr.sin_port = htons(port);
 
-	/* write the tunnel sequence number at the beginning of packet */
-	packet[0] = (htons(seq) >> 8) & 0xff;
-	packet[1] = htons(seq) & 0xff;
-
 	/* send the data on the UDP socket */
 	ret = sendto(sock, packet, length, 0, (struct sockaddr *) &addr,
 	             sizeof(struct sockaddr_in));
@@ -845,9 +618,7 @@ int write_to_udp(int sock, struct in_addr raddr, int port,
 		goto error;
 	}
 
-#if DEBUG
 	fprintf(stderr, "%u bytes written on socket %d\n", length, sock);
-#endif
 
 	return 0;
 
@@ -873,72 +644,21 @@ error:
  * @param to     The UDP socket descriptor to write to
  * @param raddr  The remote address of the tunnel
  * @param port   The remote port of the tunnel
- * @param error  Type of error emulation (0 = none, 1 = uniform,
- *               2 = non-uniform/burst)
- * @param ber    The BER (Binary Error Rate) to emulate (value used on first
- *               call only if error model is uniform)
- * @param pe2    The probability to be in error state (value used on first
- *               call only if error model is non-uniform)
- * @param p2     The probability to stay in error state (value used on first
- *               call only if error model is non-uniform)
  * @return       0 in case of success, a non-null value otherwise
  */
 int tun2udp(struct rohc_comp *comp,
             int from, int to,
-            struct in_addr raddr, int port,
-            int error, double ber, double pe2, double p2)
+            struct in_addr raddr, int port)
 {
 	static unsigned char buffer[TUNTAP_BUFSIZE];
-	static unsigned char rohc_packet[2 + MAX_ROHC_SIZE];
+	static unsigned char rohc_packet[MAX_ROHC_SIZE];
 	unsigned int buffer_len = TUNTAP_BUFSIZE;
 	unsigned char *packet;
 	unsigned int packet_len;
 	int rohc_size;
 	int ret;
-
-	/* error emulation */
-	static unsigned int dropped = 0;
-	int to_drop = 0;
-
-	/* uniform model */
-	static unsigned long nb_bytes = 0;
-	static unsigned long bytes_without_error = 0;
-
-	/* non-uniform error model */
-	static int is_state_drop = 0;
-	static float p1 = 0;
-	static struct timeval last;
-	struct timeval now;
-
-	/* statistics output */
-	static char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
-	static char *states[] = { "error", "IR", "FO", "SO" };
-
-	/* init the error model variables */
-	if(error > 0)
-	{
-		/* init uniform error model variables */
-		if(error == 1 && bytes_without_error == 0)
-		{
-			// find out the number of bytes without an error
-			bytes_without_error = (unsigned long) (1 / (ber * 8));
-		}
-
-		/* init non-uniform error model variables */
-		if(error == 2 && p1 == 0)
-		{
-			/* init of the random generator */
-			gettimeofday(&last, NULL);
-			srand(last.tv_sec);
-			
-			/* init the probability to stay in non-error state */
-			p1 = (p2 - 1) / (1 - pe2) + 2 - p2;
-		}
-	}
-
-#if DEBUG
+	
 	fprintf(stderr, "\n");
-#endif
 
 	/* read the IP packet from the virtual interface */
 	ret = read_from_tun(from, buffer, &buffer_len);
@@ -954,100 +674,24 @@ int tun2udp(struct rohc_comp *comp,
 	packet = &buffer[4];
 	packet_len = buffer_len - 4;
 
-	/* increment the tunnel sequence number */
-	seq++;
-
 	/* compress the IP packet */
-#if DEBUG
-	fprintf(stderr, "compress packet #%u (%u bytes)\n", seq, packet_len);
-#endif
+	fprintf(stderr, "compress a %u-byte packet\n", packet_len);
 	rohc_size = rohc_compress(comp, packet, packet_len,
-	                          rohc_packet + 2, MAX_ROHC_SIZE);
+	                          rohc_packet, MAX_ROHC_SIZE);
 	if(rohc_size <= 0)
 	{
-		fprintf(stderr, "compression of packet #%u failed\n", seq);
-		dump_packet("IP packet", packet, packet_len);
+		fprintf(stderr, "compression failed\n");
+		dump_packet("IP packet:", packet, packet_len);
 		goto error;
 	}
-
-	/* emulate lossy medium if asked to do so */
-	if(error == 1) /* uniform error model */
+	
+	/* write the ROHC packet in the UDP tunnel */
+	ret = write_to_udp(to, raddr, port, rohc_packet, rohc_size);
+	if(ret != 0)
 	{
-		if(nb_bytes + rohc_size >= bytes_without_error)
-		{
-			to_drop = 1;
-			dropped++;
-			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", seq);
-			nb_bytes = rohc_size - (bytes_without_error - nb_bytes);
-		}
-		
-		nb_bytes += rohc_size;
-	}
-	else if(error == 2) /* non-uniform/burst error model */
-	{
-		/* reset to normal state if too much time between two packets */
-		gettimeofday(&now, NULL);
-		if(is_state_drop && is_timeout(last, now, 2))
-		{
-			fprintf(stderr, "go back to normal state (too much time between "
-			        "packets #%u and #%u)\n", seq - 1, seq);
-			is_state_drop = 0;
-		}
-		last = now;
-
-		/* do we change state ? */
-		int r = rand() % 1000;
-		if(!is_state_drop)
-			is_state_drop = (r > (int) (p1 * 1000));
-		else
-			is_state_drop = (r <= (int) (p2 * 1000));
-
-		if(is_state_drop)
-		{
-			to_drop = 1;
-			dropped++;
-			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", seq);
-		}
-	}
-
-	/* write the ROHC packet in the UDP tunnel if not dropped */
-	if(!to_drop)
-	{
-		ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
-		if(ret != 0)
-		{
-			fprintf(stderr, "write_to_udp failed\n");
-			goto error;
-		}
-	}
-
-	/* print packet statistics */
-	if(comp->last_context == NULL)
-	{
-		fprintf(stderr, "cannot display stats (last context == NULL)\n");
+		fprintf(stderr, "write_to_udp failed\n");
 		goto error;
 	}
-	if(comp->last_context->mode <= 0 ||
-	   comp->last_context->mode > 3)
-	{
-		fprintf(stderr, "invalid mode\n");
-		goto error;
-	}
-	if(comp->last_context->state <= 0 ||
-	   comp->last_context->state > 3)
-	{
-		fprintf(stderr, "invalid state\n");
-		goto error;
-	}
-	fprintf(stats_comp, "%d\t%s\t%s\t%d\t%d\t%d\t%d\t%u\n",
-	        seq,
-	        modes[comp->last_context->mode],
-	        states[comp->last_context->state],
-	        comp->last_context->total_last_uncompressed_size,
-	        comp->last_context->header_last_uncompressed_size,
-	        comp->last_context->total_last_compressed_size,
-	        comp->last_context->header_last_compressed_size,
-	        dropped);
 
 quit:
 	return 0;
@@ -1057,37 +701,8 @@ error:
 }
 
 
-/*
- * @brief Print packet statistics for decompressor
- *
- * @param decomp        The ROHC decompressor
- * @param seq           The tunnel sequence number
- * @param lost_packets  The number of lost packets
- * @return              0 in case of success, 1 otherwise
- */
-int print_decomp_stats(struct rohc_decomp *decomp,
-                       unsigned int seq,
-                       unsigned int lost_packets)
-{
-	if(decomp->last_context == NULL)
-	{
-		fprintf(stderr, "cannot display stats (last context == NULL)\n");
-		goto error;
-	}
-
-	fprintf(stats_decomp, "%u\t%d\t%u\t%d\n", seq,
-	        lost_packets + decomp->last_context->num_decomp_failures,
-	        lost_packets, decomp->last_context->num_decomp_failures);
-
-	return 0;
-
-error:
-	return 1;
-}
-
-
 /**
- * @brief Forward ROHC packets received on the UDP socket to the TUN interface
+ * @brief Forward ROHC packets received on the UDp socket to the TUN interface
  *
  * The function decompresses the ROHC packets thanks to the ROHC library before
  * sending them on the TUN interface.
@@ -1097,22 +712,18 @@ error:
  * @param to      The TUN file descriptor to write to
  * @return        0 in case of success, a non-null value otherwise
  */
+
 int udp2tun(struct rohc_decomp *decomp, int from, int to)
 {
-	static unsigned char packet[2 + MAX_ROHC_SIZE];
+	static unsigned char packet[TUNTAP_BUFSIZE];
 	static unsigned char decomp_packet[MAX_ROHC_SIZE + 4];
 	unsigned int packet_len = TUNTAP_BUFSIZE;
 	int decomp_size;
 	int ret;
-	static unsigned int max_seq = 0;
-	unsigned int new_seq;
-	static unsigned long lost_packets = 0;
 
-#if DEBUG
 	fprintf(stderr, "\n");
-#endif
 
-	/* read the sequence number + ROHC packet from the UDP tunnel */
+	/* read the ROHC packet from the UDP tunnel */
 	ret = read_from_udp(from, packet, &packet_len);
 	if(ret != 0)
 	{
@@ -1120,60 +731,18 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		goto error;
 	}
 
-	if(packet_len <= 2)
+	if(packet_len == 0)
 		goto quit;
 
-	/* find out if some ROHC packets were lost between compressor and
-	 * decompressor (use the tunnel sequence number) */
-	new_seq = ntohs((packet[0] << 8) + packet[1]);
-
-	if(new_seq < max_seq)
-	{
-		/* some packets were reordered, the packet was wrongly
-		 * considered as lost */
-		fprintf(stderr, "ROHC packet with seq = %u received after seq = %u\n",
-		        new_seq, max_seq);
-		lost_packets--;
-	}
-	else if(new_seq > max_seq + 1)
-	{
-		/* there is a gap between sequence numbers, some packets were lost */
-		fprintf(stderr, "ROHC packet(s) probably lost between "
-		        "seq = %u and seq = %u\n", max_seq, new_seq);
-		lost_packets += new_seq - (max_seq + 1);
-	}
-	else if(new_seq == max_seq)
-	{
-		/* should not append */
-		fprintf(stderr, "ROHC packet #%u duplicated\n", new_seq);
-	}
-	
-	if(new_seq > max_seq)
-	{
-		/* update max sequence numbers */
-		max_seq = new_seq;
-	}
-
 	/* decompress the ROHC packet */
-#if DEBUG
-	fprintf(stderr, "decompress ROHC packet #%u (%u bytes)\n",
-	        new_seq, packet_len - 2);
-#endif
-	decomp_size = rohc_decompress(decomp, packet + 2, packet_len - 2,
+	fprintf(stderr, "decompress the %u-byte ROHC packet\n", packet_len);
+	decomp_size = rohc_decompress(decomp, packet, packet_len,
 	                              &decomp_packet[4], MAX_ROHC_SIZE);
 	if(decomp_size <= 0)
 	{
-		if(decomp_size == ROHC_FEEDBACK_ONLY)
-		{
-			/* no stats for feedback-only packets */
-			goto quit;
-		}
-		else
-		{
-			fprintf(stderr, "decompression of packet #%u failed\n", new_seq);
-			dump_packet("ROHC packet", packet + 2, packet_len - 2);
-			goto drop;
-		}
+		fprintf(stderr, "decompression failed\n");
+		dump_packet("ROHC packet:", packet, packet_len);
+		goto error;
 	}
 
 	/* build the TUN header */
@@ -1192,9 +761,9 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		default:
 			fprintf(stderr, "bad IP version (%d)\n",
 			        (decomp_packet[4] >> 4) & 0x0f);
-			dump_packet("ROHC packet", packet, packet_len);
-			dump_packet("Decompressed packet", &decomp_packet[4], decomp_size);
-			goto drop;
+			dump_packet("ROHC packet:", packet, packet_len);
+			dump_packet("Decompressed packet:", &decomp_packet[4], decomp_size);
+			goto error;
 	}
 	
 	/* write the IP packet on the virtual interface */
@@ -1202,83 +771,10 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	if(ret != 0)
 	{
 		fprintf(stderr, "write_to_tun failed\n");
-		goto drop;
-	}
-
-	/* print packet statistics */
-	ret = print_decomp_stats(decomp, new_seq, lost_packets);
-	if(ret != 0)
-	{
-		fprintf(stderr, "cannot display stats (print_decomp_stats failed)\n");
-		goto drop;
+		goto error;
 	}
 
 quit:
-	return 0;
-
-drop:
-	/* print packet statistics */
-	ret = print_decomp_stats(decomp, new_seq, lost_packets);
-	if(ret != 0)
-		fprintf(stderr, "cannot display stats (print_decomp_stats failed)\n");
-
-error:
-	return 1;
-}
-
-
-
-/*
- * Feedback flushing to the UDP socket
- */
-
-
-/**
- * @brief Flush feedback packets stored at the compressor to the UDP socket
- *
- * @param comp   The ROHC compressor
- * @param to     The UDP socket descriptor to write to
- * @param raddr  The remote address of the tunnel
- * @param port   The remote port of the tunnel
- * @return       0 in case of success, a non-null value otherwise
- */
-int flush_feedback(struct rohc_comp *comp,
-                   int to, struct in_addr raddr, int port)
-{
-	static unsigned char rohc_packet[2 + MAX_ROHC_SIZE];
-	int rohc_size;
-	int ret;
-	
-#if DEBUG
-	fprintf(stderr, "\n");
-#endif
-
-	/* flush feedback data as many times as necessary */
-	do
-	{
-		/* flush feedback data */
-		rohc_size = rohc_feedback_flush(comp, rohc_packet + 2, MAX_ROHC_SIZE);
-
-#if DEBUG
-		fprintf(stderr, "flush %d bytes of feedback data\n", rohc_size);
-#endif
-
-		if(rohc_size > 0)
-		{
-			/* increment the tunnel sequence number */
-			seq++;
-
-			/* write the ROHC packet in the UDP tunnel */
-			ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
-			if(ret != 0)
-			{
-				fprintf(stderr, "write_to_udp failed\n");
-				goto error;
-			}
-		}
-	}
-	while(rohc_size > 0);
-
 	return 0;
 
 error:
@@ -1305,108 +801,18 @@ void dump_packet(char *descr, unsigned char *packet, unsigned int length)
 {
 	unsigned int i;
 
-	fprintf(stderr, "-------------------------------\n");
-	fprintf(stderr, "%s (%u bytes):\n", descr, length);
+	printf("-------------------------------\n");
+	printf("%s\n", descr);
 	for(i = 0; i < length; i++)
 	{
 		if(i > 0 && (i % 16) == 0)
-			fprintf(stderr, "\n");
+			printf("\n");
 		else if(i > 0 && (i % 8) == 0)
-			fprintf(stderr, "\t");
+			printf("\t");
 
-		fprintf(stderr, "%.2x ", packet[i]);
+		printf("%.2x ", packet[i]);
 	}
-	fprintf(stderr, "\n");
-	fprintf(stderr, "-------------------------------\n");
-}
-
-
-/**
- * @brief Get a probability number from the command line
- *
- * If error = 1, the return value is undetermined.
- *
- * @param arg    The argument from the command line
- * @param error  OUT: whether the conversion failed or not
- * @return       The probability
- */
-double get_probability(char *arg, int *error)
-{
-	double proba;
-	char *endptr;
-	
-	/* set error by default */
-	*error = 1;
-
-	/* convert from string to double */
-	proba = strtod(arg, &endptr);
-
-	/* check for conversion error */
-	if(proba == 0 && endptr == arg)
-	{
-		if(errno == ERANGE)
-			fprintf(stderr, "probability out of range (underflow): %s (%d)\n",
-			        strerror(errno), errno);
-		else
-			fprintf(stderr, "bad probability value\n");
-		goto quit;
-	}
-
-	/* check for overflow */
-	if(proba == HUGE_VAL)
-	{
-		fprintf(stderr, "probability out of range (overflow): %s (%d)\n",
-		        strerror(errno), errno);
-		goto quit;
-	}
-
-	/* check probability value */
-	if(proba < 0 || proba > 1)
-	{
-		fprintf(stderr, "probability must not be negative nor greater than 1\n");
-		goto quit;
-	}
-
-	/* everything is fine */
-	*error = 0;
-
-quit:
-	return proba;
-}
-
-/**
- * @brief Whether timeout is reached or not ?
- *
- * Timeout is reached if the differences between the two dates
- * is greater than the amount of time given as third parameter.
- *
- * @param first   The first date
- * @param second  The second date
- * @param max     The maximal amount of time between the two dates
- *                in seconds
- * @return        Whether timeout is reached or not ?
- */
-int is_timeout(struct timeval first,
-               struct timeval second,
-               unsigned int max)
-{
-	unsigned int delta_sec;
-	int is_timeout;
-
-	delta_sec = second.tv_sec - first.tv_sec;
-
-	if(delta_sec > max)
-		is_timeout = 1;
-	else if(delta_sec == max)
-	{
-		if(second.tv_usec > first.tv_usec)
-			is_timeout = 1;
-		else
-			is_timeout = 0;
-	}
-	else
-		is_timeout = 0;
-
-	return is_timeout;
+	printf("\n");
+	printf("-------------------------------\n");
 }
 

@@ -301,6 +301,7 @@ error:
  * @param dest_size      The length of the rohc-packet-under-build buffer
  * @param payload_offset The offset for the payload in the IP packet
  * @return               The length of the created ROHC packet
+ *                       or -1 in case of failure
  */
 int c_udp_lite_encode(struct c_context *context,
                       const struct ip_packet ip,
@@ -320,14 +321,14 @@ int c_udp_lite_encode(struct c_context *context,
 	if(g_context == NULL)
 	{
 		rohc_debugf(0, "generic context not valid\n");
-		return 0;
+		return -1;
 	}
 
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 	if(udp_lite_context == NULL)
 	{
 		rohc_debugf(0, "UDP-Lite context not valid\n");
-		return 0;
+		return -1;
 	}
 
 	udp_lite_context->tmp_variables.udp_size = packet_size - ip_get_hdrlen(ip);
@@ -339,7 +340,7 @@ int c_udp_lite_encode(struct c_context *context,
 		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
-			return 0;
+			return -1;
 		}
 
 		/* get the transport protocol */
@@ -357,7 +358,7 @@ int c_udp_lite_encode(struct c_context *context,
 	if(ip_proto != IPPROTO_UDPLITE)
 	{
 		rohc_debugf(0, "packet is not an UDP-Lite packet\n");
-		return 0;
+		return -1;
 	}
 	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
 
@@ -773,6 +774,7 @@ boolean udp_lite_send_cce_packet(struct c_context *context,
 struct c_profile c_udp_lite_profile =
 {
 	IPPROTO_UDPLITE,          /* IP protocol */
+	NULL,                     /* list of UDP ports, not relevant for UDP-Lite */
 	ROHC_PROFILE_UDPLITE,     /* profile ID (see 7 in RFC 4019) */
 	"1.0b",                   /* profile version */
 	"UDP-Lite / Compressor",  /* profile description */

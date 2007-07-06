@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "d_generic.h"
+#include "d_ip.h"
 
 
 /**
@@ -34,6 +35,16 @@ struct d_udp_context
  * Public function prototypes.
  */
 
+void d_udp_destroy(void *context);
+
+int d_udp_decode_ir(struct rohc_decomp *decomp,
+                    struct d_context *context,
+                    unsigned char *packet,
+                    int copy_size,
+                    int large_cid_len,
+                    int is_addcid_used,
+                    unsigned char *dest);
+
 unsigned int udp_detect_ir_size(unsigned char *packet,
                                 unsigned int plen,
                                 int second_byte,
@@ -41,6 +52,7 @@ unsigned int udp_detect_ir_size(unsigned char *packet,
 
 unsigned int udp_detect_ir_dyn_size(unsigned char *first_byte,
                                     unsigned int plen,
+                                    int largecid,
                                     struct d_context *context);
 
 int udp_decode_static_udp(struct d_generic_context *context,

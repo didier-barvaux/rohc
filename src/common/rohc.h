@@ -142,16 +142,18 @@
 #define ROHC_OK                     1
 /// Return code: the action done whithout problem and no data is returned
 #define ROHC_OK_NO_DATA             0
-/// Return code: the action encountered a problem
-#define ROHC_ERROR                 -5
 /// Return code: the action can not proceed because no context is defined
 #define ROHC_ERROR_NO_CONTEXT      -1
 /// Return code: the action failed due to an unattended or malformed packet
-#define ROHC_ERROR_PACKET_FAILED  -2
+#define ROHC_ERROR_PACKET_FAILED   -2
 /// Return code: the action failed because the packet only contains feedback info
 #define ROHC_FEEDBACK_ONLY         -3
 /// Return code: the action failed due to a CRC failure
 #define ROHC_ERROR_CRC             -4
+/// Return code: the action encountered a problem
+#define ROHC_ERROR                 -5
+/// Return code: the packet needs to be parsed again
+#define ROHC_NEED_REPARSE          -6
 
 /// True value for the boolean type
 #define ROHC_TRUE   1
@@ -159,6 +161,11 @@
 #define ROHC_FALSE  0
 /// Boolean type that can only take two values: ROHC_TRUE or ROHC_FALSE
 typedef unsigned char boolean;
+
+
+/// @brief List of UDP ports associated with RTP streams
+/// The port numbers must be separated by a comma
+#define RTP_PORTS  1234, 36780, 33238, 5020, 5002
 
 
 
@@ -206,6 +213,8 @@ struct medium
 
 /// The number allocated for the ROHC Uncompressed profile
 #define ROHC_PROFILE_UNCOMPRESSED  0x0000
+/// The number allocated for the ROHC RTP profile
+#define ROHC_PROFILE_RTP           0x0001
 /// The number allocated for the ROHC UDP profile
 #define ROHC_PROFILE_UDP           0x0002
 /// The number allocated for the ROHC IP-only profile (see 5 in the RFC 3843)
@@ -255,6 +264,18 @@ struct medium
 #define PACKET_CCE       6
 /// Defines an CCE(OFF) packet (UDP-Lite profile only)
 #define PACKET_CCE_OFF   7
+/// Defines an UO-1-RTP packet
+#define PACKET_UO_1_RTP  8
+/// Defines an UO-1-ID packet
+#define PACKET_UO_1_ID   9
+/// Defines an UO-1-TS packet
+#define PACKET_UO_1_TS  10
+/// Defines an UO-2-RTP packet
+#define PACKET_UOR_2_RTP 11
+/// Defines an UO-2-ID packet
+#define PACKET_UOR_2_ID  12
+/// Defines an UO-2-TS packet
+#define PACKET_UOR_2_TS  13
 
 /// No extension for the UOR-2 packet
 #define PACKET_NOEXT    (-1)
@@ -331,6 +352,26 @@ struct medium
 #define MOD_SADDR     0x0080
 /// Indicates that the IPv4 Destination Address field changed
 #define MOD_DADDR     0x0100
+
+
+/*
+ *  The flags for the RTP changed fields:
+ */
+
+/// Indicates that the RTP Padding field changed
+#define MOD_RTP_PADDING  0x0200
+/// Indicates that the RTP Extension field changed
+#define MOD_RTP_EXT      0x0400
+/// Indicates that the RTP Marker field changed
+#define MOD_RTP_M        0x0800
+/// Indicates that the Payload Type field changed
+#define MOD_RTP_PT       0x1000
+/// Indicates that the Sequence Number field changed
+#define MOD_RTP_SN       0x2000
+/// Indicates that the Timestamp field changed
+#define MOD_RTP_TS       0x4000
+/// Indicates that the SSRC field changed
+#define MOD_RTP_SSRC     0x8000
 
 
 /*
@@ -475,6 +516,7 @@ static inline unsigned int get_milliseconds(void)
 #include "sdvl.h"
 #include "wlsb.h"
 #include "ip.h"
+#include "rtp.h"
 
 
 #endif

@@ -153,7 +153,7 @@ int d_sdvalue_decode(const unsigned char *data)
 		value = (GET_BIT_0_4(data) << 24 |
 		         GET_BIT_0_7(data + 1) << 16 |
 		         GET_BIT_0_7(data + 2) << 8 |
-		         GET_BIT_0_7(data+3));
+		         GET_BIT_0_7(data + 3));
 	else
 		value = -1; /* should not happen */
 

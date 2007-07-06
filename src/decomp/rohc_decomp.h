@@ -3,6 +3,7 @@
  * @brief ROHC decompression routines
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
  * @author The hackers from ROHC for Linux
+ * @author David Moreau from TAS
  */
 
 #ifndef DECOMP_H
@@ -13,7 +14,7 @@
 
 
 /// The number of ROHC profiles ready to be used
-#define D_NUM_PROFILES 4
+#define D_NUM_PROFILES 5
 
 
 /// ROHC decompressor states (see 4.3.2 in the RFC 3095)
@@ -208,6 +209,7 @@ struct d_profile
 	/// The handler used to find out the size of IR-DYN packets
 	unsigned int (*detect_ir_dyn_size)(unsigned char *first_byte,
 	                                   unsigned int plen,
+	                                   int largecid,
 	                                   struct d_context *context);
 
 	/// The handler used to retrieve the Sequence Number (SN)

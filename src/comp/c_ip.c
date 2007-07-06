@@ -149,6 +149,7 @@ error:
 struct c_profile c_ip_profile =
 {
 	0,                  /* IP protocol */
+	NULL,               /* list of UDP ports, not relevant for IP-only */
 	ROHC_PROFILE_IP,    /* profile ID (see 5 in RFC 3843) */
 	"1.0b",             /* profile version */
 	"IP / Compressor",  /* profile description */

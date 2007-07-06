@@ -484,6 +484,7 @@ int uncompressed_code_normal_packet(struct c_context *context,
 struct c_profile c_uncompressed_profile =
 {
 	0,                            /* IP protocol */
+	NULL,                         /* list of UDP ports, not relevant for Uncompressed */
 	ROHC_PROFILE_UNCOMPRESSED,    /* profile ID (see 8 in RFC 3095) */
 	"1.0b",                       /* profile version */
 	"Uncompressed / Compressor",  /* profile description */

@@ -2,6 +2,7 @@
  * @file wlsb.c
  * @brief Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author David Moreau from TAS
  * @author The hackers from ROHC for Linux
  */
 
@@ -108,9 +109,9 @@ void print_wlsb_stats(struct c_wlsb *s)
 				            s->window[i].sn, s->window[i].time, s->window[i].value);
 		}
 	
-		rohc_debugf(0, "oldest entry has number %d\n", s->oldest);
-		rohc_debugf(0, " and its sn = %d\n", s->window[s->oldest].sn);
-		rohc_debugf(0, "Next entry has number %d, oldest entry has number %d\n",
+		rohc_debugf(3, "oldest entry has number %d\n", s->oldest);
+		rohc_debugf(3, " and its sn = %d\n", s->window[s->oldest].sn);
+		rohc_debugf(3, "Next entry has number %d, oldest entry has number %d\n",
 		            s->next, s->oldest);
 	}
 }
@@ -170,6 +171,23 @@ void c_add_wlsb(struct c_wlsb * s, int sn, int time, int value)
  */
 void f(int v_ref, int k, int p, int *min, int *max)
 {
+	if(p == 2)
+	{
+		/* for timestamp encoding */
+		if(k <= 2)
+			p = 0;
+		else
+			p = (1 << (k - 2)) - 1;
+	}
+	else if(p == 3)
+	{
+		/* for SN encoding */
+		if(k <= 4)
+			p = 1;
+		else
+			p = (1 << (k - 5)) - 1;
+	}
+
 	*min = v_ref - p;
 	*max = v_ref + ((1 << k) - 1) - p; /* (1 << k) = 2 to the power of k */
 }

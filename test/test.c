@@ -2,6 +2,7 @@
  * @file test.c
  * @brief ROHC test program
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author David Moreau from TAS
  *
  * Introduction
  * ------------
@@ -225,7 +226,7 @@ int compare_packets(unsigned char *pkt1, int pkt1_size,
 			j++;
 	}
 
-	printf("------------------ packet is NOT correctly decoded ------------------\n");
+	printf("----------------------- packets are different -----------------------\n");
 
 skip:
 	return valid;
@@ -649,6 +650,7 @@ void test_comp_and_decomp(char *src_filename,
 	rohc_activate_profile(comp1, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp1, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp1, ROHC_PROFILE_UDPLITE);
+	rohc_activate_profile(comp1, ROHC_PROFILE_RTP);
 
 	/* create the compressor 2 */
 	comp2 = rohc_alloc_compressor(15);
@@ -666,6 +668,7 @@ void test_comp_and_decomp(char *src_filename,
 	rohc_activate_profile(comp2, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp2, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp2, ROHC_PROFILE_UDPLITE);
+	rohc_activate_profile(comp2, ROHC_PROFILE_RTP);
 
 	/* create the decompressor 1 */
 	decomp1 = rohc_alloc_decompressor(comp2);

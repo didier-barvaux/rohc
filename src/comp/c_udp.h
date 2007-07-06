@@ -78,13 +78,6 @@ int udp_code_static_udp_part(struct c_context *context,
                              unsigned char *dest,
                              int counter);
 
-int udp_code_dynamic_udp_part(struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *dest,
-                              int counter);
-
-int udp_changed_udp_dynamic(struct c_context *context,
-                            const struct udphdr *udp);
-
 
 #endif
+

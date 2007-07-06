@@ -13,7 +13,8 @@ sources = \
 	c_generic.c \
 	c_ip.c \
 	c_udp.c \
-	c_udp_lite.c
+	c_udp_lite.c \
+	c_rtp.c
 
 headers = \
 	rohc_comp.h \
@@ -22,7 +23,8 @@ headers = \
 	c_generic.h \
 	c_ip.h \
 	c_udp.h \
-	c_udp_lite.h
+	c_udp_lite.h \
+	c_rtp.h
 
 librohc_comp_la_SOURCES = $(sources) $(headers)
 

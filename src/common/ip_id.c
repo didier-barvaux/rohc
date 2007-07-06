@@ -35,17 +35,20 @@ void d_ip_id_init(struct d_ip_id_decode *s, int id_ref, int sn_ref)
 int d_ip_id_decode(struct d_ip_id_decode *s, int m, int k, int sn)
 {
 	int offset_ref = (s->id_ref - s->sn_ref) % 65536;
-	int offset_m = -1;
+	int min;
+	int max;
+	int tmp;
+	int mask = ((1 << k) - 1);
 	
-	int bitmask = ~((1 << k) - 1);
-	int ip_id = (offset_ref & bitmask) | m;
+	f(offset_ref, k, 2, &min, &max);
 	
-	if(ip_id < offset_ref)
-		ip_id += 1 << k;
-	
-	offset_m = ip_id & 0xFFFF;
+	tmp = min;
 
-	return (sn + offset_m) % 65536;
+	while(tmp <= max && (tmp & mask) != m) {
+		tmp++;
+	}
+
+	return (sn + tmp) & 0xffff;
 }
 
 

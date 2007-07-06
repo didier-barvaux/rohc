@@ -8,6 +8,8 @@
 #ifndef IP_ID_H
 #define IP_ID_H
 
+#include "wlsb.h"
+
 
 /**
  * @brief Defines a IP-ID object to help computing the IP-ID value

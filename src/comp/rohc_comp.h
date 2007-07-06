@@ -9,6 +9,7 @@
 #define COMP_H
 
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 #include <string.h>
 
 #include "rohc.h"
@@ -18,7 +19,7 @@ struct c_feedback;
 
 
 /// The number of ROHC profiles ready to be used
-#define C_NUM_PROFILES 4
+#define C_NUM_PROFILES 5
 
 
 /// ROHC compressor states (see 4.3.1 in the RFC 3095)
@@ -78,7 +79,7 @@ struct rohc_comp
 
 	/// The last context used by the compressor
 	struct c_context *last_context;
-
+ 
 	/* user interaction variables: */
 
 	/// Maximum Reconstructed Reception Unit (currently not used)
@@ -137,7 +138,7 @@ struct c_context
 	int header_last_uncompressed_size;
 	/// The header size of the last compressed packet
 	int header_last_compressed_size;
- 
+
 	/// The number of sent packets
 	int num_sent_packets;
 	/// The number of sent IR packets
@@ -170,6 +171,12 @@ struct c_profile
 	///        compress an IP packet
 	unsigned short protocol;
 	
+	/// @brief The UDP ports associated with this profile
+	/// Only used with UDP as transport protocol. The pointer can be NULL if no
+	/// port is specified. If defined, the list must be terminated by 0.
+	/// ex: { 5000, 5001, 0 }
+	int *ports;
+
 	/// The profile ID as reserved by IANA
 	unsigned short id;
 
@@ -271,8 +278,9 @@ struct c_context *c_get_context(struct rohc_comp *, int cid);
  * Functions related to profile:
  */
 
-struct c_profile * c_get_profile_from_protocol(struct rohc_comp *comp,
-                                               int protocol);
+struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
+                                             int protocol,
+                                             struct ip_packet ip);
 struct c_profile * c_get_profile_from_id(struct rohc_comp *comp,
                                          int profile_id);
 void rohc_activate_profile(struct rohc_comp *comp, int profile);

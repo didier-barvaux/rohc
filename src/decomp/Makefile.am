@@ -15,7 +15,8 @@ sources = \
 	d_generic.c \
 	d_ip.c \
 	d_udp.c \
-	d_udp_lite.c
+	d_udp_lite.c \
+	d_rtp.c
 
 headers = \
 	rohc_decomp.h \
@@ -24,7 +25,8 @@ headers = \
 	d_generic.h \
 	d_ip.h \
 	d_udp.h \
-	d_udp_lite.h
+	d_udp_lite.h \
+	d_rtp.h
 
 librohc_decomp_la_SOURCES = $(sources) $(headers)
 

@@ -1,3 +1,7 @@
+3 may 2007 :
+RTP profile implemented
+more tests added wich give statistics about ROHC packets
+
 6 mar 2007:
 Uncompressed profile now working.
 

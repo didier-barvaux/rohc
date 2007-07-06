@@ -32,6 +32,23 @@ with several IP flows and outputs an HTML page with the test results.
 See the INSTALL file to learn how to use the test application and the report.sh
 script.
 
+Statistics
+-----
+The statistics subdirectory contains a test and statistic application. The auto.pl
+script outputs a HTML with the tests and statistics results.
+
+The auto.pl script calls others scripts :
+	test.sh : executes the tests list and generate the log -> list.txt
+	analyse_log.pl : extracts information from the log
+	gnuplot.sh : generates graphics
+	stats.pl : generate the stats.html
+
+See the INSTALL file to learn how to use the test and statistic application and the auto.pl
+script.
+
+Needs:
+Perl, Gnuplot, Zenity
+
 References
 ----------
 

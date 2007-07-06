@@ -24,6 +24,7 @@ void d_lsb_init(struct d_lsb_decode *s, int v_ref_d, int p)
 	s->old_v_ref_d = v_ref_d;
 }
 
+
 /**
  * @brief Decode a LSB-encoded value
  *
@@ -34,17 +35,25 @@ void d_lsb_init(struct d_lsb_decode *s, int v_ref_d, int p)
  * @param k The length of the LSB value to decode
  * @return  The decoded value
  */
-int d_lsb_decode(struct d_lsb_decode *s, int m, int k)
-{	
-	int lower = s->v_ref_d - s->p;
+int d_lsb_decode(struct d_lsb_decode *s, int m, int k) {
 
-	int bitmask = ~((1 << k) - 1);
- 	int sn = (s->v_ref_d & bitmask) | m;
-	
-	if(sn < lower)
-		sn += 1 << k;
+	int min;
+	int max;
+	int tmp;
+	int mask = ((1 << k) - 1);
 
-	return sn & 0xFFFF;
+	f(s->v_ref_d, k, s->p, &min, &max);
+
+	tmp = min;
+	m &= mask;
+
+	while(tmp <= max && (tmp & mask) != m)
+		tmp++;
+
+	if((tmp & mask) != m)
+		tmp = -1;
+
+	return tmp;
 }
 
 

@@ -76,3 +76,19 @@ To generate an HTML report of several predefined tests:
 IMPORTANT: Run the report script after every library modification to avoid
            regressions.
 
+Test and Statistic application
+----------------
+
+1. Go to the subdirectory
+
+$ cd statistics
+
+2. Execute the script
+
+$ ./auto.pl
+
+Answer questions of the script (number of tests...)
+
+3. Load the statistics/stats.html file in your favorite browser and watch the
+   results.
+

@@ -3,17 +3,23 @@
  * @brief ROHC decompression routines
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
  * @author The hackers from ROHC for Linux
+ * @author David Moreau from TAS
  */
 
 #include "rohc_decomp.h"
 #include "d_ip.h"
 #include "d_udp.h"
+#include "d_rtp.h"
 #include "d_uncompressed.h"
 #include "d_udp_lite.h"
 #include "feedback.h"
 
 
-extern struct d_profile d_uncomp_profile, d_udp_profile, d_ip_profile, d_udplite_profile;
+extern struct d_profile d_uncomp_profile,
+                        d_udp_profile,
+                        d_ip_profile,
+                        d_udplite_profile,
+                        d_rtp_profile;
 
 /**
  * @brief The decompression parts of the ROHC profiles.
@@ -24,6 +30,7 @@ static struct d_profile *d_profiles[D_NUM_PROFILES] =
 	&d_udp_profile,
 	&d_ip_profile,
 	&d_udplite_profile,
+	&d_rtp_profile,
 };
 
 
@@ -774,7 +781,10 @@ struct d_profile * find_profile(int id)
 		i++;
 	
 	if(i >= D_NUM_PROFILES)
+	{
+		rohc_debugf(0, "no profile found for decompression\n");
 		return NULL;
+	}
 
 	return d_profiles[i];
 }
@@ -874,7 +884,7 @@ int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
 	realcrc = walk[largecid + 2];
 	
 	/* detect the size of the IR-DYN header */
-	irdyn_size = profile->detect_ir_dyn_size(walk, plen, context);
+	irdyn_size = profile->detect_ir_dyn_size(walk, plen, largecid, context);
 	if(irdyn_size == 0)
 	{
 		rohc_debugf(0, "cannot detect the IR-DYN size\n");

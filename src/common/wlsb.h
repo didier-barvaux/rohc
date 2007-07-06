@@ -2,6 +2,7 @@
  * @file wlsb.h
  * @brief Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author David Moreau from TAS
  * @author The hackers from ROHC for Linux
  */
 
@@ -14,7 +15,7 @@
 
 
 /// Default window width for W-LSB encoding
-#define C_WINDOW_WIDTH 16
+#define C_WINDOW_WIDTH 4
 
 
 /**
@@ -76,9 +77,11 @@ void c_ack_time_wlsb(struct c_wlsb *s, int time);
 
 int c_sum_wlsb(struct c_wlsb *s);
 int c_mean_wlsb(struct c_wlsb *s);
-void c_print_wlsb(struct c_wlsb *s);
+
 
 void print_wlsb_stats(struct c_wlsb *s);
+
+void f(int v_ref, int k, int p, int *min, int *max);
 
 
 #endif

@@ -12,16 +12,6 @@
  * Private function prototypes.
  */
 
-int udp_code_UO_packet_tail(struct c_context *context,
-                            const unsigned char *next_header,
-                            unsigned char *dest,
-                            int counter);
-
-int udp_code_static_udp_part(struct c_context *context,
-                             const unsigned char *next_header,
-                             unsigned char *dest,
-                             int counter);
-
 int udp_code_dynamic_udp_part(struct c_context *context,
                               const unsigned char *next_header,
                               unsigned char *dest,
@@ -66,7 +56,7 @@ int c_udp_create(struct c_context *context, const struct ip_packet ip)
   		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
-			goto quit;
+			goto clean;
 		}
 
 		/* get the transport protocol */
@@ -289,6 +279,7 @@ error:
  * @param dest_size      The length of the rohc-packet-under-build buffer
  * @param payload_offset The offset for the payload in the IP packet
  * @return               The length of the created ROHC packet
+ *                       or -1 in case of failure
  */
 int c_udp_encode(struct c_context *context,
                  const struct ip_packet ip,
@@ -308,14 +299,14 @@ int c_udp_encode(struct c_context *context,
 	if(g_context == NULL)
 	{
 		rohc_debugf(0, "generic context not valid\n");
-		return 0;
+		return -1;
 	}
 
 	udp_context = (struct sc_udp_context *) g_context->specific;
 	if(udp_context == NULL)
 	{
 		rohc_debugf(0, "UDP context not valid\n");
-		return 0;
+		return -1;
 	}
 
 	ip_proto = ip_get_protocol(ip);
@@ -325,7 +316,7 @@ int c_udp_encode(struct c_context *context,
   		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
-			return 0;
+			return -1;
 		}
 		
 		/* get the transport protocol */
@@ -340,7 +331,7 @@ int c_udp_encode(struct c_context *context,
 	if(ip_proto != IPPROTO_UDP)
 	{
 		rohc_debugf(0, "packet is not an UDP packet\n");
-		return 0;
+		return -1;
 	}
 	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
 
@@ -549,6 +540,7 @@ int udp_changed_udp_dynamic(struct c_context *context,
 struct c_profile c_udp_profile =
 {
 	IPPROTO_UDP,         /* IP protocol */
+	NULL,                /* list of UDP ports, not relevant for UDP */
 	ROHC_PROFILE_UDP,    /* profile ID (see 8 in RFC 3095) */
 	"1.0b",              /* profile version */
 	"UDP / Compressor",  /* profile description */

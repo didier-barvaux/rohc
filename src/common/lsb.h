@@ -8,6 +8,11 @@
 #ifndef LSB_H
 #define LSB_H
 
+#include <stdio.h>
+
+#include "rohc.h"
+#include "wlsb.h"
+
 
 /**
  * @brief Least Significant Bits decoding object

@@ -4,6 +4,7 @@
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
  * @author The hackers from ROHC for Linux
+ * @author David Moreau from TAS
  */
 
 #ifndef D_GENERIC_H
@@ -57,6 +58,7 @@ struct d_generic_context
 	/// Information about the current inner IP header
 	struct d_generic_changes *active2;
 
+	/// Whether at least packet was already processed by the context or not
 	int first_packet_processed;
 
 	/// The LSB-encoded Sequence Number (SN)
@@ -101,6 +103,12 @@ struct d_generic_context
 	                                  const unsigned char *packet,
 	                                  unsigned int length,
 	                                  unsigned char *dest);
+
+	/// The handler used to decode the tail of the UO* ROHC packet
+	int (*decode_uo_tail)(struct d_generic_context *context,
+	                      const unsigned char *packet,
+	                      unsigned int length,
+	                      unsigned char *dest);
 
 	/// Profile-specific data
 	void *specific;
@@ -147,12 +155,14 @@ unsigned int d_generic_detect_ir_size(unsigned char *packet,
 
 unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
                                           unsigned int plen,
+                                          int largecid,
                                           struct d_context *context);
 
 int d_generic_get_sn(struct d_context *context);
 
-int packet_type(const unsigned char *packet);
-
+int packet_type(struct rohc_decomp *decomp,
+                struct d_context *context,
+                const unsigned char *packet);
 
 #endif
 
