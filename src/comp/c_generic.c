@@ -164,8 +164,6 @@ int code_EXT3_packet(struct c_context *context,
                      unsigned char *dest,
                      int counter);
 
-boolean is_changed(unsigned short changed_fields, unsigned short check_field);
-
 void decide_state(struct c_context *context);
 
 int decide_packet(struct c_context *context);
@@ -224,6 +222,22 @@ unsigned short changed_fields(struct ip_header_info *header_info,
 
 void check_ip_identification(struct ip_header_info *header_info,
                              const struct ip_packet ip);
+
+
+/**
+ * @brief Check if a specified IP field has changed.
+ *
+ * @param changed_fields The fields that changed, created by the function
+ *                       changed_fields
+ * @param check_field    The field for which to check a change
+ * @return               Whether the field changed or not
+ *
+ * @see changed_fields 
+ */
+inline boolean is_changed(unsigned short changed_fields, unsigned short check_field)
+{
+	return (changed_fields & check_field);
+}
 
 
 /**
@@ -4018,22 +4032,6 @@ error:
 }
 
 
-/**
- * @brief Check if a specified IP field has changed.
- *
- * @param changed_fields The fields that changed, created by the function
- *                       changed_fields
- * @param check_field    The field for which to check a change
- * @return               Whether the field changed or not
- *
- * @see changed_fields 
- */
-boolean is_changed(unsigned short changed_fields, unsigned short check_field)
-{
-	return (changed_fields & check_field);
-}
-
-
 /*
  * @brief Build RTP header flags and fields
  *
@@ -4446,69 +4444,70 @@ int decide_extension(struct c_context *context)
 
 			break;
 		}
-			case PACKET_UOR_2_RTP:
-			{
-				struct sc_rtp_context *rtp_context;
-				int nr_ts_bits;
 
-				rtp_context = (struct sc_rtp_context *) g_context->specific;
-				nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+		case PACKET_UOR_2_RTP:
+		{
+			struct sc_rtp_context *rtp_context;
+			int nr_ts_bits;
 
-				/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-				if(nr_sn_bits <= 6 && nr_ts_bits <= 6)
-					ext = PACKET_NOEXT;
-				else if(nr_sn_bits <= 9 && nr_ts_bits <= 9)
-					ext = PACKET_EXT_0;
-				else if(nr_sn_bits <= 9 && nr_ts_bits <= 17)
-					ext = PACKET_EXT_1;
-				else if(nr_sn_bits <= 9 && nr_ts_bits <= 25)
-					ext = PACKET_EXT_2;
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 
-				break;
-			}
+			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
+			if(nr_sn_bits <= 6 && nr_ts_bits <= 6)
+				ext = PACKET_NOEXT;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 9)
+				ext = PACKET_EXT_0;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 17)
+				ext = PACKET_EXT_1;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 25)
+				ext = PACKET_EXT_2;
 
-			case PACKET_UOR_2_TS:
-			{
-				struct sc_rtp_context *rtp_context;
-				int nr_ts_bits;
-
-				rtp_context = (struct sc_rtp_context *) g_context->specific;
-				nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-
-				/* NO_EXT, EXT_0 and EXT_3 */
-				if(nr_sn_bits <= 6 && nr_ts_bits <= 5)
-					ext = PACKET_NOEXT;
-				else if(nr_sn_bits <= 9 && nr_ts_bits <= 8)
-					ext = PACKET_EXT_0;
-
-				break;
-			}
-
-			case PACKET_UOR_2_ID:
-			{
-				struct sc_rtp_context *rtp_context;
-				int nr_ts_bits;
-
-				rtp_context = (struct sc_rtp_context *) g_context->specific;
-				nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-
-				/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-				if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
-					ext = PACKET_NOEXT;
-				else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
-					ext = PACKET_EXT_0;
-				else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
-					ext = PACKET_EXT_1;
-				else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 16 && nr_ts_bits <= 8)
-					ext = PACKET_EXT_2;
-
-				break;
-			}
-
-			default:
-				rohc_debugf(3, "bad packet type (%d)\n", packet_type);
-				goto error;
+			break;
 		}
+
+		case PACKET_UOR_2_TS:
+		{
+			struct sc_rtp_context *rtp_context;
+			int nr_ts_bits;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+
+			/* NO_EXT, EXT_0 and EXT_3 */
+			if(nr_sn_bits <= 6 && nr_ts_bits <= 5)
+				ext = PACKET_NOEXT;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 8)
+				ext = PACKET_EXT_0;
+
+			break;
+		}
+
+		case PACKET_UOR_2_ID:
+		{
+			struct sc_rtp_context *rtp_context;
+			int nr_ts_bits;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+
+			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
+			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
+				ext = PACKET_NOEXT;
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
+				ext = PACKET_EXT_0;
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
+				ext = PACKET_EXT_1;
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 16 && nr_ts_bits <= 8)
+				ext = PACKET_EXT_2;
+
+			break;
+		}
+
+		default:
+			rohc_debugf(3, "bad packet type (%d)\n", packet_type);
+			goto error;
+	}
 
 	return ext;
 
@@ -4537,16 +4536,18 @@ int changed_static_both_hdr(struct c_context *context,
 
 	g_context = (struct c_generic_context *) context->specific;
 	changed_fields = g_context->tmp_variables.changed_fields;
-	changed_fields2 = g_context->tmp_variables.changed_fields2;
 
 	nb_fields = changed_static_one_hdr(changed_fields,
 	                                   &g_context->ip_flags,
 	                                   ip, context);
 
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1)
+	{
+		changed_fields2 = g_context->tmp_variables.changed_fields2;
 		nb_fields += changed_static_one_hdr(changed_fields2,
 		                                    &g_context->ip2_flags,
 		                                    ip2, context);
+	}
 
 	return nb_fields;
 }
