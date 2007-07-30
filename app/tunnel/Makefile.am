@@ -9,7 +9,7 @@ bin_PROGRAMS = rohctunnel
 INCLUDES = \
 	-I../../include
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
+AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
 
 AM_MAKEFLAGS = -s
 

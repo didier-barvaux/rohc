@@ -13,7 +13,6 @@
 #ifndef IPPROTO_UDPLITE
 /// define the UDP-Lite protocol number if not already defined by the system
 #define IPPROTO_UDPLITE  136
-#warning "UDP-Lite not defined on the system, set the protocol number to 136"
 #endif
 
 

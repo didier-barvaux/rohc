@@ -36,5 +36,5 @@ INCLUDES = \
 	-I../common \
 	-I../comp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
+AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
 
