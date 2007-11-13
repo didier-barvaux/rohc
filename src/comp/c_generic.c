@@ -2415,8 +2415,12 @@ int code_UO1_packet(struct c_context *context,
 	s_byte |= crc & 0x07;
 	dest[counter] = s_byte;
 	counter++;
-	rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-	            rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
+	if(!is_rtp)
+		rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
+		            g_context->sn, crc, s_byte);
+	else
+		rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
+		            rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
 
 	/* build the UO tail */
 	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
