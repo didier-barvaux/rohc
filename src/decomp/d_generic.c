@@ -1218,6 +1218,9 @@ int d_generic_decode(struct rohc_decomp *decomp,
 
 	rohc_debugf(2, "decode the packet (type %d)\n", g_context->packet_type);
 	length = decode_packet(decomp, context, packet, packet + second_byte, dest, size - second_byte);
+#if RTP_BIT_TYPE
+	// nothing to do
+#else
 	if(length == ROHC_NEED_REPARSE)
 	{
 		rohc_debugf(3, "trying to reparse the packet...\n");
@@ -1226,7 +1229,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	}
 	else if(length > 0)
 		rohc_debugf(2, "uncompressed packet length = %d bytes\n", length);
-
+#endif
 error:
 	return length;
 }
@@ -1791,10 +1794,19 @@ int decode_uor2(struct rohc_decomp *decomp,
 		rtp_context->ts_received = ts_bits;
 		rtp_context->ts_received_size = ts_bits_size;
 		rtp_context->m = m;
-	}
 
-	/* CRC */
-	real_crc = GET_BIT_0_6(packet);
+		/* CRC */
+#if RTP_BIT_TYPE
+		real_crc = GET_BIT_0_5(packet);
+#else
+		real_crc = GET_BIT_0_6(packet);
+#endif
+	}
+	else
+	{
+		/* CRC */
+		real_crc = GET_BIT_0_6(packet);
+	}
 	rohc_debugf(3, "CRC = 0x%02x\n", real_crc);
 
 	/* Extension */
@@ -2753,6 +2765,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 		/* update the context */
 		rtp_context->ts_received = ts_received;
 		rtp_context->ts_received_size = ts_received_size;
+
 	}
 
 	/* decode the tail of UO* packet */
@@ -2787,7 +2800,17 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 		dest += g_context->build_next_header(g_context, active1, dest, *plen);
 
 	/* CRC check */
-	*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - org_dest);
+	if(is_rtp){
+#if RTP_BIT_TYPE
+		*calc_crc = crc_calculate(CRC_TYPE_6, org_dest, dest - org_dest);
+#else	
+		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - org_dest);
+#endif
+	}
+	else
+	{
+		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - org_dest);
+	}
 	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
 
 	return dest - org_dest;
@@ -3590,10 +3613,29 @@ int packet_type(struct rohc_decomp *decomp,
 
 			if(!multiple_ip)
 			{
-				if((is_ip_v4 && rnd) || !is_ip_v4)
+				if(!is_ip_v4)
 				{
 					/* UOR-2-RTP packet */
 					type = PACKET_UOR_2_RTP;
+				}
+				else if((is_ip_v4 && rnd))
+				{
+#if RTP_BIT_TYPE
+					unsigned char third_byte;
+					if(decomp->medium->cid_type == LARGE_CID)
+						third_byte = *(packet + 4);
+					else
+						third_byte = *(packet + 2);
+					if (GET_BIT_6(&third_byte) == 0)
+						/* UOR-2-RTP packet */
+						type = PACKET_UOR_2_RTP;
+					else
+						/* UOR-2-ID*/
+						type = PACKET_UOR_2_ID;
+#else
+					/* UOR-2-RTP packet */
+					type = PACKET_UOR_2_RTP;
+#endif
 				}
 				else
 				{
@@ -3616,11 +3658,31 @@ int packet_type(struct rohc_decomp *decomp,
 				int rnd2 = g_context->last2->rnd;
 				int is_ip2_v4 = ip_get_version(g_context->last2->ip) == IPV4;
 
-				if(((is_ip_v4 && rnd) || !is_ip_v4) &&
-				   ((is_ip2_v4 && rnd2) || !is_ip2_v4))
+				if (!is_ip2_v4) 
 				{
 					/* UOR-2-RTP packet */
 					type = PACKET_UOR_2_RTP;
+				}
+				else if(((is_ip_v4 && rnd) && (is_ip2_v4 && rnd2)) || 
+					((!is_ip_v4) && (is_ip2_v4 && rnd2)))
+				{
+#if RTP_BIT_TYPE
+					unsigned char third_byte;
+					if(decomp->medium->cid_type == LARGE_CID)
+						third_byte = *(packet + 4);
+					else
+						third_byte = *(packet + 2);
+						
+					if (GET_BIT_6(&third_byte) == 0)
+						/* UOR-2-RTP packet */
+						type = PACKET_UOR_2_RTP;
+					else
+						/* UOR-2-ID*/
+						type = PACKET_UOR_2_ID;
+#else
+					/* UOR-2-RTP packet */
+					type = PACKET_UOR_2_RTP;
+#endif
 				}
 				else
 				{
@@ -3793,10 +3855,14 @@ int decode_inner_header_flags(unsigned char *flags,
 
 		if(info->rnd != rnd)
 		{
+#if RTP_BIT_TYPE
+			info->rnd = rnd;
+#else
 			rohc_debugf(2, "RND change detected (%d -> %d). We MUST reparse "
 			               "the UOR-2* packet\n", info->rnd, rnd);
 			info->rnd = rnd;
-			goto reparse;
+			return -2;
+#endif
 		}
 	}
 	else
@@ -3820,8 +3886,6 @@ int decode_inner_header_flags(unsigned char *flags,
 
 error:
 	return -1;
-reparse:
-	return -2;
 }
 
 

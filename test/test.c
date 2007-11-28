@@ -637,7 +637,7 @@ void test_comp_and_decomp(char *src_filename,
 		cmp_handle = NULL;
 
 	/* create the compressor 1 */
-	comp1 = rohc_alloc_compressor(15);
+	comp1 = rohc_alloc_compressor(15, 0, 0, 0);
 	if(comp1 == NULL)
 	{
 		printf("cannot create the compressor 1\n");
@@ -653,7 +653,7 @@ void test_comp_and_decomp(char *src_filename,
 	rohc_activate_profile(comp1, ROHC_PROFILE_RTP);
 
 	/* create the compressor 2 */
-	comp2 = rohc_alloc_compressor(15);
+	comp2 = rohc_alloc_compressor(15, 0, 0, 0);
 	if(comp2 == NULL)
 	{
 		printf("cannot create the compressor 2\n");

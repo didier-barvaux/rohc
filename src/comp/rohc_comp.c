@@ -46,10 +46,14 @@ int c_alloc_contexts(struct rohc_comp *comp, int num);
  * @brief Create one ROHC compressor
  *
  * @param max_cid The maximal CID value the compressor should use for contexts
+ * @param jam_use The parameter which indicates if the use of the jamming is activated 
+ *                0 if not activated else 1
+ * @param adapt_size The size of the header or trailer of the adaptation layer
+ * @param encap_size The packet size of the encapsulation layer
  * @return        The newly-created compressor if successful,
  *                NULL otherwise
  */
-struct rohc_comp *rohc_alloc_compressor(int max_cid)
+struct rohc_comp *rohc_alloc_compressor(int max_cid, int jam_use, int adapt_size, int encap_size)
 {
 	struct rohc_comp *comp;
 	int i;
@@ -77,6 +81,9 @@ struct rohc_comp *rohc_alloc_compressor(int max_cid)
 	comp->total_compressed_size = 0;
 	comp->total_uncompressed_size = 0;
 	comp->last_context = NULL;
+	comp->jam_use = jam_use;
+	comp->adapt_size = adapt_size;
+	comp->encap_size = encap_size;
 
 	for(i = 0; i < FEEDBACK_BUFFER_SIZE; i++)
 	{

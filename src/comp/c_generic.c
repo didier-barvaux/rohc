@@ -4,6 +4,7 @@
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
  * @author David Moreau from TAS
+ * @author Emmanuelle Pechereau <epechereau@b2i-toulouse.com>
  * @author The hackers from ROHC for Linux
  */
 
@@ -12,6 +13,7 @@
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
+#include <math.h>
 
 /**
  * @brief The description of the different ROHC packets.
@@ -166,7 +168,7 @@ int code_EXT3_packet(struct c_context *context,
 
 void decide_state(struct c_context *context);
 
-int decide_packet(struct c_context *context);
+int decide_packet(struct c_context *context, const struct ip_packet ip, int size_data);
 
 void update_variables(struct c_context *context,
                       const struct ip_packet ip,
@@ -222,7 +224,12 @@ unsigned short changed_fields(struct ip_header_info *header_info,
 
 void check_ip_identification(struct ip_header_info *header_info,
                              const struct ip_packet ip);
+			     
+int c_assessment_size(struct rohc_comp * comp, struct c_context *context, const struct ip_packet ip, 
+				int packet, int size_data, int original);
 
+int decide_algo(struct rohc_comp * comp, struct c_context *context, 
+		const struct ip_packet ip, int packet, int size_data);
 
 /**
  * @brief Check if a specified IP field has changed.
@@ -547,6 +554,7 @@ int c_generic_encode(struct c_context *context,
 	unsigned char *next_header;
 	unsigned int ip_proto;
 	int size;
+	int size_data;
 	int is_rtp;
 	
 	g_context = (struct c_generic_context *) context->specific;
@@ -606,6 +614,7 @@ int c_generic_encode(struct c_context *context,
 	*payload_offset =
 		ip_get_hdrlen(ip) + (g_context->tmp_variables.nr_of_ip_hdr > 1 ?
 		ip_get_hdrlen(ip2) : 0) + g_context->next_header_len;
+	size_data = packet_size - (int)*payload_offset;
 
 	/* discard IP fragments */
 	if(ip_is_fragment(ip))
@@ -698,7 +707,7 @@ int c_generic_encode(struct c_context *context,
 	update_variables(context, ip, ip2);
 
 	/* STEP 5: decide which packet to send */
-	g_context->tmp_variables.packet_type = decide_packet(context);
+	g_context->tmp_variables.packet_type = decide_packet(context, ip, size_data);
 
 	/* STEP 6: code the packet (and the extension if needed) */
 	size = code_packet(context, ip, ip2, next_header, dest);
@@ -1293,14 +1302,17 @@ int decide_SO_packet(const struct c_context *context)
  * @see decide_FO_packet
  * @see decide_SO_packet
  *
- * @param context The compression context
+ * @param context   The compression context
+ * @param ip        The ip packet to compress
+ * @param size_data The size of the data in bytes
  * @return        The packet type among PACKET_IR, PACKET_IR_DYN, PACKET_UO_0,
  *                PACKET_UO_1 and PACKET_UOR_2
  */
-int decide_packet(struct c_context *context)
+int decide_packet(struct c_context *context, const struct ip_packet ip, int size_data)
 {
 	struct c_generic_context *g_context;
 	int packet;
+	int new_packet;
 	
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -1312,18 +1324,33 @@ int decide_packet(struct c_context *context)
 			rohc_debugf(2, "IR state\n");
 			g_context->ir_count++;
 			packet = PACKET_IR;
+			//no padding to replace
 			break;
 
 		case FO:
 			rohc_debugf(2, "FO state\n");
 			g_context->fo_count++;
 			packet = decide_FO_packet(context);
+			if (context->compressor->jam_use)
+			// option to use jamming activated
+			{
+				rohc_debugf(2, "use jamming algorithm\n");
+				new_packet = decide_algo(context->compressor, context, ip, packet,size_data); 
+				packet = new_packet;
+			}															      
 			break;
 
 		case SO:
 			rohc_debugf(2, "SO state\n");
 			g_context->so_count++;
 			packet = decide_SO_packet(context);
+			if (context->compressor->jam_use)
+			// option to use jamming activated
+			{
+				rohc_debugf(2, "use jamming algorithm\n");
+				new_packet = decide_algo(context->compressor, context, ip, packet,size_data);
+				packet = new_packet;
+			}													 
 			break;
 
 		default:
@@ -2403,25 +2430,31 @@ int code_UO1_packet(struct c_context *context,
 
 	/* part 4 */
 	if(!is_rtp)
+	{
 		s_byte = (g_context->sn & 0x1f) << 3;
+		crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
+		                   (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
+				    g_context->next_header_len);
+		s_byte |= crc & 0x07;
+	}									
 	else
 	{
 		s_byte = (g_context->sn & 0x0f) << 3;
-		s_byte |= (rtp_context->tmp_variables.m & 0x01) << 7;
+		s_byte |= (rtp_context->tmp_variables.m & 0x01) << 7;				
+		crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
+		                    (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
+	        	            g_context->next_header_len);
+		s_byte |= crc & 0x07;
 	}
-	crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-	                    (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	                    g_context->next_header_len);
-	s_byte |= crc & 0x07;
 	dest[counter] = s_byte;
 	counter++;
 	if(!is_rtp)
-		rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
-		            g_context->sn, crc, s_byte);
-	else
-		rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-		            rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
-
+                rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
+                           g_context->sn, crc, s_byte);
+        else
+                rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
+                           rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
+													
 	/* build the UO tail */
 	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
 
@@ -2572,22 +2605,42 @@ int code_UO2_packet(struct c_context *context,
 	f_byte = 0xc0; /* 1 1 0 x x x x x */
 
 	/* part 4: remember the position of the second byte for future completion
+	 * part 5: partially calculate the third byte, then remember the position
+	 *         of the third byte, its final value is currently unknown 
 	 * (RTP only) */
 	if(is_rtp)
 	{
+#if RTP_BIT_TYPE
+		t_byte = crc_calculate(CRC_TYPE_6,
+		                       ip_get_raw_data(ip), ip_get_hdrlen(ip) +
+				      (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
+				      g_context->next_header_len);
 		s_byte_position = counter;
 		counter++;
+		t_byte_position = counter;
+		counter++;
+#else
+		s_byte_position = counter;
+		counter++;
+		t_byte = crc_calculate(CRC_TYPE_7,
+					ip_get_raw_data(ip), ip_get_hdrlen(ip) +
+					(nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
+					g_context->next_header_len);
+		t_byte_position = counter;
+		counter++;
+#endif
 	}
-
+	else
+	{
 	/* part 5: partially calculate the third byte, then remember the position
 	 * of the third byte, its final value is currently unknown */
-	t_byte = crc_calculate(CRC_TYPE_7,
-	                       ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-	                       (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	                       g_context->next_header_len);
-	t_byte_position = counter;
-	counter++;
-
+		t_byte = crc_calculate(CRC_TYPE_7,
+	        	               ip_get_raw_data(ip), ip_get_hdrlen(ip) +
+	                	       (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
+	                	       g_context->next_header_len);
+		t_byte_position = counter;
+		counter++;
+	}
 	/* part 6: decide which extension to use */
 	extension = decide_extension(context);
 
@@ -2834,9 +2887,12 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= g_context->sn & 0x3f;
 
-			/* part 5: set the X bit to 0 */
+			/* part 5: set the X bit to 0 + type_bit to 0*/
 			*t_byte &= ~0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -2852,9 +2908,12 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -2872,7 +2931,10 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -2888,9 +2950,12 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit = 0*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -2923,9 +2988,12 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3F;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			/* compute TS to send in extension 3 */
 			rtp_context->tmp_variables.ts_send &= (1 << nb_bits_ext3) - 1;
 
@@ -2987,7 +3055,7 @@ int code_UOR2_TS_bytes(struct c_context *context,
 	int nr_ts_bits;
 	int ts_send;
 	int m;
-
+	
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
@@ -3008,9 +3076,12 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= g_context->sn & 0x3f;
 
-			/* part 5: set the X bit to 0 */
+			/* part 5: set the X bit to 0 + type_bit to 0*/
 			*t_byte &= ~0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3026,9 +3097,12 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3044,9 +3118,12 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3062,9 +3139,12 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3097,9 +3177,12 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 0;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			/* compute TS to send in extension 3 */
 			rtp_context->tmp_variables.ts_send &= (1 << nb_bits_ext3) - 1;
 
@@ -3184,9 +3267,12 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= g_context->sn & 0x3f;
 
-			/* part 5: set the X bit to 0 */
+			/* part 5: set the X bit to 0 + type_bit to 1*/
 			*t_byte &= ~0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 1;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3202,9 +3288,12 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 1*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 1;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3220,9 +3309,12 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 1*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 1;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3238,9 +3330,12 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 +type_bit to 1 */
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 1;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			break;
 		}
 
@@ -3281,9 +3376,12 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 1*/
 			*t_byte |= 0x80;
-
+#if RTP_BIT_TYPE
+			int rtp_type_bit = 1;
+                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#endif
 			/* compute TS to send in extension 3 */
 			rtp_context->tmp_variables.ts_send &= (1 << nb_bits_ext3) - 1;
 
@@ -4902,3 +5000,313 @@ void check_ip_identification(struct ip_header_info *header_info,
 	}
 }
 
+/**
+ * @brief Make an assessment of the size in byte of the paquet which will be sent.
+ *
+ * @param context     The context used for the compression
+ * @param ip_packet   The packet which will be compressed
+ * @param packet      The type of the packet which will be compressed
+ * @size_data         The size of the data in bytes
+ * @param original    Indicate if the specified packet is the original ROHC packet 
+ * @return the size assessment of the ROHC packet
+ */
+
+int c_assessment_size(struct rohc_comp *comp, struct c_context *context, const struct ip_packet ip, int packet, int size_data, int original)
+{
+	int total_size = size_data;
+	
+	switch(packet)
+	{
+		case PACKET_IR:
+			// test the IP version
+			if(ip_get_version(ip) == IPV4)
+			{
+				total_size += 15; // size of IPv4 part in IR packet in bytes
+			}
+			else
+			{
+				total_size += 38; // size of IPv6 part in IR packet in bytes
+			}
+			// check if there is a tunnel
+			if(ip_get_protocol(ip) == IPPROTO_IPIP)
+			{
+				total_size += 15;
+			}
+			else if (ip_get_protocol(ip) == IPPROTO_IPV6)
+			{
+				total_size += 38;
+			}
+			// adapt the size with the profile
+			switch (context->profile->id)
+			{
+				case ROHC_PROFILE_RTP:
+					total_size += 27; // size max of RTP + UDP part in IR packet in bytes
+					break;
+				case ROHC_PROFILE_UDP:
+					total_size += 6; // size of UDP part in IR packet in bytes
+					break;
+				case ROHC_PROFILE_UDPLITE:
+					total_size += 8; // size of UDP-lite part in IR packet in bytes
+					break;
+				case ROHC_PROFILE_IP:
+					break; 		 // nothing to do
+				default:
+					rohc_debugf(0, "unknown or bad profile, failure\n");
+					break;
+			}
+			break;		
+		case PACKET_IR_DYN:
+			// test the IP version
+			if(ip_get_version(ip) == IPV4)
+			{
+				total_size += 5; // size of IPv4 dyn part in IR-DYN packet in bytes
+			}
+			else
+			{
+			        total_size += 2; // size of IPv6 dyn part in IR-DYN packet in bytes
+			}
+			// check if there is a tunnel
+			if(ip_get_protocol(ip) == IPPROTO_IPIP)
+			{
+				total_size += 5;
+			}
+			else if (ip_get_protocol(ip) == IPPROTO_IPV6)
+			{
+				total_size += 2;
+			}
+			// adapt the size with the profile
+			switch (context->profile->id)
+			{
+				case ROHC_PROFILE_RTP:
+					if (original)
+						total_size += 13; 
+						// size min of RTP + UDP part in IR packet in bytes
+						// the more compressed packet is estimated for original packet estimation
+					else	
+						total_size += 19; // size max of RTP + UDP part in IR packet in bytes
+					break;
+				case ROHC_PROFILE_UDP:
+					total_size += 2; // size of UDP part in IR packet in bytes
+					break;
+				case ROHC_PROFILE_UDPLITE:
+					total_size += 4; // size of UDP-lite part in IR packet in bytes
+					break;
+				case ROHC_PROFILE_IP:
+					break;           // nothing to do
+				default:
+					rohc_debugf(0, "unknown or bad profile, failure\n");
+					break;
+			}															
+		        break;
+                case PACKET_UO_0:
+			if (context->profile->id == ROHC_PROFILE_RTP
+                                 || context->profile->id == ROHC_PROFILE_UDP)
+	                        total_size += 2; // size of UDP checksum in bytes
+			if (comp->medium.cid_type == LARGE_CID)
+		        	total_size += 3;
+			else
+				total_size += 2;
+		        break;
+		case PACKET_UO_1:
+		case PACKET_UO_1_RTP:
+		case PACKET_UO_1_TS:
+		case PACKET_UO_1_ID:
+		case PACKET_UOR_2:
+			if (context->profile->id == ROHC_PROFILE_RTP 
+				|| context->profile->id == ROHC_PROFILE_UDP)
+				total_size += 2; // size of UDP checksum in bytes
+			if (comp->medium.cid_type == LARGE_CID)
+				total_size += 4;
+			else
+				total_size += 3;
+			break;
+                case PACKET_UOR_2_RTP:
+                case PACKET_UOR_2_TS:
+                case PACKET_UOR_2_ID:
+			if (context->profile->id == ROHC_PROFILE_RTP
+				|| context->profile->id == ROHC_PROFILE_UDP)
+				total_size += 2; // size of UDP checksum in bytes
+			if (comp->medium.cid_type == LARGE_CID)
+				total_size += 5;
+			else
+				total_size += 4;
+                        break;
+                default:
+                        rohc_debugf(0, "unknown packet, failure\n");
+		        break;
+	}
+	return total_size;
+}
+/**
+ * Decision Algorithm which returns the type of the packet 
+ * to send when the jamming option is activated. It is an optimisation of
+ * the use of the encapsulation packets.
+ *
+ * @param context   The context used for the compression
+ * @param ip_packet The packet to compress
+ * @param packet    The type of the original ROHC packet
+ * @param size_data The size of the data to send in bytes
+ * @param
+ * @return the new type of the ROHC packet to send (0 if failed)
+**/
+int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct ip_packet ip, int packet, int size_data)
+{
+        struct c_generic_context *g_context;
+        g_context = (struct c_generic_context *) context->specific;
+        int size_original; // size of the original packet (sent without this algoritm)
+        int size_new;      // size of the new packet
+        int nb_packets_original;
+        int nb_packets_new;
+        int adapt_size = context->compressor->adapt_size;
+        int is_rnd;
+        int is_ip_v4;
+	int encap_size = context->compressor->encap_size;
+        int nr_of_ip_hdr;
+        int is_ip2_v4 = 0;
+        int is_rnd2 = 0;
+	is_rnd = g_context->ip_flags.info.v4.rnd;
+        is_ip_v4 = g_context->ip_flags.version == IPV4;
+        nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
+        
+	if (packet == PACKET_IR)
+                return PACKET_IR;
+        size_original = c_assessment_size(comp, context, ip, packet,size_data, 1);
+        nb_packets_original = ceil((adapt_size+size_original)/encap_size);
+
+	// For all types of packets, the first test is with IR packets
+	size_new = c_assessment_size(comp, context, ip, PACKET_IR, size_data, 0);
+	nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	if (nb_packets_original == nb_packets_new)
+	        return PACKET_IR;
+
+	// The first test failed, so the second test uses IR-DYN packets
+	if (packet == PACKET_IR_DYN)
+	        return PACKET_IR_DYN;
+	size_new = c_assessment_size(comp, context, ip, PACKET_IR, size_data, 0);
+	nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	if (nb_packets_original == nb_packets_new)
+	        return PACKET_IR_DYN;
+
+	// The second test failed, so the third test uses type 2 packets
+        if (packet == PACKET_UOR_2 || packet == PACKET_UOR_2_RTP ||
+                packet == PACKET_UOR_2_TS || packet == PACKET_UOR_2_ID)
+                return packet;
+        // The profile is not RTP profile
+	if (packet == PACKET_UO_1 ||
+	       (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP))
+	{
+	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2, size_data, 0);
+	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	        if (nb_packets_original == nb_packets_new)
+		        return PACKET_UOR_2;
+	}
+	// The profile is RTP profile
+	else if (packet == PACKET_UO_1_RTP)
+	{
+	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
+	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	        if (nb_packets_original == nb_packets_new)
+	                return PACKET_UOR_2_RTP;
+	}
+	else if (packet == PACKET_UO_1_TS)
+	{
+	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_TS, size_data, 0);
+	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	        if (nb_packets_original == nb_packets_new)
+	                return PACKET_UOR_2_TS;
+	}
+	else if (packet == PACKET_UO_1_ID)
+	{
+	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_ID, size_data, 0);
+	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	        if (nb_packets_original == nb_packets_new)
+	                return PACKET_UOR_2_ID;
+	}
+	else if(packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
+	{
+	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
+	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+	        if (nb_packets_original == nb_packets_new)
+	        {
+		        if(nr_of_ip_hdr == 1) /* single IP header */
+		        {
+			        if(is_rnd || !is_ip_v4)
+				        return PACKET_UOR_2_RTP;
+				else
+		                        return PACKET_UOR_2_TS;
+		        }
+			else // two IP headers
+		        {
+		                is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+		                if(!is_ip2_v4)
+			                return PACKET_UOR_2_RTP;
+		                else
+		                {
+					if(is_rnd2)
+			                        return PACKET_UOR_2_RTP;
+			                else
+				                return PACKET_UOR_2_TS;
+			        }
+			}
+		}
+	}
+	// The type of the packet is unknown
+	else
+	{
+		rohc_debugf(0, "unknown packet, failure\n");
+		return -1;
+	}
+        // The third test failed, so the last test uses type 1 packets
+        if (packet == PACKET_UO_1 || packet == PACKET_UO_1_RTP ||
+                packet == PACKET_UO_1_TS || packet == PACKET_UO_1_ID)
+		return packet;
+	
+	// The profile is not RTP profile
+	if (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP)
+	{
+		size_new = c_assessment_size(comp, context, ip, PACKET_UO_1, size_data, 0);
+		nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+		if (nb_packets_original == nb_packets_new)
+			return PACKET_UO_1;
+	}
+	// The profile is RTP profile
+	else if (packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
+	{
+		size_new = c_assessment_size(comp, context, ip, PACKET_UO_1_RTP, size_data, 0);
+		nb_packets_new = ceil((adapt_size+size_new)/encap_size);
+		if (nb_packets_original == nb_packets_new)
+		{
+			if(nr_of_ip_hdr == 1) /* single IP header */
+			{
+				if(is_rnd || !is_ip_v4)
+					return PACKET_UO_1_RTP;
+				else
+					return PACKET_UO_1_TS;
+			}
+			else // two IP headers
+			{
+				is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+				if(!is_ip2_v4)
+					return PACKET_UO_1_RTP;
+				else
+				{
+					if(is_rnd2)
+						return PACKET_UO_1_RTP;
+					else
+						return PACKET_UO_1_TS;
+				}
+			}
+		}
+	}
+	// The type of the packet is unknown
+	else
+	{
+		rohc_debugf(0, "unknown packet, failure\n");
+		return -1;
+	}
+	
+	// No packet can replace type 0 packet
+		return packet;
+}

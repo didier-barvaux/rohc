@@ -21,7 +21,6 @@
  */
 #define IPID_MAX_DELTA  20
 
-
 /**
  * @brief Store information about an IPv4 header between the different
  *        compressions of IP packets.

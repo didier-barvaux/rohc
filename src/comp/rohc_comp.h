@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "rohc.h"
+#include <stdlib.h>
 
 
 struct c_feedback;
@@ -88,6 +89,12 @@ struct rohc_comp
 	int max_header_size;
 	/// The connection type (currently not used)
 	int connection_type;
+	/// Use of jamming (it is an option activated by the user)
+	int jam_use;
+	/// Size of the adaptation packets
+	int adapt_size;
+	/// Size of the encapsulation packets
+	int encap_size;
 };
 
 
@@ -249,7 +256,7 @@ struct c_feedback
  * Functions related to compressor:
  */
 
-struct rohc_comp * rohc_alloc_compressor(int max_cid);
+struct rohc_comp * rohc_alloc_compressor(int max_cid, int jam_use, int adapt_size, int encap_size);
 void rohc_free_compressor(struct rohc_comp *comp);
 
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,

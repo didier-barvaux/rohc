@@ -10,6 +10,7 @@
 #include <strings.h>
 #include <string.h>
 #include <net/ethernet.h>
+#include <math.h>
 
 /* include for the PCAP library */
 #include <pcap.h>
