@@ -7,6 +7,7 @@
 lib_LTLIBRARIES = librohc_common.la
 
 sources = \
+	rohc.c \
 	crc.c \
 	decode.c \
 	ip_id.c \

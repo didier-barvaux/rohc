@@ -504,6 +504,8 @@ static inline unsigned int get_milliseconds(void)
 	return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
+char *rohc_version(void);
+
 
 /*
  * ROHC library includes:

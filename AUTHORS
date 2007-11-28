@@ -1,6 +1,6 @@
 The ROHC compression/decompression library was written by Didier Barvaux for
 B2i-Toulouse and Thales Alenia Space France (TAS-F). The ROHC RTP profile was
-written by David Moreau.
+written by David Moreau. Some improvements were done by Emmanuelle Pechereau.
 
 Contact: Didier Barvaux <didier.barvaux@b2i-toulouse.com>
 B2i-Toulouse: http://www.b2i.fr/
