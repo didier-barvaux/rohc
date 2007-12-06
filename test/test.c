@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
 	{
-		printf(USAGE);
+		printf(TEST_USAGE);
 		goto quit;
 	}
 
@@ -94,13 +94,13 @@ int main(int argc, char *argv[])
 		if(!strcmp(*argv, "-v"))
 		{
 			/* print version */
-			printf(VERSION);
+			printf(TEST_VERSION);
 			goto quit;
 		}
 		else if(!strcmp(*argv, "-h"))
 		{
 			/* print help */
-			printf(USAGE);
+			printf(TEST_USAGE);
 			goto quit;
 		}
 		else if(!strcmp(*argv, "-o"))
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 		else
 		{
 			/* do not accept more than one filename without option name */
-			printf(USAGE);
+			printf(TEST_USAGE);
 			goto quit;
 		}
 	}
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 	/* the source filename is mandatory */
 	if(src_filename == NULL)
 	{
-		printf(USAGE);
+		printf(TEST_USAGE);
 		goto quit;
 	}
 

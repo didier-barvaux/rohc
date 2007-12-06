@@ -22,10 +22,10 @@
 
 
 /// The program version
-#define VERSION  	"ROHC test application, version 0.1\n"
+#define TEST_VERSION  	"ROHC test application, version 0.1\n"
 
 /// The program usage
-#define USAGE \
+#define TEST_USAGE \
 "ROHC test application: test the ROHC library with a flow of IP packets\n\n\
 usage: test [-h] [-v] [-o output_file] [-c cmp_file] flow\n\
   -v              print version information and exit\n\
