@@ -41,8 +41,6 @@ struct ts_sc_comp
 {
 	/// The TS_STRIDE value
 	int ts_stride;
-	/// A window used to encode the TS_STRIDE value
-	struct c_wlsb *stride_window;
 
 	/// The TS_SCALED value
 	int ts_scaled;

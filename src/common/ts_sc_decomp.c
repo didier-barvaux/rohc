@@ -76,8 +76,8 @@ void update_ts_sc(struct ts_sc_decomp *ts_sc)
 		            ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
 
 		/* update LSB */
-		d_lsb_init(&ts_sc->lsb_ts_stride, ts_sc->ts_stride, 2);
-		d_lsb_init(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled, 2);
+		d_lsb_sync_ref(&ts_sc->lsb_ts_scaled);
+		d_lsb_update(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
 	}
 }
 
@@ -86,14 +86,14 @@ void update_ts_sc(struct ts_sc_decomp *ts_sc)
  * @brief Decode timestamp (TS) value with TS_SCALED value
  *
  * @param ts_sc        The ts_sc_decomp object
- * @param ts_scaled    The TS_SCALED value
+ * @param ts_scaled    The W-LSB-encoded TS_SCALED value
  * @param nb_bits      The number of bits of TS_SCALED (W-LSB)
  * @return             The decoded TS
  */
 unsigned int d_decode_ts(struct ts_sc_decomp *ts_sc, int ts_scaled, int nb_bits)
 {
-	rohc_debugf(3, "ref decode value %u\n", d_get_lsb_ref(&ts_sc->lsb_ts_scaled));
-	rohc_debugf(3, "ts_scaled value to decode %u\n", ts_scaled);
+	rohc_debugf(3, "reference decode value = %u\n", d_get_lsb_ref(&ts_sc->lsb_ts_scaled));
+	rohc_debugf(3, "ts_scaled value to decode = %u\n", ts_scaled);
 
 	ts_sc->ts_scaled = d_lsb_decode(&ts_sc->lsb_ts_scaled, ts_scaled, nb_bits);
 	rohc_debugf(3, "ts_scaled decoded = %u / 0x%x with %d bits\n",

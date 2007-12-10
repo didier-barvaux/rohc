@@ -33,6 +33,9 @@ struct rtp_tmp_variables
 	/// The number of bits needed to encode ts_send
 	int nr_ts_bits;
 
+	/// The number of bits of TS to place in the extension 3 header
+	int nr_ts_bits_ext3;
+
 	/// The real timestamp of the last RTP message
 	unsigned int timestamp;
 

@@ -27,24 +27,15 @@ int c_create_sc(struct ts_sc_comp *ts_sc)
 	ts_sc->is_deductible = 0;
 	ts_sc->state = INIT_TS;
 
-	ts_sc->stride_window = c_create_wlsb(32, 4, 2);
-	if(ts_sc->stride_window == NULL)
-	{
-		rohc_debugf(0, "cannot create a W-LSB window for TS stride\n");
-		goto error;
-	}
-
 	ts_sc->scaled_window = c_create_wlsb(16, 4, 2);
 	if(ts_sc->scaled_window == NULL)
 	{
 		rohc_debugf(0, "cannot create a W-LSB window for TS scaled\n");
-		goto clean;
+		goto error;
 	}
 
 	return 1;
 
-clean:
-	c_destroy_wlsb(ts_sc->stride_window);
 error:
 	return 0;
 }
@@ -59,8 +50,6 @@ void c_destroy_sc(struct ts_sc_comp *ts_sc)
 {
 	if(ts_sc != NULL)
 	{
-		if(ts_sc->stride_window != NULL)
-			c_destroy_wlsb(ts_sc->stride_window);
 		if(ts_sc->scaled_window != NULL)
 			c_destroy_wlsb(ts_sc->scaled_window);
 	}
@@ -172,18 +161,6 @@ void c_add_ts(struct ts_sc_comp *ts_sc, unsigned int ts, unsigned int sn)
 
 
 /**
- * @brief Return the number of bits needed to encode TS_STRIDE
- *
- * @param ts_sc        The ts_sc_comp object
- * @return             The number of bits needed
- */
-int nb_bits_stride(struct ts_sc_comp ts_sc)
-{
-	return c_get_k_wlsb(ts_sc.stride_window, ts_sc.ts_stride);
-}
-
-
-/**
  * @brief Return the number of bits needed to encode TS_SCALED
  *
  * @param ts_sc        The ts_sc_comp object
@@ -192,19 +169,6 @@ int nb_bits_stride(struct ts_sc_comp ts_sc)
 int nb_bits_scaled(struct ts_sc_comp ts_sc)
 {
 	return c_get_k_wlsb(ts_sc.scaled_window, ts_sc.ts_scaled);
-}
-
-
-/**
- * @brief Add a new TS_STRIDE to the ts_sc_comp object
- *
- * @param ts_sc        The ts_sc_comp object
- * @param sn           The Sequence Number
- */
-void add_stride(struct ts_sc_comp *ts_sc, int sn)
-{
-	rohc_debugf(3, "add ts_stride %u\n", ts_sc->ts_stride);
-	c_add_wlsb(ts_sc->stride_window, sn, 0, ts_sc->ts_stride);
 }
 
 

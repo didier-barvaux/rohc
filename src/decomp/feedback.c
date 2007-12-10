@@ -118,7 +118,7 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 	if(largecidUsed)
 	{
 		/* large CIDs are used */
-		largecidsize = c_bytesSdvl(cid);
+		largecidsize = c_bytesSdvl(cid, -1);
 
 		/* check if the feedback packet can contain a large CID */
 		if(feedback->size + largecidsize > 30)
@@ -139,7 +139,7 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 			return 0;
 		}
 
-		if(!c_encodeSdvl(acid, cid))
+		if(!c_encodeSdvl(acid, cid, -1))
 		{
 			rohc_debugf(0, "this should never happen!\n");
 			zfree(acid);

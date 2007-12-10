@@ -1052,6 +1052,29 @@ void update_variables(struct c_context *context,
 			/* TS_SCALED value will be send */
 			rtp_context->tmp_variables.ts_send = get_ts_scaled(rtp_context->ts_sc);
 			rtp_context->tmp_variables.nr_ts_bits = nb_bits_scaled(rtp_context->ts_sc);
+			if(rtp_context->tmp_variables.nr_ts_bits == -1)
+			{
+				int ts_send = rtp_context->tmp_variables.ts_send;
+				int nr_bits;
+				int mask;
+
+				/* this is the first TS scaled to be sent, we cannot code it with W-LSB
+				 * and we must find its size (in bits) */
+				for(nr_bits = 1, mask = 1;
+				    nr_bits <= 32 && (ts_send & mask) != ts_send;
+				    nr_bits++, mask |= (1 << (nr_bits - 1)));
+				if((ts_send & mask) != ts_send)
+				{
+					/* cannot find the size of TS scaled, send the maximum of TS
+					 * bits we are able to send */
+					rohc_debugf(0, "size of TS scaled (0x%x) not found, this should "
+					               "never append!\n", ts_send);
+					nr_bits = 32;
+				}
+				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, mask = 0x%x, nr_bits = %d\n",
+						      rtp_context->tmp_variables.ts_send, mask, nr_bits);
+				rtp_context->tmp_variables.nr_ts_bits = nr_bits;
+			}
 
 			/* save the new TS_SCALED value */
 			add_scaled(&rtp_context->ts_sc, g_context->sn);
@@ -2632,8 +2655,8 @@ int code_UO2_packet(struct c_context *context,
 	}
 	else
 	{
-	/* part 5: partially calculate the third byte, then remember the position
-	 * of the third byte, its final value is currently unknown */
+		/* part 5: partially calculate the third byte, then remember the position
+		 * of the third byte, its final value is currently unknown */
 		t_byte = crc_calculate(CRC_TYPE_7,
 	        	               ip_get_raw_data(ip), ip_get_hdrlen(ip) +
 	                	       (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
@@ -2865,11 +2888,11 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 	struct sc_rtp_context *rtp_context;
 	int nr_ts_bits;
 	int ts_send;
+	uint32_t ts_mask;
 	int m;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 	ts_send = rtp_context->tmp_variables.ts_send;
 	m = rtp_context->tmp_variables.m;
 
@@ -2880,7 +2903,11 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			rohc_debugf(3, "code UOR-2-RTP packet with no extension\n");
 
 			/* part 2: 5 bits of 6-bit TS */
-			*f_byte |= (ts_send >> 1) & 0x1f;
+			/* (be sure not to send bad TS bits because of the shift) */
+			ts_mask = 1 << (32 - 1);
+			ts_mask -= 1;
+			ts_mask = 0x1f & (((uint32_t) (1 << (32 - 1))) - 1);
+			*f_byte |= (ts_send >> 1) & ts_mask;
 
 			/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
 			*s_byte |= (ts_send & 0x01) << 7;
@@ -2901,7 +2928,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			rohc_debugf(3, "code UOR-2-RTP packet with extension 0\n");
 
 			/* part 2: 5 bits of 9-bit TS */
-			*f_byte |= (ts_send >> 4) & 0x1f;
+			/* (be sure not to send bad TS bits because of the shift) */
+			ts_mask = 0x1f & ((1 << (32 - 3 - 1)) - 1);
+			*f_byte |= (ts_send >> 4) & ts_mask;
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
@@ -2912,7 +2941,7 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*t_byte |= 0x80;
 #if RTP_BIT_TYPE
 			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -2922,7 +2951,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			rohc_debugf(3, "code UOR-2-RTP packet with extension 1\n");
 
 			/* part 2: 5 bits of 17-bit TS */
-			*f_byte |= (ts_send >> 12) & 0x1f;
+			/* (be sure not to send bad TS bits because of the shift) */
+			ts_mask = 0x1f & ((1 << (32 - 12 - 1)) - 1);
+			*f_byte |= (ts_send >> 12) & ts_mask;
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
@@ -2933,7 +2964,7 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*t_byte |= 0x80;
 #if RTP_BIT_TYPE
 			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -2943,45 +2974,59 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			rohc_debugf(3, "code UOR-2-RTP packet with extension 2\n");
 
 			/* part 2: 5 bits of 25-bit TS */
-			*f_byte |= (ts_send >> 20) & 0x1f;
+			/* (be sure not to send bad TS bits because of the shift) */
+			ts_mask = 0x1f & ((1 << (32 - 19 - 1)) - 1);
+			*f_byte |= (ts_send >> 20) & ts_mask;
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit = 0*/
+			/* part 5: set the X bit to 1 + type_bit = 0 */
 			*t_byte |= 0x80;
 #if RTP_BIT_TYPE
 			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
 
 		case PACKET_EXT_3:
 		{
-			int nb_bits_ext3; /* number of bits to send in EXT 3 */
+			int nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
 			int nr_sn_bits;
+			int ts_bits_for_f_byte;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
 
 			rohc_debugf(3, "code UOR-2-RTP packet with extension 3\n");
 
 			/* part 2: 5 bits of TS */
 			if(nr_ts_bits <= 6)
-				nb_bits_ext3 = 0;
+				nr_ts_bits_ext3 = 0;
 			else if(nr_ts_bits <= 13)
-				nb_bits_ext3 = 7;
+				nr_ts_bits_ext3 = 7;
 			else if(nr_ts_bits <= 20)
-				nb_bits_ext3 = 14;
+				nr_ts_bits_ext3 = 14;
 			else if(nr_ts_bits <= 27)
-				nb_bits_ext3 = 21;
+				nr_ts_bits_ext3 = 21;
 			else
-				nb_bits_ext3 = 28;
-			*f_byte |= (ts_send >> (nb_bits_ext3 + 1)) & 0x1f;
+				nr_ts_bits_ext3 = 28;
+			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
+			rohc_debugf(3, "bits of TS = %d (%d in header, %d in EXT3)\n",
+			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
+			/* be sure not to send bad TS bits because of the shift, apply the two masks:
+			 *  - the 5-bit mask (0x1f) for the 5-bit field
+			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
+			 *    to avoid sending more than 32 bits of TS in all TS fields */
+			ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3 - 1)) - 1);
+			ts_bits_for_f_byte = (ts_send >> (nr_ts_bits_ext3 + 1)) & ts_mask;
+			*f_byte |= ts_bits_for_f_byte;
+			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n", ts_bits_for_f_byte, ts_mask);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of SN */
-			*s_byte |= (ts_send >> nb_bits_ext3 & 0x01) << 7;
+			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
 			*s_byte |= (m & 0x01) << 6;
 			if(nr_sn_bits <= 6)
 				*s_byte |= g_context->sn & 0x3f;
@@ -2994,8 +3039,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			int rtp_type_bit = 0;
                         *t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
-			/* compute TS to send in extension 3 */
-			rtp_context->tmp_variables.ts_send &= (1 << nb_bits_ext3) - 1;
+			/* compute TS to send in extension 3 and its length */
+			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
+			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 
 			break;
 		}
@@ -3150,24 +3196,36 @@ int code_UOR2_TS_bytes(struct c_context *context,
 
 		case PACKET_EXT_3:
 		{
-			int nb_bits_ext3; /* number of bits to send in EXT 3 */
+			int nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
 			int nr_sn_bits;
+			int ts_mask;
+			int ts_bits_for_f_byte;
 			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
 
-			rohc_debugf(3," code UOR-2-TS packet with extension 3\n");
+			rohc_debugf(3, "code UOR-2-TS packet with extension 3\n");
 
 			/* part 2: 5 bits of TS */
 			if(nr_ts_bits <= 5)
-				nb_bits_ext3 = 0;
+				nr_ts_bits_ext3 = 0;
 			else if(nr_ts_bits <= 12)
-				nb_bits_ext3 = 7;
+				nr_ts_bits_ext3 = 7;
 			else if(nr_ts_bits <= 19)
-				nb_bits_ext3 = 14;
+				nr_ts_bits_ext3 = 14;
 			else if(nr_ts_bits <= 26)
-				nb_bits_ext3 = 21;
+				nr_ts_bits_ext3 = 21;
 			else
-				nb_bits_ext3 = 28;
-			*f_byte |= (ts_send >> nb_bits_ext3) & 0x1f;
+				nr_ts_bits_ext3 = 28;
+			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
+			rohc_debugf(3, "bits of TS = %d (%d in header, %d in EXT3)\n",
+			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
+			/* compute the mask for the TS field in the 1st byte: this is the smaller mask in:
+			 *  - the 5-bit mask (0x1f) for the 5-bit field
+			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
+			 *    to avoid sending more than 32 bits of TS in all TS fields */
+			ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3)) - 1);
+			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
+			*f_byte |= ts_bits_for_f_byte;
+			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n", ts_bits_for_f_byte, ts_mask);
 
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
@@ -3183,8 +3241,9 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			int rtp_type_bit = 0;
                         *t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
-			/* compute TS to send in extension 3 */
-			rtp_context->tmp_variables.ts_send &= (1 << nb_bits_ext3) - 1;
+			/* compute TS to send in extension 3 and its length */
+			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
+			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 
 			break;
 		}
@@ -3341,7 +3400,7 @@ int code_UOR2_ID_bytes(struct c_context *context,
 
 		case PACKET_EXT_3:
 		{
-			int nb_bits_ext3; /* number of bits to send in EXT 3 */
+			int nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
 			int nr_sn_bits;
 			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
 
@@ -3361,16 +3420,16 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			if(nr_ts_bits > 0 && !is_deductible(rtp_context->ts_sc))
 			{
 				if(nr_ts_bits <= 7)
-					nb_bits_ext3 = 7;
+					nr_ts_bits_ext3 = 7;
 				else if(nr_ts_bits <= 14)
-					nb_bits_ext3 = 14;
+					nr_ts_bits_ext3 = 14;
 				else if(nr_ts_bits <= 21)
-					nb_bits_ext3 = 21;
+					nr_ts_bits_ext3 = 21;
 				else
-					nb_bits_ext3 = 28;
+					nr_ts_bits_ext3 = 28;
 			}
 			else
-				nb_bits_ext3 = 0;
+				nr_ts_bits_ext3 = 0;
 			if(nr_sn_bits <= 6)
 				*s_byte |= g_context->sn & 0x3f;
 			else
@@ -3382,8 +3441,9 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			int rtp_type_bit = 1;
                         *t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
-			/* compute TS to send in extension 3 */
-			rtp_context->tmp_variables.ts_send &= (1 << nb_bits_ext3) - 1;
+			/* compute TS to send in extension 3 and its length */
+			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
+			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 
 			break;
 		}
@@ -3712,9 +3772,9 @@ int code_EXT2_packet(struct c_context *context,
 			struct sc_rtp_context *rtp_context = g_context->specific;
 			int ts_send = rtp_context->tmp_variables.ts_send;
 
-			f_byte |= (ts_send >> 16) &  0x07;
+			f_byte |= (ts_send >> 16) & 0x07;
 			s_byte = (ts_send >> 8) & 0xff;
-			t_byte = ts_send && 0xff;
+			t_byte = ts_send & 0xff;
 			break;
 		}
 
@@ -3857,10 +3917,13 @@ int code_EXT3_packet(struct c_context *context,
 	boolean have_inner = 0;
 	boolean have_outer = 0;
 	unsigned int id;
+	struct sc_rtp_context *rtp_context = NULL;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
 	int rts = 0;     /* R-TS bit */
 	int ts_send = 0; /* TS to send */
+	int nr_ts_bits = -1; /* nb of TS bits needed */
+	int nr_ts_bits_ext3 = -1; /* nb of TS bits needed in EXT3 */
 	int packet_type;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -3873,6 +3936,15 @@ int code_EXT3_packet(struct c_context *context,
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	packet_type = g_context->tmp_variables.packet_type;
 
+	/* get some RTP parameters (RTP profile only) */
+	if(is_rtp)
+	{
+		rtp_context = (struct sc_rtp_context *) g_context->specific;
+		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+		nr_ts_bits_ext3 = rtp_context->tmp_variables.nr_ts_bits_ext3;
+		ts_send = rtp_context->tmp_variables.ts_send;
+	}
+
 	/* part 1: extension type + S bit */
 	f_byte = 0xc0;
 	if(nr_sn_bits > 5)
@@ -3882,13 +3954,7 @@ int code_EXT3_packet(struct c_context *context,
 	 *         Mode bits otherwise */
 	if(is_rtp)
 	{
-		struct sc_rtp_context *rtp_context;
-		int nr_ts_bits; /* nb of TS bits needed */
 		int tsc; /* Tsc bit */
-
-		rtp_context = (struct sc_rtp_context *) g_context->specific;
-		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-		ts_send = rtp_context->tmp_variables.ts_send;
 
 		/* R-TS bit */
 		switch(packet_type)
@@ -4011,14 +4077,16 @@ int code_EXT3_packet(struct c_context *context,
 		/* part 4.1 */
 		if(is_rtp && rts)
 		{
-			rohc_debugf(3, "ts_send = %u (0x%x) on %d bytes\n",
-			            ts_send, ts_send, c_bytesSdvl(ts_send));
-			if(!c_encodeSdvl(&dest[counter], ts_send))
+			rohc_debugf(3, "ts_send = %u (0x%x) needs %d bits in EXT3, "
+			            "will be SDVL-coded on %d bytes\n", ts_send, ts_send,
+			            nr_ts_bits_ext3, c_bytesSdvl(ts_send, nr_ts_bits_ext3));
+			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
 			{
-				rohc_debugf(0, "ts_send greater than 2^29 (%d)\n", ts_send);
+				rohc_debugf(0, "TS length greater than 29 (value = %d, "
+				               "length = %d)\n", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
-			counter += c_bytesSdvl(ts_send);
+			counter += c_bytesSdvl(ts_send, nr_ts_bits_ext3);
 		}
 
 		/* part 5 */
@@ -4080,14 +4148,16 @@ int code_EXT3_packet(struct c_context *context,
 		/* part 4.1 */
 		if(is_rtp && rts)
 		{
-			rohc_debugf(3, "ts_send = %u (0x%x) on %d bytes\n",
-			            ts_send, ts_send, c_bytesSdvl(ts_send));
-			if(!c_encodeSdvl(&dest[counter], ts_send))
+			rohc_debugf(3, "ts_send = %u (0x%x) needs %d bits in EXT3, "
+			            "will be SDVL-coded on %d bytes\n", ts_send, ts_send,
+			            nr_ts_bits_ext3, c_bytesSdvl(ts_send, nr_ts_bits_ext3));
+			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
 			{
-				rohc_debugf(0, "ts_send greater than 2^29 (%d)\n", ts_send);
+				rohc_debugf(0, "TS length greater than 29 (value = %d, "
+				               "length = %d)\n", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
-			counter += c_bytesSdvl(ts_send);
+			counter += c_bytesSdvl(ts_send, nr_ts_bits_ext3);
 		}
 
 		/* part 5 */
@@ -4229,26 +4299,22 @@ int rtp_header_flags_and_fields(struct c_context *context,
 	/* part 4 */
 	if(tss)
 	{
-		int ts_stride, nb_bits;
+		int ts_stride;
 		int success;
 
 		ts_stride = get_ts_stride(rtp_context->ts_sc);
-		nb_bits = nb_bits_stride(rtp_context->ts_sc);
 
-		success = c_encodeSdvl(&dest[counter], ts_stride);
+		success = c_encodeSdvl(&dest[counter], ts_stride, -1);
 		if(!success)
 		{
-			rohc_debugf(0, "ts_stride greater than 2^29 (%d)\n", ts_stride);
+			rohc_debugf(0, "TS stride length greater than 29 (%d)\n", ts_stride);
 			goto error;
 		}
-		counter += c_bytesSdvl(ts_stride);
+		counter += c_bytesSdvl(ts_stride, -1);
 
-		rohc_debugf(3, "ts_stride %u (0x%x) needs %d bit(s)\n",
-		            ts_stride, ts_stride, nb_bits);
-		rohc_debugf(3, "ts_stride coded on %d bytes\n",
-		            c_bytesSdvl(ts_stride));
+		rohc_debugf(3, "ts_stride %u (0x%x) is SDVL-encoded on %d bit(s)\n",
+		            ts_stride, ts_stride, c_bytesSdvl(ts_stride, -1));
 
-		add_stride(&rtp_context->ts_sc, ntohs(rtp->sn));
 		if(rtp_context->ts_sc.state == INIT_STRIDE)
 			rtp_context->ts_sc.state = SEND_SCALED;
 	}

@@ -564,8 +564,6 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 			int ts_stride;
 
 			ts_stride = get_ts_stride(rtp_context->ts_sc);
-			add_stride(&rtp_context->ts_sc, ntohs(rtp->sn));
-
 			memcpy(&dest[counter], &ts_stride, 4);
 			rohc_debugf(3, "send ts_stride = %04x on 4 bytes\n", ts_stride);
 			counter += 4;

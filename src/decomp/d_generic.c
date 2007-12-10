@@ -3227,7 +3227,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	if(is_rtp)
 	{
 		int ts = 0;
-		int ts_size = 0;
+		int ts_sdvl_size = 0;
 		struct d_rtp_context *rtp_context;
 		rtp_context = (struct d_rtp_context *) g_context->specific;
 		ts_received = rtp_context->ts_received;
@@ -3245,14 +3245,14 @@ int decode_extension3(struct rohc_decomp *decomp,
 				goto error;
 			}
 
-			ts_size = d_sdvalue_size(packet);
-			if(ts_size == -1)
+			ts_sdvl_size = d_sdvalue_size(packet);
+			if(ts_sdvl_size == -1)
 			{
 				rohc_debugf(0, "bad TS SDVL-encoded field length\n");
 				goto error;
 			}
 
-			if(length < ts_size)
+			if(length < ts_sdvl_size)
 			{
 				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 				goto error;
@@ -3265,24 +3265,25 @@ int decode_extension3(struct rohc_decomp *decomp,
 				rohc_debugf(0, "bad TS SDVL-encoded field\n");
 				goto error;
 			}
-			rohc_debugf(3, "ts read in header = 0x%x\n", ts_received);
+			rohc_debugf(3, "ts read in header = 0x%x, must be shifted by %d to make "
+			            "room for TS bits of EXT3\n", ts_received, ts_sdvl_size * 7);
 
-			if(ts_size == 1)
+			if(ts_sdvl_size == 1)
 			{
 				ts_received = ts_received << 7;
 				ts_received_size += 7;
 			}
-			else if(ts_size == 2)
+			else if(ts_sdvl_size == 2)
 			{
 				ts_received = ts_received << 14;
 				ts_received_size += 14;			
 			}
-			else if(ts_size == 3)
+			else if(ts_sdvl_size == 3)
 			{
 				ts_received = ts_received << 21;
 				ts_received_size += 21;
 			}
-			else if(ts_size == 4)
+			else if(ts_sdvl_size == 4)
 			{
 				ts_received = ts_received << 28;
 				ts_received_size += 27; /* because 5 + 28 = 33 > 32 ! */
@@ -3297,10 +3298,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 		rohc_debugf(3, "ts read in extension 3 = 0x%x\n", ts);
 		ts_received |= ts;
 		rohc_debugf(3, "ts received  = 0x%x\n", ts_received);
-		packet += ts_size;
-		length -= ts_size;
-		rtp_context->ts_received = ts_received;
-		rtp_context->ts_received_size = ts_received_size;
+		packet += ts_sdvl_size;
+		length -= ts_sdvl_size;
 
 		/* decode scaled TS */
 		if(tsc)
@@ -3310,7 +3309,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			if(rtp_context->ts_received_size == 0)
+			if(ts_received_size == 0)
 			{
 				rohc_debugf(3, "TS is deducted from SN\n");
 				ts = ts_deducted(&rtp_context->ts_sc, *sn);
@@ -3463,8 +3462,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 			int ts_stride;
 			int ts_stride_size;
 
-			/* check the minimal length to read at least one byte of TS_SRTIDE,
-			 * then extract TS_SRTIDE field size and check if packet is large
+			/* check the minimal length to read at least one byte of TS_STRIDE,
+			 * then extract TS_STRIDE field size and check if packet is large
 			 * enough to contain the whole field */
 			if(length < 1)
 			{
@@ -3475,9 +3474,10 @@ int decode_extension3(struct rohc_decomp *decomp,
 			ts_stride_size = d_sdvalue_size(packet);
 			if(ts_stride_size == -1)
 			{
-				rohc_debugf(0, "bad TS_SRTIDE SDVL-encoded field length\n");
+				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field length\n");
 				goto error;
 			}
+			rohc_debugf(3, "ts_stride is SDVL-encoded on %d bit(s)\n", ts_stride_size);
 
 			if(length < ts_stride_size)
 			{
@@ -3485,11 +3485,11 @@ int decode_extension3(struct rohc_decomp *decomp,
 				goto error;
 			}
 
-			/* decode SDVL-encoded TS_SRTIDE value */
+			/* decode SDVL-encoded TS_STRIDE value */
 			ts_stride = d_sdvalue_decode(packet);
 			if(ts_stride == -1)
 			{
-				rohc_debugf(0, "bad TS_SRTIDE SDVL-encoded field\n");
+				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field\n");
 				goto error;
 			}
 
@@ -3497,7 +3497,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			length -= ts_stride_size;
 		
 			rohc_debugf(3, "ts_stride decoded = %u / 0x%x\n", ts_stride, ts_stride);		
-			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);	
+			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);
 		}
 
 		if(tis)

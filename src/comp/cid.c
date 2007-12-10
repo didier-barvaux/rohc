@@ -66,8 +66,8 @@ int code_cid_values(struct c_context *context,
 		*first_position = 0;
 		counter++;
 	
-		c_encodeSdvl(&dest[counter], context->cid);
-		len = c_bytesSdvl(context->cid);
+		c_encodeSdvl(&dest[counter], context->cid, -1);
+		len = c_bytesSdvl(context->cid, -1);
 		
 		rohc_debugf(3, "large CID = ");
 		for(i = 0; i < len; i++)
