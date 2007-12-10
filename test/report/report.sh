@@ -128,7 +128,8 @@ while [ $i -le $nb_lines ] ; do
 	html="$html\t\t\t<tr>\n"
 	html="$html\t\t\t\t<td>$name</td>\n"
 
-	report="`$APP -c ${DIRNAME}/$dir/rohc.pcap ${DIRNAME}/$dir/source.pcap`"
+	TMPFILE="/tmp/rohc_report_`date '+%s'.log`"
+	$APP -c ${DIRNAME}/$dir/rohc.pcap ${DIRNAME}/$dir/source.pcap > ${TMPFILE} 2>&1
 
 	if [ $? -ne 0 ] ; then
 		startup_result="FAIL"
@@ -137,11 +138,11 @@ while [ $i -le $nb_lines ] ; do
 		decomp_result="FAIL"
 		cmp_ip_result="FAIL"
 	else
-		logs_startup="`echo \"$report\" | xsltproc ${DIRNAME}/logs_startup.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_comp="`echo \"$report\" | xsltproc ${DIRNAME}/logs_comp.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_cmp_rohc="`echo \"$report\" | xsltproc ${DIRNAME}/logs_cmp_rohc.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_decomp="`echo \"$report\" | xsltproc ${DIRNAME}/logs_decomp.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_cmp_ip="`echo \"$report\" | xsltproc ${DIRNAME}/logs_cmp_ip.xsl - |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_startup="`xsltproc ${DIRNAME}/logs_startup.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_comp="`xsltproc ${DIRNAME}/logs_comp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_cmp_rohc="`xsltproc ${DIRNAME}/logs_cmp_rohc.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_decomp="`xsltproc ${DIRNAME}/logs_decomp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_cmp_ip="`xsltproc ${DIRNAME}/logs_cmp_ip.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 
 		if [ -z "$logs_startup" ] ; then
 			startup_result="PASS"
@@ -172,6 +173,8 @@ while [ $i -le $nb_lines ] ; do
 		else
 			cmp_ip_result="FAIL"
 		fi
+
+		rm -f ${TMPFILE}
 	fi
 
 	print_result "PASS"          $startup_result  "startup_details_$i"

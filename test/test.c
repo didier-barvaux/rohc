@@ -171,6 +171,9 @@ int compare_packets(unsigned char *pkt1, int pkt1_size,
 	char sep1, sep2;
 
 	min_size = pkt1_size > pkt2_size ? pkt2_size : pkt1_size;
+
+	/* do not compare more than 180 bytes to avoid huge output */
+	min_size = max(180, min_size);
 	
 	/* if packets are equal, do not print the packets */
 	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
@@ -717,9 +720,15 @@ void test_comp_and_decomp(char *src_filename,
 		                          link_len_src, dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp);
 		if(ret == -1)
+		{
 			err_comp++;
+			break;
+		}
 		else if(ret == -2)
+		{
 			err_decomp++;
+			break;
+		}
 		else if(ret == 1)
 			nb_ok++;
 		else if(ret == -3)
@@ -736,9 +745,15 @@ void test_comp_and_decomp(char *src_filename,
 		                          link_len_src, dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp);
 		if(ret == -1)
+		{
 			err_comp++;
+			break;
+		}
 		else if(ret == -2)
+		{
 			err_decomp++;
+			break;
+		}
 		else if(ret == 1)
 			nb_ok++;
 		else if(ret == -3)
