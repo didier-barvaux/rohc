@@ -429,7 +429,7 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
 	/* create the compressor and activate profiles */
-	comp = rohc_alloc_compressor(15);
+	comp = rohc_alloc_compressor(15, 0, 0, 0);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
