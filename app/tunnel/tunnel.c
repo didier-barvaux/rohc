@@ -439,6 +439,7 @@ int main(int argc, char *argv[])
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
+	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 
 	/* create the decompressor (associate it with the compressor) */
 	decomp = rohc_alloc_decompressor(is_umode ? NULL : comp);
