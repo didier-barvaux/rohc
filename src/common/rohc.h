@@ -123,6 +123,188 @@
 
 
 /**
+ * \page features Library features
+ *
+ * <p>Unsupported features are in <span style="color: red;">red</span>.</p>
+ * <p>Limitations are in <span style="color: orange;">orange</span>.</p>
+ *
+ * <h2>Main features</h2>
+ *
+ * <ul>
+ *  <li>ROHC compression</li>
+ *  <li>ROHC decompression</li>
+ *  <li>ROHC channels: small and large Channel IDs (CIDs)</li>
+ *  <li>
+ *    ROHC modes:
+ *    <ul>
+ *     <li>Unidirectional mode (U-mode)</li>
+ *     <li>Bidirectional Optimistic mode (O-mode)</li>
+ *     <li style="color: red;">Bidirectional Reliable mode (R-mode)</li>
+ *    </ul>
+ *  </li>
+ *  <li>
+ *   ROHC states:
+ *   <ul>
+ *    <li>Initialization & Refresh (IR)</li>
+ *    <li>First Order (FO)</li>
+ *    <li>Second Order (SO)</li>
+ *   </ul>
+ *  </li>
+ *  <li>
+ *   Feedback:
+ *   <ul>
+ *    <li>Feedback packets</li>
+ *    <li>Piggy-backed feedbacks</li>
+ *    <li>Negative ACKs</li>
+ *   </ul>
+ *  </li>
+ *  <li>
+ *   ROHC packets:
+ *   <ul>
+ *    <li>Feedback packets (RFC 3095, §5.2.1 and §5.2.2)</li>
+ *    <li>
+ *     IR packet (RFC 3095, §5.2.3)
+ *     <ul>
+ *      <li style="color: orange;">Optional dynamic part is always sent</li>
+ *     </ul>
+ *    </li>
+ *    <li>IR-DYN packet (RFC 3095, §5.2.3)</li>
+ *    <li>
+ *     Packet type 0 (RFC 3095, §5.7.1)
+ *     <ul>
+ *      <li>UO-0</li>
+ *      <li style="color: red;">R-0</li>
+ *      <li style="color: red;">R-0-CRC</li>
+ *     </ul>
+ *    </li>
+ *    <li style="color: red;">
+ *     Packet type 1 for R-mode (RFC 3095, §5.7.2)
+ *     <ul>
+ *      <li style="color: red;">R-1</li>
+ *      <li style="color: red;">R-1-TS</li>
+ *      <li style="color: red;">R-1-ID</li>
+ *     </ul>
+ *    </li>
+ *    <li>
+ *     Packet type 1 for U/O-mode (RFC 3095, §5.7.3)
+ *     <ul>
+ *      <li>UO-1</li>
+ *      <li>UO-1-ID</li>
+ *      <li>UO-1-TS</li>
+ *     </ul>
+ *    </li>
+ *    <li>
+ *     Packet type 2 (RFC 3095, §5.7.4)
+ *     <ul>
+ *      <li>UOR-2</li>
+ *     </ul>
+ *    </li>
+ *   </ul>
+ *  </li>
+ *  <li>Actions upon CRC failure (RFC 3095, §5.3.2.2.3, §5.3.2.2.4 and §5.3.2.2.5)</li>
+ * </ul>
+ *
+ * <h2>ROHC profiles</h2>
+ *
+ * <ul>
+ *  <li>Uncompressed (0x0000)</li>
+ *  <li>RTP (0x0001)</li>
+ *  <li>UDP (0x0002)</li>
+ *  <li style="color: red;">ESP (0x0003)</li>
+ *  <li>IP-only (0x0004)</li>
+ *  <li style="color: red;">TCP (0x0006)</li>
+ *  <li>UDP-Light (0x0008)</li>
+ * </ul>
+ *
+ * <h2>Features shared by all supported profiles</h2>
+ *
+ * <ul>
+ *  <li>Compression of up to two IPv4/IPv6 headers</li>
+ *  <li style="color: red;">Compressed IPv4 Header Extension List (RFC 3095, §5.8.4.1 & §5.8.5.1)</li>
+ *  <li>Compressed IPv6 Header Extension List (RFC 3095, §5.8.4.1 & §5.8.5.1)</li>
+ *  <li>Authentication Header (AH) Compression (RFC 3095, §5.8.4.2)</li>
+ *  <li style="color: red;">Encapsulating Security Payload Header (ESP) Compression (RFC 3095, §5.8.4.3)</li>
+ *  <li style="color: red;">GRE Header Compression (RFC 3095, §5.8.4.4)</li>
+ *  <li>Forced context reinitialization controled by the user</li>
+ *  <li>Fixed sizes parameters in order to specify the size of ROHC packets</li>
+ *  <li style="color: red;">Optional Reverse decompression (RFC 3095, §6.1)</li>
+ *  <li style="color: red;">ROHC segmentation (RFC 3095, §5.2.5)</li>
+ * </ul>
+ *
+ * <h2>Profile-specific features</h2>
+ *
+ * <table style="border-collapse: collapse; border: solid thin black;">
+ *  <tr>
+ *   <td>Uncompressed</td>
+ *   <td>
+ *    &nbsp;
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>RTP</td>
+ *   <td>
+ *    <ul>
+ *     <li style="color: red;">Compressed CSRC List (RFC 3095, §5.8.5.2)</li>
+ *     <li style="color: red;">Timer-based compression of RTP Timestamp (RFC 3095, §4.5.4)</li>
+ *    </ul>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>UDP</td>
+ *   <td>
+ *    &nbsp;
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>IP-only</td>
+ *   <td>
+ *    <ul>
+ *     <li style="color: red;">more than 2 IPv4/IPv6 headers</li>
+ *    </ul>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>UDP-Lite</td>
+ *   <td>
+ *    <ul>
+ *     <li>Checksum Coverage (CC) compression</li>
+ *    </ul>
+ *   </td>
+ *  </tr>
+ * </table>
+ *
+ * <h2>Encoding methods</h2>
+ *
+ * <ul>
+ *  <li>Least Significant Bits (LSB) encoding (RFC 3095, §4.5.1)</li>
+ *  <li>Window-based LSB (W-LSB) encoding (RFC 3095, §4.5.2)</li>
+ *  <li>Scaled RTP Timestamp encoding (RFC 3095, §4.5.3)</li>
+ *  <li style="color: red;">Timer-based compression of RTP Timestamp (RFC 3095, §4.5.4)</li>
+ *  <li>Offset IP-ID encoding (RFC 3095, §4.5.5)</li>
+ *  <li>Self-describing variable-length (SDVL) values (RFC 3095, §4.5.6)</li>
+ *  <li>
+ *   Encoded values across several fields in compressed headers (RFC 3095, §4.5.7)
+ *   <ul>
+ *    <li style="color: orange;">Not fully respected: if more bits than stricly necessary are available, more bits are sent</li>
+ *   </ul>
+ *  </li>
+ * </ul>
+ *
+ * <h2>Non-standard ROHC enhancements</h2>
+ *
+ * <ul>
+ *  <li>
+ *   Use of encapsulation padding for sending larger packets</li>
+ *   <ul>
+ *    <li style="color: orange;">Padding not used with Compressed IPv6 Header Extension List</li>
+ *   </ul>
+ *  </li>
+ *  <li>Optional simplification of UOR-2-TS / UOR-2-ID packets to help distinguish them at decompressor</li>
+ * </ul>
+ */
+
+
+/**
  * @brief Determine the level of output produced by the ROHC library
  *
  * Possible levels are:
