@@ -5068,11 +5068,11 @@ void check_ip_identification(struct ip_header_info *header_info,
 
 /**
  * @brief Make an assessment of the size in byte of the paquet which will be sent.
- *
+ * @param comp        The rohc compressor
  * @param context     The context used for the compression
- * @param ip_packet   The packet which will be compressed
+ * @param ip          The packet which will be compressed
  * @param packet      The type of the packet which will be compressed
- * @size_data         The size of the data in bytes
+ * @param size_data   The size of the data in bytes
  * @param original    Indicate if the specified packet is the original ROHC packet 
  * @return the size assessment of the ROHC packet
  */
@@ -5207,12 +5207,11 @@ int c_assessment_size(struct rohc_comp *comp, struct c_context *context, const s
  * Decision Algorithm which returns the type of the packet 
  * to send when the jamming option is activated. It is an optimisation of
  * the use of the encapsulation packets.
- *
+ * @param comp      The rohc compressor
  * @param context   The context used for the compression
- * @param ip_packet The packet to compress
+ * @param ip        The packet to compress
  * @param packet    The type of the original ROHC packet
  * @param size_data The size of the data to send in bytes
- * @param
  * @return the new type of the ROHC packet to send (0 if failed)
 **/
 int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct ip_packet ip, int packet, int size_data)
