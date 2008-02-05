@@ -63,7 +63,8 @@ struct d_rtp_context
  * Public function prototypes.
  */
 
-unsigned int rtp_detect_ir_size(unsigned char *packet,
+unsigned int rtp_detect_ir_size(struct d_context *context,
+				unsigned char *packet,
                                 unsigned int plen,
                                 int second_byte,
                                 int profile_id);
@@ -71,7 +72,8 @@ unsigned int rtp_detect_ir_size(unsigned char *packet,
 unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
                                     unsigned int plen,
                                     int largecid,
-                                    struct d_context *context);
+                                    struct d_context *context,
+				    unsigned char *packet);
 
 int rtp_decode_static_rtp(struct d_generic_context *context,
                           const unsigned char *packet,
@@ -87,7 +89,7 @@ int rtp_build_uncompressed_rtp(struct d_generic_context *context,
                                struct d_generic_changes *active,
                                unsigned char *dest,
                                int payload_size);
-
+int rtp_get_static_part(void);
 
 #endif
 

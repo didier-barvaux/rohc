@@ -34,6 +34,14 @@ quit:
 	return NULL;
 }
 
+/**
+ * @brief Get the size of the static part of an IR packet (without IP)
+ * @return the size
+ */
+int ip_get_static_part(void)
+{
+	return 0;
+}
 
 /**
  * @brief Decode the IP dynamic part of the ROHC packet.
@@ -130,6 +138,7 @@ error:
  * the Profile and CRC fields, the static and dynamic chains (outer and inner
  * IP headers + UDP header) and the SN.
  *
+ * @param context         The decompression context
  * @param packet          The pointer on the IR packet
  * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
@@ -138,7 +147,8 @@ error:
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
-unsigned int ip_detect_ir_size(unsigned char *packet,
+unsigned int ip_detect_ir_size(struct d_context *context,
+			       unsigned char *packet,
                                unsigned int plen,
                                int second_byte,
                                int profile_id)
@@ -146,7 +156,7 @@ unsigned int ip_detect_ir_size(unsigned char *packet,
 	unsigned int length;
 
 	/* Profile and CRC fields + IP static & dynamic chains */
-	length = d_generic_detect_ir_size(packet, plen, second_byte, profile_id);
+	length = d_generic_detect_ir_size(context, packet, plen, second_byte, profile_id);
 	if(length == 0)
 		goto quit;
 
@@ -203,18 +213,20 @@ quit:
  * @param plen       The length of the IR-DYN packet
  * @param largecid   Whether large CIDs are used or not
  * @param context    The decompression context
+ * @param packet     The ROHC packet
  * @return           The length of the IR-DYN header,
  *                   0 if an error occurs
  */
 unsigned int ip_detect_ir_dyn_size(unsigned char *first_byte,
                                    unsigned int plen,
                                    int largecid,
-                                   struct d_context *context)
+                                   struct d_context *context,
+				   unsigned char *packet)
 {
 	unsigned int length;
 
 	/* Profile and CRC fields + IP dynamic chains */
-	length = d_generic_detect_ir_dyn_size(first_byte, plen, largecid, context);
+	length = d_generic_detect_ir_dyn_size(first_byte, plen, largecid, context, packet);
 	if(length == 0)
 		goto quit;
 
@@ -241,6 +253,7 @@ struct d_profile d_ip_profile =
 	d_generic_destroy,
 	ip_detect_ir_size,
 	ip_detect_ir_dyn_size,
+	ip_get_static_part,
 	d_generic_get_sn,
 };
 

@@ -632,11 +632,6 @@ int d_decode_header(struct rohc_decomp *decomp,
 		/* find the profile specified in the ROHC packet */
 		profile = find_profile(walk[largecid + 1]);
 
-		/* check the CRC of the IR packet */
-		if(!rohc_ir_packet_crc_ok(walk, isize - (walk - ibuf),
-		                          largecid, ddata->addcidUsed, profile))
-			return ROHC_ERROR_CRC;
-
 		/* do we need more space in the array of contexts? */
 		if(ddata->cid >= decomp->num_contexts)
 			context_array_increase(decomp, ddata->cid);
@@ -656,6 +651,16 @@ int d_decode_header(struct rohc_decomp *decomp,
 			ddata->active = context_create(decomp, ddata->cid, profile);
 			if(!ddata->active)
 				return ROHC_ERROR_NO_CONTEXT;
+		}
+		/* check the CRC of the IR packet */
+		if(!rohc_ir_packet_crc_ok(ddata->active, walk, isize - (walk - ibuf),
+			largecid, ddata->addcidUsed, profile))
+		{
+			if(casenew)
+				context_free(ddata->active);
+			else
+				decomp->contexts[ddata->cid] = ddata->active;							
+			return ROHC_ERROR_CRC;
 		}
 
 		decomp->last_context = ddata->active;
@@ -792,7 +797,7 @@ struct d_profile * find_profile(int id)
 
 /**
  * @brief Check the CRC of one IR packet.
- *
+ * @param context    The decompression context
  * @param walk       The ROHC IR packet
  * @param plen       The length of the ROHC packet
  * @param largecid   The size of the large CID field
@@ -800,7 +805,8 @@ struct d_profile * find_profile(int id)
  * @param profile    The profile associated with the ROHC packet
  * @return           Whether the CRC is ok or not
  */
-int rohc_ir_packet_crc_ok(unsigned char *walk,
+int rohc_ir_packet_crc_ok(struct d_context *context,
+			  unsigned char *walk,
                           unsigned int plen,
                           const int largecid,
                           const int addcidUsed,
@@ -819,13 +825,14 @@ int rohc_ir_packet_crc_ok(unsigned char *walk,
 	realcrc = walk[largecid + 2];
 
 	/* detect the size of the IR header */
-	ir_size = profile->detect_ir_size(walk, plen, largecid + 1, profile->id);
+	ir_size = profile->detect_ir_size(context, walk, plen, largecid + 1, profile->id);
 	if(ir_size == 0)
 	{
 		rohc_debugf(0, "cannot detect the IR size with profile %s (0x%04x)\n",
 		            profile->description, profile->id);
 		goto bad;
 	}
+	rohc_debugf(3, "size of IR packet header : %d \n", ir_size);
 
 	/* compute the CRC of the IR packet */
 	walk[largecid + 2] = 0;
@@ -884,7 +891,7 @@ int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
 	realcrc = walk[largecid + 2];
 	
 	/* detect the size of the IR-DYN header */
-	irdyn_size = profile->detect_ir_dyn_size(walk, plen, largecid, context);
+	irdyn_size = profile->detect_ir_dyn_size(walk, plen, largecid, context, walk);
 	if(irdyn_size == 0)
 	{
 		rohc_debugf(0, "cannot detect the IR-DYN size\n");

@@ -99,14 +99,17 @@ int d_decode_static_ip6(const unsigned char *packet,
 
 int d_decode_dynamic_ip(const unsigned char *packet,
                         unsigned int length,
-                        struct d_generic_changes *info);
+                        struct d_generic_changes *info,
+			struct list_decomp * decomp);
 int d_decode_dynamic_ip4(const unsigned char *packet,
                          unsigned int length,
                          struct ip_packet *ip,
                          int *rnd, int *nbo);
 int d_decode_dynamic_ip6(const unsigned char *packet,
                          unsigned int length,
-                         struct ip_packet *ip);
+                         struct ip_packet *ip,
+			 struct list_decomp * decomp,
+			 struct d_generic_changes *info);
 
 int decode_outer_header_flags(unsigned char *flags,
                               unsigned char *fields,
@@ -121,13 +124,15 @@ int decode_inner_header_flags(unsigned char *flags,
 
 unsigned int build_uncompressed_ip(struct d_generic_changes *active,
                                    unsigned char *dest,
-                                   unsigned int payload_size);
+                                   unsigned int payload_size, 
+				   struct list_decomp * decomp);
 unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
                                     unsigned char *dest,
                                     unsigned int payload_size);
 unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
                                     unsigned char *dest,
-                                    unsigned int payload_size);
+                                    unsigned int payload_size,
+				    struct list_decomp * decomp);
 
 void copy_generic_changes(struct d_generic_changes *dst,
                           struct d_generic_changes *src);
@@ -150,6 +155,23 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
                        int *calc_crc, int real_crc,
                        int ext);
 
+int check_id(struct list_decomp * decomp, int gen_id);
+
+int get_bit_index(unsigned char byte, int index);
+
+int check_ip6_index(struct list_decomp * decomp, int index);
+
+void ip6_free_table(struct list_decomp * decomp);
+
+int encode_ip6_extension(struct d_generic_changes * active,
+			 struct list_decomp * decomp, 
+			  unsigned char *dest);
+void create_ip6_item(const unsigned char *data, int length,int index, 
+		     struct list_decomp * decomp);
+
+void ip6_d_init_table(struct list_decomp * decomp);
+
+int get_ip6_ext_size(const unsigned char * ext);
 
 /**
  * @brief Create the generic decompression context.
@@ -205,6 +227,36 @@ void * d_generic_create(void)
 	}
 	bzero(context->active2, sizeof(struct d_generic_changes));
 
+	context->list_decomp1 = malloc(sizeof(struct list_decomp));
+	if(context->list_decomp1 == NULL)
+	{
+		rohc_debugf(0, "cannot allocate memory for the list decompressor1\n");
+		goto free_active2;
+	}
+	bzero(context->list_decomp1, sizeof(struct list_decomp));
+
+	context->list_decomp2 = malloc(sizeof(struct list_decomp));
+        if(context->list_decomp2 == NULL)
+	{
+		rohc_debugf(0, "cannot allocate memory for the list decompressor2\n");
+		goto free_decomp1;
+	}
+	bzero(context->list_decomp2, sizeof(struct list_decomp));
+	
+	context->list_decomp1->free_table = ip6_free_table;
+	context->list_decomp1->encode_extension = encode_ip6_extension;
+	context->list_decomp1->check_index = check_ip6_index;
+	context->list_decomp1->create_item = create_ip6_item;
+	context->list_decomp1->get_ext_size = get_ip6_ext_size;
+	context->list_decomp2->free_table = ip6_free_table;
+	context->list_decomp2->encode_extension = encode_ip6_extension;
+	context->list_decomp2->check_index = check_ip6_index;
+	context->list_decomp2->create_item = create_ip6_item;
+	context->list_decomp2->get_ext_size = get_ip6_ext_size;
+	
+	ip6_d_init_table(context->list_decomp1);
+	ip6_d_init_table(context->list_decomp2);
+		
 	/* no packet was successfully processed for the moment */
 	context->first_packet_processed = 0;
 	
@@ -212,7 +264,11 @@ void * d_generic_create(void)
 	context->next_header_proto = 0;
 
 	return context;
-
+	
+free_decomp1:
+	zfree(context->list_decomp1);
+free_active2:
+	zfree(context->active2);
 free_active1:
 	zfree(context->active1);
 free_last2:
@@ -237,6 +293,7 @@ quit:
 void d_generic_destroy(void *context)
 {
 	struct d_generic_context *c = context;
+	int i;
 
 	if(c != NULL)
 	{
@@ -251,11 +308,1120 @@ void d_generic_destroy(void *context)
 
 		if(c->specific != NULL)
 			zfree(c->specific);
-
+		if(c->list_decomp1 != NULL)
+		{
+			c->list_decomp1->free_table(c->list_decomp1);
+			if(c->list_decomp1->temp_list != NULL)
+				destroy_list( c->list_decomp1->temp_list);
+			for(i = 0; i < LIST_COMP_WINDOW; i++)
+			{
+				if(c->list_decomp1->list_table[i] != NULL)
+					destroy_list(c->list_decomp1->list_table[i]);
+			}
+			zfree(c->list_decomp1);
+		}
+		if(c->list_decomp2 != NULL)
+		{
+			c->list_decomp2->free_table(c->list_decomp2);
+			if(c->list_decomp2->temp_list != NULL)
+				destroy_list( c->list_decomp2->temp_list);
+			for(i = 0; i < LIST_COMP_WINDOW; i++)
+			{
+				if(c->list_decomp2->list_table[i] != NULL)
+					destroy_list(c->list_decomp2->list_table[i]);
+			}									
+			zfree(c->list_decomp2);
+		}
 		zfree(c);
 	}
 }
 
+/**
+ * @brief Initialize the tables IPv6 extension in decompressor
+ *
+ * @param decomp The list decompressor
+ */
+void ip6_d_init_table(struct list_decomp * decomp)
+{
+	/* insert HBH type in table */
+	decomp->based_table[0].type = HBH;
+	decomp->based_table[0].header.hbh = malloc(sizeof(struct ip6_hbh));
+	decomp->based_table[0].length = 0;
+	decomp->based_table[0].data = NULL;
+	decomp->trans_table[0].known = 0;
+	decomp->trans_table[0].item = &decomp->based_table[0];
+	/* insert DEST type in table */
+	decomp->based_table[1].type = DEST;
+	decomp->based_table[1].header.dest = malloc(sizeof(struct ip6_dest));
+	decomp->based_table[1].length = 0;
+	decomp->based_table[1].data = NULL;
+	decomp->trans_table[1].known = 0;
+	decomp->trans_table[1].item = &decomp->based_table[1];
+	/* insert RTHDR type in table */
+	decomp->based_table[2].type = RTHDR;
+	decomp->based_table[2].header.rthdr = malloc(sizeof(struct ip6_rthdr));
+	decomp->based_table[2].length = 0;
+	decomp->based_table[2].data = NULL;
+	decomp->trans_table[2].known = 0;
+	decomp->trans_table[2].item = &decomp->based_table[2];
+	/* insert AHHDR type in table */
+	decomp->based_table[3].type = AH;
+	decomp->based_table[3].header.ahhdr = malloc(sizeof(struct ip6_ahhdr));
+	decomp->based_table[3].length = 0;
+	decomp->based_table[3].data = NULL;
+	decomp->trans_table[3].known = 0;
+	decomp->trans_table[3].item = &decomp->based_table[4];
+}
+
+/**
+ * @brief Free the based table of the list decompressor
+ * @param decomp The list decompressor
+ */
+void ip6_free_table(struct list_decomp * decomp)
+{
+	int i;
+	for(i = 0; i < 4; i++)
+	{
+		if(decomp->based_table[i].data != NULL)
+			free(decomp->based_table[i].data);
+	}
+	if(decomp->based_table[0].header.hbh != NULL)
+		free(decomp->based_table[0].header.hbh);
+	if(decomp->based_table[1].header.dest != NULL)
+		free(decomp->based_table[1].header.dest);
+	if(decomp->based_table[2].header.rthdr != NULL)
+		free(decomp->based_table[2].header.rthdr);
+	if(decomp->based_table[3].header.ahhdr != NULL)
+		free(decomp->based_table[3].header.ahhdr);
+}
+
+/**
+ * @brief Algorithm of list decompression
+ * @param decomp The list decompressor 
+ * @param packet The ROHC packet to decompress
+ * @return the size of the compressed list
+ */
+
+int d_algo_list_decompress(struct list_decomp * decomp, const unsigned char *packet)
+{
+	int et; // encoding type
+	int ps; 
+	int gen_id;
+	int ref_id;
+	int size = 0;
+	int m;
+	unsigned char byte = *packet & 0xff;
+
+	if(byte == 0)
+	{
+		rohc_debugf(3, "no extension list \n");
+		decomp->list_decomp = 0;
+		goto end;
+	}
+	else
+		decomp->list_decomp = 1;
+		
+	m = GET_BIT_0_3(packet);
+	et = GET_BIT_6_7(packet); 
+	ps = GET_BIT_4(packet);
+	packet ++;
+	size ++;
+	gen_id = *packet & 0xff;
+	packet ++;
+	size ++;
+	rohc_debugf(3, "type of encoding: %d \n", et);
+	if (et == 0)
+	{
+		size += decode_type_0(decomp, packet, gen_id, ps, m);
+	}
+	else 
+	{
+		ref_id = *packet & 0xff;
+		packet ++;
+		size ++;
+		if (et == 1)
+			size += decode_type_1(decomp, packet, gen_id, ps, m, ref_id);
+		else if(et == 2)
+			size += decode_type_2(decomp, packet, gen_id, ps, ref_id);
+		else
+			size += decode_type_3(decomp, packet, gen_id, ps, m, ref_id);	
+	}
+	return size;
+end:
+	return 1;
+}
+
+/**
+ * @brief Check if the gen_id is present in list table
+ * @param decomp The list decompressor
+ * @param gen_id The specified id
+ * @return 1 if successfull, 0 else
+ */
+int check_id(struct list_decomp * decomp, int gen_id)
+{
+	int i = 0;
+	int curr_id = -1;
+	while(decomp->list_table[i] == NULL && i < LIST_COMP_WINDOW)
+	{
+		i++;
+	}
+	if(decomp->list_table[i] != NULL)
+	{
+		curr_id = decomp->list_table[i]->gen_id;
+		while( gen_id != curr_id && i < LIST_COMP_WINDOW)
+		{
+			i++;
+			if(decomp->list_table[i] != NULL)
+				curr_id = decomp->list_table[i]->gen_id;
+		}
+	}
+	if(gen_id == curr_id)
+		return 1;
+	else
+		return 0;
+}
+/**
+ * @brief Check if the index is correct in IPv6 table
+ *
+ * @param decomp The list decompressor
+ * @param index The specified index
+ * @return 1 if successfull, 0 else
+ */
+int check_ip6_index(struct list_decomp * decomp, int index)
+{
+	if(index > 3)
+	{
+		rohc_debugf(0, "no item in based table at this index: %d \n", index);
+		goto error;
+	}
+	
+	return 1;
+error:
+	return 0;
+}
+/**
+ * @brief Create an IPv6 item extension list
+ * @param data The data in the item
+ * @param length The length of the item
+ * @param index The index of the item in based table
+ * @param decomp The list decompressor
+*/
+void create_ip6_item(const unsigned char *data,int length,int index, struct list_decomp * decomp)
+{
+	decomp->based_table[index].length = length;
+	decomp->trans_table[index].known = 1;
+	switch (index)
+	{
+		case 0:
+			decomp->based_table[index].header.hbh->ip6h_nxt = * data;
+			decomp->based_table[index].header.hbh->ip6h_len = * (data + 1);
+			break;
+		case 1:
+			decomp->based_table[index].header.dest->ip6d_nxt = * data;
+			decomp->based_table[index].header.dest->ip6d_len = * (data + 1);
+			break;
+		case 2:
+			decomp->based_table[index].header.rthdr->ip6r_nxt = * data;
+			decomp->based_table[index].header.rthdr->ip6r_len = * (data + 1);
+			break;
+		case 3:
+			decomp->based_table[index].header.ahhdr->ip6ah_nxt = * data;
+			decomp->based_table[index].header.ahhdr->ip6ah_len = * (data + 1);
+			break;
+		default:
+			rohc_debugf(0, "no item defined for IPv6 with this index\n");
+			break;
+	}
+	if(decomp->based_table[index].data != NULL)
+		zfree(decomp->based_table[index].data);
+	decomp->based_table[index].data = malloc(length);
+	if(decomp->based_table[index].data != NULL)
+		memcpy(decomp->based_table[index].data, data, length);	
+}
+
+/**
+ * @brief Decode an extension list type 0
+ * @param decomp The list decompressor
+ * @param packet The ROHC packet to decompress
+ * @param gen_id The id of the current list
+ * @param ps The ps field
+ * @param m The m fiel
+ * @return the size of the compressed list
+ */
+int decode_type_0(struct list_decomp * decomp, const unsigned char * packet, int gen_id, int ps, int m)
+{
+	int i;
+	//struct c_list * list = NULL;
+	int index;
+	int X;
+	int size = 0;
+	int length;
+	const unsigned char * data;
+	int index_size = 0;
+	int new_list = !check_id(decomp, gen_id);
+	if(new_list)//new list
+	{
+		rohc_debugf(3, "creation of a new list \n");
+		decomp->counter_list++;
+		decomp->counter = 0;
+		decomp->ref_ok = 0;
+		if(decomp->counter_list >= LIST_COMP_WINDOW)
+			decomp->counter_list = 0;
+		//list = decomp->list_table[decomp->counter];
+		if(decomp->list_table[decomp->counter_list]!= NULL )
+		{
+			empty_list(decomp->list_table[decomp->counter_list]);
+		}
+		else
+		{
+			rohc_debugf(1, "creating compression list\n");
+		        decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			if(decomp->list_table[decomp->counter_list] == NULL)
+			{
+				rohc_debugf(0, "cannot allocate memory for the compression list\n");
+				goto error;
+			}
+			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+			decomp->list_table[decomp->counter_list]->first_elt = NULL;
+		}
+		decomp->counter ++;
+	}
+	else if(decomp->counter < L)
+	{
+		decomp->counter ++;
+		if(decomp->counter == L)
+		{
+			decomp->ref_list = decomp->list_table[decomp->counter_list];
+			decomp->ref_ok = 1;
+		}
+	}
+	rohc_debugf(3, "new value of decompressor list counter: %d \n", decomp->counter);
+	if(!ps && m % 2 == 0)//assessment of the index list size
+		index_size = m/2;
+	else if(!ps && m % 2 != 0)
+		index_size = (m+1)/2;
+	else if(ps)
+		index_size = m;
+	// creation of the list
+	for(i = 0; i < m ; i++)
+	{
+		rohc_debugf(3, "value of m: %d and ps: %d \n", m, ps);
+		if(!ps)
+		{
+			X = GET_BIT_7(packet + i/2);
+			index =  GET_BIT_4_6(packet);
+			if (X)
+			{
+				rohc_debugf(3, "reception of a new item \n");
+				length = decomp->get_ext_size(packet + index_size + size);
+				if(new_list)
+				{
+					data = packet + index_size + size;
+					decomp->create_item(data, length, index, decomp);
+				}
+				size += length;
+			}
+			else
+			{
+				if(!decomp->trans_table[index].known)
+					goto error;
+			}
+			if(new_list)
+			{
+				if(!insert_elt(decomp->list_table[decomp->counter_list], &(decomp->based_table[index]), i, index))
+					goto error;
+			}
+			i++;
+			X = GET_BIT_3(packet + i/2);
+			index = GET_BIT_0_2(packet + i/2);
+			if (X && i < m)
+			{
+				rohc_debugf(3, "reception of a new item \n");
+				length = decomp->get_ext_size(packet + index_size + size);
+				if(new_list)
+				{
+					data = packet + index_size + size;
+					decomp->create_item(data, length, index, decomp);
+				}
+				size += length;
+			}
+			else if (i < m)
+			{
+				if(!decomp->trans_table[index].known)
+					goto error;
+			}
+			if(new_list && i < m )
+			{
+				if(!insert_elt(decomp->list_table[decomp->counter_list], &(decomp->based_table[index]), i, index))
+					goto error;
+			}
+		}
+		else
+		{
+			X = GET_BIT_7(packet + i);
+			index = GET_BIT_0_6(packet + i);
+			if (X)
+			{
+				rohc_debugf(3, "reception of a new item \n");
+				length = decomp->get_ext_size(packet + index_size + size);
+				if(new_list)
+				{
+					data = packet + index_size + size;
+					decomp->create_item(data, length, index, decomp);
+				}
+				size += length;
+			}
+			else
+			{
+				if(!decomp->trans_table[index].known)
+					goto error;
+			}
+			if(new_list)
+			{
+				if(!insert_elt(decomp->list_table[decomp->counter_list], &(decomp->based_table[index]), i, index))
+					goto error;
+			}
+		}
+	}
+	return (size + index_size);
+error:
+	return 0;
+}
+   
+/**
+ * @brief Decode an extension list type 1
+ * @param decomp The list decompressor
+ * @param packet The ROHC packet to decompress
+ * @param gen_id The id of the current list
+ * @param ps The ps field
+ * @param m The m fiel
+ * @param ref_id The id of the reference list
+ * @return the size of the compressed list
+ */
+int decode_type_1(struct list_decomp * decomp, const unsigned char * packet, int gen_id, int ps, int m, int ref_id)
+{
+	int i;
+	struct c_list * list = NULL;
+	int index;
+	int X;
+	int size = 0;
+	int index_size = 0;
+	int length;
+	int bit;
+	int j = 0;
+	struct list_elt * elt;
+	unsigned char * mask = NULL;
+	mask = malloc(2*sizeof(unsigned char));
+	const unsigned char * data;
+	unsigned char byte = 0;
+	int index_nb;
+	int size_l = 0;
+	int new_list = !check_id(decomp, gen_id);
+	if(!check_id(decomp, ref_id))
+		goto error;
+	else
+	{
+		// update the list table
+		if(decomp->ref_list->gen_id != ref_id)
+		{
+			for( i = 0; i < LIST_COMP_WINDOW; i++)
+			{
+				if(decomp->list_table[i]->gen_id < ref_id)
+					empty_list(decomp->list_table[i]);
+				if(decomp->list_table[i]->gen_id == ref_id)
+					decomp->ref_list = decomp->list_table[i];
+			}
+		}
+		if(new_list)
+		{
+			decomp->ref_ok = 0;
+			decomp->counter = 0;
+			rohc_debugf(3, "creation of a new list\n");
+			decomp->counter_list++;
+			if(decomp->counter_list >= LIST_COMP_WINDOW)
+				decomp->counter_list = 0;
+			if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
+				decomp->counter_list++;
+			list = decomp->list_table[decomp->counter_list];
+			if(list != NULL && list->first_elt != NULL)
+			{
+				empty_list(list);
+			}
+			else 
+			{
+				rohc_debugf(1, "creating compression list\n");
+				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+				if(decomp->list_table[decomp->counter_list] == NULL)
+				{
+					rohc_debugf(0, "cannot allocate memory for the compression list\n");
+					goto error;
+				}
+				decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+				decomp->list_table[decomp->counter_list]->first_elt = NULL;
+			}
+		}
+		// insertion bit mask
+		// assessment of index number
+		size_l = size_list(decomp->ref_list);
+		index_nb = size_l;
+		mask[0] = *packet;
+		packet++;
+		for(i = 0; i < 8; i++)
+		{
+			bit = get_bit_index(mask[0], i);
+			if(bit)
+				index_nb++;
+		}
+		if(ps)
+		{
+			mask[1] = *packet;
+			packet++;
+			for(i = 0; i < 8; i++)
+			{
+				bit = get_bit_index(mask[1], i);
+				if(bit)
+					index_nb++;
+			}
+		}
+		//assessment of the index list size
+		if(!ps && (index_nb - 1 - size_l) % 2 == 0)
+			index_size = (index_nb - 1 - size_l)/2;
+		else if(!ps && (index_nb - 1 - size_l) % 2 != 0)
+			index_size = (index_nb - size_l)/2;
+		else if(ps)
+			index_size = index_nb - size_l;
+		//insertion of the elements in the new list
+		for(i = 0; i < index_nb ; i++)
+		{
+			if(i > 7)
+				bit = get_bit_index(mask[1], 15 - i);
+			else
+				bit = get_bit_index(mask[0], 7 - i);
+			if(!bit && new_list)
+			{
+				elt = get_elt(decomp->ref_list, i - j);
+				if(!insert_elt(decomp->list_table[decomp->counter_list], 
+				   elt->item, i, elt->index_table))
+					goto error;
+			}
+			else if(bit)
+			{
+				rohc_debugf(3, "value of ps :%d \n", ps);
+				if(!ps) // index coded with 4 bits
+				{
+					if(j == 0)
+					{
+						byte |= m & 0x0f;
+						X = GET_BIT_3(&byte);
+						index = GET_BIT_0_2(&byte);
+						if (X)
+						{
+							length = decomp->get_ext_size(packet + index_size + size);
+							if(new_list)
+							{
+								data = packet + index_size + size;
+								decomp->create_item(data, length, index, decomp);
+							}
+							size += length;
+						}
+						else
+						{
+							if(!decomp->trans_table[index].known)
+	                                                        goto error;
+						}
+					}
+					else if(j % 2 != 0)
+					{
+						X = GET_BIT_7(packet + (j-1)/2);
+						index = GET_BIT_4_6(packet + (j-1)/2);
+						if(!decomp->check_index(decomp, index))
+							goto error;
+						if (X)
+						{
+							length = decomp->get_ext_size(packet + index_size + size);
+							if(new_list)
+							{
+								data = packet + index_size + size;
+								decomp->create_item(data, length, index, decomp);
+							}
+							size += length;
+						}
+						else
+						{
+							if(!decomp->trans_table[index].known)
+								goto error;
+						}
+					}
+					else
+					{
+						X = GET_BIT_3(packet + (j-1)/2);
+						index = GET_BIT_0_2(packet + (j-1)/2);
+						if(!decomp->check_index(decomp, index))
+							goto error;
+						if (X)
+						{
+							length = decomp->get_ext_size(packet + index_size + size);
+							if(new_list)
+							{
+								data = packet + index_size + size;
+								decomp->create_item(data, length, index, decomp);
+							}
+							size += length;
+						}
+						else
+						{
+							 if(!decomp->trans_table[index].known)
+							 	goto error;
+						}
+					}	
+					
+				}
+				else // index coded with one byte
+				{
+					X = GET_BIT_7(packet + j);
+					index = GET_BIT_0_6(packet +j);
+					if(!decomp->check_index(decomp, index))
+						goto error;
+					if (X)
+					{
+						length = decomp->get_ext_size(packet + index_size + size);
+						if(new_list)
+						{
+							data = packet + index_size + size;
+							decomp->create_item(data, length, index, decomp);
+						}
+						size += length;
+					}
+					else
+					{
+						if(!decomp->trans_table[index].known)
+							goto error;
+					}
+				}
+				j++;
+				if(new_list)
+				{
+					if(!insert_elt(decomp->list_table[decomp->counter_list], 
+					   &(decomp->based_table[index]), i, index))
+						goto error;
+				}
+			}	
+		}
+		if(decomp->counter < L)
+		{
+			decomp->ref_ok = 0;
+			decomp->counter ++;
+			if(decomp->counter == L)
+			{
+				decomp->ref_list = decomp->list_table[decomp->counter_list];
+				decomp->ref_ok = 1;
+			}
+		}
+	}
+	if(mask != NULL)
+		free(mask);
+	if(ps) // mask coded with 2 bytes
+		size += 2;
+	else
+		size ++;
+		
+	return size + index_size;
+error:
+	return 0;
+}
+
+/**
+ * @brief Decode an extension list type 2
+ * @param decomp The list decompressor
+ * @param packet The ROHC packet to decompress
+ * @param gen_id The id of the current list
+ * @param ps The ps field
+ * @param ref_id The id of the reference list
+ * @return the size of the compressed list
+ */
+int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int gen_id, int ps, int ref_id)
+{
+	int i;
+	struct c_list * list = NULL;
+	int size = 0;
+	int bit;
+	int j = 0;
+	struct list_elt * elt;
+	unsigned char * mask = NULL;
+	mask = malloc(2*sizeof(unsigned char));
+	int size_l;
+	int new_list = !check_id(decomp, gen_id);
+	if(!check_id(decomp, ref_id))
+		goto error;
+	else
+	{
+		// update the list table
+		if(decomp->ref_list->gen_id != ref_id)
+		{
+			for( i = 0; i < LIST_COMP_WINDOW; i++)
+			{
+				if(decomp->list_table[i]->gen_id < ref_id)
+					empty_list(decomp->list_table[i]);
+				if(decomp->list_table[i]->gen_id == ref_id)
+					decomp->ref_list = decomp->list_table[i];
+			}
+		}
+		if(new_list)
+		{
+			decomp->ref_ok = 0;
+			decomp->counter = 0;
+			rohc_debugf(3, "creation of a new list\n");
+			decomp->counter_list++;
+			if(decomp->counter_list >= LIST_COMP_WINDOW)
+				decomp->counter_list = 0;
+			if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
+				decomp->counter_list++;
+			list = decomp->list_table[decomp->counter_list];
+			if(list != NULL && list->first_elt != NULL)
+			{
+				empty_list(list);
+			}
+			else 
+			{
+				rohc_debugf(1, "creating compression list\n");
+				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+				if(decomp->list_table[decomp->counter_list] == NULL)
+				{
+					rohc_debugf(0, "cannot allocate memory for the compression list\n");
+					goto error;
+				}
+				decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+				decomp->list_table[decomp->counter_list]->first_elt = NULL;													
+			}
+		}
+		// removal bit mask
+		size_l = size_list(decomp->ref_list);
+		mask[0] = *packet;
+		packet++;
+		size++;
+		for(i = 0; i < 8; i++)
+		{
+			bit = get_bit_index(mask[0], i);
+			if(bit)
+				size_l--;
+		}
+		if(ps)
+		{
+			mask[1] = *packet;
+			packet++;
+			for(i = 0; i < 8; i++)
+			{
+				bit = get_bit_index(mask[1], i);
+				if(bit)
+					size_l--;
+			}
+			size++;
+		}
+		// creation of the new list
+		if(new_list)
+		{
+			for(i = 0; i < size_l ; i++)
+			{
+				if(i + j > 7)
+					bit = get_bit_index(mask[1], 15 - (i + j));
+				else
+					bit = get_bit_index(mask[0], 7 - (i + j));
+				if(!bit)
+				{
+					elt = get_elt(decomp->ref_list, i + j);
+					if(!insert_elt(decomp->list_table[decomp->counter_list], 
+					   elt->item, i, elt->index_table))
+						goto error;
+				}
+				else
+				{
+					i--; // no elt added in new list
+					j++;
+				}
+			}
+		}
+		if(decomp->counter < L)
+		{
+			decomp->ref_ok = 0;
+			decomp->counter ++;
+			if(decomp->counter == L)
+			{
+				decomp->ref_list = decomp->list_table[decomp->counter_list];
+				decomp->ref_ok = 1;
+			}
+		}
+		rohc_debugf(3, "new value of decompressor list counter: %d \n", decomp->counter);
+	}
+	if(mask != NULL)
+		free(mask);
+	return size;
+error:
+	return 0;
+}
+
+/**
+ * @brief Get the size of the extension in bytes
+ * @param ext The extension
+ * @return The size
+ */
+int get_ip6_ext_size(const unsigned char * ext)
+{
+	int size = (*(ext+1) + 1 )*8;
+	return size;
+}
+
+/**
+ * @brief Decode an extension list type 3
+ * @param decomp The list decompressor
+ * @param packet The ROHC packet to decompress
+ * @param gen_id The id of the current list
+ * @param ps The ps field
+ * @param m The m fiel
+ * @param ref_id The id of the reference list
+ * @return the size of the compressed list
+ */
+int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int gen_id, int ps, int m, int ref_id)
+{
+	int i;
+	int index;
+	int X;
+	int size = 0;
+	int size_header =0;
+	int index_size = 0;
+	int length;
+	int bit;
+	int j = 0;
+	struct list_elt * elt;
+	unsigned char * rem_mask = NULL;
+	rem_mask = malloc(2*sizeof(unsigned char));
+	unsigned char * ins_mask = NULL;
+	ins_mask = malloc(2*sizeof(unsigned char));
+	const unsigned char * data;
+	unsigned char byte = 0;
+	int index_nb;
+	int size_l;
+	int new_list = !check_id(decomp, gen_id);
+	if(!check_id(decomp, ref_id))
+		goto error;
+	else
+	{
+		// update the list table
+		if(decomp->ref_list->gen_id != ref_id)
+		{
+			for( i = 0; i < LIST_COMP_WINDOW; i++)
+			{
+				if(decomp->list_table[i] != NULL)
+				{
+					if(decomp->list_table[i]->gen_id < ref_id)
+						empty_list(decomp->list_table[i]);
+					if(decomp->list_table[i]->gen_id == ref_id)
+						decomp->ref_list = decomp->list_table[i];
+				}
+			}
+		}
+		if(new_list)
+		{
+			decomp->ref_ok = 0;
+			decomp->counter = 0;
+			rohc_debugf(3, "creation of a new list\n");
+			decomp->counter_list++;
+			if(decomp->counter_list >= LIST_COMP_WINDOW)
+				decomp->counter_list = 0;
+			if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
+				decomp->counter_list++;
+			if(decomp->list_table[decomp->counter_list] != NULL && 
+			   decomp->list_table[decomp->counter_list]->first_elt != NULL)
+			{
+				empty_list(decomp->list_table[decomp->counter_list]);
+			}
+			else 
+			{
+				rohc_debugf(1, "creating compression list\n");
+				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+				if(decomp->list_table[decomp->counter_list] == NULL)
+				{
+					rohc_debugf(0, "cannot allocate memory for the compression list\n");
+					goto error;
+				}
+				rohc_debugf(3, "value of gen_id : %d \n", gen_id);
+				decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+				decomp->list_table[decomp->counter_list]->first_elt = NULL;
+			}
+			if(decomp->temp_list != NULL && decomp->temp_list->first_elt != NULL)
+			{
+				empty_list(decomp->temp_list);
+			}
+			else
+			{
+				rohc_debugf(1, "creating temp list\n");
+				decomp->temp_list = malloc(sizeof(struct c_list));
+				if(decomp->temp_list == NULL)
+				{
+					rohc_debugf(0, "cannot allocate memory for the temp list\n");
+					goto error;
+				}
+				decomp->temp_list->gen_id = gen_id;
+				decomp->temp_list->first_elt = NULL;
+			}
+		}
+		// removal bit mask
+		size_l = size_list(decomp->ref_list);
+		rem_mask[0] = *packet;
+		packet++;
+		size++;
+		for(i = 0; i < 8; i++)
+		{
+			bit = get_bit_index(rem_mask[0], i);
+			if(bit)
+				size_l--;
+		}
+		if(ps)
+		{
+			rem_mask[1] = *packet;
+			packet++;
+			for(i = 0; i < 8; i++)
+			{
+				bit = get_bit_index(rem_mask[1], i);
+				if(bit)
+					size_l--;
+			}
+			size++;
+		}
+		// creation of the new list
+		if(new_list)
+		{
+			for(i = 0; i < size_l ; i++)
+			{
+				if(i > 7)
+					bit = get_bit_index(rem_mask[1], 15 - (i+j));
+				else
+					bit = get_bit_index(rem_mask[0], 7 - (i+j));
+				if(!bit)
+				{
+					elt = get_elt(decomp->ref_list, i + j);
+					if(!insert_elt(decomp->temp_list, elt->item, i, elt->index_table))
+						goto error;
+				}
+				else
+				{
+					i--;
+					j++;
+				}
+			}
+		}
+		// insertion bit mask
+		// assessment of index number
+		size_l = size_list(decomp->temp_list);
+		index_nb = size_l;
+		ins_mask[0] = *packet;
+		packet++;
+		for(i = 0; i < 8; i++)
+		{
+			bit = get_bit_index(ins_mask[0], i);
+			if(bit)
+				index_nb++;
+		}
+		size ++;
+		if(ps)
+		{
+			ins_mask[1] = *packet;
+			packet++;
+			for(i = 0; i < 8; i++)
+			{
+				bit = get_bit_index(ins_mask[1], i);
+				if(bit)
+					index_nb++;
+			}
+			size++;
+		}
+		j = 0;
+		//assessment of the index list size
+		if(!ps && (index_nb - 1 - size_l) % 2 == 0)
+			index_size = (index_nb - 1 - size_l)/2;
+		else if(!ps && (index_nb - 1 - size_l) % 2 != 0)
+			index_size = (index_nb - size_l)/2;
+		else if(ps)
+			index_size = index_nb - size_l;
+		//insertion of the elements in the new list
+		size_header = size;
+		for(i = 0; i < index_nb ; i++)
+		{
+			if(i > 7)
+				bit = get_bit_index(ins_mask[1], 15 - i);
+			else
+				bit = get_bit_index(ins_mask[0], 7 - i);
+			if(!bit && new_list)
+			{
+				elt = get_elt(decomp->temp_list, i - j);
+				if(!insert_elt(decomp->list_table[decomp->counter_list], 
+						elt->item, i, elt->index_table))
+				goto error;
+			}
+			else if(bit)
+			{
+				rohc_debugf(3, "value of ps :%d \n", ps);
+				if(!ps) // index coded with 4 bits
+				{
+					if(j == 0)
+					{
+						byte |= m & 0x0f;
+						X = GET_BIT_3(&byte);
+						index = GET_BIT_0_2(&byte);
+						if (X)
+						{
+							length = decomp->get_ext_size(packet + index_size + size - size_header);
+							if(new_list)
+							{
+								data = packet + index_size + size - size_header;
+								decomp->create_item(data, length, index, decomp);
+							}
+							size += length;
+						}
+						else
+						{
+							if(!decomp->trans_table[index].known)
+								goto error;
+						}												
+					}
+					else if(j % 2 != 0)
+					{
+						X = GET_BIT_7(packet + (j-1)/2);
+						index = GET_BIT_4_6(packet + (j-1)/2);
+						if(!decomp->check_index(decomp, index))
+							goto error;
+						if (X)
+						{
+							length = decomp->get_ext_size(packet + index_size + size - size_header);
+							if(new_list)
+							{
+								data = packet + index_size + size - size_header;
+								decomp->create_item(data, length, index, decomp);
+							}
+							size += length;
+						}
+						else
+						{
+							if(!decomp->trans_table[index].known)
+								goto error;
+						}
+					}
+					else
+					{
+						X = GET_BIT_3(packet + (j-1)/2);
+						index = GET_BIT_0_2(packet + (j-1)/2);
+						if(!decomp->check_index(decomp, index))
+							goto error;
+						if (X)
+						{
+							length = decomp->get_ext_size(packet + index_size + size - size_header);
+							if(new_list)
+							{
+								data = packet + index_size + size - size_header;
+								decomp->create_item(data, length, index, decomp);
+							}
+							size += length;
+						}
+						else
+						{
+							if(!decomp->trans_table[index].known)
+								goto error;
+						}
+					}
+				}
+				else // index coded with one byte
+				{
+					X = GET_BIT_7(packet + j);
+					index = GET_BIT_0_6(packet +j);
+					if(!decomp->check_index(decomp, index))
+						goto error;
+					if (X)
+					{
+						length = decomp->get_ext_size(packet + index_size + size - size_header);
+						if(new_list)
+						{
+							data = packet + index_size + size - size_header;
+							decomp->create_item(data, length, index, decomp);
+						}
+						size += length;
+					}
+					else
+					{
+						if(!decomp->trans_table[index].known)
+							goto error;
+					}
+				}
+				j++;
+				if(new_list)
+				{
+					if(!insert_elt(decomp->list_table[decomp->counter_list], 
+							&(decomp->based_table[index]), i, index))
+						goto error;
+				}
+			}
+		}
+		if(decomp->counter < L)
+		{
+			decomp->ref_ok = 0;
+			decomp->counter ++;
+			if(decomp->counter == L)
+			{
+				decomp->ref_list = decomp->list_table[decomp->counter_list];
+				decomp->ref_ok = 1;
+			}
+		}
+		rohc_debugf(3, "new value of decompressor list counter: %d \n", decomp->counter);
+	}
+	if (rem_mask != NULL)
+		free(rem_mask);
+	if (ins_mask != NULL)
+		free(ins_mask);
+	return size + index_size;
+error:
+	return 0;
+}
+
+/**
+ * @brief Get the bit in the byte at the specified index
+ * @param byte the byte to analyse
+ * @param index the specified index
+ * @return the bit
+ */
+int get_bit_index(unsigned char byte, int index)
+{
+	int bit;
+	switch (index)
+	{
+		case 0:
+			bit = GET_BIT_0(&byte);
+			break;
+		case 1:
+			bit = GET_BIT_1(&byte) >> 1;
+			break;
+		case 2:
+			bit = GET_BIT_2(&byte) >> 2;
+			break;
+		case 3:
+			bit = GET_BIT_3(&byte) >> 3;
+			break;
+		case 4:
+			bit = GET_BIT_4(&byte) >> 4;
+			break;
+		case 5:
+			bit = GET_BIT_5(&byte) >> 5;
+			break;
+		case 6:
+			bit = GET_BIT_6(&byte) >> 6;
+			break;
+		case 7:
+			bit = GET_BIT_7(&byte) >> 7;
+			break;
+		default:
+			rohc_debugf(0, "there is no more bit in a byte \n");
+			bit = -1;
+			break;
+	}
+	return bit;
+}
 
 /**
  * @brief Decode one IR packet.
@@ -412,7 +1578,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	if(dynamic_present)
 	{
 		/* decode the dynamic part of the outer IP header */
-		size = d_decode_dynamic_ip(packet, plen, active1);
+		size = d_decode_dynamic_ip(packet, plen, active1, g_context->list_decomp1);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the inner IP dynamic part\n");
@@ -424,7 +1590,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		/* decode the dynamic part of the inner IP header */
 		if(g_context->multiple_ip)
 		{
-			size = d_decode_dynamic_ip(packet, plen, active2);
+			size = d_decode_dynamic_ip(packet, plen, active2, g_context->list_decomp2);
 			if(size == -1)
 			{
 				rohc_debugf(0, "cannot decode the outer IP dynamic part\n");
@@ -469,13 +1635,17 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	{
 		dest += build_uncompressed_ip(active1, dest, plen +
 		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len);
+		                              active1->next_header_len + 
+					      active2->size_list, 
+					      g_context->list_decomp1);
 		dest += build_uncompressed_ip(active2, dest, plen +
-		                              active2->next_header_len);
+		                              active2->next_header_len,
+					      g_context->list_decomp2);
 	}
 	else
 		dest += build_uncompressed_ip(active1, dest, plen +
-		                              active1->next_header_len);
+		                              active1->next_header_len,
+					      g_context->list_decomp1);
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
@@ -551,7 +1721,7 @@ int d_decode_static_ip(const unsigned char *packet,
 	/* create a new empty IP packet with no payload */
 	ip_new(&info->ip, ip_version);
 
-	/* decode the dynamic part of the IP header depending on the IP version */
+	/* decode the static part of the IP header depending on the IP version */
 	if(ip_version == IPV4)
 		read = d_decode_static_ip4(packet, length, &info->ip);
 	else /* IPV6 */
@@ -669,7 +1839,7 @@ int d_decode_static_ip6(const unsigned char *packet,
 
 	/* read the next header value */	
 	ip_set_protocol(ip, GET_BIT_0_7(packet));
-	rohc_debugf(3, "Next Header = 0x%02x\n", ip_get_protocol(*ip));
+	rohc_debugf(3, "Next Header = 0x%02x\n", ip->header.v6.ip6_nxt);
 	packet++;
 	read++;
 
@@ -702,12 +1872,14 @@ error:
  * @param packet The ROHC packet to decode
  * @param length The length of the ROHC packet
  * @param info   The decoded IP header information
+ * @param decomp The list decompressor (only for IPv6)
  * @return       The number of bytes read in the ROHC packet,
  *               -1 in case of failure
  */
 int d_decode_dynamic_ip(const unsigned char *packet,
                         unsigned int length,
-                        struct d_generic_changes *info)
+                        struct d_generic_changes *info, 
+			struct list_decomp * decomp)
 {
 	int read; /* number of bytes read from the packet */
 
@@ -716,7 +1888,7 @@ int d_decode_dynamic_ip(const unsigned char *packet,
 		read = d_decode_dynamic_ip4(packet, length, &info->ip,
 		                            &info->rnd, &info->nbo);
 	else /* IPV6 */
-		read = d_decode_dynamic_ip6(packet, length, &info->ip);
+		read = d_decode_dynamic_ip6(packet, length, &info->ip, decomp, info);
 	
 	return read;
 }
@@ -799,15 +1971,23 @@ error:
  * @param packet The ROHC packet to decode
  * @param length The length of the ROHC packet
  * @param ip     The decoded IP packet
+ * @param decomp The list decompressor
+ * @param info   The decoded IP header information 
  * @return       The number of bytes read in the ROHC packet,
  *               -1 in case of failure
  */
 int d_decode_dynamic_ip6(const unsigned char *packet,
                          unsigned int length,
-                         struct ip_packet *ip)
+                         struct ip_packet *ip,
+			 struct list_decomp * decomp,
+			 struct d_generic_changes * info)
 {
 	int read = 0; /* number of bytes read from the packet */
-
+	struct c_list * list;
+	int i;
+	struct list_elt * elt;
+	int length_list = 0; // number of element in reference list
+	int size = 0; // size of the list
 	/* check the minimal length to decode the IPv6 dynamic part */
 	if(length < 2)
 	{
@@ -827,8 +2007,29 @@ int d_decode_dynamic_ip6(const unsigned char *packet,
 	packet++;
 	read++;
 	
-	/* generic extension header list is not managed yet */
-
+	/* generic extension header list */
+	if(!decomp->size_ext)
+		goto error;
+	else
+	{
+		read += decomp->size_ext;
+		if(decomp->list_decomp)
+		{
+			if(decomp->ref_ok)
+				list = decomp->ref_list;
+			else
+				list = decomp->list_table[decomp->counter_list];
+	
+			if(list->first_elt != NULL)
+				length_list = size_list(list);
+			for(i = 0; i < length_list; i++)
+			{
+				elt = get_elt(list, i);
+				size += elt->item->length;
+			}
+			info->size_list = size;
+		}
+	}
 	return read;
 
 error:
@@ -880,7 +2081,7 @@ error:
  * The function computes the length of the fields 2 + 4-7, ie. the first byte,
  * the Profile and CRC fields and the static and dynamic chains (outer and inner
  * IP headers).
- *
+ * @param context         The decompression context
  * @param packet          The pointer on the IR packet
  * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
@@ -889,16 +2090,19 @@ error:
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
-unsigned int d_generic_detect_ir_size(unsigned char *packet,
+unsigned int d_generic_detect_ir_size(struct d_context *context,
+				      unsigned char *packet,
                                       unsigned int plen,
                                       int second_byte,
                                       int profile_id)
 {
+	struct d_generic_context *g_context = context->specific;
 	unsigned int length = 0;
 	int ip_offset;
 	int d;
 	unsigned int ip_version, ip2_version = 0;
 	unsigned int proto;
+	int static_part;
 
 	/* skip:
 	 *  - the first byte of the ROHC packet (field 2)
@@ -976,15 +2180,27 @@ unsigned int d_generic_detect_ir_size(unsigned char *packet,
 		if(ip_version == IPV4)
 			length += 5;
 		else /* IPv6 */
+		{
 			length += 2;
-
+			static_part = context->profile->get_static_part();
+			g_context->list_decomp1->size_ext = 
+			d_algo_list_decompress(g_context->list_decomp1, packet + length + static_part);
+			rohc_debugf(1, "size of extension list : %d \n", g_context->list_decomp1->size_ext);
+			length += g_context->list_decomp1->size_ext;
+		}
 		/* IP dynamic part of the inner header if present */
 		if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 		{
 			if(ip2_version == IPV4)
 				length += 5;
 			else /* IPv6 */
+			{
 				length += 2;
+				static_part = context->profile->get_static_part();
+				g_context->list_decomp2->size_ext =
+				d_algo_list_decompress(g_context->list_decomp2, packet + length + static_part);
+				length += g_context->list_decomp2->size_ext;
+			}
 		}
 	}
 
@@ -1035,7 +2251,7 @@ error:
  * The function computes the length of the fields 2 + 4-7, ie. the first byte,
  * the Profile and CRC fields and the dynamic chains (outer and inner IP
  * headers).
- *
+ * 
  * @param first_byte The first byte of the IR-DYN packet
  * @param plen       The length of the IR-DYN packet
  * @param largecid   Whether large CIDs are used or not
@@ -1046,7 +2262,8 @@ error:
 unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
                                           unsigned int plen,
                                           int largecid,
-                                          struct d_context *context)
+                                          struct d_context *context,
+					  unsigned char *packet)
 {
 	struct d_generic_context *g_context = context->specific;
 	unsigned int length = 0;
@@ -1067,8 +2284,12 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 	if(version == IPV4)
 		length += 5;
 	else /* IPV6 */
+	{
 		length += 2;
-
+		g_context->list_decomp1->size_ext =
+		d_algo_list_decompress(g_context->list_decomp1, packet + length);
+		length += g_context->list_decomp1->size_ext;
+	}
 	/* analyze the second header if present */
 	protocol = ip_get_protocol(g_context->active1->ip);
 	if(protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6)
@@ -1081,7 +2302,12 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 		if(version2 == IPV4)
 			length += 5;
 		else /* IPv6 */
+		{
 			length += 2;
+			g_context->list_decomp2->size_ext =
+			d_algo_list_decompress(g_context->list_decomp2, packet + length);
+			length += g_context->list_decomp2->size_ext;
+		}
 	}
 
 	return length;
@@ -1280,6 +2506,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 	int org_plen;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 
+	if(g_context->active1->complist)
+		g_context->list_decomp1->ref_ok = 1;
+	if(g_context->multiple_ip && g_context->active2->complist)
+		g_context->list_decomp2->ref_ok = 1;
+
 	if(is_rtp)
 	{
 		struct d_rtp_context *rtp_context;
@@ -1445,6 +2676,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 	int ts_received_size = 0;
 	int m = 0;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+
+	if(g_context->active1->complist)
+		g_context->list_decomp1->ref_ok = 1;
+	if(g_context->multiple_ip && g_context->active2->complist)
+		g_context->list_decomp2->ref_ok = 1;
 
 	/* check if the ROHC packet is large enough to read the second byte */
 	if(plen < 1)
@@ -1691,6 +2927,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 	int ts_bits_size = 0, ts_bits = 0;
 	int m = 0;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP; 
+
+	if(g_context->active1->complist)
+		g_context->list_decomp1->ref_ok = 1;
+	if(g_context->multiple_ip && g_context->active2->complist)
+		g_context->list_decomp2->ref_ok = 1;
 
 	/* check if the ROHC packet is large enough to read the second byte */
 	if(plen < 1)
@@ -1978,7 +3219,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	int size;
 
 	/* decode the dynamic part of the outer IP header */
-	size = d_decode_dynamic_ip(packet, plen, active1);
+	size = d_decode_dynamic_ip(packet, plen, active1, g_context->list_decomp1);
 	if(size == -1)
 	{
 		rohc_debugf(0, "cannot decode the outer IP dynamic part\n");
@@ -1990,7 +3231,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* decode the dynamic part of the inner IP header */
 	if(g_context->multiple_ip)
 	{
-		size = d_decode_dynamic_ip(packet, plen, active2);
+		size = d_decode_dynamic_ip(packet, plen, active2, g_context->list_decomp2);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the outer IP dynamic part\n");
@@ -2024,14 +3265,18 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		dest += build_uncompressed_ip(active1, dest, plen +
-		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len);
+					      ip_get_hdrlen(active2->ip) +
+		                              active1->next_header_len +
+					      active2->size_list,
+					      g_context->list_decomp1);
 		dest += build_uncompressed_ip(active2, dest, plen +
-		                              active2->next_header_len);
+		                              active2->next_header_len,
+					      g_context->list_decomp2);
 	}
 	else
 		dest += build_uncompressed_ip(active1, dest, plen +
-		                              active1->next_header_len);
+		                              active1->next_header_len,
+					      g_context->list_decomp1);
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
@@ -2095,7 +3340,8 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
 	unsigned char *org_dest = dest;
-	int size;	
+	int size;
+	int size_list = 0;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	struct d_rtp_context *rtp_context;
 	rtp_context = (struct d_rtp_context *) g_context->specific;
@@ -2214,17 +3460,29 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	{
 		dest += build_uncompressed_ip(active1, dest, *plen +
 		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len);
+		                              active1->next_header_len +
+					      active2->size_list,
+					      g_context->list_decomp1);
 		dest += build_uncompressed_ip(active2, dest, *plen +
-		                              active2->next_header_len);
+		                              active2->next_header_len,
+					      g_context->list_decomp2);
 	}
 	else
 		dest += build_uncompressed_ip(active1, dest, *plen +
-		                              active1->next_header_len);
+		                              active1->next_header_len,
+					      g_context->list_decomp1);
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
 		dest += g_context->build_next_header(g_context, active1, dest, *plen);
+	if(g_context->multiple_ip)
+	{
+		if(active2->complist)
+			size_list += active2->size_list;
+	}
+	if(active1->complist)
+		size_list += active1->size_list;
+		
 
 	/* check CRC */
 	*calc_crc = crc_calculate(CRC_TYPE_3, org_dest, dest - org_dest);
@@ -2277,6 +3535,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	int is_rtp_present = 0;
 	int is_pt_updated = 0;
 	int size = 0;
+	int size_list = 0;
 	int ts_tmp = 0;
 	int id_size = 0;
 	int id2_size = 0;
@@ -2787,29 +4046,41 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	{
 		dest += build_uncompressed_ip(active1, dest, *plen +
 		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len);
+		                              active1->next_header_len +
+					      active2->size_list,
+					      g_context->list_decomp1);
 		dest += build_uncompressed_ip(active2, dest, *plen +
-		                              active2->next_header_len);
+		                              active2->next_header_len,
+					      g_context->list_decomp2);
 	}
 	else
 		dest += build_uncompressed_ip(active1, dest, *plen +
-		                              active1->next_header_len);
+		                              active1->next_header_len,
+					      g_context->list_decomp1);
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
 		dest += g_context->build_next_header(g_context, active1, dest, *plen);
 
+	if(g_context->multiple_ip)
+	{
+		if(active2->complist)
+			size_list += active2->size_list;
+	}
+	if(active1->complist)
+		size_list += active1->size_list;
+		
 	/* CRC check */
 	if(is_rtp){
 #if RTP_BIT_TYPE
-		*calc_crc = crc_calculate(CRC_TYPE_6, org_dest, dest - org_dest);
+		*calc_crc = crc_calculate(CRC_TYPE_6, org_dest, dest - (size_list + org_dest));
 #else	
-		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - org_dest);
+		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - (size_list + org_dest));
 #endif
 	}
 	else
 	{
-		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - org_dest);
+		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - (size_list + org_dest));
 	}
 	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
 
@@ -3227,7 +4498,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	if(is_rtp)
 	{
 		int ts = 0;
-		int ts_sdvl_size = 0;
+		int ts_size = 0;
 		struct d_rtp_context *rtp_context;
 		rtp_context = (struct d_rtp_context *) g_context->specific;
 		ts_received = rtp_context->ts_received;
@@ -3245,14 +4516,14 @@ int decode_extension3(struct rohc_decomp *decomp,
 				goto error;
 			}
 
-			ts_sdvl_size = d_sdvalue_size(packet);
-			if(ts_sdvl_size == -1)
+			ts_size = d_sdvalue_size(packet);
+			if(ts_size == -1)
 			{
 				rohc_debugf(0, "bad TS SDVL-encoded field length\n");
 				goto error;
 			}
 
-			if(length < ts_sdvl_size)
+			if(length < ts_size)
 			{
 				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 				goto error;
@@ -3265,25 +4536,24 @@ int decode_extension3(struct rohc_decomp *decomp,
 				rohc_debugf(0, "bad TS SDVL-encoded field\n");
 				goto error;
 			}
-			rohc_debugf(3, "ts read in header = 0x%x, must be shifted by %d to make "
-			            "room for TS bits of EXT3\n", ts_received, ts_sdvl_size * 7);
+			rohc_debugf(3, "ts read in header = 0x%x\n", ts_received);
 
-			if(ts_sdvl_size == 1)
+			if(ts_size == 1)
 			{
 				ts_received = ts_received << 7;
 				ts_received_size += 7;
 			}
-			else if(ts_sdvl_size == 2)
+			else if(ts_size == 2)
 			{
 				ts_received = ts_received << 14;
 				ts_received_size += 14;			
 			}
-			else if(ts_sdvl_size == 3)
+			else if(ts_size == 3)
 			{
 				ts_received = ts_received << 21;
 				ts_received_size += 21;
 			}
-			else if(ts_sdvl_size == 4)
+			else if(ts_size == 4)
 			{
 				ts_received = ts_received << 28;
 				ts_received_size += 27; /* because 5 + 28 = 33 > 32 ! */
@@ -3298,8 +4568,10 @@ int decode_extension3(struct rohc_decomp *decomp,
 		rohc_debugf(3, "ts read in extension 3 = 0x%x\n", ts);
 		ts_received |= ts;
 		rohc_debugf(3, "ts received  = 0x%x\n", ts_received);
-		packet += ts_sdvl_size;
-		length -= ts_sdvl_size;
+		packet += ts_size;
+		length -= ts_size;
+		rtp_context->ts_received = ts_received;
+		rtp_context->ts_received_size = ts_received_size;
 
 		/* decode scaled TS */
 		if(tsc)
@@ -3309,7 +4581,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			if(ts_received_size == 0)
+			if(rtp_context->ts_received_size == 0)
 			{
 				rohc_debugf(3, "TS is deducted from SN\n");
 				ts = ts_deducted(&rtp_context->ts_sc, *sn);
@@ -3462,8 +4734,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 			int ts_stride;
 			int ts_stride_size;
 
-			/* check the minimal length to read at least one byte of TS_STRIDE,
-			 * then extract TS_STRIDE field size and check if packet is large
+			/* check the minimal length to read at least one byte of TS_SRTIDE,
+			 * then extract TS_SRTIDE field size and check if packet is large
 			 * enough to contain the whole field */
 			if(length < 1)
 			{
@@ -3474,10 +4746,9 @@ int decode_extension3(struct rohc_decomp *decomp,
 			ts_stride_size = d_sdvalue_size(packet);
 			if(ts_stride_size == -1)
 			{
-				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field length\n");
+				rohc_debugf(0, "bad TS_SRTIDE SDVL-encoded field length\n");
 				goto error;
 			}
-			rohc_debugf(3, "ts_stride is SDVL-encoded on %d bit(s)\n", ts_stride_size);
 
 			if(length < ts_stride_size)
 			{
@@ -3485,11 +4756,11 @@ int decode_extension3(struct rohc_decomp *decomp,
 				goto error;
 			}
 
-			/* decode SDVL-encoded TS_STRIDE value */
+			/* decode SDVL-encoded TS_SRTIDE value */
 			ts_stride = d_sdvalue_decode(packet);
 			if(ts_stride == -1)
 			{
-				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field\n");
+				rohc_debugf(0, "bad TS_SRTIDE SDVL-encoded field\n");
 				goto error;
 			}
 
@@ -3497,7 +4768,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			length -= ts_stride_size;
 		
 			rohc_debugf(3, "ts_stride decoded = %u / 0x%x\n", ts_stride, ts_stride);		
-			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);
+			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);	
 		}
 
 		if(tis)
@@ -4000,19 +5271,21 @@ reparse:
  * @param dest         The buffer to store the IP header (MUST be at least
  *                     of sizeof(struct iphdr) or sizeof(struct ip6_hdr) bytes
  *                     depending on the IP version)
+ * @param decomp       The list decompressor : only for IPv6
  * @param payload_size The length of the IP payload
  * @return             The length of the IP header
  */
 unsigned int build_uncompressed_ip(struct d_generic_changes *active,
                                    unsigned char *dest,
-                                   unsigned int payload_size)
+                                   unsigned int payload_size,
+				   struct list_decomp * decomp)
 {
 	unsigned int length;
 
 	if(ip_get_version(active->ip) == IPV4)
 		length = build_uncompressed_ip4(active, dest, payload_size);
 	else
-		length = build_uncompressed_ip6(active, dest, payload_size);
+		length = build_uncompressed_ip6(active, dest, payload_size, decomp);
 
 	return length;
 }
@@ -4068,21 +5341,100 @@ unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
  */
 unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
                                     unsigned char *dest,
-                                    unsigned int payload_size)
+                                    unsigned int payload_size, 
+				    struct list_decomp * decomp)
 {
 	struct ip6_hdr *ip = (struct ip6_hdr *) dest;
+	int size = 0;
+	uint8_t next_proto = active->ip.header.v6.ip6_nxt;
 
 	/* static & changing */
+	if(decomp->list_decomp)
+	{
+		if(decomp->list_table[decomp->counter_list] != NULL)
+			active->ip.header.v6.ip6_nxt =
+				(uint8_t)(decomp->list_table[decomp->counter_list]->first_elt->item->type);
+	}
 	memcpy(dest, &active->ip.header.v6, sizeof(struct ip6_hdr));
-
+	dest += sizeof(struct ip6_hdr);
+	active->ip.header.v6.ip6_nxt = next_proto;
+	
+	/* extension list */
+	if(decomp->list_decomp)
+	{
+		active->complist = 1;
+		size += decomp->encode_extension(active, decomp, dest);
+		active->size_list = size;
+	}
+	
 	/* interfered fields */
-	ip->ip6_plen = htons(payload_size);
+	ip->ip6_plen = htons(payload_size + size);
 	rohc_debugf(3, "Payload Length = 0x%04x\n", ntohs(payload_size));
 
-	return sizeof(struct ip6_hdr);
+	return sizeof(struct ip6_hdr) + size;
 }
 
-
+/**
+ * @brief Build an extension list in IPv6 header
+ * @param active The IPv6 header changes
+ * @param decomp The list decompressor
+ * @param dest The buffer to store the IPv6 header
+ * @return The size of the list
+ */
+int encode_ip6_extension(struct d_generic_changes * active,
+			  struct list_decomp * decomp,
+                          unsigned char *dest)
+{
+	int length; // number of element in reference list
+	int i;
+	unsigned char next_header_type;
+	struct list_elt * elt;
+	unsigned char byte = 0;
+	struct c_list * list;
+	if(decomp->ref_ok)
+	{
+		rohc_debugf(3, "reference list to use \n");
+		list = decomp->ref_list;
+	}
+	else
+		list= decomp->list_table[decomp->counter_list];
+	int size = 0; // size of the list
+	int size_data; // size of one of the extension
+	
+	if(list->first_elt != NULL)
+	{
+		length = size_list(list);
+		for(i = 0; i < length; i++)
+		{
+			byte = 0;
+			// next header 
+			elt = get_elt(list, i);
+			if(elt->next_elt != NULL)
+			{
+				next_header_type = elt->next_elt->item->type;
+				byte |= (next_header_type & 0xff);
+			}
+			else // next_header is protocol header
+			{
+				next_header_type = active->ip.header.v6.ip6_nxt;
+				byte |= (next_header_type & 0xff);
+			}
+			memcpy(dest, &byte, 1);
+			dest ++;
+			byte = 0;
+			// length
+			size_data = elt->item->length;
+			byte |= (((size_data/8)-1) & 0xff);
+			memcpy(dest, &byte, 1);
+			dest ++;
+			// data
+			memcpy(dest, elt->item->data + 2, size_data - 2);
+			dest += (size_data - 2);
+			size += size_data;	
+		}
+	}
+	return size;
+}
 /**
  * @brief Try to repair the SN in one of two different ways.
  *

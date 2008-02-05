@@ -141,7 +141,6 @@ error:
 	return -1;
 }
 
-
 /**
  * @brief Define the compression part of the IP-only profile as described
  *        in the RFC 3843.

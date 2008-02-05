@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "rohc_comp.h"
+#include "comp_list.h"
 
 
 /**
@@ -20,6 +21,13 @@
  *        can be considered as coded in Network Byte Order (NBO)
  */
 #define IPID_MAX_DELTA  20
+
+/// The number of compression list items
+#define MAX_ITEM 15
+
+/// The number of compressed list to send to make the reference list
+/// L is the name specified in the RFC
+#define L 5
 
 /**
  * @brief Store information about an IPv4 header between the different
@@ -76,6 +84,8 @@ struct ipv6_header_info
 {
 	/// The previous IPv6 header
 	struct ip6_hdr old_ip;
+	/// The extension compressor
+	struct list_comp * ext_comp;
 };
 
 
@@ -230,6 +240,47 @@ struct c_generic_context
 	void *specific;
 };
 
+/**
+ * @brief The list compressor
+ */
+struct list_comp
+{
+	/// The reference list
+	struct c_list * ref_list;
+	/// The current list
+	struct c_list * curr_list;
+	/// counter which indicates if ref_list is reference list
+        int counter;
+	/// The compression based table
+	struct item  based_table[MAX_ITEM];
+	/// The translation table
+	struct c_translation  trans_table[MAX_ITEM];
+	/// Boolean which equals to 1 if the update is done, 0 else
+	int update_done;
+	/// Boolean which equals to 1 if the list change
+	int list_compress;
+	/// Boolean which equals to 1 if there is a list, 0 else
+	int islist;
+	/// @brief the handler used to get the extension in the IP packet
+	unsigned char *(*get_extension)(const struct ip_packet ip,int index);
+
+	/// @brief the handler used to get the index in based table for the corresponding item
+	int (*get_index_table)(const struct ip_packet ip, int index);
+
+	/// @brief the handler used to get the size of an extension
+	int (*get_size)(unsigned char * ext);
+
+	/// @brief the handler used to compare two extension of the same type
+	int (*compare)(unsigned char * ext,struct list_comp * comp,int size, int index_table);
+
+	/// @brief the handler used to create the item with the corresponding 
+	///        type of the extension
+	void (*create_item)(unsigned char *ext, int index_table, int size, 
+				struct list_comp * comp);
+	/// @brief the handler used to free the based table element
+	void (*free_table)(struct list_comp * comp);
+};
+																									    
 
 /*
  * Function prototypes.
@@ -241,6 +292,15 @@ void c_generic_destroy(struct c_context *context);
 void change_mode(struct c_context *context, rohc_mode new_mode);
 void change_state(struct c_context *context, rohc_c_state new_state);
 
+void ip6_c_init_table(struct list_comp * comp);
+int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip);
+int c_create_current_list(int index, struct list_comp * comp, unsigned char * ext, int index_table);
+int decide_type(struct list_comp * comp);
+int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int ps, int size);
+int encode_type_0(struct list_comp * comp, unsigned char * dest, int counter, int ps);
+int encode_type_1(struct list_comp * comp, unsigned char * dest, int counter, int ps);
+int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, int ps);
+int encode_type_2(struct list_comp * comp, unsigned char * dest, int counter, int ps);
 int c_generic_encode(struct c_context *context,
                      const struct ip_packet ip,
                      int packet_size,

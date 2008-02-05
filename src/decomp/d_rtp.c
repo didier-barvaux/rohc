@@ -128,6 +128,15 @@ quit:
 	return NULL;
 }
 
+/**
+ * @brief Get the size of the static part of an IR packet
+ *
+ * @return the size
+ */
+int rtp_get_static_part(void)
+{
+	return 8; // udp statix part + rtp static part
+}
 
 /**
  * @brief Find the length of the IR header.
@@ -174,6 +183,7 @@ quit:
  * the Profile and CRC fields and the static and dynamic chains (outer and inner
  * IP headers + UDP header + RTP header).
  *
+ * @param context         The decompression context
  * @param packet          The pointer on the IR packet
  * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
@@ -182,7 +192,8 @@ quit:
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
-unsigned int rtp_detect_ir_size(unsigned char *packet,
+unsigned int rtp_detect_ir_size(struct d_context *context,
+				unsigned char *packet,
                                 unsigned int plen,
                                 int second_byte,
                                 int profile_id)
@@ -192,16 +203,12 @@ unsigned int rtp_detect_ir_size(unsigned char *packet,
 	int rx;
 
 	/* Profile and CRC fields + IP static & dynamic chains */
-	length = d_generic_detect_ir_size(packet, plen, second_byte, profile_id);
+	length = d_generic_detect_ir_size(context, packet, plen, second_byte, profile_id);
 	offset = length + second_byte - 1;
 
-	/* UDP static chain */
-	length += 4;
-	offset += 4;
-
-	/* RTP static chain */
-	length += 4;
-	offset += 4;
+	/* UDP static chain + RTP static chain*/
+	length += rtp_get_static_part();
+	offset += 8;
 
 	/* UDP dynamic chain */
 	length += 2;
@@ -292,20 +299,22 @@ unsigned int rtp_detect_ir_size(unsigned char *packet,
  * @param plen       The length of the IR-DYN packet
  * @param largecid   The size of the large cid
  * @param context    The decompression context
+ * @param packet     The ROHC packet
  * @return           The length of the IR-DYN header,
  *                   0 if an error occurs
  */
 unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
                                     unsigned int plen,
                                     int largecid,
-                                    struct d_context *context)
+                                    struct d_context *context,
+				    unsigned char *packet)
 {
 	unsigned int length;
 	int offset; /* offset for RX, TIS and TSS flags (RTP dynamic chain) */
 	int rx;
 
 	/* Profile and CRC fields + IP dynamic chain */
-	length =   d_generic_detect_ir_dyn_size(first_byte, plen, largecid, context);
+	length =   d_generic_detect_ir_dyn_size(first_byte, plen, largecid, context, packet);
 	offset = length + largecid;
 
 	/* UDP dynamic chain */
@@ -350,7 +359,6 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 
 	return length;
 }
-
 
 /**
  * @brief Decode the UDP/RTP static part of the ROHC packet.
@@ -698,6 +706,7 @@ struct d_profile d_rtp_profile =
 	d_udp_destroy,
 	rtp_detect_ir_size,
 	rtp_detect_ir_dyn_size,
+	rtp_get_static_part,
 	d_generic_get_sn,
 };
 

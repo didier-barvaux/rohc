@@ -498,6 +498,7 @@ struct medium
 #define GET_BIT_4_7(x)  ( ((*(x)) & 0xf0) >> 4 )
 #define GET_BIT_5_7(x)  ( ((*(x)) & 0xe0) >> 5 )
 #define GET_BIT_6_7(x)  ( ((*(x)) & 0xc0) >> 6 )
+#define GET_BIT_4_6(x)  ( ((*(x)) & 0x70) >> 4 )
 
 #define GET_BIT_0(x)  ((*(x)) & 0x01)
 #define GET_BIT_1(x)  ((*(x)) & 0x02)

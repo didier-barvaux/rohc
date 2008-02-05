@@ -151,6 +151,14 @@ void d_udp_destroy(void *context)
 	}
 }
 
+/**
+ * @brief Get the size of the static part of an IR packet
+ * @return the size
+ */
+int udp_get_static_size(void)
+{
+	return 4;
+}
 
 /**
  * @brief Decode one IR packet for the UDP profile.
@@ -232,6 +240,7 @@ int d_udp_decode_ir(struct rohc_decomp *decomp,
  * the Profile and CRC fields, the static and dynamic chains (outer and inner
  * IP headers + UDP header) and the SN.
  *
+ * @param context         The decompression context
  * @param packet          The pointer on the IR packet
  * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
@@ -240,7 +249,8 @@ int d_udp_decode_ir(struct rohc_decomp *decomp,
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
-unsigned int udp_detect_ir_size(unsigned char *packet,
+unsigned int udp_detect_ir_size(struct d_context *context,
+				unsigned char *packet,
                                 unsigned int plen,
                                 int second_byte,
                                 int profile_id)
@@ -248,12 +258,12 @@ unsigned int udp_detect_ir_size(unsigned char *packet,
 	unsigned int length, d;
 
 	/* Profile and CRC fields + IP static & dynamic chains + SN */
-	length = ip_detect_ir_size(packet, plen, second_byte, profile_id);
+	length = ip_detect_ir_size(context, packet, plen, second_byte, profile_id);
 	if(length == 0)
 		goto quit;
 
 	/* UDP static part (see 5.7.7.5 in RFC 3095) */ 
-	length += 4;
+	length += udp_get_static_size();
 
 	/* UDP dynamic part if included (see 5.7.7.5 in RFC 3095) */
 	d = GET_BIT_0(packet);
@@ -310,18 +320,20 @@ quit:
  * @param plen       The length of the IR-DYN packet
  * @param largecid   Whether large CIDs are used or not
  * @param context    The decompression context
+ * @param packet     The ROHC packet
  * @return           The length of the IR-DYN header,
  *                   0 if an error occurs
  */
 unsigned int udp_detect_ir_dyn_size(unsigned char *first_byte,
                                     unsigned int plen,
                                     int largecid,
-                                    struct d_context *context)
+                                    struct d_context *context,
+				    unsigned char *packet)
 {
 	unsigned int length;
 
 	/* Profile and CRC fields + IP dynamic chains */
-	length = ip_detect_ir_dyn_size(first_byte, plen, largecid, context);
+	length = ip_detect_ir_dyn_size(first_byte, plen, largecid, context, packet);
 	if(length == 0)
 		goto quit;
 
@@ -557,6 +569,7 @@ struct d_profile d_udp_profile =
 	d_udp_destroy,
 	udp_detect_ir_size,
 	udp_detect_ir_dyn_size,
+	udp_get_static_size,
 	d_generic_get_sn,
 };
 

@@ -187,7 +187,6 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	rohc_debugf(2, "IP protocol = %d\n", proto);
 	p = c_get_profile_from_packet(comp, proto, *last_header);
-
  	/* use the IP profile if no profile was found based on the protocol */
 	if(p == 0)
 	{
@@ -1074,7 +1073,6 @@ struct c_context * c_find_context(struct rohc_comp *comp,
 		if(c && c->used && c->profile->id == profile->id)
 		{
 			ret = c->profile->check_context(c, ip);
-
 			if(ret == -1)
 			{
 				c = (struct c_context*) -1;

@@ -163,29 +163,103 @@ int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner)
 	next_header = ip_get_next_header(outer);
 
 	/* create an IP packet with the next header data */
+	rohc_debugf(3, "size of outer :%d \n", ip_get_plen(outer));
 	return ip_create(inner, next_header, ip_get_plen(outer));
 }
 
 
 /**
- * @brief Get the next header in the IP packet
- *
+ * @brief Get the next header of the protocol (not extension)
+ *        encapsulated in the IP packet
+ *        
  * @param ip The IP packet to analyze
  * @return   The next header
  */
 unsigned char * ip_get_next_header(struct ip_packet ip)
 {
 	unsigned char *next_header;
+	uint8_t next_header_type;
+	uint8_t length;
 
 	/* find the start of the next header data */
 	if(ip.version == IPV4)
 		next_header = ip.data + sizeof(struct iphdr);
 	else /* IPV6 */
+	{
+		next_header_type = ip.header.v6.ip6_nxt; 
 		next_header = ip.data + sizeof(struct ip6_hdr);
+		while(next_header_type == 0 || next_header_type == 60 ||
+		      next_header_type == 43 || next_header_type == 51)
+		{
+			//extension header
+			next_header_type = * next_header;
+			length = * (next_header + 1);
+			next_header = next_header + (length+1)*8 ;
+		}
+	}
 
 	return next_header;
 }
 
+/**
+ * @brief Get the next extension header of IPv6 packets
+ *
+ * @param ext the extension to analyse
+ * @return the next extension header, NULL if no extension
+ */
+unsigned char * ip_get_next_extension_header(unsigned char* ext )
+{
+	unsigned char *next_header;
+	uint8_t length;
+	uint8_t next_header_type;
+
+	next_header_type = *ext;
+	
+	switch (next_header_type)
+	{
+		case 0:
+		case 60:
+		case 43:
+		case 51: //extension header
+			length = * (ext + 1);
+			next_header = ext + (length+1)*8;
+			break;
+		default:
+			goto end;
+			break;
+	}
+	return next_header;
+end:
+	return NULL;
+}
+
+/**
+ * @brief Get the size of the extension list
+ *
+ * @param ip The packet to analyse
+ * @return the size of extension list
+ */
+int ip_get_extension_size(struct ip_packet ip)
+{
+	int hdr = ip_get_hdrlen(ip);
+	unsigned char * data = ip.data;
+	unsigned char * ext;
+	int size;
+	int length;
+	
+	data += hdr;
+	ext = ip_get_next_extension_header(data);
+	length = *(data + 1);
+	size = ((int)(*(data + 1))+1)*8;
+	while(ext != NULL)
+	{
+		length = *(ext);
+		size += ((int)(*(ext + 1))+1)*8;
+		data = ext;
+		ext = ip_get_next_extension_header(data);
+	}
+	return size;
+}
 
 /**
  * @brief Whether the IP packet is an IP fragment or not
@@ -256,12 +330,27 @@ unsigned int ip_get_hdrlen(struct ip_packet ip)
 unsigned int ip_get_plen(struct ip_packet ip)
 {
 	uint16_t len;
+	int size_list = 0;
+	uint8_t next_header_type;
 
 	if(ip.version == IPV4)
 		len = ntohs(ip.header.v4.tot_len) - ip.header.v4.ihl * 4;
 	else
-		len = ntohs(ip.header.v6.ip6_plen);
-
+	{
+		next_header_type = ip.header.v6.ip6_nxt;
+		switch (next_header_type)
+		{
+			case 0:
+			case 60:
+			case 43:
+			case 51: //extension header 
+				size_list = ip_get_extension_size(ip);
+				break;
+			default:
+				break;
+		}
+		len = ntohs(ip.header.v6.ip6_plen) - size_list;
+	}
 	return len;
 }
 
@@ -288,15 +377,64 @@ ip_version ip_get_version(struct ip_packet ip)
 unsigned int ip_get_protocol(struct ip_packet ip)
 {
 	uint8_t protocol;
+	unsigned char * next_header;
+	uint8_t next_header_type;
 
 	if(ip.version == IPV4)
 		protocol = ip.header.v4.protocol;
 	else /* IPV6 */
-		protocol = ip.header.v6.ip6_nxt;
+	{
+		next_header_type = ip.header.v6.ip6_nxt;
+		switch (next_header_type)
+		{
+			case 0:
+			case 60:
+			case 43:
+			case 51: //extension header 
+				next_header = ip.data + sizeof(struct ip6_hdr);
+				protocol = ext_get_protocol(next_header);
+				break;
+			default:
+				protocol = next_header_type;
+				break;
+		}
+	}
 
 	return protocol;
 }
 
+/**
+ * @brief Get the protocol transported by an IPv6 extension
+ *
+ * @param ext the first extension
+ *
+ * @return The protocol number that identify the protocol transported
+ *         by the given IP extension
+ */
+unsigned int ext_get_protocol(unsigned char * ext)
+{
+	uint8_t type;
+	uint8_t length;
+	uint8_t protocol;
+	unsigned char * next_header;
+
+	type = * ext;
+	length = *(ext + 1);
+	switch (type)
+	{
+		case 0:
+		case 60:
+		case 43:
+		case 51:
+			next_header = ext + (length+1)*8 ;
+			protocol = ext_get_protocol(next_header);
+			break;
+		default:
+			protocol = type;
+			break;
+	}
+	return protocol;
+}
 
 /**
  * @brief Set the protocol transported by an IP packet
@@ -621,14 +759,13 @@ struct in6_addr * ipv6_get_daddr(struct ip_packet *ip)
 	return NULL;
 }
 
-
-/*
+/**
  * Private functions used by the IP module:
  * (please do not use directly)
  */
 
 
-/**
+/*
  * @brief Get the version of an IP packet
  *
  * If the function returns an error (bad IP packet), the value of 'version'
@@ -663,6 +800,7 @@ int get_ip_version(unsigned char *packet, unsigned int size, ip_version *version
 			ret = 0;
 			break;
 	}
+	return ret;
 
 quit:
 	return ret;

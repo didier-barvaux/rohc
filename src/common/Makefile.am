@@ -16,7 +16,8 @@ sources = \
 	wlsb.c \
 	ip.c \
 	ts_sc_comp.c \
-	ts_sc_decomp.c 
+	ts_sc_decomp.c \
+	comp_list.c
 
 headers = \
 	rohc.h \
@@ -30,7 +31,8 @@ headers = \
 	udp_lite.h \
 	rtp.h \
 	ts_sc_comp.h \
-	ts_sc_decomp.h 
+	ts_sc_decomp.h \
+	comp_list.h
 
 librohc_common_la_SOURCES = $(sources) $(headers)
 

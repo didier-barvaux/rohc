@@ -13,7 +13,13 @@
 #include <stdlib.h>
 
 #include "rohc_decomp.h"
+#include "comp_list.h"
 
+#define MAX_ITEM 15
+
+#define LIST_COMP_WINDOW 100
+
+#define L 5
 
 /**
  * @brief Store information about an IP header between the different
@@ -33,6 +39,11 @@ struct d_generic_changes
 	/// Whether the IP-ID is considered as coded in NBO or not (IPv4 only)
 	int nbo;
 
+	/// Whether the compression list is used or not(IPv6 only)
+	int complist;
+	/// The size of the list
+	int size_list;
+	
 	/// The next header located after the IP header(s)
 	unsigned char *next_header;
 	/// The length of the next header
@@ -67,6 +78,11 @@ struct d_generic_context
 	struct d_ip_id_decode ip_id1;
 	/// The IP-ID of the inner IP header
 	struct d_ip_id_decode ip_id2;
+
+	/// The list decompressor of the outer IP header
+	struct list_decomp * list_decomp1;
+	/// The list decompressor of the inner IP header
+	struct list_decomp * list_decomp2;
 
 	/// Whether the decompressed packet contains a 2nd IP header
 	int multiple_ip;
@@ -124,6 +140,47 @@ struct d_generic_context
 	unsigned int inter_arrival_time;
 };
 
+/**
+ * @brief The list decompressor
+ */
+struct list_decomp
+{
+	/// The reference list
+	struct c_list * ref_list;
+	/// The table of lists
+	struct c_list * list_table[LIST_COMP_WINDOW];
+	/// The temp list
+	struct c_list * temp_list;
+	/// The compression based table
+	struct item  based_table[MAX_ITEM];
+	/// The translation table
+	struct d_translation  trans_table[MAX_ITEM];
+	/// counter in list table
+	int counter_list;
+	/// counter which indicates if the list is reference list
+	int counter;
+	/// boolean which indicates if there is a list to decompress
+	int list_decomp;
+	/// boolean which indicates if the ref list must be decompress 
+	int ref_ok;
+	/// Size of the last list extension received
+	int size_ext;
+
+	/// The handler used to free the based table
+	void (*free_table)(struct list_decomp * decomp);
+	/// The handler used to add the extension to IP packet
+	int (*encode_extension)(struct d_generic_changes * active, 
+			struct list_decomp * decomp, unsigned char *dest);
+	/// The handler used to check if the index
+	/// corresponds to an existing item
+	int (*check_index)(struct list_decomp * decomp, int index);
+	/// The handler used to create the item at 
+	/// the corresponding index of the based table
+	void (*create_item)(const unsigned char *data,int length,
+			        int index, struct list_decomp * decomp);
+	/// The handler used to get the size of an extension
+	int (*get_ext_size)(const unsigned char * ext);
+};
 
 /*
  * Public function prototypes.
@@ -148,7 +205,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         int is_addcid_used,
                         unsigned char *dest);
 
-unsigned int d_generic_detect_ir_size(unsigned char *packet,
+unsigned int d_generic_detect_ir_size(struct d_context *context,
+				      unsigned char *packet,
                                       unsigned int plen,
                                       int second_byte,
                                       int profile_id);
@@ -156,7 +214,28 @@ unsigned int d_generic_detect_ir_size(unsigned char *packet,
 unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
                                           unsigned int plen,
                                           int largecid,
-                                          struct d_context *context);
+                                          struct d_context *context,
+					  unsigned char *packet);
+int d_algo_list_decompress(struct list_decomp * decomp, 
+			   const unsigned char *packet);
+
+int decode_type_0(struct list_decomp * decomp,
+		  const unsigned char * packet, 
+		  int gen_id, int ps, int m);
+
+int decode_type_1(struct list_decomp * decomp,
+		  const unsigned char * packet, 
+		  int gen_id, 
+		  int ps, int m, int ref_id);
+
+int decode_type_2(struct list_decomp * decomp, 
+		  const unsigned char * packet, 
+		  int gen_id, int ps, int ref_id);
+
+int decode_type_3(struct list_decomp * decomp,
+		  const unsigned char * packet, 
+		  int gen_id, 
+		  int ps, int m, int ref_id);
 
 int d_generic_get_sn(struct d_context *context);
 

@@ -9,15 +9,12 @@
 #define C_IP_H
 
 #include <netinet/ip.h>
-
 #include "c_generic.h"
-
 
 /*
  * Function prototypes.
  */
 
 int c_ip_check_context(struct c_context *context, const struct ip_packet ip);
-
 
 #endif

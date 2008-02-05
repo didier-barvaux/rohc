@@ -87,6 +87,7 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
+ * @param context         The decompression context
  * @param packet          The pointer on the IR packet
  * @param plen            The length of the IR packet
  * @param second_byte     The offset for the second byte of the IR packet
@@ -94,7 +95,8 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
  * @return                The length of data in the IR packet,
  *                        0 if an error occurs
  */
-unsigned int uncompressed_detect_ir_size(unsigned char *packet,
+unsigned int uncompressed_detect_ir_size(struct d_context *context,
+					 unsigned char *packet,
                                          unsigned int plen,
                                          int second_byte,
                                          int profile_id)
@@ -118,13 +120,15 @@ unsigned int uncompressed_detect_ir_size(unsigned char *packet,
  * @param plen       The length of the IR-DYN packet
  * @param largecid   Whether large CIDs are used or not
  * @param context    The decompression context
+ * @param packet     The ROHC packet
  * @return           The length of data in the IR-DYN packet,
  *                   0 if an error occurs
  */
 unsigned int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
                                              unsigned int plen,
                                              int largecid,
-                                             struct d_context *context)
+                                             struct d_context *context,
+					     unsigned char *packet)
 {
 	rohc_debugf(0, "IR-DYN packet is not defined in uncompressed profile\n");
 	return 0;
@@ -215,6 +219,7 @@ struct d_profile d_uncomp_profile =
 	uncompressed_free_decode_data,
 	uncompressed_detect_ir_size,
 	uncompressed_detect_ir_dyn_size,
+	NULL,
 	uncompressed_get_sn,
 };
 

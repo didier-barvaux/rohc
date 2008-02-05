@@ -45,7 +45,8 @@ int d_udp_decode_ir(struct rohc_decomp *decomp,
                     int is_addcid_used,
                     unsigned char *dest);
 
-unsigned int udp_detect_ir_size(unsigned char *packet,
+unsigned int udp_detect_ir_size(struct d_context *context,
+				unsigned char *packet,
                                 unsigned int plen,
                                 int second_byte,
                                 int profile_id);
@@ -53,7 +54,8 @@ unsigned int udp_detect_ir_size(unsigned char *packet,
 unsigned int udp_detect_ir_dyn_size(unsigned char *first_byte,
                                     unsigned int plen,
                                     int largecid,
-                                    struct d_context *context);
+                                    struct d_context *context,
+				    unsigned char *packet);
 
 int udp_decode_static_udp(struct d_generic_context *context,
                           const unsigned char *packet,
@@ -64,6 +66,8 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
                            const unsigned char *packet,
                            unsigned int length,
                            unsigned char *dest);
+
+int udp_get_static_size(void);
 
 int udp_build_uncompressed_udp(struct d_generic_context *context,
                                struct d_generic_changes *active,

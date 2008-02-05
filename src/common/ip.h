@@ -13,7 +13,6 @@
 
 #include "rohc.h"
 
-
 /// IP version
 typedef enum
 {
@@ -46,6 +45,22 @@ struct ip_packet
 	unsigned char *data;
 };
 
+/* AH header */
+struct ip6_ahhdr
+{
+	/// The next header 
+	uint8_t   ip6ah_nxt; 
+	/// AH payload length
+	uint8_t   ip6ah_len;
+	/// reserved field
+        uint16_t  ip6ah_reserved;  
+	/// Security Parameters Index (SPI)
+	uint32_t  ip6ah_secur;     
+	/// Sequence Number Field
+	uint32_t  ip6ah_sn;      
+	/* followed by Authentication Data */
+};
+		    
 
 /*
  * Generic IP macros:
@@ -152,11 +167,11 @@ struct ip_packet
 
 int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size);
 int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner);
-
 void ip_new(struct ip_packet *ip, ip_version version);
 
 unsigned char * ip_get_raw_data(struct ip_packet ip);
 unsigned char * ip_get_next_header(struct ip_packet ip);
+unsigned char * ip_get_next_extension_header(unsigned char* ext );
 
 unsigned int ip_get_totlen(struct ip_packet ip);
 unsigned int ip_get_hdrlen(struct ip_packet ip);
@@ -165,6 +180,7 @@ unsigned int ip_get_plen(struct ip_packet ip);
 int ip_is_fragment(struct ip_packet ip);
 ip_version ip_get_version(struct ip_packet ip);
 unsigned int ip_get_protocol(struct ip_packet ip);
+unsigned int ext_get_protocol(unsigned char * ext);
 unsigned int ip_get_tos(struct ip_packet ip);
 unsigned int ip_get_ttl(struct ip_packet ip);
 
@@ -191,12 +207,11 @@ struct ip6_hdr * ipv6_get_header(struct ip_packet ip);
 uint32_t ipv6_get_flow_label(struct ip_packet ip);
 struct in6_addr * ipv6_get_saddr(struct ip_packet *ip);
 struct in6_addr * ipv6_get_daddr(struct ip_packet *ip);
-
 void ipv6_set_flow_label(struct ip_packet *ip, uint32_t value);
+int ip_get_extension_size(struct ip_packet ip);
 
 /* Private functions (do not use directly) */
 int get_ip_version(unsigned char *packet, unsigned int size, ip_version *version);
 
 
 #endif
-

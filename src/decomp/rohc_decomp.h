@@ -12,7 +12,6 @@
 #include "rohc.h"
 #include "rohc_comp.h"
 
-
 /// The number of ROHC profiles ready to be used
 #define D_NUM_PROFILES 5
 
@@ -201,7 +200,8 @@ struct d_profile
 	void (*free_decode_data)(void *);
 
 	/// The handler used to find out the size of IR packets
-	unsigned int (*detect_ir_size)(unsigned char *packet,
+	unsigned int (*detect_ir_size)(struct d_context *context,
+				       unsigned char *packet,
 	                               unsigned int plen,
 	                               int second_byte,
 	                               int profile_id);
@@ -210,12 +210,15 @@ struct d_profile
 	unsigned int (*detect_ir_dyn_size)(unsigned char *first_byte,
 	                                   unsigned int plen,
 	                                   int largecid,
-	                                   struct d_context *context);
+	                                   struct d_context *context,
+					   unsigned char *packet);
+	
+	/// The handler used to get the size of the specific static part of IR packets
+	int (*get_static_part)(void);
 
 	/// The handler used to retrieve the Sequence Number (SN)
 	int (*get_sn)(struct d_context * context);
 };
-
 
 /*
  * Functions related to decompressor:
@@ -262,7 +265,8 @@ void d_change_mode_feedback(struct rohc_decomp *decomp, struct d_context *contex
  * Functions related to CRC of IR and IR-DYN packets:
  */
 
-int rohc_ir_packet_crc_ok(unsigned char *walk, unsigned int plen,
+int rohc_ir_packet_crc_ok(struct d_context *context,
+			  unsigned char *walk, unsigned int plen,
                           const int largecid, const int addcidUsed,
                           const struct d_profile *profile);
 int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
