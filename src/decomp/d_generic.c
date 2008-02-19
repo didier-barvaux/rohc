@@ -2256,6 +2256,7 @@ error:
  * @param plen       The length of the IR-DYN packet
  * @param largecid   Whether large CIDs are used or not
  * @param context    The decompression context
+ * @param packet     The pointer on the IR-DYN packet
  * @return           The length of the IR-DYN header,
  *                   0 if an error occurs
  */
@@ -5337,6 +5338,7 @@ unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
  * @param dest         The buffer to store the IPv6 header (MUST be at least
  *                     of sizeof(struct ip6_hdr) bytes)
  * @param payload_size The length of the IPv6 payload
+ * @param decomp       The list decompressor
  * @return             The length of the IPv6 header
  */
 unsigned int build_uncompressed_ip6(struct d_generic_changes *active,

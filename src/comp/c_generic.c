@@ -1123,7 +1123,6 @@ error:
  * @brief Decide the encoding type for compression list
  * 
  * @param comp The list compressor
- * @param
  * @return the encoding type
  */
 int decide_type(struct list_comp * comp)
@@ -1843,6 +1842,7 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
  * @param ext The extensiom
  * @param comp the list compressor
  * @param size The size to compare
+ * @param index_table The index in based table
  * @return 1 if equal, 0 else
  */
 int ipv6_compare(unsigned char * ext,struct list_comp * comp,int size, int index_table)
@@ -1919,7 +1919,8 @@ unsigned char * get_ipv6_extension(const struct ip_packet ip, int index)
 
 /**
  * @brief Return the index in based table for the corresponding item
- * @param header_type the type of item
+ * @param ip The ip packet to analyse
+ * @param index The index in based table
  * @return the index in based table
  */
  int get_index_ipv6_table(const struct ip_packet ip, int index)
