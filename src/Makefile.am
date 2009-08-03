@@ -9,5 +9,3 @@ SUBDIRS = \
 	comp \
 	decomp
 
-AM_MAKEFLAGS = -s
-

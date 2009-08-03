@@ -17,8 +17,6 @@ configure_files = \
 	missing \
 	depcomp
 
-AM_MAKEFLAGS = -s
-
 .PHONY: doc report measures
 
 doc:

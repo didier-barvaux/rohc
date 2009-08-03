@@ -34,13 +34,11 @@ headers = \
 	ts_sc_decomp.h \
 	comp_list.h
 
-librohc_common_la_SOURCES = $(sources) $(headers)
+librohc_common_la_SOURCES = $(sources)
 
 include_HEADERS = $(headers)
 
 INCLUDES =
 
 AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
-
-AM_MAKEFLAGS = -s
 

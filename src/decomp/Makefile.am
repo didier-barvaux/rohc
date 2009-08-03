@@ -4,8 +4,6 @@
 #	Description: create the ROHC decompression library
 ################################################################################
 
-AM_MAKEFLAGS = -s
-
 lib_LTLIBRARIES = librohc_decomp.la
 
 sources = \
@@ -28,7 +26,7 @@ headers = \
 	d_udp_lite.h \
 	d_rtp.h
 
-librohc_decomp_la_SOURCES = $(sources) $(headers)
+librohc_decomp_la_SOURCES = $(sources)
 
 include_HEADERS = rohc_decomp.h
 

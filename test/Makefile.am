@@ -7,14 +7,16 @@
 bin_PROGRAMS = test
 
 INCLUDES = \
-	-I../include
+	-I../src/common \
+	-I../src/comp \
+	-I../src/decomp
 
 AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
 
-AM_MAKEFLAGS = -s
-
 AM_LDFLAGS = \
-	-L../lib
+	-L../src/common/.libs \
+	-L../src/comp/.libs \
+	-L../src/decomp/.libs
 
 noinst_HEADERS = test.h
 

@@ -26,7 +26,7 @@ headers = \
 	c_udp_lite.h \
 	c_rtp.h
 
-librohc_comp_la_SOURCES = $(sources) $(headers)
+librohc_comp_la_SOURCES = $(sources)
 
 include_HEADERS = rohc_comp.h cid.h
 
@@ -34,6 +34,4 @@ INCLUDES = \
 	-I../common
 
 AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
-
-AM_MAKEFLAGS = -s
 
