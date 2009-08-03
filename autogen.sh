@@ -2,42 +2,34 @@
 # Script to generate all required files for `configure' when
 # starting from a fresh repository checkout.
 
-ACLOCAL="aclocal"
-AUTOCONF="autoconf"
-AUTOHEADER="autoheader"
-LIBTOOLIZE="libtoolize --automake"
-AUTOMAKE="automake -a -c --foreign"
+#!/bin/sh
+# Generate the autotools files
 
-function build {
-    echo -n "Building '$1'... "
-    eval "$2"
-    if [ $? -ne 0 ] ; then
-        echo "failed"
-        exit 1
-    fi
+function run()
+{
+  echo -n "Running $1... "
+  $@ >/dev/null 2>&1
+  if [ $? -eq 0 ] ; then
     echo "done"
+  else
+    echo "failed"
+    echo "Running $1 again with errors unmasked:"
+    $@
+    exit 1
+  fi
 }
 
-# Clean up old files which could hurt otherwise.
-rm -f config.cache config.log config.status
+export WANT_AUTOMAKE=1.7
 
-# Generate `aclocal.m4'.
-rm -f aclocal.m4
-build "aclocal.m4" "$ACLOCAL"
+rm -f config.cache
+rm -f config.log
 
-# Generate `config.h.in'.
-build "config.h.in" "$AUTOHEADER"
+run aclocal
+run libtoolize --force
+run autoconf
+run autoheader
+run automake --add-missing
 
-# Generate `configure' from `configure.ac'.
-build "configure" "$AUTOCONF"
+chmod +x ./configure
+./configure $@
 
-# Generate `ltmain.sh'.
-build "ltmain.sh" "$LIBTOOLIZE"
-
-# Generate `stamp-h1' and all `Makefile.in' files.
-rm -f stamp-h1
-build "Makefile templates" "$AUTOMAKE"
-
-echo
-echo "Run './configure ; make'"
-echo
