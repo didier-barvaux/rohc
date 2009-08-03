@@ -784,6 +784,7 @@ int get_ip_version(unsigned char *packet, unsigned int size, ip_version *version
 	if(size <= 0)
 	{
 		ret = 0;
+		*version = IPV4;
 		goto quit;
 	}
 
@@ -798,6 +799,7 @@ int get_ip_version(unsigned char *packet, unsigned int size, ip_version *version
 			break;
 		default:
 			ret = 0;
+			*version = IPV4;
 			break;
 	}
 	return ret;
