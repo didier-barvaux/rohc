@@ -12,6 +12,9 @@
  * @brief Get the version of the ROHC library
  *
  * @return the version of the library
+ *
+ * @ingroup rohc_comp
+ * @ingroup rohc_decomp
  */
 char *rohc_version(void)
 {
