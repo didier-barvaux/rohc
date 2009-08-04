@@ -14,7 +14,8 @@ Bugtracker:            http://bugs.launchpad.net/rohc
 License
 -------
 
-The project is licensed under GPL, see COPYING and AUTHORS for details.
+The project is licensed under GPL, see the COPYING and AUTHORS files for more
+details.
 
 
 Libraries
@@ -37,8 +38,7 @@ The test subdirectory contains a test application. See the header of the test.c
 file for details. There is also a report tool that tests the ROHC libraries with
 several IP flows and outputs an HTML page with the test results.
 
-See the INSTALL file to learn how to use the non-regression tool and the report
-tool.
+See the INSTALL file to learn how to use the non-regression and report tools.
 
 
 Statistics
@@ -66,7 +66,7 @@ RFC 3095      RObust Header Compression (ROHC): Framework and four profiles:
               RTP, UDP, ESP, and uncompressed.
               http://www.ietf.org/rfc/rfc3095.txt
 
-RFC 3096      Requirements for robust IP/UDP/RTP header compression
+RFC 3096      Requirements for robust IP/UDP/RTP header compression.
               http://www.ietf.org/rfc/rfc3096.txt
 
 RFC 3828      The Lightweight User Datagram Protocol (UDP-Lite).
@@ -81,7 +81,7 @@ RFC 4019      RObust Header Compression (ROHC): Profiles for User Datagram
 
 ROHC library  The Open Source ROHC library described by the README file you are
               currently reading.
-              http://rohc.sourceforge.net/
+              http://launchpad.net/rohc
 
 ROHC Linux    A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
               kernel. The ROHC library is mainly based on this software.

@@ -6,6 +6,10 @@
  * @author David Moreau from TAS
  */
 
+/**
+ * @defgroup rohc_decomp ROHC decompression API
+ */
+
 #include "rohc_decomp.h"
 #include "d_ip.h"
 #include "d_udp.h"
@@ -286,6 +290,8 @@ void context_free(struct d_context *context)
  * @param compressor  The ROHC compressor to associate the decompressor with
  * @return            The newly-created decompressor if successful,
  *                    NULL otherwise
+ *
+ * @ingroup rohc_decomp
  */
 struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
@@ -338,6 +344,8 @@ error:
  * @brief Destroy one ROHC decompressor.
  *
  * @param decomp  The decompressor to destroy
+ *
+ * @ingroup rohc_decomp
  */
 void rohc_free_decompressor(struct rohc_decomp *decomp)
 {
@@ -375,6 +383,8 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
  * @param obuf   The buffer where to store the decompressed packet
  * @param osize  The size of the buffer for the decompressed packet
  * @return       The size of the decompressed packet
+ *
+ * @ingroup rohc_decomp
  */
 int rohc_decompress(struct rohc_decomp *decomp,
                     unsigned char *ibuf, int isize,
@@ -797,6 +807,7 @@ struct d_profile * find_profile(int id)
 
 /**
  * @brief Check the CRC of one IR packet.
+ *
  * @param context    The decompression context
  * @param walk       The ROHC IR packet
  * @param plen       The length of the ROHC packet
@@ -1097,6 +1108,8 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
  * @brief Clear all the statistics.
  *
  * @param decomp The ROHC decompressor
+ *
+ * @ingroup rohc_decomp
  */
 void clear_statistics(struct rohc_decomp *decomp)
 {
@@ -1116,6 +1129,8 @@ void clear_statistics(struct rohc_decomp *decomp)
  * @param indent The level of indentation to add during output
  * @param buffer The buffer where to outputs the statistics
  * @return       The length of data written to the buffer
+ *
+ * @ingroup rohc_decomp
  */
 int rohc_d_statistics(struct rohc_decomp *decomp,
                       unsigned int indent,
@@ -1330,6 +1345,8 @@ int rohc_d_context(struct rohc_decomp *decomp,
  *
  * @param decomp  The ROHC decompressor
  * @param context The decompression context
+ *
+ * @ingroup rohc_decomp
  */
 void d_change_mode_feedback(struct rohc_decomp *decomp,
                             struct d_context *context)
@@ -1384,6 +1401,8 @@ skip:
  *
  * @param decomp          The ROHC decompressor
  * @param feedback_maxval The feedback interval given by user
+ *
+ * @ingroup rohc_decomp
  */
 void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 {

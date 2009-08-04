@@ -4,6 +4,7 @@ Makefile.in
 .libs
 *.lo
 *.la
+./cscope.out
 ./aclocal.m4
 ./autom4te.cache
 ./config.guess
@@ -20,6 +21,7 @@ Makefile.in
 ./missing
 ./mkinstalldirs
 ./stamp-h1
+./doc/html
 ./test/test
 ./test/report/report.html
 ./app/tunnel/rohctunnel

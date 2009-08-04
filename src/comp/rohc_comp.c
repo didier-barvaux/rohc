@@ -6,6 +6,10 @@
  * @author David Moreau from TAS
  */
 
+/**
+ * @defgroup rohc_comp ROHC compression API
+ */
+
 #include "rohc_comp.h"
 
 
@@ -52,6 +56,8 @@ int c_alloc_contexts(struct rohc_comp *comp, int num);
  * @param encap_size The packet size of the encapsulation layer
  * @return        The newly-created compressor if successful,
  *                NULL otherwise
+ *
+ * @ingroup rohc_comp
  */
 struct rohc_comp *rohc_alloc_compressor(int max_cid, int jam_use, int adapt_size, int encap_size)
 {
@@ -107,6 +113,8 @@ error:
  * @brief Destroy one ROHC compressor.
  *
  * @param comp The compressor to destroy
+ *
+ * @ingroup rohc_comp
  */
 void rohc_free_compressor(struct rohc_comp *comp)
 {
@@ -135,6 +143,8 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * @param obuf   The buffer where to store the ROHC packet
  * @param osize  The size of the buffer for the ROHC packet
  * @return       The size of the ROHC packet
+ *
+ * @ingroup rohc_comp
  */
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
                   unsigned char *obuf, int osize)
@@ -385,6 +395,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
  *
  * @param comp    The ROHC compressor
  * @param profile The ID of the profile to activate
+ *
+ * @ingroup rohc_comp
  */
 void rohc_activate_profile(struct rohc_comp *comp, int profile)
 {
@@ -409,6 +421,8 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
  *
  * @param comp The ROHC compressor
  * @return     Whether the compressor uses small CID or not
+ *
+ * @ingroup rohc_comp
  */
 int rohc_c_using_small_cid(struct rohc_comp *comp)
 {
@@ -422,6 +436,8 @@ int rohc_c_using_small_cid(struct rohc_comp *comp)
  *
  * @param comp   The ROHC compressor
  * @param header The maximal header size
+ *
+ * @ingroup rohc_comp
  */
 void rohc_c_set_header(struct rohc_comp *comp, int header)
 {
@@ -435,6 +451,8 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
  *
  * @param comp  The ROHC compressor
  * @param value The new MRRU value
+ *
+ * @ingroup rohc_comp
  */
 void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 {
@@ -447,6 +465,8 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
  *
  * @param comp  The ROHC compressor
  * @param value The new maximal CID value
+ *
+ * @ingroup rohc_comp
  */
 void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 {
@@ -469,6 +489,8 @@ void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
  *
  * @param comp      The ROHC compressor
  * @param large_cid Whether to use large CIDs or not
+ *
+ * @ingroup rohc_comp
  */
 void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 {
@@ -488,6 +510,8 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
  *
  * @param comp   The ROHC compressor
  * @param enable Whether to enable the compressor or not
+ *
+ * @ingroup rohc_comp
  */
 void rohc_c_set_enable(struct rohc_comp *comp, int enable)
 {
@@ -500,6 +524,8 @@ void rohc_c_set_enable(struct rohc_comp *comp, int enable)
  *
  * @param comp The ROHC compressor
  * @return      Whether the compressor is enabled or not
+ *
+ * @ingroup rohc_comp
  */
 int rohc_c_is_enabled(struct rohc_comp *comp)
 {
@@ -514,6 +540,8 @@ int rohc_c_is_enabled(struct rohc_comp *comp)
  *
  * @param buffer The buffer where to store profile information
  * @return       The length of the data stored in the buffer
+ *
+ * @ingroup rohc_comp
  */
 int rohc_c_info(char *buffer)
 {
@@ -555,6 +583,8 @@ int rohc_c_info(char *buffer)
  * @param buffer The buffer where to store the information
  * @return       The length of the data stored in the buffer if successful,
  *               -1 if an error occurs
+ *
+ * @ingroup rohc_comp
  */
 int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 {

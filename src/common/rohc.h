@@ -18,40 +18,68 @@
  * Linux (or other Unix-compatible OS). The library can be used to add ROHC
  * compression/decompression capabilities to an application.
  * </p>
+ *
+ * <p>Important links:
+ *  <ul>
+ *    <li>Official website: <a href="http://launchpad.net/rohc">
+ *                           http://launchpad.net/rohc</a></li>
+ *    <li>Mailing list: <a href="mailto:rohc@lists.launchpad.net">
+ *                       rohc@lists.launchpad.net</a></li>
+ *    <li>Mailing list archives: <a href="http://lists.launchpad.net/rohc/">
+ *                                http://lists.launchpad.net/rohc/</a></li>
+ *    <li>Bugtracker: <a href="http://bugs.launchpad.net/rohc">
+ *                     http://bugs.launchpad.net/rohc</a></li>
+ *  </ul>
+ * </p>
+ *
+ * <p>The list of features implemented (or not yet implemented) in the ROHC
+ * library is available on a separate page: \ref features</p>
+ *
+ * <p>The APIs for ROHC compression and decompression are also available on
+ * separate pages:
+ *  <ul>
+ *    <li>\ref rohc_comp</li>
+ *    <li>\ref rohc_decomp</li>
+ *  </ul>
+ * </p>
  * 
  * <h2>License</h2>
  * 
  * <p>
- * The project is licensed under GPL, see the COPYING file for details.
+ * The project is licensed under GPL, see the <a
+ * href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/COPYING">
+ * COPYING</a> and <a
+ * href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/AUTHORS">
+ * AUTHORS</a> files for more details.
  * </p>
  * 
  * <h2>Libraries</h2>
  * 
  * <p>
- * The sources are in the src subdirectory. The sources are separated into three
- * libraries:
+ * The sources are in the src subdirectory. The sources are separated into
+ * three libraries:
  *  <ul>
- *   <li>a library that contains the routines used for both the compression and the
- *       decompression processes</li>
+ *   <li>a library that contains the routines used for both the compression
+ *       and the decompression processes</li>
  *   <li>a library that handles the compression process</li>
  *   <li>a library that handles the decompression process</li>
  *  </ul>
  * </p>
  * 
- * <p>See the INSTALL file to learn to build the libraries.</p>
+ * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">
+ * INSTALL</a> file to learn to build the libraries.</p>
  * 
- * <h2>Tests</h2>
- * 
- * <p>
- * The test subdirectory contains a test application. See the header of the test.c
- * file for details. There is also a report.sh script that tests the ROHC libraries
- * with several IP flows and outputs an HTML page with the test results.
- * </p>
+ * <h2>Non-regression tests</h2>
  * 
  * <p>
- * See the INSTALL file to learn how to use the test application and the report.sh
- * script.
+ * The test subdirectory contains a test application. See the header of the
+ * test.c file for details. There is also a report tool that tests the ROHC
+ * libraries with several IP flows and outputs an HTML page with the test
+ * results.
  * </p>
+ * 
+ * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">
+ * INSTALL</a> file to learn how to use the non-regression and report tools.</p>
  * 
  * <h2>References</h2>
  * 
@@ -62,9 +90,29 @@
  *    <p>
  *     RObust Header Compression (ROHC): Framework and four profiles: RTP,
  *     UDP, ESP, and uncompressed.<br>
- * 	 <a href="http://www.ietf.org/rfc/rfc3095.txt">
- * 	 http://www.ietf.org/rfc/rfc3095.txt</a>
- * 	</p>
+ *      <a href="http://www.ietf.org/rfc/rfc3095.txt">
+ *       http://www.ietf.org/rfc/rfc3095.txt</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>RFC 3096</td>
+ *   <td>
+ *    <p>
+ *     Requirements for robust IP/UDP/RTP header compression.<br>
+ *      <a href="http://www.ietf.org/rfc/rfc3096.txt">
+ *       http://www.ietf.org/rfc/rfc3096.txt</a>
+ *    </p>
+ *   </td>
+ *  </tr>
+ *  <tr>
+ *   <td>RFC 3828</td>
+ *   <td>
+ *    <p>
+ *     The Lightweight User Datagram Protocol (UDP-Lite).<br>
+ *     <a href="http://www.ietf.org/rfc/rfc3828.txt">
+ *     http://www.ietf.org/rfc/rfc3828.txt</a>
+ *    </p>
  *   </td>
  *  </tr>
  *  <tr>
@@ -89,22 +137,22 @@
  *   </td>
  *  </tr>
  *  <tr>
- *   <td>ROHC Linux</td>
+ *   <td>ROHC library</td>
  *   <td>
  *    <p>
- *     A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
- *     kernel. The project is mainly based on this software.<br>
- *     <a href="http://rohc.sourceforge.net/">http://rohc.sourceforge.net/</a>
+ *     The Open Source ROHC library described by the documentation you are
+ *     currently reading.<br>
+ *     <a href="http://launchpad.net/rohc">http://launchpad.net/rohc</a>
  *    </p>
  *   </td>
  *  </tr>
  *  <tr>
- *   <td>RFC 3828</td>
+ *   <td>ROHC Linux</td>
  *   <td>
  *    <p>
- *     The Lightweight User Datagram Protocol (UDP-Lite).<br>
- *     <a href="http://www.ietf.org/rfc/rfc3828.txt">
- *     http://www.ietf.org/rfc/rfc3828.txt</a>
+ *     A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
+ *     kernel. The ROHC library is mainly based on this software.<br>
+ *     <a href="http://rohc.sourceforge.net/">http://rohc.sourceforge.net/</a>
  *    </p>
  *   </td>
  *  </tr>
@@ -112,9 +160,9 @@
  *   <td>UDP-Lite</td>
  *   <td>
  *    <p>
- *     UDP-Lite implementation for the Linux kernel.<br>
- *     <a href="http://erg.abdn.ac.uk/users/gerrit/udp-lite/">
- *     http://erg.abdn.ac.uk/users/gerrit/udp-lite/</a>
+ *     An UDP-Lite implementation for the Linux kernel.<br>
+ *     <a href="http://www.erg.abdn.ac.uk/users/gerrit/udp-lite/">
+ *     http://www.erg.abdn.ac.uk/users/gerrit/udp-lite/</a>
  *    </p>
  *   </td>
  *  </tr>
