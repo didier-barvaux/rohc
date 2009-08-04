@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT(B2i, 1.0.0, didier.barvaux@b2i-toulouse.com)
+AC_INIT(rohc, 1.0.0, didier.barvaux@toulouse.viveris.com)
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE

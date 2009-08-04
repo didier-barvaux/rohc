@@ -11,7 +11,7 @@
 # in the data file have the following format:
 # <SEQUENCE NUMBER> <tab> <NUMBER OF REORDERED PACKETS UP TO NOW>
 #
-# Author: Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+# Author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #
 
 # check arguments

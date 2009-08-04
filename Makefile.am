@@ -1,6 +1,6 @@
 ################################################################################
 #	Name       : Makefile
-#	Author     : Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+#	Author     : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #	Description: create the ROHC libraries and the test application
 ################################################################################
 

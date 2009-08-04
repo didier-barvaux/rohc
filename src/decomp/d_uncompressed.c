@@ -1,7 +1,7 @@
 /**
  * @file d_uncompressed.c
  * @brief ROHC decompression context for the uncompressed profile.
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  */
 

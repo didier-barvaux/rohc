@@ -1,7 +1,7 @@
 #
 # Create the RTP / IPv[46] graphics
 #
-# Author: Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+# Author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #
 
 GNUPLOT=gnuplot

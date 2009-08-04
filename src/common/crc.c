@@ -1,7 +1,7 @@
 /**
  * @file crc.c
  * @brief ROHC CRC routines
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  */
 

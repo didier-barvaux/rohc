@@ -1,7 +1,7 @@
 /**
  * @file comp_list.h
  * @brief Define list compression with its function
- * @author Emmanuelle Pechereau <epechereau@b2i-toulouse.com>
+ * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
  */
 
 #ifndef COMP_LIST_H

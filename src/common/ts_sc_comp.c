@@ -2,7 +2,7 @@
  * @file ts_sc_comp.c
  * @brief Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #include "ts_sc_comp.h"

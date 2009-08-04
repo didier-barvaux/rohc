@@ -1,7 +1,7 @@
 /**
  * @file wlsb.h
  * @brief Window-based Least Significant Bits (W-LSB) encoding
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author David Moreau from TAS
  * @author The hackers from ROHC for Linux
  */

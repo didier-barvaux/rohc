@@ -2,9 +2,9 @@
  * @file c_generic.c
  * @brief ROHC generic compression context for IP-only, UDP and UDP Lite
  *        profiles.
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author David Moreau from TAS
- * @author Emmanuelle Pechereau <epechereau@b2i-toulouse.com>
+ * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  */
 

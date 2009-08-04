@@ -1,7 +1,7 @@
 /**
  * @file udp_lite.h
  * @brief Define the UDP-Lite protocol.
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #ifndef UDP_LITE_H

@@ -1,7 +1,7 @@
 /**
  * @file test.c
  * @brief ROHC test program
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author David Moreau from TAS
  *
  * Introduction

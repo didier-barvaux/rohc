@@ -18,7 +18,7 @@
 # The generated data file can of course be used to draw graphics with gnuplot.
 # Records in the data file have the same format as in decompression data files.
 #
-# Author: Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+# Author: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 
 # check arguments
 if ! test -f $1 ; then

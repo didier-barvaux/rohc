@@ -1,7 +1,7 @@
 /**
  * @file ip.h
  * @brief IP-agnostic packet
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #ifndef IP_H

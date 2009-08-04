@@ -1,7 +1,7 @@
 /**
  * @file rohc_decomp.h
  * @brief ROHC decompression routines
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
  */

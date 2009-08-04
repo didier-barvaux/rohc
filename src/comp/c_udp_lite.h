@@ -1,7 +1,7 @@
 /**
  * @file c_udp_lite.c
  * @brief ROHC compression context for the UDP-Lite profile.
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  */
 

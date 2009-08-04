@@ -2,7 +2,7 @@
  * @file ts_sc_comp.h
  * @brief Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  *
  * See section 4.5.3 of RFC 3095 for details about Scaled RTP Timestamp
  * encoding.

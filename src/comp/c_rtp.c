@@ -2,7 +2,7 @@
  * @file c_rtp.c
  * @brief ROHC compression context for the RTP profile.
  * @author David Moreau from TAS
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #include "c_rtp.h"

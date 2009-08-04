@@ -2,7 +2,7 @@
  * @file d_rtp.h
  * @brief ROHC decompression context for the RTP profile.
  * @author David Moreau from TAS
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #ifndef D_RTP_H

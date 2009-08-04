@@ -1,8 +1,8 @@
 /**
  * @file rohc.c
  * @brief ROHC common definitions and routines 
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
- * @author Emmanuelle Pechereau <epechereau@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
  */
 
 #include "rohc.h"

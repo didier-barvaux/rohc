@@ -3,7 +3,7 @@
 # file:        report.sh
 # description: Generate a report with the results of the tests described
 #              in the report.conf configuration file.
-# author:      Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+# author:      Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #
 
 debug=0

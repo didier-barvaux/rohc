@@ -1,7 +1,7 @@
 /**
  * @file tunnel.c
  * @brief ROHC tunnel
- * @author Didier Barvaux <didier.barvaux@b2i-toulouse.com>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  *
  * Description
  * -----------
