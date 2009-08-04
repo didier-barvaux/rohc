@@ -45,12 +45,12 @@
  *
  * Type as root on machine B:
  *
- *  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000
+ *  # rohctunnel rohc0 remote 192.168.0.21 local 192.168.0.20 port 5000
  *  # ip link set rohc0 up
- *  # ip -4 addr add 10.0.0.1/24 dev rohc0
- *  # ip -6 addr add 2001:eeee::1/64 dev rohc0
+ *  # ip -4 addr add 10.0.0.2/24 dev rohc0
+ *  # ip -6 addr add 2001:eeee::2/64 dev rohc0
  *
- * Then:
+ * Then, on machine B:
  *
  *  $ ping 10.0.0.1
  *  $ ping6 2001:eeee::1
