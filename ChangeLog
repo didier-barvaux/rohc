@@ -1,14 +1,18 @@
-18 feb 2008 - release 1.1.0
- - Support for IPv6 list compression
- - RTP bugfixes
- - fix build failure of the tunnel application
- - fix doxygen documentation
+4 Aug 2009 - release 1.2.0
+  Clean the build chain.
+  Update source code for building with GCC 4.3.
+  Update documentation and copyright.
 
-27 nov 2007 - release 1.0.0
-  - first release of ROHC library
-  - IPv4/v6 profiles
-  - UDP profile
-  - UDP-Lite profile
-  - RTP profile
-  - some non-standard improvements (use of jamming, new RTP bit type)
+18 Feb 2008 - release 1.1.0
+  Support for IPv6 list compression
+  RTP bugfixes
+  fix build failure of the tunnel application
+  fix doxygen documentation
 
+27 Nov 2007 - release 1.0.0
+  first release of ROHC library
+  IPv4/v6 profiles
+  UDP profile
+  UDP-Lite profile
+  RTP profile
+  some non-standard improvements (use of jamming, new RTP bit type)
