@@ -1,14 +1,14 @@
-3 may 2007 :
-RTP profile implemented
-more tests added wich give statistics about ROHC packets
+18 feb 2008 - release 1.1.0
+ - Support for IPv6 list compression
+ - RTP bugfixes
+ - fix build failure of the tunnel application
+ - fix doxygen documentation
 
-6 mar 2007:
-Uncompressed profile now working.
-
-5 mar 2007:
-IPv6 support added.
-
-10 jan 2007:
-Initial version with the Uncompressed, IP-only, UDP and UDP-Lite
-version. No IPv6 nor RTP support.
+27 nov 2007 - release 1.0.0
+  - first release of ROHC library
+  - IPv4/v6 profiles
+  - UDP profile
+  - UDP-Lite profile
+  - RTP profile
+  - some non-standard improvements (use of jamming, new RTP bit type)
 

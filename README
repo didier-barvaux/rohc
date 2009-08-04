@@ -5,10 +5,17 @@ This piece of software is an implementation of RObust Header Compression for
 Linux (or other Unix-compatible OS). The library can be used to add ROHC
 compression/decompression capabilities to an application.
 
+Official website:      http://launchpad.net/rohc
+Mailing list:          rohc@lists.launchpad.net
+Mailing list archives: http://lists.launchpad.net/rohc/
+Bugtracker:            http://bugs.launchpad.net/rohc
+
+
 License
 -------
 
-The project is licensed under GPL, see COPYING for details.
+The project is licensed under GPL, see COPYING and AUTHORS for details.
+
 
 Libraries
 ---------
@@ -22,54 +29,64 @@ libraries:
 
 See the INSTALL file to learn to build the libraries.
 
-Tests
------
+
+Non-regression tests
+--------------------
 
 The test subdirectory contains a test application. See the header of the test.c
-file for details. There is also a report.sh script that tests the ROHC libraries
-with several IP flows and outputs an HTML page with the test results.
+file for details. There is also a report tool that tests the ROHC libraries with
+several IP flows and outputs an HTML page with the test results.
 
-See the INSTALL file to learn how to use the test application and the report.sh
-script.
+See the INSTALL file to learn how to use the non-regression tool and the report
+tool.
+
 
 Statistics
------
+----------
+
 The statistics subdirectory contains a test and statistic application. The auto.pl
 script outputs a HTML with the tests and statistics results.
 
 The auto.pl script calls others scripts :
-	test.sh : executes the tests list and generate the log -> list.txt
-	analyse_log.pl : extracts information from the log
-	gnuplot.sh : generates graphics
-	stats.pl : generate the stats.html
+ - test.sh         executes the tests list and generate the log -> list.txt
+ - analyse_log.pl  extracts information from the log
+ - gnuplot.sh      generates graphics
+ - stats.pl        generate the stats.html
 
 See the INSTALL file to learn how to use the test and statistic application and the auto.pl
 script.
 
-Needs:
-Perl, Gnuplot, Zenity
+Requirements: Perl, Gnuplot, Zenity
+
 
 References
 ----------
 
-RFC 3095    RObust Header Compression (ROHC): Framework and four profiles: RTP,
-            UDP, ESP, and uncompressed.
-				http://www.ietf.org/rfc/rfc3095.txt
+RFC 3095      RObust Header Compression (ROHC): Framework and four profiles:
+              RTP, UDP, ESP, and uncompressed.
+              http://www.ietf.org/rfc/rfc3095.txt
 
-RFC 3843    RObust Header Compression (ROHC): A Compression Profile for IP.
-            http://www.ietf.org/rfc/rfc3843.txt
+RFC 3096      Requirements for robust IP/UDP/RTP header compression
+              http://www.ietf.org/rfc/rfc3096.txt
 
-RFC 4019    RObust Header Compression (ROHC): Profiles for User Datagram Protocol
-            (UDP) Lite.
-            http://www.ietf.org/rfc/rfc4019.txt
+RFC 3828      The Lightweight User Datagram Protocol (UDP-Lite).
+              http://www.ietf.org/rfc/rfc3828.txt
 
-ROHC Linux  A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
-            kernel. The project is mainly based on this software.
-            http://rohc.sourceforge.net/
+RFC 3843      RObust Header Compression (ROHC): A Compression Profile for IP.
+              http://www.ietf.org/rfc/rfc3843.txt
 
-RFC 3828    The Lightweight User Datagram Protocol (UDP-Lite).
-            http://www.ietf.org/rfc/rfc3828.txt
+RFC 4019      RObust Header Compression (ROHC): Profiles for User Datagram
+              Protocol (UDP) Lite.
+              http://www.ietf.org/rfc/rfc4019.txt
 
-UDP-Lite    UDP-Lite implementation for the Linux kernel.
-            http://erg.abdn.ac.uk/users/gerrit/udp-lite/
+ROHC library  The Open Source ROHC library described by the README file you are
+              currently reading.
+              http://rohc.sourceforge.net/
+
+ROHC Linux    A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
+              kernel. The ROHC library is mainly based on this software.
+              http://rohc.sourceforge.net/
+
+UDP-Lite      An UDP-Lite implementation for the Linux kernel.
+              http://www.erg.abdn.ac.uk/users/gerrit/udp-lite/
 
