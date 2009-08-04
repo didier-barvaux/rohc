@@ -4,7 +4,7 @@
 #	Description: create the ROHC libraries and the test application
 ################################################################################
 
-SUBDIRS = src
+SUBDIRS = src test app
 
 configure_files = \
 	aclocal.m4 \
@@ -22,14 +22,8 @@ configure_files = \
 doc:
 	doxygen doc/doxygen
 
-test: test/test.c test/test.h all
-	$(MAKE) -C test
-
 report:
 	./test/report/report.sh
-
-tunnel: app/tunnel/tunnel.c
-	$(MAKE) -C app/tunnel
 
 measures:
 	$(MAKE) -C measures

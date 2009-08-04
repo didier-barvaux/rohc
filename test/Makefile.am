@@ -4,7 +4,7 @@
 #	Description: create the ROHC test program
 ################################################################################
 
-bin_PROGRAMS = test
+noinst_PROGRAMS = test
 
 INCLUDES = \
 	-I../src/common \
