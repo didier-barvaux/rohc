@@ -2,10 +2,7 @@
 # Script to generate all required files for `configure' when
 # starting from a fresh repository checkout.
 
-#!/bin/sh
-# Generate the autotools files
-
-function run()
+run()
 {
   echo -n "Running $1... "
   $@ >/dev/null 2>&1
