@@ -1044,6 +1044,7 @@ int tun2udp(struct rohc_comp *comp,
 	        comp->last_context->total_last_compressed_size,
 	        comp->last_context->header_last_compressed_size,
 	        dropped);
+	fflush(stats_comp);
 
 quit:
 	return 0;
@@ -1074,6 +1075,7 @@ int print_decomp_stats(struct rohc_decomp *decomp,
 	fprintf(stats_decomp, "%u\t%d\t%u\t%d\n", seq,
 	        lost_packets + decomp->last_context->num_decomp_failures,
 	        lost_packets, decomp->last_context->num_decomp_failures);
+	fflush(stats_decomp);
 
 	return 0;
 
