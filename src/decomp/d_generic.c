@@ -9,6 +9,7 @@
 
 #include "d_generic.h"
 #include "d_rtp.h"
+#include "config.h" /* for RTP_BIT_TYPE definition */
 
 
 /*

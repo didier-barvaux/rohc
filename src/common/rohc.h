@@ -622,7 +622,6 @@ struct medium
 #include <time.h>
 #include <sys/time.h>
 #include <netinet/in.h>
-#include <config.h>
 
 /*
  * Debug macros:

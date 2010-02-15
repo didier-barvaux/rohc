@@ -10,6 +10,7 @@
 
 #include "c_generic.h"
 #include "c_rtp.h"
+#include "config.h" /* for RTP_BIT_TYPE definition */
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
