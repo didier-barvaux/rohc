@@ -4,7 +4,13 @@
 #	Description: create the ROHC libraries and the test application
 ################################################################################
 
-SUBDIRS = src test app
+if ROHC_TESTS
+TESTS_DIR = test
+else
+TESTS_DIR = 
+endif
+
+SUBDIRS = src $(TESTS_DIR) app
 
 configure_files = \
 	aclocal.m4 \
@@ -23,7 +29,11 @@ doc:
 	doxygen doc/doxygen
 
 report:
+if ROHC_TESTS
 	./test/report/report.sh
+else
+	@echo "tests are disabled, so report can not be created"
+endif
 
 measures:
 	$(MAKE) -C measures
