@@ -4,14 +4,26 @@
 
 run()
 {
-  echo -n "Running $1... "
-  $@ >/dev/null 2>&1
+  binary_name="$1"
+  shift
+  args="$@"
+
+  echo -n "Running ${binary_name}... "
+
+  binary_path=$( which ${binary_name} 2>/dev/null )
+  if [ -z "$binary_path" ] || [ ! -x "$binary_path" ] ; then
+    echo "failed"
+    echo "Command ${binary_name} not found, please install it"
+    exit 1
+  fi
+
+  $binary_path $args >/dev/null 2>&1
   if [ $? -eq 0 ] ; then
     echo "done"
   else
     echo "failed"
-    echo "Running $1 again with errors unmasked:"
-    $@
+    echo "Running ${binary_name} again with errors unmasked:"
+    $binary_path $args
     exit 1
   fi
 }
