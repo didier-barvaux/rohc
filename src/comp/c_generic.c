@@ -15,6 +15,7 @@
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <math.h>
+#include <assert.h>
 
 /**
  * @brief The description of the different ROHC packets.
@@ -929,13 +930,23 @@ int c_generic_encode(struct c_context *context,
  */
 int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 {
-	int i = 0;
+	int i;
 	int size;
 	int j;
 	int index_table;
 	unsigned char * ext = ip.data + sizeof(struct ip6_hdr);
 	int result = 0;
 	struct list_elt * elt;
+
+	/* print current list before update */
+	rohc_debugf(3, "current list before update:\n");
+	i = 0;
+	while((elt = get_elt(comp->curr_list, i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
 
 	size = size_list(comp->curr_list);
 	if(comp->counter == L+1) // update the reference list
@@ -951,12 +962,15 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 		comp->ref_list->gen_id = comp->curr_list->gen_id;
 	}
 	// get the extensions
+	i = 0;
 	index_table = comp->get_index_table(ip, i);
 	if (index_table != -1) // There is one extension or more 
 	{
+		rohc_debugf(3, "there is at least one IPv6 extension\n");
 		comp->islist = 1;
+
+		/* add new extensions and update modified extensions in current list */
 		ext = comp->get_extension(ip, i);
-		rohc_debugf(3, "There is one extension or more \n");
 		while( index_table != -1)
 		{
 			if(!c_create_current_list(i,comp,ext,index_table))
@@ -965,14 +979,24 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 			index_table = comp->get_index_table(ip, i);
 			ext = comp->get_extension(ip, i);
 		}
-		if(size > i) // there are less elements in curr_list than in ref_list
+
+		/* there are fewer extensions in the packet than in the current list,
+		   delete them all */
+		if(size > i)
 		{
+			int nb_deleted = 0;
+
 			comp->counter = 0;
 			for(j = i; j < size ; j++)
 			{
-				elt = get_elt(comp->curr_list,j);
-				if (elt != NULL)
-					delete_elt(comp->curr_list, elt->item);
+				elt = get_elt(comp->curr_list, j - nb_deleted);
+				assert(elt != NULL);
+
+				rohc_debugf(3, "delete IPv6 extension of type %d from "
+				            "current list because it is not transmitted "
+				            "anymore\n", elt->item->type);
+				delete_elt(comp->curr_list, elt->item);
+				nb_deleted++;
 			}																
 		}
 		if(comp->counter == 0)
@@ -995,6 +1019,17 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 		comp->islist = 0;
 	}
 	rohc_debugf(3, "value of the counter for reference: %d \n", comp->counter);
+
+	/* print current list after update */
+	rohc_debugf(3, "current list after update:\n");
+	i = 0;
+	while((elt = get_elt(comp->curr_list, i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+
 	comp->update_done = 1;
 	return result;
 error:
@@ -1033,6 +1068,9 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 				for(i = index; i < curr_index + 1; i++)
 				{
 					elt = get_elt(comp->curr_list,i);
+					rohc_debugf(3, "delete IPv6 extension of type %d from current "
+					            "list because it is not transmitted anymore\n",
+					            elt->item->type);
 					delete_elt(comp->curr_list,elt->item);
 				}
 			}
@@ -1040,12 +1078,17 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 			{
 				// the extension which was modified is deleted
 				elt = get_elt(comp->curr_list,index);
+				rohc_debugf(3, "delete IPv6 extension of type %d from current "
+				            "list because it was modified\n", elt->item->type);
 				delete_elt(comp->curr_list,elt->item);
 			}
 			comp->counter = 0;
 			// new version of the extension added
 			if(!insert_elt(comp->curr_list,&(comp->based_table[index_table]), index, index_table))
 				goto error;
+			rohc_debugf(3, "add IPv6 extension of type %d to current list "
+			            "to replace the one we deleted because it was modified\n",
+			            comp->based_table[index_table].type);
 		}
 		else
 		{
@@ -1055,12 +1098,18 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 				if(!insert_elt(comp->curr_list, &comp->based_table[index_table], index, index_table))
 					goto error;
 				comp->counter = 0;
+				rohc_debugf(3, "add IPv6 extension of type %d to current list "
+				            "because it is a new extension not present yet\n",
+				            comp->based_table[index_table].type);
 			}
 			else if(index < curr_index)// some elts are not transmitted anymore
 			{
 				for(i = index; i < curr_index; i++)
 				{
 					elt = get_elt(comp->curr_list,i);
+					rohc_debugf(3, "delete IPv6 extension of type %d from current "
+					            "list because it is not transmitted anymore\n",
+					            elt->item->type);
 					delete_elt(comp->curr_list,elt->item);
 				}
 				comp->counter = 0;
@@ -1080,6 +1129,9 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 			// new extension added
 			if(!push_back(comp->curr_list, &comp->based_table[index_table], index_table))
 				goto error;
+			rohc_debugf(3, "add IPv6 extension of type %d to current list "
+			            "because it is a new extension not present yet\n",
+			            comp->based_table[index_table].type);
 			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
 			if(index < curr_index)// some elts are not transmitted anymore
 			{
@@ -1087,6 +1139,9 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 				for(i = index; i < curr_index; i++)
 				{
 					elt = get_elt(comp->curr_list,i);
+					rohc_debugf(3, "delete IPv6 extension of type %d from current "
+					            "list because it is not transmitted anymore\n",
+					            elt->item->type);
 					delete_elt(comp->curr_list,elt->item);
 				}
 			}
@@ -1100,6 +1155,9 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 				for(i = index; i < curr_index + 1; i++)
 				{
 					elt = get_elt(comp->curr_list,i);
+					rohc_debugf(3, "delete IPv6 extension of type %d from current "
+					            "list because it is not transmitted anymore\n",
+					            elt->item->type);
 					delete_elt(comp->curr_list,elt->item);
 				}
 			}
@@ -1107,11 +1165,16 @@ int c_create_current_list(int index, struct list_comp * comp, unsigned char * ex
 			{
 				// the extension which was modified is deleted
 				elt = get_elt(comp->curr_list,index);
+				rohc_debugf(3, "delete IPv6 extension of type %d from current "
+				            "list because it was modified\n", elt->item->type);
 				delete_elt(comp->curr_list,elt->item);
 			}
 			// new version of the extension added
 			if(!insert_elt(comp->curr_list, &comp->based_table[index_table], index, index_table))
 				goto error;
+			rohc_debugf(3, "add IPv6 extension of type %d to current list "
+			            "to replace the one we deleted because it was modified\n",
+			            comp->based_table[index_table].type);
 		}
 		comp->counter = 0;
 	}
@@ -1251,16 +1314,19 @@ int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int 
 		byte |= (ps & 0x01) << 4;
 		dest[counter] = byte;
 		counter ++;
+		rohc_debugf(3, "flags = 0x%02x\n", byte);
 		byte = 0;
 		// second byte (gen_id)
 		byte = (comp->curr_list->gen_id & 0xff);
 		dest[counter] = byte;
 		counter ++;
+		rohc_debugf(3, "gen_id = 0x%02x\n", byte);
 		byte = 0;
 		// third byte (ref_id)
 		byte = (comp->ref_list->gen_id & 0xff);
 		dest[counter] = byte;
 		counter ++;
+		rohc_debugf(3, "ref_id = 0x%02x\n", byte);
 		byte = 0;
 		switch(type)
 		{
@@ -1586,39 +1652,49 @@ int encode_type_2(struct list_comp * comp, unsigned char * dest, int counter, in
 	int i;
 	int j;
 	struct list_elt * elt;
-	unsigned char byte = 0;
+	unsigned char byte;
 	int size = size_list(comp->ref_list);
+
 	dest[counter - 3] |= (size & 0x0f);
+
 	// The 3 first bytes are already encoded
-	//removal mask
+
+	/* removal mask (first byte) */
+	byte = 0xff;
 	for(i = 0; i<size && i < 8; i++)
 	{
 		elt = get_elt(comp->ref_list, i);
-		if(!type_is_present(comp->curr_list, elt->item))
+		if(type_is_present(comp->curr_list, elt->item))
 		{
-			byte |= 1 << (7 - i);
+			byte &= ~(1 << (7 - i));
 		}
 	}
 	dest[counter] = byte;
 	counter ++;
-	byte = 0;
+	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", byte);
+
+	/* removal mask (second optional byte) */
 	if (size > 8)
 	{
+		byte = 0xff;
 		for(i = 8; i<size && i < 16; i++)
 		{
 			elt = get_elt(comp->ref_list, i);
 			if(!type_is_present(comp->curr_list, elt->item))
 			{
 				j = i - 8;
-				byte |= 1 << (7 - j);
+				byte &= ~(1 << (7 - j));
 			}
 		}
-		j = i - 8;
-		byte |= 1 << (7 - j);
 		dest[counter] = byte;
 		counter ++;
-		byte = 0;
+		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", byte);
 	}
+	else
+	{
+		rohc_debugf(3, "no second byte of removal bit mask\n");
+	}
+
 	return counter;
 }
 /**
@@ -1662,50 +1738,64 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
 	int i;
 	int j;
 	struct list_elt * elt;
-	unsigned char byte = 0;
-	int size = size_list(comp->ref_list);
+	unsigned char byte;
+	int size;
 	int length; //data length
+
 	// The 3 first bytes are already encoded
+
 	//removal mask
+	size = size_list(comp->ref_list);
+	byte = 0xff;
 	for(i = 0; i<size && i < 8; i++)
 	{
 		elt = get_elt(comp->ref_list, i);
-		if(!type_is_present(comp->curr_list, elt->item) || 
-			!comp->trans_table[elt->index_table].known)
-			byte |= 1 << (7 - i);
+		if(type_is_present(comp->curr_list, elt->item) &&
+		   comp->trans_table[elt->index_table].known)
+		{
+			byte &= ~(1 << (7 - i));
+		}
 	}
 	dest[counter] = byte;
 	counter ++;
-	byte = 0;
+	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", byte);
 	if (size > 8)
 	{
+		byte = 0xff;
 		for(i = 8; i<size && i < 16; i++)
 		{
 			elt = get_elt(comp->ref_list, i);
-			if(!type_is_present(comp->curr_list, elt->item)||
-				!comp->trans_table[elt->index_table].known)
+			if(type_is_present(comp->curr_list, elt->item) &&
+			   comp->trans_table[elt->index_table].known)
 			{
 				j = i - 8;
-				byte |= 1 << (7 - j);
+				byte &= ~(1 << (7 - j));
 			}
 		}
-		j = i - 8;
-		byte |= 1 << (7 - j);
 		dest[counter] = byte;
 		counter ++;
-		byte = 0;
+		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", byte);
+	}
+	else
+	{
+		rohc_debugf(3, "no second byte of removal bit mask\n");
 	}
 	size = size_list(comp->curr_list);
+
 	//insertion mask
-        for(i = 0; i<size && i < 8; i++)
+	byte = 0;
+	for(i = 0; i<size && i < 8; i++)
 	{
 		elt = get_elt(comp->curr_list, i);
 		if(!type_is_present(comp->ref_list, elt->item) || 
 			!comp->trans_table[elt->index_table].known)
+		{
 			byte |= 1 << (7 - i);
+		}
 	}
 	dest[counter] = byte;
 	counter ++;
+	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", byte);
 	byte = 0;
 	j = 2; //mask size
 	if (size > 8)
@@ -1723,12 +1813,19 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
 		j = 4;
 		dest[counter] = byte;
 		counter ++;
+		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", byte);
+	}
+	else
+	{
+		rohc_debugf(3, "no second byte of insertion bit mask\n");
 	}
 	byte = 0;
 	i = 0;
 	// next bytes: index
 	if (!ps)// XI = 4 bits
 	{
+		rohc_debugf(3, "create 4-bit XI list\n");
+
 		elt = get_elt(comp->curr_list, i);
 		while(type_is_present(comp->ref_list, elt->item) &&
 			comp->trans_table[elt->index_table].known && i<size)
@@ -1742,6 +1839,9 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
 			dest[counter - (3+j)] |= 1 << 3;
 		}
 		dest[counter - (3+j)] |= (elt->index_table & 0x07);
+		rohc_debugf(3, "update first byte with first 4-bit XI (X = %d, "
+		            " index = %d)\n", GET_REAL(GET_BIT_3(dest + counter - (3+j))),
+		            GET_BIT_0_2(dest + counter - (3+j)));
 		i++;
 		for(j = i; j<size; j++)
 		{
@@ -1782,12 +1882,15 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
 				}
 				dest[counter] = byte;
 				counter ++;
+				rohc_debugf(3, "add 2 XI elements = 0x%02x\n", byte);
 				byte = 0;
 			}
 		}
 	}
 	else // XI = 8 bits
 	{
+		rohc_debugf(3, "create 8-bit XI list\n");
+
 		for (i = 0; i < size; i++)
 		{
 			elt = get_elt(comp->curr_list, i);
@@ -1804,6 +1907,7 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
 				byte |= (elt->index_table & 0x7f);
 				dest[counter] = byte;
 				counter ++;
+				rohc_debugf(3, "add XI element = 0x%02x\n", byte);
 				byte = 0;
 				i++;
 			}
@@ -1824,6 +1928,7 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
 			if(!comp->trans_table[elt->index_table].known)
 			{
 				length = elt->item->length;
+				rohc_debugf(3, "add %d-byte item\n", length);
 				for(j = 0; j<length; j++)
 				{
 					byte |= (elt->item->data[j] & 0xff);
