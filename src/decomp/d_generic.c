@@ -162,7 +162,7 @@ int get_bit_index(unsigned char byte, int index);
 
 int check_ip6_index(struct list_decomp * decomp, int index);
 
-void ip6_free_table(struct list_decomp * decomp);
+static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp);
 
 int encode_ip6_extension(struct d_generic_changes * active,
 			 struct list_decomp * decomp, 
@@ -244,12 +244,12 @@ void * d_generic_create(void)
 	}
 	bzero(context->list_decomp2, sizeof(struct list_decomp));
 	
-	context->list_decomp1->free_table = ip6_free_table;
+	context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp1->encode_extension = encode_ip6_extension;
 	context->list_decomp1->check_index = check_ip6_index;
 	context->list_decomp1->create_item = create_ip6_item;
 	context->list_decomp1->get_ext_size = get_ip6_ext_size;
-	context->list_decomp2->free_table = ip6_free_table;
+	context->list_decomp2->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp2->encode_extension = encode_ip6_extension;
 	context->list_decomp2->check_index = check_ip6_index;
 	context->list_decomp2->create_item = create_ip6_item;
@@ -378,7 +378,7 @@ void ip6_d_init_table(struct list_decomp * decomp)
  * @brief Free the based table of the list decompressor
  * @param decomp The list decompressor
  */
-void ip6_free_table(struct list_decomp * decomp)
+static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 {
 	int i;
 	for(i = 0; i < 4; i++)

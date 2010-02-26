@@ -185,7 +185,7 @@ int get_index_ipv6_table(const struct ip_packet ip,
 				
 int get_ipv6_ext_size(unsigned char * ext);	
 
-void ip6_free_table(struct list_comp * comp);
+static void list_comp_ipv6_destroy_table(struct list_comp * comp);
 
 void decide_state(struct c_context *context);
 
@@ -312,7 +312,7 @@ void ip6_c_init_table(struct list_comp * comp)
 	comp->trans_table[3].counter = 0;
 }
 
-void ip6_free_table(struct list_comp * comp)
+static void list_comp_ipv6_destroy_table(struct list_comp *comp)
 {
 	int i;
 	for(i = 0; i < 4; i++)
@@ -414,7 +414,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 		header_info->info.v6.ext_comp->create_item = create_ipv6_item;
 		header_info->info.v6.ext_comp->get_size = get_ipv6_ext_size;
 		header_info->info.v6.ext_comp->compare = ipv6_compare;
-		header_info->info.v6.ext_comp->free_table = ip6_free_table;
+		header_info->info.v6.ext_comp->free_table = list_comp_ipv6_destroy_table;
 		header_info->info.v6.ext_comp->get_index_table = get_index_ipv6_table;
 	}
 
@@ -590,7 +590,7 @@ void c_generic_destroy(struct c_context *context)
 		   		destroy_list(g_context->ip_flags.info.v6.ext_comp->curr_list);
 			if(g_context->ip_flags.info.v6.ext_comp->ref_list != NULL)
 		   		destroy_list(g_context->ip_flags.info.v6.ext_comp->ref_list);
-			ip6_free_table(g_context->ip_flags.info.v6.ext_comp);
+			list_comp_ipv6_destroy_table(g_context->ip_flags.info.v6.ext_comp);
 			zfree(g_context->ip_flags.info.v6.ext_comp);
 		}
 		if(g_context->is_ip2_initialized &&
@@ -601,7 +601,7 @@ void c_generic_destroy(struct c_context *context)
 				destroy_list(g_context->ip2_flags.info.v6.ext_comp->curr_list);
 			if(g_context->ip2_flags.info.v6.ext_comp->ref_list != NULL)
 				destroy_list(g_context->ip2_flags.info.v6.ext_comp->ref_list);
-			ip6_free_table(g_context->ip2_flags.info.v6.ext_comp);
+			list_comp_ipv6_destroy_table(g_context->ip2_flags.info.v6.ext_comp);
 			zfree(g_context->ip2_flags.info.v6.ext_comp);
 		}
 		if(g_context->sn_window != NULL)
