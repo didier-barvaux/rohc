@@ -10,7 +10,8 @@
 
 #include "c_generic.h"
 #include "c_rtp.h"
-#include "config.h" /* for RTP_BIT_TYPE definition */
+#include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
+#include "rohc_traces.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -938,6 +939,7 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 	int result = 0;
 	struct list_elt * elt;
 
+#if ROHC_DEBUG_LEVEL >= 3
 	/* print current list before update */
 	rohc_debugf(3, "current list before update:\n");
 	i = 0;
@@ -947,6 +949,7 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 		            elt->item->type, elt->item->type);
 		i++;
 	}
+#endif
 
 	size = size_list(comp->curr_list);
 	if(comp->counter == L+1) // update the reference list
@@ -1020,6 +1023,7 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 	}
 	rohc_debugf(3, "value of the counter for reference: %d \n", comp->counter);
 
+#if ROHC_DEBUG_LEVEL >= 3
 	/* print current list after update */
 	rohc_debugf(3, "current list after update:\n");
 	i = 0;
@@ -1029,6 +1033,7 @@ int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
 		            elt->item->type, elt->item->type);
 		i++;
 	}
+#endif
 
 	comp->update_done = 1;
 	return result;

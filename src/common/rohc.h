@@ -352,18 +352,6 @@
  */
 
 
-/**
- * @brief Determine the level of output produced by the ROHC library
- *
- * Possible levels are:
- *  - 0 = error messages only
- *  - 1 = a few informative messages in addition
- *  - 2 = more informative messages (for debug purposes)
- *  - 3 = even more informative messages (for debug purposes)
- */
-#define ROHC_DEBUG_LEVEL  3
-
-
 /*
  * Below are some return codes:
  */
@@ -626,20 +614,6 @@ struct medium
 /*
  * Debug macros:
  */
-
-/// @brief Print information depending on the debug level and prefixed
-///        with the function name
-#define rohc_debugf(level, format, ...) \
-	rohc_debugf_(level, "%s[%s:%d %s()] " format, \
-	             (level == 0 ? "[ERROR] " : ""), \
-	             __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)
-
-/// Print information depending on the debug level
-#define rohc_debugf_(level, format, ...) \
-	do { \
-		if((level) <= ROHC_DEBUG_LEVEL) \
-			printf(format, ##__VA_ARGS__); \
-	} while(0)
 
 /// Free a pointer plus set it to NULL to avoid hidden bugs
 #define zfree(pointer) \

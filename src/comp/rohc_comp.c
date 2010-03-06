@@ -11,6 +11,7 @@
  */
 
 #include "rohc_comp.h"
+#include "rohc_traces.h"
 
 
 extern struct c_profile c_rtp_profile,

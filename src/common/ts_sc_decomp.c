@@ -5,6 +5,7 @@
  */
 
 #include "ts_sc_decomp.h"
+#include "rohc_traces.h"
 
 
 /**

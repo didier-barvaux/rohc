@@ -5,6 +5,7 @@
  */
 
 #include "ip.h"
+#include "rohc_traces.h"
 
 
 /*

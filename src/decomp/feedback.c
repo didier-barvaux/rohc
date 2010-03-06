@@ -6,6 +6,7 @@
  */
 
 #include "feedback.h"
+#include "rohc_traces.h"
 
 
 /*

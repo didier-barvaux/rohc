@@ -36,6 +36,21 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero ceil])
 
 
+# get debug level
+AC_ARG_ENABLE(rohc_debug,
+              AS_HELP_STRING([--enable-rohc-debug],
+                             [set level for ROHC traces: \
+                              0 = error messages only, \
+                              1 = a few informative messages, \
+                              2 = more informative messages, \
+                              3 = even more informative messages \
+                              [[default=3]]]),
+              rohc_debug_level=$enableval,
+              rohc_debug_level=3)
+AC_DEFINE_UNQUOTED([ROHC_DEBUG_LEVEL], [$rohc_debug_level],
+                   [Debug level for ROHC library])
+
+
 # allow users to specify a special location for libpcap includes
 AC_ARG_WITH(libpcap_includes,
             AS_HELP_STRING([--with-libpcap-includes=DIR],

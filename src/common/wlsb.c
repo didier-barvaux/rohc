@@ -7,6 +7,7 @@
  */
 
 #include "wlsb.h"
+#include "rohc_traces.h"
 
 
 /*

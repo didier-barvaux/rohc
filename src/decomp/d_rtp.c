@@ -5,11 +5,12 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
+#include "d_rtp.h"
+#include "rohc_traces.h"
+#include "ts_sc_decomp.h"
+
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-
-#include "d_rtp.h"
-#include "ts_sc_decomp.h"
 
 
 /*

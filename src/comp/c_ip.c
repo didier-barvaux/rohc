@@ -6,6 +6,7 @@
  */
 
 #include "c_ip.h"
+#include "rohc_traces.h"
 
 
 /**

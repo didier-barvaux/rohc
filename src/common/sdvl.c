@@ -6,6 +6,7 @@
  */
 
 #include "sdvl.h"
+#include "rohc_traces.h"
 
 
 /**

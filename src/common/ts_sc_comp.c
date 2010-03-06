@@ -6,6 +6,7 @@
  */
 
 #include "ts_sc_comp.h"
+#include "rohc_traces.h"
 
 
 /**

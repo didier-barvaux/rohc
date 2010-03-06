@@ -11,6 +11,7 @@
  */
 
 #include "rohc_decomp.h"
+#include "rohc_traces.h"
 #include "d_ip.h"
 #include "d_udp.h"
 #include "d_rtp.h"

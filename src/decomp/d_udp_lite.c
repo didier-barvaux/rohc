@@ -6,6 +6,7 @@
  */
 
 #include "d_udp_lite.h"
+#include "rohc_traces.h"
 
 
 /*

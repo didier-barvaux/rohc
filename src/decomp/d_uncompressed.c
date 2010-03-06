@@ -6,6 +6,7 @@
  */
 
 #include "d_uncompressed.h"
+#include "rohc_traces.h"
 
 
 /**

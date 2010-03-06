@@ -6,6 +6,7 @@
  */
 
 #include "cid.h"
+#include "rohc_traces.h"
 
 
 /**

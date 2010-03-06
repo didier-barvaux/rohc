@@ -10,6 +10,7 @@
 #include "d_generic.h"
 #include "d_rtp.h"
 #include "config.h" /* for RTP_BIT_TYPE definition */
+#include "rohc_traces.h"
 
 
 /** Get the minimum of two values */
