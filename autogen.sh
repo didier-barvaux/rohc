@@ -37,6 +37,8 @@ run autoconf
 run autoheader
 run automake --add-missing
 
+# run configure with failure on compiler warnings enabled since autogen.sh
+# is for developpers not users
 chmod +x ./configure
-./configure $@
+./configure --enable-fail-on-warning $@
 

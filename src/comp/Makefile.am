@@ -33,5 +33,5 @@ include_HEADERS = rohc_comp.h cid.h
 INCLUDES = \
 	-I../common
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
+AM_CFLAGS = -g -Wall -Wstrict-prototypes
 

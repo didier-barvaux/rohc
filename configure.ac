@@ -49,6 +49,17 @@ AC_DEFINE_UNQUOTED([ROHC_DEBUG_LEVEL], [$rohc_debug_level],
                    [Debug level for ROHC library])
 
 
+# check if -Werror must be appended to CFLAGS
+AC_ARG_ENABLE(fail_on_warning,
+              AS_HELP_STRING([--enable-fail-on-warning],
+                             [build fails on warnings if enabled [[default=no]]]),
+              fail_on_warning=$enableval,
+              fail_on_warning=no)
+if test "x$fail_on_warning" != "xno"; then
+	CFLAGS="${CFLAGS} -Werror"
+fi
+
+
 # allow users to specify a special location for libpcap includes
 AC_ARG_WITH(libpcap_includes,
             AS_HELP_STRING([--with-libpcap-includes=DIR],
@@ -56,7 +67,7 @@ AC_ARG_WITH(libpcap_includes,
             [with_libpcap_includes="$withval"],
             [with_libpcap_includes="no"])
 if test "x$with_libpcap_includes" != "xno"; then
-	CFLAGS="${CFLAGS} -I${with_libpcap_includes}"
+	CPPFLAGS="${CPPFLAGS} -I${with_libpcap_includes}"
 fi
 
 

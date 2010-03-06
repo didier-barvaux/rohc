@@ -40,5 +40,5 @@ include_HEADERS = $(headers)
 
 INCLUDES =
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
+AM_CFLAGS = -g -Wall -Wstrict-prototypes
 

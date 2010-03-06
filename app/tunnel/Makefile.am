@@ -11,7 +11,7 @@ INCLUDES = \
 	-I../../src/comp \
 	-I../../src/decomp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes -Werror
+AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 AM_LDFLAGS = \
 	-L../../src/common/.libs \
