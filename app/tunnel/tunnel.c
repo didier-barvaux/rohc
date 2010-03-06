@@ -160,20 +160,46 @@ void sighandler(int sig)
  */
 void usage(void)
 {
-	printf("ROHC tunnel: make a ROHC over UDP tunnel\n\n\
-usage: rohctunnel NAME remote RADDR local LADDR port PORT [error MODEL PARAMS [dir DIR]]\n\
-  NAME    the name of the tunnel\n\
-  RADDR   the IP address of the remote host\n\
-  LADDR   the IP address of the local host\n\
-  PORT    the UDP port to use (local and remote)\n\
-  MODEL   the error model to apply (none, uniform, burst)\n\
-  PARAMS  the error model parameters:\n\
-            none     no extra parameter\n\
-            uniform  RATE = the BER (binary error rate) to emulate\n\
-            burst    PE2  = the probability to be in error state\n\
-                     P2   = the probability to stay in error state\n\
-  DIR     unidirectional or bidirectional mode (default is bidirectional)\n\n\
-example: rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 error uniform 1e-5 dir bidirectional\n");
+	printf("ROHC tunnel: make a ROHC over UDP tunnel\n\
+\n\
+usage:\n\
+  rohctunnel [ version | help ]\n\
+  rohctunnel TUNNEL [ ERROR ] [ DIR ]\n\
+\n\
+Tunnel parameters:\n\
+  TUNNEL := NAME remote RADDR local LADDR port PORT\n\
+  NAME   := STRING            The name of the tunnel\n\
+  RADDR  := IPV4_ADDRESS      The IP address of the remote host\n\
+  LADDR  := IPV4_ADDRESS      The IP address of the local host\n\
+  PORT   := PORT              The UDP port to use (local and remote)\n\
+\n\
+Error model (none if not specified):\n\
+  ERROR  := error { none | uniform RATE | burst PE2 P2 }\n\
+  RATE   := FLOAT             The BER (binary error rate) to emulate\n\
+  PE2    := FLOAT             The probability to be in error state\n\
+  P2     := FLOAT             The probability to stay in error state\n\
+\n\
+Direction (bidirectional if not specified):\n\
+  DIR    := dir { bidirectional | unidirectional }\n\
+\n\
+Examples:\n\
+  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000\n\
+  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+    dir unidirectional\n\
+  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+    error uniform 1e-5 dir bidirectional\n\
+  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+    error burst 1e-5 2e-5\n\
+");
+}
+
+
+/**
+ * @brief Display the application version
+ */
+void version(void)
+{
+	printf("ROHC tunnel version %s\n", rohc_version());
 }
 
 
@@ -227,8 +253,34 @@ int main(int argc, char *argv[])
 	 * Parse arguments:
 	 */
 
-	if(argc != 8 &&
-	   argc < 10 && argc > 14)
+	/* check the number of arguments:
+	 *   rohctunnel version          -> 2 arguments
+	 *   rohctunnel help             -> 2 arguments
+	 *   rohctunnel TUNNEL           -> 8 arguments
+	 *   rohctunnel TUNNEL ERROR     -> 10-12 arguments
+	 *   rohctunnel TUNNEL DIR       -> 10 arguments
+	 *   rohctunnel TUNNEL ERROR DIR -> 12-14 arguments
+	 */
+	if(argc != 2 && argc != 8 && (argc < 10 || argc > 14))
+	{
+		usage();
+		goto quit;
+	}
+
+	/* is the first argument 'version' or 'help' ? */
+	if(strcmp(argv[1], "version") == 0)
+	{
+		version();
+		goto quit;
+	}
+	else if(strcmp(argv[1], "help") == 0)
+	{
+		usage();
+		goto quit;
+	}
+
+	/* first argument is not 'version' or 'help', so we have a tunnel request */
+	if(argc < 8)
 	{
 		usage();
 		goto quit;
@@ -248,7 +300,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "bad remote IP address: %s\n", argv[3]);
 		goto quit;
 	}
-
 
 	/* get the local IP address */
 	if(strcmp(argv[4], "local") != 0)
@@ -276,15 +327,16 @@ int main(int argc, char *argv[])
 	}
 
 	/* get the error model and its parameters if present */
-	if(argc >= 10)
+	if(argc >= 9 && strcmp(argv[8], "error") == 0)
 	{
-		if(strcmp(argv[8], "error") != 0)
+		arg_count = 9;
+
+		if(argc < arg_count + 1)
 		{
-			usage();
+			fprintf(stderr, "the error keyword requires an argument: "
+			        "none, uniform or burst\n");
 			goto quit;
 		}
-
-		arg_count = 9;
 
 		if(strcmp(argv[arg_count], "none") == 0)
 		{
@@ -361,35 +413,45 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
+		/* no error model */
+		fprintf(stderr, "do not emulate lossy medium (default)\n");
 		error_model = 0;
 		arg_count = 8;
 	}
 
 	/* get the direction mode if present */
-	if(argc >= arg_count + 2)
+	if(argc >= arg_count + 1 && strcmp(argv[arg_count], "dir") == 0)
 	{
-		if(strcmp(argv[arg_count], "dir") != 0)
-		{
-			usage();
-			goto quit;
-		}
 		arg_count++;
 
+		if(argc < arg_count + 1)
+		{
+			fprintf(stderr, "the dir keyword requires an argument: "
+			        "unidirectional or bidirectional\n");
+			goto quit;
+		}
+
 		if(strcmp(argv[arg_count], "unidirectional") == 0)
+		{
+			fprintf(stderr, "force unidirectional mode\n");
 			is_umode = 1;
+		}
 		else if(strcmp(argv[arg_count], "bidirectional") == 0)
+		{
+			fprintf(stderr, "force bidirectional mode\n");
 			is_umode = 0;
+		}
 		else
 		{
 			fprintf(stderr, "bad direction mode: %s\n", argv[arg_count]);
 			goto quit;
 		}
-
-		if(is_umode)
-			fprintf(stderr, "force unidirectional mode\n");
 	}
 	else
+	{
+		fprintf(stderr, "force bidirectional mode (default)\n");
 		is_umode = 0;
+	}
 
 
 	/*
