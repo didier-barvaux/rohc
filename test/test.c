@@ -65,6 +65,15 @@
 #include "test.h"
 
 
+/** A simple maximum macro */
+#define max(x, y) \
+	(((x) > (y)) ? (x) : (y))
+
+/** A simple minimum macro */
+#define min(x, y) \
+	(((x) < (y)) ? (x) : (y))
+
+
 /* prototypes of private functions */
 static int test_comp_and_decomp(char *src_filename,
                                 char *ofilename,
@@ -184,7 +193,7 @@ int compare_packets(unsigned char *pkt1, int pkt1_size,
 	min_size = pkt1_size > pkt2_size ? pkt2_size : pkt1_size;
 
 	/* do not compare more than 180 bytes to avoid huge output */
-	min_size = max(180, min_size);
+	min_size = min(180, min_size);
 	
 	/* if packets are equal, do not print the packets */
 	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)

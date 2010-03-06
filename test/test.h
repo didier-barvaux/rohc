@@ -42,8 +42,3 @@ usage: test [-h] [-v] [-o output_file] [-c cmp_file] flow\n\
 /// The length of the Linux Cooked Sockets header
 #define LINUX_COOKED_HDR_LEN  16
 
-
-/// A simple maximum macro
-#define max(x, y) \
-	(((x) > (y)) ? (x) : (y))
-
