@@ -137,51 +137,43 @@ while [ $i -le $nb_lines ] ; do
 	TMPFILE="/tmp/rohc_report_`date '+%s'.log`"
 	$APP -c ${DIRNAME}/$dir/rohc.pcap ${DIRNAME}/$dir/source.pcap > ${TMPFILE} 2>&1
 
-	if [ $? -ne 0 ] ; then
-		startup_result="FAIL"
-		comp_result="FAIL"
-		cmp_rohc_result="FAIL"
-		decomp_result="FAIL"
-		cmp_ip_result="FAIL"
+	logs_startup="`${XSLTPROC} ${DIRNAME}/logs_startup.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+	logs_comp="`${XSLTPROC} ${DIRNAME}/logs_comp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+	logs_cmp_rohc="`${XSLTPROC} ${DIRNAME}/logs_cmp_rohc.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+	logs_decomp="`${XSLTPROC} ${DIRNAME}/logs_decomp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+	logs_cmp_ip="`${XSLTPROC} ${DIRNAME}/logs_cmp_ip.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+
+	if [ -z "$logs_startup" ] ; then
+		startup_result="PASS"
 	else
-		logs_startup="`${XSLTPROC} ${DIRNAME}/logs_startup.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_comp="`${XSLTPROC} ${DIRNAME}/logs_comp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_cmp_rohc="`${XSLTPROC} ${DIRNAME}/logs_cmp_rohc.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_decomp="`${XSLTPROC} ${DIRNAME}/logs_decomp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_cmp_ip="`${XSLTPROC} ${DIRNAME}/logs_cmp_ip.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-
-		if [ -z "$logs_startup" ] ; then
-			startup_result="PASS"
-		else
-			startup_result="FAIL"
-		fi
-
-		if [ "$startup_result" = "PASS" ] && [ -z "$logs_comp" ] ; then
-			comp_result="PASS"
-		else
-			comp_result="FAIL"
-		fi
-
-		if [ "$startup_result" = "PASS" ] && [ -z "$logs_cmp_rohc" ] ; then
-			cmp_rohc_result="PASS"
-		else
-			cmp_rohc_result="FAIL"
-		fi
-
-		if [ "$startup_result" = "PASS" ] && [ -z "$logs_decomp" ] ; then
-			decomp_result="PASS"
-		else
-			decomp_result="FAIL"
-		fi
-
-		if [ "$startup_result" = "PASS" ] && [ -z "$logs_cmp_ip" ] ; then
-			cmp_ip_result="PASS"
-		else
-			cmp_ip_result="FAIL"
-		fi
-
-		rm -f ${TMPFILE}
+		startup_result="FAIL"
 	fi
+
+	if [ "$startup_result" = "PASS" ] && [ -z "$logs_comp" ] ; then
+		comp_result="PASS"
+	else
+		comp_result="FAIL"
+	fi
+
+	if [ "$startup_result" = "PASS" ] && [ -z "$logs_cmp_rohc" ] ; then
+		cmp_rohc_result="PASS"
+	else
+		cmp_rohc_result="FAIL"
+	fi
+
+	if [ "$startup_result" = "PASS" ] && [ -z "$logs_decomp" ] ; then
+		decomp_result="PASS"
+	else
+		decomp_result="FAIL"
+	fi
+
+	if [ "$startup_result" = "PASS" ] && [ -z "$logs_cmp_ip" ] ; then
+		cmp_ip_result="PASS"
+	else
+		cmp_ip_result="FAIL"
+	fi
+
+	rm -f ${TMPFILE}
 
 	print_result "PASS"          $startup_result  "startup_details_$i"
 	print_result $startup_result $comp_result     "comp_details_$i"
