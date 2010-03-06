@@ -9,6 +9,12 @@
 
 #include "d_generic.h"
 #include "d_rtp.h"
+#include "config.h" /* for RTP_BIT_TYPE definition */
+
+
+/** Get the minimum of two values */
+#define MIN(a, b) \
+	((a) < (b) ? (a) : (b))
 
 
 /*
@@ -161,7 +167,7 @@ int get_bit_index(unsigned char byte, int index);
 
 int check_ip6_index(struct list_decomp * decomp, int index);
 
-void ip6_free_table(struct list_decomp * decomp);
+static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp);
 
 int encode_ip6_extension(struct d_generic_changes * active,
 			 struct list_decomp * decomp, 
@@ -243,12 +249,12 @@ void * d_generic_create(void)
 	}
 	bzero(context->list_decomp2, sizeof(struct list_decomp));
 	
-	context->list_decomp1->free_table = ip6_free_table;
+	context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp1->encode_extension = encode_ip6_extension;
 	context->list_decomp1->check_index = check_ip6_index;
 	context->list_decomp1->create_item = create_ip6_item;
 	context->list_decomp1->get_ext_size = get_ip6_ext_size;
-	context->list_decomp2->free_table = ip6_free_table;
+	context->list_decomp2->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp2->encode_extension = encode_ip6_extension;
 	context->list_decomp2->check_index = check_ip6_index;
 	context->list_decomp2->create_item = create_ip6_item;
@@ -377,7 +383,7 @@ void ip6_d_init_table(struct list_decomp * decomp)
  * @brief Free the based table of the list decompressor
  * @param decomp The list decompressor
  */
-void ip6_free_table(struct list_decomp * decomp)
+static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 {
 	int i;
 	for(i = 0; i < 4; i++)
@@ -426,10 +432,13 @@ int d_algo_list_decompress(struct list_decomp * decomp, const unsigned char *pac
 	ps = GET_BIT_4(packet);
 	packet ++;
 	size ++;
+	rohc_debugf(3, "ET = %d, PS = %d, m = %d\n", m, et, ps);
+
 	gen_id = *packet & 0xff;
 	packet ++;
 	size ++;
-	rohc_debugf(3, "type of encoding: %d \n", et);
+	rohc_debugf(3, "gen_id = 0x%02x\n", gen_id);
+
 	if (et == 0)
 	{
 		size += decode_type_0(decomp, packet, gen_id, ps, m);
@@ -439,6 +448,8 @@ int d_algo_list_decompress(struct list_decomp * decomp, const unsigned char *pac
 		ref_id = *packet & 0xff;
 		packet ++;
 		size ++;
+		rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
+
 		if (et == 1)
 			size += decode_type_1(decomp, packet, gen_id, ps, m, ref_id);
 		else if(et == 2)
@@ -574,8 +585,8 @@ int decode_type_0(struct list_decomp * decomp, const unsigned char * packet, int
 		}
 		else
 		{
-			rohc_debugf(1, "creating compression list\n");
-		        decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
+			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
 			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
 				rohc_debugf(0, "cannot allocate memory for the compression list\n");
@@ -749,7 +760,7 @@ int decode_type_1(struct list_decomp * decomp, const unsigned char * packet, int
 			}
 			else 
 			{
-				rohc_debugf(1, "creating compression list\n");
+				rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
 				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
 				if(decomp->list_table[decomp->counter_list] == NULL)
 				{
@@ -949,6 +960,7 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 	struct list_elt * elt;
 	unsigned char * mask = NULL;
 	mask = malloc(2*sizeof(unsigned char));
+	int size_ref_list;
 	int size_l;
 	int new_list = !check_id(decomp, gen_id);
 	if(!check_id(decomp, ref_id))
@@ -983,7 +995,7 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 			}
 			else 
 			{
-				rohc_debugf(1, "creating compression list\n");
+				rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
 				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
 				if(decomp->list_table[decomp->counter_list] == NULL)
 				{
@@ -994,14 +1006,17 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 				decomp->list_table[decomp->counter_list]->first_elt = NULL;													
 			}
 		}
+
 		// removal bit mask
-		size_l = size_list(decomp->ref_list);
+		size_ref_list = size_list(decomp->ref_list);
+		size_l = size_ref_list;
 		mask[0] = *packet;
 		packet++;
 		size++;
-		for(i = 0; i < 8; i++)
+		rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", mask[0]);
+		for(i = 0; i < MIN(8, size_ref_list); i++)
 		{
-			bit = get_bit_index(mask[0], i);
+			bit = get_bit_index(mask[0], 7 - i);
 			if(bit)
 				size_l--;
 		}
@@ -1009,14 +1024,23 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 		{
 			mask[1] = *packet;
 			packet++;
-			for(i = 0; i < 8; i++)
+			rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", mask[1]);
+			if(size_ref_list > 8)
 			{
-				bit = get_bit_index(mask[1], i);
-				if(bit)
-					size_l--;
+				for(i = 0; i < MIN(8, size_ref_list - 8); i++)
+				{
+					bit = get_bit_index(mask[1], 7 - i);
+					if(bit)
+						size_l--;
+				}
 			}
 			size++;
 		}
+		else
+		{
+			rohc_debugf(3, "no second byte of removal bit mask\n");
+		}
+
 		// creation of the new list
 		if(new_list)
 		{
@@ -1028,6 +1052,8 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 					bit = get_bit_index(mask[0], 7 - (i + j));
 				if(!bit)
 				{
+					rohc_debugf(3, "take element #%d of reference list as "
+					            "element #%d of new list\n", i + j + 1, i + 1);
 					elt = get_elt(decomp->ref_list, i + j);
 					if(!insert_elt(decomp->list_table[decomp->counter_list], 
 					   elt->item, i, elt->index_table))
@@ -1035,11 +1061,15 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 				}
 				else
 				{
+					rohc_debugf(3, "do not take element #%d of reference list\n",
+					            i + j + 1);
 					i--; // no elt added in new list
 					j++;
 				}
 			}
+			rohc_debugf(3, "size of new list after removal = %d elements\n", size_l);
 		}
+
 		if(decomp->counter < L)
 		{
 			decomp->ref_ok = 0;
@@ -1099,6 +1129,7 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 	const unsigned char * data;
 	unsigned char byte = 0;
 	int index_nb;
+	int size_ref_list;
 	int size_l;
 	int new_list = !check_id(decomp, gen_id);
 	if(!check_id(decomp, ref_id))
@@ -1136,7 +1167,7 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 			}
 			else 
 			{
-				rohc_debugf(1, "creating compression list\n");
+				rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
 				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
 				if(decomp->list_table[decomp->counter_list] == NULL)
 				{
@@ -1164,14 +1195,17 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 				decomp->temp_list->first_elt = NULL;
 			}
 		}
+
 		// removal bit mask
-		size_l = size_list(decomp->ref_list);
+		size_ref_list = size_list(decomp->ref_list);
+		size_l = size_ref_list;
 		rem_mask[0] = *packet;
 		packet++;
 		size++;
-		for(i = 0; i < 8; i++)
+		rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", rem_mask[0]);
+		for(i = 0; i < MIN(8, size_ref_list); i++)
 		{
-			bit = get_bit_index(rem_mask[0], i);
+			bit = get_bit_index(rem_mask[0], 7 - i);
 			if(bit)
 				size_l--;
 		}
@@ -1179,14 +1213,23 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 		{
 			rem_mask[1] = *packet;
 			packet++;
-			for(i = 0; i < 8; i++)
+			rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", rem_mask[1]);
+			if(size_ref_list > 8)
 			{
-				bit = get_bit_index(rem_mask[1], i);
-				if(bit)
-					size_l--;
+				for(i = 0; i < MIN(8, size_ref_list - 8); i++)
+				{
+					bit = get_bit_index(rem_mask[1], 7 - i);
+					if(bit)
+						size_l--;
+				}
 			}
 			size++;
 		}
+		else
+		{
+			rohc_debugf(3, "no second byte of removal bit mask\n");
+		}
+
 		// creation of the new list
 		if(new_list)
 		{
@@ -1198,23 +1241,31 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 					bit = get_bit_index(rem_mask[0], 7 - (i+j));
 				if(!bit)
 				{
+					rohc_debugf(3, "take element #%d of reference list "
+					            "as element #%d of temporary list\n",
+					            i + j + 1, i + 1);
 					elt = get_elt(decomp->ref_list, i + j);
 					if(!insert_elt(decomp->temp_list, elt->item, i, elt->index_table))
 						goto error;
 				}
 				else
 				{
+					rohc_debugf(3, "do not take element #%d of reference list\n",
+					            i + j + 1);
 					i--;
 					j++;
 				}
 			}
+			rohc_debugf(3, "size of new list after removal = %d elements\n", size_l);
 		}
+
 		// insertion bit mask
 		// assessment of index number
 		size_l = size_list(decomp->temp_list);
 		index_nb = size_l;
 		ins_mask[0] = *packet;
 		packet++;
+		rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", ins_mask[0]);
 		for(i = 0; i < 8; i++)
 		{
 			bit = get_bit_index(ins_mask[0], i);
@@ -1226,6 +1277,7 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 		{
 			ins_mask[1] = *packet;
 			packet++;
+			rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", ins_mask[1]);
 			for(i = 0; i < 8; i++)
 			{
 				bit = get_bit_index(ins_mask[1], i);
@@ -1233,6 +1285,10 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 					index_nb++;
 			}
 			size++;
+		}
+		else
+		{
+			rohc_debugf(3, "no second byte of insertion bit mask\n");
 		}
 		j = 0;
 		//assessment of the index list size
@@ -1252,6 +1308,8 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 				bit = get_bit_index(ins_mask[0], 7 - i);
 			if(!bit && new_list)
 			{
+				rohc_debugf(3, "take element #%d of temporary list "
+				            "as element #%d of new list\n", i - j + 1, i + 1);
 				elt = get_elt(decomp->temp_list, i - j);
 				if(!insert_elt(decomp->list_table[decomp->counter_list], 
 						elt->item, i, elt->index_table))
@@ -1262,16 +1320,20 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 				rohc_debugf(3, "value of ps :%d \n", ps);
 				if(!ps) // index coded with 4 bits
 				{
+					rohc_debugf(3, "decode 4-bit XI list\n");
+
 					if(j == 0)
 					{
 						byte |= m & 0x0f;
-						X = GET_BIT_3(&byte);
+						X = GET_REAL(GET_BIT_3(&byte));
 						index = GET_BIT_0_2(&byte);
+						rohc_debugf(3, "decode first XI (X = %d, index = %d)\n", X, index);
 						if (X)
 						{
 							length = decomp->get_ext_size(packet + index_size + size - size_header);
 							if(new_list)
 							{
+								rohc_debugf(3, "extract %d-byte item\n", length);
 								data = packet + index_size + size - size_header;
 								decomp->create_item(data, length, index, decomp);
 							}
@@ -1285,8 +1347,9 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 					}
 					else if(j % 2 != 0)
 					{
-						X = GET_BIT_7(packet + (j-1)/2);
+						X = GET_REAL(GET_BIT_7(packet + (j-1)/2));
 						index = GET_BIT_4_6(packet + (j-1)/2);
+						rohc_debugf(3, "decode XI #%d (X = %d, index = %d)\n", j, X, index);
 						if(!decomp->check_index(decomp, index))
 							goto error;
 						if (X)
@@ -1294,6 +1357,7 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 							length = decomp->get_ext_size(packet + index_size + size - size_header);
 							if(new_list)
 							{
+								rohc_debugf(3, "extract %d-byte item\n", length);
 								data = packet + index_size + size - size_header;
 								decomp->create_item(data, length, index, decomp);
 							}
@@ -1307,8 +1371,9 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 					}
 					else
 					{
-						X = GET_BIT_3(packet + (j-1)/2);
+						X = GET_REAL(GET_BIT_3(packet + (j-1)/2));
 						index = GET_BIT_0_2(packet + (j-1)/2);
+						rohc_debugf(3, "decode XI #%d (X = %d, index = %d)\n", j, X, index);
 						if(!decomp->check_index(decomp, index))
 							goto error;
 						if (X)
@@ -1316,6 +1381,7 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 							length = decomp->get_ext_size(packet + index_size + size - size_header);
 							if(new_list)
 							{
+								rohc_debugf(3, "extract %d-byte item\n", length);
 								data = packet + index_size + size - size_header;
 								decomp->create_item(data, length, index, decomp);
 							}
@@ -1330,8 +1396,11 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 				}
 				else // index coded with one byte
 				{
-					X = GET_BIT_7(packet + j);
+					rohc_debugf(3, "decode 8-bit XI list\n");
+
+					X = GET_REAL(GET_BIT_7(packet + j));
 					index = GET_BIT_0_6(packet +j);
+					rohc_debugf(3, "decode XI #%d (X = %d, index = %d)\n", j, X, index);
 					if(!decomp->check_index(decomp, index))
 						goto error;
 					if (X)
@@ -1339,6 +1408,7 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 						length = decomp->get_ext_size(packet + index_size + size - size_header);
 						if(new_list)
 						{
+							rohc_debugf(3, "extract %d-byte item\n", length);
 							data = packet + index_size + size - size_header;
 							decomp->create_item(data, length, index, decomp);
 						}
@@ -1350,13 +1420,15 @@ int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int 
 							goto error;
 					}
 				}
-				j++;
 				if(new_list)
 				{
+					rohc_debugf(3, "take item #%d from packet as element #%d "
+					            "of new list\n", j + 1, i + 1);
 					if(!insert_elt(decomp->list_table[decomp->counter_list], 
 							&(decomp->based_table[index]), i, index))
 						goto error;
 				}
+				j++;
 			}
 		}
 		if(decomp->counter < L)
@@ -5353,9 +5425,12 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 	/* static & changing */
 	if(decomp->list_decomp)
 	{
-		if(decomp->list_table[decomp->counter_list] != NULL)
+		if(decomp->list_table[decomp->counter_list] != NULL &&
+		   size_list(decomp->list_table[decomp->counter_list]) > 0)
+		{
 			active->ip.header.v6.ip6_nxt =
 				(uint8_t)(decomp->list_table[decomp->counter_list]->first_elt->item->type);
+		}
 	}
 	memcpy(dest, &active->ip.header.v6, sizeof(struct ip6_hdr));
 	dest += sizeof(struct ip6_hdr);

@@ -6,6 +6,7 @@
  */
 
 #include "rohc.h"
+#include "config.h" /* for VERSION definition */
 
 
 /**

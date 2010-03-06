@@ -13,6 +13,12 @@ CONF="${DIRNAME}/report.conf"
 LD_LIBRARY_PATH="${DIRNAME}/../../lib"
 APP="${DIRNAME}/../test"
 
+XSLTPROC="$(which xsltproc 2>/dev/null)"
+if [ -z "${XSLTPROC}" ] || [ ! -x "${XSLTPROC}" ]; then
+	echo "xsltproc tool is missing, please install it on your system"
+	exit 1
+fi
+
 error=0
 
 get_num_at_line()
@@ -138,11 +144,11 @@ while [ $i -le $nb_lines ] ; do
 		decomp_result="FAIL"
 		cmp_ip_result="FAIL"
 	else
-		logs_startup="`xsltproc ${DIRNAME}/logs_startup.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_comp="`xsltproc ${DIRNAME}/logs_comp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_cmp_rohc="`xsltproc ${DIRNAME}/logs_cmp_rohc.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_decomp="`xsltproc ${DIRNAME}/logs_decomp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
-		logs_cmp_ip="`xsltproc ${DIRNAME}/logs_cmp_ip.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_startup="`${XSLTPROC} ${DIRNAME}/logs_startup.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_comp="`${XSLTPROC} ${DIRNAME}/logs_comp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_cmp_rohc="`${XSLTPROC} ${DIRNAME}/logs_cmp_rohc.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_decomp="`${XSLTPROC} ${DIRNAME}/logs_decomp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
+		logs_cmp_ip="`${XSLTPROC} ${DIRNAME}/logs_cmp_ip.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 
 		if [ -z "$logs_startup" ] ; then
 			startup_result="PASS"
