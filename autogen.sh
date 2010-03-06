@@ -28,8 +28,6 @@ run()
   fi
 }
 
-export WANT_AUTOMAKE=1.7
-
 rm -f config.cache
 rm -f config.log
 

@@ -1,26 +1,24 @@
 #!/bin/bash
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT(rohc, trunk, didier.barvaux@toulouse.viveris.com)
+AC_INIT(rohc, trunk, http://launchpad.net/rohc/)
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
 
-# By default, generate static libraries
-#AC_DISABLE_SHARED
+# Disable static libraries by default
+AC_DISABLE_STATIC
 
 # Checks for programs.
-AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 
-# Checks for libraries.
-AC_SUBST(SET_MAKE,MAKE=make)
-
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([netinet/ip.h netinet/udp.h stdio.h stdlib.h string.h strings.h time.h sys/time.h netinet/in.h])
+AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
+AC_CHECK_HEADERS([time.h sys/time.h])
+AC_CHECK_HEADERS([netinet/ip.h netinet/udp.h netinet/in.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -111,7 +109,9 @@ fi
 # check if RTP bit type is enabled
 AC_ARG_ENABLE(rtp_bit_type,
               AS_HELP_STRING([--enable-rtp-bit-type],
-                             [enable RTP bit type (use an additionnal bit to distinguish UOR-2-TS and UOR-2-ID packets) [[default=no]]]),
+                             [enable RTP bit type (use an additionnal bit \
+                              to distinguish UOR-2-TS and UOR-2-ID packets) \
+                              [[default=no]]]),
               enable_rtp_bit_type=$enableval,
               enable_rtp_bit_type=no)
 if test "$enable_rtp_bit_type" = "yes"; then
