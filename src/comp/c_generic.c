@@ -4005,14 +4005,15 @@ int code_UO2_packet(struct c_context *context,
 	int first_position, s_byte_position = 0, t_byte_position;
 	int extension;
 	struct c_generic_context *g_context;
+	unsigned int header_len;
 	int nr_of_ip_hdr;
 	int packet_type;
 	int is_rtp;
 	int (*code_bytes)(struct c_context *context,
-	                   int extension,
-	                   unsigned char *f_byte,
-                      unsigned char *s_byte,
-                      unsigned char *t_byte);
+	                  int extension,
+	                  unsigned char *f_byte,
+	                  unsigned char *s_byte,
+	                  unsigned char *t_byte);
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -4057,43 +4058,41 @@ int code_UO2_packet(struct c_context *context,
 	/* part 2: to be continued, we need to add the 5 bits of SN */
 	f_byte = 0xc0; /* 1 1 0 x x x x x */
 
-	/* part 4: remember the position of the second byte for future completion
-	 * part 5: partially calculate the third byte, then remember the position
-	 *         of the third byte, its final value is currently unknown 
-	 * (RTP only) */
+	/* parts 4 & 5 */
+	/* compute outer IP + inner IP + next header length */
+	header_len = ip_get_hdrlen(ip) + g_context->next_header_len;
+	if(nr_of_ip_hdr > 1)
+	{
+		header_len += ip_get_hdrlen(ip2);
+	}
 	if(is_rtp)
 	{
-#if RTP_BIT_TYPE
-		t_byte = crc_calculate(CRC_TYPE_6,
-		                       ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-				      (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-				      g_context->next_header_len);
-		s_byte_position = counter;
-		counter++;
-		t_byte_position = counter;
-		counter++;
+		/* RTP-only parts 4 & 5:
+		 * part 4: remember the position of the second byte for future completion
+		 * part 5: partially calculate the third byte, then remember the position
+		 *         of the third byte, its final value is currently unknown */
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+		const int crc_type = CRC_TYPE_6;
 #else
+		const int crc_type = CRC_TYPE_7;
+#endif
+
 		s_byte_position = counter;
 		counter++;
-		t_byte = crc_calculate(CRC_TYPE_7,
-					ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-					(nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-					g_context->next_header_len);
+
+		t_byte = crc_calculate(crc_type, ip_get_raw_data(ip), header_len);
 		t_byte_position = counter;
 		counter++;
-#endif
 	}
 	else
 	{
-		/* part 5: partially calculate the third byte, then remember the position
-		 * of the third byte, its final value is currently unknown */
-		t_byte = crc_calculate(CRC_TYPE_7,
-	        	               ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-	                	       (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	                	       g_context->next_header_len);
+		/* non-RTP part 5: partially calculate the third byte, then remember the
+		 * position of the third byte, its final value is currently unknown */
+		t_byte = crc_calculate(CRC_TYPE_7, ip_get_raw_data(ip), header_len);
 		t_byte_position = counter;
 		counter++;
 	}
+
 	/* part 6: decide which extension to use */
 	extension = decide_extension(context);
 
@@ -4316,6 +4315,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+	const int rtp_type_bit = 0;
+#endif
 	int nr_ts_bits;
 	int ts_send;
 	uint32_t ts_mask;
@@ -4344,10 +4346,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= g_context->sn & 0x3f;
 
-			/* part 5: set the X bit to 0 + type_bit to 0*/
+			/* part 5: set the X bit to 0 + type_bit to 0 */
 			*t_byte &= ~0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
@@ -4367,10 +4368,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 0*/
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
@@ -4390,10 +4390,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
@@ -4413,10 +4412,9 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit = 0 */
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
@@ -4463,11 +4461,10 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3F;
 
-			/* part 5: set the X bit to 1 + type_bit to 0*/
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			/* compute TS to send in extension 3 and its length */
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
@@ -4528,6 +4525,9 @@ int code_UOR2_TS_bytes(struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+	const int rtp_type_bit = 0;
+#endif
 	int nr_ts_bits;
 	int ts_send;
 	int m;
@@ -4554,9 +4554,8 @@ int code_UOR2_TS_bytes(struct c_context *context,
 
 			/* part 5: set the X bit to 0 + type_bit to 0*/
 			*t_byte &= ~0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4573,11 +4572,10 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 0*/
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4596,9 +4594,8 @@ int code_UOR2_TS_bytes(struct c_context *context,
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4615,11 +4612,10 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 0*/
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4655,7 +4651,8 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3)) - 1);
 			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
-			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n", ts_bits_for_f_byte, ts_mask);
+			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n",
+			            ts_bits_for_f_byte, ts_mask);
 
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
@@ -4665,11 +4662,10 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 0*/
+			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 0;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			/* compute TS to send in extension 3 and its length */
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
@@ -4730,6 +4726,9 @@ int code_UOR2_ID_bytes(struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+	const int rtp_type_bit = 1;
+#endif
 	int nr_ip_id_bits;
 	int nr_ts_bits;
 	int ts_send;
@@ -4758,9 +4757,8 @@ int code_UOR2_ID_bytes(struct c_context *context,
 
 			/* part 5: set the X bit to 0 + type_bit to 1*/
 			*t_byte &= ~0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 1;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4777,11 +4775,10 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 1*/
+			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 1;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4798,11 +4795,10 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 1*/
+			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 1;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4819,11 +4815,10 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			*s_byte |= (m & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
-			/* part 5: set the X bit to 1 +type_bit to 1 */
+			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 1;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			break;
 		}
@@ -4865,11 +4860,10 @@ int code_UOR2_ID_bytes(struct c_context *context,
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
 
-			/* part 5: set the X bit to 1 + type_bit to 1*/
+			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
-#if RTP_BIT_TYPE
-			int rtp_type_bit = 1;
-                        *t_byte |= (rtp_type_bit & 0x01) << 6;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			/* compute TS to send in extension 3 and its length */
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;

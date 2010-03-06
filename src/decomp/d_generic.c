@@ -1718,7 +1718,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	else
 		dest += build_uncompressed_ip(active1, dest, plen +
 		                              active1->next_header_len,
-					      g_context->list_decomp1);
+		                              g_context->list_decomp1);
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
@@ -1952,7 +1952,7 @@ error:
 int d_decode_dynamic_ip(const unsigned char *packet,
                         unsigned int length,
                         struct d_generic_changes *info, 
-			struct list_decomp * decomp)
+                        struct list_decomp *decomp)
 {
 	int read; /* number of bytes read from the packet */
 
@@ -1996,7 +1996,7 @@ int d_decode_dynamic_ip4(const unsigned char *packet,
 	}
 
 	/* read the TOS field */
-  	ip_set_tos(ip, GET_BIT_0_7(packet));
+	ip_set_tos(ip, GET_BIT_0_7(packet));
 	rohc_debugf(3, "TOS = 0x%02x\n", ip_get_tos(*ip));
 	packet++;
 	read++;
@@ -2052,8 +2052,8 @@ error:
 int d_decode_dynamic_ip6(const unsigned char *packet,
                          unsigned int length,
                          struct ip_packet *ip,
-			 struct list_decomp * decomp,
-			 struct d_generic_changes * info)
+                         struct list_decomp *decomp,
+                         struct d_generic_changes *info)
 {
 	int read = 0; /* number of bytes read from the packet */
 	struct c_list * list;
@@ -2061,6 +2061,7 @@ int d_decode_dynamic_ip6(const unsigned char *packet,
 	struct list_elt * elt;
 	int length_list = 0; // number of element in reference list
 	int size = 0; // size of the list
+
 	/* check the minimal length to decode the IPv6 dynamic part */
 	if(length < 2)
 	{
@@ -2069,7 +2070,7 @@ int d_decode_dynamic_ip6(const unsigned char *packet,
 	}
 
 	/* read the TC field */
-  	ip_set_tos(ip, GET_BIT_0_7(packet));
+	ip_set_tos(ip, GET_BIT_0_7(packet));
 	rohc_debugf(3, "TC = 0x%02x\n", ip_get_tos(*ip));
 	packet++;
 	read++;
@@ -5345,14 +5346,14 @@ reparse:
  * @param dest         The buffer to store the IP header (MUST be at least
  *                     of sizeof(struct iphdr) or sizeof(struct ip6_hdr) bytes
  *                     depending on the IP version)
- * @param decomp       The list decompressor : only for IPv6
  * @param payload_size The length of the IP payload
+ * @param decomp       The list decompressor (IPv6 only)
  * @return             The length of the IP header
  */
 unsigned int build_uncompressed_ip(struct d_generic_changes *active,
                                    unsigned char *dest,
                                    unsigned int payload_size,
-				   struct list_decomp * decomp)
+                                   struct list_decomp *decomp)
 {
 	unsigned int length;
 
@@ -5417,7 +5418,7 @@ unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
 unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
                                     unsigned char *dest,
                                     unsigned int payload_size, 
-				    struct list_decomp * decomp)
+                                    struct list_decomp *decomp)
 {
 	struct ip6_hdr *ip = (struct ip6_hdr *) dest;
 	int size = 0;
