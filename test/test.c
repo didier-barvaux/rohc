@@ -65,6 +65,12 @@
 #include "test.h"
 
 
+/* prototypes of private functions */
+static int test_comp_and_decomp(char *src_filename,
+                                char *ofilename,
+                                char *cmp_filename);
+
+
 /**
  * @brief Main function for the ROHC test program
  *
@@ -79,12 +85,13 @@ int main(int argc, char *argv[])
 	char *cmp_filename = NULL;
 	int failure = 1;
 	int args_used;
+	int ret;
 
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
 	{
 		printf(TEST_USAGE);
-		goto quit;
+		goto error;
 	}
 
 	for(argc--, argv++; argc > 0; argc -= args_used, argv += args_used)
@@ -95,13 +102,13 @@ int main(int argc, char *argv[])
 		{
 			/* print version */
 			printf(TEST_VERSION);
-			goto quit;
+			goto error;
 		}
 		else if(!strcmp(*argv, "-h"))
 		{
 			/* print help */
 			printf(TEST_USAGE);
-			goto quit;
+			goto error;
 		}
 		else if(!strcmp(*argv, "-o"))
 		{
@@ -126,7 +133,7 @@ int main(int argc, char *argv[])
 		{
 			/* do not accept more than one filename without option name */
 			printf(TEST_USAGE);
-			goto quit;
+			goto error;
 		}
 	}
 
@@ -134,7 +141,7 @@ int main(int argc, char *argv[])
 	if(src_filename == NULL)
 	{
 		printf(TEST_USAGE);
-		goto quit;
+		goto error;
 	}
 
 	/* init the CRC tables */
@@ -143,11 +150,15 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
 	/* test ROHC compression/decompression with the packets from the file */
-	test_comp_and_decomp(src_filename, ofilename, cmp_filename);
+	ret = test_comp_and_decomp(src_filename, ofilename, cmp_filename);
+	if(ret != 0)
+	{
+		goto error;
+	}
 
 	failure = 0;
 
-quit:
+error:
 	return failure;
 }
 
@@ -519,10 +530,11 @@ exit:
  * @param ofilename     The name of the PCAP file to output the ROHC packets
  * @param cmp_filename  The name of the PCAP file that contains the ROHC
  *                      packets used for comparison
+ * @return              0 in case of success, 1 otherwise
  */
-void test_comp_and_decomp(char *src_filename,
-                          char *ofilename,
-                          char *cmp_filename)
+static int test_comp_and_decomp(char *src_filename,
+                                char *ofilename,
+                                char *cmp_filename)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -546,6 +558,7 @@ void test_comp_and_decomp(char *src_filename,
 
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0;
+	int is_failure = 1;
 
 	printf("<?xml version=\"1.0\" encoding=\"ISO-8859-15\"?>\n");
 	printf("<test>\n");
@@ -560,7 +573,7 @@ void test_comp_and_decomp(char *src_filename,
 		printf("\t\t</log>\n");
 		printf("\t\t<status>failed</status>\n");
 		printf("\t</startup>\n\n");
-		goto exit;
+		goto error;
 	}
 
 	/* link layer in the source dump must be Ethernet */
@@ -777,6 +790,12 @@ void test_comp_and_decomp(char *src_filename,
 	printf("\t<shutdown>\n");
 	printf("\t\t<log>\n\n");
 
+	if(err_comp == 0 && err_decomp == 0 && nb_bad == 0 && nb_ok == (counter * 2))
+	{
+		/* test is successful */
+		is_failure = 0;
+	}
+
 	rohc_free_decompressor(decomp2);
 destroy_decomp1:
 	rohc_free_decompressor(decomp1);
@@ -795,7 +814,8 @@ close_output:
 		pcap_dump_close(dumper);
 close_input:
 	pcap_close(handle);
-exit:
+error:
 	printf("</test>\n");
+	return is_failure;
 }
 

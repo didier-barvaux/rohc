@@ -47,12 +47,3 @@ usage: test [-h] [-v] [-o output_file] [-c cmp_file] flow\n\
 #define max(x, y) \
 	(((x) > (y)) ? (x) : (y))
 
-
-/*
- * Function prototypes:
- */
-
-void test_comp_and_decomp(char *src_filename,
-                          char *ofilename,
-                          char *cmp_filename);
-

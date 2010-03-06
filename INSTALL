@@ -9,6 +9,10 @@ Build the libraries and tools:
 
  $ make all
 
+If you want to run non-regression tests:
+
+ $ make check
+
 Install the libraries and tools:
 
  $ make install
@@ -40,8 +44,8 @@ If you want to clean the documentation:
 Non-regression tool
 -------------------
 
-Please, note that the non-regression tool is often used through the report tool
-described below because its interface is simplier.
+Please, note that the non-regression tool is often used through the "make check"
+command or the report tool described below because their interfaces are simplier.
 
 Run the non-regression tool:
 
