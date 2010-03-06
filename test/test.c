@@ -63,6 +63,7 @@
  */
 
 #include "test.h"
+#include "config.h" /* for RTP_BIT_TYPE definition */
 
 
 /** A simple maximum macro */
@@ -85,16 +86,18 @@ static int test_comp_and_decomp(char *src_filename,
  *
  * @param argc The number of program arguments
  * @param argv The program arguments
- * @return     The unix return code
+ * @return     The unix return code:
+ *              \li 0 in case of success,
+ *              \li 1 in case of failure,
+ *              \li 77 in case test is skipped
  */
 int main(int argc, char *argv[])
 {
 	char *src_filename = NULL;
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
-	int failure = 1;
+	int status = 1;
 	int args_used;
-	int ret;
 
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
@@ -159,16 +162,10 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
 	/* test ROHC compression/decompression with the packets from the file */
-	ret = test_comp_and_decomp(src_filename, ofilename, cmp_filename);
-	if(ret != 0)
-	{
-		goto error;
-	}
-
-	failure = 0;
+	status = test_comp_and_decomp(src_filename, ofilename, cmp_filename);
 
 error:
-	return failure;
+	return status;
 }
 
 
@@ -458,6 +455,13 @@ int compress_decompress(struct rohc_comp *comp,
 	/* compare the ROHC packets with the ones given by the user if asked */
 	printf("\t\t<rohc_comparison>\n");
 	printf("\t\t\t<log>\n");
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+	printf("RTP bit type option enabled, comparison with ROHC packets "
+	       "of reference is skipped because they will not match\n");
+	printf("\t\t\t</log>\n");
+	printf("\t\t\t<status>failed</status>\n");
+	ret = 0;
+#else
 	if(cmp_packet != NULL && cmp_size > link_len_cmp)
 	{
 		if(!compare_packets(cmp_packet + link_len_cmp, cmp_size - link_len_cmp,
@@ -481,6 +485,7 @@ int compress_decompress(struct rohc_comp *comp,
 		printf("\t\t\t<status>failed</status>\n");
 		ret = 0;
 	}
+#endif
 	printf("\t\t</rohc_comparison>\n\n");
 
 	/* decompress the ROHC packet */
@@ -539,7 +544,9 @@ exit:
  * @param ofilename     The name of the PCAP file to output the ROHC packets
  * @param cmp_filename  The name of the PCAP file that contains the ROHC
  *                      packets used for comparison
- * @return              0 in case of success, 1 otherwise
+ * @return              0 in case of success,
+ *                      1 in case of failure,
+ *                      77 if test is skipped
  */
 static int test_comp_and_decomp(char *src_filename,
                                 char *ofilename,
@@ -566,8 +573,8 @@ static int test_comp_and_decomp(char *src_filename,
 	struct rohc_decomp * decomp2;
 
 	int ret;
-	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0;
-	int is_failure = 1;
+	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
+	int status = 1;
 
 	printf("<?xml version=\"1.0\" encoding=\"ISO-8859-15\"?>\n");
 	printf("<test>\n");
@@ -751,10 +758,18 @@ static int test_comp_and_decomp(char *src_filename,
 			err_decomp++;
 			break;
 		}
+		else if(ret == 0)
+		{
+			nb_ref++;
+		}
 		else if(ret == 1)
+		{
 			nb_ok++;
-		else if(ret == -3)
+		}
+		else
+		{
 			nb_bad++;
+		}
 
 		/* get next ROHC packet from the comparison dump file if asked */
 		if(cmp_handle != NULL)
@@ -776,10 +791,18 @@ static int test_comp_and_decomp(char *src_filename,
 			err_decomp++;
 			break;
 		}
+		else if(ret == 0)
+		{
+			nb_ref++;
+		}
 		else if(ret == 1)
+		{
 			nb_ok++;
-		else if(ret == -3)
+		}
+		else
+		{
 			nb_bad++;
+		}
 	}
 
 	/* show the compression/decompression results */
@@ -799,11 +822,24 @@ static int test_comp_and_decomp(char *src_filename,
 	printf("\t<shutdown>\n");
 	printf("\t\t<log>\n\n");
 
-	if(err_comp == 0 && err_decomp == 0 && nb_bad == 0 && nb_ok == (counter * 2))
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+	if(err_comp == 0 && err_decomp == 0 &&
+	   nb_bad == 0 && nb_ref == (counter * 2) &&
+	   nb_ok == 0)
+	{
+		/* test is successful, but exit with code 77 to report test as skipped
+		   because of the RTP bit type option */
+		status = 77;
+	}
+#else
+	if(err_comp == 0 && err_decomp == 0 &&
+	   nb_bad == 0 && nb_ref == 0 &&
+	   nb_ok == (counter * 2))
 	{
 		/* test is successful */
-		is_failure = 0;
+		status = 0;
 	}
+#endif
 
 	rohc_free_decompressor(decomp2);
 destroy_decomp1:
@@ -825,6 +861,6 @@ close_input:
 	pcap_close(handle);
 error:
 	printf("</test>\n");
-	return is_failure;
+	return status;
 }
 

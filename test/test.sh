@@ -43,8 +43,8 @@ CMD="${APP} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
 
 # run in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
-	${CMD} || exit 1
+	${CMD} || exit $?
 else
-	${CMD} > /dev/null 2>&1 || exit 1
+	${CMD} > /dev/null 2>&1 || exit $?
 fi
 
