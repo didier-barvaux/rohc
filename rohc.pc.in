@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: RObust Header Compression (ROHC)
+Description: Free and efficient library that implements the ROHC protocol
+Version: @VERSION@
+Libs: -L${libdir} -lrohc_common -lrohc_comp -lrohc_decomp -lm
+Cflags: -I${includedir}

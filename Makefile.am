@@ -23,6 +23,9 @@ configure_files = \
 	missing \
 	depcomp
 
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = rohc.pc
+
 .PHONY: doc report measures
 
 doc:

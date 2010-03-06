@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT(rohc, 1.2.0, didier.barvaux@toulouse.viveris.com)
+AC_INIT(rohc, trunk, didier.barvaux@toulouse.viveris.com)
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
@@ -124,6 +124,16 @@ AC_DEFINE_UNQUOTED([RTP_BIT_TYPE], [$rtp_bit_type], [Whether RTP bit type is ena
 
 AM_DEP_TRACK
 
-AC_CONFIG_FILES([Makefile src/Makefile src/common/Makefile src/comp/Makefile src/decomp/Makefile test/Makefile app/Makefile app/tunnel/Makefile])
+AC_CONFIG_FILES([ \
+	Makefile \
+	src/Makefile \
+	src/common/Makefile \
+	src/comp/Makefile \
+	src/decomp/Makefile \
+	test/Makefile \
+	app/Makefile \
+	app/tunnel/Makefile \
+	rohc.pc \
+])
 
 AC_OUTPUT

@@ -21,6 +21,7 @@ Makefile.in
 ./missing
 ./mkinstalldirs
 ./stamp-h1
+./rohc.pc
 ./doc/html
 ./test/test
 ./test/report/report.html
