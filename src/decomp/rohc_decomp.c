@@ -288,7 +288,8 @@ void context_free(struct d_context *context)
 /**
  * @brief Create one ROHC decompressor.
  *
- * @param compressor  The ROHC compressor to associate the decompressor with
+ * @param compressor  \li The ROHC compressor to associate the decompressor with
+ *                    \li NULL to disable feedback and force undirectional mode
  * @return            The newly-created decompressor if successful,
  *                    NULL otherwise
  *
