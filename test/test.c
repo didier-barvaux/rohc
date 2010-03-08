@@ -187,7 +187,8 @@ int compare_packets(unsigned char *pkt1, int pkt1_size,
 	char str1[4][7], str2[4][7];
 	char sep1, sep2;
 
-	min_size = pkt1_size > pkt2_size ? pkt2_size : pkt1_size;
+	/* do not compare more than the shortest of the 2 packets */
+	min_size = min(pkt1_size, pkt2_size);
 
 	/* do not compare more than 180 bytes to avoid huge output */
 	min_size = min(180, min_size);
