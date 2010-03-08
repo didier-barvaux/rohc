@@ -215,7 +215,7 @@ unsigned int rtp_detect_ir_size(struct d_context *context,
 	offset += 2;
 
 	/* RTP dynamic chain */
-	length += 8;
+	length += 9;
 
 	/* check RX flag */
 	rx = (packet[offset] >> 4) & 0x01;
@@ -225,7 +225,7 @@ unsigned int rtp_detect_ir_size(struct d_context *context,
 
 		rohc_debugf(3, "RX flag set\n");
 		length++;
-		offset += 8;
+		offset += 9;
 
 		/* check TIS flags */
 		tis = (packet[offset] >> 1) & 0x01;
@@ -322,7 +322,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 	offset += 2;
 
 	/* RTP dynamic chain */
-	length += 8;
+	length += 9;
 
 	/* check RX flag */
 	rx = (first_byte[offset] >> 4) & 0x01;
@@ -332,7 +332,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 
 		rohc_debugf(3, "RX flag set\n");
 		length++;
-		offset += 8;
+		offset += 9;
 
 		/* check TIS flags */
 		tis = (first_byte[offset] >> 1) & 0x01;
@@ -529,7 +529,15 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	length -= 4;
 	rohc_debugf(3, "timestamp = 0x%x\n", rtp_context->timestamp);
 
-	/* part 6 is not supported yet */
+	/* part 6 is not supported yet ignore the byte which should be set to 0 */
+	if((*packet & 0xff) != 0x00)
+	{
+		rohc_debugf(0, "Generic CSRC list non null");
+		goto error;
+	}
+	packet++;
+	read++;
+	length--;
 
 	/* part 7 */
 	if(rx)

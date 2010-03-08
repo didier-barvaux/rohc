@@ -2025,7 +2025,15 @@ int d_decode_dynamic_ip4(const unsigned char *packet,
 	packet++;
 	read++;
 
-	/* generic extension header list is not managed yet */
+	/* generic extension header list is not managed yet,
+	 * ignore the byte which should be set to 0 */
+	if((*packet & 0xff) != 0x00)
+	{
+		rohc_debugf(0, "Generic extension header list non null");
+		goto error;
+	}
+	packet++;
+	read++;
 
 	return read;
 
@@ -2250,7 +2258,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	{
 		/* IP dynamic part of the outer header */
 		if(ip_version == IPV4)
-			length += 5;
+			length += 6;
 		else /* IPv6 */
 		{
 			length += 2;
@@ -2264,7 +2272,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 		if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 		{
 			if(ip2_version == IPV4)
-				length += 5;
+				length += 6;
 			else /* IPv6 */
 			{
 				length += 2;
@@ -2355,7 +2363,7 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 	/* IP dynamic part of the outer header
 	 * (see 5.7.7.3 & 5.7.7.4 in RFC 3095) */
 	if(version == IPV4)
-		length += 5;
+		length += 6;
 	else /* IPV6 */
 	{
 		length += 2;
@@ -2373,7 +2381,7 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 		/* IP dynamic part of the inner header
 		 * (see 5.7.7.3 & 5.7.7.4 in RFC 3095) */
 		if(version2 == IPV4)
-			length += 5;
+			length += 6;
 		else /* IPv6 */
 		{
 			length += 2;

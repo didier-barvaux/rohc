@@ -3403,7 +3403,10 @@ int code_ipv4_dynamic_part(struct c_context *context,
 	header_info->info.v4.rnd_count++;
 	header_info->info.v4.nbo_count++;
 
-	/* part 5 is not supported for the moment */
+	/* part 5 is not supported for the moment, but the field is mandatory.
+	 * Thus, we add a byte set to 0 */
+	dest[counter] = 0x00;
+	counter++;
 
 	rohc_debugf(3, "TOS = 0x%02x, TTL = 0x%02x, IP-ID = 0x%04x, df_rnd_nbo = "
 	            "0x%02x (DF = %d, RND = %d, NBO = %d)\n", tos, ttl, id,
