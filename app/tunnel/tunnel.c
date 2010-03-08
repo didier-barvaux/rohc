@@ -110,8 +110,8 @@
  */
 
 int tun_create(char *name);
-int read_from_tun(int fd, unsigned char *buffer, unsigned int *length);
-int write_to_tun(int fd, unsigned char *buffer, unsigned int length);
+int read_from_tun(int fd, unsigned char *packet, unsigned int *length);
+int write_to_tun(int fd, unsigned char *packet, unsigned int length);
 
 int udp_create(struct in_addr laddr, int port);
 int read_from_udp(int sock, unsigned char *buffer, unsigned int *length);
@@ -691,15 +691,15 @@ int tun_create(char *name)
  *            0x86dd for IPv6
  *
  * @param fd      The TUN file descriptor to read data from
- * @param buffer  The buffer where to store the data
+ * @param packet  The buffer where to store the data
  * @param length  OUT: the length of the data
  * @return        0 in case of success, a non-null value otherwise
  */
-int read_from_tun(int fd, unsigned char *buffer, unsigned int *length)
+int read_from_tun(int fd, unsigned char *packet, unsigned int *length)
 {
 	int ret;
 
-	ret = read(fd, buffer, *length);
+	ret = read(fd, packet, *length);
 
 	if(ret < 0 || ret > *length)
 	{
@@ -728,7 +728,7 @@ error:
  * the protocol of the data. See the read_from_tun function for details.
  *
  * @param fd      The TUN file descriptor to write data to
- * @param buffer  The packet to write to the TUN interface (header included)
+ * @param packet  The packet to write to the TUN interface (header included)
  * @param length  The length of the packet (header included)
  * @return        0 in case of success, a non-null value otherwise
  */
