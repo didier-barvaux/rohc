@@ -2008,7 +2008,7 @@ int d_decode_dynamic_ip4(const unsigned char *packet,
 	read++;
 
 	/* read the IP-ID field */
-	ipv4_set_id(ip, *((uint16_t *) packet));
+	ipv4_set_id(ip, GET_NEXT_16_BITS(packet));
 	rohc_debugf(3, "IP-ID = 0x%04x\n", ntohs(ipv4_get_id(*ip)));
 	packet += 2;
 	read += 2;
@@ -3441,7 +3441,7 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 				goto error;
 			}
 
-			*id = ntohs(*((uint16_t *) packet));
+			*id = ntohs(GET_NEXT_16_BITS(packet));
 			packet += 2;
 			*plen -= 2;
 		}
@@ -3504,7 +3504,7 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 				goto error;
 			}
 
-			*id2 = ntohs(*((uint16_t *) packet));
+			*id2 = ntohs(GET_NEXT_16_BITS(packet));
 			packet += 2;
 			*plen -= 2;
 		}
@@ -4045,7 +4045,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 		/* random outer IP-ID ? */
 		if(active1->rnd)
 		{
-			*id = ntohs(*((uint16_t *) packet));
+			*id = ntohs(GET_NEXT_16_BITS(packet));
 			rohc_debugf(3, "outer IP-ID = 0x%04x (RND)\n", *id);
 			packet += 2;
 			*plen -= 2;
@@ -4063,7 +4063,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 		/* random inner IP-ID ? */
 		if(active2->rnd)
 		{
-			*id2 = ntohs(*((uint16_t *) packet));
+			*id2 = ntohs(GET_NEXT_16_BITS(packet));
 			rohc_debugf(3, "inner IP-ID = 0x%04x (RND)\n", *id2);
 			packet += 2;
 			*plen -= 2;
@@ -4709,7 +4709,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 		if(g_context->multiple_ip)
 		{
-			ipv4_set_id(&active2->ip, *((uint16_t *) packet));
+			ipv4_set_id(&active2->ip, GET_NEXT_16_BITS(packet));
 			rohc_debugf(3, "inner IP-ID changed (0x%04x)\n",
 			            ntohs(ipv4_get_id(active2->ip)));
 			packet += 2;
@@ -4719,7 +4719,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ipv4_set_id(&active1->ip, *((uint16_t *) packet));
+			ipv4_set_id(&active1->ip, GET_NEXT_16_BITS(packet));
 			rohc_debugf(3, "outer IP-ID changed (0x%04x)\n",
 			            ntohs(ipv4_get_id(active1->ip)));
 			packet += 2;
@@ -5321,7 +5321,7 @@ int decode_outer_header_flags(unsigned char *flags,
 			goto error;
 		}
 
-		ipv4_set_id(&info->ip, *((uint16_t *) fields));
+		ipv4_set_id(&info->ip, GET_NEXT_16_BITS(fields));
 		rohc_debugf(3, "IP-ID = 0x%04x\n", ntohs(ipv4_get_id(info->ip)));
 		fields += 2;
 		read += 2;

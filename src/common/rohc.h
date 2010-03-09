@@ -548,6 +548,17 @@ struct medium
 /// Convert GET_BIT_x values to 0 or 1, ex: GET_REAL(GET_BIT_5(data_ptr));
 #define GET_REAL(x)	( (x) ? 1 : 0 )
 
+/** Get the next 16 bits at the given memory location in Network Byte Order */
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#	define GET_NEXT_16_BITS(x) \
+		((((*((x) + 1)) << 8) & 0xff00) | ((*(x)) & 0x00ff))
+#elif __BYTE_ORDER == __BIG_ENDIAN
+#	define GET_NEXT_16_BITS(x) \
+		((((*(x)) << 8) & 0xff00) | ((*((x) + 1)) & 0x00ff))
+#else
+#	error "Adjust your <bits/endian.h> defines"
+#endif
+
 
 /*
  * The flags for the IP changed fields:
@@ -639,6 +650,8 @@ static inline uint16_t swab16(uint16_t value)
 }
 
 
+#ifdef __i386__
+
 /**
  * @brief This is a version of ip_compute_csum() optimized for IP headers,
  *        which always checksum on 4 octet boundaries.
@@ -681,6 +694,85 @@ static inline unsigned short ip_fast_csum(unsigned char *iph, unsigned int ihl)
 
 	return(sum);
 }
+
+#else
+
+static inline unsigned short from32to16(unsigned long x)
+{
+    /* add up 16-bit and 16-bit for 16+c bit */
+    x = (x & 0xffff) + (x >> 16);
+    /* add up carry.. */
+    x = (x & 0xffff) + (x >> 16);
+    return x;
+}
+
+static unsigned int do_csum(const unsigned char *buff, int len)                                        
+{   
+    int odd, count;
+    unsigned long result = 0;                                                                          
+    
+    if (len <= 0)                                                                                      
+        goto out;
+    odd = 1 & (unsigned long) buff;                                                                    
+    if (odd) {
+#ifdef __LITTLE_ENDIAN
+        result = *buff;                                                                                
+#else   
+        result += (*buff << 8);                                                                        
+#endif  
+        len--;
+        buff++;                                                                                        
+    }
+    count = len >> 1;       /* nr of 16-bit words.. */                                                 
+    if (count) {
+        if (2 & (unsigned long) buff) {
+            result += *(unsigned short *) buff;                                                        
+            count--;
+            len -= 2;
+            buff += 2;                                                                                 
+        }
+        count >>= 1;        /* nr of 32-bit words.. */                                                 
+        if (count) { 
+            unsigned long carry = 0;                                                                   
+            do {
+                unsigned long w = *(unsigned int *) buff;                                              
+                count--;
+                buff += 4;
+                result += carry;                                                                       
+                result += w; 
+                carry = (w > result);                                                                  
+            } while (count);                                                                           
+            result += carry; 
+            result = (result & 0xffff) + (result >> 16);                                               
+        }
+        if (len & 2) {
+            result += *(unsigned short *) buff;                                                        
+            buff += 2;                                                                                 
+        }                                                                                              
+    }
+    if (len & 1)
+#ifdef __LITTLE_ENDIAN
+        result += *buff;                                                                               
+#else   
+        result += (*buff << 8);                                                                        
+#endif
+    result = from32to16(result);                                                                       
+    if (odd)
+        result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
+out:
+    return result;
+}
+
+/**
+ *  This is a version of ip_compute_csum() optimized for IP headers,
+ *  which always checksum on 4 octet boundaries.
+ */
+static inline uint16_t ip_fast_csum(const void *iph, unsigned int ihl)
+{
+    return (uint16_t)~do_csum(iph, ihl*4);
+}
+
+#endif
 
 
 /**

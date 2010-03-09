@@ -371,12 +371,12 @@ int udp_decode_static_udp(struct d_generic_context *context,
 		goto error;
 	}
 
-	udp->source = *((uint16_t *) packet);
+	udp->source = GET_NEXT_16_BITS(packet);
 	rohc_debugf(3, "UDP source port = 0x%04x\n", ntohs(udp->source));
 	packet += 2;
 	read += 2;
 
-	udp->dest = *((uint16_t *) packet);
+	udp->dest = GET_NEXT_16_BITS(packet);
 	rohc_debugf(3, "UDP destination port = 0x%04x\n", ntohs(udp->dest));
 	packet += 2;
 	read += 2;
@@ -425,7 +425,7 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
 		}
 
 		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = *((uint16_t *) packet);
+		udp->check = GET_NEXT_16_BITS(packet);
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 		packet += 2;
 		read += 2;
@@ -486,7 +486,7 @@ int udp_decode_uo_tail_udp(struct d_generic_context *context,
 		}
 
 		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = *((uint16_t *) packet);
+		udp->check = GET_NEXT_16_BITS(packet);
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 		packet += 2;
 		read += 2;

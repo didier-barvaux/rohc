@@ -2994,11 +2994,12 @@ int code_IR_packet(struct c_context *context,
 	/* part 8 */
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
-		dest[counter] = g_context->sn >> 8;
-		counter++;
-		dest[counter] = g_context->sn & 0xff;
-		counter++;
-		rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", g_context->sn, dest[counter-2], dest[counter-1]);
+		uint16_t sn;
+		sn = htons(g_context->sn);
+		memcpy(&dest[counter], &sn, sizeof(uint16_t));
+		counter += 2;
+		rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", g_context->sn,
+		            dest[counter - 2], dest[counter - 1]);
 	}
 
 	/* part 5 */
@@ -3373,8 +3374,9 @@ int code_ipv4_dynamic_part(struct c_context *context,
                            unsigned char *dest,
                            int counter)
 {
-	unsigned int tos, ttl, id, df;
+	unsigned int tos, ttl, df;
 	unsigned char df_rnd_nbo;
+	uint16_t id;
 
 	/* part 1 */
 	tos = ip_get_tos(ip);
@@ -5340,7 +5342,6 @@ int code_EXT3_packet(struct c_context *context,
 	int nr_ip_id_bits, nr_ip_id_bits2;
 	boolean have_inner = 0;
 	boolean have_outer = 0;
-	unsigned int id;
 	struct sc_rtp_context *rtp_context = NULL;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
@@ -5525,6 +5526,8 @@ int code_EXT3_packet(struct c_context *context,
 			   (g_context->ip_flags.info.v4.rnd_count-1 < MAX_FO_COUNT &&
 			    g_context->ip_flags.info.v4.rnd == 0))
 			{
+				uint16_t id;
+
 				id = ipv4_get_id(ip);
 				memcpy(&dest[counter], &id, 2);
 				rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
@@ -5596,6 +5599,8 @@ int code_EXT3_packet(struct c_context *context,
 			   (g_context->ip2_flags.info.v4.rnd_count-1 < MAX_FO_COUNT &&
 			    g_context->ip2_flags.info.v4.rnd == 0))
 			{
+				uint16_t id;
+
 				id = ipv4_get_id(ip2);
 				memcpy(&dest[counter], &id, 2);
 				rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",

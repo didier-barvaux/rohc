@@ -449,7 +449,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		}
 
 		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = *((uint16_t *) packet);
+		udp->check = GET_NEXT_16_BITS(packet);
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 		packet += 2;
 		read += 2;
@@ -500,7 +500,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	length--;
 
 	/* part 4 */
-	rtp->sn = *((uint16_t *) packet);
+	rtp->sn = GET_NEXT_16_BITS(packet);
 	packet += 2;
 	read += 2;
 	length -= 2;
@@ -558,8 +558,9 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		/* part 8 */
 		if(tss)
 		{
-			int ts_stride;
-			ts_stride = *((uint32_t *) packet);
+			uint32_t ts_stride;
+
+			ts_stride = ntohl(*((uint32_t *) packet));
 			read += 4;
 			packet += 4;
 
@@ -622,7 +623,7 @@ int rtp_decode_uo_tail_rtp(struct d_generic_context *context,
 		}
 
 		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = *((uint16_t *) packet);
+		udp->check = GET_NEXT_16_BITS(packet);
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 		packet += 2;
 		read += 2;

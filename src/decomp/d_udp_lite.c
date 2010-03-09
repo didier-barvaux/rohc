@@ -468,7 +468,7 @@ int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
 	if(udp_lite_context->cfp != 0)
 	{
 		/* retrieve the checksum coverage field from the ROHC packet */
-		udp_lite->len = *((uint16_t *) packet);
+		udp_lite->len = GET_NEXT_16_BITS(packet);
 		rohc_debugf(2, "checksum coverage = 0x%04x\n", ntohs(udp_lite->len));
 		read += 2;
 		packet += 2;
@@ -494,7 +494,7 @@ int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
 	}
 
 	/* retrieve the checksum field from the ROHC packet */
-	udp_lite->check = *((uint16_t *) packet);
+	udp_lite->check = GET_NEXT_16_BITS(packet);
 	rohc_debugf(2, "checksum = 0x%04x\n", ntohs(udp_lite->check));
 	packet += 2;
 	read += 2;
@@ -550,7 +550,7 @@ int udp_lite_decode_uo_tail_udp(struct d_generic_context *context,
 	if(udp_lite_context->cfp > 0)
 	{
 		/* retrieve the checksum coverage field from the ROHC packet */
-		udp_lite->len = *((uint16_t *) packet);
+		udp_lite->len = GET_NEXT_16_BITS(packet);
 		rohc_debugf(2, "checksum coverage = 0x%04x\n", ntohs(udp_lite->len));
 		read += 2;
 		packet += 2;
@@ -569,7 +569,7 @@ int udp_lite_decode_uo_tail_udp(struct d_generic_context *context,
 	}
 
 	/* retrieve the checksum field from the ROHC packet */
-	udp_lite->check = *((uint16_t *) packet);
+	udp_lite->check = GET_NEXT_16_BITS(packet);
 	rohc_debugf(2, "checksum = 0x%04x\n", ntohs(udp_lite->check));
 	packet += 2;
 	read += 2;
