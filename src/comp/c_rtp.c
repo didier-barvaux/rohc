@@ -8,6 +8,8 @@
 #include "c_rtp.h"
 #include "rohc_traces.h"
 
+#include <assert.h>
+
 
 /*
  * Private function prototypes.
@@ -563,11 +565,25 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 		if(tss)
 		{
 			uint32_t ts_stride;
+			unsigned short ts_stride_sdvl_len;
+			boolean ret;
 
-			ts_stride = htonl(get_ts_stride(rtp_context->ts_sc));
-			rohc_debugf(3, "send ts_stride = 0x%08x on 4 bytes\n", ts_stride);
-			memcpy(&dest[counter], &ts_stride, 4);
-			counter += 4;
+			/* get the TS_STRIDE to send in packet */
+			ts_stride = get_ts_stride(rtp_context->ts_sc);
+
+			/* how many bytes are required by SDVL to encode TS_STRIDE ? */
+			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, -1);
+			assert(ts_stride_sdvl_len >= 1 && ts_stride_sdvl_len <= 4);
+
+			rohc_debugf(3, "send ts_stride = 0x%08x encoded with SDVL "
+			            "on %u bytes\n", ts_stride, ts_stride_sdvl_len);
+
+			/* encode TS_STRIDE in SDVL and write it to packet */
+			ret = c_encodeSdvl(&dest[counter], ts_stride, -1);
+			assert(ret == ROHC_TRUE);
+
+			/* skip the bytes used to encode TS_STRIDE in SDVL */
+			counter += ts_stride_sdvl_len;
 
 			if(rtp_context->ts_sc.state == INIT_STRIDE)
 				rtp_context->ts_sc.state = SEND_SCALED;

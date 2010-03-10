@@ -228,30 +228,62 @@ unsigned int rtp_detect_ir_size(struct d_context *context,
 		length++;
 		offset += 8;
 
+		/* check TSS flag */
+		tss = packet[offset] & 0x01;
+		if(tss)
+		{
+			unsigned short tss_offset;
+			int ts_stride_sdvl_len;
+
+			rohc_debugf(3, "TSS flag set\n");
+
+			/* check that packet is large enough for 1st byte of TS_STRIDE field */
+			tss_offset = offset + 1;
+			if(plen < (tss_offset + 1))
+			{
+				rohc_debugf(0, "packet is too short (%u bytes) for 1st byte "
+				            "of SDVL-encoded TS_STRIDE\n", plen);
+				goto error;
+			}
+
+			/* get the size of the SDVL-encoded TS_STRIDE field */
+			ts_stride_sdvl_len = d_sdvalue_size(&packet[offset + 1]);
+			if(ts_stride_sdvl_len < 1 || ts_stride_sdvl_len > 4)
+			{
+				rohc_debugf(0, "invalid size (%d bytes) for SDVL-encoded "
+				            "TS_STRIDE field\n", ts_stride_sdvl_len);
+				goto error;
+			}
+
+			length += ts_stride_sdvl_len;
+		}
+		else
+		{
+			rohc_debugf(3, "TSS flag not set\n");
+		}
+
 		/* check TIS flags */
 		tis = (packet[offset] >> 1) & 0x01;
 		if(tis)
 		{
 			rohc_debugf(3, "TIS flag set\n");
-			length += 4; /* to check: always 4 bytes ? */
+			rohc_debugf(0, "TIS flag set is not supported yet\n");
+			goto error;
 		}
 		else
-			rohc_debugf(3, "TIS flag not set\n");
-
-		/* check TSS flag */
-		tss = packet[offset] & 0x01;
-		if(tss)
 		{
-			rohc_debugf(3, "TSS flag set\n");
-			length += 4; /* to check: always 4 bytes ? */
+			rohc_debugf(3, "TIS flag not set\n");
 		}
-		else
-			rohc_debugf(3, "TSS flag not set\n");
 	}
 	else
+	{
 		rohc_debugf(3, "RX flag not set\n");
+	}
 
 	return length;
+
+error:
+	return 0;
 }
 
 
@@ -335,31 +367,64 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 		length++;
 		offset += 8;
 
+		/* check TSS flag */
+		tss = first_byte[offset] & 0x01;
+		if(tss)
+		{
+			unsigned short tss_offset;
+			int ts_stride_sdvl_len;
+
+			rohc_debugf(3, "TSS flag set\n");
+
+			/* check that packet is large enough for 1st byte of TS_STRIDE field */
+			tss_offset = offset + 1;
+			if(plen < (tss_offset + 1))
+			{
+				rohc_debugf(0, "packet is too short (%u bytes) for 1st byte "
+				            "of SDVL-encoded TS_STRIDE\n", plen);
+				goto error;
+			}
+
+			/* get the size of the SDVL-encoded TS_STRIDE field */
+			ts_stride_sdvl_len = d_sdvalue_size(&first_byte[offset + 1]);
+			if(ts_stride_sdvl_len < 1 || ts_stride_sdvl_len > 4)
+			{
+				rohc_debugf(0, "invalid size (%d bytes) for SDVL-encoded "
+				            "TS_STRIDE field\n", ts_stride_sdvl_len);
+				goto error;
+			}
+
+			length += ts_stride_sdvl_len;
+		}
+		else
+		{
+			rohc_debugf(3, "TSS flag not set\n");
+		}
+
 		/* check TIS flags */
 		tis = (first_byte[offset] >> 1) & 0x01;
 		if(tis)
 		{
 			rohc_debugf(3, "TIS flag set\n");
-			length += 4; /* to check: always 4 bytes ? */
+			rohc_debugf(0, "TIS flag set is not supported yet\n");
+			goto error;
 		}
 		else
-			rohc_debugf(3, "TIS flag not set\n");
-
-		/* check TSS flag */
-		tss = first_byte[offset] & 0x01;
-		if(tss)
 		{
-			rohc_debugf(3, "TSS flag set\n");
-			length += 4; /* to check: always 4 bytes ? */
+			rohc_debugf(3, "TIS flag not set\n");
 		}
-		else
-			rohc_debugf(3, "TSS flag not set\n");
 	}
 	else
+	{
 		rohc_debugf(3, "RX flag not set\n");
+	}
 
 	return length;
+
+error:
+	return 0;
 }
+
 
 /**
  * @brief Decode the UDP/RTP static part of the ROHC packet.
@@ -548,30 +613,64 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		packet++;
 		length--;
 
-		/* check the minimal length to decode parts 8 & 9 of the RTP dynamic part */
-		if(length < 4 * tis + 4 * tss)
-		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
-			goto error;
-		}
-
 		/* part 8 */
 		if(tss)
 		{
+			int ts_stride_sdvl_len;
 			uint32_t ts_stride;
 
-			ts_stride = ntohl(*((uint32_t *) packet));
-			read += 4;
-			packet += 4;
+			/* check the minimal length to decode the SDVL-encoded TS_STRIDE */
+			if(length < 1)
+			{
+				rohc_debugf(0, "ROHC packet too small (len = %d) for 1st byte "
+				            "of SDVL-encoded TS_STRIDE\n", length);
+				goto error;
+			}
 
+			/* how many bytes for the SDVL-encoded TS_STRIDE ? */
+			ts_stride_sdvl_len = d_sdvalue_size(packet);
+			if(ts_stride_sdvl_len < 1 || ts_stride_sdvl_len > 4)
+			{
+				rohc_debugf(0, "invalid size (%d bytes) for SDVL-encoded "
+				            "TS_STRIDE field\n", ts_stride_sdvl_len);
+				goto error;
+			}
+
+			/* check the length to decode the full SDVL-encoded TS_STRIDE */
+			if(length < ts_stride_sdvl_len)
+			{
+				rohc_debugf(0, "ROHC packet too small (len = %d) for the full "
+				            "%d-byte SDVL-encoded TS_STRIDE\n", length,
+				            ts_stride_sdvl_len);
+				goto error;
+			}
+
+			/* decode the SDVL-encoded TS_STRIDE field */
+			ts_stride = d_sdvalue_decode(packet);
 			rohc_debugf(3, "ts_stride read = %u / 0x%x\n", ts_stride, ts_stride);
+
+			/* skip the SDVL-encoded TS_STRIDE field in packet */
+			read += ts_stride_sdvl_len;
+			packet += ts_stride_sdvl_len;
+			length -= ts_stride_sdvl_len;
+
+			/* update context with the decoded TS_STRIDE */
 			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);
 		}
 
 		/* part 9 */
 		if(tis)
 		{
+			/* check the minimal length to decode the SDVL-encoded TIME_STRIDE */
+			if(length < 1)
+			{
+				rohc_debugf(0, "ROHC packet too small (len = %d) for 1st byte "
+				            "of SDVL-encoded TIME_STRIDE\n", length);
+				goto error;
+			}
+
 			/* not supported yet */
+			rohc_debugf(0, "TIME_STRIDE field not supported yet\n");
 			goto error;
 		}
 	}

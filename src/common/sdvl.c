@@ -37,7 +37,10 @@ int c_bytesSdvl(int value, int length)
 		else if(value <= 536870911)
 			size = 4;
 		else
+		{
+			rohc_debugf(0, "value %d is too large for SDVL-encoding\n", value);
 			size = 5;
+		}
 	}
 	else
 	{
@@ -51,7 +54,11 @@ int c_bytesSdvl(int value, int length)
 		else if(length <= 29)
 			size = 4;
 		else
+		{
+			rohc_debugf(0, "value %d on %d bits is too large for SDVL-encoding\n",
+			            value, length);
 			size = 5;
+		}
 	}
 
 	return size;
