@@ -10,12 +10,16 @@
 
 
 /**
+ * @defgroup rohc_common ROHC compressor/decompressor common API
+ */
+
+
+/**
  * @brief Get the version of the ROHC library
  *
  * @return the version of the library
  *
- * @ingroup rohc_comp
- * @ingroup rohc_decomp
+ * @ingroup rohc_common
  */
 char *rohc_version(void)
 {

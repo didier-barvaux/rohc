@@ -35,9 +35,10 @@
  * <p>The list of features implemented (or not yet implemented) in the ROHC
  * library is available on a separate page: \ref features</p>
  *
- * <p>The APIs for ROHC compression and decompression are also available on
+ * <p>The APIs for ROHC common, compression and decompression are also available on
  * separate pages:
  *  <ul>
+ *    <li>\ref rohc_common</li>
  *    <li>\ref rohc_comp</li>
  *    <li>\ref rohc_decomp</li>
  *  </ul>
