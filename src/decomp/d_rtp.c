@@ -13,6 +13,19 @@
 #include <netinet/udp.h>
 
 
+/**
+ * @brief The size (in bytes) of the constant RTP dynamic part
+ *
+ * According to RFC3095 section 5.7.7.6:
+ *   1 (flags V, P, RX, CC) + 1 (flags M, PT) + 2 (RTP SN) +
+ *   4 (RTP TS) + 1 (CSRC list) = 9 bytes
+ *
+ * The size of the Generic CSRC list field is considered constant because
+ * generic CSRC list is not supported yet and thus 1 byte of zero is used.
+ */
+#define RTP_CONST_DYN_PART_SIZE  9
+
+
 /*
  * Private function prototypes.
  */
@@ -216,7 +229,7 @@ unsigned int rtp_detect_ir_size(struct d_context *context,
 	offset += 2;
 
 	/* RTP dynamic chain */
-	length += 8;
+	length += RTP_CONST_DYN_PART_SIZE;
 
 	/* check RX flag */
 	rx = (packet[offset] >> 4) & 0x01;
@@ -226,7 +239,7 @@ unsigned int rtp_detect_ir_size(struct d_context *context,
 
 		rohc_debugf(3, "RX flag set\n");
 		length++;
-		offset += 8;
+		offset += RTP_CONST_DYN_PART_SIZE;
 
 		/* check TSS flag */
 		tss = packet[offset] & 0x01;
@@ -355,7 +368,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 	offset += 2;
 
 	/* RTP dynamic chain */
-	length += 8;
+	length += RTP_CONST_DYN_PART_SIZE;
 
 	/* check RX flag */
 	rx = (first_byte[offset] >> 4) & 0x01;
@@ -365,7 +378,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 
 		rohc_debugf(3, "RX flag set\n");
 		length++;
-		offset += 8;
+		offset += RTP_CONST_DYN_PART_SIZE;
 
 		/* check TSS flag */
 		tss = first_byte[offset] & 0x01;
@@ -525,8 +538,9 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 			rtp_context->udp_checksum_present = udp->check;
 	}
 
-	/* check the minimal length to decode the first byte of the RTP dynamic part */
-	if(length < 1)
+	/* check the minimal length to decode the constant part of the RTP
+	   dynamic part (parts 2-6) */
+	if(length < RTP_CONST_DYN_PART_SIZE)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 		goto error;
@@ -544,13 +558,6 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	rohc_debugf(3, "version = 0x%x\n", rtp->version);
 	rohc_debugf(3, "padding = 0x%x\n", rtp->padding);
 	rohc_debugf(3, "cc = 0x%x\n", rtp->cc);
-
-	/* check the minimal length to decode parts 3-7 of the RTP dynamic part */
-	if(length < 7 + rx)
-	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
-		goto error;
-	}
 
 	/* part 3 */
 	byte = *packet;
@@ -595,12 +602,28 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	length -= 4;
 	rohc_debugf(3, "timestamp = 0x%x\n", rtp_context->timestamp);
 
-	/* part 6 is not supported yet */
+	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
+	if(GET_BIT_0_7(packet) != 0x00)
+	{
+		rohc_debugf(0, "generic CSRC list not supported yet\n");
+		goto error;
+	}
+	packet++;
+	read++;
+	length--;
 
 	/* part 7 */
 	if(rx)
 	{
 		int x, mode, tis, tss;
+
+		/* check the minimal length to decode the flags that are only present
+		   if RX flag is set */
+		if(length < 1)
+		{
+			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			goto error;
+		}
 
 		byte = *packet;
 		x = (byte & 0x10) >> 4;

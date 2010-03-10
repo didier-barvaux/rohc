@@ -17,6 +17,18 @@
 #define MIN(a, b) \
 	((a) < (b) ? (a) : (b))
 
+/**
+ * @brief The size (in bytes) of the IPv4 dynamic part
+ *
+ * According to RFC3095 section 5.7.7.4:
+ *   1 (TOS) + 1 (TTL) + 2 (IP-ID) + 1 (flags) + 1 (header list) = 6 bytes
+ *
+ * The size of the generic extension header list field is considered constant
+ * because generic extension header list is not supported yet and thus 1 byte
+ * of zero is used.
+ */
+#define IPV4_DYN_PART_SIZE  6
+
 
 /*
  * Private function prototypes.
@@ -1989,7 +2001,7 @@ int d_decode_dynamic_ip4(const unsigned char *packet,
 	int read = 0; /* number of bytes read from the packet */
 
 	/* check the minimal length to decode the IPv4 dynamic part */
-	if(length < 5)
+	if(length < IPV4_DYN_PART_SIZE)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 		goto error;
@@ -2026,7 +2038,15 @@ int d_decode_dynamic_ip4(const unsigned char *packet,
 	packet++;
 	read++;
 
-	/* generic extension header list is not managed yet */
+	/* generic extension header list is not managed yet,
+	   ignore the byte which should be set to 0 */
+	if(GET_BIT_0_7(packet) != 0x00)
+	{
+		rohc_debugf(0, "generic extension header list not supported yet\n");
+		goto error;
+	}
+	packet++;
+	read++;
 
 	return read;
 
@@ -2252,7 +2272,9 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	{
 		/* IP dynamic part of the outer header */
 		if(ip_version == IPV4)
-			length += 5;
+		{
+			length += IPV4_DYN_PART_SIZE;
+		}
 		else /* IPv6 */
 		{
 			length += 2;
@@ -2266,7 +2288,9 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 		if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 		{
 			if(ip2_version == IPV4)
-				length += 5;
+			{
+				length += IPV4_DYN_PART_SIZE;
+			}
 			else /* IPv6 */
 			{
 				length += 2;
@@ -2357,7 +2381,9 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 	/* IP dynamic part of the outer header
 	 * (see 5.7.7.3 & 5.7.7.4 in RFC 3095) */
 	if(version == IPV4)
-		length += 5;
+	{
+		length += IPV4_DYN_PART_SIZE;
+	}
 	else /* IPV6 */
 	{
 		length += 2;
@@ -2375,7 +2401,9 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 		/* IP dynamic part of the inner header
 		 * (see 5.7.7.3 & 5.7.7.4 in RFC 3095) */
 		if(version2 == IPV4)
-			length += 5;
+		{
+			length += IPV4_DYN_PART_SIZE;
+		}
 		else /* IPv6 */
 		{
 			length += 2;

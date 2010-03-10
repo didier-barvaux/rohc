@@ -540,7 +540,10 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 	            dest[counter + 1], dest[counter + 2], dest[counter + 3]);
 	counter += 4;
 
-	/* part 6 not supported yet */
+	/* part 6 not supported yet  but the field is mandatory,
+	   so add a zero byte */
+	dest[counter] = 0x00;
+	counter++;
 
 	/* parts 7, 8 & 9 */
 	if(rx_byte)
