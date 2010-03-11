@@ -1123,6 +1123,17 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 	if(decomp->compressor == NULL)
 	{
 		rohc_debugf(1, "no associated compressor, do not sent feedback\n");
+
+		/* only change state if needed */
+		if(rohc_status == ROHC_ERROR_PACKET_FAILED ||
+		   rohc_status == ROHC_ERROR_CRC)
+		{
+			if(context->state == STATIC_CONTEXT)
+				context->state = NO_CONTEXT;
+			else if(context->state == FULL_CONTEXT)
+				context->state = STATIC_CONTEXT;
+		}
+		
 		goto skip;
 	}
 
