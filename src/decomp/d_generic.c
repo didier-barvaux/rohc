@@ -2175,20 +2175,20 @@ error:
  * The function computes the length of the fields 2 + 4-7, ie. the first byte,
  * the Profile and CRC fields and the static and dynamic chains (outer and inner
  * IP headers).
+ *
  * @param context         The decompression context
- * @param packet          The pointer on the IR packet
- * @param plen            The length of the IR packet
- * @param second_byte     The offset for the second byte of the IR packet
- *                        (ie. the field 4 in the figure)
- * @param profile_id      The ID of the decompression profile
+ * @param packet          The pointer on the IR packet minus the Add-CID byte
+ *                        (ie. the field 2 in the figure)
+ * @param plen            The length of the IR packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ *                        (ie. the field 3 in the figure)
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
 unsigned int d_generic_detect_ir_size(struct d_context *context,
-				      unsigned char *packet,
+                                      unsigned char *packet,
                                       unsigned int plen,
-                                      int second_byte,
-                                      int profile_id)
+                                      unsigned int large_cid_len)
 {
 	struct d_generic_context *g_context = context->specific;
 	unsigned int length = 0;
@@ -2196,14 +2196,17 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	int d;
 	unsigned int ip_version, ip2_version = 0;
 	unsigned int proto;
-	int static_part;
 
 	/* skip:
 	 *  - the first byte of the ROHC packet (field 2)
-	 *  - the Profile byte (field 4) if the profile ID != 0
+	 *  - the Profile byte (field 4)
 	 *  - the CRC byte (field 5) */
-	length += 1 + (profile_id == 0 ? 0 : 1) + 1;
-	ip_offset = second_byte + 2;
+	length += 3;
+
+	/* determine the position of the first IP version field: the second byte
+	 * is the Profile byte (field 4) and we must skip the Profile byte (field 4)
+	 * and the CRC byte (field 5) */
+	ip_offset = large_cid_len + length;
 
 	/* check if IR packet is large enough to contain an IP version field */
 	if(ip_offset >= plen)
@@ -2239,9 +2242,11 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	proto = packet[ip_offset + (ip_version == IPV4 ? 1 : 3)];
 	if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 	{
+		rohc_debugf(2, "inner IP header detected in static chain\n");
+
 		/* change offset to point on the second IP header
 		 * (substract 1 because of the first byte) */
-		ip_offset = second_byte + (length - 1);
+		ip_offset = large_cid_len + length;
 
 		/* check if IR packet is large enough to contain an IP version field */
 		if(ip_offset >= plen)
@@ -2270,6 +2275,10 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	d = GET_REAL(GET_BIT_0(packet));
 	if(d)
 	{
+		unsigned int ext_list_offset;
+
+		rohc_debugf(2, "dynamic chain detected\n");
+
 		/* IP dynamic part of the outer header */
 		if(ip_version == IPV4)
 		{
@@ -2277,30 +2286,49 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 		}
 		else /* IPv6 */
 		{
+
+			/* IPv6 dynamic chain (constant part) */
 			length += 2;
-			static_part = context->profile->get_static_part();
+
+			/* IPv6 dynamic chain (variable part): IPv6 extensions list */
+			ext_list_offset = large_cid_len + length +
+			                  context->profile->get_static_part();
 			g_context->list_decomp1->size_ext = 
-			d_algo_list_decompress(g_context->list_decomp1, packet + length + static_part);
-			rohc_debugf(1, "size of extension list : %d \n", g_context->list_decomp1->size_ext);
+				d_algo_list_decompress(g_context->list_decomp1,
+				                       packet + ext_list_offset);
+			rohc_debugf(1, "IPv6 extensions list in outer IPv6 dynamic "
+			            "chain = %d bytes\n", g_context->list_decomp1->size_ext);
 			length += g_context->list_decomp1->size_ext;
 		}
+
 		/* IP dynamic part of the inner header if present */
 		if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 		{
+			rohc_debugf(1, "inner IP header detected in dynamic chain\n");
+
 			if(ip2_version == IPV4)
 			{
 				length += IPV4_DYN_PART_SIZE;
 			}
 			else /* IPv6 */
 			{
+				/* IPv6 dynamic chain (constant part) */
 				length += 2;
-				static_part = context->profile->get_static_part();
+
+				/* IPv6 dynamic chain (variable part): IPv6 extensions list */
+				ext_list_offset = large_cid_len + length +
+				                  context->profile->get_static_part();
 				g_context->list_decomp2->size_ext =
-				d_algo_list_decompress(g_context->list_decomp2, packet + length + static_part);
+					d_algo_list_decompress(g_context->list_decomp2,
+					                       packet + ext_list_offset);
+				rohc_debugf(1, "IPv6 extensions list in inner IPv6 dynamic chain "
+				            "= %d bytes\n", g_context->list_decomp2->size_ext);
 				length += g_context->list_decomp2->size_ext;
 			}
 		}
 	}
+
+	rohc_debugf(1, "length of fields 2 + 4-7 = %u bytes\n", length);
 
 	return length;
 
@@ -2350,24 +2378,25 @@ error:
  * the Profile and CRC fields and the dynamic chains (outer and inner IP
  * headers).
  * 
- * @param first_byte The first byte of the IR-DYN packet
- * @param plen       The length of the IR-DYN packet
- * @param largecid   Whether large CIDs are used or not
- * @param context    The decompression context
- * @param packet     The pointer on the IR-DYN packet
- * @return           The length of the IR-DYN header,
- *                   0 if an error occurs
+ * @param context         The decompression context
+ * @param packet          The IR-DYN packet after the Add-CID byte if present
+ *                        (ie. field 2 in the figure)
+ * @param plen            The length of the IR-DYN packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ *                        (ie. field 3 in the figure)
+ * @return                The length of the IR-DYN header,
+ *                        0 if an error occurs
  */
-unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
+unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
+                                          unsigned char *packet,
                                           unsigned int plen,
-                                          int largecid,
-                                          struct d_context *context,
-					  unsigned char *packet)
+                                          unsigned int large_cid_len)
 {
 	struct d_generic_context *g_context = context->specific;
 	unsigned int length = 0;
 	unsigned int protocol;
 	ip_version version, version2;
+	unsigned int ext_list_offset;
 
 	/* skip:
 	 *  - the first byte of the ROHC packet (field 2)
@@ -2387,10 +2416,13 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 	else /* IPV6 */
 	{
 		length += 2;
+		ext_list_offset = large_cid_len + length;
 		g_context->list_decomp1->size_ext =
-		d_algo_list_decompress(g_context->list_decomp1, packet + length);
+			d_algo_list_decompress(g_context->list_decomp1,
+			                       packet + ext_list_offset);
 		length += g_context->list_decomp1->size_ext;
 	}
+
 	/* analyze the second header if present */
 	protocol = ip_get_protocol(g_context->active1->ip);
 	if(protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6)
@@ -2407,8 +2439,10 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
 		else /* IPv6 */
 		{
 			length += 2;
+			ext_list_offset = large_cid_len + length;
 			g_context->list_decomp2->size_ext =
-			d_algo_list_decompress(g_context->list_decomp2, packet + length);
+				d_algo_list_decompress(g_context->list_decomp2,
+				                       packet + ext_list_offset);
 			length += g_context->list_decomp2->size_ext;
 		}
 	}
@@ -2427,8 +2461,8 @@ unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
  * @param context     The decompression context
  * @param packet      The ROHC packet to decode
  * @param size        The length of the ROHC packet
- * @param second_byte The offset for the second byte of the ROHC packet (depends
- *                    on the CID encoding)
+ * @param second_byte The offset for the second byte of the ROHC packet
+ *                    (depends on the CID encoding and the packet type)
  * @param dest        The decoded IP packet
  * @return            The length of the uncompressed IP packet
  *                    or ROHC_OK_NO_DATA if packet is feedback only
@@ -2482,7 +2516,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 		goto error;
 
 	/* parse the packet according to its type */
-	switch(packet_type(decomp, context, packet))
+	switch(find_packet_type(decomp, context, packet, second_byte))
 	{
 		case PACKET_UO_0:
 			g_context->packet_type = PACKET_UO_0;
@@ -2557,7 +2591,9 @@ int d_generic_decode(struct rohc_decomp *decomp,
 		                          second_byte, dest);
 	}
 	else if(length > 0)
+	{
 		rohc_debugf(2, "uncompressed packet length = %d bytes\n", length);
+	}
 #endif
 error:
 	return length;
@@ -4901,18 +4937,21 @@ reparse:
 /**
  * @brief Find out of which type is the ROHC packet.
  *
- * @param decomp   The ROHC decompressor
- * @param context  The decompression context
- * @param packet   The ROHC packet
- * @return         The packet type among PACKET_UO_0, PACKET_UO_1,
- *                 PACKET_UO_1_RTP, PACKET_UO_1_TS, PACKET_UO_1_ID,
- *                 PACKET_UOR_2, PACKET_UOR_2_RTP, PACKET_UOR_2_TS,
- *                 PACKET_UOR_2_ID, PACKET_IR_DYN, PACKET_IR or
- *                 PACKET_UNKNOWN
+ * @param decomp      The ROHC decompressor
+ * @param context     The decompression context
+ * @param packet      The ROHC packet
+ * @param second_byte The offset for the second byte of the ROHC packet
+ *                    (depends on the CID encoding and the packet type)
+ * @return            The packet type among PACKET_UO_0, PACKET_UO_1,
+ *                    PACKET_UO_1_RTP, PACKET_UO_1_TS, PACKET_UO_1_ID,
+ *                    PACKET_UOR_2, PACKET_UOR_2_RTP, PACKET_UOR_2_TS,
+ *                    PACKET_UOR_2_ID, PACKET_IR_DYN, PACKET_IR or
+ *                    PACKET_UNKNOWN
  */
-int packet_type(struct rohc_decomp *decomp,
-                struct d_context *context,
-                const unsigned char *packet)
+int find_packet_type(struct rohc_decomp *decomp,
+                     struct d_context *context,
+                     const unsigned char *packet,
+                     int second_byte)
 {
 	int type = PACKET_UNKNOWN;
 	struct d_generic_context *g_context = context->specific;
@@ -4994,37 +5033,39 @@ int packet_type(struct rohc_decomp *decomp,
 				}
 				else if((is_ip_v4 && rnd))
 				{
+					/* UOR-2-RTP or UOR-2-ID packet */
 #if RTP_BIT_TYPE
-					unsigned char third_byte;
-					if(decomp->medium->cid_type == LARGE_CID)
-						third_byte = *(packet + 4);
-					else
-						third_byte = *(packet + 2);
-					if (GET_BIT_6(&third_byte) == 0)
+					/* check the RTP disambiguation bit type to avoid reparsing
+					 * (proprietary extention of the ROHC standard) */
+					if(GET_BIT_6(packet + second_byte + 1) == 0)
+					{
 						/* UOR-2-RTP packet */
 						type = PACKET_UOR_2_RTP;
+					}
 					else
-						/* UOR-2-ID*/
+					{
+						/* UOR-2-ID */
 						type = PACKET_UOR_2_ID;
+					}
 #else
-					/* UOR-2-RTP packet */
+					/* try to decode as UOR-2-RTP packet and change to UOR-2-ID
+					 * later if UOR-2-RTP was the wrong choice */
 					type = PACKET_UOR_2_RTP;
 #endif
 				}
 				else
 				{
-					/* UOR-2-ID or UOR-2-TS packet */
-					unsigned char second_byte;
-
-					if(decomp->medium->cid_type == LARGE_CID)
-						second_byte = *(packet + 3);
-					else
-						second_byte = *(packet + 1);
-
-					if(GET_BIT_7(&second_byte) == 0)
+					/* UOR-2-ID or UOR-2-TS packet, check the T field */
+					if(GET_BIT_7(packet + second_byte) == 0)
+					{
+						/* UOR-2-ID packet */
 						type = PACKET_UOR_2_ID;
+					}
 					else
+					{
+						/* UOR-2-TS packet */
 						type = PACKET_UOR_2_TS;
+					}
 				}
 			}
 			else /* double IP headers */
@@ -5040,38 +5081,39 @@ int packet_type(struct rohc_decomp *decomp,
 				else if(((is_ip_v4 && rnd) && (is_ip2_v4 && rnd2)) || 
 					((!is_ip_v4) && (is_ip2_v4 && rnd2)))
 				{
+					/* UOR-2-RTP or UOR-2-ID packet */
 #if RTP_BIT_TYPE
-					unsigned char third_byte;
-					if(decomp->medium->cid_type == LARGE_CID)
-						third_byte = *(packet + 4);
-					else
-						third_byte = *(packet + 2);
-						
-					if (GET_BIT_6(&third_byte) == 0)
+					/* check the RTP disambiguation bit type to avoid reparsing
+					 * (proprietary extention of the ROHC standard) */
+					if(GET_BIT_6(packet + second_byte + 1) == 0)
+					{
 						/* UOR-2-RTP packet */
 						type = PACKET_UOR_2_RTP;
+					}
 					else
-						/* UOR-2-ID*/
+					{
+						/* UOR-2-ID */
 						type = PACKET_UOR_2_ID;
+					}
 #else
-					/* UOR-2-RTP packet */
+					/* try to decode as UOR-2-RTP packet and change to UOR-2-ID
+					 * later if UOR-2-RTP was the wrong choice */
 					type = PACKET_UOR_2_RTP;
 #endif
 				}
 				else
 				{
-					/* UOR-2-ID or UOR-2-TS packet */
-					unsigned char second_byte;
-
-					if(decomp->medium->cid_type == LARGE_CID)
-						second_byte = *(packet + 3);
-					else
-						second_byte = *(packet + 1);
-
-					if(GET_BIT_7(&second_byte) == 0)
+					/* UOR-2-ID or UOR-2-TS packet, check the T field */
+					if(GET_BIT_7(packet + second_byte) == 0)
+					{
+						/* UOR-2-ID packet */
 						type = PACKET_UOR_2_ID;
+					}
 					else
+					{
+						/* UOR-2-TS packet */
 						type = PACKET_UOR_2_TS;
+					}
 				}
 			}
 		}

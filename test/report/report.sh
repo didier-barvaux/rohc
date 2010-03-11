@@ -135,7 +135,7 @@ while [ $i -le $nb_lines ] ; do
 	html="$html\t\t\t\t<td>$name</td>\n"
 
 	TMPFILE="/tmp/rohc_report_`date '+%s'.log`"
-	$APP -c ${DIRNAME}/$dir/rohc.pcap ${DIRNAME}/$dir/source.pcap > ${TMPFILE} 2>&1
+	$APP -c ${DIRNAME}/$dir/rohc_smallcid.pcap smallcid ${DIRNAME}/$dir/source.pcap > ${TMPFILE} 2>&1
 
 	logs_startup="`${XSLTPROC} ${DIRNAME}/logs_startup.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"
 	logs_comp="`${XSLTPROC} ${DIRNAME}/logs_comp.xsl ${TMPFILE} |  grep -v \"^<?xml\" | sed -e '/^\t*$/d'`"

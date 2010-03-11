@@ -18,16 +18,14 @@
  */
 
 unsigned int ip_detect_ir_size(struct d_context *context,
-			       unsigned char *packet,
+                               unsigned char *packet,
                                unsigned int plen,
-                               int second_byte,
-                               int profile_id);
+                               unsigned int large_cid_len);
 
-unsigned int ip_detect_ir_dyn_size(unsigned char *first_byte,
+unsigned int ip_detect_ir_dyn_size(struct d_context *context,
+                                   unsigned char *packet,
                                    unsigned int plen,
-                                   int largecid,
-                                   struct d_context *context,
-				   unsigned char *packet);
+                                   unsigned int large_cid_len);
 
 int ip_decode_dynamic_ip(struct d_generic_context *context,
                          const unsigned char *packet,

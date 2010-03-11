@@ -22,12 +22,14 @@ VERBOSE="$1"
 BASEDIR=$( dirname "${SCRIPT}" )
 APP="${BASEDIR}/test"
 
-# extract the capture name from the name of the script
+# extract the CID type and capture name from the name of the script
+CID_TYPE=$( echo "${SCRIPT}" | \
+            sed -e 's#^.*/test_\(.\+\)_\(.\+\)\.sh#\2#' )
 STREAM=$( echo "${SCRIPT}" | \
-          sed -e 's#^.*/test_\(.\+\)\.sh#\1#' | \
+          sed -e 's#^.*/test_\(.\+\)_\(.\+\)\.sh#\1#' | \
           sed -e 's#_#/#g' )
 CAPTURE_SOURCE="${BASEDIR}/report/samples/${STREAM}/source.pcap"
-CAPTURE_COMPARE="${BASEDIR}/report/samples/${STREAM}/rohc.pcap"
+CAPTURE_COMPARE="${BASEDIR}/report/samples/${STREAM}/rohc_${CID_TYPE}.pcap"
 
 # check that capture names are not empty
 if [ -z "${CAPTURE_SOURCE}" ] ; then
@@ -39,7 +41,7 @@ if [ -z "${CAPTURE_COMPARE}" ] ; then
 	exit 1
 fi
 
-CMD="${APP} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
+CMD="${APP} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 
 # run in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then

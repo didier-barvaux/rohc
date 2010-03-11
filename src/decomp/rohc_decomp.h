@@ -43,6 +43,8 @@ struct d_decode_data
 	int addcidUsed;
 	/// Whether the ROHC packet uses large CID or not
 	int largecidUsed;
+	/// The size (in bytes) of the large CID field
+	unsigned int large_cid_size;
 	/// The context to which the packet is related
 	struct d_context *active;
 };
@@ -201,17 +203,15 @@ struct d_profile
 
 	/// The handler used to find out the size of IR packets
 	unsigned int (*detect_ir_size)(struct d_context *context,
-				       unsigned char *packet,
+	                               unsigned char *packet,
 	                               unsigned int plen,
-	                               int second_byte,
-	                               int profile_id);
+	                               unsigned int large_cid_len);
 
 	/// The handler used to find out the size of IR-DYN packets
-	unsigned int (*detect_ir_dyn_size)(unsigned char *first_byte,
+	unsigned int (*detect_ir_dyn_size)(struct d_context *context,
+	                                   unsigned char *packet,
 	                                   unsigned int plen,
-	                                   int largecid,
-	                                   struct d_context *context,
-					   unsigned char *packet);
+	                                   unsigned int large_cid_len);
 	
 	/// The handler used to get the size of the specific static part of IR packets
 	int (*get_static_part)(void);
@@ -250,10 +250,6 @@ void context_free(struct d_context * context);
 /*
  * Functions related to feedback:
  */
-
-int d_decode_feedback(struct rohc_decomp *decomp, unsigned char *ibuf);
-int d_decode_feedback_first(struct rohc_decomp *decomp, unsigned char **walk,
-                            const int isize);
 
 void d_operation_mode_feedback(struct rohc_decomp *decomp, int rohc_status, int cid,
                                int addcidUsed, int largecidUsed, int mode,

@@ -30,6 +30,16 @@
  * Private function prototypes.
  */
 
+unsigned int rtp_detect_ir_size(struct d_context *context,
+                                unsigned char *packet,
+                                unsigned int plen,
+                                unsigned int large_cid_len);
+
+unsigned int rtp_detect_ir_dyn_size(struct d_context *context,
+                                    unsigned char *packet,
+                                    unsigned int plen,
+                                    unsigned int large_cid_len);
+
 int rtp_decode_uo_tail_rtp(struct d_generic_context *context,
                            const unsigned char *packet,
                            unsigned int length,
@@ -142,15 +152,19 @@ quit:
 	return NULL;
 }
 
+
 /**
  * @brief Get the size of the static part of an IR packet
  *
- * @return the size
+ * @return  The size of the static part of an IR packet
  */
 int rtp_get_static_part(void)
 {
-	return 8; // udp statix part + rtp static part
+	/* UDP static part (source and destination ports = 4 bytes) and
+	   RTP static part (RTP SSRC = 4 bytes) */
+	return 8;
 }
+
 
 /**
  * @brief Find the length of the IR header.
@@ -193,45 +207,46 @@ int rtp_get_static_part(void)
 
 \endverbatim
  *
- * The function computes the length of the fields 2 + 4-7, ie. the first byte,
+ * The function computes the length of the fields 2 + 4-8, ie. the first byte,
  * the Profile and CRC fields and the static and dynamic chains (outer and inner
- * IP headers + UDP header + RTP header).
+ * IP headers + UDP header + RTP header) and the SN (0 byte in case of RTP).
  *
  * @param context         The decompression context
- * @param packet          The pointer on the IR packet
- * @param plen            The length of the IR packet
- * @param second_byte     The offset for the second byte of the IR packet
- *                        (ie. the field 4 in the figure)
- * @param profile_id      The ID of the decompression profile
+ * @param packet          The pointer on the IR packet minus the Add-CID byte
+ *                        (ie. the field 2 in the figure)
+ * @param plen            The length of the IR packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ *                        (ie. field 3 in the figure)
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
 unsigned int rtp_detect_ir_size(struct d_context *context,
-				unsigned char *packet,
+                                unsigned char *packet,
                                 unsigned int plen,
-                                int second_byte,
-                                int profile_id)
+                                unsigned int large_cid_len)
 {
 	unsigned int length;
+	unsigned int udp_rtp_static_part;
 	int offset; /* offset for RX, TIS and TSS flags (RTP dynamic chain) */
 	int rx;
 
 	/* Profile and CRC fields + IP static & dynamic chains */
-	length = d_generic_detect_ir_size(context, packet, plen, second_byte, profile_id);
-	offset = length + second_byte - 1;
+	length = d_generic_detect_ir_size(context, packet, plen, large_cid_len);
+	offset = large_cid_len + length;
 
 	/* UDP static chain + RTP static chain*/
-	length += rtp_get_static_part();
-	offset += 8;
+	udp_rtp_static_part = rtp_get_static_part();
+	length += udp_rtp_static_part;
+	offset += udp_rtp_static_part;
 
 	/* UDP dynamic chain */
 	length += 2;
 	offset += 2;
 
-	/* RTP dynamic chain */
+	/* RTP dynamic chain (constant part) */
 	length += RTP_CONST_DYN_PART_SIZE;
 
-	/* check RX flag */
+	/* RTP dynamic chain (variable part that depends on RX flag) */
 	rx = (packet[offset] >> 4) & 0x01;
 	if(rx)
 	{
@@ -337,31 +352,31 @@ error:
 
 \endverbatim
  *
- * The function computes the length of the fields 2 + 4-6, ie. the first byte,
+ * The function computes the length of the fields 2 + 4-7, ie. the first byte,
  * the Profile and CRC fields and the dynamic chains (outer and inner IP
- * headers + UDP header).
+ * headers + UDP header + RTP header) and the SN (0 byte in case of RTP).
  *
- * @param first_byte The first byte of the IR-DYN packet
- * @param plen       The length of the IR-DYN packet
- * @param largecid   The size of the large cid
- * @param context    The decompression context
- * @param packet     The ROHC packet
- * @return           The length of the IR-DYN header,
- *                   0 if an error occurs
+ * @param context         The decompression context
+ * @param packet          The IR-DYN packet after the Add-CID byte if present
+ *                        (ie. the field 2 in the figure)
+ * @param plen            The length of the IR-DYN packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ *                        (ie. field 3 in the figure)
+ * @return                The length of the IR-DYN header,
+ *                        0 if an error occurs
  */
-unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
+unsigned int rtp_detect_ir_dyn_size(struct d_context *context,
+                                    unsigned char *packet,
                                     unsigned int plen,
-                                    int largecid,
-                                    struct d_context *context,
-				    unsigned char *packet)
+                                    unsigned int large_cid_len)
 {
 	unsigned int length;
 	int offset; /* offset for RX, TIS and TSS flags (RTP dynamic chain) */
 	int rx;
 
 	/* Profile and CRC fields + IP dynamic chain */
-	length =   d_generic_detect_ir_dyn_size(first_byte, plen, largecid, context, packet);
-	offset = length + largecid;
+	length = d_generic_detect_ir_dyn_size(context, packet, plen, large_cid_len);
+	offset = large_cid_len + length;
 
 	/* UDP dynamic chain */
 	length += 2;
@@ -371,7 +386,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 	length += RTP_CONST_DYN_PART_SIZE;
 
 	/* check RX flag */
-	rx = (first_byte[offset] >> 4) & 0x01;
+	rx = (packet[offset] >> 4) & 0x01;
 	if(rx)
 	{
 		int tis, tss;
@@ -381,7 +396,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 		offset += RTP_CONST_DYN_PART_SIZE;
 
 		/* check TSS flag */
-		tss = first_byte[offset] & 0x01;
+		tss = packet[offset] & 0x01;
 		if(tss)
 		{
 			unsigned short tss_offset;
@@ -399,7 +414,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 			}
 
 			/* get the size of the SDVL-encoded TS_STRIDE field */
-			ts_stride_sdvl_len = d_sdvalue_size(&first_byte[offset + 1]);
+			ts_stride_sdvl_len = d_sdvalue_size(&packet[offset + 1]);
 			if(ts_stride_sdvl_len < 1 || ts_stride_sdvl_len > 4)
 			{
 				rohc_debugf(0, "invalid size (%d bytes) for SDVL-encoded "
@@ -415,7 +430,7 @@ unsigned int rtp_detect_ir_dyn_size(unsigned char *first_byte,
 		}
 
 		/* check TIS flags */
-		tis = (first_byte[offset] >> 1) & 0x01;
+		tis = (packet[offset] >> 1) & 0x01;
 		if(tis)
 		{
 			rohc_debugf(3, "TIS flag set\n");

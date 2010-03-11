@@ -206,16 +206,15 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         unsigned char *dest);
 
 unsigned int d_generic_detect_ir_size(struct d_context *context,
-				      unsigned char *packet,
+                                      unsigned char *packet,
                                       unsigned int plen,
-                                      int second_byte,
-                                      int profile_id);
+                                      unsigned int large_cid_len);
 
-unsigned int d_generic_detect_ir_dyn_size(unsigned char *first_byte,
+unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
+                                          unsigned char *first_byte,
                                           unsigned int plen,
-                                          int largecid,
-                                          struct d_context *context,
-					  unsigned char *packet);
+                                          unsigned int large_cid_len);
+
 int d_algo_list_decompress(struct list_decomp * decomp, 
 			   const unsigned char *packet);
 
@@ -239,9 +238,10 @@ int decode_type_3(struct list_decomp * decomp,
 
 int d_generic_get_sn(struct d_context *context);
 
-int packet_type(struct rohc_decomp *decomp,
-                struct d_context *context,
-                const unsigned char *packet);
+int find_packet_type(struct rohc_decomp *decomp,
+                     struct d_context *context,
+                     const unsigned char *packet,
+                     int second_byte);
 
 #endif
 

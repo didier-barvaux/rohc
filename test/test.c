@@ -76,7 +76,8 @@
 
 
 /* prototypes of private functions */
-static int test_comp_and_decomp(char *src_filename,
+static int test_comp_and_decomp(char *cid_type,
+                                char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename);
 
@@ -93,6 +94,7 @@ static int test_comp_and_decomp(char *src_filename,
  */
 int main(int argc, char *argv[])
 {
+	char *cid_type = NULL;
 	char *src_filename = NULL;
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
@@ -135,6 +137,11 @@ int main(int argc, char *argv[])
 			cmp_filename = argv[1];
 			args_used++;
 		}
+		else if(cid_type == NULL)
+		{
+			/* get the type of CID to use within the ROHC library */
+			cid_type = argv[0];
+		}
 		else if(src_filename == NULL)
 		{
 			/* get the name of the file that contains the packets to
@@ -162,7 +169,7 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(src_filename, ofilename, cmp_filename);
+	status = test_comp_and_decomp(cid_type, src_filename, ofilename, cmp_filename);
 
 error:
 	return status;
@@ -296,6 +303,7 @@ void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
  * @param header        The PCAP header for the packet
  * @param packet        The packet to compress/decompress (link layer included)
  * @param link_len_src  The length of the link layer header before IP data
+ * @param use_large_cid Whether use large CID or not
  * @param dumper        The PCAP output dump file
  * @param cmp_packet    The ROHC packet for comparison purpose
  * @param cmp_size      The size of the ROHC packet used for comparison purpose
@@ -314,6 +322,7 @@ int compress_decompress(struct rohc_comp *comp,
                         struct pcap_pkthdr header,
                         unsigned char *packet,
                         int link_len_src,
+                        int use_large_cid,
                         pcap_dumper_t *dumper,
                         unsigned char *cmp_packet,
                         int cmp_size,
@@ -492,7 +501,10 @@ int compress_decompress(struct rohc_comp *comp,
 	/* decompress the ROHC packet */
 	printf("\t\t<decompression>\n");
 	printf("\t\t\t<log>\n");
-	decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size, decomp_packet, MAX_ROHC_SIZE);
+	decomp_size = rohc_decompress_both(decomp,
+	                                   rohc_packet, rohc_size,
+	                                   decomp_packet, MAX_ROHC_SIZE,
+	                                   use_large_cid);
 	printf("\t\t\t</log>\n");
 	
 	if(decomp_size <= 0)
@@ -541,6 +553,7 @@ exit:
  * @brief Test the ROHC library with a flow of IP packets going through
  *        two compressor/decompressor pairs
  *
+ * @param cid_type      The type of CID to use within the ROHC library
  * @param src_filename  The name of the PCAP file that contains the IP packets
  * @param ofilename     The name of the PCAP file to output the ROHC packets
  * @param cmp_filename  The name of the PCAP file that contains the ROHC
@@ -549,7 +562,8 @@ exit:
  *                      1 in case of failure,
  *                      77 if test is skipped
  */
-static int test_comp_and_decomp(char *src_filename,
+static int test_comp_and_decomp(char *cid_type,
+                                char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename)
 {
@@ -575,12 +589,32 @@ static int test_comp_and_decomp(char *src_filename,
 
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
+	int use_large_cid;
 	int status = 1;
 
 	printf("<?xml version=\"1.0\" encoding=\"ISO-8859-15\"?>\n");
 	printf("<test>\n");
 	printf("\t<startup>\n");
 	printf("\t\t<log>\n");
+
+	/* check CID type */
+	if(!strcmp(cid_type, "smallcid"))
+	{
+		use_large_cid = 0;
+	}
+	else if(!strcmp(cid_type, "largecid"))
+	{
+		use_large_cid = 1;
+	}
+	else
+	{
+		printf("invalid CID type '%s', only 'smallcid' and 'largecid' "
+		       "expected\n", cid_type);
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		goto error;
+	}
 
 	/* open the source dump file */
 	handle = pcap_open_offline(src_filename, errbuf);
@@ -684,6 +718,7 @@ static int test_comp_and_decomp(char *src_filename,
 	rohc_activate_profile(comp1, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp1, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp1, ROHC_PROFILE_RTP);
+	rohc_c_set_large_cid(comp1, use_large_cid);
 
 	/* create the compressor 2 */
 	comp2 = rohc_alloc_compressor(15, 0, 0, 0);
@@ -702,6 +737,7 @@ static int test_comp_and_decomp(char *src_filename,
 	rohc_activate_profile(comp2, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp2, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp2, ROHC_PROFILE_RTP);
+	rohc_c_set_large_cid(comp2, use_large_cid);
 
 	/* create the decompressor 1 */
 	decomp1 = rohc_alloc_decompressor(comp2);
@@ -747,7 +783,8 @@ static int test_comp_and_decomp(char *src_filename,
 
 		/* compress & decompress from 1 to 2 */
 		ret = compress_decompress(comp1, decomp2, 1, counter, header, packet,
-		                          link_len_src, dumper, cmp_packet,
+		                          link_len_src, use_large_cid,
+		                          dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp);
 		if(ret == -1)
 		{
@@ -780,7 +817,8 @@ static int test_comp_and_decomp(char *src_filename,
 
 		/* compress & decompress from 2 to 1 */
 		ret = compress_decompress(comp2, decomp1, 2, counter, header, packet,
-		                          link_len_src, dumper, cmp_packet,
+		                          link_len_src, use_large_cid,
+		                          dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp);
 		if(ret == -1)
 		{

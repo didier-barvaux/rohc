@@ -70,7 +70,7 @@ int code_cid_values(struct c_context *context,
 		c_encodeSdvl(&dest[counter], context->cid, -1);
 		len = c_bytesSdvl(context->cid, -1);
 		
-		rohc_debugf(3, "large CID = ");
+		rohc_debugf(3, "SDVL-encoded large CID = ");
 		for(i = 0; i < len; i++)
 			rohc_debugf_(3, "0x%02x ", dest[counter + i]);
 		rohc_debugf_(3, "\n");

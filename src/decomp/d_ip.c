@@ -138,27 +138,26 @@ error:
  *
  * The function computes the length of the fields 2 + 4-8, ie. the first byte,
  * the Profile and CRC fields, the static and dynamic chains (outer and inner
- * IP headers + UDP header) and the SN.
+ * IP headers) and the SN.
  *
  * @param context         The decompression context
- * @param packet          The pointer on the IR packet
- * @param plen            The length of the IR packet
- * @param second_byte     The offset for the second byte of the IR packet
- *                        (ie. the field 4 in the figure)
- * @param profile_id      The ID of the decompression profile
+ * @param packet          The pointer on the IR packet minus the Add-CID byte
+ *                        (ie. the field 2 in the figure)
+ * @param plen            The length of the IR packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ *                        (ie. field 3 in the figure)
  * @return                The length of the IR header,
  *                        0 if an error occurs
  */
 unsigned int ip_detect_ir_size(struct d_context *context,
-			       unsigned char *packet,
+                               unsigned char *packet,
                                unsigned int plen,
-                               int second_byte,
-                               int profile_id)
+                               unsigned int large_cid_len)
 {
 	unsigned int length;
 
 	/* Profile and CRC fields + IP static & dynamic chains */
-	length = d_generic_detect_ir_size(context, packet, plen, second_byte, profile_id);
+	length = d_generic_detect_ir_size(context, packet, plen, large_cid_len);
 	if(length == 0)
 		goto quit;
 
@@ -208,27 +207,27 @@ quit:
 \endverbatim
  *
  * The function computes the length of the fields 2 + 4-7, ie. the first byte,
- * the Profile and CRC fields, the dynamic chains (outer and inner IP headers +
- * UDP header) and the SN.
+ * the Profile and CRC fields, the dynamic chains (outer and inner IP headers)
+ * and the SN.
  *
- * @param first_byte The first byte of the IR-DYN packet
- * @param plen       The length of the IR-DYN packet
- * @param largecid   Whether large CIDs are used or not
- * @param context    The decompression context
- * @param packet     The ROHC packet
- * @return           The length of the IR-DYN header,
- *                   0 if an error occurs
+ * @param context         The decompression context
+ * @param packet          The IR-DYN packet after the Add-CID byte if present
+ *                        (ie. the field 2 in the figure)
+ * @param plen            The length of the IR-DYN packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ *                        (ie. field 3 in the figure)
+ * @return                The length of the IR-DYN header,
+ *                        0 if an error occurs
  */
-unsigned int ip_detect_ir_dyn_size(unsigned char *first_byte,
+unsigned int ip_detect_ir_dyn_size(struct d_context *context,
+                                   unsigned char *packet,
                                    unsigned int plen,
-                                   int largecid,
-                                   struct d_context *context,
-				   unsigned char *packet)
+                                   unsigned int large_cid_len)
 {
 	unsigned int length;
 
 	/* Profile and CRC fields + IP dynamic chains */
-	length = d_generic_detect_ir_dyn_size(first_byte, plen, largecid, context, packet);
+	length = d_generic_detect_ir_dyn_size(context, packet, plen, large_cid_len);
 	if(length == 0)
 		goto quit;
 

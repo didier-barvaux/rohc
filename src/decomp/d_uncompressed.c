@@ -89,21 +89,20 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
  * framework to work.
  *
  * @param context         The decompression context
- * @param packet          The pointer on the IR packet
- * @param plen            The length of the IR packet
- * @param second_byte     The offset for the second byte of the IR packet
- * @param profile_id      The ID of the decompression profile
+ * @param packet          The IR packet after the Add-CID byte if present
+ * @param plen            The length of the IR-DYN packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
  * @return                The length of data in the IR packet,
  *                        0 if an error occurs
  */
 unsigned int uncompressed_detect_ir_size(struct d_context *context,
-					 unsigned char *packet,
+                                         unsigned char *packet,
                                          unsigned int plen,
-                                         int second_byte,
-                                         int profile_id)
+                                         unsigned int large_cid_len)
 {
-	/* check if ROHC  packet is large enough */
-	if(second_byte + 2 >= plen)
+	/* check if ROHC packet is large enough to contain
+	   the first byte + Profile ID + CRC in addition to the large CID */
+	if(plen < (1 + large_cid_len + 1 + 1))
 		return 0;
 
 	/* first byte + Profile ID + CRC */
@@ -117,19 +116,17 @@ unsigned int uncompressed_detect_ir_size(struct d_context *context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param first_byte The first byte of the IR-DYN packet
- * @param plen       The length of the IR-DYN packet
- * @param largecid   Whether large CIDs are used or not
- * @param context    The decompression context
- * @param packet     The ROHC packet
- * @return           The length of data in the IR-DYN packet,
- *                   0 if an error occurs
+ * @param context         The decompression context
+ * @param packet          The IR-DYN packet after the Add-CID byte if present
+ * @param plen            The length of the IR-DYN packet minus the Add-CID byte
+ * @param large_cid_len   The size of the large CID field
+ * @return                The length of data in the IR-DYN packet,
+ *                        0 if an error occurs
  */
-unsigned int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
-                                             unsigned int plen,
-                                             int largecid,
-                                             struct d_context *context,
-					     unsigned char *packet)
+unsigned int uncompressed_detect_ir_dyn_size(struct d_context *context,
+                                              unsigned char *packet,
+                                              unsigned int plen,
+                                              unsigned int large_cid_len)
 {
 	rohc_debugf(0, "IR-DYN packet is not defined in uncompressed profile\n");
 	return 0;
@@ -146,8 +143,8 @@ unsigned int uncompressed_detect_ir_dyn_size(unsigned char *first_byte,
  * @param context     The decompression context
  * @param packet      The ROHC packet to decode
  * @param size        The length of the ROHC packet
- * @param second_byte The offset for the second byte of the ROHC packet (depends
- *                    on the CID encoding)
+ * @param second_byte The offset for the second byte of the ROHC packet
+ *                    (depends on the CID encoding and the packet type)
  * @param dest        The decoded IP packet
  * @return            The length of the uncompressed IP packet
  *                    or ROHC_ERROR if an error occurs
