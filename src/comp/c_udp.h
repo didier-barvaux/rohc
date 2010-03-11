@@ -78,6 +78,5 @@ int udp_code_static_udp_part(struct c_context *context,
                              unsigned char *dest,
                              int counter);
 
-
 #endif
 

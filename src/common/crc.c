@@ -6,6 +6,9 @@
  */
 
 #include "crc.h"
+#include "rtp.h"
+#include <netinet/udp.h>
+#include <assert.h>
 
 
 unsigned char crc_table_8[256];
@@ -86,10 +89,12 @@ void crc_init_table(unsigned char *table, unsigned char poly)
  * @param size The size of the data
  * @return     The CRC byte
  */
-inline unsigned char crc_calc_8(unsigned char *buf, int size)
+inline unsigned char crc_calc_8(unsigned char *buf,
+                                int size,
+                                unsigned int init_val)
 {
 	int i;
-	unsigned char crc = 0xff;
+	unsigned char crc = init_val;
 
 	for(i = 0; i < size; i++)
 		crc = crc_table_8[buf[i] ^ crc];
@@ -105,10 +110,12 @@ inline unsigned char crc_calc_8(unsigned char *buf, int size)
  * @param size The size of the data
  * @return     The CRC byte
  */
-inline unsigned char crc_calc_7(unsigned char *buf, int size)
+inline unsigned char crc_calc_7(unsigned char *buf,
+                                int size,
+                                unsigned int init_val)
 {
 	int i;
-	unsigned char crc = 0x7f;
+	unsigned char crc = init_val;
 
 	for(i = 0; i < size; i++)
 		crc = crc_table_7[buf[i] ^ (crc & 127)];
@@ -123,10 +130,12 @@ inline unsigned char crc_calc_7(unsigned char *buf, int size)
  * @param size The size of the data
  * @return     The CRC byte
  */
-inline unsigned char crc_calc_6(unsigned char *buf, int size)
+inline unsigned char crc_calc_6(unsigned char *buf,
+                                int size,
+                                unsigned int init_val)
 {
 	int i;
-	unsigned char crc = 0x3f;
+	unsigned char crc = init_val;
 
 	for(i = 0; i < size; i++)
 		crc = crc_table_6[buf[i] ^ (crc & 63)];
@@ -141,10 +150,12 @@ inline unsigned char crc_calc_6(unsigned char *buf, int size)
  * @param size The size of the data
  * @return     The CRC byte
  */
-inline unsigned char crc_calc_3(unsigned char *buf, int size)
+inline unsigned char crc_calc_3(unsigned char *buf,
+                                int size,
+                                unsigned int init_val)
 {
 	int i;
-	unsigned char crc = 0x7;
+	unsigned char crc = init_val;
 
 	for(i = 0; i < size; i++)
 		crc = crc_table_3[buf[i] ^ (crc & 7)];
@@ -159,10 +170,12 @@ inline unsigned char crc_calc_3(unsigned char *buf, int size)
  * @param size The size of the data
  * @return     The CRC byte
  */
-inline unsigned char crc_calc_2(unsigned char *buf, int size)
+inline unsigned char crc_calc_2(unsigned char *buf,
+                                int size,
+                                unsigned int init_val)
 {
 	int i;
-	unsigned char crc = 0x3;
+	unsigned char crc = init_val;
 
 	for(i = 0; i < size; i++)
 		crc = crc_table_2[buf[i] ^ (crc & 3)];
@@ -173,31 +186,35 @@ inline unsigned char crc_calc_2(unsigned char *buf, int size)
 /**
  * @brief Calculate the checksum for the given data.
  *
- * @param type   The CRC type (CRC_TYPE_2, CRC_TYPE_3, CRC_TYPE_6, CRC_TYPE_7 or CRC_TYPE_8)
- * @param data   The data to calculate the checksum on
- * @param length The length of the data
- * @return       The checksum
+ * @param type     The CRC type (CRC_TYPE_2, CRC_TYPE_3, CRC_TYPE_6, CRC_TYPE_7 or CRC_TYPE_8)
+ * @param data     The data to calculate the checksum on
+ * @param length   The length of the data
+ * @param init_val The initial CRC value
+ * @return         The checksum
  */
-unsigned int crc_calculate(int type, unsigned char *data, int length)
+unsigned int crc_calculate(int type,
+                           unsigned char *data, 
+                           int length,
+                           unsigned int init_val)
 {
 	unsigned int crc;
 
 	switch(type)
 	{
 		case CRC_TYPE_8:
-			crc = crc_calc_8(data, length);
+			crc = crc_calc_8(data, length, init_val);
 			break;
 		case CRC_TYPE_7:
-			crc = crc_calc_7(data, length);
+			crc = crc_calc_7(data, length, init_val);
 			break;
 		case CRC_TYPE_6:
-			crc = crc_calc_6(data, length);
+			crc = crc_calc_6(data, length, init_val);
 			break;
 		case CRC_TYPE_3:
-			crc = crc_calc_3(data, length);
+			crc = crc_calc_3(data, length, init_val);
 			break;
 		case CRC_TYPE_2:
-			crc = crc_calc_2(data, length);
+			crc = crc_calc_2(data, length, init_val);
 			break;
 		default:
 			crc = 0;
@@ -206,4 +223,370 @@ unsigned int crc_calculate(int type, unsigned char *data, int length)
 
 	return crc;
 }
+
+
+/**
+ * @brief Compute the CRC-STATIC part of an IP header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1-2, 7-10, 13-20 in original IPv4 header
+ *    - bytes 1-4, 7-40 in original IPv6 header
+ * 
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int compute_crc_static(const unsigned char *ip,
+                                const unsigned char *ip2,
+                                const unsigned char *next_header,
+                                unsigned int crc_type,
+                                unsigned int init_val)
+{
+	unsigned int crc;
+	ip_version version;
+	int ret;
+
+	assert(ip != NULL);
+
+	ret = get_ip_version(ip, 2,  &version);
+	assert(ret);
+
+	crc = init_val;
+
+	/* first IPv4 header */
+	if(version == IPV4)
+	{
+		struct iphdr *ip_hdr = (struct iphdr *) ip;
+		/* bytes 1-2 (Version, Header length, TOS) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(ip_hdr), 2, crc);
+		/* bytes 7-10 (Flags, Fragment Offset, TTL, Protocol) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->frag_off), 4, crc);
+		/* bytes 13-20 (Source Address, Destination Address) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->saddr), 8, crc);
+	}
+	else /* first IPv6 header */
+	{
+		struct ip6_hdr *ip_hdr = (struct ip6_hdr *) ip;
+		/* bytes 1-4 (Version, TC, Flow Label) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_flow),
+		                    4, crc);
+		/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt),
+		                    34, crc);
+	}
+
+	/* second header */
+	if(ip2 != NULL)
+	{
+		ret = get_ip_version(ip2, 2, &version);
+		assert(ret);
+
+		/* IPv4 */
+		if(version == IPV4)
+		{
+			struct iphdr *ip2_hdr = (struct iphdr *) ip;
+			/* bytes 1-2 (Version, Header length, TOS) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(ip2_hdr), 2, crc);
+			/* bytes 7-10 (Flags, Fragment Offset, TTL, Protocol) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->frag_off), 4, crc);
+			/* bytes 13-20 (Source Address, Destination Address) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->saddr), 8, crc);
+		}
+		else /* IPv6 */
+		{
+			struct ip6_hdr *ip2_hdr = (struct ip6_hdr *) ip2;
+			/* bytes 1-4 (Version, TC, Flow Label) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->ip6_ctlun.ip6_un1.ip6_un1_flow),
+			                    4, crc);
+			/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt),
+			                    34, crc);
+		}
+	}
+
+	return crc;
+}
+
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of an IP header
+ *
+ * Concerned fields are:
+ *   - bytes 3-4, 5-6, 11-12 in original IPv4 header
+ *   - bytes 5-6 in original IPv6 header
+ * 
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int compute_crc_dynamic(const unsigned char *ip,
+                                 const unsigned char *ip2,
+                                 const unsigned char *next_header,
+                                 unsigned int crc_type,
+                                 unsigned int init_val)
+{
+	unsigned int crc;
+	ip_version version;
+	int ret;
+
+	assert(ip != NULL);
+
+	ret = get_ip_version(ip, 2, &version);
+	assert(ret);
+
+	crc = init_val;
+
+	/* first IPv4 header */
+	if(version == IPV4)
+	{
+		struct iphdr *ip_hdr = (struct iphdr *) ip;
+		/* bytes 3-6 (Total Length, Identification) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->id), 4, crc);
+		/* bytes 11-12 (Header Checksum) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->check), 2, crc);
+	}
+	else /* first IPv6 header */
+	{
+		struct ip6_hdr *ip_hdr = (struct ip6_hdr *) ip;
+		/* bytes 5-6 (Payload Length) */
+		crc = crc_calculate(crc_type,
+		                    (unsigned char *)(&ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_plen),
+		                    2, crc);
+	}
+
+	/* second_header */
+	if(ip2 != NULL)
+	{
+		ret = get_ip_version(ip2, 2, &version);
+		assert(ret);
+
+		/* IPv4 */
+		if(version == IPV4)
+		{
+			struct iphdr *ip2_hdr = (struct iphdr *) ip2;
+			/* bytes 3-6 (Total Length, Identification) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->id), 4, crc);
+			/* bytes 11-12 (Header Checksum) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->check), 2, crc);
+		}
+		else /* IPv6 */
+		{
+			struct ip6_hdr *ip2_hdr = (struct ip6_hdr *) ip2;
+			/* bytes 5-6 (Payload Length) */
+			crc = crc_calculate(crc_type,
+			                    (unsigned char *)(&ip2_hdr->ip6_ctlun.ip6_un1.ip6_un1_plen),
+			                    2, crc);
+		}
+	}
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-STATIC part of an UDP or UDO-Lite header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1-4 in original UDP header
+ * 
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int udp_compute_crc_static(const unsigned char *ip,
+                                    const unsigned char *ip2,
+                                    const unsigned char *next_header,
+                                    unsigned int crc_type,
+                                    unsigned int init_val)
+{
+	unsigned int crc;
+	struct udphdr *udp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-STATIC value for IP and IP2 headers */
+	crc = compute_crc_static(ip, ip2, next_header, crc_type, crc);
+
+	/* get the start of UDP header */
+	udp = (struct udphdr *) next_header;
+
+	/* bytes 1-4 (Source Port, Destination Port) */
+	crc = crc_calculate(crc_type, (unsigned char *)(&udp->source), 4, crc);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of an UDP or UDP-Lite header
+ *
+ * Concerned fields are:
+ *   - bytes 5-6, 7-8 in original UDP header
+ * 
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int udp_compute_crc_dynamic(const unsigned char *ip,
+                                     const unsigned char *ip2,
+                                     const unsigned char *next_header,
+                                     unsigned int crc_type,
+                                     unsigned int init_val)
+{
+	unsigned int crc;
+	struct udphdr *udp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
+	crc = compute_crc_dynamic(ip, ip2, next_header, crc_type, crc);
+
+	/* get the start of UDP header */
+	udp = (struct udphdr *) next_header;
+
+	/* bytes 5-8 (Length, Checksum) */
+	crc = crc_calculate(crc_type, (unsigned char *)(&udp->len), 4, crc);
+
+	return crc;
+}
+
+/**
+ * @brief Compute the CRC-STATIC part of a RTP header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1, 9-12 (and CSRC list) in original RTP header
+ * 
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int rtp_compute_crc_static(const unsigned char *ip,
+                                    const unsigned char *ip2,
+                                    const unsigned char *next_header,
+                                    unsigned int crc_type,
+                                    unsigned int init_val)
+{
+	unsigned int crc;
+	struct rtphdr *rtp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-STATIC value for IP, IP2 and UDP headers */
+	crc = udp_compute_crc_static(ip, ip2, next_header, crc_type, crc);
+
+	/* get the start of RTP header */
+	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
+
+	/* byte 1 (Version, P, X, CC) */
+	crc = crc_calculate(crc_type, (unsigned char *)rtp, 1, crc);
+
+	/* bytes 9-12 (SSRC identifier) */
+	crc = crc_calculate(crc_type, (unsigned char *)(&rtp->ssrc), 4, crc);
+
+	/* TODO CSRC identifiers */
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of a RTP header
+ *
+ * Concerned fields are:
+ *   - bytes 2, 3-4, 5-8 in original RTP header
+ * 
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
+                                     const unsigned char *ip2,
+                                     const unsigned char *next_header,
+                                     unsigned int crc_type,
+                                     unsigned int init_val)
+{
+	unsigned int crc;
+	struct rtphdr *rtp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-DYNAMIC value for IP, IP2 and UDP headers */
+	crc = udp_compute_crc_dynamic(ip, ip2, next_header, crc_type, crc);
+
+	/* get the start of RTP header */
+	rtp = (struct rtphdr *) (next_header + sizeof(struct udphdr));
+
+	/* bytes 2-8 (Payload Type, Sequence Number, Timestamp) */
+	crc = crc_calculate(crc_type, (unsigned char *)(rtp) + 1, 7, crc);
+
+	return crc;
+}
+
+
 

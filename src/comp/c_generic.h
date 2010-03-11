@@ -236,6 +236,19 @@ struct c_generic_context
 	                           const unsigned char *next_header,
 	                           unsigned char *dest, int counter);
 
+	/// @brief The handler used to compute the CRC-STATIC value
+	unsigned int (*compute_crc_static)(const unsigned char *ip,
+	                                   const unsigned char *ip2,
+	                                   const unsigned char *next_header,
+	                                   unsigned int crc_type,
+	                                   unsigned int init_val);
+	/// @brief The handler used to compute the CRC-DYNAMIC value
+	unsigned int (*compute_crc_dynamic)(const unsigned char *ip,
+	                                    const unsigned char *ip2,
+	                                    const unsigned char *next_header,
+	                                    unsigned int crc_type,
+	                                    unsigned int init_val);
+
 	/// Profile-specific data	
 	void *specific;
 };
@@ -311,7 +324,6 @@ int c_generic_encode(struct c_context *context,
 void c_generic_feedback(struct c_context *context, struct c_feedback *feedback);
 
 void decide_state(struct c_context *context);
-
 
 #endif
 

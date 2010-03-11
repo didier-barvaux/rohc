@@ -47,6 +47,7 @@ const char *generic_extension_types[] =
  * Function prototypes.
  */
 
+
 int code_packet(struct c_context *context,
                 const struct ip_packet ip,
                 const struct ip_packet ip2,
@@ -552,6 +553,8 @@ int c_generic_create(struct c_context *context, const struct ip_packet ip)
 	g_context->code_dynamic_part = NULL;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_UO_packet_tail = NULL;
+	g_context->compute_crc_static = compute_crc_static;
+	g_context->compute_crc_dynamic = compute_crc_dynamic;
 
 	return 1;
 
@@ -2158,7 +2161,7 @@ void c_generic_feedback(struct c_context *context,
 			}
 			
 			/* check CRC if used */
-			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data, feedback->size) != crc)
+			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data, feedback->size, CRC_INIT_8) != crc)
 			{
 				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
 				return;
@@ -2997,10 +3000,9 @@ int code_IR_packet(struct c_context *context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter);
+	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
-
 error:
 	return counter;
 }
@@ -3125,7 +3127,7 @@ int code_IR_DYN_packet(struct c_context *context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter);
+	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
 
@@ -3668,6 +3670,8 @@ int code_UO0_packet(struct c_context *context,
 	unsigned char f_byte;
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
+	unsigned int crc;
+	unsigned char *ip2_hdr;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3686,12 +3690,30 @@ int code_UO0_packet(struct c_context *context,
 		counter = g_context->code_UO_packet_head(context, next_header,
 		                                         dest, counter, &first_position);
 
-	/* part 2 */
+	/* part 2
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	crc = CRC_INIT_3;
+	if(nr_of_ip_hdr > 1)
+	{
+		ip2_hdr = (unsigned char *)(&ip2.header);
+	}
+	else
+	{
+		ip2_hdr = NULL;
+	}
+	crc = g_context->compute_crc_static((unsigned char *)(&ip.header),
+	                                    ip2_hdr,
+																			next_header,
+	                                    CRC_TYPE_3, crc);
+	crc = g_context->compute_crc_dynamic((unsigned char *)(&ip.header),
+	                                     ip2_hdr,
+																			 next_header,
+	                                     CRC_TYPE_3, crc);
+
 	f_byte = (g_context->sn & 0x0f) << 3;
-	f_byte |= crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-	                        (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	                        g_context->next_header_len);
-	rohc_debugf(2, "F byte = 0x%02x (CRC = 0x%x on %d bytes)\n", f_byte,
+	f_byte |= crc;
+	rohc_debugf(2, "first byte = 0x%02x (CRC = 0x%x on %d bytes)\n", f_byte,
 	            f_byte & 0x07, ip_get_hdrlen(ip) + (nr_of_ip_hdr > 1  ?
 	            ip_get_hdrlen(ip2) : 0) + g_context->next_header_len);
 
@@ -3785,7 +3807,8 @@ int code_UO1_packet(struct c_context *context,
 	int is_ip_v4;
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
-	int crc;
+	unsigned int crc;
+	unsigned char *ip2_hdr;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3879,24 +3902,37 @@ int code_UO1_packet(struct c_context *context,
 	dest[first_position] = f_byte;
 	rohc_debugf(3, "1 0 + T + TS/IP-ID = 0x%02x\n", f_byte);
 
-	/* part 4 */
+	/* part 4
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	crc = CRC_INIT_3;
+	if(nr_of_ip_hdr > 1)
+	{
+		ip2_hdr = (unsigned char *)(&ip2.header);
+	}
+	else
+	{
+		ip2_hdr = NULL;
+	}
+	crc = g_context->compute_crc_static((unsigned char *)(&ip.header),
+	                                    ip2_hdr,
+																			next_header,
+	                                    CRC_TYPE_3, crc);
+	crc = g_context->compute_crc_dynamic((unsigned char *)(&ip.header),
+	                                     ip2_hdr,
+																			 next_header,
+	                                     CRC_TYPE_3, crc);
+
 	if(!is_rtp)
 	{
 		s_byte = (g_context->sn & 0x1f) << 3;
-		crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-		                   (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-				    g_context->next_header_len);
-		s_byte |= crc & 0x07;
 	}									
 	else
 	{
 		s_byte = (g_context->sn & 0x0f) << 3;
 		s_byte |= (rtp_context->tmp_variables.m & 0x01) << 7;				
-		crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-		                    (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	        	            g_context->next_header_len);
-		s_byte |= crc & 0x07;
 	}
+	s_byte |= crc & 0x07;
 	dest[counter] = s_byte;
 	counter++;
 	if(!is_rtp)
@@ -4006,6 +4042,9 @@ int code_UO2_packet(struct c_context *context,
 	int nr_of_ip_hdr;
 	int packet_type;
 	int is_rtp;
+	unsigned int crc;
+	unsigned int crc_type;
+	unsigned char *ip2_hdr;
 	int (*code_bytes)(struct c_context *context,
 	                   int extension,
 	                   unsigned char *f_byte,
@@ -4056,42 +4095,47 @@ int code_UO2_packet(struct c_context *context,
 	f_byte = 0xc0; /* 1 1 0 x x x x x */
 
 	/* part 4: remember the position of the second byte for future completion
+	 *         (RTP only)
 	 * part 5: partially calculate the third byte, then remember the position
 	 *         of the third byte, its final value is currently unknown 
-	 * (RTP only) */
+	 *
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	crc = CRC_INIT_7;
+	crc_type = CRC_TYPE_7;
+#if RTP_BIT_TYPE
 	if(is_rtp)
 	{
-#if RTP_BIT_TYPE
-		t_byte = crc_calculate(CRC_TYPE_6,
-		                       ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-				      (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-				      g_context->next_header_len);
-		s_byte_position = counter;
-		counter++;
-		t_byte_position = counter;
-		counter++;
-#else
-		s_byte_position = counter;
-		counter++;
-		t_byte = crc_calculate(CRC_TYPE_7,
-					ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-					(nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-					g_context->next_header_len);
-		t_byte_position = counter;
-		counter++;
+		crc = CRC_INIT_6;
+		crc_type = CRC_TYPE_6;
+	}
 #endif
+	if(nr_of_ip_hdr > 1)
+	{
+		ip2_hdr = (unsigned char *)(&ip2.header);
 	}
 	else
 	{
-		/* part 5: partially calculate the third byte, then remember the position
-		 * of the third byte, its final value is currently unknown */
-		t_byte = crc_calculate(CRC_TYPE_7,
-	        	               ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-	                	       (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	                	       g_context->next_header_len);
-		t_byte_position = counter;
+		ip2_hdr = NULL;
+	}
+	crc = g_context->compute_crc_static((unsigned char *)(&ip.header),
+	                                    ip2_hdr,
+	                                    next_header,
+	                                    crc_type, crc);
+	crc = g_context->compute_crc_dynamic((unsigned char *)(&ip.header),
+	                                     ip2_hdr,
+	                                     next_header,
+	                                     crc_type, crc);
+
+	t_byte = crc;
+	if(is_rtp)
+	{
+		s_byte_position = counter;
 		counter++;
 	}
+	t_byte_position = counter;
+	counter++;
+
 	/* part 6: decide which extension to use */
 	extension = decide_extension(context);
 
@@ -6262,7 +6306,7 @@ int changed_dynamic_both_hdr(struct c_context *context,
  *
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
- * @param header_info    The header info stored in the profile
+
  * @param ip             The header of the new IP packet
  * @param context        The compression context
  * @return               The number of fields that changed

@@ -59,6 +59,8 @@ void * d_udp_create(void)
 	context->decode_static_next_header = udp_decode_static_udp;
 	context->decode_dynamic_next_header = udp_decode_dynamic_udp;
 	context->decode_uo_tail = udp_decode_uo_tail_udp;
+	context->compute_crc_static = udp_compute_crc_static;
+	context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
 	/* create the UDP-specific part of the header changes */
 	context->last1->next_header_len = sizeof(struct udphdr);

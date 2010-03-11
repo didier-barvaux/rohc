@@ -11,8 +11,6 @@
 #include <netinet/ip6.h>
 #include <string.h>
 
-#include "rohc.h"
-
 /// IP version
 typedef enum
 {
@@ -211,7 +209,7 @@ void ipv6_set_flow_label(struct ip_packet *ip, uint32_t value);
 int ip_get_extension_size(struct ip_packet ip);
 
 /* Private functions (do not use directly) */
-int get_ip_version(unsigned char *packet, unsigned int size, ip_version *version);
+int get_ip_version(const unsigned char *packet, unsigned int size, ip_version *version);
 
 
 #endif

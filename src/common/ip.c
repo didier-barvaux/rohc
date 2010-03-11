@@ -5,6 +5,7 @@
  */
 
 #include "ip.h"
+#include "rohc.h" /* TODO for rohc_debugf */
 
 
 /*
@@ -776,7 +777,7 @@ struct in6_addr * ipv6_get_daddr(struct ip_packet *ip)
  * @param version OUT: the version of the IP packet: IPV4 or IPV6
  * @return        Whether the given packet is an IPv4 or IPv6 packet or not
  */
-int get_ip_version(unsigned char *packet, unsigned int size, ip_version *version)
+int get_ip_version(const unsigned char *packet, unsigned int size, ip_version *version)
 {
 	int ret = 1;
 

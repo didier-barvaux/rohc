@@ -848,7 +848,7 @@ int rohc_ir_packet_crc_ok(struct d_context *context,
 	/* compute the CRC of the IR packet */
 	walk[largecid + 2] = 0;
 	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    ir_size + largecid + addcidUsed);
+	                    ir_size + largecid + addcidUsed, CRC_INIT_8);
 	walk[largecid + 2] = realcrc;
 
 	/* compare the transmitted CRC and the computed one */
@@ -913,7 +913,8 @@ int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
 	walk[largecid + 2] = 0;
 	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
 	                    irdyn_size +
-	                    largecid + addcidUsed);
+	                    largecid + addcidUsed,
+	                    CRC_INIT_8);
 	walk[largecid + 2] = realcrc;
 
 	/* compare the transmitted CRC and the computed one */

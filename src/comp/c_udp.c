@@ -102,6 +102,8 @@ int c_udp_create(struct c_context *context, const struct ip_packet ip)
 	g_context->code_dynamic_part = udp_code_dynamic_udp_part;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_UO_packet_tail = udp_code_UO_packet_tail;
+	g_context->compute_crc_static = udp_compute_crc_static;
+	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
 	return 1;
 

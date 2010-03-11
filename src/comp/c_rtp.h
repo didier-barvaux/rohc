@@ -125,6 +125,5 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 int rtp_changed_rtp_dynamic(struct c_context *context,
                             const struct udphdr *udp);
 
-
 #endif
 

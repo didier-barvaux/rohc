@@ -119,6 +119,8 @@ int c_rtp_create(struct c_context *context, const struct ip_packet ip)
 	g_context->code_dynamic_part = rtp_code_dynamic_rtp_part;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_UO_packet_tail = udp_code_UO_packet_tail;
+	g_context->compute_crc_static = rtp_compute_crc_static;
+	g_context->compute_crc_dynamic = rtp_compute_crc_dynamic;
 
 	return 1;
 

@@ -175,7 +175,7 @@ void c_uncompressed_feedback(struct c_context *context,
 		/* check CRC if used */
 		if(crc_used)
 		{
-			if(crc_calculate(CRC_TYPE_8, feedback->data, feedback->size ) != crc)
+			if(crc_calculate(CRC_TYPE_8, feedback->data, feedback->size, CRC_INIT_8) != crc)
 			{
 				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
 				return;
@@ -408,7 +408,7 @@ int uncompressed_code_IR_packet(struct c_context *context,
 
 	/* part 5 */
 	dest[counter]= 0;
-	dest[counter]= crc_calculate(CRC_TYPE_8, dest, counter + 1);
+	dest[counter]= crc_calculate(CRC_TYPE_8, dest, counter + 1, CRC_INIT_8);
 	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter + 1, dest[counter]);
 	counter++;
 
