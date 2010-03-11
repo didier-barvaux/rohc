@@ -4654,7 +4654,14 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			 *  - the 5-bit mask (0x1f) for the 5-bit field
 			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
 			 *    to avoid sending more than 32 bits of TS in all TS fields */
-			ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3)) - 1);
+			if(nr_ts_bits_ext3 == 0)
+			{
+				ts_mask = 0x1f;
+			}
+			else
+			{
+				ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3)) - 1);
+			}
 			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
 			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n",
