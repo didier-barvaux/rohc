@@ -2575,7 +2575,8 @@ int decide_SO_packet(const struct c_context *context)
 					packet = PACKET_UO_0;
 				else if(nr_sn_bits <= 4 && nr_ip_id_bits == 0 && nr_ts_bits <= 5)
 					packet = PACKET_UO_1_TS;
-				else if(nr_sn_bits <= 4 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
+				else if(nr_sn_bits <= 4 && nr_ip_id_bits <= 5 &&
+				        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
 					packet = PACKET_UO_1_ID;
 				else if(nr_ip_id_bits != 0 && nr_ts_bits <= 28)
 					packet = PACKET_UOR_2_ID;
@@ -2592,7 +2593,7 @@ int decide_SO_packet(const struct c_context *context)
 			if((nr_sn_bits <= 4) &&
 			   (!is_ip_v4 || is_rnd || nr_ip_id_bits == 0) &&
 			   (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
-			   nr_ts_bits == 0)
+			   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
 				packet = PACKET_UO_0;
 			else if((!is_ip_v4 || is_rnd) &&
 			        (!is_ip2_v4 || is_rnd2) &&
@@ -2602,7 +2603,7 @@ int decide_SO_packet(const struct c_context *context)
 			else if((is_ip_v4 && nr_ip_id_bits <= 5) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
 			        nr_sn_bits <= 4 &&
-			        nr_ts_bits == 0)
+			        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
 				packet = PACKET_UO_1_ID;
 			else if((!is_ip_v4 || is_rnd || nr_ip_id_bits == 0) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
@@ -6092,9 +6093,11 @@ int decide_extension(struct c_context *context)
 			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
+			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 &&
+			   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
 				ext = PACKET_NOEXT;
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 &&
+			        (nr_ts_bits == 0  || is_deductible(rtp_context->ts_sc)))
 				ext = PACKET_EXT_0;
 			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
 				ext = PACKET_EXT_1;
