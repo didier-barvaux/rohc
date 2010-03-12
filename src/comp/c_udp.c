@@ -75,7 +75,7 @@ int c_udp_create(struct c_context *context, const struct ip_packet ip)
 		goto clean;
 	}
 
-	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 
 	/* create the UDP part of the profile context */
 	udp_context = malloc(sizeof(struct sc_udp_context));
@@ -256,7 +256,7 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 		goto bad_context;
 	
 	/* check UDP ports */
-	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 	is_udp_same = udp_context->old_udp.source == udp->source &&
 		           udp_context->old_udp.dest == udp->dest;
 
@@ -335,7 +335,7 @@ int c_udp_encode(struct c_context *context,
 		rohc_debugf(0, "packet is not an UDP packet\n");
 		return -1;
 	}
-	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 
 	/* how many UDP fields changed? */
 	udp_context->tmp_variables.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);

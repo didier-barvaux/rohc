@@ -18,6 +18,10 @@ unsigned char crc_table_3[256];
 unsigned char crc_table_2[256];
 
 
+static unsigned char *ipv6_get_first_extension(const unsigned char *ip,
+                                               uint8_t *type);
+
+
 /**
  * @brief Get the polynom for the CRC type.
  *
@@ -279,12 +283,14 @@ unsigned int compute_crc_static(const unsigned char *ip,
 		struct ip6_hdr *ip_hdr = (struct ip6_hdr *) ip;
 		/* bytes 1-4 (Version, TC, Flow Label) */
 		crc = crc_calculate(crc_type,
-		                    (unsigned char *)(&ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_flow),
+		                    (unsigned char *)(&ip_hdr->ip6_flow),
 		                    4, crc);
 		/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
 		crc = crc_calculate(crc_type,
-		                    (unsigned char *)(&ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt),
+		                    (unsigned char *)(&ip_hdr->ip6_nxt),
 		                    34, crc);
+		/* IPv6 extensions */
+		crc = ipv6_ext_compute_crc_static(ip, crc_type, crc);
 	}
 
 	/* second header */
@@ -312,12 +318,14 @@ unsigned int compute_crc_static(const unsigned char *ip,
 			struct ip6_hdr *ip2_hdr = (struct ip6_hdr *) ip2;
 			/* bytes 1-4 (Version, TC, Flow Label) */
 			crc = crc_calculate(crc_type,
-			                    (unsigned char *)(&ip2_hdr->ip6_ctlun.ip6_un1.ip6_un1_flow),
+			                    (unsigned char *)(&ip2_hdr->ip6_flow),
 			                    4, crc);
 			/* bytes 7-40 (Next Header, Hop Limit, Source Address, Destination Address) */
 			crc = crc_calculate(crc_type,
-			                    (unsigned char *)(&ip2_hdr->ip6_ctlun.ip6_un1.ip6_un1_nxt),
+			                    (unsigned char *)(&ip2_hdr->ip6_nxt),
 			                    34, crc);
+			/* IPv6 extensions */
+			crc = ipv6_ext_compute_crc_static(ip2, crc_type, crc);
 		}
 	}
 
@@ -376,8 +384,10 @@ unsigned int compute_crc_dynamic(const unsigned char *ip,
 		struct ip6_hdr *ip_hdr = (struct ip6_hdr *) ip;
 		/* bytes 5-6 (Payload Length) */
 		crc = crc_calculate(crc_type,
-		                    (unsigned char *)(&ip_hdr->ip6_ctlun.ip6_un1.ip6_un1_plen),
+		                    (unsigned char *)(&ip_hdr->ip6_plen),
 		                    2, crc);
+		/* IPv6 extensions (only AH is CRC-DYNAMIC) */
+		crc = ipv6_ext_compute_crc_dynamic(ip, crc_type, crc);
 	}
 
 	/* second_header */
@@ -402,8 +412,10 @@ unsigned int compute_crc_dynamic(const unsigned char *ip,
 			struct ip6_hdr *ip2_hdr = (struct ip6_hdr *) ip2;
 			/* bytes 5-6 (Payload Length) */
 			crc = crc_calculate(crc_type,
-			                    (unsigned char *)(&ip2_hdr->ip6_ctlun.ip6_un1.ip6_un1_plen),
+			                    (unsigned char *)(&ip2_hdr->ip6_plen),
 			                    2, crc);
+			/* IPv6 extensions (only AH is CRC-DYNAMIC) */
+			crc = ipv6_ext_compute_crc_dynamic(ip2, crc_type, crc);
 		}
 	}
 
@@ -588,5 +600,99 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
 	return crc;
 }
 
+/**
+ * @brief Compute the CRC-STATIC part of IPv6 extensions
+ *
+ * All extensions are concerned except entire AH header.
+ *
+ * @param ip          The IPv6 packet
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
+                                         unsigned int crc_type,
+                                         unsigned int init_val)
+{
+	unsigned int crc;
+	unsigned char *ext;
+	uint8_t ext_type;
 
+	crc = init_val;
+
+	ext = ipv6_get_first_extension(ip, &ext_type);
+	while(ext != NULL)
+	{
+		if(ext_type != AUTH)
+		{
+			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext), crc);
+		}
+		ext = ip_get_next_ext_header_from_ext(ext, &ext_type);
+	}
+
+	return crc;
+}
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of IPv6 extensions
+ *
+ * Only entire AH header is concerned.
+ *
+ * @param ip          The IPv6 packet
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @return            The checksum
+ */
+unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
+                                          unsigned int crc_type,
+                                          unsigned int init_val)
+{
+	unsigned int crc;
+	unsigned char *ext;
+	uint8_t ext_type;
+
+	crc = init_val;
+
+	ext = ipv6_get_first_extension(ip, &ext_type);
+	while(ext != NULL)
+	{
+		if(ext_type == AUTH)
+		{
+			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext), crc);
+		}
+		ext = ip_get_next_ext_header_from_ext(ext, &ext_type);
+	}
+
+	return crc;
+}
+
+/**
+ * @brief Get the first extension in an IPv6 packet
+ *
+ * @param ip   The IPv6 packet
+ * @param type The type of the extension
+ * @return     The extension, NULL if there is no extension
+ */
+static unsigned char *ipv6_get_first_extension(const unsigned char *ip,
+                                               uint8_t *type)
+{
+	struct ip6_hdr *ip_hdr;
+
+	ip_hdr = (struct ip6_hdr *)ip;
+	*type = ip_hdr->ip6_nxt;
+	switch (*type)
+	{
+		case HOP_BY_HOP:
+		case DESTINATION:
+		case ROUTING:
+		case AUTH: //extension header
+			break;
+		default:
+			goto end;
+	}
+
+	return (unsigned char *)(ip + sizeof(struct ip6_hdr));
+end:
+	return NULL;
+}
 

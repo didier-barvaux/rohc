@@ -92,5 +92,12 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
                                      unsigned int crc_type,
                                      unsigned int init_val);
 
+unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
+                                         unsigned int crc_type,
+                                         unsigned int init_val);
+unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
+                                          unsigned int crc_type,
+                                          unsigned int init_val);
+
 #endif
 

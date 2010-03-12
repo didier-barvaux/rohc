@@ -11,6 +11,22 @@
 #include <netinet/ip6.h>
 #include <string.h>
 
+/*
+ * Next header codes for IPv6 extensions:
+ */
+
+
+/** Next header code for Hop-by-Hop options */
+#define HOP_BY_HOP 0
+/** Next header code for Destination options */
+#define DESTINATION 60
+/** Next header code for Routing extension */
+#define ROUTING 43
+/** Next header code for Authentification Header */
+#define AUTH 51
+
+
+
 /// IP version
 typedef enum
 {
@@ -168,8 +184,13 @@ int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner);
 void ip_new(struct ip_packet *ip, ip_version version);
 
 unsigned char * ip_get_raw_data(struct ip_packet ip);
-unsigned char * ip_get_next_header(struct ip_packet ip);
-unsigned char * ip_get_next_extension_header(unsigned char* ext );
+unsigned char *ip_get_next_header(const struct ip_packet *ip,
+                                  uint8_t *type);
+unsigned char *ip_get_next_layer(const struct ip_packet *ip);
+unsigned char *ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
+                                              uint8_t *type);
+unsigned char *ip_get_next_ext_header_from_ext(const unsigned char *ext,
+                                               uint8_t *type);
 
 unsigned int ip_get_totlen(struct ip_packet ip);
 unsigned int ip_get_hdrlen(struct ip_packet ip);
@@ -206,7 +227,8 @@ uint32_t ipv6_get_flow_label(struct ip_packet ip);
 struct in6_addr * ipv6_get_saddr(struct ip_packet *ip);
 struct in6_addr * ipv6_get_daddr(struct ip_packet *ip);
 void ipv6_set_flow_label(struct ip_packet *ip, uint32_t value);
-int ip_get_extension_size(struct ip_packet ip);
+uint8_t ip_get_extension_size(unsigned char *ext);
+uint8_t ip_get_total_extension_size(struct ip_packet ip);
 
 /* Private functions (do not use directly) */
 int get_ip_version(const unsigned char *packet, unsigned int size, ip_version *version);

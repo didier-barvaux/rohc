@@ -80,7 +80,7 @@ int c_rtp_create(struct c_context *context, const struct ip_packet ip)
 		goto clean;
 	}
 
-	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 
 	/* create the RTP part of the profile context */
 	rtp_context = malloc(sizeof(struct sc_rtp_context));
@@ -219,7 +219,7 @@ int c_rtp_check_context(struct c_context *context, struct ip_packet ip)
 	}
 
 	/* get UDP and RTP headers */
-	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* check the RTP SSRC field */
@@ -301,7 +301,7 @@ int c_rtp_encode(struct c_context *context,
 		rohc_debugf(0, "packet is not an UDP packet\n");
 		return -1;
 	}
-	udp = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* how many UDP/RTP fields changed? */

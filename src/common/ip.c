@@ -8,6 +8,7 @@
 #include "rohc.h" /* TODO for rohc_debugf */
 
 
+
 /*
  * Generic IP functions (apply to both IPv4 and IPv6):
  */
@@ -135,13 +136,10 @@ void ip_new(struct ip_packet *ip, ip_version version)
 
 
 /**
- * @brief Get the IP raw data
- *
- * This function may return NULL if the IP packet only contains the IP header
- * and not the whole IP data (ie. header and payload).
+ * @brief Get the IP raw data (header + payload)
  *
  * @param ip The IP packet to analyze
- * @return   The IP raw data
+ * @return   The IP raw data (header + payload)
  */
 unsigned char * ip_get_raw_data(struct ip_packet ip)
 {
@@ -161,11 +159,38 @@ int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner)
 	unsigned char *next_header;
 
 	/* get the next header data in the IP packet */
-	next_header = ip_get_next_header(outer);
+	next_header = ip_get_next_layer(&outer);
 
 	/* create an IP packet with the next header data */
 	rohc_debugf(3, "size of outer :%d \n", ip_get_plen(outer));
 	return ip_create(inner, next_header, ip_get_plen(outer));
+}
+
+/**
+ * @brief Get the IP next header
+ *        
+ * @param ip   The IP packet to analyze
+ * @param type OUT: The type of the next header
+ * @return     The next header
+ */
+unsigned char *ip_get_next_header(const struct ip_packet *ip,
+                                  uint8_t *type)
+{
+	unsigned char *next_header;
+
+	/* find the start of the next header data */
+	if(ip->version == IPV4)
+	{
+		*type = ip->header.v4.protocol;
+		next_header = ip->data + sizeof(struct iphdr);
+	}
+	else /* IPV6 */
+	{
+		*type = ip->header.v6.ip6_nxt; 
+		next_header = ip->data + sizeof(struct ip6_hdr);
+	}
+
+	return next_header;
 }
 
 
@@ -173,29 +198,29 @@ int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner)
  * @brief Get the next header of the protocol (not extension)
  *        encapsulated in the IP packet
  *        
- * @param ip The IP packet to analyze
- * @return   The next header
+ * @param ip   The IP packet to analyze
+ * @param type OUT: The type of the next header
+ * @return     The next header
  */
-unsigned char * ip_get_next_header(struct ip_packet ip)
+unsigned char *ip_get_next_layer(const struct ip_packet *ip)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
 	uint8_t length;
 
-	/* find the start of the next header data */
-	if(ip.version == IPV4)
-		next_header = ip.data + sizeof(struct iphdr);
-	else /* IPV6 */
+	next_header = ip_get_next_header(ip, &next_header_type);
+	/* skip IPv6 extensions */
+	if(ip->version == IPV6)
 	{
-		next_header_type = ip.header.v6.ip6_nxt; 
-		next_header = ip.data + sizeof(struct ip6_hdr);
-		while(next_header_type == 0 || next_header_type == 60 ||
-		      next_header_type == 43 || next_header_type == 51)
+		while(next_header_type == HOP_BY_HOP ||
+		      next_header_type == DESTINATION ||
+		      next_header_type == ROUTING ||
+		      next_header_type == AUTH)
 		{
-			//extension header
-			next_header_type = * next_header;
-			length = * (next_header + 1);
-			next_header = next_header + (length+1)*8 ;
+			/* extension header */
+			next_header_type = *next_header;
+			length = *(next_header + 1);
+			next_header = next_header + (length + 1) * 8 ;
 		}
 	}
 
@@ -203,63 +228,112 @@ unsigned char * ip_get_next_header(struct ip_packet ip)
 }
 
 /**
- * @brief Get the next extension header of IPv6 packets
+ * @brief Get the next extension header of IPv6 packets from
+ *        an IPv6 header
  *
- * @param ext the extension to analyse
- * @return the next extension header, NULL if no extension
+ * @param ext  The extension to analyse
+ * @param type OUT: The type of the next header
+ *             If there is no next header the value must be ignored
+ * @return     The next extension header,
+ *             NULL if there is no extension
  */
-unsigned char * ip_get_next_extension_header(unsigned char* ext )
+unsigned char *ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
+                                              uint8_t *type)
 {
 	unsigned char *next_header;
-	uint8_t length;
-	uint8_t next_header_type;
 
-	next_header_type = *ext;
-	
-	switch (next_header_type)
+	if(ip->version != IPV6)
 	{
-		case 0:
-		case 60:
-		case 43:
-		case 51: //extension header
-			length = * (ext + 1);
-			next_header = ext + (length+1)*8;
+		return NULL;
+	}
+
+	next_header = ip_get_next_header(ip, type);
+	switch (*type)
+	{
+		case HOP_BY_HOP:
+		case DESTINATION:
+		case ROUTING:
+		case AUTH: //extension header
 			break;
 		default:
 			goto end;
-			break;
 	}
+
 	return next_header;
 end:
 	return NULL;
 }
 
 /**
+ * @brief Get the next extension header of IPv6 packets from
+ *        another extension
+ *
+ * @param ext  The extension to analyse
+ * @param type OUT: The type of the next header
+ *             If there is no next header the value must be ignored
+ * @return     The next extension header,
+ *             NULL if there is no more extension
+ */
+unsigned char *ip_get_next_ext_header_from_ext(const unsigned char *ext,
+                                               uint8_t *type)
+{
+	unsigned char *next_header;
+	uint8_t length;
+
+	*type = *ext;
+	
+	switch (*type)
+	{
+		case HOP_BY_HOP:
+		case DESTINATION:
+		case ROUTING:
+		case AUTH: //extension header
+			length = *(ext + 1);
+			next_header = (unsigned char *)(ext + (length + 1) * 8);
+			break;
+		default:
+			goto end;
+	}
+
+	return next_header;
+end:
+	return NULL;
+}
+
+/**
+ * @brief Get the size of an IPv6 extension
+ *
+ * @param ext The extension
+ * @return    The size of the extension
+ */
+uint8_t ip_get_extension_size(unsigned char *ext)
+{
+	uint8_t ext_length;
+	
+	ext_length = *(ext + 1);
+	return (ext_length + 1) * 8;
+}
+
+
+/**
  * @brief Get the size of the extension list
  *
  * @param ip The packet to analyse
- * @return the size of extension list
+ * @return   The size of extension list
  */
-int ip_get_extension_size(struct ip_packet ip)
+uint8_t ip_get_total_extension_size(struct ip_packet ip)
 {
-	int hdr = ip_get_hdrlen(ip);
-	unsigned char * data = ip.data;
-	unsigned char * ext;
-	int size;
-	int length;
+	unsigned char *ext;
+	uint8_t next_hdr_type;
+	uint8_t total_ext_size = 0;
 	
-	data += hdr;
-	ext = ip_get_next_extension_header(data);
-	length = *(data + 1);
-	size = ((int)(*(data + 1))+1)*8;
+	ext = ip_get_next_ext_header_from_ip(&ip, &next_hdr_type);
 	while(ext != NULL)
 	{
-		length = *(ext);
-		size += ((int)(*(ext + 1))+1)*8;
-		data = ext;
-		ext = ip_get_next_extension_header(data);
+		total_ext_size += ip_get_extension_size(ext);
+		ext = ip_get_next_ext_header_from_ext(ext, &next_hdr_type);
 	}
-	return size;
+	return total_ext_size;
 }
 
 /**
@@ -341,11 +415,11 @@ unsigned int ip_get_plen(struct ip_packet ip)
 		next_header_type = ip.header.v6.ip6_nxt;
 		switch (next_header_type)
 		{
-			case 0:
-			case 60:
-			case 43:
-			case 51: //extension header 
-				size_list = ip_get_extension_size(ip);
+			case HOP_BY_HOP:
+			case DESTINATION:
+			case ROUTING:
+			case AUTH: //extension header
+				size_list = ip_get_total_extension_size(ip);
 				break;
 			default:
 				break;
@@ -388,10 +462,10 @@ unsigned int ip_get_protocol(struct ip_packet ip)
 		next_header_type = ip.header.v6.ip6_nxt;
 		switch (next_header_type)
 		{
-			case 0:
-			case 60:
-			case 43:
-			case 51: //extension header 
+			case HOP_BY_HOP:
+			case DESTINATION:
+			case ROUTING:
+			case AUTH: //extension header
 				next_header = ip.data + sizeof(struct ip6_hdr);
 				protocol = ext_get_protocol(next_header);
 				break;
@@ -405,12 +479,11 @@ unsigned int ip_get_protocol(struct ip_packet ip)
 }
 
 /**
- * @brief Get the protocol transported by an IPv6 extension
+ * @brief Get the protocol transported by the last IPv6 extension
  *
- * @param ext the first extension
- *
- * @return The protocol number that identify the protocol transported
- *         by the given IP extension
+ * @param ext The first extension
+ * @return    The protocol number that identify the protocol transported
+ *            by the given IP extension
  */
 unsigned int ext_get_protocol(unsigned char * ext)
 {
@@ -423,11 +496,11 @@ unsigned int ext_get_protocol(unsigned char * ext)
 	length = *(ext + 1);
 	switch (type)
 	{
-		case 0:
-		case 60:
-		case 43:
-		case 51:
-			next_header = ext + (length+1)*8 ;
+		case HOP_BY_HOP:
+		case DESTINATION:
+		case ROUTING:
+		case AUTH: //extension header
+			next_header = ext + (length + 1) * 8 ;
 			protocol = ext_get_protocol(next_header);
 			break;
 		default:
