@@ -84,6 +84,8 @@ void * d_rtp_create(void)
 	context->decode_static_next_header = rtp_decode_static_rtp;
 	context->decode_dynamic_next_header = rtp_decode_dynamic_rtp;
 	context->decode_uo_tail = rtp_decode_uo_tail_rtp;
+	context->compute_crc_static = rtp_compute_crc_static;
+	context->compute_crc_dynamic = rtp_compute_crc_dynamic;
 
 	/* create the UDP-specific part of the header changes */
 	context->last1->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);

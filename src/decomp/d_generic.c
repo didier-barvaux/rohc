@@ -282,6 +282,10 @@ void * d_generic_create(void)
 	/* no default next header */
 	context->next_header_proto = 0;
 
+	/* default CRC computation */
+	context->compute_crc_static = compute_crc_static;
+	context->compute_crc_dynamic = compute_crc_dynamic;
+
 	return context;
 	
 free_decomp1:
@@ -3486,6 +3490,9 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	rtp_context = (struct d_rtp_context *) g_context->specific;
 	int ts_received;
 	int ts_received_size = 0;
+	unsigned char *ip_hdr;
+	unsigned char *ip2_hdr;
+	unsigned char *next_header;
 
 	/* decode SN */
 	*sn = d_lsb_decode(&g_context->sn, sn_bits, nb_of_sn_bits);
@@ -3597,21 +3604,28 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	/* build the IP headers */
 	if(g_context->multiple_ip)
 	{
+		ip_hdr = dest;
 		dest += build_uncompressed_ip(active1, dest, *plen +
 		                              ip_get_hdrlen(active2->ip) +
 		                              active1->next_header_len +
 					      active2->size_list,
 					      g_context->list_decomp1);
+		ip2_hdr = dest;
 		dest += build_uncompressed_ip(active2, dest, *plen +
 		                              active2->next_header_len,
 					      g_context->list_decomp2);
 	}
 	else
+	{
+		ip_hdr = dest;
 		dest += build_uncompressed_ip(active1, dest, *plen +
 		                              active1->next_header_len,
 					      g_context->list_decomp1);
+		ip2_hdr = NULL;
+	}
 
 	/* build the next header if necessary */
+	next_header = dest;
 	if(g_context->build_next_header != NULL)
 		dest += g_context->build_next_header(g_context, active1, dest, *plen);
 	if(g_context->multiple_ip)
@@ -3623,8 +3637,15 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 		size_list += active1->size_list;
 		
 
-	/* check CRC */
-	*calc_crc = crc_calculate(CRC_TYPE_3, org_dest, dest - org_dest);
+	/* check CRC
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	*calc_crc = CRC_INIT_3;
+	*calc_crc = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
+	                                          CRC_TYPE_3, *calc_crc);
+	*calc_crc = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr,
+	                                           next_header,
+	                                           CRC_TYPE_3, *calc_crc);
 	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
 
 	return dest - org_dest;
@@ -3680,6 +3701,10 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	int id2_size = 0;
 	int ts_received_size = 0;
 	int ts_received = 0;
+	int crc_type;
+	unsigned char *ip_hdr;
+	unsigned char *ip2_hdr;
+	unsigned char *next_header;
 
 	*sn = sn_bits;
 
@@ -4183,21 +4208,28 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	/* build the IP headers */
 	if(g_context->multiple_ip)
 	{
+		ip_hdr = dest;
 		dest += build_uncompressed_ip(active1, dest, *plen +
 		                              ip_get_hdrlen(active2->ip) +
 		                              active1->next_header_len +
 					      active2->size_list,
 					      g_context->list_decomp1);
+		ip2_hdr = dest;
 		dest += build_uncompressed_ip(active2, dest, *plen +
 		                              active2->next_header_len,
 					      g_context->list_decomp2);
 	}
 	else
+	{
+		ip_hdr = dest;
 		dest += build_uncompressed_ip(active1, dest, *plen +
 		                              active1->next_header_len,
 					      g_context->list_decomp1);
+		ip2_hdr = NULL;
+	}
 
 	/* build the next header if necessary */
+	next_header = dest;
 	if(g_context->build_next_header != NULL)
 		dest += g_context->build_next_header(g_context, active1, dest, *plen);
 
@@ -4209,18 +4241,23 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	if(active1->complist)
 		size_list += active1->size_list;
 		
-	/* CRC check */
-	if(is_rtp){
+	/* CRC check
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	*calc_crc = CRC_INIT_7;
+	crc_type = CRC_TYPE_7;
 #if RTP_BIT_TYPE
-		*calc_crc = crc_calculate(CRC_TYPE_6, org_dest, dest - (size_list + org_dest));
-#else	
-		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - (size_list + org_dest));
-#endif
-	}
-	else
+	if(is_rtp)
 	{
-		*calc_crc = crc_calculate(CRC_TYPE_7, org_dest, dest - (size_list + org_dest));
+		*calc_crc = CRC_INIT_6;
+		crc_type = CRC_TYPE_6;
 	}
+#endif
+	*calc_crc = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
+	                                          crc_type, *calc_crc);
+	*calc_crc = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
+	                                           crc_type, *calc_crc);
+
 	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
 
 	return dest - org_dest;

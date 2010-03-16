@@ -893,7 +893,7 @@ struct c_profile *c_get_profile_from_packet(struct rohc_comp *comp,
 				struct udphdr *udp;
 				int port;
 
-				udp = (struct udphdr *) ip_get_next_header(ip);
+				udp = (struct udphdr *) ip_get_next_layer(&ip);
 				port = ntohs(udp->dest);
 
 				rohc_debugf(3, "UDP port = 0x%x (%u)\n", port, port);

@@ -817,8 +817,8 @@ char *rohc_version(void);
 #include "lsb.h"
 #include "sdvl.h"
 #include "wlsb.h"
-#include "ip.h"
 #include "rtp.h"
+#include "ip.h"
 
 
 #endif

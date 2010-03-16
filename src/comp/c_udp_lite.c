@@ -90,7 +90,7 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 		goto clean;
 	}
 	
-	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp_lite = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 
 	/* create the UDP-Lite part of the profile context */
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
@@ -124,6 +124,8 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 	g_context->code_dynamic_part = udp_lite_code_dynamic_udp_lite_part;
 	g_context->code_UO_packet_head = udp_lite_build_cce_packet;
 	g_context->code_UO_packet_tail = udp_lite_code_UO_packet_tail;
+	g_context->compute_crc_static = udp_compute_crc_static;
+	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
 	return 1;
 
@@ -276,7 +278,7 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 		goto bad_context;
 	
 	/* check UDP-Lite ports */
-	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp_lite = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 	is_udp_lite_same =
 		udp_lite_context->old_udp_lite.source == udp_lite->source &&
 		udp_lite_context->old_udp_lite.dest == udp_lite->dest;
@@ -361,7 +363,7 @@ int c_udp_lite_encode(struct c_context *context,
 		rohc_debugf(0, "packet is not an UDP-Lite packet\n");
 		return -1;
 	}
-	udp_lite = (struct udphdr *) ip_get_next_header(last_ip_header);
+	udp_lite = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size, payload_offset);

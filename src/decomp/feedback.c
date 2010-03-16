@@ -213,7 +213,7 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	/* compute the CRC and store it in the feedback packet if specified */
 	if(with_crc)
 	{
-		crc = crc_calculate(CRC_TYPE_8, feedback_packet, feedback->size);
+		crc = crc_calculate(CRC_TYPE_8, feedback_packet, feedback->size, CRC_INIT_8);
 		feedback_packet[feedback->size - 1] = (unsigned char) (crc & 0xff);
 	}
 

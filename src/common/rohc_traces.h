@@ -7,6 +7,7 @@
 #ifndef ROHC_TRACES_H
 #define ROHC_TRACES_H
 
+#include <stdio.h>
 #include "config.h" /* for ROHC_DEBUG_LEVEL */
 
 /// @brief Print information depending on the debug level and prefixed

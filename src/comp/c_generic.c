@@ -553,6 +553,8 @@ int c_generic_create(struct c_context *context, const struct ip_packet ip)
 	g_context->code_dynamic_part = NULL;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_UO_packet_tail = NULL;
+	g_context->compute_crc_static = compute_crc_static;
+	g_context->compute_crc_dynamic = compute_crc_dynamic;
 
 	return 1;
 
@@ -698,7 +700,6 @@ int c_generic_encode(struct c_context *context,
 	struct c_generic_context *g_context;
 	struct ip_packet ip2, last_ip_header;
 	unsigned char *next_header;
-	unsigned char next_header_type;
 	unsigned int ip_proto;
 	int size;
 	int size_data;
@@ -755,40 +756,16 @@ int c_generic_encode(struct c_context *context,
 		 * next header protocol */
 		return -1;
 	}
-	next_header = ip_get_next_header(last_ip_header);
+	next_header = ip_get_next_layer(&last_ip_header);
 
-	/* find the offset of the payload */
-	*payload_offset =
-		ip_get_hdrlen(ip) + (g_context->tmp_variables.nr_of_ip_hdr > 1 ?
-		ip_get_hdrlen(ip2) : 0) + g_context->next_header_len;
-	//check if there is an IPv6 extension
-	if(g_context->tmp_variables.nr_of_ip_hdr == 1 && ip_get_version(ip) == IPV6)
+	/* find the offset of the payload and its size */
+	*payload_offset = ip_get_hdrlen(ip) + ip_get_total_extension_size(ip);
+	if(g_context->tmp_variables.nr_of_ip_hdr > 1)
 	{
-		next_header_type = ip.header.v6.ip6_nxt;
-		if(next_header_type == 0 || next_header_type == 60 ||
-		   next_header_type == 43 || next_header_type == 51)
-			*payload_offset += ip_get_extension_size(ip);
+		*payload_offset += ip_get_hdrlen(ip2) + ip_get_total_extension_size(ip2);
 	}
-	else if(g_context->tmp_variables.nr_of_ip_hdr == 2 && 
-		(ip_get_version(ip) == IPV6 || ip_get_version(ip2) == IPV6))
-	{
-		if(ip_get_version(ip) == IPV6)
-		{
-			next_header_type = ip.header.v6.ip6_nxt;
-			if(next_header_type == 0 || next_header_type == 60 ||
-			   next_header_type == 43 || next_header_type == 51)
-				*payload_offset += ip_get_extension_size(ip);	
-		}
-		if(ip_get_version(ip2) == IPV6)
-		{
-			next_header_type = ip2.header.v6.ip6_nxt;
-			if(next_header_type == 0 || next_header_type == 60 ||
-				next_header_type == 43 || next_header_type == 51)
-				*payload_offset += ip_get_extension_size(ip2);
-		}
-	}
-
-	size_data = packet_size - (int)*payload_offset;
+	*payload_offset += g_context->next_header_len;
+	size_data = packet_size - (*payload_offset);
 
 	/* discard IP fragments */
 	if(ip_is_fragment(ip))
@@ -828,9 +805,9 @@ int c_generic_encode(struct c_context *context,
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
-			udp = (struct udphdr *) ip_get_next_header(ip2);
+			udp = (struct udphdr *) ip_get_next_layer(&ip2);
 		else
-			udp = (struct udphdr *) ip_get_next_header(ip);
+			udp = (struct udphdr *) ip_get_next_layer(&ip);
 
 		/* initialisation of SN with the SN field of the RTP packet */
 		rtp = (struct rtphdr *) (udp + 1);
@@ -2001,79 +1978,90 @@ void create_ipv6_item(unsigned char *ext, int index_table, int size, struct list
 		memcpy(comp->based_table[index_table].data, ext, size);
 }
 
-/**
- * @brief Extract the extension of the ip packet
- *
- * @param ip The ip packet to analyse
- * @param index The number of the extension in ip packet
- * @return the extension
- */
-unsigned char * get_ipv6_extension(const struct ip_packet ip, int index)
-{
-	unsigned char * next_header;
-	int i = 0;
-	uint8_t next_header_type;
 
-	next_header_type = ip.header.v6.ip6_nxt;
-	next_header = ip.data + sizeof(struct ip6_hdr);
-	if(next_header_type == 0 || next_header_type == 60 ||
-	     next_header_type == 43 || next_header_type == 51)
+/**
+ * @brief Extract the Nth IP extension of the IP packet
+ *
+ * Extract the IP extension at the given index.
+ *
+ * @param ip     The IP packet to analyse
+ * @param index  The index of the extension to retrieve in the IP packet
+ * @return       the extension
+ */
+unsigned char *get_ipv6_extension(const struct ip_packet ip, int index)
+{
+	unsigned char *next_header;
+	uint8_t next_header_type;
+	int i = 0;
+
+	/* get the next known IP extension in packet */
+	next_header = ip_get_next_ext_header_from_ip(&ip, &next_header_type);
+	while(i < index && next_header != NULL)
 	{
-		while( i < index)
-		{
-			next_header = ip_get_next_extension_header(next_header);
-			i++;
-		}
+		/* get the next known IP extension */
+		next_header = ip_get_next_ext_header_from_ext(next_header,
+		                                              &next_header_type);
+		i++;
 	}
+
 	return next_header;
 }
 
-/**
- * @brief Return the index in based table for the corresponding item
- * @param ip The ip packet to analyse
- * @param index The index in based table
- * @return the index in based table
- */
- int get_index_ipv6_table(const struct ip_packet ip, int index)
- {
- 	int index_table = -1;
-	unsigned char * next_header;
-	int i = 0;
-	uint8_t header_type;
 
-	header_type = ip.header.v6.ip6_nxt;
-	next_header = ip.data + sizeof(struct ip6_hdr);
-	if(header_type == 0 || header_type == 60 ||
-		header_type == 43 || header_type == 51)
+/**
+ * @brief Return the based table index for the Nth IP extension of the IP packet
+ *
+ * @param ip     The IP packet to analyse
+ * @param index  The index of the extension to retrieve in the IP packet
+ * @return       the based table index
+ */
+int get_index_ipv6_table(const struct ip_packet ip, int index)
+{
+	int index_table = -1;
+	unsigned char *next_header;
+	uint8_t next_header_type;
+	int i = 0;
+
+	/* get the next known IP extension in packet */
+	next_header = ip_get_next_ext_header_from_ip(&ip, &next_header_type);
+	while(i < index && next_header != NULL)
 	{
-		while( i < index)
-		{
-			header_type = *next_header;
-			next_header = ip_get_next_extension_header(next_header);
-			i++;
-		}
+		/* get the next known IP extension */
+		next_header = ip_get_next_ext_header_from_ext(next_header,
+		                                              &next_header_type);
+		i++;
 	}
-	switch (header_type)
+
+	/* did we find the Nth extension ? */
+	if(next_header == NULL)
 	{
-		case 0:
+		goto error;
+	}
+
+	switch(next_header_type)
+	{
+		case IPV6_EXT_HOP_BY_HOP:
 			index_table = 0;
 			break;
-		case 60:
+		case IPV6_EXT_DESTINATION:
 			index_table = 1;
 			break;
-		case 43:
+		case IPV6_EXT_ROUTING:
 			index_table = 2;
 			break;
-		case 51:
+		case IPV6_EXT_AUTH:
 			index_table = 3;
 			break;
 		default:
 			goto error;
 	}
+
 	return index_table;
+
 error:
 	return -1;
 }
+
 
 /**
  * @brief Get the size of the IPv6 extension
@@ -2163,7 +2151,7 @@ void c_generic_feedback(struct c_context *context,
 			}
 			
 			/* check CRC if used */
-			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data, feedback->size) != crc)
+			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data, feedback->size, CRC_INIT_8) != crc)
 			{
 				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
 				return;
@@ -2380,9 +2368,9 @@ void update_variables(struct c_context *context,
 		struct sc_rtp_context *rtp_context;
 
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
-			udp = (struct udphdr *) ip_get_next_header(ip2);
+			udp = (struct udphdr *) ip_get_next_layer(&ip2);
 		else
-			udp = (struct udphdr *) ip_get_next_header(ip);
+			udp = (struct udphdr *) ip_get_next_layer(&ip);
 
 		rtp = (struct rtphdr *) (udp + 1);
 		rtp_context = g_context->specific;
@@ -2729,8 +2717,11 @@ int decide_packet(struct c_context *context, const struct ip_packet ip, const st
 		if(nr_of_ip_hdr == 1 && g_context->ip_flags.version == IPV6)
 		{
 			next_header_type = ip.header.v6.ip6_nxt;
-			if(next_header_type == 0 || next_header_type == 60 ||
-			   next_header_type == 43 || next_header_type == 51)// extension list to compress
+			/* extension list to compress */
+			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+			   next_header_type == IPV6_EXT_DESTINATION ||
+			   next_header_type == IPV6_EXT_ROUTING ||
+			   next_header_type == IPV6_EXT_AUTH)
 			{
 				g_context->ip_flags.info.v6.ext_comp->update_done = 0;
 				g_context->ip_flags.info.v6.ext_comp->list_compress = 
@@ -2747,8 +2738,11 @@ int decide_packet(struct c_context *context, const struct ip_packet ip, const st
 			if(g_context->ip_flags.version == IPV6)
 			{
 				next_header_type = ip.header.v6.ip6_nxt;
-				if(next_header_type == 0 || next_header_type == 60 ||
-				   next_header_type == 43 || next_header_type == 51)// extension list to compress
+				/* extension list to compress */
+				if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+				   next_header_type == IPV6_EXT_DESTINATION ||
+				   next_header_type == IPV6_EXT_ROUTING ||
+				   next_header_type == IPV6_EXT_AUTH)
 				{
 					g_context->ip_flags.info.v6.ext_comp->update_done = 0;
 					g_context->ip_flags.info.v6.ext_comp->list_compress = 
@@ -2760,8 +2754,11 @@ int decide_packet(struct c_context *context, const struct ip_packet ip, const st
 			if(packet != PACKET_IR_DYN && g_context->ip2_flags.version == IPV6)
 			{
 				next_header_type = ip2.header.v6.ip6_nxt;
-				if(next_header_type == 0 || next_header_type == 60 ||
-				   next_header_type == 43 || next_header_type == 51)// extension list to compress
+				/* extension list to compress */
+				if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+				   next_header_type == IPV6_EXT_DESTINATION ||
+				   next_header_type == IPV6_EXT_ROUTING ||
+				   next_header_type == IPV6_EXT_AUTH)
 				{
 					g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
 					g_context->ip2_flags.info.v6.ext_comp->list_compress = 
@@ -3004,10 +3001,9 @@ int code_IR_packet(struct c_context *context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter);
+	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
-
 error:
 	return counter;
 }
@@ -3132,7 +3128,7 @@ int code_IR_DYN_packet(struct c_context *context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter);
+	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
 
@@ -3676,6 +3672,8 @@ int code_UO0_packet(struct c_context *context,
 	unsigned char f_byte;
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
+	unsigned int crc;
+	unsigned char *ip2_hdr;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3694,15 +3692,25 @@ int code_UO0_packet(struct c_context *context,
 		counter = g_context->code_UO_packet_head(context, next_header,
 		                                         dest, counter, &first_position);
 
-	/* part 2 */
+	/* part 2: SN + CRC
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
 	f_byte = (g_context->sn & 0x0f) << 3;
-	f_byte |= crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-	                        (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	                        g_context->next_header_len);
-	rohc_debugf(2, "F byte = 0x%02x (CRC = 0x%x on %d bytes)\n", f_byte,
-	            f_byte & 0x07, ip_get_hdrlen(ip) + (nr_of_ip_hdr > 1  ?
-	            ip_get_hdrlen(ip2) : 0) + g_context->next_header_len);
-
+	crc = CRC_INIT_3;
+	if(nr_of_ip_hdr > 1)
+	{
+		ip2_hdr = ip2.data;
+	}
+	else
+	{
+		ip2_hdr = NULL;
+	}
+	crc = g_context->compute_crc_static(ip.data, ip2_hdr, next_header,
+	                                    CRC_TYPE_3, crc);
+	crc = g_context->compute_crc_dynamic(ip.data, ip2_hdr, next_header,
+	                                     CRC_TYPE_3, crc);
+	f_byte |= crc;
+	rohc_debugf(2, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
 	dest[first_position] = f_byte;
 
 	/* build the UO tail */
@@ -3793,7 +3801,8 @@ int code_UO1_packet(struct c_context *context,
 	int is_ip_v4;
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
-	int crc;
+	unsigned int crc;
+	unsigned char *ip2_hdr;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3887,33 +3896,45 @@ int code_UO1_packet(struct c_context *context,
 	dest[first_position] = f_byte;
 	rohc_debugf(3, "1 0 + T + TS/IP-ID = 0x%02x\n", f_byte);
 
-	/* part 4 */
+	/* part 4: (M +) SN + CRC
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
 	if(!is_rtp)
 	{
 		s_byte = (g_context->sn & 0x1f) << 3;
-		crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-		                   (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-				    g_context->next_header_len);
-		s_byte |= crc & 0x07;
-	}									
+	}
 	else
 	{
 		s_byte = (g_context->sn & 0x0f) << 3;
-		s_byte |= (rtp_context->tmp_variables.m & 0x01) << 7;				
-		crc = crc_calculate(CRC_TYPE_3, ip_get_raw_data(ip), ip_get_hdrlen(ip) +
-		                    (nr_of_ip_hdr > 1  ? ip_get_hdrlen(ip2) : 0) +
-	        	            g_context->next_header_len);
-		s_byte |= crc & 0x07;
+		s_byte |= (rtp_context->tmp_variables.m & 0x01) << 7;
 	}
+	crc = CRC_INIT_3;
+	if(nr_of_ip_hdr > 1)
+	{
+		ip2_hdr = ip2.data;
+	}
+	else
+	{
+		ip2_hdr = NULL;
+	}
+	crc = g_context->compute_crc_static(ip.data, ip2_hdr, next_header,
+	                                    CRC_TYPE_3, crc);
+	crc = g_context->compute_crc_dynamic(ip.data, ip2_hdr, next_header,
+	                                     CRC_TYPE_3, crc);
+	s_byte |= crc & 0x07;
 	dest[counter] = s_byte;
 	counter++;
 	if(!is_rtp)
-                rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
-                           g_context->sn, crc, s_byte);
-        else
-                rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-                           rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
-													
+	{
+		rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
+		            g_context->sn, crc, s_byte);
+	}
+	else
+	{
+		rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
+		            rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
+	}
+
 	/* build the UO tail */
 	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
 
@@ -4011,10 +4032,12 @@ int code_UO2_packet(struct c_context *context,
 	int first_position, s_byte_position = 0, t_byte_position;
 	int extension;
 	struct c_generic_context *g_context;
-	unsigned int header_len;
 	int nr_of_ip_hdr;
 	int packet_type;
 	int is_rtp;
+	unsigned int crc;
+	unsigned int crc_type;
+	unsigned char *ip2_hdr;
 	int (*code_bytes)(struct c_context *context,
 	                  int extension,
 	                  unsigned char *f_byte,
@@ -4064,40 +4087,45 @@ int code_UO2_packet(struct c_context *context,
 	/* part 2: to be continued, we need to add the 5 bits of SN */
 	f_byte = 0xc0; /* 1 1 0 x x x x x */
 
-	/* parts 4 & 5 */
-	/* compute outer IP + inner IP + next header length */
-	header_len = ip_get_hdrlen(ip) + g_context->next_header_len;
-	if(nr_of_ip_hdr > 1)
-	{
-		header_len += ip_get_hdrlen(ip2);
-	}
+	/* part 4: remember the position of the second byte for future completion
+	 *         (RTP only) */
 	if(is_rtp)
 	{
-		/* RTP-only parts 4 & 5:
-		 * part 4: remember the position of the second byte for future completion
-		 * part 5: partially calculate the third byte, then remember the position
-		 *         of the third byte, its final value is currently unknown */
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-		const int crc_type = CRC_TYPE_6;
-#else
-		const int crc_type = CRC_TYPE_7;
-#endif
-
 		s_byte_position = counter;
 		counter++;
+	}
 
-		t_byte = crc_calculate(crc_type, ip_get_raw_data(ip), header_len);
-		t_byte_position = counter;
-		counter++;
+	/* part 5: partially calculate the third byte, then remember the position
+	 *         of the third byte, its final value is currently unknown 
+	 *
+	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+	 * if the CRC-STATIC fields did not change */
+	crc = CRC_INIT_7;
+	crc_type = CRC_TYPE_7;
+#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
+	if(is_rtp)
+	{
+		crc = CRC_INIT_6;
+		crc_type = CRC_TYPE_6;
+	}
+#endif
+	if(nr_of_ip_hdr > 1)
+	{
+		ip2_hdr = ip2.data;
 	}
 	else
 	{
-		/* non-RTP part 5: partially calculate the third byte, then remember the
-		 * position of the third byte, its final value is currently unknown */
-		t_byte = crc_calculate(CRC_TYPE_7, ip_get_raw_data(ip), header_len);
-		t_byte_position = counter;
-		counter++;
+		ip2_hdr = NULL;
 	}
+	/* compute CRC on CRC-STATIC fields */
+	crc = g_context->compute_crc_static(ip.data, ip2_hdr, next_header,
+	                                    crc_type, crc);
+	/* compute CRC on CRC-DYNAMIC fields */
+	crc = g_context->compute_crc_dynamic(ip.data, ip2_hdr, next_header,
+	                                     crc_type, crc);
+	t_byte = crc;
+	t_byte_position = counter;
+	counter++;
 
 	/* part 6: decide which extension to use */
 	extension = decide_extension(context);
@@ -5707,7 +5735,7 @@ int rtp_header_flags_and_fields(struct c_context *context,
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 	/* get RTP header */
-	udp = (struct udphdr *) ip_get_next_header(ip);
+	udp = (struct udphdr *) ip_get_next_layer(&ip);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* part 1 */
@@ -6440,7 +6468,7 @@ unsigned short changed_fields(struct ip_header_info *header_info,
 		old_rtp = (struct rtphdr *) (old_udp + 1);
 		old_pt = old_rtp->pt;
 
-		udp = (struct udphdr *) ip_get_next_header(ip);
+		udp = (struct udphdr *) ip_get_next_layer(&ip);
 		rtp = (struct rtphdr *) (udp + 1);
 		if(old_pt != rtp->pt)
 			ret_value |= MOD_RTP_PT;
@@ -6682,25 +6710,37 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	if(nr_of_ip_hdr == 1 && ip_get_version(ip) == IPV6)
 	{
 		next_header_type = ip.header.v6.ip6_nxt;
-		if(next_header_type == 0 || next_header_type == 60 ||
-			next_header_type == 43 || next_header_type == 51)
+		if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+		   next_header_type == IPV6_EXT_DESTINATION ||
+		   next_header_type == IPV6_EXT_ROUTING ||
+		   next_header_type == IPV6_EXT_AUTH)
+		{
 			return packet;
+		}
 	}
 	else if(nr_of_ip_hdr == 2 && (ip_get_version(ip) == IPV6 || ip_get_version(ip2) == IPV6))
 	{
 		if(ip_get_version(ip) == IPV6)
 		{
 			next_header_type = ip.header.v6.ip6_nxt;
-			if(next_header_type == 0 || next_header_type == 60 ||
-				next_header_type == 43 || next_header_type == 51)
+			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+			   next_header_type == IPV6_EXT_DESTINATION ||
+			   next_header_type == IPV6_EXT_ROUTING ||
+			   next_header_type == IPV6_EXT_AUTH)
+			{
 				return packet;
+			}
 		}
 		else
 		{
 			next_header_type = ip2.header.v6.ip6_nxt;
-			if(next_header_type == 0 || next_header_type == 60 ||
-				next_header_type == 43 || next_header_type == 51)
+			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+			   next_header_type == IPV6_EXT_DESTINATION ||
+			   next_header_type == IPV6_EXT_ROUTING ||
+			   next_header_type == IPV6_EXT_AUTH)
+			{
 				return packet;
+			}
 		}
 	}
        
