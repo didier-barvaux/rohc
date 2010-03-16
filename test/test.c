@@ -781,8 +781,8 @@ static int test_comp_and_decomp(char *cid_type,
 		else
 			cmp_packet = NULL;
 
-		/* compress & decompress from 1 to 2 */
-		ret = compress_decompress(comp1, decomp2, 1, counter, header, packet,
+		/* compress & decompress from compressor 1 to decompressor 1 */
+		ret = compress_decompress(comp1, decomp1, 1, counter, header, packet,
 		                          link_len_src, use_large_cid,
 		                          dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp);
@@ -815,8 +815,8 @@ static int test_comp_and_decomp(char *cid_type,
 		else
 			cmp_packet = NULL;
 
-		/* compress & decompress from 2 to 1 */
-		ret = compress_decompress(comp2, decomp1, 2, counter, header, packet,
+		/* compress & decompress from compressor 2 to decompressor 2 */
+		ret = compress_decompress(comp2, decomp2, 2, counter, header, packet,
 		                          link_len_src, use_large_cid,
 		                          dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp);
