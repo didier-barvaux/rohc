@@ -6,7 +6,7 @@ The ROHC compression/decompression library was written by:
   CNES (French space agency)      http://www.cnes.fr/
   Lulea University of Technology  http://www.ltu.se/?l=en
 
-The ROHC library is released under the GPL license. See COPYING file. 
+The ROHC library is released under the GPL2+ license. See COPYING file. 
 
 The following people are/were involved in the project:
   Didier Barvaux         Main developer and maintainer.
