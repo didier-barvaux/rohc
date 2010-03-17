@@ -234,7 +234,7 @@ unsigned char *ip_get_next_layer(const struct ip_packet *ip)
  * @brief Get the next extension header of IPv6 packets from
  *        an IPv6 header
  *
- * @param ext  The extension to analyse
+ * @param ip   The IP packet to analyze
  * @param type OUT: The type of the next header
  *             If there is no next header the value must be ignored
  * @return     The next extension header,
