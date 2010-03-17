@@ -1,21 +1,29 @@
-The ROHC compression/decompression library was written by Viveris Technologies
-and Thales Alenia Space. It is released under the GPL license.
+The ROHC compression/decompression library was written by:
+  Viveris Technologies            http://www.tech.viveris.com/opensource/
+                                  opensource@toulouse.viveris.com
+  Thales Alenia Space             http://www.thalesaleniaspace.com/
+                                  cedric.baudoin@thalesaleniaspace.com
+  CNES (French space agency)      http://www.cnes.fr/
+  Lulea University of Technology  http://www.ltu.se/?l=en
+
+The ROHC library is released under the GPL license. See COPYING file. 
 
 The following people are/were involved in the project:
   Didier Barvaux         Main developer and maintainer.
+                         <didier.barvaux@toulouse.viveris.com>
   Cédric Baudoin         Many thanks for his help during the library development
                          and for his tenacity during the process of making the
                          library Open Source.
-  David Moreau           Developed the ROHC RTP profile.
-  Emmanuelle Péchereau   Developed the list compression and some non-standard
+                         <cedric.baudoin@thalesaleniaspace.com>
+  David Moreau           ROHC RTP profile.
+                         <david.moreau@toulouse.viveris.com>
+  Emmanuelle Péchereau   IPv6 list compression and some non-standard
                          modifications to improve ROHC on satellite links.
-  Damien Pinet           Realized some testing that led to some bug fixes.
-
-The following companies are involved in the project:
-  Viveris Technologies   http://www.viveris.com/
-                         Didier Barvaux <didier.barvaux@toulouse.viveris.com>
-  Thales Alenia Space    http://www.thalesaleniaspace.com/
-                         Cédric Baudoin <cedric.baudoin@thalesaleniaspace.com>
+  Damien Pinet           Test and benchmark.
+  Julien Bernard         Bugfixes.
+                         <julien.bernard@toulouse.viveris.com>
+  Julien Peyrade         Bugfixes.
+                         <julien.peyrade@toulouse.viveris.com>
 
 The library was mainly based on the work of the ROHC Project 2003 at the Lulea
 University of Technology, Sweden (http://rohc.sourceforge.net/). People involved
