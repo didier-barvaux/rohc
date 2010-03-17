@@ -4642,7 +4642,10 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* remember position of inner IP header flags if present */
 	if(ip)
 	{
-		ip_flags_pos = packet;
+		if(g_context->multiple_ip)
+			ip2_flags_pos = packet;
+		else
+			ip_flags_pos = packet;
 		packet++;
 		length--;
 	}
@@ -4650,7 +4653,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* remember position of outer IP header flags if present */
 	if(ip2)
 	{
-		ip2_flags_pos = packet;
+		ip_flags_pos = packet;
 		packet++;
 		length--;
 	}
@@ -4836,10 +4839,10 @@ int decode_extension3(struct rohc_decomp *decomp,
 	}
 
 	/* decode the outer IP header fields (pointed by packet) according to the
-	 * outer IP header flags (pointed by ip_flags_pos) if present */
+	 * outer IP header flags (pointed by ip2_flags_pos) if present */
 	if(ip2)
 	{
-		size = decode_outer_header_flags(ip_flags_pos, packet, length,
+		size = decode_outer_header_flags(ip2_flags_pos, packet, length,
 		                                 active1, is_id_updated);
 		if(size == -1)
 		{
@@ -5555,7 +5558,9 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 	
 	/* interfered fields */
 	ip->ip6_plen = htons(payload_size + size);
-	rohc_debugf(3, "Payload Length = 0x%04x\n", ntohs(payload_size));
+	rohc_debugf(3, "Payload Length = 0x%04x (extensions = %d bytes, "
+	            "payload = %u bytes)\n", ntohs(payload_size), size,
+	            ntohs(payload_size));
 
 	return sizeof(struct ip6_hdr) + size;
 }

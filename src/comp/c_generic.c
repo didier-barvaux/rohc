@@ -2454,7 +2454,10 @@ int decide_FO_packet(struct c_context *context)
 	if(send_static)
 	{
 		g_context->ir_dyn_count = 0;
-		packet = PACKET_UOR_2;
+		if(is_rtp)
+			packet = PACKET_UOR_2_RTP;
+		else
+			packet = PACKET_UOR_2;
 	}
 	else if(g_context->ir_dyn_count < MAX_FO_COUNT)
 	{
