@@ -316,7 +316,7 @@ unsigned int compute_crc_dynamic(const unsigned char *ip,
 		struct iphdr *ip_hdr = (struct iphdr *) ip;
 		/* bytes 3-6 (Total Length, Identification) */
 		crc = crc_calculate(crc_type,
-		                    (unsigned char *)(&ip_hdr->id), 4, crc);
+		                    (unsigned char *)(&ip_hdr->tot_len), 4, crc);
 		/* bytes 11-12 (Header Checksum) */
 		crc = crc_calculate(crc_type,
 		                    (unsigned char *)(&ip_hdr->check), 2, crc);
@@ -344,7 +344,7 @@ unsigned int compute_crc_dynamic(const unsigned char *ip,
 			struct iphdr *ip2_hdr = (struct iphdr *) ip2;
 			/* bytes 3-6 (Total Length, Identification) */
 			crc = crc_calculate(crc_type,
-			                    (unsigned char *)(&ip2_hdr->id), 4, crc);
+			                    (unsigned char *)(&ip2_hdr->tot_len), 4, crc);
 			/* bytes 11-12 (Header Checksum) */
 			crc = crc_calculate(crc_type,
 			                    (unsigned char *)(&ip2_hdr->check), 2, crc);

@@ -61,13 +61,13 @@ int c_bytesSdvl(int value, int length)
 	else
 	{
 		/* value length is known, find the length for SDVL-encoding */
-		if(length <= 7)
+		if(length <= MAX_BITS_IN_1_BYTE_SDVL)
 			size = 1;
-		else if(length <= 14)
+		else if(length <= MAX_BITS_IN_2_BYTE_SDVL)
 			size = 2;
-		else if(length <= 21)
+		else if(length <= MAX_BITS_IN_3_BYTE_SDVL)
 			size = 3;
-		else if(length <= 29)
+		else if(length <= MAX_BITS_IN_4_BYTE_SDVL)
 			size = 4;
 		else
 		{

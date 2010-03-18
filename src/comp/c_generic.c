@@ -1249,7 +1249,7 @@ int decide_type(struct list_comp * comp)
 int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int ps, int size)
 {
 	int type; // encoding type
-	unsigned char byte = 0;
+	unsigned char byte;
 	int i = 0;
 	struct list_elt * elt;
 	// Encoding type 0
@@ -1261,16 +1261,19 @@ int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int 
 	else if(comp->islist && !comp->list_compress)// the list does'nt change but is sent
 	{
 		//first_byte: type 0
-		byte |= 1 << 5;
+		byte = 1 << 5;
 		byte |= (ps & 0x01) << 4;
 		byte |= (size & 0x0f);
 		dest[counter] = byte;
 		counter ++;
+		rohc_debugf(2, "flags = 0x%02x\n", byte);
+
 		// it is the reference list: ref_id
-		byte = 0;
 		byte = (comp->ref_list->gen_id & 0xff);
 		dest[counter] = byte;
 		counter ++;
+		rohc_debugf(2, "ref_id = 0x%02x\n", byte);
+
 		// index
 		for (i = 0; i < size; i++)
 		{
@@ -1278,16 +1281,16 @@ int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int 
 			if(ps)
 			{
 				elt = get_elt(comp->ref_list, i);
-				byte |= 0 << 7;// elt already known
+				byte = 0 << 7;// elt already known
 				byte |= (elt->index_table & 0x7f);
 				dest[counter] = byte;
 				counter ++;
-				byte = 0;
+				rohc_debugf(2, "list element #%d = 0x%02x\n", i + 1, byte);
 			}
 			else
 			{
 				elt = get_elt(comp->ref_list, i);
-				byte |= 0 << 7;
+				byte = 0 << 7;
 				byte |= (elt->index_table & 0x07)<< 4;
 				i++;
 				elt = get_elt(comp->ref_list, i);
@@ -1298,7 +1301,8 @@ int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int 
 				}
 				dest[counter] = byte;
 				counter ++;
-				byte = 0;
+				rohc_debugf(2, "list elements #%d and #%d = 0x%02x\n",
+				            i, i + 1, byte);
 			}
 		}//item not sent because already known
 	}
@@ -1307,25 +1311,25 @@ int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int 
 		type = decide_type(comp);
 		rohc_debugf(1, "type of list encoding : %d \n", type);
 		// first byte
-		byte |= (type & 0x03) << 6;
-                byte |= 1 << 5;
+		byte = (type & 0x03) << 6;
+		byte |= 1 << 5;
 		byte |= (ps & 0x01) << 4;
 		dest[counter] = byte;
 		counter ++;
 		rohc_debugf(3, "flags = 0x%02x\n", byte);
-		byte = 0;
+
 		// second byte (gen_id)
 		byte = (comp->curr_list->gen_id & 0xff);
 		dest[counter] = byte;
 		counter ++;
 		rohc_debugf(3, "gen_id = 0x%02x\n", byte);
-		byte = 0;
+
 		// third byte (ref_id)
 		byte = (comp->ref_list->gen_id & 0xff);
 		dest[counter] = byte;
 		counter ++;
 		rohc_debugf(3, "ref_id = 0x%02x\n", byte);
-		byte = 0;
+
 		switch(type)
 		{
 			case 1: // Encoding type 1 (insertion only scheme)
@@ -2495,8 +2499,9 @@ int decide_FO_packet(struct c_context *context)
 		{
 			if(!is_ip_v4 || is_rnd)
 				packet = PACKET_UOR_2_RTP;
-			else if(is_ip_v4 && !is_rnd && nr_ip_id_bits > 0 && nr_ts_bits <= 28)
-				/* a UOR-2-ID packet can only carry 28 bits of TS (with ext 3) */
+			else if(is_ip_v4 && !is_rnd && nr_ip_id_bits > 0 &&
+			        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+				/* a UOR-2-ID packet can only carry 29 bits of TS (with ext 3) */
 				packet = PACKET_UOR_2_ID;
 			else
 				packet = PACKET_UOR_2_TS;
@@ -2509,7 +2514,7 @@ int decide_FO_packet(struct c_context *context)
 
 			if( (!is_ip_v4 || is_rnd) && (!is_ip2_v4 || is_rnd2))
 				packet = PACKET_UOR_2_RTP;
-			else if(nr_ts_bits <= 28 &&
+			else if(nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL &&
 			        (is_ip_v4 && nr_ip_id_bits > 0 &&
 			         (!is_ip_v4 || is_rnd2 || nr_ip_id_bits2 == 0)))
 				packet = PACKET_UOR_2_ID;
@@ -2585,7 +2590,7 @@ int decide_SO_packet(const struct c_context *context)
 				else if(nr_sn_bits <= 4 && nr_ip_id_bits <= 5 &&
 				        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
 					packet = PACKET_UO_1_ID;
-				else if(nr_ip_id_bits != 0 && nr_ts_bits <= 28)
+				else if(nr_ip_id_bits != 0 && nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
 					packet = PACKET_UOR_2_ID;
 			}
 		}
@@ -2622,7 +2627,7 @@ int decide_SO_packet(const struct c_context *context)
 				packet = PACKET_UOR_2_RTP;
 			else if((is_ip_v4 && nr_ip_id_bits > 0) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
-			        nr_ts_bits <= 28)
+			        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
 				packet = PACKET_UOR_2_ID;
 			else
 				packet = PACKET_UOR_2_TS;
@@ -4493,7 +4498,7 @@ int code_UOR2_RTP_bytes(struct c_context *context,
 			else if(nr_ts_bits <= 27)
 				nr_ts_bits_ext3 = 21;
 			else
-				nr_ts_bits_ext3 = 28;
+				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
 			rohc_debugf(3, "bits of TS = %d (%d in header, %d in EXT3)\n",
 			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
@@ -4693,7 +4698,7 @@ int code_UOR2_TS_bytes(struct c_context *context,
 			else if(nr_ts_bits <= 26)
 				nr_ts_bits_ext3 = 21;
 			else
-				nr_ts_bits_ext3 = 28;
+				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
 			rohc_debugf(3, "bits of TS = %d (%d in header, %d in EXT3)\n",
 			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
@@ -4911,7 +4916,7 @@ int code_UOR2_ID_bytes(struct c_context *context,
 				else if(nr_ts_bits <= 21)
 					nr_ts_bits_ext3 = 21;
 				else
-					nr_ts_bits_ext3 = 28;
+					nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
 			}
 			else
 				nr_ts_bits_ext3 = 0;

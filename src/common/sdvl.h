@@ -26,6 +26,18 @@
 
 #include "rohc.h"
 
+/*
+ * Constants related to fields length for SDVL-encoding
+ */
+
+/** Maximum number of bits in 1 SDVL-encoded byte */
+#define MAX_BITS_IN_1_BYTE_SDVL 7
+/** Maximum number of bits in 2 SDVL-encoded byte */
+#define MAX_BITS_IN_2_BYTE_SDVL 14
+/** Maximum number of bits in 3 SDVL-encoded byte */
+#define MAX_BITS_IN_3_BYTE_SDVL 21
+/** Maximum number of bits in 4 SDVL-encoded byte */
+#define MAX_BITS_IN_4_BYTE_SDVL 29
 
 /*
  * Function prototypes.

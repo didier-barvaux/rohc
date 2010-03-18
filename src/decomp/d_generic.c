@@ -4750,8 +4750,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 			}
 			else if(ts_size == 4)
 			{
-				ts_received = ts_received << 28;
-				ts_received_size += 27; /* because 5 + 28 = 33 > 32 ! */
+				ts_received = ts_received << MAX_BITS_IN_4_BYTE_SDVL;
+				ts_received_size += 27; /* because 5 + MAX_BITS_IN_4_BYTE_SDVL (29) = 34 > 32 ! */
 			}
 			else
 			{
