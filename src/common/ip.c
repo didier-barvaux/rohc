@@ -696,15 +696,36 @@ struct iphdr * ipv4_get_header(struct ip_packet ip)
  * The IP-ID value is returned as-is (ie. not automatically converted to
  * the host byte order).
  *
- * @param ip The IP packet to analyze
- * @return   The IP-ID if the given packet is IPv4, -1 otherwise
+ * @param ip  The IP packet to analyze
+ * @return    The IP-ID if the given packet is IPv4, -1 otherwise
  */
 int ipv4_get_id(struct ip_packet ip)
+{
+	return ipv4_get_id_nbo(ip, 1);
+}
+
+
+/**
+ * @brief Get the IP-ID of an IPv4 packet in Network Byte Order
+ *
+ * @param ip  The IP packet to analyze
+ * @param nbo The NBO flag (if RND = 1, use NBO = 1)
+ * @return    The IP-ID if the given packet is IPv4, -1 otherwise
+ */
+int ipv4_get_id_nbo(struct ip_packet ip, unsigned int nbo)
 {
 	uint16_t id;
 
 	if(ip.version == IPV4)
+	{
 		id = ip.header.v4.id;
+		if(!nbo)
+		{
+			/* If IP-ID is not transmitted in Network Byte Order,
+			 * swap the two bytes */
+			id = swab16(id);
+		}
+	}
 	else /* IPV6 */
 		id = -1;
 

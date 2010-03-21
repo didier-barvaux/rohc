@@ -146,13 +146,15 @@ int d_decode_dynamic_ip6(const unsigned char *packet,
 			 struct list_decomp * decomp,
 			 struct d_generic_changes *info);
 
-int decode_outer_header_flags(unsigned char *flags,
+int decode_outer_header_flags(struct d_context *context,
+                              unsigned char *flags,
                               unsigned char *fields,
                               unsigned int length,
                               struct d_generic_changes *info,
                               int *updated_id);
 
-int decode_inner_header_flags(unsigned char *flags,
+int decode_inner_header_flags(struct d_context *context,
+                              unsigned char *flags,
                               unsigned char * fields,
                               unsigned int length,
                               struct d_generic_changes *info);
@@ -4799,9 +4801,15 @@ int decode_extension3(struct rohc_decomp *decomp,
 	if(ip)
 	{
 		if(g_context->multiple_ip)
-			size = decode_inner_header_flags(ip2_flags_pos, packet, length, active2);
+		{
+			size = decode_inner_header_flags(context, ip2_flags_pos, packet,
+			                                 length, active2);
+		}
 		else
-			size = decode_inner_header_flags(ip_flags_pos, packet, length, active1);
+		{
+			size = decode_inner_header_flags(context, ip_flags_pos, packet,
+			                                 length, active1);
+		}
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the inner IP header flags & fields\n");
@@ -4858,7 +4866,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	 * outer IP header flags (pointed by ip2_flags_pos) if present */
 	if(ip2)
 	{
-		size = decode_outer_header_flags(ip2_flags_pos, packet, length,
+		size = decode_outer_header_flags(context, ip2_flags_pos, packet, length,
 		                                 active1, is_id_updated);
 		if(size == -1)
 		{
@@ -5235,17 +5243,19 @@ int extension_type(const unsigned char *packet)
 
 \endverbatim
  *
- * @param flags  The ROHC flags that indicate which IP fields are present
- *               in the packet
- * @param fields The ROHC packet part that contains some IP header fields
- * @param length The length of the ROHC packet part that contains some IP
- *               header fields
- * @param info   The IP header info to store the decoded values in
- * @return       The data length read from the ROHC packet,
- *               -2 in case packet must be parsed again,
- *               -1 in case of error
+ * @param context  The decompression context
+ * @param flags    The ROHC flags that indicate which IP fields are present
+ *                 in the packet
+ * @param fields   The ROHC packet part that contains some IP header fields
+ * @param length   The length of the ROHC packet part that contains some IP
+ *                 header fields
+ * @param info     The IP header info to store the decoded values in
+ * @return         The data length read from the ROHC packet,
+ *                 -2 in case packet must be parsed again,
+ *                 -1 in case of error
  */
-int decode_inner_header_flags(unsigned char *flags,
+int decode_inner_header_flags(struct d_context *context,
+                              unsigned char *flags,
                               unsigned char *fields,
                               unsigned int length,
                               struct d_generic_changes *info)
@@ -5253,6 +5263,7 @@ int decode_inner_header_flags(unsigned char *flags,
 	int is_tos, is_ttl, is_pr, is_ipx;
 	int df, nbo, rnd;
 	int read = 0;
+	int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 
 	/* get the inner IP header flags */
 	is_tos = GET_REAL(GET_BIT_7(flags));
@@ -5264,6 +5275,12 @@ int decode_inner_header_flags(unsigned char *flags,
 	rnd = GET_REAL(GET_BIT_1(flags));
 	rohc_debugf(3, "header flags: TOS = %d, TTL = %d, PR = %d, IPX = %d\n",
 	            is_tos, is_ttl, is_pr, is_ipx);
+
+	/* force the NBO flag to 1 if RND is detected */
+	if(rnd)
+	{
+		nbo = 1;
+	}
 
 	/* check the minimal length to decode the header fields */
 	if(length < is_tos + is_ttl + is_pr + is_ipx)
@@ -5323,18 +5340,23 @@ int decode_inner_header_flags(unsigned char *flags,
 	if(ip_get_version(info->ip) == IPV4)
 	{
 		info->nbo = nbo;
-		info->rnd = rnd;
 
+		/* if RND changed, we must restart parsing for RTP profile
+		   (except if the RTP bit type mechanism is used) */
 		if(info->rnd != rnd)
 		{
+			rohc_debugf(1, "RND change detected (%d -> %d)\n", info->rnd, rnd);
+			info->rnd = rnd;
+
+			if(is_rtp)
+			{
 #if RTP_BIT_TYPE
-			info->rnd = rnd;
 #else
-			rohc_debugf(2, "RND change detected (%d -> %d). We MUST reparse "
-			               "the UOR-2* packet\n", info->rnd, rnd);
-			info->rnd = rnd;
-			return -2;
+				rohc_debugf(1, "RND changed, so we MUST reparse "
+				            "the UOR-2* packet\n");
+				return -2;
 #endif
+			}
 		}
 	}
 	else
@@ -5391,6 +5413,7 @@ error:
 
 \endverbatim
  *
+ * @param context    The decompression context
  * @param flags      The ROHC flags that indicate which IP fields are present
  *                   in the packet
  * @param fields     The ROHC packet part that contain some IP header fields
@@ -5401,7 +5424,8 @@ error:
  * @return           The data length read from the ROHC packet,
  *                   -1 in case of error
  */
-int decode_outer_header_flags(unsigned char *flags,
+int decode_outer_header_flags(struct d_context *context,
+                              unsigned char *flags,
                               unsigned char *fields,
                               unsigned int length,
                               struct d_generic_changes *info,
@@ -5412,7 +5436,7 @@ int decode_outer_header_flags(unsigned char *flags,
 
 	/* decode the some outer IP header flags and fields that are identical
 	 * to inner IP header flags and fields */
-	read = decode_inner_header_flags(flags, fields, length, info);
+	read = decode_inner_header_flags(context, flags, fields, length, info);
 	if(read == -1)
 		goto error;
 	if(read == -2)

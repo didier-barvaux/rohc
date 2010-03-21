@@ -654,22 +654,6 @@ struct medium
 	} while(0)
 
 
-/*
- * Inline functions:
- */
-
-/**
- * @brief In-place change the byte order in a two-byte value.
- *
- * @param value The two-byte value to modify
- * @return      The same value with the byte order changed
- */
-static inline uint16_t swab16(uint16_t value)
-{
-	return ((value & 0x00ff) << 8) | ((value & 0xff00) >> 8);
-}
-
-
 #ifdef __i386__
 
 /**

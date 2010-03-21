@@ -189,6 +189,22 @@ struct ip6_ahhdr
 
 
 /*
+ * Inline functions
+ */
+
+/**
+ * @brief In-place change the byte order in a two-byte value.
+ *
+ * @param value The two-byte value to modify
+ * @return      The same value with the byte order changed
+ */
+static inline uint16_t swab16(uint16_t value)
+{
+	return ((value & 0x00ff) << 8) | ((value & 0xff00) >> 8);
+}
+
+
+/*
  * Function prototypes.
  */
 
@@ -228,6 +244,7 @@ void ip_set_daddr(struct ip_packet *ip, const unsigned char *value);
 
 struct iphdr * ipv4_get_header(struct ip_packet ip);
 int ipv4_get_id(struct ip_packet ip);
+int ipv4_get_id_nbo(struct ip_packet ip, unsigned int nbo);
 int ipv4_get_df(struct ip_packet ip);
 uint32_t ipv4_get_saddr(struct ip_packet ip);
 uint32_t ipv4_get_daddr(struct ip_packet ip);

@@ -3412,7 +3412,8 @@ int code_ipv4_dynamic_part(struct c_context *context,
 	header_info->ttl_count++;
 
 	/* part 3 */
-	id = ipv4_get_id(ip);
+	/* always transmit IP-ID in Network Byte Order */
+	id = ipv4_get_id_nbo(ip, header_info->info.v4.nbo);
 	memcpy(&dest[counter], &id, 2);
 	counter += 2;
 
@@ -3622,6 +3623,7 @@ int code_UO_packet_tail(struct c_context *context,
 	/* parts 6: only IPv4 */
 	if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 1)
 	{
+		/* do not care of Network Byte Order because IP-ID is random */
 		id = ipv4_get_id(ip);
 		memcpy(&dest[counter], &id, 2);
 		rohc_debugf(3, "outer IP-ID = 0x%04x\n", id);
@@ -3634,6 +3636,7 @@ int code_UO_packet_tail(struct c_context *context,
 	if(nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4 &&
 	   g_context->ip2_flags.info.v4.rnd == 1)
 	{
+		/* do not care of Network Byte Order because IP-ID is random */
 		id = ipv4_get_id(ip2);
 		memcpy(&dest[counter], &id, 2);
 		rohc_debugf(3, "inner IP-ID = 0x%04x\n", id);
@@ -5591,7 +5594,8 @@ int code_EXT3_packet(struct c_context *context,
 			{
 				uint16_t id;
 
-				id = ipv4_get_id(ip);
+				/* always transmit IP-ID in Network Byte Order */
+				id = ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo);
 				memcpy(&dest[counter], &id, 2);
 				rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
 				            dest[counter], dest[counter + 1]);
@@ -5664,7 +5668,8 @@ int code_EXT3_packet(struct c_context *context,
 			{
 				uint16_t id;
 
-				id = ipv4_get_id(ip2);
+				/* always transmit IP-ID in Network Byte Order */
+				id = ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo);
 				memcpy(&dest[counter], &id, 2);
 				rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
 				            dest[counter], dest[counter + 1]);
@@ -5889,7 +5894,6 @@ int header_flags(struct c_context *context,
 		int df;
 
 		df = ipv4_get_df(ip);
-		rohc_debugf(1, "DF = %d\n", df);
 		header_info->info.v4.df_count++;
 		flags |= df << 5;
 
@@ -5908,6 +5912,11 @@ int header_flags(struct c_context *context,
 				flags |= 0x01;
 		}
 	}
+
+	rohc_debugf(2, "Header flags: TOS = %d, TTL = %d, DF = %d, PR = %d, "
+	            "IPX = %d, NBO = %d, RND = %d\n", (flags >> 7) & 0x1,
+	            (flags >> 6) & 0x1, (flags >> 5) & 0x1, (flags >> 4) & 0x1,
+	            (flags >> 3) & 0x1, (flags >> 2) & 0x1, (flags >> 1) & 0x1);
 
 	/* for inner and outer flags (1 & 2) */
 	dest[counter] = flags;
@@ -6011,7 +6020,8 @@ int header_fields(struct c_context *context,
 		   (header_info->info.v4.rnd_count - 1 < MAX_FO_COUNT &&
 		    header_info->info.v4.rnd == 0))
 		{
-			id = ipv4_get_id(ip);
+			/* always transmit IP-ID in Network Byte Order */
+			id = ipv4_get_id_nbo(ip, header_info->info.v4.nbo);
 			memcpy(&dest[counter], &id, 2);
 			rohc_debugf(3, "(outer = %d) IP ID = 0x%02x 0x%02x\n", is_outer,
 			            dest[counter], dest[counter + 1]);
@@ -6551,13 +6561,16 @@ void check_ip_identification(struct ip_header_info *header_info,
 	{
 		rohc_debugf(2, "RND detected\n");
 		header_info->info.v4.rnd = 1;
+		header_info->info.v4.nbo = 1; /* do not change bit order if RND */
 	}
 	else
 	{
-		rohc_debugf(2, "NBO = %d\n", nbo);
 		header_info->info.v4.rnd = 0;
 		header_info->info.v4.nbo = nbo;
 	}
+
+	rohc_debugf(2, "NBO = %d, RND = %d\n",
+	           header_info->info.v4.nbo, header_info->info.v4.rnd);
 }
 
 /**
