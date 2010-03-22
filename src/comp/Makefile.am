@@ -6,7 +6,7 @@
 
 lib_LTLIBRARIES = librohc_comp.la
 
-sources = \
+librohc_comp_la_SOURCES = \
 	rohc_comp.c \
 	cid.c \
 	c_uncompressed.c \
@@ -16,22 +16,20 @@ sources = \
 	c_udp_lite.c \
 	c_rtp.c
 
-headers = \
+INCLUDES = \
+	-I$(top_srcdir)/src/common
+
+AM_CFLAGS = -g -Wall -Wstrict-prototypes
+
+include_HEADERS = \
 	rohc_comp.h \
-	cid.h \
+	cid.h
+
+EXTRA_DIST = \
 	c_uncompressed.h \
 	c_generic.h \
 	c_ip.h \
 	c_udp.h \
 	c_udp_lite.h \
 	c_rtp.h
-
-librohc_comp_la_SOURCES = $(sources)
-
-include_HEADERS = rohc_comp.h cid.h
-
-INCLUDES = \
-	-I../common
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
 

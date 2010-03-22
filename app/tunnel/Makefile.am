@@ -4,22 +4,21 @@
 #	Description: create the ROHC tunnel application
 ################################################################################
 
-sbin_PROGRAMS = rohctunnel
+bin_PROGRAMS = rohctunnel
 
 INCLUDES = \
-	-I../../src/common \
-	-I../../src/comp \
-	-I../../src/decomp
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
+	-I$(top_srcdir)/src/decomp
 
 AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 AM_LDFLAGS = \
-	-L../../src/common/.libs \
-	-L../../src/comp/.libs \
-	-L../../src/decomp/.libs
+	-L$(top_builddir)/src/common/.libs \
+	-L$(top_builddir)/src/comp/.libs \
+	-L$(top_builddir)/src/decomp/.libs
 
 rohctunnel_SOURCES = tunnel.c
-
 rohctunnel_LDADD = \
 	-lrohc_common \
 	-lrohc_comp \

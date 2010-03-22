@@ -96,16 +96,16 @@ check_PROGRAMS = \
 
 
 INCLUDES = \
-	-I../src/common \
-	-I../src/comp \
-	-I../src/decomp
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
+	-I$(top_srcdir)/src/decomp
 
 AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 AM_LDFLAGS = \
-	-L../src/common/.libs \
-	-L../src/comp/.libs \
-	-L../src/decomp/.libs
+	-L$(top_builddir)/src/common/.libs \
+	-L$(top_builddir)/src/comp/.libs \
+	-L$(top_builddir)/src/decomp/.libs
 
 
 test_SOURCES = test.c
@@ -115,4 +115,18 @@ test_LDADD = \
 	-lrohc_comp \
 	-lrohc_decomp \
 	-lm
+
+EXTRA_DIST = \
+	test.h \
+	test.sh \
+	$(TESTS_SMALLCID) \
+	$(TESTS_LARGECID) \
+	report/report.sh \
+	report/report.conf \
+	report/logs_cmp_ip.xsl \
+	report/logs_cmp_rohc.xsl \
+	report/logs_comp.xsl \
+	report/logs_decomp.xsl \
+	report/logs_startup.xsl \
+	report/samples
 

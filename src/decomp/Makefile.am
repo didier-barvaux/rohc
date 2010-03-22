@@ -6,7 +6,7 @@
 
 lib_LTLIBRARIES = librohc_decomp.la
 
-sources = \
+librohc_decomp_la_SOURCES = \
 	rohc_decomp.c \
 	feedback.c \
 	d_uncompressed.c \
@@ -16,8 +16,15 @@ sources = \
 	d_udp_lite.c \
 	d_rtp.c
 
-headers = \
-	rohc_decomp.h \
+INCLUDES = \
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp
+
+AM_CFLAGS = -g -Wall -Wstrict-prototypes
+
+include_HEADERS = rohc_decomp.h
+
+EXTRA_DIST = \
 	feedback.h \
 	d_uncompressed.h \
 	d_generic.h \
@@ -25,14 +32,4 @@ headers = \
 	d_udp.h \
 	d_udp_lite.h \
 	d_rtp.h
-
-librohc_decomp_la_SOURCES = $(sources)
-
-include_HEADERS = rohc_decomp.h
-
-INCLUDES = \
-	-I../common \
-	-I../comp
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
 

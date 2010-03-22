@@ -19,8 +19,13 @@
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
-BASEDIR=$( dirname "${SCRIPT}" )
-APP="${BASEDIR}/test"
+if [ "x$MAKELEVEL" != "x" ] ; then
+	BASEDIR="${srcdir}"
+	APP="./test"
+else
+	BASEDIR=$( dirname "${SCRIPT}" )
+	APP="${BASEDIR}/test"
+fi
 
 # extract the CID type and capture name from the name of the script
 CID_TYPE=$( echo "${SCRIPT}" | \

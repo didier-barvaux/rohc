@@ -21,6 +21,7 @@ sources = \
 
 headers = \
 	rohc.h \
+	rohc_traces.h \
 	crc.h \
 	decode.h \
 	ip_id.h \
