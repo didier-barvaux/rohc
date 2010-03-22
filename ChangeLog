@@ -1,4 +1,44 @@
-4 Aug 2009 - release 1.2.0
+22 Mar 2010 - release 1.3.0
+  Compatibility:
+    Version 1.3.0 is not compatible with versions < 1.3.0 because of several
+    fixes related to IETF RFCs that change the format of ROHC packets.
+  License/Authors:
+    Make clear that code is released under GPL version 2 or later.
+    Add CNES, the French space agency, as author.
+    Add Julien Bernard of Viveris Technologies as author.
+    Add Julien Peyrade of Viveris Technologies as author.
+  Build system:
+    Do not force automake version.
+    Disable static libraries by default.
+    Remove useless check for C++ compiler.
+    Change contact address to website instead of email address.
+    Add "make check" support for non-regression tests.
+    Make trace level configurable through ./configure script.
+    Add pkg-config support.
+    Do not force -Werror CFLAG by default.
+    Add --enable-fail-on-warning to use -Werror CFLAG.
+    Fix make dist and make distcheck.
+  Bug fixes:
+    Fix bug #409428 entitled "autogen.sh fails on Ubuntu 8.04".
+    Fix bug #414032 entitled "rohctunnel: cannot see compression/decompression
+      statistics".
+    Fix bug #481572 entitled "incorrect CRC computation".
+    Fix bug #482559 entitled "incorrect generic extension header list".
+    Fix bug #490752 entitled "ROHC decompressor crashes on Blackfin 561".
+    Fix bug #518796 entitled "TS_Stride field not encoded with SDVL".
+    Fix several endianness problems.
+    Fix large CID support.
+    Fix the decision algorithm to be able to choose UO-1-ID packet.
+    Fix integer overflow.
+    Fix a bug with state transitions at decompressor in unidirectional mode.
+    Fix non-regression tests for cases where RTP bit type is enabled.
+    Fix many doxygen errors.
+    Many more...
+  ROHC tunnel:
+    Re-work option parsing of ROHC tunnel application. 
+    Install ROHC tunnel application in 'sbin' instead of 'bin'.
+
+04 Aug 2009 - release 1.2.0
   Clean the build chain.
   Update source code for building with GCC 4.3.
   Update documentation and copyright.
