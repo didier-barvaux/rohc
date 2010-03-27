@@ -4,7 +4,7 @@
 #	Description: create the ROHC tunnel application
 ################################################################################
 
-bin_PROGRAMS = rohctunnel
+sbin_PROGRAMS = rohctunnel
 
 INCLUDES = \
 	-I$(top_srcdir)/src/common \
