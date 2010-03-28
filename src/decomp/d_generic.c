@@ -27,6 +27,7 @@
 #include "d_rtp.h"
 #include "config.h" /* for RTP_BIT_TYPE definition */
 #include "rohc_traces.h"
+#include "rohc_time.h"
 
 
 /** Get the minimum of two values */

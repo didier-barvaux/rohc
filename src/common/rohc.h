@@ -654,30 +654,9 @@ struct medium
 	} while(0)
 
 
-/**
- * @brief Get the current time in microseconds
- *
- * @return The current time in microseconds
+/*
+ * Prototypes of public functions
  */
-static inline unsigned int get_microseconds(void)
-{
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec * 1000000 + tv.tv_usec;
-}
-
-
-/**
- * @brief Get the current time in milliseconds
- *
- * @return The current time in milliseconds
- */
-static inline unsigned int get_milliseconds(void)
-{
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec * 1000 + tv.tv_usec / 1000;
-}
 
 char *rohc_version(void);
 

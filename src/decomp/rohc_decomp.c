@@ -28,6 +28,7 @@
 
 #include "rohc_decomp.h"
 #include "rohc_traces.h"
+#include "rohc_time.h"
 #include "d_ip.h"
 #include "d_udp.h"
 #include "d_rtp.h"
