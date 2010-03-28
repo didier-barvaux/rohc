@@ -483,51 +483,6 @@ struct medium
 
 
 /*
- * The types of ROHC packets and their extensions:
- */
-
-/// Defines an UO-0 packet
-#define PACKET_UO_0      0
-/// Defines an UO-1 packet
-#define PACKET_UO_1      1
-/// Defines an UOR-2 packet
-#define PACKET_UOR_2     2
-/// Defines an IR-DYN packet
-#define PACKET_IR_DYN    3
-/// Defines an IR packet
-#define PACKET_IR        4
-/// If packet type is not defined yet
-#define PACKET_UNKNOWN   5
-/// Defines an CCE packet (UDP-Lite profile only)
-#define PACKET_CCE       6
-/// Defines an CCE(OFF) packet (UDP-Lite profile only)
-#define PACKET_CCE_OFF   7
-/// Defines an UO-1-RTP packet
-#define PACKET_UO_1_RTP  8
-/// Defines an UO-1-ID packet
-#define PACKET_UO_1_ID   9
-/// Defines an UO-1-TS packet
-#define PACKET_UO_1_TS  10
-/// Defines an UO-2-RTP packet
-#define PACKET_UOR_2_RTP 11
-/// Defines an UO-2-ID packet
-#define PACKET_UOR_2_ID  12
-/// Defines an UO-2-TS packet
-#define PACKET_UOR_2_TS  13
-
-/// No extension for the UOR-2 packet
-#define PACKET_NOEXT    (-1)
-/// Defines the EXT-0 extension for the UOR-2 packet
-#define PACKET_EXT_0     0
-/// Defines the EXT-1 extension for the UOR-2 packet
-#define PACKET_EXT_1     1
-/// Defines the EXT-2 extension for the UOR-2 packet
-#define PACKET_EXT_2     2
-/// Defines the EXT-3 extension for the UOR-2 packet
-#define PACKET_EXT_3     3
-
-
-/*
  * Constants related to packet recovery after CRC failure:
  */
 

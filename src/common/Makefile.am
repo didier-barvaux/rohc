@@ -23,6 +23,7 @@ headers = \
 	rohc.h \
 	rohc_traces.h \
 	rohc_time.h \
+	rohc_packets.h \
 	crc.h \
 	decode.h \
 	ip_id.h \

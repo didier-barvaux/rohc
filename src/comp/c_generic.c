@@ -28,36 +28,12 @@
 #include "c_rtp.h"
 #include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 #include "rohc_traces.h"
+#include "rohc_packets.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <math.h>
 #include <assert.h>
-
-/**
- * @brief The description of the different ROHC packets.
- */
-const char *generic_packet_types[] =
-{
-	"IR",
-	"IRDYN",
-	"OU-0",
-	"OU-1",
-	"OU-2",
-};
-
-
-/**
- * @brief The description of the different extensions for the UO-2 packet.
- */
-const char *generic_extension_types[] =
-{
-	"NOEXT",
-	"EXT0",
-	"EXT1",
-	"EXT2",
-	"EXT3",
-};
 
 
 /*
@@ -144,25 +120,25 @@ int code_UO2_packet(struct c_context *context,
                     unsigned char *dest);
 
 int code_UOR2_bytes(struct c_context *context,
-                    int extension,
+                    const rohc_ext_t extension,
                     unsigned char *f_byte,
                     unsigned char *s_byte,
                     unsigned char *t_byte);
 
 int code_UOR2_RTP_bytes(struct c_context *context,
-                        int extension,
+                        const rohc_ext_t extension,
                         unsigned char *f_byte,
                         unsigned char *s_byte,
                         unsigned char *t_byte);
 
 int code_UOR2_TS_bytes(struct c_context *context,
-                       int extension,
+                       const rohc_ext_t extension,
                        unsigned char *f_byte,
                        unsigned char *s_byte,
                        unsigned char *t_byte);
 
 int code_UOR2_ID_bytes(struct c_context *context,
-                       int extension,
+                       const rohc_ext_t extension,
                        unsigned char *f_byte,
                        unsigned char *s_byte,
                        unsigned char *t_byte);
@@ -207,16 +183,20 @@ static void list_comp_ipv6_destroy_table(struct list_comp * comp);
 
 void decide_state(struct c_context *context);
 
-int decide_packet(struct c_context *context, 
-		  const struct ip_packet ip,
-		  const struct ip_packet ip2,
-		  int size_data);
+
+static rohc_packet_t decide_packet(const struct c_context *context, 
+                                   const struct ip_packet ip,
+                                   const struct ip_packet ip2,
+                                   const size_t size_data);
+static rohc_packet_t decide_FO_packet(const struct c_context *context);
+static rohc_packet_t decide_SO_packet(const struct c_context *context);
+
 
 void update_variables(struct c_context *context,
                       const struct ip_packet ip,
                       const struct ip_packet ip2);
 
-int decide_extension(struct c_context *context);
+rohc_ext_t decide_extension(const struct c_context *context);
 
 int rtp_header_flags_and_fields(struct c_context *context,
                                 unsigned short changed_f,
@@ -266,13 +246,31 @@ unsigned short changed_fields(struct ip_header_info *header_info,
 
 void check_ip_identification(struct ip_header_info *header_info,
                              const struct ip_packet ip);
-			     
-int c_assessment_size(struct rohc_comp * comp, struct c_context *context, const struct ip_packet ip, 
-				int packet, int size_data, int original);
 
-int decide_algo(struct rohc_comp * comp, struct c_context *context, 
-		const struct ip_packet ip, const struct ip_packet ip2,
-		int packet, int size_data);
+
+/*
+ * Prototypes of private functions related to the jamming mechanism
+ */
+
+static int jamming_find_packet_size(const struct rohc_comp *comp,
+                                    const struct c_context *context,
+                                    const struct ip_packet ip,
+                                    const rohc_packet_t packet,
+                                    const size_t size_data,
+                                    const int original);
+     
+static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
+                                         const struct c_context *context,
+                                         const struct ip_packet ip,
+                                         const struct ip_packet ip2,
+                                         const rohc_packet_t packet,
+                                         const size_t size_data);
+
+
+
+/*
+ * Definitions of public functions
+ */
 
 /**
  * @brief Check if a specified IP field has changed.
@@ -457,7 +455,7 @@ void c_init_tmp_variables(struct generic_tmp_variables *tmp_variables)
 	tmp_variables->nr_ip_id_bits = -1;
 	tmp_variables->nr_sn_bits = -1;
 	tmp_variables->nr_ip_id_bits2 = -1;
-	tmp_variables->packet_type = -1;
+	tmp_variables->packet_type = PACKET_UNKNOWN;
 	tmp_variables->max_size = -1;
 }
 
@@ -730,7 +728,7 @@ int c_generic_encode(struct c_context *context,
 
 	g_context->tmp_variables.changed_fields2 = 0;
 	g_context->tmp_variables.nr_ip_id_bits2 = 0;
-	g_context->tmp_variables.packet_type = PACKET_IR;
+	g_context->tmp_variables.packet_type = PACKET_UNKNOWN;
 	g_context->tmp_variables.max_size = dest_size;
 	
 	/* STEP 1:
@@ -874,7 +872,8 @@ int c_generic_encode(struct c_context *context,
 	update_variables(context, ip, ip2);
 
 	/* STEP 5: decide which packet to send */
-	g_context->tmp_variables.packet_type = decide_packet(context, ip, ip2, size_data);
+	g_context->tmp_variables.packet_type =
+		decide_packet(context, ip, ip2, size_data);
 
 	/* STEP 6: code the packet (and the extension if needed) */
 	size = code_packet(context, ip, ip2, next_header, dest);
@@ -2452,7 +2451,7 @@ void update_variables(struct c_context *context,
  * @param context The compression context
  * @return        The packet type among PACKET_IR_DYN and PACKET_UOR_2
  */
-int decide_FO_packet(struct c_context *context)
+static rohc_packet_t decide_FO_packet(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr, send_static, send_dynamic;
@@ -2541,7 +2540,7 @@ int decide_FO_packet(struct c_context *context)
  * @return        The packet type among PACKET_UO_0, PACKET_UO_1 and
  *                PACKET_UOR_2
  */
-int decide_SO_packet(const struct c_context *context)
+static rohc_packet_t decide_SO_packet(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr, nr_sn_bits, nr_ip_id_bits;
@@ -2682,20 +2681,22 @@ int decide_SO_packet(const struct c_context *context)
  * @param ip        The ip packet to compress
  * @param ip2       The inner ip packet
  * @param size_data The size of the data in bytes
- * @return        The packet type among PACKET_IR, PACKET_IR_DYN, PACKET_UO_0,
- *                PACKET_UO_1 and PACKET_UOR_2
+ * @return          \li The packet type among PACKET_IR, PACKET_IR_DYN,
+ *                      PACKET_UO_0, PACKET_UO_1* and PACKET_UOR_2* in case
+ *                      of success
+ *                  \li PACKET_UNKNOWN in case of failure
  */
-int decide_packet(struct c_context *context, const struct ip_packet ip, const struct ip_packet ip2, int size_data)
+static rohc_packet_t decide_packet(const struct c_context *context, 
+                                   const struct ip_packet ip,
+                                   const struct ip_packet ip2,
+                                   const size_t size_data)
 {
 	struct c_generic_context *g_context;
-	int packet;
-	int new_packet;
+	rohc_packet_t packet;
 	unsigned char next_header_type;
 	
 	g_context = (struct c_generic_context *) context->specific;
 	int nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
-
-	packet = PACKET_IR; /* default packet type */
 
 	switch(context->state)
 	{
@@ -2714,8 +2715,8 @@ int decide_packet(struct c_context *context, const struct ip_packet ip, const st
 			// option to use jamming activated
 			{
 				rohc_debugf(2, "use jamming algorithm\n");
-				new_packet = decide_algo(context->compressor, context, ip, ip2, packet,size_data); 
-				packet = new_packet;
+				packet = jamming_decide_algo(context->compressor, context, ip, ip2,
+				                             packet, size_data); 
 			}															      
 			break;
 
@@ -2727,15 +2728,18 @@ int decide_packet(struct c_context *context, const struct ip_packet ip, const st
 			// option to use jamming activated
 			{
 				rohc_debugf(2, "use jamming algorithm\n");
-				new_packet = decide_algo(context->compressor, context, ip, ip2, packet,size_data);
-				packet = new_packet;
+				packet = jamming_decide_algo(context->compressor, context, ip, ip2,
+				                             packet, size_data);
 			}													 
 			break;
 
 		default:
 			/* impossible value */
-			rohc_debugf(2, "unknown state (%d) => IR packet\n", context->state);			
+			rohc_debugf(2, "unknown state (%d), cannot determine packet type\n",
+			            context->state);
+			goto error;
 	}
+
 	if(packet != PACKET_IR && packet != PACKET_IR_DYN)
 	{
 		if(nr_of_ip_hdr == 1 && g_context->ip_flags.version == IPV6)
@@ -2793,7 +2797,11 @@ int decide_packet(struct c_context *context, const struct ip_packet ip, const st
 			}
 		}
 	}
+
 	return packet;
+
+error:
+	return PACKET_UNKNOWN;
 }
 
 
@@ -2815,20 +2823,17 @@ int code_packet(struct c_context *context,
                 unsigned char *dest)
 {
 	struct c_generic_context *g_context;
-	int nr_of_ip_hdr, packet_type;
+	rohc_packet_t packet_type;
+	int nr_of_ip_hdr;
 	int (*code_packet_type)(struct c_context *context,
 	                        const struct ip_packet ip,
 	                        const struct ip_packet ip2,
 	                        const unsigned char *next_header,
 	                        unsigned char *dest);
-	int counter;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
 	packet_type = g_context->tmp_variables.packet_type;
-
-	code_packet_type = NULL;
-	counter = -1;
 
 	switch(packet_type)
 	{
@@ -2860,15 +2865,13 @@ int code_packet(struct c_context *context,
 
 		default:
 			rohc_debugf(0, "unknown packet, failure\n");
-			break;
+			goto error;
 	}
 
-	if(code_packet != NULL)
-		counter = code_packet_type(context, ip, ip2, next_header, dest);
-	else
-		counter = -1;
+	return code_packet_type(context, ip, ip2, next_header, dest);
 
-	return counter;
+error:
+	return -1;
 }
 
 
@@ -3824,7 +3827,7 @@ int code_UO1_packet(struct c_context *context,
 	unsigned char s_byte;
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
-	int packet_type;
+	rohc_packet_t packet_type;
 	int is_ip_v4;
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
@@ -4057,16 +4060,16 @@ int code_UO2_packet(struct c_context *context,
 	unsigned char t_byte = 0; /* part 5 */
 	int counter;
 	int first_position, s_byte_position = 0, t_byte_position;
-	int extension;
+	rohc_ext_t extension;
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
-	int packet_type;
+	rohc_packet_t packet_type;
 	int is_rtp;
 	unsigned int crc;
 	unsigned int crc_type;
 	unsigned char *ip2_hdr;
 	int (*code_bytes)(struct c_context *context,
-	                  int extension,
+	                  const rohc_ext_t extension,
 	                  unsigned char *f_byte,
 	                  unsigned char *s_byte,
 	                  unsigned char *t_byte);
@@ -4242,7 +4245,7 @@ error:
  * @return             1 if successful, 0 otherwise
  */
 int code_UOR2_bytes(struct c_context *context,
-                    int extension,
+                    const rohc_ext_t extension,
                     unsigned char *f_byte,
                     unsigned char *s_byte,
                     unsigned char *t_byte)
@@ -4369,7 +4372,7 @@ error:
  * @return             1 if successful, 0 otherwise
  */
 int code_UOR2_RTP_bytes(struct c_context *context,
-                        int extension,
+                        const rohc_ext_t extension,
                         unsigned char *f_byte,
                         unsigned char *s_byte,
                         unsigned char *t_byte)
@@ -4579,7 +4582,7 @@ error:
  * @return             1 if successful, 0 otherwise
  */
 int code_UOR2_TS_bytes(struct c_context *context,
-                       int extension,
+                       const rohc_ext_t extension,
                        unsigned char *f_byte,
                        unsigned char *s_byte,
                        unsigned char *t_byte)
@@ -4787,7 +4790,7 @@ error:
  * @return             1 if successful, 0 otherwise
  */
 int code_UOR2_ID_bytes(struct c_context *context,
-                       int extension,
+                       const rohc_ext_t extension,
                        unsigned char *f_byte,
                        unsigned char *s_byte,
                        unsigned char *t_byte)
@@ -4993,7 +4996,7 @@ int code_EXT0_packet(struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	unsigned char f_byte;
-	int packet_type;
+	rohc_packet_t packet_type;
 
 	g_context = (struct c_generic_context *) context->specific;
 	packet_type = g_context->tmp_variables.packet_type;
@@ -5087,7 +5090,7 @@ int code_EXT1_packet(struct c_context *context,
                      int counter)
 {
 	struct c_generic_context *g_context;
-	int packet_type;
+	rohc_packet_t packet_type;
 	unsigned char f_byte;
 	unsigned char s_byte;
 
@@ -5222,7 +5225,7 @@ int code_EXT2_packet(struct c_context *context,
                      int counter)
 {
 	struct c_generic_context *g_context;
-	int packet_type;
+	rohc_packet_t packet_type;
 	unsigned char f_byte;
 	unsigned char s_byte;
 	unsigned char t_byte;
@@ -5415,7 +5418,7 @@ int code_EXT3_packet(struct c_context *context,
 	int ts_send = 0; /* TS to send */
 	int nr_ts_bits = -1; /* nb of TS bits needed */
 	int nr_ts_bits_ext3 = -1; /* nb of TS bits needed in EXT3 */
-	int packet_type;
+	rohc_packet_t packet_type;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -6042,9 +6045,10 @@ int header_fields(struct c_context *context,
  * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
  *                PACKET_EXT_1 and PACKET_EXT_3 if successful, -1 otherwise
  */
-int decide_extension(struct c_context *context)
+rohc_ext_t decide_extension(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
+	rohc_packet_t packet_type;
 	int send_static;
 	int send_dynamic;
 	int nr_ip_id_bits;
@@ -6052,7 +6056,6 @@ int decide_extension(struct c_context *context)
 	int nr_sn_bits;
 	int ext;
 	int is_rtp;
-	int packet_type;
 	
 	g_context = (struct c_generic_context *) context->specific;
 	send_static = g_context->tmp_variables.send_static;
@@ -6573,18 +6576,24 @@ void check_ip_identification(struct ip_header_info *header_info,
 	           header_info->info.v4.nbo, header_info->info.v4.rnd);
 }
 
+
 /**
- * @brief Make an assessment of the size in byte of the paquet which will be sent.
+ * @brief Determine the probable size of the packet which will be sent
+ *
  * @param comp        The rohc compressor
  * @param context     The context used for the compression
  * @param ip          The packet which will be compressed
  * @param packet      The type of the packet which will be compressed
  * @param size_data   The size of the data in bytes
  * @param original    Indicate if the specified packet is the original ROHC packet 
- * @return the size assessment of the ROHC packet
+ * @return            The estimation of the ROHC packet size
  */
-
-int c_assessment_size(struct rohc_comp *comp, struct c_context *context, const struct ip_packet ip, int packet, int size_data, int original)
+static int jamming_find_packet_size(const struct rohc_comp *comp,
+                                    const struct c_context *context,
+                                    const struct ip_packet ip,
+                                    const rohc_packet_t packet,
+                                    const size_t size_data,
+                                    const int original)
 {
 	int total_size = size_data;
 	
@@ -6710,6 +6719,8 @@ int c_assessment_size(struct rohc_comp *comp, struct c_context *context, const s
 	}
 	return total_size;
 }
+
+
 /**
  * Decision Algorithm which returns the type of the packet 
  * to send when the jamming option is activated. It is an optimisation of
@@ -6720,10 +6731,15 @@ int c_assessment_size(struct rohc_comp *comp, struct c_context *context, const s
  * @param ip2 	    The inner ip packet
  * @param packet    The type of the original ROHC packet
  * @param size_data The size of the data to send in bytes
- * @return the new type of the ROHC packet to send (0 if failed)
-**/
-int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct ip_packet ip, 
-		const struct ip_packet ip2, int packet, int size_data)
+ * @return          The new type of the ROHC packet to send in case of success,
+ *                  PACKET_UNKNOWN in case of failure
+ */
+static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
+                                         const struct c_context *context,
+                                         const struct ip_packet ip,
+                                         const struct ip_packet ip2,
+                                         const rohc_packet_t packet,
+                                         const size_t size_data)
 {
         struct c_generic_context *g_context;
         g_context = (struct c_generic_context *) context->specific;
@@ -6783,11 +6799,11 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
        
 	if (packet == PACKET_IR)
                 return PACKET_IR;
-        size_original = c_assessment_size(comp, context, ip, packet,size_data, 1);
+        size_original = jamming_find_packet_size(comp, context, ip, packet,size_data, 1);
         nb_packets_original = ceil((adapt_size+size_original)/encap_size);
 
 	// For all types of packets, the first test is with IR packets
-	size_new = c_assessment_size(comp, context, ip, PACKET_IR, size_data, 0);
+	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR, size_data, 0);
 	nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	if (nb_packets_original == nb_packets_new)
 	        return PACKET_IR;
@@ -6795,7 +6811,7 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	// The first test failed, so the second test uses IR-DYN packets
 	if (packet == PACKET_IR_DYN)
 	        return PACKET_IR_DYN;
-	size_new = c_assessment_size(comp, context, ip, PACKET_IR, size_data, 0);
+	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR, size_data, 0);
 	nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	if (nb_packets_original == nb_packets_new)
 	        return PACKET_IR_DYN;
@@ -6808,7 +6824,7 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	if (packet == PACKET_UO_1 ||
 	       (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP))
 	{
-	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2, size_data, 0);
+	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2, size_data, 0);
 	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	        if (nb_packets_original == nb_packets_new)
 		        return PACKET_UOR_2;
@@ -6816,28 +6832,28 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	// The profile is RTP profile
 	else if (packet == PACKET_UO_1_RTP)
 	{
-	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
+	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
 	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	        if (nb_packets_original == nb_packets_new)
 	                return PACKET_UOR_2_RTP;
 	}
 	else if (packet == PACKET_UO_1_TS)
 	{
-	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_TS, size_data, 0);
+	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_TS, size_data, 0);
 	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	        if (nb_packets_original == nb_packets_new)
 	                return PACKET_UOR_2_TS;
 	}
 	else if (packet == PACKET_UO_1_ID)
 	{
-	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_ID, size_data, 0);
+	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_ID, size_data, 0);
 	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	        if (nb_packets_original == nb_packets_new)
 	                return PACKET_UOR_2_ID;
 	}
 	else if(packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
 	{
-	        size_new = c_assessment_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
+	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
 	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 	        if (nb_packets_original == nb_packets_new)
 	        {
@@ -6878,7 +6894,7 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	// The profile is not RTP profile
 	if (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP)
 	{
-		size_new = c_assessment_size(comp, context, ip, PACKET_UO_1, size_data, 0);
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1, size_data, 0);
 		nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 		if (nb_packets_original == nb_packets_new)
 			return PACKET_UO_1;
@@ -6886,7 +6902,7 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	// The profile is RTP profile
 	else if (packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
 	{
-		size_new = c_assessment_size(comp, context, ip, PACKET_UO_1_RTP, size_data, 0);
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1_RTP, size_data, 0);
 		nb_packets_new = ceil((adapt_size+size_new)/encap_size);
 		if (nb_packets_original == nb_packets_new)
 		{
@@ -6917,7 +6933,7 @@ int decide_algo(struct rohc_comp *comp, struct c_context *context, const struct 
 	else
 	{
 		rohc_debugf(0, "unknown packet, failure\n");
-		return -1;
+		return PACKET_UNKNOWN;
 	}
 	
 	// No packet can replace type 0 packet

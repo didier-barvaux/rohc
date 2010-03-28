@@ -28,6 +28,7 @@
 #include "config.h" /* for RTP_BIT_TYPE definition */
 #include "rohc_traces.h"
 #include "rohc_time.h"
+#include "rohc_packets.h"
 
 
 /** Get the minimum of two values */
@@ -98,17 +99,17 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 
 int decode_extension0(unsigned char *packet,
                       unsigned int length,
-                      int packet_type,
+                      const rohc_packet_t packet_type,
                       int *sn, int *ip_id, int *ts);
 
 int decode_extension1(unsigned char *packet,
                       unsigned int length,
-                      int packet_type,
+                      const rohc_packet_t packet_type,
                       int *sn, int *ip_id, int *ts);
 
 int decode_extension2(unsigned char *packet,
                       unsigned int length,
-                      int packet_type,
+                      const rohc_packet_t packet_type,
                       int *sn, int *ip_id, int *ip_id2, int *ts);
 
 int decode_extension3(struct rohc_decomp *decomp,
@@ -2827,7 +2828,7 @@ int decode_uo1(struct rohc_decomp *decomp,
                int plen)
 {
 	struct d_generic_context *g_context = context->specific;
-	int packet_type = g_context->packet_type;
+	rohc_packet_t packet_type;
 	int org_plen;
 	int id, id2 = -1;
 	int id_size; /* the number of bits for IP-ID */
@@ -2838,6 +2839,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 	int ts_received_size = 0;
 	int m = 0;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+
+	packet_type = g_context->packet_type;
 
 	if(g_context->active1->complist)
 		g_context->list_decomp1->ref_ok = 1;
@@ -3076,7 +3079,7 @@ int decode_uor2(struct rohc_decomp *decomp,
                 int plen)
 {
 	struct d_generic_context *g_context = context->specific;
-	int packet_type = g_context->packet_type;
+	rohc_packet_t packet_type;
 	unsigned char *org_packet;
 	unsigned char *org_dest;
 	int org_plen;
@@ -3089,6 +3092,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 	int ts_bits_size = 0, ts_bits = 0;
 	int m = 0;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP; 
+
+	packet_type = g_context->packet_type;
 
 	if(g_context->active1->complist)
 		g_context->list_decomp1->ref_ok = 1;
@@ -3553,12 +3558,11 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	{
 		struct udphdr *udp = (struct udphdr *) active1->next_header;
 		struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
-		int packet_type = g_context->packet_type;
 
 		ts_received_size = rtp_context->ts_received_size;
 		ts_received = rtp_context->ts_received;
  
-		if(packet_type == PACKET_UO_0 || ts_received_size == 0)
+		if(g_context->packet_type == PACKET_UO_0 || ts_received_size == 0)
 		{
 			rtp_context->timestamp = ts_deducted(&rtp_context->ts_sc,*sn);
 			rohc_debugf(3, "ts deducted = %u\n", rtp_context->timestamp);
@@ -3706,7 +3710,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
 	unsigned char *org_dest = dest;
-	int packet_type = g_context->packet_type;
+	rohc_packet_t packet_type;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	struct d_rtp_context *rtp_context = g_context->specific;
 	int is_id2_updated = 0;
@@ -3724,6 +3728,8 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	unsigned char *ip_hdr;
 	unsigned char *ip2_hdr;
 	unsigned char *next_header;
+
+	packet_type = g_context->packet_type;
 
 	*sn = sn_bits;
 
@@ -4308,7 +4314,7 @@ reparse:
  */
 int decode_extension0(unsigned char *packet,
                       unsigned int length,
-                      int packet_type,
+                      const rohc_packet_t packet_type,
                       int *sn, int *ip_id, int *ts)
 {
 	int read = 0;
@@ -4372,7 +4378,7 @@ error:
  */
 int decode_extension1(unsigned char *packet,
                       unsigned int length,
-                      int packet_type,
+                      const rohc_packet_t packet_type,
                       int *sn, int *ip_id, int *ts)
 {
 	int read = 0;
@@ -4459,7 +4465,7 @@ error:
  */
 int decode_extension2(unsigned char *packet,
                       unsigned int length,
-                      int packet_type,
+                      const rohc_packet_t packet_type,
                       int *sn, int *ip_id,
                       int *ip_id2, int *ts)
 {
@@ -4591,7 +4597,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	int size;
 	int ts_received;
 	int ts_received_size;
-	int packet_type;
+	rohc_packet_t packet_type;
 	int is_rtp;
 	
 	packet_type = g_context->packet_type;
@@ -5013,12 +5019,12 @@ reparse:
  *                    PACKET_UOR_2_ID, PACKET_IR_DYN, PACKET_IR or
  *                    PACKET_UNKNOWN
  */
-int find_packet_type(struct rohc_decomp *decomp,
-                     struct d_context *context,
-                     const unsigned char *packet,
-                     int second_byte)
+rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
+                               struct d_context *context,
+                               const unsigned char *packet,
+                               int second_byte)
 {
-	int type = PACKET_UNKNOWN;
+	rohc_packet_t type;
 	struct d_generic_context *g_context = context->specific;
 	int multiple_ip = g_context->multiple_ip;
 	int rnd = g_context->last1->rnd;
@@ -5197,6 +5203,11 @@ int find_packet_type(struct rohc_decomp *decomp,
 	{
 		/* IR packet */
 		type = PACKET_IR;
+	}
+	else
+	{
+		/* unknown packet */
+		type = PACKET_UNKNOWN;
 	}
 
 	return type;

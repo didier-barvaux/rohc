@@ -29,6 +29,7 @@
 #include <stdlib.h>
 
 #include "rohc_decomp.h"
+#include "rohc_packets.h"
 #include "comp_list.h"
 
 #define MAX_ITEM 15
@@ -104,7 +105,7 @@ struct d_generic_context
 	int multiple_ip;
 
 	/// The type of packet the decompressor may receive: IR, IR-DYN, UO*
-	int packet_type;
+	rohc_packet_t packet_type;
 
 	/* below are some information and handlers to manage the next header
  	 * (if any) located just after the IP headers (1 or 2 IP headers) */
@@ -268,10 +269,10 @@ int decode_type_3(struct list_decomp * decomp,
 
 int d_generic_get_sn(struct d_context *context);
 
-int find_packet_type(struct rohc_decomp *decomp,
-                     struct d_context *context,
-                     const unsigned char *packet,
-                     int second_byte);
+rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
+                               struct d_context *context,
+                               const unsigned char *packet,
+                               int second_byte);
 
 #endif
 

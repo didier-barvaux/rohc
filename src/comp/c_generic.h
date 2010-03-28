@@ -29,6 +29,7 @@
 #include <string.h>
 
 #include "rohc_comp.h"
+#include "rohc_packets.h"
 #include "comp_list.h"
 
 
@@ -161,7 +162,7 @@ struct generic_tmp_variables
 	int nr_ip_id_bits2;
 
 	/// The type of packet the compressor must send: IR, IR-DYN, UO*
-	int packet_type;
+	rohc_packet_t packet_type;
 
 	/// The maximal size of the compressed packet
 	int max_size;

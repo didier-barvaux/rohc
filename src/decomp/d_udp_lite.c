@@ -23,6 +23,7 @@
 
 #include "d_udp_lite.h"
 #include "rohc_traces.h"
+#include "rohc_packets.h"
 
 
 /*
@@ -386,7 +387,7 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
-	int packet_type;
+	rohc_packet_t packet_type;
 
 	/* check if the ROHC packet is large enough to read the one byte */
 	if(size < 2)
