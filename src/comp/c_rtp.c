@@ -128,6 +128,7 @@ int c_rtp_create(struct c_context *context, const struct ip_packet ip)
 	rtp_context->tmp_variables.nr_ts_bits = 0;
 	rtp_context->tmp_variables.m = 0;
 	rtp_context->tmp_variables.m_changed = 0;
+	rtp_context->tmp_variables.rtp_pt_changed = 0;
 
 	/* init the RTP-specific variables and functions */
 	g_context->next_header_proto = IPPROTO_UDP;
@@ -546,6 +547,7 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 	dest[counter] = byte;
 	rohc_debugf(3, "part 3 = 0x%02x\n", dest[counter]);
 	counter++;
+	rtp_context->rtp_pt_change_count++;
 
 	/* part 4 */
 	memcpy(&dest[counter], &rtp->sn, 2);
@@ -669,8 +671,21 @@ int rtp_changed_rtp_dynamic(struct c_context *context,
 		rtp_context->tmp_variables.m_changed = 0;
 
 	/* check RTP Payload Type field */
-	if(rtp->pt != rtp_context->old_rtp.pt)
+	if(rtp->pt != rtp_context->old_rtp.pt ||
+	   rtp_context->rtp_pt_change_count < MAX_IR_COUNT)
+	{
+		if(rtp->pt != rtp_context->old_rtp.pt)
+		{
+			rtp_context->tmp_variables.rtp_pt_changed = 1;
+			rtp_context->rtp_pt_change_count = 0;
+		}
+
 		fields++;
+	}
+	else
+	{
+		rtp_context->tmp_variables.rtp_pt_changed = 0;
+	}
 
 	/* we verify if ts_stride changed */
 	rtp_context->tmp_variables.timestamp = ntohl(rtp->timestamp);

@@ -11,6 +11,7 @@ TESTS_SMALLCID = \
 	test_ipv4_ipv4_icmp_smallcid.sh \
 	test_ipv4_ipv4_udplite_smallcid.sh \
 	test_ipv4_ipv4_udp_rtp_mp3_smallcid.sh \
+	test_ipv4_ipv4_udp_rtp_mp3-variable-pt_smallcid.sh \
 	test_ipv4_ipv4_udp_rtp_video1_smallcid.sh \
 	test_ipv4_ipv4_udp_rtp_video2_smallcid.sh \
 	test_ipv4_ipv4_udp_smallcid.sh \
@@ -52,6 +53,7 @@ TESTS_LARGECID = \
 	test_ipv4_ipv4_icmp_largecid.sh \
 	test_ipv4_ipv4_udplite_largecid.sh \
 	test_ipv4_ipv4_udp_rtp_mp3_largecid.sh \
+	test_ipv4_ipv4_udp_rtp_mp3-variable-pt_largecid.sh \
 	test_ipv4_ipv4_udp_rtp_video1_largecid.sh \
 	test_ipv4_ipv4_udp_rtp_video2_largecid.sh \
 	test_ipv4_ipv4_udp_largecid.sh \
