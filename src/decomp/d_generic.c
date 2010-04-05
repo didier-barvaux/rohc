@@ -1770,7 +1770,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - org_packet);
+	            plen, (int) (packet - org_packet));
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
@@ -2782,7 +2782,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	            plen, (int) (packet - head));
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
@@ -3030,7 +3030,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	            plen, (int) (packet - head));
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
@@ -3329,7 +3329,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	            plen, (int) (packet - head));
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
@@ -3450,7 +3450,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* copy the payload */
 	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	            plen, (int) (packet - head));
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
@@ -3664,7 +3664,8 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	*calc_crc = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr,
 	                                           next_header,
 	                                           CRC_TYPE_3, *calc_crc);
-	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
+	rohc_debugf(3, "size = %d => CRC = 0x%x\n",
+	            (int) (dest - org_dest), *calc_crc);
 
 	return dest - org_dest;
 
@@ -4276,7 +4277,8 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	*calc_crc = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
 	                                           crc_type, *calc_crc);
 
-	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
+	rohc_debugf(3, "size = %d => CRC = 0x%x\n",
+	            (int) (dest - org_dest), *calc_crc);
 
 	return dest - org_dest;
 
