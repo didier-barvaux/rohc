@@ -3842,6 +3842,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 		}
 
 		/* decode extension */
+		rohc_debugf(3, "first byte of extension = 0x%02x\n", *packet);
 		switch(extension_type(packet))
 		{
 			case PACKET_EXT_0:
@@ -4779,6 +4780,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* remember position of inner IP header flags if present */
 	if(ip)
 	{
+		rohc_debugf(3, "inner IP header flags field is present "
+		            "in EXT-3 = 0x%02x\n", *packet);
 		if(g_context->multiple_ip)
 			ip2_flags_pos = packet;
 		else
@@ -4790,6 +4793,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* remember position of outer IP header flags if present */
 	if(ip2)
 	{
+		rohc_debugf(3, "outer IP header flags field is present "
+		            "in EXT-3 = 0x%02x\n", *packet);
 		ip_flags_pos = packet;
 		packet++;
 		length--;
@@ -4798,6 +4803,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* extract the SN if present */
 	if(S)
 	{
+		rohc_debugf(3, "SN field is present in EXT-3 = 0x%02x\n", *packet);
 		*sn = (*sn << 8) + *packet;
 		*sn_size += 8;
 		packet++;

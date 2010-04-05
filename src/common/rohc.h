@@ -541,42 +541,10 @@ struct medium
 
 /// Indicates that the IPv4 Type Of Service field changed
 #define MOD_TOS       0x0001
-/// Indicates that the IPv4 Total Length field changed
-#define MOD_TOT_LEN   0x0002
-/// Indicates that the IPv4 Identification field changed
-#define MOD_ID        0x0004
-/// Indicates that the IPv4 Fragment Offset field changed
-#define MOD_FRAG_OFF  0x0008
 /// Indicates that the IPv4 Time To Live field changed
 #define MOD_TTL       0x0010
 /// Indicates that the IPv4 Protocol field changed
 #define MOD_PROTOCOL  0x0020
-/// Indicates that the IPv4 Checksum field changed
-#define MOD_CHECK     0x0040
-/// Indicates that the IPv4 Source Address field changed
-#define MOD_SADDR     0x0080
-/// Indicates that the IPv4 Destination Address field changed
-#define MOD_DADDR     0x0100
-
-
-/*
- *  The flags for the RTP changed fields:
- */
-
-/// Indicates that the RTP Padding field changed
-#define MOD_RTP_PADDING  0x0200
-/// Indicates that the RTP Extension field changed
-#define MOD_RTP_EXT      0x0400
-/// Indicates that the RTP Marker field changed
-#define MOD_RTP_M        0x0800
-/// Indicates that the Payload Type field changed
-#define MOD_RTP_PT       0x1000
-/// Indicates that the Sequence Number field changed
-#define MOD_RTP_SN       0x2000
-/// Indicates that the Timestamp field changed
-#define MOD_RTP_TS       0x4000
-/// Indicates that the SSRC field changed
-#define MOD_RTP_SSRC     0x8000
 
 
 /*

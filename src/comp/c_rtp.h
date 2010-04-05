@@ -64,6 +64,9 @@ struct rtp_tmp_variables
 	/// Whether the M bit changed or not
 	int m_changed;
 
+	/// Whether the Payload Type (PT) field changed or not
+	int rtp_pt_changed;
+
 };
 
 
@@ -72,6 +75,9 @@ struct rtp_tmp_variables
  *
  * This object must be used with the generic part of the decompression
  * context c_generic_context.
+ *
+ * @warning The 2 first fields MUST stay at the beginning of the structure
+ *          to be compatible with \ref sc_udp_context
  *
  * @see c_generic_context
  */
@@ -83,6 +89,10 @@ struct sc_rtp_context
 
 	/// The previous UDP header
 	struct udphdr old_udp;
+
+	/// @brief The number of times the RTP Payload Type (PT) field was added to
+	///        the compressed header
+	int rtp_pt_change_count;
 
 	/// The previous RTP header
 	struct rtphdr old_rtp;

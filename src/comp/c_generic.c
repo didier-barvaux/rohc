@@ -241,8 +241,7 @@ int changed_dynamic_one_hdr(unsigned short changed_fields,
                             struct c_context *context);
 
 unsigned short changed_fields(struct ip_header_info *header_info,
-                              const struct ip_packet ip,
-                              int check_rtp);
+                              const struct ip_packet ip);
 
 void check_ip_identification(struct ip_header_info *header_info,
                              const struct ip_packet ip);
@@ -284,7 +283,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
  */
 inline boolean is_changed(unsigned short changed_fields, unsigned short check_field)
 {
-	return (changed_fields & check_field);
+	return ((changed_fields & check_field) != 0);
 }
 
 /**
@@ -839,11 +838,16 @@ int c_generic_encode(struct c_context *context,
 
 	/* find IP fields that changed */
 	if(g_context->tmp_variables.nr_of_ip_hdr == 1)
-		g_context->tmp_variables.changed_fields = changed_fields(&g_context->ip_flags, ip, is_rtp);
+	{
+		g_context->tmp_variables.changed_fields =
+			changed_fields(&g_context->ip_flags, ip);
+	}
 	else
 	{
-		g_context->tmp_variables.changed_fields = changed_fields(&g_context->ip_flags, ip, 0);
-		g_context->tmp_variables.changed_fields2 = changed_fields(&g_context->ip2_flags, ip2, is_rtp);
+		g_context->tmp_variables.changed_fields =
+			changed_fields(&g_context->ip_flags, ip);
+		g_context->tmp_variables.changed_fields2 =
+			changed_fields(&g_context->ip2_flags, ip2);
 	}
 
 	/* how many changed fields are static ones? */
@@ -5320,6 +5324,7 @@ int code_EXT2_packet(struct c_context *context,
 	counter++;
 	dest[counter] = t_byte;
 	counter++;
+	rohc_debugf(3, "extension 2: 0x%02x 0x%02x 0x%02x\n", f_byte, s_byte, t_byte);
 
 	return counter;
 
@@ -5411,6 +5416,7 @@ int code_EXT3_packet(struct c_context *context,
 	int nr_ip_id_bits, nr_ip_id_bits2;
 	boolean have_inner = 0;
 	boolean have_outer = 0;
+	int I = 0;
 	struct sc_rtp_context *rtp_context = NULL;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
@@ -5473,12 +5479,12 @@ int code_EXT3_packet(struct c_context *context,
 		      !(packet_type == PACKET_UOR_2_ID && is_deductible(rtp_context->ts_sc));
 		f_byte |= (tsc & 0x01) << 3;
 
-		/* rtp bit */
-		if(nr_of_ip_hdr == 1)
-			rtp = is_changed(changed_f, MOD_RTP_PT);
-		else
-			rtp = is_changed(changed_f2, MOD_RTP_PT);
-		rtp = rtp || (rtp_context->ts_sc.state == INIT_STRIDE && !is_ts_constant(rtp_context->ts_sc));
+		/* rtp bit: set to 1 if RTP PT changed in this packet or changed
+		 * in the last few packets or RTP TS and TS_STRIDE must be initialized */
+		rtp = (rtp_context->tmp_variables.rtp_pt_changed ||
+		       rtp_context->rtp_pt_change_count < MAX_FO_COUNT ||
+		       (rtp_context->ts_sc.state == INIT_STRIDE &&
+		        !is_ts_constant(rtp_context->ts_sc)));
 		f_byte |= rtp & 0x01;
 
 		rohc_debugf(3, "R-TS = %d, Tsc = %d, rtp = %d\n", rts, tsc, rtp);
@@ -5501,7 +5507,10 @@ int code_EXT3_packet(struct c_context *context,
 			if((nr_ip_id_bits > 0 && g_context->ip_flags.info.v4.rnd == 0) ||
 			   (g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT &&
 			    g_context->ip_flags.info.v4.rnd == 0))
-				f_byte |= 0x04;
+			{
+				I = 1;
+			}
+			f_byte |= (I & 0x01) << 2;
 		}
 
 		/* ip bit */
@@ -5522,7 +5531,10 @@ int code_EXT3_packet(struct c_context *context,
 			if((nr_ip_id_bits2 > 0 && g_context->ip2_flags.info.v4.rnd == 0) ||
 			   (g_context->ip2_flags.info.v4.rnd_count < MAX_FO_COUNT &&
 			    g_context->ip2_flags.info.v4.rnd == 0))
-				f_byte |= 0x04;
+			{
+				I = 1;
+			}
+			f_byte |= (I & 0x01) << 2;
 		}
 
 		/* ip2 bit if non-RTP */
@@ -5589,21 +5601,16 @@ int code_EXT3_packet(struct c_context *context,
 			                        0, nr_ip_id_bits, dest, counter);
 
 		/* part 6 */
-		if(ip_get_version(ip) == IPV4)
+		if(ip_get_version(ip) == IPV4 && I)
 		{
-			if((nr_ip_id_bits > 0 && g_context->ip_flags.info.v4.rnd == 0) ||
-			   (g_context->ip_flags.info.v4.rnd_count-1 < MAX_FO_COUNT &&
-			    g_context->ip_flags.info.v4.rnd == 0))
-			{
-				uint16_t id;
+			uint16_t id;
 
-				/* always transmit IP-ID in Network Byte Order */
-				id = ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo);
-				memcpy(&dest[counter], &id, 2);
-				rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
-				            dest[counter], dest[counter + 1]);
-				counter += 2;
-			}
+			/* always transmit IP-ID in Network Byte Order */
+			id = ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo);
+			memcpy(&dest[counter], &id, 2);
+			rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
+			            dest[counter], dest[counter + 1]);
+			counter += 2;
 		}
 
 		/* part 7: only one IP header */
@@ -5663,21 +5670,16 @@ int code_EXT3_packet(struct c_context *context,
 			                        0, nr_ip_id_bits2, dest, counter);
 
 		/* part 6 */
-		if(ip_get_version(ip2) == IPV4)
+		if(ip_get_version(ip2) == IPV4 && I)
 		{
-			if((nr_ip_id_bits2 > 0 && g_context->ip2_flags.info.v4.rnd == 0) ||
-			   (g_context->ip2_flags.info.v4.rnd_count-1 < MAX_FO_COUNT &&
-			    g_context->ip2_flags.info.v4.rnd == 0))
-			{
-				uint16_t id;
+			uint16_t id;
 
-				/* always transmit IP-ID in Network Byte Order */
-				id = ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo);
-				memcpy(&dest[counter], &id, 2);
-				rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
-				            dest[counter], dest[counter + 1]);
-				counter += 2;
-			}
+			/* always transmit IP-ID in Network Byte Order */
+			id = ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo);
+			memcpy(&dest[counter], &id, 2);
+			rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
+			            dest[counter], dest[counter + 1]);
+			counter += 2;
 		}
 
 		/* part 7 */
@@ -5771,7 +5773,8 @@ int rtp_header_flags_and_fields(struct c_context *context,
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* part 1 */
-	rpt = is_changed(changed_f, MOD_RTP_PT);
+	rpt = (rtp_context->tmp_variables.rtp_pt_changed ||
+	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT);
 	tss = rtp_context->ts_sc.state == INIT_STRIDE;
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
@@ -5792,6 +5795,7 @@ int rtp_header_flags_and_fields(struct c_context *context,
 		rohc_debugf(3, "part 2 = 0x%x\n", byte);
 		dest[counter] = byte;
 		counter++;
+		rtp_context->rtp_pt_change_count++;
 	}
 
 	/* part 3: not supported yet */
@@ -6068,8 +6072,20 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 	ext = PACKET_EXT_3; /* default extension */
 
-	if (send_static > 0 || send_dynamic > 0 )
+	/* force extension type 3 if at least one static or dynamic field changed */
+	if(send_static > 0 || send_dynamic > 0)
 		return ext;
+
+	/* force extension type 3 if at least one RTP dynamic field changed */
+	if(is_rtp)
+	{
+		struct sc_rtp_context *rtp_context;
+		rtp_context = (struct sc_rtp_context *) g_context->specific;
+		if(rtp_context->tmp_variables.send_rtp_dynamic > 0)
+		{
+			return ext;
+		}
+	}
 
 	switch(packet_type)
 	{
@@ -6449,15 +6465,13 @@ int changed_dynamic_one_hdr(unsigned short changed_fields,
  *
  * @param header_info    The header info stored in the profile
  * @param ip             The header of the new IP packet
- * @param check_rtp      Whether the function must check for RTP fields or not
  * @return               The bitpattern that indicates which field changed
  */
 unsigned short changed_fields(struct ip_header_info *header_info,
-                              const struct ip_packet ip,
-                              int check_rtp)
+                              const struct ip_packet ip)
 {
 	unsigned short ret_value = 0;
-	unsigned int old_tos, old_ttl, old_protocol, old_pt;
+	unsigned int old_tos, old_ttl, old_protocol;
 
 	if(ip_get_version(ip) == IPV4)
 	{
@@ -6484,32 +6498,6 @@ unsigned short changed_fields(struct ip_header_info *header_info,
 		ret_value |= MOD_TTL;
 	if(old_protocol != ip_get_protocol(ip))
 		ret_value |= MOD_PROTOCOL;
-
-	if(check_rtp)
-	{
-		struct udphdr *old_udp, *udp;
-		struct rtphdr *old_rtp, *rtp;
-
-		if(ip_get_version(ip) == IPV4)
-		{
-			struct iphdr *old_ip_v4;
-			old_ip_v4 = &header_info->info.v4.old_ip;
-			old_udp = (struct udphdr *) (old_ip_v4 + 1);
-		}
-		else
-		{
-			struct ip6_hdr *old_ip_v6;
-			old_ip_v6 = &header_info->info.v6.old_ip;
-			old_udp = (struct udphdr *) (old_ip_v6 + 1);
-		}
-		old_rtp = (struct rtphdr *) (old_udp + 1);
-		old_pt = old_rtp->pt;
-
-		udp = (struct udphdr *) ip_get_next_layer(&ip);
-		rtp = (struct rtphdr *) (udp + 1);
-		if(old_pt != rtp->pt)
-			ret_value |= MOD_RTP_PT;
-	}
 
 	return ret_value;
 }
