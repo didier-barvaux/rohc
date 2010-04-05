@@ -863,18 +863,18 @@ struct c_profile *c_get_profile_from_id(struct rohc_comp *comp, int profile_id)
  *
  * @param profile  The ROHC profile
  * @param port     The UDP port
- * @return         ROHC_TRUE if UDP is associated with profile,
- *                 ROHC_FALSE otherwise
+ * @return         1 if UDP port is associated with profile,
+ *                 0 otherwise
  */
-boolean c_is_in_list(struct c_profile *profile, int port)
+int c_is_in_list(struct c_profile *profile, int port)
 {
-	boolean match = ROHC_FALSE;
+	int match = 0;
 	int i;
 
 	i = 0;
 	while(profile->ports[i] != 0 && !match)
 	{
-		match = port == profile->ports[i];
+		match = (port == profile->ports[i]);
 		i++;
 	}
 

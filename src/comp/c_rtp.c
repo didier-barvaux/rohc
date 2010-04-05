@@ -215,7 +215,8 @@ int c_rtp_check_context(struct c_context *context, struct ip_packet ip)
 	struct udphdr *udp;
 	struct rtphdr *rtp;
 	unsigned int ip_proto;
-	boolean udp_check, is_rtp_same;
+	int udp_check;
+	int is_rtp_same;
 
 	/* check IP and UDP headers */
 	udp_check = c_udp_check_context(context, ip);
@@ -246,7 +247,7 @@ int c_rtp_check_context(struct c_context *context, struct ip_packet ip)
 	/* check the RTP SSRC field */
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	is_rtp_same = rtp_context->old_rtp.ssrc == rtp->ssrc;
+	is_rtp_same = (rtp_context->old_rtp.ssrc == rtp->ssrc);
 
 	return is_rtp_same;
 
@@ -590,7 +591,7 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 		{
 			uint32_t ts_stride;
 			unsigned short ts_stride_sdvl_len;
-			boolean ret;
+			int ret;
 
 			/* get the TS_STRIDE to send in packet */
 			ts_stride = get_ts_stride(rtp_context->ts_sc);
@@ -604,7 +605,7 @@ int rtp_code_dynamic_rtp_part(struct c_context *context,
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
 			ret = c_encodeSdvl(&dest[counter], ts_stride, -1);
-			assert(ret == ROHC_TRUE);
+			assert(ret == 1);
 
 			/* skip the bytes used to encode TS_STRIDE in SDVL */
 			counter += ts_stride_sdvl_len;

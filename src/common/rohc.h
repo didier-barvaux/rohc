@@ -393,13 +393,6 @@
 /// Return code: the packet needs to be parsed again
 #define ROHC_NEED_REPARSE          -6
 
-/// True value for the boolean type
-#define ROHC_TRUE   1
-/// False value for the boolean type
-#define ROHC_FALSE  0
-/// Boolean type that can only take two values: ROHC_TRUE or ROHC_FALSE
-typedef unsigned char boolean;
-
 
 /// @brief List of UDP ports associated with RTP streams
 /// The port numbers must be separated by a comma

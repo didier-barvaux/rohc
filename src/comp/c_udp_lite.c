@@ -41,8 +41,8 @@ int udp_lite_build_cce_packet(struct c_context *context,
                               int counter,
                               int *first_position);
 
-boolean udp_lite_send_cce_packet(struct c_context *context,
-                                 const struct udphdr *udp_lite);
+int udp_lite_send_cce_packet(struct c_context *context,
+                             const struct udphdr *udp_lite);
 
 int udp_lite_code_UO_packet_tail(struct c_context *context,
                                  const unsigned char *next_header,
@@ -187,7 +187,9 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 	struct udphdr *udp_lite;
 	ip_version version;
 	unsigned int ip_proto;
-	boolean is_ip_same, is_ip2_same, is_udp_lite_same;
+	int is_ip_same;
+	int is_ip2_same;
+	int is_udp_lite_same;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
@@ -447,7 +449,7 @@ int udp_lite_build_cce_packet(struct c_context *context,
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
 	struct udphdr *udp_lite;
-	boolean send_cce_packet;
+	int send_cce_packet;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
@@ -456,7 +458,6 @@ int udp_lite_build_cce_packet(struct c_context *context,
 
 	/* do we need to add the CCE packet? */
 	send_cce_packet = udp_lite_send_cce_packet(context, udp_lite);
-
 	if(send_cce_packet)
 	{
 		rohc_debugf(2, "Adding CCE\n");
@@ -633,15 +634,15 @@ void udp_lite_init_cc(struct c_context *context,
  *
  * @param context  The compression context
  * @param udp_lite The UDP-Lite header
- * @return         Whether a CCE packet must be sent
+ * @return         1 if a CCE packet must be sent, 0 if not
  */
-boolean udp_lite_send_cce_packet(struct c_context *context,
-                                 const struct udphdr *udp_lite)
+int udp_lite_send_cce_packet(struct c_context *context,
+                             const struct udphdr *udp_lite)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	boolean inferred;
-	boolean same;
+	int is_coverage_inferred;
+	int is_coverage_same;
 	
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
@@ -649,33 +650,46 @@ boolean udp_lite_send_cce_packet(struct c_context *context,
 	rohc_debugf(2, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
 	            udp_lite_context->cfi);
 
-	inferred = (ntohs(udp_lite->len) == udp_lite_context->tmp_variables.udp_size);
+	/* may the checksum coverage be inferred from UDP-Lite length ? */
+	is_coverage_inferred =
+		(ntohs(udp_lite->len) == udp_lite_context->tmp_variables.udp_size);
 
+	/* is the checksum coverage unchanged since last packet ? */
 	if(udp_lite_context->sent_cce_only_count > 0)
-		same = (udp_lite_context->tmp_coverage == udp_lite->len);
+	{
+		is_coverage_same = (udp_lite_context->tmp_coverage == udp_lite->len);
+	}
 	else
-		same = (udp_lite_context->old_udp_lite.len == udp_lite->len);
+	{
+		is_coverage_same = (udp_lite_context->old_udp_lite.len == udp_lite->len);
+	}
 
 	udp_lite_context->tmp_coverage = udp_lite->len;
 
-	if(same)
+	if(is_coverage_same)
 	{
 		udp_lite_context->coverage_equal_count++;
-		if(inferred)
+		if(is_coverage_inferred)
+		{
 			udp_lite_context->coverage_inferred_count++;
+		}
 	}
 	else
 	{
 		udp_lite_context->coverage_equal_count = 0;
-		if(inferred)
+		if(is_coverage_inferred)
+		{
 			udp_lite_context->coverage_inferred_count++;
+		}
 		else
+		{
 			udp_lite_context->coverage_inferred_count = 0;
+		}
 	}
 
 	if(udp_lite_context->cfp == 0 && udp_lite_context->cfi == 1)
 	{
-		if(!inferred)
+		if(!is_coverage_inferred)
 		{
 			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
 			{
@@ -707,7 +721,7 @@ boolean udp_lite_send_cce_packet(struct c_context *context,
 	}
 	else if(udp_lite_context->cfp == 0 && udp_lite_context->cfi == 0)
 	{
-		if(inferred || (!inferred && !same))
+		if(is_coverage_inferred || (!is_coverage_inferred && !is_coverage_same))
 		{
 			if(udp_lite_context->sent_cce_only_count < MAX_IR_COUNT)
 			{
@@ -739,7 +753,7 @@ boolean udp_lite_send_cce_packet(struct c_context *context,
 	}
 	else if(udp_lite_context->cfp == 1)
 	{
-		if(inferred || (inferred && same))
+		if(is_coverage_inferred || (is_coverage_inferred && is_coverage_same))
 		{
 			if(udp_lite_context->coverage_equal_count > MAX_LITE_COUNT)
 			{

@@ -208,7 +208,7 @@ int header_flags(struct c_context *context,
                  struct ip_header_info *header_info,
                  unsigned short changed_f,
                  const struct ip_packet ip,
-                 boolean is_outer,
+                 int is_outer,
                  int nr_ip_id_bits,
                  unsigned char *dest,
                  int counter);
@@ -217,7 +217,7 @@ int header_fields(struct c_context *context,
                   struct ip_header_info *header_info,
                   unsigned short changed_f,
                   const struct ip_packet ip,
-                  boolean is_outer,
+                  int is_outer,
                   int nr_ip_id_bits,
                   unsigned char *dest,
                   int counter);
@@ -277,11 +277,11 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
  * @param check_field    The field for which to check a change
- * @return               Whether the field changed or not
+ * @return               1 if the field changed, 0 if not
  *
  * @see changed_fields 
  */
-inline boolean is_changed(unsigned short changed_fields, unsigned short check_field)
+inline int is_changed(unsigned short changed_fields, unsigned short check_field)
 {
 	return ((changed_fields & check_field) != 0);
 }
@@ -5414,8 +5414,8 @@ int code_EXT3_packet(struct c_context *context,
 	int nr_sn_bits;
 	unsigned short changed_f, changed_f2;
 	int nr_ip_id_bits, nr_ip_id_bits2;
-	boolean have_inner = 0;
-	boolean have_outer = 0;
+	int have_inner = 0;
+	int have_outer = 0;
 	int I = 0;
 	struct sc_rtp_context *rtp_context = NULL;
 	int is_rtp;
@@ -5879,7 +5879,7 @@ int header_flags(struct c_context *context,
                  struct ip_header_info *header_info,
                  unsigned short changed_f,
                  const struct ip_packet ip,
-                 boolean is_outer,
+                 int is_outer,
                  int nr_ip_id_bits,
                  unsigned char *dest,
                  int counter)
@@ -5982,7 +5982,7 @@ int header_fields(struct c_context *context,
                   struct ip_header_info *header_info,
                   unsigned short changed_f,
                   const struct ip_packet ip,
-                  boolean is_outer,
+                  int is_outer,
                   int nr_ip_id_bits,
                   unsigned char *dest,
                   int counter)

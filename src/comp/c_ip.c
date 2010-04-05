@@ -54,8 +54,10 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
   	struct ip_packet ip2;
 	ip_version version;
 	unsigned int ip_proto;
-	boolean same_src, same_dest;
-	boolean same_src2, same_dest2;
+	int same_src;
+	int same_dest;
+	int same_src2;
+	int same_dest2;
 
 	g_context = (struct c_generic_context *) context->specific;
 	ip_flags = &g_context->ip_flags;

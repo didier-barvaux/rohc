@@ -50,8 +50,12 @@ struct c_window
 	/// The value stored in the window entry
 	int value;
 
-	/// Whether the window entry is used or not
-	boolean used;
+	/**
+	 * @brief Whether the window entry is used or not
+	 *
+	 * 1 if the window entry is used, 0 if not
+	 */
+	int is_used;
 };
 
 

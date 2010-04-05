@@ -166,7 +166,9 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 	struct udphdr *udp;
 	ip_version version;
 	unsigned int ip_proto;
-	boolean is_ip_same, is_ip2_same, is_udp_same;
+	int is_ip_same;
+	int is_ip2_same;
+	int is_udp_same;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_context = (struct sc_udp_context *) g_context->specific;

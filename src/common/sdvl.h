@@ -45,7 +45,7 @@
 
 int c_bytesSdvl(int value, int length);
 
-boolean c_encodeSdvl(unsigned char *dest, int value, int length);
+int c_encodeSdvl(unsigned char *dest, int value, int length);
 
 int d_sdvalue_size(const unsigned char *data);
 

@@ -78,7 +78,7 @@ struct c_wlsb * c_create_wlsb(int bits, int window_width, int p)
 	for(i = 0; i < window_width; i++)
 	{
 		s->window[i].time = -1;
-		s->window[i].used = ROHC_FALSE;
+		s->window[i].is_used = 0;
 	}
 
 	return s;
@@ -121,9 +121,11 @@ void print_wlsb_stats(struct c_wlsb *s)
 	{
 		for(i = 0; i < s->window_width; i++)
 		{
-			if(s->window[i].used == ROHC_TRUE)
+			if(s->window[i].is_used)
+			{
 				rohc_debugf(2, "window[%d].sn = %d, .time = %d, .value = %d\n", i,
 				            s->window[i].sn, s->window[i].time, s->window[i].value);
+			}
 		}
 	
 		rohc_debugf(3, "oldest entry has number %d\n", s->oldest);
@@ -157,13 +159,15 @@ void c_add_wlsb(struct c_wlsb * s, int sn, int time, int value)
 		return;
 	}
 
-	if(s->window[s->next].used == ROHC_TRUE)
+	if(s->window[s->next].is_used)
+	{
 		s->oldest++; /* if window is full and an entry is overwritten */
+	}
 
 	s->window[s->next].sn = sn;
 	s->window[s->next].time = time;
 	s->window[s->next].value = value;
-	s->window[s->next].used = ROHC_TRUE;
+	s->window[s->next].is_used = 1;
 	s->next++;
 
 	if(s->next >= s->window_width)
@@ -267,8 +271,11 @@ int c_get_k_wlsb(struct c_wlsb *s, int value)
 	/* find out the interval in which all the values from the window stand */
 	for(i = 0; i < s->window_width; i++)
 	{
-		if(!s->window[i].used == ROHC_TRUE)
+		/* skip entry if not in use */
+		if(!s->window[i].is_used)
+		{
 			continue;
+		}
 
 		/* the window contains at least one value */
 		valid = 1;
@@ -323,7 +330,7 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 	 * starting from the oldest one */
 	for(i = s->oldest; i < s->window_width; i++)
 	{
-		if(s->window[i].used == ROHC_TRUE && s->window[i].sn == sn)
+		if(s->window[i].is_used && s->window[i].sn == sn)
 		{
 			found = 1;
 			break;
@@ -334,7 +341,7 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 	{
 		for(i = 0; i < s->oldest; i++)
 		{
-			if(s->window[i].used == ROHC_TRUE && s->window[i].sn == sn)
+			if(s->window[i].is_used && s->window[i].sn == sn)
 			{
 				found = 1;
 				break;
@@ -369,7 +376,7 @@ void c_ack_time_wlsb(struct c_wlsb *s, int time)
 	 * starting from the oldest one */
 	for(i = s->oldest; i < s->window_width; i++)
 	{
-		if(s->window[i].used == ROHC_TRUE && s->window[i].time <= time)
+		if(s->window[i].is_used && s->window[i].time <= time)
 		{
 			if(s->window[i].time < time)
 				i++;
@@ -384,7 +391,7 @@ void c_ack_time_wlsb(struct c_wlsb *s, int time)
 	{
 		for(i = 0; i < s->oldest; i++)
 		{
-			if(s->window[i].used == ROHC_TRUE && s->window[i].time <= time)
+			if(s->window[i].is_used && s->window[i].time <= time)
 			{
 				found = 1;
 				break;
@@ -419,7 +426,7 @@ void c_ack_remove(struct c_wlsb *s, int index, int by_time)
 	{
 		/* remove only the oldest entry */
 		s->window[s->oldest].time = -1;
-		s->window[s->oldest].used = ROHC_FALSE;
+		s->window[s->oldest].is_used = 0;
 	}
 	else if(s->oldest < index)
 	{
@@ -427,7 +434,7 @@ void c_ack_remove(struct c_wlsb *s, int index, int by_time)
 		for(j = s->oldest; j < index; j++)
 		{
 			s->window[j].time = -1;
-			s->window[j].used = ROHC_FALSE;
+			s->window[j].is_used = 0;
 		}
 	}
 	else /* s->oldest > index */
@@ -437,12 +444,12 @@ void c_ack_remove(struct c_wlsb *s, int index, int by_time)
 		for(j = s->oldest; j < s->window_width; j++)
 		{
 			s->window[j].time = -1;
-			s->window[j].used = ROHC_FALSE;
+			s->window[j].is_used = 0;
 		}
 		for(j = 0; j < index; j++)
 		{
 			s->window[j].time = -1;
-			s->window[j].used = ROHC_FALSE;
+			s->window[j].is_used = 0;
 		}
 	}
 
@@ -463,17 +470,25 @@ void c_ack_remove(struct c_wlsb *s, int index, int by_time)
 	s->next = s->oldest;
 	for(j = s->oldest; j < s->window_width; j++)
 	{
-		if(s->window[j].used == ROHC_TRUE)
+		if(s->window[j].is_used)
+		{
 			s->next = (s->next + 1) % s->window_width;
+		}
 		else
+		{
 			break;
+		}
 	}
 	for(j = 0; j < s->oldest; j++)
 	{
-		if(s->window[j].used == ROHC_TRUE)
+		if(s->window[j].is_used)
+		{
 			s->next = (s->next + 1) % s->window_width;
+		}
 		else
+		{
 			break;
+		}
 	}
 
 	if(s->oldest >= s->window_width)
@@ -496,8 +511,10 @@ int c_sum_wlsb(struct c_wlsb *s)
 
 	for(i = 0; i < s->window_width; i++)
 	{
-		if(s->window[i].used == ROHC_TRUE)
+		if(s->window[i].is_used)
+		{
 			sum += s->window[i].value;
+		}
 	}
 
 	return sum;
@@ -520,7 +537,7 @@ int c_mean_wlsb(struct c_wlsb *s)
 
 	for(i = 0; i < s->window_width; i++)
 	{
-		if(s->window[i].used == ROHC_TRUE)
+		if(s->window[i].is_used)
 		{
 			sum += s->window[i].value;
 			num++;

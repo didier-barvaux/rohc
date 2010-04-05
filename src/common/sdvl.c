@@ -89,25 +89,28 @@ int c_bytesSdvl(int value, int length)
  * @param dest   The destination to write the SDVL-encoded to
  * @param value  The value to encode
  * @param length The length of the value to encode
- * @return       Whether the SDVL encoding is successful or not (failure may be
- *               due to a value greater than 2^29)
+ * @return       1 if SDVL encoding is successful, 0 in case of failure
+ *               (failure may be due to a value greater than 2^29)
  */
-boolean c_encodeSdvl(unsigned char *dest, int value, int length)
+int c_encodeSdvl(unsigned char *dest, int value, int length)
 {
-	boolean status = ROHC_FALSE;
 	int size;
 
 	/* check destination buffer validity */
 	if(dest == NULL)
-		goto quit;
+	{
+		goto error;
+	}
 
 	/* find out the number of bytes needed to represent
 	 * the SDVL-encoded value */
 	size = c_bytesSdvl(value, length);
 
 	/* check if the number of bytes needed is not too large (must be < 2^29) */
-	if(size > 4 )
-		goto quit;
+	if(size > 4)
+	{
+		goto error;
+	}
 
 	/* encode the value according to the number of available bytes */
 	switch(size)
@@ -139,10 +142,10 @@ boolean c_encodeSdvl(unsigned char *dest, int value, int length)
 			break;
 	}
 
-	status = ROHC_TRUE;
+	return 1;
 
-quit:
-	return status;
+error:
+	return 0;
 }
 
 
