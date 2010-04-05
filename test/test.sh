@@ -35,6 +35,7 @@ STREAM=$( echo "${SCRIPT}" | \
           sed -e 's#_#/#g' )
 CAPTURE_SOURCE="${BASEDIR}/report/samples/${STREAM}/source.pcap"
 CAPTURE_COMPARE="${BASEDIR}/report/samples/${STREAM}/rohc_${CID_TYPE}.pcap"
+SIZE_COMPARE="${BASEDIR}/report/samples/${STREAM}/rohc_sizes_${CID_TYPE}"
 
 # check that capture names are not empty
 if [ -z "${CAPTURE_SOURCE}" ] ; then
@@ -46,6 +47,7 @@ if [ -z "${CAPTURE_COMPARE}" ] ; then
 	exit 1
 fi
 
+#CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 CMD="${APP} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 
 # run in verbose mode or quiet mode
