@@ -54,24 +54,24 @@
 
 int decode_irdyn(struct rohc_decomp *decomp,
                  struct d_context *context,
-                 unsigned char *head,
                  unsigned char *packet,
-                 unsigned char *dest,
-                 int plen);
+                 int plen,
+                 int second_byte,
+                 unsigned char *dest);
 
 int decode_uo1(struct rohc_decomp *decomp,
                struct d_context *context,
-               unsigned char *head,
                unsigned char *packet,
-               unsigned char *dest,
-               int plen);
+               int plen,
+               int second_byte,
+               unsigned char *dest);
 
 int decode_uo0(struct rohc_decomp *decomp,
                struct d_context *context,
-               unsigned char *head,
                unsigned char *packet,
-               unsigned char *dest,
-               int plen);
+               int plen,
+               int second_byte,
+               unsigned char *dest);
 
 int do_decode_uo0_and_uo1(struct d_context *context,
                           const unsigned char *packet,
@@ -83,10 +83,10 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 
 int decode_uor2(struct rohc_decomp *decomp,
                 struct d_context *context,
-                unsigned char *head,
                 unsigned char *packet,
-                unsigned char *dest,
-                int plen);
+                int plen,
+                int second_byte,
+                unsigned char *dest);
 
 int do_decode_uor2(struct rohc_decomp *decomp,
                    struct d_context *context,
@@ -1563,8 +1563,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
 
-	unsigned char *org_packet = packet;
-	unsigned char *org_dest = dest;
+	unsigned int rohc_header_len = 0;
+	unsigned int uncomp_header_len = 0;
 
 	int dynamic_present;
 	int size;
@@ -1585,6 +1585,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	 * 	IR type + Profile ID + CRC (+ eventually CID bytes) */
 	packet += 3 + large_cid_len;
 	plen -= 3 + large_cid_len;
+	rohc_header_len += 3 + large_cid_len;
 
 	/* decode the static part of the outer header */
 	size = d_decode_static_ip(packet, plen, active1);
@@ -1595,6 +1596,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	}
 	packet += size;
 	plen -= size;
+	rohc_header_len += size;
 
 	/* check the version of the outer IP header against the context if the IR
 	 * packet is not the first ROHC packet processed by the context */
@@ -1641,6 +1643,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		}
 		packet += size;
 		plen -= size;
+		rohc_header_len += size;
 
 		/* check the version of the inner IP header against the context if the IR
 		 * packet is not the first ROHC packet processed by the context */
@@ -1681,6 +1684,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		}
 		packet += size;
 		plen -= size;
+		rohc_header_len += size;
 	}
 
 	/* decode the dynamic part of the ROHC packet */
@@ -1695,6 +1699,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		}
 		packet += size;
 		plen -= size;
+		rohc_header_len += size;
 
 		/* decode the dynamic part of the inner IP header */
 		if(g_context->multiple_ip)
@@ -1707,6 +1712,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 			}
 			packet += size;
 			plen -= size;
+			rohc_header_len += size;
 		}
 
 		/* decode the dynamic part of the next header header if necessary */
@@ -1722,6 +1728,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 			}
 			packet += size;
 			plen -= size;
+			rohc_header_len += size;
 		}
 
 		/* reset the correction counter */
@@ -1742,23 +1749,39 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	/* build the IP headers */
 	if(g_context->multiple_ip)
 	{
-		dest += build_uncompressed_ip(active1, dest, plen +
-		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len + 
-					      active2->size_list, 
-					      g_context->list_decomp1);
-		dest += build_uncompressed_ip(active2, dest, plen +
-		                              active2->next_header_len,
-					      g_context->list_decomp2);
+		/* build the outer IP header */
+		size = build_uncompressed_ip(active1, dest, plen +
+		                             ip_get_hdrlen(active2->ip) +
+		                             active1->next_header_len +
+		                             active2->size_list, 
+		                             g_context->list_decomp1);
+		dest += size;
+		uncomp_header_len += size;
+
+		/* build the inner IP header */
+		size = build_uncompressed_ip(active2, dest, plen +
+		                             active2->next_header_len,
+		                             g_context->list_decomp2);
+		dest += size;
+		uncomp_header_len += size;
 	}
 	else
-		dest += build_uncompressed_ip(active1, dest, plen +
-		                              active1->next_header_len,
-		                              g_context->list_decomp1);
+	{
+		/* build the single IP header */
+		size = build_uncompressed_ip(active1, dest, plen +
+		                             active1->next_header_len,
+		                             g_context->list_decomp1);
+		dest += size;
+		uncomp_header_len += size;
+	}
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
-		dest += g_context->build_next_header(g_context, active1, dest, plen);
+	{
+		size = g_context->build_next_header(g_context, active1, dest, plen);
+		dest += size;
+		uncomp_header_len += size;
+	}
 
 	/* synchronize the IP header changes */
 	synchronize(g_context);
@@ -1771,19 +1794,19 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	update_inter_packet(g_context);
 
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - org_packet);
+	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %u\n",
+	            plen, rohc_header_len);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += is_addcid_used + (packet - org_packet);
-	c_add_wlsb(context->header_16_compressed, 0, 0, is_addcid_used + (packet - org_packet));
-	context->header_uncompressed_size += dest - org_dest;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, dest - org_dest);
+	context->header_compressed_size += is_addcid_used + rohc_header_len;
+	c_add_wlsb(context->header_16_compressed, 0, 0, is_addcid_used + rohc_header_len);
+	context->header_uncompressed_size += uncomp_header_len;
+	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
 
-	return plen + (dest - org_dest);
+	return uncomp_header_len + plen;
 
 no_data:
 	return ROHC_OK_NO_DATA;
@@ -2487,7 +2510,7 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
  * @param size        The length of the ROHC packet
  * @param second_byte The offset for the second byte of the ROHC packet
  *                    (depends on the CID encoding and the packet type)
- * @param dest        The decoded IP packet
+ * @param dest        OUT: The decoded IP packet
  * @return            The length of the uncompressed IP packet
  *                    or ROHC_OK_NO_DATA if packet is feedback only
  *                    or ROHC_ERROR if an error occurs
@@ -2501,9 +2524,12 @@ int d_generic_decode(struct rohc_decomp *decomp,
                      unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
-	int (*decode_packet)(struct rohc_decomp *decomp, struct d_context *context,
-	                     unsigned char *head, unsigned char *packet,
-	                     unsigned char *dest, int plen);
+	int (*decode_packet)(struct rohc_decomp *decomp,
+	                     struct d_context *context,
+	                     unsigned char *packet,
+	                     int plen,
+	                     int second_byte,
+	                     unsigned char *dest);
 	int length = ROHC_ERROR;
 
 	synchronize(g_context);
@@ -2604,7 +2630,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	}
 
 	rohc_debugf(2, "decode the packet (type %d)\n", g_context->packet_type);
-	length = decode_packet(decomp, context, packet, packet + second_byte, dest, size - second_byte);
+	length = decode_packet(decomp, context, packet, size, second_byte, dest);
 #if RTP_BIT_TYPE
 	// nothing to do
 #else
@@ -2645,10 +2671,10 @@ int d_generic_get_sn(struct d_context *context)
  *
  * @param decomp       The ROHC decompressor
  * @param context      The decompression context
- * @param head         The first byte the the ROHC packet
- * @param packet       The end of the ROHC packet to decode
- * @param dest         The decoded IP packet
+ * @param packet       The ROHC packet to decode
  * @param plen         The length of the ROHC packet
+ * @param second_byte  The offset of the 2nd byte in the ROHC packet
+ * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
  *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
@@ -2656,18 +2682,26 @@ int d_generic_get_sn(struct d_context *context)
  */
 int decode_uo0(struct rohc_decomp *decomp,
                struct d_context *context,
-               unsigned char *head,
                unsigned char *packet,
-               unsigned char *dest,
-               int plen)
+               int plen,
+               int second_byte,
+               unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 	int id, id2 = -1;
 	int sn, sn_bits, sn_size;
 	int calc_crc, real_crc;
+	unsigned int rohc_header_len = 0;
 	int hlen; /* uncompressed header length */
 	int org_plen;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+
+	/* check if the ROHC packet is large enough to read the second byte */
+	if(plen <= second_byte)
+	{
+		rohc_debugf(0, "ROHC packet too small (len = %d)\n", plen);
+		goto error;
+	}
 
 	if(g_context->active1->complist)
 		g_context->list_decomp1->ref_ok = 1;
@@ -2682,16 +2716,19 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 
 	/* first byte */
-	real_crc = GET_BIT_0_2(head);
-	sn_bits = GET_BIT_3_6(head);
+	real_crc = GET_BIT_0_2(packet);
+	sn_bits = GET_BIT_3_6(packet);
 	sn_size = 4;
 	rohc_debugf(3, "first byte = 0x%02x (real CRC = 0x%x, SN = 0x%x)\n",
-	            *head, real_crc, sn_bits);
+	            packet[0], real_crc, sn_bits);
+	packet += second_byte;
+	plen -= second_byte;
+	rohc_header_len += second_byte;
 
 	/* keep the packet size value in case of CRC failure */
 	org_plen = plen;
 
-	/* decode the packet */
+	/* decode the common part of the UO-0 packet */
 	hlen = do_decode_uo0_and_uo1(context, packet, dest, &plen, sn_bits,
 	                             sn_size, &id, 0, &id2, &sn, &calc_crc);
 	if(hlen == -1)
@@ -2759,7 +2796,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 		}
 	}
 
+	/* UO-0 common part is now read */
 	packet += org_plen - plen;
+	rohc_header_len += org_plen - plen;
 	dest += hlen;
 
 	/* update the inter-packet variable */
@@ -2783,15 +2822,15 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %u\n",
+	            plen, rohc_header_len);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += packet - head;
-	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
+	context->header_compressed_size += rohc_header_len;
+	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
 	context->header_uncompressed_size += hlen;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, hlen);
 
@@ -2811,10 +2850,10 @@ error_crc:
  *
  * @param decomp       The ROHC decompressor
  * @param context      The decompression context
- * @param head         The first byte the the ROHC packet
- * @param packet       The end of the ROHC packet to decode
- * @param dest         The decoded IP packet
+ * @param packet       The ROHC packet to decode
  * @param plen         The length of the ROHC packet
+ * @param second_byte  The offset of the 2nd byte in the ROHC packet
+ * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
  *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
@@ -2822,10 +2861,10 @@ error_crc:
  */
 int decode_uo1(struct rohc_decomp *decomp,
                struct d_context *context,
-               unsigned char *head,
                unsigned char *packet,
-               unsigned char *dest,
-               int plen)
+               int plen,
+               int second_byte,
+               unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 	rohc_packet_t packet_type;
@@ -2833,6 +2872,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	int id, id2 = -1;
 	int id_size; /* the number of bits for IP-ID */
 	int sn, sn_bits, sn_size;
+	unsigned int rohc_header_len = 0;
 	int hlen; /* uncompressed header length */
 	int calc_crc, real_crc;
 	int ts_received = 0;
@@ -2842,13 +2882,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	packet_type = g_context->packet_type;
 
-	if(g_context->active1->complist)
-		g_context->list_decomp1->ref_ok = 1;
-	if(g_context->multiple_ip && g_context->active2->complist)
-		g_context->list_decomp2->ref_ok = 1;
-
 	/* check if the ROHC packet is large enough to read the second byte */
-	if(plen < 1)
+	if(plen <= second_byte)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", plen);
 		goto error;
@@ -2869,15 +2904,20 @@ int decode_uo1(struct rohc_decomp *decomp,
 		goto error;
 	}
 
+	if(g_context->active1->complist)
+		g_context->list_decomp1->ref_ok = 1;
+	if(g_context->multiple_ip && g_context->active2->complist)
+		g_context->list_decomp2->ref_ok = 1;
+
 	/* first and second bytes */
 	switch(packet_type)
 	{
 		case PACKET_UO_1:
 			/* first byte */
-			id = GET_BIT_0_5(head);
+			id = GET_BIT_0_5(packet);
 			/* second byte */
-			sn_bits = GET_BIT_3_7(packet);
-			real_crc = GET_BIT_0_2(packet);
+			sn_bits = GET_BIT_3_7(packet + second_byte);
+			real_crc = GET_BIT_0_2(packet + second_byte);
 			/* SN and IP-ID sizes */
 			id_size = 6;
 			sn_size = 5;
@@ -2885,12 +2925,12 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		case PACKET_UO_1_RTP:
 			/* first byte */
-			ts_received = GET_BIT_0_5(head);
+			ts_received = GET_BIT_0_5(packet);
 			ts_received_size += 6;
 			/* second byte */
-			m = GET_BIT_7(packet);
-			sn_bits = GET_BIT_3_6(packet);
-			real_crc = GET_BIT_0_2(packet);
+			m = GET_BIT_7(packet + second_byte);
+			sn_bits = GET_BIT_3_6(packet + second_byte);
+			real_crc = GET_BIT_0_2(packet + second_byte);
 			/* SN and IP-ID sizes */
 			sn_size = 4;
 			id_size = 0;
@@ -2898,12 +2938,12 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		case PACKET_UO_1_TS:
 			/* first byte */
-			ts_received = GET_BIT_0_4(head);
+			ts_received = GET_BIT_0_4(packet);
 			ts_received_size += 5;
 			/* second byte */
 			m = GET_BIT_7(packet);
-			sn_bits = GET_BIT_3_6(packet);
-			real_crc = GET_BIT_0_2(packet);
+			sn_bits = GET_BIT_3_6(packet + second_byte);
+			real_crc = GET_BIT_0_2(packet + second_byte);
 			/* SN and IP-ID sizes */
 			sn_size = 4;
 			id_size = 0;
@@ -2911,11 +2951,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		case PACKET_UO_1_ID:
 			/* first byte */
-			id = GET_BIT_0_4(head);
+			id = GET_BIT_0_4(packet);
 			/* second byte */
-			m = GET_BIT_7(packet);
-			sn_bits = GET_BIT_3_6(packet);
-			real_crc = GET_BIT_0_2(packet);
+			m = GET_BIT_7(packet + second_byte);
+			sn_bits = GET_BIT_3_6(packet + second_byte);
+			real_crc = GET_BIT_0_2(packet + second_byte);
 			/* SN and IP-ID sizes */
 			sn_size = 4;
 			id_size = 5;
@@ -2925,8 +2965,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
 			goto error;
 	}
-	packet++;
-	plen--;
+
+	/* first and second bytes read */
+	packet += second_byte + 1;
+	plen -= second_byte + 1;
+	rohc_header_len += second_byte + 1;
 
 	if(is_rtp)
 	{
@@ -2941,7 +2984,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* keep the packet size value in case of CRC failure */
 	org_plen = plen;
 
-	/* decode the packet */
+	/* decode the common part of the UO-1 packet */
 	hlen = do_decode_uo0_and_uo1(context, packet, dest, &plen, sn_bits,
 	                             sn_size, &id, id_size, &id2, &sn, &calc_crc);
 	if(hlen == -1)
@@ -3009,7 +3052,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 		}
 	}
 
+	/* UO-1 common part is now read */
 	packet += org_plen - plen;
+	rohc_header_len += org_plen - plen;
 	dest += hlen;
 
 	/* update the inter-packet variable */
@@ -3033,15 +3078,15 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %u\n",
+	            plen, rohc_header_len);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += packet - head;
-	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
+	context->header_compressed_size += rohc_header_len;
+	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
 	context->header_uncompressed_size += hlen;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, hlen);
 
@@ -3061,10 +3106,10 @@ error_crc:
  *
  * @param decomp       The ROHC decompressor
  * @param context      The decompression context
- * @param head         The first byte the the ROHC packet
- * @param packet       The end of the ROHC packet to decode
- * @param dest         The decoded IP packet
+ * @param packet       The ROHC packet to decode
  * @param plen         The length of the ROHC packet
+ * @param second_byte  The offset of the 2nd byte in the ROHC packet
+ * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
  *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
@@ -3073,16 +3118,17 @@ error_crc:
  */
 int decode_uor2(struct rohc_decomp *decomp,
                 struct d_context *context,
-                unsigned char *head,
                 unsigned char *packet,
-                unsigned char *dest,
-                int plen)
+                int plen,
+                int second_byte,
+                unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 	rohc_packet_t packet_type;
 	unsigned char *org_packet;
 	unsigned char *org_dest;
 	int org_plen;
+	unsigned int rohc_header_len = 0;
 	int hlen; /* uncompressed header length */
 	int sn_size = 0;
 	int id = 0, id2 = 0;
@@ -3095,17 +3141,17 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	packet_type = g_context->packet_type;
 
-	if(g_context->active1->complist)
-		g_context->list_decomp1->ref_ok = 1;
-	if(g_context->multiple_ip && g_context->active2->complist)
-		g_context->list_decomp2->ref_ok = 1;
-
 	/* check if the ROHC packet is large enough to read the second byte */
-	if(plen < 1)
+	if(plen <= second_byte)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", plen);
 		goto error;
 	}
+
+	if(g_context->active1->complist)
+		g_context->list_decomp1->ref_ok = 1;
+	if(g_context->multiple_ip && g_context->active2->complist)
+		g_context->list_decomp2->ref_ok = 1;
 
 	/* check packet usage */
 	if(is_rtp && packet_type == PACKET_UOR_2)
@@ -3127,25 +3173,30 @@ int decode_uor2(struct rohc_decomp *decomp,
 	{
 		case PACKET_UOR_2:
 			/* SN only */
-			sn_bits = GET_BIT_0_4(head);
+			sn_bits = GET_BIT_0_4(packet);
 			rohc_debugf(3, "SN bits = 0x%x\n", sn_bits);
+			/* first byte read, second byte is CRC */
+			packet += second_byte;
+			rohc_header_len += second_byte;
+			plen -= second_byte;
 			break;
 
 		case PACKET_UOR_2_RTP:
 			/* TS */
-			ts_bits = GET_BIT_0_4(head) << 1;
-			ts_bits |= GET_REAL(GET_BIT_7(packet));
+			ts_bits = GET_BIT_0_4(packet) << 1;
+			ts_bits |= GET_REAL(GET_BIT_7(packet + second_byte));
 			ts_bits_size = 6;
 			rohc_debugf(3, "%d TS bits = 0x%x\n", ts_bits_size, ts_bits);
 			/* M flag */
-			m = GET_REAL(GET_BIT_6(packet));
+			m = GET_REAL(GET_BIT_6(packet + second_byte));
 			rohc_debugf(3, "M flag = %d\n", m);
 			/* SN */
-			sn_bits = GET_BIT_0_5(packet);
+			sn_bits = GET_BIT_0_5(packet + second_byte);
 			rohc_debugf(3, "SN bits = 0x%x\n", sn_bits);
-			/* second byte read */
-			packet++;
-			plen--;
+			/* first and second bytes read, third byte is CRC */
+			packet += second_byte + 1;
+			rohc_header_len += second_byte + 1;
+			plen -= second_byte + 1;
 			break;
 
 		case PACKET_UOR_2_ID:
@@ -3159,33 +3210,35 @@ int decode_uor2(struct rohc_decomp *decomp,
 			}
 
 			/* IP-ID */
-			id = GET_BIT_0_4(head);
+			id = GET_BIT_0_4(packet);
 			rohc_debugf(3, "IP-ID bits = 0x%x\n", id);
 			/* M flag */
-			m = GET_REAL(GET_BIT_6(packet));
+			m = GET_REAL(GET_BIT_6(packet + second_byte));
 			rohc_debugf(3, "M flag = %d\n", m);
 			/* SN */
-			sn_bits = GET_BIT_0_5(packet);
+			sn_bits = GET_BIT_0_5(packet + second_byte);
 			rohc_debugf(3, "SN bits = 0x%x\n", sn_bits);
-			/* second byte read */
-			packet++;
-			plen--;
+			/* first and second bytes read, third byte is CRC */
+			packet += second_byte + 1;
+			rohc_header_len += second_byte + 1;
+			plen -= second_byte + 1;
 			break;
 
 		case PACKET_UOR_2_TS:
 			/* TS */
-			ts_bits = GET_BIT_0_4(head);
+			ts_bits = GET_BIT_0_4(packet);
 			ts_bits_size = 5;
 			rohc_debugf(3, "%d TS bits = 0x%x\n", ts_bits_size, ts_bits);
 			/* M flag */
-			m = GET_REAL(GET_BIT_6(packet));
+			m = GET_REAL(GET_BIT_6(packet + second_byte));
 			rohc_debugf(3, "M flag = %d\n", m);
 			/* SN */
-			sn_bits = GET_BIT_0_5(packet);
+			sn_bits = GET_BIT_0_5(packet + second_byte);
 			rohc_debugf(3, "SN bits = 0x%x\n", sn_bits);
-			/* second byte read */
-			packet++;
-			plen--;
+			/* first and second bytes read, third byte is CRC */
+			packet += second_byte + 1;
+			rohc_header_len += second_byte + 1;
+			plen -= second_byte + 1;
 			break;
 
 		default:
@@ -3193,7 +3246,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 			goto error;
 	}
 
-	/* update TS and M in RTP context */
+	/* update TS and M in RTP context if RTP profile and read CRC in packet */
 	if(is_rtp)
 	{
 		struct d_rtp_context *rtp_context;
@@ -3221,7 +3274,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 	ext = GET_REAL(GET_BIT_7(packet));
 	rohc_debugf(3, "Extension is present = %d\n", ext);
 
+	/* second byte for UDP UOR-2 packet and third byte for RTP UOR-2* is read */
 	packet++;
+	rohc_header_len++;
 	plen--;
 
 	/* keep some values in case of CRC failure */
@@ -3310,7 +3365,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	context->state = FULL_CONTEXT;
 
+	/* UOR-2 common part and extension are now read */
 	packet += org_plen - plen;
+	rohc_header_len += org_plen - plen;
 	dest += hlen;
 
 	/* update the inter-packet variable */
@@ -3334,15 +3391,15 @@ int decode_uor2(struct rohc_decomp *decomp,
 	}
 	
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %u\n",
+	            plen, rohc_header_len);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += packet - head;
-	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
+	context->header_compressed_size += rohc_header_len;
+	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
 	context->header_uncompressed_size += hlen;
 	c_add_wlsb(context->header_16_uncompressed, 0, 0, hlen);
 
@@ -3364,26 +3421,33 @@ reparse:
  *
  * @param decomp       The ROHC decompressor
  * @param context      The decompression context
- * @param head         The first byte the the ROHC packet
- * @param packet       The end of the ROHC packet to decode
- * @param dest         The decoded IP packet
+ * @param packet       The ROHC packet to decode
  * @param plen         The length of the ROHC packet
+ * @param second_byte  The offset of the 2nd byte in the ROHC packet
+ * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
  *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
  */
 int decode_irdyn(struct rohc_decomp *decomp,
                  struct d_context *context,
-                 unsigned char *head,
                  unsigned char *packet,
-                 unsigned char *dest,
-                 int plen)
+                 int plen,
+                 int second_byte,
+                 unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
-	unsigned char *org_dest = dest;
+	unsigned int rohc_header_len = 0;
+	unsigned int uncomp_header_len = 0;
 	int size;
+
+	/* skip the first bytes:
+	 *  IR-DYN type + Profile ID + CRC (+ eventually CID bytes) */
+	packet += second_byte + 1 + 1;
+	plen -= second_byte + 1 + 1;
+	rohc_header_len += second_byte + 1 + 1;
 
 	/* decode the dynamic part of the outer IP header */
 	size = d_decode_dynamic_ip(packet, plen, active1, g_context->list_decomp1);
@@ -3394,6 +3458,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	}
 	packet += size;
 	plen -= size;
+	rohc_header_len += size;
 
 	/* decode the dynamic part of the inner IP header */
 	if(g_context->multiple_ip)
@@ -3406,6 +3471,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 		}
 		packet += size;
 		plen -= size;
+		rohc_header_len += size;
 	}
 
 	/* decode the dynamic part of the next header if necessary */
@@ -3420,6 +3486,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 		}
 		packet += size;
 		plen -= size;
+		rohc_header_len += size;
 	}
 
 	/* synchronize the old headers with the new ones in the context */
@@ -3431,23 +3498,39 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* build the IP headers */
 	if(g_context->multiple_ip)
 	{
-		dest += build_uncompressed_ip(active1, dest, plen +
-					      ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len +
-					      active2->size_list,
-					      g_context->list_decomp1);
-		dest += build_uncompressed_ip(active2, dest, plen +
-		                              active2->next_header_len,
-					      g_context->list_decomp2);
+		/* build the outer IP header */
+		size = build_uncompressed_ip(active1, dest, plen +
+		                             ip_get_hdrlen(active2->ip) +
+		                             active1->next_header_len +
+		                             active2->size_list,
+		                             g_context->list_decomp1);
+		dest += size;
+		uncomp_header_len += size;
+
+		/* build the inner IP header */
+		size = build_uncompressed_ip(active2, dest, plen +
+		                             active2->next_header_len,
+		                             g_context->list_decomp2);
+		dest += size;
+		uncomp_header_len += size;
 	}
 	else
-		dest += build_uncompressed_ip(active1, dest, plen +
-		                              active1->next_header_len,
-					      g_context->list_decomp1);
+	{
+		/* build the single IP header */
+		size = build_uncompressed_ip(active1, dest, plen +
+		                             active1->next_header_len,
+		                             g_context->list_decomp1);
+		dest += size;
+		uncomp_header_len += size;
+	}
 
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
-		dest += g_context->build_next_header(g_context, active1, dest, plen);
+	{
+		size = g_context->build_next_header(g_context, active1, dest, plen);
+		dest += size;
+		uncomp_header_len += size;
+	}
 
 	context->state = FULL_CONTEXT;
 
@@ -3455,19 +3538,19 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	update_inter_packet(g_context);
 
 	/* copy the payload */
-	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %d\n",
-	            plen, packet - head);
+	rohc_debugf(3, "ROHC payload (length = %d bytes) starts at offset %u\n",
+	            plen, rohc_header_len);
 	if(plen == 0)
 		goto no_data;
 	memcpy(dest, packet, plen);
 
 	/* statistics */
-	context->header_compressed_size += packet - head;
-	c_add_wlsb(context->header_16_compressed, 0, 0, packet - head);
-	context->header_uncompressed_size += dest - org_dest;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, dest - org_dest);
+	context->header_compressed_size += rohc_header_len;
+	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
+	context->header_uncompressed_size += uncomp_header_len;
+	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
 
-	return (dest - org_dest) + plen;
+	return uncomp_header_len + plen;
 
 no_data:
 	return ROHC_OK_NO_DATA;
@@ -3506,7 +3589,7 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	struct d_generic_context *g_context = context->specific;
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
-	unsigned char *org_dest = dest;
+	unsigned int uncomp_header_len = 0;
 	int size;
 	int size_list = 0;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
@@ -3627,30 +3710,45 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	/* build the IP headers */
 	if(g_context->multiple_ip)
 	{
+		/* build the outer IP header */
+		size = build_uncompressed_ip(active1, dest, *plen +
+		                             ip_get_hdrlen(active2->ip) +
+		                             active1->next_header_len +
+		                             active2->size_list,
+		                             g_context->list_decomp1);
 		ip_hdr = dest;
-		dest += build_uncompressed_ip(active1, dest, *plen +
-		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len +
-					      active2->size_list,
-					      g_context->list_decomp1);
+		dest += size;
+		uncomp_header_len += size;
+
+		/* build the inner IP header */
+		size = build_uncompressed_ip(active2, dest, *plen +
+		                             active2->next_header_len,
+		                             g_context->list_decomp2);
 		ip2_hdr = dest;
-		dest += build_uncompressed_ip(active2, dest, *plen +
-		                              active2->next_header_len,
-					      g_context->list_decomp2);
+		dest += size;
+		uncomp_header_len += size;
 	}
 	else
 	{
+		/* build the single IP header */
+		size = build_uncompressed_ip(active1, dest, *plen +
+		                             active1->next_header_len,
+		                             g_context->list_decomp1);
 		ip_hdr = dest;
-		dest += build_uncompressed_ip(active1, dest, *plen +
-		                              active1->next_header_len,
-					      g_context->list_decomp1);
 		ip2_hdr = NULL;
+		dest += size;
+		uncomp_header_len += size;
 	}
 
 	/* build the next header if necessary */
 	next_header = dest;
 	if(g_context->build_next_header != NULL)
-		dest += g_context->build_next_header(g_context, active1, dest, *plen);
+	{
+		size = g_context->build_next_header(g_context, active1, dest, *plen);
+		dest += size;
+		uncomp_header_len += size;
+	}
+
 	if(g_context->multiple_ip)
 	{
 		if(active2->complist)
@@ -3669,9 +3767,9 @@ int do_decode_uo0_and_uo1(struct d_context *context,
 	*calc_crc = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr,
 	                                           next_header,
 	                                           CRC_TYPE_3, *calc_crc);
-	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
+	rohc_debugf(3, "size = %u => CRC = 0x%x\n", uncomp_header_len, *calc_crc);
 
-	return dest - org_dest;
+	return uncomp_header_len;
 
 error:
 	return -1;
@@ -3709,7 +3807,7 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	struct d_generic_context *g_context = context->specific;
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
-	unsigned char *org_dest = dest;
+	unsigned int uncomp_header_len = 0;
 	rohc_packet_t packet_type;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	struct d_rtp_context *rtp_context = g_context->specific;
@@ -4233,30 +4331,44 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	/* build the IP headers */
 	if(g_context->multiple_ip)
 	{
+		/* build the outer IP header */
+		size = build_uncompressed_ip(active1, dest, *plen +
+		                             ip_get_hdrlen(active2->ip) +
+		                             active1->next_header_len +
+		                             active2->size_list,
+		                             g_context->list_decomp1);
 		ip_hdr = dest;
-		dest += build_uncompressed_ip(active1, dest, *plen +
-		                              ip_get_hdrlen(active2->ip) +
-		                              active1->next_header_len +
-					      active2->size_list,
-					      g_context->list_decomp1);
+		dest += size;
+		uncomp_header_len += size;
+
+		/* build the inner IP header */
+		size = build_uncompressed_ip(active2, dest, *plen +
+		                             active2->next_header_len,
+		                             g_context->list_decomp2);
 		ip2_hdr = dest;
-		dest += build_uncompressed_ip(active2, dest, *plen +
-		                              active2->next_header_len,
-					      g_context->list_decomp2);
+		dest += size;
+		uncomp_header_len += size;
 	}
 	else
 	{
+		/* build the single IP header */
+		size = build_uncompressed_ip(active1, dest, *plen +
+		                             active1->next_header_len,
+		                             g_context->list_decomp1);
 		ip_hdr = dest;
-		dest += build_uncompressed_ip(active1, dest, *plen +
-		                              active1->next_header_len,
-					      g_context->list_decomp1);
 		ip2_hdr = NULL;
+		dest += size;
+		uncomp_header_len += size;
 	}
 
 	/* build the next header if necessary */
 	next_header = dest;
 	if(g_context->build_next_header != NULL)
-		dest += g_context->build_next_header(g_context, active1, dest, *plen);
+	{
+		size = g_context->build_next_header(g_context, active1, dest, *plen);
+		dest += size;
+		uncomp_header_len += size;
+	}
 
 	if(g_context->multiple_ip)
 	{
@@ -4283,9 +4395,9 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 	*calc_crc = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
 	                                           crc_type, *calc_crc);
 
-	rohc_debugf(3, "size = %d => CRC = 0x%x\n", dest - org_dest, *calc_crc);
+	rohc_debugf(3, "size = %u => CRC = 0x%x\n", uncomp_header_len, *calc_crc);
 
-	return dest - org_dest;
+	return uncomp_header_len;
 
 error:
 	return -1;

@@ -628,7 +628,7 @@ int d_decode_header(struct rohc_decomp *decomp,
                     unsigned char *obuf, int osize,
                     struct d_decode_data *ddata)
 {
-	int size, irdynvar = 0, casenew = 0;
+	int size, casenew = 0;
 	struct d_profile * profile;
 	unsigned char * walk = ibuf;
 	unsigned int feedback_size;
@@ -776,12 +776,10 @@ int d_decode_header(struct rohc_decomp *decomp,
 				                              ddata->addcidUsed,
 				                              profile, ddata->active))
 					return ROHC_ERROR_CRC;
-
-				irdynvar += 2;
 			}
 
 			/* determine the offset of the second byte */
-			second_byte = 1 + ddata->large_cid_size + irdynvar;
+			second_byte = 1 + ddata->large_cid_size;
 			rohc_debugf(2, "the second byte in the packet is at offset %d\n",
 			            second_byte);
 
