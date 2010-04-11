@@ -83,8 +83,9 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 
 		/* point to the whole IPv4 packet */
 		ip->data = packet;
+		ip->size = size;
 	}
-	else /* IPV6 */
+	else if(version == IPV6)
 	{
 		/* IPv6: packet must be at least 40-byte long (= header length)
 		 *       packet length == header length + Payload Length field */
@@ -107,6 +108,13 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 
 		/* point to the whole IPv6 packet */
 		ip->data = packet;
+		ip->size = size;
+	}
+	else /* IP_UNKNOWN */
+	{
+		/* point to the whole packet */
+		ip->data = packet;
+		ip->size = size;
 	}
 
 	ret = 1;
@@ -399,8 +407,10 @@ unsigned int ip_get_totlen(struct ip_packet ip)
 
 	if(ip.version == IPV4)
 		len = ntohs(ip.header.v4.tot_len);
-	else
+	else if(ip.version == IPV6)
 		len = sizeof(struct ip6_hdr) + ntohs(ip.header.v6.ip6_plen);
+	else /* IP_UNKNOWN */
+		len = ip.size;
 
 	return len;
 }
@@ -491,7 +501,7 @@ unsigned int ip_get_protocol(struct ip_packet ip)
 
 	if(ip.version == IPV4)
 		protocol = ip.header.v4.protocol;
-	else /* IPV6 */
+	else if(ip.version == IPV6)
 	{
 		next_header_type = ip.header.v6.ip6_nxt;
 		switch (next_header_type)
@@ -508,6 +518,10 @@ unsigned int ip_get_protocol(struct ip_packet ip)
 				protocol = next_header_type;
 				break;
 		}
+	}
+	else /* IP_UNKNOWN */
+	{
+		protocol = 0;
 	}
 
 	return protocol;
@@ -934,8 +948,7 @@ int get_ip_version(const unsigned char *packet,
 			*version = IPV6;
 			break;
 		default:
-			ret = 0;
-			*version = IPV4;
+			*version = IP_UNKNOWN;
 			break;
 	}
 	return ret;

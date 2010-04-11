@@ -49,6 +49,8 @@ typedef enum
 	IPV4 = 4,
 	/// IP version 6
 	IPV6 = 6,
+	/// not IP
+	IP_UNKNOWN,
 } ip_version;
 
 
@@ -72,6 +74,9 @@ struct ip_packet
 
 	/// The whole IP data (header + payload) if not NULL
 	unsigned char *data;
+
+	/// The length (in bytes) of the whole IP data (header + payload)
+	unsigned int size;
 };
 
 /* AH header */

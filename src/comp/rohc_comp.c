@@ -169,7 +169,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	struct ip_packet ip;
 	struct ip_packet ip2;
 	int proto;
-	struct ip_packet *last_header;
+	struct ip_packet *inner_ip;
 	struct c_profile *p;
 	struct c_context *c;
 	int feedback_size, payload_size, payload_offset;
@@ -206,33 +206,25 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		/* get the transport protocol */
 		proto = ip_get_protocol(ip2);
 	
-		/* last IP header */
-		last_header = &ip2;
+		/* there are two IP headers, the inner IP header is the second one */
+		inner_ip = &ip2;
 	}
 	else
-		last_header = &ip;
+	{
+		/* there is only one IP header, there is no inner IP header */
+		inner_ip = NULL;
+	}
 
 	rohc_debugf(2, "IP protocol = %d\n", proto);
-	p = c_get_profile_from_packet(comp, proto, *last_header);
- 	/* use the IP profile if no profile was found based on the protocol */
+
+	/* find the best profile for the packet */
+	p = c_get_profile_from_packet(comp, &ip, inner_ip, proto);
 	if(p == 0)
 	{
-		rohc_debugf(2, "no profile found, using default IP profile\n");
-		p = c_get_profile_from_id(comp, ROHC_PROFILE_IP);
-
-		/* use the uncompressed profile if IP profile was not found */
-		if(p == 0)
-		{
-			rohc_debugf(0, "IP profile not found, using uncompressed profile\n");
-			p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
-
-			if(p == 0)
-			{
-				rohc_debugf(0, "uncompressed profile not found, giving up\n");
-				return 0;
-			}
-		}
+		rohc_debugf(0, "no profile found to compress packet\n");
+		return 0;
 	}
+	rohc_debugf(1, "using profile '%s' (0x%04x)\n", p->description, p->id);
 
 	/* get the context using help from the profiles */
 	c = c_find_context(comp, p, ip);
@@ -281,9 +273,6 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	}
 
 	c->latest_used = get_milliseconds();
-
-	rohc_debugf(1, "selected compression profile = %s (0x%04x)\n",
-	            p->description, p->id);
 
 	/* create the ROHC packet: */
 	size = 0;
@@ -884,42 +873,122 @@ boolean c_is_in_list(struct c_profile *profile, int port)
 /**
  * @brief Find out a ROHC profile given an IP protocol ID
  *
- * @param comp     The ROHC compressor
- * @param protocol The IP protocol ID
- * @param ip       An IP packet that will help choosing the best profile
- * @return         The ROHC profile if found, NULL otherwise
+ * @param comp      The ROHC compressor
+ * @param outer_ip  The outer IP header of the network packet that will help
+ *                  choosing the best profile
+ * @param inner_ip  \li The inner IP header of the network packet that will
+ *                      help choosing the best profile if any
+ *                  \li NULL if there is no inner IP header in the packet
+ * @param protocol  The transport protocol of the network packet
+ * @return          The ROHC profile if found, NULL otherwise
  */
-struct c_profile *c_get_profile_from_packet(struct rohc_comp *comp,
-                                            int protocol,
-                                            struct ip_packet ip)
+struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
+                                             struct ip_packet *outer_ip,
+                                             struct ip_packet *inner_ip,
+                                             int protocol)
 {
 	int i;
 
 	/* test all compression profiles */
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		/* if the profile protocol IDs match and the profile is enabled */
-		if(c_profiles[i]->protocol == protocol && comp->profiles[i] == 1)
+		/* skip profile if the profile is not enabled */
+		if(!comp->profiles[i])
 		{
-			/* if profile uses UDP as transport protocol, check UDP ports if any */
-			if(c_profiles[i]->protocol == IPPROTO_UDP &&
-			   c_profiles[i]->ports != NULL &&
-			   c_profiles[i]->ports[0] != 0)
+			rohc_debugf(3, "skip disabled profile '%s' (0x%04x)\n",
+			            c_profiles[i]->description, c_profiles[i]->id);
+			continue;
+		}
+
+		/* for all profiles except the uncompressed profile, skip the profile:
+		    - if the outer IP header of the packet is not IPv4 nor IPv6,
+		    - if the outer IP header of the packet is an IPv4 fragment,
+		    - if the inner IP header of the packet is not IPv4 nor IPv6,
+		    - if the inner IP header of the packet is an IPv4 fragment. */
+		if(c_profiles[i]->id != ROHC_PROFILE_UNCOMPRESSED)
+		{
+			/* check outer IP header */
+			if(outer_ip->version != IPV4 && outer_ip->version != IPV6)
 			{
-				struct udphdr *udp;
-				int port;
+				rohc_debugf(3, "skip profile '%s' (0x%04x) because it only support "
+				            "IPv4 or IPv6\n", c_profiles[i]->description,
+				            c_profiles[i]->id);
+				continue;
+			}
 
-				udp = (struct udphdr *) ip_get_next_layer(&ip);
-				port = ntohs(udp->dest);
+			if(outer_ip->version == IPV4 && ip_is_fragment(*outer_ip))
+			{
+				rohc_debugf(3, "skip profile '%s' (0x%04x) because it does not "
+				            "support IPv4 fragments\n", c_profiles[i]->description,
+				            c_profiles[i]->id);
+				continue;
+			}
 
-				rohc_debugf(3, "UDP port = 0x%x (%u)\n", port, port);
+			/* check inner IP header if present */
+			if(inner_ip != NULL)
+			{
+				if(inner_ip->version != IPV4 && inner_ip->version != IPV6)
+				{
+					rohc_debugf(3, "skip profile '%s' (0x%04x) because it only support "
+					            "IPv4 or IPv6\n", c_profiles[i]->description,
+					            c_profiles[i]->id);
+					continue;
+				}
 
-				if(c_is_in_list(c_profiles[i], port))
-					return c_profiles[i];
+				if(inner_ip->version == IPV4 && ip_is_fragment(*inner_ip))
+				{
+					rohc_debugf(3, "skip profile '%s' (0x%04x) because it does not "
+					            "support IPv4 fragments\n", c_profiles[i]->description,
+					            c_profiles[i]->id);
+					continue;
+				}
+			}
+		}
+
+		/* skip profile if the profile handles a specific transport protocol and
+		   this protocol does not match the transport protocol of the packet */
+		if(c_profiles[i]->protocol != 0 && c_profiles[i]->protocol != protocol)
+		{
+			rohc_debugf(3, "skip profile '%s' (0x%04x) because transport protocol "
+			            "does not match\n", c_profiles[i]->description,
+			            c_profiles[i]->id);
+			continue;
+		}
+
+		/* skip profile if it uses UDP as transport protocol and the UDP ports
+		   are not reserved for the profile */
+		if(c_profiles[i]->protocol == IPPROTO_UDP &&
+		   c_profiles[i]->ports != NULL &&
+		   c_profiles[i]->ports[0] != 0)
+		{
+			struct udphdr *udp;
+			int port;
+
+			/* retrieve the UDP header after the last IP header */
+			if(inner_ip == NULL)
+			{
+				udp = (struct udphdr *) ip_get_next_layer(outer_ip);
 			}
 			else
-				return c_profiles[i];
+			{
+				udp = (struct udphdr *) ip_get_next_layer(inner_ip);
+			}
+
+			/* retrieve the destination port in the UDP header */
+			port = ntohs(udp->dest);
+			rohc_debugf(3, "UDP port = 0x%x (%u)\n", port, port);
+
+			/* check if UDP port is reserved by the ROHC profile */
+			if(!c_is_in_list(c_profiles[i], port))
+			{
+				rohc_debugf(3, "skip profile '%s' (0x%04x) because UDP destination port "
+				            "is not reserved for profile\n", c_profiles[i]->description,
+				            c_profiles[i]->id);
+				continue;
+			}
 		}
+
+		return c_profiles[i];
 	}
 
 	return NULL;
