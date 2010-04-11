@@ -228,7 +228,7 @@ int c_rtp_check_context(struct c_context *context, struct ip_packet ip)
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* second IP header is last IP header */
-  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto error;
@@ -303,7 +303,7 @@ int c_rtp_encode(struct c_context *context,
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* get the last IP header */
-  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			return -1;

@@ -71,7 +71,7 @@ int c_udp_create(struct c_context *context, const struct ip_packet ip)
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* get the last IP header */
-  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto clean;
@@ -107,7 +107,7 @@ int c_udp_create(struct c_context *context, const struct ip_packet ip)
 	/* initialize the UDP part of the profile context */
 	udp_context->udp_checksum_change_count = 0;
 	udp_context->old_udp = *udp;
-	
+
 	/* init the UDP-specific temporary variables */
 	udp_context->tmp_variables.send_udp_dynamic = -1;
 
@@ -210,7 +210,7 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 			goto bad_context;
 
 		/* get the second IP header */
-  		if(!ip_get_inner_packet(ip, &ip2))
+		if(!ip_get_inner_packet(ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto error;
@@ -266,7 +266,7 @@ int c_udp_check_context(struct c_context *context, struct ip_packet ip)
 	/* check UDP ports */
 	udp = (struct udphdr *) ip_get_next_layer(&last_ip_header);
 	is_udp_same = udp_context->old_udp.source == udp->source &&
-		           udp_context->old_udp.dest == udp->dest;
+	              udp_context->old_udp.dest == udp->dest;
 
 	return is_udp_same;
 
@@ -322,12 +322,12 @@ int c_udp_encode(struct c_context *context,
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* get the last IP header */
-  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			return -1;
 		}
-		
+
 		/* get the transport protocol */
 		ip_proto = ip_get_protocol(last_ip_header);
 	}

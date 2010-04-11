@@ -85,7 +85,7 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* get the last IP header */
-  		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &last_ip_header))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto quit;
@@ -99,7 +99,7 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 		/* only one single IP header, the last IP header is the first one */
 		last_ip_header = ip;
 	}
-		
+
 	if(ip_proto != IPPROTO_UDPLITE)
 	{
 		rohc_debugf(0, "next header is not UDP-Lite (%d), cannot use this "
@@ -113,8 +113,8 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
 	if(udp_lite_context == NULL)
 	{
-	  rohc_debugf(0, "no memory for the UDP-Lite part of the profile context\n");
-	  goto clean;
+		rohc_debugf(0, "no memory for the UDP-Lite part of the profile context\n");
+		goto clean;
 	}
 	g_context->specific = udp_lite_context;
 
@@ -231,7 +231,7 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 			goto bad_context;
 
 		/* get the second IP header */
-  		if(!ip_get_inner_packet(ip, &ip2))
+		if(!ip_get_inner_packet(ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto error;
@@ -602,7 +602,7 @@ void udp_lite_init_cc(struct c_context *context,
 
 	udp_lite_context->cfp = (ntohs(udp_lite->len) != packet_length) || udp_lite_context->cfp;
 	udp_lite_context->cfi = (ntohs(udp_lite->len) == packet_length) && udp_lite_context->cfi;
-	
+
 	rohc_debugf(2, "packet_length = %d\n", packet_length);
 	rohc_debugf(2, "udp_lite length = %d\n", ntohs(udp_lite->len));
 	rohc_debugf(2, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
@@ -630,7 +630,7 @@ int udp_lite_send_cce_packet(struct c_context *context,
 	struct sc_udp_lite_context *udp_lite_context;
 	int is_coverage_inferred;
 	int is_coverage_same;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 

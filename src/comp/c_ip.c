@@ -51,7 +51,7 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 	struct c_generic_context *g_context;
 	struct ip_header_info *ip_flags;
 	struct ip_header_info *ip2_flags;
-  	struct ip_packet ip2;
+	struct ip_packet ip2;
 	ip_version version;
 	unsigned int ip_proto;
 	int same_src;
@@ -99,7 +99,7 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 			goto bad_context;
 
 		/* get the second IP header */
-  		if(!ip_get_inner_packet(ip, &ip2))
+		if(!ip_get_inner_packet(ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto error;
@@ -123,9 +123,9 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 			same_dest2 = IPV6_ADDR_CMP(&ip2_flags->info.v6.old_ip.ip6_dst,
 			                           ipv6_get_daddr(&ip2));
 		}
-	
+
 		if(!same_src2 || !same_dest2)
-	 		goto bad_context;
+			goto bad_context;
 
 		/* compare the Flow Label of the second header if IPv6 */
 		if(version == IPV6 && ipv6_get_flow_label(ip2) !=
