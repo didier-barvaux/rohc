@@ -183,7 +183,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	unsigned char *ip_raw_data;
 
 	/* check compressor validity */
-	if(comp == 0)
+	if(comp == NULL)
 	{
 		rohc_debugf(0, "compressor not valid\n");
 		return 0;
@@ -225,7 +225,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	rohc_debugf(2, "try to find the best profile for packet with "
 	            "transport protocol %d\n", proto);
 	p = c_get_profile_from_packet(comp, &ip, inner_ip, proto);
-	if(p == 0)
+	if(p == NULL)
 	{
 		rohc_debugf(0, "no profile found to compress packet\n");
 		return 0;
@@ -234,12 +234,11 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	/* get the context using help from the profiles */
 	c = c_find_context(comp, p, ip);
-
-	if(c == 0)
+	if(c == NULL)
 	{
 		/* context not found, create a new one */
 		c = c_create_context(comp, p, ip);
-		if(c == 0)
+		if(c == NULL)
 		{
 			rohc_debugf(0, "failed to create a new context\n");
 			return 0;
@@ -253,7 +252,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		rohc_debugf(0, "error while finding context, using uncompressed profile\n");
 
 		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
-		if(p == 0)
+		if(p == NULL)
 		{
 			rohc_debugf(0, "uncompressed profile not found, giving up\n");
 			return 0;
@@ -261,10 +260,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 		/* find the context or create a new one */
 		c = c_find_context(comp, p, ip);
-		if(c == 0)
+		if(c == NULL)
 		{
 			c = c_create_context(comp, p, ip);
-			if(c == 0)
+			if(c == NULL)
 			{
 				rohc_debugf(0, "failed to create an uncompressed context\n");
 				return 0;
@@ -315,7 +314,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 		/* get uncompressed profile */
 		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
-		if(p == 0)
+		if(p == NULL)
 		{
 			rohc_debugf(0, "uncompressed profile not found, giving up\n");
 			return 0;
@@ -323,10 +322,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 		/* find the context or create a new one */
 		c = c_find_context(comp, p,  ip);
-		if(c == 0)
+		if(c == NULL)
 		{
 			c = c_create_context(comp, p, ip);
-			if(c == 0)
+			if(c == NULL)
 			{
 				rohc_debugf(0, "failed to create an uncompressed context\n");
 				return 0;
@@ -1445,7 +1444,7 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	int feedback_size;
 
 	/* check compressor validity */
-	if(comp == 0)
+	if(comp == NULL)
 	{
 		rohc_debugf(0, "compressor not valid\n");
 		return 0;
@@ -1538,7 +1537,7 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 
 	/* find context */
 	c = c_get_context(comp, feedback.cid);
-	if(c == 0)
+	if(c == NULL)
 	{
 		/* context was not found */
 		rohc_debugf(0, "context not found (CID = %d)\n", feedback.cid);
