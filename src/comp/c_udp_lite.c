@@ -198,14 +198,8 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 
 	/* check the IP version of the first header */
 	version = ip_get_version(ip);
-	if(version != IPV4 && version != IPV6)
-		goto bad_profile;
 	if(version != ip_flags->version)
 		goto bad_context;
-
-	/* check if the first header is a fragment */
-	if(ip_is_fragment(ip))
-		goto bad_profile;
 
 	/* compare the addresses of the first header */
 	if(version == IPV4)
@@ -245,14 +239,8 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 
 		/* check the IP version of the second header */
 		version = ip_get_version(ip2);
-		if(version != IPV4 && version != IPV6)
-			goto bad_profile;
 		if(version != ip2_flags->version)
 			goto bad_context;
-
-		/* check if the second header is a fragment */
-		if(ip_is_fragment(ip2))
-			goto bad_profile;
 
 		/* compare the addresses of the second header */
 		if(version == IPV4)
@@ -306,7 +294,6 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 
 bad_context:
 	return 0;
-bad_profile:
 error:
 	return -1;
 }

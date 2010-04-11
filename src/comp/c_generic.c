@@ -780,19 +780,6 @@ int c_generic_encode(struct c_context *context,
 	*payload_offset += g_context->next_header_len;
 	size_data = packet_size - (*payload_offset);
 
-	/* discard IP fragments */
-	if(ip_is_fragment(ip))
-	{
-		rohc_debugf(0, "fragment error in outer IP header\n");
-		return -1;
-	}
-
-	if(g_context->tmp_variables.nr_of_ip_hdr > 1 && ip_is_fragment(ip2))
-	{
-		rohc_debugf(0, "fragment error in inner IP header\n");
-		return -1;
-	}
-
 	/* STEP 2:
 	 *  - check NBO and RND of the IP-ID of the outer and inner IP headers
 	 *    (IPv4 only)
