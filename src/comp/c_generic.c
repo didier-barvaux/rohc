@@ -371,7 +371,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	
 		/* store the IP packet and the random and NBO parameters
 		 * in the header info */
-		header_info->info.v4.old_ip = *(ipv4_get_header(ip));
+		header_info->info.v4.old_ip = *(ipv4_get_header(&ip));
 		header_info->info.v4.rnd = 0;
 		header_info->info.v4.old_rnd = header_info->info.v4.rnd;
 		header_info->info.v4.nbo = 1;
@@ -389,7 +389,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	else
 	{
 		/* store the IP header in the header info */
-		header_info->info.v6.old_ip = *(ipv6_get_header(ip));
+		header_info->info.v6.old_ip = *(ipv6_get_header(&ip));
 		header_info->info.v6.ext_comp = malloc(sizeof(struct list_comp));
 		if (header_info->info.v6.ext_comp == NULL)
 		{
@@ -887,23 +887,23 @@ int c_generic_encode(struct c_context *context,
 	/* update the context with the new headers */
 	if(ip_get_version(ip) == IPV4)
 	{
-		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(ip));
+		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(&ip));
 		g_context->ip_flags.info.v4.old_rnd = g_context->ip_flags.info.v4.rnd;
 		g_context->ip_flags.info.v4.old_nbo = g_context->ip_flags.info.v4.nbo;
 	}
 	else /* IPV6 */
-		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(ip));
+		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(&ip));
 
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1)
 	{
 		if(ip_get_version(ip2) == IPV4)
 		{
-			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(ip2));
+			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(&ip2));
 			g_context->ip2_flags.info.v4.old_rnd = g_context->ip2_flags.info.v4.rnd;
 			g_context->ip2_flags.info.v4.old_nbo = g_context->ip2_flags.info.v4.nbo;
 		}
 		else /* IPV6 */
-			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(ip2));
+			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(&ip2));
 	}
 
 	/* update packet counters */

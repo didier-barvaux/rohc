@@ -23,6 +23,8 @@
 #include "ip.h"
 #include "rohc_traces.h"
 
+#include <assert.h>
+
 
 /*
  * Generic IP functions (apply to both IPv4 and IPv6):
@@ -45,7 +47,7 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 	/* get the version of the IP packet */
 	if(!get_ip_version(packet, size, &version))
 	{
-		rohc_debugf(1, "bad IP version (%d)\n", version);
+		rohc_debugf(1, "bad IP version\n");
 		goto quit;
 	}
 
@@ -83,8 +85,9 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 
 		/* point to the whole IPv4 packet */
 		ip->data = packet;
+		ip->size = size;
 	}
-	else /* IPV6 */
+	else if(version == IPV6)
 	{
 		/* IPv6: packet must be at least 40-byte long (= header length)
 		 *       packet length == header length + Payload Length field */
@@ -107,6 +110,13 @@ int ip_create(struct ip_packet *ip, unsigned char *packet, unsigned int size)
 
 		/* point to the whole IPv6 packet */
 		ip->data = packet;
+		ip->size = size;
+	}
+	else /* IP_UNKNOWN */
+	{
+		/* point to the whole packet */
+		ip->data = packet;
+		ip->size = size;
 	}
 
 	ret = 1;
@@ -153,6 +163,9 @@ void ip_new(struct ip_packet *ip, ip_version version)
 /**
  * @brief Get the IP raw data (header + payload)
  *
+ * The function handles \ref ip_packet whose \ref ip_packet::version is
+ * \ref IP_UNKNOWN.
+ *
  * @param ip The IP packet to analyze
  * @return   The IP raw data (header + payload)
  */
@@ -164,6 +177,9 @@ unsigned char * ip_get_raw_data(struct ip_packet ip)
 
 /**
  * @brief Get the inner IP packet (IP in IP)
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
  *
  * @param outer The outer IP packet to analyze
  * @param inner The inner IP packet to create
@@ -185,6 +201,9 @@ int ip_get_inner_packet(struct ip_packet outer, struct ip_packet *inner)
 /**
  * @brief Get the IP next header
  *        
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip   The IP packet to analyze
  * @param type OUT: The type of the next header
  * @return     The next header
@@ -200,10 +219,15 @@ unsigned char *ip_get_next_header(const struct ip_packet *ip,
 		*type = ip->header.v4.protocol;
 		next_header = ip->data + sizeof(struct iphdr);
 	}
-	else /* IPV6 */
+	else if(ip->version == IPV6)
 	{
 		*type = ip->header.v6.ip6_nxt; 
 		next_header = ip->data + sizeof(struct ip6_hdr);
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
 	}
 
 	return next_header;
@@ -213,6 +237,9 @@ unsigned char *ip_get_next_header(const struct ip_packet *ip,
 /**
  * @brief Get the next header (but skip IP extensions)
  *        
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip   The IP packet to analyze
  * @return     The next header that is not an IP extension
  */
@@ -250,6 +277,9 @@ unsigned char *ip_get_next_layer(const struct ip_packet *ip)
  * @brief Get the next extension header of IPv6 packets from
  *        an IPv6 header
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip   The IP packet to analyze
  * @param type OUT: The type of the next header
  *             If there is no next header the value must be ignored
@@ -260,6 +290,9 @@ unsigned char *ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
                                               uint8_t *type)
 {
 	unsigned char *next_header;
+
+	/* function does not handle non-IPv4/IPv6 packets */
+	assert(ip->version != IP_UNKNOWN);
 
 	if(ip->version != IPV6)
 	{
@@ -345,6 +378,9 @@ uint8_t ip_get_extension_size(unsigned char *ext)
 /**
  * @brief Get the size of the extension list
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip The packet to analyse
  * @return   The size of extension list
  */
@@ -371,6 +407,9 @@ uint8_t ip_get_total_extension_size(struct ip_packet ip)
  * The IP packet is a fragment if the  MF (More Fragments) bit is set
  * or the Fragment Offset field is non-zero.
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip The IP packet to analyze
  * @return   Whether the IP packet is an IP fragment or not
  */
@@ -379,9 +418,18 @@ int ip_is_fragment(struct ip_packet ip)
 	int is_fragment;
 
 	if(ip.version == IPV4)
+	{
 		is_fragment = ((ntohs(ip.header.v4.frag_off) & (~IP_DF)) != 0);
-	else /* IPV6 */
+	}
+	else if(ip.version == IPV6)
+	{
 		is_fragment = 0;
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 
 	return is_fragment;
 }
@@ -389,6 +437,9 @@ int ip_is_fragment(struct ip_packet ip)
 
 /**
  * @brief Get the total length of an IP packet
+ *
+ * The function handles \ref ip_packet whose \ref ip_packet::version is
+ * \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
  * @return   The total length of the IP packet
@@ -398,9 +449,17 @@ unsigned int ip_get_totlen(struct ip_packet ip)
 	uint16_t len;
 
 	if(ip.version == IPV4)
+	{
 		len = ntohs(ip.header.v4.tot_len);
-	else
+	}
+	else if(ip.version == IPV6)
+	{
 		len = sizeof(struct ip6_hdr) + ntohs(ip.header.v6.ip6_plen);
+	}
+	else /* IP_UNKNOWN */
+	{
+		len = ip.size;
+	}
 
 	return len;
 }
@@ -408,6 +467,9 @@ unsigned int ip_get_totlen(struct ip_packet ip)
 
 /**
  * @brief Get the length of an IP header
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
  * @return   The length of the IP header
@@ -417,19 +479,31 @@ unsigned int ip_get_hdrlen(struct ip_packet ip)
 	unsigned int len;
 
 	if(ip.version == IPV4)
+	{
 		len = ip.header.v4.ihl * 4;
-	else
+	}
+	else if(ip.version == IPV6)
+	{
 		len = sizeof(struct ip6_hdr);
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 
 	return len;
 }
 
 
 /**
- * @brief Get the length of an IP payload
+ * @brief Get the length of an IPv4/IPv6 payload
  *
- * @param ip The IP packet to analyze
- * @return   The length of the IP payload
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
+ * @param ip The IPv4/IPv6 packet to analyze
+ * @return   The length of the IPv4/IPv6 payload
  */
 unsigned int ip_get_plen(struct ip_packet ip)
 {
@@ -438,8 +512,10 @@ unsigned int ip_get_plen(struct ip_packet ip)
 	uint8_t next_header_type;
 
 	if(ip.version == IPV4)
+	{
 		len = ntohs(ip.header.v4.tot_len) - ip.header.v4.ihl * 4;
-	else
+	}
+	else if(ip.version == IPV6)
 	{
 		next_header_type = ip.header.v6.ip6_nxt;
 		switch (next_header_type)
@@ -456,6 +532,11 @@ unsigned int ip_get_plen(struct ip_packet ip)
 		}
 		len = ntohs(ip.header.v6.ip6_plen) - size_list;
 	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 
 	return len;
 }
@@ -463,6 +544,9 @@ unsigned int ip_get_plen(struct ip_packet ip)
 
 /**
  * @brief Get the IP version of an IP packet
+ *
+ * The function handles \ref ip_packet whose \ref ip_packet::version is
+ * \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
  * @return   The version of the IP packet
@@ -479,9 +563,12 @@ ip_version ip_get_version(struct ip_packet ip)
  * The protocol returned is the one transported by the last known IP extension
  * header if any is found.
  *
- * @param ip The IP packet to analyze
- * @return   The protocol number that identify the protocol transported
- *           by the given IP packet
+ * The function handles \ref ip_packet whose \ref ip_packet::version is
+ * \ref IP_UNKNOWN. It always returns the special value 0.
+ *
+ * @param ip  The IP packet to analyze
+ * @return    The protocol number that identify the protocol transported
+ *            by the given IP packet, 0 if the packet is not IPv4 nor IPv6
  */
 unsigned int ip_get_protocol(struct ip_packet ip)
 {
@@ -490,8 +577,10 @@ unsigned int ip_get_protocol(struct ip_packet ip)
 	uint8_t next_header_type;
 
 	if(ip.version == IPV4)
+	{
 		protocol = ip.header.v4.protocol;
-	else /* IPV6 */
+	}
+	else if(ip.version == IPV6)
 	{
 		next_header_type = ip.header.v6.ip6_nxt;
 		switch (next_header_type)
@@ -508,6 +597,10 @@ unsigned int ip_get_protocol(struct ip_packet ip)
 				protocol = next_header_type;
 				break;
 		}
+	}
+	else /* IP_UNKNOWN */
+	{
+		protocol = 0;
 	}
 
 	return protocol;
@@ -552,21 +645,36 @@ unsigned int ext_get_protocol(unsigned char * ext)
 /**
  * @brief Set the protocol transported by an IP packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip     The IP packet to modify
  * @param value  The protocol value
  */
 void ip_set_protocol(struct ip_packet *ip, uint8_t value)
 {
 	if(ip->version == IPV4)
+	{
 		ip->header.v4.protocol = value & 0xff;
-	else /* IPV6 */
+	}
+	else if(ip->version == IPV6)
+	{
 		ip->header.v6.ip6_nxt = value & 0xff;
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 }
 
 
 /**
  * @brief Get the IPv4 Type Of Service (TOS) or IPv6 Traffic Class (TC)
  *        of an IP packet
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
  * @return   The TOS or TC value
@@ -576,9 +684,18 @@ unsigned int ip_get_tos(struct ip_packet ip)
 	unsigned int tos;
 
 	if(ip.version == IPV4)
+	{
 		tos = ip.header.v4.tos;
-	else /* IPV6 */
+	}
+	else if(ip.version == IPV6)
+	{
 		tos = IPV6_GET_TC(ip.header.v6);
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 
 	return tos;
 }
@@ -588,21 +705,36 @@ unsigned int ip_get_tos(struct ip_packet ip)
  * @brief Set the IPv4 Type Of Service (TOS) or IPv6 Traffic Class (TC)
  *        of an IP packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip     The IP packet to modify
  * @param value  The TOS/TC value
  */
 void ip_set_tos(struct ip_packet *ip, uint8_t value)
 {
 	if(ip->version == IPV4)
+	{
 		ip->header.v4.tos = value & 0xff;
-	else /* IPV6 */
+	}
+	else if(ip->version == IPV6)
+	{
 		IPV6_SET_TC(&ip->header.v6, value);
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 }
 
 
 /**
  * @brief Get the IPv4 Time To Live (TTL) or IPv6 Hop Limit (HL)
  *        of an IP packet
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
  * @return   The TTL or HL value
@@ -612,9 +744,18 @@ unsigned int ip_get_ttl(struct ip_packet ip)
 	unsigned int ttl;
 
 	if(ip.version == IPV4)
+	{
 		ttl = ip.header.v4.ttl;
-	else /* IPV6 */
+	}
+	else if(ip.version == IPV6)
+	{
 		ttl = ip.header.v6.ip6_hlim;
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 
 	return ttl;
 }
@@ -624,20 +765,35 @@ unsigned int ip_get_ttl(struct ip_packet ip)
  * @brief Set the IPv4 Time To Live (TTL) or IPv6 Hop Limit (HL)
  *        of an IP packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
+ *
  * @param ip     The IP packet to modify
  * @param value  The TTL/HL value
  */
 void ip_set_ttl(struct ip_packet *ip, uint8_t value)
 {
 	if(ip->version == IPV4)
+	{
 		ip->header.v4.ttl = value & 0xff;
-	else /* IPV6 */
+	}
+	else if(ip->version == IPV6)
+	{
 		ip->header.v6.ip6_hlim = value & 0xff;
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 }
 
 
 /**
  * @brief Set the Source Address of an IP packet
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
  *
  * @param ip     The IP packet to modify
  * @param value  The IP address value
@@ -645,14 +801,26 @@ void ip_set_ttl(struct ip_packet *ip, uint8_t value)
 void ip_set_saddr(struct ip_packet *ip, const unsigned char *value)
 {
 	if(ip->version == IPV4)
+	{
 		memcpy(&ip->header.v4.saddr, value, sizeof(struct in_addr));
-	else /* IPV6 */
+	}
+	else if(ip->version == IPV6)
+	{
 		memcpy(&ip->header.v6.ip6_src, value, sizeof(struct in6_addr));
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 }
 
 
 /**
  * @brief Set the Destination Address of an IP packet
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is \ref IP_UNKNOWN.
  *
  * @param ip     The IP packet to modify
  * @param value  The IP address value
@@ -660,9 +828,18 @@ void ip_set_saddr(struct ip_packet *ip, const unsigned char *value)
 void ip_set_daddr(struct ip_packet *ip, const unsigned char *value)
 {
 	if(ip->version == IPV4)
+	{
 		memcpy(&ip->header.v4.daddr, value, sizeof(struct in_addr));
-	else /* IPV6 */
+	}
+	else if(ip->version == IPV6)
+	{
 		memcpy(&ip->header.v6.ip6_dst, value, sizeof(struct in6_addr));
+	}
+	else
+	{
+		/* function does not handle non-IPv4/IPv6 packets */
+		assert(0);
+	}
 }
 
 
@@ -674,19 +851,16 @@ void ip_set_daddr(struct ip_packet *ip, const unsigned char *value)
 /**
  * @brief Get the IPv4 header
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
+ *
  * @param ip The IP packet to analyze
  * @return   The IP header if IPv4, NULL otherwise
  */
-struct iphdr * ipv4_get_header(struct ip_packet ip)
+const struct iphdr * ipv4_get_header(const struct ip_packet *ip)
 {
-	struct iphdr *header;
-
-	if(ip.version == IPV4)
-		header = &ip.header.v4;
-	else
-		header = NULL;
-
-	return header;
+	assert(ip->version == IPV4);
+	return &(ip->header.v4);
 }
 
 
@@ -696,17 +870,24 @@ struct iphdr * ipv4_get_header(struct ip_packet ip)
  * The IP-ID value is returned as-is (ie. not automatically converted to
  * the host byte order).
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
+ *
  * @param ip  The IP packet to analyze
  * @return    The IP-ID if the given packet is IPv4, -1 otherwise
  */
 int ipv4_get_id(struct ip_packet ip)
 {
+	assert(ip.version == IPV4);
 	return ipv4_get_id_nbo(ip, 1);
 }
 
 
 /**
  * @brief Get the IP-ID of an IPv4 packet in Network Byte Order
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
  *
  * @param ip  The IP packet to analyze
  * @param nbo The NBO flag (if RND = 1, use NBO = 1)
@@ -716,18 +897,15 @@ int ipv4_get_id_nbo(struct ip_packet ip, unsigned int nbo)
 {
 	uint16_t id;
 
-	if(ip.version == IPV4)
+	assert(ip.version == IPV4);
+
+	id = ip.header.v4.id;
+	if(!nbo)
 	{
-		id = ip.header.v4.id;
-		if(!nbo)
-		{
-			/* If IP-ID is not transmitted in Network Byte Order,
-			 * swap the two bytes */
-			id = swab16(id);
-		}
+		/* If IP-ID is not transmitted in Network Byte Order,
+		 * swap the two bytes */
+		id = swab16(id);
 	}
-	else /* IPV6 */
-		id = -1;
 
 	return id;
 }
@@ -739,18 +917,24 @@ int ipv4_get_id_nbo(struct ip_packet ip, unsigned int nbo)
  * The IP-ID value is set as-is (ie. not automatically converted to
  * the host byte order).
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
+ *
  * @param ip     The IP packet to modify
  * @param value  The IP-ID value
  */
 void ipv4_set_id(struct ip_packet *ip, int value)
 {
-	if(ip->version == IPV4)
-		ip->header.v4.id = value & 0xffff;
+	assert(ip->version == IPV4);
+	ip->header.v4.id = value & 0xffff;
 }
 
 
 /**
  * @brief Get the Don't Fragment (DF) bit of an IPv4 packet
+ *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
  *
  * @param ip The IP packet to analyze
  * @return   The DF bit of the IPv4 header if the given packet is IPv4,
@@ -758,57 +942,56 @@ void ipv4_set_id(struct ip_packet *ip, int value)
  */
 int ipv4_get_df(struct ip_packet ip)
 {
-	int df;
-
-	if(ip.version == IPV4)
-		df = IPV4_GET_DF(ip.header.v4);
-	else /* IPV6 */
-		df = -1;
-
-	return df;
+	assert(ip.version == IPV4);
+	return IPV4_GET_DF(ip.header.v4);
 }
 
 
 /**
  * @brief Set the Don't Fragment (DF) bit of an IPv4 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
+ *
  * @param ip     The IP packet to modify
  * @param value  The value of the DF bit
  */
 void ipv4_set_df(struct ip_packet *ip, int value)
 {
-	if(ip->version == IPV4)
-		IPV4_SET_DF(&ip->header.v4, value);
+	assert(ip->version == IPV4);
+	IPV4_SET_DF(&ip->header.v4, value);
 }
 
 
 /**
  * @brief Get the source address of an IPv4 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
+ *
  * @param ip The IPv4 packet to analyze
  * @return   The source address of the given IPv4 packet
  */
 uint32_t ipv4_get_saddr(struct ip_packet ip)
 {
-	if(ip.version == IPV4)
-		return ip.header.v4.saddr;
-
-	return 0;
+	assert(ip.version == IPV4);
+	return ip.header.v4.saddr;
 }
 
 
 /**
  * @brief Get the destination address of an IPv4 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV4.
+ *
  * @param ip The IPv4 packet to analyze
  * @return   The source address of the given IPv4 packet
  */
 uint32_t ipv4_get_daddr(struct ip_packet ip)
 {
-	if(ip.version == IPV4)
-		return ip.header.v4.daddr;
-
-	return 0;
+	assert(ip.version == IPV4);
+	return ip.header.v4.daddr;
 }
 
 
@@ -820,78 +1003,82 @@ uint32_t ipv4_get_daddr(struct ip_packet ip)
 /**
  * @brief Get the IPv6 header
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV6.
+ *
  * @param ip The IP packet to analyze
  * @return   The IP header if IPv6, NULL otherwise
  */
-struct ip6_hdr * ipv6_get_header(struct ip_packet ip)
+const struct ip6_hdr * ipv6_get_header(const struct ip_packet *ip)
 {
-	struct ip6_hdr *header;
-
-	if(ip.version == IPV6)
-		header = &ip.header.v6;
-	else
-		header = NULL;
-
-	return header;
+	assert(ip->version == IPV6);
+	return &(ip->header.v6);
 }
 
 
 /**
  * @brief Get the flow label of an IPv6 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV6.
+ *
  * @param ip The IPv6 packet to analyze
  * @return   The flow label of the given IPv6 packet
  */
 uint32_t ipv6_get_flow_label(struct ip_packet ip)
 {
-	if(ip.version == IPV6)
-		return IPV6_GET_FLOW_LABEL(ip.header.v6);
-
-	return 0;
+	assert(ip.version == IPV6);
+	return IPV6_GET_FLOW_LABEL(ip.header.v6);
 }
 
 
 /**
  * @brief Set the flow label of an IPv6 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV6.
+ *
  * @param ip     The IPv6 packet to modify
  * @param value  The flow label value
  */
 void ipv6_set_flow_label(struct ip_packet *ip, uint32_t value)
 {
-	if(ip->version == IPV6)
-		IPV6_SET_FLOW_LABEL(&ip->header.v6, value);
+	assert(ip->version == IPV6);
+	IPV6_SET_FLOW_LABEL(&ip->header.v6, value);
 }
 
 
 /**
  * @brief Get the source address of an IPv6 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV6.
+ *
  * @param ip The IPv6 packet to analyze
  * @return   The source address of the given IPv6 packet
  */
 struct in6_addr * ipv6_get_saddr(struct ip_packet *ip)
 {
-	if(ip->version == IPV6)
-		return &ip->header.v6.ip6_src;
-
-	return NULL;
+	assert(ip->version == IPV6);
+	return &ip->header.v6.ip6_src;
 }
 
 
 /**
  * @brief Get the destination address of an IPv6 packet
  *
+ * The function does not handle \ref ip_packet whose \ref ip_packet::version
+ * is not \ref IPV6.
+ *
  * @param ip The IPv6 packet to analyze
  * @return   The source address of the given IPv6 packet
  */
 struct in6_addr * ipv6_get_daddr(struct ip_packet *ip)
 {
-	if(ip->version == IPV6)
-		return &ip->header.v6.ip6_dst;
-
-	return NULL;
+	assert(ip->version == IPV6);
+	return &ip->header.v6.ip6_dst;
 }
+
 
 /**
  * Private functions used by the IP module:
@@ -902,26 +1089,22 @@ struct in6_addr * ipv6_get_daddr(struct ip_packet *ip)
 /*
  * @brief Get the version of an IP packet
  *
- * If the function returns an error (bad IP packet), the value of 'version'
- * is unchanged.
+ * If the function returns an error (packet too short for example), the value
+ * of 'version' is unchanged.
  *
  * @param packet  The IP data
  * @param size    The length of the IP data
- * @param version OUT: the version of the IP packet: IPV4 or IPV6
- * @return        Whether the given packet is an IPv4 or IPv6 packet or not
+ * @param version OUT: the version of the IP packet: IPV4, IPV6 or IP_UNKNOWN
+ * @return        Whether the given packet was successfully parsed or not
  */
 int get_ip_version(const unsigned char *packet,
                    unsigned int size,
                    ip_version *version)
 {
-	int ret = 1;
-
 	/* check the length of the packet */
 	if(size <= 0)
 	{
-		ret = 0;
-		*version = IPV4;
-		goto quit;
+		goto error;
 	}
 
 	/* check the version field */
@@ -934,13 +1117,13 @@ int get_ip_version(const unsigned char *packet,
 			*version = IPV6;
 			break;
 		default:
-			ret = 0;
-			*version = IPV4;
+			*version = IP_UNKNOWN;
 			break;
 	}
-	return ret;
 
-quit:
-	return ret;
+	return 1;
+
+error:
+	return 0;
 }
 

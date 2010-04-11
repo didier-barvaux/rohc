@@ -301,9 +301,6 @@ struct c_context *c_get_context(struct rohc_comp *, int cid);
  * Functions related to profile:
  */
 
-struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
-                                             int protocol,
-                                             struct ip_packet ip);
 struct c_profile * c_get_profile_from_id(struct rohc_comp *comp,
                                          int profile_id);
 void rohc_activate_profile(struct rohc_comp *comp, int profile);

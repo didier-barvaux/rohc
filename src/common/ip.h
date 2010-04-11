@@ -49,6 +49,8 @@ typedef enum
 	IPV4 = 4,
 	/// IP version 6
 	IPV6 = 6,
+	/// not IP
+	IP_UNKNOWN,
 } ip_version;
 
 
@@ -72,6 +74,9 @@ struct ip_packet
 
 	/// The whole IP data (header + payload) if not NULL
 	unsigned char *data;
+
+	/// The length (in bytes) of the whole IP data (header + payload)
+	unsigned int size;
 };
 
 /* AH header */
@@ -366,7 +371,7 @@ void ip_set_daddr(struct ip_packet *ip, const unsigned char *value);
 
 /* IPv4 specific functions */
 
-struct iphdr * ipv4_get_header(struct ip_packet ip);
+const struct iphdr * ipv4_get_header(const struct ip_packet *ip);
 int ipv4_get_id(struct ip_packet ip);
 int ipv4_get_id_nbo(struct ip_packet ip, unsigned int nbo);
 int ipv4_get_df(struct ip_packet ip);
@@ -378,7 +383,7 @@ void ipv4_set_df(struct ip_packet *ip, int value);
 
 /* IPv6 specific functions */
 
-struct ip6_hdr * ipv6_get_header(struct ip_packet ip);
+const struct ip6_hdr * ipv6_get_header(const struct ip_packet *ip);
 uint32_t ipv6_get_flow_label(struct ip_packet ip);
 struct in6_addr * ipv6_get_saddr(struct ip_packet *ip);
 struct in6_addr * ipv6_get_daddr(struct ip_packet *ip);
