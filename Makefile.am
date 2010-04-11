@@ -12,6 +12,13 @@ endif
 
 SUBDIRS = src $(TESTS_DIR) app
 
+dist_doc_DATA = \
+	README \
+	INSTALL \
+	COPYING \
+	AUTHORS \
+	ChangeLog
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = rohc.pc
 
