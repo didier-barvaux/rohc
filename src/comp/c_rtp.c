@@ -742,7 +742,6 @@ struct c_profile c_rtp_profile =
 	IPPROTO_UDP,         /* IP protocol */
 	rtp_ports,           /* list of UDP ports */
 	ROHC_PROFILE_RTP,    /* profile ID */
-	"alpha",             /* profile version */
 	"RTP / Compressor",  /* profile description */
 	c_rtp_create,        /* profile handlers */
 	c_rtp_destroy,

@@ -559,7 +559,6 @@ struct c_profile c_udp_profile =
 	IPPROTO_UDP,         /* IP protocol */
 	NULL,                /* list of UDP ports, not relevant for UDP */
 	ROHC_PROFILE_UDP,    /* profile ID (see 8 in RFC 3095) */
-	"1.0b",              /* profile version */
 	"UDP / Compressor",  /* profile description */
 	c_udp_create,        /* profile handlers */
 	c_generic_destroy,

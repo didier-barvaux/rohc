@@ -654,7 +654,6 @@ int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
 struct d_profile d_udplite_profile =
 {
 	ROHC_PROFILE_UDPLITE,        /* profile ID (see 7 in RFC 4019) */
-	"1.0",                       /* profile version */
 	"UDP-Lite / Decompressor",   /* profile description */
 	d_udp_lite_decode,           /* profile handlers */
 	d_udp_lite_decode_ir,

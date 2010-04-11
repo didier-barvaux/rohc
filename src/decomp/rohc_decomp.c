@@ -1359,8 +1359,6 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 		buffer += strlen(buffer);
 		sprintf(buffer, "name=\"%s\" ", p->description);
 		buffer += strlen(buffer);
-		sprintf(buffer, "version=\"%s\" ", p->version);
-		buffer += strlen(buffer);
 		sprintf(buffer, "active=\"yes\" />\n");
 		buffer += strlen(buffer);
 	}

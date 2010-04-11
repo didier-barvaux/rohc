@@ -225,7 +225,6 @@ int uncompressed_get_sn(struct d_context *context)
 struct d_profile d_uncomp_profile =
 {
 	ROHC_PROFILE_UNCOMPRESSED,     /* profile ID (see 8 in RFC 3095) */
-	"1.0",                         /* profile version */
 	"Uncompressed / Decompressor", /* profile description */
 	uncompressed_decode,           /* profile handlers */
 	uncompressed_decode_ir,

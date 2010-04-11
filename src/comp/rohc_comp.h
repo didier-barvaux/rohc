@@ -203,9 +203,7 @@ struct c_profile
 	/// The profile ID as reserved by IANA
 	const unsigned short id;
 
-	/// A string that describes the version of the implementation
-	const char *version;
-	/// A string that describes the implementation (authors...)
+	/// A string that describes the profile
 	const char *description;
 
 	/// @brief The handler used to create the profile-specific part of the

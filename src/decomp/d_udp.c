@@ -579,7 +579,6 @@ error:
 struct d_profile d_udp_profile =
 {
 	ROHC_PROFILE_UDP,       /* profile ID (see 8 in RFC 3095) */
-	"1.0",                  /* profile version */
 	"UDP / Decompressor",   /* profile description */
 	d_generic_decode,       /* profile handlers */
 	d_udp_decode_ir,

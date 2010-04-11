@@ -855,7 +855,6 @@ error:
 struct d_profile d_rtp_profile =
 {
 	ROHC_PROFILE_RTP,       /* profile ID (see 8 in RFC 3095) */
-	"beta",                 /* profile version */
 	"RTP / Decompressor",   /* profile description */
 	d_generic_decode,       /* profile handlers */
 	d_udp_decode_ir,

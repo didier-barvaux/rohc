@@ -194,9 +194,7 @@ struct d_profile
 	/// The profile ID as reserved by IANA
 	int id;
 
-	/// A string that describes the version of the implementation
-	char *version;
-	/// A string that describes the implementation (authors...)
+	/// A string that describes the profile
 	char *description;
 
 	/// The handler used to decode IR-DYN and UO* packets

@@ -573,8 +573,6 @@ int rohc_c_info(char *buffer)
 		buffer += strlen(buffer);
 		sprintf(buffer, "name=\"%s\" ", c_profiles[i]->description);
 		buffer += strlen(buffer);
-		sprintf(buffer, "version=\"%s\" ", c_profiles[i]->version);
-		buffer += strlen(buffer);
 		sprintf(buffer, "/>\n");
 		buffer += strlen(buffer);
 	}
@@ -660,8 +658,6 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 		sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
 		buffer += strlen(buffer);
 		sprintf(buffer, "name=\"%s\" ", p->description);
-		buffer += strlen(buffer);
-		sprintf(buffer, "version=\"%s\" ", p->version);
 		buffer += strlen(buffer);
 		sprintf(buffer, "active=\"%s\" ", comp->profiles[i] ? "yes" : "no");
 		buffer += strlen(buffer);

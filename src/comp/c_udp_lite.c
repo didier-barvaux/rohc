@@ -799,7 +799,6 @@ struct c_profile c_udp_lite_profile =
 	IPPROTO_UDPLITE,          /* IP protocol */
 	NULL,                     /* list of UDP ports, not relevant for UDP-Lite */
 	ROHC_PROFILE_UDPLITE,     /* profile ID (see 7 in RFC 4019) */
-	"1.0b",                   /* profile version */
 	"UDP-Lite / Compressor",  /* profile description */
 	c_udp_lite_create,        /* profile handlers */
 	c_generic_destroy,

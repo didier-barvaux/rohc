@@ -263,7 +263,6 @@ quit:
 struct d_profile d_ip_profile =
 {
 	ROHC_PROFILE_IP,              /* profile ID (see 5 in RFC 3843) */
-	"1.0",                        /* profile version */
 	"IP / Decompressor",          /* profile description */
 	d_generic_decode,             /* profile handlers */
 	d_generic_decode_ir,
