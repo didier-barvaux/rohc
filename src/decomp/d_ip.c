@@ -97,12 +97,12 @@ int ip_decode_dynamic_ip(struct d_generic_context *context,
 		read += 2;
 
 		/* init the outer IP-ID (IPv4 only) */
-		if(ip_get_version(context->active1->ip) == IPV4)
-			d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(context->active1->ip)), sn);
+		if(ip_get_version(&context->active1->ip) == IPV4)
+			d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);
 
 		/* init the inner IP-ID (IPv4 only) */
-		if(context->multiple_ip && ip_get_version(context->active2->ip) == IPV4)
-			d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(context->active2->ip)), sn);
+		if(context->multiple_ip && ip_get_version(&context->active2->ip) == IPV4)
+			d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
 	}
 
 	return read;

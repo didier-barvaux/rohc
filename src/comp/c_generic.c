@@ -40,211 +40,208 @@
  * Function prototypes.
  */
 
-int code_packet(struct c_context *context,
-                const struct ip_packet ip,
-                const struct ip_packet ip2,
+int code_packet(struct c_context *const context,
+                const struct ip_packet *ip,
+                const struct ip_packet *ip2,
                 const unsigned char *next_header,
-                unsigned char *dest);
+                unsigned char *const dest);
 
-int code_IR_packet(struct c_context *context,
-                   const struct ip_packet ip,
-                   const struct ip_packet ip2,
+int code_IR_packet(struct c_context *const context,
+                   const struct ip_packet *ip,
+                   const struct ip_packet *ip2,
                    const unsigned char *next_header,
-                   unsigned char *dest);
+                   unsigned char *const dest);
 
-int code_IR_DYN_packet(struct c_context *context,
-                       const struct ip_packet ip,
-                       const struct ip_packet ip2,
+int code_IR_DYN_packet(struct c_context *const context,
+                       const struct ip_packet *ip,
+                       const struct ip_packet *ip2,
                        const unsigned char *next_header,
-                       unsigned char *dest);
+                       unsigned char *const dest);
 
-int code_generic_static_part(struct c_context *context,
-                     struct ip_header_info *header_info,
-                     const struct ip_packet ip,
-                     unsigned char *dest,
-                     int counter);
+int code_generic_static_part(const struct c_context *context,
+                             struct ip_header_info *const header_info,
+                             const struct ip_packet *ip,
+                             unsigned char *const dest,
+                             int counter);
 
-int code_ipv4_static_part(struct c_context *context,
-                          struct ip_header_info *header_info,
-                          const struct ip_packet ip,
-                          unsigned char *dest,
+int code_ipv4_static_part(const struct c_context *context,
+                          struct ip_header_info *const header_info,
+                          const struct ip_packet *ip,
+                          unsigned char *const dest,
                           int counter);
 
-int code_ipv6_static_part(struct c_context *context,
-                          struct ip_header_info *header_info,
-                          struct ip_packet ip,
-                          unsigned char *dest,
+int code_ipv6_static_part(const struct c_context *context,
+                          struct ip_header_info *const header_info,
+                          const struct ip_packet *ip,
+                          unsigned char *const dest,
                           int counter);
 
-int code_generic_dynamic_part(struct c_context *context,
-                      struct ip_header_info *header_info,
-                      const struct ip_packet ip,
-                      unsigned char *dest,
-                      int counter);
+int code_generic_dynamic_part(const struct c_context *context,
+                              struct ip_header_info *const header_info,
+                              const struct ip_packet *ip,
+                              unsigned char *const dest,
+                              int counter);
 
-int code_ipv4_dynamic_part(struct c_context *context,
-                           struct ip_header_info *header_info,
-                           const struct ip_packet ip,
-                           unsigned char *dest,
+int code_ipv4_dynamic_part(const struct c_context *context,
+                           struct ip_header_info *const header_info,
+                           const struct ip_packet *ip,
+                           unsigned char *const dest,
                            int counter);
 
-int code_ipv6_dynamic_part(struct c_context *context,
-                           struct ip_header_info *header_info,
-                           const struct ip_packet ip,
-                           unsigned char *dest,
+int code_ipv6_dynamic_part(const struct c_context *context,
+                           struct ip_header_info *const header_info,
+                           const struct ip_packet *ip,
+                           unsigned char *const dest,
                            int counter);
 
-int code_UO_packet_tail(struct c_context *context,
-                        const struct ip_packet ip,
-                        const struct ip_packet ip2,
+int code_UO_packet_tail(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const struct ip_packet *ip2,
                         const unsigned char *next_header,
-                        unsigned char *dest,
+                        unsigned char *const dest,
                         int counter);
 
-int code_UO0_packet(struct c_context *context,
-                    const struct ip_packet ip,
-                    const struct ip_packet ip2,
+int code_UO0_packet(struct c_context *const context,
+                    const struct ip_packet *ip,
+                    const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *dest);
+                    unsigned char *const dest);
 
-int code_UO1_packet(struct c_context *context,
-                    const struct ip_packet ip,
-                    const struct ip_packet ip2,
+int code_UO1_packet(struct c_context *const context,
+                    const struct ip_packet *ip,
+                    const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *dest);
+                    unsigned char *const dest);
 
-int code_UO2_packet(struct c_context *context,
-                    const struct ip_packet ip,
-                    const struct ip_packet ip2,
+int code_UO2_packet(struct c_context *const context,
+                    const struct ip_packet *ip,
+                    const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *dest);
+                    unsigned char *const dest);
 
-int code_UOR2_bytes(struct c_context *context,
+int code_UOR2_bytes(const struct c_context *context,
                     const rohc_ext_t extension,
-                    unsigned char *f_byte,
-                    unsigned char *s_byte,
-                    unsigned char *t_byte);
+                    unsigned char *const f_byte,
+                    unsigned char *const s_byte,
+                    unsigned char *const t_byte);
 
-int code_UOR2_RTP_bytes(struct c_context *context,
+int code_UOR2_RTP_bytes(const struct c_context *context,
                         const rohc_ext_t extension,
-                        unsigned char *f_byte,
-                        unsigned char *s_byte,
-                        unsigned char *t_byte);
+                        unsigned char *const f_byte,
+                        unsigned char *const s_byte,
+                        unsigned char *const t_byte);
 
-int code_UOR2_TS_bytes(struct c_context *context,
+int code_UOR2_TS_bytes(const struct c_context *context,
                        const rohc_ext_t extension,
-                       unsigned char *f_byte,
-                       unsigned char *s_byte,
-                       unsigned char *t_byte);
+                       unsigned char *const f_byte,
+                       unsigned char *const s_byte,
+                       unsigned char *const t_byte);
 
-int code_UOR2_ID_bytes(struct c_context *context,
+int code_UOR2_ID_bytes(const struct c_context *context,
                        const rohc_ext_t extension,
-                       unsigned char *f_byte,
-                       unsigned char *s_byte,
-                       unsigned char *t_byte);
+                       unsigned char *const f_byte,
+                       unsigned char *const s_byte,
+                       unsigned char *const t_byte);
 
-int code_EXT0_packet(struct c_context *context,
-                     unsigned char *dest,
+int code_EXT0_packet(const struct c_context *context,
+                     unsigned char *const dest,
                      int counter);
 
-int code_EXT1_packet(struct c_context *context,
-                     unsigned char *dest,
+int code_EXT1_packet(const struct c_context *context,
+                     unsigned char *const dest,
                      int counter);
 
-int code_EXT2_packet(struct c_context *context,
-                     unsigned char *dest,
+int code_EXT2_packet(const struct c_context *context,
+                     unsigned char *const dest,
                      int counter);
 
-int code_EXT3_packet(struct c_context *context,
-                     const struct ip_packet ip,
-                     const struct ip_packet ip2,
-                     unsigned char *dest,
+int code_EXT3_packet(const struct c_context *context,
+                     const struct ip_packet *ip,
+                     const struct ip_packet *ip2,
+                     unsigned char *const dest,
                      int counter);
 
-void create_ipv6_item(unsigned char *ext, 
-		      int index_table, 
-		      int size, 
-		      struct list_comp * comp);
+void create_ipv6_item(const unsigned char *ext,
+                      const int index_table,
+                      const int size,
+                      struct list_comp *const comp);
 		      
-unsigned char * get_ipv6_extension(const struct ip_packet ip,
-                       int index);
+unsigned char * get_ipv6_extension(const struct ip_packet *ip,
+                                   const int index);
 
-int ipv6_compare(unsigned char * ext,
-		 struct list_comp * comp,
-		 int size,
-		 int index_table);
+int ipv6_compare(const unsigned char *ext,
+                 const struct list_comp *comp,
+                 const int size,
+                 const int index_table);
 
-int get_index_ipv6_table(const struct ip_packet ip,
-			 int index);
+int get_index_ipv6_table(const struct ip_packet *ip, const int index);
 				
-int get_ipv6_ext_size(unsigned char * ext);	
+int get_ipv6_ext_size(const unsigned char *ext);
 
-static void list_comp_ipv6_destroy_table(struct list_comp * comp);
-
-void decide_state(struct c_context *context);
+static void list_comp_ipv6_destroy_table(struct list_comp *const comp);
 
 
 static rohc_packet_t decide_packet(const struct c_context *context, 
-                                   const struct ip_packet ip,
-                                   const struct ip_packet ip2,
+                                   const struct ip_packet *ip,
+                                   const struct ip_packet *ip2,
                                    const size_t size_data);
 static rohc_packet_t decide_FO_packet(const struct c_context *context);
 static rohc_packet_t decide_SO_packet(const struct c_context *context);
 
 
-void update_variables(struct c_context *context,
-                      const struct ip_packet ip,
-                      const struct ip_packet ip2);
+void update_variables(struct c_context *const context,
+                      const struct ip_packet *ip,
+                      const struct ip_packet *ip2);
 
 rohc_ext_t decide_extension(const struct c_context *context);
 
-int rtp_header_flags_and_fields(struct c_context *context,
-                                unsigned short changed_f,
-                                const struct ip_packet ip,
-                                unsigned char *dest,
+int rtp_header_flags_and_fields(const struct c_context *context,
+                                const unsigned short changed_f,
+                                const struct ip_packet *ip,
+                                unsigned char *const dest,
                                 int counter);
 
-int header_flags(struct c_context *context,
-                 struct ip_header_info *header_info,
-                 unsigned short changed_f,
-                 const struct ip_packet ip,
-                 int is_outer,
-                 int nr_ip_id_bits,
-                 unsigned char *dest,
+int header_flags(const struct c_context *context,
+                 struct ip_header_info *const header_info,
+                 const unsigned short changed_f,
+                 const struct ip_packet *ip,
+                 const int is_outer,
+                 const int nr_ip_id_bits,
+                 unsigned char *const dest,
                  int counter);
 
-int header_fields(struct c_context *context,
-                  struct ip_header_info *header_info,
-                  unsigned short changed_f,
-                  const struct ip_packet ip,
-                  int is_outer,
-                  int nr_ip_id_bits,
-                  unsigned char *dest,
+int header_fields(const struct c_context *context,
+                  struct ip_header_info *const header_info,
+                  const unsigned short changed_f,
+                  const struct ip_packet *ip,
+                  const int is_outer,
+                  const int nr_ip_id_bits,
+                  unsigned char *const dest,
                   int counter);
 
-int changed_static_both_hdr(struct c_context *context,
-                            const struct ip_packet ip,
-                            const struct ip_packet ip2);
+int changed_static_both_hdr(const struct c_context *context,
+                            const struct ip_packet *ip,
+                            const struct ip_packet *ip2);
 
-int changed_static_one_hdr(unsigned short changed_fields,
-                           struct ip_header_info *header_info,
-                           const struct ip_packet ip,
-                           struct c_context *context);
+int changed_static_one_hdr(const unsigned short changed_fields,
+                           struct ip_header_info *const header_info,
+                           const struct ip_packet *ip,
+                           const struct c_context *context);
 
-int changed_dynamic_both_hdr(struct c_context *context,
-                             const struct ip_packet ip,
-                             const struct ip_packet ip2);
+int changed_dynamic_both_hdr(const struct c_context *context,
+                             const struct ip_packet *ip,
+                             const struct ip_packet *ip2);
 
-int changed_dynamic_one_hdr(unsigned short changed_fields,
-                            struct ip_header_info *header_info,
-                            const struct ip_packet ip,
-                            struct c_context *context);
+int changed_dynamic_one_hdr(const unsigned short changed_fields,
+                            struct ip_header_info *const header_info,
+                            const struct ip_packet *ip,
+                            const struct c_context *context);
 
-unsigned short changed_fields(struct ip_header_info *header_info,
-                              const struct ip_packet ip);
+unsigned short changed_fields(const struct ip_header_info *header_info,
+                              const struct ip_packet *ip);
 
-void check_ip_identification(struct ip_header_info *header_info,
-                             const struct ip_packet ip);
+void check_ip_identification(struct ip_header_info *const header_info,
+                             const struct ip_packet *ip);
 
 
 /*
@@ -253,15 +250,15 @@ void check_ip_identification(struct ip_header_info *header_info,
 
 static int jamming_find_packet_size(const struct rohc_comp *comp,
                                     const struct c_context *context,
-                                    const struct ip_packet ip,
+                                    const struct ip_packet *ip,
                                     const rohc_packet_t packet,
                                     const size_t size_data,
                                     const int original);
      
 static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
                                          const struct c_context *context,
-                                         const struct ip_packet ip,
-                                         const struct ip_packet ip2,
+                                         const struct ip_packet *ip,
+                                         const struct ip_packet *ip2,
                                          const rohc_packet_t packet,
                                          const size_t size_data);
 
@@ -281,7 +278,8 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
  *
  * @see changed_fields 
  */
-inline int is_changed(unsigned short changed_fields, unsigned short check_field)
+inline int is_changed(const unsigned short changed_fields,
+                      const unsigned short check_field)
 {
 	return ((changed_fields & check_field) != 0);
 }
@@ -291,7 +289,7 @@ inline int is_changed(unsigned short changed_fields, unsigned short check_field)
  *
  * @param comp The list compressor
  */
-void ip6_c_init_table(struct list_comp * comp)
+void ip6_c_init_table(struct list_comp *const comp)
 {
 	/* insert HBH type in table */
 	comp->based_table[0].type = HBH;
@@ -327,7 +325,7 @@ void ip6_c_init_table(struct list_comp * comp)
 	comp->trans_table[3].counter = 0;
 }
 
-static void list_comp_ipv6_destroy_table(struct list_comp *comp)
+static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 {
 	int i;
 	for(i = 0; i < 4; i++)
@@ -353,7 +351,7 @@ static void list_comp_ipv6_destroy_table(struct list_comp *comp)
  * @return            1 if successful, 0 otherwise
  */
 int c_init_header_info(struct ip_header_info *header_info,
-                       const struct ip_packet ip)
+                       const struct ip_packet *ip)
 {
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
@@ -371,7 +369,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	
 		/* store the IP packet and the random and NBO parameters
 		 * in the header info */
-		header_info->info.v4.old_ip = *(ipv4_get_header(&ip));
+		header_info->info.v4.old_ip = *(ipv4_get_header(ip));
 		header_info->info.v4.rnd = 0;
 		header_info->info.v4.old_rnd = header_info->info.v4.rnd;
 		header_info->info.v4.nbo = 1;
@@ -389,7 +387,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	else
 	{
 		/* store the IP header in the header info */
-		header_info->info.v6.old_ip = *(ipv6_get_header(&ip));
+		header_info->info.v6.old_ip = *(ipv6_get_header(ip));
 		header_info->info.v6.ext_comp = malloc(sizeof(struct list_comp));
 		if (header_info->info.v6.ext_comp == NULL)
 		{
@@ -469,7 +467,8 @@ void c_init_tmp_variables(struct generic_tmp_variables *tmp_variables)
  * @param ip      The IP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_generic_create(struct c_context *context, const struct ip_packet ip)
+int c_generic_create(struct c_context *const context,
+                     const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	unsigned int ip_proto;
@@ -586,7 +585,7 @@ quit:
  *
  * @param context The compression context
  */
-void c_generic_destroy(struct c_context *context)
+void c_generic_destroy(struct c_context *const context)
 {
 	struct c_generic_context *g_context =
 		(struct c_generic_context *) context->specific;
@@ -638,7 +637,7 @@ void c_generic_destroy(struct c_context *context)
  * @param context  The compression context
  * @param new_mode The new mode the context must enter in
  */
-void change_mode(struct c_context *context, rohc_mode new_mode)
+void change_mode(struct c_context *const context, const rohc_mode new_mode)
 {
 	if(context->mode != new_mode)
 	{
@@ -657,7 +656,7 @@ void change_mode(struct c_context *context, rohc_mode new_mode)
  * @param context   The compression context
  * @param new_state The new state the context must enter in
  */
-void change_state(struct c_context *context, rohc_c_state new_state)
+void change_state(struct c_context *const context, const rohc_c_state new_state)
 {
 	struct c_generic_context *g_context;
 	
@@ -703,15 +702,17 @@ void change_state(struct c_context *context, rohc_c_state new_state)
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
  */
-int c_generic_encode(struct c_context *context,
-                     const struct ip_packet ip,
-                     int packet_size,
-                     unsigned char *dest,
-                     int dest_size,
-                     int *payload_offset)
+int c_generic_encode(struct c_context *const context,
+                     const struct ip_packet *ip,
+                     const int packet_size,
+                     unsigned char *const dest,
+                     const int dest_size,
+                     int *const payload_offset)
 {
 	struct c_generic_context *g_context;
-	struct ip_packet ip2, last_ip_header;
+	struct ip_packet ip2;
+	struct ip_packet *inner_ip;
+	const struct ip_packet *last_ip_header;
 	unsigned char *next_header;
 	unsigned int ip_proto;
 	int size;
@@ -744,12 +745,13 @@ int c_generic_encode(struct c_context *context,
 			return -1;
 
 		g_context->tmp_variables.nr_of_ip_hdr = 2;
-		last_ip_header = ip2;
+		inner_ip = &ip2;
+		last_ip_header = &ip2;
 
 		/* initialize IPv4 header info if the inner header is IPv4 */
 		if(!g_context->is_ip2_initialized)
 		{
-			if(!c_init_header_info(&g_context->ip2_flags, ip2))
+			if(!c_init_header_info(&g_context->ip2_flags, inner_ip))
 				return -1;
 			g_context->is_ip2_initialized = 1;
 		}
@@ -758,6 +760,7 @@ int c_generic_encode(struct c_context *context,
 	{
 		/* there is only one IP header */
 		g_context->tmp_variables.nr_of_ip_hdr = 1;
+		inner_ip = NULL;
 		last_ip_header = ip;
 	}
 	
@@ -769,13 +772,14 @@ int c_generic_encode(struct c_context *context,
 		 * next header protocol */
 		return -1;
 	}
-	next_header = ip_get_next_layer(&last_ip_header);
+	next_header = ip_get_next_layer(last_ip_header);
 
 	/* find the offset of the payload and its size */
 	*payload_offset = ip_get_hdrlen(ip) + ip_get_total_extension_size(ip);
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1)
 	{
-		*payload_offset += ip_get_hdrlen(ip2) + ip_get_total_extension_size(ip2);
+		*payload_offset += ip_get_hdrlen(inner_ip) +
+		                   ip_get_total_extension_size(inner_ip);
 	}
 	*payload_offset += g_context->next_header_len;
 	size_data = packet_size - (*payload_offset);
@@ -791,8 +795,8 @@ int c_generic_encode(struct c_context *context,
 		if(ip_get_version(ip) == IPV4)
 			check_ip_identification(&g_context->ip_flags, ip);
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1 &&
-		   ip_get_version(ip2) == IPV4)
-			check_ip_identification(&g_context->ip2_flags, ip2);
+		   ip_get_version(inner_ip) == IPV4)
+			check_ip_identification(&g_context->ip2_flags, inner_ip);
 	}
 
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
@@ -805,9 +809,9 @@ int c_generic_encode(struct c_context *context,
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
-			udp = (struct udphdr *) ip_get_next_layer(&ip2);
+			udp = (struct udphdr *) ip_get_next_layer(inner_ip);
 		else
-			udp = (struct udphdr *) ip_get_next_layer(&ip);
+			udp = (struct udphdr *) ip_get_next_layer(ip);
 
 		/* initialisation of SN with the SN field of the RTP packet */
 		rtp = (struct rtphdr *) (udp + 1);
@@ -834,13 +838,16 @@ int c_generic_encode(struct c_context *context,
 		g_context->tmp_variables.changed_fields =
 			changed_fields(&g_context->ip_flags, ip);
 		g_context->tmp_variables.changed_fields2 =
-			changed_fields(&g_context->ip2_flags, ip2);
+			changed_fields(&g_context->ip2_flags, inner_ip);
 	}
 
 	/* how many changed fields are static ones? */
-	g_context->tmp_variables.send_static = changed_static_both_hdr(context, ip, ip2);
+	g_context->tmp_variables.send_static =
+		changed_static_both_hdr(context, ip, inner_ip);
+
 	/* how many changed fields are dynamic ones? */
-	g_context->tmp_variables.send_dynamic = changed_dynamic_both_hdr(context, ip, ip2);
+	g_context->tmp_variables.send_dynamic =
+		changed_dynamic_both_hdr(context, ip, inner_ip);
 
 	rohc_debugf(2, "send_static = %d, send_dynamic = %d\n",
 	            g_context->tmp_variables.send_static,
@@ -860,37 +867,37 @@ int c_generic_encode(struct c_context *context,
 	 *  - compute how many bits are needed to send the IP-ID and SN fields
 	 *  - update the sliding windows
 	 */
-	update_variables(context, ip, ip2);
+	update_variables(context, ip, inner_ip);
 
 	/* STEP 5: decide which packet to send */
 	g_context->tmp_variables.packet_type =
-		decide_packet(context, ip, ip2, size_data);
+		decide_packet(context, ip, inner_ip, size_data);
 
 	/* STEP 6: code the packet (and the extension if needed) */
-	size = code_packet(context, ip, ip2, next_header, dest);
+	size = code_packet(context, ip, inner_ip, next_header, dest);
 	if(size < 0)
 		return -1;
 
 	/* update the context with the new headers */
 	if(ip_get_version(ip) == IPV4)
 	{
-		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(&ip));
+		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(ip));
 		g_context->ip_flags.info.v4.old_rnd = g_context->ip_flags.info.v4.rnd;
 		g_context->ip_flags.info.v4.old_nbo = g_context->ip_flags.info.v4.nbo;
 	}
 	else /* IPV6 */
-		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(&ip));
+		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(ip));
 
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1)
 	{
-		if(ip_get_version(ip2) == IPV4)
+		if(ip_get_version(inner_ip) == IPV4)
 		{
-			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(&ip2));
+			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(inner_ip));
 			g_context->ip2_flags.info.v4.old_rnd = g_context->ip2_flags.info.v4.rnd;
 			g_context->ip2_flags.info.v4.old_nbo = g_context->ip2_flags.info.v4.nbo;
 		}
 		else /* IPV6 */
-			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(&ip2));
+			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(inner_ip));
 	}
 
 	/* update packet counters */
@@ -912,15 +919,18 @@ int c_generic_encode(struct c_context *context,
  * @param ip The ip packet to compress
  * @return 1 if a compressed list must be sent, 0 if not and -1 if error
  */
-int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip)
+int c_algo_list_compress(struct list_comp *const comp,
+                         const struct ip_packet *ip)
 {
 	int i;
 	int size;
 	int j;
 	int index_table;
-	unsigned char * ext = ip.data + sizeof(struct ip6_hdr);
+	const unsigned char *ext;
 	int result = 0;
 	struct list_elt * elt;
+
+	ext = ip_get_raw_data(ip) + sizeof(struct ip6_hdr);
 
 #if ROHC_DEBUG_LEVEL >= 3
 	/* print current list before update */
@@ -1032,7 +1042,10 @@ error:
  * @param index_table The index of the item in the based table
  * @return 1 if successfull, 0 else
  */
-int c_create_current_list(int index, struct list_comp * comp, unsigned char * ext, int index_table)
+int c_create_current_list(const int index,
+                          struct list_comp *const comp,
+                          const unsigned char *ext,
+                          const int index_table)
 {
 	struct list_elt * elt;
 	int curr_index;
@@ -1235,8 +1248,11 @@ int decide_type(struct list_comp * comp)
  * @param size The number of element in current list
  * @return The new position 
  */
-
-int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int ps, int size)
+int encode_list(struct list_comp *const comp,
+                unsigned char *const dest,
+                int counter,
+                const int ps,
+                const int size)
 {
 	int type; // encoding type
 	unsigned char byte;
@@ -1371,7 +1387,10 @@ Encoding type 0 (5.8.6.1):
  * @param ps the size of the index
  * @return The new position
  */
-int encode_type_0(struct list_comp * comp, unsigned char * dest, int counter, int ps)
+int encode_type_0(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps)
 {
 	int length; // data length
 	int i;
@@ -1477,7 +1496,10 @@ Encoding type 1 (5.8.6.2):
  * @param ps the size of the index
  * @return The new position
  */
-int encode_type_1(struct list_comp * comp, unsigned char * dest, int counter, int ps)									
+int encode_type_1(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps)
 {
 	int length; // data length
 	int i;
@@ -1639,7 +1661,10 @@ Encoding type 2 (5.8.6.3):
  * @param ps the size of the index
  * @return The new position
  */
-int encode_type_2(struct list_comp * comp, unsigned char * dest, int counter, int ps)
+int encode_type_2(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps)
 {
 	int i;
 	int j;
@@ -1725,7 +1750,10 @@ Encoding type 3 (5.8.6.4):
  * @param ps the size of the index
  * @return The new position
  */
-int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, int ps)
+int encode_type_3(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps)
 {
 	int i;
 	int j;
@@ -1943,7 +1971,10 @@ int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, in
  * @param index_table The index in based table
  * @return 1 if equal, 0 else
  */
-int ipv6_compare(unsigned char * ext,struct list_comp * comp,int size, int index_table)
+int ipv6_compare(const unsigned char *ext,
+                 const struct list_comp *comp,
+                 const int size,
+                 const int index_table)
 {
 	return memcmp(ext + 2, comp->based_table[index_table].data + 2, size - 2);
 }
@@ -1956,7 +1987,10 @@ int ipv6_compare(unsigned char * ext,struct list_comp * comp,int size, int index
  * @param size The size of the data
  * @param comp The list compressor
  */
-void create_ipv6_item(unsigned char *ext, int index_table, int size, struct list_comp * comp)
+void create_ipv6_item(const unsigned char *ext,
+                      const int index_table,
+                      const int size,
+                      struct list_comp *const comp)
 {
 	comp->based_table[index_table].length = size;
 	switch (index_table)
@@ -1998,14 +2032,14 @@ void create_ipv6_item(unsigned char *ext, int index_table, int size, struct list
  * @param index  The index of the extension to retrieve in the IP packet
  * @return       the extension
  */
-unsigned char *get_ipv6_extension(const struct ip_packet ip, int index)
+unsigned char *get_ipv6_extension(const struct ip_packet *ip, const int index)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
 	int i = 0;
 
 	/* get the next known IP extension in packet */
-	next_header = ip_get_next_ext_header_from_ip(&ip, &next_header_type);
+	next_header = ip_get_next_ext_header_from_ip(ip, &next_header_type);
 	while(i < index && next_header != NULL)
 	{
 		/* get the next known IP extension */
@@ -2025,7 +2059,7 @@ unsigned char *get_ipv6_extension(const struct ip_packet ip, int index)
  * @param index  The index of the extension to retrieve in the IP packet
  * @return       the based table index
  */
-int get_index_ipv6_table(const struct ip_packet ip, int index)
+int get_index_ipv6_table(const struct ip_packet *ip, const int index)
 {
 	int index_table = -1;
 	unsigned char *next_header;
@@ -2033,7 +2067,7 @@ int get_index_ipv6_table(const struct ip_packet ip, int index)
 	int i = 0;
 
 	/* get the next known IP extension in packet */
-	next_header = ip_get_next_ext_header_from_ip(&ip, &next_header_type);
+	next_header = ip_get_next_ext_header_from_ip(ip, &next_header_type);
 	while(i < index && next_header != NULL)
 	{
 		/* get the next known IP extension */
@@ -2079,7 +2113,7 @@ error:
  * @param ext The extension
  * @return the size
  */
-int get_ipv6_ext_size(unsigned char * ext)
+int get_ipv6_ext_size(const unsigned char *ext)
 {
 	int size = (*(ext+1) + 1 )*8;
 	return size;
@@ -2094,8 +2128,8 @@ int get_ipv6_ext_size(unsigned char * ext)
  * @param context  The compression context
  * @param feedback The feedback information including the whole feedback packet
  */
-void c_generic_feedback(struct c_context *context,
-                        struct c_feedback *feedback)
+void c_generic_feedback(struct c_context *const context,
+                        const struct c_feedback *feedback)
 {
 	struct c_generic_context *g_context;
 	unsigned char *p; /* pointer to the profile-specific data
@@ -2265,7 +2299,7 @@ void periodic_down_transition(struct c_context *context)
  *
  * @param context The compression context
  */
-void decide_state(struct c_context *context)
+void decide_state(struct c_context *const context)
 {
 	struct c_generic_context *g_context;
 	int ir_count, fo_count, send_static, send_dynamic;
@@ -2314,9 +2348,9 @@ void decide_state(struct c_context *context)
  * @param ip      The outer IP header
  * @param ip2     The inner IP header
  */
-void update_variables(struct c_context *context,
-                      const struct ip_packet ip,
-                      const struct ip_packet ip2)
+void update_variables(struct c_context *const context,
+                      const struct ip_packet *ip,
+                      const struct ip_packet *ip2)
 {
 	struct c_generic_context *g_context;
 	
@@ -2378,9 +2412,9 @@ void update_variables(struct c_context *context,
 		struct sc_rtp_context *rtp_context;
 
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
-			udp = (struct udphdr *) ip_get_next_layer(&ip2);
+			udp = (struct udphdr *) ip_get_next_layer(ip2);
 		else
-			udp = (struct udphdr *) ip_get_next_layer(&ip);
+			udp = (struct udphdr *) ip_get_next_layer(ip);
 
 		rtp = (struct rtphdr *) (udp + 1);
 		rtp_context = g_context->specific;
@@ -2678,8 +2712,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
  *                  \li PACKET_UNKNOWN in case of failure
  */
 static rohc_packet_t decide_packet(const struct c_context *context, 
-                                   const struct ip_packet ip,
-                                   const struct ip_packet ip2,
+                                   const struct ip_packet *ip,
+                                   const struct ip_packet *ip2,
                                    const size_t size_data)
 {
 	struct c_generic_context *g_context;
@@ -2735,7 +2769,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 	{
 		if(nr_of_ip_hdr == 1 && g_context->ip_flags.version == IPV6)
 		{
-			next_header_type = ip.header.v6.ip6_nxt;
+			next_header_type = ip->header.v6.ip6_nxt;
 			/* extension list to compress */
 			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
 			   next_header_type == IPV6_EXT_DESTINATION ||
@@ -2756,7 +2790,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 				g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
 			if(g_context->ip_flags.version == IPV6)
 			{
-				next_header_type = ip.header.v6.ip6_nxt;
+				next_header_type = ip->header.v6.ip6_nxt;
 				/* extension list to compress */
 				if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
 				   next_header_type == IPV6_EXT_DESTINATION ||
@@ -2772,7 +2806,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			}
 			if(packet != PACKET_IR_DYN && g_context->ip2_flags.version == IPV6)
 			{
-				next_header_type = ip2.header.v6.ip6_nxt;
+				next_header_type = ip2->header.v6.ip6_nxt;
 				/* extension list to compress */
 				if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
 				   next_header_type == IPV6_EXT_DESTINATION ||
@@ -2807,18 +2841,18 @@ error:
  * @return            The position in the rohc-packet-under-build buffer
  *                    if successful, -1 otherwise
  */
-int code_packet(struct c_context *context,
-                const struct ip_packet ip,
-                const struct ip_packet ip2,
+int code_packet(struct c_context *const context,
+                const struct ip_packet *ip,
+                const struct ip_packet *ip2,
                 const unsigned char *next_header,
-                unsigned char *dest)
+                unsigned char *const dest)
 {
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
 	int nr_of_ip_hdr;
 	int (*code_packet_type)(struct c_context *context,
-	                        const struct ip_packet ip,
-	                        const struct ip_packet ip2,
+	                        const struct ip_packet *ip,
+	                        const struct ip_packet *ip2,
 	                        const unsigned char *next_header,
 	                        unsigned char *dest);
 
@@ -2913,11 +2947,11 @@ error:
  * @param dest           The rohc-packet-under-build buffer
  * @return               The position in the rohc-packet-under-build buffer 
  */
-int code_IR_packet(struct c_context *context,
-                   const struct ip_packet ip,
-                   const struct ip_packet ip2,
+int code_IR_packet(struct c_context *const context,
+                   const struct ip_packet *ip,
+                   const struct ip_packet *ip2,
                    const unsigned char *next_header,
-                   unsigned char *dest)
+                   unsigned char *const dest)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
@@ -3071,11 +3105,11 @@ error:
  * @param dest           The rohc-packet-under-build buffer
  * @return               The position in the rohc-packet-under-build buffer 
  */
-int code_IR_DYN_packet(struct c_context *context,
-                       const struct ip_packet ip,
-                       const struct ip_packet ip2,
+int code_IR_DYN_packet(struct c_context *const context,
+                       const struct ip_packet *ip,
+                       const struct ip_packet *ip2,
                        const unsigned char *next_header,
-                       unsigned char *dest)
+                       unsigned char *const dest)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
@@ -3165,10 +3199,10 @@ error:
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_generic_static_part(struct c_context *context,
-                             struct ip_header_info *header_info,
-                             const struct ip_packet ip,
-                             unsigned char *dest,
+int code_generic_static_part(const struct c_context *context,
+                             struct ip_header_info *const header_info,
+                             const struct ip_packet *ip,
+                             unsigned char *const dest,
                              int counter)
 {
 	if(ip_get_version(ip) == IPV4)
@@ -3208,10 +3242,10 @@ int code_generic_static_part(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_ipv4_static_part(struct c_context *context,
-                          struct ip_header_info *header_info,
-                          const struct ip_packet ip,
-                          unsigned char *dest,
+int code_ipv4_static_part(const struct c_context *context,
+                          struct ip_header_info *const header_info,
+                          const struct ip_packet *ip,
+                          unsigned char *const dest,
                           int counter)
 {
 	unsigned int protocol;
@@ -3278,16 +3312,16 @@ int code_ipv4_static_part(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_ipv6_static_part(struct c_context *context,
-                          struct ip_header_info *header_info,
-                          struct ip_packet ip,
-                          unsigned char *dest,
+int code_ipv6_static_part(const struct c_context *context,
+                          struct ip_header_info *const header_info,
+                          const struct ip_packet *ip,
+                          unsigned char *const dest,
                           int counter)
 {
 	unsigned int flow_label;
 	unsigned int protocol;
-	struct in6_addr *saddr;
-	struct in6_addr *daddr;
+	const struct in6_addr *saddr;
+	const struct in6_addr *daddr;
 
 	/* part 1 */
 	flow_label = ipv6_get_flow_label(ip);
@@ -3311,14 +3345,14 @@ int code_ipv6_static_part(struct c_context *context,
 	header_info->protocol_count++;
 
 	/* part 4 */
-	saddr = ipv6_get_saddr(&ip);
+	saddr = ipv6_get_saddr(ip);
 	memcpy(&dest[counter], saddr, 16);
 	rohc_debugf(3, "src addr = " IPV6_ADDR_FORMAT "\n",
 	            IPV6_ADDR(saddr));
 	counter += 16;
 
 	/* part 5 */
-	daddr = ipv6_get_daddr(&ip);
+	daddr = ipv6_get_daddr(ip);
 	memcpy(&dest[counter], daddr, 16);
 	rohc_debugf(3, "dst addr = " IPV6_ADDR_FORMAT "\n",
 	            IPV6_ADDR(daddr));
@@ -3338,10 +3372,10 @@ int code_ipv6_static_part(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_generic_dynamic_part(struct c_context *context,
-                              struct ip_header_info *header_info,
-                              const struct ip_packet ip,
-                              unsigned char *dest,
+int code_generic_dynamic_part(const struct c_context *context,
+                              struct ip_header_info *const header_info,
+                              const const struct ip_packet *ip,
+                              unsigned char *const dest,
                               int counter)
 {
 	if(ip_get_version(ip) == IPV4)
@@ -3383,10 +3417,10 @@ int code_generic_dynamic_part(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_ipv4_dynamic_part(struct c_context *context,
+int code_ipv4_dynamic_part(const struct c_context *const context,
                            struct ip_header_info *header_info,
-                           const struct ip_packet ip,
-                           unsigned char *dest,
+                           const struct ip_packet *ip,
+                           unsigned char *const dest,
                            int counter)
 {
 	unsigned int tos, ttl, df;
@@ -3464,10 +3498,10 @@ int code_ipv4_dynamic_part(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_ipv6_dynamic_part(struct c_context *context,
-                           struct ip_header_info *header_info,
-                           const struct ip_packet ip,
-                           unsigned char *dest,
+int code_ipv6_dynamic_part(const struct c_context *context,
+                           struct ip_header_info *const header_info,
+                           const struct ip_packet *ip,
+                           unsigned char *const dest,
                            int counter)
 {
 	unsigned int tos, ttl;
@@ -3600,11 +3634,11 @@ int code_ipv6_dynamic_part(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int code_UO_packet_tail(struct c_context *context,
-                        const struct ip_packet ip,
-                        const struct ip_packet ip2,
+int code_UO_packet_tail(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const struct ip_packet *ip2,
                         const unsigned char *next_header,
-                        unsigned char *dest,
+                        unsigned char *const dest,
 								int counter)
 {
 	struct c_generic_context *g_context;
@@ -3682,11 +3716,11 @@ int code_UO_packet_tail(struct c_context *context,
  * @return               The position in the rohc-packet-under-build buffer 
  *                       if successful, -1 otherwise
  */
-int code_UO0_packet(struct c_context *context,
-                    const struct ip_packet ip,
-                    const struct ip_packet ip2,
+int code_UO0_packet(struct c_context *const context,
+                    const struct ip_packet *ip,
+                    const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *dest)
+                    unsigned char *const dest)
 {
 	int counter;
 	int first_position;
@@ -3694,7 +3728,7 @@ int code_UO0_packet(struct c_context *context,
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
 	unsigned int crc;
-	unsigned char *ip2_hdr;
+	const unsigned char *ip2_hdr;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3720,15 +3754,15 @@ int code_UO0_packet(struct c_context *context,
 	crc = CRC_INIT_3;
 	if(nr_of_ip_hdr > 1)
 	{
-		ip2_hdr = ip2.data;
+		ip2_hdr = ip2->data;
 	}
 	else
 	{
 		ip2_hdr = NULL;
 	}
-	crc = g_context->compute_crc_static(ip.data, ip2_hdr, next_header,
+	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                    CRC_TYPE_3, crc);
-	crc = g_context->compute_crc_dynamic(ip.data, ip2_hdr, next_header,
+	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                     CRC_TYPE_3, crc);
 	f_byte |= crc;
 	rohc_debugf(2, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
@@ -3806,11 +3840,11 @@ int code_UO0_packet(struct c_context *context,
  * @return               The position in the rohc-packet-under-build buffer 
  *                       if successful, -1 otherwise
  */
-int code_UO1_packet(struct c_context *context,
-                    const struct ip_packet ip,
-                    const struct ip_packet ip2,
+int code_UO1_packet(struct c_context *const context,
+                    const struct ip_packet *ip,
+                    const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *dest)
+                    unsigned char *const dest)
 {
 	int counter;
 	int first_position;
@@ -3823,7 +3857,7 @@ int code_UO1_packet(struct c_context *context,
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
 	unsigned int crc;
-	unsigned char *ip2_hdr;
+	const unsigned char *ip2_hdr;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3932,15 +3966,15 @@ int code_UO1_packet(struct c_context *context,
 	crc = CRC_INIT_3;
 	if(nr_of_ip_hdr > 1)
 	{
-		ip2_hdr = ip2.data;
+		ip2_hdr = ip2->data;
 	}
 	else
 	{
 		ip2_hdr = NULL;
 	}
-	crc = g_context->compute_crc_static(ip.data, ip2_hdr, next_header,
+	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                    CRC_TYPE_3, crc);
-	crc = g_context->compute_crc_dynamic(ip.data, ip2_hdr, next_header,
+	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                     CRC_TYPE_3, crc);
 	s_byte |= crc & 0x07;
 	dest[counter] = s_byte;
@@ -4040,11 +4074,11 @@ error:
  * @return               The position in the rohc-packet-under-build buffer 
  *                       if successful, -1 otherwise
  */
-int code_UO2_packet(struct c_context *context,
-                    const struct ip_packet ip,
-                    const struct ip_packet ip2,
+int code_UO2_packet(struct c_context *const context,
+                    const struct ip_packet *ip,
+                    const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *dest)
+                    unsigned char *const dest)
 {
 	unsigned char f_byte;     /* part 2 */
 	unsigned char s_byte = 0; /* part 4 */
@@ -4058,12 +4092,12 @@ int code_UO2_packet(struct c_context *context,
 	int is_rtp;
 	unsigned int crc;
 	unsigned int crc_type;
-	unsigned char *ip2_hdr;
-	int (*code_bytes)(struct c_context *context,
+	const unsigned char *ip2_hdr;
+	int (*code_bytes)(const struct c_context *context,
 	                  const rohc_ext_t extension,
-	                  unsigned char *f_byte,
-	                  unsigned char *s_byte,
-	                  unsigned char *t_byte);
+	                  unsigned char *const f_byte,
+	                  unsigned char *const s_byte,
+	                  unsigned char *const t_byte);
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -4132,17 +4166,17 @@ int code_UO2_packet(struct c_context *context,
 #endif
 	if(nr_of_ip_hdr > 1)
 	{
-		ip2_hdr = ip2.data;
+		ip2_hdr = ip2->data;
 	}
 	else
 	{
 		ip2_hdr = NULL;
 	}
 	/* compute CRC on CRC-STATIC fields */
-	crc = g_context->compute_crc_static(ip.data, ip2_hdr, next_header,
+	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                    crc_type, crc);
 	/* compute CRC on CRC-DYNAMIC fields */
-	crc = g_context->compute_crc_dynamic(ip.data, ip2_hdr, next_header,
+	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                     crc_type, crc);
 	t_byte = crc;
 	t_byte_position = counter;
@@ -4235,11 +4269,11 @@ error:
  * @param t_byte       IN/OUT: The second byte of the UOR-2 packet
  * @return             1 if successful, 0 otherwise
  */
-int code_UOR2_bytes(struct c_context *context,
+int code_UOR2_bytes(const struct c_context *context,
                     const rohc_ext_t extension,
-                    unsigned char *f_byte,
-                    unsigned char *s_byte,
-                    unsigned char *t_byte)
+                    unsigned char *const f_byte,
+                    unsigned char *const s_byte,
+                    unsigned char *const t_byte)
 {
 	struct c_generic_context *g_context;
 
@@ -4362,11 +4396,11 @@ error:
  * @param t_byte       IN/OUT: The third byte of the UOR-2-RTP packet
  * @return             1 if successful, 0 otherwise
  */
-int code_UOR2_RTP_bytes(struct c_context *context,
+int code_UOR2_RTP_bytes(const struct c_context *context,
                         const rohc_ext_t extension,
-                        unsigned char *f_byte,
-                        unsigned char *s_byte,
-                        unsigned char *t_byte)
+                        unsigned char *const f_byte,
+                        unsigned char *const s_byte,
+                        unsigned char *const t_byte)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
@@ -4572,11 +4606,11 @@ error:
  * @param t_byte       IN/OUT: The third byte of the UOR-2-TS packet
  * @return             1 if successful, 0 otherwise
  */
-int code_UOR2_TS_bytes(struct c_context *context,
+int code_UOR2_TS_bytes(const struct c_context *context,
                        const rohc_ext_t extension,
-                       unsigned char *f_byte,
-                       unsigned char *s_byte,
-                       unsigned char *t_byte)
+                       unsigned char *const f_byte,
+                       unsigned char *const s_byte,
+                       unsigned char *const t_byte)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
@@ -4780,11 +4814,11 @@ error:
  * @param t_byte       IN/OUT: The third byte of the UOR-2-ID packet
  * @return             1 if successful, 0 otherwise
  */
-int code_UOR2_ID_bytes(struct c_context *context,
+int code_UOR2_ID_bytes(const struct c_context *context,
                        const rohc_ext_t extension,
-                       unsigned char *f_byte,
-                       unsigned char *s_byte,
-                       unsigned char *t_byte)
+                       unsigned char *const f_byte,
+                       unsigned char *const s_byte,
+                       unsigned char *const t_byte)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
@@ -4981,8 +5015,8 @@ error:
  * @return           The new position in the rohc-packet-under-build buffer 
  *                   if successful, -1 otherwise
  */
-int code_EXT0_packet(struct c_context *context,
-                     unsigned char *dest,
+int code_EXT0_packet(const struct c_context *context,
+                     unsigned char *const dest,
                      int counter)
 {
 	struct c_generic_context *g_context;
@@ -5076,8 +5110,8 @@ error:
  * @return           The new position in the rohc-packet-under-build buffer 
  *                   if successful, -1 otherwise
  */
-int code_EXT1_packet(struct c_context *context,
-                     unsigned char *dest,
+int code_EXT1_packet(const struct c_context *context,
+                     unsigned char *const dest,
                      int counter)
 {
 	struct c_generic_context *g_context;
@@ -5211,8 +5245,8 @@ error:
  * @return           The new position in the rohc-packet-under-build buffer 
  *                   if successful, -1 otherwise
  */
-int code_EXT2_packet(struct c_context *context,
-                     unsigned char *dest,
+int code_EXT2_packet(const struct c_context *context,
+                     unsigned char *const dest,
                      int counter)
 {
 	struct c_generic_context *g_context;
@@ -5389,10 +5423,10 @@ error:
  * @return           The new position in the rohc-packet-under-build buffer
  *                   if successful, -1 otherwise
  */
-int code_EXT3_packet(struct c_context *context,
-                     const struct ip_packet ip,
-                     const struct ip_packet ip2,
-                     unsigned char *dest,
+int code_EXT3_packet(const struct c_context *context,
+                     const struct ip_packet *ip,
+                     const struct ip_packet *ip2,
+                     unsigned char *const dest,
                      int counter)
 {
 	struct c_generic_context *g_context;
@@ -5738,10 +5772,10 @@ error:
  *
  * @see changed_fields
  */
-int rtp_header_flags_and_fields(struct c_context *context,
-                                unsigned short changed_f,
-                                const struct ip_packet ip,
-                                unsigned char *dest,
+int rtp_header_flags_and_fields(const struct c_context *context,
+                                const unsigned short changed_f,
+                                const struct ip_packet *ip,
+                                unsigned char *const dest,
                                 int counter)
 {
 	struct c_generic_context *g_context;
@@ -5756,7 +5790,7 @@ int rtp_header_flags_and_fields(struct c_context *context,
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 	/* get RTP header */
-	udp = (struct udphdr *) ip_get_next_layer(&ip);
+	udp = (struct udphdr *) ip_get_next_layer(ip);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* part 1 */
@@ -5862,13 +5896,13 @@ error:
  *
  * @see changed_fields
  */
-int header_flags(struct c_context *context,
-                 struct ip_header_info *header_info,
-                 unsigned short changed_f,
-                 const struct ip_packet ip,
-                 int is_outer,
-                 int nr_ip_id_bits,
-                 unsigned char *dest,
+int header_flags(const struct c_context *context,
+                 struct ip_header_info *const header_info,
+                 const unsigned short changed_f,
+                 const struct ip_packet *ip,
+                 const int is_outer,
+                 const int nr_ip_id_bits,
+                 unsigned char *const dest,
                  int counter)
 {
 	int flags = 0;
@@ -5965,13 +5999,13 @@ int header_flags(struct c_context *context,
  *
  * @see changed_fields
  */
-int header_fields(struct c_context *context,
-                  struct ip_header_info *header_info,
-                  unsigned short changed_f,
-                  const struct ip_packet ip,
-                  int is_outer,
-                  int nr_ip_id_bits,
-                  unsigned char *dest,
+int header_fields(const struct c_context *context,
+                  struct ip_header_info *const header_info,
+                  const unsigned short changed_f,
+                  const struct ip_packet *ip,
+                  const int is_outer,
+                  const int nr_ip_id_bits,
+                  unsigned char *const dest,
                   int counter)
 {
 	unsigned int tos, ttl, protocol, id;
@@ -6203,9 +6237,9 @@ error:
  * @param ip2     The inner IP header
  * @return        The number of fields that changed
  */
-int changed_static_both_hdr(struct c_context *context,
-                            const struct ip_packet ip,
-                            const struct ip_packet ip2)
+int changed_static_both_hdr(const struct c_context *context,
+                            const struct ip_packet *ip,
+                            const struct ip_packet *ip2)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	unsigned short changed_fields;
@@ -6258,10 +6292,10 @@ int changed_static_both_hdr(struct c_context *context,
  * @param context        The compression context
  * @return               The number of fields that changed
  */
-int changed_static_one_hdr(unsigned short changed_fields,
-                           struct ip_header_info *header_info,
-                           const struct ip_packet ip,
-                           struct c_context *context)
+int changed_static_one_hdr(const unsigned short changed_fields,
+                           struct ip_header_info *const header_info,
+                           const struct ip_packet *ip,
+                           const struct c_context *context)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	struct c_generic_context *g_context;
@@ -6295,9 +6329,9 @@ int changed_static_one_hdr(unsigned short changed_fields,
  * @param ip2     The inner IP header
  * @return        The number of fields that changed
  */
-int changed_dynamic_both_hdr(struct c_context *context,
-                             const struct ip_packet ip,
-                             const struct ip_packet ip2)
+int changed_dynamic_both_hdr(const struct c_context *context,
+                             const struct ip_packet *ip,
+                             const struct ip_packet *ip2)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	unsigned short changed_fields;
@@ -6349,10 +6383,10 @@ int changed_dynamic_both_hdr(struct c_context *context,
  * @param context        The compression context
  * @return               The number of fields that changed
  */
-int changed_dynamic_one_hdr(unsigned short changed_fields,
-                            struct ip_header_info *header_info,
-                            const struct ip_packet ip,
-                            struct c_context *context)
+int changed_dynamic_one_hdr(const unsigned short changed_fields,
+                            struct ip_header_info *const header_info,
+                            const struct ip_packet *ip,
+                            const struct c_context *context)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	int nb_flags = 0; /* number of flags that changed */
@@ -6454,15 +6488,15 @@ int changed_dynamic_one_hdr(unsigned short changed_fields,
  * @param ip             The header of the new IP packet
  * @return               The bitpattern that indicates which field changed
  */
-unsigned short changed_fields(struct ip_header_info *header_info,
-                              const struct ip_packet ip)
+unsigned short changed_fields(const struct ip_header_info *header_info,
+                              const struct ip_packet *ip)
 {
 	unsigned short ret_value = 0;
 	unsigned int old_tos, old_ttl, old_protocol;
 
 	if(ip_get_version(ip) == IPV4)
 	{
-		struct iphdr *old_ip;
+		const struct iphdr *old_ip;
 	
 		old_ip = &header_info->info.v4.old_ip;
 		old_tos = old_ip->tos;
@@ -6471,7 +6505,7 @@ unsigned short changed_fields(struct ip_header_info *header_info,
 	}
 	else /* IPV6 */
 	{
-		struct ip6_hdr *old_ip;
+		const struct ip6_hdr *old_ip;
 
 		old_ip = &header_info->info.v6.old_ip;
 		old_tos = IPV6_GET_TC(*old_ip);
@@ -6497,8 +6531,8 @@ unsigned short changed_fields(struct ip_header_info *header_info,
  * @param header_info  The header info stored in the profile
  * @param ip           One IPv4 header
  */
-void check_ip_identification(struct ip_header_info *header_info,
-                             const struct ip_packet ip)
+void check_ip_identification(struct ip_header_info *const header_info,
+                             const struct ip_packet *ip)
 {
 	int old_id, new_id;
 	int nbo = -1;
@@ -6565,7 +6599,7 @@ void check_ip_identification(struct ip_header_info *header_info,
  */
 static int jamming_find_packet_size(const struct rohc_comp *comp,
                                     const struct c_context *context,
-                                    const struct ip_packet ip,
+                                    const struct ip_packet *ip,
                                     const rohc_packet_t packet,
                                     const size_t size_data,
                                     const int original)
@@ -6711,8 +6745,8 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
  */
 static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
                                          const struct c_context *context,
-                                         const struct ip_packet ip,
-                                         const struct ip_packet ip2,
+                                         const struct ip_packet *ip,
+                                         const struct ip_packet *ip2,
                                          const rohc_packet_t packet,
                                          const size_t size_data)
 {
@@ -6721,7 +6755,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
         int size_original; // size of the original packet (sent without this algoritm)
         int size_new;      // size of the new packet
         int nb_packets_original;
-	unsigned char next_header_type;
+	uint8_t next_header_type;
         int nb_packets_new;
         int adapt_size = context->compressor->adapt_size;
         int is_rnd;
@@ -6737,7 +6771,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	//check if there is an IPv6 extension
 	if(nr_of_ip_hdr == 1 && ip_get_version(ip) == IPV6)
 	{
-		next_header_type = ip.header.v6.ip6_nxt;
+		ip_get_next_header(ip, &next_header_type);
 		if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
 		   next_header_type == IPV6_EXT_DESTINATION ||
 		   next_header_type == IPV6_EXT_ROUTING ||
@@ -6750,7 +6784,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	{
 		if(ip_get_version(ip) == IPV6)
 		{
-			next_header_type = ip.header.v6.ip6_nxt;
+			ip_get_next_header(ip, &next_header_type);
 			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
 			   next_header_type == IPV6_EXT_DESTINATION ||
 			   next_header_type == IPV6_EXT_ROUTING ||
@@ -6761,7 +6795,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 		}
 		else
 		{
-			next_header_type = ip2.header.v6.ip6_nxt;
+			ip_get_next_header(ip2, &next_header_type);
 			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
 			   next_header_type == IPV6_EXT_DESTINATION ||
 			   next_header_type == IPV6_EXT_ROUTING ||

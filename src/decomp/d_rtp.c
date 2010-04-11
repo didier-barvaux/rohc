@@ -614,10 +614,10 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	/* init SN and IP-IDs (IPv4 only) */
 	sn = ntohs(rtp->sn);
 	d_lsb_init(&context->sn, sn, 3);
-	if(ip_get_version(context->active1->ip) == IPV4)
-		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(context->active1->ip)), sn);
-	if(context->multiple_ip && ip_get_version(context->active2->ip) == IPV4)
-		d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(context->active2->ip)), sn);
+	if(ip_get_version(&context->active1->ip) == IPV4)
+		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);
+	if(context->multiple_ip && ip_get_version(&context->active2->ip) == IPV4)
+		d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
 
 	/* part 5 */
 	rtp->timestamp = *((uint32_t *) packet);

@@ -31,9 +31,12 @@
  * Function prototypes.
  */
 
-unsigned char c_add_cid(int cid);
+unsigned char c_add_cid(const int cid);
 
-int code_cid_values(struct c_context *context, unsigned char *dest, int dest_size, int *first_position);
+int code_cid_values(const struct c_context *context,
+                    unsigned char *const dest,
+                    const int dest_size,
+                    int *const first_position);
 
 
 #endif

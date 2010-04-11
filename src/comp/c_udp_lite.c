@@ -30,26 +30,26 @@
  * Private function prototypes.
  */
 
-int udp_lite_code_dynamic_udp_lite_part(struct c_context *context,
+int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
                                         const unsigned char *next_header,
-                                        unsigned char *dest,
+                                        unsigned char *const dest,
                                         int counter);
 
-int udp_lite_build_cce_packet(struct c_context *context,
+int udp_lite_build_cce_packet(const struct c_context *context,
                               const unsigned char *next_header,
-                              unsigned char *dest,
+                              unsigned char *const dest,
                               int counter,
-                              int *first_position);
+                              int *const first_position);
 
-int udp_lite_send_cce_packet(struct c_context *context,
+int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
                              const struct udphdr *udp_lite);
 
-int udp_lite_code_UO_packet_tail(struct c_context *context,
+int udp_lite_code_UO_packet_tail(const struct c_context *context,
                                  const unsigned char *next_header,
-                                 unsigned char *dest,
+                                 unsigned char *const dest,
                                  int counter);
 
-void udp_lite_init_cc(struct c_context *context,
+void udp_lite_init_cc(const struct c_context *context,
                       const unsigned char *next_header);
 
 
@@ -64,12 +64,14 @@ void udp_lite_init_cc(struct c_context *context,
  * @param ip      The IP/UDP-Lite packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
+int c_udp_lite_create(struct c_context *const context,
+                      const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct udphdr *udp_lite;
-	struct ip_packet last_ip_header;
+	struct ip_packet ip2;
+	const struct ip_packet *last_ip_header;
+	const struct udphdr *udp_lite;
 	unsigned int ip_proto;
 
 	/* create and initialize the generic part of the profile context */
@@ -85,11 +87,12 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* get the last IP header */
-		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			goto quit;
 		}
+		last_ip_header = &ip2;
 
 		/* get the transport protocol */
 		ip_proto = ip_get_protocol(last_ip_header);
@@ -107,7 +110,7 @@ int c_udp_lite_create(struct c_context *context, const struct ip_packet ip)
 		goto clean;
 	}
 	
-	udp_lite = (struct udphdr *) ip_get_next_layer(&last_ip_header);
+	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
 
 	/* create the UDP-Lite part of the profile context */
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
@@ -177,14 +180,16 @@ quit:
  *                0 if it does not belong to the context and
  *                -1 if the profile cannot compress it or an error occurs
  */
-int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
+int c_udp_lite_check_context(const struct c_context *context,
+                             const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
 	struct ip_header_info *ip_flags;
 	struct ip_header_info *ip2_flags;
-	struct ip_packet ip2, last_ip_header;
-	struct udphdr *udp_lite;
+	struct ip_packet ip2;
+	const struct ip_packet *last_ip_header;
+	const struct udphdr *udp_lite;
 	ip_version version;
 	unsigned int ip_proto;
 	int is_ip_same;
@@ -210,8 +215,8 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 	else /* IPV6 */
 	{
 		is_ip_same =
-			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_src, ipv6_get_saddr(&ip)) &&
-			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_dst, ipv6_get_daddr(&ip));
+			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_src, ipv6_get_saddr(ip)) &&
+			IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_dst, ipv6_get_daddr(ip));
 	}
 
 	if(!is_ip_same)
@@ -238,15 +243,15 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 		}
 
 		/* check the IP version of the second header */
-		version = ip_get_version(ip2);
+		version = ip_get_version(&ip2);
 		if(version != ip2_flags->version)
 			goto bad_context;
 
 		/* compare the addresses of the second header */
 		if(version == IPV4)
 		{
-			is_ip2_same = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip2) &&
-			              ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip2);
+			is_ip2_same = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(&ip2) &&
+			              ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(&ip2);
 		}
 		else /* IPV6 */
 		{
@@ -260,15 +265,15 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 			goto bad_context;
 
 		/* compare the Flow Label of the second header if IPv6 */
-		if(version == IPV6 && ipv6_get_flow_label(ip2) !=
+		if(version == IPV6 && ipv6_get_flow_label(&ip2) !=
 		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
 			goto bad_context;
 
 		/* get the last IP header */
-		last_ip_header = ip2;
+		last_ip_header = &ip2;
 
 		/* get the transport protocol */
-		ip_proto = ip_get_protocol(ip2);
+		ip_proto = ip_get_protocol(&ip2);
 	}
 	else /* no second IP header */
 	{
@@ -285,7 +290,7 @@ int c_udp_lite_check_context(struct c_context *context, struct ip_packet ip)
 		goto bad_context;
 	
 	/* check UDP-Lite ports */
-	udp_lite = (struct udphdr *) ip_get_next_layer(&last_ip_header);
+	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
 	is_udp_lite_same =
 		udp_lite_context->old_udp_lite.source == udp_lite->source &&
 		udp_lite_context->old_udp_lite.dest == udp_lite->dest;
@@ -312,17 +317,18 @@ error:
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
  */
-int c_udp_lite_encode(struct c_context *context,
-                      const struct ip_packet ip,
-                      int packet_size,
-                      unsigned char *dest,
-                      int dest_size,
-                      int *payload_offset)
+int c_udp_lite_encode(struct c_context *const context,
+                      const struct ip_packet *ip,
+                      const int packet_size,
+                      unsigned char *const dest,
+                      const int dest_size,
+                      int *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct ip_packet last_ip_header;
-	struct udphdr *udp_lite;
+	struct ip_packet ip2;
+	const struct ip_packet *last_ip_header;
+	const struct udphdr *udp_lite;
 	unsigned int ip_proto;
 	int size;
 
@@ -346,11 +352,12 @@ int c_udp_lite_encode(struct c_context *context,
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
 	{
 		/* get the last IP header */
-		if(!ip_get_inner_packet(ip, &last_ip_header))
+		if(!ip_get_inner_packet(ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			return -1;
 		}
+		last_ip_header = &ip2;
 
 		/* get the transport protocol */
 		ip_proto = ip_get_protocol(last_ip_header);
@@ -369,7 +376,7 @@ int c_udp_lite_encode(struct c_context *context,
 		rohc_debugf(0, "packet is not an UDP-Lite packet\n");
 		return -1;
 	}
-	udp_lite = (struct udphdr *) ip_get_next_layer(&last_ip_header);
+	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size, payload_offset);
@@ -427,15 +434,15 @@ quit:
  * @param first_position The position to place the first byte of packet
  * @return               The new position in the rohc-packet-under-build buffer 
  */
-int udp_lite_build_cce_packet(struct c_context *context,
+int udp_lite_build_cce_packet(const struct c_context *context,
                               const unsigned char *next_header,
-                              unsigned char *dest,
+                              unsigned char *const dest,
                               int counter,
-                              int *first_position)
+                              int *const first_position)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct udphdr *udp_lite;
+	const struct udphdr *udp_lite;
 	int send_cce_packet;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -444,7 +451,7 @@ int udp_lite_build_cce_packet(struct c_context *context,
 	udp_lite = (struct udphdr *) next_header;
 
 	/* do we need to add the CCE packet? */
-	send_cce_packet = udp_lite_send_cce_packet(context, udp_lite);
+	send_cce_packet = udp_lite_send_cce_packet(udp_lite_context, udp_lite);
 	if(send_cce_packet)
 	{
 		rohc_debugf(2, "Adding CCE\n");
@@ -487,14 +494,14 @@ int udp_lite_build_cce_packet(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int udp_lite_code_UO_packet_tail(struct c_context *context,
+int udp_lite_code_UO_packet_tail(const struct c_context *context,
                                  const unsigned char *next_header,
-                                 unsigned char *dest,
+                                 unsigned char *const dest,
                                  int counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct udphdr *udp_lite;
+	const struct udphdr *udp_lite;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
@@ -503,7 +510,7 @@ int udp_lite_code_UO_packet_tail(struct c_context *context,
 
 	/* part 1 */
 	if(udp_lite_context->cfp == 1 ||
-	   udp_lite_send_cce_packet(context, udp_lite))
+	   udp_lite_send_cce_packet(udp_lite_context, udp_lite))
 	{
 		rohc_debugf(3, "UDP-Lite checksum coverage = 0x%04x\n",
 		            ntohs(udp_lite->len));
@@ -541,14 +548,14 @@ int udp_lite_code_UO_packet_tail(struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer 
  */
-int udp_lite_code_dynamic_udp_lite_part(struct c_context *context,
+int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
                                         const unsigned char *next_header,
-                                        unsigned char *dest,
+                                        unsigned char *const dest,
                                         int counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct udphdr *udp_lite;
+	const struct udphdr *udp_lite;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
@@ -577,12 +584,12 @@ int udp_lite_code_dynamic_udp_lite_part(struct c_context *context,
  * @param context     The compression context
  * @param next_header The UDP-Lite header
  */
-void udp_lite_init_cc(struct c_context *context,
+void udp_lite_init_cc(const struct c_context *context,
                       const unsigned char *next_header)
 {
-	struct c_generic_context *g_context;
+	const struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
-	struct udphdr *udp_lite;
+	const struct udphdr *udp_lite;
 	int packet_length;
 	
 	g_context = (struct c_generic_context *) context->specific;
@@ -619,20 +626,15 @@ void udp_lite_init_cc(struct c_context *context,
  *
  * The function also updates the FK variable stored in the UDP-Lite context.
  *
- * @param context  The compression context
- * @param udp_lite The UDP-Lite header
- * @return         1 if a CCE packet must be sent, 0 if not
+ * @param udp_lite_context  The compression context
+ * @param udp_lite          The UDP-Lite header
+ * @return                  1 if a CCE packet must be sent, 0 if not
  */
-int udp_lite_send_cce_packet(struct c_context *context,
+int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
                              const struct udphdr *udp_lite)
 {
-	struct c_generic_context *g_context;
-	struct sc_udp_lite_context *udp_lite_context;
 	int is_coverage_inferred;
 	int is_coverage_same;
-
-	g_context = (struct c_generic_context *) context->specific;
-	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 
 	rohc_debugf(2, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
 	            udp_lite_context->cfi);

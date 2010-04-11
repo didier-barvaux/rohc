@@ -54,19 +54,20 @@ struct c_profile *c_profiles[C_NUM_PROFILES] =
  * Function prototypes:
  */
 
-static struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
-                                                    struct ip_packet *outer_ip,
-                                                    struct ip_packet *inner_ip,
-                                                    int protocol);
+static const struct c_profile *
+	c_get_profile_from_packet(const struct rohc_comp *comp,
+	                          const struct ip_packet *outer_ip,
+	                          const struct ip_packet *inner_ip,
+	                          const int protocol);
 
-void c_piggyback_destroy(struct rohc_comp *comp);
-int c_piggyback_get(struct rohc_comp *comp,
-                    unsigned char *buffer,
-                    unsigned int max);
+void c_piggyback_destroy(struct rohc_comp *const comp);
+int c_piggyback_get(struct rohc_comp *const comp,
+                    unsigned char *const buffer,
+                    const unsigned int max);
 
-void c_destroy_contexts(struct rohc_comp *comp);
-int c_create_contexts(struct rohc_comp *comp);
-int c_alloc_contexts(struct rohc_comp *comp, int num);
+void c_destroy_contexts(struct rohc_comp *const comp);
+int c_create_contexts(struct rohc_comp *const comp);
+int c_alloc_contexts(struct rohc_comp *const comp, int num);
 
 
 /**
@@ -175,12 +176,13 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	struct ip_packet ip;
 	struct ip_packet ip2;
 	int proto;
-	struct ip_packet *inner_ip;
-	struct c_profile *p;
+	const struct ip_packet *outer_ip;
+	const struct ip_packet *inner_ip;
+	const struct c_profile *p;
 	struct c_context *c;
 	int feedback_size, payload_size, payload_offset;
 	int size, esize;
-	unsigned char *ip_raw_data;
+	const unsigned char *ip_raw_data;
 
 	/* check compressor validity */
 	if(comp == NULL)
@@ -195,25 +197,26 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		rohc_debugf(0, "cannot create the outer IP header\n");
 		return 0;
 	}
+	outer_ip = &ip;
 	rohc_debugf(3, "size of IP packet = %d bytes\n", isize);
 
 	/* get the transport protocol in the IP packet (skip the second IP header
 	 * if present) */
-	proto = ip_get_protocol(ip);
+	proto = ip_get_protocol(outer_ip);
 	if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
 	{
 		/* create the second IP header */
-		if(!ip_get_inner_packet(ip, &ip2))
+		if(!ip_get_inner_packet(outer_ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
 			return 0;
 		}
 
-		/* get the transport protocol */
-		proto = ip_get_protocol(ip2);
-	
 		/* there are two IP headers, the inner IP header is the second one */
 		inner_ip = &ip2;
+
+		/* get the transport protocol */
+		proto = ip_get_protocol(inner_ip);
 	}
 	else
 	{
@@ -224,7 +227,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	/* find the best profile for the packet */
 	rohc_debugf(2, "try to find the best profile for packet with "
 	            "transport protocol %d\n", proto);
-	p = c_get_profile_from_packet(comp, &ip, inner_ip, proto);
+	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto);
 	if(p == NULL)
 	{
 		rohc_debugf(0, "no profile found to compress packet\n");
@@ -233,11 +236,11 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	rohc_debugf(1, "using profile '%s' (0x%04x)\n", p->description, p->id);
 
 	/* get the context using help from the profiles */
-	c = c_find_context(comp, p, ip);
+	c = c_find_context(comp, p, outer_ip);
 	if(c == NULL)
 	{
 		/* context not found, create a new one */
-		c = c_create_context(comp, p, ip);
+		c = c_create_context(comp, p, outer_ip);
 		if(c == NULL)
 		{
 			rohc_debugf(0, "failed to create a new context\n");
@@ -259,10 +262,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p, ip);
+		c = c_find_context(comp, p, outer_ip);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, ip);
+			c = c_create_context(comp, p, outer_ip);
 			if(c == NULL)
 			{
 				rohc_debugf(0, "failed to create an uncompressed context\n");
@@ -296,8 +299,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	/* 2. use profile to compress packet */
 	rohc_debugf(1, "compress the packet #%d\n", comp->num_packets + 1);
-	esize = p->encode(c, ip, isize, obuf, osize - size, &payload_offset);
-
+	esize = p->encode(c, outer_ip, isize, obuf, osize - size, &payload_offset);
 	if(esize < 0)
 	{
 		/* error while compressing, use uncompressed */
@@ -321,10 +323,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p,  ip);
+		c = c_find_context(comp, p, outer_ip);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, ip);
+			c = c_create_context(comp, p, outer_ip);
 			if(c == NULL)
 			{
 				rohc_debugf(0, "failed to create an uncompressed context\n");
@@ -338,8 +340,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			return 0;
 		}
 		
-		esize = p->encode(c, ip, isize, obuf, osize - size, &payload_offset);
-
+		esize = p->encode(c, outer_ip, isize, obuf, osize - size, &payload_offset);
 		if(esize < 0)
 		{
 			rohc_debugf(0, "error while compressing with uncompressed profile, "
@@ -351,7 +352,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	size += esize;
 	obuf += esize;
 
-	payload_size = ip_get_totlen(ip) - payload_offset;
+	payload_size = ip_get_totlen(outer_ip) - payload_offset;
 
 	/* is packet too large? */
 	if(size + payload_size > osize)
@@ -364,7 +365,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	}
 
 	/* copy payload to rohc packet */
-	ip_raw_data = ip_get_raw_data(ip);
+	ip_raw_data = ip_get_raw_data(outer_ip);
 	memcpy(obuf, ip_raw_data + payload_offset, payload_size);
 	obuf += payload_size;
 	size += payload_size;
@@ -836,7 +837,8 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
  * @param profile_id The ID of the ROHC profile to find out
  * @return           The ROHC profile if found, NULL otherwise
  */
-struct c_profile *c_get_profile_from_id(struct rohc_comp *comp, int profile_id)
+const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
+                                               const int profile_id)
 {
 	int i;
 
@@ -888,10 +890,11 @@ int c_is_in_list(struct c_profile *profile, int port)
  * @param protocol  The transport protocol of the network packet
  * @return          The ROHC profile if found, NULL otherwise
  */
-static struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
-                                                    struct ip_packet *outer_ip,
-                                                    struct ip_packet *inner_ip,
-                                                    int protocol)
+static const struct c_profile *
+	c_get_profile_from_packet(const struct rohc_comp *comp,
+	                          const struct ip_packet *outer_ip,
+	                          const struct ip_packet *inner_ip,
+	                          const int protocol)
 {
 	int i;
 
@@ -922,7 +925,7 @@ static struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
 				continue;
 			}
 
-			if(ip_is_fragment(*outer_ip))
+			if(ip_is_fragment(outer_ip))
 			{
 				rohc_debugf(3, "skip profile '%s' (0x%04x) because it does not "
 				            "support IPv4 fragments\n", c_profiles[i]->description,
@@ -941,7 +944,7 @@ static struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
 					continue;
 				}
 
-				if(ip_is_fragment(*inner_ip))
+				if(ip_is_fragment(inner_ip))
 				{
 					rohc_debugf(3, "skip profile '%s' (0x%04x) because it does not "
 					            "support IPv4 fragments\n", c_profiles[i]->description,
@@ -1009,7 +1012,7 @@ static struct c_profile * c_get_profile_from_packet(struct rohc_comp *comp,
  * @param size The size of the context array (maximum: comp->medium.max_cid + 1)
  * @return     1 if the creation is successful, 0 otherwise
  */
-int c_alloc_contexts(struct rohc_comp *comp, int size)
+int c_alloc_contexts(struct rohc_comp *const comp, int size)
 {
 	/* the array size must not be greater than comp->medium.max_cid,
 	 * it would be a waste of memory */
@@ -1065,8 +1068,8 @@ int c_alloc_contexts(struct rohc_comp *comp, int size)
  * @return        The compression context if successful, NULL otherwise
  */
 struct c_context * c_create_context(struct rohc_comp *comp,
-                                    struct c_profile *profile,
-                                    struct ip_packet ip)
+                                    const struct c_profile *profile,
+                                    const struct ip_packet *ip)
 {
 	struct c_context *c;
 	int index, i;
@@ -1181,9 +1184,9 @@ struct c_context * c_create_context(struct rohc_comp *comp,
  *                NULL if not found,
  *                -1 if an error occurs
  */
-struct c_context * c_find_context(struct rohc_comp *comp,
-                                  struct c_profile *profile,
-                                  struct ip_packet ip)
+struct c_context * c_find_context(const struct rohc_comp *comp,
+                                  const struct c_profile *profile,
+                                  const struct ip_packet *ip)
 {
 	struct c_context *c = NULL;
 	int i;
@@ -1249,7 +1252,7 @@ not_found:
  * @param comp The ROHC compressor
  * @return     1 if the creation is successful, 0 otherwise
  */
-int c_create_contexts(struct rohc_comp *comp)
+int c_create_contexts(struct rohc_comp *const comp)
 {
 	comp->contexts = NULL;
 	comp->num_contexts = 0;
@@ -1266,7 +1269,7 @@ int c_create_contexts(struct rohc_comp *comp)
  *
  * @param comp The ROHC compressor
  */
-void c_destroy_contexts(struct rohc_comp *comp)
+void c_destroy_contexts(struct rohc_comp *const comp)
 {
 	int i;
 
@@ -1342,9 +1345,9 @@ void c_piggyback_feedback(struct rohc_comp *comp,
  *               0 if no feedback is available,
  *               -1 if the feedback is too large for the given buffer
  */
-int c_piggyback_get(struct rohc_comp *comp,
-                    unsigned char *buffer,
-                    unsigned int max)
+int c_piggyback_get(struct rohc_comp *const comp,
+                    unsigned char *const buffer,
+                    const unsigned int max)
 {
 	int i;
 	int size = 0;
@@ -1415,7 +1418,7 @@ full:
  *
  * @param comp   The ROHC compressor
  */
-void c_piggyback_destroy(struct rohc_comp *comp)
+void c_piggyback_destroy(struct rohc_comp *const comp)
 {
 	int i;
 

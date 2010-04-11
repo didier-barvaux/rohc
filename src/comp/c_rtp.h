@@ -119,37 +119,25 @@ struct sc_rtp_context
  * Function prototypes.
  */
 
-int c_rtp_create(struct c_context *context, const struct ip_packet ip);
-void c_rtp_destroy(struct c_context *context);
+int c_rtp_create(struct c_context *const context, const struct ip_packet *ip);
+void c_rtp_destroy(struct c_context *const context);
 
-int c_rtp_check_context(struct c_context *context, const struct ip_packet ip);
+int c_rtp_check_context(const struct c_context *context,
+                        const struct ip_packet *ip);
 
-int c_rtp_encode(struct c_context *context,
-                 const struct ip_packet ip,
-                 int packet_size,
-                 unsigned char *dest,
-                 int dest_size,
-                 int *payload_offset);
+int c_rtp_encode(struct c_context *const context,
+                 const struct ip_packet *ip,
+                 const int packet_size,
+                 unsigned char *const dest,
+                 const int dest_size,
+                 int *const payload_offset);
 
-void rtp_decide_state(struct c_context *context);
+void rtp_decide_state(struct c_context *const context);
 
 int rtp_code_UO_packet_tail(struct c_context *context,
                             const unsigned char *next_header,
                             unsigned char *dest,
                             int counter);
-
-int rtp_code_static_rtp_part(struct c_context *context,
-                             const unsigned char *next_header,
-                             unsigned char *dest,
-                             int counter);
-
-int rtp_code_dynamic_rtp_part(struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *dest,
-                              int counter);
-
-int rtp_changed_rtp_dynamic(struct c_context *context,
-                            const struct udphdr *udp);
 
 
 #endif

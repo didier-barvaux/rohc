@@ -33,11 +33,11 @@
  * @param cid The small CID to set
  * @return    The add-CID byte
  */
-unsigned char c_add_cid(int cid)
+unsigned char c_add_cid(const int cid)
 {
-	unsigned char ret_value = 0xe0;
-	ret_value |= (cid & 0x0f);
-	return ret_value;
+	const uint8_t add_cid_type = 0xe0;
+
+	return (add_cid_type | (cid & 0x0f));
 }
 
 
@@ -51,10 +51,10 @@ unsigned char c_add_cid(int cid)
  *                       by other functions
  * @return               The position in the rohc-packet-under-build buffer
  */
-int code_cid_values(struct c_context *context,
-                    unsigned char *dest,
-                    int dest_size,
-                    int *first_position)
+int code_cid_values(const struct c_context *context,
+                    unsigned char *const dest,
+                    const int dest_size,
+                    int *const first_position)
 {
 	int counter = 0;
 

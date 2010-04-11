@@ -46,7 +46,8 @@
  *                0 if it does not belong to the context and
  *                -1 if the profile cannot compress it or an error occurs
  */
-int c_ip_check_context(struct c_context *context, struct ip_packet ip)
+int c_ip_check_context(const struct c_context *context,
+                       const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct ip_header_info *ip_flags;
@@ -77,9 +78,9 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 	else /* IPV6 */
 	{
 		same_src = IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_src,
-		                         ipv6_get_saddr(&ip));
+		                         ipv6_get_saddr(ip));
 		same_dest = IPV6_ADDR_CMP(&ip_flags->info.v6.old_ip.ip6_dst,
-		                          ipv6_get_daddr(&ip));
+		                          ipv6_get_daddr(ip));
 	}
 
 	if(!same_src || !same_dest)
@@ -106,15 +107,15 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 		}
 
 		/* check the IP version of the second header */
-		version = ip_get_version(ip2);
+		version = ip_get_version(&ip2);
 		if(version != ip2_flags->version)
 			goto bad_context;
 
 		/* compare the addresses of the second header */
 		if(version == IPV4)
 		{
-			same_src2 = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(ip2);
-			same_dest2 = ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(ip2);
+			same_src2 = ip2_flags->info.v4.old_ip.saddr == ipv4_get_saddr(&ip2);
+			same_dest2 = ip2_flags->info.v4.old_ip.daddr == ipv4_get_daddr(&ip2);
 		}
 		else /* IPV6 */
 		{
@@ -128,7 +129,7 @@ int c_ip_check_context(struct c_context *context, struct ip_packet ip)
 			goto bad_context;
 
 		/* compare the Flow Label of the second header if IPv6 */
-		if(version == IPV6 && ipv6_get_flow_label(ip2) !=
+		if(version == IPV6 && ipv6_get_flow_label(&ip2) !=
 		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
 			goto bad_context;
 	}

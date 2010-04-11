@@ -133,7 +133,7 @@ struct c_context
 	struct rohc_comp *compressor;
 
 	/// The associated profile
-	struct c_profile *profile;
+	const struct c_profile *profile;
 	/// Profile-specific data, defined by the profiles
 	void *specific;
 
@@ -192,42 +192,48 @@ struct c_profile
 {
 	/// @brief The IP protocol ID used to find out which profile is able to
 	///        compress an IP packet
-	unsigned short protocol;
+	const unsigned short protocol;
 	
 	/// @brief The UDP ports associated with this profile
 	/// Only used with UDP as transport protocol. The pointer can be NULL if no
 	/// port is specified. If defined, the list must be terminated by 0.
 	/// ex: { 5000, 5001, 0 }
-	int *ports;
+	const int *ports;
 
 	/// The profile ID as reserved by IANA
-	unsigned short id;
+	const unsigned short id;
 
 	/// A string that describes the version of the implementation
-	char *version;
+	const char *version;
 	/// A string that describes the implementation (authors...)
-	char *description;
+	const char *description;
 
 	/// @brief The handler used to create the profile-specific part of the
 	///        compression context
-	int (*create)(struct c_context *context, const struct ip_packet packet);
+	int (*create)(struct c_context *const context,
+	              const struct ip_packet *packet);
 
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        compression context
-	void (*destroy)(struct c_context *context);
+	void (*destroy)(struct c_context *const context);
 
 	/// @brief The handler used to check whether an uncompressed IP packet
 	///        belongs to a context or not
-	int (*check_context)(struct c_context *context, struct ip_packet packet);
+	int (*check_context)(const struct c_context *context,
+	                     const struct ip_packet *packet);
 
 	/// The handler used to encode uncompressed IP packets
-	int (*encode)(struct c_context *context, const struct ip_packet packet,
-	              int packet_size, unsigned char *dest, int dest_size,
-	              int *payload_offset);
+	int (*encode)(struct c_context *const context,
+	              const struct ip_packet *packet,
+	              const int packet_size,
+	              unsigned char *const dest,
+	              const int dest_size,
+	              int *const payload_offset);
 
 	/// @brief The handler used to warn the profile-specific part of the context
 	///        about the arrival of feedback data
-	void (*feedback)(struct c_context *context, struct c_feedback *feedback);
+	void (*feedback)(struct c_context *const context,
+	                 const struct c_feedback *feedback);
 };
 
 
@@ -292,8 +298,12 @@ int rohc_c_using_small_cid(struct rohc_comp *comp);
  * Functions related to context:
  */
 
-struct c_context *c_create_context(struct rohc_comp *, struct c_profile *profile, struct ip_packet ip);
-struct c_context *c_find_context(struct rohc_comp *, struct c_profile *profile, struct ip_packet ip);
+struct c_context * c_create_context(struct rohc_comp *comp,
+                                    const struct c_profile *profile,
+                                    const struct ip_packet *ip);
+struct c_context * c_find_context(const struct rohc_comp *comp,
+                                  const struct c_profile *profile,
+                                  const struct ip_packet *ip);
 struct c_context *c_get_context(struct rohc_comp *, int cid);
 
 
@@ -301,8 +311,8 @@ struct c_context *c_get_context(struct rohc_comp *, int cid);
  * Functions related to profile:
  */
 
-struct c_profile * c_get_profile_from_id(struct rohc_comp *comp,
-                                         int profile_id);
+const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
+                                               const int profile_id);
 void rohc_activate_profile(struct rohc_comp *comp, int profile);
 
 

@@ -77,42 +77,41 @@ void crc_init_table(unsigned char *table, unsigned char polynum);
 unsigned int compute_crc_static(const unsigned char *ip,
                                 const unsigned char *ip2,
                                 const unsigned char *next_header,
-                                unsigned int crc_type,
+                                const unsigned int crc_type,
                                 unsigned int init_val);
 unsigned int compute_crc_dynamic(const unsigned char *ip,
                                  const unsigned char *ip2,
                                  const unsigned char *next_header,
-                                 unsigned int crc_type,
+                                 const unsigned int crc_type,
                                  unsigned int init_val);
 
 unsigned int udp_compute_crc_static(const unsigned char *ip,
                                     const unsigned char *ip2,
                                     const unsigned char *next_header,
-                                    unsigned int crc_type,
+                                    const unsigned int crc_type,
                                     unsigned int init_val);
 unsigned int udp_compute_crc_dynamic(const unsigned char *ip,
                                      const unsigned char *ip2,
                                      const unsigned char *next_header,
-                                     unsigned int crc_type,
+                                     const unsigned int crc_type,
                                      unsigned int init_val);
-
 
 unsigned int rtp_compute_crc_static(const unsigned char *ip,
                                     const unsigned char *ip2,
                                     const unsigned char *next_header,
-                                    unsigned int crc_type,
+                                    const unsigned int crc_type,
                                     unsigned int init_val);
 unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
                                      const unsigned char *ip2,
                                      const unsigned char *next_header,
-                                     unsigned int crc_type,
+                                     const unsigned int crc_type,
                                      unsigned int init_val);
 
 unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
-                                         unsigned int crc_type,
+                                         const unsigned int crc_type,
                                          unsigned int init_val);
 unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
-                                          unsigned int crc_type,
+                                          const unsigned int crc_type,
                                           unsigned int init_val);
 
 #endif

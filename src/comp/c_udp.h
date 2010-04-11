@@ -71,27 +71,28 @@ struct sc_udp_context
  * Function prototypes.
  */
 
-int c_udp_create(struct c_context *context, const struct ip_packet ip);
+int c_udp_create(struct c_context *const context, const struct ip_packet *ip);
 
-int c_udp_check_context(struct c_context *context, const struct ip_packet ip);
+int c_udp_check_context(const struct c_context *context,
+                        const struct ip_packet *ip);
 
-int c_udp_encode(struct c_context *context,
-                 const struct ip_packet ip,
-                 int packet_size,
-                 unsigned char *dest,
-                 int dest_size,
-                 int *payload_offset);
+int c_udp_encode(struct c_context *const context,
+                 const struct ip_packet *ip,
+                 const int packet_size,
+                 unsigned char *const dest,
+                 const int dest_size,
+                 int *const payload_offset);
 
-void udp_decide_state(struct c_context *context);
+void udp_decide_state(struct c_context *const context);
 
-int udp_code_UO_packet_tail(struct c_context *context,
+int udp_code_UO_packet_tail(const struct c_context *context,
                             const unsigned char *next_header,
-                            unsigned char *dest,
+                            unsigned char *const dest,
                             int counter);
 
-int udp_code_static_udp_part(struct c_context *context,
+int udp_code_static_udp_part(const struct c_context *context,
                              const unsigned char *next_header,
-                             unsigned char *dest,
+                             unsigned char *const dest,
                              int counter);
 
 

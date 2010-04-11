@@ -36,7 +36,8 @@
  * @param ip      The IP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_uncompressed_create(struct c_context *context, const struct ip_packet ip)
+int c_uncompressed_create(struct c_context *const context,
+                          const struct ip_packet *ip)
 {
 	struct sc_uncompressed_context *uncomp_context;
 	int success = 0;
@@ -68,7 +69,7 @@ quit:
  *
  * @param context The compression context
  */
-void c_uncompressed_destroy(struct c_context *context)
+void c_uncompressed_destroy(struct c_context *const context)
 {
 	if(context->specific != NULL)
 		zfree(context->specific);
@@ -86,8 +87,8 @@ void c_uncompressed_destroy(struct c_context *context)
  * @return        Always return 1 to tell that the IP packet belongs
  *                to the context
  */
-int c_uncompressed_check_context(struct c_context *context,
-                                 const struct ip_packet ip)
+int c_uncompressed_check_context(const struct c_context *context,
+                                 const struct ip_packet *ip)
 {
 	return 1;
 }
@@ -110,12 +111,12 @@ int c_uncompressed_check_context(struct c_context *context,
  * @param payload_offset The offset for the payload in the IP packet
  * @return               The length of the created ROHC packet
  */
-int c_uncompressed_encode(struct c_context *context,
-                          const struct ip_packet ip,
-                          int packet_size,
-                          unsigned char *dest,
-                          int dest_size,
-                          int *payload_offset)
+int c_uncompressed_encode(struct c_context *const context,
+                          const struct ip_packet *ip,
+                          const int packet_size,
+                          unsigned char *const dest,
+                          const int dest_size,
+                          int *const payload_offset)
 {
 	int size;
 
@@ -139,8 +140,8 @@ int c_uncompressed_encode(struct c_context *context,
  * @param context  The compression context
  * @param feedback The feedback information including the whole feedback packet
  */
-void c_uncompressed_feedback(struct c_context *context,
-                             struct c_feedback *feedback)
+void c_uncompressed_feedback(struct c_context *const context,
+                             const struct c_feedback *feedback)
 {
 	unsigned char *p = feedback->data + feedback->specific_offset;
 
@@ -234,7 +235,7 @@ void c_uncompressed_feedback(struct c_context *context,
  *
  * @param context The compression context
  */
-void uncompressed_decide_state(struct c_context *context)
+void uncompressed_decide_state(struct c_context *const context)
 {
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -253,7 +254,7 @@ void uncompressed_decide_state(struct c_context *context)
  *
  * @param context The compression context
  */
-void uncompressed_periodic_down_transition(struct c_context *context)
+void uncompressed_periodic_down_transition(struct c_context *const context)
 {
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -275,7 +276,8 @@ void uncompressed_periodic_down_transition(struct c_context *context)
  * @param context  The compression context
  * @param new_mode The new mode the context must enter in
  */
-void uncompressed_change_mode(struct c_context *context, rohc_mode new_mode)
+void uncompressed_change_mode(struct c_context *const context,
+                              const rohc_mode new_mode)
 {
 	if(context->mode != new_mode)
 	{
@@ -291,8 +293,8 @@ void uncompressed_change_mode(struct c_context *context, rohc_mode new_mode)
  * @param context   The compression context
  * @param new_state The new state the context must enter in
  */
-void uncompressed_change_state(struct c_context *context,
-                               rohc_c_state new_state)
+void uncompressed_change_state(struct c_context *const context,
+                               const rohc_c_state new_state)
 {
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -321,14 +323,17 @@ void uncompressed_change_state(struct c_context *context,
  * @return               The position in the rohc-packet-under-build buffer
  *                       if successful, -1 otherwise
  */
-int uncompressed_code_packet(struct c_context *context,
-                             const struct ip_packet ip,
-                             unsigned char *dest,
-                             int *payload_offset,
-                             int dest_size)
+int uncompressed_code_packet(const struct c_context *context,
+                             const struct ip_packet *ip,
+                             unsigned char *const dest,
+                             int *const payload_offset,
+                             const int dest_size)
 {
-	int (*code_packet)(struct c_context *context, const struct ip_packet ip,
-	                   unsigned char *dest, int *payload_offset, int dest_size);
+	int (*code_packet)(const struct c_context *context,
+	                   const struct ip_packet *ip,
+	                   unsigned char *const dest,
+	                   int *const payload_offset,
+	                   const int dest_size);
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
 	int size = -1;
@@ -397,11 +402,11 @@ int uncompressed_code_packet(struct c_context *context,
  * @return               The position in the rohc-packet-under-build buffer
  *                       if successful, -1 otherwise
  */
-int uncompressed_code_IR_packet(struct c_context *context,
-                                const struct ip_packet ip,
-                                unsigned char *dest,
-                                int *payload_offset,
-                                int dest_size)
+int uncompressed_code_IR_packet(const struct c_context *context,
+                                const struct ip_packet *ip,
+                                unsigned char *const dest,
+                                int *const payload_offset,
+                                const int dest_size)
 {
 	int counter;
 	int first_position;
@@ -469,11 +474,11 @@ int uncompressed_code_IR_packet(struct c_context *context,
  * @return               The position in the rohc-packet-under-build buffer
  *                       if successful, -1 otherwise
  */
-int uncompressed_code_normal_packet(struct c_context *context,
-                                    const struct ip_packet ip,
-                                    unsigned char *dest,
-                                    int *payload_offset,
-                                    int dest_size)
+int uncompressed_code_normal_packet(const struct c_context *context,
+                                    const struct ip_packet *ip,
+                                    unsigned char *const dest,
+                                    int *const payload_offset,
+                                    const int dest_size)
 {
 	int counter;
 	int first_position;

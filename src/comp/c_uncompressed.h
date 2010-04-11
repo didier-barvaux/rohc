@@ -50,31 +50,33 @@ struct sc_uncompressed_context
  * Function prototypes.
  */
 
-void uncompressed_decide_state(struct c_context *context);
+void uncompressed_decide_state(struct c_context *const context);
 
-void uncompressed_periodic_down_transition(struct c_context *context);
+void uncompressed_periodic_down_transition(struct c_context *const context);
 
-void uncompressed_change_mode(struct c_context *c, rohc_mode new_mode);
+void uncompressed_change_mode(struct c_context *const context,
+                              const rohc_mode new_mode);
 
-void uncompressed_change_state(struct c_context *c, rohc_c_state new_state);
+void uncompressed_change_state(struct c_context *const const,
+                               const rohc_c_state new_state);
 
-int uncompressed_code_packet(struct c_context *context,
-                             const struct ip_packet ip,
-                             unsigned char *dest,
-                             int *payload_offset,
-                             int dest_size);
+int uncompressed_code_packet(const struct c_context *context,
+                             const struct ip_packet *ip,
+                             unsigned char *const dest,
+                             int *const payload_offset,
+                             const int dest_size);
 
-int uncompressed_code_IR_packet(struct c_context *context,
-                                const struct ip_packet ip,
-                                unsigned char *dest,
-                                int *payload_offset,
-                                int dest_size);
+int uncompressed_code_IR_packet(const struct c_context *context,
+                                const struct ip_packet *ip,
+                                unsigned char *const dest,
+                                int *const payload_offset,
+                                const int dest_size);
 
-int uncompressed_code_normal_packet(struct c_context *context,
-                                    const struct ip_packet ip,
-                                    unsigned char *dest,
-                                    int *payload_offset,
-                                    int dest_size);
+int uncompressed_code_normal_packet(const struct c_context *context,
+                                    const struct ip_packet *ip,
+                                    unsigned char *const dest,
+                                    int *const payload_offset,
+                                    const int dest_size);
 
 
 #endif

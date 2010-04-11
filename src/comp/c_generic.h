@@ -222,49 +222,53 @@ struct c_generic_context
 
 	/// @brief The handler used to decide the state that should be used for the
 	///        next packet
-	void (*decide_state)(struct c_context *context);
+	void (*decide_state)(struct c_context *const context);
 
 	/// The handler used to initialize some data just before the IR packet build
-	void (*init_at_IR)(struct c_context *context,
+	void (*init_at_IR)(const struct c_context *context,
 	                   const unsigned char *next_header);
 
 	/// @brief The handler used to add the static part of the next header to the
 	///        ROHC packet
-	int (*code_static_part)(struct c_context *context,
+	int (*code_static_part)(const struct c_context *context,
 	                        const unsigned char *next_header,
-	                        unsigned char *dest, int counter);
+	                        unsigned char *const dest,
+	                        int counter);
 
 	/// @brief The handler used to add the dynamic part of the next header to the
 	///        ROHC pachet
-	int (*code_dynamic_part)(struct c_context *context,
+	int (*code_dynamic_part)(const struct c_context *context,
 	                         const unsigned char *next_header,
-	                         unsigned char *dest, int counter);
+	                         unsigned char *const dest,
+	                         int counter);
 
 	/// @brief The handler used to add an additional header in the head of the
 	///        UO-0, UO-1 and UO-2 packets
-	int (*code_UO_packet_head)(struct c_context *context,
+	int (*code_UO_packet_head)(const struct c_context *context,
 	                           const unsigned char *next_header,
-	                           unsigned char *dest, int counter,
-	                           int *first_position);
+	                           unsigned char *const dest,
+	                           int counter,
+	                           int *const first_position);
 
 	/// @brief The handler used to add an additional header in the tail of the
 	///        UO-0, UO-1 and UO-2 packets
-	int (*code_UO_packet_tail)(struct c_context *context,
+	int (*code_UO_packet_tail)(const struct c_context *context,
 	                           const unsigned char *next_header,
-	                           unsigned char *dest, int counter);
+	                           unsigned char *const dest,
+	                           int counter);
 
 	/// @brief The handler used to compute the CRC-STATIC value
 	unsigned int (*compute_crc_static)(const unsigned char *ip,
 	                                   const unsigned char *ip2,
 	                                   const unsigned char *next_header,
-	                                   unsigned int crc_type,
+	                                   const unsigned int crc_type,
 	                                   unsigned int init_val);
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
 	unsigned int (*compute_crc_dynamic)(const unsigned char *ip,
 	                                    const unsigned char *ip2,
 	                                    const unsigned char *next_header,
-	                                    unsigned int crc_type,
+	                                    const unsigned int crc_type,
 	                                    unsigned int init_val);
 
 	/// Profile-specific data	
@@ -292,24 +296,32 @@ struct list_comp
 	int list_compress;
 	/// Boolean which equals to 1 if there is a list, 0 else
 	int islist;
+
 	/// @brief the handler used to get the extension in the IP packet
-	unsigned char *(*get_extension)(const struct ip_packet ip,int index);
+	unsigned char * (*get_extension)(const struct ip_packet *ip,
+	                                 const int index);
 
 	/// @brief the handler used to get the index in based table for the corresponding item
-	int (*get_index_table)(const struct ip_packet ip, int index);
+	int (*get_index_table)(const struct ip_packet *ip, const int index);
 
 	/// @brief the handler used to get the size of an extension
-	int (*get_size)(unsigned char * ext);
+	int (*get_size)(const unsigned char *ext);
 
 	/// @brief the handler used to compare two extension of the same type
-	int (*compare)(unsigned char * ext,struct list_comp * comp,int size, int index_table);
+	int (*compare)(const unsigned char *ext,
+	               const struct list_comp *comp,
+	               const int size,
+	               const int index_table);
 
 	/// @brief the handler used to create the item with the corresponding 
 	///        type of the extension
-	void (*create_item)(unsigned char *ext, int index_table, int size, 
-				struct list_comp * comp);
+	void (*create_item)(const unsigned char *ext,
+	                    const int index_table,
+	                    const int size,
+	                    struct list_comp *const comp);
+
 	/// @brief the handler used to free the based table element
-	void (*free_table)(struct list_comp * comp);
+	void (*free_table)(struct list_comp *const comp);
 };
 																									    
 
@@ -317,31 +329,54 @@ struct list_comp
  * Function prototypes.
  */
 
-int c_generic_create(struct c_context *context, const struct ip_packet ip);
-void c_generic_destroy(struct c_context *context);
+int c_generic_create(struct c_context *const context,
+                     const struct ip_packet *ip);
+void c_generic_destroy(struct c_context *const context);
 
-void change_mode(struct c_context *context, rohc_mode new_mode);
-void change_state(struct c_context *context, rohc_c_state new_state);
+void change_mode(struct c_context *const context, const rohc_mode new_mode);
+void change_state(struct c_context *const context, const rohc_c_state new_state);
 
-void ip6_c_init_table(struct list_comp * comp);
-int c_algo_list_compress(struct list_comp * comp, const struct ip_packet ip);
-int c_create_current_list(int index, struct list_comp * comp, unsigned char * ext, int index_table);
-int decide_type(struct list_comp * comp);
-int encode_list(struct list_comp * comp, unsigned char * dest, int counter, int ps, int size);
-int encode_type_0(struct list_comp * comp, unsigned char * dest, int counter, int ps);
-int encode_type_1(struct list_comp * comp, unsigned char * dest, int counter, int ps);
-int encode_type_3(struct list_comp * comp, unsigned char * dest, int counter, int ps);
-int encode_type_2(struct list_comp * comp, unsigned char * dest, int counter, int ps);
-int c_generic_encode(struct c_context *context,
-                     const struct ip_packet ip,
-                     int packet_size,
-                     unsigned char *dest,
-                     int dest_size,
-                     int *payload_offset);
+void ip6_c_init_table(struct list_comp *const comp);
+int c_algo_list_compress(struct list_comp *const comp,
+                         const struct ip_packet *ip);
+int c_create_current_list(const int index,
+                          struct list_comp *const comp,
+                          const unsigned char *ext,
+                          const int index_table);
+int decide_type(struct list_comp *const comp);
+int encode_list(struct list_comp *const comp,
+                unsigned char *const dest,
+                int counter,
+                const int ps,
+                const int size);
+int encode_type_0(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps);
+int encode_type_1(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps);
+int encode_type_2(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps);
+int encode_type_3(struct list_comp *const comp,
+                  unsigned char *const dest,
+                  int counter,
+                  const int ps);
 
-void c_generic_feedback(struct c_context *context, struct c_feedback *feedback);
+int c_generic_encode(struct c_context *const context,
+                     const struct ip_packet *ip,
+                     const int packet_size,
+                     unsigned char *const dest,
+                     const int dest_size,
+                     int *const payload_offset);
 
-void decide_state(struct c_context *context);
+void c_generic_feedback(struct c_context *const context,
+                        const struct c_feedback *feedback);
+
+void decide_state(struct c_context *const context);
 
 
 #endif
