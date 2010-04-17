@@ -340,7 +340,7 @@ end:
  * @param ext The extension
  * @return    The size of the extension
  */
-uint8_t ip_get_extension_size(unsigned char *ext)
+unsigned short ip_get_extension_size(unsigned char *ext)
 {
 	uint8_t ext_length;
 	
@@ -356,11 +356,11 @@ uint8_t ip_get_extension_size(unsigned char *ext)
  * @param ip The packet to analyse
  * @return   The size of extension list
  */
-uint8_t ip_get_total_extension_size(struct ip_packet ip)
+unsigned short ip_get_total_extension_size(struct ip_packet ip)
 {
 	unsigned char *ext;
 	uint8_t next_hdr_type;
-	uint8_t total_ext_size = 0;
+	unsigned short total_ext_size = 0;
 	
 	ext = ip_get_next_ext_header_from_ip(&ip, &next_hdr_type);
 	while(ext != NULL)
@@ -443,9 +443,9 @@ unsigned int ip_get_hdrlen(struct ip_packet ip)
  */
 unsigned int ip_get_plen(struct ip_packet ip)
 {
-	uint16_t len;
-	int size_list = 0;
+	unsigned int size_list = 0;
 	uint8_t next_header_type;
+	unsigned int len;
 
 	if(ip.version == IPV4)
 		len = ntohs(ip.header.v4.tot_len) - ip.header.v4.ihl * 4;

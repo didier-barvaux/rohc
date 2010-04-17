@@ -264,8 +264,8 @@ uint32_t ipv6_get_flow_label(struct ip_packet ip);
 struct in6_addr * ipv6_get_saddr(struct ip_packet *ip);
 struct in6_addr * ipv6_get_daddr(struct ip_packet *ip);
 void ipv6_set_flow_label(struct ip_packet *ip, uint32_t value);
-uint8_t ip_get_extension_size(unsigned char *ext);
-uint8_t ip_get_total_extension_size(struct ip_packet ip);
+unsigned short ip_get_extension_size(unsigned char *ext);
+unsigned short ip_get_total_extension_size(struct ip_packet ip);
 
 /* Private functions (do not use directly) */
 int get_ip_version(const unsigned char *packet,
