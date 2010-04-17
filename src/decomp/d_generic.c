@@ -1836,7 +1836,7 @@ int d_decode_static_ip(const unsigned char *packet,
 	/* check the minimal length to decode the IP version */
 	if(length < 1)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -1887,7 +1887,7 @@ int d_decode_static_ip4(const unsigned char *packet,
 	/* check the minimal length to decode the IPv4 static part */
 	if(length < 10)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -1948,7 +1948,7 @@ int d_decode_static_ip6(const unsigned char *packet,
 	/* check the minimal length to decode the IPv6 static part */
 	if(length < 36)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -2050,7 +2050,7 @@ int d_decode_dynamic_ip4(const unsigned char *packet,
 	/* check the minimal length to decode the IPv4 dynamic part */
 	if(length < IPV4_DYN_PART_SIZE)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -2132,7 +2132,7 @@ int d_decode_dynamic_ip6(const unsigned char *packet,
 	/* check the minimal length to decode the IPv6 dynamic part */
 	if(length < 2)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -2259,7 +2259,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	if(ip_offset >= plen)
 	{
 		rohc_debugf(0, "ROHC packet too small for outer IP version field "
-		               "(len = %d)\n", plen);
+		               "(len = %u)\n", plen);
 		goto error;
 	}
 
@@ -2267,7 +2267,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	ip_version = (packet[ip_offset] >> 4) & 0x0f;
 	if(ip_version != IPV4 && ip_version != IPV6)
 	{
-		rohc_debugf(0, "bad outer IP version (%d)\n", ip_version);
+		rohc_debugf(0, "bad outer IP version (%u)\n", ip_version);
 		goto error;
 	}
 
@@ -2280,7 +2280,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 	/* check if IR packet is large enough to contain an IP protocol field */
 	if(ip_offset + (ip_version == IPV4 ? 1 : 3) >= plen)
 	{
-		rohc_debugf(0, "ROHC packet too small for protocol field (len = %d)\n",
+		rohc_debugf(0, "ROHC packet too small for protocol field (len = %u)\n",
 		            plen);
 		goto error;
 	}
@@ -2299,7 +2299,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 		if(ip_offset >= plen)
 		{
 			rohc_debugf(0, "ROHC packet too small for inner IP version field "
-			               "(len = %d)\n", plen);
+			               "(len = %u)\n", plen);
 			goto error;
 		}
 
@@ -2307,7 +2307,7 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 		ip2_version = (packet[ip_offset] >> 4) & 0x0f;
 		if(ip2_version != IPV4 && ip2_version != IPV6)
 		{
-			rohc_debugf(0, "bad inner IP version (%d)\n", ip2_version);
+			rohc_debugf(0, "bad inner IP version (%u)\n", ip2_version);
 			goto error;
 		}
 
@@ -4439,7 +4439,7 @@ int decode_extension0(unsigned char *packet,
 	/* check the minimal length to decode the extension 0 */
 	if(length < 1)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -4503,7 +4503,7 @@ int decode_extension1(unsigned char *packet,
 	/* check the minimal length to decode the extension 1 */
 	if(length < 2)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -4591,7 +4591,7 @@ int decode_extension2(unsigned char *packet,
 	/* check the minimal length to decode the extension 2 */
 	if(length < 3)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -4723,7 +4723,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* check the minimal length to decode the flags */
 	if(length < 1)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -4749,7 +4749,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			/* check the minimal length to decode the first byte of flags and ip2 flag */
 			if(length < 2)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+				rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 				goto error;
 			}
 			rts = GET_REAL(GET_BIT_4(packet));
@@ -4775,7 +4775,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	 * and the SN */
 	if(length < ip + ip2 + S)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -4836,7 +4836,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			 * contain the whole field */
 			if(length < 1)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+				rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 				goto error;
 			}
 
@@ -4849,7 +4849,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 			if(length < ts_size)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+				rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 				goto error;
 			}
 
@@ -4958,7 +4958,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		/* check the minimal length to decode the IP-ID field */
 		if(length < 2)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 			goto error;
 		}
 
@@ -5021,7 +5021,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		/* check the minimal length to decode RTP header flags */
 		if(length < 1)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 			goto error;
 		}
 	
@@ -5039,7 +5039,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		/* check the minimal length to decode RTP header fields */
 		if(length < *is_pt_updated + csrc + tss + tis)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 			goto error;
 		}
 	
@@ -5069,7 +5069,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			 * enough to contain the whole field */
 			if(length < 1)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+				rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 				goto error;
 			}
 
@@ -5082,7 +5082,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 			if(length < ts_stride_size)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+				rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 				goto error;
 			}
 
@@ -5417,7 +5417,7 @@ int decode_inner_header_flags(struct d_context *context,
 	/* check the minimal length to decode the header fields */
 	if(length < is_tos + is_ttl + is_pr + is_ipx)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -5582,7 +5582,7 @@ int decode_outer_header_flags(struct d_context *context,
 	/* check the minimal length to decode the outer header fields */
 	if(length < is_I2 * 2)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
