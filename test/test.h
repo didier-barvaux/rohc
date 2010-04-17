@@ -42,15 +42,24 @@
 
 /// The program usage
 #define TEST_USAGE \
-"ROHC test application: test the ROHC library with a flow of IP packets\n\n\
-usage: test [-h] [-v] [-o output_file] [-c cmp_file] cid_type flow\n\
-  -v              print version information and exit\n\
-  -h              print this usage and exit\n\
-  -o output_file  save the generated ROHC packets in output_file (PCAP format)\n\
-  -c cmp_file     compare the generated ROHC packets with the ROHC packets\n\
-                  stored in cmp_file (PCAP format)\n\
-  cid_type        the type of CID to use during the test (smallcid or largecid)\n\
-  flow            flow of Ethernet frames to compress (PCAP format)\n"
+"ROHC test application: test the ROHC library with a flow of IP packets\n\
+\n\
+usage: test [OPTIONS] CID_TYPE FLOW\n\
+\n\
+with:\n\
+  CID_TYPE                 The type of CID to use among 'smallcid' and\n\
+                           'largecid'\n\
+  FLOW                     The flow of Ethernet frames to compress\n\
+                           (in PCAP format)\n\
+\n\
+options:\n\
+  -v                       Print version information and exit\n\
+  -h                       Print this usage and exit\n\
+  -o FILE                  Save the generated ROHC packets in FILE\n\
+                           (in PCAP format)\n\
+  -c FILE                  Compare the generated ROHC packets with the ROHC\n\
+                           packets stored in FILE (in PCAP format)\n\
+  --rohc-size-ouput FILE   Save the sizes of ROHC packets in FILE\n"
 
 
 /// The maximal size for the ROHC packets
