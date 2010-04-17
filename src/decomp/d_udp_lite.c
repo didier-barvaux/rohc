@@ -185,8 +185,8 @@ int udp_lite_get_static_part(void)
  *
  * @param decomp          The ROHC decompressor
  * @param context         The decompression context
- * @param packet          The ROHC packet to decode
- * @param copy_size       The length of the ROHC packet to decode
+ * @param rohc_packet     The ROHC packet to decode
+ * @param rohc_length     The length of the ROHC packet to decode
  * @param large_cid_len   The length of the large CID field
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
@@ -196,8 +196,8 @@ int udp_lite_get_static_part(void)
  */
 int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
                          struct d_context *context,
-                         unsigned char *packet,
-                         int copy_size,
+                         const unsigned char *const rohc_packet,
+                         const unsigned int rohc_length,
                          int large_cid_len,
                          int is_addcid_used,
                          unsigned char *dest)
@@ -208,7 +208,7 @@ int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
 	udp_lite_context->cfp = -1;
 	udp_lite_context->cfi = -1;
 
-	return d_generic_decode_ir(decomp, context, packet, copy_size,
+	return d_generic_decode_ir(decomp, context, rohc_packet, rohc_length,
 	                           large_cid_len, is_addcid_used, dest);
 }
 
@@ -370,8 +370,8 @@ quit:
  *
  * @param decomp      The ROHC decompressor
  * @param context     The decompression context
- * @param packet      The ROHC packet to decode
- * @param size        The length of the ROHC packet
+ * @param rohc_packet The ROHC packet to decode
+ * @param rohc_length The length of the ROHC packet
  * @param second_byte The offset for the second byte of the ROHC packet
  *                    (depends on the CID encoding and the packet type)
  * @param dest        The decoded IP packet
@@ -380,8 +380,8 @@ quit:
  */
 int d_udp_lite_decode(struct rohc_decomp *decomp,
                       struct d_context *context,
-                      unsigned char *packet,
-                      int size,
+                      const unsigned char *const rohc_packet,
+                      const unsigned int rohc_length,
                       int second_byte,
                       unsigned char *dest)
 {
@@ -389,15 +389,19 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
 	rohc_packet_t packet_type;
 
+	/* remaining ROHC data not parsed yet */
+	const unsigned char *rohc_remain_data = rohc_packet;
+	unsigned int rohc_remain_len = rohc_length;
+
 	/* check if the ROHC packet is large enough to read the one byte */
-	if(size < 2)
+	if(rohc_remain_len < 2)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", size);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
 		goto error;
 	}
 
 	/* find whether the IR packet owns an Coverage Checksum Extension or not */
-	switch(*packet)
+	switch(rohc_remain_data[0])
 	{
 		case 0xf9: /* CCE() */
 			rohc_debugf(2, "CCE()\n");
@@ -422,20 +426,20 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	 * and go to the second byte */
 	if(udp_lite_context->cce_packet)
 	{
-		packet += second_byte;
+		rohc_remain_data += second_byte;
 		second_byte = 1;
-		size--;
+		rohc_remain_len--;
 	}
 
 	/* reset the coverage infos if IR-DYN packet */
-	packet_type = find_packet_type(decomp, context, packet, second_byte);
+	packet_type = find_packet_type(decomp, context, rohc_remain_data, second_byte);
 	if(packet_type == PACKET_IR_DYN)
 	{
 		udp_lite_context->cfp = -1;
 		udp_lite_context->cfi = -1;
 	}
 
-	return d_generic_decode(decomp, context, packet, size,
+	return d_generic_decode(decomp, context, rohc_remain_data, rohc_remain_len,
 	                        second_byte, dest);
 
 error:

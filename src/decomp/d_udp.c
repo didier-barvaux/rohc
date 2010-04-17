@@ -187,8 +187,8 @@ int udp_get_static_size(void)
  *
  * @param decomp          The ROHC decompressor
  * @param context         The decompression context
- * @param packet          The ROHC packet to decode
- * @param copy_size       The length of the ROHC packet to decode
+ * @param rohc_packet     The ROHC packet to decode
+ * @param rohc_length     The length of the ROHC packet to decode
  * @param large_cid_len   The length of the large CID field
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
@@ -198,8 +198,8 @@ int udp_get_static_size(void)
  */
 int d_udp_decode_ir(struct rohc_decomp *decomp,
                     struct d_context *context,
-                    unsigned char *packet,
-                    int copy_size,
+                    const unsigned char *rohc_packet,
+                    const unsigned int rohc_length,
                     int large_cid_len,
                     int is_addcid_used,
                     unsigned char *dest)
@@ -209,7 +209,7 @@ int d_udp_decode_ir(struct rohc_decomp *decomp,
 
 	udp_context->udp_checksum_present = -1;
 
-	return d_generic_decode_ir(decomp, context, packet, copy_size,
+	return d_generic_decode_ir(decomp, context, rohc_packet, rohc_length,
 	                           large_cid_len, is_addcid_used, dest);
 }
 

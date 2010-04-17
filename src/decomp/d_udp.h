@@ -55,8 +55,8 @@ void d_udp_destroy(void *context);
 
 int d_udp_decode_ir(struct rohc_decomp *decomp,
                     struct d_context *context,
-                    unsigned char *packet,
-                    int copy_size,
+                    const unsigned char *rohc_packet,
+                    const unsigned int rohc_length,
                     int large_cid_len,
                     int is_addcid_used,
                     unsigned char *dest);

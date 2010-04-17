@@ -198,14 +198,21 @@ struct d_profile
 	char *description;
 
 	/// The handler used to decode IR-DYN and UO* packets
-	int (*decode)(struct rohc_decomp *decomp, struct d_context *context,
-	              unsigned char *packet, int size, int second_byte,
+	int (*decode)(struct rohc_decomp *decomp,
+	              struct d_context *context,
+	              const unsigned char *const rohc_packet,
+	              const unsigned int rohc_length,
+	              int second_byte,
 	              unsigned char *dest);
 
 	/// The handler used to decode the IR packets
-	int (*decode_ir)(struct rohc_decomp *decomp, struct d_context *context,
-	                 unsigned char *packet, int size, int large_cid_len,
-	                 int is_addcid_used, unsigned char *dest);
+	int (*decode_ir)(struct rohc_decomp *decomp,
+	                 struct d_context *context,
+	                 const unsigned char *const rohc_packet,
+	                 const unsigned int rohc_length,
+	                 int large_cid_len,
+	                 int is_addcid_used,
+	                 unsigned char *dest);
 
 	/// @brief The handler used to create the profile-specific part of the
 	///        decompression context

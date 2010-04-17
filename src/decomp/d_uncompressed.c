@@ -62,8 +62,8 @@ void uncompressed_free_decode_data(void *context)
  *
  * @param decomp          The ROHC decompressor
  * @param context         The decompression context
- * @param packet          The ROHC packet to decode
- * @param payload_size    The length of the ROHC packet to decode
+ * @param rohc_packet     The ROHC packet to decode
+ * @param rohc_length     The length of the ROHC packet to decode
  * @param large_cid_len   The length of the large CID field
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
@@ -73,28 +73,40 @@ void uncompressed_free_decode_data(void *context)
  */
 int uncompressed_decode_ir(struct rohc_decomp *decomp,
                            struct d_context *context,
-                           unsigned char *packet,
-                           int payload_size,
+                           const unsigned char *const rohc_packet,
+                           const unsigned int rohc_length,
                            int large_cid_len,
                            int is_addcid_used,
                            unsigned char *dest)
 {
+	/* remaining ROHC data not parsed yet */
+	const unsigned char *rohc_remain_data = rohc_packet;
+	unsigned int rohc_remain_len = rohc_length;
+
+	/* ROHC and uncompressed payloads (they are the same) */
+	const unsigned char *payload_data;
+	unsigned int payload_len;
+
 	/* change state to Full Context */
 	context->state = FULL_CONTEXT;
 
 	/* skip the first bytes:
 	 * 	IR type + Profile ID + CRC (+ eventually CID bytes) */
-	packet += 3 + large_cid_len;
-	payload_size -= 3 + large_cid_len;
+	rohc_remain_data += 3 + large_cid_len;
+	rohc_remain_len -= 3 + large_cid_len;
+
+	/* ROHC header is now fully decoded */
+	payload_data = rohc_remain_data;
+	payload_len = rohc_remain_len;
 
 	/* check IR packet size */
-	if(payload_size == 0)
+	if(payload_len == 0)
 		return ROHC_OK_NO_DATA;
 
 	/* copy IR packet to uncompressed packet */
-	memcpy(dest, packet, payload_size);
+	memcpy(dest, payload_data, payload_len);
 
-	return payload_size;
+	return payload_len;
 }
 
 
@@ -157,8 +169,8 @@ unsigned int uncompressed_detect_ir_dyn_size(struct d_context *context,
  *
  * @param decomp      The ROHC decompressor
  * @param context     The decompression context
- * @param packet      The ROHC packet to decode
- * @param size        The length of the ROHC packet
+ * @param rohc_packet The ROHC packet to decode
+ * @param rohc_length The length of the ROHC packet
  * @param second_byte The offset for the second byte of the ROHC packet
  *                    (depends on the CID encoding and the packet type)
  * @param dest        The decoded IP packet
@@ -167,11 +179,15 @@ unsigned int uncompressed_detect_ir_dyn_size(struct d_context *context,
  */
 int uncompressed_decode(struct rohc_decomp *decomp,
                         struct d_context *context,
-                        unsigned char *packet,
-                        int size,
+                        const unsigned char *const rohc_packet,
+                        const unsigned int rohc_length,
                         int second_byte,
                         unsigned char *dest)
 {
+	/* remaining ROHC data not parsed yet */
+	const unsigned char *rohc_remain_data = rohc_packet;
+	unsigned int rohc_remain_len = rohc_length;
+
 	/* state must not be No Context */
 	if(context->state == NO_CONTEXT)
 	{
@@ -180,22 +196,23 @@ int uncompressed_decode(struct rohc_decomp *decomp,
 	}
 
 	/* check if the ROHC packet is large enough to read the second byte */
-	if(second_byte >= size)
+	if(second_byte >= rohc_length)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", size);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_length);
 		goto error;
 	}
 
 	/* copy the first byte of the ROHC packet to the decompressed packet */
-	*dest = GET_BIT_0_7(packet);
+	*dest = GET_BIT_0_7(rohc_packet);
 	dest += 1;
-	packet += second_byte;
+	rohc_remain_data += second_byte;
+	rohc_remain_len -= second_byte;
 
 	/* copy the second byte and the following bytes of the ROHC packet
 	 * to the decompressed packet */
-	memcpy(dest, packet, size - second_byte);
+	memcpy(dest, rohc_remain_data, rohc_remain_len);
 
-	return size - second_byte + 1;
+	return (1 + rohc_remain_len);
 
 error:
 	return ROHC_ERROR;

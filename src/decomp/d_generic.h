@@ -223,15 +223,15 @@ void d_generic_destroy(void *context);
 
 int d_generic_decode(struct rohc_decomp *decomp,
                      struct d_context *context,
-                     unsigned char *packet,
-                     int size,
+                     const unsigned char *const rohc_packet,
+                     const unsigned int rohc_length,
                      int second_byte,
                      unsigned char *dest);
 
 int d_generic_decode_ir(struct rohc_decomp *decomp,
                         struct d_context *context,
-                        unsigned char *packet,
-                        int plen,
+                        const unsigned char *const rohc_packet,
+                        const unsigned int rohc_length,
                         int large_cid_len,
                         int is_addcid_used,
                         unsigned char *dest);
