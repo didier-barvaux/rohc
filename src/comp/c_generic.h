@@ -305,7 +305,7 @@ struct list_comp
 	int (*get_index_table)(const struct ip_packet *ip, const int index);
 
 	/// @brief the handler used to get the size of an extension
-	int (*get_size)(const unsigned char *ext);
+	unsigned short (*get_size)(const unsigned char *ext);
 
 	/// @brief the handler used to compare two extension of the same type
 	int (*compare)(const unsigned char *ext,

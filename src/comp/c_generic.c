@@ -165,7 +165,7 @@ void create_ipv6_item(const unsigned char *ext,
                       const int index_table,
                       const int size,
                       struct list_comp *const comp);
-		      
+
 unsigned char * get_ipv6_extension(const struct ip_packet *ip,
                                    const int index);
 
@@ -175,13 +175,11 @@ int ipv6_compare(const unsigned char *ext,
                  const int index_table);
 
 int get_index_ipv6_table(const struct ip_packet *ip, const int index);
-				
-int get_ipv6_ext_size(const unsigned char *ext);
 
 static void list_comp_ipv6_destroy_table(struct list_comp *const comp);
 
 
-static rohc_packet_t decide_packet(const struct c_context *context, 
+static rohc_packet_t decide_packet(const struct c_context *context,
                                    const struct ip_packet *ip,
                                    const struct ip_packet *ip2,
                                    const size_t size_data);
@@ -254,7 +252,7 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
                                     const rohc_packet_t packet,
                                     const size_t size_data,
                                     const int original);
-     
+
 static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
                                          const struct c_context *context,
                                          const struct ip_packet *ip,
@@ -268,6 +266,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
  * Definitions of public functions
  */
 
+
 /**
  * @brief Check if a specified IP field has changed.
  *
@@ -276,13 +275,14 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
  * @param check_field    The field for which to check a change
  * @return               1 if the field changed, 0 if not
  *
- * @see changed_fields 
+ * @see changed_fields
  */
 inline int is_changed(const unsigned short changed_fields,
                       const unsigned short check_field)
 {
 	return ((changed_fields & check_field) != 0);
 }
+
 
 /**
  * @brief Initialize the tables IPv6 extension in compressor
@@ -325,6 +325,12 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[3].counter = 0;
 }
 
+
+/**
+ * @brief Destory the tables of the given list compressor
+ *
+ * @param comp  The list compressor whose tables should be destroyed
+ */
 static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 {
 	int i;
@@ -342,6 +348,7 @@ static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 	if(comp->based_table[3].header.ahhdr != NULL)
 		free(comp->based_table[3].header.ahhdr);
 }
+
 
 /**
  * @brief Initialize the inner or outer IP header info stored in the context.
@@ -366,7 +373,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 			rohc_debugf(0, "no memory to allocate W-LSB encoding for IP-ID\n");
 			goto error;
 		}
-	
+
 		/* store the IP packet and the random and NBO parameters
 		 * in the header info */
 		header_info->info.v4.old_ip = *(ipv4_get_header(ip));
@@ -389,7 +396,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 		/* store the IP header in the header info */
 		header_info->info.v6.old_ip = *(ipv6_get_header(ip));
 		header_info->info.v6.ext_comp = malloc(sizeof(struct list_comp));
-		if (header_info->info.v6.ext_comp == NULL)
+		if(header_info->info.v6.ext_comp == NULL)
 		{
 			rohc_debugf(0, "no memory to allocate extension IPv6 compressor\n");
 			goto error;
@@ -412,12 +419,12 @@ int c_init_header_info(struct ip_header_info *header_info,
 		}
 		header_info->info.v6.ext_comp->curr_list->gen_id = 0;
 		header_info->info.v6.ext_comp->curr_list->first_elt = NULL;
-												
-		/*if (!create_list(header_info->info.v6.ext_comp->ref_list) || 
-			!create_list(header_info->info.v6.ext_comp->curr_list))
+
+		/*if(!create_list(header_info->info.v6.ext_comp->ref_list) ||
+		    !create_list(header_info->info.v6.ext_comp->curr_list))
 		{
-			 rohc_debugf(0, "no memory to allocate compression list\n");
-			 goto error;
+			rohc_debugf(0, "no memory to allocate compression list\n");
+			goto error;
 		}*/
 		header_info->info.v6.ext_comp->counter = 0;
 		header_info->info.v6.ext_comp->update_done = 0;
@@ -425,7 +432,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 		ip6_c_init_table(header_info->info.v6.ext_comp);
 		header_info->info.v6.ext_comp->get_extension = get_ipv6_extension;
 		header_info->info.v6.ext_comp->create_item = create_ipv6_item;
-		header_info->info.v6.ext_comp->get_size = get_ipv6_ext_size;
+		header_info->info.v6.ext_comp->get_size = ip_get_extension_size;
 		header_info->info.v6.ext_comp->compare = ipv6_compare;
 		header_info->info.v6.ext_comp->free_table = list_comp_ipv6_destroy_table;
 		header_info->info.v6.ext_comp->get_index_table = get_index_ipv6_table;
@@ -436,6 +443,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 error:
 	return 0;
 }
+
 
 /**
  * @brief Initialize all temporary variables stored in the context.
@@ -579,7 +587,7 @@ quit:
 
 /**
  * @brief Destroy the context.
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -602,10 +610,10 @@ void c_generic_destroy(struct c_context *const context)
 		if(g_context->ip_flags.version == IPV6 &&
 		   g_context->ip_flags.info.v6.ext_comp != NULL)
 		{
-		   	if(g_context->ip_flags.info.v6.ext_comp->curr_list!=NULL)
-		   		destroy_list(g_context->ip_flags.info.v6.ext_comp->curr_list);
+			if(g_context->ip_flags.info.v6.ext_comp->curr_list!=NULL)
+				destroy_list(g_context->ip_flags.info.v6.ext_comp->curr_list);
 			if(g_context->ip_flags.info.v6.ext_comp->ref_list != NULL)
-		   		destroy_list(g_context->ip_flags.info.v6.ext_comp->ref_list);
+				destroy_list(g_context->ip_flags.info.v6.ext_comp->ref_list);
 			list_comp_ipv6_destroy_table(g_context->ip_flags.info.v6.ext_comp);
 			zfree(g_context->ip_flags.info.v6.ext_comp);
 		}
@@ -659,7 +667,7 @@ void change_mode(struct c_context *const context, const rohc_mode new_mode)
 void change_state(struct c_context *const context, const rohc_c_state new_state)
 {
 	struct c_generic_context *g_context;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 
 	if(context->state != new_state)
@@ -718,19 +726,19 @@ int c_generic_encode(struct c_context *const context,
 	int size;
 	int size_data;
 	int is_rtp;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 	if(g_context == NULL)
 	{
-	 	 rohc_debugf(0, "generic context not valid\n");
-	 	 return -1;
+		rohc_debugf(0, "generic context not valid\n");
+		return -1;
 	}
 
 	g_context->tmp_variables.changed_fields2 = 0;
 	g_context->tmp_variables.nr_ip_id_bits2 = 0;
 	g_context->tmp_variables.packet_type = PACKET_UNKNOWN;
 	g_context->tmp_variables.max_size = dest_size;
-	
+
 	/* STEP 1:
 	 *  - check double IP headers
 	 *  - check the next header protocol if necessary
@@ -742,7 +750,9 @@ int c_generic_encode(struct c_context *const context,
 	{
 		/* there are 2 IP headers */
 		if(!ip_get_inner_packet(ip, &ip2))
+		{
 			return -1;
+		}
 
 		g_context->tmp_variables.nr_of_ip_hdr = 2;
 		inner_ip = &ip2;
@@ -752,7 +762,9 @@ int c_generic_encode(struct c_context *const context,
 		if(!g_context->is_ip2_initialized)
 		{
 			if(!c_init_header_info(&g_context->ip2_flags, inner_ip))
+			{
 				return -1;
+			}
 			g_context->is_ip2_initialized = 1;
 		}
 	}
@@ -763,7 +775,7 @@ int c_generic_encode(struct c_context *const context,
 		inner_ip = NULL;
 		last_ip_header = ip;
 	}
-	
+
 	/* check the next header protocol if necessary */
 	if(g_context->next_header_proto != 0 &&
 	   ip_get_protocol(last_ip_header) != g_context->next_header_proto)
@@ -855,13 +867,19 @@ int c_generic_encode(struct c_context *const context,
 
 	/* STEP 3: decide in which state to go */
 	if(g_context->decide_state != NULL)
+	{
 		g_context->decide_state(context);
+	}
 
 	if(ip_get_version(ip) == IPV4)
+	{
 		rohc_debugf(2, "ip_id = 0x%04x, context_sn = %d\n",
 		            ntohs(ipv4_get_id(ip)), g_context->sn);
+	}
 	else /* IPV6 */
+	{
 		rohc_debugf(2, "context_sn = %d\n", g_context->sn);
+	}
 
 	/* STEP 4:
 	 *  - compute how many bits are needed to send the IP-ID and SN fields
@@ -876,7 +894,9 @@ int c_generic_encode(struct c_context *const context,
 	/* STEP 6: code the packet (and the extension if needed) */
 	size = code_packet(context, ip, inner_ip, next_header, dest);
 	if(size < 0)
+	{
 		return -1;
+	}
 
 	/* update the context with the new headers */
 	if(ip_get_version(ip) == IPV4)
@@ -886,7 +906,9 @@ int c_generic_encode(struct c_context *const context,
 		g_context->ip_flags.info.v4.old_nbo = g_context->ip_flags.info.v4.nbo;
 	}
 	else /* IPV6 */
+	{
 		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(ip));
+	}
 
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1)
 	{
@@ -897,27 +919,36 @@ int c_generic_encode(struct c_context *const context,
 			g_context->ip2_flags.info.v4.old_nbo = g_context->ip2_flags.info.v4.nbo;
 		}
 		else /* IPV6 */
+		{
 			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(inner_ip));
+		}
 	}
 
 	/* update packet counters */
 	if(g_context->tmp_variables.packet_type == PACKET_IR)
+	{
 		context->num_sent_ir++;
-	else if (g_context->tmp_variables.packet_type == PACKET_IR_DYN)
+	}
+	else if(g_context->tmp_variables.packet_type == PACKET_IR_DYN)
+	{
 		context->num_sent_ir_dyn++;
+	}
 
 	/* return the length of the ROHC packet */
 	return size;
 }
+
 
 /**
  * @brief Algorithm of compression list
  *
  * This function compress a generic extension list
  *
- * @param comp The list compressor which is specific to the extension type
- * @param ip The ip packet to compress
- * @return 1 if a compressed list must be sent, 0 if not and -1 if error
+ * @param comp  The list compressor which is specific to the extension type
+ * @param ip    The IP packet to compress
+ * @return      \li 1 if a compressed list must be sent,
+ *              \li 0 if not,
+ *              \li -1 if error
  */
 int c_algo_list_compress(struct list_comp *const comp,
                          const struct ip_packet *ip)
@@ -945,7 +976,9 @@ int c_algo_list_compress(struct list_comp *const comp,
 #endif
 
 	size = size_list(comp->curr_list);
-	if(comp->counter == L+1) // update the reference list
+
+	/* do we update the reference list ? */
+	if(comp->counter == (L + 1))
 	{
 		rohc_debugf(3, "update the reference list \n");
 		empty_list(comp->ref_list);
@@ -953,24 +986,30 @@ int c_algo_list_compress(struct list_comp *const comp,
 		{
 			elt = get_elt(comp->curr_list, j);
 			if(!insert_elt(comp->ref_list, elt->item, j, elt->index_table))
+			{
 				goto error;
+			}
 		}
 		comp->ref_list->gen_id = comp->curr_list->gen_id;
 	}
-	// get the extensions
+
+	/* get the extensions */
 	i = 0;
 	index_table = comp->get_index_table(ip, i);
-	if (index_table != -1) // There is one extension or more 
+	if(index_table != -1)
 	{
+		/* there is one extension or more */
 		rohc_debugf(3, "there is at least one IPv6 extension\n");
 		comp->islist = 1;
 
 		/* add new extensions and update modified extensions in current list */
 		ext = comp->get_extension(ip, i);
-		while( index_table != -1)
+		while(index_table != -1)
 		{
-			if(!c_create_current_list(i,comp,ext,index_table))
+			if(!c_create_current_list(i, comp, ext, index_table))
+			{
 				goto error;
+			}
 			i++;
 			index_table = comp->get_index_table(ip, i);
 			ext = comp->get_extension(ip, i);
@@ -993,22 +1032,22 @@ int c_algo_list_compress(struct list_comp *const comp,
 				            "anymore\n", elt->item->type);
 				delete_elt(comp->curr_list, elt->item);
 				nb_deleted++;
-			}																
+			}
 		}
 		if(comp->counter == 0)
 			comp->curr_list->gen_id++;
 		if(comp->counter < L + 2)
 			//result = 1;
-			comp->counter ++;
+			comp->counter++;
 		if(comp->counter < L + 1)
 			result = 1;
-		for (j = 0; j < MAX_ITEM; j++)
+		for(j = 0; j < MAX_ITEM; j++)
 		{
 			if(!comp->trans_table[j].known)
 				comp->trans_table[j].counter++;
-			if (comp->trans_table[j].counter == L)
+			if(comp->trans_table[j].counter == L)
 				comp->trans_table[j].known = 1;
-		}		
+		}
 	}
 	else
 	{
@@ -1034,39 +1073,47 @@ error:
 	return -1;
 }
 
+
 /**
  * @brief Create the current list
- * @param index the number of the extension
- * @param comp The list compressor which is specific to the extension type
- * @param ext The extension
- * @param index_table The index of the item in the based table
- * @return 1 if successfull, 0 else
+ *
+ * @param index        The number of the extension
+ * @param comp         The list compressor which is specific to the extension type
+ * @param ext          The extension
+ * @param index_table  The index of the item in the based table
+ * @return             1 if successful, 0 otherwise
  */
 int c_create_current_list(const int index,
                           struct list_comp *const comp,
                           const unsigned char *ext,
                           const int index_table)
 {
-	struct list_elt * elt;
+	struct list_elt *elt;
 	int curr_index;
 	int i;
-	int size = comp->get_size(ext);
-	// test if the extension is the same in tables
-	if (size == comp->based_table[index_table].length)
+	int size;
+	
+	size = comp->get_size(ext);
+
+	/* test if the extension is the same in tables */
+	if(size == comp->based_table[index_table].length)
 	{
 		if(comp->compare(ext, comp, size, index_table)!= 0)
 		{
-			// the extension is modified
-			rohc_debugf(3, "new extension to encode with same size than previously \n");
+			/* the extension is modified */
+			rohc_debugf(3, "new extension to encode with same size "
+			            "than previously\n");
 			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
 			comp->create_item(ext, index_table, size, comp);
 			comp->trans_table[index_table].known = 0;
 			comp->trans_table[index_table].counter = 0;
-			if(index < curr_index)// some elts are not transmitted anymore
+
+			/* are some elements not transmitted anymore ? */
+			if(index < curr_index)
 			{
-				// the elements not transmitted are deleted 
-				// the extension which was modified is deleted
-				for(i = index; i < curr_index + 1; i++)
+				/* the elements not transmitted are deleted,
+				   the extension which was modified is deleted */
+				for(i = index; i < (curr_index + 1); i++)
 				{
 					elt = get_elt(comp->curr_list,i);
 					rohc_debugf(3, "delete IPv6 extension of type %d from current "
@@ -1077,34 +1124,43 @@ int c_create_current_list(const int index,
 			}
 			else if(index == curr_index)
 			{
-				// the extension which was modified is deleted
+				/* the extension which was modified is deleted */
 				elt = get_elt(comp->curr_list,index);
 				rohc_debugf(3, "delete IPv6 extension of type %d from current "
 				            "list because it was modified\n", elt->item->type);
 				delete_elt(comp->curr_list,elt->item);
 			}
+
 			comp->counter = 0;
-			// new version of the extension added
-			if(!insert_elt(comp->curr_list,&(comp->based_table[index_table]), index, index_table))
-				goto error;
+
+			/* add the new version of the extension */
 			rohc_debugf(3, "add IPv6 extension of type %d to current list "
 			            "to replace the one we deleted because it was modified\n",
 			            comp->based_table[index_table].type);
+			if(!insert_elt(comp->curr_list,&(comp->based_table[index_table]), index, index_table))
+			{
+				goto error;
+			}
 		}
 		else
 		{
 			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
-			if(curr_index < 0)// elt not present in current list
+			if(curr_index < 0)
 			{
-				if(!insert_elt(comp->curr_list, &comp->based_table[index_table], index, index_table))
-					goto error;
-				comp->counter = 0;
+				/* the element is not present in current list, add it */
 				rohc_debugf(3, "add IPv6 extension of type %d to current list "
 				            "because it is a new extension not present yet\n",
 				            comp->based_table[index_table].type);
+				if(!insert_elt(comp->curr_list, &comp->based_table[index_table],
+				               index, index_table))
+				{
+					goto error;
+				}
+				comp->counter = 0;
 			}
-			else if(index < curr_index)// some elts are not transmitted anymore
+			else if(index < curr_index)
 			{
+				/* some elements are not transmitted anymore, delete them */
 				for(i = index; i < curr_index; i++)
 				{
 					elt = get_elt(comp->curr_list,i);
@@ -1116,27 +1172,32 @@ int c_create_current_list(const int index,
 				comp->counter = 0;
 			}
 		}
-	}	
+	}
 	else
 	{
-		// the extension is modified or new
+		/* the extension is modified or new */
 		rohc_debugf(3, "new extension to encode with new size \n");
 		curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
 		comp->create_item(ext, index_table, size, comp);
 		comp->trans_table[index_table].known = 0;
 		comp->trans_table[index_table].counter = 0;
-		if(curr_index < 0)// new extension
+
+		if(curr_index < 0)
 		{
-			// new extension added
-			if(!push_back(comp->curr_list, &comp->based_table[index_table], index_table))
-				goto error;
+			/* the element is not present in the current list, add it */
 			rohc_debugf(3, "add IPv6 extension of type %d to current list "
 			            "because it is a new extension not present yet\n",
 			            comp->based_table[index_table].type);
-			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
-			if(index < curr_index)// some elts are not transmitted anymore
+			if(!push_back(comp->curr_list, &comp->based_table[index_table],
+			              index_table))
 			{
-				// the elements not transmitted are deleted
+				goto error;
+			}
+
+			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
+			if(index < curr_index)
+			{
+				/* some elements are not transmitted anymore, delete them */
 				for(i = index; i < curr_index; i++)
 				{
 					elt = get_elt(comp->curr_list,i);
@@ -1147,15 +1208,16 @@ int c_create_current_list(const int index,
 				}
 			}
 		}
-		else //extension modified
+		else /* extension modified */
 		{
-			if(index < curr_index)// some elts are not transmitted anymore
+			/* are some elements not transmitted anymore ? */
+			if(index < curr_index)
 			{
-				// the elements not transmitted are deleted
-				// the extension which was modified is deleted
-				for(i = index; i < curr_index + 1; i++)
+				/* the elements not transmitted are deleted,
+				   the extension which was modified is deleted */
+				for(i = index; i < (curr_index + 1); i++)
 				{
-					elt = get_elt(comp->curr_list,i);
+					elt = get_elt(comp->curr_list, i);
 					rohc_debugf(3, "delete IPv6 extension of type %d from current "
 					            "list because it is not transmitted anymore\n",
 					            elt->item->type);
@@ -1164,53 +1226,64 @@ int c_create_current_list(const int index,
 			}
 			else if(index == curr_index)
 			{
-				// the extension which was modified is deleted
+				/* the extension which was modified is deleted */
 				elt = get_elt(comp->curr_list,index);
 				rohc_debugf(3, "delete IPv6 extension of type %d from current "
 				            "list because it was modified\n", elt->item->type);
 				delete_elt(comp->curr_list,elt->item);
 			}
-			// new version of the extension added
-			if(!insert_elt(comp->curr_list, &comp->based_table[index_table], index, index_table))
-				goto error;
+
+			/* add the new version of the extension */
 			rohc_debugf(3, "add IPv6 extension of type %d to current list "
 			            "to replace the one we deleted because it was modified\n",
 			            comp->based_table[index_table].type);
+			if(!insert_elt(comp->curr_list, &comp->based_table[index_table],
+			               index, index_table))
+			{
+				goto error;
+			}
 		}
+
 		comp->counter = 0;
 	}
+
 	return 1;
+
 error:
 	return 0;
 }
 
+
 /**
  * @brief Decide the encoding type for compression list
- * 
- * @param comp The list compressor
- * @return the encoding type
+ *
+ * @param comp  The list compressor
+ * @return      the encoding type
  */
-int decide_type(struct list_comp * comp)
+int decide_type(struct list_comp *comp)
 {
-	int type;     // encoding type
+	int type; /* list encoding type */
 	int i;
-	int present; // boolean which indicates if an item is present
-	struct list_elt * elt; 
-	int ref_size; // size of reference list
-	int curr_size; // size of current list
-	
+	int present; /* boolean which indicates if an item is present */
+	struct list_elt *elt;
+	int ref_size; /* size of reference list */
+	int curr_size; /* size of current list */
+
 	ref_size = size_list(comp->ref_list);
 	curr_size = size_list(comp->curr_list);
-	if (ref_size >= curr_size) // there is less elements 
+	if(ref_size >= curr_size)
 	{
+		/* there are fewer elements */
 		i = 0;
 		present = 1;
-		while(present && i<curr_size)
+		while(present && i < curr_size)
 		{
 			elt = get_elt(comp->curr_list, i);
 			if(!type_is_present(comp->ref_list, elt->item) ||
-				!comp->trans_table[elt->index_table].known)
+			   !comp->trans_table[elt->index_table].known)
+			{
 				present = 0;
+			}
 			i++;
 		}
 		if(present)
@@ -1218,16 +1291,19 @@ int decide_type(struct list_comp * comp)
 		else
 			type = 3;
 	}
-	else  // there is more elements
+	else
 	{
+		/* there are more elements */
 		i = 0;
 		present = 1;
-		while(present && i<ref_size)
+		while(present && i < ref_size)
 		{
 			elt = get_elt(comp->ref_list, i);
-			if (!type_is_present(comp->curr_list, elt->item) ||
-				!comp->trans_table[elt->index_table].known)
+			if(!type_is_present(comp->curr_list, elt->item) ||
+			   !comp->trans_table[elt->index_table].known)
+			{
 				present = 0;
+			}
 			i++;
 		}
 		if(present)
@@ -1235,18 +1311,20 @@ int decide_type(struct list_comp * comp)
 		else
 			type = 3;
 	}
+
 	return type;
 }
- 
+
+
 /**
- * @brief Generique encoding of compressed list
+ * @brief Generic encoding of compressed list
  *
- * @param comp the list compressor
- * @param dest The ROHC packet under build
- * @param counter The current position in the rohc-packet-under-build buffer
- * @param ps the size of the index
- * @param size The number of element in current list
- * @return The new position 
+ * @param comp     The list compressor
+ * @param dest     The ROHC packet under build
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @param ps       The size of the index
+ * @param size     The number of element in current list
+ * @return         The new position in the rohc-packet-under-build buffer
  */
 int encode_list(struct list_comp *const comp,
                 unsigned char *const dest,
@@ -1254,43 +1332,46 @@ int encode_list(struct list_comp *const comp,
                 const int ps,
                 const int size)
 {
-	int type; // encoding type
+	int type; /* encoding type */
 	unsigned char byte;
 	int i = 0;
 	struct list_elt * elt;
-	// Encoding type 0
-	if (comp->ref_list->first_elt == NULL)
+
+	if(comp->ref_list->first_elt == NULL)
 	{
-		rohc_debugf(1, "type of list encoding : 0 \n");
+		/* choose encoding type 0 for list because there is reference list */
+		rohc_debugf(1, "use list encoding type 0\n");
 		counter = encode_type_0(comp, dest, counter, ps);
 	}
-	else if(comp->islist && !comp->list_compress)// the list does'nt change but is sent
+	else if(comp->islist && !comp->list_compress)
 	{
-		//first_byte: type 0
+		/* the list did not change but send it anyway */
+
+		/* first_byte: type 0 */
 		byte = 1 << 5;
 		byte |= (ps & 0x01) << 4;
 		byte |= (size & 0x0f);
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(2, "flags = 0x%02x\n", byte);
 
-		// it is the reference list: ref_id
+		/* it is the reference list: ref_id */
 		byte = (comp->ref_list->gen_id & 0xff);
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(2, "ref_id = 0x%02x\n", byte);
 
-		// index
-		for (i = 0; i < size; i++)
+		/* indexes */
+		for(i = 0; i < size; i++)
 		{
-			rohc_debugf(3, "value of ps: %d \n", ps);
+			rohc_debugf(3, "ps = %d\n", ps);
 			if(ps)
 			{
 				elt = get_elt(comp->ref_list, i);
-				byte = 0 << 7;// elt already known
+				byte = 0 << 7; /* elt already known */
 				byte |= (elt->index_table & 0x7f);
 				dest[counter] = byte;
-				counter ++;
+				counter++;
 				rohc_debugf(2, "list element #%d = 0x%02x\n", i + 1, byte);
 			}
 			else
@@ -1299,52 +1380,58 @@ int encode_list(struct list_comp *const comp,
 				byte = 0 << 7;
 				byte |= (elt->index_table & 0x07)<< 4;
 				i++;
+
 				elt = get_elt(comp->ref_list, i);
-				if (elt != NULL)
+				if(elt != NULL)
 				{
 					byte |= 0<< 3;
 					byte |= (elt->index_table & 0x07);
 				}
 				dest[counter] = byte;
-				counter ++;
+				counter++;
+
 				rohc_debugf(2, "list elements #%d and #%d = 0x%02x\n",
 				            i, i + 1, byte);
 			}
-		}//item not sent because already known
+		}
+		
+		/* items are not sent because they are already known */
 	}
-	else //the list is modified
+	else /* the list is modified */
 	{
+		/* which encoding for the modified list ? */
 		type = decide_type(comp);
-		rohc_debugf(1, "type of list encoding : %d \n", type);
-		// first byte
+		rohc_debugf(1, "use list encoding type %d\n", type);
+
+		/* first byte */
 		byte = (type & 0x03) << 6;
 		byte |= 1 << 5;
 		byte |= (ps & 0x01) << 4;
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(3, "flags = 0x%02x\n", byte);
 
-		// second byte (gen_id)
+		/* second byte (gen_id) */
 		byte = (comp->curr_list->gen_id & 0xff);
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(3, "gen_id = 0x%02x\n", byte);
 
-		// third byte (ref_id)
+		/* third byte (ref_id) */
 		byte = (comp->ref_list->gen_id & 0xff);
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(3, "ref_id = 0x%02x\n", byte);
 
 		switch(type)
 		{
-			case 1: // Encoding type 1 (insertion only scheme)
-				counter = encode_type_1(comp, dest, counter, ps);				
+			case 1: /* Encoding type 1 (insertion only scheme) */
+				counter = encode_type_1(comp, dest, counter, ps);
 				break;
-			case 2: // Encoding type 2 (removal only scheme)
+			case 2: /* Encoding type 2 (removal only scheme) */
 				counter = encode_type_2(comp, dest, counter, ps);
 				break;
-			case 3: // Encoding type 3 (remove then insert scheme)
+			case 3: /* encoding type 3 (remove then insert scheme) */
 				counter = encode_type_3(comp, dest, counter, ps);
 				break;
 			default:
@@ -1353,65 +1440,73 @@ int encode_list(struct list_comp *const comp,
 				break;
 		}
 	}
-	rohc_debugf(3, "value of counter at the end of encoding the list : %d \n", counter);
+
+	rohc_debugf(3, "counter at the end of list encoding = %d\n", counter);
+
 	return counter;
 }
 
+
 /**
- * @brief build Encoding type 0
+ * @brief Build encoding type 0 for list compression
  *
  * \verbatim
- 
+
 Encoding type 0 (5.8.6.1):
 
        0   1   2   3   4   5   6   7
       --- --- --- --- --- --- --- ---
-     | ET = 0| GP| PS|   CC = m      |  
+     | ET = 0| GP| PS|   CC = m      |
      +---+---+---+---+---+---+---+---+
      |            gen_id             |
      +---+---+---+---+---+---+---+---+
      |       XI 1, ..., XI m         | m octets, or m * 4 bits
-     /               --- --- --- --- /  
+     /               --- --- --- --- /
      |               :    Padding    : if PS = 0 and m is odd
      +---+---+---+---+---+---+---+---+
      |                               |
      /      item 1, ..., item n      / variable length
      |                               |
      +---+---+---+---+---+---+---+---+
-	
+
 \endverbatim
  *
- * @param comp the list compressor
- * @param dest The ROHC packet under build
- * @param counter The current position in the rohc-packet-under-build buffer
- * @param ps the size of the index
- * @return The new position
+ * @param comp     The list compressor
+ * @param dest     The ROHC packet under build
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @param ps       The size of the index
+ * @return         The new position in the rohc-packet-under-build buffer
  */
 int encode_type_0(struct list_comp *const comp,
                   unsigned char *const dest,
                   int counter,
                   const int ps)
 {
-	int length; // data length
+	int length; /* data length */
 	int i;
 	int j;
 	struct list_elt * elt;
 	unsigned char byte = 0;
-	int size = size_list(comp->curr_list);
-	// first byte
-        byte |= 1 << 5;
+	int size;
+
+	size = size_list(comp->curr_list);
+
+	/* first byte */
+	byte |= 1 << 5;
 	byte |= (ps & 0x01) << 4;
 	byte |= (size & 0x0f);
 	dest[counter] = byte;
-	counter ++;
-	//second byte : gen_id
+	counter++;
+
+	/* second byte: gen_id */
 	byte = 0;
 	byte = (comp->curr_list->gen_id & 0xff);
 	dest[counter] = byte;
-	counter ++;
-	//following bytes : index
+	counter++;
+
+	/* next bytes: indexes */
 	byte = 0;
-	for (i = 0; i < size; i++)
+	for(i = 0; i < size; i++)
 	{
 		rohc_debugf(3, "value of ps: %d \n", ps);
 		if(ps)
@@ -1421,7 +1516,7 @@ int encode_type_0(struct list_comp *const comp,
 				byte |= 1 << 7;
 			byte |= (elt->index_table & 0x7f);
 			dest[counter] = byte;
-			counter ++;
+			counter++;
 			byte = 0;
 		}
 		else
@@ -1432,39 +1527,41 @@ int encode_type_0(struct list_comp *const comp,
 			byte |= (elt->index_table & 0x07)<< 4;
 			i++;
 			elt = get_elt(comp->curr_list, i);
-			if (elt != NULL)
+			if(elt != NULL)
 			{
 				if(!comp->trans_table[elt->index_table].known)
-					byte |= 1<< 3;
+					byte |= 1 << 3;
 				byte |= (elt->index_table & 0x07);
 			}
 			dest[counter] = byte;
-			counter ++;
+			counter++;
 			byte = 0;
 		}
 	}
-	//following bytes : item
-	for (i = 0; i < size; i++)
+
+	/* next bytes: items */
+	for(i = 0; i < size; i++)
 	{
 		elt = get_elt(comp->curr_list, i);
-		if (!comp->trans_table[elt->index_table].known)
+		if(!comp->trans_table[elt->index_table].known)
 		{
 			length = elt->item->length;
-			for(j = 0; j<length; j++)
+			for(j = 0; j < length; j++)
 			{
-				//rohc_debugf(3, "length of the extension: %d byte %d \n", length, j);
 				byte |= (elt->item->data[j] & 0xff);
 				dest[counter] = byte;
-				counter ++;
+				counter++;
 				byte = 0;
 			}
 		}
 	}
+
 	return counter;
 }
 
+
 /**
- * @brief build Encoding type 1
+ * @brief Build encoding type 1 for list compression
  *
  * \verbatim
 
@@ -1488,41 +1585,46 @@ Encoding type 1 (5.8.6.2):
 	/      item 1, ..., item n      / variable length
 	|                               |
 	+---+---+---+---+---+---+---+---+
+
 \endverbatim
  *
- * @param comp the list compressor
- * @param dest The ROHC packet under build
- * @param counter The current position in the rohc-packet-under-build buffer
- * @param ps the size of the index
- * @return The new position
+ * @param comp     The list compressor
+ * @param dest     The ROHC packet under build
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @param ps       The size of the index
+ * @return         The new position in the rohc-packet-under-build buffer
  */
 int encode_type_1(struct list_comp *const comp,
                   unsigned char *const dest,
                   int counter,
                   const int ps)
 {
-	int length; // data length
+	int length; /* data length */
 	int i;
 	int j;
-	struct list_elt * elt;
+	int mask_size;
+	struct list_elt *elt;
 	unsigned char byte = 0;
-	//unsigned char mask[2];
-	int size = size_list(comp->curr_list);
-	// The 3 first bytes are already encoded
-	//insertion mask
-	for(i = 0; i<size && i < 8; i++)
+	int size;
+
+	size = size_list(comp->curr_list);
+
+	/* the 3 first bytes are already encoded */
+
+	/* insertion mask */
+	for(i = 0; i < size && i < 8; i++)
 	{
 		elt = get_elt(comp->curr_list, i);
 		if(!type_is_present(comp->ref_list, elt->item))
 			byte |= 1 << (7 - i);
 	}
-	j = 1;
+	mask_size = 1;
 	dest[counter] = byte;
-	counter ++;
+	counter++;
 	byte = 0;
-	if (size > 8)
+	if(size > 8)
 	{
-		for(i = 8; i<size && i < 16; i++)
+		for(i = 8; i< size && i < 16; i++)
 		{
 			elt = get_elt(comp->curr_list, i);
 			if(!type_is_present(comp->ref_list, elt->item))
@@ -1531,14 +1633,15 @@ int encode_type_1(struct list_comp *const comp,
 				byte |= 1 << (7 - j);
 			}
 		}
-		j = 2;//size of mask
+		mask_size = 2;
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		byte = 0;
 	}
+
+	/* next bytes: indexes */
 	i = 0;
-	// next bytes: index
-	if (!ps)// XI = 4 bits
+	if(!ps) /* XI = 4 bits */
 	{
 		elt = get_elt(comp->curr_list, i);
 		while(type_is_present(comp->ref_list, elt->item) && i<size)
@@ -1546,30 +1649,36 @@ int encode_type_1(struct list_comp *const comp,
 			i++;
 			elt = get_elt(comp->curr_list, i);
 		}
+
+		/* first index in first byte */
 		if(!comp->trans_table[elt->index_table].known)
-			dest[counter - (3+j)] |= 1 << 3; //first byte
-		dest[counter - (3+j)] |= (elt->index_table & 0x07); // j: size of mask
+			dest[counter - (3 + mask_size)] |= 1 << 3;
+		dest[counter - (3 + mask_size)] |= (elt->index_table & 0x07);
 		i++;
-		for(j = i; j<size; j++)// j: index (different use)
+
+		/* next indexes */
+		for(j = i; j < size; j++)
 		{
-		 	elt = get_elt(comp->curr_list, j);
-			while(elt != NULL && type_is_present(comp->ref_list, elt->item) && j<size)
+			elt = get_elt(comp->curr_list, j);
+			while(elt != NULL &&
+			      type_is_present(comp->ref_list, elt->item) &&
+			      j < size)
 			{
 				j++;
 				elt = get_elt(comp->curr_list, j);
 			}
 			if(elt != NULL)
 			{
-		        	if(!comp->trans_table[elt->index_table].known)
+				if(!comp->trans_table[elt->index_table].known)
 					byte |= 1 << 7;
-				byte |= (elt->index_table & 0x07)<< 4;
+				byte |= (elt->index_table & 0x07) << 4;
 				j++;
 				elt = get_elt(comp->curr_list, j);
-				if (elt != NULL)
+				if(elt != NULL)
 				{
-					while(elt != NULL && 
+					while(elt != NULL &&
 					      type_is_present(comp->ref_list, elt->item) &&
-					      j<size)
+					      j < size)
 					{
 						j++;
 						elt = get_elt(comp->curr_list, j);
@@ -1577,19 +1686,19 @@ int encode_type_1(struct list_comp *const comp,
 					if(elt != NULL)
 					{
 						if(!comp->trans_table[elt->index_table].known)
-							byte |= 1<< 3;
+							byte |= 1 << 3;
 						byte |= (elt->index_table & 0x07);
 					}
-				}//else padding
+				} /* else padding */
 				dest[counter] = byte;
-				counter ++;
+				counter++;
 				byte = 0;
 			}
-		}																	 
+		}
 	}
-	else // XI = 8 bits
+	else /* XI = 8 bits */
 	{
-		for (i = 0; i < size; i++)
+		for(i = 0; i < size; i++)
 		{
 			elt = get_elt(comp->curr_list, i);
 			while(elt != NULL && type_is_present(comp->ref_list, elt->item) && i<size)
@@ -1603,17 +1712,20 @@ int encode_type_1(struct list_comp *const comp,
 					byte |= 1 << 7;
 				byte |= (elt->index_table & 0x7f);
 				dest[counter] = byte;
-				counter ++;
+				counter++;
 				byte = 0;
 				i++;
 			}
 		}
 	}
-	//next bytes: item
-	for (i = 0; i < size; i++)
+
+	/* next bytes: items */
+	for(i = 0; i < size; i++)
 	{
 		elt = get_elt(comp->curr_list, i);
-		while(elt != NULL && type_is_present(comp->ref_list, elt->item) && i<size)
+		while(elt != NULL &&
+		      type_is_present(comp->ref_list, elt->item) &&
+		      i < size)
 		{
 			i++;
 			elt = get_elt(comp->curr_list, i);
@@ -1623,21 +1735,23 @@ int encode_type_1(struct list_comp *const comp,
 			if(!comp->trans_table[elt->index_table].known)
 			{
 				length = elt->item->length;
-				for(j = 0; j<length; j++)
+				for(j = 0; j < length; j++)
 				{
 					byte |= (elt->item->data[j] & 0xff);
 					dest[counter] = byte;
-					counter ++;
+					counter++;
 					byte = 0;
 				}
 			}
 		}
 	}
+
 	return counter;
 }
 
+
 /**
- * @brief build Encoding type 2
+ * @brief Build encoding type 2 for list compression
  *
  * \verbatim
 
@@ -1653,13 +1767,14 @@ Encoding type 2 (5.8.6.3):
 	+---+---+---+---+---+---+---+---+
 	/        removal bit mask       /
 	+---+---+---+---+---+---+---+---+
+
  \endverbatim
  *
- * @param comp the list compressor
- * @param dest The ROHC packet under build
- * @param counter The current position in the rohc-packet-under-build buffer
- * @param ps the size of the index
- * @return The new position
+ * @param comp     The list compressor
+ * @param dest     The ROHC packet under build
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @param ps       The size of the index
+ * @return         The new position in the rohc-packet-under-build buffer
  */
 int encode_type_2(struct list_comp *const comp,
                   unsigned char *const dest,
@@ -1668,17 +1783,19 @@ int encode_type_2(struct list_comp *const comp,
 {
 	int i;
 	int j;
-	struct list_elt * elt;
+	struct list_elt *elt;
 	unsigned char byte;
-	int size = size_list(comp->ref_list);
+	int size;
+
+	size = size_list(comp->ref_list);
 
 	dest[counter - 3] |= (size & 0x0f);
 
-	// The 3 first bytes are already encoded
+	/* the 3 first bytes are already encoded */
 
 	/* removal mask (first byte) */
 	byte = 0xff;
-	for(i = 0; i<size && i < 8; i++)
+	for(i = 0; i < size && i < 8; i++)
 	{
 		elt = get_elt(comp->ref_list, i);
 		if(type_is_present(comp->curr_list, elt->item))
@@ -1687,14 +1804,14 @@ int encode_type_2(struct list_comp *const comp,
 		}
 	}
 	dest[counter] = byte;
-	counter ++;
+	counter++;
 	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", byte);
 
 	/* removal mask (second optional byte) */
-	if (size > 8)
+	if(size > 8)
 	{
 		byte = 0xff;
-		for(i = 8; i<size && i < 16; i++)
+		for(i = 8; i < size && i < 16; i++)
 		{
 			elt = get_elt(comp->ref_list, i);
 			if(!type_is_present(comp->curr_list, elt->item))
@@ -1704,7 +1821,7 @@ int encode_type_2(struct list_comp *const comp,
 			}
 		}
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", byte);
 	}
 	else
@@ -1714,8 +1831,10 @@ int encode_type_2(struct list_comp *const comp,
 
 	return counter;
 }
+
+
 /**
- * @brief build Encoding type 3
+ * @brief Build encoding type 3 for list compression
  *
  * \verbatim
 
@@ -1732,7 +1851,7 @@ Encoding type 3 (5.8.6.4):
 	/        removal bit mask       /
 	+---+---+---+---+---+---+---+---+
 	/       insertion bit mask      /
-        +---+---+---+---+---+---+---+---+
+	+---+---+---+---+---+---+---+---+
 	|           XI list             | k octets, or (k-1)*4 bits
 	/               --- --- --- --- /
 	|               :    Padding    : if PS = 0 and k is even
@@ -1741,14 +1860,14 @@ Encoding type 3 (5.8.6.4):
 	/      item 1, ..., item n      / variable length
 	|                               |
 	+---+---+---+---+---+---+---+---+
-									
+
 \endverbatim
  *
- * @param comp the list compressor
- * @param dest The ROHC packet under build
- * @param counter The current position in the rohc-packet-under-build buffer
- * @param ps the size of the index
- * @return The new position
+ * @param comp     The list compressor
+ * @param dest     The ROHC packet under build
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @param ps       The size of the index
+ * @return         The new position in the rohc-packet-under-build buffer
  */
 int encode_type_3(struct list_comp *const comp,
                   unsigned char *const dest,
@@ -1757,14 +1876,15 @@ int encode_type_3(struct list_comp *const comp,
 {
 	int i;
 	int j;
-	struct list_elt * elt;
+	int mask_size;
+	struct list_elt *elt;
 	unsigned char byte;
 	int size;
-	int length; //data length
+	int length; /* data length */
 
-	// The 3 first bytes are already encoded
+	/* the 3 first bytes are already encoded */
 
-	//removal mask
+	/* removal mask */
 	size = size_list(comp->ref_list);
 	byte = 0xff;
 	for(i = 0; i<size && i < 8; i++)
@@ -1777,12 +1897,12 @@ int encode_type_3(struct list_comp *const comp,
 		}
 	}
 	dest[counter] = byte;
-	counter ++;
+	counter++;
 	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", byte);
-	if (size > 8)
+	if(size > 8)
 	{
 		byte = 0xff;
-		for(i = 8; i<size && i < 16; i++)
+		for(i = 8; i < size && i < 16; i++)
 		{
 			elt = get_elt(comp->ref_list, i);
 			if(type_is_present(comp->curr_list, elt->item) &&
@@ -1793,7 +1913,7 @@ int encode_type_3(struct list_comp *const comp,
 			}
 		}
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", byte);
 	}
 	else
@@ -1802,72 +1922,80 @@ int encode_type_3(struct list_comp *const comp,
 	}
 	size = size_list(comp->curr_list);
 
-	//insertion mask
+	/* insertion mask */
 	byte = 0;
-	for(i = 0; i<size && i < 8; i++)
+	for(i = 0; i < size && i < 8; i++)
 	{
 		elt = get_elt(comp->curr_list, i);
-		if(!type_is_present(comp->ref_list, elt->item) || 
-			!comp->trans_table[elt->index_table].known)
+		if(!type_is_present(comp->ref_list, elt->item) ||
+		   !comp->trans_table[elt->index_table].known)
 		{
 			byte |= 1 << (7 - i);
 		}
 	}
 	dest[counter] = byte;
-	counter ++;
+	counter++;
 	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", byte);
 	byte = 0;
-	j = 2; //mask size
-	if (size > 8)
+	mask_size = 2;
+	if(size > 8)
 	{
 		for(i = 8; i<size && i < 16; i++)
 		{
 			elt = get_elt(comp->curr_list, i);
-			if(!type_is_present(comp->ref_list, elt->item)||
-				!comp->trans_table[elt->index_table].known)
+			if(!type_is_present(comp->ref_list, elt->item) ||
+			   !comp->trans_table[elt->index_table].known)
 			{
 				j = i - 8;
 				byte |= 1 << (7 - j);
 			}
 		}
-		j = 4;
+		mask_size = 4;
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", byte);
 	}
 	else
 	{
 		rohc_debugf(3, "no second byte of insertion bit mask\n");
 	}
+
+	/* next bytes: indexes */
 	byte = 0;
 	i = 0;
-	// next bytes: index
-	if (!ps)// XI = 4 bits
+	if(!ps) /* XI = 4 bits */
 	{
 		rohc_debugf(3, "create 4-bit XI list\n");
 
 		elt = get_elt(comp->curr_list, i);
 		while(type_is_present(comp->ref_list, elt->item) &&
-			comp->trans_table[elt->index_table].known && i<size)
-			
+		      comp->trans_table[elt->index_table].known &&
+		      i < size)
 		{
 			i++;
 			elt = get_elt(comp->curr_list, i);
 		}
+
+		/* first index in first byte */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			dest[counter - (3+j)] |= 1 << 3;
+			dest[counter - (3 + mask_size)] |= 1 << 3;
 		}
-		dest[counter - (3+j)] |= (elt->index_table & 0x07);
+		dest[counter - (3 + mask_size)] |= (elt->index_table & 0x07);
 		rohc_debugf(3, "update first byte with first 4-bit XI (X = %d, "
-		            " index = %d)\n", GET_REAL(GET_BIT_3(dest + counter - (3+j))),
-		            GET_BIT_0_2(dest + counter - (3+j)));
+		            "index = %d)\n",
+		            GET_REAL(GET_BIT_3(dest + counter - (3 + mask_size))),
+		            GET_BIT_0_2(dest + counter - (3 + mask_size)));
 		i++;
-		for(j = i; j<size; j++)
+
+		/* next indexes */
+		for(j = i; j < size; j++)
 		{
 			elt = get_elt(comp->curr_list, j);
-			while(elt != NULL && type_is_present(comp->ref_list, elt->item) && 
-				comp->trans_table[elt->index_table].known && j<size)
+			while(elt != NULL &&
+			      type_is_present(comp->ref_list, elt->item) &&
+			      comp->trans_table[elt->index_table].known &&
+			      j < size)
 			{
 				j++;
 				elt = get_elt(comp->curr_list, j);
@@ -1881,12 +2009,12 @@ int encode_type_3(struct list_comp *const comp,
 				byte |= (elt->index_table & 0x07)<< 4;
 				j++;
 				elt = get_elt(comp->curr_list, j);
-				if (elt != NULL)
+				if(elt != NULL)
 				{
 					while(elt != NULL &&
-						type_is_present(comp->ref_list, elt->item) &&
-						comp->trans_table[elt->index_table].known &&
-						j<size)
+					      type_is_present(comp->ref_list, elt->item) &&
+					      comp->trans_table[elt->index_table].known &&
+					      j < size)
 					{
 						j++;
 						elt = get_elt(comp->curr_list, j);
@@ -1901,21 +2029,23 @@ int encode_type_3(struct list_comp *const comp,
 					}
 				}
 				dest[counter] = byte;
-				counter ++;
+				counter++;
 				rohc_debugf(3, "add 2 XI elements = 0x%02x\n", byte);
 				byte = 0;
 			}
 		}
 	}
-	else // XI = 8 bits
+	else /* XI = 8 bits */
 	{
 		rohc_debugf(3, "create 8-bit XI list\n");
 
-		for (i = 0; i < size; i++)
+		for(i = 0; i < size; i++)
 		{
 			elt = get_elt(comp->curr_list, i);
-			while(elt != NULL && type_is_present(comp->ref_list, elt->item) && 
-				comp->trans_table[elt->index_table].known && i<size)
+			while(elt != NULL &&
+			      type_is_present(comp->ref_list, elt->item) &&
+			      comp->trans_table[elt->index_table].known &&
+			      i < size)
 			{
 				i++;
 				elt = get_elt(comp->curr_list, i);
@@ -1926,19 +2056,22 @@ int encode_type_3(struct list_comp *const comp,
 					byte |= 1 << 7;
 				byte |= (elt->index_table & 0x7f);
 				dest[counter] = byte;
-				counter ++;
+				counter++;
 				rohc_debugf(3, "add XI element = 0x%02x\n", byte);
 				byte = 0;
 				i++;
 			}
 		}
 	}
-	//next bytes: item
-	for (i = 0; i < size; i++)
+
+	/* next bytes: items */
+	for(i = 0; i < size; i++)
 	{
 		elt = get_elt(comp->curr_list, i);
-		while(elt != NULL && type_is_present(comp->ref_list, elt->item) && 
-			comp->trans_table[elt->index_table].known && i<size)
+		while(elt != NULL &&
+		      type_is_present(comp->ref_list, elt->item) &&
+		      comp->trans_table[elt->index_table].known &&
+		      i < size)
 		{
 			i++;
 			elt = get_elt(comp->curr_list, i);
@@ -1949,27 +2082,29 @@ int encode_type_3(struct list_comp *const comp,
 			{
 				length = elt->item->length;
 				rohc_debugf(3, "add %d-byte item\n", length);
-				for(j = 0; j<length; j++)
+				for(j = 0; j < length; j++)
 				{
 					byte |= (elt->item->data[j] & 0xff);
 					dest[counter] = byte;
-					counter ++;
+					counter++;
 					byte = 0;
 				}
 			}
 		}
 	}
-	return counter;																	    
+
+	return counter;
 }
 
+
 /**
- * @brief Ipv6 extension comparison
+ * @brief IPv6 extension comparison
  *
- * @param ext The extensiom
- * @param comp the list compressor
- * @param size The size to compare
- * @param index_table The index in based table
- * @return 1 if equal, 0 else
+ * @param ext          The IPv6 extension to compare
+ * @param comp         The list compressor
+ * @param size         The size of the IPv6 extension to compare
+ * @param index_table  The index of the IPv6 extention in based table
+ * @return             1 if equal, 0 otherwise
  */
 int ipv6_compare(const unsigned char *ext,
                  const struct list_comp *comp,
@@ -1979,13 +2114,14 @@ int ipv6_compare(const unsigned char *ext,
 	return memcmp(ext + 2, comp->based_table[index_table].data + 2, size - 2);
 }
 
+
 /**
  * @brief Update an IPv6 item with the extension
- * 
- * @param ext the extension
- * @param index_table The index of this item in the based table
- * @param size The size of the data
- * @param comp The list compressor
+ *
+ * @param ext          The IPv6 extension
+ * @param index_table  The index of this item in the based table
+ * @param size         The size of the data
+ * @param comp         The list compressor
  */
 void create_ipv6_item(const unsigned char *ext,
                       const int index_table,
@@ -1993,23 +2129,23 @@ void create_ipv6_item(const unsigned char *ext,
                       struct list_comp *const comp)
 {
 	comp->based_table[index_table].length = size;
-	switch (index_table)
+	switch(index_table)
 	{
 		case 0:
-			comp->based_table[index_table].header.hbh->ip6h_nxt = * ext;
-			comp->based_table[index_table].header.hbh->ip6h_len = * (ext + 1);
+			comp->based_table[index_table].header.hbh->ip6h_nxt = ext[0];
+			comp->based_table[index_table].header.hbh->ip6h_len = ext[1];
 			break;
-		case 1: 
-			comp->based_table[index_table].header.dest->ip6d_nxt = * ext;
-			comp->based_table[index_table].header.dest->ip6d_len = * (ext + 1);
+		case 1:
+			comp->based_table[index_table].header.dest->ip6d_nxt = ext[0];
+			comp->based_table[index_table].header.dest->ip6d_len = ext[1];
 			break;
 		case 2:
-			comp->based_table[index_table].header.rthdr->ip6r_nxt = * ext;
-			comp->based_table[index_table].header.rthdr->ip6r_len = * (ext + 1);
+			comp->based_table[index_table].header.rthdr->ip6r_nxt = ext[0];
+			comp->based_table[index_table].header.rthdr->ip6r_len = ext[1];
 			break;
 		case 3:
-			comp->based_table[index_table].header.ahhdr->ip6ah_nxt = * ext;
-			comp->based_table[index_table].header.ahhdr->ip6ah_len = * (ext + 1);
+			comp->based_table[index_table].header.ahhdr->ip6ah_nxt = ext[0];
+			comp->based_table[index_table].header.ahhdr->ip6ah_len = ext[1];
 			break;
 		default:
 			rohc_debugf(0, "no item defined for IPv6 with this index\n");
@@ -2108,18 +2244,6 @@ error:
 
 
 /**
- * @brief Get the size of the IPv6 extension
- * 
- * @param ext The extension
- * @return the size
- */
-int get_ipv6_ext_size(const unsigned char *ext)
-{
-	int size = (*(ext+1) + 1 )*8;
-	return size;
-}
-
-/**
  * @brief Update the profile when feedback arrives.
  *
  * This function is one of the functions that must exist in one profile for the
@@ -2135,7 +2259,7 @@ void c_generic_feedback(struct c_context *const context,
 	unsigned char *p; /* pointer to the profile-specific data
 	                     in the feedback packet */
 	unsigned int sn;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 	p = feedback->data + feedback->specific_offset;
 
@@ -2144,7 +2268,7 @@ void c_generic_feedback(struct c_context *const context,
 		case 1: /* FEEDBACK-1 */
 			rohc_debugf(2, "feedback 1\n");
 			sn = p[0];
-		
+
 			/* ack IP-ID only if IPv4, but always ack SN */
 			if(g_context->ip_flags.version == IPV4)
 				c_ack_sn_wlsb(g_context->ip_flags.info.v4.ip_id_window, sn);
@@ -2163,12 +2287,12 @@ void c_generic_feedback(struct c_context *const context,
 
 			sn = ((p[0] & 15) << 8) + p[1];
 			p += 2;
-			
+
 			while(remaining > 0)
 			{
 				opt = p[0] >> 4;
 				optlen = p[0] & 0x0f;
-				
+
 				switch(opt)
 				{
 					case 1: /* CRC */
@@ -2189,13 +2313,14 @@ void c_generic_feedback(struct c_context *const context,
 						rohc_debugf(0, "unknown feedback type: %d\n", opt);
 						break;
 				}
-				
+
 				remaining -= 1 + optlen;
 				p += 1 + optlen;
 			}
-			
+
 			/* check CRC if used */
-			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data, feedback->size, CRC_INIT_8) != crc)
+			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data,
+			                             feedback->size, CRC_INIT_8) != crc)
 			{
 				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
 				return;
@@ -2208,7 +2333,7 @@ void c_generic_feedback(struct c_context *const context,
 				else
 					rohc_debugf(0, "mode change requested but no crc was given\n");
 			}
-			
+
 			switch(feedback->acktype)
 			{
 				case ACK:
@@ -2221,7 +2346,7 @@ void c_generic_feedback(struct c_context *const context,
 						c_ack_sn_wlsb(g_context->sn_window, sn);
 					}
 					break;
-				
+
 				case NACK:
 					rohc_debugf(2, "nack\n");
 					if(context->state == SO)
@@ -2232,12 +2357,12 @@ void c_generic_feedback(struct c_context *const context,
 					else if(context->state == FO)
 						g_context->ir_dyn_count = 0;
 					break;
-					
+
 				case STATIC_NACK:
 					rohc_debugf(2, "static nack\n");
 					change_state(context, IR);
 					break;
-					
+
 				case RESERVED:
 					rohc_debugf(0, "reserved field used\n");
 					break;
@@ -2245,7 +2370,7 @@ void c_generic_feedback(struct c_context *const context,
 				default:
 					/* impossible value */
 					rohc_debugf(0, "unknown ack type\n");
-			}	
+			}
 		}
 		break;
 
@@ -2265,7 +2390,7 @@ void c_generic_feedback(struct c_context *const context,
 void periodic_down_transition(struct c_context *context)
 {
 	struct c_generic_context *g_context;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 
 	if(g_context->go_back_fo_count >= CHANGE_TO_FO_COUNT)
@@ -2304,7 +2429,7 @@ void decide_state(struct c_context *const context)
 	struct c_generic_context *g_context;
 	int ir_count, fo_count, send_static, send_dynamic;
 	rohc_c_state curr_state, next_state;
-	
+
 	curr_state = context->state;
 	next_state = curr_state;
 
@@ -2332,7 +2457,7 @@ void decide_state(struct c_context *const context)
 		next_state = FO;
 
 	change_state(context, next_state);
-	
+
 	if(context->mode == U_MODE)
 		periodic_down_transition(context);
 }
@@ -2353,7 +2478,7 @@ void update_variables(struct c_context *const context,
                       const struct ip_packet *ip2)
 {
 	struct c_generic_context *g_context;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* update info related to the IP-ID of the outer header
@@ -2377,32 +2502,44 @@ void update_variables(struct c_context *const context,
 		           g_context->ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
+	{
 		g_context->tmp_variables.nr_ip_id_bits = 0;
-	
+	}
+
 	/* always update the info related to the SN */
-	g_context->tmp_variables.nr_sn_bits = c_get_k_wlsb(g_context->sn_window, g_context->sn);
-	rohc_debugf(2, "sn bits=%d\n", g_context->tmp_variables.nr_sn_bits);
+	g_context->tmp_variables.nr_sn_bits =
+		c_get_k_wlsb(g_context->sn_window, g_context->sn);
+	rohc_debugf(2, "sn bits = %d\n", g_context->tmp_variables.nr_sn_bits);
 	c_add_wlsb(g_context->sn_window, g_context->sn, 0, g_context->sn);
-	
+
 	/* update info related to the IP-ID of the inner header
 	 * only if header is IPv4 */
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
 	{
 		if(g_context->ip2_flags.info.v4.nbo)
-			g_context->ip2_flags.info.v4.id_delta = ntohs(ipv4_get_id(ip2)) - g_context->sn;
+		{
+			g_context->ip2_flags.info.v4.id_delta =
+				ntohs(ipv4_get_id(ip2)) - g_context->sn;
+		}
 		else
-			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
+		{
+			g_context->ip2_flags.info.v4.id_delta =
+				ipv4_get_id(ip2) - g_context->sn;
+		}
 
 		g_context->tmp_variables.nr_ip_id_bits2 =
 			c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
 			             g_context->ip2_flags.info.v4.id_delta);
-		rohc_debugf(2, "ip_id bits2=%d\n", g_context->tmp_variables.nr_ip_id_bits2);
+		rohc_debugf(2, "ip_id bits2 = %d\n",
+		            g_context->tmp_variables.nr_ip_id_bits2);
 
 		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn, 0,
 		           g_context->ip2_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
+	{
 		g_context->tmp_variables.nr_ip_id_bits2 = 0;
+	}
 
 	/* update info related to RTP header */
 	if(context->profile->id == ROHC_PROFILE_RTP)
@@ -2443,8 +2580,9 @@ void update_variables(struct c_context *const context,
 					               "never append!\n", ts_send);
 					nr_bits = 32;
 				}
-				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, mask = 0x%x, nr_bits = %d\n",
-						      rtp_context->tmp_variables.ts_send, mask, nr_bits);
+				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
+				            "mask = 0x%x, nr_bits = %d\n",
+				            rtp_context->tmp_variables.ts_send, mask, nr_bits);
 				rtp_context->tmp_variables.nr_ts_bits = nr_bits;
 			}
 
@@ -2479,7 +2617,9 @@ void update_variables(struct c_context *const context,
 static rohc_packet_t decide_FO_packet(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
-	int nr_of_ip_hdr, send_static, send_dynamic;
+	int nr_of_ip_hdr;
+	int send_static;
+	int send_dynamic;
 	int packet;
 	int is_rtp;
 	int is_rnd;
@@ -2509,9 +2649,13 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 		packet = PACKET_IR_DYN;
 	}
 	else if(nr_of_ip_hdr == 1 && send_dynamic > 2)
+	{
 		packet = PACKET_IR_DYN;
+	}
 	else if(nr_of_ip_hdr > 1 && send_dynamic > 4)
+	{
 		packet = PACKET_IR_DYN;
+	}
 	else if(is_rtp) /* RTP profile */
 	{
 		int nr_ts_bits;
@@ -2522,13 +2666,19 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 		if(nr_of_ip_hdr == 1) /* single IP header */
 		{
 			if(!is_ip_v4 || is_rnd)
+			{
 				packet = PACKET_UOR_2_RTP;
+			}
 			else if(is_ip_v4 && !is_rnd && nr_ip_id_bits > 0 &&
 			        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+			{
 				/* a UOR-2-ID packet can only carry 29 bits of TS (with ext 3) */
 				packet = PACKET_UOR_2_ID;
+			}
 			else
+			{
 				packet = PACKET_UOR_2_TS;
+			}
 		}
 		else /* double IP headers */
 		{
@@ -2536,18 +2686,26 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 			int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
 			int nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
 
-			if( (!is_ip_v4 || is_rnd) && (!is_ip2_v4 || is_rnd2))
+			if((!is_ip_v4 || is_rnd) && (!is_ip2_v4 || is_rnd2))
+			{
 				packet = PACKET_UOR_2_RTP;
+			}
 			else if(nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL &&
 			        (is_ip_v4 && nr_ip_id_bits > 0 &&
 			         (!is_ip_v4 || is_rnd2 || nr_ip_id_bits2 == 0)))
+			{
 				packet = PACKET_UOR_2_ID;
+			}
 			else
+			{
 				packet = PACKET_UOR_2_TS;
+			}
 		}
 	}
 	else /* non-RTP profiles */
+	{
 		packet = PACKET_UOR_2;
+	}
 
 	return packet;
 }
@@ -2568,7 +2726,9 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 static rohc_packet_t decide_SO_packet(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
-	int nr_of_ip_hdr, nr_sn_bits, nr_ip_id_bits;
+	int nr_of_ip_hdr;
+	int nr_sn_bits;
+	int nr_ip_id_bits;
 	int packet;
 	int is_rtp;
 	int is_rnd;
@@ -2597,10 +2757,15 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			{
 				packet = PACKET_UOR_2_RTP; /* default packet */
 
-				if(nr_sn_bits <= 4 && (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				if(nr_sn_bits <= 4 &&
+				   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				{
 					packet = PACKET_UO_0;
+				}
 				else if(nr_sn_bits <= 4 && nr_ts_bits <= 6)
+				{
 					packet = PACKET_UO_1_RTP;
+				}
 			}
 			else
 			{
@@ -2608,19 +2773,27 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 
 				if(nr_sn_bits <= 4 && nr_ip_id_bits == 0 &&
 				   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				{
 					packet = PACKET_UO_0;
+				}
 				else if(nr_sn_bits <= 4 && nr_ip_id_bits == 0 && nr_ts_bits <= 5)
+				{
 					packet = PACKET_UO_1_TS;
+				}
 				else if(nr_sn_bits <= 4 && nr_ip_id_bits <= 5 &&
 				        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				{
 					packet = PACKET_UO_1_ID;
+				}
 				else if(nr_ip_id_bits != 0 && nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+				{
 					packet = PACKET_UOR_2_ID;
+				}
 			}
 		}
 		else /* double IP headers */
 		{
-			int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+			int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
 			int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
 			int nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
 			rohc_debugf(3, "nr_ip_id_bits2 = %d rnd2 = %d\n",
@@ -2630,31 +2803,45 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			   (!is_ip_v4 || is_rnd || nr_ip_id_bits == 0) &&
 			   (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
 			   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+			{
 				packet = PACKET_UO_0;
+			}
 			else if((!is_ip_v4 || is_rnd) &&
 			        (!is_ip2_v4 || is_rnd2) &&
 			        nr_sn_bits <= 4 &&
 			        nr_ts_bits <= 6)
+			{
 				packet = PACKET_UO_1_RTP;
+			}
 			else if((is_ip_v4 && nr_ip_id_bits <= 5) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
 			        nr_sn_bits <= 4 &&
 			        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+			{
 				packet = PACKET_UO_1_ID;
+			}
 			else if((!is_ip_v4 || is_rnd || nr_ip_id_bits == 0) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
 			        nr_sn_bits <= 4 &&
 			        nr_ts_bits <= 5)
+			{
 				packet = PACKET_UO_1_TS;
+			}
 			else if((!is_ip_v4 || is_rnd) &&
 			        (!is_ip2_v4 || is_rnd2))
+			{
 				packet = PACKET_UOR_2_RTP;
+			}
 			else if((is_ip_v4 && nr_ip_id_bits > 0) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
 			        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+			{
 				packet = PACKET_UOR_2_ID;
+			}
 			else
+			{
 				packet = PACKET_UOR_2_TS;
+			}
 		}
 	}
 	else /* non-RTP profiles */
@@ -2665,26 +2852,36 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 		{
 			if(nr_sn_bits <= 4 &&
 			   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
+			{
 				packet = PACKET_UO_0;
+			}
 			else if(nr_sn_bits == 5 && (!is_ip_v4 || (is_ip_v4 && nr_ip_id_bits == 0)))
+			{
 				packet = PACKET_UOR_2;
+			}
 			else if(nr_sn_bits <= 5 && (is_ip_v4 && nr_ip_id_bits <= 6))
+			{
 				packet = PACKET_UO_1; /* IPv4 only */
+			}
 			/* else PACKET_UOR_2 */
 		}
 		else /* double IP headers */
 		{
-			int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+			int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
 			int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
 			int nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
 
 			if(nr_sn_bits <= 4 &&
 			   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))) &&
 			   (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
+			{
 				packet = PACKET_UO_0;
+			}
 			else if(nr_sn_bits <= 5 && (is_ip_v4 && nr_ip_id_bits <= 6) &&
 			        (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
+			{
 				packet = PACKET_UO_1; /* IPv4 only for outer header */
+			}
 			/* else PACKET_UOR_2 */
 		}
 	}
@@ -2711,7 +2908,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
  *                      of success
  *                  \li PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t decide_packet(const struct c_context *context, 
+static rohc_packet_t decide_packet(const struct c_context *context,
                                    const struct ip_packet *ip,
                                    const struct ip_packet *ip2,
                                    const size_t size_data)
@@ -2719,50 +2916,64 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 	struct c_generic_context *g_context;
 	rohc_packet_t packet;
 	unsigned char next_header_type;
-	
+	int nr_of_ip_hdr;
+
 	g_context = (struct c_generic_context *) context->specific;
-	int nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
+	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
 
 	switch(context->state)
 	{
 		case IR:
+		{
 			rohc_debugf(2, "IR state\n");
 			g_context->ir_count++;
 			packet = PACKET_IR;
-			//no padding to replace
+
+			/* jamming mechanism: the IR packet is the packet that contains all
+			   the information, so there is no need to override the default
+			   decision algorithm */
 			break;
+		}
 
 		case FO:
+		{
 			rohc_debugf(2, "FO state\n");
 			g_context->fo_count++;
 			packet = decide_FO_packet(context);
-			if (context->compressor->jam_use)
-			// option to use jamming activated
-			{
-				rohc_debugf(2, "use jamming algorithm\n");
-				packet = jamming_decide_algo(context->compressor, context, ip, ip2,
-				                             packet, size_data); 
-			}															      
-			break;
 
-		case SO:
-			rohc_debugf(2, "SO state\n");
-			g_context->so_count++;
-			packet = decide_SO_packet(context);
-			if (context->compressor->jam_use)
-			// option to use jamming activated
+			/* override the default decision algorithm if jamming is enabled */
+			if(context->compressor->jam_use)
 			{
 				rohc_debugf(2, "use jamming algorithm\n");
 				packet = jamming_decide_algo(context->compressor, context, ip, ip2,
 				                             packet, size_data);
-			}													 
+			}
 			break;
+		}
+
+		case SO:
+		{
+			rohc_debugf(2, "SO state\n");
+			g_context->so_count++;
+			packet = decide_SO_packet(context);
+
+			/* override the default decision algorithm if jamming is enabled */
+			if(context->compressor->jam_use)
+			{
+				rohc_debugf(2, "use jamming algorithm\n");
+				packet = jamming_decide_algo(context->compressor, context, ip, ip2,
+				                             packet, size_data);
+			}
+			break;
+		}
 
 		default:
+		{
 			/* impossible value */
 			rohc_debugf(2, "unknown state (%d), cannot determine packet type\n",
 			            context->state);
 			goto error;
+		}
 	}
 
 	if(packet != PACKET_IR && packet != PACKET_IR_DYN)
@@ -2777,17 +2988,23 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			   next_header_type == IPV6_EXT_AUTH)
 			{
 				g_context->ip_flags.info.v6.ext_comp->update_done = 0;
-				g_context->ip_flags.info.v6.ext_comp->list_compress = 
+				g_context->ip_flags.info.v6.ext_comp->list_compress =
 					c_algo_list_compress(g_context->ip_flags.info.v6.ext_comp, ip);
-				if(g_context->ip_flags.info.v6.ext_comp->list_compress)// there are some modifications
+				if(g_context->ip_flags.info.v6.ext_comp->list_compress)
+				{
+					/* there are some modifications */
 					packet = PACKET_IR_DYN;
+				}
 			}
 		}
-		else if(nr_of_ip_hdr == 2 && (g_context->ip_flags.version == IPV6 ||
-						g_context->ip2_flags.version == IPV6))
+		else if(nr_of_ip_hdr == 2 &&
+		        (g_context->ip_flags.version == IPV6 ||
+		         g_context->ip2_flags.version == IPV6))
 		{
 			if(g_context->ip2_flags.version == IPV6)
+			{
 				g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
+			}
 			if(g_context->ip_flags.version == IPV6)
 			{
 				next_header_type = ip->header.v6.ip6_nxt;
@@ -2798,10 +3015,13 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 				   next_header_type == IPV6_EXT_AUTH)
 				{
 					g_context->ip_flags.info.v6.ext_comp->update_done = 0;
-					g_context->ip_flags.info.v6.ext_comp->list_compress = 
+					g_context->ip_flags.info.v6.ext_comp->list_compress =
 						c_algo_list_compress(g_context->ip_flags.info.v6.ext_comp, ip);
-					if(g_context->ip_flags.info.v6.ext_comp->list_compress)// there are some modifications
+					if(g_context->ip_flags.info.v6.ext_comp->list_compress)
+					{
+						/* there are some modifications */
 						packet = PACKET_IR_DYN;
+					}
 				}
 			}
 			if(packet != PACKET_IR_DYN && g_context->ip2_flags.version == IPV6)
@@ -2814,10 +3034,13 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 				   next_header_type == IPV6_EXT_AUTH)
 				{
 					g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
-					g_context->ip2_flags.info.v6.ext_comp->list_compress = 
+					g_context->ip2_flags.info.v6.ext_comp->list_compress =
 						c_algo_list_compress(g_context->ip2_flags.info.v6.ext_comp, ip2);
-					if(g_context->ip2_flags.info.v6.ext_comp->list_compress)// there are some modifications
+					if(g_context->ip2_flags.info.v6.ext_comp->list_compress)
+					{
+						/* there are some modifications */
 						packet = PACKET_IR_DYN;
+					}
 				}
 			}
 		}
@@ -2938,14 +3161,14 @@ error:
 
 \endverbatim
  *
- * @param context        The compression context
- * @param ip             The outer IP header
- * @param ip2            The inner IP header
- * @param next_header    The next header data used to code the static and
- *                       dynamic parts of the next header for some profiles such
- *                       as UDP, UDP-Lite, and so on.
- * @param dest           The rohc-packet-under-build buffer
- * @return               The position in the rohc-packet-under-build buffer 
+ * @param context      The compression context
+ * @param ip           The outer IP header
+ * @param ip2          The inner IP header
+ * @param next_header  The next header data used to code the static and
+ *                     dynamic parts of the next header for some profiles such
+ *                     as UDP, UDP-Lite, and so on.
+ * @param dest         The rohc-packet-under-build buffer
+ * @return             The position in the rohc-packet-under-build buffer
  */
 int code_IR_packet(struct c_context *const context,
                    const struct ip_packet *ip,
@@ -2957,7 +3180,9 @@ int code_IR_packet(struct c_context *const context,
 	int nr_of_ip_hdr;
 	unsigned char type;
 	int counter;
-	int first_position, crc_position;
+	int first_position;
+	int 
+	  crc_position;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -2974,7 +3199,9 @@ int code_IR_packet(struct c_context *const context,
 	/* initialize some profile-specific things when building an IR
 	 * or IR-DYN packet */
 	if(g_context->init_at_IR != NULL)
+	{
 		g_context->init_at_IR(context, next_header);
+	}
 
 	/* part 2: type of packet and D flag if dynamic part is included */
 	type = 0xfc;
@@ -2998,14 +3225,18 @@ int code_IR_packet(struct c_context *const context,
 	counter = code_generic_static_part(context, &g_context->ip_flags,
 	                                   ip, dest, counter);
 	if(counter < 0)
+	{
 		goto error;
+	}
 
 	if(nr_of_ip_hdr > 1)
 	{
 		counter = code_generic_static_part(context, &g_context->ip2_flags,
 		                                   ip2, dest, counter);
 		if(counter < 0)
+		{
 			goto error;
+		}
 	}
 
 	if(g_context->code_static_part != NULL && next_header != NULL)
@@ -3014,7 +3245,9 @@ int code_IR_packet(struct c_context *const context,
 		counter = g_context->code_static_part(context, next_header,
 		                                      dest, counter);
 		if(counter < 0)
+		{
 			goto error;
+		}
 	}
 
 	/* part 7: if we do not want dynamic part in IR packet, we should not
@@ -3022,14 +3255,18 @@ int code_IR_packet(struct c_context *const context,
 	counter = code_generic_dynamic_part(context, &g_context->ip_flags,
 	                                    ip, dest, counter);
 	if(counter < 0)
+	{
 		goto error;
+	}
 
 	if(nr_of_ip_hdr > 1)
 	{
 		counter = code_generic_dynamic_part(context, &g_context->ip2_flags,
 		                                    ip2, dest, counter);
 		if(counter < 0)
+		{
 			goto error;
+		}
 	}
 
 	if(g_context->code_dynamic_part != NULL && next_header != NULL)
@@ -3038,7 +3275,9 @@ int code_IR_packet(struct c_context *const context,
 		counter = g_context->code_dynamic_part(context, next_header,
 		                                       dest, counter);
 		if(counter < 0)
+		{
 			goto error;
+		}
 	}
 
 	/* part 8 */
@@ -3056,6 +3295,7 @@ int code_IR_packet(struct c_context *const context,
 	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
+
 error:
 	return counter;
 }
@@ -3096,14 +3336,14 @@ error:
 
 \endverbatim
  *
- * @param context        The compression context
- * @param ip             The outer IP header
- * @param ip2            The inner IP header
- * @param next_header    The next header data used to code the dynamic part
- *                       of the next header for some profiles such as UDP,
- *                       UDP-Lite, etc.
- * @param dest           The rohc-packet-under-build buffer
- * @return               The position in the rohc-packet-under-build buffer 
+ * @param context      The compression context
+ * @param ip           The outer IP header
+ * @param ip2          The inner IP header
+ * @param next_header  The next header data used to code the dynamic part
+ *                     of the next header for some profiles such as UDP,
+ *                     UDP-Lite, etc.
+ * @param dest         The rohc-packet-under-build buffer
+ * @return             The position in the rohc-packet-under-build buffer
  */
 int code_IR_DYN_packet(struct c_context *const context,
                        const struct ip_packet *ip,
@@ -3114,7 +3354,8 @@ int code_IR_DYN_packet(struct c_context *const context,
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
 	int counter;
-	int first_position, crc_position;
+	int first_position;
+	int crc_position;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3131,7 +3372,9 @@ int code_IR_DYN_packet(struct c_context *const context,
 	/* initialize some profile-specific things when building an IR
 	 * or IR-DYN packet */
 	if(g_context->init_at_IR != NULL)
+	{
 		g_context->init_at_IR(context, next_header);
+	}
 
 	/* part 2 */
 	dest[first_position] = 0xf8;
@@ -3151,14 +3394,18 @@ int code_IR_DYN_packet(struct c_context *const context,
 	counter = code_generic_dynamic_part(context, &g_context->ip_flags,
 	                                    ip, dest, counter);
 	if(counter < 0)
+	{
 		goto error;
+	}
 
 	if(nr_of_ip_hdr > 1)
 	{
 		counter = code_generic_dynamic_part(context, &g_context->ip2_flags,
 		                                    ip2, dest, counter);
 		if(counter < 0)
+		{
 			goto error;
+		}
 	}
 
 	if(g_context->code_dynamic_part != NULL && next_header != NULL)
@@ -3166,7 +3413,9 @@ int code_IR_DYN_packet(struct c_context *const context,
 		/* dynamic part of next header */
 		counter = g_context->code_dynamic_part(context, next_header, dest, counter);
 		if(counter < 0)
+		{
 			goto error;
+		}
 	}
 
 	/* part 7 */
@@ -3197,7 +3446,7 @@ error:
  * @param ip          The IP header the static part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_generic_static_part(const struct c_context *context,
                              struct ip_header_info *const header_info,
@@ -3206,11 +3455,15 @@ int code_generic_static_part(const struct c_context *context,
                              int counter)
 {
 	if(ip_get_version(ip) == IPV4)
+	{
 		counter = code_ipv4_static_part(context, header_info,
 		                                ip, dest, counter);
+	}
 	else /* IPV6 */
+	{
 		counter = code_ipv6_static_part(context, header_info,
 		                                ip, dest, counter);
+	}
 
 	return counter;
 }
@@ -3240,7 +3493,7 @@ int code_generic_static_part(const struct c_context *context,
  * @param ip          The IPv4 header the static part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_ipv4_static_part(const struct c_context *context,
                           struct ip_header_info *const header_info,
@@ -3310,7 +3563,7 @@ int code_ipv4_static_part(const struct c_context *context,
  * @param ip          The IPv6 header the static part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_ipv6_static_part(const struct c_context *context,
                           struct ip_header_info *const header_info,
@@ -3370,7 +3623,7 @@ int code_ipv6_static_part(const struct c_context *context,
  * @param ip          The IP header the dynamic part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_generic_dynamic_part(const struct c_context *context,
                               struct ip_header_info *const header_info,
@@ -3379,11 +3632,15 @@ int code_generic_dynamic_part(const struct c_context *context,
                               int counter)
 {
 	if(ip_get_version(ip) == IPV4)
+	{
 		counter = code_ipv4_dynamic_part(context, header_info,
 		                                 ip, dest, counter);
+	}
 	else /* IPV6 */
+	{
 		counter = code_ipv6_dynamic_part(context, header_info,
 		                                 ip, dest, counter);
+	}
 
 	return counter;
 }
@@ -3395,7 +3652,7 @@ int code_generic_dynamic_part(const struct c_context *context,
  * \verbatim
 
  Dynamic part IPv4 (5.7.7.4):
- 
+
     +---+---+---+---+---+---+---+---+
  1  |        Type of Service        |
    +---+---+---+---+---+---+---+---+
@@ -3415,7 +3672,7 @@ int code_generic_dynamic_part(const struct c_context *context,
  * @param ip          The IPv4 header the dynamic part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_ipv4_dynamic_part(const struct c_context *const context,
                            struct ip_header_info *header_info,
@@ -3423,7 +3680,9 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
                            unsigned char *const dest,
                            int counter)
 {
-	unsigned int tos, ttl, df;
+	unsigned int tos;
+	unsigned int ttl;
+	unsigned int df;
 	unsigned char df_rnd_nbo;
 	uint16_t id;
 
@@ -3496,7 +3755,7 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
  * @param ip          The IPv6 header the dynamic part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_ipv6_dynamic_part(const struct c_context *context,
                            struct ip_header_info *const header_info,
@@ -3504,11 +3763,14 @@ int code_ipv6_dynamic_part(const struct c_context *context,
                            unsigned char *const dest,
                            int counter)
 {
-	unsigned int tos, ttl;
+	unsigned int tos;
+	unsigned int ttl;
 	unsigned char byte;
-	int i = counter;
+	int counter_org;
 	int size;
 	int size_dyn_ip6_part = 0;
+
+	counter_org = counter;
 
 	/* part 1 */
 	tos = ip_get_tos(ip);
@@ -3527,13 +3789,13 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	/* part 3 */
 	if(!header_info->info.v6.ext_comp->update_done)
 	{
-		rohc_debugf(3,"update not done \n");
-		header_info->info.v6.ext_comp->list_compress = 
+		rohc_debugf(3,"update not done\n");
+		header_info->info.v6.ext_comp->list_compress =
 		c_algo_list_compress(header_info->info.v6.ext_comp, ip);
 	}
-	if (header_info->info.v6.ext_comp->list_compress < 0)
+	if(header_info->info.v6.ext_comp->list_compress < 0)
 	{
-		rohc_debugf(0, "error with extension \n");		
+		rohc_debugf(0, "error with extension\n");
 		counter = -1;
 	}
 	else if(header_info->info.v6.ext_comp->list_compress)
@@ -3542,8 +3804,8 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 		size = size_list(header_info->info.v6.ext_comp->curr_list);
 		counter = encode_list(header_info->info.v6.ext_comp, dest, counter, 0, size);
 		size_dyn_ip6_part += counter - 2;
-		size_dyn_ip6_part -= i;
-		rohc_debugf(3, "size of the compressed list : %d \n", size_dyn_ip6_part - 2);
+		size_dyn_ip6_part -= counter_org;
+		rohc_debugf(3, "compressed list size = %d\n", size_dyn_ip6_part - 2);
 		header_info->info.v6.ext_comp->update_done = 0;
 	}
 	else if(header_info->info.v6.ext_comp->islist)
@@ -3552,15 +3814,17 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 		rohc_debugf(3, "same extension than previously\n");
 		counter = encode_list(header_info->info.v6.ext_comp, dest, counter, 0, size);
 	}
-	else // no extension
+	else /* no extension */
 	{
 		rohc_debugf(3, "no extension to encode\n");
 		byte = 0;
 		dest[counter] = byte;
-		counter ++;
+		counter++;
 		size_dyn_ip6_part++;
 	}
-	rohc_debugf(3, "TC = 0x%02x, HL = 0x%02x, size dyn ip6 part = %d\n", tos, ttl, size_dyn_ip6_part);
+
+	rohc_debugf(3, "TC = 0x%02x, HL = 0x%02x, size dyn ip6 part = %d\n",
+	            tos, ttl, size_dyn_ip6_part);
 
 	return counter;
 }
@@ -3632,14 +3896,14 @@ int code_ipv6_dynamic_part(const struct c_context *context,
  * @param next_header The next header such as UDP or UDP-Lite
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int code_UO_packet_tail(struct c_context *const context,
                         const struct ip_packet *ip,
                         const struct ip_packet *ip2,
                         const unsigned char *next_header,
                         unsigned char *const dest,
-								int counter)
+                        int counter)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
@@ -3670,14 +3934,16 @@ int code_UO_packet_tail(struct c_context *const context,
 		rohc_debugf(3, "inner IP-ID = 0x%04x\n", id);
 		counter += 2;
 	}
-	
+
 	/* parts 10, 11 and 12 are not supported */
 
 	/* part 13 */
 	/* add fields related to the next header */
 	if(g_context->code_UO_packet_tail != NULL && next_header != NULL)
+	{
 		counter = g_context->code_UO_packet_tail(context, next_header,
 		                                         dest, counter);
+	}
 
 	return counter;
 }
@@ -3698,9 +3964,9 @@ int code_UO_packet_tail(struct c_context *const context,
  3  /   0, 1, or 2 octets of CID    /
     :                               :
     +---+---+---+---+---+---+---+---+
- 
+
  UO-0 (5.7.1)
- 
+
       0   1   2   3   4   5   6   7
     +---+---+---+---+---+---+---+---+
  2  | 0 |      SN       |    CRC    |
@@ -3708,13 +3974,13 @@ int code_UO_packet_tail(struct c_context *const context,
 
 \endverbatim
  *
- * @param context        The compression context
- * @param ip             The outer IP header
- * @param ip2            The inner IP header
- * @param next_header    The next header such as UDP or UDP-Lite
- * @param dest           The rohc-packet-under-build buffer
- * @return               The position in the rohc-packet-under-build buffer 
- *                       if successful, -1 otherwise
+ * @param context      The compression context
+ * @param ip           The outer IP header
+ * @param ip2          The inner IP header
+ * @param next_header  The next header such as UDP or UDP-Lite
+ * @param dest         The rohc-packet-under-build buffer
+ * @return             The position in the rohc-packet-under-build buffer
+ *                     if successful, -1 otherwise
  */
 int code_UO0_packet(struct c_context *const context,
                     const struct ip_packet *ip,
@@ -3744,8 +4010,10 @@ int code_UO0_packet(struct c_context *const context,
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
+	{
 		counter = g_context->code_UO_packet_head(context, next_header,
 		                                         dest, counter, &first_position);
+	}
 
 	/* part 2: SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
@@ -3793,9 +4061,9 @@ int code_UO0_packet(struct c_context *const context,
  3  /   0, 1, or 2 octets of CID    /
     :                               :
     +---+---+---+---+---+---+---+---+
- 
+
  UO-1 (5.11.3):
- 
+
       0   1   2   3   4   5   6   7
     +---+---+---+---+---+---+---+---+
  2  | 1   0 |         IP-ID         |
@@ -3832,13 +4100,13 @@ int code_UO0_packet(struct c_context *const context,
 
 \endverbatim
  *
- * @param context        The compression context
- * @param ip             The outer IP header
- * @param ip2            The inner IP header
- * @param next_header    The next header such as UDP or UDP-Lite
- * @param dest           The rohc-packet-under-build buffer
- * @return               The position in the rohc-packet-under-build buffer 
- *                       if successful, -1 otherwise
+ * @param context      The compression context
+ * @param ip           The outer IP header
+ * @param ip2          The inner IP header
+ * @param next_header  The next header such as UDP or UDP-Lite
+ * @param dest         The rohc-packet-under-build buffer
+ * @return             The position in the rohc-packet-under-build buffer
+ *                     if successful, -1 otherwise
  */
 int code_UO1_packet(struct c_context *const context,
                     const struct ip_packet *ip,
@@ -3924,8 +4192,10 @@ int code_UO1_packet(struct c_context *const context,
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
+	{
 		counter = g_context->code_UO_packet_head(context, next_header,
 		                                         dest, counter, &first_position);
+	}
 
 	/* part 2 */
 	switch(packet_type)
@@ -4015,9 +4285,9 @@ error:
  3  /   0, 1, or 2 octets of CID    /
     :                               :
     +---+---+---+---+---+---+---+---+
- 
+
  UOR-2 (5.11.3):
- 
+
       0   1   2   3   4   5   6   7
     +---+---+---+---+---+---+---+---+
  2  | 1   1   0 |        SN         |
@@ -4066,13 +4336,13 @@ error:
 
 \endverbatim
  *
- * @param context        The compression context
- * @param ip             The outer IP header
- * @param ip2            The inner IP header
- * @param next_header    The next header such as UDP or UDP-Lite
- * @param dest           The rohc-packet-under-build buffer
- * @return               The position in the rohc-packet-under-build buffer 
- *                       if successful, -1 otherwise
+ * @param context      The compression context
+ * @param ip           The outer IP header
+ * @param ip2          The inner IP header
+ * @param next_header  The next header such as UDP or UDP-Lite
+ * @param dest         The rohc-packet-under-build buffer
+ * @return             The position in the rohc-packet-under-build buffer
+ *                     if successful, -1 otherwise
  */
 int code_UO2_packet(struct c_context *const context,
                     const struct ip_packet *ip,
@@ -4084,7 +4354,9 @@ int code_UO2_packet(struct c_context *const context,
 	unsigned char s_byte = 0; /* part 4 */
 	unsigned char t_byte = 0; /* part 5 */
 	int counter;
-	int first_position, s_byte_position = 0, t_byte_position;
+	int first_position;
+	int s_byte_position = 0;
+	int t_byte_position;
 	rohc_ext_t extension;
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
@@ -4136,8 +4408,10 @@ int code_UO2_packet(struct c_context *const context,
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
+	{
 		counter = g_context->code_UO_packet_head(context, next_header,
 		                                         dest, counter, &first_position);
+	}
 
 	/* part 2: to be continued, we need to add the 5 bits of SN */
 	f_byte = 0xc0; /* 1 1 0 x x x x x */
@@ -4151,7 +4425,7 @@ int code_UO2_packet(struct c_context *const context,
 	}
 
 	/* part 5: partially calculate the third byte, then remember the position
-	 *         of the third byte, its final value is currently unknown 
+	 *         of the third byte, its final value is currently unknown
 	 *
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
@@ -4389,12 +4663,12 @@ error:
 
 \endverbatim
  *
- * @param context      The compression context
- * @param extension    The extension that will be appended to the packet
- * @param f_byte       IN/OUT: The first byte of the UOR-2-RTP packet
- * @param s_byte       IN/OUT: The second byte of the UOR-2-RTP packet
- * @param t_byte       IN/OUT: The third byte of the UOR-2-RTP packet
- * @return             1 if successful, 0 otherwise
+ * @param context    The compression context
+ * @param extension  The extension that will be appended to the packet
+ * @param f_byte     IN/OUT: The first byte of the UOR-2-RTP packet
+ * @param s_byte     IN/OUT: The second byte of the UOR-2-RTP packet
+ * @param t_byte     IN/OUT: The third byte of the UOR-2-RTP packet
+ * @return           1 if successful, 0 otherwise
  */
 int code_UOR2_RTP_bytes(const struct c_context *context,
                         const rohc_ext_t extension,
@@ -4540,7 +4814,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3 - 1)) - 1);
 			ts_bits_for_f_byte = (ts_send >> (nr_ts_bits_ext3 + 1)) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
-			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n", ts_bits_for_f_byte, ts_mask);
+			rohc_debugf(3, "bits of TS in 1st byte = 0x%x (mask = 0x%x)\n",
+			            ts_bits_for_f_byte, ts_mask);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of SN */
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
@@ -4599,12 +4874,12 @@ error:
 
 \endverbatim
  *
- * @param context      The compression context
- * @param extension    The extension that will be appended to the packet
- * @param f_byte       IN/OUT: The first byte of the UOR-2-TS packet
- * @param s_byte       IN/OUT: The second byte of the UOR-2-TS packet
- * @param t_byte       IN/OUT: The third byte of the UOR-2-TS packet
- * @return             1 if successful, 0 otherwise
+ * @param context    The compression context
+ * @param extension  The extension that will be appended to the packet
+ * @param f_byte     IN/OUT: The first byte of the UOR-2-TS packet
+ * @param s_byte     IN/OUT: The second byte of the UOR-2-TS packet
+ * @param t_byte     IN/OUT: The third byte of the UOR-2-TS packet
+ * @return           1 if successful, 0 otherwise
  */
 int code_UOR2_TS_bytes(const struct c_context *context,
                        const rohc_ext_t extension,
@@ -4620,7 +4895,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 	int nr_ts_bits;
 	int ts_send;
 	int m;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
@@ -4807,12 +5082,12 @@ error:
 
 \endverbatim
  *
- * @param context      The compression context
- * @param extension    The extension that will be appended to the packet
- * @param f_byte       IN/OUT: The first byte of the UOR-2-ID packet
- * @param s_byte       IN/OUT: The second byte of the UOR-2-ID packet
- * @param t_byte       IN/OUT: The third byte of the UOR-2-ID packet
- * @return             1 if successful, 0 otherwise
+ * @param context    The compression context
+ * @param extension  The extension that will be appended to the packet
+ * @param f_byte     IN/OUT: The first byte of the UOR-2-ID packet
+ * @param s_byte     IN/OUT: The second byte of the UOR-2-ID packet
+ * @param t_byte     IN/OUT: The third byte of the UOR-2-ID packet
+ * @return           1 if successful, 0 otherwise
  */
 int code_UOR2_ID_bytes(const struct c_context *context,
                        const rohc_ext_t extension,
@@ -5009,11 +5284,11 @@ error:
 
 \endverbatim
  *
- * @param context    The compression context
- * @param dest       The rohc-packet-under-build buffer
- * @param counter    The current position in the rohc-packet-under-build buffer
- * @return           The new position in the rohc-packet-under-build buffer 
- *                   if successful, -1 otherwise
+ * @param context  The compression context
+ * @param dest     The rohc-packet-under-build buffer
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer
+ *                 if successful, -1 otherwise
  */
 int code_EXT0_packet(const struct c_context *context,
                      unsigned char *const dest,
@@ -5104,11 +5379,11 @@ error:
 
 \endverbatim
  *
- * @param context    The compression context
- * @param dest       The rohc-packet-under-build buffer
- * @param counter    The current position in the rohc-packet-under-build buffer
- * @return           The new position in the rohc-packet-under-build buffer 
- *                   if successful, -1 otherwise
+ * @param context  The compression context
+ * @param dest     The rohc-packet-under-build buffer
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer
+ *                 if successful, -1 otherwise
  */
 int code_EXT1_packet(const struct c_context *context,
                      unsigned char *const dest,
@@ -5239,11 +5514,11 @@ error:
 
 \endverbatim
  *
- * @param context    The compression context
- * @param dest       The rohc-packet-under-build buffer
- * @param counter    The current position in the rohc-packet-under-build buffer
- * @return           The new position in the rohc-packet-under-build buffer 
- *                   if successful, -1 otherwise
+ * @param context  The compression context
+ * @param dest     The rohc-packet-under-build buffer
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer
+ *                 if successful, -1 otherwise
  */
 int code_EXT2_packet(const struct c_context *context,
                      unsigned char *const dest,
@@ -5360,7 +5635,7 @@ error:
  * \verbatim
 
  Extension 3 for non-RTP profiles (5.7.5 & 5.11.4):
- 
+
        0     1     2     3     4     5     6     7
     +-----+-----+-----+-----+-----+-----+-----+-----+
  1  |  1     1  |  S  |   Mode    |  I  | ip  | ip2 |
@@ -5415,13 +5690,13 @@ error:
 
 \endverbatim
  *
- * @param context    The compression context
- * @param ip         The outer IP header
- * @param ip2        The inner IP header
- * @param dest       The rohc-packet-under-build buffer
- * @param counter    The current position in the rohc-packet-under-build buffer
- * @return           The new position in the rohc-packet-under-build buffer
- *                   if successful, -1 otherwise
+ * @param context  The compression context
+ * @param ip       The outer IP header
+ * @param ip2      The inner IP header
+ * @param dest     The rohc-packet-under-build buffer
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer
+ *                 if successful, -1 otherwise
  */
 int code_EXT3_packet(const struct c_context *context,
                      const struct ip_packet *ip,
@@ -5433,8 +5708,10 @@ int code_EXT3_packet(const struct c_context *context,
 	unsigned char f_byte;
 	int nr_of_ip_hdr;
 	int nr_sn_bits;
-	unsigned short changed_f, changed_f2;
-	int nr_ip_id_bits, nr_ip_id_bits2;
+	unsigned short changed_f;
+	unsigned short changed_f2;
+	int nr_ip_id_bits;
+	int nr_ip_id_bits2;
 	int have_inner = 0;
 	int have_outer = 0;
 	int I = 0;
@@ -5487,7 +5764,7 @@ int code_EXT3_packet(const struct c_context *context,
 				rts = nr_ts_bits > 5;
 				break;
 			case PACKET_UOR_2_ID:
-				rts = nr_ts_bits > 0 && !is_deductible(rtp_context->ts_sc);
+				rts = (nr_ts_bits > 0 && !is_deductible(rtp_context->ts_sc));
 				break;
 			default:
 				rohc_debugf(0, "bad packet type (%d)\n", packet_type);
@@ -5496,8 +5773,9 @@ int code_EXT3_packet(const struct c_context *context,
 		f_byte |= (rts & 0x01) << 4;
 
 		/* Tsc bit */
-		tsc = rtp_context->ts_sc.state == SEND_SCALED &&
-		      !(packet_type == PACKET_UOR_2_ID && is_deductible(rtp_context->ts_sc));
+		tsc = (rtp_context->ts_sc.state == SEND_SCALED &&
+		       !(packet_type == PACKET_UOR_2_ID &&
+		         is_deductible(rtp_context->ts_sc)));
 		f_byte |= (tsc & 0x01) << 3;
 
 		/* rtp bit: set to 1 if RTP PT changed in this packet or changed
@@ -5517,7 +5795,9 @@ int code_EXT3_packet(const struct c_context *context,
 
 	/* if random bit is set we have the IP-ID field outside this function */
 	if(ip_get_version(ip) == IPV4)
+	{
 		rohc_debugf(1, "rnd_count_up: %d \n", g_context->ip_flags.info.v4.rnd_count);
+	}
 
 	if(nr_of_ip_hdr == 1)
 	{
@@ -5618,8 +5898,10 @@ int code_EXT3_packet(const struct c_context *context,
 
 		/* part 5 */
 		if(have_inner)
+		{
 			counter = header_fields(context, &g_context->ip_flags, changed_f, ip,
 			                        0, nr_ip_id_bits, dest, counter);
+		}
 
 		/* part 6 */
 		if(ip_get_version(ip) == IPV4 && I)
@@ -5642,7 +5924,9 @@ int code_EXT3_packet(const struct c_context *context,
 			counter = rtp_header_flags_and_fields(context, changed_f, ip,
 			                                      dest, counter);
 			if(counter < 0)
+			{
 				goto error;
+			}
 		}
 	}
 	else /* double IP headers */
@@ -5655,13 +5939,17 @@ int code_EXT3_packet(const struct c_context *context,
 
 			/* add ip2 flag in inner IP header flags if needed */
 			if(is_rtp && have_outer)
+			{
 				dest[counter - 1] |= 0x01;
+			}
 		}
 
 		/* part 3 */
 		if(have_outer)
+		{
 			counter = header_flags(context, &g_context->ip_flags, changed_f, ip,
 			                       1, nr_ip_id_bits, dest, counter);
+		}
 
 		/* part 4 */
 		if(nr_sn_bits > 5)
@@ -5687,8 +5975,10 @@ int code_EXT3_packet(const struct c_context *context,
 
 		/* part 5 */
 		if(have_inner)
+		{
 			counter = header_fields(context, &g_context->ip2_flags, changed_f2, ip2,
 			                        0, nr_ip_id_bits2, dest, counter);
+		}
 
 		/* part 6 */
 		if(ip_get_version(ip2) == IPV4 && I)
@@ -5705,8 +5995,10 @@ int code_EXT3_packet(const struct c_context *context,
 
 		/* part 7 */
 		if(have_outer)
+		{
 			counter = header_fields(context, &g_context->ip_flags, changed_f, ip,
 			                        1, nr_ip_id_bits, dest, counter);
+		}
 
 		/* part 8 */
 		if(is_rtp && rtp)
@@ -5714,7 +6006,9 @@ int code_EXT3_packet(const struct c_context *context,
 			counter = rtp_header_flags_and_fields(context, changed_f2, ip2,
 			                                      dest, counter);
 			if(counter < 0)
+			{
 				goto error;
+			}
 		}
 	}
 
@@ -5841,7 +6135,9 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		            ts_stride, ts_stride, c_bytesSdvl(ts_stride, -1));
 
 		if(rtp_context->ts_sc.state == INIT_STRIDE)
+		{
 			rtp_context->ts_sc.state = SEND_SCALED;
+		}
 	}
 
 	/* part 5: not supported yet */
@@ -5867,14 +6163,14 @@ error:
  Header flags for IP and UDP profiles (5.11.4):
 
  For inner flags:
- 
+
     +-----+-----+-----+-----+-----+-----+-----+-----+
  1  |            Inner IP header flags        |     |  if ip = 1
     | TOS | TTL | DF  | PR  | IPX | NBO | RND | 0** |  0** reserved
     +-----+-----+-----+-----+-----+-----+-----+-----+
- 
+
  or for outer flags:
- 
+
     +-----+-----+-----+-----+-----+-----+-----+-----+
  2  |            Outer IP header flags              |
     | TOS2| TTL2| DF2 | PR2 |IPX2 |NBO2 |RND2 |  I2 |  if ip2 = 1
@@ -5892,7 +6188,7 @@ error:
  * @param dest           The rohc-packet-under-build buffer
  * @param counter        The current position in the rohc-packet-under-build
  *                       buffer
- * @return               The new position in the rohc-packet-under-build buffer 
+ * @return               The new position in the rohc-packet-under-build buffer
  *
  * @see changed_fields
  */
@@ -5937,7 +6233,9 @@ int header_flags(const struct c_context *context,
 			if((nr_ip_id_bits > 0 && header_info->info.v4.rnd == 0) ||
 			   (header_info->info.v4.rnd_count-1 < MAX_FO_COUNT &&
 			    header_info->info.v4.rnd == 0))
+			{
 				flags |= 0x01;
+			}
 		}
 	}
 
@@ -5974,7 +6272,7 @@ int header_flags(const struct c_context *context,
      ..... ..... ..... ..... ..... ..... ..... .....
  4  /         IP extension headers                  /  variable, if IPX = 1
      ..... ..... ..... ..... ..... ..... ..... .....
- 
+
     IP-ID is coded here for outer header fields although it doesn't look that
     way in the extension 3 picture in 5.7.5 and 5.11.4 of RFC 3095.
     +-----+-----+-----+-----+-----+-----+-----+-----+
@@ -5995,7 +6293,7 @@ int header_flags(const struct c_context *context,
  * @param dest           The rohc-packet-under-build buffer
  * @param counter        The current position in the rohc-packet-under-build
  *                       buffer
- * @return               The new position in the rohc-packet-under-build buffer 
+ * @return               The new position in the rohc-packet-under-build buffer
  *
  * @see changed_fields
  */
@@ -6008,7 +6306,10 @@ int header_fields(const struct c_context *context,
                   unsigned char *const dest,
                   int counter)
 {
-	unsigned int tos, ttl, protocol, id;
+	unsigned int tos;
+	unsigned int ttl;
+	unsigned int protocol;
+	unsigned int id;
 
 	/* part 1 */
 	if(is_changed(changed_f, MOD_TOS) || header_info->tos_count < MAX_FO_COUNT)
@@ -6063,7 +6364,7 @@ int header_fields(const struct c_context *context,
 
 /**
  * @brief Decide what extension shall be used in the UO-2 packet.
- * 
+ *
  * Extentions 0, 1 & 2 are IPv4 only because of the IP-ID.
  *
  * @param context The compression context
@@ -6081,7 +6382,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	int nr_sn_bits;
 	int ext;
 	int is_rtp;
-	
+
 	g_context = (struct c_generic_context *) context->specific;
 	send_static = g_context->tmp_variables.send_static;
 	send_dynamic = g_context->tmp_variables.send_dynamic;
@@ -6095,7 +6396,9 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 	/* force extension type 3 if at least one static or dynamic field changed */
 	if(send_static > 0 || send_dynamic > 0)
+	{
 		return ext;
+	}
 
 	/* force extension type 3 if at least one RTP dynamic field changed */
 	if(is_rtp)
@@ -6268,22 +6571,22 @@ int changed_static_both_hdr(const struct c_context *context,
 /**
  * @brief Check if the static part of the context changed in the new IP packet.
  *
- *	The fields classified as STATIC-DEF by RFC do not need to be checked for
- *	change. These fields are constant for all packets in a stream (ie. a
- *	profile context). So, the Source Address and Destination Address fields are
- *	not checked for change for both IPv4 and IPv6. The Flow Label is not checked
- *	for IPv6.
+ * The fields classified as STATIC-DEF by RFC do not need to be checked for
+ * change. These fields are constant for all packets in a stream (ie. a
+ * profile context). So, the Source Address and Destination Address fields are
+ * not checked for change for both IPv4 and IPv6. The Flow Label is not checked
+ * for IPv6.
  *
- *	Althought not classified as STATIC-DEF, the Version field is the same for
- *	all packets in a stream (ie. a profile context) and therefore does not need
- *	to be checked for change neither for IPv4 nor IPv6.
+ * Althought not classified as STATIC-DEF, the Version field is the same for
+ * all packets in a stream (ie. a profile context) and therefore does not need
+ * to be checked for change neither for IPv4 nor IPv6.
  *
- *	Althought classified as STATIC, the IPv4 Don't Fragment flag is not part of
- *	the static initialization, but of the dynamic initialization.
+ * Althought classified as STATIC, the IPv4 Don't Fragment flag is not part of
+ * the static initialization, but of the dynamic initialization.
  *
- *	Summary:
- *	 - For IPv4, check the Protocol field for change.
- *	 - For IPv6, check the Next Header field for change.
+ * Summary:
+ *  - For IPv4, check the Protocol field for change.
+ *  - For IPv6, check the Next Header field for change.
  *
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
@@ -6307,7 +6610,7 @@ int changed_static_one_hdr(const unsigned short changed_fields,
 	   header_info->protocol_count < MAX_FO_COUNT)
 	{
 		rohc_debugf(2, "protocol_count %d\n", header_info->protocol_count);
-		
+
 		if(is_changed(changed_fields, MOD_PROTOCOL))
 		{
 			header_info->protocol_count = 0;
@@ -6368,13 +6671,13 @@ int changed_dynamic_both_hdr(const struct c_context *context,
  *
  * The IP-ID changes are managed outside of this function.
  *
- *	Althought classified as STATIC, the IPv4 Don't Fragment flag is not part of
- *	the static initialization, but of the dynamic initialization. It needs to be
- *	checked for change.
+ * Althought classified as STATIC, the IPv4 Don't Fragment flag is not part of
+ * the static initialization, but of the dynamic initialization. It needs to be
+ * checked for change.
  *
- *	Other flags are checked for change for IPv4. There are IP-ID related flags:
- *	 - RND: is the IP-ID random ?
- *	 - NBO: is the IP-ID in Network Byte Order ?
+ * Other flags are checked for change for IPv4. There are IP-ID related flags:
+ *  - RND: is the IP-ID random ?
+ *  - NBO: is the IP-ID in Network Byte Order ?
  *
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
@@ -6469,7 +6772,9 @@ int changed_dynamic_one_hdr(const unsigned short changed_fields,
 		}
 
 		if(nb_flags > 0)
+		{
 			nb_fields += 1;
+		}
 	}
 
 	return nb_fields;
@@ -6479,7 +6784,7 @@ int changed_dynamic_one_hdr(const unsigned short changed_fields,
 /**
  * @brief Find the IP fields that changed between the profile and a new
  *        IP packet.
- * 
+ *
  * Only some fields are checked for change in the compression process, so
  * only check these ones to avoid useless work. The fields to check are:
  * TOS/TC, TTL/HL and Protocol/Next Header.
@@ -6492,12 +6797,14 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
                               const struct ip_packet *ip)
 {
 	unsigned short ret_value = 0;
-	unsigned int old_tos, old_ttl, old_protocol;
+	uint8_t old_tos;
+	uint8_t old_ttl;
+	uint8_t old_protocol;
 
 	if(ip_get_version(ip) == IPV4)
 	{
 		const struct iphdr *old_ip;
-	
+
 		old_ip = &header_info->info.v4.old_ip;
 		old_tos = old_ip->tos;
 		old_ttl = old_ip->ttl;
@@ -6549,10 +6856,14 @@ void check_ip_identification(struct ip_header_info *const header_info,
 	rohc_debugf(2, "1) old_id = 0x%04x new_id = 0x%04x\n", old_id, new_id);
 
 	if((new_id - old_id) < IPID_MAX_DELTA && (new_id - old_id) > 0)
+	{
 		nbo = 1;
+	}
 	else if((old_id + IPID_MAX_DELTA) > 0xffff &&
 	        new_id < ((old_id + IPID_MAX_DELTA) & 0xffff))
+	{
 		nbo = 1;
+	}
 
 	if(nbo == -1)
 	{
@@ -6563,10 +6874,14 @@ void check_ip_identification(struct ip_header_info *const header_info,
 		rohc_debugf(2, "2) old_id = 0x%04x new_id = 0x%04x\n", old_id, new_id);
 
 		if((new_id - old_id) < IPID_MAX_DELTA && (new_id - old_id) > 0)
+		{
 			nbo = 0;
+		}
 		else if((old_id + IPID_MAX_DELTA) > 0xffff &&
 		        new_id < ((old_id + IPID_MAX_DELTA) & 0xffff))
+		{
 			nbo = 0;
+		}
 	}
 
 	if(nbo == -1)
@@ -6594,7 +6909,7 @@ void check_ip_identification(struct ip_header_info *const header_info,
  * @param ip          The packet which will be compressed
  * @param packet      The type of the packet which will be compressed
  * @param size_data   The size of the data in bytes
- * @param original    Indicate if the specified packet is the original ROHC packet 
+ * @param original    Indicate if the specified packet is the original ROHC packet
  * @return            The estimation of the ROHC packet size
  */
 static int jamming_find_packet_size(const struct rohc_comp *comp,
@@ -6605,139 +6920,189 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
                                     const int original)
 {
 	int total_size = size_data;
-	
+
 	switch(packet)
 	{
 		case PACKET_IR:
-			// test the IP version
+		{
+			/* test the IP version */
 			if(ip_get_version(ip) == IPV4)
 			{
-				total_size += 15; // size of IPv4 part in IR packet in bytes
+				total_size += 15; /*  size of IPv4 part in IR packet */
 			}
 			else
 			{
-				total_size += 39; // size of IPv6 part in IR packet in bytes
+				total_size += 39; /* size of IPv6 part in IR packet */
 			}
-			// check if there is a tunnel
+
+			/* check if there is a tunnel */
 			if(ip_get_protocol(ip) == IPPROTO_IPIP)
 			{
 				total_size += 15;
 			}
-			else if (ip_get_protocol(ip) == IPPROTO_IPV6)
+			else if(ip_get_protocol(ip) == IPPROTO_IPV6)
 			{
 				total_size += 39;
 			}
-			// adapt the size with the profile
-			switch (context->profile->id)
+
+			/* adapt the size with the profile */
+			switch(context->profile->id)
 			{
 				case ROHC_PROFILE_RTP:
-					total_size += 27; // size max of RTP + UDP part in IR packet in bytes
+					total_size += 27; /* size max of RTP + UDP part in IR packet */
 					break;
 				case ROHC_PROFILE_UDP:
-					total_size += 6; // size of UDP part in IR packet in bytes
+					total_size += 6; /* UDP part in IR packet */
 					break;
 				case ROHC_PROFILE_UDPLITE:
-					total_size += 8; // size of UDP-lite part in IR packet in bytes
+					total_size += 8; /* size of UDP-lite part in IR packet */
 					break;
 				case ROHC_PROFILE_IP:
-					break; 		 // nothing to do
+					/* nothing to add */
+					break;
 				default:
 					rohc_debugf(0, "unknown or bad profile, failure\n");
 					break;
 			}
-			break;		
+			break;
+		}
+
 		case PACKET_IR_DYN:
-			// test the IP version
+		{
+			/* test the IP version */
 			if(ip_get_version(ip) == IPV4)
 			{
-				total_size += 5; // size of IPv4 dyn part in IR-DYN packet in bytes
+				total_size += 5; /* size of IPv4 dyn part in IR-DYN packet */
 			}
 			else
 			{
-			        total_size += 3; // size of IPv6 dyn part in IR-DYN packet in bytes
+				total_size += 3; /* size of IPv6 dyn part in IR-DYN packet in bytes */
 			}
-			// check if there is a tunnel
+
+			/* check if there is a tunnel */
 			if(ip_get_protocol(ip) == IPPROTO_IPIP)
 			{
 				total_size += 5;
 			}
-			else if (ip_get_protocol(ip) == IPPROTO_IPV6)
+			else if(ip_get_protocol(ip) == IPPROTO_IPV6)
 			{
 				total_size += 3;
 			}
-			// adapt the size with the profile
-			switch (context->profile->id)
+
+			/* adapt the size with the profile */
+			switch(context->profile->id)
 			{
 				case ROHC_PROFILE_RTP:
-					if (original)
-						total_size += 13; 
-						// size min of RTP + UDP part in IR packet in bytes
-						// the more compressed packet is estimated for original packet estimation
-					else	
-						total_size += 19; // size max of RTP + UDP part in IR packet in bytes
+					if(original)
+					{
+						/* size min of RTP + UDP part in IR packet, the most
+						   compressed packet is estimated */
+						total_size += 13;
+					}
+					else
+					{
+						/* size max of RTP + UDP part in IR packet */
+						total_size += 19;
+					}
 					break;
 				case ROHC_PROFILE_UDP:
-					total_size += 2; // size of UDP part in IR packet in bytes
+					total_size += 2; /* size of UDP part in IR packet */
 					break;
 				case ROHC_PROFILE_UDPLITE:
-					total_size += 4; // size of UDP-lite part in IR packet in bytes
+					total_size += 4; /* size of UDP-lite part in IR packet */
 					break;
 				case ROHC_PROFILE_IP:
-					break;           // nothing to do
+					/* nothing to add */
+					break;
 				default:
 					rohc_debugf(0, "unknown or bad profile, failure\n");
 					break;
-			}															
-		        break;
-                case PACKET_UO_0:
-			if (context->profile->id == ROHC_PROFILE_RTP
-                                 || context->profile->id == ROHC_PROFILE_UDP)
-	                        total_size += 2; // size of UDP checksum in bytes
-			if (comp->medium.cid_type == LARGE_CID)
-		        	total_size += 3;
+			}
+			break;
+		}
+
+		case PACKET_UO_0:
+		{
+			if(context->profile->id == ROHC_PROFILE_RTP ||
+			   context->profile->id == ROHC_PROFILE_UDP)
+			{
+				total_size += 2; /* size of UDP checksum */
+			}
+			if(comp->medium.cid_type == LARGE_CID)
+			{
+				total_size += 3;
+			}
 			else
+			{
 				total_size += 2;
-		        break;
+			}
+			break;
+		}
+
 		case PACKET_UO_1:
 		case PACKET_UO_1_RTP:
 		case PACKET_UO_1_TS:
 		case PACKET_UO_1_ID:
 		case PACKET_UOR_2:
-			if (context->profile->id == ROHC_PROFILE_RTP 
-				|| context->profile->id == ROHC_PROFILE_UDP)
-				total_size += 2; // size of UDP checksum in bytes
-			if (comp->medium.cid_type == LARGE_CID)
+		{
+			if(context->profile->id == ROHC_PROFILE_RTP ||
+			   context->profile->id == ROHC_PROFILE_UDP)
+			{
+				total_size += 2; /* size of UDP checksum */
+			}
+			if(comp->medium.cid_type == LARGE_CID)
+			{
 				total_size += 4;
+			}
 			else
+			{
 				total_size += 3;
+			}
 			break;
-                case PACKET_UOR_2_RTP:
-                case PACKET_UOR_2_TS:
-                case PACKET_UOR_2_ID:
-			if (context->profile->id == ROHC_PROFILE_RTP
-				|| context->profile->id == ROHC_PROFILE_UDP)
-				total_size += 2; // size of UDP checksum in bytes
-			if (comp->medium.cid_type == LARGE_CID)
+		}
+
+		case PACKET_UOR_2_RTP:
+		case PACKET_UOR_2_TS:
+		case PACKET_UOR_2_ID:
+		{
+			if(context->profile->id == ROHC_PROFILE_RTP ||
+			   context->profile->id == ROHC_PROFILE_UDP)
+			{
+				total_size += 2; /* size of UDP checksum */
+			}
+			if(comp->medium.cid_type == LARGE_CID)
+			{
 				total_size += 5;
+			}
 			else
+			{
 				total_size += 4;
-                        break;
-                default:
-                        rohc_debugf(0, "unknown packet, failure\n");
-		        break;
+			}
+			break;
+		}
+
+		default:
+		{
+			rohc_debugf(0, "unknown packet, failure\n");
+			break;
+		}
 	}
+
 	return total_size;
 }
 
 
 /**
- * Decision Algorithm which returns the type of the packet 
- * to send when the jamming option is activated. It is an optimisation of
- * the use of the encapsulation packets.
+ * @brief Decision Algorithm which returns the type of the packet
+ *        to send when the jamming option is activated
+ *
+ * The jamming algorithm is an optimisation to better use available space
+ * in encapsulation packets such as ATM cells or MPEG2-TS frames.
+ *
  * @param comp      The rohc compressor
  * @param context   The context used for the compression
- * @param ip 	    The packet to compress
- * @param ip2 	    The inner ip packet
+ * @param ip        The packet to compress
+ * @param ip2       The inner ip packet
  * @param packet    The type of the original ROHC packet
  * @param size_data The size of the data to send in bytes
  * @return          The new type of the ROHC packet to send in case of success,
@@ -6750,23 +7115,27 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
                                          const rohc_packet_t packet,
                                          const size_t size_data)
 {
-        struct c_generic_context *g_context;
-        g_context = (struct c_generic_context *) context->specific;
-        int size_original; // size of the original packet (sent without this algoritm)
-        int size_new;      // size of the new packet
-        int nb_packets_original;
+	struct c_generic_context *g_context;
+	int size_original; /* size of original packet (sent without this algorithm) */
+	int size_new; /* size of the new packet */
+	int nb_packets_original;
 	uint8_t next_header_type;
-        int nb_packets_new;
-        int adapt_size = context->compressor->adapt_size;
-        int is_rnd;
-        int is_ip_v4;
-	int encap_size = context->compressor->encap_size;
-        int nr_of_ip_hdr;
-        int is_ip2_v4 = 0;
-        int is_rnd2 = 0;
+	int nb_packets_new;
+	int adapt_size;
+	int encap_size;
+	int is_rnd;
+	int is_ip_v4;
+	int nr_of_ip_hdr;
+	int is_ip2_v4 = 0;
+	int is_rnd2 = 0;
+
+	adapt_size = context->compressor->adapt_size;
+	encap_size = context->compressor->encap_size;
+
+	g_context = (struct c_generic_context *) context->specific;
 	is_rnd = g_context->ip_flags.info.v4.rnd;
-        is_ip_v4 = g_context->ip_flags.version == IPV4;
-        nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
+	is_ip_v4 = (g_context->ip_flags.version == IPV4);
+	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
 
 	//check if there is an IPv6 extension
 	if(nr_of_ip_hdr == 1 && ip_get_version(ip) == IPV6)
@@ -6780,7 +7149,8 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 			return packet;
 		}
 	}
-	else if(nr_of_ip_hdr == 2 && (ip_get_version(ip) == IPV6 || ip_get_version(ip2) == IPV6))
+	else if(nr_of_ip_hdr == 2 &&
+	        (ip_get_version(ip) == IPV6 || ip_get_version(ip2) == IPV6))
 	{
 		if(ip_get_version(ip) == IPV6)
 		{
@@ -6805,146 +7175,200 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 			}
 		}
 	}
-       
-	if (packet == PACKET_IR)
-                return PACKET_IR;
-        size_original = jamming_find_packet_size(comp, context, ip, packet,size_data, 1);
-        nb_packets_original = ceil((adapt_size+size_original)/encap_size);
 
-	// For all types of packets, the first test is with IR packets
-	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR, size_data, 0);
-	nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	if (nb_packets_original == nb_packets_new)
-	        return PACKET_IR;
+	if(packet == PACKET_IR)
+	{
+		return PACKET_IR;
+	}
+	
+	size_original = jamming_find_packet_size(comp, context, ip, packet,
+	                                         size_data, 1);
+	nb_packets_original = ceil((adapt_size + size_original) / encap_size);
 
-	// The first test failed, so the second test uses IR-DYN packets
-	if (packet == PACKET_IR_DYN)
-	        return PACKET_IR_DYN;
-	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR, size_data, 0);
-	nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	if (nb_packets_original == nb_packets_new)
-	        return PACKET_IR_DYN;
+	/* for all types of packets, the first test is with IR packets */
+	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR,
+	                                    size_data, 0);
+	nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+	if(nb_packets_original == nb_packets_new)
+	{
+		return PACKET_IR;
+	}
 
-	// The second test failed, so the third test uses type 2 packets
-        if (packet == PACKET_UOR_2 || packet == PACKET_UOR_2_RTP ||
-                packet == PACKET_UOR_2_TS || packet == PACKET_UOR_2_ID)
-                return packet;
-        // The profile is not RTP profile
-	if (packet == PACKET_UO_1 ||
-	       (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP))
+	/* the first test failed, so the second test uses IR-DYN packets */
+	if(packet == PACKET_IR_DYN)
 	{
-	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2, size_data, 0);
-	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	        if (nb_packets_original == nb_packets_new)
-		        return PACKET_UOR_2;
+		return PACKET_IR_DYN;
 	}
-	// The profile is RTP profile
-	else if (packet == PACKET_UO_1_RTP)
+	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR,
+	                                    size_data, 0);
+	nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+	if(nb_packets_original == nb_packets_new)
 	{
-	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
-	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	        if (nb_packets_original == nb_packets_new)
-	                return PACKET_UOR_2_RTP;
+		return PACKET_IR_DYN;
 	}
-	else if (packet == PACKET_UO_1_TS)
+
+	/* the second test failed, so the third test uses type 2 packets */
+	if(packet == PACKET_UOR_2 ||
+	   packet == PACKET_UOR_2_RTP ||
+	   packet == PACKET_UOR_2_TS ||
+	   packet == PACKET_UOR_2_ID)
 	{
-	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_TS, size_data, 0);
-	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	        if (nb_packets_original == nb_packets_new)
-	                return PACKET_UOR_2_TS;
+		return packet;
 	}
-	else if (packet == PACKET_UO_1_ID)
+	if(packet == PACKET_UO_1 ||
+	   (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP))
 	{
-	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_ID, size_data, 0);
-	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	        if (nb_packets_original == nb_packets_new)
-	                return PACKET_UOR_2_ID;
+		/* profile is not RTP profile */
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
+		{
+			return PACKET_UOR_2;
+		}
+	}
+	else if(packet == PACKET_UO_1_RTP)
+	{
+		/* profile is RTP profile */
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
+		{
+			return PACKET_UOR_2_RTP;
+		}
+	}
+	else if(packet == PACKET_UO_1_TS)
+	{
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_TS,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
+		{
+			return PACKET_UOR_2_TS;
+		}
+	}
+	else if(packet == PACKET_UO_1_ID)
+	{
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_ID,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
+		{
+			return PACKET_UOR_2_ID;
+		}
 	}
 	else if(packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
 	{
-	        size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP, size_data, 0);
-	        nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-	        if (nb_packets_original == nb_packets_new)
-	        {
-		        if(nr_of_ip_hdr == 1) /* single IP header */
-		        {
-			        if(is_rnd || !is_ip_v4)
-				        return PACKET_UOR_2_RTP;
-				else
-		                        return PACKET_UOR_2_TS;
-		        }
-			else // two IP headers
-		        {
-		                is_ip2_v4 = g_context->ip2_flags.version == IPV4;
-				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-		                if(!is_ip2_v4)
-			                return PACKET_UOR_2_RTP;
-		                else
-		                {
-					if(is_rnd2)
-			                        return PACKET_UOR_2_RTP;
-			                else
-				                return PACKET_UOR_2_TS;
-			        }
-			}
-		}
-	}
-	// The type of the packet is unknown
-	else
-	{
-		rohc_debugf(0, "unknown packet, failure\n");
-		return -1;
-	}
-        // The third test failed, so the last test uses type 1 packets
-        if (packet == PACKET_UO_1 || packet == PACKET_UO_1_RTP ||
-                packet == PACKET_UO_1_TS || packet == PACKET_UO_1_ID)
-		return packet;
-	
-	// The profile is not RTP profile
-	if (packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP)
-	{
-		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1, size_data, 0);
-		nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-		if (nb_packets_original == nb_packets_new)
-			return PACKET_UO_1;
-	}
-	// The profile is RTP profile
-	else if (packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
-	{
-		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1_RTP, size_data, 0);
-		nb_packets_new = ceil((adapt_size+size_new)/encap_size);
-		if (nb_packets_original == nb_packets_new)
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
 		{
 			if(nr_of_ip_hdr == 1) /* single IP header */
 			{
 				if(is_rnd || !is_ip_v4)
-					return PACKET_UO_1_RTP;
-				else
-					return PACKET_UO_1_TS;
-			}
-			else // two IP headers
-			{
-				is_ip2_v4 = g_context->ip2_flags.version == IPV4;
-				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-				if(!is_ip2_v4)
-					return PACKET_UO_1_RTP;
+				{
+					return PACKET_UOR_2_RTP;
+				}
 				else
 				{
-					if(is_rnd2)
-						return PACKET_UO_1_RTP;
-					else
-						return PACKET_UO_1_TS;
+					return PACKET_UOR_2_TS;
+				}
+			}
+			else /* two IP headers */
+			{
+				is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
+				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+
+				if(!is_ip2_v4)
+				{
+					return PACKET_UOR_2_RTP;
+				}
+				else if(is_rnd2)
+				{
+					return PACKET_UOR_2_RTP;
+				}
+				else
+				{
+					return PACKET_UOR_2_TS;
 				}
 			}
 		}
 	}
-	// The type of the packet is unknown
 	else
 	{
+		/* the type of the packet is unknown */
+		rohc_debugf(0, "unknown packet, failure\n");
+		return -1;
+	}
+	
+	/* the third test failed, so the last test uses type 1 packets */
+	if(packet == PACKET_UO_1 ||
+	   packet == PACKET_UO_1_RTP ||
+	   packet == PACKET_UO_1_TS ||
+	   packet == PACKET_UO_1_ID)
+	{
+		return packet;
+	}
+	if(packet == PACKET_UO_0 && context->profile->id != ROHC_PROFILE_RTP)
+	{
+		/* profile is not RTP profile */
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
+		{
+			return PACKET_UO_1;
+		}
+	}
+	else if(packet == PACKET_UO_0 && context->profile->id == ROHC_PROFILE_RTP)
+	{
+		/* profile is RTP profile */
+		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1_RTP,
+		                                    size_data, 0);
+		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		if(nb_packets_original == nb_packets_new)
+		{
+			if(nr_of_ip_hdr == 1) /* single IP header */
+			{
+				if(is_rnd || !is_ip_v4)
+				{
+					return PACKET_UO_1_RTP;
+				}
+				else
+				{
+					return PACKET_UO_1_TS;
+				}
+			}
+			else /* two IP headers */
+			{
+				is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
+				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+
+				if(!is_ip2_v4)
+				{
+					return PACKET_UO_1_RTP;
+				}
+				else if(is_rnd2)
+				{
+					return PACKET_UO_1_RTP;
+				}
+				else
+				{
+					return PACKET_UO_1_TS;
+				}
+			}
+		}
+	}
+	else
+	{
+		/* the type of the packet is unknown */
 		rohc_debugf(0, "unknown packet, failure\n");
 		return PACKET_UNKNOWN;
 	}
-	
-	// No packet can replace type 0 packet
-		return packet;
+
+	/* no packet can replace type 0 packet */
+	return packet;
 }
+
