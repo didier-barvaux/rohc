@@ -368,7 +368,7 @@ end:
  * @param ext The extension
  * @return    The size of the extension
  */
-uint8_t ip_get_extension_size(const unsigned char *ext)
+unsigned short ip_get_extension_size(const unsigned char *ext)
 {
 	uint8_t ext_length;
 	
@@ -387,11 +387,11 @@ uint8_t ip_get_extension_size(const unsigned char *ext)
  * @param ip The packet to analyse
  * @return   The size of extension list
  */
-uint8_t ip_get_total_extension_size(const struct ip_packet *ip)
+unsigned short ip_get_total_extension_size(const struct ip_packet *ip)
 {
 	unsigned char *ext;
 	uint8_t next_hdr_type;
-	uint8_t total_ext_size = 0;
+	unsigned short total_ext_size = 0;
 	
 	ext = ip_get_next_ext_header_from_ip(ip, &next_hdr_type);
 	while(ext != NULL)
@@ -510,9 +510,7 @@ unsigned int ip_get_hdrlen(const struct ip_packet *ip)
  */
 unsigned int ip_get_plen(const struct ip_packet *ip)
 {
-	uint16_t len;
-	int size_list = 0;
-	uint8_t next_header_type;
+	unsigned int len;
 
 	if(ip->version == IPV4)
 	{
@@ -520,20 +518,7 @@ unsigned int ip_get_plen(const struct ip_packet *ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		next_header_type = ip->header.v6.ip6_nxt;
-		switch (next_header_type)
-		{
-			case IPV6_EXT_HOP_BY_HOP:
-			case IPV6_EXT_DESTINATION:
-			case IPV6_EXT_ROUTING:
-			case IPV6_EXT_AUTH:
-				/* known extension headers */
-				size_list = ip_get_total_extension_size(ip);
-				break;
-			default:
-				break;
-		}
-		len = ntohs(ip->header.v6.ip6_plen) - size_list;
+		len = ntohs(ip->header.v6.ip6_plen) - ip_get_total_extension_size(ip);
 	}
 	else
 	{

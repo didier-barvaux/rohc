@@ -34,6 +34,7 @@ TESTS_SMALLCID = \
 	test_ipv4_udp_rtp_voip+video_smallcid.sh \
 	test_ipv4_udp_smallcid.sh \
 	test_ipv6ext_icmp_smallcid.sh \
+	test_ipv6ext_icmp-large-ipv6-ext_smallcid.sh \
 	test_ipv6ext_ipv6ext_icmp_smallcid.sh \
 	test_ipv6ext_udp_rtp_audio-vlc_smallcid.sh \
 	test_ipv6ext_udp_smallcid.sh \
@@ -77,6 +78,7 @@ TESTS_LARGECID = \
 	test_ipv4_udp_rtp_voip+video_largecid.sh \
 	test_ipv4_udp_largecid.sh \
 	test_ipv6ext_icmp_largecid.sh \
+	test_ipv6ext_icmp-large-ipv6-ext_largecid.sh \
 	test_ipv6ext_ipv6ext_icmp_largecid.sh \
 	test_ipv6ext_udp_rtp_audio-vlc_largecid.sh \
 	test_ipv6ext_udp_largecid.sh \
