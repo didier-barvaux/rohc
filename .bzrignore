@@ -27,6 +27,7 @@ Makefile.in
 ./test/test
 ./test/report/report.html
 ./app/tunnel/rohctunnel
+./examples/simple_rohc_program
 ./measures/ftp/*.png
 ./measures/ftp/*.decomp_data_sorted
 ./measures/ftp/*.reorder_data

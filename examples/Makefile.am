@@ -1,0 +1,34 @@
+################################################################################
+#	Name       : Makefile
+#	Author     : Didier Barvaux <didier@barvaux.org>
+#	Description: create the ROHC example programs
+################################################################################
+
+examplesdir = $(docdir)/examples
+
+examples_DATA = \
+	simple_rohc_program.c
+
+noinst_PROGRAMS = \
+	simple_rohc_program
+
+
+INCLUDES = \
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp
+
+AM_CFLAGS = -g -Wall -Wstrict-prototypes
+
+AM_LDFLAGS = \
+	-L$(top_builddir)/src/common/.libs \
+	-L$(top_builddir)/src/comp/.libs
+
+
+simple_rohc_program_SOURCES = \
+	simple_rohc_program.c
+
+simple_rohc_program_LDADD = \
+	-lrohc_common \
+	-lrohc_comp \
+	-lm
+

@@ -4,6 +4,8 @@
 #	Description: create the API documentation in HTML for the ROHC library
 ################################################################################
 
+htmldir = $(docdir)/html
+
 html_DATA = \
 	html/*.html \
 	html/*.map \

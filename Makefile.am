@@ -16,7 +16,13 @@ else
 DOC_DIR =
 endif
 
-SUBDIRS = src $(TESTS_DIR) app $(DOC_DIR)
+if BUILD_EXAMPLES
+EXAMPLES_DIR = examples
+else
+EXAMPLES_DIR =
+endif
+
+SUBDIRS = src $(TESTS_DIR) app $(DOC_DIR) $(EXAMPLES_DIR)
 
 dist_doc_DATA = \
 	README \

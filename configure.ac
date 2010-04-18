@@ -135,11 +135,20 @@ AC_DEFINE_UNQUOTED([RTP_BIT_TYPE], [$rtp_bit_type], [Whether RTP bit type is ena
 
 # check if API documentation should be generated (HTML format with doxygen)
 AC_ARG_ENABLE(doc,
-							AS_HELP_STRING([--enable-doc],
-														 [generate API documentation in HTML format [default=no]]),
+              AS_HELP_STRING([--enable-doc],
+                             [generate API documentation in HTML format [default=no]]),
               [build_doc=$enableval],
               [build_doc=no])
 AM_CONDITIONAL([BUILD_DOC], [test "x$build_doc" = "xyes"])
+
+
+# check if library examples should be generated
+AC_ARG_ENABLE(examples,
+              AS_HELP_STRING([--disable-examples],
+                             [build example programs [default=yes]]),
+              [build_examples=$enableval],
+              [build_examples=yes])
+AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$build_examples" = "xyes"])
 
 
 AM_DEP_TRACK
@@ -151,6 +160,7 @@ AC_CONFIG_FILES([ \
 	src/comp/Makefile \
 	src/decomp/Makefile \
 	test/Makefile \
+	examples/Makefile \
 	app/Makefile \
 	app/tunnel/Makefile \
 	doc/doxygen.conf \
