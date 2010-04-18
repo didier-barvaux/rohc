@@ -3,7 +3,9 @@ Libraries and tools
 
 Configure the libraries and tools:
 
- $ ./autogen.sh --prefix=/path/to/installation/directory
+ $ ./configure --prefix=/path/to/installation/directory
+
+  (use ./autogen.sh if you are building from the source repository)
 
 Build the libraries and tools:
 
