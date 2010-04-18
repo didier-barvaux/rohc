@@ -668,6 +668,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 	{
 		uint8_t profile_id;
 
+		rohc_debugf(1, "ROHC packet is an IR packet\n");
+
 		/* find the profile specified in the ROHC packet */
 		profile_id = walk[1 + ddata->large_cid_size];
 		profile = find_profile(profile_id);
@@ -677,15 +679,23 @@ int d_decode_header(struct rohc_decomp *decomp,
 			            profile_id);
 			return ROHC_ERROR_NO_CONTEXT;
 		}
+		rohc_debugf(1, "profile 0x%04x found in IR packet\n", profile_id);
 
 		/* do we need more space in the array of contexts? */
 		if(ddata->cid >= decomp->num_contexts)
+		{
+			rohc_debugf(2, "CID in ROHC packet (%d) is greater than the current "
+			            "number of contexts (%d), so enlarge the context array\n",
+			            ddata->cid, decomp->num_contexts);
 			context_array_increase(decomp, ddata->cid);
+		}
 
 		if(decomp->contexts[ddata->cid] && decomp->contexts[ddata->cid]->profile == profile)
 		{
 			/* the decompression context associated with the CID already exists
 			 * and the context profile and the packet profile match. */
+			rohc_debugf(2, "context with CID %d already exists and matches profile "
+			            "0x%04x found in IR packet\n", ddata->cid, profile_id);
 			ddata->active = decomp->contexts[ddata->cid];
 			decomp->contexts[ddata->cid] = NULL;
 		}
@@ -693,16 +703,24 @@ int d_decode_header(struct rohc_decomp *decomp,
 		{
 			/* the decompression context does not exist or the profiles do not match,
 			 * create a new context */
+			rohc_debugf(2, "context with CID %d either does not already exist or "
+			            "does not match profile 0x%04x found in IR packet\n",
+			            ddata->cid, profile_id);
 			casenew = 1;
 			ddata->active = context_create(decomp, ddata->cid, profile);
 			if(!ddata->active)
+			{
+				rohc_debugf(0, "failed to create a new context with CID %d and "
+				            "profile 0x%04x\n", ddata->cid, profile_id);
 				return ROHC_ERROR_NO_CONTEXT;
+			}
 		}
 
 		/* check the CRC of the IR packet */
 		if(!rohc_ir_packet_crc_ok(ddata->active, walk, isize,
 		                          ddata->large_cid_size, ddata->addcidUsed, profile))
 		{
+			rohc_debugf(0, "IR packet has incorrect CRC, abort all changes\n");
 			if(casenew)
 				context_free(ddata->active);
 			else
@@ -730,6 +748,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		}
 
 		/* the IR decompression failed, free ressources if necessary */
+		rohc_debugf(0, "failed to decompress IR packet (code = %d)\n", size);
 		if(casenew)
 			context_free(ddata->active);
 		else
@@ -741,21 +760,29 @@ int d_decode_header(struct rohc_decomp *decomp,
 	{
 		int second_byte;
 
+		rohc_debugf(1, "ROHC packet is not an IR packet\n");
+
 		/* find the context associated with the CID */
 		ddata->active = find_context(decomp, ddata->cid);
 		
 		/* is the context valid? */
 		if(!ddata->active || !ddata->active->profile)
+		{
+			rohc_debugf(0, "context with CID %d either does not exist or no profile "
+			            "is associated with the context\n", ddata->cid);
 			return ROHC_ERROR_NO_CONTEXT;
+		}
 		else
 		{
 			/* context is valid */
+			rohc_debugf(1, "context with CID %d found\n", ddata->cid);
 			ddata->active->latest_used = get_milliseconds();
 			decomp->last_context = ddata->active;
 
 			/* is the ROHC packet an IR-DYN packet? */
 			if(d_is_irdyn(walk))
 			{
+				rohc_debugf(1, "ROHC packet is an IR-DYN packet\n");
 				ddata->active->num_recv_ir_dyn++;
 
 				/* find the profile specified in the ROHC packet */
@@ -775,7 +802,10 @@ int d_decode_header(struct rohc_decomp *decomp,
 				                              ddata->large_cid_size,
 				                              ddata->addcidUsed,
 				                              profile, ddata->active))
+				{
+					rohc_debugf(0, "IR-DYN packet has incorrect CRC\n");
 					return ROHC_ERROR_CRC;
+				}
 			}
 
 			/* determine the offset of the second byte */
