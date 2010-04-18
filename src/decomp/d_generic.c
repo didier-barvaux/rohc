@@ -4902,6 +4902,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	
 		/* decode RTP header flags */
 		mode = GET_BIT_6_7(packet);
+		*is_rtp_present = 1;
 		*is_pt_updated = GET_REAL(GET_BIT_5(packet));
 		rtp_context->m = GET_REAL(GET_BIT_4(packet));
 		rtp_context->rx = GET_REAL(GET_BIT_3(packet));

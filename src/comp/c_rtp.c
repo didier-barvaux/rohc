@@ -113,6 +113,7 @@ int c_rtp_create(struct c_context *context, const struct ip_packet ip)
 	/* initialize the RTP part of the profile context */
 	rtp_context->udp_checksum_change_count = 0;
 	rtp_context->old_udp = *udp;
+	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->old_rtp = *((struct rtphdr *) (udp + 1));
 	rtp_context->ts_window = c_create_wlsb(32, C_WINDOW_WIDTH, 2);
 	if(!c_create_sc(&rtp_context->ts_sc))
