@@ -22,6 +22,7 @@ Makefile.in
 ./mkinstalldirs
 ./stamp-h1
 ./rohc.pc
+./doc/doxygen.conf
 ./doc/html
 ./test/test
 ./test/report/report.html

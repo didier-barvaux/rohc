@@ -10,7 +10,13 @@ else
 TESTS_DIR = 
 endif
 
-SUBDIRS = src $(TESTS_DIR) app
+if BUILD_DOC
+DOC_DIR = doc
+else
+DOC_DIR =
+endif
+
+SUBDIRS = src $(TESTS_DIR) app $(DOC_DIR)
 
 dist_doc_DATA = \
 	README \
@@ -22,10 +28,7 @@ dist_doc_DATA = \
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = rohc.pc
 
-.PHONY: doc report measures
-
-doc:
-	doxygen doc/doxygen
+.PHONY: report measures
 
 report:
 if ROHC_TESTS
@@ -37,13 +40,9 @@ endif
 measures:
 	$(MAKE) -C measures
 
-clean-doc:
-	$(RM) -r doc/html
-
 # extra files for releases
 EXTRA_DIST = \
-	autogen.sh \
-	doc/doxygen
+	autogen.sh
 
 # other extra files for releases
 dist-hook:

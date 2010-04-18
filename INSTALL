@@ -32,13 +32,10 @@ Documentation
 
 HTML documentation can be generated from the source code thanks to Doxygen:
 
- $ make doc
+ $ ./configure --enable-doc
+ $ make html
 
 Open the ./doc/html/index.html file in your favorite web browser.
-
-If you want to clean the documentation:
-
- $ make clean-doc
 
 
 Non-regression tool
