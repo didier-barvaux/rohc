@@ -46,6 +46,13 @@ endif
 measures:
 	$(MAKE) -C measures
 
+# configure options for distcheck
+DISTCHECK_CONFIGURE_FLAGS = \
+	--enable-fail-on-warning \
+	--enable-rohc-tests \
+	--enable-doc \
+	--disable-examples
+
 # extra files for releases
 EXTRA_DIST = \
 	autogen.sh
