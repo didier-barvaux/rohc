@@ -478,7 +478,8 @@ int main(int argc, char *argv[])
 	tun = tun_create(tun_name);
 	if(tun < 0)
 	{
-		fprintf(stderr, "%s creation failed\n", tun_name);
+		fprintf(stderr, "%s creation failed, be sure to start rohctunnel "
+		        "as root\n", tun_name);
 		failure = 1;
 		goto quit;
 	}
@@ -672,7 +673,11 @@ int tun_create(char *name)
 
 	/* open a file descriptor on the kernel interface */
 	if((fd = open("/dev/net/tun", O_RDWR)) < 0)
+	{
+		fprintf(stderr, "failed to open /dev/net/tun: %s (%d)\n",
+		        strerror(errno), errno);
 		return fd;
+	}
 
 	/* flags: IFF_TUN   - TUN device (no Ethernet headers)
 	 *        IFF_TAP   - TAP device
@@ -685,6 +690,8 @@ int tun_create(char *name)
 	/* create the TUN interface */
 	if((err = ioctl(fd, TUNSETIFF, (void *) &ifr)) < 0)
 	{
+		fprintf(stderr, "failed to ioctl(TUNSETIFF) on /dev/net/tun: %s (%d)\n",
+		        strerror(errno), errno);
 		close(fd);
 		return err;
 	}
