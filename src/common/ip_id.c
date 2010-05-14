@@ -56,7 +56,7 @@ int d_ip_id_decode(struct d_ip_id_decode *s, int m, int k, int sn)
 	int tmp;
 	int mask = ((1 << k) - 1);
 	
-	f(offset_ref, k, 2, &min, &max);
+	f(offset_ref, k, 0, &min, &max);
 	
 	tmp = min;
 
