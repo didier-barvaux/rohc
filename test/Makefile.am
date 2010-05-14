@@ -8,6 +8,7 @@ TESTS_SMALLCID = \
 	test_ipvx_smallcid.sh \
 	test_ipv4fragmented_smallcid.sh \
 	test_ipv4_icmp_smallcid.sh \
+	test_ipv4_icmp_bug580491_smallcid.sh \
 	test_ipv4_icmp+tcp_smallcid.sh \
 	test_ipv4_ipv4_icmp_smallcid.sh \
 	test_ipv4_ipv4_udplite_smallcid.sh \
@@ -52,6 +53,7 @@ TESTS_LARGECID = \
 	test_ipvx_largecid.sh \
 	test_ipv4fragmented_largecid.sh \
 	test_ipv4_icmp_largecid.sh \
+	test_ipv4_icmp_bug580491_largecid.sh \
 	test_ipv4_icmp+tcp_largecid.sh \
 	test_ipv4_ipv4_icmp_largecid.sh \
 	test_ipv4_ipv4_udplite_largecid.sh \

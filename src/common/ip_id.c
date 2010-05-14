@@ -55,16 +55,27 @@ int d_ip_id_decode(struct d_ip_id_decode *s, int m, int k, int sn)
 	int max;
 	int tmp;
 	int mask = ((1 << k) - 1);
-	
-	f(offset_ref, k, 2, &min, &max);
+
+	f(offset_ref, k, 0, &min, &max);
 	
 	tmp = min;
+	m &= mask;
 
-	while(tmp <= max && (tmp & mask) != m) {
+	while(tmp <= max && (tmp & mask) != m)
+	{
 		tmp++;
 	}
 
-	return (sn + tmp) & 0xffff;
+	if((tmp & mask) != m)
+	{
+		tmp = -1;
+	}
+	else
+	{
+		tmp = (sn + tmp) & 0xffff;
+	}
+
+	return tmp;
 }
 
 

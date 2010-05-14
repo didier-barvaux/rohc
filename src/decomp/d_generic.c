@@ -4046,7 +4046,10 @@ int do_decode_uor2(struct rohc_decomp *decomp,
 
 				/* decode IP-ID */
 				if(ip_get_version(&active1->ip) == IPV4)
+				{
+					rohc_debugf(3, "decode IP-ID from %d-bit value 0x%x\n", id_size, *id);
 					*id = d_ip_id_decode(&g_context->ip_id1, *id, id_size, *sn);
+				}
 				if(g_context->multiple_ip && ip_get_version(&active2->ip) == IPV4)
 					*id2 = d_ip_id_decode(&g_context->ip_id2, 0, 0, *sn);
 
@@ -4585,6 +4588,7 @@ int decode_extension0(const unsigned char *packet,
 	{
 		case PACKET_UOR_2:
 			*ip_id = GET_BIT_0_2(packet);
+			rohc_debugf(3, "read 3 bits of IP-ID = 0x%x\n", *ip_id);
 			break;
 		case PACKET_UOR_2_ID:
 			*ip_id = (*ip_id << 3) | GET_BIT_0_2(packet);
