@@ -127,7 +127,7 @@ test_non_regression_LDADD = \
 
 EXTRA_DIST = \
 	test.h \
-	test.sh \
+	test_non_regression.sh \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID) \
 	report/report.sh \
