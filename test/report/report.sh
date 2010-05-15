@@ -11,7 +11,7 @@ debug=0
 DIRNAME="`dirname $0`"
 CONF="${DIRNAME}/report.conf"
 LD_LIBRARY_PATH="${DIRNAME}/../../lib"
-APP="${DIRNAME}/../test"
+APP="${DIRNAME}/../test_non_regression"
 
 XSLTPROC="$(which xsltproc 2>/dev/null)"
 if [ -z "${XSLTPROC}" ] || [ ! -x "${XSLTPROC}" ]; then
