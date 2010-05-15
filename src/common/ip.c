@@ -209,7 +209,7 @@ int ip_get_inner_packet(const struct ip_packet *outer,
  *
  * @param ip   The IP packet to analyze
  * @param type OUT: The type of the next header
- * @return     The next header
+ * @return     The next header if successful, NULL otherwise
  */
 unsigned char *ip_get_next_header(const struct ip_packet *ip,
                                   uint8_t *const type)
@@ -230,6 +230,7 @@ unsigned char *ip_get_next_header(const struct ip_packet *ip,
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
+		next_header = NULL;
 		assert(0);
 	}
 
@@ -414,7 +415,8 @@ unsigned short ip_get_total_extension_size(const struct ip_packet *ip)
  * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
- * @return   Whether the IP packet is an IP fragment or not
+ * @return   Whether the IP packet is an IP fragment or not if successful,
+ *           0 otherwise
  */
 int ip_is_fragment(const struct ip_packet *ip)
 {
@@ -431,6 +433,7 @@ int ip_is_fragment(const struct ip_packet *ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
+		is_fragment = 0;
 		assert(0);
 	}
 
@@ -475,7 +478,7 @@ unsigned int ip_get_totlen(const struct ip_packet *ip)
  * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
- * @return   The length of the IP header
+ * @return   The length of the IP header if successful, 0 otherwise
  */
 unsigned int ip_get_hdrlen(const struct ip_packet *ip)
 {
@@ -492,6 +495,7 @@ unsigned int ip_get_hdrlen(const struct ip_packet *ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
+		len = 0;
 		assert(0);
 	}
 
@@ -506,7 +510,7 @@ unsigned int ip_get_hdrlen(const struct ip_packet *ip)
  * is \ref IP_UNKNOWN.
  *
  * @param ip The IPv4/IPv6 packet to analyze
- * @return   The length of the IPv4/IPv6 payload
+ * @return   The length of the IPv4/IPv6 payload if successful, 0 otherwise
  */
 unsigned int ip_get_plen(const struct ip_packet *ip)
 {
@@ -523,6 +527,7 @@ unsigned int ip_get_plen(const struct ip_packet *ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
+		len = 0;
 		assert(0);
 	}
 
@@ -665,7 +670,7 @@ void ip_set_protocol(struct ip_packet *const ip, const uint8_t value)
  * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
- * @return   The TOS or TC value
+ * @return   The TOS or TC value if successful, 0 otherwise
  */
 unsigned int ip_get_tos(const struct ip_packet *ip)
 {
@@ -682,6 +687,7 @@ unsigned int ip_get_tos(const struct ip_packet *ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
+		tos = 0;
 		assert(0);
 	}
 
@@ -725,7 +731,7 @@ void ip_set_tos(struct ip_packet *const ip, const uint8_t value)
  * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
- * @return   The TTL or HL value
+ * @return   The TTL or HL value if successful, 0 otherwise
  */
 unsigned int ip_get_ttl(const struct ip_packet *ip)
 {
@@ -742,6 +748,7 @@ unsigned int ip_get_ttl(const struct ip_packet *ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
+		ttl = 0;
 		assert(0);
 	}
 
