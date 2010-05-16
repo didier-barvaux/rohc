@@ -260,6 +260,7 @@ static int tune_env_for_perfs(double *coef_nanosec)
 	struct sched_param param;
 	unsigned long long tics1;
 	unsigned long long tics2;
+	unsigned int i;
 	int ret;
 
 	/* set the process to realtime priority */
@@ -289,10 +290,15 @@ static int tune_env_for_perfs(double *coef_nanosec)
 	}
 
 	/* determine CPU tics to nanoseconds coefficient */
-	GET_CPU_TICS(tics1);
-	sleep(1);
-	GET_CPU_TICS(tics2);
-	*coef_nanosec = 1.e9 / (tics2 - tics1);
+	*coef_nanosec = 0;
+	for(i = 0; i < 10; i++)
+	{
+		GET_CPU_TICS(tics1);
+		sleep(1);
+		GET_CPU_TICS(tics2);
+		*coef_nanosec += 1.e9 / (tics2 - tics1);
+	}
+	*coef_nanosec /= 10;
 	fprintf(stderr, "CPU frequency estimated to %.6f GHz\n",
 	        1. / (*coef_nanosec));
 
