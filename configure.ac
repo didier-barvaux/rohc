@@ -5,9 +5,12 @@ AC_INIT(rohc, trunk, http://launchpad.net/rohc/)
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 
-# Init automake with silent rules enabled to make 'make' less verbose,
-# but do not call the AM_SILENT_RULES macro if it is not defined to
-# keep compatibility with automake < 1.11 for the moment.
+# Init automake with:
+#  - silent rules enabled to make 'make' less verbose, but do not call the
+#    AM_SILENT_RULES macro if it is not defined to keep compatibility with
+#    automake < 1.11 for the moment.
+#  - color-tests to get nice colored results for tests (currently disabled
+#    to keep compatibility with automake 1.10 for the moment.
 AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
