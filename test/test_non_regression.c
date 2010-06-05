@@ -106,6 +106,7 @@
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(char *cid_type,
+                                const unsigned int max_contexts,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -129,6 +130,7 @@ int main(int argc, char *argv[])
 	char *src_filename = NULL;
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
+	int max_contexts = 15;
 	int status = 1;
 	int args_used;
 
@@ -174,6 +176,12 @@ int main(int argc, char *argv[])
 			rohc_size_ofilename = argv[1];
 			args_used++;
 		}
+		else if(!strcmp(*argv, "--max-contexts"))
+		{
+			/* get the maximum number of contexts the test should use */
+			max_contexts = atoi(argv[1]);
+			args_used++;
+		}
 		else if(cid_type == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -193,6 +201,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* the maximum number of ROHC contexts should be valid */
+	if(max_contexts < 1 || max_contexts > 16384)
+	{
+		fprintf(stderr, "the maximum number of ROHC contexts should be "
+		        "between 1 and 16384\n\n");
+		usage();
+		goto error;
+	}
+
 	/* the source filename is mandatory */
 	if(src_filename == NULL)
 	{
@@ -206,8 +223,8 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(cid_type, src_filename, ofilename, cmp_filename,
-	                              rohc_size_ofilename);
+	status = test_comp_and_decomp(cid_type, max_contexts, src_filename, ofilename,
+	                              cmp_filename, rohc_size_ofilename);
 
 error:
 	return status;
@@ -238,7 +255,9 @@ static void usage(void)
 	        "                          (PCAP format)\n"
 	        "  -c FILE                 Compare the generated ROHC packets with the\n"
 	        "                          ROHC packets stored in FILE (PCAP format)\n"
-	        "  --rohc-size-ouput FILE  Save the sizes of ROHC packets in FILE\n");
+	        "  --rohc-size-ouput FILE  Save the sizes of ROHC packets in FILE\n"
+	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
+	        "                          simultaneously use during the test\n");
 }
 
 
@@ -631,6 +650,7 @@ exit:
  *        two compressor/decompressor pairs
  *
  * @param cid_type             The type of CID to use within the ROHC library
+ * @param max_contexts         The maximum number of ROHC contexts to use
  * @param src_filename         The name of the PCAP file that contains the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
@@ -644,6 +664,7 @@ exit:
  *                             77 if test is skipped
  */
 static int test_comp_and_decomp(char *cid_type,
+                                const unsigned int max_contexts,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -807,7 +828,7 @@ static int test_comp_and_decomp(char *cid_type,
 	}
 
 	/* create the compressor 1 */
-	comp1 = rohc_alloc_compressor(15, 0, 0, 0);
+	comp1 = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
 	if(comp1 == NULL)
 	{
 		printf("cannot create the compressor 1\n");
