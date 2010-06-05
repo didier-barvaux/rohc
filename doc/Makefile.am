@@ -19,8 +19,10 @@ html/*.css: html-am
 html/*.png: html-am
 html/*.gif: html-am
 
-html-am:
-	doxygen doxygen.conf
+html-am: htmldoc
+
+htmldoc:
+	$(AM_V_GEN)doxygen doxygen.conf
 
 clean-local:
 	-$(RM) -rf html/
