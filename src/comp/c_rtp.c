@@ -29,6 +29,18 @@
 
 
 /*
+ * Constants and macros
+ */
+
+/**
+ * @brief The list of UDP ports associated with RTP streams
+ *
+ * The port numbers must be separated by a comma
+ */
+#define RTP_PORTS  1234, 36780, 33238, 5020, 5002
+
+
+/*
  * Private function prototypes.
  */
 

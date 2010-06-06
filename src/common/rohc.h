@@ -394,12 +394,6 @@
 #define ROHC_NEED_REPARSE          -6
 
 
-/// @brief List of UDP ports associated with RTP streams
-/// The port numbers must be separated by a comma
-#define RTP_PORTS  1234, 36780, 33238, 5020, 5002
-
-
-
 /**
  * ROHC operation modes (see 4.4 in the RFC 3095)
  */
