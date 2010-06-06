@@ -29,6 +29,7 @@
 #include "rohc_traces.h"
 #include "rohc_time.h"
 #include "rohc_packets.h"
+#include "rohc_bit_ops.h"
 
 
 /** Get the minimum of two values */

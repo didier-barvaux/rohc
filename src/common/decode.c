@@ -22,6 +22,7 @@
  */
 
 #include "decode.h"
+#include "rohc_bit_ops.h"
 
 
 /**

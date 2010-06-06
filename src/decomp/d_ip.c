@@ -22,6 +22,7 @@
  */
 
 #include "d_ip.h"
+#include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 #include "rohc_packets.h"
 

@@ -37,9 +37,13 @@ headers = \
 	ts_sc_decomp.h \
 	comp_list.h
 
+private_headers = \
+	rohc_bit_ops.h
+
 librohc_common_la_SOURCES = $(sources)
 
 include_HEADERS = $(headers)
+noinst_HEADERS = $(private_headers)
 
 INCLUDES =
 

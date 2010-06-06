@@ -22,6 +22,7 @@
  */
 
 #include "sdvl.h"
+#include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 
 
