@@ -51,8 +51,12 @@ struct c_profile *c_profiles[C_NUM_PROFILES] =
 
 
 /*
- * Function prototypes:
+ * Prototypes of private functions related to ROHC compression profiles
  */
+
+static const struct c_profile *
+	c_get_profile_from_id(const struct rohc_comp *comp,
+	                      const int profile_id);
 
 static const struct c_profile *
 	c_get_profile_from_packet(const struct rohc_comp *comp,
@@ -60,14 +64,39 @@ static const struct c_profile *
 	                          const struct ip_packet *inner_ip,
 	                          const int protocol);
 
-void c_piggyback_destroy(struct rohc_comp *const comp);
-int c_piggyback_get(struct rohc_comp *const comp,
-                    unsigned char *const buffer,
-                    const unsigned int max);
+static int c_is_in_list(struct c_profile *profile, int port);
 
-void c_destroy_contexts(struct rohc_comp *const comp);
-int c_create_contexts(struct rohc_comp *const comp);
-int c_alloc_contexts(struct rohc_comp *const comp, int num);
+
+/*
+ * Prototypes of private functions related to ROHC compression contexts
+ */
+
+static int c_create_contexts(struct rohc_comp *const comp);
+static int c_alloc_contexts(struct rohc_comp *const comp, int num);
+static void c_destroy_contexts(struct rohc_comp *const comp);
+
+static struct c_context * c_create_context(struct rohc_comp *comp,
+                                           const struct c_profile *profile,
+                                           const struct ip_packet *ip);
+static struct c_context * c_find_context(const struct rohc_comp *comp,
+                                         const struct c_profile *profile,
+                                         const struct ip_packet *ip);
+static struct c_context * c_get_context(struct rohc_comp *comp, int cid);
+
+
+/*
+ * Prototypes of private functions related to ROHC feedback
+ */
+
+static void c_piggyback_destroy(struct rohc_comp *const comp);
+static int c_piggyback_get(struct rohc_comp *const comp,
+                           unsigned char *const buffer,
+                           const unsigned int max);
+
+
+/*
+ * Definitions of public functions
+ */
 
 
 /**
@@ -827,14 +856,191 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 
 
 /**
+ * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
+ *
+ * @param comp     The ROHC compressor
+ * @param feedback The feedback data
+ * @param size     The length of the feedback packet
+ */
+void c_piggyback_feedback(struct rohc_comp *comp,
+                          unsigned char *feedback,
+                          int size)
+{
+	if(comp == NULL)
+	{
+		rohc_debugf(0, "no compressor associated with the decompressor, "
+		               "cannot deliver feedback\n");
+		return;
+	}
+
+	rohc_debugf(2, "add %d byte(s) of feedback to the next outgoing ROHC "
+	               "packet\n", size);
+
+	if(comp->feedback_pointer >= FEEDBACK_BUFFER_SIZE)
+	{
+		rohc_debugf(0, "no place in buffer for feedback data\n");
+		return;
+	}
+
+	comp->feedback_buffer[comp->feedback_pointer] = malloc(size);
+	if(comp->feedback_buffer[comp->feedback_pointer] == NULL)
+	{
+	  rohc_debugf(0, "no memory for feedback data\n");
+	  return;
+	}
+
+	memcpy(comp->feedback_buffer[comp->feedback_pointer], feedback, size);
+	comp->feedback_size[comp->feedback_pointer] = size;
+
+	comp->feedback_pointer++;
+}
+
+
+/**
+ * @brief Callback called by a decompressor to deliver a feedback packet to the
+ *        compressor
+ *
+ * When feedback is received by the decompressor, this function is called and
+ * delivers the feedback to the right profile/context of the compressor.
+ *
+ * @param comp   The ROHC compressor
+ * @param packet The feedback data
+ * @param size   The length of the feedback packet
+ */
+void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
+{
+	struct c_context *c;
+	struct c_feedback feedback;
+	unsigned char *p = packet;
+	
+	if(comp == NULL)
+	{
+		rohc_debugf(0, "no compressor associated with the decompressor, "
+		               "cannot deliver feedback\n");
+		goto quit;
+	}
+
+	rohc_debugf(2, "deliver %d byte(s) of feedback to the right context\n",
+	            size);
+
+	feedback.size = size;
+
+	/* decode CID */
+	if(comp->medium.cid_type == LARGE_CID)
+	{
+		/* decode large cid at p[0..3] */
+		feedback.cid =  d_sdvalue_decode(p);
+		p += d_sdvalue_size(p);
+	}
+	else
+	{
+		/* decode small CID */
+		if(d_is_add_cid(p))
+		{
+			feedback.cid = d_decode_add_cid(p);
+			p++;
+		}
+		else
+			feedback.cid = 0;
+	}
+
+	feedback.specific_size = size - (p - packet);
+	rohc_debugf(2, "feedback size = %d\n", feedback.specific_size);
+
+	if(feedback.specific_size == 1)
+		feedback.type = 1; /* FEEDBACK-1 */
+	else
+	{
+		feedback.type = 2; /* FEEDBACK-2 */
+		feedback.acktype = p[0] >> 6;
+	}
+
+	feedback.specific_offset = p - packet;
+	feedback.data = malloc(feedback.size);
+	if(feedback.data == NULL)
+	{
+	  rohc_debugf(0, "no memory for feedback data\n");
+	  goto quit;
+	}
+
+	memcpy(feedback.data, packet, feedback.size);
+
+	/* find context */
+	c = c_get_context(comp, feedback.cid);
+	if(c == NULL)
+	{
+		/* context was not found */
+		rohc_debugf(0, "context not found (CID = %d)\n", feedback.cid);
+		goto clean;
+	}
+
+	c->num_recv_feedbacks++;
+
+	/* deliver feedback to profile with the context */
+	c->profile->feedback(c, &feedback);
+
+clean:
+	zfree(feedback.data);
+quit:
+	;
+}
+
+
+/**
+ * @brief Send as much feedback data as possible
+ *
+ * @param comp   The ROHC compressor
+ * @param obuf   The buffer where to store the feedback-only packet
+ * @param osize  The size of the buffer for the feedback-only packet
+ * @return       The size of the feedback-only packet,
+ *               0 if there is no feedback data to send
+ */
+int rohc_feedback_flush(struct rohc_comp *comp,
+                        unsigned char *obuf,
+                        int osize)
+{
+	unsigned int size;
+	int feedback_size;
+
+	/* check compressor validity */
+	if(comp == NULL)
+	{
+		rohc_debugf(0, "compressor not valid\n");
+		return 0;
+	}
+
+	/* build the feedback-only packet */
+	size = 0;
+	do
+	{
+		feedback_size = c_piggyback_get(comp, obuf, osize - size);
+		if(feedback_size > 0)
+		{
+			obuf += feedback_size;
+			size += feedback_size;
+		}
+	}
+	while(feedback_size > 0);
+
+	return size;
+}
+
+
+/*
+ * Definitions of private functions
+ */
+
+
+/**
  * @brief Find out a ROHC profile given a profile ID
  *
  * @param comp       The ROHC compressor
  * @param profile_id The ID of the ROHC profile to find out
  * @return           The ROHC profile if found, NULL otherwise
  */
-const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
-                                               const int profile_id)
+static const struct c_profile *
+	c_get_profile_from_id(const struct rohc_comp *comp,
+	                      const int profile_id)
 {
 	int i;
 
@@ -858,7 +1064,7 @@ const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
  * @return         1 if UDP port is associated with profile,
  *                 0 otherwise
  */
-int c_is_in_list(struct c_profile *profile, int port)
+static int c_is_in_list(struct c_profile *profile, int port)
 {
 	int match = 0;
 	int i;
@@ -1008,7 +1214,7 @@ static const struct c_profile *
  * @param size The size of the context array (maximum: comp->medium.max_cid + 1)
  * @return     1 if the creation is successful, 0 otherwise
  */
-int c_alloc_contexts(struct rohc_comp *const comp, int size)
+static int c_alloc_contexts(struct rohc_comp *const comp, int size)
 {
 	/* the array size must not be greater than comp->medium.max_cid,
 	 * it would be a waste of memory */
@@ -1063,9 +1269,9 @@ int c_alloc_contexts(struct rohc_comp *const comp, int size)
  * @param ip      The IP packet to initialize the context
  * @return        The compression context if successful, NULL otherwise
  */
-struct c_context * c_create_context(struct rohc_comp *comp,
-                                    const struct c_profile *profile,
-                                    const struct ip_packet *ip)
+static struct c_context * c_create_context(struct rohc_comp *comp,
+                                           const struct c_profile *profile,
+                                           const struct ip_packet *ip)
 {
 	struct c_context *c;
 	int index, i;
@@ -1180,9 +1386,9 @@ struct c_context * c_create_context(struct rohc_comp *comp,
  *                NULL if not found,
  *                -1 if an error occurs
  */
-struct c_context * c_find_context(const struct rohc_comp *comp,
-                                  const struct c_profile *profile,
-                                  const struct ip_packet *ip)
+static struct c_context * c_find_context(const struct rohc_comp *comp,
+                                         const struct c_profile *profile,
+                                         const struct ip_packet *ip)
 {
 	struct c_context *c = NULL;
 	int i;
@@ -1225,7 +1431,7 @@ struct c_context * c_find_context(const struct rohc_comp *comp,
  * @param cid  The CID of the context to find
  * @return     The context with the given CID if found, NULL otherwise
  */
-struct c_context * c_get_context(struct rohc_comp *comp, int cid)
+static struct c_context * c_get_context(struct rohc_comp *comp, int cid)
 {
 	/* the CID must not be larger than the context array */
 	if(cid >= comp->num_contexts)
@@ -1248,7 +1454,7 @@ not_found:
  * @param comp The ROHC compressor
  * @return     1 if the creation is successful, 0 otherwise
  */
-int c_create_contexts(struct rohc_comp *const comp)
+static int c_create_contexts(struct rohc_comp *const comp)
 {
 	comp->contexts = NULL;
 	comp->num_contexts = 0;
@@ -1265,7 +1471,7 @@ int c_create_contexts(struct rohc_comp *const comp)
  *
  * @param comp The ROHC compressor
  */
-void c_destroy_contexts(struct rohc_comp *const comp)
+static void c_destroy_contexts(struct rohc_comp *const comp)
 {
 	int i;
 
@@ -1291,47 +1497,6 @@ void c_destroy_contexts(struct rohc_comp *const comp)
 
 
 /**
- * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
- *
- * @param comp     The ROHC compressor
- * @param feedback The feedback data
- * @param size     The length of the feedback packet
- */
-void c_piggyback_feedback(struct rohc_comp *comp,
-                          unsigned char *feedback,
-                          int size)
-{
-	if(comp == NULL)
-	{
-		rohc_debugf(0, "no compressor associated with the decompressor, "
-		               "cannot deliver feedback\n");
-		return;
-	}
-
-	rohc_debugf(2, "add %d byte(s) of feedback to the next outgoing ROHC "
-	               "packet\n", size);
-
-	if(comp->feedback_pointer >= FEEDBACK_BUFFER_SIZE)
-	{
-		rohc_debugf(0, "no place in buffer for feedback data\n");
-		return;
-	}
-
-	comp->feedback_buffer[comp->feedback_pointer] = malloc(size);
-	if(comp->feedback_buffer[comp->feedback_pointer] == NULL)
-	{
-	  rohc_debugf(0, "no memory for feedback data\n");
-	  return;
-	}
-
-	memcpy(comp->feedback_buffer[comp->feedback_pointer], feedback, size);
-	comp->feedback_size[comp->feedback_pointer] = size;
-
-	comp->feedback_pointer++;
-}
-
-
-/**
  * @brief Retrieve one feedback packet and store it in the given buffer
  *
  * @param comp   The ROHC compressor
@@ -1341,9 +1506,9 @@ void c_piggyback_feedback(struct rohc_comp *comp,
  *               0 if no feedback is available,
  *               -1 if the feedback is too large for the given buffer
  */
-int c_piggyback_get(struct rohc_comp *const comp,
-                    unsigned char *const buffer,
-                    const unsigned int max)
+static int c_piggyback_get(struct rohc_comp *const comp,
+                           unsigned char *const buffer,
+                           const unsigned int max)
 {
 	int i;
 	int size = 0;
@@ -1414,7 +1579,7 @@ full:
  *
  * @param comp   The ROHC compressor
  */
-void c_piggyback_destroy(struct rohc_comp *const comp)
+static void c_piggyback_destroy(struct rohc_comp *const comp)
 {
 	int i;
 
@@ -1423,134 +1588,5 @@ void c_piggyback_destroy(struct rohc_comp *const comp)
 		if(comp->feedback_size[i] > 0 && comp->feedback_buffer[i] != NULL)
 			zfree(comp->feedback_buffer[i]);
 	}
-}
-
-
-/**
- * @brief Send as much feedback data as possible
- *
- * @param comp   The ROHC compressor
- * @param obuf   The buffer where to store the feedback-only packet
- * @param osize  The size of the buffer for the feedback-only packet
- * @return       The size of the feedback-only packet,
- *               0 if there is no feedback data to send
- */
-int rohc_feedback_flush(struct rohc_comp *comp,
-                        unsigned char *obuf,
-                        int osize)
-{
-	unsigned int size;
-	int feedback_size;
-
-	/* check compressor validity */
-	if(comp == NULL)
-	{
-		rohc_debugf(0, "compressor not valid\n");
-		return 0;
-	}
-
-	/* build the feedback-only packet */
-	size = 0;
-	do
-	{
-		feedback_size = c_piggyback_get(comp, obuf, osize - size);
-		if(feedback_size > 0)
-		{
-			obuf += feedback_size;
-			size += feedback_size;
-		}
-	}
-	while(feedback_size > 0);
-
-	return size;
-}
-
-/**
- * @brief Callback called by a decompressor to deliver a feedback packet to the
- *        compressor
- *
- * When feedback is received by the decompressor, this function is called and
- * delivers the feedback to the right profile/context of the compressor.
- *
- * @param comp   The ROHC compressor
- * @param packet The feedback data
- * @param size   The length of the feedback packet
- */
-void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
-{
-	struct c_context *c;
-	struct c_feedback feedback;
-	unsigned char *p = packet;
-	
-	if(comp == NULL)
-	{
-		rohc_debugf(0, "no compressor associated with the decompressor, "
-		               "cannot deliver feedback\n");
-		goto quit;
-	}
-
-	rohc_debugf(2, "deliver %d byte(s) of feedback to the right context\n",
-	            size);
-
-	feedback.size = size;
-
-	/* decode CID */
-	if(comp->medium.cid_type == LARGE_CID)
-	{
-		/* decode large cid at p[0..3] */
-		feedback.cid =  d_sdvalue_decode(p);
-		p += d_sdvalue_size(p);
-	}
-	else
-	{
-		/* decode small CID */
-		if(d_is_add_cid(p))
-		{
-			feedback.cid = d_decode_add_cid(p);
-			p++;
-		}
-		else
-			feedback.cid = 0;
-	}
-
-	feedback.specific_size = size - (p - packet);
-	rohc_debugf(2, "feedback size = %d\n", feedback.specific_size);
-
-	if(feedback.specific_size == 1)
-		feedback.type = 1; /* FEEDBACK-1 */
-	else
-	{
-		feedback.type = 2; /* FEEDBACK-2 */
-		feedback.acktype = p[0] >> 6;
-	}
-
-	feedback.specific_offset = p - packet;
-	feedback.data = malloc(feedback.size);
-	if(feedback.data == NULL)
-	{
-	  rohc_debugf(0, "no memory for feedback data\n");
-	  goto quit;
-	}
-
-	memcpy(feedback.data, packet, feedback.size);
-
-	/* find context */
-	c = c_get_context(comp, feedback.cid);
-	if(c == NULL)
-	{
-		/* context was not found */
-		rohc_debugf(0, "context not found (CID = %d)\n", feedback.cid);
-		goto clean;
-	}
-
-	c->num_recv_feedbacks++;
-
-	/* deliver feedback to profile with the context */
-	c->profile->feedback(c, &feedback);
-
-clean:
-	zfree(feedback.data);
-quit:
-	;
 }
 

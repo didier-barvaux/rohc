@@ -273,7 +273,7 @@ struct c_feedback
 
 
 /*
- * Functions related to compressor:
+ * Prototypes of main public functions related to ROHC compression
  */
 
 struct rohc_comp * rohc_alloc_compressor(int max_cid, int jam_use, int adapt_size, int encap_size);
@@ -282,40 +282,25 @@ void rohc_free_compressor(struct rohc_comp *comp);
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
                   unsigned char *obuf, int osize);
 
-int rohc_c_info(char *buffer);
-int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent,
-                      char *buffer);
-int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent,
-                   char *buffer);
+
+/*
+ * Prototypes of public functions related to user interaction
+ */
 
 int rohc_c_is_enabled(struct rohc_comp *comp);
 int rohc_c_using_small_cid(struct rohc_comp *comp);
 
-
-/*
- * Functions related to context:
- */
-
-struct c_context * c_create_context(struct rohc_comp *comp,
-                                    const struct c_profile *profile,
-                                    const struct ip_packet *ip);
-struct c_context * c_find_context(const struct rohc_comp *comp,
-                                  const struct c_profile *profile,
-                                  const struct ip_packet *ip);
-struct c_context *c_get_context(struct rohc_comp *, int cid);
-
-
-/*
- * Functions related to profile:
- */
-
-const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
-                                               const int profile_id);
 void rohc_activate_profile(struct rohc_comp *comp, int profile);
 
+void rohc_c_set_header(struct rohc_comp *compressor, int value);
+void rohc_c_set_mrru(struct rohc_comp *compressor, int value);
+void rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
+void rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
+void rohc_c_set_enable(struct rohc_comp *compressor, int value);
+
 
 /*
- * Functions related to feedback:
+ * Prototypes of public functions related to ROHC feedback
  */
 
 void c_piggyback_feedback(struct rohc_comp *comp, unsigned char *packet,
@@ -328,14 +313,14 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 
 
 /*
- * Functions related to user interaction:
+ * Prototypes of public functions related to ROHC compression statistics
  */
 
-void rohc_c_set_header(struct rohc_comp *compressor, int value);
-void rohc_c_set_mrru(struct rohc_comp *compressor, int value);
-void rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
-void rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
-void rohc_c_set_enable(struct rohc_comp *compressor, int value);
+int rohc_c_info(char *buffer);
+int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent,
+                      char *buffer);
+int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent,
+                   char *buffer);
 
 
 /*
