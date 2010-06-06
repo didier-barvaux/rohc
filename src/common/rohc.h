@@ -470,14 +470,6 @@ struct medium
 
 
 /*
- * Constants related to packet recovery after CRC failure:
- */
-
-/// Whether to attempt packet recovery after CRC failure or not
-#define CRC_ACTION  1
-
-
-/*
  * System includes:
  */
 

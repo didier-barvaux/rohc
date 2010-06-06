@@ -5992,10 +5992,6 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 
 	sync_on_failure(g_context);
 
-	/* do we try SN recovery on CRC failure? */
-	if(!CRC_ACTION)
-		goto skip;
-
 	rohc_debugf(0, "try to repair the CRC\n");
 
 	/* if last packet time = 0, then IR was just sent and we can not
@@ -6115,7 +6111,6 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 		d_ip_id_update(&g_context->ip_id2, *id2, *sn);
 
 failure:
-skip:
 	return ROHC_ERROR_CRC;
 }
 
