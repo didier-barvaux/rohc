@@ -33,6 +33,7 @@
 #include "comp_list.h"
 #include "lsb.h"
 #include "ip_id.h"
+#include "ip.h"
 
 #define MAX_ITEM 15
 

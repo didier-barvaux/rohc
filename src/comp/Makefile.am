@@ -22,10 +22,10 @@ INCLUDES = \
 AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 include_HEADERS = \
-	rohc_comp.h \
-	cid.h
+	rohc_comp.h
 
-EXTRA_DIST = \
+noinst_HEADERS = \
+	cid.h \
 	c_uncompressed.h \
 	c_generic.h \
 	c_ip.h \

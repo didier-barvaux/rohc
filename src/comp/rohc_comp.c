@@ -33,6 +33,7 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "decode.h"
+#include "ip.h"
 
 
 extern struct c_profile c_rtp_profile,

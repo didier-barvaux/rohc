@@ -25,7 +25,6 @@
 #define COMP_H
 
 #include "rohc.h"
-#include "ip.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -34,6 +33,7 @@
 
 
 struct c_feedback;
+struct ip_packet;
 
 
 /// The number of ROHC profiles ready to be used

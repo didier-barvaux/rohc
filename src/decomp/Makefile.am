@@ -24,7 +24,7 @@ AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 include_HEADERS = rohc_decomp.h
 
-EXTRA_DIST = \
+noinst_HEADERS = \
 	feedback.h \
 	d_uncompressed.h \
 	d_generic.h \

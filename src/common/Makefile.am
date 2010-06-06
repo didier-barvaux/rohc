@@ -19,8 +19,12 @@ sources = \
 	ts_sc_decomp.c \
 	comp_list.c
 
-headers = \
-	rohc.h \
+public_headers = \
+	rohc.h
+
+private_headers = \
+	rohc_bit_ops.h \
+	rohc_debug.h \
 	rohc_traces.h \
 	rohc_time.h \
 	rohc_packets.h \
@@ -37,13 +41,9 @@ headers = \
 	ts_sc_decomp.h \
 	comp_list.h
 
-private_headers = \
-	rohc_bit_ops.h \
-	rohc_debug.h
-
 librohc_common_la_SOURCES = $(sources)
 
-include_HEADERS = $(headers)
+include_HEADERS = $(public_headers)
 noinst_HEADERS = $(private_headers)
 
 INCLUDES =

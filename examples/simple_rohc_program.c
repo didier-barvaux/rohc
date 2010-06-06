@@ -128,8 +128,8 @@ int main(int argc, char **argv)
 	ip_header->saddr = htonl(0x01020304);
 	ip_header->daddr = htonl(0x05060708);
 
-	/* header is now built, compute the checksum */
-	ip_header->check = ip_fast_csum(ip_packet, ip_header->ihl);
+	/* header is now built, put a fake IP checksum for this example */
+	ip_header->check = 0xbeef;
 
 	/* copy the payload just after the IP header */
 	memcpy(ip_packet + ip_header->ihl * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));

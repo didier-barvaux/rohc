@@ -31,6 +31,7 @@
 #include "rohc_comp.h"
 #include "rohc_packets.h"
 #include "comp_list.h"
+#include "ip.h"
 
 
 /**

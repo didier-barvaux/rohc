@@ -60,6 +60,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <net/ethernet.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <errno.h>
 #include <stdarg.h>
 

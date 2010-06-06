@@ -86,6 +86,8 @@
 #include <strings.h>
 #include <string.h>
 #include <net/ethernet.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <math.h>
 #include <errno.h>
 
