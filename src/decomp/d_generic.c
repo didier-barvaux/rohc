@@ -21,6 +21,7 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "d_generic.h"
@@ -31,6 +32,10 @@
 #include "rohc_packets.h"
 #include "rohc_bit_ops.h"
 
+
+/*
+ * Definitions of private constants and macros
+ */
 
 /** Get the minimum of two values */
 #define MIN(a, b) \
@@ -47,6 +52,12 @@
  * of zero is used.
  */
 #define IPV4_DYN_PART_SIZE  6
+
+/** Constant to compute inter-arrival time between the received packets */
+#define WEIGHT_OLD  1
+
+/** Constant to compute inter-arrival time between the received packets */
+#define WEIGHT_NEW  1
 
 
 /*

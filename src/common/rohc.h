@@ -478,14 +478,6 @@ struct medium
 
 
 /*
- * Time-related constants:
- */
-
-#define WEIGHT_OLD  1
-#define WEIGHT_NEW  1
-
-
-/*
  * System includes:
  */
 
