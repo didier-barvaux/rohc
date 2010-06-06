@@ -30,12 +30,8 @@
 #include "rohc_traces.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
-#include "d_ip.h"
-#include "d_udp.h"
-#include "d_rtp.h"
-#include "d_uncompressed.h"
-#include "d_udp_lite.h"
 #include "feedback.h"
+#include "wlsb.h"
 #include "decode.h"
 
 
