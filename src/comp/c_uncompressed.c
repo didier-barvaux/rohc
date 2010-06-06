@@ -420,7 +420,8 @@ int uncompressed_code_IR_packet(const struct c_context *context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, dest_size, &first_position);
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, dest_size, &first_position);
 
 	/* part 2 */
 	dest[first_position] = 0xfc;
@@ -492,7 +493,8 @@ int uncompressed_code_normal_packet(const struct c_context *context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, dest_size, &first_position);
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, dest_size, &first_position);
 
 	/* part 2 */
 	dest[first_position] = (ip_get_raw_data(ip))[0];

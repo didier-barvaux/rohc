@@ -42,14 +42,17 @@ static unsigned char c_add_cid(const int cid);
 /**
  * @brief Build the CID part of the ROHC packets.
  *
- * @param context        The compression context
+ * @param cid_type       The type of CID in use for the compression context:
+ *                       ROHC_SMALL_CID or ROHC_LARGE_CID
+ * @param cid            The value of the CID for the compression context
  * @param dest           The rohc-packet-under-build buffer
  * @param dest_size      The length of the rohc-packet-under-build buffer
  * @param first_position OUT: The position of the first byte to be completed
  *                       by other functions
  * @return               The position in the rohc-packet-under-build buffer
  */
-int code_cid_values(const struct c_context *context,
+int code_cid_values(const rohc_cid_type_t cid_type,
+                    const int cid,
                     unsigned char *const dest,
                     const int dest_size,
                     int *const first_position)
@@ -57,11 +60,11 @@ int code_cid_values(const struct c_context *context,
 	int counter = 0;
 
 	/* small CID */
-	if(context->compressor->medium.cid_type == ROHC_SMALL_CID)
+	if(cid_type == ROHC_SMALL_CID)
 	{
-		if(context->cid > 0)
+		if(cid > 0)
 		{
-			dest[counter] = c_add_cid(context->cid);
+			dest[counter] = c_add_cid(cid);
 			rohc_debugf(3, "add-CID = 0x%02x\n", dest[counter]);
 
 			*first_position = 1;
@@ -81,8 +84,8 @@ int code_cid_values(const struct c_context *context,
 		*first_position = 0;
 		counter++;
 	
-		c_encodeSdvl(&dest[counter], context->cid, -1);
-		len = c_bytesSdvl(context->cid, -1);
+		c_encodeSdvl(&dest[counter], cid, -1);
+		len = c_bytesSdvl(cid, -1);
 		
 		rohc_debugf(3, "SDVL-encoded large CID = ");
 		for(i = 0; i < len; i++)

@@ -8,7 +8,6 @@ lib_LTLIBRARIES = librohc_comp.la
 
 librohc_comp_la_SOURCES = \
 	rohc_comp.c \
-	cid.c \
 	c_uncompressed.c \
 	c_generic.c \
 	c_ip.c \
@@ -25,7 +24,6 @@ include_HEADERS = \
 	rohc_comp.h
 
 noinst_HEADERS = \
-	cid.h \
 	c_uncompressed.h \
 	c_generic.h \
 	c_ip.h \

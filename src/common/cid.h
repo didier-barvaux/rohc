@@ -24,14 +24,15 @@
 #ifndef CID_H
 #define CID_H
 
-#include "rohc_comp.h"
+#include "rohc.h"
 
 
 /*
  * Prototypes of functions that may used by other ROHC modules
  */
 
-int code_cid_values(const struct c_context *context,
+int code_cid_values(const rohc_cid_type_t cid_type,
+                    const int cid,
                     unsigned char *const dest,
                     const int dest_size,
                     int *const first_position);

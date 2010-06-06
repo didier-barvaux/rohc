@@ -17,7 +17,8 @@ sources = \
 	ip.c \
 	ts_sc_comp.c \
 	ts_sc_decomp.c \
-	comp_list.c
+	comp_list.c \
+	cid.c
 
 public_headers = \
 	rohc.h
@@ -39,7 +40,8 @@ private_headers = \
 	rtp.h \
 	ts_sc_comp.h \
 	ts_sc_decomp.h \
-	comp_list.h
+	comp_list.h \
+	cid.h
 
 librohc_common_la_SOURCES = $(sources)
 

@@ -3210,7 +3210,8 @@ int code_IR_packet(struct c_context *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, g_context->tmp_variables.max_size,
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, g_context->tmp_variables.max_size,
 	                          &first_position);
 
 	/* initialize some profile-specific things when building an IR
@@ -3383,7 +3384,8 @@ int code_IR_DYN_packet(struct c_context *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, g_context->tmp_variables.max_size,
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, g_context->tmp_variables.max_size,
 	                          &first_position);
 
 	/* initialize some profile-specific things when building an IR
@@ -4022,7 +4024,8 @@ int code_UO0_packet(struct c_context *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, g_context->tmp_variables.max_size,
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, g_context->tmp_variables.max_size,
 	                          &first_position);
 
 	/* build the UO head if necessary */
@@ -4204,7 +4207,8 @@ int code_UO1_packet(struct c_context *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, g_context->tmp_variables.max_size,
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, g_context->tmp_variables.max_size,
 	                          &first_position);
 
 	/* build the UO head if necessary */
@@ -4420,7 +4424,8 @@ int code_UO2_packet(struct c_context *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - parts 4/5 will start at 'counter'
 	 */
-	counter = code_cid_values(context, dest, g_context->tmp_variables.max_size,
+	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                          dest, g_context->tmp_variables.max_size,
 	                          &first_position);
 
 	/* build the UO head if necessary */
