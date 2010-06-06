@@ -478,18 +478,6 @@ struct medium
 
 
 /*
- * The flags for the IP changed fields:
- */
-
-/// Indicates that the IPv4 Type Of Service field changed
-#define MOD_TOS       0x0001
-/// Indicates that the IPv4 Time To Live field changed
-#define MOD_TTL       0x0010
-/// Indicates that the IPv4 Protocol field changed
-#define MOD_PROTOCOL  0x0020
-
-
-/*
  * Time-related constants:
  */
 

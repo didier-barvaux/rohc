@@ -39,6 +39,18 @@
 
 
 /*
+ * Definitions of private constants and macros
+ */
+
+/** A flag to indicate that IPv4 Type Of Service field changed in IP header */
+#define MOD_TOS       0x0001
+/** A flag to indicate that IPv4 Time To Live field changed in IP header */
+#define MOD_TTL       0x0010
+/** A flag to indicate that the IPv4 Protocol field changed in IP header */
+#define MOD_PROTOCOL  0x0020
+
+
+/*
  * Function prototypes.
  */
 
