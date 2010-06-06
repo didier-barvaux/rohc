@@ -322,13 +322,5 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent,
 int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent,
                    char *buffer);
 
-
-/*
- * ROHC library includes:
- */
-
-#include "cid.h"
-
-
 #endif
 

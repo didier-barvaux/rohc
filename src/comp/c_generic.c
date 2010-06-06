@@ -29,6 +29,7 @@
 #include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 #include "rohc_traces.h"
 #include "rohc_packets.h"
+#include "cid.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
