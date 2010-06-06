@@ -24,6 +24,8 @@
 #include "ts_sc_comp.h"
 #include "rohc_traces.h"
 
+#include <stdlib.h> /* for abs(3) */
+
 
 /**
  * @brief Create the ts_sc_comp object

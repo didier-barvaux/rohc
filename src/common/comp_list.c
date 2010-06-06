@@ -23,6 +23,8 @@
 #include "comp_list.h"
 #include "rohc_traces.h"
 
+#include <stdlib.h>
+
 
 /**
  * @brief Create one compression_list

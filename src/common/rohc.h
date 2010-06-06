@@ -470,17 +470,6 @@ struct medium
 
 
 /*
- * System includes:
- */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-
-
-/*
  * Prototypes of public functions
  */
 

@@ -83,6 +83,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <math.h> /* for HUGE_VAL */
+#include <sys/time.h> /* for gettimeofday(2) */
 
 /* TUN includes */
 #include <net/if.h> /* for IFNAMSIZ */
