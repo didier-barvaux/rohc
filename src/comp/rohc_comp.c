@@ -107,13 +107,13 @@ static int c_piggyback_get(struct rohc_comp *const comp,
 /**
  * @brief Create one ROHC compressor
  *
- * @param max_cid The maximal CID value the compressor should use for contexts
- * @param jam_use The parameter which indicates if the use of the jamming is activated 
- *                0 if not activated else 1
- * @param adapt_size The size of the header or trailer of the adaptation layer
- * @param encap_size The packet size of the encapsulation layer
- * @return        The newly-created compressor if successful,
- *                NULL otherwise
+ * @param max_cid     The maximal CID value the compressor should use for contexts
+ * @param jam_use     The parameter which indicates if the use of the jamming is
+ *                    activated: 0 if not activated, 1 otherwise
+ * @param adapt_size  The size of the header or trailer of the adaptation layer
+ * @param encap_size  The packet size of the encapsulation layer
+ * @return            The newly-created compressor if successful,
+ *                    NULL otherwise
  *
  * @ingroup rohc_comp
  */
@@ -572,7 +572,7 @@ void rohc_c_set_enable(struct rohc_comp *comp, int enable)
 /**
  * @brief Whether the ROHC compressor is enabled or not
  *
- * @param comp The ROHC compressor
+ * @param comp  The ROHC compressor
  * @return      Whether the compressor is enabled or not
  *
  * @ingroup rohc_comp
@@ -1585,7 +1585,7 @@ full:
 /**
  * @brief Destroy memory allocated for the feedback packets
  *
- * @param comp   The ROHC compressor
+ * @param comp  The ROHC compressor
  */
 static void c_piggyback_destroy(struct rohc_comp *const comp)
 {
