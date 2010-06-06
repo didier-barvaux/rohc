@@ -28,10 +28,8 @@
 
 
 /*
- * Function prototypes.
+ * Prototypes of functions that may used by other ROHC modules
  */
-
-unsigned char c_add_cid(const int cid);
 
 int code_cid_values(const struct c_context *context,
                     unsigned char *const dest,

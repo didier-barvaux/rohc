@@ -24,22 +24,16 @@
 #include "cid.h"
 #include "rohc_traces.h"
 
-
-/**
- * @brief Set an add-CID value.
- *
- * Add-CID is needed when using small CIDs.
- *
- * @param cid The small CID to set
- * @return    The add-CID byte
+/*
+ * Prototypes of private functions
  */
-unsigned char c_add_cid(const int cid)
-{
-	const uint8_t add_cid_type = 0xe0;
 
-	return (add_cid_type | (cid & 0x0f));
-}
+static unsigned char c_add_cid(const int cid);
 
+
+/*
+ * Definitions of functions that may used by other ROHC modules
+ */
 
 /**
  * @brief Build the CID part of the ROHC packets.
@@ -95,5 +89,26 @@ int code_cid_values(const struct c_context *context,
 	}
 
 	return counter;
+}
+
+
+/*
+ * Definitions of private functions
+ */
+
+
+/**
+ * @brief Set an add-CID value.
+ *
+ * Add-CID is needed when using small CIDs.
+ *
+ * @param cid The small CID to set
+ * @return    The add-CID byte
+ */
+static unsigned char c_add_cid(const int cid)
+{
+	const uint8_t add_cid_type = 0xe0;
+
+	return (add_cid_type | (cid & 0x0f));
 }
 
