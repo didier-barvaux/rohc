@@ -23,7 +23,7 @@
 #ifndef TS_SC_DECOMP_H
 #define TS_SC_DECOMP_H
 
-#include "rohc.h"
+#include "lsb.h"
 
 
 /**

@@ -24,9 +24,6 @@
 #ifndef DECODE_H
 #define DECODE_H
 
-#include "rohc.h"
-
-
 /// The magic bits to find out whether a field is a segment field or not
 #define D_SEGMENT        (0xfe >> 1)
 /// The magic byte to find out whether a field is a padding field or not

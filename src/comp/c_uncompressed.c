@@ -25,6 +25,7 @@
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 #include "cid.h"
+#include "crc.h"
 
 
 /**

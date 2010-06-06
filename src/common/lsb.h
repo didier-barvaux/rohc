@@ -26,7 +26,6 @@
 
 #include <stdio.h>
 
-#include "rohc.h"
 #include "wlsb.h"
 
 

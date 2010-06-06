@@ -21,6 +21,7 @@
  * @author The hackers from ROHC for Linux
  */
 
+#include "rohc.h"
 #include "feedback.h"
 #include "rohc_traces.h"
 #include "rohc_debug.h"

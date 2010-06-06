@@ -32,6 +32,8 @@
 #include "rohc_packets.h"
 #include "rohc_bit_ops.h"
 #include "cid.h"
+#include "sdvl.h"
+#include "crc.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>

@@ -24,12 +24,13 @@
 #ifndef C_RTP_H
 #define C_RTP_H
 
-#include <netinet/ip.h>
-#include <netinet/udp.h>
-
 #include "c_generic.h"
 #include "c_udp.h"
 #include "ts_sc_comp.h"
+#include "rtp.h"
+
+#include <netinet/ip.h>
+#include <netinet/udp.h>
 
 
 /**

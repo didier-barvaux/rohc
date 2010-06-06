@@ -27,7 +27,7 @@
 #ifndef TS_SC_COMP_H
 #define TS_SC_COMP_H
 
-#include "rohc.h"
+#include "wlsb.h"
 
 
 /**

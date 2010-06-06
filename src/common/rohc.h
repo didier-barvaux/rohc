@@ -470,24 +470,41 @@ struct medium
 
 
 /*
+ * The different CRC types and tables for ROHC compression/decompression
+ */
+
+/** The CRC-2 type */
+#define CRC_TYPE_2 1
+/** The CRC-3 type */
+#define CRC_TYPE_3 2
+/** The CRC-6 type */
+#define CRC_TYPE_6 3
+/** The CRC-7 type */
+#define CRC_TYPE_7 4
+/** The CRC-8 type */
+#define CRC_TYPE_8 5
+
+/** The table to enable fast CRC-2 computation */
+extern unsigned char crc_table_2[256];
+/** The table to enable fast CRC-3 computation */
+extern unsigned char crc_table_3[256];
+/** The table to enable fast CRC-6 computation */
+extern unsigned char crc_table_6[256];
+/** The table to enable fast CRC-7 computation */
+extern unsigned char crc_table_7[256];
+/** The table to enable fast CRC-8 computation */
+extern unsigned char crc_table_8[256];
+
+
+/*
  * Prototypes of public functions
  */
 
 char *rohc_version(void);
 
+int crc_get_polynom(int type);
 
-/*
- * ROHC library includes:
- */
-
-#include "crc.h"
-#include "decode.h"
-#include "ip_id.h"
-#include "lsb.h"
-#include "sdvl.h"
-#include "wlsb.h"
-#include "rtp.h"
-#include "ip.h"
+void crc_init_table(unsigned char *table, unsigned char polynum);
 
 
 #endif

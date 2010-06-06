@@ -32,6 +32,8 @@
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_bit_ops.h"
+#include "sdvl.h"
+#include "crc.h"
 
 
 /*

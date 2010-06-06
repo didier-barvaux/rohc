@@ -24,7 +24,6 @@
 #define COMP_LIST_H
 
 #include <netinet/ip6.h>
-#include "rohc.h"
 
 
 /// Header version

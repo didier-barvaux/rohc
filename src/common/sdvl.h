@@ -24,8 +24,6 @@
 #ifndef SDVL_H
 #define SDVL_H
 
-#include "rohc.h"
-
 /*
  * Constants related to fields length for SDVL-encoding
  */

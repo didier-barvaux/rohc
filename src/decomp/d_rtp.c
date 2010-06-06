@@ -26,6 +26,8 @@
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 #include "ts_sc_decomp.h"
+#include "sdvl.h"
+#include "crc.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>

@@ -21,8 +21,10 @@
  * @author The hackers from ROHC for Linux
  */
 
-#include "cid.h"
 #include "rohc_traces.h"
+#include "cid.h"
+#include "sdvl.h"
+
 
 /*
  * Prototypes of private functions

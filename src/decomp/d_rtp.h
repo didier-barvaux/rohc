@@ -24,13 +24,14 @@
 #ifndef D_RTP_H
 #define D_RTP_H
 
-#include <netinet/ip.h>
-#include <netinet/udp.h>
-#include <string.h>
-
+#include "rtp.h"
 #include "d_generic.h"
 #include "d_udp.h"
 #include "ts_sc_decomp.h"
+
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+#include <string.h>
 
 
 /**

@@ -24,6 +24,8 @@
 #include "c_rtp.h"
 #include "rohc_traces.h"
 #include "rohc_packets.h"
+#include "sdvl.h"
+#include "crc.h"
 
 #include <assert.h>
 

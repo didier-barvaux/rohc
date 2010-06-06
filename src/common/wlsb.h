@@ -27,8 +27,6 @@
 
 #include <strings.h>
 
-#include "rohc.h"
-
 
 /// Default window width for W-LSB encoding
 #define C_WINDOW_WIDTH 4

@@ -36,6 +36,7 @@
 #include "d_uncompressed.h"
 #include "d_udp_lite.h"
 #include "feedback.h"
+#include "decode.h"
 
 
 extern struct d_profile d_uncomp_profile,

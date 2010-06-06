@@ -24,11 +24,12 @@
 #ifndef COMP_H
 #define COMP_H
 
+#include "rohc.h"
+#include "ip.h"
+
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <string.h>
-
-#include "rohc.h"
 #include <stdlib.h>
 
 

@@ -31,6 +31,8 @@
 #include "rohc_decomp.h"
 #include "rohc_packets.h"
 #include "comp_list.h"
+#include "lsb.h"
+#include "ip_id.h"
 
 #define MAX_ITEM 15
 

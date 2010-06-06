@@ -93,9 +93,9 @@
 #include <pcap.h>
 
 /* ROHC includes */
-#include "rohc.h"
-#include "rohc_comp.h"
-#include "rohc_decomp.h"
+#include <rohc.h>
+#include <rohc_comp.h>
+#include <rohc_decomp.h>
 #include "config.h" /* for RTP_BIT_TYPE definition */
 
 
