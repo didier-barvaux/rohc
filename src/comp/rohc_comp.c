@@ -142,7 +142,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->enabled = 1;
 	comp->feedback_pointer = 0;
 	comp->medium.max_cid = max_cid;
-	comp->medium.cid_type = SMALL_CID;
+	comp->medium.cid_type = ROHC_SMALL_CID;
 	comp->mrru = 0;
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
@@ -480,7 +480,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
  */
 int rohc_c_using_small_cid(struct rohc_comp *comp)
 {
-	return (comp->medium.cid_type == SMALL_CID);
+	return (comp->medium.cid_type == ROHC_SMALL_CID);
 }
 
 
@@ -525,7 +525,7 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 {
 	/* large CID */
-	if(comp->medium.cid_type == LARGE_CID)
+	if(comp->medium.cid_type == ROHC_LARGE_CID)
 	{
 		if(value > 0 && value < 65536)
 			comp->medium.max_cid = value;
@@ -549,10 +549,10 @@ void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 {
 	if(large_cid)
-		comp->medium.cid_type = LARGE_CID;
+		comp->medium.cid_type = ROHC_LARGE_CID;
 	else
 	{
-		comp->medium.cid_type = SMALL_CID;
+		comp->medium.cid_type = ROHC_SMALL_CID;
 		if(comp->medium.max_cid > 15)
 			comp->medium.max_cid = 15;
 	}
@@ -681,7 +681,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	sprintf(buffer, "%s\t<mrru>%d</mrru>\n", prefix, comp->mrru);
 	buffer += strlen(buffer);
 	sprintf(buffer, "%s\t<large_cid>%s</large_cid>\n", prefix,
-	        comp->medium.cid_type == LARGE_CID ? "yes" : "no");
+	        comp->medium.cid_type == ROHC_LARGE_CID ? "yes" : "no");
 	buffer += strlen(buffer);
 	sprintf(buffer, "%s\t<connection_type>%d</connection_type>\n", prefix, 3);
 	buffer += strlen(buffer);
@@ -938,7 +938,7 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 	feedback.size = size;
 
 	/* decode CID */
-	if(comp->medium.cid_type == LARGE_CID)
+	if(comp->medium.cid_type == ROHC_LARGE_CID)
 	{
 		/* decode large cid at p[0..3] */
 		feedback.cid =  d_sdvalue_decode(p);

@@ -332,7 +332,7 @@ void context_free(struct d_context *context)
  */
 struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
-	struct medium medium = { SMALL_CID, 15 };
+	struct medium medium = { ROHC_SMALL_CID, 15 };
 	struct rohc_decomp * decomp;
 
 	/* allocate memory for the decompressor */
@@ -556,7 +556,7 @@ int rohc_decompress_both(struct rohc_decomp * decomp,
                          unsigned char *obuf, int osize,
                          int large)
 {
-	decomp->medium->cid_type = large ? LARGE_CID : SMALL_CID;
+	decomp->medium->cid_type = large ? ROHC_LARGE_CID : ROHC_SMALL_CID;
 
 	return rohc_decompress(decomp, ibuf, isize, obuf, osize);
 }
@@ -908,7 +908,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	if(decomp->medium->cid_type == SMALL_CID)
+	if(decomp->medium->cid_type == ROHC_SMALL_CID)
 	{
 		/* small CID */
 		ddata->large_cid_size = 0;
@@ -930,7 +930,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 			rohc_debugf(2, "no add-CID found, CID defaults to 0\n");
 		}
 	}
-	else if(decomp->medium->cid_type == LARGE_CID)
+	else if(decomp->medium->cid_type == ROHC_LARGE_CID)
 	{
 		int ret;
 
@@ -1594,7 +1594,7 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	f_feedback2(ACKTYPE_ACK, context->mode, context->profile->get_sn(context),
 	            &sfeedback);
 	feedback = f_wrap_feedback(&sfeedback, cid,
-	                           (decomp->medium->cid_type == LARGE_CID ? 1 : 0),
+	                           (decomp->medium->cid_type == ROHC_LARGE_CID ? 1 : 0),
 	                           WITH_CRC, &feedbacksize);
 
 	if(feedback == NULL)

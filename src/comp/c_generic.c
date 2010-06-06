@@ -7045,7 +7045,7 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
 			{
 				total_size += 2; /* size of UDP checksum */
 			}
-			if(comp->medium.cid_type == LARGE_CID)
+			if(comp->medium.cid_type == ROHC_LARGE_CID)
 			{
 				total_size += 3;
 			}
@@ -7067,7 +7067,7 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
 			{
 				total_size += 2; /* size of UDP checksum */
 			}
-			if(comp->medium.cid_type == LARGE_CID)
+			if(comp->medium.cid_type == ROHC_LARGE_CID)
 			{
 				total_size += 4;
 			}
@@ -7087,7 +7087,7 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
 			{
 				total_size += 2; /* size of UDP checksum */
 			}
-			if(comp->medium.cid_type == LARGE_CID)
+			if(comp->medium.cid_type == ROHC_LARGE_CID)
 			{
 				total_size += 5;
 			}

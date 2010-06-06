@@ -57,7 +57,7 @@ int code_cid_values(const struct c_context *context,
 	int counter = 0;
 
 	/* small CID */
-	if(context->compressor->medium.cid_type == SMALL_CID)
+	if(context->compressor->medium.cid_type == ROHC_SMALL_CID)
 	{
 		if(context->cid > 0)
 		{
