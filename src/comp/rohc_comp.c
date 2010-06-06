@@ -35,6 +35,10 @@
 #include "decode.h"
 #include "ip.h"
 
+#include <netinet/udp.h>
+#include <string.h>
+#include <stdlib.h>
+
 
 extern struct c_profile c_rtp_profile,
                         c_udp_profile,

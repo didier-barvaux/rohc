@@ -26,6 +26,8 @@
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 
+#include <strings.h>
+
 
 /*
  * Private function prototypes:

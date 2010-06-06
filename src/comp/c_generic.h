@@ -25,13 +25,12 @@
 #ifndef C_GENERIC_H
 #define C_GENERIC_H
 
-#include <netinet/ip.h>
-#include <string.h>
-
 #include "rohc_comp.h"
 #include "rohc_packets.h"
 #include "comp_list.h"
 #include "ip.h"
+
+#include <netinet/ip.h>
 
 
 /**

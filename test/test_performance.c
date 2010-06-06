@@ -64,6 +64,7 @@
 #include <netinet/ip6.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <string.h>
 
 /* include for the PCAP library */
 #include <pcap.h>

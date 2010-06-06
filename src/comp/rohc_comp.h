@@ -26,11 +26,6 @@
 
 #include "rohc.h"
 
-#include <netinet/ip.h>
-#include <netinet/udp.h>
-#include <string.h>
-#include <stdlib.h>
-
 
 struct c_feedback;
 struct ip_packet;

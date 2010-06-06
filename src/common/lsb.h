@@ -24,8 +24,6 @@
 #ifndef LSB_H
 #define LSB_H
 
-#include <stdio.h>
-
 #include "wlsb.h"
 
 

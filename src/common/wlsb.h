@@ -25,8 +25,6 @@
 #ifndef WLSB_H
 #define WLSB_H
 
-#include <strings.h>
-
 
 /// Default window width for W-LSB encoding
 #define C_WINDOW_WIDTH 4

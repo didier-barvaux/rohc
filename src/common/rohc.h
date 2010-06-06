@@ -369,9 +369,6 @@
  */
 
 
-#include <endian.h>
-
-
 /*
  * Below are some return codes:
  */

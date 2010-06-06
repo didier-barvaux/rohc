@@ -25,6 +25,8 @@
 #include "cid.h"
 #include "sdvl.h"
 
+#include <stdint.h>
+
 
 /*
  * Prototypes of private functions
