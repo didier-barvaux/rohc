@@ -117,7 +117,10 @@ static int c_piggyback_get(struct rohc_comp *const comp,
  *
  * @ingroup rohc_comp
  */
-struct rohc_comp *rohc_alloc_compressor(int max_cid, int jam_use, int adapt_size, int encap_size)
+struct rohc_comp * rohc_alloc_compressor(int max_cid,
+                                         int jam_use,
+                                         int adapt_size,
+                                         int encap_size)
 {
 	struct rohc_comp *comp;
 	int i;

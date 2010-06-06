@@ -277,7 +277,10 @@ struct c_feedback
  * Prototypes of main public functions related to ROHC compression
  */
 
-struct rohc_comp * rohc_alloc_compressor(int max_cid, int jam_use, int adapt_size, int encap_size);
+struct rohc_comp * rohc_alloc_compressor(int max_cid,
+                                         int jam_use,
+                                         int adapt_size,
+                                         int encap_size);
 void rohc_free_compressor(struct rohc_comp *comp);
 
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
