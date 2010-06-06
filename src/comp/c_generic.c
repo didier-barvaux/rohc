@@ -28,6 +28,7 @@
 #include "c_rtp.h"
 #include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 #include "rohc_traces.h"
+#include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_bit_ops.h"
 #include "cid.h"

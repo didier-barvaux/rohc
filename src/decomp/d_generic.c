@@ -29,6 +29,7 @@
 #include "config.h" /* for RTP_BIT_TYPE definition */
 #include "rohc_traces.h"
 #include "rohc_time.h"
+#include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_bit_ops.h"
 

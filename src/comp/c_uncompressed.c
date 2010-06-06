@@ -23,6 +23,7 @@
 
 #include "c_uncompressed.h"
 #include "rohc_traces.h"
+#include "rohc_debug.h"
 #include "cid.h"
 
 

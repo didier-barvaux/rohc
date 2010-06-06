@@ -24,6 +24,7 @@
 #include "d_rtp.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
+#include "rohc_debug.h"
 #include "ts_sc_decomp.h"
 
 #include <netinet/ip.h>

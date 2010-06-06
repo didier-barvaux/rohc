@@ -24,6 +24,7 @@
 #include "d_udp.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
+#include "rohc_debug.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>

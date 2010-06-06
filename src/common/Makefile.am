@@ -38,7 +38,8 @@ headers = \
 	comp_list.h
 
 private_headers = \
-	rohc_bit_ops.h
+	rohc_bit_ops.h \
+	rohc_debug.h
 
 librohc_common_la_SOURCES = $(sources)
 

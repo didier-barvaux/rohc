@@ -24,6 +24,7 @@
 
 #include "wlsb.h"
 #include "rohc_traces.h"
+#include "rohc_debug.h"
 
 
 /*

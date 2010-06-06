@@ -479,17 +479,6 @@ struct medium
 #include <sys/time.h>
 #include <netinet/in.h>
 
-/*
- * Debug macros:
- */
-
-/// Free a pointer plus set it to NULL to avoid hidden bugs
-#define zfree(pointer) \
-	do { \
-		free(pointer); \
-		pointer = NULL; \
-	} while(0)
-
 
 /*
  * Prototypes of public functions

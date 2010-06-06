@@ -29,6 +29,7 @@
 #include "rohc_comp.h"
 #include "rohc_traces.h"
 #include "rohc_time.h"
+#include "rohc_debug.h"
 
 
 extern struct c_profile c_rtp_profile,
