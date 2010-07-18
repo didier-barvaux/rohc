@@ -1006,6 +1006,8 @@ quit:
  * @param osize  The size of the buffer for the feedback-only packet
  * @return       The size of the feedback-only packet,
  *               0 if there is no feedback data to send
+ *
+ * @ingroup rohc_comp
  */
 int rohc_feedback_flush(struct rohc_comp *comp,
                         unsigned char *obuf,
