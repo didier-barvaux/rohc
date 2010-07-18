@@ -25,7 +25,7 @@
 #ifndef C_GENERIC_H
 #define C_GENERIC_H
 
-#include "rohc_comp.h"
+#include "rohc_comp_internals.h"
 #include "rohc_packets.h"
 #include "comp_list.h"
 #include "ip.h"

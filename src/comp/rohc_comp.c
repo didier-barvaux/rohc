@@ -27,10 +27,10 @@
  */
 
 #include "rohc_comp.h"
+#include "rohc_comp_internals.h"
 #include "rohc_traces.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
-#include "wlsb.h"
 #include "sdvl.h"
 #include "decode.h"
 #include "ip.h"

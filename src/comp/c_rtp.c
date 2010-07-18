@@ -22,6 +22,7 @@
  */
 
 #include "c_rtp.h"
+#include "c_udp.h"
 #include "rohc_traces.h"
 #include "rohc_packets.h"
 #include "sdvl.h"

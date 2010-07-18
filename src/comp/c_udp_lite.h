@@ -26,9 +26,7 @@
 
 #include <netinet/udp.h>
 
-#include "rohc_comp.h"
 #include "c_generic.h"
-#include "c_udp.h"
 #include "udp_lite.h"
 
 

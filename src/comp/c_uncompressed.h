@@ -24,7 +24,7 @@
 #ifndef C_UNCOMPRESSED_H
 #define C_UNCOMPRESSED_H
 
-#include "rohc_comp.h"
+#include "rohc_comp_internals.h"
 
 
 /**

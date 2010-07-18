@@ -25,7 +25,6 @@
 #define C_RTP_H
 
 #include "c_generic.h"
-#include "c_udp.h"
 #include "ts_sc_comp.h"
 #include "rtp.h"
 

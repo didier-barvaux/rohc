@@ -24,6 +24,7 @@ include_HEADERS = \
 	rohc_comp.h
 
 noinst_HEADERS = \
+	rohc_comp_internals.h \
 	c_uncompressed.h \
 	c_generic.h \
 	c_ip.h \
