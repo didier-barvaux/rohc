@@ -47,6 +47,24 @@ typedef enum
 } rohc_c_state;
 
 
+/** Some information about the last compressed packet */
+typedef struct
+{
+	/** The mode of the last context used by the compressor */
+	rohc_mode context_mode;
+	/** The state of the last context used by the compressor */
+	rohc_c_state context_state;
+	/** The uncompressed size (in bytes) of the last compressed packet */
+	unsigned long total_last_uncomp_size;
+	/** The uncompressed size (in bytes) of the last compressed header */
+	unsigned long header_last_uncomp_size;
+	/** The compressed size (in bytes) of the last compressed packet */
+	unsigned long total_last_comp_size;
+	/** The compressed size (in bytes) of the last compressed header */
+	unsigned long header_last_comp_size;
+} rohc_comp_last_packet_info_t;
+
+
 /**
  * @brief The ROHC compressor.
  */
@@ -320,6 +338,8 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent,
                       char *buffer);
 int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent,
                    char *buffer);
+int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
+                                   rohc_comp_last_packet_info_t *const info);
 
 #endif
 

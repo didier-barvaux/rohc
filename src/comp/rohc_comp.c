@@ -1038,6 +1038,47 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 }
 
 
+/**
+ * @brief Get some information about the last compressed packet
+ *
+ * @param comp  The ROHC compressor to get information from
+ * @param info  IN/OUT: the structure where information will be stored
+ * @return      ROHC_OK in case of success, ROHC_ERROR otherwise
+ *
+ * @ingroup rohc_comp
+ */
+int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
+                                   rohc_comp_last_packet_info_t *const info)
+{
+	if(comp == NULL)
+	{
+		rohc_debugf(0, "compressor is not valid\n");
+		return ROHC_ERROR;
+	}
+
+	if(comp->last_context == NULL)
+	{
+		rohc_debugf(0, "last context found in compressor is not valid\n");
+		return ROHC_ERROR;
+	}
+
+	if(info == NULL)
+	{
+		rohc_debugf(0, "structure for last packet information is not valid\n");
+		return ROHC_ERROR;
+	}
+
+	info->context_mode = comp->last_context->mode;
+	info->context_state = comp->last_context->state;
+	info->total_last_uncomp_size = comp->last_context->total_last_uncompressed_size;
+	info->header_last_uncomp_size = comp->last_context->header_last_uncompressed_size;
+	info->total_last_comp_size = comp->last_context->total_last_compressed_size;
+	info->header_last_comp_size = comp->last_context->header_last_compressed_size;
+
+	return ROHC_OK;
+}
+
+
 /*
  * Definitions of private functions
  */
