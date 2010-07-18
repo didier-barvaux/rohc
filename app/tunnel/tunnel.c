@@ -993,8 +993,9 @@ int tun2udp(struct rohc_comp *comp,
 	struct timeval now;
 
 	/* statistics output */
-	static char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
-	static char *states[] = { "error", "IR", "FO", "SO" };
+	rohc_comp_last_packet_info_t last_packet_info;
+	const char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
+	const char *states[] = { "error", "IR", "FO", "SO" };
 
 	/* init the error model variables */
 	if(error > 0)
@@ -1104,31 +1105,20 @@ int tun2udp(struct rohc_comp *comp,
 	}
 
 	/* print packet statistics */
-	if(comp->last_context == NULL)
+	ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
+	if(ret != ROHC_OK)
 	{
-		fprintf(stderr, "cannot display stats (last context == NULL)\n");
+		fprintf(stderr, "cannot display stats about the last compressed packet\n");
 		goto error;
 	}
-	if(comp->last_context->mode <= 0 ||
-	   comp->last_context->mode > 3)
-	{
-		fprintf(stderr, "invalid mode\n");
-		goto error;
-	}
-	if(comp->last_context->state <= 0 ||
-	   comp->last_context->state > 3)
-	{
-		fprintf(stderr, "invalid state\n");
-		goto error;
-	}
-	fprintf(stats_comp, "%d\t%s\t%s\t%d\t%d\t%d\t%d\t%u\n",
+	fprintf(stats_comp, "%d\t%s\t%s\t%lu\t%lu\t%lu\t%lu\t%u\n",
 	        seq,
-	        modes[comp->last_context->mode],
-	        states[comp->last_context->state],
-	        comp->last_context->total_last_uncompressed_size,
-	        comp->last_context->header_last_uncompressed_size,
-	        comp->last_context->total_last_compressed_size,
-	        comp->last_context->header_last_compressed_size,
+	        modes[last_packet_info.context_mode],
+	        states[last_packet_info.context_state],
+	        last_packet_info.total_last_uncomp_size,
+	        last_packet_info.header_last_uncomp_size,
+	        last_packet_info.total_last_comp_size,
+	        last_packet_info.header_last_comp_size,
 	        dropped);
 	fflush(stats_comp);
 
