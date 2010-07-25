@@ -91,16 +91,10 @@ IMPORTANT: Run the report script after every library modification to avoid
 Test and Statistic tool
 -----------------------
 
-1. Go to the subdirectory
+A HTML summary of compression statistics may be generated:
 
- $ cd statistics
+ $ ./configure --enable-rohc-stats
+ $ make -C statistics check
 
-2. Execute the script
-
- $ ./auto.pl
-
-Answer questions of the script (number of tests...)
-
-3. Load the ./statistics/stats.html file in your favorite browser and watch the
-   results.
+Open the ./statistics/html/index.html file in your favorite web browser.
 

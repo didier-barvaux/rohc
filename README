@@ -44,19 +44,12 @@ See the INSTALL file to learn how to use the non-regression and report tools.
 Statistics
 ----------
 
-The statistics subdirectory contains a test and statistic application. The auto.pl
-script outputs a HTML with the tests and statistics results.
+The statistics subdirectory contains an application that generates some
+compression statistics. The generate_statistics.sh script outputs a HTML report
+with the statistics results. The Gnuplot tool is required.
 
-The auto.pl script calls others scripts :
- - test.sh         executes the tests list and generate the log -> list.txt
- - analyse_log.pl  extracts information from the log
- - gnuplot.sh      generates graphics
- - stats.pl        generate the stats.html
-
-See the INSTALL file to learn how to use the test and statistic application and the auto.pl
-script.
-
-Requirements: Perl, Gnuplot, Zenity
+See the INSTALL file to learn how to use the statistics application and the
+generate_statistics.sh script.
 
 
 References
