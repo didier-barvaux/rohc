@@ -1,17 +1,17 @@
 #!/bin/sh
 #
-# file:        test.sh
+# file:        test_non_regression.sh
 # description: Check that the behaviour of the ROHC library did not changed
 #              without developpers noticing it.
 # author:      Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #
-# This script may be used by creating a link "test_STREAM.sh"
+# This script may be used by creating a link "test_non_regression_STREAM.sh"
 # where:
 #    STREAM  is the path to the capture file that contains the IP stream to
 #            test library with (separators '/' are replaced by '_')
 #
 # Script arguments:
-#    test_STREAM.sh [verbose]
+#    test_non_regression_STREAM.sh [verbose]
 # where:
 #   verbose          prints the traces of test application
 #
