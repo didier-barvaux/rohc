@@ -25,6 +25,7 @@
 #define COMP_H
 
 #include "rohc.h"
+#include "rohc_packets.h"
 
 
 /*
@@ -63,6 +64,8 @@ typedef struct
 	rohc_mode context_mode;
 	/** The state of the last context used by the compressor */
 	rohc_c_state context_state;
+	/** The type of ROHC packet created for the last compressed packet */
+	rohc_packet_t packet_type;
 	/** The uncompressed size (in bytes) of the last compressed packet */
 	unsigned long total_last_uncomp_size;
 	/** The uncompressed size (in bytes) of the last compressed header */

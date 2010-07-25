@@ -111,6 +111,7 @@ int c_uncompressed_check_context(const struct c_context *context,
  * @param packet_size    The length of the IP packet to encode
  * @param dest           The rohc-packet-under-build buffer
  * @param dest_size      The length of the rohc-packet-under-build buffer
+ * @param packet_type    OUT: The type of ROHC packet that is created
  * @param payload_offset The offset for the payload in the IP packet
  * @return               The length of the created ROHC packet
  */
@@ -119,6 +120,7 @@ int c_uncompressed_encode(struct c_context *const context,
                           const int packet_size,
                           unsigned char *const dest,
                           const int dest_size,
+                          rohc_packet_t *const packet_type,
                           int *const payload_offset)
 {
 	int size;
@@ -128,7 +130,7 @@ int c_uncompressed_encode(struct c_context *const context,
 
 	/* STEP 2: Code packet */
 	size = uncompressed_code_packet(context, ip, dest,
-	                                payload_offset, dest_size);
+	                                packet_type, payload_offset, dest_size);
 
 	return size;
 }
@@ -321,6 +323,7 @@ void uncompressed_change_state(struct c_context *const context,
  * @param context        The compression context
  * @param ip             The IP header
  * @param dest           The rohc-packet-under-build buffer
+ * @param packet_type    OUT: The type of ROHC packet that is created
  * @param payload_offset OUT: the offset of the payload in the buffer
  * @param dest_size      The maximal size of the ROHC packet
  * @return               The position in the rohc-packet-under-build buffer
@@ -329,6 +332,7 @@ void uncompressed_change_state(struct c_context *const context,
 int uncompressed_code_packet(const struct c_context *context,
                              const struct ip_packet *ip,
                              unsigned char *const dest,
+                             rohc_packet_t *const packet_type,
                              int *const payload_offset,
                              const int dest_size)
 {
@@ -347,17 +351,20 @@ int uncompressed_code_packet(const struct c_context *context,
 			rohc_debugf(1, "build IR packet\n");
 			uncomp_context->ir_count++;
 			code_packet = uncompressed_code_IR_packet;
+			*packet_type = PACKET_IR;
 			break;
 
 		case FO:
 			rohc_debugf(1, "build normal packet\n");
 			uncomp_context->normal_count++;
 			code_packet = uncompressed_code_normal_packet;
+			*packet_type = PACKET_NORMAL;
 			break;
 
 		default:
 			rohc_debugf(0, "unknown state, cannot build packet\n");
 			code_packet = NULL;
+			*packet_type = PACKET_UNKNOWN;
 	}
 
 	if(code_packet != NULL)

@@ -315,6 +315,7 @@ error:
  * @param packet_size    The length of the IP packet to encode
  * @param dest           The rohc-packet-under-build buffer
  * @param dest_size      The length of the rohc-packet-under-build buffer
+ * @param packet_type    OUT: The type of ROHC packet that is created
  * @param payload_offset The offset for the payload in the IP packet
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
@@ -324,6 +325,7 @@ int c_udp_lite_encode(struct c_context *const context,
                       const int packet_size,
                       unsigned char *const dest,
                       const int dest_size,
+                      rohc_packet_t *const packet_type,
                       int *const payload_offset)
 {
 	struct c_generic_context *g_context;
@@ -381,7 +383,8 @@ int c_udp_lite_encode(struct c_context *const context,
 	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
 
 	/* encode the IP packet */
-	size = c_generic_encode(context, ip, packet_size, dest, dest_size, payload_offset);
+	size = c_generic_encode(context, ip, packet_size, dest, dest_size,
+	                        packet_type, payload_offset);
 	if(size < 0)
 		goto quit;
 

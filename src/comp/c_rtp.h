@@ -130,6 +130,7 @@ int c_rtp_encode(struct c_context *const context,
                  const int packet_size,
                  unsigned char *const dest,
                  const int dest_size,
+                 rohc_packet_t *const packet_type,
                  int *const payload_offset);
 
 void rtp_decide_state(struct c_context *const context);

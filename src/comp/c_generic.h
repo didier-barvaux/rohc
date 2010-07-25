@@ -371,6 +371,7 @@ int c_generic_encode(struct c_context *const context,
                      const int packet_size,
                      unsigned char *const dest,
                      const int dest_size,
+                     rohc_packet_t *const packet_type,
                      int *const payload_offset);
 
 void c_generic_feedback(struct c_context *const context,

@@ -63,6 +63,7 @@ void uncompressed_change_state(struct c_context *const const,
 int uncompressed_code_packet(const struct c_context *context,
                              const struct ip_packet *ip,
                              unsigned char *const dest,
+                             rohc_packet_t *const packet_type,
                              int *const payload_offset,
                              const int dest_size);
 

@@ -26,7 +26,8 @@
 #define ROHC_COMP_INTERNALS_H
 
 #include "rohc.h" /* for struct medium */
-#include "rohc_comp.h" /* for struct medium */
+#include "rohc_packets.h"
+#include "rohc_comp.h"
 #include "wlsb.h"
 #include "ip.h"
 
@@ -180,6 +181,7 @@ struct c_profile
 	              const int packet_size,
 	              unsigned char *const dest,
 	              const int dest_size,
+	              rohc_packet_t *const packet_type,
 	              int *const payload_offset);
 
 	/**
@@ -220,6 +222,9 @@ struct c_context
 	rohc_c_state state;
 
 	/* below are some statistics */
+
+	/* The type of ROHC packet created for the last compressed packet */
+	rohc_packet_t packet_type;
 
 	/** The average size of the uncompressed packets */
 	int total_uncompressed_size;

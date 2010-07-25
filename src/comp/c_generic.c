@@ -723,6 +723,7 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
  * @param packet_size    The length of the IP packet to encode
  * @param dest           The rohc-packet-under-build buffer
  * @param dest_size      The length of the rohc-packet-under-build buffer
+ * @param packet_type    OUT: The type of ROHC packet that is created
  * @param payload_offset The offset for the payload in the IP packet
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
@@ -732,6 +733,7 @@ int c_generic_encode(struct c_context *const context,
                      const int packet_size,
                      unsigned char *const dest,
                      const int dest_size,
+                     rohc_packet_t *const packet_type,
                      int *const payload_offset)
 {
 	struct c_generic_context *g_context;
@@ -950,6 +952,9 @@ int c_generic_encode(struct c_context *const context,
 	{
 		context->num_sent_ir_dyn++;
 	}
+
+	/* return the packet type */
+	*packet_type = g_context->tmp_variables.packet_type;
 
 	/* return the length of the ROHC packet */
 	return size;

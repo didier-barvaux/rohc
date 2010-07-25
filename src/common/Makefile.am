@@ -21,14 +21,14 @@ sources = \
 	cid.c
 
 public_headers = \
-	rohc.h
+	rohc.h \
+	rohc_packets.h
 
 private_headers = \
 	rohc_bit_ops.h \
 	rohc_debug.h \
 	rohc_traces.h \
 	rohc_time.h \
-	rohc_packets.h \
 	crc.h \
 	decode.h \
 	ip_id.h \

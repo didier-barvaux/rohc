@@ -50,6 +50,9 @@ typedef enum
 	PACKET_CCE,      /**< ROHC CCE packet (UDP-Lite profile only) */
 	PACKET_CCE_OFF,  /**< ROHC CCE(OFF) packet (UDP-Lite profile only) */
 
+	/* Normal packet (Uncompressed profile only) */
+	PACKET_NORMAL,   /**< ROHC Normal packet (Uncompressed profile only) */
+
 	PACKET_UNKNOWN,  /**< Unknown packet type */
 
 } rohc_packet_t;

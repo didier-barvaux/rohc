@@ -222,6 +222,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	const struct c_profile *p;
 	struct c_context *c;
 	int feedback_size, payload_size, payload_offset;
+	rohc_packet_t packet_type;
 	int size, esize;
 	const unsigned char *ip_raw_data;
 
@@ -340,7 +341,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 
 	/* 2. use profile to compress packet */
 	rohc_debugf(1, "compress the packet #%d\n", comp->num_packets + 1);
-	esize = p->encode(c, outer_ip, isize, obuf, osize - size, &payload_offset);
+	esize = p->encode(c, outer_ip, isize, obuf, osize - size,
+	                  &packet_type, &payload_offset);
 	if(esize < 0)
 	{
 		/* error while compressing, use uncompressed */
@@ -381,7 +383,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			return 0;
 		}
 		
-		esize = p->encode(c, outer_ip, isize, obuf, osize - size, &payload_offset);
+		esize = p->encode(c, outer_ip, isize, obuf, osize - size,
+		                  &packet_type, &payload_offset);
 		if(esize < 0)
 		{
 			rohc_debugf(0, "error while compressing with uncompressed profile, "
@@ -422,6 +425,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	comp->total_uncompressed_size += isize;
 	comp->total_compressed_size += size;
 	comp->last_context = c;
+
+	c->packet_type = packet_type;
 
 	c->total_uncompressed_size += isize;
 	c->total_compressed_size += size;
@@ -1072,6 +1077,7 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 
 	info->context_mode = comp->last_context->mode;
 	info->context_state = comp->last_context->state;
+	info->packet_type = comp->last_context->packet_type;
 	info->total_last_uncomp_size = comp->last_context->total_last_uncompressed_size;
 	info->header_last_uncomp_size = comp->last_context->header_last_uncompressed_size;
 	info->total_last_comp_size = comp->last_context->total_last_compressed_size;
