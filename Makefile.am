@@ -78,15 +78,6 @@ dist-hook:
 	cp -f $(srcdir)/measures/ftp/*.plot $(distdir)/measures/ftp/
 	cp -f $(srcdir)/measures/ftp/*.comp_data $(distdir)/measures/ftp/
 	cp -f $(srcdir)/measures/ftp/*.decomp_data $(distdir)/measures/ftp/
-	mkdir -p $(distdir)/statistics
-	cp -f $(srcdir)/statistics/analyse_log.pl $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/auto.pl $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/auto.pl $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/gnuplot.sh $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/list_all.txt $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/stats.css $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/stats.pl $(distdir)/statistics/
-	cp -f $(srcdir)/statistics/test.sh $(distdir)/statistics/
 	find $(distdir)/test/report/samples \
 		-type f -and \
 		-not -name source.pcap -and \
