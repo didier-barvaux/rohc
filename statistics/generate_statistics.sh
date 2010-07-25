@@ -11,16 +11,19 @@ VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="./generate_statistics"
+	BUILD_ROOTDIR=".."
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
 	APP="${BASEDIR}/generate_statistics"
+	BUILD_ROOTDIR="${BASEDIR}/.."
 fi
+SRC_ROOTDIR="${BASEDIR}/.."
 
 # generate statistics for all captures found in the samples/ subdirectory
-for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/samples/" -name source.pcap | sort) ; do
 
 	# determine the name of the stream stored in the capture
-	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${BASEDIR}/samples/||")"
+	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/samples/||")"
 
 	# check that stream name is not empty
 	if [ -z "${STREAM}" ] ; then
@@ -36,7 +39,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	fi
 
 	# determine filename for raw output
-	RAW_OUTPUT="${BASEDIR}/html/${STREAM}/raw.txt"
+	RAW_OUTPUT="${BUILD_ROOTDIR}/statistics/html/${STREAM}/raw.txt"
 
 	# determine type of packet in capture
 	PACKET_TYPE=$(echo $STREAM | sed -e 's|^./||' | sed -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
@@ -48,7 +51,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	fi
 
 	# create the output directory
-	mkdir -p "${BASEDIR}/html/${STREAM}" || exit 1
+	mkdir -p "${BUILD_ROOTDIR}/statistics/html/${STREAM}" || exit 1
 
 	# create the raw output
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\trun statistics application... "
@@ -58,7 +61,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	# create the graph with context modes
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate graph with context modes... "
 	echo -e "set terminal png\n" \
-	        "set output '${BASEDIR}/html/${STREAM}/modes.png'\n" \
+	        "set output '${BUILD_ROOTDIR}/statistics/html/${STREAM}/modes.png'\n" \
 	        "set title 'Compression modes for ${PACKET_TYPE} packets'\n" \
 	        "set xlabel 'packet number in capture'\n" \
 	        "plot [] [0:4] '${RAW_OUTPUT}' using 2:3:yticlabels(4) title columnhead(3)" \
@@ -69,7 +72,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	# create the graph with context states
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate graph with context states... "
 	echo -e "set terminal png\n" \
-	        "set output '${BASEDIR}/html/${STREAM}/states.png'\n" \
+	        "set output '${BUILD_ROOTDIR}/statistics/html/${STREAM}/states.png'\n" \
 	        "set title 'Compression states for ${PACKET_TYPE} packets'\n" \
 	        "set xlabel 'packet number in capture'\n" \
 	        "plot [] [0:4] '${RAW_OUTPUT}' using 2:5:yticlabels(6) title columnhead(5)" \
@@ -80,7 +83,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	# create the graph with packet types
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate graph with packet types... "
 	echo -e "set terminal png\n" \
-	        "set output '${BASEDIR}/html/${STREAM}/packet_types.png'\n" \
+	        "set output '${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_types.png'\n" \
 	        "set title 'ROHC packet types for ${PACKET_TYPE} packets'\n" \
 	        "set xlabel 'packet number in capture'\n" \
 	        "plot [] [-1:14] '${RAW_OUTPUT}' using 2:7:yticlabels(8) title columnhead(7)" \
@@ -91,7 +94,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	# create the graph with (un)compressed packet sizes
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate graph with (un)compressed packet sizes... "
 	echo -e "set terminal png\n" \
-	        "set output '${BASEDIR}/html/${STREAM}/packet_sizes.png'\n" \
+	        "set output '${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_sizes.png'\n" \
 	        "set title 'Packet sizes for compression of ${PACKET_TYPE} packets'\n" \
 	        "set xlabel 'packet number in capture'\n" \
 	        "set ylabel 'packet size (bytes)'\n" \
@@ -104,7 +107,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	# create the graph with (un)compressed header sizes
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate graph with (un)compressed header sizes... "
 	echo -e "set terminal png\n" \
-	        "set output '${BASEDIR}/html/${STREAM}/header_sizes.png'\n" \
+	        "set output '${BUILD_ROOTDIR}/statistics/html/${STREAM}/header_sizes.png'\n" \
 	        "set title 'Header sizes for compression of ${PACKET_TYPE} packets'\n" \
 	        "set xlabel 'packet number in capture'\n" \
 	        "set ylabel 'header size (bytes)'\n" \
@@ -119,7 +122,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	for CONTEXT_MODE in "U-mode" "O-mode" "R-mode" ; do
 		gawk "\$4 == \"${CONTEXT_MODE}\" { print \$11 }" \
 		     "${RAW_OUTPUT}" \
-			| wc -l > ${BASEDIR}/html/${STREAM}/context_mode_${CONTEXT_MODE}.count \
+			| wc -l > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/context_mode_${CONTEXT_MODE}.count \
 			|| exit 1
 	done
 	[ "${VERBOSE}" = "verbose" ] && echo "done"
@@ -129,7 +132,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	for CONTEXT_STATE in "IR" "FO" "SO" ; do
 		gawk "\$6 == \"${CONTEXT_STATE}\" { print \$11 }" \
 		     "${RAW_OUTPUT}" \
-			| wc -l > ${BASEDIR}/html/${STREAM}/context_state_${CONTEXT_STATE}.count \
+			| wc -l > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/context_state_${CONTEXT_STATE}.count \
 			|| exit 1
 	done
 	[ "${VERBOSE}" = "verbose" ] && echo "done"
@@ -145,7 +148,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	do
 		gawk "\$8 == \"${PACKET_TYPE}\" { print \$11 }" \
 		     "${RAW_OUTPUT}" \
-			| wc -l > ${BASEDIR}/html/${STREAM}/packet_type_${PACKET_TYPE}.count \
+			| wc -l > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_type_${PACKET_TYPE}.count \
 			|| exit 1
 	done
 	[ "${VERBOSE}" = "verbose" ] && echo "done"
@@ -156,7 +159,7 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	      $2 != "\"packet" { uncomp+=$9 ; comp+=$11 }\
 	      END { printf "scale=2\n100-" comp "*100/" uncomp "\n" }' \
 	     "${RAW_OUTPUT}" \
-		| bc > ${BASEDIR}/html/${STREAM}/packet_compression.gain \
+		| bc > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_compression.gain \
 		|| exit 1
 	[ "${VERBOSE}" = "verbose" ] && echo "done"
 
@@ -166,14 +169,14 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort) ; do
 	      $2 != "\"packet" { uncomp+=$10 ; comp+=$12 }\
 	      END { printf "scale=2\n100-" comp "*100/" uncomp "\n" }' \
 	     "${RAW_OUTPUT}" \
-		| bc > ${BASEDIR}/html/${STREAM}/header_compression.gain \
+		| bc > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/header_compression.gain \
 		|| exit 1
 	[ "${VERBOSE}" = "verbose" ] && echo "done"
 
 done
 
 # generate the HTML page which summarize all the results
-HTML_OUTPUT="${BASEDIR}/html/index.html"
+HTML_OUTPUT="${BUILD_ROOTDIR}/statistics/html/index.html"
 echo -n "" > ${HTML_OUTPUT}
 echo -e "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" >> ${HTML_OUTPUT}
 echo -e "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">" >> ${HTML_OUTPUT}
@@ -230,18 +233,18 @@ echo -e "\t\t\t<th><acronym title=\"UOR-2 with IP-ID bits\">ID</acronym></th>" >
 echo -e "\t\t\t<th><acronym title=\"UOR-2 with TS bits\">TS</acronym></th>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 
-for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort ) ; do
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/samples/" -name source.pcap | sort ) ; do
 
-	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${BASEDIR}/samples/||")"
+	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/samples/||")"
 	PACKET_TYPE=$(echo $STREAM | sed -e 's|^./||' | sed -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
 
 	echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
 	echo -e "\t\t\t<td>${PACKET_TYPE} packets</td>" >> ${HTML_OUTPUT}
 	for CONTEXT_MODE in "U-mode" "O-mode" "R-mode" ; do
-		echo -e "\t\t\t<td><a href=\"./${STREAM}/modes.png\">$(cat ${BASEDIR}/html/${STREAM}/context_mode_${CONTEXT_MODE}.count)</a></td>" >> ${HTML_OUTPUT}
+		echo -e "\t\t\t<td><a href=\"./${STREAM}/modes.png\">$(cat ${BUILD_ROOTDIR}/statistics/html/${STREAM}/context_mode_${CONTEXT_MODE}.count)</a></td>" >> ${HTML_OUTPUT}
 	done
 	for CONTEXT_STATE in "IR" "FO" "SO" ; do
-		echo -e "\t\t\t<td><a href=\"./${STREAM}/states.png\">$(cat ${BASEDIR}/html/${STREAM}/context_state_${CONTEXT_STATE}.count)</a></td>" >> ${HTML_OUTPUT}
+		echo -e "\t\t\t<td><a href=\"./${STREAM}/states.png\">$(cat ${BUILD_ROOTDIR}/statistics/html/${STREAM}/context_state_${CONTEXT_STATE}.count)</a></td>" >> ${HTML_OUTPUT}
 	done
 	for PACKET_TYPE in "IR" "IR-DYN" \
 	                   "UO-0" \
@@ -250,10 +253,10 @@ for CAPTURE in $(find "${BASEDIR}/samples/" -name source.pcap | sort ) ; do
 	                   "CCE" "CCE(off)" \
 	                   "Normal"
 	do
-		echo -e "\t\t\t<td><a href=\"./${STREAM}/packet_types.png\">$(cat ${BASEDIR}/html/${STREAM}/packet_type_${PACKET_TYPE}.count)</a></td>" >> ${HTML_OUTPUT}
+		echo -e "\t\t\t<td><a href=\"./${STREAM}/packet_types.png\">$(cat ${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_type_${PACKET_TYPE}.count)</a></td>" >> ${HTML_OUTPUT}
 	done
-	echo -e "\t\t\t<td><a href=\"./${STREAM}/packet_sizes.png\">$(cat ${BASEDIR}/html/${STREAM}/packet_compression.gain)&nbsp;%</a></td>" >> ${HTML_OUTPUT}
-	echo -e "\t\t\t<td><a href=\"./${STREAM}/header_sizes.png\">$(cat ${BASEDIR}/html/${STREAM}/header_compression.gain)&nbsp;%</a></td>" >> ${HTML_OUTPUT}
+	echo -e "\t\t\t<td><a href=\"./${STREAM}/packet_sizes.png\">$(cat ${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_compression.gain)&nbsp;%</a></td>" >> ${HTML_OUTPUT}
+	echo -e "\t\t\t<td><a href=\"./${STREAM}/header_sizes.png\">$(cat ${BUILD_ROOTDIR}/statistics/html/${STREAM}/header_compression.gain)&nbsp;%</a></td>" >> ${HTML_OUTPUT}
 	echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 
 done

@@ -31,6 +31,10 @@ generate_statistics_LDADD = \
 	-lm
 
 
+distclean-am: clean-am distclean-compile distclean-generic distclean-tags
+	$(RM) -r ./html
+
 EXTRA_DIST = \
-	generate_statistics.sh
+	generate_statistics.sh \
+	samples
 
