@@ -10,6 +10,12 @@ else
 TESTS_DIR = 
 endif
 
+if ROHC_STATS
+STATS_DIR = statistics
+else
+STATS_DIR = 
+endif
+
 if BUILD_DOC
 DOC_DIR = doc
 else
@@ -22,7 +28,7 @@ else
 EXAMPLES_DIR =
 endif
 
-SUBDIRS = src $(TESTS_DIR) app $(DOC_DIR) $(EXAMPLES_DIR)
+SUBDIRS = src $(TESTS_DIR) $(STATS_DIR) app $(DOC_DIR) $(EXAMPLES_DIR)
 
 dist_doc_DATA = \
 	README \
@@ -73,7 +79,14 @@ dist-hook:
 	cp -f $(srcdir)/measures/ftp/*.comp_data $(distdir)/measures/ftp/
 	cp -f $(srcdir)/measures/ftp/*.decomp_data $(distdir)/measures/ftp/
 	mkdir -p $(distdir)/statistics
-	cp -f $(srcdir)/statistics/* $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/analyse_log.pl $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/auto.pl $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/auto.pl $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/gnuplot.sh $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/list_all.txt $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/stats.css $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/stats.pl $(distdir)/statistics/
+	cp -f $(srcdir)/statistics/test.sh $(distdir)/statistics/
 	find $(distdir)/test/report/samples \
 		-type f -and \
 		-not -name source.pcap -and \

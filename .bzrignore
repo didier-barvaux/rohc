@@ -27,6 +27,8 @@ Makefile.in
 ./test/test_non_regression
 ./test/test_performance
 ./test/report/report.html
+./statistics/generate_statistics
+./statistics/html
 ./app/tunnel/rohctunnel
 ./examples/simple_rohc_program
 ./measures/ftp/*.png

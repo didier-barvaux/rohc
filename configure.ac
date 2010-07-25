@@ -99,8 +99,17 @@ AC_ARG_ENABLE(rohc_tests,
 AM_CONDITIONAL([ROHC_TESTS], [test x$enable_rohc_tests = xyes])
 
 
-# libpcap is mandatory if ROHC tests are enabled
-if test "x$enable_rohc_tests" = "xyes"  ; then
+# check if ROHC statistics application is enabled
+AC_ARG_ENABLE(rohc_stats,
+              AS_HELP_STRING([--enable-rohc-stats],
+                             [enable ROHC statistics application [[default=yes]]]),
+              enable_rohc_stats=$enableval,
+              enable_rohc_stats=yes)
+AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
+
+
+# libpcap is mandatory if ROHC tests or statistics are enabled
+if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
 	# check for libpcap presence
 	LPCAP=""
 	AC_CHECK_LIB(pcap, pcap_open_offline, , LPCAP="no")
@@ -168,6 +177,7 @@ AC_CONFIG_FILES([ \
 	src/comp/Makefile \
 	src/decomp/Makefile \
 	test/Makefile \
+	statistics/Makefile \
 	examples/Makefile \
 	app/Makefile \
 	app/tunnel/Makefile \
