@@ -13,7 +13,7 @@ Build the libraries and tools:
 
 If you want to run non-regression tests:
 
- $ make check
+ $ make -C test check
 
 Install the libraries and tools:
 
@@ -48,7 +48,7 @@ command or the report tool described below because their interfaces are simplier
 
 Run the non-regression tool:
 
- $ ./test/test <source PCAP file>
+ $ ./test/test_non_regression <smallcid OR largecid> <source PCAP file>
 
 The application:
  - outputs the results (status & logs) in XML on stdout,
@@ -58,7 +58,7 @@ The application:
 
 For usage details, run:
 
- $ ./test/test -h
+ $ ./test/test_non_regression -h
 
 
 HTML report
