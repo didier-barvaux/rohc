@@ -24,6 +24,7 @@ Makefile.in
 ./rohc.pc
 ./doc/doxygen.conf
 ./doc/html
+./test/robustness/test_empty_payload
 ./test/test_non_regression
 ./test/test_performance
 ./test/report/report.html

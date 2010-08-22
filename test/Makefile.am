@@ -4,6 +4,8 @@
 #	Description: create the ROHC test program
 ################################################################################
 
+SUBDIRS = robustness
+
 TESTS_SMALLCID = \
 	test_non_regression_ipvx_smallcid.sh \
 	test_non_regression_ipv4fragmented_smallcid.sh \
