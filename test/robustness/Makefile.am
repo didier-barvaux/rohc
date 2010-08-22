@@ -13,10 +13,6 @@ TESTS = \
 	test_empty_payload_uo1.sh \
 	test_empty_payload_uor2.sh
 
-# decompression of ROHC packets with empty payloads currently fails :(
-XFAIL_TESTS = \
-	$(TESTS)
-
 
 check_PROGRAMS = \
 	test_empty_payload

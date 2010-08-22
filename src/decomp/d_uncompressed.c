@@ -100,12 +100,11 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	payload_data = rohc_remain_data;
 	payload_len = rohc_remain_len;
 
-	/* check IR packet size */
-	if(payload_len == 0)
-		return ROHC_OK_NO_DATA;
-
-	/* copy IR packet to uncompressed packet */
-	memcpy(dest, payload_data, payload_len);
+	/* copy IR payload to uncompressed packet */
+	if(payload_len != 0)
+	{
+		memcpy(dest, payload_data, payload_len);
+	}
 
 	return payload_len;
 }

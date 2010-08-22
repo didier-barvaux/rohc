@@ -1566,7 +1566,6 @@ int get_bit_index(unsigned char byte, int index)
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if packet is feedback only
  *                        or ROHC_ERROR if an error occurs
  */
 int d_generic_decode_ir(struct rohc_decomp *decomp,
@@ -1831,18 +1830,17 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
 	            payload_len, rohc_header_len);
-	if(payload_len == 0)
-	{
-		goto no_data;
-	}
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_debugf(0, "ROHC IR header (%u bytes) and payload (%u bytes) "
 		            "are larger than full ROHC IR packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
+	} 
+	if(payload_len != 0)
+	{
+		memcpy(dest, payload_data, payload_len);
 	}
-	memcpy(dest, payload_data, payload_len);
 
 	/* statistics */
 	context->header_compressed_size += is_addcid_used + rohc_header_len;
@@ -1852,8 +1850,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	return (uncomp_header_len + payload_len);
 
-no_data:
-	return ROHC_OK_NO_DATA;
 error:
 	return ROHC_ERROR;
 }
@@ -2556,7 +2552,6 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
  *                    (depends on the CID encoding and the packet type)
  * @param dest        OUT: The decoded IP packet
  * @return            The length of the uncompressed IP packet
- *                    or ROHC_OK_NO_DATA if packet is feedback only
  *                    or ROHC_ERROR if an error occurs
  *                    or ROHC_ERROR_CRC if a CRC error occurs
  */
@@ -2721,7 +2716,6 @@ int d_generic_get_sn(struct d_context *context)
  * @param second_byte  The offset of the 2nd byte in the ROHC packet
  * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
  *                     or ROHC_ERROR_CRC if a CRC error occurs
  */
@@ -2887,10 +2881,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
 	            payload_len, rohc_header_len);
-	if(payload_len == 0)
-	{
-		goto no_data;
-	}
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_debugf(0, "ROHC UO-0 header (%u bytes) and payload (%u bytes) "
@@ -2898,7 +2888,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
 	}
-	memcpy(dest, payload_data, payload_len);
+	if(payload_len != 0)
+	{
+		memcpy(dest, payload_data, payload_len);
+	}
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
@@ -2908,8 +2901,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	return (uncomp_header_len + payload_len);
 
-no_data:
-	return ROHC_OK_NO_DATA;
 error:
 	return ROHC_ERROR;
 error_crc:
@@ -2927,7 +2918,6 @@ error_crc:
  * @param second_byte  The offset of the 2nd byte in the ROHC packet
  * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
  *                     or ROHC_ERROR_CRC if a CRC error occurs
  */
@@ -3170,10 +3160,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
 	            payload_len, rohc_header_len);
-	if(payload_len == 0)
-	{
-		goto no_data;
-	}
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_debugf(0, "ROHC UO-1 header (%u bytes) and payload (%u bytes) "
@@ -3181,7 +3167,10 @@ int decode_uo1(struct rohc_decomp *decomp,
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
 	}
-	memcpy(dest, payload_data, payload_len);
+	if(payload_len != 0)
+	{
+		memcpy(dest, payload_data, payload_len);
+	}
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
@@ -3191,8 +3180,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	return (uncomp_header_len + payload_len);
 
-no_data:
-	return ROHC_OK_NO_DATA;
 error:
 	return ROHC_ERROR;
 error_crc:
@@ -3210,7 +3197,6 @@ error_crc:
  * @param second_byte  The offset of the 2nd byte in the ROHC packet
  * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
  *                     or ROHC_ERROR_CRC if a CRC error occurs
  *                     or ROHC_NEED_REPARSE if packet needs to be parsed again
@@ -3513,10 +3499,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
 	            payload_len, rohc_header_len);
-	if(payload_len == 0)
-	{
-		goto no_data;
-	}
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_debugf(0, "ROHC UOR-2 header (%u bytes) and payload (%u bytes) "
@@ -3524,7 +3506,10 @@ int decode_uor2(struct rohc_decomp *decomp,
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
 	}
-	memcpy(dest, payload_data, payload_len);
+	if(payload_len != 0)
+	{
+		memcpy(dest, payload_data, payload_len);
+	}
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
@@ -3534,8 +3519,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	return (uncomp_header_len + payload_len);
 
-no_data:
-	return ROHC_OK_NO_DATA;
 error:
 	return ROHC_ERROR;
 error_crc:
@@ -3555,7 +3538,6 @@ reparse:
  * @param second_byte  The offset of the 2nd byte in the ROHC packet
  * @param dest         OUT: The decoded IP packet
  * @return             The length of the uncompressed IP packet
- *                     or ROHC_OK_NO_DATA if packet is feedback only
  *                     or ROHC_ERROR if an error occurs
  */
 int decode_irdyn(struct rohc_decomp *decomp,
@@ -3686,10 +3668,6 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* copy the payload */
 	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
 	            payload_len, rohc_header_len);
-	if(payload_len == 0)
-	{
-		goto no_data;
-	}
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_debugf(0, "ROHC IR-DYN header (%u bytes) and payload (%u bytes) "
@@ -3697,7 +3675,10 @@ int decode_irdyn(struct rohc_decomp *decomp,
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
 	}
-	memcpy(dest, payload_data, payload_len);
+	if(payload_len != 0)
+	{
+		memcpy(dest, payload_data, payload_len);
+	}
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
@@ -3707,8 +3688,6 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	return (uncomp_header_len + payload_len);
 
-no_data:
-	return ROHC_OK_NO_DATA;
 error:
 	return ROHC_ERROR;
 }

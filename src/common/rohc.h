@@ -375,8 +375,6 @@
 
 /// Return code: the action done without problem
 #define ROHC_OK                     1
-/// Return code: the action done whithout problem and no data is returned
-#define ROHC_OK_NO_DATA             0
 /// Return code: the action can not proceed because no context is defined
 #define ROHC_ERROR_NO_CONTEXT      -1
 /// Return code: the action failed due to an unattended or malformed packet
