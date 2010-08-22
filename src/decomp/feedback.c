@@ -146,6 +146,8 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 			return 0;
 		}
 
+		rohc_debugf(2, "add %d bytes for large CID to feedback\n", largecidsize);
+
 		/* move feedback data to make space for the large CID */
 		for(i = feedback->size - 1; i >= 0; i--)
 			feedback->data[i + largecidsize] = feedback->data[i];
@@ -174,6 +176,8 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 	}
 	else if(cid > 0 && cid < 16)
 	{
+		rohc_debugf(2, "add 1 byte for small CID to feedback\n");
+
 		/* move feedback data to make space for the small CID */
 		for(i = feedback->size - 1; i >= 0; i--)
 			feedback->data[i + 1] = feedback->data[i];
@@ -213,8 +217,9 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	/* add the CRC option if specified */
 	if(with_crc)
 	{
+		rohc_debugf(2, "add CRC option to feedback\n");
 		if(!f_add_option(feedback, OPT_TYPE_CRC, (unsigned char *) 1))
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			rohc_debugf(0, "failed to add CRC option to the feedback packet\n");
 	}
 
 	/* allocate memory for the feedback packet */
