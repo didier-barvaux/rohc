@@ -44,7 +44,7 @@ pkgconfig_DATA = rohc.pc
 
 report:
 if ROHC_TESTS
-	./test/report/report.sh
+	./test/non_regression/report/report.sh
 else
 	@echo "tests are disabled, so report can not be created"
 endif
@@ -78,7 +78,7 @@ dist-hook:
 	cp -f $(srcdir)/measures/ftp/*.plot $(distdir)/measures/ftp/
 	cp -f $(srcdir)/measures/ftp/*.comp_data $(distdir)/measures/ftp/
 	cp -f $(srcdir)/measures/ftp/*.decomp_data $(distdir)/measures/ftp/
-	find $(distdir)/test/report/samples \
+	find $(distdir)/test/non_regression/report/samples \
 		-type f -and \
 		-not -name source.pcap -and \
 		-not -name rohc_smallcid.pcap -and \

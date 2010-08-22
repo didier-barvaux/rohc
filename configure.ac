@@ -178,6 +178,8 @@ AC_CONFIG_FILES([ \
 	src/decomp/Makefile \
 	test/Makefile \
 	test/robustness/Makefile \
+	test/non_regression/Makefile \
+	test/performance/Makefile \
 	statistics/Makefile \
 	examples/Makefile \
 	app/Makefile \
