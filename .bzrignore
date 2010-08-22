@@ -33,9 +33,3 @@ Makefile.in
 ./statistics/html
 ./app/tunnel/rohctunnel
 ./examples/simple_rohc_program
-./measures/ftp/*.png
-./measures/ftp/*.decomp_data_sorted
-./measures/ftp/*.reorder_data
-./measures/rtp/*.png
-./measures/rtp/*.decomp_data_sorted
-./measures/rtp/*.reorder_data

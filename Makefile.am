@@ -40,7 +40,7 @@ dist_doc_DATA = \
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = rohc.pc
 
-.PHONY: report measures
+.PHONY: report
 
 report:
 if ROHC_TESTS
@@ -48,9 +48,6 @@ if ROHC_TESTS
 else
 	@echo "tests are disabled, so report can not be created"
 endif
-
-measures:
-	$(MAKE) -C measures
 
 # configure options for distcheck
 DISTCHECK_CONFIGURE_FLAGS = \
@@ -65,19 +62,6 @@ EXTRA_DIST = \
 
 # other extra files for releases
 dist-hook:
-	mkdir -p $(distdir)/measures
-	cp -f $(srcdir)/measures/*.sh $(distdir)/measures/
-	cp -f $(srcdir)/measures/Makefile $(distdir)/measures/
-	mkdir -p $(distdir)/measures/rtp
-	cp -f $(srcdir)/measures/rtp/Makefile $(distdir)/measures/rtp/
-	cp -f $(srcdir)/measures/rtp/*.plot $(distdir)/measures/rtp/
-	cp -f $(srcdir)/measures/rtp/*.comp_data $(distdir)/measures/rtp/
-	cp -f $(srcdir)/measures/rtp/*.decomp_data $(distdir)/measures/rtp/
-	mkdir -p $(distdir)/measures/ftp
-	cp -f $(srcdir)/measures/ftp/Makefile $(distdir)/measures/ftp/
-	cp -f $(srcdir)/measures/ftp/*.plot $(distdir)/measures/ftp/
-	cp -f $(srcdir)/measures/ftp/*.comp_data $(distdir)/measures/ftp/
-	cp -f $(srcdir)/measures/ftp/*.decomp_data $(distdir)/measures/ftp/
 	find $(distdir)/test/non_regression/report/samples \
 		-type f -and \
 		-not -name source.pcap -and \
