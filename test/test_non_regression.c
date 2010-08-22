@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 	char *src_filename = NULL;
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
-	int max_contexts = 15;
+	int max_contexts = 16;
 	int status = 1;
 	int args_used;
 
@@ -847,7 +847,7 @@ static int test_comp_and_decomp(char *cid_type,
 	rohc_c_set_large_cid(comp1, use_large_cid);
 
 	/* create the compressor 2 */
-	comp2 = rohc_alloc_compressor(15, 0, 0, 0);
+	comp2 = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
 	if(comp2 == NULL)
 	{
 		printf("cannot create the compressor 2\n");
