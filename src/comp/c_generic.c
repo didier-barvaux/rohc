@@ -2773,6 +2773,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 		int nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 
+		rohc_debugf(3, "nr_ts_bits = %d\n", nr_ts_bits);
+
 		if(nr_of_ip_hdr == 1) /* single IP header */
 		{
 			if(is_rnd || !is_ip_v4)
