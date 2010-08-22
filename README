@@ -31,14 +31,11 @@ libraries:
 See the INSTALL file to learn to build the libraries.
 
 
-Non-regression tests
---------------------
+Automated tests
+---------------
 
-The test subdirectory contains a test application. See the header of the test.c
-file for details. There is also a report tool that tests the ROHC libraries with
-several IP flows and outputs an HTML page with the test results.
-
-See the INSTALL file to learn how to use the non-regression and report tools.
+The test subdirectory contains several test applications. See the INSTALL file
+to learn how to use these tools.
 
 
 Statistics
