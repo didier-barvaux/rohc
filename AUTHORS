@@ -11,6 +11,7 @@ The ROHC library is released under the GPL2+ license. See COPYING file.
 The following people are/were involved in the project:
   Didier Barvaux         Main developer and maintainer.
                          <didier.barvaux@toulouse.viveris.com>
+                         <didier@barvaux.org>
   Cédric Baudoin         Many thanks for his help during the library development
                          and for his tenacity during the process of making the
                          library Open Source.
