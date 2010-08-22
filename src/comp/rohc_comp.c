@@ -1288,6 +1288,10 @@ static int c_alloc_contexts(struct rohc_comp *const comp, int size)
 		struct c_context *new_contexts;
 		int i;
 
+		rohc_debugf(2, "enlarge the context array from %d to %d elements "
+		            "(MAX_CID = %d)\n", comp->num_contexts, size,
+		            comp->medium.max_cid);
+
 		new_contexts = calloc(size, sizeof(struct c_context));
 		if(new_contexts == NULL)
 		{
