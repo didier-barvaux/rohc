@@ -369,6 +369,15 @@
  */
 
 
+/**
+ * @brief The Ethertype assigned to the ROHC protocol by the IEEE
+ *
+ * @see http://standards.ieee.org/regauth/ethertype/eth.txt
+ */
+#define ROHC_ETHERTYPE  0x0800
+//#define ROHC_ETHERTYPE  0x22f1 
+
+
 /*
  * Below are some return codes:
  */

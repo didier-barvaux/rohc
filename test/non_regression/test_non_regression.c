@@ -541,12 +541,12 @@ int compress_decompress(struct rohc_comp *comp,
 			if(link_len_src == ETHER_HDR_LEN) /* Ethernet only */
 			{
 				eth_header = (struct ether_header *) output_packet;
-				eth_header->ether_type = 0x162f; /* unused Ethernet ID ? */
+				eth_header->ether_type = htons(ROHC_ETHERTYPE); /* ROHC Ethertype */
 			}
 			else if(link_len_src == LINUX_COOKED_HDR_LEN) /* Linux Cooked Sockets only */
 			{
-				output_packet[LINUX_COOKED_HDR_LEN - 2] = 0x16;
-				output_packet[LINUX_COOKED_HDR_LEN - 1] = 0x2f;
+				output_packet[LINUX_COOKED_HDR_LEN - 2] = ROHC_ETHERTYPE & 0xff;
+				output_packet[LINUX_COOKED_HDR_LEN - 1] = (ROHC_ETHERTYPE >> 8) & 0xff;
 			}
 		}
 		pcap_dump((u_char *) dumper, &header, output_packet);
