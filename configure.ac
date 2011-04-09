@@ -31,12 +31,10 @@ AC_CHECK_HEADERS([netinet/ip.h netinet/udp.h netinet/in.h])
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
-AC_TYPE_SIZE_T
 AC_HEADER_TIME
 
 # Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
-AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero ceil])
