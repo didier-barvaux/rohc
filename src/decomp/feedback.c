@@ -62,11 +62,11 @@ int f_feedback1(int sn, struct d_feedback *feedback)
  * @param sn       The Sequence Number (SN) the feedback packet is
  *                 associated with
  * @param feedback The feedback packet to build
+ * @return         ROHC_OK if the packet is successfully built,
+ *                 ROHC_ERROR otherwise
  */
-void f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
+int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 {
-	unsigned char tkn = sn & 0xff;
-
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
 	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
@@ -78,16 +78,30 @@ void f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 	}
 	else if(sn < (1 << 20)) /* SN may be stored on 20 bits */
 	{
+		const unsigned char sn_last_bits = sn & 0xff;
+		int ret;
+
 		feedback->data[0] |= (sn & 0xf0000) >> 16;
 		feedback->data[1] = sn & 0xff00 >> 8;
-		if(!f_add_option(feedback, OPT_TYPE_SN, &tkn))
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_last_bits,
+		                   sizeof(sn_last_bits));
+		if(ret != ROHC_OK)
+		{
 			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			goto error;
+		}
 	}
 	else /* SN may not be stored on 20 bits */
 	{
 		/* should not append */
 		assert(0);
+		goto error;
 	}
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
 }
 
 
@@ -97,34 +111,54 @@ void f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
  * @param feedback The feedback packet to which the option must be added
  * @param opt_type The type of option to add
  * @param data     The option data
- * @return         Whether the option is successfully added or not
+ * @param data_len The length of option data (in bytes)
+ * @return         ROHC_OK if the option is successfully added,
+ *                 ROHC_ERROR otherwise
  */
 int f_add_option(struct d_feedback *feedback,
-                  int opt_type, unsigned char *data)
+                 const uint8_t opt_type,
+                 const unsigned char *data,
+                 const size_t data_len)
 {
-	int result = 0;
+	/* options are reserved for FEEDBACK-2 */
+	assert(feedback->type == 2);
 
-	if(feedback->type == 2)
+	/* write option header: type and size */
+	feedback->data[feedback->size] = opt_type & 0xf;
+	feedback->data[feedback->size] <<= 4;
+	if(opt_type == OPT_TYPE_CRC || data != NULL)
 	{
-		feedback->data[feedback->size] = opt_type & 0xf;
-		feedback->data[feedback->size] <<= 4;
-		if(data != NULL)
-			feedback->data[feedback->size] |= 1;
+		assert(data_len == 0 || data_len == 1);
+		feedback->data[feedback->size] |= 1;
+	}
+	feedback->size++;
+
+	if(opt_type == OPT_TYPE_CRC)
+	{
+		/* force 0x00 as data in case of CRC option */
+		assert(data == NULL);
+		assert(data_len == 0);
+		feedback->data[feedback->size] = 0;
 		feedback->size++;
-
-		if(opt_type == OPT_TYPE_CRC || data)
+	}
+	else if(data != NULL)
+	{
+		/* copy given data if not NULL */
+		assert(data_len == 1);
+		if((feedback->size + data_len) > FEEDBACK_DATA_MAX_LEN)
 		{
-			if(opt_type == OPT_TYPE_CRC)
-				feedback->data[feedback->size] = 0;
-			else
-				feedback->data[feedback->size] = data[0];
-			feedback->size++;
+			return ROHC_ERROR;
 		}
-
-		result = 1;
+		feedback->data[feedback->size] = data[0];
+		feedback->size++;
+	}
+	else
+	{
+		/* no data given */
+		assert(data_len == 0);
 	}
 
-	return result;
+	return ROHC_OK;
 }
 
 
@@ -216,17 +250,26 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 {
 	unsigned char *feedback_packet;
 	unsigned int crc;
+	int ret;
 
 	/* append the CID to the feedback packet */
 	if(!f_append_cid(feedback, cid, largecidUsed))
+	{
+		feedback->size = 0;
 		return NULL;
+	}
 
 	/* add the CRC option if specified */
 	if(with_crc)
 	{
 		rohc_debugf(2, "add CRC option to feedback\n");
-		if(!f_add_option(feedback, OPT_TYPE_CRC, (unsigned char *) 1))
+		ret = f_add_option(feedback, OPT_TYPE_CRC, NULL, 0);
+		if(ret != ROHC_OK)
+		{
 			rohc_debugf(0, "failed to add CRC option to the feedback packet\n");
+			feedback->size = 0;
+			return NULL;
+		}
 	}
 
 	/* allocate memory for the feedback packet */

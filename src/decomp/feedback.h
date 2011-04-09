@@ -60,6 +60,10 @@
 #define WITH_CRC  1
 
 
+/// The maximum length (in bytes) of the feedback data
+#define FEEDBACK_DATA_MAX_LEN  30
+
+
 /**
  * @brief Defines a ROHC feedback.
  */
@@ -68,7 +72,7 @@ struct d_feedback
 	/// The type of feedback (1 for FEEDBACK-1 and 2 for FEEDBACK-2)
 	int type;
 	/// The feedback data
-	char data[30];
+	char data[FEEDBACK_DATA_MAX_LEN];
 	/// The size of feedback data
 	int size;
 };
@@ -80,10 +84,12 @@ struct d_feedback
 
 int f_feedback1(int sn, struct d_feedback *feedback);
 
-void f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback);
+int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback);
 
-int f_add_option(struct d_feedback *feedback, int opt_type,
-                  unsigned char *data);
+int f_add_option(struct d_feedback *feedback,
+                 const uint8_t opt_type,
+                 const unsigned char *data,
+                 const size_t data_len);
 
 unsigned char * f_wrap_feedback(struct d_feedback *feedback, int cid,
                                 int largecidUsed, int with_crc,

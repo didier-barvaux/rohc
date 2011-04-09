@@ -1160,6 +1160,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 	struct d_feedback sfeedback;
 	unsigned char *feedback;
 	int feedbacksize;
+	int ret;
 
 	/* check associated compressor availability */
 	if(decomp->compressor == NULL)
@@ -1184,11 +1185,17 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		case ROHC_OK:
 			/* create an ACK feedback */
 			rohc_debugf(1, "send an ACK feedback\n");
-			f_feedback2(ACKTYPE_ACK, context->mode, context->profile->get_sn(context), &sfeedback);
+			ret = f_feedback2(ACKTYPE_ACK, context->mode,
+			                  context->profile->get_sn(context), &sfeedback);
+			if(ret != ROHC_OK)
+			{
+				rohc_debugf(0, "failed to build the ACK feedback\n");
+				return;
+			}
 			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC, &feedbacksize);
 			if(feedback == NULL)
 			{
-				rohc_debugf(0, "failed to create an ACK feedback\n");
+				rohc_debugf(0, "failed to wrap the ACK feedback\n");
 				return;
 			}
 
@@ -1204,12 +1211,24 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		case ROHC_ERROR_NO_CONTEXT:
 			/* create a STATIC NACK feedback */
 			rohc_debugf(1, "send a STATIC NACK feedback\n");
-			f_feedback2(ACKTYPE_STATIC_NACK, O_MODE, 0, &sfeedback);
-			f_add_option(&sfeedback, OPT_TYPE_SN_NOT_VALID, NULL);
-			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, NO_CRC, &feedbacksize);
+			ret = f_feedback2(ACKTYPE_STATIC_NACK, O_MODE, 0, &sfeedback);
+			if(ret != ROHC_OK)
+			{
+				rohc_debugf(0, "failed to build the STATIC NACK feedback\n");
+				return;
+			}
+			ret = f_add_option(&sfeedback, OPT_TYPE_SN_NOT_VALID, NULL, 0);
+			if(ret != ROHC_OK)
+			{
+				rohc_debugf(0, "failed to add the SN-NOT-VALID option to the "
+				               "STATIC NACK feedback\n");
+				return;
+			}
+			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, NO_CRC,
+			                           &feedbacksize);
 			if(feedback == NULL)
 			{
-				rohc_debugf(0, "failed to create a STATIC NACK feedback\n");
+				rohc_debugf(0, "failed to wrap the STATIC NACK feedback\n");
 				return;
 			}
 
@@ -1230,8 +1249,15 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				case NO_CONTEXT:
 					/* create a STATIC NACK feedback */
 					rohc_debugf(1, "send a STATIC NACK feedback\n");
-					f_feedback2(ACKTYPE_STATIC_NACK, context->mode, context->profile->get_sn(context), &sfeedback);
-					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC, &feedbacksize);
+					ret = f_feedback2(ACKTYPE_STATIC_NACK, context->mode,
+					                  context->profile->get_sn(context), &sfeedback);
+					if(ret != ROHC_OK)
+					{
+						rohc_debugf(0, "failed to build the STATIC NACK feedback\n");
+						return;
+					}
+					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC,
+					                           &feedbacksize);
 					if(feedback == NULL)
 					{
 						rohc_debugf(0, "failed to create a STATIC NACK feedback\n");
@@ -1250,11 +1276,18 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				case FULL_CONTEXT:
 					/* create a NACK feedback */
 					rohc_debugf(1, "send a NACK feedback\n");
-					f_feedback2(ACKTYPE_NACK, context->mode, context->profile->get_sn(context), &sfeedback);
-					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC, &feedbacksize);
+					ret = f_feedback2(ACKTYPE_NACK, context->mode,
+					                  context->profile->get_sn(context), &sfeedback);
+					if(ret != ROHC_OK)
+					{
+						rohc_debugf(0, "failed to build the NACK feedback\n");
+						return;
+					}
+					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC,
+					                           &feedbacksize);
 					if(feedback == NULL)
 					{
-						rohc_debugf(0, "failed to create a NACK feedback\n");
+						rohc_debugf(0, "failed to create the NACK feedback\n");
 						return;
 					}
 
