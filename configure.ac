@@ -177,6 +177,7 @@ AC_CONFIG_FILES([ \
 	src/comp/Makefile \
 	src/decomp/Makefile \
 	test/Makefile \
+	test/functional/Makefile \
 	test/robustness/Makefile \
 	test/non_regression/Makefile \
 	test/performance/Makefile \

@@ -26,6 +26,8 @@
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 
+#include <assert.h>
+
 
 /*
  * Prototypes of private functions.
@@ -69,17 +71,22 @@ void f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 	feedback->size = 2; /* size of FEEDBACK-2 header */
 	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
 
-	if(sn < 255) /* 12-bit SN */
+	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
 	{
 		feedback->data[0] |= (sn & 0xf00) >> 8;
 		feedback->data[1] = sn & 0xff;
 	}
-	else /* 20-bit SN */
+	else if(sn < (1 << 20)) /* SN may be stored on 20 bits */
 	{
 		feedback->data[0] |= (sn & 0xf0000) >> 16;
 		feedback->data[1] = sn & 0xff00 >> 8;
 		if(!f_add_option(feedback, OPT_TYPE_SN, &tkn))
 			rohc_debugf(0, "failed to add option to the feedback packet\n");
+	}
+	else /* SN may not be stored on 20 bits */
+	{
+		/* should not append */
+		assert(0);
 	}
 }
 

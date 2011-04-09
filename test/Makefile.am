@@ -6,6 +6,7 @@
 ################################################################################
 
 SUBDIRS = \
+	functional \
 	robustness \
 	non_regression \
 	performance
