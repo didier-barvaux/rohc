@@ -136,11 +136,11 @@ int main(int argc, char *argv[])
 	}
 
 	/* determine if we use small or large CIDs */
-	if(strcmp(cid_type, "small") == 0)
+	if(strcmp(cid_type, "smallcid") == 0)
 	{
 		is_large_cid = 0;
 	}
-	else if(strcmp(cid_type, "large") == 0)
+	else if(strcmp(cid_type, "largecid") == 0)
 	{
 		is_large_cid = 1;
 	}
@@ -177,7 +177,7 @@ static void usage(void)
 	        "with:\n"
 	        "  FLOW         The flow of Ethernet frames to compress\n"
 	        "               (in PCAP format)\n"
-	        "  CID_TYPE     The CID type among 'large' and 'small'\n"
+	        "  CID_TYPE     The CID type among 'largecid' and 'smallcid'\n"
 	        "  ACK_TYPE     The type of FEEDBACK-2 expected among:\n"
 	        "               ack\n"
 	        "  ACK_OPTIONS  The FEEDBACK-2 options expected among:\n"

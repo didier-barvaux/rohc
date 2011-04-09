@@ -6,8 +6,10 @@
 
 
 TESTS = \
-	test_feedback2_ack_smallsn_crc.sh \
-	test_feedback2_ack_largesn_sn_crc.sh
+	test_feedback2_ack_smallcid_smallsn_crc.sh \
+	test_feedback2_ack_smallcid_largesn_sn_crc.sh \
+	test_feedback2_ack_largecid_largesn_sn_crc.sh \
+	test_feedback2_ack_largecid_smallsn_crc.sh
 
 
 check_PROGRAMS = \

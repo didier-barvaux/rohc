@@ -33,16 +33,16 @@ fi
 
 # extract the ACK type and test type from the name of the script
 ACKTYPE=$( echo "${SCRIPT}" | \
-           sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\1#' )
-TESTTYPE=$( echo "${SCRIPT}" | \
-            sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\2#' )
-CID_TYPE=$( echo "${TESTTYPE}" | \
-            sed -e 's/^.*\(small\|large\).*$/\1/' )
+           sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\1#' )
+CID_TYPE=$( echo "${SCRIPT}" | \
+            sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\2#' )
+SN_TYPE=$( echo "${SCRIPT}" | \
+           sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\3#' )
 OPTIONS=$( echo "${SCRIPT}" | \
-           sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\3#' | \
+           sed -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\4#' | \
            sed -e 's/none//g' | \
            sed -e 's/_/ /g' )
-CAPTURE_SOURCE="${BASEDIR}/inputs/${ACKTYPE}_${TESTTYPE}.pcap"
+CAPTURE_SOURCE="${BASEDIR}/inputs/${ACKTYPE}_${CID_TYPE}_${SN_TYPE}.pcap"
 
 # check that capture exists
 if [ ! -r "${CAPTURE_SOURCE}" ] ; then
