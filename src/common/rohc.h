@@ -374,8 +374,7 @@
  *
  * @see http://standards.ieee.org/regauth/ethertype/eth.txt
  */
-#define ROHC_ETHERTYPE  0x0800
-//#define ROHC_ETHERTYPE  0x22f1 
+#define ROHC_ETHERTYPE  0x22f1
 
 
 /*
