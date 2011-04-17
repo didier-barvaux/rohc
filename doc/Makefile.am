@@ -10,14 +10,12 @@ html_DATA = \
 	html/*.html \
 	html/*.map \
 	html/*.css \
-	html/*.png \
-	html/*.gif
+	html/*.png
 
 html/*.html: html-am
 html/*.map: html-am
 html/*.css: html-am
 html/*.png: html-am
-html/*.gif: html-am
 
 html-am: htmldoc
 
