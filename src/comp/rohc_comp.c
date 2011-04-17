@@ -532,13 +532,17 @@ void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 	/* large CID */
 	if(comp->medium.cid_type == ROHC_LARGE_CID)
 	{
-		if(value > 0 && value < 65536)
+		if(value > 0 && value <= ROHC_LARGE_CID_MAX)
+		{
 			comp->medium.max_cid = value;
+		}
 	}
 	else /* small CID */
 	{
-		if(value > 0 && value < 16)
+		if(value > 0 && value <= ROHC_SMALL_CID_MAX)
+		{
 			comp->medium.max_cid = value;
+		}
 	}
 }
 
@@ -554,12 +558,18 @@ void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 {
 	if(large_cid)
+	{
 		comp->medium.cid_type = ROHC_LARGE_CID;
+	}
 	else
 	{
 		comp->medium.cid_type = ROHC_SMALL_CID;
-		if(comp->medium.max_cid > 15)
-			comp->medium.max_cid = 15;
+
+		/* reduce the MAX_CID parameter if needed */
+		if(comp->medium.max_cid > ROHC_SMALL_CID_MAX)
+		{
+			comp->medium.max_cid = ROHC_SMALL_CID_MAX;
+		}
 	}
 }
 

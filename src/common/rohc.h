@@ -412,18 +412,30 @@ typedef enum
 } rohc_mode;
 
 
+/** The maximum value for large CIDs */
+#define ROHC_LARGE_CID_MAX  16383
+/** The maximum value for small CIDs */
+#define ROHC_SMALL_CID_MAX  15
+
+
 /**
  * @brief The different types of Context IDs (CID) a stream/context may use
  *
- * Possible values are: ROHC_LARGE_CID, ROHC_SMALL_CID. Small CID means CID in
- * the \f$[0-15]\f$ interval and large CID means CID in the \f$[0-65535]\f$
- * interval.
+ * Possible values are: ROHC_LARGE_CID, ROHC_SMALL_CID.
+ * Small CID means CID in the \f$[0-ROHC_SMALL_CID_MAX]\f$ interval.
+ * Large CID means CID in the \f$[0-ROHC_LARGE_CID_MAX]\f$ interval.
  */
 typedef enum
 {
-	/** The context uses large CID (value in the \f$[0-65535]\f$ interval) */
+	/**
+	 * @brief The context uses large CID
+	 * Value in the \f$[0-ROHC_LARGE_CID_MAX]\f$ interval.
+	 */
 	ROHC_LARGE_CID,
-	/** The context uses small CID (value in the \f$[0-15]\f$ interval) */
+	/**
+	 * @brief The context uses small CID
+	 * Value in the \f$[0-ROHC_SMALL_CID_MAX]\f$ interval.
+	 */
 	ROHC_SMALL_CID,
 } rohc_cid_type_t;
 
