@@ -61,34 +61,6 @@ For usage details, run:
  $ ./test/non_regression/test_non_regression -h
 
 
-HTML report
------------
-
-To generate an HTML report of several predefined non-regression tests:
-
-1. For each predefined test, create an new directory in the test/report/samples/
-   directory and put the source.pcap (= IP flow) and the rohc.pcap (= dump of
-   previously generated ROHC packets) into it. The report script will call the
-   test application with the source.pcap and rohc.pcap files as input.
-
-2. Edit the report configuration file to point to the directories defined in
-   step 1. The configuration format is easy to understand.
-
- $ vim test/non_regression/report/report.conf
-
-3. Generate the HTML report:
-
- $ make report
-
-4. Load the ./test/non_regression/report/report.html file in your favorite
-   browser and watch the results. In case of failure, the HTML page shows the
-   logs, so you can find out the problem or report it on the mailing list or
-   bugtracker.
-
-IMPORTANT: Run the report script after every library modification to avoid
-           regressions.
-
-
 Test and Statistic tool
 -----------------------
 

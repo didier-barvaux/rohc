@@ -130,12 +130,5 @@ EXTRA_DIST = \
 	test_non_regression.sh \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID) \
-	report/report.sh \
-	report/report.conf \
-	report/logs_cmp_ip.xsl \
-	report/logs_cmp_rohc.xsl \
-	report/logs_comp.xsl \
-	report/logs_decomp.xsl \
-	report/logs_startup.xsl \
-	report/samples
+	inputs
 

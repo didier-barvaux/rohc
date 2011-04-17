@@ -36,5 +36,5 @@ distclean-am: clean-am distclean-compile distclean-generic distclean-tags
 
 EXTRA_DIST = \
 	generate_statistics.sh \
-	samples
+	inputs
 

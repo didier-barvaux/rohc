@@ -40,15 +40,6 @@ dist_doc_DATA = \
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = rohc.pc
 
-.PHONY: report
-
-report:
-if ROHC_TESTS
-	./test/non_regression/report/report.sh
-else
-	@echo "tests are disabled, so report can not be created"
-endif
-
 # configure options for distcheck
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \
@@ -62,7 +53,7 @@ EXTRA_DIST = \
 
 # other extra files for releases
 dist-hook:
-	find $(distdir)/test/non_regression/report/samples \
+	find $(distdir)/test/non_regression/inputs \
 		-type f -and \
 		-not -name source.pcap -and \
 		-not -name rohc_smallcid.pcap -and \

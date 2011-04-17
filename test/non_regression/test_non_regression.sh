@@ -33,9 +33,9 @@ CID_TYPE=$( echo "${SCRIPT}" | \
 STREAM=$( echo "${SCRIPT}" | \
           sed -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\1#' | \
           sed -e 's#_#/#g' )
-CAPTURE_SOURCE="${BASEDIR}/report/samples/${STREAM}/source.pcap"
-CAPTURE_COMPARE="${BASEDIR}/report/samples/${STREAM}/rohc_${CID_TYPE}.pcap"
-SIZE_COMPARE="${BASEDIR}/report/samples/${STREAM}/rohc_sizes_${CID_TYPE}"
+CAPTURE_SOURCE="${BASEDIR}/inputs/${STREAM}/source.pcap"
+CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_${CID_TYPE}.pcap"
+SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_sizes_${CID_TYPE}"
 
 # check that capture names are not empty
 if [ -z "${CAPTURE_SOURCE}" ] ; then

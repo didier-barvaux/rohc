@@ -19,11 +19,17 @@ else
 fi
 SRC_ROOTDIR="${BASEDIR}/.."
 
-# generate statistics for all captures found in the samples/ subdirectory
-for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/samples/" -name source.pcap | sort) ; do
+# Check that the inputs/ directory exists
+if [ ! -d "${SRC_ROOTDIR}/statistics/inputs" ] ; then
+	echo "Input directory '${SRC_ROOTDIR}/statistics/inputs' does not exist"
+	exit 1
+fi
+
+# generate statistics for all captures found in the inputs/ subdirectory
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | sort) ; do
 
 	# determine the name of the stream stored in the capture
-	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/samples/||")"
+	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
 
 	# check that stream name is not empty
 	if [ -z "${STREAM}" ] ; then
@@ -233,9 +239,9 @@ echo -e "\t\t\t<th><acronym title=\"UOR-2 with IP-ID bits\">ID</acronym></th>" >
 echo -e "\t\t\t<th><acronym title=\"UOR-2 with TS bits\">TS</acronym></th>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 
-for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/samples/" -name source.pcap | sort ) ; do
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | sort ) ; do
 
-	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/samples/||")"
+	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
 	PACKET_TYPE=$(echo $STREAM | sed -e 's|^./||' | sed -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
 
 	echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
