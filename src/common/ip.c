@@ -196,7 +196,7 @@ int ip_get_inner_packet(const struct ip_packet *outer,
 	next_header = ip_get_next_layer(outer);
 
 	/* create an IP packet with the next header data */
-	rohc_debugf(3, "size of outer :%d \n", ip_get_plen(outer));
+	rohc_debugf(3, "size of outer = %d\n", ip_get_plen(outer));
 	return ip_create(inner, next_header, ip_get_plen(outer));
 }
 
