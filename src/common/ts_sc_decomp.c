@@ -54,7 +54,8 @@ void d_add_ts(struct ts_sc_decomp *ts_sc, unsigned int ts, unsigned int sn)
 	ts_sc->old_sn = ts_sc->sn;
 	ts_sc->ts = ts;
 	ts_sc->sn = sn;
-	rohc_debugf(3, "new TS = %u - old TS = %u\n", ts_sc->ts, ts_sc->old_ts);
+	rohc_debugf(3, "new SN %u replaced old SN %u\n", ts_sc->sn, ts_sc->old_sn);
+	rohc_debugf(3, "new TS %u replaced old TS %u\n", ts_sc->ts, ts_sc->old_ts);
 	update_ts_sc(ts_sc);
 }
 
@@ -144,6 +145,9 @@ unsigned int ts_deducted(struct ts_sc_decomp *ts_sc, unsigned int sn)
 	rohc_debugf(3, "new ts_scaled = %d\n", ts_scaled);
 
 	timestamp = ts_scaled * ts_stride + ts_offset;
+	rohc_debugf(3, "new TS = %u (TS_SCALED = %u, TS_STRIDE = %d, "
+	            "TS_OFFSET = %u)\n", timestamp, ts_scaled, ts_sc->ts_stride,
+	            ts_sc->ts_offset);
 
 	ts_sc->ts_scaled = ts_scaled;
 	ts_sc->ts = timestamp;

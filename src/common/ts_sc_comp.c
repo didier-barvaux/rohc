@@ -151,12 +151,16 @@ void c_add_ts(struct ts_sc_comp *ts_sc, unsigned int ts, unsigned int sn)
 			if(ts_sc->state != INIT_STRIDE &&
 			   (ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
 			{
-				rohc_debugf(2, "TS can be deducted from SN\n");
+				rohc_debugf(2, "TS can be deducted from SN (old TS_SCALED = %u, "
+				            "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
+				            old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
 				ts_sc->is_deductible = 1;
 			}
 			else
 			{
-				rohc_debugf(2, "TS can not be deducted from SN\n");
+				rohc_debugf(2, "TS can not be deducted from SN (old TS_SCALED = %u, "
+				            "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
+				            old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
 				ts_sc->is_deductible = 0;
 			}
 
