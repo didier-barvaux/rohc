@@ -169,7 +169,7 @@ static void usage(void)
 	        "  FLOW         The flow of Ethernet frames to compress\n"
 	        "               (in PCAP format)\n"
 	        "  PACKET_TYPE  The packet type expected for the last packet\n"
-	        "               among: IR, IR_DYN, UO_0, UO_1, UOR_2\n"
+	        "               among: ir, irdyn, uo0, uo1, uor2\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
