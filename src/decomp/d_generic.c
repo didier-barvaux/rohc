@@ -523,7 +523,7 @@ end:
  * @brief Check if the gen_id is present in list table
  * @param decomp The list decompressor
  * @param gen_id The specified id
- * @return 1 if successfull, 0 else
+ * @return 1 if successful, 0 else
  */
 int check_id(struct list_decomp * decomp, int gen_id)
 {
@@ -553,7 +553,7 @@ int check_id(struct list_decomp * decomp, int gen_id)
  *
  * @param decomp The list decompressor
  * @param index The specified index
- * @return 1 if successfull, 0 else
+ * @return 1 if successful, 0 else
  */
 int check_ip6_index(struct list_decomp * decomp, int index)
 {
