@@ -2818,7 +2818,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		if(g_context->counter == 1)
 		{
-			rohc_debugf(2, "throw away packet, just 2 packages right so far\n");
+			rohc_debugf(2, "throw away repaired packet, 2 more correct packets "
+			            "required to consider repair successful\n");
 
 			g_context->counter++;
 
@@ -3097,7 +3098,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 	{
 		if(g_context->counter == 1)
 		{
-			rohc_debugf(2, "throw away packet, just 2 packages right so far\n");
+			rohc_debugf(2, "throw away repaired packet, 2 more correct packets "
+			            "required to consider repair successful\n");
 
 			g_context->counter++;
 
@@ -3434,7 +3436,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 	{
 		if(g_context->counter == 1)
 		{
-			rohc_debugf(2, "throw away packet, just 2 packets right so far\n");
+			rohc_debugf(2, "throw away repaired packet, 2 more correct packets "
+			            "required to consider repair successful\n");
 
 			g_context->counter++;
 

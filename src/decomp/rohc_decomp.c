@@ -468,7 +468,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	{
 		case ROHC_ERROR_PACKET_FAILED:
 		case ROHC_ERROR:
-			decomp->statistics.packets_failed_package++;
+			decomp->statistics.packets_failed_decompression++;
 			ddata.active->curval += decomp->errval;
 			if(ddata.active->curval >= decomp->maxval)
 			{
@@ -1366,7 +1366,7 @@ void clear_statistics(struct rohc_decomp *decomp)
 	decomp->statistics.packets_received = 0;
 	decomp->statistics.packets_failed_crc = 0;
 	decomp->statistics.packets_failed_no_context = 0;
-	decomp->statistics.packets_failed_package = 0;
+	decomp->statistics.packets_failed_decompression = 0;
 	decomp->statistics.packets_feedback = 0;
 }
 
