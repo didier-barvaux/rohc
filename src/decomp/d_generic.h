@@ -162,7 +162,7 @@ struct d_generic_context
 	void *specific;
 
 	/// Correction counter (see e and f in 5.3.2.2.4 of the RFC 3095)
-	int counter;
+	unsigned int correction_counter;
 
 	/// The timestamp of the last CRC-approved packet
 	unsigned int last_packet_time;
