@@ -113,6 +113,23 @@ static int test_comp_and_decomp(char *cid_type,
                                 char *ofilename,
                                 char *cmp_filename,
                                 const char *rohc_size_ofilename);
+static int compress_decompress(struct rohc_comp *comp,
+                               struct rohc_decomp *decomp,
+                               int num_comp,
+                               int num_packet,
+                               struct pcap_pkthdr header,
+                               unsigned char *packet,
+                               int link_len_src,
+                               int use_large_cid,
+                               pcap_dumper_t *dumper,
+                               unsigned char *cmp_packet,
+                               int cmp_size,
+                               int link_len_cmp,
+                               FILE *size_ouput_file);
+static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
+                            struct rohc_comp *comp2, struct rohc_decomp *decomp2);
+static int compare_packets(unsigned char *pkt1, int pkt1_size,
+                           unsigned char *pkt2, int pkt2_size);
 
 
 /**
@@ -264,91 +281,6 @@ static void usage(void)
 
 
 /**
- * @brief Compare two network packets and print differences if any
- *
- * @param pkt1      The first packet
- * @param pkt1_size The size of the first packet
- * @param pkt2      The second packet
- * @param pkt2_size The size of the second packet
- * @return          Whether the packets are equal or not
- */
-int compare_packets(unsigned char *pkt1, int pkt1_size,
-                    unsigned char *pkt2, int pkt2_size)
-{
-	int valid = 1;
-	int min_size;
-	int i, j, k;
-	char str1[4][7], str2[4][7];
-	char sep1, sep2;
-
-	/* do not compare more than the shortest of the 2 packets */
-	min_size = min(pkt1_size, pkt2_size);
-
-	/* do not compare more than 180 bytes to avoid huge output */
-	min_size = min(180, min_size);
-	
-	/* if packets are equal, do not print the packets */
-	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
-		goto skip;
-
-	/* packets are different */
-	valid = 0;
-
-	printf("------------------------------ Compare ------------------------------\n");
-	
-	if(pkt1_size != pkt2_size)
-		printf("packets have different sizes (%d != %d), compare only the %d "
-		       "first bytes\n", pkt1_size, pkt2_size, min_size);
-
-	j = 0;
-	for(i = 0; i < min_size; i++)
-	{
-		if(pkt1[i] != pkt2[i])
-		{
-			sep1 = '#';
-			sep2 = '#';
-		}
-		else
-		{
-			sep1 = '[';
-			sep2 = ']';
-		}
-
-		sprintf(str1[j], "%c0x%.2x%c", sep1, pkt1[i], sep2);
-		sprintf(str2[j], "%c0x%.2x%c", sep1, pkt2[i], sep2);
-
-		/* make the output human readable */
-		if(j >= 3 || (i + 1) >= min_size)
-		{
-			for(k = 0; k < 4; k++)
-			{
-				if(k < (j + 1))
-					printf("%s  ", str1[k]);
-				else /* fill the line with blanks if nothing to print */
-					printf("        ");
-			}
-
-			printf("      ");
-
-			for(k = 0; k < (j + 1); k++)
-				printf("%s  ", str2[k]);
-
-			printf("\n");
-
-			j = 0;
-		}
-		else
-			j++;
-	}
-
-	printf("----------------------- packets are different -----------------------\n");
-
-skip:
-	return valid;
-}
-
-
-/**
  * @brief Print statistics about the compressors and decompressors used during
  *        the test
  *
@@ -357,8 +289,8 @@ skip:
  * @param comp2 The second compressor
  * @param decomp2 The decompressor that receives data from the second compressor
  */
-void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
-                     struct rohc_comp *comp2, struct rohc_decomp *decomp2)
+static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
+                            struct rohc_comp *comp2, struct rohc_decomp *decomp2)
 {
 	char buffer[80000];
 	int len;
@@ -405,19 +337,19 @@ void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
  *                         -2 if an error occurs while decompressing
  *                         -3 if the link layer is not Ethernet
  */
-int compress_decompress(struct rohc_comp *comp,
-                        struct rohc_decomp *decomp,
-                        int num_comp,
-                        int num_packet,
-                        struct pcap_pkthdr header,
-                        unsigned char *packet,
-                        int link_len_src,
-                        int use_large_cid,
-                        pcap_dumper_t *dumper,
-                        unsigned char *cmp_packet,
-                        int cmp_size,
-                        int link_len_cmp,
-                        FILE *size_ouput_file)
+static int compress_decompress(struct rohc_comp *comp,
+                               struct rohc_decomp *decomp,
+                               int num_comp,
+                               int num_packet,
+                               struct pcap_pkthdr header,
+                               unsigned char *packet,
+                               int link_len_src,
+                               int use_large_cid,
+                               pcap_dumper_t *dumper,
+                               unsigned char *cmp_packet,
+                               int cmp_size,
+                               int link_len_cmp,
+                               FILE *size_ouput_file)
 {
 	unsigned char *ip_packet;
 	int ip_size;
@@ -1034,5 +966,90 @@ close_input:
 error:
 	printf("</test>\n");
 	return status;
+}
+
+
+/**
+ * @brief Compare two network packets and print differences if any
+ *
+ * @param pkt1      The first packet
+ * @param pkt1_size The size of the first packet
+ * @param pkt2      The second packet
+ * @param pkt2_size The size of the second packet
+ * @return          Whether the packets are equal or not
+ */
+static int compare_packets(unsigned char *pkt1, int pkt1_size,
+                           unsigned char *pkt2, int pkt2_size)
+{
+	int valid = 1;
+	int min_size;
+	int i, j, k;
+	char str1[4][7], str2[4][7];
+	char sep1, sep2;
+
+	/* do not compare more than the shortest of the 2 packets */
+	min_size = min(pkt1_size, pkt2_size);
+
+	/* do not compare more than 180 bytes to avoid huge output */
+	min_size = min(180, min_size);
+	
+	/* if packets are equal, do not print the packets */
+	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
+		goto skip;
+
+	/* packets are different */
+	valid = 0;
+
+	printf("------------------------------ Compare ------------------------------\n");
+	
+	if(pkt1_size != pkt2_size)
+		printf("packets have different sizes (%d != %d), compare only the %d "
+		       "first bytes\n", pkt1_size, pkt2_size, min_size);
+
+	j = 0;
+	for(i = 0; i < min_size; i++)
+	{
+		if(pkt1[i] != pkt2[i])
+		{
+			sep1 = '#';
+			sep2 = '#';
+		}
+		else
+		{
+			sep1 = '[';
+			sep2 = ']';
+		}
+
+		sprintf(str1[j], "%c0x%.2x%c", sep1, pkt1[i], sep2);
+		sprintf(str2[j], "%c0x%.2x%c", sep1, pkt2[i], sep2);
+
+		/* make the output human readable */
+		if(j >= 3 || (i + 1) >= min_size)
+		{
+			for(k = 0; k < 4; k++)
+			{
+				if(k < (j + 1))
+					printf("%s  ", str1[k]);
+				else /* fill the line with blanks if nothing to print */
+					printf("        ");
+			}
+
+			printf("      ");
+
+			for(k = 0; k < (j + 1); k++)
+				printf("%s  ", str2[k]);
+
+			printf("\n");
+
+			j = 0;
+		}
+		else
+			j++;
+	}
+
+	printf("----------------------- packets are different -----------------------\n");
+
+skip:
+	return valid;
 }
 
