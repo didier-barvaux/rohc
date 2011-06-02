@@ -2831,10 +2831,14 @@ int decode_uo0(struct rohc_decomp *decomp,
 			d_lsb_sync_ref(&g_context->sn);
 			d_lsb_update(&g_context->sn, sn);
 			if(ip_get_version(&g_context->active1->ip) == IPV4)
+			{
 				d_ip_id_update(&g_context->ip_id1, id, sn);
+			}
 			if(g_context->multiple_ip &&
 			   ip_get_version(&g_context->active2->ip) == IPV4)
+			{
 				d_ip_id_update(&g_context->ip_id2, id2, sn);
+			}
 
 			goto error_crc;
 		}
@@ -2867,9 +2871,13 @@ int decode_uo0(struct rohc_decomp *decomp,
 	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	{
 		d_ip_id_update(&g_context->ip_id1, id, sn);
+	}
 	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
+	{
 		d_ip_id_update(&g_context->ip_id2, id2, sn);
+	}
 
 	/* RTP */
 	if(is_rtp)
@@ -3111,10 +3119,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 			d_lsb_sync_ref(&g_context->sn);
 			d_lsb_update(&g_context->sn, sn);
 			if(ip_get_version(&g_context->active1->ip) == IPV4)
+			{
 				d_ip_id_update(&g_context->ip_id1, id, sn);
+			}
 			if(g_context->multiple_ip &&
 			   ip_get_version(&g_context->active2->ip) == IPV4)
+			{
 				d_ip_id_update(&g_context->ip_id2, id2, sn);
+			}
 
 			goto error_crc;
 		}
@@ -3147,9 +3159,13 @@ int decode_uo1(struct rohc_decomp *decomp,
 	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	{
 		d_ip_id_update(&g_context->ip_id1, id, sn);
+	}
 	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
+	{
 		d_ip_id_update(&g_context->ip_id2, id2, sn);
+	}
 		
 	/* RTP */
 	if(is_rtp)
@@ -3449,10 +3465,14 @@ int decode_uor2(struct rohc_decomp *decomp,
 			d_lsb_sync_ref(&g_context->sn);
 			d_lsb_update(&g_context->sn, sn);
 			if(ip_get_version(&g_context->active1->ip) == IPV4)
+			{
 				d_ip_id_update(&g_context->ip_id1, id, sn);
+			}
 			if(g_context->multiple_ip &&
 			   ip_get_version(&g_context->active2->ip) == IPV4)
+			{
 				d_ip_id_update(&g_context->ip_id2, id, sn);
+			}
 
 			goto error_crc;
 		}
@@ -3487,9 +3507,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	{
 		d_ip_id_update(&g_context->ip_id1, id, sn);
+	}
 	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
+	{
 		d_ip_id_update(&g_context->ip_id2, id2, sn);
+	}
 
 	/* RTP */
 	if(is_rtp)
@@ -6059,7 +6083,9 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 		default:
 			rohc_debugf(0, "unknown packet type (%d)\n", g_context->packet_type);
 			if(sn_update)
+			{
 				d_lsb_update(&g_context->sn, sn_curr1);
+			}
 			goto failure;
 	}
 
@@ -6070,7 +6096,9 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 		            *calc_crc, real_crc);
 		g_context->counter = 0;
 		if(sn_update)
+		{
 			d_lsb_update(&g_context->sn, sn_curr1); /* reference curr1 should be used */
+		}
 		sync_on_failure(g_context);
 		goto failure;
 	}
@@ -6089,11 +6117,15 @@ int act_on_crc_failure(struct rohc_decomp *decomp,
 		d_lsb_update(&g_context->sn, *sn);
 	}
 	else
+	{
 		d_lsb_update(&g_context->sn, sn_curr2);
+	}
 
 	d_ip_id_update(&g_context->ip_id1, *id, *sn);
 	if(g_context->multiple_ip)
+	{
 		d_ip_id_update(&g_context->ip_id2, *id2, *sn);
+	}
 
 failure:
 	return ROHC_ERROR_CRC;
