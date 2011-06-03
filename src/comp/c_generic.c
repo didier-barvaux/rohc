@@ -2515,7 +2515,7 @@ void update_variables(struct c_context *const context,
 		g_context->tmp_variables.nr_ip_id_bits =
 			c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
 			             g_context->ip_flags.info.v4.id_delta);
-		rohc_debugf(3, "ip_id delta = 0x%x / %u\n",
+		rohc_debugf(3, "ip_id delta = 0x%x / %d\n",
 		            g_context->ip_flags.info.v4.id_delta,
 		            g_context->ip_flags.info.v4.id_delta);
 		rohc_debugf(2, "ip_id bits = %d\n", g_context->tmp_variables.nr_ip_id_bits);
@@ -2620,8 +2620,6 @@ void update_variables(struct c_context *const context,
 			rtp_context->tmp_variables.ts_send = ntohl(rtp->timestamp);
 			rtp_context->tmp_variables.nr_ts_bits = 32;
 		}
-
-		rtp_context->tmp_variables.m = rtp->m;
 	}
 }
 
@@ -2782,7 +2780,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				packet = PACKET_UOR_2_RTP; /* default packet */
 
 				if(nr_sn_bits <= 4 &&
-				   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)) &&
+				   rtp_context->tmp_variables.m_set == 0)
 				{
 					packet = PACKET_UO_0;
 				}
@@ -2796,7 +2795,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				packet = PACKET_UOR_2_TS; /* default packet */
 
 				if(nr_sn_bits <= 4 && nr_ip_id_bits == 0 &&
-				   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)) &&
+				   rtp_context->tmp_variables.m_set == 0)
 				{
 					packet = PACKET_UO_0;
 				}
@@ -2826,7 +2826,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			if((nr_sn_bits <= 4) &&
 			   (!is_ip_v4 || is_rnd || nr_ip_id_bits == 0) &&
 			   (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
-			   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+			   (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)) &&
+			   rtp_context->tmp_variables.m_set == 0)
 			{
 				packet = PACKET_UO_0;
 			}
@@ -4259,7 +4260,7 @@ int code_UO1_packet(struct c_context *const context,
 	else
 	{
 		s_byte = (g_context->sn & 0x0f) << 3;
-		s_byte |= (rtp_context->tmp_variables.m & 0x01) << 7;
+		s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 7;
 	}
 	crc = CRC_INIT_3;
 	if(nr_of_ip_hdr > 1)
@@ -4285,7 +4286,7 @@ int code_UO1_packet(struct c_context *const context,
 	else
 	{
 		rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-		            rtp_context->tmp_variables.m, g_context->sn, crc, s_byte);
+		            rtp_context->tmp_variables.m_set, g_context->sn, crc, s_byte);
 	}
 
 	/* build the UO tail */
@@ -4713,12 +4714,10 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 	int nr_ts_bits;
 	int ts_send;
 	uint32_t ts_mask;
-	int m;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 	ts_send = rtp_context->tmp_variables.ts_send;
-	m = rtp_context->tmp_variables.m;
 
 	switch(extension)
 	{
@@ -4735,7 +4734,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
 			*s_byte |= (ts_send & 0x01) << 7;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= g_context->sn & 0x3f;
 
 			/* part 5: set the X bit to 0 + type_bit to 0 */
@@ -4757,7 +4756,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
@@ -4779,7 +4778,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
@@ -4801,7 +4800,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
@@ -4848,7 +4847,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of SN */
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			if(nr_sn_bits <= 6)
 				*s_byte |= g_context->sn & 0x3f;
 			else
@@ -4923,13 +4922,11 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 #endif
 	int nr_ts_bits;
 	int ts_send;
-	int m;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 	ts_send = rtp_context->tmp_variables.ts_send;
-	m = rtp_context->tmp_variables.m;
 
 	switch(extension)
 	{
@@ -4942,7 +4939,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= g_context->sn & 0x3f;
 
 			/* part 5: set the X bit to 0 + type_bit to 0*/
@@ -4962,7 +4959,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
@@ -4982,7 +4979,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
@@ -5002,7 +4999,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
@@ -5056,7 +5053,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			if(nr_sn_bits <= 6)
 				*s_byte |= g_context->sn & 0x3f;
 			else
@@ -5132,14 +5129,12 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 	int nr_ip_id_bits;
 	int nr_ts_bits;
 	int ts_send;
-	int m;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_ip_id_bits = g_context->tmp_variables.nr_ip_id_bits;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 	ts_send = rtp_context->tmp_variables.ts_send;
-	m = rtp_context->tmp_variables.m;
 
 	switch(extension)
 	{
@@ -5149,11 +5144,14 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 5-bit IP-ID */
 			*f_byte |= g_context->ip_flags.info.v4.id_delta & 0x1f;
+			rohc_debugf(3, "5 bits of 5-bit IP-ID = 0x%x\n", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 6-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			*s_byte |= g_context->sn & 0x3f;
+			rohc_debugf(3, "6 bits of 6-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 0 + type_bit to 1*/
 			*t_byte &= ~0x80;
@@ -5169,11 +5167,14 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 8-bit IP-ID */
 			*f_byte |= (g_context->ip_flags.info.v4.id_delta >> 3) & 0x1f;
+			rohc_debugf(3, "5 bits of 8-bit IP-ID = 0x%x\n", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
@@ -5189,11 +5190,14 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 8-bit IP-ID */
 			*f_byte |= (g_context->ip_flags.info.v4.id_delta >> 3) & 0x1f;
+			rohc_debugf(3, "5 bits of 8-bit IP-ID = 0x%x\n", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
@@ -5209,11 +5213,14 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 16-bit IP-ID */
 			*f_byte |= (g_context->ip_flags.info.v4.id_delta >> 11) & 0x1f;
+			rohc_debugf(3, "5 bits of 16-bit IP-ID = 0x%x\n", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (m & 0x01) << 6;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
@@ -5233,15 +5240,29 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of IP-ID */
 			if(nr_ip_id_bits <= 5)
+			{
+				/* transmit <= 5 bits of IP-ID, so use the 5-bit field in the UOR-2-ID
+				   field and do not use the 16-bit field in the EXT3 header */
 				*f_byte |= g_context->ip_flags.info.v4.id_delta & 0x1f;
-			else if(nr_ts_bits <= 13)
-				*f_byte |= (g_context->ip_flags.info.v4.id_delta >> 8) & 0x1f;
+				rohc_debugf(3, "5 bits of less-than-5-bit IP-ID = 0x%x\n",
+				            (*f_byte) & 0x1f);
+			}
 			else
-				*f_byte |= 0;
+			{
+				/* transmitting > 16 bits of IP-ID is not possible */
+				assert(nr_ip_id_bits <= 16);
+
+				/* transmit <= 16 bits of IP-ID, so use the 16-bit field in the EXT3
+				   header and fill the 5-bit field of UOR-2-ID with zeroes */
+				*f_byte &= ~0x1f;
+				rohc_debugf(3, "5 zero bits of more-than-5-bit IP-ID = 0x%x\n",
+				            (*f_byte) & 0x1f);
+			}
 
 			/* part 4: T = 0 + M flag + 6 bits of SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (m << 6) & 0x40;
+			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			if(nr_ts_bits > 0 && !is_deductible(rtp_context->ts_sc))
 			{
 				if(nr_ts_bits <= 7)
@@ -5254,20 +5275,33 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 					nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
 			}
 			else
+			{
 				nr_ts_bits_ext3 = 0;
+			}
 			if(nr_sn_bits <= 6)
+			{
 				*s_byte |= g_context->sn & 0x3f;
+				rohc_debugf(3, "6 bits of less-than-6-bit SN = 0x%x\n",
+				            (*s_byte) & 0x3f);
+			}
 			else
+			{
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
+				rohc_debugf(3, "6 bits of more-than-6-bit SN = 0x%x\n",
+				            (*s_byte) & 0x3f);
+			}
 
 			/* part 5: set the X bit to 1 + type_bit to 1 */
 			*t_byte |= 0x80;
 #if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
+
 			/* compute TS to send in extension 3 and its length */
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
+			rohc_debugf(3, "will put %u bits of TS = 0x%x in EXT3\n",
+			            nr_ts_bits_ext3, rtp_context->tmp_variables.ts_send);
 
 			break;
 		}
@@ -5565,6 +5599,7 @@ int code_EXT2_packet(const struct c_context *context,
 	/* part 1: extension type + SN */
 	f_byte = (g_context->sn & 0x07) << 3;
 	f_byte |= 0x80;
+	rohc_debugf(3, "3 bits of SN = 0x%x\n", g_context->sn & 0x07);
 
 	/* parts 1, 2 & 3: IP-ID or TS ? */
 	switch(packet_type)
@@ -5578,16 +5613,20 @@ int code_EXT2_packet(const struct c_context *context,
 			 *    and thus to the g_context->ip2_flags header info.
 			 */
 
-			if(g_context->ip_flags.version != IPV4 ||
-			   g_context->ip2_flags.version != IPV4)
-			{
-				rohc_debugf(0, "extension 2 for UOR-2 is for IPv4 only\n");
-				goto error;
-			}
+			/* extension 2 for UOR-2 must contain two IPv4 headers with non-random
+			   IP-IDs */
+			assert(g_context->ip_flags.version == IPV4 &&
+			       g_context->ip_flags.info.v4.rnd == 0 &&
+			       g_context->is_ip2_initialized == 1 &&
+			       g_context->ip2_flags.version == IPV4 &&
+			       g_context->ip2_flags.info.v4.rnd == 0);
 
 			f_byte |= (g_context->ip_flags.info.v4.id_delta >> 8) & 0x07;
+			rohc_debugf(3, "3 bits of outer IP-ID = 0x%x\n", f_byte & 0x07);
 			s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
+			rohc_debugf(3, "8 bits of outer IP-ID = 0x%x\n", s_byte & 0xff);
 			t_byte = g_context->ip2_flags.info.v4.id_delta & 0xff;
+			rohc_debugf(3, "8 bits of inner IP-ID = 0x%x\n", t_byte & 0xff);
 			break;
 		}
 
@@ -5597,8 +5636,11 @@ int code_EXT2_packet(const struct c_context *context,
 			int ts_send = rtp_context->tmp_variables.ts_send;
 
 			f_byte |= (ts_send >> 16) & 0x07;
+			rohc_debugf(3, "3 bits of TS = 0x%x\n", f_byte & 0x07);
 			s_byte = (ts_send >> 8) & 0xff;
+			rohc_debugf(3, "8 bits of TS = 0x%x\n", s_byte & 0xff);
 			t_byte = ts_send & 0xff;
+			rohc_debugf(3, "8 bits of TS = 0x%x\n", t_byte & 0xff);
 			break;
 		}
 
@@ -5606,17 +5648,47 @@ int code_EXT2_packet(const struct c_context *context,
 		{
 			struct sc_rtp_context *rtp_context = g_context->specific;
 			int ts_send = rtp_context->tmp_variables.ts_send;
+			int innermost_ip_hdr;
 
-			if(g_context->ip_flags.version != IPV4)
+			if(g_context->is_ip2_initialized &&
+			   g_context->ip2_flags.version == IPV4 &&
+			   g_context->ip2_flags.info.v4.rnd == 0)
 			{
-				rohc_debugf(0, "extension 2 for UOR-2-TS is for IPv4 only\n");
+				/* the second IP header is the innermost IPv4 header with
+				   value(RND) = 0 */
+				innermost_ip_hdr = 2;
+			}
+			else if(g_context->ip_flags.version == IPV4 &&
+			        g_context->ip_flags.info.v4.rnd == 0)
+			{
+				/* the first IP header is the innermost IPv4 header with
+				   value(RND) = 0 */
+				innermost_ip_hdr = 1;
+			}
+			else
+			{
+				rohc_debugf(0, "extension 2 for UOR-2-TS must contain at least one "
+				            "IPv4 header with a non-random IP-ID\n");
+				assert(0);
 				goto error;
 			}
+			rohc_debugf(3, "IP header #%d is the innermost IPv4 header with a "
+			            "non-random IP-ID\n", innermost_ip_hdr);
 
-			f_byte |= g_context->ip_flags.info.v4.id_delta & 0x07;
 			f_byte |= (ts_send >> 8) & 0x07;
+			rohc_debugf(3, "3 bits of TS = 0x%x\n", f_byte & 0x07);
 			s_byte = ts_send & 0xff;
-			t_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
+			rohc_debugf(3, "8 bits of TS = 0x%x\n", s_byte & 0xff);
+			if(innermost_ip_hdr == 1)
+			{
+				t_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
+				rohc_debugf(3, "8 bits of outer IP-ID = 0x%x\n", t_byte & 0xff);
+			}
+			else
+			{
+				t_byte = g_context->ip2_flags.info.v4.id_delta & 0xff;
+				rohc_debugf(3, "8 bits of inner IP-ID = 0x%x\n", t_byte & 0xff);
+			}
 			break;
 		}
 
@@ -5624,16 +5696,48 @@ int code_EXT2_packet(const struct c_context *context,
 		{
 			struct sc_rtp_context *rtp_context = g_context->specific;
 			int ts_send = rtp_context->tmp_variables.ts_send;
+			int innermost_ip_hdr;
 
-			if(g_context->ip_flags.version != IPV4)
+			if(g_context->is_ip2_initialized &&
+			   g_context->ip2_flags.version == IPV4 &&
+			   g_context->ip2_flags.info.v4.rnd == 0)
 			{
-				rohc_debugf(0, "extension 2 for UOR-2-ID is for IPv4 only\n");
+				/* the second IP header is the innermost IPv4 header with
+				   value(RND) = 0 */
+				innermost_ip_hdr = 2;
+			}
+			else if(g_context->ip_flags.version == IPV4 &&
+			        g_context->ip_flags.info.v4.rnd == 0)
+			{
+				/* the first IP header is the innermost IPv4 header with
+				   value(RND) = 0 */
+				innermost_ip_hdr = 1;
+			}
+			else
+			{
+				rohc_debugf(0, "extension 2 for UOR-2-ID must contain at least one "
+				            "IPv4 header with a non-random IP-ID\n");
 				goto error;
 			}
+			rohc_debugf(3, "IP header #%d is the innermost IPv4 header with a "
+			            "non-random IP-ID\n", innermost_ip_hdr);
 
-			f_byte |= (g_context->ip_flags.info.v4.id_delta >> 8) & 0x07;
-			s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
+			if(innermost_ip_hdr == 1)
+			{
+				f_byte |= (g_context->ip_flags.info.v4.id_delta >> 8) & 0x07;
+				rohc_debugf(3, "3 bits of outer IP-ID = 0x%x\n", f_byte & 0x07);
+				s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
+				rohc_debugf(3, "8 bits of outer IP-ID = 0x%x\n", s_byte & 0xff);
+			}
+			else
+			{
+				f_byte |= (g_context->ip2_flags.info.v4.id_delta >> 8) & 0x07;
+				rohc_debugf(3, "3 bits of inner IP-ID = 0x%x\n", f_byte & 0x07);
+				s_byte = g_context->ip2_flags.info.v4.id_delta & 0xff;
+				rohc_debugf(3, "8 bits of inner IP-ID = 0x%x\n", s_byte & 0xff);
+			}
 			t_byte = ts_send & 0xff;
+			rohc_debugf(3, "8 bits of TS = 0x%x\n", t_byte & 0xff);
 			break;
 		}
 
@@ -5834,11 +5938,22 @@ int code_EXT3_packet(const struct c_context *context,
 		 * otherwise I is always set to 0 */
 		if(ip_get_version(ip) == IPV4)
 		{
-			if((nr_ip_id_bits > 0 && g_context->ip_flags.info.v4.rnd == 0) ||
-			   (g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT &&
-			    g_context->ip_flags.info.v4.rnd == 0))
+			if(g_context->ip_flags.info.v4.rnd == 0)
 			{
-				I = 1;
+				if(g_context->tmp_variables.packet_type != PACKET_UOR_2_ID &&
+				   nr_ip_id_bits > 0)
+				{
+					I = 1;
+				}
+				else if(g_context->tmp_variables.packet_type == PACKET_UOR_2_ID &&
+				        nr_ip_id_bits > 5)
+				{
+					I = 1;
+				}
+				else if(g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
+				{
+					I = 1;
+				}
 			}
 			f_byte |= (I & 0x01) << 2;
 		}
@@ -5858,11 +5973,22 @@ int code_EXT3_packet(const struct c_context *context,
 		 * otherwise I is always set to 0 */
 		if(ip_get_version(ip2) == IPV4)
 		{
-			if((nr_ip_id_bits2 > 0 && g_context->ip2_flags.info.v4.rnd == 0) ||
-			   (g_context->ip2_flags.info.v4.rnd_count < MAX_FO_COUNT &&
-			    g_context->ip2_flags.info.v4.rnd == 0))
+			if(g_context->ip2_flags.info.v4.rnd == 0)
 			{
-				I = 1;
+				if(g_context->tmp_variables.packet_type != PACKET_UOR_2_ID &&
+				   nr_ip_id_bits2 > 0)
+				{
+					I = 1;
+				}
+				else if(g_context->tmp_variables.packet_type == PACKET_UOR_2_ID &&
+				        nr_ip_id_bits2 > 5)
+				{
+					I = 1;
+				}
+				else if(g_context->ip2_flags.info.v4.rnd_count < MAX_FO_COUNT)
+				{
+					I = 1;
+				}
 			}
 			f_byte |= (I & 0x01) << 2;
 		}
@@ -5935,11 +6061,11 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 6 */
 		if(ip_get_version(ip) == IPV4 && I)
 		{
-			uint16_t id;
+			uint16_t id_encoded;
 
-			/* always transmit IP-ID in Network Byte Order */
-			id = ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo);
-			memcpy(&dest[counter], &id, 2);
+			/* always transmit the IP-ID encoded, in Network Byte Order */
+			id_encoded = htons((uint16_t)(g_context->ip_flags.info.v4.id_delta & 0xffff));
+			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
 			            dest[counter], dest[counter + 1]);
 			counter += 2;
@@ -6012,11 +6138,11 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 6 */
 		if(ip_get_version(ip2) == IPV4 && I)
 		{
-			uint16_t id;
+			uint16_t id_encoded;
 
-			/* always transmit IP-ID in Network Byte Order */
-			id = ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo);
-			memcpy(&dest[counter], &id, 2);
+			/* always transmit the IP-ID encoded, in Network Byte Order */
+			id_encoded = htons((uint16_t)(g_context->ip2_flags.info.v4.id_delta & 0xffff));
+			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
 			            dest[counter], dest[counter + 1]);
 			counter += 2;

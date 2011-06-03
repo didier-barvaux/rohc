@@ -50,27 +50,6 @@ struct d_rtp_context
 	/// The LSB-encoded Timestamp
 	struct d_lsb_decode ts;
 
-	/// Timestamp
-	unsigned int timestamp;
-
-	/// The field received to decode TS
-	int ts_received;
-
-	/// The size of the field received to decode TS
-	int ts_received_size;
-
-	/// Padding field
-	int rp;
-
-	/// Extension field
-	int rx;
-
-	/// Payload Type field
-	int pt;
-
-	/// RTP Marker
-	int m;
-
 	/// The structure to decompress TS_SRIDE
 	struct ts_sc_decomp ts_sc;
 };

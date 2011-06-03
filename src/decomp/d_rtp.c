@@ -151,10 +151,6 @@ void * d_rtp_create(void)
 	/* set next header to UDP */
 	context->next_header_proto = IPPROTO_UDP;
 
-	/* init timestamp and TS received variables */
-	rtp_context->timestamp = 0;
-	rtp_context->ts_received = 0;
-
 	/* init the scaled RTP Timestamp decoding */
 	d_create_sc(&rtp_context->ts_sc);
 
@@ -599,10 +595,8 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	/* part 3 */
 	byte = *packet;
 	rtp->m = (byte >> 7) & 0x01;
-	rtp_context->m = rtp->m;
 	rohc_debugf(3, "M = 0x%x\n", rtp->m);
 	rtp->pt = byte & 0x7f;
-	rtp_context->pt = rtp->pt;
 	rohc_debugf(3, "payload type = %d / 0x%x\n", ntohs(rtp->pt), rtp->pt);
 	packet++;
 	read++;
@@ -625,19 +619,10 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 	/* part 5 */
 	rtp->timestamp = *((uint32_t *) packet);
-	if(rtp_context->timestamp != 0)
-	{
-		/* we can evaluate TS delta */
-		rtp_context->ts_received = ntohl(rtp->timestamp) - rtp_context->timestamp;
-	}
-
-	/* add the timestamp to the context */
-	rtp_context->timestamp = ntohl(rtp->timestamp);
-
 	read += 4;
 	packet += 4;
 	length -= 4;
-	rohc_debugf(3, "timestamp = 0x%x\n", rtp_context->timestamp);
+	rohc_debugf(3, "timestamp = 0x%x\n", ntohl(rtp->timestamp));
 
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)

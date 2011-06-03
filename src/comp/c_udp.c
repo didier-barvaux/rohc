@@ -26,6 +26,8 @@
 #include "rohc_packets.h"
 #include "crc.h"
 
+#include <stdlib.h>
+
 
 /*
  * Private function prototypes.

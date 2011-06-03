@@ -58,11 +58,8 @@ struct rtp_tmp_variables
 	/// The TS field to send (ts_scaled or ts)
 	int ts_send;
 
-	/// The M bit of the RTP message
-	int m;
-
-	/// Whether the M bit changed or not
-	int m_changed;
+	/// Whether the M bit is set in the RTP header or not
+	int m_set;
 
 	/// Whether the Payload Type (PT) field changed or not
 	int rtp_pt_changed;

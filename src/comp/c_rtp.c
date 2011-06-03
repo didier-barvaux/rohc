@@ -28,6 +28,7 @@
 #include "sdvl.h"
 #include "crc.h"
 
+#include <stdlib.h>
 #include <assert.h>
 
 
@@ -145,8 +146,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->tmp_variables.timestamp = 0;
 	rtp_context->tmp_variables.ts_send = 0;
 	rtp_context->tmp_variables.nr_ts_bits = 0;
-	rtp_context->tmp_variables.m = 0;
-	rtp_context->tmp_variables.m_changed = 0;
+	rtp_context->tmp_variables.m_set = 0;
 	rtp_context->tmp_variables.rtp_pt_changed = 0;
 
 	/* init the RTP-specific variables and functions */
@@ -404,14 +404,6 @@ void rtp_decide_state(struct c_context *const context)
 		/* init ts_stride but timestamp is constant so we stay in IR */
 		rohc_debugf(3, "init ts_stride but timestamp is constant -> stay in IR\n");
 		change_state(context, IR);
-	}
-	else if(rtp_context->tmp_variables.send_rtp_dynamic == 1 &&
-	        rtp_context->tmp_variables.m_changed == 1 &&
-	        context->state != IR)
-	{
-		/* only M bit changed */
-		rohc_debugf(3, "only M bit changed -> stay in FO\n");
-		change_state(context, FO);
 	}
 	else if(rtp_context->ts_sc.state == INIT_STRIDE &&
 	        context->state != IR &&
@@ -706,15 +698,17 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 		fields++;
 	}
 
-	/* check RTP Marker field */
-	if(rtp->m != rtp_context->old_rtp.m)
+	/* check RTP Marker field: remember its value but do not count it
+	 * as a changed field since it is not stored in the context */
+	if(rtp->m != 0)
 	{
-		rohc_debugf(3, "RTP M field changed\n");
-		rtp_context->tmp_variables.m_changed = 1;
-		fields++;
+		rohc_debugf(3, "RTP Marker (M) bit is set\n");
+		rtp_context->tmp_variables.m_set = 1;
 	}
 	else
-		rtp_context->tmp_variables.m_changed = 0;
+	{
+		rtp_context->tmp_variables.m_set = 0;
+	}
 
 	/* check RTP Payload Type field */
 	if(rtp->pt != rtp_context->old_rtp.pt ||
