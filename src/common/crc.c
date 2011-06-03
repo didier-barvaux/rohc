@@ -248,7 +248,7 @@ unsigned int compute_crc_static(const unsigned char *ip,
 		/* IPv4 */
 		if(version == IPV4)
 		{
-			struct iphdr *ip2_hdr = (struct iphdr *) ip;
+			struct iphdr *ip2_hdr = (struct iphdr *) ip2;
 
 			/* bytes 1-2 (Version, Header length, TOS) */
 			crc = crc_calculate(crc_type,
