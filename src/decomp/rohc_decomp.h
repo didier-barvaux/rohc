@@ -78,7 +78,7 @@ struct d_statistics
 	/// The number of bad decompressions due to being in the No Context state
 	unsigned int packets_failed_no_context;
 	/// The number of bad decompressions
-	unsigned int packets_failed_package;
+	unsigned int packets_failed_decompression;
 	/// The number of feedback packets sent to the associated compressor
 	unsigned int packets_feedback;
 };

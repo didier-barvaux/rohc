@@ -28,7 +28,7 @@
 
 /**
  * @brief Create one compression_list
- * @return 1 if successfull, 0 otherwise
+ * @return 1 if successful, 0 otherwise
  */
 int create_list(struct c_list * list)
 {
@@ -322,7 +322,7 @@ end:
  * @param item the element to insert
  * @param index the position
  * @param index_table the index in based_table
- * @return 1 if successfull, 0 else
+ * @return 1 if successful, 0 else
  */
 int insert_elt(struct c_list * list, struct item * item, int index, int index_table)
 {

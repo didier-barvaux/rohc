@@ -525,7 +525,7 @@ end:
  * @brief Check if the gen_id is present in list table
  * @param decomp The list decompressor
  * @param gen_id The specified id
- * @return 1 if successfull, 0 else
+ * @return 1 if successful, 0 else
  */
 int check_id(struct list_decomp * decomp, int gen_id)
 {
@@ -555,7 +555,7 @@ int check_id(struct list_decomp * decomp, int gen_id)
  *
  * @param decomp The list decompressor
  * @param index The specified index
- * @return 1 if successfull, 0 else
+ * @return 1 if successful, 0 else
  */
 int check_ip6_index(struct list_decomp * decomp, int index)
 {
@@ -1764,7 +1764,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		}
 
 		/* reset the correction counter */
-		g_context->counter = 0;
+		g_context->correction_counter = 0;
 
 		/* set the state to Full Context */
 		context->state = FULL_CONTEXT;
@@ -3140,11 +3140,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
 	 * packets are therefore thrown away. */
-	if(g_context->counter == 1)
+	if(g_context->correction_counter == 1)
 	{
 		rohc_debugf(2, "throw away packet, just 2 CRC-valid packets so far\n");
 
-		g_context->counter++;
+		g_context->correction_counter++;
 
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
@@ -3165,16 +3165,16 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 		goto error_crc;
 	}
-	else if(g_context->counter == 2)
+	else if(g_context->correction_counter == 2)
 	{
-		g_context->counter = 0;
+		g_context->correction_counter = 0;
 		rohc_debugf(2, "the repair is deemed successful\n");
 	}
-	else if(g_context->counter != 0)
+	else if(g_context->correction_counter != 0)
 	{
 		rohc_debugf(0, "CRC-valid counter not valid (%d)\n",
-		            g_context->counter);
-		g_context->counter = 0;
+		            g_context->correction_counter);
+		g_context->correction_counter = 0;
 		goto error_crc;
 	}
 
@@ -3880,11 +3880,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
 	 * packets are therefore thrown away. */
-	if(g_context->counter == 1)
+	if(g_context->correction_counter == 1)
 	{
 		rohc_debugf(2, "throw away packet, just 2 CRC-valid packets so far\n");
 
-		g_context->counter++;
+		g_context->correction_counter++;
 
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
@@ -3905,16 +3905,16 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		goto error_crc;
 	}
-	else if(g_context->counter == 2)
+	else if(g_context->correction_counter == 2)
 	{
-		g_context->counter = 0;
+		g_context->correction_counter = 0;
 		rohc_debugf(2, "the repair is deemed successful\n");
 	}
-	else if(g_context->counter != 0)
+	else if(g_context->correction_counter != 0)
 	{
 		rohc_debugf(0, "CRC-valid counter not valid (%d)\n",
-		            g_context->counter);
-		g_context->counter = 0;
+		            g_context->correction_counter);
+		g_context->correction_counter = 0;
 		goto error_crc;
 	}
 
@@ -4998,11 +4998,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
 	 * packets are therefore thrown away. */
-	if(g_context->counter == 1)
+	if(g_context->correction_counter == 1)
 	{
 		rohc_debugf(2, "throw away packet, just 2 CRC-valid packets so far\n");
 
-		g_context->counter++;
+		g_context->correction_counter++;
 
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
@@ -5023,16 +5023,16 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		goto error_crc;
 	}
-	else if(g_context->counter == 2)
+	else if(g_context->correction_counter == 2)
 	{
-		g_context->counter = 0;
+		g_context->correction_counter = 0;
 		rohc_debugf(2, "the repair is deemed successful\n");
 	}
-	else if(g_context->counter != 0)
+	else if(g_context->correction_counter != 0)
 	{
 		rohc_debugf(0, "CRC-valid counter not valid (%d)\n",
-		            g_context->counter);
-		g_context->counter = 0;
+		            g_context->correction_counter);
+		g_context->correction_counter = 0;
 		goto error_crc;
 	}
 
@@ -5197,7 +5197,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* reset the correction counter */
-	g_context->counter = 0;
+	g_context->correction_counter = 0;
 
 	/* build the IP headers */
 	if(g_context->multiple_ip)
