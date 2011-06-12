@@ -619,10 +619,11 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			/* how many bytes are required by SDVL to encode TS_STRIDE ? */
 			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, 0 /* length detection */);
 			assert(ts_stride_sdvl_len > 0 && ts_stride_sdvl_len < 5);
-			if(ts_stride_sdvl_len <= 0 || ts_stride_sdvl_len > 4);
+			if(ts_stride_sdvl_len <= 0 || ts_stride_sdvl_len > 4)
 			{
 				rohc_debugf(0, "failed to determine the number of bits required to "
-				            "SDVL-encode TS_STRIDE %u\n", ts_stride);
+				            "SDVL-encode TS_STRIDE %u (%zd)\n", ts_stride,
+				            ts_stride_sdvl_len);
 				/* TODO: should handle error */
 			}
 
