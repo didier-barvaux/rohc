@@ -56,25 +56,25 @@ typedef enum
 struct ts_sc_comp
 {
 	/// The TS_STRIDE value
-	int ts_stride;
+	uint32_t ts_stride;
 
 	/// The TS_SCALED value
-	int ts_scaled;
+	uint32_t ts_scaled;
 	/// A window used to encode the TS_SCALED value
 	struct c_wlsb *scaled_window;
 
 	/// The TS_OFFSET value
-	int ts_offset;
+	uint32_t ts_offset;
 
 	/// The timestamp (TS)
-	unsigned int ts;
+	uint32_t ts;
 	/// The previous timestamp
-	unsigned int old_ts;
+	uint32_t old_ts;
 
 	/// The sequence number (SN)
-	unsigned int sn;
+	uint16_t sn;
 	/// The previous sequence number
-	unsigned int old_sn;
+	uint16_t old_sn;
 
 	/// Whether timestamp is deductible from SN or not
 	int is_deductible;
@@ -83,7 +83,7 @@ struct ts_sc_comp
 	ts_sc_state state;
 
 	/// The difference between old and current TS
-	int ts_delta;
+	uint32_t ts_delta;
 };
 
 
@@ -92,23 +92,20 @@ struct ts_sc_comp
  * Function prototypes
  */
 
-int c_create_sc(struct ts_sc_comp *ts_sc);
-void c_destroy_sc(struct ts_sc_comp *ts_sc);
+int c_create_sc(struct ts_sc_comp *const ts_sc);
+void c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
-void c_add_ts(struct ts_sc_comp *ts_sc, unsigned int ts, unsigned int sn);
+void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t sn);
 
-int nb_bits_stride(struct ts_sc_comp ts_sc);
-int nb_bits_scaled(struct ts_sc_comp ts_sc);
+int nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr);
 
-void add_stride(struct ts_sc_comp *ts_sc, int sn);
-void add_scaled(struct ts_sc_comp *ts_sc, int sn);
+void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn);
 
-int get_ts_stride(struct ts_sc_comp ts_sc);
-int get_ts_scaled(struct ts_sc_comp ts_sc);
-int get_ts_offset(struct ts_sc_comp ts_sc);
+uint32_t get_ts_stride(const struct ts_sc_comp ts_sc);
+uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc);
 
-int is_deductible(struct ts_sc_comp ts_sc);
-int is_ts_constant(struct ts_sc_comp ts_sc);
+int is_deductible(const struct ts_sc_comp ts_sc);
+int is_ts_constant(const struct ts_sc_comp ts_sc);
 
 
 #endif

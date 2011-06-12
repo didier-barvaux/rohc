@@ -15,44 +15,19 @@
  */
 
 /**
- * @file sdvl.h
- * @brief Self-Describing Variable-Length (SDVL) encoding
+ * @file interval.h
+ * @brief Compute the interpretation interval for LSB and W-LSB encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
-#ifndef SDVL_H
-#define SDVL_H
+#ifndef INTERVAL_H
+#define INTERVAL_H
 
 #include <stdlib.h>
 #include <stdint.h>
 
-
-/*
- * Constants related to fields length for SDVL-encoding
- */
-
-/** Maximum number of bits in 1 SDVL-encoded byte */
-#define MAX_BITS_IN_1_BYTE_SDVL 7
-/** Maximum number of bits in 2 SDVL-encoded byte */
-#define MAX_BITS_IN_2_BYTE_SDVL 14
-/** Maximum number of bits in 3 SDVL-encoded byte */
-#define MAX_BITS_IN_3_BYTE_SDVL 21
-/** Maximum number of bits in 4 SDVL-encoded byte */
-#define MAX_BITS_IN_4_BYTE_SDVL 29
-
-/*
- * Function prototypes.
- */
-
-size_t c_bytesSdvl(uint32_t value, size_t length);
-
-int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length);
-
-int d_sdvalue_size(const unsigned char *data);
-
-int d_sdvalue_decode(const unsigned char *data);
-
+void f(const uint32_t v_ref, const size_t k, const int32_t p,
+       uint32_t *const min, uint32_t *const max);
 
 #endif
 

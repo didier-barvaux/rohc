@@ -24,7 +24,8 @@
 #ifndef LSB_H
 #define LSB_H
 
-#include "wlsb.h"
+#include <stdlib.h>
+#include <stdint.h>
 
 
 /**
@@ -33,11 +34,11 @@
 struct d_lsb_decode
 {
 	/// The current reference value
-	int v_ref_d;
+	uint32_t v_ref_d;
 	/// The previous reference value
-	int old_v_ref_d;
+	uint32_t old_v_ref_d;
 	/// The p shift parameter (see 4.5.1 in the RFC 3095)
-	int p;
+	short p;
 };
 
 
@@ -45,18 +46,25 @@ struct d_lsb_decode
  * Function prototypes
  */
 
-void d_lsb_update(struct d_lsb_decode *s, int v_ref_d);
+void d_lsb_init(struct d_lsb_decode *const lsb,
+                const uint32_t v_ref_d,
+                const short p);
 
-void d_lsb_sync_ref(struct d_lsb_decode *s);
+int d_lsb_decode32(const struct d_lsb_decode *const lsb,
+                   const uint32_t m,
+                   const size_t k,
+                   uint32_t *const decoded);
+int d_lsb_decode16(const struct d_lsb_decode *const lsb,
+                   const uint16_t m,
+                   const size_t k,
+                   uint16_t *const decoded);
 
-int d_get_lsb_old_ref(struct d_lsb_decode *s);
+void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d);
 
-int d_lsb_decode(struct d_lsb_decode *s, int m, int length);
+void d_lsb_sync_ref(struct d_lsb_decode *const lsb);
 
-void d_lsb_init(struct d_lsb_decode *s, int v_ref_d, int p);
-
-int d_get_lsb_ref(struct d_lsb_decode *s);
-
+uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb);
+uint32_t d_get_lsb_old_ref(struct d_lsb_decode *const lsb);
 
 #endif
 

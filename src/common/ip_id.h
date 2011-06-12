@@ -24,7 +24,8 @@
 #ifndef IP_ID_H
 #define IP_ID_H
 
-#include "wlsb.h"
+#include <stdlib.h>
+#include <stdint.h>
 
 
 /**
@@ -33,8 +34,8 @@
  */
 struct d_ip_id_decode
 {
-	int id_ref; ///< The reference IP-ID
-	int sn_ref; ///< The reference Sequence Number (SN)
+	uint16_t id_ref; ///< The reference IP-ID
+	uint16_t sn_ref; ///< The reference Sequence Number (SN)
 };
 
 
@@ -42,12 +43,19 @@ struct d_ip_id_decode
  * Function prototypes.
  */
 
-void d_ip_id_init(struct d_ip_id_decode *s, int id_ref, int sn_ref);
+void d_ip_id_init(struct d_ip_id_decode *const ip_id,
+                  const uint16_t ip_id_ref,
+                  const uint16_t sn_ref);
 
-int d_ip_id_decode(struct d_ip_id_decode *s, int m, int length, int sn);
+int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
+                   const uint16_t m,
+                   const size_t k,
+                   const uint16_t sn,
+                   uint16_t *const decoded);
 
-void d_ip_id_update(struct d_ip_id_decode *s, int id_ref, int sn_ref);
-
+void d_ip_id_update(struct d_ip_id_decode *const ip_id,
+                    const uint16_t id_ref,
+                    const uint16_t sn_ref);
 
 #endif
 

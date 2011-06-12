@@ -145,7 +145,9 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->tmp_variables.send_rtp_dynamic = -1;
 	rtp_context->tmp_variables.timestamp = 0;
 	rtp_context->tmp_variables.ts_send = 0;
+	/* do not transmit any RTP TimeStamp (TS) bit by default */
 	rtp_context->tmp_variables.nr_ts_bits = 0;
+	/* RTP Marker (M) bit is not set by default */
 	rtp_context->tmp_variables.m_set = 0;
 	rtp_context->tmp_variables.rtp_pt_changed = 0;
 
@@ -608,22 +610,32 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		if(tss)
 		{
 			uint32_t ts_stride;
-			unsigned short ts_stride_sdvl_len;
+			size_t ts_stride_sdvl_len;
 			int ret;
 
 			/* get the TS_STRIDE to send in packet */
 			ts_stride = get_ts_stride(rtp_context->ts_sc);
 
 			/* how many bytes are required by SDVL to encode TS_STRIDE ? */
-			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, -1);
-			assert(ts_stride_sdvl_len >= 1 && ts_stride_sdvl_len <= 4);
+			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, 0 /* length detection */);
+			assert(ts_stride_sdvl_len > 0 && ts_stride_sdvl_len < 5);
+			if(ts_stride_sdvl_len <= 0 || ts_stride_sdvl_len > 4);
+			{
+				rohc_debugf(0, "failed to determine the number of bits required to "
+				            "SDVL-encode TS_STRIDE %u\n", ts_stride);
+				/* TODO: should handle error */
+			}
 
-			rohc_debugf(3, "send ts_stride = 0x%08x encoded with SDVL "
-			            "on %u bytes\n", ts_stride, ts_stride_sdvl_len);
+			rohc_debugf(3, "send ts_stride = 0x%08x encoded with SDVL on %zd bytes\n",
+			            ts_stride, ts_stride_sdvl_len);
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
-			ret = c_encodeSdvl(&dest[counter], ts_stride, -1);
-			assert(ret == 1);
+			ret = c_encodeSdvl(&dest[counter], ts_stride, 0 /* length detection */);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to SDVL-encode TS_STRIDE %u\n", ts_stride);
+				/* TODO: should handle error */
+			}
 
 			/* skip the bytes used to encode TS_STRIDE in SDVL */
 			counter += ts_stride_sdvl_len;

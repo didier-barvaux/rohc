@@ -32,6 +32,7 @@
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_bit_ops.h"
+#include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
 
@@ -1846,9 +1847,9 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += is_addcid_used + rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, 0, is_addcid_used + rohc_header_len);
+	c_add_wlsb(context->header_16_compressed, 0, is_addcid_used + rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
+	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -2851,9 +2852,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
-	unsigned int payload_len;
+	size_t payload_len;
 
+	/* helper variables for values returned by functions */
 	int size;
+	int ret;
 
 
 	if(g_context->active1->complist)
@@ -2873,7 +2876,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* check if the ROHC packet is large enough to read the second byte */
 	if(rohc_remain_len <= second_byte)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -2881,7 +2884,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	assert(GET_BIT_7(rohc_remain_data) == 0);
 	sn_bits = GET_BIT_3_6(rohc_remain_data);
 	sn_bits_nr = 4;
-	rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+	rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 	crc_packet = GET_BIT_0_2(rohc_remain_data);
 	rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 	/* part 3: large CID (handled elsewhere) */
@@ -2902,14 +2905,14 @@ int decode_uo0(struct rohc_decomp *decomp,
 		if(rohc_remain_len < 2)
 		{
 			rohc_debugf(0, "ROHC packet too small for random outer IP-ID bits "
-			            "(len = %u)\n", rohc_remain_len);
+			            "(len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
 		/* retrieve the full outer IP-ID value */
 		ip_id_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
 		ip_id_bits_nr = 16;
-		rohc_debugf(3, "%u outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+		rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -2929,14 +2932,14 @@ int decode_uo0(struct rohc_decomp *decomp,
 		if(rohc_remain_len < 2)
 		{
 			rohc_debugf(0, "ROHC packet too small for random inner IP-ID bits "
-			            "(len = %u)\n", rohc_remain_len);
+			            "(len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
 		/* retrieve the full inner IP-ID value */
 		ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
 		ip_id2_bits_nr = 16;
-		rohc_debugf(3, "%u inner IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+		rohc_debugf(3, "%zd inner IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -2972,8 +2975,13 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	sn_decoded = d_lsb_decode(&g_context->sn, sn_bits, sn_bits_nr);
-	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %u, bits = %u / 0x%x)\n",
+	ret = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	if(ret != 1)
+	{
+		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
+		goto error;
+	}
+	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
 	            sn_decoded, sn_decoded, sn_bits_nr, sn_bits, sn_bits);
 
 	/* decode outer IP-ID (IPv4 only) */
@@ -2985,12 +2993,18 @@ int decode_uo0(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ip_id_decoded = d_ip_id_decode(&g_context->ip_id1, ip_id_bits,
-			                               ip_id_bits_nr, sn_decoded);
+			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
+			                     sn_decoded, &ip_id_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
+				            ip_id_bits_nr, ip_id_bits);
+				goto error;
+			}
 		}
 
 		ipv4_set_id(&g_context->active1->ip, htons(ip_id_decoded));
-		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %u, "
+		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
 		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
 		            g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
 	}
@@ -3004,12 +3018,18 @@ int decode_uo0(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ip_id2_decoded = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits,
-			                                ip_id2_bits_nr, sn_decoded);
+			ret = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits, ip_id2_bits_nr,
+			                     sn_decoded, &ip_id2_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
+				            ip_id2_bits_nr, ip_id2_bits);
+				goto error;
+			}
 		}
 
 		ipv4_set_id(&g_context->active2->ip, htons(ip_id2_decoded));
-		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %u, "
+		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
 		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
 		            g_context->active2->rnd, ip_id2_bits_nr, ip_id2_bits);
 	}
@@ -3115,7 +3135,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	                                             CRC_TYPE_3, crc_computed);
 	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
 	                                              CRC_TYPE_3, crc_computed);
-	rohc_debugf(3, "CRC-3 on %u-byte uncompressed header = 0x%x\n",
+	rohc_debugf(3, "CRC-3 on %zd-byte uncompressed header = 0x%x\n",
 	            uncomp_header_len, crc_computed);
 
 	/* try to guess the correct SN value in case of failure */
@@ -3125,7 +3145,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
 		            crc_computed, crc_packet);
-		rohc_debugf(3, "uncompressed headers (length = %u): ", uncomp_header_len);
+		rohc_debugf(3, "uncompressed headers (length = %zd): ", uncomp_header_len);
 		for(i = 0; i < uncomp_header_len; i++)
 		{
 			rohc_debugf_(3, "0x%02x ", uncomp_packet[i - uncomp_header_len]);
@@ -3172,7 +3192,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 	else if(g_context->correction_counter != 0)
 	{
-		rohc_debugf(0, "CRC-valid counter not valid (%d)\n",
+		rohc_debugf(0, "CRC-valid counter not valid (%u)\n",
 		            g_context->correction_counter);
 		g_context->correction_counter = 0;
 		goto error_crc;
@@ -3213,11 +3233,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
+	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
 	            payload_len, rohc_header_len);
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC UO-0 header (%u bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC UO-0 header (%zd bytes) and payload (%zd bytes) "
 		            "do not match the full ROHC UO-0 packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -3229,9 +3249,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
+	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
+	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -3445,7 +3465,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 	const unsigned char *payload_data;
 	size_t payload_len;
 
+	/* helper variables for values returned by functions */
 	int size;
+	int ret;
 
 
 	/* check packet usage */
@@ -3482,7 +3504,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* check if the ROHC packet is large enough to read the second byte */
 	if(rohc_remain_len <= second_byte)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -3495,12 +3517,12 @@ int decode_uo1(struct rohc_decomp *decomp,
 			assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
 			ip_id_bits = GET_BIT_0_5(rohc_remain_data);
 			ip_id_bits_nr = 6;
-			rohc_debugf(3, "%u outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 5-bit SN + 3-bit CRC */
 			sn_bits = GET_BIT_3_7(rohc_remain_data + second_byte);
 			sn_bits_nr = 5;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -3512,14 +3534,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 			assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
 			ts_bits = GET_BIT_0_5(rohc_remain_data);
 			ts_bits_nr = 6;
-			rohc_debugf(3, "%u TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 			rtp_m_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			rohc_debugf(3, "1-bit RTP Marker (M) = %u\n", rtp_m_flag);
 			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
 			sn_bits_nr = 4;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -3532,14 +3554,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 			assert(GET_BIT_5(rohc_remain_data) == 0);
 			ip_id_bits = GET_BIT_0_4(rohc_remain_data);
 			ip_id_bits_nr = 5;
-			rohc_debugf(3, "%u outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 			rtp_m_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			rohc_debugf(3, "1-bit RTP Marker (M) = %u\n", rtp_m_flag);
 			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
 			sn_bits_nr = 4;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -3552,14 +3574,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 			assert(GET_BIT_5(rohc_remain_data) != 0);
 			ts_bits = GET_BIT_0_4(rohc_remain_data);
 			ts_bits_nr = 5;
-			rohc_debugf(3, "%u TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 			rtp_m_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			rohc_debugf(3, "1-bit RTP Marker (M) = %u\n", rtp_m_flag);
 			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
 			sn_bits_nr = 4;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -3589,7 +3611,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		if(rohc_remain_len < 2)
 		{
 			rohc_debugf(0, "ROHC packet too small for random outer IP-ID bits "
-			            "(len = %u)\n", rohc_remain_len);
+			            "(len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -3606,7 +3628,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		ip_id_bits_nr = 16;
 
 		rohc_debugf(3, "replace any existing outer IP-ID bits with the ones "
-		            "found at the end of the UO-1* packet (0x%x on %u bits)\n",
+		            "found at the end of the UO-1* packet (0x%x on %zd bits)\n",
 		            ip_id_bits, ip_id_bits_nr);
 
 		rohc_remain_data += 2;
@@ -3628,7 +3650,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		if(rohc_remain_len < 2)
 		{
 			rohc_debugf(0, "ROHC packet too small for random inner IP-ID bits "
-			            "(len = %u)\n", rohc_remain_len);
+			            "(len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -3645,7 +3667,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		ip_id2_bits_nr = 16;
 
 		rohc_debugf(3, "replace any existing inner IP-ID bits with the ones "
-		            "found at the end of the UO-1* packet (0x%x on %u bits)\n",
+		            "found at the end of the UO-1* packet (0x%x on %zd bits)\n",
 		            ip_id2_bits, ip_id2_bits_nr);
 
 		rohc_remain_data += 2;
@@ -3683,8 +3705,13 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	sn_decoded = d_lsb_decode(&g_context->sn, sn_bits, sn_bits_nr);
-	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %u, bits = %u / 0x%x)\n",
+	ret = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	if(ret != 1)
+	{
+		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
+		goto error;
+	}
+	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
 	            sn_decoded, sn_decoded, sn_bits_nr, sn_bits, sn_bits);
 
 	/* decode outer IP-ID (IPv4 only) */
@@ -3696,12 +3723,18 @@ int decode_uo1(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ip_id_decoded = d_ip_id_decode(&g_context->ip_id1, ip_id_bits,
-			                               ip_id_bits_nr, sn_decoded);
+			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
+			                     sn_decoded, &ip_id_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
+				            ip_id_bits_nr, ip_id_bits);
+				goto error;
+			}
 		}
 
 		ipv4_set_id(&g_context->active1->ip, htons(ip_id_decoded));
-		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %u, "
+		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
 		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
 		            g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
 	}
@@ -3715,12 +3748,18 @@ int decode_uo1(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ip_id2_decoded = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits,
-			                                ip_id2_bits_nr, sn_decoded);
+			ret = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits, ip_id2_bits_nr,
+			                     sn_decoded, &ip_id2_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
+				            ip_id2_bits_nr, ip_id2_bits);
+				goto error;
+			}
 		}
 
 		ipv4_set_id(&g_context->active2->ip, htons(ip_id2_decoded));
-		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %u, "
+		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
 		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
 		            g_context->active2->rnd, ip_id2_bits_nr, ip_id2_bits);
 	}
@@ -3731,12 +3770,18 @@ int decode_uo1(struct rohc_decomp *decomp,
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
 
-		rohc_debugf(3, "%u-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
+		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
 
 		if(is_ts_scaled)
 		{
 			rohc_debugf(3, "TS is scaled\n");
-			ts_decoded = d_decode_ts(&rtp_context->ts_sc, ts_bits, ts_bits_nr);
+			ret = d_decode_ts(&rtp_context->ts_sc, ts_bits, ts_bits_nr, &ts_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
+				            ts_bits_nr, ts_bits);
+				goto error;
+			}
 		}
 		else if(ts_bits_nr == 0)
 		{
@@ -3749,7 +3794,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 			ts_decoded = ts_bits;
 		}
 
-		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %u, "
+		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
 		            "bits = %u / 0x%x)\n", ts_decoded, ts_decoded,
 		            ts_bits_nr, ts_bits, ts_bits);
 	}
@@ -3855,7 +3900,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	                                             CRC_TYPE_3, crc_computed);
 	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
 	                                              CRC_TYPE_3, crc_computed);
-	rohc_debugf(3, "CRC-3 on %u-byte uncompressed header = 0x%x\n",
+	rohc_debugf(3, "CRC-3 on %zd-byte uncompressed header = 0x%x\n",
 	            uncomp_header_len, crc_computed);
 
 	/* try to guess the correct SN value in case of failure */
@@ -3865,7 +3910,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
 		            crc_computed, crc_packet);
-		rohc_debugf(3, "uncompressed headers (length = %u): ", uncomp_header_len);
+		rohc_debugf(3, "uncompressed headers (length = %zd): ", uncomp_header_len);
 		for(i = 0; i < uncomp_header_len; i++)
 		{
 			rohc_debugf_(3, "0x%02x ", uncomp_packet[i - uncomp_header_len]);
@@ -3912,7 +3957,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 	else if(g_context->correction_counter != 0)
 	{
-		rohc_debugf(0, "CRC-valid counter not valid (%d)\n",
+		rohc_debugf(0, "CRC-valid counter not valid (%u)\n",
 		            g_context->correction_counter);
 		g_context->correction_counter = 0;
 		goto error_crc;
@@ -3953,11 +3998,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
+	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
 	            payload_len, rohc_header_len);
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC UO-1 header (%u bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC UO-1 header (%zd bytes) and payload (%zd bytes) "
 		            "do not match the full ROHC UO-1 packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -3969,9 +4014,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
+	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
+	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -4195,7 +4240,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 	const unsigned char *payload_data;
 	size_t payload_len;
 
+	/* helper variables for values returned by functions */
 	int size;
+	int ret;
 
 
 	/* check packet usage */
@@ -4232,7 +4279,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* check if the ROHC packet is large enough to read the second byte */
 	if(rohc_remain_len <= second_byte)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -4246,7 +4293,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
 			sn_bits = GET_BIT_0_4(rohc_remain_data);
 			sn_bits_nr = 5;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* first byte read, second byte is CRC (part 4) */
 			rohc_remain_data += second_byte;
@@ -4265,12 +4312,12 @@ int decode_uor2(struct rohc_decomp *decomp,
 			/* part 4a: 1-bit TS (ignored) + 1-bit M flag + 6-bit SN */
 			ts_bits |= GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			ts_bits_nr += 1;
-			rohc_debugf(3, "%u TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));
 			rohc_debugf(3, "M flag = %u\n", rtp_m_flag);
 			sn_bits = GET_BIT_0_5(rohc_remain_data + second_byte);
 			sn_bits_nr = 6;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			/* first and second bytes read, third byte is CRC (part 4b) */
 			rohc_remain_data += second_byte + 1;
 			rohc_remain_len -= second_byte + 1;
@@ -4284,14 +4331,14 @@ int decode_uor2(struct rohc_decomp *decomp,
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
 			ts_bits = GET_BIT_0_4(rohc_remain_data);
 			ts_bits_nr = 5;
-			rohc_debugf(3, "%u TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));
 			rohc_debugf(3, "M flag = %u\n", rtp_m_flag);
 			sn_bits = GET_BIT_0_5(rohc_remain_data + second_byte);
 			sn_bits_nr = 6;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			/* first and second bytes read, third byte is CRC (part 4b) */
 			rohc_remain_data += second_byte + 1;
 			rohc_remain_len -= second_byte + 1;
@@ -4316,14 +4363,14 @@ int decode_uor2(struct rohc_decomp *decomp,
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
 			ip_id_bits = GET_BIT_0_4(rohc_remain_data);
 			ip_id_bits_nr = 5;
-			rohc_debugf(3, "%u IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+			rohc_debugf(3, "%zd IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));
 			rohc_debugf(3, "M flag = %u\n", rtp_m_flag);
 			sn_bits = GET_BIT_0_5(rohc_remain_data + second_byte);
 			sn_bits_nr = 6;
-			rohc_debugf(3, "%u SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
 			/* first and second bytes read, third byte is CRC (part 4b) */
 			rohc_remain_data += second_byte + 1;
 			rohc_remain_len -= second_byte + 1;
@@ -4355,7 +4402,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		crc_packet = GET_BIT_0_6(rohc_remain_data);
 		crc_packet_size = 7;
 	}
-	rohc_debugf(3, "CRC-%u found in packet = 0x%02x\n",
+	rohc_debugf(3, "CRC-%zd found in packet = 0x%02x\n",
 	            crc_packet_size, crc_packet);
 
 	/* part 4: 1-bit X (extension) flag */
@@ -4394,7 +4441,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		/* check if the ROHC packet is large enough to read extension type */
 		if(rohc_remain_len < 1)
 		{
-			rohc_debugf(0, "ROHC packet too small for extension (len = %u)\n",
+			rohc_debugf(0, "ROHC packet too small for extension (len = %zd)\n",
 			            rohc_remain_len);
 			goto error;
 		}
@@ -4698,7 +4745,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		if(rohc_remain_len < 2)
 		{
 			rohc_debugf(0, "ROHC packet too small for random outer IP-ID bits "
-			            "(len = %u)\n", rohc_remain_len);
+			            "(len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -4715,7 +4762,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		ip_id_bits_nr = 16;
 
 		rohc_debugf(3, "replace any existing outer IP-ID bits with the ones "
-		            "found at the end of the UOR-2* packet (0x%x on %u bits)\n",
+		            "found at the end of the UOR-2* packet (0x%x on %zd bits)\n",
 		            ip_id_bits, ip_id_bits_nr);
 
 		rohc_remain_data += 2;
@@ -4737,7 +4784,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		if(rohc_remain_len < 2)
 		{
 			rohc_debugf(0, "ROHC packet too small for random inner IP-ID bits "
-			            "(len = %u)\n", rohc_remain_len);
+			            "(len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -4754,7 +4801,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		ip_id2_bits_nr = 16;
 
 		rohc_debugf(3, "replace any existing inner IP-ID bits with the ones "
-		            "found at the end of the UOR-2* packet (0x%x on %u bits)\n",
+		            "found at the end of the UOR-2* packet (0x%x on %zd bits)\n",
 		            ip_id2_bits, ip_id2_bits_nr);
 
 		rohc_remain_data += 2;
@@ -4792,8 +4839,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	sn_decoded = d_lsb_decode(&g_context->sn, sn_bits, sn_bits_nr);
-	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %u, bits = %u / 0x%x)\n",
+	ret = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	if(ret != 1)
+	{
+		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
+		goto error;
+	}
+	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
 	            sn_decoded, sn_decoded, sn_bits_nr, sn_bits, sn_bits);
 
 	/* decode outer IP-ID (IPv4 only) */
@@ -4805,12 +4857,19 @@ int decode_uor2(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ip_id_decoded = d_ip_id_decode(&g_context->ip_id1, ip_id_bits,
-			                               ip_id_bits_nr, sn_decoded);
+/* TODO */ rohc_debugf(3, "decode outer IP-ID (rnd = %d, nr bits = %zd, bits = 0x%x)\n", g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
+			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
+			                     sn_decoded, &ip_id_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
+				            ip_id_bits_nr, ip_id_bits);
+				goto error;
+			}
 		}
 
 		ipv4_set_id(&g_context->active1->ip, htons(ip_id_decoded));
-		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %u, "
+		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
 		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
 		            g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
 	}
@@ -4824,12 +4883,18 @@ int decode_uor2(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			ip_id2_decoded = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits,
-			                                ip_id2_bits_nr, sn_decoded);
+			ret = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits, ip_id2_bits_nr,
+			                     sn_decoded, &ip_id2_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
+				            ip_id2_bits_nr, ip_id2_bits);
+				goto error;
+			}
 		}
 
 		ipv4_set_id(&g_context->active2->ip, htons(ip_id2_decoded));
-		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %u, "
+		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
 		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
 		            g_context->active2->rnd, ip_id2_bits_nr, ip_id2_bits);
 	}
@@ -4840,12 +4905,18 @@ int decode_uor2(struct rohc_decomp *decomp,
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
 
-		rohc_debugf(3, "%u-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
+		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
 
 		if(is_ts_scaled)
 		{
 			rohc_debugf(3, "TS is scaled\n");
-			ts_decoded = d_decode_ts(&rtp_context->ts_sc, ts_bits, ts_bits_nr);
+			ret = d_decode_ts(&rtp_context->ts_sc, ts_bits, ts_bits_nr, &ts_decoded);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
+				            ts_bits_nr, ts_bits);
+				goto error;
+			}
 		}
 		else if(ts_bits_nr == 0)
 		{
@@ -4858,7 +4929,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 			ts_decoded = ts_bits;
 		}
 
-		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %u, "
+		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
 		            "bits = %u / 0x%x)\n", ts_decoded, ts_decoded,
 		            ts_bits_nr, ts_bits, ts_bits);
 	}
@@ -4973,7 +5044,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	                                             crc_type, crc_computed);
 	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
 	                                              crc_type, crc_computed);
-	rohc_debugf(3, "CRC on %u-byte uncompressed header = 0x%x\n",
+	rohc_debugf(3, "CRC on %zd-byte uncompressed header = 0x%x\n",
 	            uncomp_header_len, crc_computed);
 
 	/* try to guess the correct SN value in case of failure */
@@ -4983,7 +5054,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
 		            crc_computed, crc_packet);
-		rohc_debugf(3, "uncompressed headers (length = %u): ", uncomp_header_len);
+		rohc_debugf(3, "uncompressed headers (length = %zd): ", uncomp_header_len);
 		for(i = 0; i < uncomp_header_len; i++)
 		{
 			rohc_debugf_(3, "0x%02x ", uncomp_packet[i - uncomp_header_len]);
@@ -5030,7 +5101,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	}
 	else if(g_context->correction_counter != 0)
 	{
-		rohc_debugf(0, "CRC-valid counter not valid (%d)\n",
+		rohc_debugf(0, "CRC-valid counter not valid (%u)\n",
 		            g_context->correction_counter);
 		g_context->correction_counter = 0;
 		goto error_crc;
@@ -5073,11 +5144,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 	}
 	
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
+	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
 	            payload_len, rohc_header_len);
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC UOR-2 header (%u bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC UOR-2 header (%zd bytes) and payload (%zd bytes) "
 		            "do not match the full ROHC UOR-2 packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -5089,9 +5160,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
+	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
+	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -5258,9 +5329,9 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, 0, rohc_header_len);
+	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, 0, uncomp_header_len);
+	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 

@@ -30,6 +30,7 @@
 #include "comp_list.h"
 #include "ip.h"
 
+#include <stdlib.h>
 #include <netinet/ip.h>
 
 
@@ -84,7 +85,8 @@ struct ipv4_header_info
 	int old_nbo;
 
 	/// The delta between the IP-ID and the current Sequence Number (SN)
-	int id_delta;
+	/// (overflow over 16 bits is expected when SN > IP-ID)
+	uint16_t id_delta;
 };
 
 
@@ -155,11 +157,11 @@ struct generic_tmp_variables
 	int send_dynamic;
 
 	/// The number of bits needed to encode the Sequence Number (SN)
-	int nr_sn_bits;
+	size_t nr_sn_bits;
 	/// The number of bits needed to encode the IP-ID of the outer IP header
-	int nr_ip_id_bits;
+	size_t nr_ip_id_bits;
 	/// The number of bits needed to encode the IP-ID of the inner IP header
-	int nr_ip_id_bits2;
+	size_t nr_ip_id_bits2;
 
 	/// The type of packet the compressor must send: IR, IR-DYN, UO*
 	rohc_packet_t packet_type;

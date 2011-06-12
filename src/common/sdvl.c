@@ -25,6 +25,8 @@
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 
+#include <assert.h>
+
 
 /**
  * @brief Find out how many bytes are needed to represent the value using
@@ -33,15 +35,15 @@
  * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
  *
  * @param value  The value to encode
- * @param length The length of the value to encode (-1 to let the SDVL encoding
- *               find the length itself)
+ * @param length The length of the value to encode
+ *               (0 to let the SDVL encoding find the length itself)
  * @return       The size needed to represent the SDVL-encoded value
  */
-int c_bytesSdvl(int value, int length)
+size_t c_bytesSdvl(uint32_t value, size_t length)
 {
-	int size;
+	size_t size;
 
-	if(length < 0)
+	if(length == 0)
 	{
 		/* value length is unknown, find the length ourselves, then
 		 * find the length for SDVL-encoding */
@@ -90,26 +92,23 @@ int c_bytesSdvl(int value, int length)
  * @param dest   The destination to write the SDVL-encoded to
  * @param value  The value to encode
  * @param length The length of the value to encode
+ *               (0 to let the SDVL encoding find the length itself)
  * @return       1 if SDVL encoding is successful, 0 in case of failure
  *               (failure may be due to a value greater than 2^29)
  */
-int c_encodeSdvl(unsigned char *dest, int value, int length)
+int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length)
 {
-	int size;
+	size_t size;
 
 	/* check destination buffer validity */
-	if(dest == NULL)
-	{
-		goto error;
-	}
+	assert(dest != NULL);
 
-	/* find out the number of bytes needed to represent
-	 * the SDVL-encoded value */
+	/* find out the number of bytes needed to represent the SDVL-encoded value */
 	size = c_bytesSdvl(value, length);
-
-	/* check if the number of bytes needed is not too large (must be < 2^29) */
+	assert(size > 0 && size <= 5);
 	if(size > 4)
 	{
+		/* number of bytes needed is too large (value must be < 2^29) */
 		goto error;
 	}
 
@@ -140,6 +139,11 @@ int c_encodeSdvl(unsigned char *dest, int value, int length)
 		case 1:
 			/* bit pattern 0 */
 			*dest = value & 0x7f;
+			break;
+
+		default:
+			rohc_debugf(0, "invalid length (%zd) for SDVL encoding\n", size);
+			assert(0);
 			break;
 	}
 

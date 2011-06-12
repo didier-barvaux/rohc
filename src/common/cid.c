@@ -26,6 +26,7 @@
 #include "sdvl.h"
 
 #include <stdint.h>
+#include <assert.h>
 
 
 /*
@@ -79,19 +80,37 @@ int code_cid_values(const rohc_cid_type_t cid_type,
 	}
 	else /* large CID */
 	{
-		int len, i;
+		size_t len;
+		int ret;
+		size_t i;
 
 		*first_position = 0;
 		counter++;
-	
-		c_encodeSdvl(&dest[counter], cid, -1);
-		len = c_bytesSdvl(cid, -1);
-		
+
+		/* determine the size of the SDVL-encoded large CID */
+		len = c_bytesSdvl(cid, 0 /* length detection */);
+		assert(len > 0 && len <= 5);
+		if(len <= 0 || len > 4)
+		{
+			rohc_debugf(0, "failed to determine the number of bits required to "
+			            "SDVL-encode the large CID %d\n", cid);
+			/* TODO: should handle the error */
+		}
+
+		/* SDVL-encode the large CID */
+		ret = c_encodeSdvl(&dest[counter], cid, 0 /* length detection */);
+		if(ret != 1)
+		{
+			rohc_debugf(0, "failed to SDVL-encode the large CID %d\n", cid);
+			/* TODO: should handle the error */
+		}
+
+		/* print the SDVL-encoded large CID */
 		rohc_debugf(3, "SDVL-encoded large CID = ");
 		for(i = 0; i < len; i++)
 			rohc_debugf_(3, "0x%02x ", dest[counter + i]);
 		rohc_debugf_(3, "\n");
-		
+
 		counter += len;
 	}
 

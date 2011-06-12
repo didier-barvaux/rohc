@@ -22,6 +22,9 @@
  */
 
 #include "lsb.h"
+#include "interval.h" /* for the f() function */
+
+#include <assert.h>
 
 
 /**
@@ -29,47 +32,118 @@
  *
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
- * @param s       The LSB object to initialize
+ * @param lsb     The LSB object to initialize
  * @param v_ref_d The reference value
  * @param p       The p value used to efficiently encode the values
  */
-void d_lsb_init(struct d_lsb_decode *s, int v_ref_d, int p)
+void d_lsb_init(struct d_lsb_decode *const lsb,
+                const uint32_t v_ref_d,
+                const short p)
 {
-	s->p = p;
-	s->v_ref_d = v_ref_d;
-	s->old_v_ref_d = v_ref_d;
+	lsb->p = p;
+	lsb->v_ref_d = v_ref_d;
+	lsb->old_v_ref_d = v_ref_d;
 }
 
 
 /**
- * @brief Decode a LSB-encoded value
+ * @brief Decode a 32-bit LSB-encoded value
  *
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
- * @param s The LSB object used to decode
- * @param m The LSB value to decode
- * @param k The length of the LSB value to decode
- * @return  The decoded value
+ * @param lsb      The LSB object used to decode
+ * @param m        The LSB value to decode
+ * @param k        The length of the LSB value to decode
+ * @param decoded  OUT: The decoded value
+ * @return         1 in case of success, 0 otherwise
  */
-int d_lsb_decode(struct d_lsb_decode *s, int m, int k) {
+int d_lsb_decode32(const struct d_lsb_decode *const lsb,
+                   const uint32_t m,
+                   const size_t k,
+                   uint32_t *const decoded)
+{
+	uint32_t min;
+	uint32_t max;
+	uint32_t try;
+	uint32_t mask;
+	int is_success;
 
-	int min;
-	int max;
-	int tmp;
-	int mask = ((1 << k) - 1);
+	assert(lsb != NULL);
+	assert(k <= 32);
+	assert(decoded != NULL);
 
-	f(s->v_ref_d, k, s->p, &min, &max);
+	/* compute the mask for k bits (and avoid integer overflow) */
+	if(k == 32)
+	{
+		mask = 0xffffffff;
+	}
+	else
+	{
+		mask = ((1 << k) - 1);
+	}
 
-	tmp = min;
-	m &= mask;
+	/* determine the interval in which the decoded value should be present */
+	f(lsb->v_ref_d, k, lsb->p, &min, &max);
 
-	while(tmp <= max && (tmp & mask) != m)
-		tmp++;
+	/* search the value that matches the k lower bits of the value m to decode:
+	   try all values from the interval starting from the smallest one */
+	for(try = min; try <= max && (try & mask) != m; try++)
+	{
+		if((try & mask) == (m & mask))
+		{
+			/* corresponding value found */
+			break;
+		}
+	}
 
-	if((tmp & mask) != m)
-		tmp = -1;
+	if((try & mask) == (m & mask))
+	{
+		*decoded = try;
+		is_success = 1;
+	}
+	else
+	{
+		is_success = 0;
+	}
 
-	return tmp;
+	return is_success;
+}
+
+
+/**
+ * @brief Decode a 16-bit LSB-encoded value
+ *
+ * See \ref d_lsb_decode32 for details.
+ *
+ * @param lsb      The LSB object used to decode
+ * @param m        The LSB value to decode
+ * @param k        The length of the LSB value to decode
+ * @param decoded  OUT: The decoded value
+ * @return         1 in case of success, 0 otherwise
+ */
+int d_lsb_decode16(const struct d_lsb_decode *const lsb,
+                   const uint16_t m,
+                   const size_t k,
+                   uint16_t *const decoded)
+{
+	uint32_t m32;
+	uint32_t decoded32;
+	int is_success;
+
+	assert(lsb != NULL);
+	assert(k <= 16);
+	assert(decoded != NULL);
+
+	m32 = ((uint32_t) m) & 0xffff;
+
+	is_success = d_lsb_decode32(lsb, m32, k, &decoded32);
+	if(is_success)
+	{
+		assert((decoded32 & 0xffff) == decoded32);
+		*decoded = (uint16_t) (decoded32 & 0xffff);
+	}
+
+	return is_success;
 }
 
 
@@ -80,44 +154,46 @@ int d_lsb_decode(struct d_lsb_decode *s, int m, int k) {
  * value (for example, the SN value). See 4.5.1 in the RFC 3095 for details
  * about LSB encoding.
  *
- * @param s       The LSB object
+ * @param lsb     The LSB object
  * @param v_ref_d The new reference value
  */
-void d_lsb_update(struct d_lsb_decode *s, int v_ref_d)
+void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d)
 {
-	s->v_ref_d = v_ref_d;
+	lsb->v_ref_d = v_ref_d;
 }
 
 
 /**
  * @brief Replace the previous LSB reference value with the current one
  *
- * @param s The LSB object
+ * @param lsb  The LSB object
  */
-void d_lsb_sync_ref(struct d_lsb_decode *s)
+void d_lsb_sync_ref(struct d_lsb_decode *const lsb)
 {
-	s->old_v_ref_d = s->v_ref_d;
-}
-
-
-/**
- * @brief Get the previous LSB reference value
- *
- * @param s The LSB object
- */
-int d_get_lsb_old_ref(struct d_lsb_decode *s)
-{
-	return s->old_v_ref_d;
+	lsb->old_v_ref_d = lsb->v_ref_d;
 }
 
 
 /**
  * @brief Get the current LSB reference value
  *
- * @param s The LSB object
+ * @param lsb  The LSB object
+ * @return     The current reference value
  */
-int d_get_lsb_ref(struct d_lsb_decode *s)
+uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb)
 {
-	return s->v_ref_d;
+	return lsb->v_ref_d;
+}
+
+
+/** 
+ * @brief Get the previous LSB reference value
+ *
+ * @param lsb  The LSB object
+ * @return     The previous reference value
+ */ 
+uint32_t d_get_lsb_old_ref(struct d_lsb_decode *const lsb)
+{   
+	return lsb->old_v_ref_d;
 }
 

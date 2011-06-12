@@ -439,10 +439,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	c->header_last_uncompressed_size = payload_offset;
 	c->header_last_compressed_size = esize;
 
-	c_add_wlsb(c->total_16_uncompressed, 0, 0, isize);
-	c_add_wlsb(c->total_16_compressed, 0, 0, size);
-	c_add_wlsb(c->header_16_uncompressed, 0, 0, payload_offset);
-	c_add_wlsb(c->header_16_compressed, 0, 0, esize);
+	c_add_wlsb(c->total_16_uncompressed, 0, isize);
+	c_add_wlsb(c->total_16_compressed, 0, size);
+	c_add_wlsb(c->header_16_uncompressed, 0, payload_offset);
+	c_add_wlsb(c->header_16_compressed, 0, esize);
 
 	/* return the size of the ROHC packet */
 	return size;

@@ -24,12 +24,20 @@
 #include "rohc_traces.h"
 
 
+/* prototypes of private functions */
+static void update_ts_sc(struct ts_sc_decomp *const ts_sc);
+
+
+/*
+ * Public functions
+ */
+
 /**
  * @brief Create the ts_sc_decomp object
  *
  * @param ts_sc  The ts_sc_decomp object to create
  */
-void d_create_sc(struct ts_sc_decomp *ts_sc)
+void d_create_sc(struct ts_sc_decomp *const ts_sc)
 {
 	ts_sc->ts_stride = 0;
 	ts_sc->ts_scaled = 0;
@@ -48,7 +56,9 @@ void d_create_sc(struct ts_sc_decomp *ts_sc)
  * @param ts     The timestamp to add
  * @param sn     The Sequence Number of the current packet
  */
-void d_add_ts(struct ts_sc_decomp *ts_sc, unsigned int ts, unsigned int sn)
+void d_add_ts(struct ts_sc_decomp *const ts_sc,
+              const uint32_t ts,
+              const uint16_t sn)
 {
 	ts_sc->old_ts = ts_sc->ts;
 	ts_sc->old_sn = ts_sc->sn;
@@ -66,37 +76,11 @@ void d_add_ts(struct ts_sc_decomp *ts_sc, unsigned int ts, unsigned int sn)
  * @param ts_sc      The ts_sc_decomp object
  * @param ts_stride  The TS_STRIDE value to add
  */
-void d_add_ts_stride(struct ts_sc_decomp *ts_sc, int ts_stride)
+void d_add_ts_stride(struct ts_sc_decomp *const ts_sc,
+                     const uint32_t ts_stride)
 {
 	ts_sc->ts_stride = ts_stride;
-	rohc_debugf(3, "ts_stride = %d\n", ts_sc->ts_stride);
-}
-
-
-/**
- * @brief Update a ts_sc_decomp object
- *
- * @param ts_sc  The ts_sc_decomp object to update
- */
-void update_ts_sc(struct ts_sc_decomp *ts_sc)
-{
-	if(ts_sc->ts_stride != 0)
-	{
-		rohc_debugf(3, "timestamp = %u\n", ts_sc->ts);
-		rohc_debugf(3, "ts_stride = %d\n", ts_sc->ts_stride);
-
-		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
-		rohc_debugf(3, "ts_offset = %u modulo %d = %d\n",
-		            ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
-
-		ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
-		rohc_debugf(3, "ts_scaled = (%u - %d) / %d = %d\n", ts_sc->ts,
-		            ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
-
-		/* update LSB */
-		d_lsb_sync_ref(&ts_sc->lsb_ts_scaled);
-		d_lsb_update(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
-	}
+	rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_stride);
 }
 
 
@@ -105,23 +89,41 @@ void update_ts_sc(struct ts_sc_decomp *ts_sc)
  *
  * @param ts_sc        The ts_sc_decomp object
  * @param ts_scaled    The W-LSB-encoded TS_SCALED value
- * @param nb_bits      The number of bits of TS_SCALED (W-LSB)
- * @return             The decoded TS
+ * @param bits_nr      The number of bits of TS_SCALED (W-LSB)
+ * @param decoded_ts   OUT: The decoded TS
+ * @return             1 in case of success, 0 otherwise
  */
-unsigned int d_decode_ts(struct ts_sc_decomp *ts_sc, int ts_scaled, int nb_bits)
+int d_decode_ts(struct ts_sc_decomp *const ts_sc,
+                const uint32_t ts_scaled,
+                const size_t bits_nr,
+                uint32_t *const decoded_ts)
 {
-	rohc_debugf(3, "reference decode value = %u\n", d_get_lsb_ref(&ts_sc->lsb_ts_scaled));
-	rohc_debugf(3, "ts_scaled value to decode = %u\n", ts_scaled);
+	int lsb_decode_ok;
+	int is_success;
 
-	ts_sc->ts_scaled = d_lsb_decode(&ts_sc->lsb_ts_scaled, ts_scaled, nb_bits);
-	rohc_debugf(3, "ts_scaled decoded = %u / 0x%x with %d bits\n",
-	            ts_sc->ts_scaled, ts_sc->ts_scaled, nb_bits);
+	rohc_debugf(3, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
+	            ts_scaled, d_get_lsb_ref(&ts_sc->lsb_ts_scaled));
+	lsb_decode_ok = d_lsb_decode32(&ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
+	                               &(ts_sc->ts_scaled));
+	if(!lsb_decode_ok)
+	{
+		rohc_debugf(0, "failed to decode %zd-bit TS_SCALED %u\n", bits_nr,
+		            ts_scaled);
+		is_success = 0;
+	}
+	else
+	{
+		rohc_debugf(3, "ts_scaled decoded = %u / 0x%x with %zd bits\n",
+		            ts_sc->ts_scaled, ts_sc->ts_scaled, bits_nr);
 
-	/* TS calculation */
-	unsigned int ts = ts_sc->ts_stride * ts_sc->ts_scaled + ts_sc->ts_offset;
-	rohc_debugf(3, "TS calculated = %u\n", ts);
+		/* TS calculation */
+		*decoded_ts = ts_sc->ts_stride * ts_sc->ts_scaled + ts_sc->ts_offset;
+		rohc_debugf(3, "TS calculated = %u\n", *decoded_ts);
 
-	return ts;
+		is_success = 1;
+	}
+
+	return is_success;
 }
 
 
@@ -132,20 +134,18 @@ unsigned int d_decode_ts(struct ts_sc_decomp *ts_sc, int ts_scaled, int nb_bits)
  * @param sn           The SN
  * @return             The decoded TS
  */
-unsigned int ts_deducted(struct ts_sc_decomp *ts_sc, unsigned int sn)
+uint32_t ts_deducted(struct ts_sc_decomp *const ts_sc,
+                     const uint16_t sn)
 {
-	int timestamp = 0;
-	int ts_scaled = ts_sc->ts_scaled;
-	int ts_stride = ts_sc->ts_stride;
-	int ts_offset = ts_sc->ts_offset;
+	uint32_t timestamp;
+	uint32_t ts_scaled;
 
-	rohc_debugf(3, "old ts_scaled = %d\n", ts_scaled);
-	ts_scaled += (sn - ts_sc->sn);
-	rohc_debugf(3, "sn = %u, ts_sc->sn = %u\n", sn, ts_sc->sn);
-	rohc_debugf(3, "new ts_scaled = %d\n", ts_scaled);
+	ts_scaled = ts_sc->ts_scaled + (sn - ts_sc->sn);
+	rohc_debugf(3, "new TS_SCALED = %u (ref TS_SCALED = %u, new SN = %u, "
+	            "ref SN = %u)\n", ts_scaled, ts_sc->ts_scaled, sn, ts_sc->sn);
 
-	timestamp = ts_scaled * ts_stride + ts_offset;
-	rohc_debugf(3, "new TS = %u (TS_SCALED = %u, TS_STRIDE = %d, "
+	timestamp = ts_scaled * ts_sc->ts_stride + ts_sc->ts_offset;
+	rohc_debugf(3, "new TS = %u (TS_SCALED = %u, TS_STRIDE = %u, "
 	            "TS_OFFSET = %u)\n", timestamp, ts_scaled, ts_sc->ts_stride,
 	            ts_sc->ts_offset);
 
@@ -153,5 +153,36 @@ unsigned int ts_deducted(struct ts_sc_decomp *ts_sc, unsigned int sn)
 	ts_sc->ts = timestamp;
 
 	return timestamp;
+}
+
+
+/*
+ * Private functions
+ */
+
+/**
+ * @brief Update a ts_sc_decomp object
+ *
+ * @param ts_sc  The ts_sc_decomp object to update
+ */
+static void update_ts_sc(struct ts_sc_decomp *const ts_sc)
+{
+	if(ts_sc->ts_stride != 0)
+	{
+		rohc_debugf(3, "timestamp = %u\n", ts_sc->ts);
+		rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_stride);
+
+		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
+		rohc_debugf(3, "ts_offset = %u modulo %u = %u\n",
+		            ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
+
+		ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
+		rohc_debugf(3, "ts_scaled = (%u - %u) / %u = %u\n", ts_sc->ts,
+		            ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
+
+		/* update LSB */
+		d_lsb_sync_ref(&ts_sc->lsb_ts_scaled);
+		d_lsb_update(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
+	}
 }
 

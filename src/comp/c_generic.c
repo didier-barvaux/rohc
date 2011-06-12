@@ -204,9 +204,9 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context);
 static rohc_packet_t decide_SO_packet(const struct c_context *context);
 
 
-void update_variables(struct c_context *const context,
-                      const struct ip_packet *ip,
-                      const struct ip_packet *ip2);
+int update_variables(struct c_context *const context,
+                     const struct ip_packet *const ip,
+                     const struct ip_packet *const ip2);
 
 rohc_ext_t decide_extension(const struct c_context *context);
 
@@ -221,7 +221,7 @@ int header_flags(const struct c_context *context,
                  const unsigned short changed_f,
                  const struct ip_packet *ip,
                  const int is_outer,
-                 const int nr_ip_id_bits,
+                 const size_t nr_ip_id_bits,
                  unsigned char *const dest,
                  int counter);
 
@@ -230,7 +230,7 @@ int header_fields(const struct c_context *context,
                   const unsigned short changed_f,
                   const struct ip_packet *ip,
                   const int is_outer,
-                  const int nr_ip_id_bits,
+                  const size_t nr_ip_id_bits,
                   unsigned char *const dest,
                   int counter);
 
@@ -474,9 +474,12 @@ void c_init_tmp_variables(struct generic_tmp_variables *tmp_variables)
 	tmp_variables->changed_fields2 = -1;
 	tmp_variables->send_static = -1;
 	tmp_variables->send_dynamic = -1;
-	tmp_variables->nr_ip_id_bits = -1;
-	tmp_variables->nr_sn_bits = -1;
-	tmp_variables->nr_ip_id_bits2 = -1;
+
+	/* do not send any bits of SN, outer/inner IP-IDs by default */
+	tmp_variables->nr_sn_bits = 0;
+	tmp_variables->nr_ip_id_bits = 0;
+	tmp_variables->nr_ip_id_bits2 = 0;
+	
 	tmp_variables->packet_type = PACKET_UNKNOWN;
 	tmp_variables->max_size = -1;
 }
@@ -745,6 +748,7 @@ int c_generic_encode(struct c_context *const context,
 	int size;
 	int size_data;
 	int is_rtp;
+	int ret;
 
 	g_context = (struct c_generic_context *) context->specific;
 	if(g_context == NULL)
@@ -904,7 +908,12 @@ int c_generic_encode(struct c_context *const context,
 	 *  - compute how many bits are needed to send the IP-ID and SN fields
 	 *  - update the sliding windows
 	 */
-	update_variables(context, ip, inner_ip);
+	ret = update_variables(context, ip, inner_ip);
+	if(ret != ROHC_OK)
+	{
+		rohc_debugf(0, "failed to update the compression context\n");
+		return -1;
+	}
 
 	/* STEP 5: decide which packet to send */
 	g_context->tmp_variables.packet_type =
@@ -2494,33 +2503,97 @@ void decide_state(struct c_context *const context)
  * @param context The compression context
  * @param ip      The outer IP header
  * @param ip2     The inner IP header
+ * @return        ROHC_OK in case of success,
+ *                ROHC_ERROR otherwise
  */
-void update_variables(struct c_context *const context,
-                      const struct ip_packet *ip,
-                      const struct ip_packet *ip2)
+int update_variables(struct c_context *const context,
+                     const struct ip_packet *const ip,
+                     const struct ip_packet *const ip2)
 {
 	struct c_generic_context *g_context;
+	int ret;
 
+	assert(context != NULL);
+	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
+	assert(ip != NULL);
+	assert((g_context->tmp_variables.nr_of_ip_hdr == 1 && ip2 == NULL) ||
+	       (g_context->tmp_variables.nr_of_ip_hdr == 2 && ip2 != NULL));
+
+	rohc_debugf(2, "compressor is in state %u\n", context->state);
+
+	/* always update the info related to the SN */
+	{
+		rohc_debugf(2, "new SN = %u / 0x%x\n", g_context->sn, g_context->sn);
+
+		/* how many bits are required to encode the new SN ? */
+		if(context->state == IR)
+		{
+			/* send all bits in IR state */
+			g_context->tmp_variables.nr_sn_bits = 16;
+		}
+		else
+		{
+			/* send only required bits in FO or SO states */
+			ret = c_get_k_wlsb(g_context->sn_window, g_context->sn,
+			                   &(g_context->tmp_variables.nr_sn_bits));
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to find the minimal number of bits required "
+				            "for SN\n");
+				goto error;
+			}
+		}
+		rohc_debugf(2, "%zd bits are required to encode new SN\n",
+		            g_context->tmp_variables.nr_sn_bits);
+
+		/* add the new SN to the W-LSB encoding object */
+		c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
+	}
 
 	/* update info related to the IP-ID of the outer header
 	 * only if header is IPv4 */
 	if(ip_get_version(ip) == IPV4)
 	{
+		/* compute the new IP-ID / SN delta */
 		if(g_context->ip_flags.info.v4.nbo)
-			g_context->ip_flags.info.v4.id_delta = ntohs(ipv4_get_id(ip)) - g_context->sn;
+		{
+			g_context->ip_flags.info.v4.id_delta =
+				ntohs(ipv4_get_id(ip)) - g_context->sn;
+		}
 		else
+		{
 			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - g_context->sn;
-
-		g_context->tmp_variables.nr_ip_id_bits =
-			c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
-			             g_context->ip_flags.info.v4.id_delta);
-		rohc_debugf(3, "ip_id delta = 0x%x / %d\n",
+		}
+		rohc_debugf(3, "new outer IP-ID delta = 0x%x / %u (NBO = %d)\n",
 		            g_context->ip_flags.info.v4.id_delta,
-		            g_context->ip_flags.info.v4.id_delta);
-		rohc_debugf(2, "ip_id bits = %d\n", g_context->tmp_variables.nr_ip_id_bits);
+		            g_context->ip_flags.info.v4.id_delta,
+		            g_context->ip_flags.info.v4.nbo);
 
-		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, g_context->sn, 0,
+		/* how many bits are required to encode the new IP-ID / SN delta ? */
+		if(context->state == IR)
+		{
+			/* send all bits in IR state */
+			g_context->tmp_variables.nr_ip_id_bits = 16;
+		}
+		else
+		{
+			/* send only required bits in FO or SO states */
+			ret = c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
+			                   g_context->ip_flags.info.v4.id_delta,
+			                   &(g_context->tmp_variables.nr_ip_id_bits));
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to find the minimal number of bits required "
+				            "for new outer IP-ID delta\n");
+				goto error;
+			}
+		}
+		rohc_debugf(2, "%zd bits are required to encode new outer IP-ID delta\n",
+		            g_context->tmp_variables.nr_ip_id_bits);
+
+		/* add the new IP-ID / SN delta to the W-LSB encoding object */
+		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, g_context->sn,
 		           g_context->ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
@@ -2528,16 +2601,11 @@ void update_variables(struct c_context *const context,
 		g_context->tmp_variables.nr_ip_id_bits = 0;
 	}
 
-	/* always update the info related to the SN */
-	g_context->tmp_variables.nr_sn_bits =
-		c_get_k_wlsb(g_context->sn_window, g_context->sn);
-	rohc_debugf(2, "sn bits = %d\n", g_context->tmp_variables.nr_sn_bits);
-	c_add_wlsb(g_context->sn_window, g_context->sn, 0, g_context->sn);
-
 	/* update info related to the IP-ID of the inner header
 	 * only if header is IPv4 */
 	if(g_context->tmp_variables.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
 	{
+		/* compute the new IP-ID / SN delta */
 		if(g_context->ip2_flags.info.v4.nbo)
 		{
 			g_context->ip2_flags.info.v4.id_delta =
@@ -2545,17 +2613,37 @@ void update_variables(struct c_context *const context,
 		}
 		else
 		{
-			g_context->ip2_flags.info.v4.id_delta =
-				ipv4_get_id(ip2) - g_context->sn;
+			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
 		}
+		rohc_debugf(3, "new inner IP-ID delta = 0x%x / %u (NBO = %d)\n",
+		            g_context->ip2_flags.info.v4.id_delta,
+		            g_context->ip2_flags.info.v4.id_delta,
+		            g_context->ip2_flags.info.v4.nbo);
 
-		g_context->tmp_variables.nr_ip_id_bits2 =
-			c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
-			             g_context->ip2_flags.info.v4.id_delta);
-		rohc_debugf(2, "ip_id bits2 = %d\n",
+		/* how many bits are required to encode the new IP-ID / SN delta ? */
+		if(context->state == IR)
+		{
+			/* send all bits in IR state */
+			g_context->tmp_variables.nr_ip_id_bits2 = 16;
+		}
+		else
+		{
+			/* send only required bits in FO or SO states */
+			ret = c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
+			                   g_context->ip2_flags.info.v4.id_delta,
+			                   &(g_context->tmp_variables.nr_ip_id_bits2));
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to find the minimal number of bits required "
+				            "for new inner IP-ID delta\n");
+				goto error;
+			}
+		}
+		rohc_debugf(2, "%zd bits are required to encode new inner IP-ID delta\n",
 		            g_context->tmp_variables.nr_ip_id_bits2);
 
-		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn, 0,
+		/* add the new IP-ID / SN delta to the W-LSB encoding object */
+		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn,
 		           g_context->ip2_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
@@ -2582,12 +2670,13 @@ void update_variables(struct c_context *const context,
 		{
 			/* TS_SCALED value will be send */
 			rtp_context->tmp_variables.ts_send = get_ts_scaled(rtp_context->ts_sc);
-			rtp_context->tmp_variables.nr_ts_bits = nb_bits_scaled(rtp_context->ts_sc);
-			if(rtp_context->tmp_variables.nr_ts_bits == -1)
+			ret = nb_bits_scaled(rtp_context->ts_sc,
+			                     &(rtp_context->tmp_variables.nr_ts_bits));
+			if(ret != 1)
 			{
-				int ts_send = rtp_context->tmp_variables.ts_send;
-				int nr_bits;
-				int mask;
+				const uint32_t ts_send = rtp_context->tmp_variables.ts_send;
+				size_t nr_bits;
+				uint32_t mask;
 
 				/* this is the first TS scaled to be sent, we cannot code it with W-LSB
 				 * and we must find its size (in bits) */
@@ -2600,17 +2689,17 @@ void update_variables(struct c_context *const context,
 					 * bits we are able to send */
 					rohc_debugf(0, "size of TS scaled (0x%x) not found, this should "
 					               "never append!\n", ts_send);
+					assert(0);
 					nr_bits = 32;
 				}
 				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
-				            "mask = 0x%x, nr_bits = %d\n",
-				            rtp_context->tmp_variables.ts_send, mask, nr_bits);
+				            "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
 				rtp_context->tmp_variables.nr_ts_bits = nr_bits;
 			}
 
 			/* save the new TS_SCALED value */
 			add_scaled(&rtp_context->ts_sc, g_context->sn);
-			rohc_debugf(3, "ts_scaled = %u on %d bits\n",
+			rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
 			            rtp_context->tmp_variables.ts_send,
 			            rtp_context->tmp_variables.nr_ts_bits);
 		}
@@ -2621,6 +2710,11 @@ void update_variables(struct c_context *const context,
 			rtp_context->tmp_variables.nr_ts_bits = 32;
 		}
 	}
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
 }
 
 
@@ -2678,8 +2772,9 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 	}
 	else if(is_rtp) /* RTP profile */
 	{
-		int nr_ts_bits;
-		struct sc_rtp_context *rtp_context;
+		const struct sc_rtp_context *rtp_context;
+		size_t nr_ts_bits;
+
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits; /* nb of bits needed */
 
@@ -2702,9 +2797,9 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 		}
 		else /* double IP headers */
 		{
-			int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
-			int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-			int nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
+			const int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+			const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+			const size_t nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
 
 			if((!is_ip_v4 || is_rnd) && (!is_ip2_v4 || is_rnd2))
 			{
@@ -2747,8 +2842,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
-	int nr_sn_bits;
-	int nr_ip_id_bits;
+	size_t nr_sn_bits;
+	size_t nr_ip_id_bits;
 	int packet;
 	int is_rtp;
 	int is_rnd;
@@ -2762,16 +2857,18 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 	is_rnd = g_context->ip_flags.info.v4.rnd;
 	is_ip_v4 = g_context->ip_flags.version == IPV4;
 
-	rohc_debugf(3, "nr_ip_bits=%d nr_sn_bits=%d nr_of_ip_hdr=%d rnd=%d\n",
-	            nr_ip_id_bits, nr_sn_bits, nr_of_ip_hdr, is_rnd);
+	rohc_debugf(3, "nr_ip_bits = %zd, nr_sn_bits = %zd, nr_of_ip_hdr = %d, "
+	            "rnd = %d\n", nr_ip_id_bits, nr_sn_bits, nr_of_ip_hdr, is_rnd);
 
 	if(is_rtp) /* RTP profile */
 	{
 		struct sc_rtp_context *rtp_context;
-		rtp_context = (struct sc_rtp_context *) g_context->specific;
-		int nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+		size_t nr_ts_bits;
 
-		rohc_debugf(3, "nr_ts_bits = %d\n", nr_ts_bits);
+		rtp_context = (struct sc_rtp_context *) g_context->specific;
+		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+
+		rohc_debugf(3, "nr_ts_bits = %zd\n", nr_ts_bits);
 
 		if(nr_of_ip_hdr == 1) /* single IP header */
 		{
@@ -2809,7 +2906,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				{
 					packet = PACKET_UO_1_ID;
 				}
-				else if(nr_ip_id_bits != 0 && nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+				else if(nr_ip_id_bits > 0 && nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
 				{
 					packet = PACKET_UOR_2_ID;
 				}
@@ -2817,10 +2914,11 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 		}
 		else /* double IP headers */
 		{
-			int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
-			int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-			int nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
-			rohc_debugf(3, "nr_ip_id_bits2 = %d rnd2 = %d\n",
+			const int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
+			const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+			const size_t nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
+
+			rohc_debugf(3, "nr_ip_id_bits2 = %zd, rnd2 = %d\n",
 			            nr_ip_id_bits2, is_rnd2);
 
 			if((nr_sn_bits <= 4) &&
@@ -2892,9 +2990,9 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 		}
 		else /* double IP headers */
 		{
-			int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
-			int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-			int nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
+			const int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
+			const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+			const size_t nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
 
 			if(nr_sn_bits <= 4 &&
 			   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))) &&
@@ -3206,11 +3304,23 @@ int code_IR_packet(struct c_context *const context,
 	unsigned char type;
 	int counter;
 	int first_position;
-	int 
-	  crc_position;
+	int crc_position;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
+
+	assert(ip != NULL);
+	assert((nr_of_ip_hdr == 1 && ip2 == NULL) ||
+	       (nr_of_ip_hdr == 2 && ip2 != NULL));
+	assert(g_context->tmp_variables.nr_sn_bits == 16);
+	assert((ip_get_version(ip) == IPV4 && g_context->tmp_variables.nr_ip_id_bits == 16) ||
+	       (ip_get_version(ip) != IPV4 && g_context->tmp_variables.nr_ip_id_bits == 0));
+	assert((nr_of_ip_hdr == 1 && g_context->tmp_variables.nr_ip_id_bits2 == 0) ||
+	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) == IPV4 && g_context->tmp_variables.nr_ip_id_bits2 == 16) ||
+	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) != IPV4 && g_context->tmp_variables.nr_ip_id_bits2 == 0));
 
 	rohc_debugf(2, "code IR packet (CID = %d)\n", context->cid);
 
@@ -3383,9 +3493,12 @@ int code_IR_DYN_packet(struct c_context *const context,
 	int first_position;
 	int crc_position;
 
+	assert(context != NULL);
+	assert(context->specific != NULL);
+
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
-
+	
 	rohc_debugf(2, "code IR-DYN packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
@@ -4639,13 +4752,10 @@ int code_UOR2_bytes(const struct c_context *context,
 
 		case PACKET_EXT_3:
 		{
-			int nr_sn_bits;
-			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
-
 			rohc_debugf(3, "code UOR-2 packet with extension 3\n");
 
 			/* part 2: check if the s-field needs to be used */
-			if(nr_sn_bits > 5)
+			if(g_context->tmp_variables.nr_sn_bits > 5)
 				*f_byte |= g_context->sn >> 8;
 			else
 				*f_byte |= g_context->sn & 0x1f;
@@ -4711,8 +4821,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 #if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 	const int rtp_type_bit = 0;
 #endif
-	int nr_ts_bits;
-	int ts_send;
+	uint32_t ts_send;
 	uint32_t ts_mask;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -4813,11 +4922,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 		case PACKET_EXT_3:
 		{
-			int nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
-			int nr_sn_bits;
-			int ts_bits_for_f_byte;
-			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
+			const size_t nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
+			uint8_t ts_bits_for_f_byte;
 
 			rohc_debugf(3, "code UOR-2-RTP packet with extension 3\n");
 
@@ -4833,7 +4940,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			else
 				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
-			rohc_debugf(3, "bits of TS = %d (%d in header, %d in EXT3)\n",
+			assert(nr_ts_bits_ext3 <= nr_ts_bits);
+			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
 			/* be sure not to send bad TS bits because of the shift, apply the two masks:
 			 *  - the 5-bit mask (0x1f) for the 5-bit field
@@ -4848,7 +4956,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 4: 1 more bit of TS + M flag + 6 bits of SN */
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
-			if(nr_sn_bits <= 6)
+			if(g_context->tmp_variables.nr_sn_bits <= 6)
 				*s_byte |= g_context->sn & 0x3f;
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3F;
@@ -4859,6 +4967,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			/* compute TS to send in extension 3 and its length */
+			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 
@@ -4920,12 +5029,10 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 #if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 	const int rtp_type_bit = 0;
 #endif
-	int nr_ts_bits;
-	int ts_send;
+	uint32_t ts_send;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 	ts_send = rtp_context->tmp_variables.ts_send;
 
 	switch(extension)
@@ -5012,11 +5119,10 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 		case PACKET_EXT_3:
 		{
-			int nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
-			int nr_sn_bits;
-			int ts_mask;
-			int ts_bits_for_f_byte;
-			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
+			const size_t nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
+			uint32_t ts_mask;
+			uint8_t ts_bits_for_f_byte;
 
 			rohc_debugf(3, "code UOR-2-TS packet with extension 3\n");
 
@@ -5032,7 +5138,8 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			else
 				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
-			rohc_debugf(3, "bits of TS = %d (%d in header, %d in EXT3)\n",
+			assert(nr_ts_bits_ext3 <= nr_ts_bits);
+			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
 			/* compute the mask for the TS field in the 1st byte: this is the smaller mask in:
 			 *  - the 5-bit mask (0x1f) for the 5-bit field
@@ -5044,6 +5151,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			}
 			else
 			{
+				assert(nr_ts_bits_ext3 < 32);
 				ts_mask = 0x1f & ((1 << (32 - nr_ts_bits_ext3)) - 1);
 			}
 			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
@@ -5054,7 +5162,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
-			if(nr_sn_bits <= 6)
+			if(g_context->tmp_variables.nr_sn_bits <= 6)
 				*s_byte |= g_context->sn & 0x3f;
 			else
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
@@ -5065,6 +5173,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			*t_byte |= (rtp_type_bit & 0x01) << 6;
 #endif
 			/* compute TS to send in extension 3 and its length */
+			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
 
@@ -5126,15 +5235,16 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 #if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 	const int rtp_type_bit = 1;
 #endif
-	int nr_ip_id_bits;
-	int nr_ts_bits;
-	int ts_send;
+	size_t nr_ip_id_bits;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_ip_id_bits = g_context->tmp_variables.nr_ip_id_bits;
+
+	assert(g_context->specific != NULL);
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-	ts_send = rtp_context->tmp_variables.ts_send;
 
 	switch(extension)
 	{
@@ -5232,9 +5342,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 		case PACKET_EXT_3:
 		{
-			int nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
-			int nr_sn_bits;
-			nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
+			/* number of TS bits to transmit overall and in extension 3 */
+			const size_t nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+			size_t nr_ts_bits_ext3;
 
 			rohc_debugf(3, "code UOR-2-ID packet with extension 3\n");
 
@@ -5278,7 +5388,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			{
 				nr_ts_bits_ext3 = 0;
 			}
-			if(nr_sn_bits <= 6)
+			if(g_context->tmp_variables.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
 				rohc_debugf(3, "6 bits of less-than-6-bit SN = 0x%x\n",
@@ -5298,9 +5408,10 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 #endif
 
 			/* compute TS to send in extension 3 and its length */
+			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp_variables.ts_send &= (1 << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp_variables.nr_ts_bits_ext3 = nr_ts_bits_ext3;
-			rohc_debugf(3, "will put %u bits of TS = 0x%x in EXT3\n",
+			rohc_debugf(3, "will put %zd bits of TS = 0x%x in EXT3\n",
 			            nr_ts_bits_ext3, rtp_context->tmp_variables.ts_send);
 
 			break;
@@ -5374,10 +5485,8 @@ int code_EXT0_packet(const struct c_context *context,
 		case PACKET_UOR_2_RTP:
 		case PACKET_UOR_2_TS:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
-
-			f_byte |= ts_send & 0x07;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
+			f_byte |= rtp_context->tmp_variables.ts_send & 0x07;
 			break;
 		}
 
@@ -5482,18 +5591,15 @@ int code_EXT1_packet(const struct c_context *context,
 
 		case PACKET_UOR_2_RTP:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
-
-			f_byte |= (ts_send >> 8) &  0x07;
-			s_byte = ts_send & 0xff;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
+			f_byte |= (rtp_context->tmp_variables.ts_send >> 8) &  0x07;
+			s_byte = rtp_context->tmp_variables.ts_send & 0xff;
 			break;
 		}
 
 		case PACKET_UOR_2_TS:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
 			if(g_context->ip_flags.version != IPV4)
 			{
@@ -5501,15 +5607,14 @@ int code_EXT1_packet(const struct c_context *context,
 				goto error;
 			}
 
-			f_byte |= ts_send & 0x07;
+			f_byte |= rtp_context->tmp_variables.ts_send & 0x07;
 			s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
 			break;
 		}
 
 		case PACKET_UOR_2_ID:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
 			if(g_context->ip_flags.version != IPV4)
 			{
@@ -5518,7 +5623,7 @@ int code_EXT1_packet(const struct c_context *context,
 			}
 
 			f_byte |= g_context->ip_flags.info.v4.id_delta & 0x07;
-			s_byte = ts_send & 0xff;
+			s_byte = rtp_context->tmp_variables.ts_send & 0xff;
 			break;
 		}
 
@@ -5632,8 +5737,8 @@ int code_EXT2_packet(const struct c_context *context,
 
 		case PACKET_UOR_2_RTP:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
+			const uint32_t ts_send = rtp_context->tmp_variables.ts_send;
 
 			f_byte |= (ts_send >> 16) & 0x07;
 			rohc_debugf(3, "3 bits of TS = 0x%x\n", f_byte & 0x07);
@@ -5646,8 +5751,8 @@ int code_EXT2_packet(const struct c_context *context,
 
 		case PACKET_UOR_2_TS:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
+			const uint32_t ts_send = rtp_context->tmp_variables.ts_send;
 			int innermost_ip_hdr;
 
 			if(g_context->is_ip2_initialized &&
@@ -5694,8 +5799,7 @@ int code_EXT2_packet(const struct c_context *context,
 
 		case PACKET_UOR_2_ID:
 		{
-			struct sc_rtp_context *rtp_context = g_context->specific;
-			int ts_send = rtp_context->tmp_variables.ts_send;
+			const struct sc_rtp_context *const rtp_context = g_context->specific;
 			int innermost_ip_hdr;
 
 			if(g_context->is_ip2_initialized &&
@@ -5736,7 +5840,7 @@ int code_EXT2_packet(const struct c_context *context,
 				s_byte = g_context->ip2_flags.info.v4.id_delta & 0xff;
 				rohc_debugf(3, "8 bits of inner IP-ID = 0x%x\n", s_byte & 0xff);
 			}
-			t_byte = ts_send & 0xff;
+			t_byte = rtp_context->tmp_variables.ts_send & 0xff;
 			rohc_debugf(3, "8 bits of TS = 0x%x\n", t_byte & 0xff);
 			break;
 		}
@@ -5840,26 +5944,20 @@ int code_EXT3_packet(const struct c_context *context,
 	struct c_generic_context *g_context;
 	unsigned char f_byte;
 	int nr_of_ip_hdr;
-	int nr_sn_bits;
 	unsigned short changed_f;
 	unsigned short changed_f2;
-	int nr_ip_id_bits;
-	int nr_ip_id_bits2;
+	size_t nr_ip_id_bits;
+	size_t nr_ip_id_bits2;
 	int have_inner = 0;
 	int have_outer = 0;
 	int I = 0;
-	struct sc_rtp_context *rtp_context = NULL;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
 	int rts = 0;     /* R-TS bit */
-	int ts_send = 0; /* TS to send */
-	int nr_ts_bits = -1; /* nb of TS bits needed */
-	int nr_ts_bits_ext3 = -1; /* nb of TS bits needed in EXT3 */
 	rohc_packet_t packet_type;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
-	nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
 	changed_f = g_context->tmp_variables.changed_fields;
 	changed_f2 = g_context->tmp_variables.changed_fields2;
 	nr_ip_id_bits = g_context->tmp_variables.nr_ip_id_bits;
@@ -5867,25 +5965,21 @@ int code_EXT3_packet(const struct c_context *context,
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	packet_type = g_context->tmp_variables.packet_type;
 
-	/* get some RTP parameters (RTP profile only) */
-	if(is_rtp)
-	{
-		rtp_context = (struct sc_rtp_context *) g_context->specific;
-		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-		nr_ts_bits_ext3 = rtp_context->tmp_variables.nr_ts_bits_ext3;
-		ts_send = rtp_context->tmp_variables.ts_send;
-	}
-
 	/* part 1: extension type + S bit */
 	f_byte = 0xc0;
-	if(nr_sn_bits > 5)
+	if(g_context->tmp_variables.nr_sn_bits > 5)
 		f_byte |= 0x20;
 
 	/* part 1: R-TS, Tsc & RTP bits if RTP
 	 *         Mode bits otherwise */
 	if(is_rtp)
 	{
-		int tsc; /* Tsc bit */
+		const struct sc_rtp_context *rtp_context;
+		size_t nr_ts_bits; /* nb of TS bits needed */
+		uint8_t tsc; /* Tsc bit */
+
+		rtp_context = (struct sc_rtp_context *) g_context->specific;
+		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 
 		/* R-TS bit */
 		switch(packet_type)
@@ -5919,7 +6013,7 @@ int code_EXT3_packet(const struct c_context *context,
 		        !is_ts_constant(rtp_context->ts_sc)));
 		f_byte |= rtp & 0x01;
 
-		rohc_debugf(3, "R-TS = %d, Tsc = %d, rtp = %d\n", rts, tsc, rtp);
+		rohc_debugf(3, "R-TS = %d, Tsc = %u, rtp = %d\n", rts, tsc, rtp);
 	}
 	else /* non-RTP profiles */
 	{
@@ -6029,7 +6123,7 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 3: only one IP header */
 
 		/* part 4 */
-		if(nr_sn_bits > 5)
+		if(g_context->tmp_variables.nr_sn_bits > 5)
 		{
 			dest[counter] = g_context->sn & 0xff;
 			rohc_debugf(3, "SN = 0x%02x\n", dest[counter]);
@@ -6039,16 +6133,37 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 4.1 */
 		if(is_rtp && rts)
 		{
-			rohc_debugf(3, "ts_send = %u (0x%x) needs %d bits in EXT3, "
-			            "will be SDVL-coded on %d bytes\n", ts_send, ts_send,
-			            nr_ts_bits_ext3, c_bytesSdvl(ts_send, nr_ts_bits_ext3));
-			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits_ext3; /* nb of TS bits needed in EXT3 */
+			uint32_t ts_send; /* TS to send */
+			size_t sdvl_size;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits_ext3 = rtp_context->tmp_variables.nr_ts_bits_ext3;
+			ts_send = rtp_context->tmp_variables.ts_send;
+
+			/* determine the size of the SDVL-encoded TS value */
+			sdvl_size = c_bytesSdvl(ts_send, nr_ts_bits_ext3);
+			assert(sdvl_size > 0 && sdvl_size <= 5);
+			if(sdvl_size <= 0 || sdvl_size > 4)
 			{
-				rohc_debugf(0, "TS length greater than 29 (value = %d, "
-				               "length = %d)\n", ts_send, nr_ts_bits_ext3);
+				rohc_debugf(0, "failed to determine the number of bits required to "
+				            "SDVL-encode %zd bits of TS\n", nr_ts_bits_ext3);
 				goto error;
 			}
-			counter += c_bytesSdvl(ts_send, nr_ts_bits_ext3);
+
+			rohc_debugf(3, "ts_send = %u (0x%x) needs %zd bits in EXT3, "
+			            "will be SDVL-coded on %zd bytes\n", ts_send, ts_send,
+			            nr_ts_bits_ext3, sdvl_size);
+
+			/* SDVL-encode the TS value */
+			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
+			{
+				rohc_debugf(0, "TS length greater than 29 (value = %u, length = %zd)\n",
+				            ts_send, nr_ts_bits_ext3);
+				goto error;
+			}
+			counter += sdvl_size;
 		}
 
 		/* part 5 */
@@ -6064,7 +6179,7 @@ int code_EXT3_packet(const struct c_context *context,
 			uint16_t id_encoded;
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
-			id_encoded = htons((uint16_t)(g_context->ip_flags.info.v4.id_delta & 0xffff));
+			id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
 			            dest[counter], dest[counter + 1]);
@@ -6107,7 +6222,7 @@ int code_EXT3_packet(const struct c_context *context,
 		}
 
 		/* part 4 */
-		if(nr_sn_bits > 5)
+		if(g_context->tmp_variables.nr_sn_bits > 5)
 		{
 			dest[counter] = g_context->sn & 0xff;
 			counter++;
@@ -6116,16 +6231,37 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 4.1 */
 		if(is_rtp && rts)
 		{
-			rohc_debugf(3, "ts_send = %u (0x%x) needs %d bits in EXT3, "
-			            "will be SDVL-coded on %d bytes\n", ts_send, ts_send,
-			            nr_ts_bits_ext3, c_bytesSdvl(ts_send, nr_ts_bits_ext3));
-			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits_ext3; /* nb of TS bits needed in EXT3 */
+			uint32_t ts_send; /* TS to send */
+			size_t sdvl_size;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits_ext3 = rtp_context->tmp_variables.nr_ts_bits_ext3;
+			ts_send = rtp_context->tmp_variables.ts_send;
+
+			/* determine the size of the SDVL-encoded TS value */
+			sdvl_size = c_bytesSdvl(ts_send, nr_ts_bits_ext3);
+			assert(sdvl_size > 0 && sdvl_size <= 5);
+			if(sdvl_size <= 0 || sdvl_size > 4)
 			{
-				rohc_debugf(0, "TS length greater than 29 (value = %d, "
-				               "length = %d)\n", ts_send, nr_ts_bits_ext3);
+				rohc_debugf(0, "failed to determine the number of bits required to "
+				            "SDVL-encode %zd bits of TS\n", nr_ts_bits_ext3);
 				goto error;
 			}
-			counter += c_bytesSdvl(ts_send, nr_ts_bits_ext3);
+
+			rohc_debugf(3, "ts_send = %u (0x%x) needs %zd bits in EXT3, "
+			            "will be SDVL-coded on %zd bytes\n", ts_send, ts_send,
+			            nr_ts_bits_ext3, sdvl_size);
+
+			/* SDVL-encode the TS value */
+			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
+			{
+				rohc_debugf(0, "TS length greater than 29 (value = %u, "
+				               "length = %zd)\n", ts_send, nr_ts_bits_ext3);
+				goto error;
+			}
+			counter += sdvl_size;
 		}
 
 		/* part 5 */
@@ -6141,7 +6277,7 @@ int code_EXT3_packet(const struct c_context *context,
 			uint16_t id_encoded;
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
-			id_encoded = htons((uint16_t)(g_context->ip2_flags.info.v4.id_delta & 0xffff));
+			id_encoded = htons(g_context->ip2_flags.info.v4.id_delta);
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_debugf(3, "IP ID = 0x%02x 0x%02x\n",
 			            dest[counter], dest[counter + 1]);
@@ -6273,21 +6409,34 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 	/* part 4 */
 	if(tss)
 	{
-		int ts_stride;
+		uint32_t ts_stride;
+		size_t sdvl_size;
 		int success;
 
+		/* determine the TS_STRIDE to transmit */
 		ts_stride = get_ts_stride(rtp_context->ts_sc);
 
-		success = c_encodeSdvl(&dest[counter], ts_stride, -1);
-		if(!success)
+		/* determine the size of the SDVL-encoded TS_STRIDE value */
+		sdvl_size = c_bytesSdvl(ts_stride, 0 /* length detection */);
+		assert(sdvl_size > 0 && sdvl_size <= 5);
+		if(sdvl_size <= 0 || sdvl_size > 4)
 		{
-			rohc_debugf(0, "TS stride length greater than 29 (%d)\n", ts_stride);
+			rohc_debugf(0, "failed to determine the number of bits required to "
+			            "SDVL-encode TS_STRIDE %u\n", ts_stride);
 			goto error;
 		}
-		counter += c_bytesSdvl(ts_stride, -1);
 
-		rohc_debugf(3, "ts_stride %u (0x%x) is SDVL-encoded on %d bit(s)\n",
-		            ts_stride, ts_stride, c_bytesSdvl(ts_stride, -1));
+		/* SDVL-encode the TS_STRIDE value */
+		success = c_encodeSdvl(&dest[counter], ts_stride, 0 /* length detection */);
+		if(!success)
+		{
+			rohc_debugf(0, "TS stride length greater than 29 (%u)\n", ts_stride);
+			goto error;
+		}
+		counter += sdvl_size;
+
+		rohc_debugf(3, "ts_stride %u (0x%x) is SDVL-encoded on %zd bit(s)\n",
+		            ts_stride, ts_stride, sdvl_size);
 
 		if(rtp_context->ts_sc.state == INIT_STRIDE)
 		{
@@ -6352,7 +6501,7 @@ int header_flags(const struct c_context *context,
                  const unsigned short changed_f,
                  const struct ip_packet *ip,
                  const int is_outer,
-                 const int nr_ip_id_bits,
+                 const size_t nr_ip_id_bits,
                  unsigned char *const dest,
                  int counter)
 {
@@ -6457,7 +6606,7 @@ int header_fields(const struct c_context *context,
                   const unsigned short changed_f,
                   const struct ip_packet *ip,
                   const int is_outer,
-                  const int nr_ip_id_bits,
+                  const size_t nr_ip_id_bits,
                   unsigned char *const dest,
                   int counter)
 {
@@ -6532,9 +6681,9 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	rohc_packet_t packet_type;
 	int send_static;
 	int send_dynamic;
-	int nr_ip_id_bits;
-	int nr_ip_id_bits2;
-	int nr_sn_bits;
+	size_t nr_ip_id_bits;
+	size_t nr_ip_id_bits2;
+	size_t nr_sn_bits;
 	int ext;
 	int is_rtp;
 
@@ -6615,8 +6764,8 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 		case PACKET_UOR_2_RTP:
 		{
-			struct sc_rtp_context *rtp_context;
-			int nr_ts_bits;
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
 
 			rtp_context = (struct sc_rtp_context *) g_context->specific;
 			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
@@ -6636,8 +6785,8 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 		case PACKET_UOR_2_TS:
 		{
-			struct sc_rtp_context *rtp_context;
-			int nr_ts_bits;
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
 
 			rtp_context = (struct sc_rtp_context *) g_context->specific;
 			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
@@ -6653,8 +6802,8 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 		case PACKET_UOR_2_ID:
 		{
-			struct sc_rtp_context *rtp_context;
-			int nr_ts_bits;
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
 
 			rtp_context = (struct sc_rtp_context *) g_context->specific;
 			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;

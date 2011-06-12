@@ -25,6 +25,9 @@
 #ifndef WLSB_H
 #define WLSB_H
 
+#include <stdlib.h>
+#include <stdint.h>
+
 
 /// Default window width for W-LSB encoding
 #define C_WINDOW_WIDTH 4
@@ -37,14 +40,10 @@ struct c_window
 {
 	/// @brief The Sequence Number (SN) associated with the entry (used to
 	///        acknowledge the entry)
-	int sn;
-
-	/// @brief The time stamp associated with the entry (used to acknowledge
-	///        the entry)
-	int time;
+	uint16_t sn;
 
 	/// The value stored in the window entry
-	int value;
+	uint32_t value;
 
 	/**
 	 * @brief Whether the window entry is used or not
@@ -64,17 +63,17 @@ struct c_wlsb
 	///        are stored to help recreate the value
  	struct c_window *window;
 	/// The width of the window
- 	int window_width;
+ 	size_t window_width;
 
 	/// A pointer on the oldest entry in the window (change on acknowledgement)
-	int oldest;
+	size_t oldest;
 	/// A pointer on the current entry in the window  (change on add and ack)
-	int next;
+	size_t next;
 
 	/// The maximal number of bits for representing the value
- 	int bits;
+ 	size_t bits;
 	/// Shift parameter (see 4.5.2 in the RFC 3095)
- 	int p;
+ 	int32_t p;
 };
 
 
@@ -82,23 +81,22 @@ struct c_wlsb
  * Public function prototypes:
  */
 
-struct c_wlsb *c_create_wlsb(int bits, int window_width, int p);
+struct c_wlsb * c_create_wlsb(const size_t bits,
+                              const size_t window_width,
+                              const int32_t p);
 void c_destroy_wlsb(struct c_wlsb *s);
 
-void c_add_wlsb(struct c_wlsb *s, int sn, int time, int value);
-int c_get_k_wlsb(struct c_wlsb *s, int value);
+void c_add_wlsb(struct c_wlsb *const wlsb,
+                const uint16_t sn,
+                const uint32_t value);
+int c_get_k_wlsb(const struct c_wlsb *const wlsb,
+                 const uint32_t value,
+                 size_t *const bits_nr);
 
 void c_ack_sn_wlsb(struct c_wlsb *s, int sn);
-void c_ack_time_wlsb(struct c_wlsb *s, int time);
 
 int c_sum_wlsb(struct c_wlsb *s);
 int c_mean_wlsb(struct c_wlsb *s);
-
-
-void print_wlsb_stats(struct c_wlsb *s);
-
-void f(int v_ref, int k, int p, int *min, int *max);
-
 
 #endif
 

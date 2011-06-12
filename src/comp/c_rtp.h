@@ -47,23 +47,22 @@ struct rtp_tmp_variables
 	int send_rtp_dynamic;
 
 	/// The number of bits needed to encode ts_send
-	int nr_ts_bits;
+	size_t nr_ts_bits;
 
 	/// The number of bits of TS to place in the extension 3 header
-	int nr_ts_bits_ext3;
+	size_t nr_ts_bits_ext3;
 
 	/// The real timestamp of the last RTP message
-	unsigned int timestamp;
+	uint32_t timestamp;
 
 	/// The TS field to send (ts_scaled or ts)
-	int ts_send;
+	uint32_t ts_send;
 
 	/// Whether the M bit is set in the RTP header or not
 	int m_set;
 
 	/// Whether the Payload Type (PT) field changed or not
 	int rtp_pt_changed;
-
 };
 
 

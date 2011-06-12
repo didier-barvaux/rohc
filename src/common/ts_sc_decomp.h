@@ -25,6 +25,8 @@
 
 #include "lsb.h"
 
+#include <stdint.h>
+
 
 /**
  * @brief Scaled RTP Timestamp decoding object
@@ -35,27 +37,27 @@
 struct ts_sc_decomp
 {
 	/// The TS_STRIDE value
-	int ts_stride;
+	uint32_t ts_stride;
 	/// The LSB-encoded TS_STRIDE value
 	struct d_lsb_decode lsb_ts_stride;
 
 	/// The TS_SCALED value
-	int ts_scaled;
+	uint32_t ts_scaled;
 	/// The LSB-encoded TS_SCALED value
 	struct d_lsb_decode lsb_ts_scaled;
 
 	/// The TS_OFFSET value
-	int ts_offset;
+	uint32_t ts_offset;
 
 	/// The timestamp (TS) value
-	unsigned int ts;
+	uint32_t ts;
 	/// The previous timestamp value
-	unsigned int old_ts;
+	uint32_t old_ts;
 
 	/// The sequence number (SN)
-	unsigned int sn;
+	uint16_t sn;
 	/// The previous sequence number
-	unsigned int old_sn;
+	uint16_t old_sn;
 };
 
 
@@ -64,15 +66,20 @@ struct ts_sc_decomp
  * Function prototypes
  */
 
-void d_create_sc(struct ts_sc_decomp *ts_sc);
+void d_create_sc(struct ts_sc_decomp *const ts_sc);
 
-void d_add_ts(struct ts_sc_decomp *ts_sc, unsigned int ts, unsigned int sn);
-void d_add_ts_stride(struct ts_sc_decomp *ts_sc, int ts_stride);
+void d_add_ts(struct ts_sc_decomp *const ts_sc,
+              const uint32_t ts,
+              const uint16_t sn);
+void d_add_ts_stride(struct ts_sc_decomp *const ts_sc,
+                     const uint32_t ts_stride);
 
-unsigned int d_decode_ts(struct ts_sc_decomp *ts_sc, int ts_scaled, int nb_bits);
-unsigned int ts_deducted(struct ts_sc_decomp *ts_sc, unsigned int sn);
-
-void update_ts_sc(struct ts_sc_decomp *ts_sc);
+int d_decode_ts(struct ts_sc_decomp *const ts_sc,
+                const uint32_t ts_scaled,
+                const size_t bits_nr,
+                uint32_t *const decoded_ts);
+uint32_t ts_deducted(struct ts_sc_decomp *const ts_sc,
+                     const uint16_t sn);
 
 #endif
 

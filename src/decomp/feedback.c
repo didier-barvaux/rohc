@@ -172,26 +172,38 @@ int f_add_option(struct d_feedback *feedback,
  */
 int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 {
-	unsigned char *acid;
-	int largecidsize, i;
+	size_t i;
 
 	if(largecidUsed)
 	{
-		/* large CIDs are used */
-		largecidsize = c_bytesSdvl(cid, -1);
+		unsigned char *acid;
+		size_t largecidsize;
 
-		/* check if the feedback packet can contain a large CID */
+		/* large CIDs are used */
+
+		/* determine the number of bits required for the SDVL-encoded large CID */
+		largecidsize = c_bytesSdvl(cid, 0 /* length detection */);
+		assert(largecidsize > 0 && largecidsize <= 5);
+		if(largecidsize <= 0 || largecidsize > 4)
+		{
+			rohc_debugf(0, "failed to determine the number of bits required to "
+			            "SDVL-encode the large CID %d\n", cid);
+			return 0;
+		}
+
+		/* check if the feedback packet can contain a SDVL-encoded large CID */
 		if(feedback->size + largecidsize > 30)
 		{
 			rohc_debugf(0, "feedback packet is too small for large CID\n");
 			return 0;
 		}
 
-		rohc_debugf(2, "add %d bytes for large CID to feedback\n", largecidsize);
+		rohc_debugf(2, "add %zd bytes for large CID to feedback\n", largecidsize);
 
-		/* move feedback data to make space for the large CID */
-		for(i = feedback->size - 1; i >= 0; i--)
-			feedback->data[i + largecidsize] = feedback->data[i];
+		/* move feedback data to make space for the SDVL-encoded large CID */
+		assert(feedback->size >= 1);
+		for(i = feedback->size; i > 0; i--)
+			feedback->data[i - 1 + largecidsize] = feedback->data[i - 1];
 
 		/* allocate memory for the large CID */
 		acid = (unsigned char *) malloc(largecidsize);
@@ -201,9 +213,11 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 			return 0;
 		}
 
-		if(!c_encodeSdvl(acid, cid, -1))
+		/* SDVL-encode the large CID */
+		if(!c_encodeSdvl(acid, cid, 0 /* length detection */))
 		{
-			rohc_debugf(0, "this should never happen!\n");
+			rohc_debugf(0, "failed to SDVL-encoded large CID %d: this should never "
+			            "happen!\n", cid);
 			zfree(acid);
 			return 0;
 		}
@@ -220,8 +234,9 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		rohc_debugf(2, "add 1 byte for small CID to feedback\n");
 
 		/* move feedback data to make space for the small CID */
-		for(i = feedback->size - 1; i >= 0; i--)
-			feedback->data[i + 1] = feedback->data[i];
+		assert(feedback->size >= 1);
+		for(i = feedback->size; i > 0; i--)
+			feedback->data[i] = feedback->data[i - 1];
 
 		/* write the small CID to the feedback packet */
 		feedback->data[0] = 0xe0;
