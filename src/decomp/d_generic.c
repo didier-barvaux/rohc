@@ -3618,9 +3618,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 		/* sanity check: all bits that are above 16 bits should be zero */
 		if(ip_id_bits_nr > 0 && ip_id_bits != 0)
 		{
-			rohc_debugf(0, "outer IP-ID bits from the base ROHC header shall be "
-			            "filled with zeroes but 0x%x was found\n", ip_id_bits);
-			assert(0);
+			rohc_debugf(0, "bad packet format: outer IP-ID bits from the base ROHC "
+			            "header shall be filled with zeroes but 0x%x was found\n",
+			            ip_id_bits);
 		}
 
 		/* retrieve the full outer IP-ID value */
@@ -3657,9 +3657,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 		/* sanity check: all bits that are above 16 bits should be zero */
 		if(ip_id2_bits_nr > 0 && ip_id2_bits != 0)
 		{
-			rohc_debugf(0, "inner IP-ID bits from the base ROHC header shall be "
-			            "filled with zeroes but 0x%x was found\n", ip_id2_bits);
-			assert(0);
+			rohc_debugf(0, "bad packet format: inner IP-ID bits from the base ROHC "
+			            "header shall be filled with zeroes but 0x%x was found\n",
+			            ip_id2_bits);
 		}
 
 		/* retrieve the full inner IP-ID value */
@@ -4752,9 +4752,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 		/* sanity check: all bits that are above 16 bits should be zero */
 		if(ip_id_bits_nr > 0 && ip_id_bits != 0)
 		{
-			rohc_debugf(0, "outer IP-ID bits from the base ROHC header shall be "
-			            "filled with zeroes but 0x%x was found\n", ip_id_bits);
-			assert(0);
+			rohc_debugf(0, "bad packet format: outer IP-ID bits from the base ROHC "
+			            "header shall be filled with zeroes but 0x%x was found\n",
+			            ip_id_bits);
 		}
 
 		/* retrieve the full outer IP-ID value */
@@ -4791,9 +4791,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 		/* sanity check: all bits that are above 16 bits should be zero */
 		if(ip_id2_bits_nr > 0 && ip_id2_bits != 0)
 		{
-			rohc_debugf(0, "inner IP-ID bits from the base ROHC header shall be "
-			            "filled with zeroes but 0x%x was found\n", ip_id2_bits);
-			assert(0);
+			rohc_debugf(0, "bad packet format: inner IP-ID bits from the base ROHC "
+			            "header shall be filled with zeroes but 0x%x was found\n",
+			            ip_id2_bits);
 		}
 
 		/* retrieve the full inner IP-ID value */
