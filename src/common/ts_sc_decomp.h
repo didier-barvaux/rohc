@@ -38,8 +38,6 @@ struct ts_sc_decomp
 {
 	/// The TS_STRIDE value
 	uint32_t ts_stride;
-	/// The LSB-encoded TS_STRIDE value
-	struct d_lsb_decode lsb_ts_stride;
 
 	/// The TS_SCALED value
 	uint32_t ts_scaled;
