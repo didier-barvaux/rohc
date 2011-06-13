@@ -555,7 +555,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		/* check the minimal length to decode the UDP dynamic part */
 		if(length < 2)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 			goto error;
 		}
 
@@ -568,14 +568,14 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 		/* init the UDP context if necessary */
 		if(rtp_context->udp_checksum_present < 0)
-			rtp_context->udp_checksum_present = udp->check;
+			rtp_context->udp_checksum_present = (udp->check > 0);
 	}
 
 	/* check the minimal length to decode the constant part of the RTP
 	   dynamic part (parts 2-6) */
 	if(length < RTP_CONST_DYN_PART_SIZE)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -643,7 +643,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		   if RX flag is set */
 		if(length < 1)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 			goto error;
 		}
 
@@ -661,13 +661,13 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		/* part 8 */
 		if(tss)
 		{
-			int ts_stride_sdvl_len;
+			size_t ts_stride_sdvl_len;
 			uint32_t ts_stride;
 
 			/* check the minimal length to decode the SDVL-encoded TS_STRIDE */
 			if(length < 1)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d) for 1st byte "
+				rohc_debugf(0, "ROHC packet too small (len = %u) for 1st byte "
 				            "of SDVL-encoded TS_STRIDE\n", length);
 				goto error;
 			}
@@ -684,8 +684,8 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 			/* check the length to decode the full SDVL-encoded TS_STRIDE */
 			if(length < ts_stride_sdvl_len)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d) for the full "
-				            "%d-byte SDVL-encoded TS_STRIDE\n", length,
+				rohc_debugf(0, "ROHC packet too small (len = %u) for the full "
+				            "%zd-byte SDVL-encoded TS_STRIDE\n", length,
 				            ts_stride_sdvl_len);
 				goto error;
 			}
@@ -709,7 +709,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 			/* check the minimal length to decode the SDVL-encoded TIME_STRIDE */
 			if(length < 1)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %d) for 1st byte "
+				rohc_debugf(0, "ROHC packet too small (len = %u) for 1st byte "
 				            "of SDVL-encoded TIME_STRIDE\n", length);
 				goto error;
 			}
