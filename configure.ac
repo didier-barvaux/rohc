@@ -177,6 +177,8 @@ AC_CONFIG_FILES([ \
 	test/Makefile \
 	test/functional/Makefile \
 	test/robustness/Makefile \
+	test/robustness/empty_payload/Makefile \
+	test/robustness/damaged_packet/Makefile \
 	test/non_regression/Makefile \
 	test/performance/Makefile \
 	statistics/Makefile \
