@@ -3211,7 +3211,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	update_inter_packet(g_context);
 	synchronize(g_context);
 
-	/* update SN (and IP-IDs if IPv4) */	
+	/* update SN (and IP-IDs if IPv4) in decompression context */
 	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
@@ -3224,7 +3224,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 		d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
 	}
 
-	/* RTP */
+	/* update TS in decompression context (RTP profile only) */
 	if(is_rtp)
 	{
 		struct d_rtp_context *const rtp_context =
@@ -3976,7 +3976,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	update_inter_packet(g_context);
 	synchronize(g_context);
 
-	/* update SN and IP-IDs */
+	/* update SN (and IP-IDs if IPv4) in decompression context */
 	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
@@ -3989,7 +3989,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
 	}
 		
-	/* RTP */
+	/* update TS in decompression context (RTP profile only) */
 	if(is_rtp)
 	{
 		struct d_rtp_context *const rtp_context =
@@ -5122,7 +5122,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	update_inter_packet(g_context);
 	synchronize(g_context);
 
-	/* update SN and IP-IDs */
+	/* update SN (and IP-IDs if IPv4) in decompression context */
 	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
@@ -5135,7 +5135,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
 	}
 
-	/* RTP */
+	/* update TS in decompression context (RTP profile only) */
 	if(is_rtp)
 	{
 		struct d_rtp_context *const rtp_context =
