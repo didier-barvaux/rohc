@@ -6152,8 +6152,8 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 			rtp_context = (struct d_rtp_context *) g_context->specific;
 
-			/* check the minimal length to read at least one byte of TS_SRTIDE,
-			 * then extract TS_SRTIDE field size and check if packet is large
+			/* check the minimal length to read at least one byte of TS_STRIDE,
+			 * then extract TS_STRIDE field size and check if packet is large
 			 * enough to contain the whole field */
 			if(rohc_remain_len < 1)
 			{
@@ -6164,7 +6164,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			ts_stride_size = d_sdvalue_size(rohc_remain_data);
 			if(ts_stride_size < 0)
 			{
-				rohc_debugf(0, "bad TS_SRTIDE SDVL-encoded field length\n");
+				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field length\n");
 				goto error;
 			}
 
@@ -6178,7 +6178,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			ts_stride = d_sdvalue_decode(rohc_remain_data);
 			if(ts_stride < 0)
 			{
-				rohc_debugf(0, "bad TS_SRTIDE SDVL-encoded field\n");
+				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field\n");
 				goto error;
 			}
 
