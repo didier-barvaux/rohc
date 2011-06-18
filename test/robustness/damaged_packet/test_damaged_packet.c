@@ -125,6 +125,10 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_7, crc_get_polynom(CRC_TYPE_7));
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
+	/* init the random system with a constant value for the test to be fully
+	   reproductible */
+	srand(5);
+
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(filename, packet_to_damage);
 
@@ -300,9 +304,14 @@ static int test_comp_and_decomp(const char *filename,
 
 		if(counter == packet_to_damage)
 		{
-			fprintf(stderr, "\tvoluntary damage packet (set last byte to 0)\n");
+			unsigned char old_byte;
+
 			assert(rohc_size >= 1);
-			rohc_packet[rohc_size - 1] = 0;
+
+			old_byte = rohc_packet[rohc_size - 1];
+			rohc_packet[rohc_size - 1] ^= rand() & 0xff;
+			fprintf(stderr, "\tvoluntary damage packet (change byte #%d from 0x%02x "
+			        "to 0x%02x)\n", rohc_size, old_byte, rohc_packet[rohc_size - 1]);
 		}
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
