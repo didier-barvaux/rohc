@@ -7,6 +7,8 @@
 
 
 TESTS = \
+	test_damaged_packet_3_ir_with_tss_set.sh \
+	test_damaged_packet_3_ir_with_tss_not_set.sh \
 	test_damaged_packet_7_uo0.sh
 
 # the following tests fail with the current codebase
