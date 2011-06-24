@@ -49,8 +49,9 @@
 
 /* prototypes of private functions */
 static void usage(void);
-static int test_comp_and_decomp(const char *filename,
-                                const unsigned int packet_to_damage);
+static int test_comp_and_decomp(const char *const filename,
+                                const unsigned int packet_to_damage,
+                                const rohc_packet_t expected_packet);
 
 
 /**
@@ -67,6 +68,8 @@ int main(int argc, char *argv[])
 	char *filename = NULL;
 	char *packet_to_damage_param = NULL;
 	int packet_to_damage;
+	char *packet_type = NULL;
+	rohc_packet_t expected_packet;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -95,6 +98,11 @@ int main(int argc, char *argv[])
 			/* get the ROHC packet to damage */
 			packet_to_damage_param = argv[0];
 		}
+		else if(packet_type == NULL)
+		{
+			/* get the expected type of the packet to damage */
+			packet_type = argv[0];
+		}
 		else
 		{
 			/* do not accept more than two arguments without option name */
@@ -103,8 +111,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* the source filename and the packet damage are mandatory */
-	if(filename == NULL || packet_to_damage_param == NULL)
+	/* check mandatory parameters */
+	if(filename == NULL || packet_to_damage_param == NULL || packet_type == NULL)
 	{
 		usage();
 		goto error;
@@ -114,8 +122,36 @@ int main(int argc, char *argv[])
 	packet_to_damage = atoi(packet_to_damage_param);
 	if(packet_to_damage <= 0)
 	{
-		fprintf(stderr, "bad number for the package to damage '%s'\n",
+		fprintf(stderr, "bad number for the package to damage '%s'\n\n",
 		        packet_to_damage_param);
+		usage();
+		goto error;
+	}
+
+	/* parse the packet type */
+	if(strlen(packet_type) == 2 && strcmp(packet_type, "ir") == 0)
+	{
+		expected_packet = PACKET_IR;
+	}
+	else if(strlen(packet_type) == 5 && strcmp(packet_type, "irdyn") == 0)
+	{
+		expected_packet = PACKET_IR_DYN;
+	}
+	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo0") == 0)
+	{
+		expected_packet = PACKET_UO_0;
+	}
+	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo1") == 0)
+	{
+		expected_packet = PACKET_UO_1_ID;
+	}
+	else if(strlen(packet_type) == 4 && strcmp(packet_type, "uor2") == 0)
+	{
+		expected_packet = PACKET_UOR_2_TS;
+	}
+	else
+	{
+		fprintf(stderr, "unknown packet type '%s'\n\n", packet_type);
 		usage();
 		goto error;
 	}
@@ -130,7 +166,7 @@ int main(int argc, char *argv[])
 	srand(5);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, packet_to_damage);
+	status = test_comp_and_decomp(filename, packet_to_damage, expected_packet);
 
 error:
 	return status;
@@ -145,12 +181,14 @@ static void usage(void)
 	fprintf(stderr,
 	        "Check that damaged ROHC packets are correctly handled\n"
 	        "\n"
-	        "usage: test_damaged_packet [OPTIONS] FLOW PACKET_NUM\n"
+	        "usage: test_damaged_packet [OPTIONS] FLOW PACKET_NUM PACKET_TYPE\n"
 	        "\n"
 	        "with:\n"
-	        "  FLOW        The flow of Ethernet frames to compress/decompress\n"
-	        "              (in PCAP format)\n"
-	        "  PACKET_NUM  The packet # to damage\n"
+	        "  FLOW         The flow of Ethernet frames to compress/decompress\n"
+	        "               (in PCAP format)\n"
+	        "  PACKET_NUM   The packet # to damage\n"
+	        "  PACKET_TYPE  The packet type expected for the last packet\n"
+	        "               among: ir, irdyn, uo0, uo1, uor2\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
@@ -164,11 +202,14 @@ static void usage(void)
  * @param filename          The name of the PCAP file that contains the
  *                          IP packets
  * @param packet_to_damage  The packet # to damage
+ * @param expected_packet   The type of ROHC packet expected at the end of the
+ *                          source capture
  * @return                  0 in case of success,
  *                          1 in case of failure
  */
-static int test_comp_and_decomp(const char *filename,
-                                const unsigned int packet_to_damage)
+static int test_comp_and_decomp(const char *const filename,
+                                const unsigned int packet_to_damage,
+                                const rohc_packet_t expected_packet)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -242,6 +283,8 @@ static int test_comp_and_decomp(const char *filename,
 		int ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
 		int rohc_size;
+		rohc_comp_last_packet_info_t packet_info;
+		int ret;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
 
@@ -302,16 +345,40 @@ static int test_comp_and_decomp(const char *filename,
 		}
 		fprintf(stderr, "\tcompression is successful\n");
 
+		/* get packet statistics to retrieve the packet type */
+		ret = rohc_comp_get_last_packet_info(comp, &packet_info);
+		if(ret != ROHC_OK)
+		{
+			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");
+			goto destroy_decomp;
+		}
+
+		/* is it the packet to damage? */
 		if(counter == packet_to_damage)
 		{
 			unsigned char old_byte;
 
-			assert(rohc_size >= 1);
+			/* check packet type of the packet to damage */
+			if(packet_info.packet_type != expected_packet)
+			{
+				fprintf(stderr, "\tROHC packet #%u is of type %d while type %d was "
+				        "expected\n", packet_to_damage, packet_info.packet_type,
+				        expected_packet);
+				goto destroy_decomp;
+			}
+			fprintf(stderr, "\tROHC packet #%u is of type %d as expected\n",
+			        packet_to_damage, expected_packet);
 
+			/* damage the packet (randomly modify its last byte) */
+			assert(rohc_size >= 1);
 			old_byte = rohc_packet[rohc_size - 1];
 			rohc_packet[rohc_size - 1] ^= rand() & 0xff;
 			fprintf(stderr, "\tvoluntary damage packet (change byte #%d from 0x%02x "
 			        "to 0x%02x)\n", rohc_size, old_byte, rohc_packet[rohc_size - 1]);
+		}
+		else
+		{
+			fprintf(stderr, "\tROHC packet is of type %d\n", packet_info.packet_type);
 		}
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
@@ -322,13 +389,15 @@ static int test_comp_and_decomp(const char *filename,
 			if(counter != packet_to_damage)
 			{
 				/* failure is NOT expected for the non-damaged packets */
-				fprintf(stderr, "\tunexpected failure to decompress generated ROHC packet\n");
+				fprintf(stderr, "\tunexpected failure to decompress generated ROHC "
+				        "packet\n");
 				goto destroy_decomp;
 			}
 			else
 			{
 				/* failure is expected for the damaged packet */
-				fprintf(stderr, "\texpected failure to decompress generated ROHC packet\n");
+				fprintf(stderr, "\texpected failure to decompress generated ROHC "
+				        "packet\n");
 			}
 		}
 		else
