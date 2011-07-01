@@ -19,6 +19,7 @@
  * @brief ROHC generic compression context for IP-only, UDP and UDP Lite
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
@@ -2770,56 +2771,83 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 	{
 		packet = PACKET_IR_DYN;
 	}
-	else if(is_rtp) /* RTP profile */
+	else if(!is_rtp) /* non-RTP profiles */
 	{
+		const size_t nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
+
+		/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
+		   base header + 8 bits in extension 3) */
+		if(nr_sn_bits > 14)
+		{
+			/* UOR-2 packet can not be used, use IR-DYN instead */
+			packet = PACKET_IR_DYN;
+		}
+		else
+		{
+			/* UOR-2 packet is possible, determine which one */
+			packet = PACKET_UOR_2;
+		}
+	}
+	else /* RTP profile */
+	{
+		const size_t nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
 		const struct sc_rtp_context *rtp_context;
 		size_t nr_ts_bits;
 
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
-		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits; /* nb of bits needed */
+		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 
-		if(nr_of_ip_hdr == 1) /* single IP header */
+		/* UOR-2* packets can be used only if SN stand on <= 14 bits (6 bits
+		   in base header + 8 bits in extension 3) */
+		if(nr_sn_bits > 14)
 		{
-			if(!is_ip_v4 || is_rnd)
+			/* UOR-2* packets can not be used, use IR-DYN instead */
+			packet = PACKET_IR_DYN;
+		}
+		else
+		{
+			/* UOR-2* packets are possible, determine which one */
+
+			if(nr_of_ip_hdr == 1) /* single IP header */
 			{
-				packet = PACKET_UOR_2_RTP;
+				/* UOR-2* packets are possible, determine which one */
+				if((!is_ip_v4 || is_rnd))
+				{
+					packet = PACKET_UOR_2_RTP;
+				}
+				else if(is_ip_v4 && !is_rnd && nr_ip_id_bits > 0 &&
+				        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+				{
+					/* a UOR-2-ID packet can only carry 29 bits of TS (with ext 3) */
+					packet = PACKET_UOR_2_ID;
+				}
+				else
+				{
+					packet = PACKET_UOR_2_TS;
+				}
 			}
-			else if(is_ip_v4 && !is_rnd && nr_ip_id_bits > 0 &&
-			        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+			else /* double IP headers */
 			{
-				/* a UOR-2-ID packet can only carry 29 bits of TS (with ext 3) */
-				packet = PACKET_UOR_2_ID;
-			}
-			else
-			{
-				packet = PACKET_UOR_2_TS;
+				const int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+				const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+				const size_t nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
+
+				if((!is_ip_v4 || is_rnd) && (!is_ip2_v4 || is_rnd2))
+				{
+					packet = PACKET_UOR_2_RTP;
+				}
+				else if(nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL &&
+				        (is_ip_v4 && nr_ip_id_bits > 0 &&
+				         (!is_ip_v4 || is_rnd2 || nr_ip_id_bits2 == 0)))
+				{
+					packet = PACKET_UOR_2_ID;
+				}
+				else
+				{
+					packet = PACKET_UOR_2_TS;
+				}
 			}
 		}
-		else /* double IP headers */
-		{
-			const int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
-			const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-			const size_t nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
-
-			if((!is_ip_v4 || is_rnd) && (!is_ip2_v4 || is_rnd2))
-			{
-				packet = PACKET_UOR_2_RTP;
-			}
-			else if(nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL &&
-			        (is_ip_v4 && nr_ip_id_bits > 0 &&
-			         (!is_ip_v4 || is_rnd2 || nr_ip_id_bits2 == 0)))
-			{
-				packet = PACKET_UOR_2_ID;
-			}
-			else
-			{
-				packet = PACKET_UOR_2_TS;
-			}
-		}
-	}
-	else /* non-RTP profiles */
-	{
-		packet = PACKET_UOR_2;
 	}
 
 	return packet;
@@ -4844,7 +4872,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
 			*s_byte |= (ts_send & 0x01) << 7;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
+			rohc_debugf(3, "6 bits of 6-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 0 + type_bit to 0 */
 			*t_byte &= ~0x80;
@@ -4866,7 +4896,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -4888,7 +4920,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -4910,7 +4944,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -4957,9 +4993,18 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			if(g_context->tmp_variables.nr_sn_bits <= 6)
+			{
 				*s_byte |= g_context->sn & 0x3f;
+				rohc_debugf(3, "6 bits of %zd-bit SN = 0x%x\n",
+				            g_context->tmp_variables.nr_sn_bits, (*s_byte) & 0x3f);
+			}
 			else
-				*s_byte |= (g_context->sn >> 8) & 0x3F;
+			{
+				assert(g_context->tmp_variables.nr_sn_bits <= (6 + 8));
+				*s_byte |= (g_context->sn >> 8) & 0x3f;
+				rohc_debugf(3, "6 bits of %zd-bit SN = 0x%x\n",
+				            g_context->tmp_variables.nr_sn_bits, (*s_byte) & 0x3f);
+			}
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -5047,7 +5092,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
+			rohc_debugf(3, "6 bits of 6-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 0 + type_bit to 0*/
 			*t_byte &= ~0x80;
@@ -5067,7 +5114,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -5087,7 +5136,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -5107,7 +5158,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
+			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -5141,10 +5194,12 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			assert(nr_ts_bits_ext3 <= nr_ts_bits);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
-			/* compute the mask for the TS field in the 1st byte: this is the smaller mask in:
+			/* compute the mask for the TS field in the 1st byte: this is the
+			 * smaller mask in:
 			 *  - the 5-bit mask (0x1f) for the 5-bit field
-			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
-			 *    to avoid sending more than 32 bits of TS in all TS fields */
+			 *  - the variable-length mask (depending on the number of TS bits in
+			 *    UOR-2-RTP) to avoid sending more than 32 bits of TS in all TS
+			 *    fields */
 			if(nr_ts_bits_ext3 == 0)
 			{
 				ts_mask = 0x1f;
@@ -5162,10 +5217,18 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
+			rohc_debugf(3, "SN to send = 0x%x\n", g_context->sn);
 			if(g_context->tmp_variables.nr_sn_bits <= 6)
+			{
 				*s_byte |= g_context->sn & 0x3f;
+				rohc_debugf(3, "6 bits of 6-bit SN = 0x%x\n", (*s_byte) & 0x3f);
+			}
 			else
+			{
+				assert(g_context->tmp_variables.nr_sn_bits <= (6 + 8));
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
+				rohc_debugf(3, "6 bits of 14-bit SN = 0x%x\n", (*s_byte) & 0x3f);
+			}
 
 			/* part 5: set the X bit to 1 + type_bit to 0 */
 			*t_byte |= 0x80;
@@ -5260,6 +5323,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte &= ~0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
+			assert(g_context->tmp_variables.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_debugf(3, "6 bits of 6-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
@@ -5283,6 +5347,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte &= ~0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
@@ -5306,6 +5371,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte &= ~0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
@@ -5329,6 +5395,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte &= ~0x80;
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
+			assert(g_context->tmp_variables.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_debugf(3, "6 bits of 9-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 
@@ -5391,14 +5458,12 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			if(g_context->tmp_variables.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
-				rohc_debugf(3, "6 bits of less-than-6-bit SN = 0x%x\n",
-				            (*s_byte) & 0x3f);
+				rohc_debugf(3, "6 bits of 6-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 			}
 			else
 			{
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
-				rohc_debugf(3, "6 bits of more-than-6-bit SN = 0x%x\n",
-				            (*s_byte) & 0x3f);
+				rohc_debugf(3, "6 bits of 14-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 			}
 
 			/* part 5: set the X bit to 1 + type_bit to 1 */
@@ -6126,7 +6191,8 @@ int code_EXT3_packet(const struct c_context *context,
 		if(g_context->tmp_variables.nr_sn_bits > 5)
 		{
 			dest[counter] = g_context->sn & 0xff;
-			rohc_debugf(3, "SN = 0x%02x\n", dest[counter]);
+			rohc_debugf(3, "8 bits of %zd-bit SN = 0x%02x\n",
+			            g_context->tmp_variables.nr_sn_bits, dest[counter]);
 			counter++;
 		}
 
