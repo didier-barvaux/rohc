@@ -8,7 +8,8 @@
 # where:
 #    NUM      is the packet # to damage
 #    CAPTURE  is the source capture to use for the test, it must begins with
-#             the name of the packet to damage (ie. ir, irdyn, uo0, uo1 or uor2)
+#             the name of the packet to damage (ie. ir, irdyn, uo0, uo1id,
+#             uor2 or uor2ts)
 #
 # Script arguments:
 #    test_damaged_packet_NUM_CAPTURE.sh [verbose [verbose]]

@@ -141,11 +141,15 @@ int main(int argc, char *argv[])
 	{
 		expected_packet = PACKET_UO_0;
 	}
-	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo1") == 0)
+	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
 	{
 		expected_packet = PACKET_UO_1_ID;
 	}
 	else if(strlen(packet_type) == 4 && strcmp(packet_type, "uor2") == 0)
+	{
+		expected_packet = PACKET_UOR_2_RTP;
+	}
+	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
 	{
 		expected_packet = PACKET_UOR_2_TS;
 	}
@@ -188,7 +192,7 @@ static void usage(void)
 	        "               (in PCAP format)\n"
 	        "  PACKET_NUM   The packet # to damage\n"
 	        "  PACKET_TYPE  The packet type expected for the last packet\n"
-	        "               among: ir, irdyn, uo0, uo1, uor2\n"
+	        "               among: ir, irdyn, uo0, uo1id, uor2 and uor2ts\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
@@ -384,21 +388,28 @@ static int test_comp_and_decomp(const char *const filename,
 		/* decompress the generated ROHC packet with the ROHC decompressor */
 		decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size,
 		                              decomp_packet, MAX_ROHC_SIZE);
-		if(decomp_size <= 0)
+		if(decomp_size == ROHC_ERROR_CRC)
 		{
 			if(counter != packet_to_damage)
 			{
 				/* failure is NOT expected for the non-damaged packets */
-				fprintf(stderr, "\tunexpected failure to decompress generated ROHC "
-				        "packet\n");
+				fprintf(stderr, "\tunexpected CRC failure to decompress generated "
+				        "ROHC packet\n");
 				goto destroy_decomp;
 			}
 			else
 			{
 				/* failure is expected for the damaged packet */
-				fprintf(stderr, "\texpected failure to decompress generated ROHC "
+				fprintf(stderr, "\texpected CRC failure to decompress generated ROHC "
 				        "packet\n");
 			}
+		}
+		else if(decomp_size <= 0)
+		{
+			/* non-CRC failure is NOT expected */
+			fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
+			        "ROHC packet\n");
+			goto destroy_decomp;
 		}
 		else
 		{

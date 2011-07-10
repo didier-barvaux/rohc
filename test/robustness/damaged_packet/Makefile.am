@@ -12,15 +12,16 @@ TESTS = \
 	test_damaged_packet_4_irdyn_with_tss_set.sh \
 	test_damaged_packet_4_irdyn_with_tss_not_set.sh \
 	test_damaged_packet_7_uo0.sh \
-	test_damaged_packet_8_uo1.sh \
-	test_damaged_packet_8_uor2_without_ext3.sh \
-	test_damaged_packet_8_uor2_with_ext3_and_ts_stride.sh
+	test_damaged_packet_8_uo1id.sh \
+	test_damaged_packet_8_uor2ts_without_ext3.sh \
+	test_damaged_packet_8_uor2ts_with_ext3_and_ts_stride.sh \
+	test_damaged_packet_8_uor2_with_ext3_but_not_ts_stride.sh
 
 # the following tests fail with the current codebase
 XFAIL_TESTS = \
 	test_damaged_packet_7_uo0.sh \
-	test_damaged_packet_8_uo1.sh \
-	test_damaged_packet_8_uor2_with_ext3_and_ts_stride.sh
+	test_damaged_packet_8_uo1id.sh \
+	test_damaged_packet_8_uor2ts_with_ext3_and_ts_stride.sh
 
 
 check_PROGRAMS = \
