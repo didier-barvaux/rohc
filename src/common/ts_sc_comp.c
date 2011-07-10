@@ -179,7 +179,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 
 			if(rest == 0 && wraparound)
 			{
-				rohc_debugf(2, "wraparoud detected\n");
+				rohc_debugf(2, "wraparound detected\n");
 				if(ts_sc->ts_stride % 2 != 0)
 				{
 					rohc_debugf(3, "ts_stride is not a power of two");
