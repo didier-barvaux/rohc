@@ -4857,7 +4857,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 		}
 		else
 		{
-/* TODO */ rohc_debugf(3, "decode outer IP-ID (rnd = %d, nr bits = %zd, bits = 0x%x)\n", g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
 			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
 			                     sn_decoded, &ip_id_decoded);
 			if(ret != 1)
