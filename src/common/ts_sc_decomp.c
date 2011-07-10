@@ -46,6 +46,8 @@ void d_create_sc(struct ts_sc_decomp *const ts_sc)
 	ts_sc->old_ts = 0;
 	ts_sc->old_sn = 0;
 	ts_sc->sn = 0;
+
+	d_lsb_init(&ts_sc->lsb_ts_scaled, 0, 2);
 }
 
 

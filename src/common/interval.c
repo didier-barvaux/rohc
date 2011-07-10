@@ -18,6 +18,7 @@
  * @file interval.c
  * @brief Compute the interpretation interval for LSB and W-LSB encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  * @author The hackers from ROHC for Linux
  */
@@ -43,6 +44,7 @@
 void f(const uint32_t v_ref, const size_t k, const int32_t p,
        uint32_t *const min, uint32_t *const max)
 {
+	const uint32_t interval_width = (1 << k) - 1; /* (1 << k) = 2^k */
 	int32_t computed_p;
 
 	/* sanity check: check for value that will cause an integer overflow */
@@ -79,7 +81,27 @@ void f(const uint32_t v_ref, const size_t k, const int32_t p,
 		computed_p = p;
 	}
 
-	*min = v_ref - computed_p;
-	*max = v_ref + ((1 << k) - 1) - computed_p; /* (1 << k) = 2 to the power of k */
+	/* compute the minimal value of the interval */
+	if(v_ref > computed_p)
+	{
+		*min = v_ref - computed_p;
+	}
+	else
+	{
+		/* do not straddle the wraparound boundary */
+		*min = 0;
+	}
+
+	/* compute the maximal value of the interval */
+	if(interval_width <= computed_p ||
+	   v_ref <= (0xffffffff - (interval_width - computed_p)))
+	{
+		*max = v_ref + interval_width - computed_p;
+	}
+	else
+	{
+		/* do not straddle the wraparound boundary */
+		*max = 0xffffffff;
+	}
 }
 

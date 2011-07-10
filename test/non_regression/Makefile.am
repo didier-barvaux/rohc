@@ -35,6 +35,7 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv4_udp_rtp_voip_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_voip+video_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_smallcid.sh \
 	test_non_regression_ipv4_udp_smallcid.sh \
 	test_non_regression_ipv6ext_icmp_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_smallcid.sh \
@@ -81,6 +82,7 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_udp_rtp_voip_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_voip+video_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_largecid.sh \
 	test_non_regression_ipv4_udp_largecid.sh \
 	test_non_regression_ipv6ext_icmp_largecid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_largecid.sh \
