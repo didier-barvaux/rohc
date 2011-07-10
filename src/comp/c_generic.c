@@ -6015,6 +6015,7 @@ int code_EXT3_packet(const struct c_context *context,
 	size_t nr_ip_id_bits2;
 	int have_inner = 0;
 	int have_outer = 0;
+	int S = 0;
 	int I = 0;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
@@ -6032,8 +6033,11 @@ int code_EXT3_packet(const struct c_context *context,
 
 	/* part 1: extension type + S bit */
 	f_byte = 0xc0;
-	if(g_context->tmp_variables.nr_sn_bits > 5)
-		f_byte |= 0x20;
+	if(g_context->tmp_variables.nr_sn_bits > 6)
+	{
+		S = 1;
+	}
+	f_byte |= (S << 5) & 0x20;
 
 	/* part 1: R-TS, Tsc & RTP bits if RTP
 	 *         Mode bits otherwise */
@@ -6078,7 +6082,7 @@ int code_EXT3_packet(const struct c_context *context,
 		        !is_ts_constant(rtp_context->ts_sc)));
 		f_byte |= rtp & 0x01;
 
-		rohc_debugf(3, "R-TS = %d, Tsc = %u, rtp = %d\n", rts, tsc, rtp);
+		rohc_debugf(3, "S = %d, R-TS = %d, Tsc = %u, rtp = %d\n", S, rts, tsc, rtp);
 	}
 	else /* non-RTP profiles */
 	{
@@ -6188,7 +6192,7 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 3: only one IP header */
 
 		/* part 4 */
-		if(g_context->tmp_variables.nr_sn_bits > 5)
+		if(S)
 		{
 			dest[counter] = g_context->sn & 0xff;
 			rohc_debugf(3, "8 bits of %zd-bit SN = 0x%02x\n",
@@ -6288,7 +6292,7 @@ int code_EXT3_packet(const struct c_context *context,
 		}
 
 		/* part 4 */
-		if(g_context->tmp_variables.nr_sn_bits > 5)
+		if(S)
 		{
 			dest[counter] = g_context->sn & 0xff;
 			counter++;
