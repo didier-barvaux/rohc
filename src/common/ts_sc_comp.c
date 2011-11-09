@@ -19,6 +19,7 @@
  * @brief Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "ts_sc_comp.h"
@@ -48,6 +49,7 @@ int c_create_sc(struct ts_sc_comp *const ts_sc)
 	ts_sc->sn = 0;
 	ts_sc->is_deductible = 0;
 	ts_sc->state = INIT_TS;
+	ts_sc->nr_init_stride_packets = 0;
 
 	ts_sc->scaled_window = c_create_wlsb(16, 4, 2);
 	if(ts_sc->scaled_window == NULL)
@@ -145,6 +147,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 				/* ts_stride has changed */
 				rohc_debugf(2, "/!\\ ts_stride changed\n");
 				ts_sc->state = INIT_STRIDE;
+				ts_sc->nr_init_stride_packets = 0;
 				rohc_debugf(2, "state -> INIT_STRIDE\n");
 				ts_sc->ts_stride = ts_sc->ts_delta;
 			}
@@ -184,6 +187,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 				{
 					rohc_debugf(3, "ts_stride is not a power of two");
 					ts_sc->state = INIT_STRIDE;
+					ts_sc->nr_init_stride_packets = 0;
 				}
 			}
 			break;

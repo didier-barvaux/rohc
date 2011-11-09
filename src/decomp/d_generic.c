@@ -3041,7 +3041,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 			(struct d_rtp_context *) g_context->specific;
 
 		rohc_debugf(3, "TS is deducted from SN\n");
-		ts_decoded = ts_deducted(&rtp_context->ts_sc, sn_decoded);
+		ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
 	}
 
 
@@ -3229,7 +3229,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		d_add_ts(&rtp_context->ts_sc, ts_decoded, sn_decoded);
+		ts_update_context(&rtp_context->ts_sc, ts_decoded, sn_decoded);
 	}
 
 	/* payload */
@@ -3772,10 +3772,16 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
 
-		if(is_ts_scaled)
+		if(ts_bits_nr == 0)
+		{
+			rohc_debugf(3, "TS is deducted from SN\n");
+			ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+		}
+		else if(is_ts_scaled)
 		{
 			rohc_debugf(3, "TS is scaled\n");
-			ret = d_decode_ts(&rtp_context->ts_sc, ts_bits, ts_bits_nr, &ts_decoded);
+			ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
+			                       &ts_decoded);
 			if(ret != 1)
 			{
 				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
@@ -3783,15 +3789,10 @@ int decode_uo1(struct rohc_decomp *decomp,
 				goto error;
 			}
 		}
-		else if(ts_bits_nr == 0)
-		{
-			rohc_debugf(3, "TS is deducted from SN\n");
-			ts_decoded = ts_deducted(&rtp_context->ts_sc, sn_decoded);
-		}
 		else
 		{
 			rohc_debugf(3, "TS is not scaled\n");
-			ts_decoded = ts_bits;
+			ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
 		}
 
 		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
@@ -3994,7 +3995,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		d_add_ts(&rtp_context->ts_sc, ts_decoded, sn_decoded);
+		ts_update_context(&rtp_context->ts_sc, ts_decoded, sn_decoded);
 	}
 
 	/* payload */
@@ -4583,14 +4584,26 @@ int decode_uor2(struct rohc_decomp *decomp,
 					   value(RND) = 0 */
 					innermost_ip_hdr = 1;
 				}
-				else
+				else if(packet_type == PACKET_UOR_2_TS ||
+				        packet_type == PACKET_UOR_2_ID)
 				{
-					rohc_debugf(0, "extension 2 for UOR-2-TS must contain at least one "
+					/* UOR-2-TS or UOR-2-ID packet but no IPv4 header with non-random
+					   IP-ID => not possible */
+					rohc_debugf(0, "extension 2 for UOR-2-TS/ID must contain at least one "
 				            "IPv4 header with a non-random IP-ID\n");
 					goto error;
 				}
-				rohc_debugf(3, "IP header #%d is the innermost IPv4 header with a "
-				            "non-random IP-ID\n", innermost_ip_hdr);
+				else
+				{
+					/* UOR-2 or UOR-2-RTP packet and no IPv4 header with non-random
+					   IP-ID => possible */
+					innermost_ip_hdr = 0;
+				}
+				if(innermost_ip_hdr != 0)
+				{
+					rohc_debugf(3, "IP header #%d is the innermost IPv4 header with a "
+					            "non-random IP-ID\n", innermost_ip_hdr);
+				}
 
 				/* decode extension 2 */
 				ext_size = decode_extension2(rohc_remain_data, rohc_remain_len,
@@ -4906,10 +4919,16 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
 
-		if(is_ts_scaled)
+		if(ts_bits_nr == 0)
+		{
+			rohc_debugf(3, "TS is deducted from SN\n");
+			ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+		}
+		else if(is_ts_scaled)
 		{
 			rohc_debugf(3, "TS is scaled\n");
-			ret = d_decode_ts(&rtp_context->ts_sc, ts_bits, ts_bits_nr, &ts_decoded);
+			ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
+			                       &ts_decoded);
 			if(ret != 1)
 			{
 				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
@@ -4917,15 +4936,10 @@ int decode_uor2(struct rohc_decomp *decomp,
 				goto error;
 			}
 		}
-		else if(ts_bits_nr == 0)
-		{
-			rohc_debugf(3, "TS is deducted from SN\n");
-			ts_decoded = ts_deducted(&rtp_context->ts_sc, sn_decoded);
-		}
 		else
 		{
 			rohc_debugf(3, "TS is not scaled\n");
-			ts_decoded = ts_bits;
+			ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
 		}
 
 		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
@@ -5139,7 +5153,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		d_add_ts(&rtp_context->ts_sc, ts_decoded, sn_decoded);
+		ts_update_context(&rtp_context->ts_sc, ts_decoded, sn_decoded);
 	}
 	
 	/* payload */
@@ -5559,8 +5573,8 @@ error:
  * @param rohc_data         The ROHC packet to decode
  * @param rohc_data_len     The length of the ROHC packet
  * @param packet_type       The type of ROHC packet
- * @param innermost_ip_hdr  The innermost IP header (1 means first IP header,
- *                          2 means second IP header)
+ * @param innermost_ip_hdr  The innermost IP header (0 means none,
+ *                          1 means first IP header, 2 means second IP header)
  * @param sn_bits           OUT: The SN bits found in the extension
  * @param sn_bits_nr        OUT: The number of SN bits found in the extension
  * @param ip_id_bits        OUT: The outer IP-ID bits found in the extension
@@ -5577,7 +5591,7 @@ error:
 int decode_extension2(const unsigned char *const rohc_data,
                       const size_t rohc_data_len,
                       const rohc_packet_t packet_type,
-											const int innermost_ip_hdr,
+                      const int innermost_ip_hdr,
                       uint16_t *const sn_bits,
                       size_t *const sn_bits_nr,
                       uint16_t *const ip_id_bits,
@@ -5588,9 +5602,6 @@ int decode_extension2(const unsigned char *const rohc_data,
                       size_t *const ts_bits_nr)
 {
 	const size_t rohc_ext2_len = 3;
-
-	/* sanity checks */
-	assert(innermost_ip_hdr == 1 || innermost_ip_hdr == 2);
 
 	rohc_debugf(3, "decode UOR-2* extension 2\n");
 
@@ -5609,6 +5620,8 @@ int decode_extension2(const unsigned char *const rohc_data,
 	{
 		case PACKET_UOR_2:
 		{
+			/* sanity check */
+			assert(innermost_ip_hdr >= 0 && innermost_ip_hdr <= 2);
 			/* parse 11 bits of outer IP-ID */
 			*ip_id_bits = (GET_BIT_0_2(rohc_data) << 8) | GET_BIT_0_7(rohc_data + 1);
 			*ip_id_bits_nr = 11;
@@ -5623,10 +5636,13 @@ int decode_extension2(const unsigned char *const rohc_data,
 
 		case PACKET_UOR_2_RTP:
 		{
+			/* sanity check */
+			assert(innermost_ip_hdr >= 0 && innermost_ip_hdr <= 2);
 			/* parse 19 bits of TS */
-			*ts_bits = (GET_BIT_0_2(rohc_data) << 8) |
-			           GET_BIT_0_7(rohc_data + 1) |
-			           GET_BIT_0_7(rohc_data + 2);
+			*ts_bits = ((GET_BIT_0_2(rohc_data) << 16) & 0x70000) |
+			           ((GET_BIT_0_7(rohc_data + 1) << 8) & 0xff00) |
+			           (GET_BIT_0_7(rohc_data + 2) & 0xff);
+			*ts_bits_nr = 19;
 			/* no outer IP-ID bit */
 			*ip_id_bits = 0;
 			*ip_id_bits_nr = 0;
@@ -5638,6 +5654,8 @@ int decode_extension2(const unsigned char *const rohc_data,
 		
 		case PACKET_UOR_2_TS:
 		{
+			/* sanity check */
+			assert(innermost_ip_hdr == 1 || innermost_ip_hdr == 2);
 			/* parse 11 bits of TS */
 			*ts_bits = (GET_BIT_0_2(rohc_data) << 8) | GET_BIT_0_7(rohc_data + 1);
 			*ts_bits_nr = 11;
@@ -5661,6 +5679,8 @@ int decode_extension2(const unsigned char *const rohc_data,
 
 		case PACKET_UOR_2_ID:
 		{
+			/* sanity check */
+			assert(innermost_ip_hdr == 1 || innermost_ip_hdr == 2);
 			/* parse 11 bits of the innermost IP-ID */
 			if(innermost_ip_hdr == 1)
 			{
@@ -6185,7 +6205,9 @@ int decode_extension3(struct rohc_decomp *decomp,
 			rohc_remain_len -= ts_stride_size;
 		
 			rohc_debugf(3, "decoded ts_stride = %u / 0x%x\n", ts_stride, ts_stride);
-			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);
+
+			/* temporarily store the decoded TS_STRIDE in context */
+			d_record_ts_stride(&rtp_context->ts_sc, ts_stride);
 		}
 
 		if(tis)

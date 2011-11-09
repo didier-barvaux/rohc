@@ -19,6 +19,7 @@
  * @brief Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  *
  * See section 4.5.3 of RFC 3095 for details about Scaled RTP Timestamp
  * encoding.
@@ -81,6 +82,8 @@ struct ts_sc_comp
 
 	/// The state of the scaled RTP Timestamp encoding object
 	ts_sc_state state;
+	/// The number of packets sent in state INIT_STRIDE
+	size_t nr_init_stride_packets;
 
 	/// The difference between old and current TS
 	uint32_t ts_delta;

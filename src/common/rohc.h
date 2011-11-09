@@ -18,6 +18,7 @@
  * @file rohc.h
  * @brief ROHC common definitions and routines 
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -481,12 +482,17 @@ struct medium
 #define CHANGE_TO_FO_COUNT  700
 
 /// @brief Defines the minimal number of packets that must be sent while
-///        in IR state before being able to switch the the FO state
+///        in IR state before being able to switch to the FO state
 #define MAX_IR_COUNT  3
 
 /// @brief Defines the minimal number of packets that must be sent while
-///        in FO state before being able to switch the the SO state
+///        in FO state before being able to switch to the SO state
 #define MAX_FO_COUNT  3
+
+/// @brief Defines the minimal number of packets that must be sent while in
+///        INIT_STRIDE state before being able to switch to the SEND_SCALED
+///        state
+#define ROHC_INIT_TS_STRIDE_MIN  3U
 
 
 /*

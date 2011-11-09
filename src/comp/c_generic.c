@@ -3344,7 +3344,7 @@ int code_IR_packet(struct c_context *const context,
 	assert((nr_of_ip_hdr == 1 && ip2 == NULL) ||
 	       (nr_of_ip_hdr == 2 && ip2 != NULL));
 	assert(g_context->tmp_variables.nr_sn_bits == 16);
-	assert((ip_get_version(ip) == IPV4 && g_context->tmp_variables.nr_ip_id_bits == 16) ||
+	assert((ip_get_version(ip) == IPV4 && g_context->tmp_variables.nr_ip_id_bits <= 16) ||
 	       (ip_get_version(ip) != IPV4 && g_context->tmp_variables.nr_ip_id_bits == 0));
 	assert((nr_of_ip_hdr == 1 && g_context->tmp_variables.nr_ip_id_bits2 == 0) ||
 	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) == IPV4 && g_context->tmp_variables.nr_ip_id_bits2 == 16) ||
@@ -6508,9 +6508,25 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		rohc_debugf(3, "ts_stride %u (0x%x) is SDVL-encoded on %zd bit(s)\n",
 		            ts_stride, ts_stride, sdvl_size);
 
+		/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
 		if(rtp_context->ts_sc.state == INIT_STRIDE)
 		{
-			rtp_context->ts_sc.state = SEND_SCALED;
+			rtp_context->ts_sc.nr_init_stride_packets++;
+			if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
+			{
+				rohc_debugf(3, "TS_STRIDE transmitted at least %u times, so change "
+				            "from state INIT_STRIDE to SEND_SCALED\n",
+				            ROHC_INIT_TS_STRIDE_MIN);
+				rtp_context->ts_sc.state = SEND_SCALED;
+			}
+			else
+			{
+				rohc_debugf(3, "TS_STRIDE transmitted only %u times, so stay in "
+				            "state INIT_STRIDE (at least %u times are required "
+				            "to change to state SEND_SCALED)\n",
+				            rtp_context->ts_sc.nr_init_stride_packets,
+				            ROHC_INIT_TS_STRIDE_MIN);
+			}
 		}
 	}
 

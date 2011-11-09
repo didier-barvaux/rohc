@@ -19,6 +19,7 @@
  * @brief ROHC compression context for the RTP profile.
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "c_rtp.h"
@@ -641,15 +642,37 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			/* skip the bytes used to encode TS_STRIDE in SDVL */
 			counter += ts_stride_sdvl_len;
 
+			/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
 			if(rtp_context->ts_sc.state == INIT_STRIDE)
-				rtp_context->ts_sc.state = SEND_SCALED;
+			{
+				rtp_context->ts_sc.nr_init_stride_packets++;
+				if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
+				{
+					rohc_debugf(3, "TS_STRIDE transmitted at least %u times, so change "
+					            "from state INIT_STRIDE to SEND_SCALED\n",
+					            ROHC_INIT_TS_STRIDE_MIN);
+					rtp_context->ts_sc.state = SEND_SCALED;
+				}
+				else
+				{
+					rohc_debugf(3, "TS_STRIDE transmitted only %u times, so stay in "
+					            "state INIT_STRIDE (at least %u times are required "
+					            "to change to state SEND_SCALED)\n",
+					            rtp_context->ts_sc.nr_init_stride_packets,
+					            ROHC_INIT_TS_STRIDE_MIN);
+				}
+			}
 		}
 
 		/* part 9 not supported yet */
 	}
 
 	if(rtp_context->ts_sc.state == INIT_TS)
+	{
+		rohc_debugf(3, "change from state INIT_TS to INIT_STRIDE\n");
 		rtp_context->ts_sc.state = INIT_STRIDE;
+		rtp_context->ts_sc.nr_init_stride_packets = 0;
+	}
 
 	return counter;
 }

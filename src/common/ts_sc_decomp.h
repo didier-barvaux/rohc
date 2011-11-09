@@ -18,6 +18,7 @@
  * @file ts_sc_decomp.h
  * @brief Scaled RTP Timestamp decoding
  * @author David Moreau from TAS
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef TS_SC_DECOMP_H
@@ -36,15 +37,15 @@
  */
 struct ts_sc_decomp
 {
-	/// The TS_STRIDE value
+	/// The last computed or received TS_STRIDE value (validated by CRC)
 	uint32_t ts_stride;
 
-	/// The TS_SCALED value
+	/// The last computed or received TS_SCALED value (validated by CRC)
 	uint32_t ts_scaled;
 	/// The LSB-encoded TS_SCALED value
 	struct d_lsb_decode lsb_ts_scaled;
 
-	/// The TS_OFFSET value
+	/// The last computed or received TS_OFFSET value (validated by CRC)
 	uint32_t ts_offset;
 
 	/// The timestamp (TS) value
@@ -56,6 +57,18 @@ struct ts_sc_decomp
 	uint16_t sn;
 	/// The previous sequence number
 	uint16_t old_sn;
+
+
+	/* the attributes below are new TS_* values computed by not yet validated
+	   by CRC check */
+
+	/// The last computed or received TS_STRIDE value (not validated by CRC)
+	uint32_t new_ts_stride;
+	/// The last computed or received TS_SCALED value (not validated by CRC)
+	uint32_t new_ts_scaled;
+	/// The last computed or received TS_OFFSET value (not validated by CRC)
+	uint32_t new_ts_offset;
+
 };
 
 
@@ -66,18 +79,23 @@ struct ts_sc_decomp
 
 void d_create_sc(struct ts_sc_decomp *const ts_sc);
 
-void d_add_ts(struct ts_sc_decomp *const ts_sc,
-              const uint32_t ts,
-              const uint16_t sn);
-void d_add_ts_stride(struct ts_sc_decomp *const ts_sc,
-                     const uint32_t ts_stride);
+void ts_update_context(struct ts_sc_decomp *const ts_sc,
+                       const uint32_t ts,
+                       const uint16_t sn);
 
-int d_decode_ts(struct ts_sc_decomp *const ts_sc,
-                const uint32_t ts_scaled,
-                const size_t bits_nr,
-                uint32_t *const decoded_ts);
-uint32_t ts_deducted(struct ts_sc_decomp *const ts_sc,
-                     const uint16_t sn);
+void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
+                        const uint32_t ts_stride);
+
+int ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
+                     const uint32_t ts_scaled,
+                     const size_t bits_nr,
+                     uint32_t *const decoded_ts);
+
+uint32_t ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
+                            const uint32_t ts_bits);
+
+uint32_t ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
+                           const uint16_t sn);
 
 #endif
 

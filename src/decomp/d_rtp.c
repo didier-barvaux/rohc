@@ -19,6 +19,7 @@
  * @brief ROHC decompression context for the RTP profile.
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "d_rtp.h"
@@ -536,6 +537,8 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	struct d_rtp_context *rtp_context;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
+	uint32_t ts_bits;
+	uint32_t ts_decoded;
 	int read = 0; /* number of bytes read from the packet */
 	unsigned char byte;
 	int rx;
@@ -617,12 +620,12 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	if(context->multiple_ip && ip_get_version(&context->active2->ip) == IPV4)
 		d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
 
-	/* part 5 */
-	rtp->timestamp = *((uint32_t *) packet);
+	/* part 5: 4-byte TimeStamp (TS) */
+	ts_bits = ntohl(*((uint32_t *) packet));
 	read += 4;
 	packet += 4;
 	length -= 4;
-	rohc_debugf(3, "timestamp = 0x%x\n", ntohl(rtp->timestamp));
+	rohc_debugf(3, "timestamp = 0x%x\n", ts_bits);
 
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)
@@ -699,8 +702,8 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 			packet += ts_stride_sdvl_len;
 			length -= ts_stride_sdvl_len;
 
-			/* update context with the decoded TS_STRIDE */
-			d_add_ts_stride(&rtp_context->ts_sc, ts_stride);
+			/* temporarily store the decoded TS_STRIDE in context */
+			d_record_ts_stride(&rtp_context->ts_sc, ts_stride);
 		}
 
 		/* part 9 */
@@ -720,8 +723,15 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		}
 	}
 
-	/* add the timestamp to the ts_sc object */
-	d_add_ts(&rtp_context->ts_sc, ntohl(rtp->timestamp), ntohs(rtp->sn));
+	/* decode the unscaled TS */
+	ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
+
+	/* write TS in the uncompressed RTP header */
+	rtp->timestamp = htonl(ts_decoded);
+
+	/* update TS in decompression context (it is fine for IR / IR-DYN packets to
+	   do the update here since CRC correctness was checked before parsing) */
+	ts_update_context(&rtp_context->ts_sc, ts_decoded, ntohs(rtp->sn));
 
 	return read;
 
