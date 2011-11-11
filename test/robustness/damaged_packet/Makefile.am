@@ -39,9 +39,9 @@ AM_LDFLAGS = \
 test_damaged_packet_SOURCES = test_damaged_packet.c
 test_damaged_packet_LDADD = \
 	-lpcap \
-	-lrohc_common \
 	-lrohc_comp \
 	-lrohc_decomp \
+	-lrohc_common \
 	-lm
 
 EXTRA_DIST = \

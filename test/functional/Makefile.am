@@ -33,9 +33,9 @@ AM_LDFLAGS = \
 test_feedback2_SOURCES = test_feedback2.c
 test_feedback2_LDADD = \
 	-lpcap \
-	-lrohc_common \
 	-lrohc_comp \
 	-lrohc_decomp \
+	-lrohc_common \
 	-lm
 
 EXTRA_DIST = \

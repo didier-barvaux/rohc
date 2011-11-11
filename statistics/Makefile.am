@@ -26,8 +26,8 @@ AM_LDFLAGS = \
 generate_statistics_SOURCES = generate_statistics.c
 generate_statistics_LDADD = \
 	-lpcap \
-	-lrohc_common \
 	-lrohc_comp \
+	-lrohc_common \
 	-lm
 
 

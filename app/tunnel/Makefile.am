@@ -20,8 +20,8 @@ AM_LDFLAGS = \
 
 rohctunnel_SOURCES = tunnel.c
 rohctunnel_LDADD = \
-	-lrohc_common \
 	-lrohc_comp \
 	-lrohc_decomp\
+	-lrohc_common \
 	-lm
 

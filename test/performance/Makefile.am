@@ -24,7 +24,7 @@ AM_LDFLAGS = \
 test_performance_SOURCES = test_performance.c
 test_performance_LDADD = \
 	-lpcap \
-	-lrohc_common \
 	-lrohc_comp \
+	-lrohc_common \
 	-lm
 

@@ -125,9 +125,9 @@ AM_LDFLAGS = \
 test_non_regression_SOURCES = test_non_regression.c
 test_non_regression_LDADD = \
 	-lpcap \
-	-lrohc_common \
 	-lrohc_comp \
 	-lrohc_decomp \
+	-lrohc_common \
 	-lm
 
 EXTRA_DIST = \
