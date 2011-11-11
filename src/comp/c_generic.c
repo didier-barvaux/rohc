@@ -2689,7 +2689,7 @@ int update_variables(struct c_context *const context,
 					/* cannot find the size of TS scaled, send the maximum of TS
 					 * bits we are able to send */
 					rohc_debugf(0, "size of TS scaled (0x%x) not found, this should "
-					               "never append!\n", ts_send);
+					               "never happen!\n", ts_send);
 					assert(0);
 					nr_bits = 32;
 				}

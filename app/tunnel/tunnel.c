@@ -1218,7 +1218,7 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	}
 	else if(new_seq == max_seq)
 	{
-		/* should not append */
+		/* should not happen */
 		fprintf(stderr, "ROHC packet #%u duplicated\n", new_seq);
 	}
 	

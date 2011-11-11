@@ -177,7 +177,7 @@ int d_sdvalue_size(const unsigned char *data)
 	else
 	{
 		size = -1;
-		rohc_debugf(0, "Bad SDVL data, this should not append\n");
+		rohc_debugf(0, "Bad SDVL data, this should not happen\n");
 	}
 
 	return size;

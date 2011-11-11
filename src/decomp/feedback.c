@@ -93,7 +93,7 @@ int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 	}
 	else /* SN may not be stored on 20 bits */
 	{
-		/* should not append */
+		/* should not happen */
 		assert(0);
 		goto error;
 	}

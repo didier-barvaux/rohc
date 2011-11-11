@@ -977,7 +977,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 	}
 	else
 	{
-		rohc_debugf(0, "unexpected CID type (%d), should not append\n",
+		rohc_debugf(0, "unexpected CID type (%d), should not happen\n",
 		            decomp->medium->cid_type);
 		goto error;
 	}
