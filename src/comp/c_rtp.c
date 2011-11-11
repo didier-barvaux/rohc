@@ -655,7 +655,7 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 				}
 				else
 				{
-					rohc_debugf(3, "TS_STRIDE transmitted only %u times, so stay in "
+					rohc_debugf(3, "TS_STRIDE transmitted only %zd times, so stay in "
 					            "state INIT_STRIDE (at least %u times are required "
 					            "to change to state SEND_SCALED)\n",
 					            rtp_context->ts_sc.nr_init_stride_packets,

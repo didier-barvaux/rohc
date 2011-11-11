@@ -679,7 +679,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 			ts_stride_sdvl_len = d_sdvalue_size(packet);
 			if(ts_stride_sdvl_len < 1 || ts_stride_sdvl_len > 4)
 			{
-				rohc_debugf(0, "invalid size (%d bytes) for SDVL-encoded "
+				rohc_debugf(0, "invalid size (%zd bytes) for SDVL-encoded "
 				            "TS_STRIDE field\n", ts_stride_sdvl_len);
 				goto error;
 			}

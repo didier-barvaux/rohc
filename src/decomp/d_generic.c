@@ -185,7 +185,7 @@ int decode_outer_header_flags(struct d_context *context,
                               unsigned int length,
                               struct d_generic_changes *info,
                               uint16_t *const ext3_ip_id_bits,
-                              unsigned int *const ext3_ip_id_bits_nr);
+                              size_t *const ext3_ip_id_bits_nr);
 
 int decode_inner_header_flags(struct d_context *context,
                               const unsigned char *flags,
@@ -5390,7 +5390,7 @@ int decode_extension0(const unsigned char *const rohc_data,
 	/* check the minimal length to decode the extension 0 */
 	if(rohc_data_len < 1)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_data_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_data_len);
 		goto error;
 	}
 
@@ -5432,11 +5432,11 @@ int decode_extension0(const unsigned char *const rohc_data,
 		}
 	}
 
-	rohc_debugf(3, "%u bits of SN found in EXT0 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of SN found in EXT0 = 0x%x\n",
 	            *sn_bits_nr, *sn_bits);
-	rohc_debugf(3, "%u bits of outer IP-ID found in EXT0 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of outer IP-ID found in EXT0 = 0x%x\n",
 	            *ip_id_bits_nr, *ip_id_bits);
-	rohc_debugf(3, "%u bits of TS found in EXT0 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of TS found in EXT0 = 0x%x\n",
 	            *ts_bits_nr, *ts_bits);
 
 	return rohc_ext0_len;
@@ -5485,7 +5485,7 @@ int decode_extension1(const unsigned char *const rohc_data,
 	/* check the minimal length to decode the extension 1 */
 	if(rohc_data_len < 2)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_data_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_data_len);
 		goto error;
 	}
 
@@ -5546,11 +5546,11 @@ int decode_extension1(const unsigned char *const rohc_data,
 		}
 	}
 
-	rohc_debugf(3, "%u bits of SN found in EXT1 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of SN found in EXT1 = 0x%x\n",
 	            *sn_bits_nr, *sn_bits);
-	rohc_debugf(3, "%u bits of outer IP-ID found in EXT1 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of outer IP-ID found in EXT1 = 0x%x\n",
 	            *ip_id_bits_nr, *ip_id_bits);
-	rohc_debugf(3, "%u bits of TS found in EXT1 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of TS found in EXT1 = 0x%x\n",
 	            *ts_bits_nr, *ts_bits);
 
 	return rohc_ext1_len;
@@ -5608,7 +5608,7 @@ int decode_extension2(const unsigned char *const rohc_data,
 	/* check the minimal length to decode the extension 2 */
 	if(rohc_data_len < 3)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_data_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_data_len);
 		goto error;
 	}
 
@@ -5711,13 +5711,13 @@ int decode_extension2(const unsigned char *const rohc_data,
 		}
 	}
 
-	rohc_debugf(3, "%u bits of SN found in EXT2 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of SN found in EXT2 = 0x%x\n",
 	            *sn_bits_nr, *sn_bits);
-	rohc_debugf(3, "%u bits of outer IP-ID found in EXT2 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of outer IP-ID found in EXT2 = 0x%x\n",
 	            *ip_id_bits_nr, *ip_id_bits);
-	rohc_debugf(3, "%u bits of inner IP-ID found in EXT2 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of inner IP-ID found in EXT2 = 0x%x\n",
 	            *ip_id2_bits_nr, *ip_id2_bits);
-	rohc_debugf(3, "%u bits of TS found in EXT2 = 0x%x\n",
+	rohc_debugf(3, "%zd bits of TS found in EXT2 = 0x%x\n",
 	            *ts_bits_nr, *ts_bits);
 
 	return rohc_ext2_len;
@@ -5817,7 +5817,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* check the minimal length to decode the flags */
 	if(rohc_remain_len < 1)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -5847,7 +5847,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			/* check the minimal length to decode the first byte of flags and ip2 flag */
 			if(rohc_remain_len < 2)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+				rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 				goto error;
 			}
 			rts = GET_REAL(GET_BIT_4(rohc_remain_data));
@@ -5881,7 +5881,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 	 * and the SN */
 	if(rohc_remain_len < ip + ip2 + S)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -5929,7 +5929,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		 * contain the whole field */
 		if(rohc_remain_len < 1)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -5942,7 +5942,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 		if(rohc_remain_len < ts_sdvl_size)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -6024,7 +6024,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		/* check the minimal length to decode the IP-ID field */
 		if(rohc_remain_len < 2)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 
@@ -6042,7 +6042,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			*ip_id_bits = 0;
 			*ip_id_bits_nr = 0;
 
-			rohc_debugf(3, "%u bits of inner IP-ID in EXT3 = 0x%x\n",
+			rohc_debugf(3, "%zd bits of inner IP-ID in EXT3 = 0x%x\n",
 			            *ip_id2_bits_nr, *ip_id2_bits);
 		}
 		else
@@ -6059,7 +6059,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			*ip_id2_bits = 0;
 			*ip_id2_bits_nr = 0;
 
-			rohc_debugf(3, "%u bits of outer IP-ID in EXT3 = 0x%x\n",
+			rohc_debugf(3, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
 			            *ip_id_bits_nr, *ip_id_bits);
 		}
 
@@ -6106,7 +6106,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		/* check the minimal length to decode RTP header flags */
 		if(rohc_remain_len < 1)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 	
@@ -6115,11 +6115,11 @@ int decode_extension3(struct rohc_decomp *decomp,
 		rpt = GET_REAL(GET_BIT_5(rohc_remain_data));
 		*rtp_m_bits = GET_REAL(GET_BIT_4(rohc_remain_data));
 		*rtp_m_bits_nr = 1;
-		rohc_debugf(3, "%u-bit RTP Marker (M) = %u\n",
+		rohc_debugf(3, "%zd-bit RTP Marker (M) = %u\n",
 		            *rtp_m_bits_nr, *rtp_m_bits);
 		*rtp_x_bits = GET_REAL(GET_BIT_3(rohc_remain_data));
 		*rtp_x_bits_nr = 1;
-		rohc_debugf(3, "%u-bit RTP eXtension (R-X) = %u\n",
+		rohc_debugf(3, "%zd-bit RTP eXtension (R-X) = %u\n",
 		            *rtp_x_bits_nr, *rtp_x_bits);
 		csrc = GET_REAL(GET_BIT_2(rohc_remain_data));
 		tss = GET_REAL(GET_BIT_1(rohc_remain_data));
@@ -6130,7 +6130,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		/* check the minimal length to decode RTP header fields */
 		if(rohc_remain_len < (rpt + csrc + tss + tis))
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 			goto error;
 		}
 	
@@ -6141,7 +6141,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			*rtp_p_bits_nr = 1;
 			*rtp_pt_bits = GET_BIT_0_6(rohc_remain_data);
 			*rtp_pt_bits_nr = 7;
-			rohc_debugf(3, "%u-bit RTP Payload Type (R-PT) = 0x%x\n",
+			rohc_debugf(3, "%zd-bit RTP Payload Type (R-PT) = 0x%x\n",
 			            *rtp_pt_bits_nr, *rtp_pt_bits);
 			rohc_remain_data++;
 			rohc_remain_len--;
@@ -6176,7 +6176,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			 * enough to contain the whole field */
 			if(rohc_remain_len < 1)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+				rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 				goto error;
 			}
 
@@ -6189,7 +6189,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 			if(rohc_remain_len < ts_stride_size)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
+				rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
 				goto error;
 			}
 
@@ -6677,7 +6677,7 @@ error:
  *                            some IP header fields
  * @param info                The IP header info to store the decoded values
  * @param ext3_ip_id_bits     OUT: The outer IP-ID bits found in extension 3
- * @param ext3_ip_id_bits_nr  OUT: The number of outer IP-ID bits found in
+ * @param ext3_ip_id_bits_nr  IN/OUT: The number of outer IP-ID bits found in
  *                            extension 3
  * @return                    The data length read from the ROHC packet,
  *                            -1 in case of error
@@ -6688,7 +6688,7 @@ int decode_outer_header_flags(struct d_context *context,
                               unsigned int length,
                               struct d_generic_changes *info,
                               uint16_t *const ext3_ip_id_bits,
-                              unsigned int *const ext3_ip_id_bits_nr)
+                              size_t *const ext3_ip_id_bits_nr)
 {
 	int is_I2;
 	int read;
@@ -6733,7 +6733,7 @@ int decode_outer_header_flags(struct d_context *context,
 		*ext3_ip_id_bits = ntohs(GET_NEXT_16_BITS(fields));
 		*ext3_ip_id_bits_nr = 16;
 
-		rohc_debugf(3, "%u bits of outer IP-ID in EXT3 = 0x%x\n",
+		rohc_debugf(3, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
 		            *ext3_ip_id_bits_nr, *ext3_ip_id_bits);
 
 		fields += 2;

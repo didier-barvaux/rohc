@@ -74,7 +74,7 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 			size = 4;
 		else
 		{
-			rohc_debugf(0, "value %d on %d bits is too large for SDVL-encoding\n",
+			rohc_debugf(0, "value %d on %zd bits is too large for SDVL-encoding\n",
 			            value, length);
 			size = 5;
 		}
