@@ -91,18 +91,18 @@ fi
 # check if ROHC tests are enabled
 AC_ARG_ENABLE(rohc_tests,
               AS_HELP_STRING([--enable-rohc-tests],
-                             [enable ROHC tests [[default=yes]]]),
+                             [enable ROHC tests [[default=no]]]),
               enable_rohc_tests=$enableval,
-              enable_rohc_tests=yes)
+              enable_rohc_tests=no)
 AM_CONDITIONAL([ROHC_TESTS], [test x$enable_rohc_tests = xyes])
 
 
 # check if ROHC statistics application is enabled
 AC_ARG_ENABLE(rohc_stats,
               AS_HELP_STRING([--enable-rohc-stats],
-                             [enable ROHC statistics application [[default=yes]]]),
+                             [enable ROHC statistics application [[default=no]]]),
               enable_rohc_stats=$enableval,
-              enable_rohc_stats=yes)
+              enable_rohc_stats=no)
 AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 
@@ -160,9 +160,9 @@ AM_CONDITIONAL([BUILD_DOC], [test "x$build_doc" = "xyes"])
 # check if library examples should be generated
 AC_ARG_ENABLE(examples,
               AS_HELP_STRING([--disable-examples],
-                             [build example programs [default=yes]]),
+                             [build example programs [default=no]]),
               [build_examples=$enableval],
-              [build_examples=yes])
+              [build_examples=no])
 AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$build_examples" = "xyes"])
 
 

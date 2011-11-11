@@ -44,7 +44,7 @@ pkgconfig_DATA = rohc.pc
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \
 	--enable-rohc-tests \
-	--enable-doc \
+	--disable-doc \
 	--disable-examples
 
 # extra files for releases

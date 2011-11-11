@@ -43,6 +43,8 @@ chmod +x ./configure
 ./configure \
 	--enable-fail-on-warning \
 	--enable-rohc-tests \
+	--enable-rohc-stats \
 	--enable-doc \
+	--enable-examples \
 	$@
 
