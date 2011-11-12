@@ -1,3 +1,16 @@
+Requirements
+------------
+
+The library itself does not require external resources. Optional configure
+flags require external resources:
+
+ --enable-doc         requires doxygen and latex.
+ --enable-rohc-stats  requires libpcap.
+ --enable-rohc-tests  requires libpcap.
+
+
+
+
 Libraries and tools
 -------------------
 
