@@ -500,7 +500,7 @@ int rtp_decode_static_rtp(struct d_generic_context *context,
 	length -= read;
 
 	/* check the minimal length to decode the RTP static part */
-	if(length < 4)
+	if(length < sizeof(uint32_t))
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 		goto error;
@@ -508,9 +508,9 @@ int rtp_decode_static_rtp(struct d_generic_context *context,
 
 	/* decode RTP static part */
 	memcpy(&(rtp->ssrc), packet, sizeof(uint32_t));
-	rohc_debugf(3, "SSRC = 0x%x\n", rtp->ssrc);
-	packet += 4;
-	read += 4;
+	rohc_debugf(3, "SSRC = 0x%08x\n", rtp->ssrc);
+	packet += sizeof(uint32_t);
+	read += sizeof(uint32_t);
 
 	return read;
 
@@ -556,7 +556,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	if(rtp_context->udp_checksum_present != 0)
 	{
 		/* check the minimal length to decode the UDP dynamic part */
-		if(length < 2)
+		if(length < sizeof(uint16_t))
 		{
 			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 			goto error;
@@ -565,9 +565,9 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		/* retrieve the UDP checksum from the ROHC packet */
 		udp->check = GET_NEXT_16_BITS(packet);
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
-		packet += 2;
-		read += 2;
-		length -= 2;
+		packet += sizeof(uint16_t);
+		read += sizeof(uint16_t);
+		length -= sizeof(uint16_t);
 
 		/* init the UDP context if necessary */
 		if(rtp_context->udp_checksum_present < 0)
@@ -607,9 +607,9 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 	/* part 4 */
 	rtp->sn = GET_NEXT_16_BITS(packet);
-	packet += 2;
-	read += 2;
-	length -= 2;
+	packet += sizeof(uint16_t);
+	read += sizeof(uint16_t);
+	length -= sizeof(uint16_t);
 	rohc_debugf(3, "SN = %d\n", ntohs(rtp->sn));
 
 	/* init SN and IP-IDs (IPv4 only) */
@@ -623,10 +623,10 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	/* part 5: 4-byte TimeStamp (TS) */
 	memcpy(&ts_bits, packet, sizeof(uint32_t));
 	ts_bits = ntohl(ts_bits);
-	read += 4;
-	packet += 4;
-	length -= 4;
-	rohc_debugf(3, "timestamp = 0x%x\n", ts_bits);
+	read += sizeof(uint32_t);
+	packet += sizeof(uint32_t);
+	length -= sizeof(uint32_t);
+	rohc_debugf(3, "timestamp = 0x%08x\n", ts_bits);
 
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)
