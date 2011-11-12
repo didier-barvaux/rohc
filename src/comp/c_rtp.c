@@ -723,14 +723,16 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	/* check RTP CSRC Counter and CSRC field */
 	if(rtp->cc != rtp_context->old_rtp.cc)
 	{
-		rohc_debugf(3, "RTP CC field changed\n");
+		rohc_debugf(3, "RTP CC field changed (0x%x -> 0x%x)\n",
+		            rtp_context->old_rtp.cc, rtp->cc);
 		fields += 2;
 	}
 
 	/* check SSRC field */
 	if(rtp->ssrc != rtp_context->old_rtp.ssrc)
 	{
-		rohc_debugf(3, "RTP SSRC field changed\n");
+		rohc_debugf(3, "RTP SSRC field changed (0x%08x -> 0x%08x)\n",
+		            rtp_context->old_rtp.ssrc, rtp->ssrc);
 		fields++;
 	}
 
@@ -752,7 +754,8 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	{
 		if(rtp->pt != rtp_context->old_rtp.pt)
 		{
-			rohc_debugf(3, "RTP Payload Type (PT) field changed\n");
+			rohc_debugf(3, "RTP Payload Type (PT) field changed (0x%x -> 0x%x)\n",
+			            rtp_context->old_rtp.pt, rtp->pt);
 			rtp_context->tmp_variables.rtp_pt_changed = 1;
 			rtp_context->rtp_pt_change_count = 0;
 		}
