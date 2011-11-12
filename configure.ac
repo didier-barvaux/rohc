@@ -132,6 +132,23 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 fi
 
 
+# gnuplot is mandatory if ROHC statistics is enabled
+if test "x$enable_rohc_stats" = "xyes" ; then
+	# check for the gnuplot binary and abort if it is not found
+	AC_CHECK_PROG(is_gnuplot_found, gnuplot, "yes", "no")
+	if test "x$is_gnuplot_found" != "xyes"; then
+		echo
+		echo "ERROR: gnuplot binary not found"
+		echo
+		echo "gnuplot is required in order to generate compression statistics."
+		echo
+		echo "Go get it from http://www.gnuplot.info/ or use your package manager "
+		echo "to install it on your system."
+		exit 1
+	fi
+fi
+
+
 # check if RTP bit type is enabled
 AC_ARG_ENABLE(rtp_bit_type,
               AS_HELP_STRING([--enable-rtp-bit-type],
