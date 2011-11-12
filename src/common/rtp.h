@@ -56,7 +56,7 @@ struct rtphdr
 	u_int32_t timestamp;     ///< Timestamp
 	u_int32_t ssrc;          ///< Synchronization SouRCe (SSRC) identifier
 //	u_int32_t * csrc;
-};
+} __attribute__((packed));
 
 
 #endif

@@ -507,7 +507,7 @@ int rtp_decode_static_rtp(struct d_generic_context *context,
 	}
 
 	/* decode RTP static part */
-	rtp->ssrc = *((uint32_t *) packet );
+	memcpy(&(rtp->ssrc), packet, sizeof(uint32_t));
 	rohc_debugf(3, "SSRC = 0x%x\n", rtp->ssrc);
 	packet += 4;
 	read += 4;
@@ -621,7 +621,8 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 		d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
 
 	/* part 5: 4-byte TimeStamp (TS) */
-	ts_bits = ntohl(*((uint32_t *) packet));
+	memcpy(&ts_bits, packet, sizeof(uint32_t));
+	ts_bits = ntohl(ts_bits);
 	read += 4;
 	packet += 4;
 	length -= 4;
