@@ -18,6 +18,7 @@
  * @file rohc_decomp.c
  * @brief ROHC decompression routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
  */
@@ -427,8 +428,8 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	struct d_decode_data ddata = { -1, 0, 0, 0, NULL };
 
 	decomp->statistics.packets_received++;
-	rohc_debugf(1, "decompress the packet #%u\n",
-	            decomp->statistics.packets_received);
+	rohc_debugf(1, "decompress the %d-byte packet #%u\n",
+	            isize, decomp->statistics.packets_received);
 	
 	ret = d_decode_header(decomp, ibuf, isize, obuf, osize, &ddata);
 	if(ddata.active == NULL &&
@@ -632,8 +633,12 @@ int d_decode_header(struct rohc_decomp *decomp,
 	unsigned int feedback_size;
 	int status;
 
-	if(isize < 2)
+	if(isize < 1)
+	{
+		rohc_debugf(0, "ROHC packet too small (len = %d, at least 1 byte "
+		            "required)\n", isize);
 		return ROHC_ERROR_NO_CONTEXT;
+	}
 
 	/* decode feedback if present */
 	status = d_decode_feedback_first(decomp, walk, isize, &feedback_size);
@@ -662,13 +667,15 @@ int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 	/* is the ROHC packet an IR packet? */
-	if(d_is_ir(walk))
+	if(d_is_ir(walk, isize))
 	{
 		uint8_t profile_id;
 
 		rohc_debugf(1, "ROHC packet is an IR packet\n");
 
-		/* find the profile specified in the ROHC packet */
+		/* find the profile specified in the ROHC packet (no length check here
+		 * since the length of the ROHC data was already checked in function
+		 * rohc_decomp_decode_cid) */
 		profile_id = walk[1 + ddata->large_cid_size];
 		profile = find_profile(profile_id);
 		if(profile == NULL)
@@ -778,12 +785,14 @@ int d_decode_header(struct rohc_decomp *decomp,
 			decomp->last_context = ddata->active;
 
 			/* is the ROHC packet an IR-DYN packet? */
-			if(d_is_irdyn(walk))
+			if(d_is_irdyn(walk, isize))
 			{
 				rohc_debugf(1, "ROHC packet is an IR-DYN packet\n");
 				ddata->active->num_recv_ir_dyn++;
 
-				/* find the profile specified in the ROHC packet */
+				/* find the profile specified in the ROHC packet (no length check
+				 * here since the length of the ROHC data was already checked in
+				 * function rohc_decomp_decode_cid) */
 				profile = find_profile(walk[ddata->large_cid_size + 1]);
 
 				/* if IR-DYN changes profile, make the decompressor

@@ -18,6 +18,7 @@
  * @file decode.c
  * @brief ROHC packet related routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -119,24 +120,26 @@ int d_feedback_headersize(const unsigned char *data)
 /**
  * @brief Find out whether a ROHC packet is an IR packet or not
  *
- * @param data The ROHC packet to analyze
- * @return     Whether the ROHC packet is an IR packet or not
+ * @param data  The ROHC packet to analyze
+ * @param len   The length of the ROHC packet
+ * @return      Whether the ROHC packet is an IR packet or not
  */
-int d_is_ir(const unsigned char *data)
+int d_is_ir(const unsigned char *data, const size_t len)
 {
-	return (GET_BIT_1_7(data) == D_IR_PACKET);
+	return (len > 0 && GET_BIT_1_7(data) == D_IR_PACKET);
 }
 
 
 /**
  * @brief Find out whether a ROHC packet is an IR-DYN packet or not
  *
- * @param data The ROHC packet to analyze
- * @return     Whether the ROHC packet is an IR-DYN packet or not
+ * @param data  The ROHC packet to analyze
+ * @param len   The length of the ROHC packet
+ * @return      Whether the ROHC packet is an IR-DYN packet or not
  */
-int d_is_irdyn(const unsigned char *data)
+int d_is_irdyn(const unsigned char *data, const size_t len)
 {
-	return (GET_BIT_0_7(data) == D_IR_DYN_PACKET);
+	return (len > 0 && GET_BIT_0_7(data) == D_IR_DYN_PACKET);
 }
 
 

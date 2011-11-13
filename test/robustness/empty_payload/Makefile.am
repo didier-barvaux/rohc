@@ -15,10 +15,6 @@ TESTS = \
 	test_empty_payload_uo1.sh \
 	test_empty_payload_uor2.sh
 
-# the following tests fail with the current codebase
-XFAIL_TESTS = \
-	test_empty_payload_uo0_iponlyprofile.sh
-
 
 check_PROGRAMS = \
 	test_empty_payload

@@ -18,6 +18,7 @@
  * @file d_udp_lite.c
  * @brief ROHC decompression context for the UDP-Lite profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -435,7 +436,9 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	}
 
 	/* reset the coverage infos if IR-DYN packet */
-	packet_type = find_packet_type(decomp, context, rohc_remain_data, second_byte);
+	packet_type = find_packet_type(decomp, context,
+	                               rohc_remain_data, rohc_remain_len,
+	                               second_byte);
 	if(packet_type == PACKET_IR_DYN)
 	{
 		udp_lite_context->cfp = -1;

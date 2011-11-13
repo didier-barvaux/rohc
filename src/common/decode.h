@@ -18,11 +18,15 @@
  * @file decode.h
  * @brief ROHC packet related routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #ifndef DECODE_H
 #define DECODE_H
+
+#include <stddef.h>
+
 
 /// The magic bits to find out whether a field is a segment field or not
 #define D_SEGMENT        (0xfe >> 1)
@@ -52,8 +56,8 @@ int d_is_feedback(const unsigned char *);
 int d_feedback_size(const unsigned char *);
 int d_feedback_headersize(const unsigned char *);
 
-int d_is_ir(const unsigned char *);
-int d_is_irdyn(const unsigned char *);
+int d_is_ir(const unsigned char *data, const size_t len);
+int d_is_irdyn(const unsigned char *data, const size_t len);
 
 int d_is_add_cid(const unsigned char *);
 int d_decode_add_cid(const unsigned char *);

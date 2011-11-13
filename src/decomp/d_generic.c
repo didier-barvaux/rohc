@@ -19,9 +19,9 @@
  * @brief ROHC generic decompression context for IP-only, UDP and UDP Lite
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
- * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "d_generic.h"
@@ -2552,7 +2552,8 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
  * @param rohc_packet The ROHC packet to decode
  * @param rohc_length The length of the ROHC packet
  * @param second_byte The offset for the second byte of the ROHC packet
- *                    (depends on the CID encoding and the packet type)
+ *                    (depends on the CID encoding and the packet type,
+ *                    may not exist in packet)
  * @param dest        OUT: The decoded IP packet
  * @return            The length of the uncompressed IP packet
  *                    or ROHC_ERROR if an error occurs
@@ -2576,13 +2577,6 @@ int d_generic_decode(struct rohc_decomp *decomp,
 
 	synchronize(g_context);
 	g_context->current_packet_time = get_microseconds();
-
-	/* check if the ROHC packet is large enough to read the second byte */
-	if(second_byte >= rohc_length)
-	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_length);
-		goto error;
-	}
 
 	/* ---- DEBUG ---- */
 	struct d_generic_changes *active1 = g_context->active1;
@@ -2608,7 +2602,9 @@ int d_generic_decode(struct rohc_decomp *decomp,
 		goto error;
 
 	/* parse the packet according to its type */
-	switch(find_packet_type(decomp, context, rohc_packet, second_byte))
+	switch(find_packet_type(decomp, context,
+	                        rohc_packet, rohc_length,
+	                        second_byte))
 	{
 		case PACKET_UO_0:
 			g_context->packet_type = PACKET_UO_0;
@@ -2873,10 +2869,13 @@ int decode_uo0(struct rohc_decomp *decomp,
 	rohc_remain_data = rohc_packet;
 	rohc_remain_len = rohc_length;
 
-	/* check if the ROHC packet is large enough to read the second byte */
-	if(rohc_remain_len <= second_byte)
+	/* check if the ROHC packet is large enough to read the second byte
+	 * OR that there is no second byte (no parts 4, 5...) */
+	if(rohc_remain_len < second_byte)
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		rohc_debugf(0, "ROHC packet too small to read the second byte "
+		            "(%zd bytes available while at least %d are required)\n",
+		            rohc_remain_len, second_byte + 1);
 		goto error;
 	}
 
@@ -2888,7 +2887,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	crc_packet = GET_BIT_0_2(rohc_remain_data);
 	rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 	/* part 3: large CID (handled elsewhere) */
-	/* first byte read, second byte is part 4 */
+	/* first byte read, second byte is parts 4, 5... or maybe empty! */
 	rohc_remain_data += second_byte;
 	rohc_remain_len -= second_byte;
 	rohc_header_len += second_byte;
@@ -6251,8 +6250,10 @@ reparse:
  * @param decomp      The ROHC decompressor
  * @param context     The decompression context
  * @param packet      The ROHC packet
+ * @param rohc_length The length of the ROHC packet
  * @param second_byte The offset for the second byte of the ROHC packet
- *                    (depends on the CID encoding and the packet type)
+ *                    (depends on the CID encoding and the packet type,
+ *                    may not exist in packet)
  * @return            The packet type among PACKET_UO_0, PACKET_UO_1,
  *                    PACKET_UO_1_RTP, PACKET_UO_1_TS, PACKET_UO_1_ID,
  *                    PACKET_UOR_2, PACKET_UOR_2_RTP, PACKET_UOR_2_TS,
@@ -6262,6 +6263,7 @@ reparse:
 rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
                                struct d_context *context,
                                const unsigned char *packet,
+                               const size_t rohc_length,
                                int second_byte)
 {
 	rohc_packet_t type;
@@ -6270,6 +6272,13 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 	int rnd = g_context->last1->rnd;
 	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	int is_ip_v4 = (ip_get_version(&g_context->last1->ip) == IPV4);
+
+	if(rohc_length < 1)
+	{
+		rohc_debugf(0, "ROHC packet too small to read the first byte that "
+		            "contains the packet type (len = %zd)\n", rohc_length);
+		goto error;
+	}
 
 	if(GET_BIT_7(packet) == 0x00)
 	{
@@ -6347,7 +6356,19 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 					/* UOR-2-RTP or UOR-2-ID packet */
 #if RTP_BIT_TYPE
 					/* check the RTP disambiguation bit type to avoid reparsing
-					 * (proprietary extention of the ROHC standard) */
+					 * (proprietary extension of the ROHC standard) */
+
+					/* check if the ROHC packet is large enough to read the
+					 * byte that contains the RTP disambiguation bit */
+					if(rohc_length <= (second_byte + 1))
+					{
+						rohc_debugf(0, "ROHC packet too small to read the byte "
+						            "that contains the RTP disambiguation bit "
+						            "(len = %zd)\n", rohc_length);
+						goto error;
+					}
+
+					/* check the RTP disambiguation bit type */
 					if(GET_BIT_6(packet + second_byte + 1) == 0)
 					{
 						/* UOR-2-RTP packet */
@@ -6355,7 +6376,7 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 					}
 					else
 					{
-						/* UOR-2-ID */
+						/* UOR-2-ID packet */
 						type = PACKET_UOR_2_ID;
 					}
 #else
@@ -6367,6 +6388,18 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 				else
 				{
 					/* UOR-2-ID or UOR-2-TS packet, check the T field */
+
+					/* check if the ROHC packet is large enough to read the
+					 * byte that contains the T field */
+					if(rohc_length <= second_byte)
+					{
+						rohc_debugf(0, "ROHC packet too small to read the byte "
+						            "that contains the T field (len = %zd)\n",
+						            rohc_length);
+						goto error;
+					}
+
+					/* check the T field */
 					if(GET_BIT_7(packet + second_byte) == 0)
 					{
 						/* UOR-2-ID packet */
@@ -6395,7 +6428,19 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 					/* UOR-2-RTP or UOR-2-ID packet */
 #if RTP_BIT_TYPE
 					/* check the RTP disambiguation bit type to avoid reparsing
-					 * (proprietary extention of the ROHC standard) */
+					 * (proprietary extension of the ROHC standard) */
+
+					/* check if the ROHC packet is large enough to read the
+					 * byte that contains the RTP disambiguation bit */
+					if(rohc_length <= (second_byte + 1))
+					{
+						rohc_debugf(0, "ROHC packet too small to read the byte "
+						            "that contains the RTP disambiguation bit "
+						            "(len = %zd)\n", rohc_length);
+						goto error;
+					}
+
+					/* check the RTP disambiguation bit type */
 					if(GET_BIT_6(packet + second_byte + 1) == 0)
 					{
 						/* UOR-2-RTP packet */
@@ -6403,7 +6448,7 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 					}
 					else
 					{
-						/* UOR-2-ID */
+						/* UOR-2-ID packet */
 						type = PACKET_UOR_2_ID;
 					}
 #else
@@ -6415,6 +6460,18 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 				else
 				{
 					/* UOR-2-ID or UOR-2-TS packet, check the T field */
+
+					/* check if the ROHC packet is large enough to read the
+					 * byte that contains the T field */
+					if(rohc_length <= second_byte)
+					{
+						rohc_debugf(0, "ROHC packet too small to read the byte "
+						            "that contains the T field (len = %zd)\n",
+						            rohc_length);
+						goto error;
+					}
+
+					/* check the T field */
 					if(GET_BIT_7(packet + second_byte) == 0)
 					{
 						/* UOR-2-ID packet */
@@ -6451,6 +6508,9 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 	}
 
 	return type;
+
+error:
+	return PACKET_UNKNOWN;
 }
 
 

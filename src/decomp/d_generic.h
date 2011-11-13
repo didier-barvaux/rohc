@@ -19,6 +19,7 @@
  * @brief ROHC generic decompression context for IP-only, UDP and UDP Lite
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
  */
@@ -32,6 +33,9 @@
 #include "lsb.h"
 #include "ip_id.h"
 #include "ip.h"
+
+#include <stddef.h>
+
 
 #define MAX_ITEM 15
 
@@ -273,6 +277,7 @@ int d_generic_get_sn(struct d_context *context);
 rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
                                struct d_context *context,
                                const unsigned char *packet,
+                               const size_t rohc_length,
                                int second_byte);
 
 #endif
