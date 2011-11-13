@@ -106,8 +106,20 @@ AC_ARG_ENABLE(rohc_stats,
 AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 
-# libpcap is mandatory if ROHC tests or statistics are enabled
+# if ROHC tests or statistics are enabled:
+#  - fail if cross-compiling
+#  - libpcap is mandatory if ROHC tests or statistics are enabled
 if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
+	# cross-compiling is not compatible with tests and stats yet
+	if test "x$cross_compiling" = "xyes" ; then
+		echo
+		echo "ERROR: --enable-rohc-tests and --enable-rohc-stats are not compatible"
+		echo "       with cross-compiling"
+		echo
+		echo "Please disable both options and try again."
+		exit 1
+	fi
+
 	# check for libpcap presence
 	LPCAP=""
 	AC_CHECK_LIB(pcap, pcap_open_offline, , LPCAP="no")
