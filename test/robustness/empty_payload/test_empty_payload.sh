@@ -29,9 +29,16 @@ else
 fi
 
 # extract the packet type from the name of the script
+CAPTURE_NAME=$( echo "${SCRIPT}" | \
+                sed -e 's#^.*/test_empty_payload_\(.\+\)\.sh#\1#' )
 PACKET_TYPE=$( echo "${SCRIPT}" | \
-               sed -e 's#^.*/test_empty_payload_\(.\+\)\.sh#\1#' )
-CAPTURE_SOURCE="${BASEDIR}/inputs/${PACKET_TYPE}.pcap"
+               sed -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_[^.]\+\)\?\.sh#\1#' )
+PROFILE_NAME=$( echo "${SCRIPT}" | \
+                sed -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_\([^.]\+\)\)\?\.sh#\3#' )
+if [ -z "${PROFILE_NAME}" ] ; then
+	PROFILE_NAME="auto"
+fi
+CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
 if [ ! -r "${CAPTURE_SOURCE}" ] ; then
@@ -39,7 +46,7 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 	exit 1
 fi
 
-CMD="${APP} ${CAPTURE_SOURCE} ${PACKET_TYPE}"
+CMD="${APP} ${CAPTURE_SOURCE} ${PROFILE_NAME} ${PACKET_TYPE}"
 
 # run in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then

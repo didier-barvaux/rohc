@@ -52,6 +52,7 @@
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const char *filename,
+                                const unsigned int profile_id,
                                 const rohc_packet_t expected_packet);
 
 
@@ -68,12 +69,14 @@ static int test_comp_and_decomp(const char *filename,
 int main(int argc, char *argv[])
 {
 	char *filename = NULL;
+	char *profile_name = NULL;
+	unsigned int profile_id;
 	char *packet_type = NULL;
 	rohc_packet_t expected_packet;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
-	if(argc <= 2)
+	if(argc <= 3)
 	{
 		usage();
 		goto error;
@@ -93,6 +96,11 @@ int main(int argc, char *argv[])
 			 * compress/decompress */
 			filename = argv[0];
 		}
+		else if(profile_name == NULL)
+		{
+			/* get the name of the profile to enable ('auto' means all) */
+			profile_name = argv[0];
+		}
 		else if(packet_type == NULL)
 		{
 			/* get the expected type of the last packet of the capture */
@@ -106,9 +114,41 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* the source filename and the packet type are mandatory */
-	if(filename == NULL || packet_type == NULL)
+	/* the source filename, the profile name and the packet type are mandatory */
+	if(filename == NULL || profile_name == NULL || packet_type == NULL)
 	{
+		usage();
+		goto error;
+	}
+
+	/* parse the profile name */
+	if(strcmp(profile_name, "uncompressedprofile") == 0)
+	{
+		profile_id = ROHC_PROFILE_UNCOMPRESSED;
+	}
+	else if(strcmp(profile_name, "iponlyprofile") == 0)
+	{
+		profile_id = ROHC_PROFILE_IP;
+	}
+	else if(strcmp(profile_name, "udpprofile") == 0)
+	{
+		profile_id = ROHC_PROFILE_UDP;
+	}
+	else if(strcmp(profile_name, "udpliteprofile") == 0)
+	{
+		profile_id = ROHC_PROFILE_UDPLITE;
+	}
+	else if(strcmp(profile_name, "rtpprofile") == 0)
+	{
+		profile_id = ROHC_PROFILE_RTP;
+	}
+	else if(strcmp(profile_name, "auto") == 0)
+	{
+		profile_id = 0xFFFF;
+	}
+	else
+	{
+		fprintf(stderr, "unknown profile '%s'\n", profile_name);
 		usage();
 		goto error;
 	}
@@ -147,7 +187,7 @@ int main(int argc, char *argv[])
 	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, expected_packet);
+	status = test_comp_and_decomp(filename, profile_id, expected_packet);
 
 error:
 	return status;
@@ -166,10 +206,11 @@ static void usage(void)
 	        "usage: test_empty_payload [OPTIONS] FLOW PACKET_TYPE\n"
 	        "\n"
 	        "with:\n"
-	        "  FLOW         The flow of Ethernet frames to compress\n"
-	        "               (in PCAP format)\n"
-	        "  PACKET_TYPE  The packet type expected for the last packet\n"
-	        "               among: ir, irdyn, uo0, uo1, uor2\n"
+	        "  FLOW          The flow of Ethernet frames to compress\n"
+	        "                (in PCAP format)\n"
+	        "  PROFILE_NAME  The name of the profile to enable ('auto' means all)\n"
+	        "  PACKET_TYPE   The packet type expected for the last packet\n"
+	        "                among: ir, irdyn, uo0, uo1, uor2\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
@@ -182,12 +223,15 @@ static void usage(void)
  *
  * @param filename         The name of the PCAP file that contains the
  *                         IP packets
+ * @param profile_id       The profile to compress packets with
+ *                         (0xFFFF means all)
  * @param expected_packet  The type of ROHC packet expected at the end of the
  *                         source capture
  * @return                 0 in case of success,
  *                         1 in case of failure
  */
 static int test_comp_and_decomp(const char *filename,
+                                const unsigned int profile_id,
                                 const rohc_packet_t expected_packet)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -241,12 +285,23 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "failed to create the ROHC compressor\n");
 		goto close_input;
 	}
-	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
-	rohc_activate_profile(comp, ROHC_PROFILE_IP);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_c_set_large_cid(comp, 0);
+
+	/* enable the requested profile(s) */
+	if(profile_id != 0xFFFF)
+	{
+		fprintf(stderr, "enable only the compression profile %u\n", profile_id);
+		rohc_activate_profile(comp, profile_id);
+	}
+	else
+	{
+		fprintf(stderr, "enable all compression profiles\n");
+		rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
+		rohc_activate_profile(comp, ROHC_PROFILE_UDP);
+		rohc_activate_profile(comp, ROHC_PROFILE_IP);
+		rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
+		rohc_activate_profile(comp, ROHC_PROFILE_RTP);
+	}
 
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_alloc_decompressor(NULL);
