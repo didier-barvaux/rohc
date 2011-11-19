@@ -238,6 +238,7 @@ AC_CONFIG_FILES([ \
 	test/robustness/Makefile \
 	test/robustness/empty_payload/Makefile \
 	test/robustness/damaged_packet/Makefile \
+	test/robustness/piggybacking_feedback/Makefile \
 	test/non_regression/Makefile \
 	test/performance/Makefile \
 	statistics/Makefile \

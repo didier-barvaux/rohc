@@ -28,6 +28,7 @@ Makefile.in
 ./test/functional/test_feedback2
 ./test/robustness/empty_payload/test_empty_payload
 ./test/robustness/damaged_packet/test_damaged_packet
+./test/robustness/piggybacking_feedback/test_piggybacking_feedback
 ./test/non_regression/test_non_regression
 ./test/non_regression/report/report.html
 ./test/performance/test_performance
