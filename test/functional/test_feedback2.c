@@ -44,9 +44,8 @@
 #include <rohc_comp.h>
 #include <rohc_decomp.h>
 #include <rohc_packets.h>
-#include <rohc_comp_internals.h> /* to gain access to feedback_buffer and
-                                    feedback_size in struct rohc_comp */
-#include <sdvl.h> /* for d_sdvalue_size() */
+#include <rohc_comp_internals.h> /* to gain access to feedbacks in struct rohc_comp */
+#include <sdvl.h> /* to gain access to d_sdvalue_size() */
 
 
 /* prototypes of private functions */
@@ -293,8 +292,8 @@ static int test_comp_and_decomp(const char *filename,
 		static unsigned char ip_packet[MAX_ROHC_SIZE];
 		int ip_size;
 
-		unsigned char *data;
-		unsigned int size;
+		unsigned char *feedback_data;
+		size_t feedback_size;
 		unsigned int feedback_type;
 		unsigned int feedback_data_pos = 0;
 		uint16_t sn;
@@ -330,19 +329,20 @@ static int test_comp_and_decomp(const char *filename,
 		}
 		fprintf(stderr, "\tdecompression is successful\n");
 
-		if(comp->feedback_pointer != 1)
+		if(comp->feedbacks_first == 0 &&
+		   comp->feedbacks[comp->feedbacks_first].length == 0)
 		{
 			fprintf(stderr, "\tno feedback generated while one was expected\n");
 			goto destroy_decomp;
 		}
 
 		/* retrieve feedback data */
-		data = comp->feedback_buffer[comp->feedback_pointer - 1];
-		size = comp->feedback_size[comp->feedback_pointer - 1];
-		fprintf(stderr, "\t%u-byte feedback generated\n", size);
+		feedback_data = comp->feedbacks[comp->feedbacks_first].data;
+		feedback_size = comp->feedbacks[comp->feedbacks_first].length;
+		fprintf(stderr, "\t%zd-byte feedback generated\n", feedback_size);
 
-		/* if the size is one octet, the feedback is a FEEDBACK-1 */
-		if(size < 2)
+		/* if feedback length is one octet, the feedback is a FEEDBACK-1 */
+		if(feedback_size < 2)
 		{
 			fprintf(stderr, "\tFEEDBACK-2 should be at least 2 byte long\n");
 			goto destroy_decomp;
@@ -352,7 +352,7 @@ static int test_comp_and_decomp(const char *filename,
 		if(is_large_cid)
 		{
 			/* determine the size of the SDVL-encoded large CID */
-			ret = d_sdvalue_size(data);
+			ret = d_sdvalue_size(feedback_data);
 			if(ret <= 0 || ret > 4)
 			{
 				fprintf(stderr, "\tinvalid SDVL-encoded value for large CID\n");
@@ -364,7 +364,7 @@ static int test_comp_and_decomp(const char *filename,
 		}
 		else
 		{
-			if(((data[0] & 0xc0) >> 6) == 3)
+			if(((feedback_data[0] & 0xc0) >> 6) == 3)
 			{
 				/* skip Add-CID */
 				fprintf(stderr, "\tAdd-CID found\n");
@@ -373,7 +373,7 @@ static int test_comp_and_decomp(const char *filename,
 		}
 
 		/* check feedback type */
-		feedback_type = (data[feedback_data_pos] & 0xc0) >> 6;
+		feedback_type = (feedback_data[feedback_data_pos] & 0xc0) >> 6;
 		switch(feedback_type)
 		{
 			case 0:
@@ -411,13 +411,13 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "\tFEEDBACK-2 is a %s feedback as expected\n",
 		        expected_type);
 
-		sn = ((data[feedback_data_pos] & 0x0f) << 8) +
-		     (data[feedback_data_pos + 1] & 0xff);
+		sn = ((feedback_data[feedback_data_pos] & 0x0f) << 8) +
+		     (feedback_data[feedback_data_pos + 1] & 0xff);
 		fprintf(stderr, "\tSN (or a part of it) = 0x%04x\n", sn);
 
 		/* parse every feedback options found in the packet */
 		expected_opt_pos = 0;
-		for(i = feedback_data_pos + 2; i < size; i += opt_len)
+		for(i = feedback_data_pos + 2; i < feedback_size; i += opt_len)
 		{
 			/* is another feedback option expected? */
 			if(expected_opt_pos >= expected_options_nr)
@@ -427,10 +427,10 @@ static int test_comp_and_decomp(const char *filename,
 			}
 
 			/* get option length (1 byte of header + variable data) */
-			opt_len = 1 + (data[i] & 0x0f);
+			opt_len = 1 + (feedback_data[i] & 0x0f);
 
 			/* check option type */
-			switch((data[i] & 0xf0) >> 4)
+			switch((feedback_data[i] & 0xf0) >> 4)
 			{
 				case 1:
 					/* CRC */
@@ -512,14 +512,17 @@ static int test_comp_and_decomp(const char *filename,
 				default:
 					/* unknown option: RFC 3095 says to ignore unknown options */
 					fprintf(stderr, "\tIgnore unknown %u-byte option of type %u\n",
-					        opt_len, (data[i] & 0xf0) >> 4);
+					        opt_len, (feedback_data[i] & 0xf0) >> 4);
 					break;
 			}
 		}
 
-		free(comp->feedback_buffer[comp->feedback_pointer - 1]);
-		comp->feedback_size[comp->feedback_pointer - 1] = 0;
-		comp->feedback_pointer--;
+		free(comp->feedbacks[comp->feedbacks_first].data);
+		comp->feedbacks[comp->feedbacks_first].length = 0;
+		comp->feedbacks[comp->feedbacks_first].is_locked = 0;
+		comp->feedbacks_first = 0;
+		comp->feedbacks_first_unlocked = 0;
+		comp->feedbacks_next = 0;
 	}
 
 	/* everything went fine */

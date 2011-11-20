@@ -31,6 +31,8 @@
 #include "wlsb.h"
 #include "ip.h"
 
+#include <stdbool.h>
+
 
 /*
  * Constants and macros
@@ -40,7 +42,7 @@
 #define C_NUM_PROFILES 5
 
 /** The maximal number of outgoing feedbacks that can be queued */
-#define FEEDBACK_BUFFER_SIZE 10
+#define FEEDBACK_RING_SIZE 10
 
 
 /*
@@ -55,6 +57,20 @@ struct c_context;
 /*
  * Definitions of ROHC compression structures
  */
+
+
+/**
+ * @brief Information on ROHC feedback data
+ */
+struct rohc_feedback
+{
+	/** The feedback data */
+	unsigned char *data;
+	/** The length (in bytes) of the feedback data */
+	size_t length;
+	/** Whether the feedback data was locked during packet build? */
+	bool is_locked;
+};
 
 
 /**
@@ -88,12 +104,14 @@ struct rohc_comp
 
 	/* feedback-related variables: */
 
-	/** The ring of buffers that stores outgoing feedbacks */
-	unsigned char *feedback_buffer[FEEDBACK_BUFFER_SIZE];
-	/** The sizes of the buffers that stores outgoing feedbacks */
-	unsigned int feedback_size [FEEDBACK_BUFFER_SIZE];
-	/** The position of the current feedback buffer in the feedback ring */
-	int feedback_pointer;
+	/** The ring of outgoing feedbacks */
+	struct rohc_feedback feedbacks[FEEDBACK_RING_SIZE];
+	/** The index of the oldest feedback in the feedback ring */
+	size_t feedbacks_first;
+	/** The index of the oldest unlocked feedback in the feedback ring */
+	size_t feedbacks_first_unlocked;
+	/** @brief The index of the next empty location in the feedback ring */
+	size_t feedbacks_next;
 
 	/* some statistics about the compression process: */
 

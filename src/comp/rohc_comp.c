@@ -38,6 +38,8 @@
 #include <netinet/udp.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <assert.h>
 
 
 extern struct c_profile c_rtp_profile,
@@ -97,10 +99,12 @@ static struct c_context * c_get_context(struct rohc_comp *comp, int cid);
  * Prototypes of private functions related to ROHC feedback
  */
 
-static void c_piggyback_destroy(struct rohc_comp *const comp);
-static int c_piggyback_get(struct rohc_comp *const comp,
-                           unsigned char *const buffer,
-                           const unsigned int max);
+static void rohc_feedback_destroy(struct rohc_comp *const comp);
+static int rohc_feedback_get(struct rohc_comp *const comp,
+                             unsigned char *const buffer,
+                             const unsigned int max);
+static bool rohc_feedback_remove_locked(struct rohc_comp *const comp);
+static bool rohc_feedback_unlock(struct rohc_comp *const comp);
 
 
 /*
@@ -140,7 +144,6 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	bzero(comp, sizeof(struct rohc_comp));
 
 	comp->enabled = 1;
-	comp->feedback_pointer = 0;
 	comp->medium.max_cid = max_cid;
 	comp->medium.cid_type = ROHC_SMALL_CID;
 	comp->mrru = 0;
@@ -156,11 +159,16 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->adapt_size = adapt_size;
 	comp->encap_size = encap_size;
 
-	for(i = 0; i < FEEDBACK_BUFFER_SIZE; i++)
+	/* init the ring of feedbacks */
+	for(i = 0; i < FEEDBACK_RING_SIZE; i++)
 	{
-	  comp->feedback_buffer[i] = NULL;
-	  comp->feedback_size[i] = 0;
+		comp->feedbacks[i].data = NULL;
+		comp->feedbacks[i].length = 0;
+		comp->feedbacks[i].is_locked = false;
 	}
+	comp->feedbacks_first = 0;
+	comp->feedbacks_first_unlocked = 0;
+	comp->feedbacks_next = 0;
 
 	if(!c_create_contexts(comp))
 		goto destroy_comp;
@@ -191,7 +199,7 @@ void rohc_free_compressor(struct rohc_comp *comp)
 
 		/* destroy unsent piggybacked feedback */
 		rohc_debugf(2, "free feedback buffer\n");
-		c_piggyback_destroy(comp);
+		rohc_feedback_destroy(comp);
 
 		/* free the compressor */
 		zfree(comp);
@@ -207,7 +215,8 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * @param isize  The size of the uncompressed packet
  * @param obuf   The buffer where to store the ROHC packet
  * @param osize  The size of the buffer for the ROHC packet
- * @return       The size of the ROHC packet
+ * @return       The size of the ROHC packet in case of success,
+ *               0 in case of error
  *
  * @ingroup rohc_comp
  */
@@ -230,14 +239,14 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	if(comp == NULL)
 	{
 		rohc_debugf(0, "compressor not valid\n");
-		return 0;
+		goto error;
 	}
 
 	/* create the IP packet from raw data */
 	if(!ip_create(&ip, ibuf, isize))
 	{
 		rohc_debugf(0, "cannot create the outer IP header\n");
-		return 0;
+		goto error;
 	}
 	outer_ip = &ip;
 	rohc_debugf(3, "size of IP packet = %d bytes\n", isize);
@@ -251,7 +260,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		if(!ip_get_inner_packet(outer_ip, &ip2))
 		{
 			rohc_debugf(0, "cannot create the inner IP header\n");
-			return 0;
+			goto error;
 		}
 
 		/* there are two IP headers, the inner IP header is the second one */
@@ -273,7 +282,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	if(p == NULL)
 	{
 		rohc_debugf(0, "no profile found to compress packet\n");
-		return 0;
+		goto error;
 	}
 	rohc_debugf(1, "using profile '%s' (0x%04x)\n", p->description, p->id);
 
@@ -286,7 +295,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		if(c == NULL)
 		{
 			rohc_debugf(0, "failed to create a new context\n");
-			return 0;
+			goto error;
 		}
 	}
 	else if(c == (struct c_context*) -1)
@@ -300,7 +309,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		if(p == NULL)
 		{
 			rohc_debugf(0, "uncompressed profile not found, giving up\n");
-			return 0;
+			goto error;
 		}
 
 		/* find the context or create a new one */
@@ -311,14 +320,14 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			if(c == NULL)
 			{
 				rohc_debugf(0, "failed to create an uncompressed context\n");
-				return 0;
+				goto error;
 			}
 		}
 		else if(c == (struct c_context*)-1)
 		{
 			rohc_debugf(0, "error while finding context in uncompressed profile, "
 			               "giving up\n");
-			return 0;
+			goto error;
 		}
 	}
 
@@ -330,7 +339,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	/* 1. add feedback */
 	do
 	{
-		feedback_size = c_piggyback_get(comp, obuf, osize - size);
+		feedback_size = rohc_feedback_get(comp, obuf, osize - size);
 		if(feedback_size > 0)
 		{
 			obuf += feedback_size;
@@ -362,7 +371,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		if(p == NULL)
 		{
 			rohc_debugf(0, "uncompressed profile not found, giving up\n");
-			return 0;
+			goto error_unlock_feedbacks;
 		}
 
 		/* find the context or create a new one */
@@ -373,14 +382,14 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			if(c == NULL)
 			{
 				rohc_debugf(0, "failed to create an uncompressed context\n");
-				return 0;
+				goto error_unlock_feedbacks;
 			}
 		}
 		else if(c == (struct c_context*)-1)
 		{
 			rohc_debugf(0, "error while finding context in uncompressed profile, "
 			               "giving up\n");
-			return 0;
+			goto error_unlock_feedbacks;
 		}
 		
 		esize = p->encode(c, outer_ip, isize, obuf, osize - size,
@@ -389,7 +398,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		{
 			rohc_debugf(0, "error while compressing with uncompressed profile, "
 			               "giving up\n");
-			return 0;
+			goto error_free_new_context;
 		}
 	}
 
@@ -405,7 +414,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		rohc_debugf(0, "ROHC packet too large (input size = %d, maximum output "
 		            "size = %d, required output size = %d + %d = %d)\n",
 		            isize, osize, size, payload_size, size + payload_size);
-		return 0;
+		goto error_free_new_context;
 	}
 
 	/* copy payload to rohc packet */
@@ -413,6 +422,13 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	memcpy(obuf, ip_raw_data + payload_offset, payload_size);
 	obuf += payload_size;
 	size += payload_size;
+
+	/* remove locked feedbacks since compression is successful */
+	if(rohc_feedback_remove_locked(comp) != true)
+	{
+		rohc_debugf(0, "failed to remove locked feedbacks\n");
+		goto error_free_new_context;
+	}
 
 	rohc_debugf(2, "ROHC size = %d (feedback = %d, header = %d, payload = %d), "
 	            "output buffer size = %d\n", size, feedback_size, esize,
@@ -444,8 +460,24 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	c_add_wlsb(c->header_16_uncompressed, 0, payload_offset);
 	c_add_wlsb(c->header_16_compressed, 0, esize);
 
-	/* return the size of the ROHC packet */
+	/* compression is successfully, return the size of the ROHC packet */
 	return size;
+
+error_free_new_context:
+	/* free context if it was just created */
+	if(c->num_sent_packets <= 1)
+	{
+		c->profile->destroy(c);
+		c->used = 0;
+		comp->num_contexts_used--;
+	}
+error_unlock_feedbacks:
+	if(rohc_feedback_unlock(comp) != true)
+	{
+		rohc_debugf(0, "failed to unlock feedbacks\n");
+	}
+error:
+	return 0;
 }
 
 
@@ -893,6 +925,7 @@ void c_piggyback_feedback(struct rohc_comp *comp,
                           unsigned char *feedback,
                           int size)
 {
+	/* ignore feedback if no valid compressor is provided */
 	if(comp == NULL)
 	{
 		rohc_debugf(0, "no compressor associated with the decompressor, "
@@ -900,26 +933,40 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 		return;
 	}
 
-	rohc_debugf(2, "add %d byte(s) of feedback to the next outgoing ROHC "
-	               "packet\n", size);
+	rohc_debugf(2, "try to add %d byte(s) of feedback to the next outgoing "
+	               "ROHC packet\n", size);
+	
+	assert(comp->feedbacks_next >= 0);
+	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
 
-	if(comp->feedback_pointer >= FEEDBACK_BUFFER_SIZE)
+	/* If first and next feedbacks are equals, the ring is either empty or full.
+	 * If the first feedback is 0-byte length, then the ring is empty. */
+	if(comp->feedbacks_next == comp->feedbacks_first &&
+	   comp->feedbacks[comp->feedbacks_first].length != 0)
 	{
 		rohc_debugf(0, "no place in buffer for feedback data\n");
 		return;
 	}
 
-	comp->feedback_buffer[comp->feedback_pointer] = malloc(size);
-	if(comp->feedback_buffer[comp->feedback_pointer] == NULL)
+	/* allocate memory for new feedback data */
+	comp->feedbacks[comp->feedbacks_next].data = malloc(size);
+	if(comp->feedbacks[comp->feedbacks_next].data == NULL)
 	{
 	  rohc_debugf(0, "no memory for feedback data\n");
 	  return;
 	}
 
-	memcpy(comp->feedback_buffer[comp->feedback_pointer], feedback, size);
-	comp->feedback_size[comp->feedback_pointer] = size;
+	/* record new feedback data in the ring */
+	memcpy(comp->feedbacks[comp->feedbacks_next].data, feedback, size);
+	comp->feedbacks[comp->feedbacks_next].length = size;
 
-	comp->feedback_pointer++;
+	/* use the next ring location next time */
+	comp->feedbacks_next = (comp->feedbacks_next + 1) % FEEDBACK_RING_SIZE;
+
+	rohc_debugf(2, "%d byte(s) of feedback added to the next outgoing "
+	               "ROHC packet\n", size);
 }
 
 
@@ -1042,7 +1089,7 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	size = 0;
 	do
 	{
-		feedback_size = c_piggyback_get(comp, obuf, osize - size);
+		feedback_size = rohc_feedback_get(comp, obuf, osize - size);
 		if(feedback_size > 0)
 		{
 			obuf += feedback_size;
@@ -1574,6 +1621,12 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 /**
  * @brief Retrieve one feedback packet and store it in the given buffer
  *
+ * The feedback packet is not removed from the context, it is locked. It will
+ * be removed only in case of success when \ref rohc_feedback_remove_locked
+ * is called. It will be unlocked but not removed in case of failure when
+ * \ref rohc_feedback_unlock is called. Doing these actions in two times is
+ * required not to lose feedback data if compression fails.
+ *
  * @param comp   The ROHC compressor
  * @param buffer The buffer to store the feedback packet
  * @param max    The size of the buffer
@@ -1581,71 +1634,151 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
  *               0 if no feedback is available,
  *               -1 if the feedback is too large for the given buffer
  */
-static int c_piggyback_get(struct rohc_comp *const comp,
-                           unsigned char *const buffer,
-                           const unsigned int max)
+static int rohc_feedback_get(struct rohc_comp *const comp,
+                             unsigned char *const buffer,
+                             const unsigned int max)
 {
 	int i;
-	int size = 0;
+	size_t feedback_length;
 	int index = 0;
 
-	/* are there some feedback data to send with the next outgoing packet? */
-	if(comp->feedback_pointer > 0)
-	{
-		comp->feedback_pointer--;
-		size = comp->feedback_size[comp->feedback_pointer];
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_next >= 0);
+	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
 
-		/* check the buffer size */
-		if(size + 1 + (size < 8 ? 0 : 1) > max)
+	/* are there some feedback data to send with the next outgoing packet? */
+	if(comp->feedbacks_first_unlocked != comp->feedbacks_next)
+	{
+		feedback_length = comp->feedbacks[comp->feedbacks_first_unlocked].length;
+
+		/* check that there is enough space in the output buffer for the
+		 * feedback data */
+		if(feedback_length + 1 + (feedback_length < 8 ? 0 : 1) > max)
 		{
 			rohc_debugf(1, "no more place in the buffer for feedback\n");
-			comp->feedback_pointer++;
 			goto full;
 		}
 
-		/* the size can be encoded either in the last 3 bits of the first byte
-		 * or in the 2nd byte */
-		if(size < 8)
+		/* the feedback length may be encoded either in the last 3 bits of the
+		 * first byte or in the 2nd byte */
+		if(feedback_length < 8)
 		{
-			/* size is small, use only 3 bits to code it */
-			buffer[index] = 0xf0 | size;
-			rohc_debugf(3, "feedback size = 0x%02x\n", buffer[index]);
+			/* length is small, use only 3 bits to code it */
+			rohc_debugf(3, "use 1-byte form factor for feedback length\n");
+			buffer[index] = 0xf0 | feedback_length;
 			index++;
 		}
 		else
 		{
 			/* size is large, use 8 bits to code it */
+			rohc_debugf(3, "use 2-byte form factor for feedback length\n");
 			buffer[index] = 0xf0;
-			rohc_debugf(3, "feedback size = 0x%02x ", buffer[index]);
 			index++;
-			buffer[index] = size;
-			rohc_debugf_(3, "0x%02x\n", buffer[index]);
+			buffer[index] = feedback_length;
 			index++;
 		}
 
 		/* copy feedback data in the buffer */
-		memcpy(buffer + index, comp->feedback_buffer[comp->feedback_pointer], size);
+		memcpy(buffer + index,
+		       comp->feedbacks[comp->feedbacks_first_unlocked].data,
+		       feedback_length);
 
-		/* free unused memory */
-		zfree(comp->feedback_buffer[comp->feedback_pointer]);
-		comp->feedback_size[comp->feedback_pointer] = 0;
+		comp->feedbacks_first_unlocked =
+			(comp->feedbacks_first_unlocked + 1) % FEEDBACK_RING_SIZE;
+	}
+	else
+	{
+		feedback_length = 0;
 	}
 
-	rohc_debugf(2, "add %d byte(s) of feedback data", size);
-	if(size > 0)
+	rohc_debugf(2, "add %zd byte(s) of feedback data", feedback_length);
+	if(feedback_length > 0)
 	{
 		rohc_debugf_(3, ": ");
-		for(i = 0; i < size; i++)
+		for(i = 0; i < feedback_length; i++)
 			rohc_debugf_(3, "0x%02x ", buffer[index + i]);
 	}
 	rohc_debugf_(2, "\n");
 
 	/* return the length of the feedback header/data,
 	 * or zero if no feedback */
-	return index + size;
+	return index + feedback_length;
 
 full:
 	return -1;
+}
+
+
+/**
+ * @brief Remove all feedbacks locked during the packet build
+ *
+ * This function does remove the locked feedbacks. See function
+ * \ref rohc_feedback_unlock instead if you want not to remove them.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ */
+static bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
+{
+	assert(comp != NULL);
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+
+	while(comp->feedbacks_first != comp->feedbacks_first_unlocked)
+	{
+		/* destroy the feedback and unlock the ring location */
+		assert(comp->feedbacks[comp->feedbacks_first].data != NULL);
+		assert(comp->feedbacks[comp->feedbacks_first].length > 0);
+		zfree(comp->feedbacks[comp->feedbacks_first].data);
+		comp->feedbacks[comp->feedbacks_first].length = 0;
+		comp->feedbacks[comp->feedbacks_first].is_locked = false;
+		comp->feedbacks_first = (comp->feedbacks_first + 1) % FEEDBACK_RING_SIZE;
+	}
+
+	assert(comp->feedbacks_first == comp->feedbacks_first_unlocked);
+
+	return true;
+}
+
+
+/**
+ * @brief Unlock all feedbacks locked during the packet build
+ *
+ * This function does not remove the locked feedbacks. See function
+ * \ref rohc_feedback_remove_locked instead if you want to remove them.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ */
+static bool rohc_feedback_unlock(struct rohc_comp *const comp)
+{
+	assert(comp != NULL);
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_next >= 0);
+	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
+
+	/* unlock all the ring locations between first unlocked one and first one */
+	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
+	{
+		/* unlock the ring location if it is valid */
+		if(comp->feedbacks_first_unlocked != comp->feedbacks_next)
+		{
+			assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
+			comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
+		}
+		comp->feedbacks_first_unlocked =
+			(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
+	}
+
+	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
+
+	return true;
 }
 
 
@@ -1654,14 +1787,23 @@ full:
  *
  * @param comp  The ROHC compressor
  */
-static void c_piggyback_destroy(struct rohc_comp *const comp)
+static void rohc_feedback_destroy(struct rohc_comp *const comp)
 {
 	int i;
 
-	for(i = 0; i < FEEDBACK_BUFFER_SIZE; i++)
+	for(i = 0; i < FEEDBACK_RING_SIZE; i++)
 	{
-		if(comp->feedback_size[i] > 0 && comp->feedback_buffer[i] != NULL)
-			zfree(comp->feedback_buffer[i]);
+		if(comp->feedbacks[i].length > 0)
+		{
+			assert(comp->feedbacks[i].data != NULL);
+			zfree(comp->feedbacks[i].data);
+			comp->feedbacks[i].length = 0;
+			comp->feedbacks[i].is_locked = false;
+		}
 	}
+
+	comp->feedbacks_first = 0;
+	comp->feedbacks_first_unlocked = 0;
+	comp->feedbacks_next = 0;
 }
 

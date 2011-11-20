@@ -9,9 +9,6 @@
 TESTS = \
 	test_piggybacking_feedback.sh
 
-XFAIL_TESTS = \
-	test_piggybacking_feedback.sh
-
 
 check_PROGRAMS = \
 	test_piggybacking_feedback
