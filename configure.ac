@@ -23,20 +23,14 @@ AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 
 # Checks for header files.
-AC_HEADER_STDC
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])
 AC_CHECK_HEADERS([netinet/ip.h netinet/udp.h netinet/in.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 AC_C_INLINE
-AC_HEADER_TIME
 
 # Checks for library functions.
-AC_PROG_GCC_TRADITIONAL
-AC_FUNC_MEMCMP
-AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero ceil])
 
 
