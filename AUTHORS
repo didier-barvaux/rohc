@@ -1,12 +1,18 @@
-The ROHC compression/decompression library was written by:
-  Viveris Technologies            http://www.tech.viveris.com/opensource/
-                                  opensource@toulouse.viveris.com
-  Thales Alenia Space             http://www.thalesaleniaspace.com/
-                                  cedric.baudoin@thalesaleniaspace.com
-  CNES (French space agency)      http://www.cnes.fr/
-  Lulea University of Technology  http://www.ltu.se/?l=en
+The ROHC compression/decompression library is currently developped and
+maintained by Didier Barvaux <didier@barvaux.org>.
+
 
 The ROHC library is released under the GPL2+ license. See COPYING file. 
+
+
+The following companies are/were involved in the project:
+ - Viveris Technologies            http://www.viveris.com/
+                                   opensource@toulouse.viveris.com
+ - Thales Alenia Space             http://www.thalesaleniaspace.com/
+                                   cedric.baudoin@thalesaleniaspace.com
+ - CNES (French space agency)      http://www.cnes.fr/
+ - Lulea University of Technology  http://www.ltu.se/?l=en
+
 
 The following people are/were involved in the project:
   Didier Barvaux         Main developer and maintainer.
@@ -26,6 +32,7 @@ The following people are/were involved in the project:
   Julien Peyrade         Bugfixes.
                          <julien.peyrade@toulouse.viveris.com>
 
+
 The library was mainly based on the work of the ROHC Project 2003 at the Lulea
 University of Technology, Sweden (http://rohc.sourceforge.net/). People involved
 were:
@@ -37,4 +44,9 @@ were:
   Martin Juhlin <juhlin@users.sourceforge.net>
   Mikael Larsson <larmik-9@student.luth.se>
   Robert Maxe <robmax-1@student.luth.se>
+
+
+If you think your name should appear in this file, please send your request to
+the project's mailing list (see README for more information about the mailing
+list).
 
