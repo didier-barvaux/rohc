@@ -90,6 +90,8 @@ static inline unsigned char crc_calc_2(const unsigned char *const buf,
  *
  * @param type The CRC type
  * @return     The polynom for the requested CRC type
+ *
+ * @ingroup rohc_common
  */
 int crc_get_polynom(int type)
 {
@@ -107,6 +109,8 @@ int crc_get_polynom(int type)
  *
  * @param table The 256-byte table
  * @param poly  The polynom
+ *
+ * @ingroup rohc_common
  */
 void crc_init_table(unsigned char *table, unsigned char poly)
 {
