@@ -19,12 +19,15 @@
  * @brief ROHC CRC routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef CRC_H
 #define CRC_H
 
 #include "ip.h"
+
+#include <stdbool.h>
 
 /// The CRC-2 initial value
 #define CRC_INIT_2 0x3
@@ -42,50 +45,62 @@
  * Function prototypes.
  */
 
-unsigned int crc_calculate(int type,
+bool rohc_crc_init_table(unsigned char *table, int crc_type)
+	__attribute__((nonnull(1), warn_unused_result));
+
+unsigned int crc_calculate(int crc_type,
                            unsigned char *data,
                            int length,
-                           unsigned int init_val);
+                           unsigned int init_val,
+                           unsigned char *crc_table);
 
 unsigned int compute_crc_static(const unsigned char *ip,
                                 const unsigned char *ip2,
                                 const unsigned char *next_header,
                                 const unsigned int crc_type,
-                                unsigned int init_val);
+                                unsigned int init_val,
+                                unsigned char *crc_table);
 unsigned int compute_crc_dynamic(const unsigned char *ip,
                                  const unsigned char *ip2,
                                  const unsigned char *next_header,
                                  const unsigned int crc_type,
-                                 unsigned int init_val);
+                                 unsigned int init_val,
+                                 unsigned char *crc_table);
 
 unsigned int udp_compute_crc_static(const unsigned char *ip,
                                     const unsigned char *ip2,
                                     const unsigned char *next_header,
                                     const unsigned int crc_type,
-                                    unsigned int init_val);
+                                    unsigned int init_val,
+                                    unsigned char *crc_table);
 unsigned int udp_compute_crc_dynamic(const unsigned char *ip,
                                      const unsigned char *ip2,
                                      const unsigned char *next_header,
                                      const unsigned int crc_type,
-                                     unsigned int init_val);
+                                     unsigned int init_val,
+                                     unsigned char *crc_table);
 
 unsigned int rtp_compute_crc_static(const unsigned char *ip,
                                     const unsigned char *ip2,
                                     const unsigned char *next_header,
                                     const unsigned int crc_type,
-                                    unsigned int init_val);
+                                    unsigned int init_val,
+                                    unsigned char *crc_table);
 unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
                                      const unsigned char *ip2,
                                      const unsigned char *next_header,
                                      const unsigned int crc_type,
-                                     unsigned int init_val);
+                                     unsigned int init_val,
+                                     unsigned char *crc_table);
 
 unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
                                          const unsigned int crc_type,
-                                         unsigned int init_val);
+                                         unsigned int init_val,
+                                         unsigned char *crc_table);
 unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
                                           const unsigned int crc_type,
-                                          unsigned int init_val);
+                                          unsigned int init_val,
+                                          unsigned char *crc_table);
 
 #endif
 

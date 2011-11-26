@@ -497,6 +497,9 @@ struct medium
 
 /*
  * The different CRC types and tables for ROHC compression/decompression
+ *
+ * TODO API: define constants as private and move in crc.h or even crc.c
+ * TODO API: use an enum instead of constants
  */
 
 /** The CRC-2 type */
@@ -510,28 +513,44 @@ struct medium
 /** The CRC-8 type */
 #define CRC_TYPE_8 5
 
+/* TODO API: remove these variables once compatibility is not needed anymore */
 /** The table to enable fast CRC-2 computation */
-extern unsigned char crc_table_2[256];
+extern unsigned char crc_table_2[256]
+	__attribute__((deprecated("please do not use this variable anymore")));
 /** The table to enable fast CRC-3 computation */
-extern unsigned char crc_table_3[256];
+extern unsigned char crc_table_3[256]
+	__attribute__((deprecated("please do not use this variable anymore")));
 /** The table to enable fast CRC-6 computation */
-extern unsigned char crc_table_6[256];
+extern unsigned char crc_table_6[256]
+	__attribute__((deprecated("please do not use this variables anymore")));
 /** The table to enable fast CRC-7 computation */
-extern unsigned char crc_table_7[256];
+extern unsigned char crc_table_7[256]
+	__attribute__((deprecated("please do not use this variables anymore")));
 /** The table to enable fast CRC-8 computation */
-extern unsigned char crc_table_8[256];
+extern unsigned char crc_table_8[256]
+	__attribute__((deprecated("please do not use this variables anymore")));
 
 
 /*
- * Prototypes of public functions
+ * Prototypes of public up-to-date functions
  */
 
-char *rohc_version(void);
+char * rohc_version(void);
 
-int crc_get_polynom(int type);
 
-void crc_init_table(unsigned char *table, unsigned char polynum);
+/*
+ * Prototypes of public deprecated functions
+ */
 
+/* TODO API: define as private and move in crc.h */
+int crc_get_polynom(int type)
+	__attribute__((deprecated("please do not use crc_get_polynom anymore, "
+	                          "simply remove it from your code")));
+
+/* TODO API: define as private and move in crc.h */
+void crc_init_table(unsigned char *table, unsigned char polynum)
+	__attribute__((deprecated("please do not use crc_init_table anymore, "
+	                          "simply remove it from your code")));
 
 #endif
 

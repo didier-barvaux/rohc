@@ -2351,8 +2351,9 @@ void c_generic_feedback(struct c_context *const context,
 			}
 
 			/* check CRC if used */
-			if(crc_used && crc_calculate(CRC_TYPE_8, feedback->data,
-			                             feedback->size, CRC_INIT_8) != crc)
+			if(crc_used &&
+			   crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
+			                 CRC_INIT_8, context->compressor->crc_table_8) != crc)
 			{
 				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
 				return;
@@ -3456,7 +3457,8 @@ int code_IR_packet(struct c_context *const context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
+	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8,
+	                                   context->compressor->crc_table_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
 
@@ -3597,7 +3599,8 @@ int code_IR_DYN_packet(struct c_context *const context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8);
+	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8,
+	                                   context->compressor->crc_table_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
 
@@ -4198,9 +4201,11 @@ int code_UO0_packet(struct c_context *const context,
 		ip2_hdr = NULL;
 	}
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    CRC_TYPE_3, crc);
+	                                    CRC_TYPE_3, crc,
+	                                    context->compressor->crc_table_3);
 	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     CRC_TYPE_3, crc);
+	                                     CRC_TYPE_3, crc,
+	                                     context->compressor->crc_table_3);
 	f_byte |= crc;
 	rohc_debugf(2, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
 	dest[first_position] = f_byte;
@@ -4413,9 +4418,11 @@ int code_UO1_packet(struct c_context *const context,
 		ip2_hdr = NULL;
 	}
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    CRC_TYPE_3, crc);
+	                                    CRC_TYPE_3, crc,
+	                                    context->compressor->crc_table_3);
 	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     CRC_TYPE_3, crc);
+	                                     CRC_TYPE_3, crc,
+	                                     context->compressor->crc_table_3);
 	s_byte |= crc & 0x07;
 	dest[counter] = s_byte;
 	counter++;
@@ -4534,6 +4541,7 @@ int code_UO2_packet(struct c_context *const context,
 	int is_rtp;
 	unsigned int crc;
 	unsigned int crc_type;
+	unsigned char *crc_table;
 	const unsigned char *ip2_hdr;
 	int (*code_bytes)(const struct c_context *context,
 	                  const rohc_ext_t extension,
@@ -4602,11 +4610,13 @@ int code_UO2_packet(struct c_context *const context,
 	 * if the CRC-STATIC fields did not change */
 	crc = CRC_INIT_7;
 	crc_type = CRC_TYPE_7;
+	crc_table = context->compressor->crc_table_7;
 #if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 	if(is_rtp)
 	{
 		crc = CRC_INIT_6;
 		crc_type = CRC_TYPE_6;
+		crc_table = context->compressor->crc_table_6;
 	}
 #endif
 	if(nr_of_ip_hdr > 1)
@@ -4619,10 +4629,10 @@ int code_UO2_packet(struct c_context *const context,
 	}
 	/* compute CRC on CRC-STATIC fields */
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    crc_type, crc);
+	                                    crc_type, crc, crc_table);
 	/* compute CRC on CRC-DYNAMIC fields */
 	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     crc_type, crc);
+	                                     crc_type, crc, crc_table);
 	t_byte = crc;
 	t_byte_position = counter;
 	counter++;

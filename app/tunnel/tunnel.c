@@ -503,11 +503,6 @@ int main(int argc, char *argv[])
 	 * ROHC part:
 	 */
 
-	/* init the CRC tables for ROHC compression/decompression */
-	crc_init_table(crc_table_3, crc_get_polynom(CRC_TYPE_3));
-	crc_init_table(crc_table_7, crc_get_polynom(CRC_TYPE_7));
-	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
-
 	/* create the compressor and activate profiles */
 	comp = rohc_alloc_compressor(15, 0, 0, 0);
 	if(comp == NULL)

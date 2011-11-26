@@ -68,22 +68,6 @@ int main(int argc, char **argv)
 	unsigned int i;
 
 
-	/* At program start-up, initialize the pre-computed tables for the 3-bit,
-	 * 7-bit and 8-bit CRCs that the ROHC library will use.
-	 *
-	 * Note that the crc_table_3, crc_table_7 and crc_table_8 variables are
-	 * declared inside the library, there is no need to declare them in your
-	 * source code.
-	 * 
-	 * See http://www.tech.viveris.com/docs/rohc/crc_8h.html#a1226c5d4540b3bb9354cb3c2ec09186
-	 * for details about crc_init_table in the API documentation.
-	 */
-	printf("initialize the CRC pre-computed tables\n");
-	crc_init_table(crc_table_3, crc_get_polynom(CRC_TYPE_3));
-	crc_init_table(crc_table_7, crc_get_polynom(CRC_TYPE_7));
-	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
-
-
 	/* Create a ROHC compressor with small CIDs, no jamming and no adaptation
 	 * to encapsulation frames.
 	 *

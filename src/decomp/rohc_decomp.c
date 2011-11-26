@@ -34,6 +34,7 @@
 #include "feedback.h"
 #include "wlsb.h"
 #include "decode.h"
+#include "crc.h"
 
 
 extern struct d_profile d_uncomp_profile,
@@ -331,6 +332,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
 	struct medium medium = { ROHC_SMALL_CID, 15 };
 	struct rohc_decomp * decomp;
+	bool is_fine;
 
 	/* allocate memory for the decompressor */
 	decomp = (struct rohc_decomp *) malloc(sizeof(struct rohc_decomp));
@@ -363,6 +365,34 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	decomp->okval = 12;
 	decomp->curval = 0;
 
+	/* init the tables for fast CRC computation */
+	is_fine = rohc_crc_init_table(decomp->crc_table_2, CRC_TYPE_2);
+	if(is_fine != true)
+	{
+		goto destroy_decomp;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_3, CRC_TYPE_3);
+	if(is_fine != true)
+	{
+		goto destroy_decomp;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_6, CRC_TYPE_6);
+	if(is_fine != true)
+	{
+		goto destroy_decomp;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_7, CRC_TYPE_7);
+	if(is_fine != true)
+	{
+		goto destroy_decomp;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_8, CRC_TYPE_8);
+	if(is_fine != true)
+	{
+		goto destroy_decomp;
+	}
+
+	/* reset the decompressor statistics */
 	clear_statistics(decomp);
 
 	return decomp;
@@ -722,7 +752,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		}
 
 		/* check the CRC of the IR packet */
-		if(!rohc_ir_packet_crc_ok(ddata->active, walk, isize,
+		if(!rohc_ir_packet_crc_ok(decomp, ddata->active, walk, isize,
 		                          ddata->large_cid_size, ddata->addcidUsed, profile))
 		{
 			rohc_debugf(0, "IR packet has incorrect CRC, abort all changes\n");
@@ -805,7 +835,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 				}
 
 				/* check the CRC of the IR-DYN packet */
-				if(!rohc_ir_dyn_packet_crc_ok(walk, isize,
+				if(!rohc_ir_dyn_packet_crc_ok(decomp, walk, isize,
 				                              ddata->large_cid_size,
 				                              ddata->addcidUsed,
 				                              profile, ddata->active))
@@ -1024,6 +1054,7 @@ struct d_profile * find_profile(int id)
 /**
  * @brief Check the CRC of one IR packet.
  *
+ * @param decomp     The ROHC decompressor
  * @param context    The decompression context
  * @param walk       The ROHC IR packet
  * @param plen       The length of the ROHC packet
@@ -1032,7 +1063,8 @@ struct d_profile * find_profile(int id)
  * @param profile    The profile associated with the ROHC packet
  * @return           Whether the CRC is ok or not
  */
-int rohc_ir_packet_crc_ok(struct d_context *context,
+int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
+                          struct d_context *context,
                           unsigned char *walk,
                           unsigned int plen,
                           const int largecid,
@@ -1064,7 +1096,8 @@ int rohc_ir_packet_crc_ok(struct d_context *context,
 	/* compute the CRC of the IR packet */
 	walk[largecid + 2] = 0;
 	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    ir_size + largecid + addcidUsed, CRC_INIT_8);
+	                    ir_size + largecid + addcidUsed, CRC_INIT_8,
+	                    decomp->crc_table_8);
 	walk[largecid + 2] = realcrc;
 
 	/* compare the transmitted CRC and the computed one */
@@ -1090,6 +1123,7 @@ bad:
 /**
  * @brief Check the CRC of one IR-DYN packet.
  *
+ * @param decomp     The ROHC decompressor
  * @param walk       The ROHC packet
  * @param plen       The length of the ROHC packet
  * @param largecid   The large CID value
@@ -1098,7 +1132,8 @@ bad:
  * @param context    The decompression context associated with the ROHC packet
  * @return           Whether the CRC is ok or not
  */
-int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
+int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
+                              unsigned char *walk,
                               unsigned int plen,
                               const int largecid,
                               const int addcidUsed,
@@ -1128,7 +1163,8 @@ int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
 	/* compute the CRC of the IR-DYN packet */
 	walk[largecid + 2] = 0;
 	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    irdyn_size + largecid + addcidUsed, CRC_INIT_8);
+	                    irdyn_size + largecid + addcidUsed, CRC_INIT_8,
+	                    decomp->crc_table_8);
 	walk[largecid + 2] = realcrc;
 
 	/* compare the transmitted CRC and the computed one */
@@ -1201,7 +1237,9 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				rohc_debugf(0, "failed to build the ACK feedback\n");
 				return;
 			}
-			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC, &feedbacksize);
+			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+			                           WITH_CRC, decomp->crc_table_8,
+			                           &feedbacksize);
 			if(feedback == NULL)
 			{
 				rohc_debugf(0, "failed to wrap the ACK feedback\n");
@@ -1233,7 +1271,8 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				               "STATIC NACK feedback\n");
 				return;
 			}
-			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, NO_CRC,
+			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+			                           NO_CRC, NULL /* CRC table not required */,
 			                           &feedbacksize);
 			if(feedback == NULL)
 			{
@@ -1265,7 +1304,8 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 						rohc_debugf(0, "failed to build the STATIC NACK feedback\n");
 						return;
 					}
-					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC,
+					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+			                                 WITH_CRC, decomp->crc_table_8,
 					                           &feedbacksize);
 					if(feedback == NULL)
 					{
@@ -1292,7 +1332,8 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 						rohc_debugf(0, "failed to build the NACK feedback\n");
 						return;
 					}
-					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed, WITH_CRC,
+					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+			                                 WITH_CRC, decomp->crc_table_8,
 					                           &feedbacksize);
 					if(feedback == NULL)
 					{
@@ -1633,7 +1674,8 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	            &sfeedback);
 	feedback = f_wrap_feedback(&sfeedback, cid,
 	                           (decomp->medium->cid_type == ROHC_LARGE_CID ? 1 : 0),
-	                           WITH_CRC, &feedbacksize);
+			                     WITH_CRC, decomp->crc_table_8,
+	                           &feedbacksize);
 
 	if(feedback == NULL)
 	{

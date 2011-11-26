@@ -264,18 +264,21 @@ struct c_generic_context
 	                                   const unsigned char *ip2,
 	                                   const unsigned char *next_header,
 	                                   const unsigned int crc_type,
-	                                   unsigned int init_val);
+	                                   unsigned int init_val,
+	                                   unsigned char *crc_table);
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
 	unsigned int (*compute_crc_dynamic)(const unsigned char *ip,
 	                                    const unsigned char *ip2,
 	                                    const unsigned char *next_header,
 	                                    const unsigned int crc_type,
-	                                    unsigned int init_val);
+	                                    unsigned int init_val,
+	                                    unsigned char *crc_table);
 
 	/// Profile-specific data	
 	void *specific;
 };
+
 
 /**
  * @brief The list compressor

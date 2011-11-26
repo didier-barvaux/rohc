@@ -190,13 +190,6 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* init the ROHC CRC tables */
-	crc_init_table(crc_table_2, crc_get_polynom(CRC_TYPE_2));
-	crc_init_table(crc_table_3, crc_get_polynom(CRC_TYPE_3));
-	crc_init_table(crc_table_6, crc_get_polynom(CRC_TYPE_6));
-	crc_init_table(crc_table_7, crc_get_polynom(CRC_TYPE_7));
-	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
-
 	/* test ROHC compression with the packets from the capture */
 	ret = test_compression_perfs(filename, coef_nanosec,
 	                             &packet_count, &overflows, &time_elapsed);

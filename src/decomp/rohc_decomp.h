@@ -118,6 +118,21 @@ struct rohc_decomp
 	/// Variable related to the feedback interval
 	int curval;
 
+
+	/* CRC-related variables: */
+
+	/** The table to enable fast CRC-2 computation */
+	unsigned char crc_table_2[256];
+	/** The table to enable fast CRC-3 computation */
+	unsigned char crc_table_3[256];
+	/** The table to enable fast CRC-6 computation */
+	unsigned char crc_table_6[256];
+	/** The table to enable fast CRC-7 computation */
+	unsigned char crc_table_7[256];
+	/** The table to enable fast CRC-8 computation */
+	unsigned char crc_table_8[256];
+
+
 	/// Some statistics about the decompression processes
 	struct d_statistics statistics;
 };
@@ -282,11 +297,13 @@ void d_change_mode_feedback(struct rohc_decomp *decomp, struct d_context *contex
  * Functions related to CRC of IR and IR-DYN packets:
  */
 
-int rohc_ir_packet_crc_ok(struct d_context *context,
-			  unsigned char *walk, unsigned int plen,
+int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
+                          struct d_context *context,
+                          unsigned char *walk, unsigned int plen,
                           const int largecid, const int addcidUsed,
                           const struct d_profile *profile);
-int rohc_ir_dyn_packet_crc_ok(unsigned char *walk,
+int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
+                              unsigned char *walk,
                               unsigned int plen,
                               const int largecid,
                               const int addcidUsed,

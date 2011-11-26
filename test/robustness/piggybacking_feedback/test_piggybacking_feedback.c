@@ -105,11 +105,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* init the CRC tables */
-	crc_init_table(crc_table_3, crc_get_polynom(CRC_TYPE_3));
-	crc_init_table(crc_table_7, crc_get_polynom(CRC_TYPE_7));
-	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
-
 	/* test ROHC feedback handling */
 	status = test_comp_and_decomp();
 

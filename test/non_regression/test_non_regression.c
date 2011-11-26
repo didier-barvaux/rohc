@@ -236,11 +236,6 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* init the CRC tables */
-	crc_init_table(crc_table_3, crc_get_polynom(CRC_TYPE_3));
-	crc_init_table(crc_table_7, crc_get_polynom(CRC_TYPE_7));
-	crc_init_table(crc_table_8, crc_get_polynom(CRC_TYPE_8));
-
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(cid_type, max_contexts, src_filename, ofilename,
 	                              cmp_filename, rohc_size_ofilename);

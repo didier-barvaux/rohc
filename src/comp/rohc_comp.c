@@ -34,6 +34,7 @@
 #include "sdvl.h"
 #include "decode.h"
 #include "ip.h"
+#include "crc.h"
 
 #include <netinet/udp.h>
 #include <string.h>
@@ -131,6 +132,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
                                          int encap_size)
 {
 	struct rohc_comp *comp;
+	bool is_fine;
 	int i;
 	
 	rohc_debugf(1, "creating compressor\n");
@@ -158,6 +160,33 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->jam_use = jam_use;
 	comp->adapt_size = adapt_size;
 	comp->encap_size = encap_size;
+
+	/* init the tables for fast CRC computation */
+	is_fine = rohc_crc_init_table(comp->crc_table_2, CRC_TYPE_2);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+	is_fine = rohc_crc_init_table(comp->crc_table_3, CRC_TYPE_3);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+	is_fine = rohc_crc_init_table(comp->crc_table_6, CRC_TYPE_6);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+	is_fine = rohc_crc_init_table(comp->crc_table_7, CRC_TYPE_7);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+	is_fine = rohc_crc_init_table(comp->crc_table_8, CRC_TYPE_8);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
 
 	/* init the ring of feedbacks */
 	for(i = 0; i < FEEDBACK_RING_SIZE; i++)

@@ -102,6 +102,21 @@ struct rohc_comp
 	 */
 	int profiles[C_NUM_PROFILES];
 
+
+	/* CRC-related variables: */
+
+	/** The table to enable fast CRC-2 computation */
+	unsigned char crc_table_2[256];
+	/** The table to enable fast CRC-3 computation */
+	unsigned char crc_table_3[256];
+	/** The table to enable fast CRC-6 computation */
+	unsigned char crc_table_6[256];
+	/** The table to enable fast CRC-7 computation */
+	unsigned char crc_table_7[256];
+	/** The table to enable fast CRC-8 computation */
+	unsigned char crc_table_8[256];
+
+
 	/* feedback-related variables: */
 
 	/** The ring of outgoing feedbacks */
@@ -112,6 +127,7 @@ struct rohc_comp
 	size_t feedbacks_first_unlocked;
 	/** @brief The index of the next empty location in the feedback ring */
 	size_t feedbacks_next;
+
 
 	/* some statistics about the compression process: */
 
@@ -124,7 +140,8 @@ struct rohc_comp
 
 	/** The last context used by the compressor */
 	struct c_context *last_context;
- 
+
+
 	/* user interaction variables: */
 
 	/** Maximum Reconstructed Reception Unit (currently not used) */

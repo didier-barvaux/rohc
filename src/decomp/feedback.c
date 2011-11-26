@@ -255,12 +255,14 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
  * @param cid          The Context ID (CID) to append
  * @param largecidUsed Whether large CIDs are used or not
  * @param with_crc     Whether the CRC option must be added or not
+ * @param crc_table    The pre-computed table for fast CRC computation
  * @param final_size   OUT: The final size of the feedback packet
  * @return             The feedback packet if successful, NULL otherwise
  */
 unsigned char * f_wrap_feedback(struct d_feedback *feedback,
                                 int cid, int largecidUsed,
                                 int with_crc,
+                                unsigned char *crc_table,
                                 int *final_size)
 {
 	unsigned char *feedback_packet;
@@ -301,7 +303,8 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	/* compute the CRC and store it in the feedback packet if specified */
 	if(with_crc)
 	{
-		crc = crc_calculate(CRC_TYPE_8, feedback_packet, feedback->size, CRC_INIT_8);
+		crc = crc_calculate(CRC_TYPE_8, feedback_packet, feedback->size,
+		                    CRC_INIT_8, crc_table);
 		feedback_packet[feedback->size - 1] = (unsigned char) (crc & 0xff);
 	}
 
