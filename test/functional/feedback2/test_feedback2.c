@@ -270,7 +270,7 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_c_set_large_cid(comp, 0);
 	}
 
-	/* create the ROHC decompressor in unidirectional mode */
+	/* create the ROHC decompressor in bi-directional mode */
 	decomp = rohc_alloc_decompressor(comp);
 	if(decomp == NULL)
 	{
@@ -317,7 +317,7 @@ static int test_comp_and_decomp(const char *filename,
 		                               rohc_packet, rohc_size,
 		                               ip_packet, MAX_ROHC_SIZE,
 		                               is_large_cid);
-		if(rohc_size <= 0)
+		if(ip_size <= 0)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");
 			goto destroy_decomp;
