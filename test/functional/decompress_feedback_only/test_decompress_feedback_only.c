@@ -151,7 +151,7 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 	                          (unsigned char *) rohc_feedback,
 	                          rohc_feedback_len,
 	                          ip_packet, MAX_ROHC_SIZE);
-	if(ip_size <= 0 && ip_size != ROHC_FEEDBACK_ONLY)
+	if(ip_size != ROHC_FEEDBACK_ONLY)
 	{
 		fprintf(stderr, "failed to decompress ROHC feedback\n");
 		goto destroy_decomp;
