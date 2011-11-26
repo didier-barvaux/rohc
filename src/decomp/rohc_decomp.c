@@ -57,26 +57,47 @@ static struct d_profile *d_profiles[D_NUM_PROFILES] =
 
 
 /*
- * Private function prototypes:
+ * Prototypes of private functions
  */
 
-struct d_profile * find_profile(int id);
-
-static int d_decode_feedback_first(struct rohc_decomp *decomp,
-                                   unsigned char *packet,
-                                   unsigned int size,
-                                   unsigned int *parsed_size);
-
-static int d_decode_feedback(struct rohc_decomp *decomp,
-                             unsigned char *packet,
-                             unsigned int len,
-                             unsigned int *feedback_size);
+static struct d_profile * find_profile(int id);
 
 static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   unsigned char *packet,
                                   unsigned int len,
                                   struct d_decode_data *ddata);
 
+/* CRC-related functions */
+static int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
+                                 struct d_context *context,
+                                 unsigned char *walk,
+                                 unsigned int plen,
+                                 const int largecid,
+                                 const int addcidUsed,
+                                 const struct d_profile *profile);
+static int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
+                                     unsigned char *walk,
+                                     unsigned int plen,
+                                     const int largecid,
+                                     const int addcidUsed,
+                                     const struct d_profile *profile,
+                                     struct d_context *context);
+
+/* feedback-related functions */
+static int d_decode_feedback_first(struct rohc_decomp *decomp,
+                                   unsigned char *packet,
+                                   unsigned int size,
+                                   unsigned int *parsed_size);
+static int d_decode_feedback(struct rohc_decomp *decomp,
+                             unsigned char *packet,
+                             unsigned int len,
+                             unsigned int *feedback_size);
+
+
+
+/*
+ * Public functions
+ */
 
 
 /**
@@ -590,58 +611,6 @@ int rohc_decompress_both(struct rohc_decomp * decomp,
 
 
 /**
- * @brief Decode zero or more feedback packets if present
- *
- * @param decomp       The ROHC decompressor
- * @param packet       The ROHC packet to decompress
- * @param size         The size of the ROHC packet
- * @param parsed_size  OUT: The size (in bytes) of the padding and feedback
- *                          parsed in case of success, undefined otherwise
- * @return             ROHC_OK in case of success, ROHC_ERROR in case of failure
- */
-static int d_decode_feedback_first(struct rohc_decomp *decomp,
-                                   unsigned char *packet,
-                                   unsigned int size,
-                                   unsigned int *parsed_size)
-{
-	/* nothing parsed for the moment */
-	*parsed_size = 0;
-
-	/* remove all padded bytes */
-	while(size > 0 && d_is_padding(packet))
-	{
-		packet++;
-		size--;
-		(*parsed_size)++;
-	}
-	rohc_debugf(2, "skip %u byte(s) of padding\n", *parsed_size);
-
-	/* parse as much feedback data as possible */
-	while(size > 0 && d_is_feedback(packet))
-	{
-		unsigned int feedback_size;
-		int ret;
-
-		/* decode one feedback packet */
-		ret = d_decode_feedback(decomp, packet, size, &feedback_size);
-		if(ret != ROHC_OK)
-		{
-			rohc_debugf(0, "failed to decode feedback in packet\n");
-			goto error;
-		}
-		packet += feedback_size;
-		size -= feedback_size;
-		(*parsed_size) += feedback_size;
-	}
-
-	return ROHC_OK;
-
-error:
-	return ROHC_ERROR;
-} 
-
-
-/**
  * @brief Decompress the compressed headers.
  *
  * @param decomp The ROHC decompressor
@@ -859,330 +828,6 @@ int d_decode_header(struct rohc_decomp *decomp,
 	} /* end of 'the ROHC packet is not an IR packet' */
 
 	return ROHC_ERROR_NO_CONTEXT;
-}
-
-
-/**
- * @brief Decode the feedback packet and deliver it to the associated compressor
- *
- * @param decomp         The ROHC decompressor
- * @param packet         The ROHC packet starting with feedback info
- * @param len            The length of the ROHC packet
- * @param feedback_size  OUT: The feedback size (including the feedback header)
- *                            in case of success, undefined otherwise
- * @return               ROHC_OK in case of success, ROHC_ERROR in case of failure
- */
-static int d_decode_feedback(struct rohc_decomp *decomp,
-                             unsigned char *packet,
-                             unsigned int len,
-                             unsigned int *feedback_size)
-{
-	unsigned int header_size;
-	unsigned int data_size;
-
-	/* feedback info is at least 2 byte with the header */
-	if(len < 2)
-	{
-		rohc_debugf(0, "packet too short to contain feedback\n");
-		goto error;
-	}
-
-	/* extract the size of the feedback */
-	data_size = d_feedback_size(packet);
-	if(data_size > len)
-	{
-		rohc_debugf(0, "packet too short to contain one %u-byte feedback "
-		            "(feedback header not included)\n", data_size);
-		goto error;
-	}
-
-	/* extract the size of the feedback header */
-	header_size = d_feedback_headersize(packet);
-	if((header_size + data_size) > len)
-	{
-		rohc_debugf(0, "packet too short to contain one %u-byte feedback "
-		            "(feedback header included)\n", header_size + data_size);
-		goto error;
-	}
-
-	rohc_debugf(1, "feedback present (header = %u bytes, data = %u bytes)\n",
-	            header_size, data_size);
-
-	/* deliver the feedback data to the associated compressor */
-	c_deliver_feedback(decomp->compressor, packet + header_size, data_size);
-
-	/* return the total size to caller */
-	*feedback_size = header_size + data_size;
-
-	return ROHC_OK;
-
-error:
-	return ROHC_ERROR;
-}
-
-
-/**
- * @brief Decode the CID of a packet
- *
- * @param decomp  The ROHC decompressor
- * @param packet  The ROHC packet to extract CID from
- * @param len     The size of the ROHC packet
- * @param ddata   IN/OUT: decompression-related data (e.g. the context)
- * @return        ROHC_OK in case of success, ROHC_ERROR in case of failure
- */
-static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                  unsigned char *packet,
-                                  unsigned int len,
-                                  struct d_decode_data *ddata)
-{
-	/* is feedback data is large enough to read add-CID or first byte
-	   of large CID ? */
-	if(len < 1)
-	{
-		rohc_debugf(0, "feedback data too short for add-CID or large CID\n");
-		goto error;
-	}
-
-	if(decomp->medium->cid_type == ROHC_SMALL_CID)
-	{
-		/* small CID */
-		ddata->large_cid_size = 0;
-		ddata->largecidUsed = 0;
-
-		/* if add-CID is present, extract the CID value */
-		if(d_is_add_cid(packet))
-		{
-			ddata->addcidUsed = 1;
-			ddata->cid = d_decode_add_cid(packet);
-			rohc_debugf(2, "add-CID present (0x%x) contains CID = %d\n",
-			            packet[0], ddata->cid);
-		}
-		else
-		{
-			/* no add-CID, CID defaults to 0 */
-			ddata->addcidUsed = 0;
-			ddata->cid = 0;
-			rohc_debugf(2, "no add-CID found, CID defaults to 0\n");
-		}
-	}
-	else if(decomp->medium->cid_type == ROHC_LARGE_CID)
-	{
-		int ret;
-
-		/* large CID */
-		ddata->addcidUsed = 0;
-		ddata->largecidUsed = 1;
-
-		/* skip the first byte of packet located just before the large CID */
-		packet++;
-		len--;
-
-		/* get the length of the SDVL-encoded large CID **/
-		ret = d_sdvalue_size(packet);
-		if(ret < 0)
-		{
-			rohc_debugf(0, "malformed large CID SDVL-encoded field\n");
-			goto error;
-		}
-		ddata->large_cid_size = ret;
-
-		/* only 1-byte and 2-byte SDVL fields are allowed for large CID */
-		if(ddata->large_cid_size != 1 && ddata->large_cid_size != 2)
-		{
-			rohc_debugf(0, "bad large CID SDVL-encoded field length (%u bytes)\n",
-			            ddata->large_cid_size);
-			goto error;
-		}
-
-		/* is feedback data large enough ? */
-		if(len < ddata->large_cid_size)
-		{
-			rohc_debugf(0, "feedback data too small (%u bytes) for %u-byte "
-			            "SDVL-encoded large CID field\n", len,
-			            ddata->large_cid_size);
-			goto error;
-		}
-
-		/* decode SDVL-encoded large CID */
-		ddata->cid = d_sdvalue_decode(packet);
-		if(ddata->cid == -1)
-		{
-			rohc_debugf(0, "bad large CID SDVL-encoded field\n");
-			goto error;
-		}
-
-		rohc_debugf(2, "%u-byte large CID = %d (0x%02x)\n",
-		           ddata->large_cid_size, ddata->cid, ddata->cid);
-	}
-	else
-	{
-		rohc_debugf(0, "unexpected CID type (%d), should not happen\n",
-		            decomp->medium->cid_type);
-		goto error;
-	}
-
-	return ROHC_OK;
-
-error:
-	return ROHC_ERROR;
-}
-
-
-/**
- * @brief Find the ROHC profile with the given profile ID.
- *
- * @param id  The profile ID to search for
- * @return    The matching ROHC profile
- */
-struct d_profile * find_profile(int id)
-{
-	int i = 0;
-	
-	while(i < D_NUM_PROFILES && d_profiles[i]->id != id)
-		i++;
-	
-	if(i >= D_NUM_PROFILES)
-	{
-		rohc_debugf(0, "no profile found for decompression\n");
-		return NULL;
-	}
-
-	return d_profiles[i];
-}
-
-
-/**
- * @brief Check the CRC of one IR packet.
- *
- * @param decomp     The ROHC decompressor
- * @param context    The decompression context
- * @param walk       The ROHC IR packet
- * @param plen       The length of the ROHC packet
- * @param largecid   The size of the large CID field
- * @param addcidUsed Whether add-CID is used or not
- * @param profile    The profile associated with the ROHC packet
- * @return           Whether the CRC is ok or not
- */
-int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
-                          struct d_context *context,
-                          unsigned char *walk,
-                          unsigned int plen,
-                          const int largecid,
-                          const int addcidUsed,
-                          const struct d_profile *profile)
-{
-	int realcrc, crc;
-	int ir_size;
-
-	/* extract the CRC transmitted in the IR packet */
-	if(largecid + 2 >= plen)
-	{
-		rohc_debugf(0, "ROHC packet too small, cannot read the CRC (len = %d)\n",
-		            plen);
-		goto bad;
-	}
-	realcrc = walk[largecid + 2];
-
-	/* detect the size of the IR header */
-	ir_size = profile->detect_ir_size(context, walk, plen, largecid);
-	if(ir_size == 0)
-	{
-		rohc_debugf(0, "cannot detect the IR size with profile %s (0x%04x)\n",
-		            profile->description, profile->id);
-		goto bad;
-	}
-	rohc_debugf(3, "size of IR packet header : %d \n", ir_size);
-
-	/* compute the CRC of the IR packet */
-	walk[largecid + 2] = 0;
-	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    ir_size + largecid + addcidUsed, CRC_INIT_8,
-	                    decomp->crc_table_8);
-	walk[largecid + 2] = realcrc;
-
-	/* compare the transmitted CRC and the computed one */
-	if(crc != realcrc)
-	{
-		rohc_debugf(0, "CRC failed (real = 0x%x, calc = 0x%x, profile_id = "
-		            "%d, largecid = %d, addcidUsed = %d, ir_size = %d)\n",
-		            realcrc, crc, profile->id, largecid, addcidUsed, ir_size);
-		goto bad;
-	}
-	
-	rohc_debugf(2, "CRC OK (crc = 0x%x, profile_id = %d, largecid = %d, "
-	            "addcidUsed = %d, ir_size = %d)\n", crc, profile->id,
-	            largecid, addcidUsed, ir_size);
-
-	return 1;
-
-bad:
-	return 0;
-}
-
-
-/**
- * @brief Check the CRC of one IR-DYN packet.
- *
- * @param decomp     The ROHC decompressor
- * @param walk       The ROHC packet
- * @param plen       The length of the ROHC packet
- * @param largecid   The large CID value
- * @param addcidUsed Whether add-CID is used or not
- * @param profile    The profile associated with the ROHC packet
- * @param context    The decompression context associated with the ROHC packet
- * @return           Whether the CRC is ok or not
- */
-int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
-                              unsigned char *walk,
-                              unsigned int plen,
-                              const int largecid,
-                              const int addcidUsed,
-                              const struct d_profile *profile,
-                              struct d_context *context)
-{
-	int realcrc, crc;
-	int irdyn_size;
-
-	/* extract the CRC transmitted in the IR-DYN packet */
-	if(largecid + 2 >= plen)
-	{
-		rohc_debugf(0, "ROHC packet too small, cannot read the CRC (len = %d)\n",
-		            plen);
-		goto bad;
-	}
-	realcrc = walk[largecid + 2];
-	
-	/* detect the size of the IR-DYN header */
-	irdyn_size = profile->detect_ir_dyn_size(context, walk, plen, largecid);
-	if(irdyn_size == 0)
-	{
-		rohc_debugf(0, "cannot detect the IR-DYN size\n");
-		goto bad;
-	}
-
-	/* compute the CRC of the IR-DYN packet */
-	walk[largecid + 2] = 0;
-	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
-	                    irdyn_size + largecid + addcidUsed, CRC_INIT_8,
-	                    decomp->crc_table_8);
-	walk[largecid + 2] = realcrc;
-
-	/* compare the transmitted CRC and the computed one */
-	if(crc != realcrc)
-	{
-		rohc_debugf(0, "CRC failed (real = 0x%x, calc = 0x%x, largecid = %d, "
-		            "addcidUsed = %d, ir_dyn_size = %d)\n",
-		            realcrc, crc, largecid, addcidUsed, irdyn_size);
-		goto bad;
-	}
-
-	rohc_debugf(2, "CRC OK (crc = 0x%x, largecid = %d, addcidUsed = %d, "
-	            "ir_dyn_size = %d)\n", crc, largecid, addcidUsed, irdyn_size);
-
-	return 1;
-
-bad:
-	return 0;
 }
 
 
@@ -1706,5 +1351,386 @@ skip:
 void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 {
 	decomp->maxval = feedback_maxval * 100;
+}
+
+
+/*
+ * Private functions
+ */
+
+
+/**
+ * @brief Find the ROHC profile with the given profile ID.
+ *
+ * @param id  The profile ID to search for
+ * @return    The matching ROHC profile
+ */
+static struct d_profile * find_profile(int id)
+{
+	int i = 0;
+	
+	while(i < D_NUM_PROFILES && d_profiles[i]->id != id)
+		i++;
+	
+	if(i >= D_NUM_PROFILES)
+	{
+		rohc_debugf(0, "no profile found for decompression\n");
+		return NULL;
+	}
+
+	return d_profiles[i];
+}
+
+
+/**
+ * @brief Decode the CID of a packet
+ *
+ * @param decomp  The ROHC decompressor
+ * @param packet  The ROHC packet to extract CID from
+ * @param len     The size of the ROHC packet
+ * @param ddata   IN/OUT: decompression-related data (e.g. the context)
+ * @return        ROHC_OK in case of success, ROHC_ERROR in case of failure
+ */
+static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
+                                  unsigned char *packet,
+                                  unsigned int len,
+                                  struct d_decode_data *ddata)
+{
+	/* is feedback data is large enough to read add-CID or first byte
+	   of large CID ? */
+	if(len < 1)
+	{
+		rohc_debugf(0, "feedback data too short for add-CID or large CID\n");
+		goto error;
+	}
+
+	if(decomp->medium->cid_type == ROHC_SMALL_CID)
+	{
+		/* small CID */
+		ddata->large_cid_size = 0;
+		ddata->largecidUsed = 0;
+
+		/* if add-CID is present, extract the CID value */
+		if(d_is_add_cid(packet))
+		{
+			ddata->addcidUsed = 1;
+			ddata->cid = d_decode_add_cid(packet);
+			rohc_debugf(2, "add-CID present (0x%x) contains CID = %d\n",
+			            packet[0], ddata->cid);
+		}
+		else
+		{
+			/* no add-CID, CID defaults to 0 */
+			ddata->addcidUsed = 0;
+			ddata->cid = 0;
+			rohc_debugf(2, "no add-CID found, CID defaults to 0\n");
+		}
+	}
+	else if(decomp->medium->cid_type == ROHC_LARGE_CID)
+	{
+		int ret;
+
+		/* large CID */
+		ddata->addcidUsed = 0;
+		ddata->largecidUsed = 1;
+
+		/* skip the first byte of packet located just before the large CID */
+		packet++;
+		len--;
+
+		/* get the length of the SDVL-encoded large CID **/
+		ret = d_sdvalue_size(packet);
+		if(ret < 0)
+		{
+			rohc_debugf(0, "malformed large CID SDVL-encoded field\n");
+			goto error;
+		}
+		ddata->large_cid_size = ret;
+
+		/* only 1-byte and 2-byte SDVL fields are allowed for large CID */
+		if(ddata->large_cid_size != 1 && ddata->large_cid_size != 2)
+		{
+			rohc_debugf(0, "bad large CID SDVL-encoded field length (%u bytes)\n",
+			            ddata->large_cid_size);
+			goto error;
+		}
+
+		/* is feedback data large enough ? */
+		if(len < ddata->large_cid_size)
+		{
+			rohc_debugf(0, "feedback data too small (%u bytes) for %u-byte "
+			            "SDVL-encoded large CID field\n", len,
+			            ddata->large_cid_size);
+			goto error;
+		}
+
+		/* decode SDVL-encoded large CID */
+		ddata->cid = d_sdvalue_decode(packet);
+		if(ddata->cid == -1)
+		{
+			rohc_debugf(0, "bad large CID SDVL-encoded field\n");
+			goto error;
+		}
+
+		rohc_debugf(2, "%u-byte large CID = %d (0x%02x)\n",
+		           ddata->large_cid_size, ddata->cid, ddata->cid);
+	}
+	else
+	{
+		rohc_debugf(0, "unexpected CID type (%d), should not happen\n",
+		            decomp->medium->cid_type);
+		goto error;
+	}
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Check the CRC of one IR packet.
+ *
+ * @param decomp     The ROHC decompressor
+ * @param context    The decompression context
+ * @param walk       The ROHC IR packet
+ * @param plen       The length of the ROHC packet
+ * @param largecid   The size of the large CID field
+ * @param addcidUsed Whether add-CID is used or not
+ * @param profile    The profile associated with the ROHC packet
+ * @return           Whether the CRC is ok or not
+ */
+static int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
+                                 struct d_context *context,
+                                 unsigned char *walk,
+                                 unsigned int plen,
+                                 const int largecid,
+                                 const int addcidUsed,
+                                 const struct d_profile *profile)
+{
+	int realcrc, crc;
+	int ir_size;
+
+	/* extract the CRC transmitted in the IR packet */
+	if(largecid + 2 >= plen)
+	{
+		rohc_debugf(0, "ROHC packet too small, cannot read the CRC (len = %d)\n",
+		            plen);
+		goto bad;
+	}
+	realcrc = walk[largecid + 2];
+
+	/* detect the size of the IR header */
+	ir_size = profile->detect_ir_size(context, walk, plen, largecid);
+	if(ir_size == 0)
+	{
+		rohc_debugf(0, "cannot detect the IR size with profile %s (0x%04x)\n",
+		            profile->description, profile->id);
+		goto bad;
+	}
+	rohc_debugf(3, "size of IR packet header : %d \n", ir_size);
+
+	/* compute the CRC of the IR packet */
+	walk[largecid + 2] = 0;
+	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
+	                    ir_size + largecid + addcidUsed, CRC_INIT_8,
+	                    decomp->crc_table_8);
+	walk[largecid + 2] = realcrc;
+
+	/* compare the transmitted CRC and the computed one */
+	if(crc != realcrc)
+	{
+		rohc_debugf(0, "CRC failed (real = 0x%x, calc = 0x%x, profile_id = "
+		            "%d, largecid = %d, addcidUsed = %d, ir_size = %d)\n",
+		            realcrc, crc, profile->id, largecid, addcidUsed, ir_size);
+		goto bad;
+	}
+	
+	rohc_debugf(2, "CRC OK (crc = 0x%x, profile_id = %d, largecid = %d, "
+	            "addcidUsed = %d, ir_size = %d)\n", crc, profile->id,
+	            largecid, addcidUsed, ir_size);
+
+	return 1;
+
+bad:
+	return 0;
+}
+
+
+/**
+ * @brief Check the CRC of one IR-DYN packet.
+ *
+ * @param decomp     The ROHC decompressor
+ * @param walk       The ROHC packet
+ * @param plen       The length of the ROHC packet
+ * @param largecid   The large CID value
+ * @param addcidUsed Whether add-CID is used or not
+ * @param profile    The profile associated with the ROHC packet
+ * @param context    The decompression context associated with the ROHC packet
+ * @return           Whether the CRC is ok or not
+ */
+static int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
+                                     unsigned char *walk,
+                                     unsigned int plen,
+                                     const int largecid,
+                                     const int addcidUsed,
+                                     const struct d_profile *profile,
+                                     struct d_context *context)
+{
+	int realcrc, crc;
+	int irdyn_size;
+
+	/* extract the CRC transmitted in the IR-DYN packet */
+	if(largecid + 2 >= plen)
+	{
+		rohc_debugf(0, "ROHC packet too small, cannot read the CRC (len = %d)\n",
+		            plen);
+		goto bad;
+	}
+	realcrc = walk[largecid + 2];
+	
+	/* detect the size of the IR-DYN header */
+	irdyn_size = profile->detect_ir_dyn_size(context, walk, plen, largecid);
+	if(irdyn_size == 0)
+	{
+		rohc_debugf(0, "cannot detect the IR-DYN size\n");
+		goto bad;
+	}
+
+	/* compute the CRC of the IR-DYN packet */
+	walk[largecid + 2] = 0;
+	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
+	                    irdyn_size + largecid + addcidUsed, CRC_INIT_8,
+	                    decomp->crc_table_8);
+	walk[largecid + 2] = realcrc;
+
+	/* compare the transmitted CRC and the computed one */
+	if(crc != realcrc)
+	{
+		rohc_debugf(0, "CRC failed (real = 0x%x, calc = 0x%x, largecid = %d, "
+		            "addcidUsed = %d, ir_dyn_size = %d)\n",
+		            realcrc, crc, largecid, addcidUsed, irdyn_size);
+		goto bad;
+	}
+
+	rohc_debugf(2, "CRC OK (crc = 0x%x, largecid = %d, addcidUsed = %d, "
+	            "ir_dyn_size = %d)\n", crc, largecid, addcidUsed, irdyn_size);
+
+	return 1;
+
+bad:
+	return 0;
+}
+
+
+/**
+ * @brief Decode zero or more feedback packets if present
+ *
+ * @param decomp       The ROHC decompressor
+ * @param packet       The ROHC packet to decompress
+ * @param size         The size of the ROHC packet
+ * @param parsed_size  OUT: The size (in bytes) of the padding and feedback
+ *                          parsed in case of success, undefined otherwise
+ * @return             ROHC_OK in case of success, ROHC_ERROR in case of failure
+ */
+static int d_decode_feedback_first(struct rohc_decomp *decomp,
+                                   unsigned char *packet,
+                                   unsigned int size,
+                                   unsigned int *parsed_size)
+{
+	/* nothing parsed for the moment */
+	*parsed_size = 0;
+
+	/* remove all padded bytes */
+	while(size > 0 && d_is_padding(packet))
+	{
+		packet++;
+		size--;
+		(*parsed_size)++;
+	}
+	rohc_debugf(2, "skip %u byte(s) of padding\n", *parsed_size);
+
+	/* parse as much feedback data as possible */
+	while(size > 0 && d_is_feedback(packet))
+	{
+		unsigned int feedback_size;
+		int ret;
+
+		/* decode one feedback packet */
+		ret = d_decode_feedback(decomp, packet, size, &feedback_size);
+		if(ret != ROHC_OK)
+		{
+			rohc_debugf(0, "failed to decode feedback in packet\n");
+			goto error;
+		}
+		packet += feedback_size;
+		size -= feedback_size;
+		(*parsed_size) += feedback_size;
+	}
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
+} 
+
+
+/**
+ * @brief Decode the feedback packet and deliver it to the associated compressor
+ *
+ * @param decomp         The ROHC decompressor
+ * @param packet         The ROHC packet starting with feedback info
+ * @param len            The length of the ROHC packet
+ * @param feedback_size  OUT: The feedback size (including the feedback header)
+ *                            in case of success, undefined otherwise
+ * @return               ROHC_OK in case of success, ROHC_ERROR in case of failure
+ */
+static int d_decode_feedback(struct rohc_decomp *decomp,
+                             unsigned char *packet,
+                             unsigned int len,
+                             unsigned int *feedback_size)
+{
+	unsigned int header_size;
+	unsigned int data_size;
+
+	/* feedback info is at least 2 byte with the header */
+	if(len < 2)
+	{
+		rohc_debugf(0, "packet too short to contain feedback\n");
+		goto error;
+	}
+
+	/* extract the size of the feedback */
+	data_size = d_feedback_size(packet);
+	if(data_size > len)
+	{
+		rohc_debugf(0, "packet too short to contain one %u-byte feedback "
+		            "(feedback header not included)\n", data_size);
+		goto error;
+	}
+
+	/* extract the size of the feedback header */
+	header_size = d_feedback_headersize(packet);
+	if((header_size + data_size) > len)
+	{
+		rohc_debugf(0, "packet too short to contain one %u-byte feedback "
+		            "(feedback header included)\n", header_size + data_size);
+		goto error;
+	}
+
+	rohc_debugf(1, "feedback present (header = %u bytes, data = %u bytes)\n",
+	            header_size, data_size);
+
+	/* deliver the feedback data to the associated compressor */
+	c_deliver_feedback(decomp->compressor, packet + header_size, data_size);
+
+	/* return the total size to caller */
+	*feedback_size = header_size + data_size;
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
 }
 

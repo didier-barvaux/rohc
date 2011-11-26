@@ -294,24 +294,6 @@ void d_change_mode_feedback(struct rohc_decomp *decomp, struct d_context *contex
 
 
 /*
- * Functions related to CRC of IR and IR-DYN packets:
- */
-
-int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
-                          struct d_context *context,
-                          unsigned char *walk, unsigned int plen,
-                          const int largecid, const int addcidUsed,
-                          const struct d_profile *profile);
-int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
-                              unsigned char *walk,
-                              unsigned int plen,
-                              const int largecid,
-                              const int addcidUsed,
-                              const struct d_profile *profile,
-                              struct d_context *context);
-
-
-/*
  * Functions related to statistics:
  */
 
