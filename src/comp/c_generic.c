@@ -2309,7 +2309,8 @@ void c_generic_feedback(struct c_context *const context,
 
 		case 2: /* FEEDBACK-2 */
 		{
-			unsigned int crc = 0, crc_used = 0;
+			unsigned int crc_in_packet = 0; /* initialized to avoid a GCC warning */
+			bool is_crc_used = false;
 			int sn_not_valid = 0;
 			unsigned char mode = (p[0] >> 4) & 3;
 			int remaining = feedback->specific_size - 2;
@@ -2328,8 +2329,8 @@ void c_generic_feedback(struct c_context *const context,
 				switch(opt)
 				{
 					case 1: /* CRC */
-						crc = p[1];
-						crc_used = 1;
+						crc_in_packet = p[1];
+						is_crc_used = true;
 						p[1] = 0; /* set to zero for crc computation */
 						break;
 					case 3: /* SN-Not-Valid */
@@ -2350,18 +2351,28 @@ void c_generic_feedback(struct c_context *const context,
 				p += 1 + optlen;
 			}
 
-			/* check CRC if used */
-			if(crc_used &&
-			   crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
-			                 CRC_INIT_8, context->compressor->crc_table_8) != crc)
+			/* check CRC if present in feedback */
+			if(is_crc_used == true)
 			{
-				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
-				return;
+				unsigned int crc_computed;
+
+				/* compute the CRC of the feedback packet */
+			   crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
+			                                CRC_INIT_8, context->compressor->crc_table_8);
+
+				/* ignore feedback in case of bad CRC */
+				if(crc_in_packet != crc_computed)
+				{
+					rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
+					return;
+				}
 			}
 
+			/* change mode if present in feedback */
 			if(mode != 0)
 			{
-				if(crc_used)
+				/* mode can be changed only if feedback is protected by a CRC */
+				if(is_crc_used == true)
 					change_mode(context, mode);
 				else
 					rohc_debugf(0, "mode change requested but no crc was given\n");
