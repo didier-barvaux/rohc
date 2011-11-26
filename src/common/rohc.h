@@ -28,49 +28,41 @@
 /**
  * \mainpage
  *
+ *
  * <h2>Introduction</h2>
  * 
- * <p>
- * This piece of software is an implementation of RObust Header Compression for
- * Linux (or other Unix-compatible OS). The library can be used to add ROHC
- * compression/decompression capabilities to an application.
- * </p>
+ * <p>The ROHC library provides an easy and robust way for applications to
+ * reduce their bandwidth usage on network links with limited capacity.
+ * Headers of network packets are compressed with the ROHC protocol and
+ * algorithms.</p>
  *
- * <p>Important links:
- *  <ul>
- *    <li>Official website: <a href="http://launchpad.net/rohc">
- *                           http://launchpad.net/rohc</a></li>
- *    <li>Mailing list: <a href="mailto:rohc@lists.launchpad.net">
- *                       rohc@lists.launchpad.net</a></li>
- *    <li>Mailing list archives: <a href="http://lists.launchpad.net/rohc/">
- *                                http://lists.launchpad.net/rohc/</a></li>
- *    <li>Bugtracker: <a href="http://bugs.launchpad.net/rohc">
- *                     http://bugs.launchpad.net/rohc</a></li>
- *  </ul>
- * </p>
+ * <p>RObust Header Compression (ROHC) is a set of standards defined by the
+ * <a href="http://www.ietf.org/">IETF</a>. The ROHC library is a free,
+ * opensource and efficient implementation of them. The list of features
+ * implemented is available on a separate page: \ref features</p>
  *
- * <p>The list of features implemented (or not yet implemented) in the ROHC
- * library is available on a separate page: \ref features</p>
+ * <ul>
+ *   <li>Official website: <a href="http://rohc-lib.org/">
+ *                          http://rohc-lib.org/</a></li>
+ *   <li>Project page on Launchpad: <a href="http://launchpad.net/rohc">
+ *                          http://launchpad.net/rohc</a></li>
+ *   <li>Mailing list: <a href="mailto:rohc@lists.launchpad.net">
+ *                      rohc@lists.launchpad.net</a></li>
+ *   <li>Mailing list archives: <a href="http://lists.launchpad.net/rohc/">
+ *                               http://lists.launchpad.net/rohc/</a></li>
+ *   <li>Bugtracker: <a href="http://bugs.launchpad.net/rohc">
+ *                    http://bugs.launchpad.net/rohc</a></li>
+ * </ul>
  *
- * <p>The APIs for ROHC common, compression and decompression are also available on
- * separate pages:
- *  <ul>
- *    <li>\ref rohc_common</li>
- *    <li>\ref rohc_comp</li>
- *    <li>\ref rohc_decomp</li>
- *  </ul>
- * </p>
- * 
+ *
  * <h2>License</h2>
  * 
- * <p>
- * The project is licensed under GPL2+, see the <a
- * href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/COPYING">
- * COPYING</a> and <a
- * href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/AUTHORS">
- * AUTHORS</a> files for more details.
- * </p>
+ * <p>The project is licensed under GPL2+.
+ * See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/COPYING">COPYING</a>
+ * and <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/AUTHORS">AUTHORS</a>
+ * files for more details.</p>
  * 
+ *
  * <h2>Libraries</h2>
  * 
  * <p>
@@ -84,21 +76,28 @@
  *  </ul>
  * </p>
  * 
- * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">
- * INSTALL</a> file to learn to build the libraries.</p>
+ * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL"> INSTALL file</a>
+ * to learn to build the libraries.</p>
+ *
+ *
+ * <h2>API documentation</h2>
+ * <p>The APIs for ROHC common, compression and decompression are available on
+ * separate pages:
+ *  <ul>
+ *    <li>\ref rohc_common</li>
+ *    <li>\ref rohc_comp</li>
+ *    <li>\ref rohc_decomp</li>
+ *  </ul>
+ * </p>
  * 
+ *
  * <h2>Non-regression tests</h2>
  * 
  * <p>
- * The test subdirectory contains a test application. See the header of the
- * test.c file for details. There is also a report tool that tests the ROHC
- * libraries with several IP flows and outputs an HTML page with the test
- * results.
+ * The test subdirectory contains several test applications. See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">INSTALL file</a> to learn how to use these tools.
  * </p>
  * 
- * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">
- * INSTALL</a> file to learn how to use the non-regression and report tools.</p>
- * 
+ *
  * <h2>References</h2>
  * 
  * <table style="border-collapse: collapse; border: solid thin black;">
@@ -193,6 +192,8 @@
  *
  * <p>Unsupported features are in <span style="color: red;">red</span>.</p>
  * <p>Limitations are in <span style="color: orange;">orange</span>.</p>
+ *
+ * <p>See the <a href="https://answers.launchpad.net/rohc/+faq/1806">FAQ about compliance with IETF RFCs</a> for additional details.</p>
  *
  * <h2>Main features</h2>
  *
