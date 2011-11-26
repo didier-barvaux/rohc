@@ -513,20 +513,31 @@ struct medium
 /** The CRC-8 type */
 #define CRC_TYPE_8 5
 
+
 /* TODO API: remove these variables once compatibility is not needed anymore */
-/** The table to enable fast CRC-2 computation */
+
+/** The table to enable fast CRC-2 computation
+ * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_2[256]
 	__attribute__((deprecated("please do not use this variable anymore")));
-/** The table to enable fast CRC-3 computation */
+
+/** The table to enable fast CRC-3 computation
+ * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_3[256]
 	__attribute__((deprecated("please do not use this variable anymore")));
-/** The table to enable fast CRC-6 computation */
+
+/** The table to enable fast CRC-6 computation
+ * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_6[256]
 	__attribute__((deprecated("please do not use this variables anymore")));
-/** The table to enable fast CRC-7 computation */
+
+/** The table to enable fast CRC-7 computation
+ * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_7[256]
 	__attribute__((deprecated("please do not use this variables anymore")));
-/** The table to enable fast CRC-8 computation */
+
+/** The table to enable fast CRC-8 computation
+ * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_8[256]
 	__attribute__((deprecated("please do not use this variables anymore")));
 
