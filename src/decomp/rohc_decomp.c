@@ -499,25 +499,21 @@ int rohc_decompress(struct rohc_decomp *decomp,
 
 	if(ret >= 0)
 	{
-		if(!ddata.active)
-		{
-			rohc_debugf(1, "ddata.active == null when ret >=0 !\n");
-		}
-		else
-		{
-			struct d_context *c = ddata.active;
-			c->total_uncompressed_size += ret;
-			c->total_compressed_size += isize;
-
-			c_add_wlsb(c->total_16_uncompressed, 0, ret);
-			c_add_wlsb(c->total_16_compressed, 0, isize);
-		}
+		/* ROHC packet was successfully decompressed, update statistics */
+		assert(ddata.active != NULL);
+		ddata.active->total_uncompressed_size += ret;
+		ddata.active->total_compressed_size += isize;
+		c_add_wlsb(ddata.active->total_16_uncompressed, 0, ret);
+		c_add_wlsb(ddata.active->total_16_compressed, 0, isize);
 	}
 	else if(ddata.active)
 	{
+		/* ROHC packet failed to be decompressed, but a decompression context
+		 * was identified, so update statistics */
 		ddata.active->num_decomp_failures++;
 	}
 
+	/* update statistics and send feedback if needed */
 	switch(ret)
 	{
 		case ROHC_ERROR_PACKET_FAILED:
@@ -564,7 +560,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			}
 			break;
 
-		default:	/* ROHC_OK_NO_DATA, ROHC_OK */
+		default:	/* ROHC_OK */
 			decomp->curval -= decomp->okval; /* framework (S-NACK) */
 			ddata.active->curval -= decomp->okval; /* context (NACK) */
 			rohc_debugf(2, "feedback curr %d\n", ddata.active->curval);
