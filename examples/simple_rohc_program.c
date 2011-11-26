@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 	/* Create a ROHC compressor with small CIDs, no jamming and no adaptation
 	 * to encapsulation frames.
 	 *
-	 * See http://www.tech.viveris.com/docs/rohc/group__rohc__comp.html#g721fd34fc0cd9e1d789b693eb6bb6485
+	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga721fd34fc0cd9e1d789b693eb6bb6485
 	 * for details about rohc_alloc_compressor in the API documentation.
 	 */
 	printf("\ncreate the ROHC compressor\n");
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 
 	/* Enable the compression profiles you need (comment or uncomment some lines).
 	 *
-	 * See http://www.tech.viveris.com/docs/rohc/group__rohc__comp.html#g1a444eb91681521f726712a60a4df867
+	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga1a444eb91681521f726712a60a4df867
 	 * for details about rohc_activate_profile in the API documentation.
 	 */
 	printf("\nenable several ROHC compression profiles\n");
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
 
 	/* Now, compress this fake IP packet.
 	 *
-	 * See http://www.tech.viveris.com/docs/rohc/group__rohc__comp.html#g99be8242b7bc4f442f4519461a99726b
+	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga99be8242b7bc4f442f4519461a99726b
 	 * for details about rohc_compress in the API documentation.
 	 */
 	printf("\ncompress the fake IP packet\n");
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 
 	/* Release the ROHC compressor when you do not need it anymore.
 	 *
-	 * See http://www.tech.viveris.com/docs/rohc/group__rohc__comp.html#g736ea1760d7af54ad903c29765df5bd3
+	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga736ea1760d7af54ad903c29765df5bd3
 	 * for details about rohc_free_compressor in the API documentation.
 	 */
 	printf("\n\ndestroy the ROHC decompressor\n");
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 	printf("\nThe program ended successfully. The ROHC packet is larger than the "
 	       "IP packet (39 bytes versus 38 bytes). This is expected since we only "
 	       "compress one packet in this simple example. Keep in mind that ROHC "
-	       "is designed to compress streams of packets not one single packet\n\n");
+	       "is designed to compress streams of packets not one single packet.\n\n");
 
 	return 0;
 
