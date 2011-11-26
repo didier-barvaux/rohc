@@ -5,5 +5,6 @@
 ################################################################################
 
 SUBDIRS = \
-	feedback2
+	feedback2 \
+	decompress_feedback_only
 

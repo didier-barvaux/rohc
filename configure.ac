@@ -230,6 +230,7 @@ AC_CONFIG_FILES([ \
 	test/Makefile \
 	test/functional/Makefile \
 	test/functional/feedback2/Makefile \
+	test/functional/decompress_feedback_only/Makefile \
 	test/robustness/Makefile \
 	test/robustness/empty_payload/Makefile \
 	test/robustness/damaged_packet/Makefile \
