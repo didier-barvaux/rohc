@@ -42,33 +42,39 @@ unsigned char crc_table_2[256];
  * Prototypes of private functions
  */
 
-static bool rohc_crc_get_polynom(int crc_type, unsigned char *polynom)
+static bool rohc_crc_get_polynom(const int crc_type,
+                                 unsigned char *const polynom)
 	__attribute__((nonnull(2), warn_unused_result));
 
-static unsigned char *ipv6_get_first_extension(const unsigned char *ip,
-                                               uint8_t *type);
+static unsigned char *ipv6_get_first_extension(const unsigned char *const ip,
+                                               uint8_t *const type)
+	__attribute__((nonnull(1, 2)));
 
-static inline unsigned char crc_calc_8(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table);
-static inline unsigned char crc_calc_7(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table);
-static inline unsigned char crc_calc_6(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table);
-static inline unsigned char crc_calc_3(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table);
-static inline unsigned char crc_calc_2(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table);
-
+static inline unsigned char crc_calc_8(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+static inline unsigned char crc_calc_7(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char const *crc_table)
+	__attribute__((nonnull(1, 4)));
+static inline unsigned char crc_calc_6(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+static inline unsigned char crc_calc_3(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+static inline unsigned char crc_calc_2(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
 
 
 /**
@@ -116,7 +122,7 @@ void crc_init_table(unsigned char *table, unsigned char poly)
  * @param crc_type  The type of CRC to initialize the table for
  * @return          true in case of success, false in case of failure
  */
-bool rohc_crc_init_table(unsigned char *table, int crc_type)
+bool rohc_crc_init_table(unsigned char *const table, const int crc_type)
 {
 	unsigned char crc;
 	unsigned char polynom;
@@ -124,10 +130,7 @@ bool rohc_crc_init_table(unsigned char *table, int crc_type)
 	int i, j;
 
 	/* sanity check */
-	if(table == NULL)
-	{
-		goto error;
-	}
+	assert(table != NULL);
 
 	/* determine the polynom to use */
 	is_fine = rohc_crc_get_polynom(crc_type, &polynom);
@@ -171,11 +174,11 @@ error:
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The checksum
  */
-unsigned int crc_calculate(int crc_type,
-                           unsigned char *data, 
-                           int length,
-                           unsigned int init_val,
-                           unsigned char *crc_table)
+unsigned int crc_calculate(const int crc_type,
+                           const unsigned char *const data, 
+                           const int length,
+                           const unsigned int init_val,
+                           const unsigned char *const crc_table)
 {
 	unsigned int crc;
 
@@ -231,18 +234,19 @@ unsigned int crc_calculate(int crc_type,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int compute_crc_static(const unsigned char *ip,
-                                const unsigned char *ip2,
-                                const unsigned char *next_header,
+unsigned int compute_crc_static(const unsigned char *const ip,
+                                const unsigned char *const ip2,
+                                const unsigned char *const next_header,
                                 const unsigned int crc_type,
-                                unsigned int init_val,
-                                unsigned char *crc_table)
+                                const unsigned int init_val,
+                                const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	ip_version version;
 	int ret;
 
 	assert(ip != NULL);
+	assert(crc_table != NULL);
 
 	ret = get_ip_version(ip, 2,  &version);
 	assert(ret);
@@ -333,18 +337,19 @@ unsigned int compute_crc_static(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int compute_crc_dynamic(const unsigned char *ip,
-                                 const unsigned char *ip2,
-                                 const unsigned char *next_header,
+unsigned int compute_crc_dynamic(const unsigned char *const ip,
+                                 const unsigned char *const ip2,
+                                 const unsigned char *const next_header,
                                  const unsigned int crc_type,
-                                 unsigned int init_val,
-                                 unsigned char *crc_table)
+                                 const unsigned int init_val,
+                                 const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	ip_version version;
 	int ret;
 
 	assert(ip != NULL);
+	assert(crc_table != NULL);
 
 	ret = get_ip_version(ip, 2, &version);
 	assert(ret);
@@ -419,18 +424,19 @@ unsigned int compute_crc_dynamic(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int udp_compute_crc_static(const unsigned char *ip,
-                                    const unsigned char *ip2,
-                                    const unsigned char *next_header,
+unsigned int udp_compute_crc_static(const unsigned char *const ip,
+                                    const unsigned char *const ip2,
+                                    const unsigned char *const next_header,
                                     const unsigned int crc_type,
-                                    unsigned int init_val,
-                                    unsigned char *crc_table)
+                                    const unsigned int init_val,
+                                    const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	struct udphdr *udp;
 
 	assert(ip != NULL);
 	assert(next_header != NULL);
+	assert(crc_table != NULL);
 
 	crc = init_val;
 
@@ -462,18 +468,19 @@ unsigned int udp_compute_crc_static(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int udp_compute_crc_dynamic(const unsigned char *ip,
-                                     const unsigned char *ip2,
-                                     const unsigned char *next_header,
+unsigned int udp_compute_crc_dynamic(const unsigned char *const ip,
+                                     const unsigned char *const ip2,
+                                     const unsigned char *const next_header,
                                      const unsigned int crc_type,
-                                     unsigned int init_val,
-                                     unsigned char *crc_table)
+                                     const unsigned int init_val,
+                                     const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	struct udphdr *udp;
 
 	assert(ip != NULL);
 	assert(next_header != NULL);
+	assert(crc_table != NULL);
 
 	crc = init_val;
 
@@ -506,18 +513,19 @@ unsigned int udp_compute_crc_dynamic(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int rtp_compute_crc_static(const unsigned char *ip,
-                                    const unsigned char *ip2,
-                                    const unsigned char *next_header,
+unsigned int rtp_compute_crc_static(const unsigned char *const ip,
+                                    const unsigned char *const ip2,
+                                    const unsigned char *const next_header,
                                     const unsigned int crc_type,
-                                    unsigned int init_val,
-                                    unsigned char *crc_table)
+                                    const unsigned int init_val,
+                                    const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	struct rtphdr *rtp;
 
 	assert(ip != NULL);
 	assert(next_header != NULL);
+	assert(crc_table != NULL);
 
 	crc = init_val;
 
@@ -554,18 +562,19 @@ unsigned int rtp_compute_crc_static(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
-                                     const unsigned char *ip2,
-                                     const unsigned char *next_header,
+unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
+                                     const unsigned char *const ip2,
+                                     const unsigned char *const next_header,
                                      const unsigned int crc_type,
-                                     unsigned int init_val,
-                                     unsigned char *crc_table)
+                                     const unsigned int init_val,
+                                     const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	struct rtphdr *rtp;
 
 	assert(ip != NULL);
 	assert(next_header != NULL);
+	assert(crc_table != NULL);
 
 	crc = init_val;
 
@@ -594,14 +603,16 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
+unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
                                          const unsigned int crc_type,
-                                         unsigned int init_val,
-                                         unsigned char *crc_table)
+                                         const unsigned int init_val,
+                                         const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	unsigned char *ext;
 	uint8_t ext_type;
+
+	assert(ip != NULL);
 
 	crc = init_val;
 
@@ -631,14 +642,16 @@ unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
+unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
                                           const unsigned int crc_type,
-                                          unsigned int init_val,
-                                          unsigned char *crc_table)
+                                          const unsigned int init_val,
+                                          const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	unsigned char *ext;
 	uint8_t ext_type;
+
+	assert(ip != NULL);
 
 	crc = init_val;
 
@@ -669,13 +682,11 @@ unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
  * @param polynom  IN/OUT: the polynom for the requested CRC type
  * @return         true in case of success, false otherwise
  */
-static bool rohc_crc_get_polynom(int crc_type, unsigned char *polynom)
+static bool rohc_crc_get_polynom(const int crc_type,
+                                 unsigned char *const polynom)
 {
 	/* sanity check */
-	if(polynom == NULL)
-	{
-		goto error;
-	}
+	assert(polynom != NULL);
 
 	/* determine the polynom for CRC */
 	switch(crc_type)
@@ -696,6 +707,8 @@ static bool rohc_crc_get_polynom(int crc_type, unsigned char *polynom)
 			*polynom = 0xe0;
 			break;
 		default:
+			/* unknown CRC type, should not happen */
+			assert(0);
 			goto error;
 	}
 
@@ -714,10 +727,13 @@ error:
  * @param type The type of the extension
  * @return     The extension, NULL if there is no extension
  */
-static unsigned char *ipv6_get_first_extension(const unsigned char *ip,
-                                               uint8_t *type)
+static unsigned char *ipv6_get_first_extension(const unsigned char *const ip,
+                                               uint8_t *const type)
 {
 	struct ip6_hdr *ip_hdr;
+
+	assert(ip != NULL);
+	assert(type != NULL);
 
 	ip_hdr = (struct ip6_hdr *)ip;
 	*type = ip_hdr->ip6_nxt;
@@ -749,14 +765,15 @@ end:
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline unsigned char crc_calc_8(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table)
+static inline unsigned char crc_calc_8(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
 {
 	int i;
 	unsigned char crc = init_val;
 
+	assert(buf != NULL);
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
@@ -775,14 +792,15 @@ static inline unsigned char crc_calc_8(unsigned char *buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline unsigned char crc_calc_7(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table)
+static inline unsigned char crc_calc_7(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
 {
 	int i;
 	unsigned char crc = init_val;
 
+	assert(buf != NULL);
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
@@ -801,14 +819,15 @@ static inline unsigned char crc_calc_7(unsigned char *buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline unsigned char crc_calc_6(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table)
+static inline unsigned char crc_calc_6(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
 {
 	int i;
 	unsigned char crc = init_val;
 
+	assert(buf != NULL);
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
@@ -827,14 +846,15 @@ static inline unsigned char crc_calc_6(unsigned char *buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline unsigned char crc_calc_3(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table)
+static inline unsigned char crc_calc_3(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
 {
 	int i;
 	unsigned char crc = init_val;
 
+	assert(buf != NULL);
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
@@ -853,14 +873,15 @@ static inline unsigned char crc_calc_3(unsigned char *buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline unsigned char crc_calc_2(unsigned char *buf,
-                                       int size,
-                                       unsigned int init_val,
-                                       unsigned char *crc_table)
+static inline unsigned char crc_calc_2(const unsigned char *const buf,
+                                       const int size,
+                                       const unsigned int init_val,
+                                       const unsigned char *const crc_table)
 {
 	int i;
 	unsigned char crc = init_val;
 
+	assert(buf != NULL);
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)

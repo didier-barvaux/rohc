@@ -45,62 +45,72 @@
  * Function prototypes.
  */
 
-bool rohc_crc_init_table(unsigned char *table, int crc_type)
+bool rohc_crc_init_table(unsigned char *const table, const int crc_type)
 	__attribute__((nonnull(1), warn_unused_result));
 
-unsigned int crc_calculate(int crc_type,
-                           unsigned char *data,
-                           int length,
-                           unsigned int init_val,
-                           unsigned char *crc_table);
+unsigned int crc_calculate(const int crc_type,
+                           const unsigned char *const data, 
+                           const int length,
+                           const unsigned int init_val,
+                           const unsigned char *const crc_table)
+	__attribute__((nonnull(2, 5)));
 
-unsigned int compute_crc_static(const unsigned char *ip,
-                                const unsigned char *ip2,
-                                const unsigned char *next_header,
+unsigned int compute_crc_static(const unsigned char *const ip,
+                                const unsigned char *const ip2,
+                                const unsigned char *const next_header,
                                 const unsigned int crc_type,
-                                unsigned int init_val,
-                                unsigned char *crc_table);
-unsigned int compute_crc_dynamic(const unsigned char *ip,
-                                 const unsigned char *ip2,
-                                 const unsigned char *next_header,
+                                const unsigned int init_val,
+                                const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 6)));
+unsigned int compute_crc_dynamic(const unsigned char *const ip,
+                                 const unsigned char *const ip2,
+                                 const unsigned char *const next_header,
                                  const unsigned int crc_type,
-                                 unsigned int init_val,
-                                 unsigned char *crc_table);
+                                 const unsigned int init_val,
+                                 const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 6)));
 
-unsigned int udp_compute_crc_static(const unsigned char *ip,
-                                    const unsigned char *ip2,
-                                    const unsigned char *next_header,
+unsigned int udp_compute_crc_static(const unsigned char *const ip,
+                                    const unsigned char *const ip2,
+                                    const unsigned char *const next_header,
                                     const unsigned int crc_type,
-                                    unsigned int init_val,
-                                    unsigned char *crc_table);
-unsigned int udp_compute_crc_dynamic(const unsigned char *ip,
-                                     const unsigned char *ip2,
-                                     const unsigned char *next_header,
+                                    const unsigned int init_val,
+                                    const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 3, 6)));
+unsigned int udp_compute_crc_dynamic(const unsigned char *const ip,
+                                     const unsigned char *const ip2,
+                                     const unsigned char *const next_header,
                                      const unsigned int crc_type,
-                                     unsigned int init_val,
-                                     unsigned char *crc_table);
+                                     const unsigned int init_val,
+                                     const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 3, 6)));
 
-unsigned int rtp_compute_crc_static(const unsigned char *ip,
-                                    const unsigned char *ip2,
-                                    const unsigned char *next_header,
+unsigned int rtp_compute_crc_static(const unsigned char *const ip,
+                                    const unsigned char *const ip2,
+                                    const unsigned char *const next_header,
                                     const unsigned int crc_type,
-                                    unsigned int init_val,
-                                    unsigned char *crc_table);
-unsigned int rtp_compute_crc_dynamic(const unsigned char *ip,
-                                     const unsigned char *ip2,
-                                     const unsigned char *next_header,
+                                    const unsigned int init_val,
+                                    const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 3, 6)));
+unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
+                                     const unsigned char *const ip2,
+                                     const unsigned char *const next_header,
                                      const unsigned int crc_type,
-                                     unsigned int init_val,
-                                     unsigned char *crc_table);
+                                     const unsigned int init_val,
+                                     const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 3, 6)));
 
-unsigned int ipv6_ext_compute_crc_static(const unsigned char *ip,
+unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
                                          const unsigned int crc_type,
-                                         unsigned int init_val,
-                                         unsigned char *crc_table);
-unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *ip,
+                                         const unsigned int init_val,
+                                         const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
                                           const unsigned int crc_type,
-                                          unsigned int init_val,
-                                          unsigned char *crc_table);
+                                          const unsigned int init_val,
+                                          const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+
 
 #endif
 

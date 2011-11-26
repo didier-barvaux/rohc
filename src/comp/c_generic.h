@@ -260,20 +260,20 @@ struct c_generic_context
 	                           int counter);
 
 	/// @brief The handler used to compute the CRC-STATIC value
-	unsigned int (*compute_crc_static)(const unsigned char *ip,
-	                                   const unsigned char *ip2,
-	                                   const unsigned char *next_header,
+	unsigned int (*compute_crc_static)(const unsigned char *const ip,
+	                                   const unsigned char *const ip2,
+	                                   const unsigned char *const next_header,
 	                                   const unsigned int crc_type,
-	                                   unsigned int init_val,
-	                                   unsigned char *crc_table);
+	                                   const unsigned int init_val,
+	                                   const unsigned char *const crc_table);
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
-	unsigned int (*compute_crc_dynamic)(const unsigned char *ip,
-	                                    const unsigned char *ip2,
-	                                    const unsigned char *next_header,
+	unsigned int (*compute_crc_dynamic)(const unsigned char *const ip,
+	                                    const unsigned char *const ip2,
+	                                    const unsigned char *const next_header,
 	                                    const unsigned int crc_type,
-	                                    unsigned int init_val,
-	                                    unsigned char *crc_table);
+	                                    const unsigned int init_val,
+	                                    const unsigned char *const crc_table);
 
 	/// Profile-specific data	
 	void *specific;
