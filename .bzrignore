@@ -25,7 +25,7 @@ Makefile.in
 ./rohc.pc
 ./doc/doxygen.conf
 ./doc/html
-./test/functional/test_feedback2
+./test/functional/feedback2/test_feedback2
 ./test/robustness/empty_payload/test_empty_payload
 ./test/robustness/damaged_packet/test_damaged_packet
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback

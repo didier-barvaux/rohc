@@ -229,6 +229,7 @@ AC_CONFIG_FILES([ \
 	src/decomp/Makefile \
 	test/Makefile \
 	test/functional/Makefile \
+	test/functional/feedback2/Makefile \
 	test/robustness/Makefile \
 	test/robustness/empty_payload/Makefile \
 	test/robustness/damaged_packet/Makefile \
