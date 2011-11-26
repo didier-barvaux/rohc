@@ -9,9 +9,6 @@
 TESTS = \
 	test_decompress_feedback_only.sh
 
-XFAIL_TESTS = \
-	test_decompress_feedback_only.sh
-
 
 check_PROGRAMS = \
 	test_decompress_feedback_only

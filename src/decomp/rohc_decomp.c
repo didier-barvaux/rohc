@@ -36,6 +36,8 @@
 #include "decode.h"
 #include "crc.h"
 
+#include <assert.h>
+
 
 extern struct d_profile d_uncomp_profile,
                         d_udp_profile,
@@ -647,8 +649,16 @@ int d_decode_header(struct rohc_decomp *decomp,
 		            "of the packet\n");
 		return status;
 	}
+	assert(feedback_size <= isize);
 	walk += feedback_size;
 	isize -= feedback_size;
+
+	/* is there some data after feedback? */
+	if(isize <= 0)
+	{
+		rohc_debugf(1, "feedback-only packet, stop decompression\n");
+		return ROHC_FEEDBACK_ONLY;
+	}
 
 	/* decode small or large CID */
 	status = rohc_decomp_decode_cid(decomp, walk, isize, ddata);
