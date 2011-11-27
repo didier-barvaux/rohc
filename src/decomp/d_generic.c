@@ -3354,7 +3354,7 @@ Here are the first octet and remainder of UO-1 base headers:
     +---+---+---+---+---+---+---+---+
  2  | 1   0 |T=0|      IP-ID        |
     +===+===+===+===+===+===+===+===+
- 4  | M |      SN       |    CRC    |
+ 4  | X |      SN       |    CRC    |
     +---+---+---+---+---+---+---+---+
 
  UO-1-TS (5.7.3):
@@ -3365,6 +3365,12 @@ Here are the first octet and remainder of UO-1 base headers:
     +===+===+===+===+===+===+===+===+
  4  | M |      SN       |    CRC    |
     +---+---+---+---+---+---+---+---+
+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
+
+ T: T = 0 indicates format UO-1-ID;
+    T = 1 indicates format UO-1-TS.
 
  UO-1 and UO-1-ID cannot be used if there is no IPv4 header in the context or
  if value(RND) and value(RND2) are both 1.
@@ -3448,6 +3454,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 * will reset it to 0 if needed.
 	 */
 	int is_ts_scaled = 1;
+
+	/* X (extension) flag */
+	uint8_t ext_flag = 0; /* no extension by default */
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -3557,9 +3566,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 			ip_id_bits_nr = 5;
 			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
 			/* part 3: large CID (handled elsewhere) */
-			/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
-			rtp_m_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
-			rohc_debugf(3, "1-bit RTP Marker (M) = %u\n", rtp_m_flag);
+			/* part 4: 1-bit X + 4-bit SN + 3-bit CRC */
+			ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
+			rohc_debugf(3, "1-bit extension (X) = %u\n", ext_flag);
 			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
 			sn_bits_nr = 4;
 			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
@@ -3590,9 +3599,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		default:
 		{
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			assert(0);
-			goto error;
+			rohc_assert(false, error, "bad packet type (%d)", packet_type);
 		}
 	}
 	/* first and second bytes read */
@@ -3601,6 +3608,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 	rohc_header_len += second_byte + 1;
 
 	/* part 5: no extension for UO-1 packet */
+	if(ext_flag == 1)
+	{
+		rohc_assert(packet_type == PACKET_UO_1_ID, error,
+		            "packet type %d does not support extensions, only the "
+		            "UO-1-ID packet does that", packet_type);
+		rohc_debugf(0, "extensions for packet UO-1-ID are not supported yet\n");
+		goto error;
+	}
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
 	if(ip_get_version(&g_context->active1->ip) == IPV4 && g_context->active1->rnd)

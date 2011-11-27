@@ -2903,7 +2903,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 		nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
 
-		rohc_debugf(3, "nr_ts_bits = %zd\n", nr_ts_bits);
+		rohc_debugf(3, "nr_ts_bits = %zd, m_set = %d\n", nr_ts_bits,
+		            rtp_context->tmp_variables.m_set);
 
 		if(nr_of_ip_hdr == 1) /* single IP header */
 		{
@@ -2937,8 +2938,12 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 					packet = PACKET_UO_1_TS;
 				}
 				else if(nr_sn_bits <= 4 && nr_ip_id_bits <= 5 &&
-				        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+				        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)) &&
+				        rtp_context->tmp_variables.m_set == 0)
 				{
+					/* TODO: when extensions are supported within the UO-1-ID
+					 * packet, please check whether the "m_set == 0" condition
+					 * could be removed or not */
 					packet = PACKET_UO_1_ID;
 				}
 				else if(nr_ip_id_bits > 0 && nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
@@ -2974,8 +2979,12 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			else if((is_ip_v4 && nr_ip_id_bits <= 5) &&
 			        (!is_ip2_v4 || is_rnd2 || nr_ip_id_bits2 == 0) &&
 			        nr_sn_bits <= 4 &&
-			        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)))
+			        (nr_ts_bits == 0 || is_deductible(rtp_context->ts_sc)) &&
+			        rtp_context->tmp_variables.m_set == 0)
 			{
+				/* TODO: when extensions are supported within the UO-1-ID packet,
+				 * please check whether the "m_set == 0" condition could be
+				 * removed or not */
 				packet = PACKET_UO_1_ID;
 			}
 			else if((!is_ip_v4 || is_rnd || nr_ip_id_bits == 0) &&
@@ -4266,7 +4275,7 @@ int code_UO0_packet(struct c_context *const context,
     +---+---+---+---+---+---+---+---+
  2  | 1   0 |T=0|      IP-ID        |
     +===+===+===+===+===+===+===+===+
- 4  | M |      SN       |    CRC    |
+ 4  | X |      SN       |    CRC    |
     +---+---+---+---+---+---+---+---+
 
  UO-1-TS (5.7.3):
@@ -4277,6 +4286,12 @@ int code_UO0_packet(struct c_context *const context,
     +===+===+===+===+===+===+===+===+
  4  | M |      SN       |    CRC    |
     +---+---+---+---+---+---+---+---+
+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
+
+ T: T = 0 indicates format UO-1-ID;
+    T = 1 indicates format UO-1-TS.
 
 \endverbatim
  *
@@ -4329,6 +4344,12 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_debugf(2, "code UO-1-ID packet (CID = %d)\n", context->cid);
 			rohc_assert(is_ip_v4, error, "UO-1-ID packet is for IPv4 only");
 			rohc_assert(is_rtp, error, "UO-1-ID packet is for RTP profile only");
+			/* TODO: when extensions are supported within the UO-1-ID packet,
+			 * please check whether the "m_set != 0" condition could be removed
+			 * or not */
+			rohc_assert(rtp_context->tmp_variables.m_set == 0, error,
+			            "UO-1-ID packet without extension support does not "
+			            "contain room for the RTP Marker (M) flag");
 			break;
 		case PACKET_UO_1_TS:
 			rohc_debugf(2, "code UO-1-TS packet (CID = %d)\n", context->cid);
@@ -4376,18 +4397,9 @@ int code_UO1_packet(struct c_context *const context,
 	dest[first_position] = f_byte;
 	rohc_debugf(3, "1 0 + T + TS/IP-ID = 0x%02x\n", f_byte);
 
-	/* part 4: (M +) SN + CRC
+	/* part 4: (M / X +) SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	if(!is_rtp)
-	{
-		s_byte = (g_context->sn & 0x1f) << 3;
-	}
-	else
-	{
-		s_byte = (g_context->sn & 0x0f) << 3;
-		s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 7;
-	}
 	crc = CRC_INIT_3;
 	if(nr_of_ip_hdr > 1)
 	{
@@ -4403,19 +4415,37 @@ int code_UO1_packet(struct c_context *const context,
 	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                     CRC_TYPE_3, crc,
 	                                     context->compressor->crc_table_3);
-	s_byte |= crc & 0x07;
+	s_byte = crc & 0x07;
+	switch(packet_type)
+	{
+		case PACKET_UO_1:
+			/* SN + CRC (CRC was added before) */
+			s_byte |= (g_context->sn & 0x1f) << 3;
+			rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
+			            g_context->sn, crc, s_byte);
+			break;
+		case PACKET_UO_1_RTP:
+		case PACKET_UO_1_TS:
+			/* M + SN + CRC (CRC was added before) */
+			s_byte |= (g_context->sn & 0x0f) << 3;
+			s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 7;
+			rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
+			            rtp_context->tmp_variables.m_set, g_context->sn,
+			            crc, s_byte);
+			break;
+		case PACKET_UO_1_ID:
+			/* X + SN + CRC (CRC was added before) */
+			s_byte |= (g_context->sn & 0x0f) << 3;
+			s_byte |= (0 /* TODO: handle X bit */ & 0x01) << 7;
+			rohc_debugf(3, "X (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
+			            0 /* TODO: handle X bit */, g_context->sn,
+			            crc, s_byte);
+			break;
+		default:
+			rohc_assert(false, error, "bad packet type (%d)\n", packet_type);
+	}
 	dest[counter] = s_byte;
 	counter++;
-	if(!is_rtp)
-	{
-		rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
-		            g_context->sn, crc, s_byte);
-	}
-	else
-	{
-		rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-		            rtp_context->tmp_variables.m_set, g_context->sn, crc, s_byte);
-	}
 
 	/* build the UO tail */
 	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
@@ -4490,6 +4520,12 @@ error:
  6  /           Extension           /
     :                               :
      --- --- --- --- --- --- --- ---
+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
+
+ T: T = 0 indicates format UOR-2-ID;
+    T = 1 indicates format UOR-2-TS.
 
 \endverbatim
  *
