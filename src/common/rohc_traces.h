@@ -24,6 +24,7 @@
 #define ROHC_TRACES_H
 
 #include <stdio.h>
+#include <assert.h>
 #include "config.h" /* for ROHC_DEBUG_LEVEL */
 
 /// @brief Print information depending on the debug level and prefixed
@@ -38,6 +39,24 @@
 	do { \
 		if((level) <= ROHC_DEBUG_LEVEL) \
 			printf(format, ##__VA_ARGS__); \
+	} while(0)
+
+/**
+ * @brief Stop processing if the given condition is false
+ *
+ * In non-debug mode (ie. NDEBUG set): if the given condition fails, prints
+ * the given message then jump to the given label.
+ *
+ * In debug mode (ie. NDEBUG not set): if the given condition fails, prints
+ * the given message then asserts.
+ */
+#define rohc_assert(condition, label, format, ...) \
+	do { \
+		if(!(condition)) { \
+			rohc_debugf(0, format "\n", ##__VA_ARGS__); \
+			assert(condition); \
+			goto label; \
+		} \
 	} while(0)
 
 
