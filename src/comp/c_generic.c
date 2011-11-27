@@ -4207,14 +4207,7 @@ int code_UO0_packet(struct c_context *const context,
 	 * if the CRC-STATIC fields did not change */
 	f_byte = (g_context->sn & 0x0f) << 3;
 	crc = CRC_INIT_3;
-	if(nr_of_ip_hdr > 1)
-	{
-		ip2_hdr = ip2->data;
-	}
-	else
-	{
-		ip2_hdr = NULL;
-	}
+	ip2_hdr = (nr_of_ip_hdr > 1) ? ip2->data : NULL;
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                    CRC_TYPE_3, crc,
 	                                    context->compressor->crc_table_3);
@@ -4401,14 +4394,7 @@ int code_UO1_packet(struct c_context *const context,
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	crc = CRC_INIT_3;
-	if(nr_of_ip_hdr > 1)
-	{
-		ip2_hdr = ip2->data;
-	}
-	else
-	{
-		ip2_hdr = NULL;
-	}
+	ip2_hdr = (nr_of_ip_hdr > 1) ? ip2->data : NULL;
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                    CRC_TYPE_3, crc,
 	                                    context->compressor->crc_table_3);
@@ -4634,14 +4620,7 @@ int code_UO2_packet(struct c_context *const context,
 		crc_table = context->compressor->crc_table_6;
 	}
 #endif
-	if(nr_of_ip_hdr > 1)
-	{
-		ip2_hdr = ip2->data;
-	}
-	else
-	{
-		ip2_hdr = NULL;
-	}
+	ip2_hdr = (nr_of_ip_hdr > 1) ? ip2->data : NULL;
 	/* compute CRC on CRC-STATIC fields */
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
 	                                    crc_type, crc, crc_table);
