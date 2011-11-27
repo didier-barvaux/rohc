@@ -2691,20 +2691,15 @@ int update_variables(struct c_context *const context,
 				size_t nr_bits;
 				uint32_t mask;
 
-				/* this is the first TS scaled to be sent, we cannot code it with W-LSB
-				 * and we must find its size (in bits) */
+				/* this is the first TS scaled to be sent, we cannot code it with
+				 * W-LSB and we must find its size (in bits) */
 				for(nr_bits = 1, mask = 1;
 				    nr_bits <= 32 && (ts_send & mask) != ts_send;
 				    nr_bits++, mask |= (1 << (nr_bits - 1)));
-				if((ts_send & mask) != ts_send)
-				{
-					/* cannot find the size of TS scaled, send the maximum of TS
-					 * bits we are able to send */
-					rohc_debugf(0, "size of TS scaled (0x%x) not found, this should "
-					               "never happen!\n", ts_send);
-					assert(0);
-					nr_bits = 32;
-				}
+				rohc_assert((ts_send & mask) == ts_send, error,
+				            "size of TS scaled (0x%x) not found, this should "
+				            "never happen!", ts_send);
+
 				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
 				            "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
 				rtp_context->tmp_variables.nr_ts_bits = nr_bits;
@@ -4323,49 +4318,24 @@ int code_UO1_packet(struct c_context *const context,
 	{
 		case PACKET_UO_1:
 			rohc_debugf(2, "code UO-1 packet (CID = %d)\n", context->cid);
-			if(!is_ip_v4)
-			{
-				rohc_debugf(0, "UO-1 packet is for IPv4 only\n");
-				goto error;
-			}
-			else if(is_rtp)
-			{
-				rohc_debugf(0, "UO-1 packet is for non-RTP profiles\n");
-				goto error;
-			}
+			rohc_assert(is_ip_v4, error, "UO-1 packet is for IPv4 only");
+			rohc_assert(!is_rtp, error, "UO-1 packet is for non-RTP profiles");
 			break;
 		case PACKET_UO_1_RTP:
 			rohc_debugf(2, "code UO-1-RTP packet (CID = %d)\n", context->cid);
-			if(!is_rtp)
-			{
-				rohc_debugf(0, "UO-1-RTP packet is for RTP profile only\n");
-				goto error;
-			}
+			rohc_assert(is_rtp, error, "UO-1-RTP packet is for RTP profile only");
 			break;
 		case PACKET_UO_1_ID:
 			rohc_debugf(2, "code UO-1-ID packet (CID = %d)\n", context->cid);
-			if(!is_ip_v4)
-			{
-				rohc_debugf(0, "UO-1-ID packet is for IPv4 only\n");
-				goto error;
-			}
-			if(!is_rtp)
-			{
-				rohc_debugf(0, "UO-1-ID packet is for RTP profile only\n");
-				goto error;
-			}
+			rohc_assert(is_ip_v4, error, "UO-1-ID packet is for IPv4 only");
+			rohc_assert(is_rtp, error, "UO-1-ID packet is for RTP profile only");
 			break;
 		case PACKET_UO_1_TS:
 			rohc_debugf(2, "code UO-1-TS packet (CID = %d)\n", context->cid);
-			if(!is_rtp)
-			{
-				rohc_debugf(0, "UO-1-TS packet is for RTP profile only\n");
-				goto error;
-			}
+			rohc_assert(is_rtp, error, "UO-1-TS packet is for RTP profile only");
 			break;
 		default:
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			goto error;
+			rohc_assert(false, error, "bad packet type (%d)\n", packet_type);
 	}
 
 	/* parts 1 and 3:
@@ -4400,8 +4370,7 @@ int code_UO1_packet(struct c_context *const context,
 			f_byte |= 0x20;
 			break;
 		default:
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			goto error;
+			rohc_assert(false, error, "bad packet type (%d)\n", packet_type);
 	}
 	f_byte |= 0x80;
 	dest[first_position] = f_byte;
@@ -4584,8 +4553,7 @@ int code_UO2_packet(struct c_context *const context,
 			code_bytes = code_UOR2_TS_bytes;
 			break;
 		default:
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			goto error;
+			rohc_assert(false, error, "bad packet type (%d)\n", packet_type);
 	}
 
 	/* parts 1 and 3:
@@ -5042,8 +5010,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 		default:
 		{
-			rohc_debugf(0, "unknown extension (%d)\n", extension);
-			goto error;
+			rohc_assert(false, error, "unknown extension (%d)\n", extension);
 		}
 	}
 
@@ -5266,8 +5233,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 		default:
 		{
-			rohc_debugf(0, "unknown extension (%d)\n", extension);
-			goto error;
+			rohc_assert(false, error, "unknown extension (%d)\n", extension);
 		}
 	}
 
@@ -5505,8 +5471,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 		default:
 		{
-			rohc_debugf(0, "unknown extension (%d)\n", extension);
-			goto error;
+			rohc_assert(false, error, "unknown extension (%d)\n", extension);
 		}
 	}
 
@@ -5579,20 +5544,15 @@ int code_EXT0_packet(const struct c_context *context,
 		case PACKET_UOR_2_ID:
 		case PACKET_UOR_2:
 		{
-			if(g_context->ip_flags.version != IPV4)
-			{
-				rohc_debugf(0, "extension 0 for UOR-2 or UOR-2-ID is "
-				               "for IPv4 only\n");
-				goto error;
-			}
+			rohc_assert(g_context->ip_flags.version == IPV4, error,
+			            "extension 0 for UOR-2 or UOR-2-ID is for IPv4 only");
 
 			f_byte |= g_context->ip_flags.info.v4.id_delta & 0x07;
 			break;
 		}
 
 		default:
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			goto error;
+			rohc_assert(false, error, "bad packet type (%d)\n", packet_type);
 	}
 
 	/* part 1: write the byte in the extension */
@@ -5664,11 +5624,8 @@ int code_EXT1_packet(const struct c_context *context,
 	{
 		case PACKET_UOR_2:
 		{
-			if(g_context->ip_flags.version != IPV4)
-			{
-				rohc_debugf(0, "extension 1 for UOR-2 is for IPv4 only\n");
-				goto error;
-			}
+			rohc_assert(g_context->ip_flags.version == IPV4, error,
+			            "extension 1 for UOR-2 is for IPv4 only");
 
 			f_byte |= (g_context->ip_flags.info.v4.id_delta >> 8) & 0x07;
 			s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
@@ -5687,11 +5644,8 @@ int code_EXT1_packet(const struct c_context *context,
 		{
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
-			if(g_context->ip_flags.version != IPV4)
-			{
-				rohc_debugf(0, "extension 1 for UOR-2-TS is for IPv4 only\n");
-				goto error;
-			}
+			rohc_assert(g_context->ip_flags.version == IPV4, error,
+			            "extension 1 for UOR-2-TS is for IPv4 only");
 
 			f_byte |= rtp_context->tmp_variables.ts_send & 0x07;
 			s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
@@ -5702,11 +5656,8 @@ int code_EXT1_packet(const struct c_context *context,
 		{
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
-			if(g_context->ip_flags.version != IPV4)
-			{
-				rohc_debugf(0, "extension 1 for UOR-2-ID is for IPv4 only\n");
-				goto error;
-			}
+			rohc_assert(g_context->ip_flags.version == IPV4, error,
+			            "extension 1 for UOR-2-ID is for IPv4 only");
 
 			f_byte |= g_context->ip_flags.info.v4.id_delta & 0x07;
 			s_byte = rtp_context->tmp_variables.ts_send & 0xff;
@@ -5714,8 +5665,7 @@ int code_EXT1_packet(const struct c_context *context,
 		}
 
 		default:
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			goto error;
+			rohc_assert(false, error, "bad packet type (%d)", packet_type);
 	}
 
 	/* write parts 1 & 2 in the packet */
@@ -5858,10 +5808,8 @@ int code_EXT2_packet(const struct c_context *context,
 			}
 			else
 			{
-				rohc_debugf(0, "extension 2 for UOR-2-TS must contain at least one "
-				            "IPv4 header with a non-random IP-ID\n");
-				assert(0);
-				goto error;
+				rohc_assert(false, error, "extension 2 for UOR-2-TS must contain "
+				            "at least one IPv4 header with a non-random IP-ID");
 			}
 			rohc_debugf(3, "IP header #%d is the innermost IPv4 header with a "
 			            "non-random IP-ID\n", innermost_ip_hdr);
@@ -5905,9 +5853,8 @@ int code_EXT2_packet(const struct c_context *context,
 			}
 			else
 			{
-				rohc_debugf(0, "extension 2 for UOR-2-ID must contain at least one "
-				            "IPv4 header with a non-random IP-ID\n");
-				goto error;
+				rohc_assert(false, error, "extension 2 for UOR-2-ID must contain "
+				            "at least one IPv4 header with a non-random IP-ID");
 			}
 			rohc_debugf(3, "IP header #%d is the innermost IPv4 header with a "
 			            "non-random IP-ID\n", innermost_ip_hdr);
@@ -5932,8 +5879,9 @@ int code_EXT2_packet(const struct c_context *context,
 		}
 
 		default:
-			rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-			goto error;
+		{
+			rohc_assert(false, error, "bad packet type (%d)", packet_type);
+		}
 	}
 
 	/* write parts 1, 2 & 3 in the packet */
@@ -6084,8 +6032,7 @@ int code_EXT3_packet(const struct c_context *context,
 				rts = (nr_ts_bits > 0 && !is_deductible(rtp_context->ts_sc));
 				break;
 			default:
-				rohc_debugf(0, "bad packet type (%d)\n", packet_type);
-				goto error;
+				rohc_assert(false, error, "bad packet type (%d)", packet_type);
 		}
 		f_byte |= (rts & 0x01) << 4;
 
@@ -6931,8 +6878,9 @@ rohc_ext_t decide_extension(const struct c_context *context)
 		}
 
 		default:
-			rohc_debugf(3, "bad packet type (%d)\n", packet_type);
-			goto error;
+		{
+			rohc_assert(false, error, "bad packet type (%d)", packet_type);
+		}
 	}
 
 	return ext;
@@ -7255,11 +7203,8 @@ void check_ip_identification(struct ip_header_info *const header_info,
 	int old_id, new_id;
 	int nbo = -1;
 
-	if(ip_get_version(ip) != IPV4)
-	{
-		rohc_debugf(0, "cannot check IP-ID behaviour with IPv6\n");
-		return;
-	}
+	rohc_assert(ip_get_version(ip) == IPV4, error,
+	            "cannot check IP-ID behaviour with IPv6");
 
 	old_id = ntohs(header_info->info.v4.old_ip.id);
 	new_id = ntohs(ipv4_get_id(ip));
@@ -7309,6 +7254,9 @@ void check_ip_identification(struct ip_header_info *const header_info,
 
 	rohc_debugf(2, "NBO = %d, RND = %d\n",
 	           header_info->info.v4.nbo, header_info->info.v4.rnd);
+
+error:
+	;
 }
 
 
@@ -7372,8 +7320,8 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
 					/* nothing to add */
 					break;
 				default:
-					rohc_debugf(0, "unknown or bad profile, failure\n");
-					break;
+					rohc_assert(false, error, "unknown or bad profile (%d)",
+					            context->profile->id);
 			}
 			break;
 		}
@@ -7426,8 +7374,8 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
 					/* nothing to add */
 					break;
 				default:
-					rohc_debugf(0, "unknown or bad profile, failure\n");
-					break;
+					rohc_assert(false, error, "unknown or bad profile (%d)",
+					            context->profile->id);
 			}
 			break;
 		}
@@ -7494,12 +7442,16 @@ static int jamming_find_packet_size(const struct rohc_comp *comp,
 
 		default:
 		{
-			rohc_debugf(0, "unknown packet, failure\n");
-			break;
+			rohc_assert(false, error, "unknown packet type (%d)", packet);
 		}
 	}
 
 	return total_size;
+
+error:
+	/* TODO: please handle the error correctly */
+	assert(0);
+	return -1;
 }
 
 
@@ -7710,8 +7662,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	else
 	{
 		/* the type of the packet is unknown */
-		rohc_debugf(0, "unknown packet, failure\n");
-		return -1;
+		rohc_assert(false, error, "unknown packet type (%d)", packet);
 	}
 	
 	/* the third test failed, so the last test uses type 1 packets */
@@ -7775,11 +7726,13 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	else
 	{
 		/* the type of the packet is unknown */
-		rohc_debugf(0, "unknown packet, failure\n");
-		return PACKET_UNKNOWN;
+		rohc_assert(false, error, "unknown packet type (%d)", packet);
 	}
 
 	/* no packet can replace type 0 packet */
 	return packet;
+
+error:
+	return PACKET_UNKNOWN;
 }
 
