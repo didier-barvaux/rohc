@@ -414,7 +414,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 
 
 /**
- * @brief Compute the CRC-STATIC part of an UDP or UDO-Lite header
+ * @brief Compute the CRC-STATIC part of an UDP or UDP-Lite header
  *
  * Concerned fields are:
  *  all fields expect those for CRC-DYNAMIC
