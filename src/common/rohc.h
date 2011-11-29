@@ -520,27 +520,27 @@ struct medium
 /** The table to enable fast CRC-2 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_2[256]
-	__attribute__((deprecated("please do not use this variable anymore")));
+	__attribute__((deprecated));
 
 /** The table to enable fast CRC-3 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_3[256]
-	__attribute__((deprecated("please do not use this variable anymore")));
+	__attribute__((deprecated));
 
 /** The table to enable fast CRC-6 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_6[256]
-	__attribute__((deprecated("please do not use this variables anymore")));
+	__attribute__((deprecated));
 
 /** The table to enable fast CRC-7 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_7[256]
-	__attribute__((deprecated("please do not use this variables anymore")));
+	__attribute__((deprecated));
 
 /** The table to enable fast CRC-8 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_8[256]
-	__attribute__((deprecated("please do not use this variables anymore")));
+	__attribute__((deprecated));
 
 
 /*
@@ -556,13 +556,11 @@ char * rohc_version(void);
 
 /* TODO API: define as private and move in crc.h */
 int crc_get_polynom(int type)
-	__attribute__((deprecated("please do not use crc_get_polynom anymore, "
-	                          "simply remove it from your code")));
+	__attribute__((deprecated));
 
 /* TODO API: define as private and move in crc.h */
 void crc_init_table(unsigned char *table, unsigned char polynum)
-	__attribute__((deprecated("please do not use crc_init_table anymore, "
-	                          "simply remove it from your code")));
+	__attribute__((deprecated));
 
 #endif
 
