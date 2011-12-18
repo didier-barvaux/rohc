@@ -295,14 +295,37 @@ static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1
 
 	/* compute compressor statistics */
 	len = rohc_c_statistics(comp1, indent, buffer);
+	if(len < 0)
+	{
+		fprintf(stderr, "failed to compute statistics for compressor 1\n");
+		goto error;
+	}
 	len = rohc_c_statistics(comp2, indent, buffer);
+	if(len < 0)
+	{
+		fprintf(stderr, "failed to compute statistics for compressor 2\n");
+		goto error;
+	}
 
 	/* compute decompressor statistics */
 	len = rohc_d_statistics(decomp1, indent, buffer);
+	if(len < 0)
+	{
+		fprintf(stderr, "failed to compute statistics for decompressor 1\n");
+		goto error;
+	}
 	len = rohc_d_statistics(decomp2, indent, buffer);
+	if(len < 0)
+	{
+		fprintf(stderr, "failed to compute statistics for decompressor 2\n");
+		goto error;
+	}
 
 	/* print statistics */
 	printf("%s", buffer);
+
+error:
+	return;
 }
 
 

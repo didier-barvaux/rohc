@@ -3582,8 +3582,6 @@ int code_packet(struct c_context *const context,
                 unsigned char *const dest)
 {
 	struct c_generic_context *g_context;
-	rohc_packet_t packet_type;
-	int nr_of_ip_hdr;
 	int (*code_packet_type)(struct c_context *context,
 	                        const struct ip_packet *ip,
 	                        const struct ip_packet *ip2,
@@ -3591,10 +3589,8 @@ int code_packet(struct c_context *const context,
 	                        unsigned char *dest);
 
 	g_context = (struct c_generic_context *) context->specific;
-	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
-	packet_type = g_context->tmp_variables.packet_type;
 
-	switch(packet_type)
+	switch(g_context->tmp_variables.packet_type)
 	{
 		case PACKET_IR:
 			code_packet_type = code_IR_packet;
@@ -7429,10 +7425,8 @@ int changed_dynamic_one_hdr(const unsigned short changed_fields,
 	int nb_fields = 0; /* number of fields that changed */
 	int nb_flags = 0; /* number of flags that changed */
 	struct c_generic_context *g_context;
-	int is_rtp;
 
 	g_context = (struct c_generic_context *) context->specific;
-	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 
 	/* check the Type Of Service / Traffic Class field for change */
 	if(is_changed(changed_fields, MOD_TOS) ||

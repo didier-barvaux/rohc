@@ -234,9 +234,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
 	{
 		unsigned int crc_in_packet = 0; /* initialized to avoid a GCC warning */
 		bool is_crc_used = false;
-		int sn_not_valid = 0;
 		unsigned char mode = (p[0] >> 4) & 3;
-		unsigned int sn = ((p[0] & 15) << 8) + p[1];
 		int remaining = feedback->specific_size - 2;
 		p += 2;
 
@@ -256,16 +254,15 @@ static void c_uncompressed_feedback(struct c_context *const context,
 //				case 2: /* Reject */
 //					break;
 				case 3: /* SN-Not-Valid */
-					sn_not_valid = 1;
+					/* ignore the option */
 					break;
 				case 4: /* SN */
-					// TODO: how are several SN options combined?
-					sn = (sn << 8) + p[1];
+					/* ignore the option */
 					break;
 //				case 7: /* Loss */
 //					break;
 				default:
-					rohc_debugf(0, "unknown feedback type: %d\n", opt);
+					rohc_debugf(0, "unknown feedback option %d\n", opt);
 					break;
 			}
 

@@ -560,12 +560,7 @@ int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
                                         unsigned char *const dest,
                                         int counter)
 {
-	struct c_generic_context *g_context;
-	struct sc_udp_lite_context *udp_lite_context;
 	const struct udphdr *udp_lite;
-
-	g_context = (struct c_generic_context *) context->specific;
-	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 
 	udp_lite = (struct udphdr *) next_header;
 
