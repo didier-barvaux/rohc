@@ -342,34 +342,36 @@ void change_mode(struct c_context *const context, const rohc_mode new_mode);
 void change_state(struct c_context *const context, const rohc_c_state new_state);
 
 void ip6_c_init_table(struct list_comp *const comp);
-int c_algo_list_compress(struct list_comp *const comp,
-                         const struct ip_packet *ip);
+
+int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
+                                      const struct ip_packet *const ip);
+
 int c_create_current_list(const int index,
                           struct list_comp *const comp,
                           const unsigned char *ext,
                           const int index_table);
-int decide_type(struct list_comp *const comp);
-int encode_list(struct list_comp *const comp,
-                unsigned char *const dest,
-                int counter,
-                const int ps,
-                const int size);
-int encode_type_0(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps);
-int encode_type_1(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps);
-int encode_type_2(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps);
-int encode_type_3(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps);
+int rohc_list_decide_type(struct list_comp *const comp);
+int rohc_list_encode(struct list_comp *const comp,
+                     unsigned char *const dest,
+                     int counter,
+                     const int ps,
+                     const int size);
+int rohc_list_encode_type_0(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps);
+int rohc_list_encode_type_1(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps);
+int rohc_list_encode_type_2(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps);
+int rohc_list_encode_type_3(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps);
 
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,

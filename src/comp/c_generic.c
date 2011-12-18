@@ -972,9 +972,8 @@ int c_generic_encode(struct c_context *const context,
 
 
 /**
- * @brief Algorithm of compression list
- *
- * This function compress a generic extension list
+ * @brief Decide whether list of IPv6 extension headers shall be sent
+ *        compressed
  *
  * @param comp  The list compressor which is specific to the extension type
  * @param ip    The IP packet to compress
@@ -982,15 +981,15 @@ int c_generic_encode(struct c_context *const context,
  *              \li 0 if not,
  *              \li -1 if error
  */
-int c_algo_list_compress(struct list_comp *const comp,
-                         const struct ip_packet *ip)
+int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
+                                      const struct ip_packet *const ip)
 {
 	int i;
 	int size;
 	int j;
 	int index_table;
 	const unsigned char *ext;
-	int result = 0;
+	int send_list_compressed = 0;
 	struct list_elt * elt;
 
 	ext = ip_get_raw_data(ip) + sizeof(struct ip6_hdr);
@@ -1009,12 +1008,16 @@ int c_algo_list_compress(struct list_comp *const comp,
 
 	size = size_list(comp->curr_list);
 
-	/* do we update the reference list ? */
+	/* do we update the reference list ? we update it if a list was sent at
+	 * least L times */
 	if(comp->counter == (L + 1))
 	{
-		rohc_debugf(3, "update the reference list \n");
+		rohc_debugf(3, "replace the reference list (gen_id = %d) by current "
+		            "list (gen_id = %d)\n", comp->ref_list->gen_id,
+		            comp->curr_list->gen_id);
+
 		empty_list(comp->ref_list);
-		for( j = 0; j < size; j++)
+		for(j = 0; j < size; j++)
 		{
 			elt = get_elt(comp->curr_list, j);
 			if(!insert_elt(comp->ref_list, elt->item, j, elt->index_table))
@@ -1028,7 +1031,12 @@ int c_algo_list_compress(struct list_comp *const comp,
 	/* get the extensions */
 	i = 0;
 	index_table = comp->get_index_table(ip, i);
-	if(index_table != -1)
+	if(index_table == -1)
+	{
+		/* there is no list of IPv6 extension headers */
+		comp->islist = 0;
+	}
+	else
 	{
 		/* there is one extension or more */
 		rohc_debugf(3, "there is at least one IPv6 extension\n");
@@ -1066,26 +1074,44 @@ int c_algo_list_compress(struct list_comp *const comp,
 				nb_deleted++;
 			}
 		}
+
+		/* list changed, so change the gen_id */
 		if(comp->counter == 0)
+		{
 			comp->curr_list->gen_id++;
-		if(comp->counter < L + 2)
-			//result = 1;
-			comp->counter++;
-		if(comp->counter < L + 1)
-			result = 1;
+			rohc_debugf(3, "list changed, use new gen_id %d\n",
+			            comp->curr_list->gen_id);
+		}
+
+		/* send the list compressed until it was repeated at least L times */
+		if(comp->counter < L)
+		{
+			rohc_debugf(3, "list with gen_id %d was not sent at least L = %d "
+			            "times (%d times), send it compressed\n",
+			            comp->curr_list->gen_id, L, comp->counter);
+			send_list_compressed = 1;
+		}
+
+		/* list is sent another time */
+		comp->counter++;
+
+		/* mark extensions that were sent at least L times as known */
 		for(j = 0; j < MAX_ITEM; j++)
 		{
 			if(!comp->trans_table[j].known)
+			{
 				comp->trans_table[j].counter++;
-			if(comp->trans_table[j].counter == L)
-				comp->trans_table[j].known = 1;
+				if(comp->trans_table[j].counter >= L)
+				{
+					rohc_debugf(3, "extension #%d was sent at least L = %d times "
+					            "(%d times), mark it as known\n", j, L,
+					            comp->trans_table[j].counter);
+					comp->trans_table[j].known = 1;
+				}
+			}
 		}
 	}
-	else
-	{
-		comp->islist = 0;
-	}
-	rohc_debugf(3, "value of the counter for reference: %d \n", comp->counter);
+	rohc_debugf(3, "value of the counter for reference: %d\n", comp->counter);
 
 #if ROHC_DEBUG_LEVEL >= 3
 	/* print current list after update */
@@ -1100,7 +1126,9 @@ int c_algo_list_compress(struct list_comp *const comp,
 #endif
 
 	comp->update_done = 1;
-	return result;
+
+	return send_list_compressed;
+
 error:
 	return -1;
 }
@@ -1292,7 +1320,7 @@ error:
  * @param comp  The list compressor
  * @return      the encoding type
  */
-int decide_type(struct list_comp *comp)
+int rohc_list_decide_type(struct list_comp *const comp)
 {
 	int type; /* list encoding type */
 	int i;
@@ -1356,150 +1384,134 @@ int decide_type(struct list_comp *comp)
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @param ps       The size of the index
  * @param size     The number of element in current list
- * @return         The new position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer,
+ *                 -1 in case of error
  */
-int encode_list(struct list_comp *const comp,
-                unsigned char *const dest,
-                int counter,
-                const int ps,
-                const int size)
+int rohc_list_encode(struct list_comp *const comp,
+                     unsigned char *const dest,
+                     int counter,
+                     const int ps,
+                     const int size)
 {
-	int type; /* encoding type */
-	unsigned char byte;
-	int i = 0;
-	struct list_elt * elt;
-
 	if(comp->ref_list->first_elt == NULL)
 	{
-		/* choose encoding type 0 for list because there is reference list */
-		rohc_debugf(1, "use list encoding type 0\n");
-		counter = encode_type_0(comp, dest, counter, ps);
+		/* no reference list: use encoding type 0 */
+		rohc_debugf(1, "use list encoding type 0 because there is no reference "
+		            "list yet\n");
+		counter = rohc_list_encode_type_0(comp, dest, counter, ps);
 	}
 	else if(comp->islist && !comp->list_compress)
 	{
-		/* the list did not change but send it anyway */
-
-		/* first_byte: type 0 */
-		byte = 1 << 5;
-		byte |= (ps & 0x01) << 4;
-		byte |= (size & 0x0f);
-		dest[counter] = byte;
-		counter++;
-		rohc_debugf(2, "flags = 0x%02x\n", byte);
-
-		/* it is the reference list: ref_id */
-		byte = (comp->ref_list->gen_id & 0xff);
-		dest[counter] = byte;
-		counter++;
-		rohc_debugf(2, "ref_id = 0x%02x\n", byte);
-
-		/* indexes */
-		for(i = 0; i < size; i++)
-		{
-			rohc_debugf(3, "ps = %d\n", ps);
-			if(ps)
-			{
-				elt = get_elt(comp->ref_list, i);
-				byte = 0 << 7; /* elt already known */
-				byte |= (elt->index_table & 0x7f);
-				dest[counter] = byte;
-				counter++;
-				rohc_debugf(2, "list element #%d = 0x%02x\n", i + 1, byte);
-			}
-			else
-			{
-				elt = get_elt(comp->ref_list, i);
-				byte = 0 << 7;
-				byte |= (elt->index_table & 0x07)<< 4;
-				i++;
-
-				elt = get_elt(comp->ref_list, i);
-				if(elt != NULL)
-				{
-					byte |= 0<< 3;
-					byte |= (elt->index_table & 0x07);
-				}
-				dest[counter] = byte;
-				counter++;
-
-				rohc_debugf(2, "list elements #%d and #%d = 0x%02x\n",
-				            i, i + 1, byte);
-			}
-		}
-		
-		/* items are not sent because they are already known */
+		/* the list did not change: use encoding type 0 */
+		rohc_debugf(1, "use list encoding type 0 because the list did not "
+		            "change (items should not be sent)\n");
+		counter = rohc_list_encode_type_0(comp, dest, counter, ps);
 	}
 	else /* the list is modified */
 	{
+		int type; /* encoding type */
+
 		/* which encoding for the modified list ? */
-		type = decide_type(comp);
+		type = rohc_list_decide_type(comp);
 		rohc_debugf(1, "use list encoding type %d\n", type);
-
-		/* first byte */
-		byte = (type & 0x03) << 6;
-		byte |= 1 << 5;
-		byte |= (ps & 0x01) << 4;
-		dest[counter] = byte;
-		counter++;
-		rohc_debugf(3, "flags = 0x%02x\n", byte);
-
-		/* second byte (gen_id) */
-		byte = (comp->curr_list->gen_id & 0xff);
-		dest[counter] = byte;
-		counter++;
-		rohc_debugf(3, "gen_id = 0x%02x\n", byte);
-
-		/* third byte (ref_id) */
-		byte = (comp->ref_list->gen_id & 0xff);
-		dest[counter] = byte;
-		counter++;
-		rohc_debugf(3, "ref_id = 0x%02x\n", byte);
 
 		switch(type)
 		{
 			case 1: /* Encoding type 1 (insertion only scheme) */
-				counter = encode_type_1(comp, dest, counter, ps);
+				counter = rohc_list_encode_type_1(comp, dest, counter, ps);
 				break;
 			case 2: /* Encoding type 2 (removal only scheme) */
-				counter = encode_type_2(comp, dest, counter, ps);
+				counter = rohc_list_encode_type_2(comp, dest, counter, ps);
 				break;
 			case 3: /* encoding type 3 (remove then insert scheme) */
-				counter = encode_type_3(comp, dest, counter, ps);
+				counter = rohc_list_encode_type_3(comp, dest, counter, ps);
 				break;
 			default:
-				rohc_debugf(0, "no encoding type for list compression \n");
-				counter = 0;
-				break;
+				rohc_debugf(0, "unknown encoding type for list compression\n");
+				assert(0);
+				goto error;
 		}
 	}
 
 	rohc_debugf(3, "counter at the end of list encoding = %d\n", counter);
 
 	return counter;
+
+error:
+	return -1;
 }
 
 
 /**
  * @brief Build encoding type 0 for list compression
  *
+ * @todo this function is inefficient as it loops many times on the same list
+ *       (see \ref get_elt especially)
+ *
  * \verbatim
 
-Encoding type 0 (5.8.6.1):
+ Encoding type 0 (5.8.6.1):
 
-       0   1   2   3   4   5   6   7
-      --- --- --- --- --- --- --- ---
-     | ET = 0| GP| PS|   CC = m      |
-     +---+---+---+---+---+---+---+---+
-     |            gen_id             |
-     +---+---+---+---+---+---+---+---+
-     |       XI 1, ..., XI m         | m octets, or m * 4 bits
-     /               --- --- --- --- /
-     |               :    Padding    : if PS = 0 and m is odd
-     +---+---+---+---+---+---+---+---+
-     |                               |
-     /      item 1, ..., item n      / variable length
-     |                               |
-     +---+---+---+---+---+---+---+---+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  | ET = 0| GP| PS|   CC = m      |
+    +---+---+---+---+---+---+---+---+
+ 2  :            gen_id             : 1 octet, if GP = 1
+    +---+---+---+---+---+---+---+---+
+    |       XI 1, ..., XI m         | m octets, or m * 4 bits
+ 3  /               --- --- --- --- /
+    |               :    Padding    : if PS = 0 and m is odd
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 4  /      item 1, ..., item n      / variable length
+    |                               |
+    +---+---+---+---+---+---+---+---+
+
+ ET: Encoding type is zero.
+
+ GP: Indicates presence of gen_id field.
+
+ PS: Indicates size of XI fields:
+     PS = 0 indicates 4-bit XI fields;
+     PS = 1 indicates 8-bit XI fields.
+
+ CC: CSRC counter from original RTP header.
+
+ gen_id: Identifier for a sequence of identical lists.  It is
+     present in U/O-mode when the compressor decides that it may use
+     this list as a future reference list.
+
+ XI 1, ..., XI m: m XI items. The format of an XI item is as
+     follows:
+
+              +---+---+---+---+
+     PS = 0:  | X |   Index   |
+              +---+---+---+---+
+
+                0   1   2   3   4   5   6   7
+              +---+---+---+---+---+---+---+---+
+     PS = 1:  | X |           Index           |
+              +---+---+---+---+---+---+---+---+
+
+     X = 1 indicates that the item corresponding to the Index
+           is sent in the item 0, ..., item n list.
+     X = 0 indicates that the item corresponding to the Index is
+               not sent.
+
+     When 4-bit XI items are used and m > 1, the XI items are placed in
+     octets in the following manner:
+
+          0   1   2   3   4   5   6   7
+        +---+---+---+---+---+---+---+---+
+        |     XI k      |    XI k + 1   |
+        +---+---+---+---+---+---+---+---+
+
+ Padding: A 4-bit padding field is present when PS = 0 and m is
+     odd.  The Padding field is set to zero when sending and ignored
+     when receiving.
+
+ Item 1, ..., item n:
+     Each item corresponds to an XI with X = 1 in XI 1, ..., XI m.
 
 \endverbatim
  *
@@ -1509,82 +1521,118 @@ Encoding type 0 (5.8.6.1):
  * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
-int encode_type_0(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps)
+int rohc_list_encode_type_0(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps)
 {
-	int length; /* data length */
-	int i;
-	int j;
-	struct list_elt * elt;
-	unsigned char byte = 0;
-	int size;
+	const uint8_t et = 0; /* list encoding type 0 */
+	const uint8_t gp = 1; /* GP bit is always set */
+	struct list_elt *elt; /* a list element */
+	int m; /* the number of elements in current list = number of XIs */
+	int k; /* the index of the current element in list */
 
-	size = size_list(comp->curr_list);
+	m = size_list(comp->curr_list);
+	assert(m <= 15);
 
-	/* first byte */
-	byte |= 1 << 5;
-	byte |= (ps & 0x01) << 4;
-	byte |= (size & 0x0f);
-	dest[counter] = byte;
+	/* part 1: ET, GP, PS, CC */
+	rohc_debugf(3, "ET = %d, GP = %d, PS = %d, CC = m = %d\n", et, gp, ps, m);
+	dest[counter] = (et & 0x03) << 6;
+	dest[counter] |= (gp & 0x01) << 5;
+	dest[counter] |= (ps & 0x01) << 4;
+	dest[counter] |= m & 0x0f;
 	counter++;
 
-	/* second byte: gen_id */
-	byte = 0;
-	byte = (comp->curr_list->gen_id & 0xff);
-	dest[counter] = byte;
+	/* part 2: gen_id */
+	dest[counter] = comp->curr_list->gen_id & 0xff;
+	rohc_debugf(3, "gen_id = 0x%02x\n", dest[counter]);
 	counter++;
 
-	/* next bytes: indexes */
-	byte = 0;
-	for(i = 0; i < size; i++)
+	/* part 3: m XI (= X + Indexes) */
+	if(ps)
 	{
-		rohc_debugf(3, "value of ps: %d \n", ps);
-		if(ps)
+		/* each XI item is stored on 8 bits */
+		rohc_debugf(3, "use 8-bit format for the %d XIs\n", m);
+
+		/* write all XIs in packet */
+		for(k = 0; k < m; k++, counter++)
 		{
-			elt = get_elt(comp->curr_list, i);
+			dest[counter] = 0;
+
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
-				byte |= 1 << 7;
-			byte |= (elt->index_table & 0x7f);
-			dest[counter] = byte;
-			counter++;
-			byte = 0;
+				dest[counter] |= 1 << 7;
+
+			/* 7-bit Index */
+			dest[counter] |= elt->index_table & 0x7f;
+
+			rohc_debugf(3, "add 8-bit XI #%d = 0x%x\n", k, dest[counter]);
 		}
-		else
+	}
+	else
+	{
+		/* each XI item is stored on 4 bits */
+		rohc_debugf(3, "use 4-bit format for the %d XIs\n", m);
+
+		/* write all XIs in packet 2 by 2 */
+		for(k = 0; k < m; k += 2, counter++)
 		{
-			elt = get_elt(comp->curr_list, i);
+			dest[counter] = 0;
+
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* first 4-bit XI */
+			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
-				byte |= 1 << 7;
-			byte |= (elt->index_table & 0x07)<< 4;
-			i++;
-			elt = get_elt(comp->curr_list, i);
-			if(elt != NULL)
+				dest[counter] |= 1 << 7;
+			/* 3-bit Index */
+			dest[counter] |= (elt->index_table & 0x07) << 4;
+
+			rohc_debugf(3, "add 4-bit XI #%d in MSB = 0x%x\n", k,
+			            (dest[counter] & 0xf0) >> 4);
+
+			/* second 4-bit XI or padding? */
+			if((k + 1) < m)
 			{
+				elt = get_elt(comp->curr_list, k + 1);
+				assert(elt != NULL);
+
+				/* set the X bit if item is not already known */
 				if(!comp->trans_table[elt->index_table].known)
-					byte |= 1 << 3;
-				byte |= (elt->index_table & 0x07);
+					dest[counter] |= 1 << 3;
+				/* 3-bit Index */
+				dest[counter] |= (elt->index_table & 0x07) << 0;
+
+				rohc_debugf(3, "add 4-bit XI #%d in LSB = 0x%x\n", k + 1,
+				            dest[counter] & 0xf0);
 			}
-			dest[counter] = byte;
-			counter++;
-			byte = 0;
+			else
+			{
+				/* zero the padding bits */
+				rohc_debugf(3, "add 4-bit padding in LSB\n");
+				dest[counter] &= 0xf0;
+			}
 		}
 	}
 
-	/* next bytes: items */
-	for(i = 0; i < size; i++)
+	/* part 4: n items (only unknown items) */
+	for(k = 0; k < m; k++)
 	{
-		elt = get_elt(comp->curr_list, i);
+		elt = get_elt(comp->curr_list, k);
+		assert(elt != NULL);
+
+		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			length = elt->item->length;
-			for(j = 0; j < length; j++)
-			{
-				byte |= (elt->item->data[j] & 0xff);
-				dest[counter] = byte;
-				counter++;
-				byte = 0;
-			}
+			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			            elt->item->length, k);
+			assert(elt->item->length > 0);
+			memcpy(dest + counter, elt->item->data, elt->item->length);
+			counter += elt->item->length;
 		}
 	}
 
@@ -1595,28 +1643,77 @@ int encode_type_0(struct list_comp *const comp,
 /**
  * @brief Build encoding type 1 for list compression
  *
+ * @todo this function is inefficient as it loops many times in the current
+ *       and reference lists (see \ref get_elt and \ref type_is_present
+ *       especially)
+ 
+ * @bug The insertion bit mask is wrong. See bug #778541.
+ *
  * \verbatim
 
-Encoding type 1 (5.8.6.2):
+ Encoding type 1 (5.8.6.2):
 
-	  0   1   2   3   4   5   6   7
-	 --- --- --- --- --- --- --- ---
-	| ET = 1| GP| PS|     XI 1      |
-	+---+---+---+---+---+---+---+---+
-	|            gen_id             |
-	+---+---+---+---+---+---+---+---+
-	|            ref_id             |
-	+---+---+---+---+---+---+---+---+
-	/       insertion bit mask      /
-	+---+---+---+---+---+---+---+---+
-	|           XI list             | k octets, or (k-1)*4 bits
-	/               --- --- --- --- /
-	|               :    Padding    : if PS = 0 and k is even
-	+---+---+---+---+---+---+---+---+
-	|                               |
-	/      item 1, ..., item n      / variable length
-	|                               |
-	+---+---+---+---+---+---+---+---+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  | ET = 1| GP| PS|     XI 1      |
+    +---+---+---+---+---+---+---+---+
+ 2  :            gen_id             : 1 octet, if GP = 1
+    +---+---+---+---+---+---+---+---+
+ 3  |            ref_id             |
+    +---+---+---+---+---+---+---+---+
+ 4  /       insertion bit mask      / 1-2 octets
+    +---+---+---+---+---+---+---+---+
+    |           XI list             | k octets, or (k - 1) * 4 bits
+ 5  /               --- --- --- --- /
+    |               :    Padding    : if PS = 0 and k is even
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 6  /      item 1, ..., item n      / variable
+    |                               |
+    +---+---+---+---+---+---+---+---+
+
+ ET: Encoding type is one (1).
+
+ GP: Indicates presence of gen_id field.
+
+ PS: Indicates size of XI fields:
+     PS = 0 indicates 4-bit XI fields;
+     PS = 1 indicates 8-bit XI fields.
+
+ XI 1: When PS = 0, the first 4-bit XI item is placed here.
+       When PS = 1, the field is set to zero when sending, and
+       ignored when receiving.
+
+ ref_id: The identifier of the reference CSRC list used when the
+       list was compressed.  It is the 8 least significant bits of
+       the RTP Sequence Number in R-mode and gen_id (see section
+       5.8.2) in U/O-mode.
+
+ insertion bit mask: Bit mask indicating the positions where new
+           items are to be inserted.  See Insertion Only scheme in
+           section 5.8.3.  The bit mask can have either of the
+           following two formats:
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+    | 0 |        7-bit mask         |  bit 1 is the first bit
+    +---+---+---+---+---+---+---+---+
+
+    +---+---+---+---+---+---+---+---+
+    | 1 |                           |  bit 1 is the first bit
+    +---+      15-bit mask          +
+    |                               |  bit 7 is the last bit
+    +---+---+---+---+---+---+---+---+
+
+ XI list: XI fields for items to be inserted.  When the insertion
+    bit mask has k ones, the total number of XI fields is k.  When
+    PS = 1, all XI fields are in the XI list.  When PS = 0, the
+    first XI field is in the XI 1 field, and the remaining k - 1
+    XI fields are in the XI list.
+
+ Padding: Present when PS = 0 and k is even.
+
+ item 1, ..., item n: One item for each XI field with the X bit set.
 
 \endverbatim
  *
@@ -1626,155 +1723,224 @@ Encoding type 1 (5.8.6.2):
  * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
-int encode_type_1(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps)
+int rohc_list_encode_type_1(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps)
 {
-	int length; /* data length */
-	int i;
-	int j;
-	int mask_size;
+	const uint8_t et = 1; /* list encoding type 1 */
+	const uint8_t gp = 1; /* GP bit is always set */
 	struct list_elt *elt;
-	unsigned char byte = 0;
-	int size;
+	int mask_size;
+	int m; /* the number of elements in current list = number of XIs */
+	int k; /* the index of the current element in list */
 
-	size = size_list(comp->curr_list);
+	m = size_list(comp->curr_list);
+	assert(m <= 15);
 
-	/* the 3 first bytes are already encoded */
+	/* part 1: ET, GP, PS, CC */
+	rohc_debugf(3, "ET = %d, GP = %d, PS = %d\n", et, gp, ps);
+	dest[counter] = (et & 0x03) << 6;
+	dest[counter] |= (gp & 0x01) << 5;
+	dest[counter] |= (ps & 0x01) << 4;
+	dest[counter] &= 0xf0; /* clear the 4 LSB bits reserved for 1st XI */
+	counter++;
 
-	/* insertion mask */
-	for(i = 0; i < size && i < 8; i++)
+	/* part 2: gen_id */
+	dest[counter] = comp->curr_list->gen_id & 0xff;
+	rohc_debugf(3, "gen_id = 0x%02x\n", dest[counter]);
+	counter++;
+
+	/* part 3: ref_id */
+	dest[counter] = comp->ref_list->gen_id & 0xff;
+	rohc_debugf(3, "ref_id = 0x%02x\n", dest[counter]);
+	counter++;
+
+	/* part 4: insertion mask (first byte) */
+	dest[counter] = 0;
+	for(k = 0; k < m && k < 8; k++)
 	{
-		elt = get_elt(comp->curr_list, i);
+		elt = get_elt(comp->curr_list, k);
+		assert(elt != NULL);
+
+		/* set bit to 1 in the insertion mask if the list item is not present
+		   in the reference list */
 		if(!type_is_present(comp->ref_list, elt->item))
-			byte |= 1 << (7 - i);
+		{
+			dest[counter] |= 1 << (7 - k);
+		}
 	}
 	mask_size = 1;
-	dest[counter] = byte;
+	rohc_debugf(3, "insertion mask = 0x%02x\n", dest[counter]);
 	counter++;
-	byte = 0;
-	if(size > 8)
+
+	/* part 4: insertion mask (second optional byte) */
+	if(m > 8)
 	{
-		for(i = 8; i< size && i < 16; i++)
+		for(k = 8; k < m && k < 16; k++)
 		{
-			elt = get_elt(comp->curr_list, i);
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* set bit to 1 in the insertion mask if the list item is not present
+			   in the reference list */
 			if(!type_is_present(comp->ref_list, elt->item))
 			{
-				j = i - 8;
-				byte |= 1 << (7 - j);
+				dest[counter] |= 1 << (7 - (k - 8));
 			}
 		}
 		mask_size = 2;
-		dest[counter] = byte;
+		rohc_debugf(3, "insertion mask (2nd byte) = 0x%02x\n", dest[counter]);
 		counter++;
-		byte = 0;
 	}
 
-	/* next bytes: indexes */
-	i = 0;
-	if(!ps) /* XI = 4 bits */
+	/* part 5: k XI (= X + Indexes) */
+	if(ps)
 	{
-		elt = get_elt(comp->curr_list, i);
-		while(type_is_present(comp->ref_list, elt->item) && i<size)
-		{
-			i++;
-			elt = get_elt(comp->curr_list, i);
-		}
+		size_t xi_index = 0;
 
-		/* first index in first byte */
-		if(!comp->trans_table[elt->index_table].known)
-			dest[counter - (3 + mask_size)] |= 1 << 3;
-		dest[counter - (3 + mask_size)] |= (elt->index_table & 0x07);
-		i++;
+		/* each XI item is stored on 8 bits */
+		rohc_debugf(3, "use 8-bit format for the %d XIs\n", m);
 
-		/* next indexes */
-		for(j = i; j < size; j++)
+		for(k = 0; k < m; k++)
 		{
-			elt = get_elt(comp->curr_list, j);
-			while(elt != NULL &&
-			      type_is_present(comp->ref_list, elt->item) &&
-			      j < size)
-			{
-				j++;
-				elt = get_elt(comp->curr_list, j);
-			}
-			if(elt != NULL)
-			{
-				if(!comp->trans_table[elt->index_table].known)
-					byte |= 1 << 7;
-				byte |= (elt->index_table & 0x07) << 4;
-				j++;
-				elt = get_elt(comp->curr_list, j);
-				if(elt != NULL)
-				{
-					while(elt != NULL &&
-					      type_is_present(comp->ref_list, elt->item) &&
-					      j < size)
-					{
-						j++;
-						elt = get_elt(comp->curr_list, j);
-					}
-					if(elt != NULL)
-					{
-						if(!comp->trans_table[elt->index_table].known)
-							byte |= 1 << 3;
-						byte |= (elt->index_table & 0x07);
-					}
-				} /* else padding */
-				dest[counter] = byte;
-				counter++;
-				byte = 0;
-			}
-		}
-	}
-	else /* XI = 8 bits */
-	{
-		for(i = 0; i < size; i++)
-		{
-			elt = get_elt(comp->curr_list, i);
-			while(elt != NULL && type_is_present(comp->ref_list, elt->item) && i<size)
-			{
-				i++;
-				elt = get_elt(comp->curr_list, i);
-			}
-			if(elt != NULL)
-			{
-				if(!comp->trans_table[elt->index_table].known)
-					byte |= 1 << 7;
-				byte |= (elt->index_table & 0x7f);
-				dest[counter] = byte;
-				counter++;
-				byte = 0;
-				i++;
-			}
-		}
-	}
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
 
-	/* next bytes: items */
-	for(i = 0; i < size; i++)
-	{
-		elt = get_elt(comp->curr_list, i);
-		while(elt != NULL &&
-		      type_is_present(comp->ref_list, elt->item) &&
-		      i < size)
-		{
-			i++;
-			elt = get_elt(comp->curr_list, i);
-		}
-		if(elt != NULL)
-		{
+			/* skip element if it present in the reference list */
+			if(type_is_present(comp->ref_list, elt->item) &&
+			   comp->trans_table[elt->index_table].known)
+			{
+				rohc_debugf(3, "ignore element #%d because it is present in the "
+				            "reference list and already known\n", k);
+				continue;
+			}
+
+			xi_index++;
+
+			dest[counter] = 0;
+
+			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
+				dest[counter] |= 1 << 7;
+			/* 7-bit Index */
+			dest[counter] |= elt->index_table & 0x7f;
+
+			rohc_debugf(3, "add 8-bit XI #%d = 0x%x\n", k, dest[counter]);
+
+			/* byte is full, write to next one next time */
+			counter++;
+		}
+	}
+	else
+	{
+		size_t xi_index = 0;
+
+		/* each XI item is stored on 4 bits */
+		rohc_debugf(3, "use 4-bit format for the %d XIs\n", m);
+
+		for(k = 0; k < m; k++)
+		{
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* skip element if it present in the reference list */
+			if(type_is_present(comp->ref_list, elt->item) &&
+			   comp->trans_table[elt->index_table].known)
 			{
-				length = elt->item->length;
-				for(j = 0; j < length; j++)
+				rohc_debugf(3, "ignore element #%d because it is present in the "
+				            "reference list and already known\n", k);
+				continue;
+			}
+
+			xi_index++;
+
+			if(xi_index == 1)
+			{
+				/* first XI goes in part 1 */
+
+				/* set the X bit if item is not already known */
+				if(!comp->trans_table[elt->index_table].known)
+					dest[counter - (3 + mask_size)] |= 1 << 3;
+				/* 3-bit Index */
+				dest[counter - (3 + mask_size)] |= elt->index_table & 0x07;
+
+				rohc_debugf(3, "add 4-bit XI #%d in part 1 = 0x%x\n", k,
+			            (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
+			}
+			else
+			{
+				/* next XIs goes in part 5 */
+				dest[counter] = 0;
+
+				/* odd or even 4-bit XI ? */
+				if((xi_index % 2) == 0)
 				{
-					byte |= (elt->item->data[j] & 0xff);
-					dest[counter] = byte;
+					/* use MSB part of the byte */
+
+					/* set the X bit if item is not already known */
+					if(!comp->trans_table[elt->index_table].known)
+						dest[counter] |= 1 << 7;
+					/* 3-bit Index */
+					dest[counter] |= (elt->index_table & 0x07) << 4;
+
+					rohc_debugf(3, "add 4-bit XI #%d in MSB = 0x%x\n", k,
+				            (dest[counter] & 0xf0) >> 4);
+				}
+				else
+				{
+					/* use LSB part of the byte */
+
+					/* set the X bit if item is not already known */
+					if(!comp->trans_table[elt->index_table].known)
+						dest[counter] |= 1 << 3;
+					/* 3-bit Index */
+					dest[counter] |= (elt->index_table & 0x07) << 0;
+
+					rohc_debugf(3, "add 4-bit XI #%d = 0x%x in LSB\n", k + 1,
+					            dest[counter] & 0xf0);
+
+					/* byte is full, write to next one next time */
 					counter++;
-					byte = 0;
 				}
 			}
+		}
+
+		/* is padding required? */
+		if(xi_index > 1 && (xi_index % 2) == 0)
+		{
+			/* zero the padding bits */
+			rohc_debugf(3, "add 4-bit padding in LSB\n");
+			dest[counter] &= 0xf0;
+
+			/* byte is full, write to next one next time */
+			counter++;
+		}
+	}
+
+	/* part 6: n items (only unknown items) */
+	for(k = 0; k < m; k++)
+	{
+		elt = get_elt(comp->curr_list, k);
+		assert(elt != NULL);
+
+		/* skip element if it present in the reference list */
+		if(type_is_present(comp->ref_list, elt->item) &&
+		   comp->trans_table[elt->index_table].known)
+		{
+			rohc_debugf(3, "ignore element #%d because it is present in the "
+			            "reference list and already known\n", k);
+			continue;
+		}
+
+		/* copy the list element if not known yet */
+		if(!comp->trans_table[elt->index_table].known)
+		{
+			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			            elt->item->length, k);
+			assert(elt->item->length > 0);
+			memcpy(dest + counter, elt->item->data, elt->item->length);
+			counter += elt->item->length;
 		}
 	}
 
@@ -1785,22 +1951,53 @@ int encode_type_1(struct list_comp *const comp,
 /**
  * @brief Build encoding type 2 for list compression
  *
+ * @todo this function is inefficient as it loops many times in the current
+ *       and reference lists (see \ref get_elt and \ref type_is_present
+ *       especially)
+ *
+ * @bug The removal bit mask is wrong. See bug #778541.
+ *
  * \verbatim
 
-Encoding type 2 (5.8.6.3):
+ Encoding type 2 (5.8.6.3):
 
-	  0   1   2   3   4   5   6   7
-	+---+---+---+---+---+---+---+---+
-	| ET = 2| GP| PS|    Counter    |
-	+---+---+---+---+---+---+---+---+
-	|            gen_id             |
-	+---+---+---+---+---+---+---+---+
-	|            ref_id             |
-	+---+---+---+---+---+---+---+---+
-	/        removal bit mask       /
-	+---+---+---+---+---+---+---+---+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 1  | ET = 2| GP|res|    Count      |
+    +---+---+---+---+---+---+---+---+
+ 2  :            gen_id             : 1 octet, if GP = 1
+    +---+---+---+---+---+---+---+---+
+ 3  |            ref_id             |
+    +---+---+---+---+---+---+---+---+
+ 4  /        removal bit mask       / 1-2 octets
+    +---+---+---+---+---+---+---+---+
 
- \endverbatim
+ ET: Encoding type is 2.
+
+ GP: Indicates presence of gen_id field.
+
+ res: Reserved.  Set to zero when sending, ignored when
+      received.
+
+ Count: Number of elements in ref_list.
+
+ removal bit mask: Indicates the elements in ref_list to be
+    removed in order to obtain the current list.  See section
+    5.8.3.  The bit mask can have either of the following two
+    formats:
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+    | 0 |        7-bit mask         |  bit 1 is the first bit
+    +---+---+---+---+---+---+---+---+
+
+    +---+---+---+---+---+---+---+---+
+    | 1 |                           |  bit 1 is the first bit
+    +---+      15-bit mask          +
+    |                               |  bit 7 is the last bit
+    +---+---+---+---+---+---+---+---+
+
+\endverbatim
  *
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
@@ -1808,53 +2005,75 @@ Encoding type 2 (5.8.6.3):
  * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
-int encode_type_2(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps)
+int rohc_list_encode_type_2(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps)
 {
-	int i;
-	int j;
+	const uint8_t et = 2; /* list encoding type 2 */
+	const uint8_t gp = 1; /* GP bit is always set */
 	struct list_elt *elt;
-	unsigned char byte;
-	int size;
+	int size_ref_list; /* size of reference list */
+	int k; /* the index of the current element in list */
 
-	size = size_list(comp->ref_list);
+	size_ref_list = size_list(comp->ref_list);
+	assert(size_ref_list <= 15);
 
-	dest[counter - 3] |= (size & 0x0f);
+	/* part 1: ET, GP, res and Count */
+	rohc_debugf(3, "ET = %d, GP = %d, Count = %d\n", et, gp, size_ref_list);
+	dest[counter] = (et & 0x03) << 6;
+	dest[counter] |= (gp & 0x01) << 5;
+	dest[counter] &= ~(0x01 << 4); /* clear the reserved bit */
+	assert((size_ref_list & 0x0f) == size_ref_list);
+	dest[counter] |= size_ref_list & 0x0f;
+	counter++;
 
-	/* the 3 first bytes are already encoded */
+	/* part 2: gen_id */
+	dest[counter] = comp->curr_list->gen_id & 0xff;
+	rohc_debugf(3, "gen_id = 0x%02x\n", dest[counter]);
+	counter++;
 
-	/* removal mask (first byte) */
-	byte = 0xff;
-	for(i = 0; i < size && i < 8; i++)
+	/* part 3: ref_id */
+	dest[counter] = comp->ref_list->gen_id & 0xff;
+	rohc_debugf(3, "ref_id = 0x%02x\n", dest[counter]);
+	counter++;
+
+	/* part 4: removal bit mask (first byte) */
+	dest[counter] = 0xff;
+	for(k = 0; k < size_ref_list && k < 8; k++)
 	{
-		elt = get_elt(comp->ref_list, i);
+		elt = get_elt(comp->ref_list, k);
+		assert(elt != NULL);
+
 		if(type_is_present(comp->curr_list, elt->item))
 		{
-			byte &= ~(1 << (7 - i));
+			/* element shall not be removed, clear its corresponding bit in the
+			   removal bit mask */
+			dest[counter] &= ~(1 << (7 - k));
 		}
 	}
-	dest[counter] = byte;
+	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", dest[counter]);
 	counter++;
-	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", byte);
 
-	/* removal mask (second optional byte) */
-	if(size > 8)
+	/* part 4: removal bit mask (second optional byte) */
+	if(size_ref_list > 8)
 	{
-		byte = 0xff;
-		for(i = 8; i < size && i < 16; i++)
+		dest[counter] = 0xff;
+		for(k = 8; k < size_ref_list && k < 16; k++)
 		{
-			elt = get_elt(comp->ref_list, i);
+			elt = get_elt(comp->ref_list, k);
+			assert(elt != NULL);
+
+			/* @bug: shouldn't the condition be inversed? */
 			if(!type_is_present(comp->curr_list, elt->item))
 			{
-				j = i - 8;
-				byte &= ~(1 << (7 - j));
+				/* element shall not be removed, clear its corresponding bit in
+				   the removal bit mask */
+				dest[counter] &= ~(1 << (7 - (k - 8)));
 			}
 		}
-		dest[counter] = byte;
+		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", dest[counter]);
 		counter++;
-		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", byte);
 	}
 	else
 	{
@@ -1868,30 +2087,95 @@ int encode_type_2(struct list_comp *const comp,
 /**
  * @brief Build encoding type 3 for list compression
  *
+ * @todo this function is inefficient as it loops many times in the current
+ *       and reference lists (see \ref get_elt and \ref type_is_present
+ *       especially)
+ *
+ * @bug The removal/insertion bit masks are wrong. See bug #778541.
+ *
  * \verbatim
 
-Encoding type 3 (5.8.6.4):
+ Encoding type 3 (5.8.6.4):
 
-	  0   1   2   3   4   5   6   7
-	+---+---+---+---+---+---+---+---+
-	| ET = 2| GP| PS|     XI 1      |
-	+---+---+---+---+---+---+---+---+
-	|            gen_id             |
-	+---+---+---+---+---+---+---+---+
-	|            ref_id             |
-	+---+---+---+---+---+---+---+---+
-	/        removal bit mask       /
-	+---+---+---+---+---+---+---+---+
-	/       insertion bit mask      /
-	+---+---+---+---+---+---+---+---+
-	|           XI list             | k octets, or (k-1)*4 bits
-	/               --- --- --- --- /
-	|               :    Padding    : if PS = 0 and k is even
-	+---+---+---+---+---+---+---+---+
-	|                               |
-	/      item 1, ..., item n      / variable length
-	|                               |
-	+---+---+---+---+---+---+---+---+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 1  | ET=3  |GP |PS |     XI 1      |
+    +---+---+---+---+---+---+---+---+
+ 2  :            gen_id             : 1 octet, if GP = 1
+    +---+---+---+---+---+---+---+---+
+ 3  |            ref_id             |
+    +---+---+---+---+---+---+---+---+
+ 4  /        removal bit mask       / 1-2 octets
+    +---+---+---+---+---+---+---+---+
+ 5  /       insertion bit mask      / 1-2 octets
+    +---+---+---+---+---+---+---+---+
+    |           XI list             | k octets, or (k - 1) * 4 bits
+ 6  /               --- --- --- --- /
+    |               :    Padding    : if PS = 0 and k is even
+    +---+---+---+---+---+---+---+---+
+    |                               |
+ 7  /      item 1, ..., item n      / variable
+    |                               |
+    +---+---+---+---+---+---+---+---+
+
+ ET: Encoding type is 3.
+
+ GP: Indicates presence of gen_id field.
+
+ PS: Indicates size of XI fields:
+     PS = 0 indicates 4-bit XI fields;
+     PS = 1 indicates 8-bit XI fields.
+
+ gen_id: Identifier for a sequence of identical lists.  It is
+     present in U/O-mode when the compressor decides that it may use
+     this list as a future reference list.
+
+ ref_id: The identifier of the reference CSRC list used when the
+       list was compressed.  It is the 8 least significant bits of
+       the RTP Sequence Number in R-mode and gen_id (see section
+       5.8.2) in U/O-mode.
+
+ removal bit mask: Indicates the elements in ref_list to be
+    removed in order to obtain the current list.  See section
+    5.8.3.  The bit mask can have either of the following two
+    formats:
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+    | 0 |        7-bit mask         |  bit 1 is the first bit
+    +---+---+---+---+---+---+---+---+
+
+    +---+---+---+---+---+---+---+---+
+    | 1 |                           |  bit 1 is the first bit
+    +---+      15-bit mask          +
+    |                               |  bit 7 is the last bit
+    +---+---+---+---+---+---+---+---+
+
+ insertion bit mask: Bit mask indicating the positions where new
+           items are to be inserted.  See Insertion Only scheme in
+           section 5.8.3.  The bit mask can have either of the
+           following two formats:
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+    | 0 |        7-bit mask         |  bit 1 is the first bit
+    +---+---+---+---+---+---+---+---+
+
+    +---+---+---+---+---+---+---+---+
+    | 1 |                           |  bit 1 is the first bit
+    +---+      15-bit mask          +
+    |                               |  bit 7 is the last bit
+    +---+---+---+---+---+---+---+---+
+
+ XI list: XI fields for items to be inserted.  When the insertion
+    bit mask has k ones, the total number of XI fields is k.  When
+    PS = 1, all XI fields are in the XI list.  When PS = 0, the
+    first XI field is in the XI 1 field, and the remaining k - 1
+    XI fields are in the XI list.
+
+ Padding: Present when PS = 0 and k is even.
+
+ item 1, ..., item n: One item for each XI field with the X bit set.
 
 \endverbatim
  *
@@ -1901,227 +2185,278 @@ Encoding type 3 (5.8.6.4):
  * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
-int encode_type_3(struct list_comp *const comp,
-                  unsigned char *const dest,
-                  int counter,
-                  const int ps)
+int rohc_list_encode_type_3(struct list_comp *const comp,
+                            unsigned char *const dest,
+                            int counter,
+                            const int ps)
 {
-	int i;
-	int j;
-	int mask_size;
+	const uint8_t et = 3; /* list encoding type 3 */
+	const uint8_t gp = 1; /* GP bit is always set */
 	struct list_elt *elt;
-	unsigned char byte;
-	int size;
-	int length; /* data length */
+	int size_ref_list; /* size of reference list */
+	int m; /* the number of elements in current list = number of XIs */
+	int k; /* the index of the current element in list */
+	int mask_size = 0; /* the cumulative size of insertion/removal masks */
 
-	/* the 3 first bytes are already encoded */
+	/* part 1: ET, GP, PS, CC */
+	rohc_debugf(3, "ET = %d, GP = %d, PS = %d\n", et, gp, ps);
+	dest[counter] = (et & 0x03) << 6;
+	dest[counter] |= (gp & 0x01) << 5;
+	dest[counter] |= (ps & 0x01) << 4;
+	dest[counter] &= 0xf0; /* clear the 4 LSB bits reserved for 1st XI */
+	counter++;
 
-	/* removal mask */
-	size = size_list(comp->ref_list);
-	byte = 0xff;
-	for(i = 0; i<size && i < 8; i++)
+	/* part 2: gen_id */
+	dest[counter] = comp->curr_list->gen_id & 0xff;
+	rohc_debugf(3, "gen_id = 0x%02x\n", dest[counter]);
+	counter++;
+
+	/* part 3: ref_id */
+	dest[counter] = comp->ref_list->gen_id & 0xff;
+	rohc_debugf(3, "ref_id = 0x%02x\n", dest[counter]);
+	counter++;
+
+	/* part 4: removal bit mask (first byte) */
+	size_ref_list = size_list(comp->ref_list);
+	assert(size_ref_list <= 15);
+	dest[counter] = 0xff;
+	for(k = 0; k < size_ref_list && k < 8; k++)
 	{
-		elt = get_elt(comp->ref_list, i);
+		elt = get_elt(comp->ref_list, k);
+		assert(elt != NULL);
+
 		if(type_is_present(comp->curr_list, elt->item) &&
 		   comp->trans_table[elt->index_table].known)
 		{
-			byte &= ~(1 << (7 - i));
+			/* element shall not be removed, clear its corresponding bit in the
+			   removal bit mask */
+			dest[counter] &= ~(1 << (7 - k));
 		}
 	}
-	dest[counter] = byte;
+	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", dest[counter]);
 	counter++;
-	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", byte);
-	if(size > 8)
+	mask_size++;
+
+	/* part 4: removal bit mask (second optional byte) */
+	if(size_ref_list > 8)
 	{
-		byte = 0xff;
-		for(i = 8; i < size && i < 16; i++)
+		dest[counter] = 0xff;
+		for(k = 8; k < size_ref_list && k < 16; k++)
 		{
-			elt = get_elt(comp->ref_list, i);
+			elt = get_elt(comp->ref_list, k);
+			assert(elt != NULL);
+
 			if(type_is_present(comp->curr_list, elt->item) &&
 			   comp->trans_table[elt->index_table].known)
 			{
-				j = i - 8;
-				byte &= ~(1 << (7 - j));
+				/* element shall not be removed, clear its corresponding bit in
+				   the removal bit mask */
+				dest[counter] &= ~(1 << (7 - (k - 8)));
 			}
 		}
-		dest[counter] = byte;
+		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", dest[counter]);
 		counter++;
-		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", byte);
+		mask_size++;
 	}
 	else
 	{
 		rohc_debugf(3, "no second byte of removal bit mask\n");
 	}
-	size = size_list(comp->curr_list);
 
-	/* insertion mask */
-	byte = 0;
-	for(i = 0; i < size && i < 8; i++)
+	/* part 5: insertion mask */
+	m = size_list(comp->curr_list);
+	assert(m <= 15);
+	dest[counter] = 0;
+	for(k = 0; k < m && k < 8; k++)
 	{
-		elt = get_elt(comp->curr_list, i);
+		elt = get_elt(comp->curr_list, k);
+		assert(elt != NULL);
+
+		/* set bit to 1 in the insertion mask if the list item is not present
+		   in the reference list */
 		if(!type_is_present(comp->ref_list, elt->item) ||
 		   !comp->trans_table[elt->index_table].known)
 		{
-			byte |= 1 << (7 - i);
+			dest[counter] |= 1 << (7 - k);
 		}
 	}
-	dest[counter] = byte;
+	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", dest[counter]);
 	counter++;
-	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", byte);
-	byte = 0;
-	mask_size = 2;
-	if(size > 8)
+	mask_size++;
+
+	/* part 4: insertion mask (second optional byte) */
+	if(m > 8)
 	{
-		for(i = 8; i<size && i < 16; i++)
+		for(k = 8; k < m && k < 16; k++)
 		{
-			elt = get_elt(comp->curr_list, i);
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* set bit to 1 in the insertion mask if the list item is not present
+			   in the reference list */
 			if(!type_is_present(comp->ref_list, elt->item) ||
 			   !comp->trans_table[elt->index_table].known)
 			{
-				j = i - 8;
-				byte |= 1 << (7 - j);
+				dest[counter] |= 1 << (7 - (k - 8));
 			}
 		}
-		mask_size = 4;
-		dest[counter] = byte;
+		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", dest[counter]);
 		counter++;
-		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", byte);
+		mask_size++;
 	}
 	else
 	{
 		rohc_debugf(3, "no second byte of insertion bit mask\n");
 	}
 
+	/* part 6: k XI (= X + Indexes) */
 	/* next bytes: indexes */
-	byte = 0;
-	i = 0;
-	if(!ps) /* XI = 4 bits */
+	if(ps)
 	{
-		rohc_debugf(3, "create 4-bit XI list\n");
+		size_t xi_index = 0;
 
-		elt = get_elt(comp->curr_list, i);
-		while(type_is_present(comp->ref_list, elt->item) &&
-		      comp->trans_table[elt->index_table].known &&
-		      i < size)
+		/* each XI item is stored on 8 bits */
+		rohc_debugf(3, "use 8-bit format for the %d XIs\n", m);
+
+		for(k = 0; k < m; k++)
 		{
-			i++;
-			elt = get_elt(comp->curr_list, i);
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* skip element if it present in the reference list and already known */
+			if(type_is_present(comp->ref_list, elt->item) &&
+			   comp->trans_table[elt->index_table].known)
+			{
+				rohc_debugf(3, "ignore element #%d because it is present in the "
+				            "reference list and already known\n", k);
+				continue;
+			}
+
+			xi_index++;
+
+			dest[counter]  = 0;
+
+			/* set the X bit if item is not already known */
+			if(!comp->trans_table[elt->index_table].known)
+				dest[counter] |= 1 << 7;
+			/* 7-bit Index */
+			dest[counter] |= (elt->index_table & 0x7f);
+
+			rohc_debugf(3, "add 8-bit XI #%d = 0x%x\n", k, dest[counter]);
+
+			/* byte is full, write to next one next time */
+			counter++;
+		}
+	}
+	else
+	{
+		size_t xi_index = 0;
+
+		/* each XI item is stored on 4 bits */
+		rohc_debugf(3, "use 4-bit format for the %d XIs\n", m);
+
+		for(k = 0; k < m; k++)
+		{
+			elt = get_elt(comp->curr_list, k);
+			assert(elt != NULL);
+
+			/* skip element if it present in the reference list and already known */
+			if(type_is_present(comp->ref_list, elt->item) &&
+			   comp->trans_table[elt->index_table].known)
+			{
+				rohc_debugf(3, "ignore element #%d because it is present in the "
+				            "reference list and already known\n", k);
+				continue;
+			}
+
+			xi_index++;
+
+			if(xi_index == 1)
+			{
+				/* first XI goes in part 1 */
+
+				/* set the X bit if item is not already known */
+				if(!comp->trans_table[elt->index_table].known)
+					dest[counter - (3 + mask_size)] |= 1 << 3;
+				/* 3-bit Index */
+				dest[counter - (3 + mask_size)] |= elt->index_table & 0x07;
+
+				rohc_debugf(3, "add 4-bit XI #%d in part 1 = 0x%x\n", k,
+			            (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
+			}
+			else
+			{
+				/* next XIs goes in part 6 */
+				dest[counter] = 0;
+
+				/* odd or even 4-bit XI ? */
+				if((xi_index % 2) == 0)
+				{
+					/* use MSB part of the byte */
+
+					/* set the X bit if item is not already known */
+					if(!comp->trans_table[elt->index_table].known)
+						dest[counter] |= 1 << 7;
+					/* 3-bit Index */
+					dest[counter] |= (elt->index_table & 0x07) << 4;
+
+					rohc_debugf(3, "add 4-bit XI #%d in MSB = 0x%x\n", k,
+				            (dest[counter] & 0xf0) >> 4);
+				}
+				else
+				{
+					/* use LSB part of the byte */
+
+					/* set the X bit if item is not already known */
+					if(!comp->trans_table[elt->index_table].known)
+						dest[counter] |= 1 << 3;
+					/* 3-bit Index */
+					dest[counter] |= (elt->index_table & 0x07) << 0;
+
+					rohc_debugf(3, "add 4-bit XI #%d in LSB = 0x%x\n", k + 1,
+					            dest[counter] & 0xf0);
+
+					/* byte is full, write to next one next time */
+					counter++;
+				}
+			}
 		}
 
-		/* first index in first byte */
+		/* is padding required? */
+		if(xi_index > 1 && (xi_index % 2) == 0)
+		{
+			/* zero the padding bits */
+			rohc_debugf(3, "add 4-bit padding in LSB\n");
+			dest[counter] &= 0xf0;
+
+			/* byte is full, write to next one next time */
+			counter++;
+		}
+	}
+
+	/* part 7: n items (only unknown items) */
+	for(k = 0; k < m; k++)
+	{
+		elt = get_elt(comp->curr_list, k);
+		assert(elt != NULL);
+
+		/* skip element if it present in the reference list */
+		if(type_is_present(comp->ref_list, elt->item) &&
+		   comp->trans_table[elt->index_table].known)
+		{
+			rohc_debugf(3, "ignore element #%d because it is present in the "
+			            "reference list and already known\n", k);
+			continue;
+		}
+
+		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			dest[counter - (3 + mask_size)] |= 1 << 3;
-		}
-		dest[counter - (3 + mask_size)] |= (elt->index_table & 0x07);
-		rohc_debugf(3, "update first byte with first 4-bit XI (X = %d, "
-		            "index = %d)\n",
-		            GET_REAL(GET_BIT_3(dest + counter - (3 + mask_size))),
-		            GET_BIT_0_2(dest + counter - (3 + mask_size)));
-		i++;
-
-		/* next indexes */
-		for(j = i; j < size; j++)
-		{
-			elt = get_elt(comp->curr_list, j);
-			while(elt != NULL &&
-			      type_is_present(comp->ref_list, elt->item) &&
-			      comp->trans_table[elt->index_table].known &&
-			      j < size)
-			{
-				j++;
-				elt = get_elt(comp->curr_list, j);
-			}
-			if(elt != NULL)
-			{
-				if(!comp->trans_table[elt->index_table].known)
-				{
-					byte |= 1 << 7;
-				}
-				byte |= (elt->index_table & 0x07)<< 4;
-				j++;
-				elt = get_elt(comp->curr_list, j);
-				if(elt != NULL)
-				{
-					while(elt != NULL &&
-					      type_is_present(comp->ref_list, elt->item) &&
-					      comp->trans_table[elt->index_table].known &&
-					      j < size)
-					{
-						j++;
-						elt = get_elt(comp->curr_list, j);
-					}
-					if(elt != NULL)
-					{
-						if(!comp->trans_table[elt->index_table].known)
-						{
-							byte |= 1<< 3;
-						}
-						byte |= (elt->index_table & 0x07);
-					}
-				}
-				dest[counter] = byte;
-				counter++;
-				rohc_debugf(3, "add 2 XI elements = 0x%02x\n", byte);
-				byte = 0;
-			}
-		}
-	}
-	else /* XI = 8 bits */
-	{
-		rohc_debugf(3, "create 8-bit XI list\n");
-
-		for(i = 0; i < size; i++)
-		{
-			elt = get_elt(comp->curr_list, i);
-			while(elt != NULL &&
-			      type_is_present(comp->ref_list, elt->item) &&
-			      comp->trans_table[elt->index_table].known &&
-			      i < size)
-			{
-				i++;
-				elt = get_elt(comp->curr_list, i);
-			}
-			if(elt != NULL)
-			{
-				if(!comp->trans_table[elt->index_table].known)
-					byte |= 1 << 7;
-				byte |= (elt->index_table & 0x7f);
-				dest[counter] = byte;
-				counter++;
-				rohc_debugf(3, "add XI element = 0x%02x\n", byte);
-				byte = 0;
-				i++;
-			}
-		}
-	}
-
-	/* next bytes: items */
-	for(i = 0; i < size; i++)
-	{
-		elt = get_elt(comp->curr_list, i);
-		while(elt != NULL &&
-		      type_is_present(comp->ref_list, elt->item) &&
-		      comp->trans_table[elt->index_table].known &&
-		      i < size)
-		{
-			i++;
-			elt = get_elt(comp->curr_list, i);
-		}
-		if(elt != NULL)
-		{
-			if(!comp->trans_table[elt->index_table].known)
-			{
-				length = elt->item->length;
-				rohc_debugf(3, "add %d-byte item\n", length);
-				for(j = 0; j < length; j++)
-				{
-					byte |= (elt->item->data[j] & 0xff);
-					dest[counter] = byte;
-					counter++;
-					byte = 0;
-				}
-			}
+			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			            elt->item->length, k);
+			assert(elt->item->length > 0);
+			memcpy(dest + counter, elt->item->data, elt->item->length);
+			counter += elt->item->length;
 		}
 	}
 
@@ -2143,6 +2478,8 @@ int ipv6_compare(const unsigned char *ext,
                  const int size,
                  const int index_table)
 {
+	/* do not compare the Next Header field */
+	assert(size > 2);
 	return memcmp(ext + 2, comp->based_table[index_table].data + 2, size - 2);
 }
 
@@ -3137,12 +3474,13 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 		default:
 		{
 			/* impossible value */
-			rohc_debugf(2, "unknown state (%d), cannot determine packet type\n",
-			            context->state);
-			goto error;
+			rohc_assert(false, error, "unknown state (%d), cannot determine "
+			            "packet type", context->state);
 		}
 	}
 
+	/* IPv6 extension headers: do we need to change the packet type to send
+	   the compressed list? */
 	if(packet != PACKET_IR && packet != PACKET_IR_DYN)
 	{
 		if(nr_of_ip_hdr == 1 && g_context->ip_flags.version == IPV6)
@@ -3156,10 +3494,12 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			{
 				g_context->ip_flags.info.v6.ext_comp->update_done = 0;
 				g_context->ip_flags.info.v6.ext_comp->list_compress =
-					c_algo_list_compress(g_context->ip_flags.info.v6.ext_comp, ip);
+					rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
 				if(g_context->ip_flags.info.v6.ext_comp->list_compress)
 				{
 					/* there are some modifications */
+					rohc_debugf(2, "change packet type to IR-DYN because of IPv6 "
+					            "extension headers\n");
 					packet = PACKET_IR_DYN;
 				}
 			}
@@ -3183,10 +3523,12 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 				{
 					g_context->ip_flags.info.v6.ext_comp->update_done = 0;
 					g_context->ip_flags.info.v6.ext_comp->list_compress =
-						c_algo_list_compress(g_context->ip_flags.info.v6.ext_comp, ip);
+						rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
 					if(g_context->ip_flags.info.v6.ext_comp->list_compress)
 					{
 						/* there are some modifications */
+						rohc_debugf(2, "change packet type to IR-DYN because of "
+						            "IPv6 extension headers\n");
 						packet = PACKET_IR_DYN;
 					}
 				}
@@ -3202,10 +3544,12 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 				{
 					g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
 					g_context->ip2_flags.info.v6.ext_comp->list_compress =
-						c_algo_list_compress(g_context->ip2_flags.info.v6.ext_comp, ip2);
+						rohc_list_decide_ipv6_compression(g_context->ip2_flags.info.v6.ext_comp, ip2);
 					if(g_context->ip2_flags.info.v6.ext_comp->list_compress)
 					{
 						/* there are some modifications */
+						rohc_debugf(2, "change packet type to IR-DYN because of "
+						            "IPv6 extension headers\n");
 						packet = PACKET_IR_DYN;
 					}
 				}
@@ -3809,7 +4153,8 @@ int code_ipv6_static_part(const struct c_context *context,
  * @param ip          The IP header the dynamic part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @return            The new position in the rohc-packet-under-build buffer,
+ *                    -1 in case of error
  */
 int code_generic_dynamic_part(const struct c_context *context,
                               struct ip_header_info *const header_info,
@@ -3941,7 +4286,8 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
  * @param ip          The IPv6 header the dynamic part is built for
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer
+ * @return            The new position in the rohc-packet-under-build buffer,
+ *                    -1 in case of error
  */
 int code_ipv6_dynamic_part(const struct c_context *context,
                            struct ip_header_info *const header_info,
@@ -3951,7 +4297,6 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 {
 	unsigned int tos;
 	unsigned int ttl;
-	unsigned char byte;
 	int counter_org;
 	int size;
 	int size_dyn_ip6_part = 0;
@@ -3972,39 +4317,52 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	header_info->ttl_count++;
 	size_dyn_ip6_part++;
 
-	/* part 3 */
+	/* part 3: Generic extension header list */
 	if(!header_info->info.v6.ext_comp->update_done)
 	{
-		rohc_debugf(3,"update not done\n");
+		rohc_debugf(3, "extension header list: update not done\n");
 		header_info->info.v6.ext_comp->list_compress =
-		c_algo_list_compress(header_info->info.v6.ext_comp, ip);
+			rohc_list_decide_ipv6_compression(header_info->info.v6.ext_comp, ip);
 	}
 	if(header_info->info.v6.ext_comp->list_compress < 0)
 	{
-		rohc_debugf(0, "error with extension\n");
-		counter = -1;
+		rohc_debugf(0, "extension header list: error with extension\n");
+		goto error;
 	}
 	else if(header_info->info.v6.ext_comp->list_compress)
 	{
-		rohc_debugf(3, "extension to encode\n");
+		rohc_debugf(3, "extension header list: there is an extension to encode\n");
 		size = size_list(header_info->info.v6.ext_comp->curr_list);
-		counter = encode_list(header_info->info.v6.ext_comp, dest, counter, 0, size);
+		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
+		                           0, size);
+		if(counter < 0)
+		{
+			rohc_debugf(0, "failed to encode list\n");
+			goto error;
+		}
 		size_dyn_ip6_part += counter - 2;
 		size_dyn_ip6_part -= counter_org;
-		rohc_debugf(3, "compressed list size = %d\n", size_dyn_ip6_part - 2);
+		rohc_debugf(3, "extension header list: compressed list size = %d\n",
+		            size_dyn_ip6_part - 2);
 		header_info->info.v6.ext_comp->update_done = 0;
 	}
 	else if(header_info->info.v6.ext_comp->islist)
 	{
 		size = size_list(header_info->info.v6.ext_comp->ref_list);
-		rohc_debugf(3, "same extension than previously\n");
-		counter = encode_list(header_info->info.v6.ext_comp, dest, counter, 0, size);
+		rohc_debugf(3, "extension header list: same extension than previously\n");
+		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
+		                           0, size);
+		if(counter < 0)
+		{
+			rohc_debugf(0, "failed to encode list\n");
+			goto error;
+		}
 	}
 	else /* no extension */
 	{
-		rohc_debugf(3, "no extension to encode\n");
-		byte = 0;
-		dest[counter] = byte;
+		/* no extension, write a zero byte in packet */
+		rohc_debugf(3, "extension header list: no extension to encode\n");
+		dest[counter] = 0x00;
 		counter++;
 		size_dyn_ip6_part++;
 	}
@@ -4013,6 +4371,9 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	            tos, ttl, size_dyn_ip6_part);
 
 	return counter;
+
+error:
+	return -1;
 }
 
 
