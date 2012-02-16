@@ -996,9 +996,21 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 
 #if ROHC_DEBUG_LEVEL >= 3
 	/* print current list before update */
-	rohc_debugf(3, "current list before update:\n");
+	rohc_debugf(3, "current list (gen_id = %d) before update:\n",
+	            comp->curr_list->gen_id);
 	i = 0;
 	while((elt = get_elt(comp->curr_list, i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+
+	/* print reference list before update */
+	rohc_debugf(3, "reference list (gen_id = %d) before update:\n",
+	            comp->ref_list->gen_id);
+	i = 0;
+	while((elt = get_elt(comp->ref_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1013,8 +1025,9 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	if(comp->counter == (L + 1))
 	{
 		rohc_debugf(3, "replace the reference list (gen_id = %d) by current "
-		            "list (gen_id = %d)\n", comp->ref_list->gen_id,
-		            comp->curr_list->gen_id);
+		            "list (gen_id = %d) because it was transmitted more than "
+		            "L = %d times\n", comp->ref_list->gen_id,
+		            comp->curr_list->gen_id, L);
 
 		empty_list(comp->ref_list);
 		for(j = 0; j < size; j++)
@@ -1039,7 +1052,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	else
 	{
 		/* there is one extension or more */
-		rohc_debugf(3, "there is at least one IPv6 extension\n");
+		rohc_debugf(3, "there is at least one IPv6 extension in packet\n");
 		comp->islist = 1;
 
 		/* add new extensions and update modified extensions in current list */
@@ -1115,9 +1128,21 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 
 #if ROHC_DEBUG_LEVEL >= 3
 	/* print current list after update */
-	rohc_debugf(3, "current list after update:\n");
+	rohc_debugf(3, "current list (gen_id = %d) after update:\n",
+	            comp->curr_list->gen_id);
 	i = 0;
 	while((elt = get_elt(comp->curr_list, i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+
+	/* print reference list after update */
+	rohc_debugf(3, "reference list (gen_id = %d) before update:\n",
+	            comp->ref_list->gen_id);
+	i = 0;
+	while((elt = get_elt(comp->ref_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1137,9 +1162,9 @@ error:
 /**
  * @brief Create the current list
  *
- * @param index        The number of the extension
  * @param comp         The list compressor which is specific to the extension type
  * @param ext          The extension
+ * @param index        The number of the extension
  * @param index_table  The index of the item in the based table
  * @return             1 if successful, 0 otherwise
  */
@@ -1800,7 +1825,17 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 	/* part 4: insertion mask (first byte) */
 	dest[counter] = 0;
-	for(k = 0; k < m && k < 8; k++)
+	if(m <= 7)
+	{
+		/* 7-bit mask is enough, so set first bit to 0 */
+		dest[counter] &= ~(1 << 7);
+	}
+	else
+	{
+		/* 15-bit mask is required, so set first bit to 1 */
+		dest[counter] |= 1 << 7;
+	}
+	for(k = 0; k < m && k < 7; k++)
 	{
 		elt = get_elt(comp->curr_list, k);
 		assert(elt != NULL);
@@ -1809,7 +1844,7 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 		   in the reference list */
 		if(!type_is_present(comp->ref_list, elt->item))
 		{
-			dest[counter] |= 1 << (7 - k);
+			dest[counter] |= 1 << (6 - k);
 		}
 	}
 	mask_size = 1;
@@ -1817,9 +1852,9 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 	counter++;
 
 	/* part 4: insertion mask (second optional byte) */
-	if(m > 8)
+	if(m > 7)
 	{
-		for(k = 8; k < m && k < 16; k++)
+		for(k = 7; k < m && k < 15; k++)
 		{
 			elt = get_elt(comp->curr_list, k);
 			assert(elt != NULL);
@@ -1828,7 +1863,7 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 			   in the reference list */
 			if(!type_is_present(comp->ref_list, elt->item))
 			{
-				dest[counter] |= 1 << (7 - (k - 8));
+				dest[counter] |= 1 << (7 - (k - 7));
 			}
 		}
 		mask_size = 2;
@@ -2082,7 +2117,17 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
 
 	/* part 4: removal bit mask (first byte) */
 	dest[counter] = 0xff;
-	for(k = 0; k < size_ref_list && k < 8; k++)
+	if(size_ref_list <= 7)
+	{
+		/* 7-bit mask is enough, so set first bit to 0 */
+		dest[counter] &= ~(1 << 7);
+	}
+	else
+	{
+		/* 15-bit mask is required, so set first bit to 1 */
+		dest[counter] |= 1 << 7;
+	}
+	for(k = 0; k < size_ref_list && k < 7; k++)
 	{
 		elt = get_elt(comp->ref_list, k);
 		assert(elt != NULL);
@@ -2091,17 +2136,22 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
 		{
 			/* element shall not be removed, clear its corresponding bit in the
 			   removal bit mask */
-			dest[counter] &= ~(1 << (7 - k));
+			rohc_debugf(3, "mark element #%d of list as 'not to remove'\n", k);
+			dest[counter] &= ~(1 << (6 - k));
+		}
+		else
+		{
+			rohc_debugf(3, "mark element #%d of list as 'to remove'\n", k);
 		}
 	}
 	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", dest[counter]);
 	counter++;
 
 	/* part 4: removal bit mask (second optional byte) */
-	if(size_ref_list > 8)
+	if(size_ref_list > 7)
 	{
 		dest[counter] = 0xff;
-		for(k = 8; k < size_ref_list && k < 16; k++)
+		for(k = 7; k < size_ref_list && k < 15; k++)
 		{
 			elt = get_elt(comp->ref_list, k);
 			assert(elt != NULL);
@@ -2111,7 +2161,12 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
 			{
 				/* element shall not be removed, clear its corresponding bit in
 				   the removal bit mask */
-				dest[counter] &= ~(1 << (7 - (k - 8)));
+				rohc_debugf(3, "mark element #%d of list as 'not to remove'\n", k);
+				dest[counter] &= ~(1 << (7 - (k - 7)));
+			}
+			else
+			{
+				rohc_debugf(3, "mark element #%d of list as 'to remove'\n", k);
 			}
 		}
 		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", dest[counter]);
@@ -2262,7 +2317,17 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	size_ref_list = size_list(comp->ref_list);
 	assert(size_ref_list <= 15);
 	dest[counter] = 0xff;
-	for(k = 0; k < size_ref_list && k < 8; k++)
+	if(size_ref_list <= 7)
+	{
+		/* 7-bit mask is enough, so set first bit to 0 */
+		dest[counter] &= ~(1 << 7);
+	}
+	else
+	{
+		/* 15-bit mask is required, so set first bit to 1 */
+		dest[counter] |= 1 << 7;
+	}
+	for(k = 0; k < size_ref_list && k < 7; k++)
 	{
 		elt = get_elt(comp->ref_list, k);
 		assert(elt != NULL);
@@ -2272,7 +2337,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 		{
 			/* element shall not be removed, clear its corresponding bit in the
 			   removal bit mask */
-			dest[counter] &= ~(1 << (7 - k));
+			dest[counter] &= ~(1 << (6 - k));
 		}
 	}
 	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", dest[counter]);
@@ -2280,10 +2345,10 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	mask_size++;
 
 	/* part 4: removal bit mask (second optional byte) */
-	if(size_ref_list > 8)
+	if(size_ref_list > 7)
 	{
 		dest[counter] = 0xff;
-		for(k = 8; k < size_ref_list && k < 16; k++)
+		for(k = 7; k < size_ref_list && k < 15; k++)
 		{
 			elt = get_elt(comp->ref_list, k);
 			assert(elt != NULL);
@@ -2293,7 +2358,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 			{
 				/* element shall not be removed, clear its corresponding bit in
 				   the removal bit mask */
-				dest[counter] &= ~(1 << (7 - (k - 8)));
+				dest[counter] &= ~(1 << (7 - (k - 7)));
 			}
 		}
 		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", dest[counter]);
@@ -2309,7 +2374,17 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	m = size_list(comp->curr_list);
 	assert(m <= 15);
 	dest[counter] = 0;
-	for(k = 0; k < m && k < 8; k++)
+	if(m <= 7)
+	{
+		/* 7-bit mask is enough, so set first bit to 0 */
+		dest[counter] &= ~(1 << 7);
+	}
+	else
+	{
+		/* 15-bit mask is required, so set first bit to 1 */
+		dest[counter] |= 1 << 7;
+	}
+	for(k = 0; k < m && k < 7; k++)
 	{
 		elt = get_elt(comp->curr_list, k);
 		assert(elt != NULL);
@@ -2319,7 +2394,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 		if(!type_is_present(comp->ref_list, elt->item) ||
 		   !comp->trans_table[elt->index_table].known)
 		{
-			dest[counter] |= 1 << (7 - k);
+			dest[counter] |= 1 << (6 - k);
 		}
 	}
 	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", dest[counter]);
@@ -2327,9 +2402,9 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	mask_size++;
 
 	/* part 4: insertion mask (second optional byte) */
-	if(m > 8)
+	if(m > 7)
 	{
-		for(k = 8; k < m && k < 16; k++)
+		for(k = 7; k < m && k < 15; k++)
 		{
 			elt = get_elt(comp->curr_list, k);
 			assert(elt != NULL);
@@ -2339,7 +2414,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 			if(!type_is_present(comp->ref_list, elt->item) ||
 			   !comp->trans_table[elt->index_table].known)
 			{
-				dest[counter] |= 1 << (7 - (k - 8));
+				dest[counter] |= 1 << (7 - (k - 7));
 			}
 		}
 		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", dest[counter]);

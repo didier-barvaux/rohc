@@ -193,6 +193,39 @@ int decode_inner_header_flags(struct d_context *context,
                               unsigned int length,
                               struct d_generic_changes *info);
 
+
+static int rohc_list_decode(struct list_decomp *const decomp,
+                            const unsigned char *packet,
+                            size_t packet_len);
+
+static int rohc_list_decode_type_0(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps,
+                                   const int m);
+
+static int rohc_list_decode_type_1(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps,
+                                   const int xi_1);
+
+static int rohc_list_decode_type_2(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps);
+
+static int rohc_list_decode_type_3(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps,
+                                   const int xi_1);
+
+
 unsigned int build_uncompressed_ip(struct d_generic_changes *active,
                                    unsigned char *dest,
                                    unsigned int payload_size, 
@@ -225,15 +258,20 @@ int check_ip6_index(struct list_decomp * decomp, int index);
 
 static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp);
 
-int encode_ip6_extension(struct d_generic_changes * active,
-			 struct list_decomp * decomp, 
-			  unsigned char *dest);
-void create_ip6_item(const unsigned char *data, int length,int index, 
-		     struct list_decomp * decomp);
+static int rohc_build_ip6_extension(struct d_generic_changes *active,
+                                    struct list_decomp *decomp,
+                                    unsigned char *dest);
+
+static bool create_ip6_item(const unsigned char *data,
+                            int length,
+                            int index,
+                            struct list_decomp *decomp);
 
 void ip6_d_init_table(struct list_decomp * decomp);
 
-int get_ip6_ext_size(const unsigned char * ext);
+static int get_ip6_ext_size(const unsigned char *data, const size_t data_len);
+
+
 
 /**
  * @brief Create the generic decompression context.
@@ -306,12 +344,12 @@ void * d_generic_create(void)
 	bzero(context->list_decomp2, sizeof(struct list_decomp));
 	
 	context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
-	context->list_decomp1->encode_extension = encode_ip6_extension;
+	context->list_decomp1->encode_extension = rohc_build_ip6_extension;
 	context->list_decomp1->check_index = check_ip6_index;
 	context->list_decomp1->create_item = create_ip6_item;
 	context->list_decomp1->get_ext_size = get_ip6_ext_size;
 	context->list_decomp2->free_table = list_decomp_ipv6_destroy_table;
-	context->list_decomp2->encode_extension = encode_ip6_extension;
+	context->list_decomp2->encode_extension = rohc_build_ip6_extension;
 	context->list_decomp2->check_index = check_ip6_index;
 	context->list_decomp2->create_item = create_ip6_item;
 	context->list_decomp2->get_ext_size = get_ip6_ext_size;
@@ -377,8 +415,6 @@ void d_generic_destroy(void *context)
 		if(c->list_decomp1 != NULL)
 		{
 			c->list_decomp1->free_table(c->list_decomp1);
-			if(c->list_decomp1->temp_list != NULL)
-				destroy_list( c->list_decomp1->temp_list);
 			for(i = 0; i < LIST_COMP_WINDOW; i++)
 			{
 				if(c->list_decomp1->list_table[i] != NULL)
@@ -389,8 +425,6 @@ void d_generic_destroy(void *context)
 		if(c->list_decomp2 != NULL)
 		{
 			c->list_decomp2->free_table(c->list_decomp2);
-			if(c->list_decomp2->temp_list != NULL)
-				destroy_list( c->list_decomp2->temp_list);
 			for(i = 0; i < LIST_COMP_WINDOW; i++)
 			{
 				if(c->list_decomp2->list_table[i] != NULL)
@@ -461,72 +495,129 @@ static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 		free(decomp->based_table[3].header.ahhdr);
 }
 
-/**
- * @brief Algorithm of list decompression
- * @param decomp The list decompressor 
- * @param packet The ROHC packet to decompress
- * @return the size of the compressed list
- */
 
-int d_algo_list_decompress(struct list_decomp * decomp, const unsigned char *packet)
+/**
+ * @brief Decompress the compressed list in given packet
+ *
+ * @param decomp  The list decompressor 
+ * @param packet  The ROHC packet to decompress
+ * @return        The size of the compressed list in packet in case of success,
+ *                -1 in case of failure
+ */
+static int rohc_list_decode(struct list_decomp *decomp,
+                            const unsigned char *packet,
+                            size_t packet_len)
 {
 	int et; // encoding type
 	int ps; 
 	int gen_id;
-	int ref_id;
-	int size = 0;
 	int m;
-	unsigned char byte = *packet & 0xff;
+	uint8_t xi_1;
+	int ret;
+	size_t read_length = 0;
 
-	if(byte == 0)
+	assert(decomp != NULL);
+	assert(packet != NULL);
+
+	/* check for minimal size (1 byte) */
+	if(packet_len < 1)
 	{
-		rohc_debugf(3, "no extension list \n");
+		rohc_debugf(0, "packet too small for compressed list (only %zd bytes "
+		            "while at least 1 byte is required)\n", packet_len);
+		goto error;
+	}
+
+	if(GET_BIT_0_7(packet) == 0)
+	{
+		rohc_debugf(3, "no extension list found\n");
 		decomp->list_decomp = 0;
-		goto end;
+		packet++;
+		read_length++;
+		packet_len--;
 	}
 	else
+	{
 		decomp->list_decomp = 1;
-		
-	m = GET_BIT_0_3(packet);
-	et = GET_BIT_6_7(packet); 
-	ps = GET_BIT_4(packet);
-	packet ++;
-	size ++;
-	rohc_debugf(3, "ET = %d, PS = %d, m = %d\n", m, et, ps);
 
-	gen_id = *packet & 0xff;
-	packet ++;
-	size ++;
-	rohc_debugf(3, "gen_id = 0x%02x\n", gen_id);
+		/* is there enough data in packet for the ET/PS/m/XI1 and gen_id fields ? */
+		if(packet_len < 2)
+		{
+			rohc_debugf(0, "packet too small for compressed list (only %zd bytes "
+			            "while at least 2 bytes are required)\n", packet_len);
+			goto error;
+		}
 
-	if (et == 0)
-	{
-		size += decode_type_0(decomp, packet, gen_id, ps, m);
+		/* parse ET, PS, and m/XI1 fields */
+		m = GET_BIT_0_3(packet);
+		xi_1 = m; /* m and XI 1 are the same field */
+		et = GET_BIT_6_7(packet); 
+		ps = GET_BIT_4(packet);
+		packet++;
+		read_length++;
+		packet_len--;
+		rohc_debugf(3, "ET = %d, PS = %d, m = XI 1 = %d\n", m, et, ps);
+
+		/* parse gen_id */
+		gen_id = GET_BIT_0_7(packet);
+		packet++;
+		read_length++;
+		packet_len--;
+		rohc_debugf(3, "gen_id = 0x%02x\n", gen_id);
+
+		/* decode the compressed list according to its type */
+		switch(et)
+		{
+			case 0:
+				ret = rohc_list_decode_type_0(decomp, packet, packet_len,
+				                              gen_id, ps, m);
+				break;
+			case 1:
+				ret = rohc_list_decode_type_1(decomp, packet, packet_len,
+				                              gen_id, ps, xi_1);
+				break;
+			case 2:
+				ret = rohc_list_decode_type_2(decomp, packet, packet_len,
+				                              gen_id, ps);
+				break;
+			case 3:
+				ret = rohc_list_decode_type_3(decomp, packet, packet_len,
+				                              gen_id, ps, xi_1);
+				break;
+			default:
+				/* should not happen */
+				rohc_debugf(0, "unknown type of compressed list (ET = %u)\n", et);
+				assert(0);
+				goto error;
+		}
+		if(ret < 0)
+		{
+			rohc_debugf(0, "failed to decode compressed list type %d\n", et);
+			goto error;
+		}
+		if(ret > packet_len)
+		{
+			rohc_debugf(0, "too many bytes read: %zd bytes read in a %zd-byte "
+			            "packet\n", read_length, packet_len);
+			goto error;
+		}
+		read_length += ret;
+		packet_len -= ret;
 	}
-	else 
-	{
-		ref_id = *packet & 0xff;
-		packet ++;
-		size ++;
-		rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
 
-		if (et == 1)
-			size += decode_type_1(decomp, packet, gen_id, ps, m, ref_id);
-		else if(et == 2)
-			size += decode_type_2(decomp, packet, gen_id, ps, ref_id);
-		else
-			size += decode_type_3(decomp, packet, gen_id, ps, m, ref_id);	
-	}
-	return size;
-end:
-	return 1;
+	return read_length;
+
+error:
+	return -1;
 }
+
 
 /**
  * @brief Check if the gen_id is present in list table
  * @param decomp The list decompressor
  * @param gen_id The specified id
  * @return 1 if successful, 0 else
+ *
+ * @todo rework this function, could be shorter!
  */
 int check_id(struct list_decomp * decomp, int gen_id)
 {
@@ -551,6 +642,8 @@ int check_id(struct list_decomp * decomp, int gen_id)
 	else
 		return 0;
 }
+
+
 /**
  * @brief Check if the index is correct in IPv6 table
  *
@@ -570,15 +663,34 @@ int check_ip6_index(struct list_decomp * decomp, int index)
 error:
 	return 0;
 }
+
+
 /**
  * @brief Create an IPv6 item extension list
- * @param data The data in the item
- * @param length The length of the item
- * @param index The index of the item in based table
- * @param decomp The list decompressor
+ *
+ * @param data    The data in the item
+ * @param length  The length of the item
+ * @param index   The index of the item in based table
+ * @param decomp  The list decompressor
+ * @return        true in case of success, false otherwise0
 */
-void create_ip6_item(const unsigned char *data,int length,int index, struct list_decomp * decomp)
+static bool create_ip6_item(const unsigned char *data,
+                            int length,
+                            int index,
+                            struct list_decomp *decomp)
 {
+	assert(decomp != NULL);
+	assert(index >= 0 && index < MAX_ITEM);
+
+	/* check minimal length for Next Header and Length fields */
+	if(length < 2)
+	{
+		rohc_debugf(0, "packet too small for Next Header and Length fields: "
+		            "only %d bytes available while at least 2 bytes are "
+		            "required\n", length);
+		goto error;
+	}
+
 	decomp->based_table[index].length = length;
 	decomp->trans_table[index].known = 1;
 	switch (index)
@@ -600,45 +712,65 @@ void create_ip6_item(const unsigned char *data,int length,int index, struct list
 			decomp->based_table[index].header.ahhdr->ip6ah_len = * (data + 1);
 			break;
 		default:
-			rohc_debugf(0, "no item defined for IPv6 with this index\n");
-			break;
+			rohc_debugf(0, "no item defined for IPv6 with index %d\n", index);
+			goto error;
 	}
+
 	if(decomp->based_table[index].data != NULL)
 		zfree(decomp->based_table[index].data);
+
 	decomp->based_table[index].data = malloc(length);
-	if(decomp->based_table[index].data != NULL)
-		memcpy(decomp->based_table[index].data, data, length);	
+	if(decomp->based_table[index].data == NULL)
+	{
+		rohc_debugf(0, "failed to allocate memory for new IPv6 item\n");
+		goto error;
+	}
+	memcpy(decomp->based_table[index].data, data, length);
+
+	return true;
+
+error:
+	return false;
 }
+
 
 /**
  * @brief Decode an extension list type 0
- * @param decomp The list decompressor
- * @param packet The ROHC packet to decompress
- * @param gen_id The id of the current list
- * @param ps The ps field
- * @param m The m fiel
- * @return the size of the compressed list
+ *
+ * @param decomp      The list decompressor
+ * @param packet      The ROHC packet to decompress
+ * @param packet_len  The length (in bytes) of the packet to decompress
+ * @param gen_id      The id of the current list
+ * @param ps          The ps field
+ * @param m           The m field
+ * @return            \li In case of success, the number of bytes read in the given
+ *                        packet, ie. the length of the compressed list
+ *                    \li -1 in case of failure
  */
-int decode_type_0(struct list_decomp * decomp, const unsigned char * packet, int gen_id, int ps, int m)
+static int rohc_list_decode_type_0(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps,
+                                   const int m)
 {
-	int i;
-	//struct c_list * list = NULL;
-	int index;
-	int X;
-	int size = 0;
-	int length;
-	const unsigned char * data;
-	int index_size = 0;
-	int new_list = !check_id(decomp, gen_id);
+	size_t packet_read_length = 0;
+	size_t xi_length; /* the length (in bytes) of the XI list */
+	unsigned int xi_index; /* the index of the current XI in XI list */
+	size_t item_read_length; /* the amount of bytes currently read in the item field */
+	int new_list;
+
+	/* is the transmitted list a new one (ie. unknown gen_id) ? */
+	new_list = !check_id(decomp, gen_id);
+
 	if(new_list)//new list
 	{
-		rohc_debugf(3, "creation of a new list \n");
+		rohc_debugf(3, "creation of a new list\n");
 		decomp->counter_list++;
 		decomp->counter = 0;
 		decomp->ref_ok = 0;
 		if(decomp->counter_list >= LIST_COMP_WINDOW)
 			decomp->counter_list = 0;
-		//list = decomp->list_table[decomp->counter];
 		if(decomp->list_table[decomp->counter_list]!= NULL )
 		{
 			empty_list(decomp->list_table[decomp->counter_list]);
@@ -666,136 +798,303 @@ int decode_type_0(struct list_decomp * decomp, const unsigned char * packet, int
 			decomp->ref_ok = 1;
 		}
 	}
-	rohc_debugf(3, "new value of decompressor list counter: %d \n", decomp->counter);
-	if(!ps && m % 2 == 0)//assessment of the index list size
-		index_size = m/2;
-	else if(!ps && m % 2 != 0)
-		index_size = (m+1)/2;
-	else if(ps)
-		index_size = m;
-	// creation of the list
-	for(i = 0; i < m ; i++)
+	rohc_debugf(3, "new value of decompressor list counter: %d\n", decomp->counter);
+
+	/* determine the length (in bytes) of the XI list */
+	if(!ps)
 	{
-		rohc_debugf(3, "value of m: %d and ps: %d \n", m, ps);
+		/* 4-bit XIs */
+		if((m % 2) == 0)
+		{
+			/* even number of XI fields */
+			xi_length = m / 2;
+		}
+		else
+		{
+			/* odd number of XI fields, there are 4 bits of padding */
+			xi_length = (m + 1) / 2;
+		}
+	}
+	else
+	{
+		/* 8-bit XIs */
+		xi_length = m;
+	}
+
+	/* is there enough room in packet for all the XI list ? */
+	if(packet_len < xi_length)
+	{
+		rohc_debugf(0, "packet too small for m = %d XI items (only %zd bytes "
+		            "while at least %zd bytes are required)\n", m, packet_len,
+		            xi_length);
+		goto error;
+	}
+
+	/* creation of the list from the m XI items */
+	item_read_length = 0;
+	for(xi_index = 0; xi_index < m; xi_index++)
+	{
+		unsigned int xi_x_value; /* the value of the X field in one XI field */
+		unsigned int xi_index_value; /* the value of the Index field in one XI field */
+
 		if(!ps)
 		{
-			X = GET_BIT_7(packet + i/2);
-			index =  GET_BIT_4_6(packet);
-			if (X)
+			/* 4-bit XI */
+			if((xi_index % 2) == 0)
 			{
-				rohc_debugf(3, "reception of a new item \n");
-				length = decomp->get_ext_size(packet + index_size + size);
-				if(new_list)
-				{
-					data = packet + index_size + size;
-					decomp->create_item(data, length, index, decomp);
-				}
-				size += length;
+				/* 4-bit XI is stored in MSB */
+				xi_x_value = GET_BIT_7(packet + xi_index / 2);
+				xi_index_value = GET_BIT_4_6(packet);
 			}
 			else
 			{
-				if(!decomp->trans_table[index].known)
-					goto error;
+				/* 4-bit XI is stored in LSB */
+				xi_x_value = GET_BIT_3(packet + xi_index / 2);
+				xi_index_value = GET_BIT_0_2(packet);
 			}
-			if(new_list)
+			if(!decomp->check_index(decomp, xi_index_value))
 			{
-				if(!insert_elt(decomp->list_table[decomp->counter_list], &(decomp->based_table[index]), i, index))
-					goto error;
+				goto error;
 			}
-			i++;
-			X = GET_BIT_3(packet + i/2);
-			index = GET_BIT_0_2(packet + i/2);
-			if (X && i < m)
+
+			/* is there a corresponding item in packet after the XI list ? */
+			if(xi_x_value)
 			{
-				rohc_debugf(3, "reception of a new item \n");
-				length = decomp->get_ext_size(packet + index_size + size);
+				int item_length; /* the length (in bytes) of the item related to XI */
+
+				/* X bit set in XI, so retrieve the related item in ROHC header */
+				item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+				                                   packet_len - xi_length - item_read_length);
+				if(item_length < 0)
+				{
+					rohc_debugf(0, "failed to determine the length of list item "
+					            "referenced by XI #%d\n", xi_index);
+					goto error;
+				}
 				if(new_list)
 				{
-					data = packet + index_size + size;
-					decomp->create_item(data, length, index, decomp);
+					bool is_created =
+						decomp->create_item(packet + xi_length + item_read_length,
+						                    item_length, xi_index_value, decomp);
+					if(!is_created)
+					{
+						rohc_debugf(0, "failed to create new IPv6 item\n");
+						goto error;
+					}
 				}
-				size += length;
+
+				/* skip the item in ROHC header */
+				item_read_length += item_length;
 			}
-			else if (i < m)
+			else
 			{
-				if(!decomp->trans_table[index].known)
+				/* X bit not set in XI, so item is not provided in ROHC header,
+				   it must already be known by decompressor */
+				if(!decomp->trans_table[xi_index_value].known)
+				{
+					rohc_debugf(0, "list item with index #%u referenced by XI "
+					            "#%d is not known yet\n", xi_index_value, xi_index);
 					goto error;
-			}
-			if(new_list && i < m )
-			{
-				if(!insert_elt(decomp->list_table[decomp->counter_list], &(decomp->based_table[index]), i, index))
-					goto error;
+				}
 			}
 		}
 		else
 		{
-			X = GET_BIT_7(packet + i);
-			index = GET_BIT_0_6(packet + i);
-			if (X)
+			/* 8-bit XI */
+			xi_x_value = GET_BIT_7(packet + xi_index);
+			xi_index_value = GET_BIT_0_6(packet + xi_index);
+			if(!decomp->check_index(decomp, xi_index_value))
 			{
-				rohc_debugf(3, "reception of a new item \n");
-				length = decomp->get_ext_size(packet + index_size + size);
+				goto error;
+			}
+
+			/* is there a corresponding item in packet after the XI list ? */
+			if(xi_x_value)
+			{
+				int item_length; /* the length (in bytes) of the item related to XI */
+
+				/* X bit set in XI, so retrieve the related item in ROHC header */
+				item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+				                                   packet_len - xi_length - item_read_length);
+				if(item_length < 0)
+				{
+					rohc_debugf(0, "failed to determine the length of list item "
+					            "referenced by XI #%d\n", xi_index);
+					goto error;
+				}
 				if(new_list)
 				{
-					data = packet + index_size + size;
-					decomp->create_item(data, length, index, decomp);
+					bool is_created =
+						decomp->create_item(packet + xi_length + item_read_length,
+						                    item_length, xi_index_value, decomp);
+					if(!is_created)
+					{
+						rohc_debugf(0, "failed to create new IPv6 item\n");
+						goto error;
+					}
 				}
-				size += length;
+
+				/* skip the item in ROHC header */
+				item_read_length += item_length;
 			}
 			else
 			{
-				if(!decomp->trans_table[index].known)
+				/* X bit not set in XI, so item is not provided in ROHC header,
+				   it must already be known by decompressor */
+				if(!decomp->trans_table[xi_index_value].known)
+				{
+					rohc_debugf(0, "list item with index #%u referenced by XI "
+					            "#%d is not known yet\n", xi_index_value, xi_index);
 					goto error;
+				}
 			}
-			if(new_list)
+		}
+
+		if(new_list)
+		{
+			rohc_debugf(3, "insert a new item of type 0x%02x in list\n",
+			            decomp->based_table[xi_index_value].type);
+			if(!insert_elt(decomp->list_table[decomp->counter_list],
+			               &(decomp->based_table[xi_index_value]),
+			               xi_index, xi_index_value))
 			{
-				if(!insert_elt(decomp->list_table[decomp->counter_list], &(decomp->based_table[index]), i, index))
-					goto error;
+				rohc_debugf(0, "failed to insert new item transmitted in "
+				            "ROHC header at position #%d in new list\n", xi_index);
+				goto error;
 			}
 		}
 	}
-	return (size + index_size);
+
+	/* ensure that in case of an odd number of 4-bit XIs, the 4 bits of padding
+	   are set to 0 */
+	if(ps == 0 && (m % 2) != 0)
+	{
+		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_length - 1);
+		if(xi_padding != 0)
+		{
+			rohc_debugf(0, "sender does not conform to ROHC standards: when an "
+			            "odd number of 4-bit XIs is used, the last 4 bits of the "
+			            "XI list should be set to 0\n, not 0x%x\n", xi_padding);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+			goto error;
+#endif
+		}
+	}
+
+	/* skip the XI list and the item list */
+	packet_read_length += xi_length + item_read_length;
+	packet_len -= xi_length + item_read_length;
+
+#if ROHC_DEBUG_LEVEL >= 3
+	{
+		struct list_elt *elt;
+		int i;
+
+		/* print current list after reception */
+		rohc_debugf(3, "current list (gen_id = %d) after reception:\n",
+		            decomp->list_table[decomp->counter_list]->gen_id);
+		i = 0;
+		while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+		{
+			rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+			            elt->item->type, elt->item->type);
+			i++;
+		}
+	}
+#endif
+
+	return packet_read_length;
+
 error:
-	return 0;
+	return -1;
 }
-   
+
+
 /**
  * @brief Decode an extension list type 1
- * @param decomp The list decompressor
- * @param packet The ROHC packet to decompress
- * @param gen_id The id of the current list
- * @param ps The ps field
- * @param m The m fiel
- * @param ref_id The id of the reference list
- * @return the size of the compressed list
+ *
+ * @param decomp      The list decompressor
+ * @param packet      The ROHC packet to decompress
+ * @param packet_len  The length (in bytes) of the packet to decompress
+ * @param gen_id      The id of the current list
+ * @param ps          The ps field
+ * @param xi_1        The XI 1 field if PS = 1 (4-bit XI)
+ * @return            \li In case of success, the number of bytes read in the given
+ *                        packet, ie. the length of the compressed list
+ *                    \li -1 in case of failure
+ *
+ * @todo factorize some code with \ref rohc_list_decode_type_3
  */
-int decode_type_1(struct list_decomp * decomp, const unsigned char * packet, int gen_id, int ps, int m, int ref_id)
+static int rohc_list_decode_type_1(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps,
+                                   const int xi_1)
 {
+	size_t packet_read_length = 0;
+	unsigned char mask[2]; /* insertion bit mask on 1-2 bytes */
+	size_t mask_length; /* the length (in bits) of the insertion mask */
+	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
+	size_t xi_length; /* the length (in bytes) of the XI list */
+	int xi_index; /* the index of the current XI in XI list */
+	size_t item_read_length; /* the amount of bytes currently read in the item field */
+	struct list_elt *elt;
+	unsigned int ref_id;
+	size_t ref_list_size;
+	size_t ref_list_cur_pos; /* current position in reference list */
+	int new_list; /* whether we receive a new list or a known one */
 	int i;
-	struct c_list * list = NULL;
-	int index;
-	int X;
-	int size = 0;
-	int index_size = 0;
-	int length;
-	int bit;
-	int j = 0;
-	struct list_elt * elt;
-	unsigned char * mask = NULL;
-	mask = malloc(2*sizeof(unsigned char));
-	const unsigned char * data;
-	unsigned char byte = 0;
-	int index_nb;
-	int size_l = 0;
-	int new_list = !check_id(decomp, gen_id);
-	if(!check_id(decomp, ref_id))
-		goto error;
-	else
+
+	assert(decomp != NULL);
+	assert(packet != NULL);
+	assert(ps == 0 || ps == 1);
+
+	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
+	if(ps && xi_1 != 0)
 	{
-		// update the list table
-		if(decomp->ref_list->gen_id != ref_id)
+		rohc_debugf(0, "sender does not conform to ROHC standards: when 8-bit "
+		            "XIs are used, the 4-bit XI 1 field should be set to 0, "
+		            "not 0x%x\n", xi_1);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
+	}
+
+	/* is there enough data in packet for the ref_id and minimal insertion
+	   bit mask fields ? */
+	if(packet_len < 2)
+	{
+		rohc_debugf(0, "packet too small for ref_id and minimal insertion bit "
+		            "mask fields (only %zd bytes while at least 2 bytes are "
+		            "required)\n", packet_len);
+		goto error;
+	}
+
+	/* is the transmitted list a new one (ie. unknown gen_id) ? */
+	new_list = !check_id(decomp, gen_id);
+
+	/* parse ref_id */
+	ref_id = GET_BIT_0_7(packet);
+	packet++;
+	packet_read_length++;
+	packet_len--;
+	rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
+	if(!check_id(decomp, ref_id))
+	{
+		rohc_debugf(0, "unknown ID 0x%02x given for reference list\n", ref_id);
+		goto error;
+	}
+
+	/* update the list table */
+	if(decomp->ref_list->gen_id != ref_id)
+	{
+		rohc_debugf(3, "reference list changed (gen_id %d -> gen_id %d) "
+		            "since last packet, update list table in consequence\n",
+		            decomp->ref_list->gen_id, ref_id);
+		for(i = 0; i < LIST_COMP_WINDOW; i++)
 		{
-			for( i = 0; i < LIST_COMP_WINDOW; i++)
+			if(decomp->list_table[i] != NULL)
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 					empty_list(decomp->list_table[i]);
@@ -803,234 +1102,536 @@ int decode_type_1(struct list_decomp * decomp, const unsigned char * packet, int
 					decomp->ref_list = decomp->list_table[i];
 			}
 		}
-		if(new_list)
-		{
-			decomp->ref_ok = 0;
-			decomp->counter = 0;
-			rohc_debugf(3, "creation of a new list\n");
+	}
+
+#if ROHC_DEBUG_LEVEL >= 3
+	/* print current list before update */
+	rohc_debugf(3, "current list (gen_id = %d) before update:\n",
+	            decomp->list_table[decomp->counter_list]->gen_id);
+	i = 0;
+	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+#endif
+
+	if(new_list)
+	{
+		struct c_list *list;
+
+		decomp->ref_ok = 0;
+		decomp->counter = 0;
+		rohc_debugf(3, "creation of a new list\n");
+		decomp->counter_list++;
+		if(decomp->counter_list >= LIST_COMP_WINDOW)
+			decomp->counter_list = 0;
+		if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
 			decomp->counter_list++;
-			if(decomp->counter_list >= LIST_COMP_WINDOW)
-				decomp->counter_list = 0;
-			if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
-				decomp->counter_list++;
-			list = decomp->list_table[decomp->counter_list];
-			if(list != NULL && list->first_elt != NULL)
-			{
-				empty_list(list);
-			}
-			else 
-			{
-				rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
-				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
-				if(decomp->list_table[decomp->counter_list] == NULL)
-				{
-					rohc_debugf(0, "cannot allocate memory for the compression list\n");
-					goto error;
-				}
-				decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-				decomp->list_table[decomp->counter_list]->first_elt = NULL;
-			}
-		}
-		// insertion bit mask
-		// assessment of index number
-		size_l = size_list(decomp->ref_list);
-		index_nb = size_l;
-		mask[0] = *packet;
-		packet++;
-		for(i = 0; i < 8; i++)
+		list = decomp->list_table[decomp->counter_list];
+		if(list != NULL && list->first_elt != NULL)
 		{
-			bit = get_bit_index(mask[0], i);
-			if(bit)
-				index_nb++;
+			empty_list(list);
 		}
-		if(ps)
+		else 
 		{
-			mask[1] = *packet;
-			packet++;
-			for(i = 0; i < 8; i++)
+			rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
+			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
-				bit = get_bit_index(mask[1], i);
-				if(bit)
-					index_nb++;
+				rohc_debugf(0, "cannot allocate memory for the compression list\n");
+				goto error;
 			}
-		}
-		//assessment of the index list size
-		if(!ps && (index_nb - 1 - size_l) % 2 == 0)
-			index_size = (index_nb - 1 - size_l)/2;
-		else if(!ps && (index_nb - 1 - size_l) % 2 != 0)
-			index_size = (index_nb - size_l)/2;
-		else if(ps)
-			index_size = index_nb - size_l;
-		//insertion of the elements in the new list
-		for(i = 0; i < index_nb ; i++)
-		{
-			if(i > 7)
-				bit = get_bit_index(mask[1], 15 - i);
-			else
-				bit = get_bit_index(mask[0], 7 - i);
-			if(!bit && new_list)
-			{
-				elt = get_elt(decomp->ref_list, i - j);
-				if(!insert_elt(decomp->list_table[decomp->counter_list], 
-				   elt->item, i, elt->index_table))
-					goto error;
-			}
-			else if(bit)
-			{
-				rohc_debugf(3, "value of ps :%d \n", ps);
-				if(!ps) // index coded with 4 bits
-				{
-					if(j == 0)
-					{
-						byte |= m & 0x0f;
-						X = GET_BIT_3(&byte);
-						index = GET_BIT_0_2(&byte);
-						if (X)
-						{
-							length = decomp->get_ext_size(packet + index_size + size);
-							if(new_list)
-							{
-								data = packet + index_size + size;
-								decomp->create_item(data, length, index, decomp);
-							}
-							size += length;
-						}
-						else
-						{
-							if(!decomp->trans_table[index].known)
-	                                                        goto error;
-						}
-					}
-					else if(j % 2 != 0)
-					{
-						X = GET_BIT_7(packet + (j-1)/2);
-						index = GET_BIT_4_6(packet + (j-1)/2);
-						if(!decomp->check_index(decomp, index))
-							goto error;
-						if (X)
-						{
-							length = decomp->get_ext_size(packet + index_size + size);
-							if(new_list)
-							{
-								data = packet + index_size + size;
-								decomp->create_item(data, length, index, decomp);
-							}
-							size += length;
-						}
-						else
-						{
-							if(!decomp->trans_table[index].known)
-								goto error;
-						}
-					}
-					else
-					{
-						X = GET_BIT_3(packet + (j-1)/2);
-						index = GET_BIT_0_2(packet + (j-1)/2);
-						if(!decomp->check_index(decomp, index))
-							goto error;
-						if (X)
-						{
-							length = decomp->get_ext_size(packet + index_size + size);
-							if(new_list)
-							{
-								data = packet + index_size + size;
-								decomp->create_item(data, length, index, decomp);
-							}
-							size += length;
-						}
-						else
-						{
-							 if(!decomp->trans_table[index].known)
-							 	goto error;
-						}
-					}	
-					
-				}
-				else // index coded with one byte
-				{
-					X = GET_BIT_7(packet + j);
-					index = GET_BIT_0_6(packet +j);
-					if(!decomp->check_index(decomp, index))
-						goto error;
-					if (X)
-					{
-						length = decomp->get_ext_size(packet + index_size + size);
-						if(new_list)
-						{
-							data = packet + index_size + size;
-							decomp->create_item(data, length, index, decomp);
-						}
-						size += length;
-					}
-					else
-					{
-						if(!decomp->trans_table[index].known)
-							goto error;
-					}
-				}
-				j++;
-				if(new_list)
-				{
-					if(!insert_elt(decomp->list_table[decomp->counter_list], 
-					   &(decomp->based_table[index]), i, index))
-						goto error;
-				}
-			}	
-		}
-		if(decomp->counter < L)
-		{
-			decomp->ref_ok = 0;
-			decomp->counter ++;
-			if(decomp->counter == L)
-			{
-				decomp->ref_list = decomp->list_table[decomp->counter_list];
-				decomp->ref_ok = 1;
-			}
+			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+			decomp->list_table[decomp->counter_list]->first_elt = NULL;
 		}
 	}
-	if(mask != NULL)
-		free(mask);
-	if(ps) // mask coded with 2 bytes
-		size += 2;
+
+	/* determine the number of bits set to 1 in the insertion bit mask */
+	k = 0;
+	mask[0] = *packet;
+	packet++;
+	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", mask[0]);
+
+	for(i = 6; i >= 0; i--)
+	{
+		if(get_bit_index(mask[0], i))
+			k++;
+	}
+	if(GET_REAL(GET_BIT_7(mask)) == 1)
+	{
+		/* 15-bit mask */
+		if(packet_len < 2)
+		{
+			rohc_debugf(0, "packet too small for a 2-byte insertion bit mask "
+			            "(only %zd bytes available)\n", packet_len);
+			goto error;
+		}
+		mask_length = 15;
+		mask[1] = *packet;
+		packet++;
+		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", mask[1]);
+
+		for(i = 7; i >= 0; i--)
+		{
+			if(get_bit_index(mask[1], i))
+				k++;
+		}
+
+		/* skip the insertion mask */
+		packet_read_length += 2;
+		packet_len -= 2;
+	}
 	else
-		size ++;
+	{
+		/* 7-bit mask */
+		rohc_debugf(3, "no second byte of insertion bit mask\n");
+		mask_length = 7;
+
+		/* skip the insertion mask */
+		packet_read_length++;
+		packet_len--;
+	}
+
+	/* determine the length (in bytes) of the XI list */
+	if(ps == 0)
+	{
+		/* 4-bit XI */
+		if((k - 1) % 2 == 0)
+		{
+			/* odd number of 4-bit XI fields and first XI field stored in
+			   first byte of header, so last byte is full */
+			xi_length = (k - 1) / 2;
+		}
+		else
+		{
+			/* even number of 4-bit XI fields and first XI field stored in
+			   first byte of header, so last byte is not full */
+			xi_length = (k - 1) / 2 + 1;
+		}
+	}
+	else
+	{
+		/* 8-bit XI */
+		xi_length = k;
+	}
+
+	/* is there enough room in packet for all the XI list ? */
+	if(packet_len < xi_length)
+	{
+		rohc_debugf(0, "packet too small for k = %zd XI items (only %zd bytes "
+		            "while at least %zd bytes are required)\n", k, packet_len,
+		            xi_length);
+		goto error;
+	}
+
+	/* insert of new items in the list */
+	xi_index = 0;
+	item_read_length = 0;
+	ref_list_cur_pos = 0;
+	ref_list_size = size_list(decomp->ref_list);
+	for(i = 0; i < mask_length; i++)
+	{
+		int new_item_to_insert;
+
+		/* retrieve the corresponding bit in the insertion mask */
+		if(i < 7)
+		{
+			/* bit is located in first byte of insertion mask */
+			new_item_to_insert = get_bit_index(mask[0], 6 - i);
+		}
+		else
+		{
+			/* bit is located in 2nd byte of insertion mask */
+			new_item_to_insert = get_bit_index(mask[1], 14 - i);
+		}
+
+		/* insert item if required */
+		if(!new_item_to_insert)
+		{
+			/* take the next item from reference list (if there no more item in
+			   reference list, do nothing) */
+			if(new_list && ref_list_cur_pos < ref_list_size)
+			{
+				rohc_debugf(3, "insert item from reference list (index %zd) "
+				            "into current list (index %d)\n",
+				            ref_list_cur_pos, i);
+				elt = get_elt(decomp->ref_list, ref_list_cur_pos);
+				if(!insert_elt(decomp->list_table[decomp->counter_list], 
+				               elt->item, i, elt->index_table))
+				{
+					rohc_debugf(0, "failed to insert item from reference list "
+					            "(index %zd) into current list (index %d)\n",
+					            ref_list_cur_pos, i);
+					goto error;
+				}
+
+				/* skip item in reference list */
+				ref_list_cur_pos++;
+			}
+		}
+		else
+		{
+			unsigned int xi_x_value; /* the value of the X field in one XI field */
+			unsigned int xi_index_value; /* the value of the Index field in one XI field */
+			int item_length; /* the length (in bytes) of the item related to XI */
+
+			/* new item to insert in list, parse the related XI field */
+			if(!ps)
+			{
+				/* ROHC header contains 4-bit XIs */
+
+				/* which type of XI do we parse ? first one, odd one or even one ? */
+				if(xi_index == 0)
+				{
+					/* first XI is stored in the first byte of the header */
+
+					/* parse XI field */
+					xi_x_value = GET_BIT_3(&xi_1);
+					xi_index_value = GET_BIT_0_2(&xi_1);
+					if(!decomp->check_index(decomp, xi_index_value))
+					{
+						goto error;
+					}
+
+					/* parse the corresponding item if present */
+					if(xi_x_value)
+					{
+						/* X bit set in XI, so retrieve the related item in ROHC header */
+						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_debugf(0, "failed to determine the length of list item "
+							            "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+						if(new_list)
+						{
+							bool is_created =
+								decomp->create_item(packet + xi_length + item_read_length,
+								                    item_length, xi_index_value, decomp);
+							if(!is_created)
+							{
+								rohc_debugf(0, "failed to create new IPv6 item\n");
+								goto error;
+							}
+						}
+
+						/* skip the item in ROHC header */
+						item_read_length += item_length;
+					}
+					else
+					{
+						/* X bit not set in XI, so item is not provided in ROHC header,
+						   it must already be known by decompressor */
+						if(!decomp->trans_table[xi_index_value].known)
+						{
+							rohc_debugf(0, "list item with index #%u referenced "
+							            "by XI #%d is not known yet\n",
+							            xi_index_value, xi_index);
+							goto error;
+						}
+					}
+				}
+				else if((xi_index % 2) != 0)
+				{
+					/* handle odd XI, ie. XI stored in MSB */
+
+					/* parse XI field */
+					xi_x_value = GET_BIT_7(packet + (xi_index - 1) / 2);
+					xi_index_value = GET_BIT_4_6(packet + (xi_index - 1) / 2);
+					if(!decomp->check_index(decomp, xi_index_value))
+					{
+						goto error;
+					}
+
+					/* parse the corresponding item if present */
+					if(xi_x_value)
+					{
+						/* X bit set in XI, so retrieve the related item in ROHC header */
+						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_debugf(0, "failed to determine the length of list item "
+							            "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+
+						if(new_list)
+						{
+							bool is_created =
+								decomp->create_item(packet + xi_length + item_read_length,
+								                    item_length, xi_index_value, decomp);
+							if(!is_created)
+							{
+								rohc_debugf(0, "failed to create new IPv6 item\n");
+								goto error;
+							}
+						}
+
+						/* skip the item in ROHC header */
+						item_read_length += item_length;
+					}
+					else
+					{
+						/* X bit not set in XI, so item is not provided in ROHC header,
+						   it must already be known by decompressor */
+						assert(xi_index_value < MAX_ITEM);
+						if(!decomp->trans_table[xi_index_value].known)
+						{
+							rohc_debugf(0, "list item with index #%u referenced "
+							            "by XI #%d is not known yet\n",
+							            xi_index_value, xi_index);
+							goto error;
+						}
+					}
+				}
+				else
+				{
+					/* handle even XI, ie. XI stored in LSB */
+
+					/* parse XI field */
+					xi_x_value = GET_BIT_3(packet + (xi_index - 1) / 2);
+					xi_index_value = GET_BIT_0_2(packet + (xi_index - 1) / 2);
+					if(!decomp->check_index(decomp, xi_index_value))
+					{
+						goto error;
+					}
+
+					/* parse the corresponding item if present */
+					if(xi_x_value)
+					{
+						/* X bit set in XI, so retrieve the related item in ROHC header */
+						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_debugf(0, "failed to determine the length of list item "
+							            "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+						if(new_list)
+						{
+							bool is_created =
+								decomp->create_item(packet + xi_length + item_read_length,
+								                    item_length, xi_index_value, decomp);
+							if(!is_created)
+							{
+								rohc_debugf(0, "failed to create new IPv6 item\n");
+								goto error;
+							}
+						}
+
+						/* skip the item in ROHC header */
+						item_read_length += item_length;
+					}
+					else
+					{
+						/* X bit not set in XI, so item is not provided in ROHC header,
+						   it must already be known by decompressor */
+						assert(xi_index_value < MAX_ITEM);
+						if(!decomp->trans_table[xi_index_value].known)
+						{
+							rohc_debugf(0, "list item with index #%u referenced "
+							            "by XI #%d is not known yet\n",
+							            xi_index_value, xi_index);
+							goto error;
+						}
+					}
+				}
+			}
+			else
+			{
+				/* ROHC header contains 8-bit XIs */
+
+				/* parse XI field */
+				xi_x_value = GET_BIT_3(packet + xi_index);
+				xi_index_value = GET_BIT_0_2(packet + xi_index);
+				if(!decomp->check_index(decomp, xi_index))
+				{
+					goto error;
+				}
+
+				/* parse the corresponding item if present */
+				if(xi_x_value)
+				{
+					/* X bit set in XI, so retrieve the related item in ROHC header */
+					item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+					                                   packet_len - xi_length - item_read_length);
+					if(item_length < 0)
+					{
+						rohc_debugf(0, "failed to determine the length of list item "
+						            "referenced by XI #%d\n", xi_index);
+						goto error;
+					}
+					if(new_list)
+					{
+						bool is_created =
+							decomp->create_item(packet + xi_length + item_read_length,
+							                    item_length, xi_index_value, decomp);
+						if(!is_created)
+						{
+							rohc_debugf(0, "failed to create new IPv6 item\n");
+							goto error;
+						}
+					}
+
+					/* skip the item in ROHC header */
+					item_read_length += item_length;
+				}
+				else
+				{
+					/* X bit not set in XI, so item is not provided in ROHC header,
+					   it must already be known by decompressor */
+					assert(xi_index_value < MAX_ITEM);
+					if(!decomp->trans_table[xi_index_value].known)
+					{
+						rohc_debugf(0, "list item with index #%u referenced "
+						            "by XI #%d is not known yet\n",
+						            xi_index_value, xi_index);
+						goto error;
+					}
+				}
+			}
+
+			if(new_list)
+			{
+				rohc_debugf(3, "insert new item #%d into current list "
+				            "(index %d)\n", xi_index, i);
+				if(!insert_elt(decomp->list_table[decomp->counter_list], 
+				               &(decomp->based_table[xi_index_value]),
+				               i, xi_index_value))
+				{
+					rohc_debugf(0, "failed to insert new item #%d into current "
+					            "list (index %d)\n", xi_index, i);
+					goto error;
+				}
+			}
+
+			/* skip the XI we have just parsed */
+			xi_index++;
+		}
+	}
+
+	/* ensure that in case of an even number of 4-bit XIs, the 4 bits of padding
+	   are set to 0 */
+	if(ps == 0 && (k % 2) == 0)
+	{
+		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_length - 1);
+		if(xi_padding != 0)
+		{
+			rohc_debugf(0, "sender does not conform to ROHC standards: when an "
+			            "even number of 4-bit XIs is used, the last 4 bits of the "
+			            "XI list should be set to 0\n, not 0x%x\n", xi_padding);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+			goto error;
+#endif
+		}
+	}
+
+	/* skip the XI list and the item list */
+	packet_read_length += xi_length + item_read_length;
+	packet_len -= xi_length + item_read_length;
+
+#if ROHC_DEBUG_LEVEL >= 3
+	/* print current list after update */
+	rohc_debugf(3, "current list (gen_id = %d) after update:\n",
+	            decomp->list_table[decomp->counter_list]->gen_id);
+	i = 0;
+	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+#endif
+
+	/* does the received list becomes the new reference list ? */
+	if(decomp->counter < L)
+	{
+		decomp->ref_ok = 0;
+		decomp->counter++;
+		if(decomp->counter == L)
+		{
+			rohc_debugf(3, "received list (gen_id = %d) now becomes the reference "
+			            "list\n", decomp->list_table[decomp->counter_list]->gen_id);
+			decomp->ref_list = decomp->list_table[decomp->counter_list];
+			decomp->ref_ok = 1;
+		}
+	}
 		
-	return size + index_size;
+	return packet_read_length;
+
 error:
-	return 0;
+	return -1;
 }
+
 
 /**
  * @brief Decode an extension list type 2
- * @param decomp The list decompressor
- * @param packet The ROHC packet to decompress
- * @param gen_id The id of the current list
- * @param ps The ps field
- * @param ref_id The id of the reference list
- * @return the size of the compressed list
+ *
+ * @param decomp      The list decompressor
+ * @param packet      The ROHC packet to decompress
+ * @param packet_len  The length (in bytes) of the packet to decompress
+ * @param gen_id      The id of the current list
+ * @param ps          The ps field
+ * @return            \li In case of success, the number of bytes read in the given
+ *                        packet, ie. the length of the compressed list
+ *                    \li -1 in case of failure
+ *
+ * @todo factorize some code with \ref rohc_list_decode_type_3
  */
-int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int gen_id, int ps, int ref_id)
+static int rohc_list_decode_type_2(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps)
 {
+	size_t packet_read_length = 0;
+	unsigned char mask[2]; /* removal bit mask on 1-2 bytes */
+	size_t mask_length; /* the length (in bits) of the removal mask */
+	struct list_elt *elt;
+	unsigned int ref_id;
+	int new_list;
 	int i;
-	struct c_list * list = NULL;
-	int size = 0;
-	int bit;
-	int j = 0;
-	struct list_elt * elt;
-	unsigned char * mask = NULL;
-	mask = malloc(2*sizeof(unsigned char));
-	int size_ref_list;
-	int size_l;
-	int new_list = !check_id(decomp, gen_id);
-	if(!check_id(decomp, ref_id))
-		goto error;
-	else
+
+	/* is there enough data in packet for the ref_id and minimal removal
+	   bit mask fields ? */
+	if(packet_len < 2)
 	{
-		// update the list table
-		if(decomp->ref_list->gen_id != ref_id)
+		rohc_debugf(0, "packet too small for ref_id and minimal removal bit "
+		            "mask fields (only %zd bytes while at least 2 bytes are "
+		            "required)\n", packet_len);
+		goto error;
+	}
+
+	/* is the transmitted list a new one (ie. unknown gen_id) ? */
+	new_list = !check_id(decomp, gen_id);
+
+	/* parse ref_id */
+	ref_id = GET_BIT_0_7(packet);
+	packet++;
+	packet_read_length++;
+	packet_len--;
+	rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
+	if(!check_id(decomp, ref_id))
+	{
+		rohc_debugf(0, "unknown ID 0x%02x given for reference list\n", ref_id);
+		goto error;
+	}
+
+	/* update the list table */
+	if(decomp->ref_list->gen_id != ref_id)
+	{
+		rohc_debugf(3, "reference list changed (gen_id %d -> gen_id %d) "
+		            "since last packet, update list table in consequence\n",
+		            decomp->ref_list->gen_id, ref_id);
+		for(i = 0; i < LIST_COMP_WINDOW; i++)
 		{
-			for( i = 0; i < LIST_COMP_WINDOW; i++)
+			if(decomp->list_table[i] != NULL)
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 					empty_list(decomp->list_table[i]);
@@ -1038,479 +1639,911 @@ int decode_type_2(struct list_decomp * decomp, const unsigned char * packet, int
 					decomp->ref_list = decomp->list_table[i];
 			}
 		}
-		if(new_list)
+	}
+
+#if ROHC_DEBUG_LEVEL >= 3
+	/* print reference list before update */
+	rohc_debugf(3, "reference list (gen_id = %d) used as base:\n",
+	            decomp->ref_list->gen_id);
+	i = 0;
+	while((elt = get_elt(decomp->ref_list, i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+#endif
+
+	/* determine the length removal bit mask */
+	mask[0] = *packet;
+	packet++;
+	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", mask[0]);
+	if(GET_REAL(GET_BIT_7(mask)) == 1)
+	{
+		/* 15-bit mask */
+		if(packet_len < 2)
 		{
-			decomp->ref_ok = 0;
-			decomp->counter = 0;
-			rohc_debugf(3, "creation of a new list\n");
+			rohc_debugf(0, "packet too small for a 2-byte removal bit mask "
+			            "(only %zd bytes available)\n", packet_len);
+			goto error;
+		}
+		mask_length = 15;
+		mask[1] = *packet;
+		packet++;
+		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", mask[1]);
+
+		/* skip the removal mask */
+		packet_read_length += 2;
+		packet_len -= 2;
+	}
+	else
+	{
+		/* 7-bit mask */
+		rohc_debugf(3, "no second byte of removal bit mask\n");
+		mask_length = 7;
+
+		/* skip the removal mask */
+		packet_read_length++;
+		packet_len--;
+	}
+
+	/* re-use known list or create of the new list if it is not already known */
+	if(!new_list)
+	{
+		rohc_debugf(3, "re-use list with gen_id = %d found in context\n", gen_id);
+	}
+	else
+	{
+		struct c_list *list;
+		size_t new_list_len;
+		size_t ref_list_size;
+
+		rohc_debugf(3, "creation of a new list with gen_id = %d\n", gen_id);
+
+		decomp->ref_ok = 0;
+		decomp->counter = 0;
+		decomp->counter_list = (decomp->counter_list + 1) % LIST_COMP_WINDOW;
+		if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
 			decomp->counter_list++;
-			if(decomp->counter_list >= LIST_COMP_WINDOW)
-				decomp->counter_list = 0;
-			if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
-				decomp->counter_list++;
-			list = decomp->list_table[decomp->counter_list];
-			if(list != NULL && list->first_elt != NULL)
+		list = decomp->list_table[decomp->counter_list];
+		if(list != NULL && list->first_elt != NULL)
+		{
+			empty_list(list);
+		}
+		else 
+		{
+			rohc_debugf(1, "creating compression list at index %d in list table\n",
+			            decomp->counter_list);
+			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
-				empty_list(list);
+				rohc_debugf(0, "cannot allocate memory for the compression list\n");
+				goto error;
 			}
-			else 
+			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+			decomp->list_table[decomp->counter_list]->first_elt = NULL;
+		}
+
+		new_list_len = 0;
+		ref_list_size = size_list(decomp->ref_list);
+		for(i = 0; i < mask_length; i++)
+		{
+			int item_to_remove;
+
+			/* retrieve the corresponding bit in the removal mask */
+			if(i < 7)
 			{
-				rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
-				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
-				if(decomp->list_table[decomp->counter_list] == NULL)
+				/* bit is located in first byte of removal mask */
+				item_to_remove = get_bit_index(mask[0], 6 - i);
+			}
+			else
+			{
+				/* bit is located in 2nd byte of insertion mask */
+				item_to_remove = get_bit_index(mask[1], 14 - i);
+			}
+
+			/* remove item if required */
+			if(item_to_remove)
+			{
+				/* skip item only if reference list is large enough */
+				if(i < ref_list_size)
 				{
-					rohc_debugf(0, "cannot allocate memory for the compression list\n");
+					rohc_debugf(3, "skip item at index %d of reference list\n", i);
+				}
+			}
+			else
+			{
+				rohc_debugf(3, "take item at index %d of reference list as item "
+				            "at index %zd of current list\n", i, new_list_len);
+
+				/* check that reference list is large enough */
+				if(i >= ref_list_size)
+				{
+					rohc_debugf(0, "reference list is too short: item at index %d "
+					            "requested while list contains only %zd items\n",
+					            i, ref_list_size);
 					goto error;
 				}
-				decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-				decomp->list_table[decomp->counter_list]->first_elt = NULL;													
-			}
-		}
 
-		// removal bit mask
-		size_ref_list = size_list(decomp->ref_list);
-		size_l = size_ref_list;
-		mask[0] = *packet;
-		packet++;
-		size++;
-		rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", mask[0]);
-		for(i = 0; i < MIN(8, size_ref_list); i++)
-		{
-			bit = get_bit_index(mask[0], 7 - i);
-			if(bit)
-				size_l--;
-		}
-		if(ps)
-		{
-			mask[1] = *packet;
-			packet++;
-			rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", mask[1]);
-			if(size_ref_list > 8)
-			{
-				for(i = 0; i < MIN(8, size_ref_list - 8); i++)
+				/* retrieve item from reference list and insert it in current list */
+				elt = get_elt(decomp->ref_list, i);
+				if(!insert_elt(decomp->list_table[decomp->counter_list],
+				               elt->item, new_list_len, elt->index_table))
 				{
-					bit = get_bit_index(mask[1], 7 - i);
-					if(bit)
-						size_l--;
+					rohc_debugf(0, "failed to insert item at index %zd "
+					            "in current list\n", new_list_len);
+					goto error;
 				}
-			}
-			size++;
-		}
-		else
-		{
-			rohc_debugf(3, "no second byte of removal bit mask\n");
-		}
 
-		// creation of the new list
-		if(new_list)
-		{
-			for(i = 0; i < size_l ; i++)
-			{
-				if(i + j > 7)
-					bit = get_bit_index(mask[1], 15 - (i + j));
-				else
-					bit = get_bit_index(mask[0], 7 - (i + j));
-				if(!bit)
-				{
-					rohc_debugf(3, "take element #%d of reference list as "
-					            "element #%d of new list\n", i + j + 1, i + 1);
-					elt = get_elt(decomp->ref_list, i + j);
-					if(!insert_elt(decomp->list_table[decomp->counter_list], 
-					   elt->item, i, elt->index_table))
-						goto error;
-				}
-				else
-				{
-					rohc_debugf(3, "do not take element #%d of reference list\n",
-					            i + j + 1);
-					i--; // no elt added in new list
-					j++;
-				}
-			}
-			rohc_debugf(3, "size of new list after removal = %d elements\n", size_l);
-		}
-
-		if(decomp->counter < L)
-		{
-			decomp->ref_ok = 0;
-			decomp->counter ++;
-			if(decomp->counter == L)
-			{
-				decomp->ref_list = decomp->list_table[decomp->counter_list];
-				decomp->ref_ok = 1;
+				new_list_len++;
 			}
 		}
-		rohc_debugf(3, "new value of decompressor list counter: %d \n", decomp->counter);
 	}
-	if(mask != NULL)
-		free(mask);
-	return size;
+
+#if ROHC_DEBUG_LEVEL >= 3
+	/* print current list after update */
+	rohc_debugf(3, "current list (gen_id = %d) decoded:\n",
+	            decomp->list_table[decomp->counter_list]->gen_id);
+	i = 0;
+	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+#endif
+
+	/* does the received list becomes the new reference list ? */
+	if(decomp->counter < L)
+	{
+		decomp->ref_ok = 0;
+		decomp->counter ++;
+		if(decomp->counter == L)
+		{
+			rohc_debugf(3, "received list (gen_id = %d) now becomes the reference "
+			            "list\n", decomp->list_table[decomp->counter_list]->gen_id);
+			decomp->ref_list = decomp->list_table[decomp->counter_list];
+			decomp->ref_ok = 1;
+		}
+	}
+
+	rohc_debugf(3, "new value of decompressor list counter: %d\n", decomp->counter);
+
+	return packet_read_length;
+
 error:
-	return 0;
+	return -1;
 }
+
 
 /**
- * @brief Get the size of the extension in bytes
- * @param ext The extension
- * @return The size
+ * @brief Get the size (in bytes) of the extension
+ *
+ * @param ext  The extension data
+ * @param len  The length (in bytes) of the extension data
+ * @return     The size of the extension in case of success, -1 otherwise
  */
-int get_ip6_ext_size(const unsigned char * ext)
+static int get_ip6_ext_size(const unsigned char *data, const size_t data_len)
 {
-	int size = (*(ext+1) + 1 )*8;
-	return size;
+	if(data_len < 2)
+	{
+		rohc_debugf(0, "too few data for extension: only %zd bytes available "
+		            "while at least 2 bytes of data are required\n", data_len);
+		goto error;
+	}
+
+	return (data[1] + 1) * 8;
+
+error:
+	return -1;
 }
+
 
 /**
  * @brief Decode an extension list type 3
- * @param decomp The list decompressor
- * @param packet The ROHC packet to decompress
- * @param gen_id The id of the current list
- * @param ps The ps field
- * @param m The m fiel
- * @param ref_id The id of the reference list
- * @return the size of the compressed list
+ *
+ * @param decomp      The list decompressor
+ * @param packet      The ROHC packet to decompress
+ * @param packet_len  The length (in bytes) of the packet to decompress
+ * @param gen_id      The id of the current list
+ * @param ps          The ps field
+ * @param xi_1        The XI 1 field if PS = 1 (4-bit XI)
+ * @return            \li In case of success, the number of bytes read in the given
+ *                        packet, ie. the length of the compressed list
+ *                    \li -1 in case of failure
+ *
+ * @todo factorize some code with \ref rohc_list_decode_type_1
+ * @todo factorize some code with \ref rohc_list_decode_type_2
  */
-int decode_type_3(struct list_decomp * decomp,const unsigned char * packet, int gen_id, int ps, int m, int ref_id)
+static int rohc_list_decode_type_3(struct list_decomp *const decomp,
+                                   const unsigned char *packet,
+                                   size_t packet_len,
+                                   const int gen_id,
+                                   const int ps,
+                                   const int xi_1)
 {
+	size_t packet_read_length = 0;
+	unsigned char rem_mask[2]; /* removal bit mask on 1-2 bytes */
+	unsigned char ins_mask[2]; /* insertion bit mask on 1-2 bytes */
+	size_t rem_mask_length; /* the length (in bits) of the removal mask */
+	size_t ins_mask_length; /* the length (in bits) of the insertion mask */
+	size_t k; /* the number of ones in insertion mask and the number of elements in XI list */
+	size_t xi_length; /* the length (in bytes) of the XI list */
+	int xi_index; /* the index of the current XI in XI list */
+	size_t item_read_length; /* the amount of bytes currently read in the item field */
+	struct list_elt *elt;
+	unsigned int ref_id;
+	struct c_list removal_list; /* list after removal scheme but before insertion scheme */
+	size_t removal_list_cur_pos; /* current position in list after removal */
+	size_t removal_list_size; /* size of list after removal */
+	int new_list;
 	int i;
-	int index;
-	int X;
-	int size = 0;
-	int size_header =0;
-	int index_size = 0;
-	int length;
-	int bit;
-	int j = 0;
-	struct list_elt * elt;
-	unsigned char * rem_mask = NULL;
-	rem_mask = malloc(2*sizeof(unsigned char));
-	unsigned char * ins_mask = NULL;
-	ins_mask = malloc(2*sizeof(unsigned char));
-	const unsigned char * data;
-	unsigned char byte = 0;
-	int index_nb;
-	int size_ref_list;
-	int size_l;
-	int new_list = !check_id(decomp, gen_id);
-	if(!check_id(decomp, ref_id))
-		goto error;
-	else
+
+	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
+	if(ps && xi_1 != 0)
 	{
-		// update the list table
-		if(decomp->ref_list->gen_id != ref_id)
+		rohc_debugf(0, "sender does not conform to ROHC standards: when 8-bit "
+		            "XIs are used, the 4-bit XI 1 field should be set to 0, "
+		            "not 0x%x\n", xi_1);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+		goto error;
+#endif
+	}
+
+	/* is there enough data in packet for the ref_id and minimal removal
+	   bit mask fields ? */
+	if(packet_len < 2)
+	{
+		rohc_debugf(0, "packet too small for ref_id and minimal removal bit "
+		            "mask fields (only %zd bytes while at least 1 bytes are "
+		            "required)\n", packet_len);
+		goto error;
+	}
+
+	/* is the transmitted list a new one (ie. unknown gen_id) ? */
+	new_list = !check_id(decomp, gen_id);
+
+	/* parse ref_id */
+	ref_id = GET_BIT_0_7(packet);
+	packet++;
+	packet_read_length++;
+	packet_len--;
+	rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
+	if(!check_id(decomp, ref_id))
+	{
+		rohc_debugf(0, "unknown ID 0x%02x given for reference list\n", ref_id);
+		goto error;
+	}
+
+	/* update the list table */
+	if(decomp->ref_list->gen_id != ref_id)
+	{
+		rohc_debugf(3, "reference list changed (gen_id %d -> gen_id %d) "
+		            "since last packet, update list table in consequence\n",
+		            decomp->ref_list->gen_id, ref_id);
+		for(i = 0; i < LIST_COMP_WINDOW; i++)
 		{
-			for( i = 0; i < LIST_COMP_WINDOW; i++)
+			if(decomp->list_table[i] != NULL)
 			{
-				if(decomp->list_table[i] != NULL)
-				{
-					if(decomp->list_table[i]->gen_id < ref_id)
-						empty_list(decomp->list_table[i]);
-					if(decomp->list_table[i]->gen_id == ref_id)
-						decomp->ref_list = decomp->list_table[i];
-				}
+				if(decomp->list_table[i]->gen_id < ref_id)
+					empty_list(decomp->list_table[i]);
+				if(decomp->list_table[i]->gen_id == ref_id)
+					decomp->ref_list = decomp->list_table[i];
 			}
 		}
-		if(new_list)
-		{
-			decomp->ref_ok = 0;
-			decomp->counter = 0;
-			rohc_debugf(3, "creation of a new list\n");
+	}
+
+#if ROHC_DEBUG_LEVEL >= 3
+	/* print reference list before update */
+	rohc_debugf(3, "reference list (gen_id = %d) used as base:\n",
+	            decomp->ref_list->gen_id);
+	i = 0;
+	while((elt = get_elt(decomp->ref_list, i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+#endif
+
+	if(new_list)
+	{
+		decomp->ref_ok = 0;
+		decomp->counter = 0;
+		rohc_debugf(3, "creation of a new list\n");
+		decomp->counter_list++;
+		if(decomp->counter_list >= LIST_COMP_WINDOW)
+			decomp->counter_list = 0;
+		if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
 			decomp->counter_list++;
-			if(decomp->counter_list >= LIST_COMP_WINDOW)
-				decomp->counter_list = 0;
-			if(decomp->list_table[decomp->counter_list] == decomp->ref_list)
-				decomp->counter_list++;
-			if(decomp->list_table[decomp->counter_list] != NULL && 
-			   decomp->list_table[decomp->counter_list]->first_elt != NULL)
-			{
-				empty_list(decomp->list_table[decomp->counter_list]);
-			}
-			else 
-			{
-				rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
-				decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
-				if(decomp->list_table[decomp->counter_list] == NULL)
-				{
-					rohc_debugf(0, "cannot allocate memory for the compression list\n");
-					goto error;
-				}
-				rohc_debugf(3, "value of gen_id : %d \n", gen_id);
-				decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-				decomp->list_table[decomp->counter_list]->first_elt = NULL;
-			}
-			if(decomp->temp_list != NULL && decomp->temp_list->first_elt != NULL)
-			{
-				empty_list(decomp->temp_list);
-			}
-			else
-			{
-				rohc_debugf(1, "creating temp list\n");
-				decomp->temp_list = malloc(sizeof(struct c_list));
-				if(decomp->temp_list == NULL)
-				{
-					rohc_debugf(0, "cannot allocate memory for the temp list\n");
-					goto error;
-				}
-				decomp->temp_list->gen_id = gen_id;
-				decomp->temp_list->first_elt = NULL;
-			}
-		}
-
-		// removal bit mask
-		size_ref_list = size_list(decomp->ref_list);
-		size_l = size_ref_list;
-		rem_mask[0] = *packet;
-		packet++;
-		size++;
-		rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", rem_mask[0]);
-		for(i = 0; i < MIN(8, size_ref_list); i++)
+		if(decomp->list_table[decomp->counter_list] != NULL && 
+		   decomp->list_table[decomp->counter_list]->first_elt != NULL)
 		{
-			bit = get_bit_index(rem_mask[0], 7 - i);
-			if(bit)
-				size_l--;
+			empty_list(decomp->list_table[decomp->counter_list]);
 		}
-		if(ps)
+		else 
 		{
-			rem_mask[1] = *packet;
-			packet++;
-			rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", rem_mask[1]);
-			if(size_ref_list > 8)
+			rohc_debugf(1, "creating compression list %d\n", decomp->counter_list);
+			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
-				for(i = 0; i < MIN(8, size_ref_list - 8); i++)
-				{
-					bit = get_bit_index(rem_mask[1], 7 - i);
-					if(bit)
-						size_l--;
-				}
-			}
-			size++;
-		}
-		else
-		{
-			rohc_debugf(3, "no second byte of removal bit mask\n");
-		}
-
-		// creation of the new list
-		if(new_list)
-		{
-			for(i = 0; i < size_l ; i++)
-			{
-				if(i > 7)
-					bit = get_bit_index(rem_mask[1], 15 - (i+j));
-				else
-					bit = get_bit_index(rem_mask[0], 7 - (i+j));
-				if(!bit)
-				{
-					rohc_debugf(3, "take element #%d of reference list "
-					            "as element #%d of temporary list\n",
-					            i + j + 1, i + 1);
-					elt = get_elt(decomp->ref_list, i + j);
-					if(!insert_elt(decomp->temp_list, elt->item, i, elt->index_table))
-						goto error;
-				}
-				else
-				{
-					rohc_debugf(3, "do not take element #%d of reference list\n",
-					            i + j + 1);
-					i--;
-					j++;
-				}
-			}
-			rohc_debugf(3, "size of new list after removal = %d elements\n", size_l);
-		}
-
-		// insertion bit mask
-		// assessment of index number
-		size_l = size_list(decomp->temp_list);
-		index_nb = size_l;
-		ins_mask[0] = *packet;
-		packet++;
-		rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", ins_mask[0]);
-		for(i = 0; i < 8; i++)
-		{
-			bit = get_bit_index(ins_mask[0], i);
-			if(bit)
-				index_nb++;
-		}
-		size ++;
-		if(ps)
-		{
-			ins_mask[1] = *packet;
-			packet++;
-			rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", ins_mask[1]);
-			for(i = 0; i < 8; i++)
-			{
-				bit = get_bit_index(ins_mask[1], i);
-				if(bit)
-					index_nb++;
-			}
-			size++;
-		}
-		else
-		{
-			rohc_debugf(3, "no second byte of insertion bit mask\n");
-		}
-		j = 0;
-		//assessment of the index list size
-		if(!ps && (index_nb - 1 - size_l) % 2 == 0)
-			index_size = (index_nb - 1 - size_l)/2;
-		else if(!ps && (index_nb - 1 - size_l) % 2 != 0)
-			index_size = (index_nb - size_l)/2;
-		else if(ps)
-			index_size = index_nb - size_l;
-		//insertion of the elements in the new list
-		size_header = size;
-		for(i = 0; i < index_nb ; i++)
-		{
-			if(i > 7)
-				bit = get_bit_index(ins_mask[1], 15 - i);
-			else
-				bit = get_bit_index(ins_mask[0], 7 - i);
-			if(!bit && new_list)
-			{
-				rohc_debugf(3, "take element #%d of temporary list "
-				            "as element #%d of new list\n", i - j + 1, i + 1);
-				elt = get_elt(decomp->temp_list, i - j);
-				if(!insert_elt(decomp->list_table[decomp->counter_list], 
-						elt->item, i, elt->index_table))
+				rohc_debugf(0, "cannot allocate memory for the compression list\n");
 				goto error;
 			}
-			else if(bit)
+			rohc_debugf(3, "value of gen_id : %d \n", gen_id);
+			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
+			decomp->list_table[decomp->counter_list]->first_elt = NULL;
+		}
+	
+		/* create a list for intermediate result after removal scheme but
+		   before insertion scheme */
+		removal_list.gen_id = gen_id;
+		removal_list.first_elt = NULL;
+	}
+
+	/*
+	 * Removal scheme
+	 */
+
+	/* determine the length removal bit mask */
+	rem_mask[0] = *packet;
+	packet++;
+	rohc_debugf(3, "removal bit mask (first byte) = 0x%02x\n", rem_mask[0]);
+	if(GET_REAL(GET_BIT_7(rem_mask)) == 1)
+	{
+		/* 15-bit mask */
+		if(packet_len < 2)
+		{
+			rohc_debugf(0, "packet too small for a 2-byte removal bit mask "
+			            "(only %zd bytes available)\n", packet_len);
+			goto error;
+		}
+		rem_mask_length = 15;
+		rem_mask[1] = *packet;
+		packet++;
+		rohc_debugf(3, "removal bit mask (second byte) = 0x%02x\n", rem_mask[1]);
+
+		/* skip the removal mask */
+		packet_read_length += 2;
+		packet_len -= 2;
+	}
+	else
+	{
+		/* 7-bit mask */
+		rohc_debugf(3, "no second byte of removal bit mask\n");
+		rem_mask_length = 7;
+
+		/* skip the removal mask */
+		packet_read_length++;
+		packet_len--;
+	}
+
+	/* re-use known list or create of the new list if it is not already known */
+	if(!new_list)
+	{
+		rohc_debugf(3, "re-use list with gen_id = %d found in context\n", gen_id);
+	}
+	else
+	{
+		size_t new_list_len = 0;
+		size_t ref_list_size;
+
+		ref_list_size = size_list(decomp->ref_list);
+		for(i = 0; i < rem_mask_length; i++)
+		{
+			int item_to_remove;
+
+			/* retrieve the corresponding bit in the removal mask */
+			if(i < 7)
 			{
-				rohc_debugf(3, "value of ps :%d \n", ps);
-				if(!ps) // index coded with 4 bits
-				{
-					rohc_debugf(3, "decode 4-bit XI list\n");
+				/* bit is located in first byte of removal mask */
+				item_to_remove = get_bit_index(rem_mask[0], 6 - i);
+			}
+			else
+			{
+				/* bit is located in 2nd byte of insertion mask */
+				item_to_remove = get_bit_index(rem_mask[1], 14 - i);
+			}
 
-					if(j == 0)
-					{
-						byte |= m & 0x0f;
-						X = GET_REAL(GET_BIT_3(&byte));
-						index = GET_BIT_0_2(&byte);
-						rohc_debugf(3, "decode first XI (X = %d, index = %d)\n", X, index);
-						if (X)
-						{
-							length = decomp->get_ext_size(packet + index_size + size - size_header);
-							if(new_list)
-							{
-								rohc_debugf(3, "extract %d-byte item\n", length);
-								data = packet + index_size + size - size_header;
-								decomp->create_item(data, length, index, decomp);
-							}
-							size += length;
-						}
-						else
-						{
-							if(!decomp->trans_table[index].known)
-								goto error;
-						}												
-					}
-					else if(j % 2 != 0)
-					{
-						X = GET_REAL(GET_BIT_7(packet + (j-1)/2));
-						index = GET_BIT_4_6(packet + (j-1)/2);
-						rohc_debugf(3, "decode XI #%d (X = %d, index = %d)\n", j, X, index);
-						if(!decomp->check_index(decomp, index))
-							goto error;
-						if (X)
-						{
-							length = decomp->get_ext_size(packet + index_size + size - size_header);
-							if(new_list)
-							{
-								rohc_debugf(3, "extract %d-byte item\n", length);
-								data = packet + index_size + size - size_header;
-								decomp->create_item(data, length, index, decomp);
-							}
-							size += length;
-						}
-						else
-						{
-							if(!decomp->trans_table[index].known)
-								goto error;
-						}
-					}
-					else
-					{
-						X = GET_REAL(GET_BIT_3(packet + (j-1)/2));
-						index = GET_BIT_0_2(packet + (j-1)/2);
-						rohc_debugf(3, "decode XI #%d (X = %d, index = %d)\n", j, X, index);
-						if(!decomp->check_index(decomp, index))
-							goto error;
-						if (X)
-						{
-							length = decomp->get_ext_size(packet + index_size + size - size_header);
-							if(new_list)
-							{
-								rohc_debugf(3, "extract %d-byte item\n", length);
-								data = packet + index_size + size - size_header;
-								decomp->create_item(data, length, index, decomp);
-							}
-							size += length;
-						}
-						else
-						{
-							if(!decomp->trans_table[index].known)
-								goto error;
-						}
-					}
+			/* remove item if required */
+			if(item_to_remove)
+			{
+				/* skip item only if reference list is large enough */
+				if(i < ref_list_size)
+				{
+					rohc_debugf(3, "skip item at index %d of reference list\n", i);
 				}
-				else // index coded with one byte
-				{
-					rohc_debugf(3, "decode 8-bit XI list\n");
+			}
+			else
+			{
+				rohc_debugf(3, "take item at index %d of reference list as item "
+				            "at index %zd of current list\n", i, new_list_len);
 
-					X = GET_REAL(GET_BIT_7(packet + j));
-					index = GET_BIT_0_6(packet +j);
-					rohc_debugf(3, "decode XI #%d (X = %d, index = %d)\n", j, X, index);
-					if(!decomp->check_index(decomp, index))
-						goto error;
-					if (X)
+				/* check that reference list is large enough */
+				if(i >= ref_list_size)
+				{
+					rohc_debugf(0, "reference list is too short: item at index %d "
+					            "requested while list contains only %zd items\n",
+					            i, ref_list_size);
+					goto error;
+				}
+
+				/* retrieve item from reference list and insert it in current list */
+				elt = get_elt(decomp->ref_list, i);
+				if(!insert_elt(&removal_list, elt->item, new_list_len, elt->index_table))
+				{
+					rohc_debugf(0, "failed to insert element at position #%zd "
+					            "in current list\n", new_list_len + 1);
+					goto error;
+				}
+
+				new_list_len++;
+			}
+		}
+
+#if ROHC_DEBUG_LEVEL >= 3
+		/* print current list after removal scheme */
+		rohc_debugf(3, "current list (gen_id = %d) after removal scheme:\n",
+		            removal_list.gen_id);
+		i = 0;
+		while((elt = get_elt(&removal_list, i)) != NULL)
+		{
+			rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+			            elt->item->type, elt->item->type);
+			i++;
+		}
+#endif
+	}
+
+	/*
+	 * Insertion scheme
+	 */
+
+	/* is there enough data in packet for minimal insertion bit mask field ? */
+	if(packet_len < 1)
+	{
+		rohc_debugf(0, "packet too small for minimal insertion bit mask field "
+		            "(only %zd bytes while at least 1 byte is required)\n", packet_len);
+		goto error;
+	}
+
+	/* determine the number of bits set to 1 in the insertion bit mask */
+	k = 0;
+	ins_mask[0] = *packet;
+	packet++;
+	rohc_debugf(3, "insertion bit mask (first byte) = 0x%02x\n", ins_mask[0]);
+
+	for(i = 6; i >= 0; i--)
+	{
+		if(get_bit_index(ins_mask[0], i))
+			k++;
+	}
+	if(GET_REAL(GET_BIT_7(ins_mask)) == 1)
+	{
+		/* 15-bit mask */
+		if(packet_len < 2)
+		{
+			rohc_debugf(0, "packet too small for a 2-byte insertion bit mask "
+			            "(only %zd bytes available)\n", packet_len);
+			goto error;
+		}
+		ins_mask_length = 15;
+		ins_mask[1] = *packet;
+		packet++;
+		rohc_debugf(3, "insertion bit mask (second byte) = 0x%02x\n", ins_mask[1]);
+
+		for(i = 7; i >= 0; i--)
+		{
+			if(get_bit_index(ins_mask[1], i))
+				k++;
+		}
+
+		/* skip the insertion mask */
+		packet_read_length += 2;
+		packet_len -= 2;
+	}
+	else
+	{
+		/* 7-bit mask */
+		rohc_debugf(3, "no second byte of insertion bit mask\n");
+		ins_mask_length = 7;
+
+		/* skip the insertion mask */
+		packet_read_length++;
+		packet_len--;
+	}
+
+	/* determine the length (in bytes) of the XI list */
+	if(ps == 0)
+	{
+		/* 4-bit XI */
+		if((k - 1) % 2 == 0)
+		{
+			/* odd number of 4-bit XI fields and first XI field stored in
+			   first byte of header, so last byte is full */
+			xi_length = (k - 1) / 2;
+		}
+		else
+		{
+			/* even number of 4-bit XI fields and first XI field stored in
+			   first byte of header, so last byte is not full */
+			xi_length = (k - 1) / 2 + 1;
+		}
+	}
+	else
+	{
+		/* 8-bit XI */
+		xi_length = k;
+	}
+
+	/* is there enough room in packet for all the XI list ? */
+	if(packet_len < xi_length)
+	{
+		rohc_debugf(0, "packet too small for k = %zd XI items (only %zd bytes "
+		            "while at least %zd bytes are required)\n", k, packet_len,
+		            xi_length);
+		goto error;
+	}
+
+	/* create current list with reference list and new provided items */
+	xi_index = 0;
+	item_read_length = 0;
+	removal_list_cur_pos = 0;
+	if(new_list)
+	{
+		removal_list_size = size_list(&removal_list);
+	}
+	for(i = 0; i < ins_mask_length; i++)
+	{
+		int new_item_to_insert;
+
+		/* retrieve the corresponding bit in the insertion mask */
+		if(i < 7)
+		{
+			/* bit is located in first byte of insertion mask */
+			new_item_to_insert = get_bit_index(ins_mask[0], 6 - i);
+		}
+		else
+		{
+			/* bit is located in 2nd byte of insertion mask */
+			new_item_to_insert = get_bit_index(ins_mask[1], 14 - i);
+		}
+
+		/* insert item if required */
+		if(!new_item_to_insert)
+		{
+			/* take the next item from reference list (if there no more item in
+			   reference list, do nothing) */
+			if(new_list && removal_list_cur_pos < removal_list_size)
+			{
+				/* new list, insert the item from reference list */
+				rohc_debugf(3, "insert item from reference list (index %zd) "
+				            "into current list (index %d)\n",
+				            removal_list_cur_pos, i);
+				elt = get_elt(&removal_list, removal_list_cur_pos);
+				if(!insert_elt(decomp->list_table[decomp->counter_list], 
+				               elt->item, i, elt->index_table))
+				{
+					rohc_debugf(0, "failed to insert item from reference list "
+					            "(index %zd) into current list (index %d)\n",
+					            removal_list_cur_pos, i);
+					goto error;
+				}
+
+				/* skip item in reference list */
+				removal_list_cur_pos++;
+			}
+		}
+		else
+		{
+			unsigned int xi_x_value; /* the value of the X field in one XI field */
+			unsigned int xi_index_value; /* the value of the Index field in one XI field */
+			int item_length; /* the length (in bytes) of the item related to XI */
+
+			/* new item to insert in list, parse the related XI field */
+			if(!ps)
+			{
+				/* ROHC header contains 4-bit XIs */
+
+				/* which type of XI do we parse ? first one, odd one or even one ? */
+				if(xi_index == 0)
+				{
+					/* first XI is stored in the first byte of the header */
+
+					/* parse XI field */
+					xi_x_value = GET_BIT_3(&xi_1);
+					xi_index_value = GET_BIT_0_2(&xi_1);
+					if(!decomp->check_index(decomp, xi_index_value))
 					{
-						length = decomp->get_ext_size(packet + index_size + size - size_header);
+						goto error;
+					}
+
+					/* parse the corresponding item if present */
+					if(xi_x_value)
+					{
+						/* X bit set in XI, so retrieve the related item in ROHC header */
+						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_debugf(0, "failed to determine the length of list item "
+							            "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
 						if(new_list)
 						{
-							rohc_debugf(3, "extract %d-byte item\n", length);
-							data = packet + index_size + size - size_header;
-							decomp->create_item(data, length, index, decomp);
+							bool is_created;
+
+							rohc_debugf(3, "record transmitted item #%d in context "
+							            "(index %u)\n", xi_index, xi_index_value);
+							is_created =
+								decomp->create_item(packet + xi_length + item_read_length,
+								                    item_length, xi_index_value, decomp);
+							if(!is_created)
+							{
+								rohc_debugf(0, "failed to create new IPv6 item\n");
+								goto error;
+							}
 						}
-						size += length;
+
+						/* skip the item in ROHC header */
+						item_read_length += item_length;
 					}
 					else
 					{
-						if(!decomp->trans_table[index].known)
+						/* X bit not set in XI, so item is not provided in ROHC header,
+						   it must already be known by decompressor */
+						assert(xi_index_value < MAX_ITEM);
+						if(!decomp->trans_table[xi_index_value].known)
+						{
+							rohc_debugf(0, "list item with index #%u referenced "
+							            "by XI #%d is not known yet\n",
+							            xi_index_value, xi_index);
 							goto error;
+						}
 					}
 				}
-				if(new_list)
+				else if((xi_index % 2) != 0)
 				{
-					rohc_debugf(3, "take item #%d from packet as element #%d "
-					            "of new list\n", j + 1, i + 1);
-					if(!insert_elt(decomp->list_table[decomp->counter_list], 
-							&(decomp->based_table[index]), i, index))
+					/* handle odd XI, ie. XI stored in MSB */
+
+					/* parse XI field */
+					xi_x_value = GET_BIT_7(packet + (xi_index - 1) / 2);
+					xi_index_value = GET_BIT_4_6(packet + (xi_index - 1) / 2);
+					if(!decomp->check_index(decomp, xi_index_value))
+					{
 						goto error;
+					}
+
+					/* parse the corresponding item if present */
+					if(xi_x_value)
+					{
+						/* X bit set in XI, so retrieve the related item in ROHC header */
+						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_debugf(0, "failed to determine the length of list item "
+							            "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+						if(new_list)
+						{
+							bool is_created;
+
+							rohc_debugf(3, "record transmitted item #%d in context "
+							            "with index %u\n", xi_index, xi_index_value);
+							is_created =
+								decomp->create_item(packet + xi_length + item_read_length,
+								                    item_length, xi_index_value, decomp);
+							if(!is_created)
+							{
+								rohc_debugf(0, "failed to create new IPv6 item\n");
+								goto error;
+							}
+						}
+
+						/* skip the item in ROHC header */
+						item_read_length += item_length;
+					}
+					else
+					{
+						/* X bit not set in XI, so item is not provided in ROHC header,
+						   it must already be known by decompressor */
+						assert(xi_index_value < MAX_ITEM);
+						if(!decomp->trans_table[xi_index_value].known)
+						{
+							rohc_debugf(0, "list item with index #%u referenced "
+							            "by XI #%d is not known yet\n",
+							            xi_index_value, xi_index);
+							goto error;
+						}
+					}
 				}
-				j++;
+				else
+				{
+					/* handle even XI, ie. XI stored in LSB */
+
+					/* parse XI field */
+					xi_x_value = GET_BIT_3(packet + (xi_index - 1) / 2);
+					xi_index_value = GET_BIT_0_2(packet + (xi_index - 1) / 2);
+					if(!decomp->check_index(decomp, xi_index_value))
+					{
+						goto error;
+					}
+
+					/* parse the corresponding item if present */
+					if(xi_x_value)
+					{
+						/* X bit set in XI, so retrieve the related item in ROHC header */
+						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+						                                   packet_len - xi_length - item_read_length);
+						if(new_list)
+						{
+							bool is_created;
+
+							rohc_debugf(3, "record transmitted item #%d in context "
+							            "with index %u\n", xi_index, xi_index_value);
+							is_created =
+								decomp->create_item(packet + xi_length + item_read_length,
+								                    item_length, xi_index_value, decomp);
+							if(!is_created)
+							{
+								rohc_debugf(0, "failed to create new IPv6 item\n");
+								goto error;
+							}
+						}
+
+						/* skip the item in ROHC header */
+						item_read_length += item_length;
+					}
+					else
+					{
+						/* X bit not set in XI, so item is not provided in ROHC header,
+						   it must already be known by decompressor */
+						assert(xi_index_value < MAX_ITEM);
+						if(!decomp->trans_table[xi_index_value].known)
+						{
+							rohc_debugf(0, "list item with index #%u referenced "
+							            "by XI #%d is not known yet\n",
+							            xi_index_value, xi_index);
+							goto error;
+						}
+					}
+				}
 			}
-		}
-		if(decomp->counter < L)
-		{
-			decomp->ref_ok = 0;
-			decomp->counter ++;
-			if(decomp->counter == L)
+			else
 			{
-				decomp->ref_list = decomp->list_table[decomp->counter_list];
-				decomp->ref_ok = 1;
+				/* ROHC header contains 8-bit XIs */
+
+				/* parse XI field */
+				xi_x_value = GET_BIT_3(packet + xi_index);
+				xi_index_value = GET_BIT_0_2(packet + xi_index);
+				if(!decomp->check_index(decomp, xi_index_value))
+				{
+					goto error;
+				}
+
+				/* parse the corresponding item if present */
+				if(xi_x_value)
+				{
+					/* X bit set in XI, so retrieve the related item in ROHC header */
+					item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
+					                                   packet_len - xi_length - item_read_length);
+					if(item_length < 0)
+					{
+						rohc_debugf(0, "failed to determine the length of list item "
+						            "referenced by XI #%d\n", xi_index);
+						goto error;
+					}
+					if(new_list)
+					{
+						bool is_created;
+
+						rohc_debugf(3, "record transmitted item #%d in context "
+						            "with index %u\n", xi_index, xi_index_value);
+						is_created =
+							decomp->create_item(packet + xi_length + item_read_length,
+							                    item_length, xi_index_value, decomp);
+						if(!is_created)
+						{
+							rohc_debugf(0, "failed to create new IPv6 item\n");
+							goto error;
+						}
+					}
+
+					/* skip the item in ROHC header */
+					item_read_length += item_length;
+				}
+				else
+				{
+					/* X bit not set in XI, so item is not provided in ROHC header,
+					   it must already be known by decompressor */
+					if(!decomp->trans_table[xi_index_value].known)
+					{
+						rohc_debugf(0, "list item with index #%u referenced "
+						            "by XI #%d is not known yet\n",
+						            xi_index_value, xi_index);
+						goto error;
+					}
+				}
 			}
+
+			if(new_list)
+			{
+				rohc_debugf(3, "insert new item from context (index %u) into "
+				            "current list (index %d)\n", xi_index_value, i);
+				if(!insert_elt(decomp->list_table[decomp->counter_list], 
+				               &(decomp->based_table[xi_index_value]),
+				               i, xi_index_value))
+				{
+					rohc_debugf(0, "failed to insert new item from context "
+					            "(index %u) into current list (index %d)\n",
+					            xi_index_value, i);
+					goto error;
+				}
+			}
+
+			/* skip the XI we have just parsed */
+			xi_index++;
 		}
-		rohc_debugf(3, "new value of decompressor list counter: %d \n", decomp->counter);
 	}
-	if (rem_mask != NULL)
-		free(rem_mask);
-	if (ins_mask != NULL)
-		free(ins_mask);
-	return size + index_size;
+
+	/* ensure that in case of an even number of 4-bit XIs, the 4 bits of padding
+	   are set to 0 */
+	if(ps == 0 && (k % 2) == 0)
+	{
+		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_length - 1);
+		if(xi_padding != 0)
+		{
+			rohc_debugf(0, "sender does not conform to ROHC standards: when an "
+			            "even number of 4-bit XIs is used, the last 4 bits of the "
+			            "XI list should be set to 0\n, not 0x%x\n", xi_padding);
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+			goto error;
+#endif
+		}
+	}
+
+	/* skip the XI list and the item list */
+	packet_read_length += xi_length + item_read_length;
+	packet_len -= xi_length + item_read_length;
+
+#if ROHC_DEBUG_LEVEL >= 3
+	/* print current list after insertion scheme */
+	rohc_debugf(3, "current list (gen_id = %d) decoded:\n",
+	            decomp->list_table[decomp->counter_list]->gen_id);
+	i = 0;
+	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	{
+		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
+		            elt->item->type, elt->item->type);
+		i++;
+	}
+#endif
+
+	/* does the received list becomes the new reference list ? */
+	if(decomp->counter < L)
+	{
+		decomp->ref_ok = 0;
+		decomp->counter ++;
+		if(decomp->counter == L)
+		{
+			rohc_debugf(3, "received list (gen_id = %d) now becomes the reference "
+			            "list\n", decomp->list_table[decomp->counter_list]->gen_id);
+			decomp->ref_list = decomp->list_table[decomp->counter_list];
+			decomp->ref_ok = 1;
+		}
+	}
+
+	rohc_debugf(3, "new value of decompressor list counter: %d\n", decomp->counter);
+
+	return packet_read_length;
+
 error:
-	return 0;
+	return -1;
 }
+
 
 /**
  * @brief Get the bit in the byte at the specified index
@@ -1548,8 +2581,9 @@ int get_bit_index(unsigned char byte, int index)
 			bit = GET_BIT_7(&byte) >> 7;
 			break;
 		default:
-			rohc_debugf(0, "there is no more bit in a byte \n");
+			rohc_debugf(0, "there is no bit %d in a byte\n", index);
 			bit = -1;
+			assert(0); /* should not happen */
 			break;
 	}
 	return bit;
@@ -2384,8 +3418,13 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 			ext_list_offset = large_cid_len + length +
 			                  context->profile->get_static_part();
 			g_context->list_decomp1->size_ext = 
-				d_algo_list_decompress(g_context->list_decomp1,
-				                       packet + ext_list_offset);
+				rohc_list_decode(g_context->list_decomp1, packet + ext_list_offset,
+				                 plen - ext_list_offset);
+			if(g_context->list_decomp1->size_ext < 0)
+			{
+				rohc_debugf(0, "failed to decode IPv6 extensions list\n");
+				goto error;
+			}
 			rohc_debugf(1, "IPv6 extensions list in outer IPv6 dynamic "
 			            "chain = %d bytes\n", g_context->list_decomp1->size_ext);
 			length += g_context->list_decomp1->size_ext;
@@ -2409,8 +3448,13 @@ unsigned int d_generic_detect_ir_size(struct d_context *context,
 				ext_list_offset = large_cid_len + length +
 				                  context->profile->get_static_part();
 				g_context->list_decomp2->size_ext =
-					d_algo_list_decompress(g_context->list_decomp2,
-					                       packet + ext_list_offset);
+					rohc_list_decode(g_context->list_decomp2, packet + ext_list_offset,
+					                 plen - ext_list_offset);
+				if(g_context->list_decomp2->size_ext < 0)
+				{
+					rohc_debugf(0, "failed to decode IPv6 extensions list\n");
+					goto error;
+				}
 				rohc_debugf(1, "IPv6 extensions list in inner IPv6 dynamic chain "
 				            "= %d bytes\n", g_context->list_decomp2->size_ext);
 				length += g_context->list_decomp2->size_ext;
@@ -2508,8 +3552,13 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
 		length += 2;
 		ext_list_offset = large_cid_len + length;
 		g_context->list_decomp1->size_ext =
-			d_algo_list_decompress(g_context->list_decomp1,
-			                       packet + ext_list_offset);
+			rohc_list_decode(g_context->list_decomp1, packet + ext_list_offset,
+			                 plen - ext_list_offset);
+		if(g_context->list_decomp1->size_ext < 0)
+		{
+			rohc_debugf(0, "failed to decode IPv6 extensions list\n");
+			goto error;
+		}
 		length += g_context->list_decomp1->size_ext;
 	}
 
@@ -2531,13 +3580,21 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
 			length += 2;
 			ext_list_offset = large_cid_len + length;
 			g_context->list_decomp2->size_ext =
-				d_algo_list_decompress(g_context->list_decomp2,
-				                       packet + ext_list_offset);
+				rohc_list_decode(g_context->list_decomp2, packet + ext_list_offset,
+				                 plen - ext_list_offset);
+			if(g_context->list_decomp2->size_ext < 0)
+			{
+				rohc_debugf(0, "failed to decode IPv6 extensions list\n");
+				goto error;
+			}
 			length += g_context->list_decomp2->size_ext;
 		}
 	}
 
 	return length;
+
+error:
+	return 0;
 }
 
 
@@ -6919,11 +7976,18 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 	/* static & changing */
 	if(decomp->list_decomp)
 	{
-		if(decomp->list_table[decomp->counter_list] != NULL &&
-		   size_list(decomp->list_table[decomp->counter_list]) > 0)
+		/* set Next Header in base header according to the first
+		   IPv6 extension header */
+		struct c_list *list;
+		if(decomp->ref_ok)
+			list = decomp->ref_list;
+		else
+			list = decomp->list_table[decomp->counter_list];
+		if(list != NULL && size_list(list) > 0)
 		{
-			active->ip.header.v6.ip6_nxt =
-				(uint8_t)(decomp->list_table[decomp->counter_list]->first_elt->item->type);
+			active->ip.header.v6.ip6_nxt = (uint8_t) list->first_elt->item->type;
+			rohc_debugf(3, "set Next Header in IPv6 base header to 0x%02x because "
+			            "of IPv6 extension header\n", active->ip.header.v6.ip6_nxt);
 		}
 	}
 	memcpy(dest, &active->ip.header.v6, sizeof(struct ip6_hdr));
@@ -6947,6 +8011,7 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 	return sizeof(struct ip6_hdr) + size;
 }
 
+
 /**
  * @brief Build an extension list in IPv6 header
  * @param active The IPv6 header changes
@@ -6954,58 +8019,68 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
  * @param dest The buffer to store the IPv6 header
  * @return The size of the list
  */
-int encode_ip6_extension(struct d_generic_changes * active,
-			  struct list_decomp * decomp,
-                          unsigned char *dest)
+static int rohc_build_ip6_extension(struct d_generic_changes *active,
+                                    struct list_decomp *decomp,
+                                    unsigned char *dest)
 {
-	int length; // number of element in reference list
-	int i;
-	unsigned char next_header_type;
-	struct list_elt * elt;
-	unsigned char byte = 0;
-	struct c_list * list;
+	struct c_list *list;
+	int size = 0; // size of the list
+
 	if(decomp->ref_ok)
 	{
-		rohc_debugf(3, "reference list to use \n");
+		rohc_debugf(3, "use reference list to build IPv6 extension headers\n");
 		list = decomp->ref_list;
 	}
 	else
-		list= decomp->list_table[decomp->counter_list];
-	int size = 0; // size of the list
-	int size_data; // size of one of the extension
+	{
+		rohc_debugf(3, "use list #%d to build IPv6 extension headers\n",
+		            decomp->counter_list);
+		list = decomp->list_table[decomp->counter_list];
+	}
+	assert(list != NULL);
 	
 	if(list->first_elt != NULL)
 	{
+		int length; // number of element in reference list
+		int i;
+
 		length = size_list(list);
 		for(i = 0; i < length; i++)
 		{
-			byte = 0;
+			unsigned char next_header_type;
+			struct list_elt *elt;
+			int size_data; // size of one of the extension
+
 			// next header 
 			elt = get_elt(list, i);
 			if(elt->next_elt != NULL)
 			{
 				next_header_type = elt->next_elt->item->type;
-				byte |= (next_header_type & 0xff);
+				dest[0] = next_header_type & 0xff;
 			}
 			else // next_header is protocol header
 			{
 				next_header_type = active->ip.header.v6.ip6_nxt;
-				byte |= (next_header_type & 0xff);
+				dest[0] = next_header_type & 0xff;
 			}
-			memcpy(dest, &byte, 1);
-			dest ++;
-			byte = 0;
+			dest++;
+
+
 			// length
 			size_data = elt->item->length;
-			byte |= (((size_data/8)-1) & 0xff);
-			memcpy(dest, &byte, 1);
-			dest ++;
+			dest[0] = ((size_data / 8) - 1) & 0xff;
+			dest++;
+
 			// data
 			memcpy(dest, elt->item->data + 2, size_data - 2);
-			dest += (size_data - 2);
-			size += size_data;	
+			dest += size_data - 2;
+			size += size_data;
+
+			rohc_debugf(3, "build one %d-byte IPv6 extension header with Next "
+			            "Header 0x%02x\n", size_data, next_header_type);
 		}
 	}
+
 	return size;
 }
 

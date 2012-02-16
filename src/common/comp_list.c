@@ -294,54 +294,56 @@ void empty_list(struct c_list * list)
  */
 void destroy_list(struct c_list * list)
 {
-	struct list_elt * curr_elt;
-        if (list->first_elt == NULL)
+	struct list_elt *curr_elt;
+	struct list_elt *next_elt;
+
+	for(curr_elt = list->first_elt; curr_elt != NULL; curr_elt = next_elt)
 	{
-		rohc_debugf(0, "no element in the list\n");
-		goto end;
+		next_elt = curr_elt->next_elt;
+		free(curr_elt);
 	}
 
-	curr_elt = list->first_elt;
-	while (curr_elt->next_elt != NULL )
-	{
-		list->first_elt = curr_elt->next_elt;
-		curr_elt->next_elt->prev_elt = NULL;
-		free(curr_elt);
-		curr_elt = list->first_elt;
-	}
-	free(list->first_elt);
-	goto end;
-end:
 	free(list);
 }
+
 
 /**
  * @brief Insert an element at the specified position
  *
- * @param list The list in which the element is inserted
- * @param item the element to insert
- * @param index the position
- * @param index_table the index in based_table
- * @return 1 if successful, 0 else
+ * @param list         The list in which the element is inserted
+ * @param item         The element to insert
+ * @param index        The position
+ * @param index_table  The index in based_table
+ * @return             1 if successful, 0 otherwise
  */
-int insert_elt(struct c_list * list, struct item * item, int index, int index_table)
+int insert_elt(struct c_list *list, struct item *item, int index, int index_table)
 {
-	struct list_elt * curr_elt;
-	struct list_elt * elt;
 	int i;
 	int size_l = size_list(list);
 
+	if(index > size_l)
+	{
+		rohc_debugf(0, "bad index for insertion\n");
+		goto error;
+	}
+	
 	if(index == 0)
 	{
+		/* special case for first element */
 		if(!add_elt(list, item, index_table))
+		{
+			rohc_debugf(0, "failed to add element in list\n");
 			goto error;
-		else
-			goto end;
+		}
 	}
 	else
 	{
+		struct list_elt *elt;
+		struct list_elt *curr_elt;
+
+		/* create a new element */
 		elt = malloc(sizeof(struct list_elt));
-		if (elt == NULL)
+		if(elt == NULL)
 		{
 			rohc_debugf(0, "cannot allocate memory for the list element\n");
 			goto error;
@@ -350,63 +352,56 @@ int insert_elt(struct c_list * list, struct item * item, int index, int index_ta
 		elt->next_elt = NULL;
 		elt->prev_elt = NULL;
 		elt->index_table = index_table;											
-		if (index > size_l)
-		{
-			rohc_debugf(0, "bad index for insertion \n");
-			goto error;
-		}
-		
+
+		/* loop on list elements towards the given index */
 		curr_elt = list->first_elt;
-		for(i=0; i<index; i++)
+		for(i = 0; i < index; i++)
 		{
-			if (curr_elt->next_elt != NULL)
+			if(curr_elt->next_elt != NULL)
 				curr_elt = curr_elt->next_elt;
 		}
-		if (index == size_l)
+
+		/* insert new element before current element */
+		if(index == size_l)
 		{
+			/* insert at the very end of the list */
 			curr_elt->next_elt = elt;
 			elt->prev_elt = curr_elt;
 		}
 		else
 		{
+			/* insert in the middle of the list */
 			elt->next_elt = curr_elt;
 			elt->prev_elt = curr_elt->prev_elt;
 			curr_elt->prev_elt = elt;
-			if (elt->prev_elt != NULL)
+			if(elt->prev_elt != NULL)
 				elt->prev_elt->next_elt = elt;
 		}
-		return 1;
 	}
-end:
-	rohc_debugf(3, "element is in the list\n");
+
 	return 1;
+
 error:
 	return 0;
 }
 
+
 /**
- * @brief Get the size of the list
+ * @brief Get the size of the given list
  *
- * @param list The list
- *
- * @return the size
+ * @param list  The list
+ * @return      The size of the list
  */
-int size_list(struct c_list * list)
+size_t size_list(const struct c_list *const list)
 {
-	struct list_elt * curr_elt;
-	int i = 0;
+	struct list_elt *curr_elt;
+	size_t size = 0;
 
-	if (list->first_elt == NULL)
-		goto end;
-
-	curr_elt = list->first_elt;
-	i++;
-	while (curr_elt->next_elt != NULL)
+	for(curr_elt = list->first_elt; curr_elt != NULL; curr_elt = curr_elt->next_elt)
 	{
-		curr_elt = curr_elt->next_elt;
-		i++;
+		size++;
 	}
-	return i;
-end:
-	return 0;
+
+	return size;
 }
+
