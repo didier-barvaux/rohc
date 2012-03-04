@@ -8,9 +8,6 @@
 TESTS = \
 	test_lsb_decode
 
-XFAIL_TESTS = \
-	test_lsb_decode
-
 
 check_PROGRAMS = \
 	test_lsb_decode

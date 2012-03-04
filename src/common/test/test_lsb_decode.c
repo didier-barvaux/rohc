@@ -130,7 +130,6 @@ int main(int argc, char * argv[])
 		{
 			required_bits_mask = (1 << required_bits) - 1;
 		}
-		assert(required_bits_mask <= 0xffff);
 		value16_encoded = value16 & required_bits_mask;
 		if(be_verbose)
 		{

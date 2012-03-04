@@ -139,7 +139,6 @@ int d_lsb_decode16(const struct d_lsb_decode *const lsb,
 	is_success = d_lsb_decode32(lsb, m32, k, &decoded32);
 	if(is_success)
 	{
-		assert((decoded32 & 0xffff) == decoded32);
 		*decoded = (uint16_t) (decoded32 & 0xffff);
 	}
 
