@@ -1050,6 +1050,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	assert(packet != NULL);
 	assert(ps == 0 || ps == 1);
 
+	/* init mask[1] to avoid a false warning of GCC */
+	mask[1] = 0x00;
+
 	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
 	if(ps && xi_1 != 0)
 	{
@@ -1598,6 +1601,9 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	int new_list;
 	int i;
 
+	/* init mask[1] to avoid a false warning of GCC */
+	mask[1] = 0x00;
+
 	/* is there enough data in packet for the ref_id and minimal removal
 	   bit mask fields ? */
 	if(packet_len < 2)
@@ -1878,6 +1884,12 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	size_t removal_list_size; /* size of list after removal */
 	int new_list;
 	int i;
+
+	/* init rem_mask[1], ins_mask[1] and removal_list_size to avoid a false
+	 * warning of GCC */
+	rem_mask[1] = 0x00;
+	ins_mask[1] = 0x00;
+	removal_list_size = 0;
 
 	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
 	if(ps && xi_1 != 0)
