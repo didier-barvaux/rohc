@@ -1318,61 +1318,110 @@ error:
  * @brief Decide the encoding type for compression list
  *
  * @param comp  The list compressor
- * @return      the encoding type
+ * @return      the encoding type among [0-3]
  */
 int rohc_list_decide_type(struct list_comp *const comp)
 {
-	int type; /* list encoding type */
-	int i;
-	int present; /* boolean which indicates if an item is present */
-	struct list_elt *elt;
-	int ref_size; /* size of reference list */
-	int curr_size; /* size of current list */
+	int encoding_type;
 
-	ref_size = size_list(comp->ref_list);
-	curr_size = size_list(comp->curr_list);
-	if(ref_size >= curr_size)
+	/* sanity checks */
+	assert(comp != NULL);
+
+	if(comp->ref_list->first_elt == NULL)
 	{
-		/* there are fewer elements */
-		i = 0;
-		present = 1;
-		while(present && i < curr_size)
-		{
-			elt = get_elt(comp->curr_list, i);
-			if(!type_is_present(comp->ref_list, elt->item) ||
-			   !comp->trans_table[elt->index_table].known)
-			{
-				present = 0;
-			}
-			i++;
-		}
-		if(present)
-			type = 2;
-		else
-			type = 3;
+		/* no reference list, so use encoding type 0 */
+		rohc_debugf(1, "use list encoding type 0 because there is no reference "
+		            "list yet\n");
+		encoding_type = 0;
 	}
-	else
+	else if(comp->islist && !comp->list_compress)
 	{
-		/* there are more elements */
-		i = 0;
-		present = 1;
-		while(present && i < ref_size)
+		/* the list did not change, so use encoding type 0 */
+		rohc_debugf(1, "use list encoding type 0 because the list did not "
+		            "change (items should not be sent)\n");
+		encoding_type = 0;
+	}
+	else /* the list is modified */
+	{
+		bool are_all_items_present;
+		int ref_size; /* size of reference list */
+		int curr_size; /* size of current list */
+		struct list_elt *elt;
+		int i;
+
+		/* determine the sizes of current and reference lists */
+		ref_size = size_list(comp->ref_list);
+		curr_size = size_list(comp->curr_list);
+
+		if(curr_size <= ref_size)
 		{
-			elt = get_elt(comp->ref_list, i);
-			if(!type_is_present(comp->curr_list, elt->item) ||
-			   !comp->trans_table[elt->index_table].known)
+			/* there are fewer items in the current list than in the reference list */
+
+			/* are all the items of the current list in the reference list ? */
+			i = 0;
+			are_all_items_present = true;
+			while(are_all_items_present && i < curr_size)
 			{
-				present = 0;
+				elt = get_elt(comp->curr_list, i);
+				if(!type_is_present(comp->ref_list, elt->item) ||
+				   !comp->trans_table[elt->index_table].known)
+				{
+					are_all_items_present = false;
+				}
+				i++;
 			}
-			i++;
+
+			if(are_all_items_present)
+			{
+				/* all the items of the current list are present in the reference
+				   list, so the 'Removal Only scheme' (type 2) may be used to encode
+				   the current list */
+				encoding_type = 2;
+			}
+			else
+			{
+				/* some items of the current list are not present in the reference
+				   list, so the 'Remove Then Insert scheme' (type 3) is required to
+				   encode the current list */
+				encoding_type = 3;
+			}
 		}
-		if(present)
-			type = 1;
 		else
-			type = 3;
+		{
+			/* there are more items in the current list than in the reference list */
+
+			/* are all the items of the current list in the reference list ? */
+			i = 0;
+			are_all_items_present = true;
+			while(are_all_items_present && i < ref_size)
+			{
+				elt = get_elt(comp->ref_list, i);
+				if(!type_is_present(comp->curr_list, elt->item) ||
+				   !comp->trans_table[elt->index_table].known)
+				{
+					are_all_items_present = 0;
+				}
+				i++;
+			}
+
+			if(are_all_items_present)
+			{
+				/* all the items of the reference list are present in the current
+				   list, so the 'Insertion Only scheme' (type 1) may be used to
+				   encode the current list */
+				encoding_type = 1;
+			}
+			else
+			{
+				/* some items of the reference list are not present in the current
+				   list, so the 'Remove Then Insert scheme' (type 3) is required to
+				   encode the current list */
+				encoding_type = 3;
+			}
+		}
 	}
 
-	return type;
+	return encoding_type;
 }
 
 
@@ -1393,44 +1442,37 @@ int rohc_list_encode(struct list_comp *const comp,
                      const int ps,
                      const int size)
 {
-	if(comp->ref_list->first_elt == NULL)
-	{
-		/* no reference list: use encoding type 0 */
-		rohc_debugf(1, "use list encoding type 0 because there is no reference "
-		            "list yet\n");
-		counter = rohc_list_encode_type_0(comp, dest, counter, ps);
-	}
-	else if(comp->islist && !comp->list_compress)
-	{
-		/* the list did not change: use encoding type 0 */
-		rohc_debugf(1, "use list encoding type 0 because the list did not "
-		            "change (items should not be sent)\n");
-		counter = rohc_list_encode_type_0(comp, dest, counter, ps);
-	}
-	else /* the list is modified */
-	{
-		int type; /* encoding type */
+	int encoding_type;
 
-		/* which encoding for the modified list ? */
-		type = rohc_list_decide_type(comp);
-		rohc_debugf(1, "use list encoding type %d\n", type);
+	/* sanity checks */
+	assert(comp != NULL);
+	assert(dest != NULL);
+	assert(size >= 0);
 
-		switch(type)
-		{
-			case 1: /* Encoding type 1 (insertion only scheme) */
-				counter = rohc_list_encode_type_1(comp, dest, counter, ps);
-				break;
-			case 2: /* Encoding type 2 (removal only scheme) */
-				counter = rohc_list_encode_type_2(comp, dest, counter, ps);
-				break;
-			case 3: /* encoding type 3 (remove then insert scheme) */
-				counter = rohc_list_encode_type_3(comp, dest, counter, ps);
-				break;
-			default:
-				rohc_debugf(0, "unknown encoding type for list compression\n");
-				assert(0);
-				goto error;
-		}
+	/* determine which encoding type is required for the current list ? */
+	encoding_type = rohc_list_decide_type(comp);
+	assert(encoding_type >= 0 && encoding_type <= 3);
+	rohc_debugf(1, "use list encoding type %d\n", encoding_type);
+
+	/* encode the current list according to the encoding type */
+	switch(encoding_type)
+	{
+		case 0: /* Encoding type 0 (generic scheme) */
+			counter = rohc_list_encode_type_0(comp, dest, counter, ps);
+			break;
+		case 1: /* Encoding type 1 (insertion only scheme) */
+			counter = rohc_list_encode_type_1(comp, dest, counter, ps);
+			break;
+		case 2: /* Encoding type 2 (removal only scheme) */
+			counter = rohc_list_encode_type_2(comp, dest, counter, ps);
+			break;
+		case 3: /* encoding type 3 (remove then insert scheme) */
+			counter = rohc_list_encode_type_3(comp, dest, counter, ps);
+			break;
+		default:
+			rohc_debugf(0, "unknown encoding type for list compression\n");
+			assert(0);
+			goto error;
 	}
 
 	rohc_debugf(3, "counter at the end of list encoding = %d\n", counter);
