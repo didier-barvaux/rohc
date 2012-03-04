@@ -35,9 +35,13 @@
 #include "ip.h"
 
 #include <stddef.h>
+#include <stdbool.h>
 
 
 #define MAX_ITEM 15
+#if MAX_ITEM <= 7
+#	error "translation table must be larger enough for indexes stored on 3 bits"
+#endif
 
 #define LIST_COMP_WINDOW 100
 
@@ -187,8 +191,6 @@ struct list_decomp
 	struct c_list * ref_list;
 	/// The table of lists
 	struct c_list * list_table[LIST_COMP_WINDOW];
-	/// The temp list
-	struct c_list * temp_list;
 	/// The compression based table
 	struct item  based_table[MAX_ITEM];
 	/// The translation table
@@ -214,10 +216,12 @@ struct list_decomp
 	int (*check_index)(struct list_decomp * decomp, int index);
 	/// The handler used to create the item at 
 	/// the corresponding index of the based table
-	void (*create_item)(const unsigned char *data,int length,
-			        int index, struct list_decomp * decomp);
+	bool (*create_item)(const unsigned char *data,
+	                    int length,
+	                    int index,
+	                    struct list_decomp *decomp);
 	/// The handler used to get the size of an extension
-	int (*get_ext_size)(const unsigned char * ext);
+	int (*get_ext_size)(const unsigned char *data, const size_t data_len);
 };
 
 /*
@@ -252,27 +256,6 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
                                           unsigned char *first_byte,
                                           unsigned int plen,
                                           unsigned int large_cid_len);
-
-int d_algo_list_decompress(struct list_decomp * decomp, 
-			   const unsigned char *packet);
-
-int decode_type_0(struct list_decomp * decomp,
-		  const unsigned char * packet, 
-		  int gen_id, int ps, int m);
-
-int decode_type_1(struct list_decomp * decomp,
-		  const unsigned char * packet, 
-		  int gen_id, 
-		  int ps, int m, int ref_id);
-
-int decode_type_2(struct list_decomp * decomp, 
-		  const unsigned char * packet, 
-		  int gen_id, int ps, int ref_id);
-
-int decode_type_3(struct list_decomp * decomp,
-		  const unsigned char * packet, 
-		  int gen_id, 
-		  int ps, int m, int ref_id);
 
 int d_generic_get_sn(struct d_context *context);
 

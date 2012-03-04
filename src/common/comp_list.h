@@ -129,7 +129,7 @@ int elt_index(struct c_list * list, struct item * item);
 int type_is_present(struct c_list * list, struct item * item);
 void destroy_list(struct c_list * list);
 int insert_elt(struct c_list * list, struct item * item, int index, int index_table);
-int size_list(struct c_list * list);
+size_t size_list(const struct c_list *const list);
 void empty_list(struct c_list * list);
 
 #endif
