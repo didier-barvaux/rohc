@@ -225,6 +225,7 @@ AC_CONFIG_FILES([ \
 	Makefile \
 	src/Makefile \
 	src/common/Makefile \
+	src/common/test/Makefile \
 	src/comp/Makefile \
 	src/decomp/Makefile \
 	test/Makefile \

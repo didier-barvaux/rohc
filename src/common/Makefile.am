@@ -4,6 +4,10 @@
 #	Description: create the ROHC common library
 ################################################################################
 
+
+SUBDIRS = . test
+
+
 lib_LTLIBRARIES = librohc_common.la
 
 sources = \

@@ -25,6 +25,7 @@ Makefile.in
 ./rohc.pc
 ./doc/doxygen.conf
 ./doc/html
+./src/common/test/test_lsb_decode
 ./test/functional/feedback2/test_feedback2
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only
 ./test/robustness/empty_payload/test_empty_payload
