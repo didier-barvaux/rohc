@@ -4705,6 +4705,8 @@ int code_UO0_packet(struct c_context *const context,
  * UO-1 and UO-1-ID cannot be used if there is no IPv4 header in the context or
  * if value(RND) and value(RND2) are both 1.
  *
+ * @todo Handle extension (X bit) for UO-1-ID packet
+ *
  * \verbatim
 
       0   1   2   3   4   5   6   7
@@ -6469,11 +6471,12 @@ int code_EXT3_packet(const struct c_context *context,
 	int nr_of_ip_hdr;
 	unsigned short changed_f;
 	unsigned short changed_f2;
+	size_t nr_sn_bits;
 	size_t nr_ip_id_bits;
 	size_t nr_ip_id_bits2;
 	int have_inner = 0;
 	int have_outer = 0;
-	int S = 0;
+	int S;
 	int I = 0;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
@@ -6484,16 +6487,32 @@ int code_EXT3_packet(const struct c_context *context,
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
 	changed_f = g_context->tmp_variables.changed_fields;
 	changed_f2 = g_context->tmp_variables.changed_fields2;
+	nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
 	nr_ip_id_bits = g_context->tmp_variables.nr_ip_id_bits;
 	nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	packet_type = g_context->tmp_variables.packet_type;
 
-	/* part 1: extension type + S bit */
+	/* part 1: extension type */
 	f_byte = 0xc0;
-	if(g_context->tmp_variables.nr_sn_bits > 6)
+
+	/* part 1: S bit */
+	switch(packet_type)
 	{
-		S = 1;
+		case PACKET_UO_1_ID:
+			/* TODO: extension not supported in \ref code_UO1_packet yet */
+			S = nr_sn_bits > 4;
+			break;
+		case PACKET_UOR_2:
+			S = nr_sn_bits > 5;
+			break;
+		case PACKET_UOR_2_RTP:
+		case PACKET_UOR_2_TS:
+		case PACKET_UOR_2_ID:
+			S = nr_sn_bits > 6;
+			break;
+		default:
+			rohc_assert(false, error, "bad packet type (%d)", packet_type);
 	}
 	f_byte |= (S << 5) & 0x20;
 
@@ -6511,6 +6530,8 @@ int code_EXT3_packet(const struct c_context *context,
 		/* R-TS bit */
 		switch(packet_type)
 		{
+			/* TODO: handle PACKET_UO_1_ID packet once \ref code_UO1_packet
+			 *       supports extensions */
 			case PACKET_UOR_2_RTP:
 				rts = nr_ts_bits > 6;
 				break;
@@ -6544,6 +6565,8 @@ int code_EXT3_packet(const struct c_context *context,
 	else /* non-RTP profiles */
 	{
 		f_byte |= (context->mode & 0x3) << 3;
+
+		rohc_debugf(3, "S = %d, Mode = %d\n", S, context->mode & 0x3);
 	}
 
 	/* if random bit is set we have the IP-ID field outside this function */
