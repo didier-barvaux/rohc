@@ -653,7 +653,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 		byte = *packet;
 		x = (byte & 0x10) >> 4;
-		mode = (byte >> 2) & 0x11;
+		mode = (byte >> 2) & 0x03;
 		tis = (byte >> 1) & 0x01;
 		tss = byte & 0x01;
 		rohc_debugf(3, "x = %d, rohc_mode = %d, tis = %d, tss = %d\n",
