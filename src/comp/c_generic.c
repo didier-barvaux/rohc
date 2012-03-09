@@ -311,7 +311,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 {
 	/* insert HBH type in table */
 	comp->based_table[0].type = HBH;
-	comp->based_table[0].header.hbh = malloc(sizeof(struct ip6_hbh));
 	comp->based_table[0].length = 0;
 	comp->based_table[0].data = NULL;
 	comp->trans_table[0].known = 0;
@@ -319,7 +318,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[0].counter = 0;
 	/* insert DEST type in table */
 	comp->based_table[1].type = DEST;
-	comp->based_table[1].header.dest = malloc(sizeof(struct ip6_dest));
 	comp->based_table[1].length = 0;
 	comp->based_table[1].data = NULL;
 	comp->trans_table[1].known = 0;
@@ -327,7 +325,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[1].counter = 0;
 	/* insert RTHDR type in table */
 	comp->based_table[2].type = RTHDR;
-	comp->based_table[2].header.rthdr = malloc(sizeof(struct ip6_rthdr));
 	comp->based_table[2].length = 0;
 	comp->based_table[2].data = NULL;
 	comp->trans_table[2].known = 0;
@@ -335,7 +332,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[2].counter = 0;
 	/* insert AHHDR type in table */
 	comp->based_table[3].type = AH;
-	comp->based_table[3].header.ahhdr = malloc(sizeof(struct ip6_ahhdr));
 	comp->based_table[3].length = 0;
 	comp->based_table[3].data = NULL;
 	comp->trans_table[3].known = 0;
@@ -357,14 +353,6 @@ static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 		if(comp->based_table[i].data != NULL)
 			free(comp->based_table[i].data);
 	}
-	if(comp->based_table[0].header.hbh != NULL)
-		free(comp->based_table[0].header.hbh);
-	if(comp->based_table[1].header.dest != NULL)
-		free(comp->based_table[1].header.dest);
-	if(comp->based_table[2].header.rthdr != NULL)
-		free(comp->based_table[2].header.rthdr);
-	if(comp->based_table[3].header.ahhdr != NULL)
-		free(comp->based_table[3].header.ahhdr);
 }
 
 
@@ -2615,28 +2603,6 @@ void create_ipv6_item(const unsigned char *ext,
                       struct list_comp *const comp)
 {
 	comp->based_table[index_table].length = size;
-	switch(index_table)
-	{
-		case 0:
-			comp->based_table[index_table].header.hbh->ip6h_nxt = ext[0];
-			comp->based_table[index_table].header.hbh->ip6h_len = ext[1];
-			break;
-		case 1:
-			comp->based_table[index_table].header.dest->ip6d_nxt = ext[0];
-			comp->based_table[index_table].header.dest->ip6d_len = ext[1];
-			break;
-		case 2:
-			comp->based_table[index_table].header.rthdr->ip6r_nxt = ext[0];
-			comp->based_table[index_table].header.rthdr->ip6r_len = ext[1];
-			break;
-		case 3:
-			comp->based_table[index_table].header.ahhdr->ip6ah_nxt = ext[0];
-			comp->based_table[index_table].header.ahhdr->ip6ah_len = ext[1];
-			break;
-		default:
-			rohc_debugf(0, "no item defined for IPv6 with this index\n");
-			break;
-	}
 	if(comp->based_table[index_table].data != NULL)
 		zfree(comp->based_table[index_table].data);
 	comp->based_table[index_table].data = malloc(size);

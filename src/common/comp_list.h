@@ -42,27 +42,19 @@ typedef enum
 } ext_header_version;
 				
 
-
 /**
- * @brief Define the item
+ * @brief A list item
  */
 struct item
 {
 	/// item type
 	ext_header_version type;	
-	/// item header
-	union
-	{
-		struct ip6_hbh * hbh;       ///< Hop by hop header
-		struct ip6_dest * dest;     ///< Destination header
-		struct ip6_rthdr * rthdr;   ///< Routing header
-		struct ip6_ahhdr * ahhdr;   ///< AH header
-	}header;
 	/// size of the data in bytes
 	int length;
 	/// item data
-	unsigned char * data;
+	unsigned char *data;
 };
+
 
 /**
  * @brief Define a generic element in a compression list
