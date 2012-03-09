@@ -4485,7 +4485,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 * So init the is_ts_scaled variable to 1 by default. \ref decode_extension3
 	 * will reset it to 0 if needed.
 	 */
-	int is_ts_scaled = 1;
+	const int is_ts_scaled = 1;
 
 	/* X (extension) flag */
 	uint8_t ext_flag = 0; /* no extension by default */
@@ -4820,26 +4820,40 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
 
-		if(ts_bits_nr == 0)
+		if(is_ts_scaled)
 		{
-			rohc_debugf(3, "TS is deducted from SN\n");
-			ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
-		}
-		else if(is_ts_scaled)
-		{
-			rohc_debugf(3, "TS is scaled\n");
-			ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
-			                       &ts_decoded);
-			if(ret != 1)
+			if(ts_bits_nr == 0)
 			{
-				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
-				            ts_bits_nr, ts_bits);
-				goto error;
+				rohc_debugf(3, "TS is deducted from SN\n");
+				ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+			}
+			else
+			{
+				rohc_debugf(3, "TS is scaled\n");
+				ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
+				                       &ts_decoded);
+				if(ret != 1)
+				{
+					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
+					            ts_bits_nr, ts_bits);
+					goto error;
+				}
 			}
 		}
-		else
+		else /* TS not scaled */
 		{
 			rohc_debugf(3, "TS is not scaled\n");
+
+			/* RFC 4815, §4.2 says:
+			 *   If a packet with no TS bits is received with Tsc = 0, the
+			 *   decompressor MUST discard the packet. */
+			if(ts_bits_nr == 0)
+			{
+				rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bits "
+				            "received, discard the packet\n", is_ts_scaled);
+				goto error;
+			}
+
 			ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
 		}
 
@@ -5970,26 +5984,40 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
 
-		if(ts_bits_nr == 0)
+		if(is_ts_scaled)
 		{
-			rohc_debugf(3, "TS is deducted from SN\n");
-			ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
-		}
-		else if(is_ts_scaled)
-		{
-			rohc_debugf(3, "TS is scaled\n");
-			ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
-			                       &ts_decoded);
-			if(ret != 1)
+			if(ts_bits_nr == 0)
 			{
-				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
-				            ts_bits_nr, ts_bits);
-				goto error;
+				rohc_debugf(3, "TS is deducted from SN\n");
+				ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+			}
+			else
+			{
+				rohc_debugf(3, "TS is scaled\n");
+				ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
+				                       &ts_decoded);
+				if(ret != 1)
+				{
+					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
+					            ts_bits_nr, ts_bits);
+					goto error;
+				}
 			}
 		}
-		else
+		else /* TS not scaled */
 		{
 			rohc_debugf(3, "TS is not scaled\n");
+
+			/* RFC 4815, §4.2 says:
+			 *   If a packet with no TS bits is received with Tsc = 0, the
+			 *   decompressor MUST discard the packet. */
+			if(ts_bits_nr == 0)
+			{
+				rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bits "
+				            "received, discard the packet\n", is_ts_scaled);
+				goto error;
+			}
+
 			ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
 		}
 
