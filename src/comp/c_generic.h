@@ -320,10 +320,10 @@ struct list_comp
 
 	/// @brief the handler used to create the item with the corresponding 
 	///        type of the extension
-	void (*create_item)(const unsigned char *ext,
-	                    const int index_table,
-	                    const int size,
-	                    struct list_comp *const comp);
+	void (*create_item)(struct list_comp *const comp,
+	                    const unsigned int index_table,
+	                    const unsigned char *ext_data,
+	                    const size_t ext_size);
 
 	/// @brief the handler used to free the based table element
 	void (*free_table)(struct list_comp *const comp);

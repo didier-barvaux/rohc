@@ -179,10 +179,10 @@ int code_EXT3_packet(const struct c_context *context,
                      unsigned char *const dest,
                      int counter);
 
-void create_ipv6_item(const unsigned char *ext,
-                      const int index_table,
-                      const int size,
-                      struct list_comp *const comp);
+static void create_ipv6_item(struct list_comp *const comp,
+                             const unsigned int index_table,
+                             const unsigned char *ext_data,
+                             const size_t ext_size);
 
 unsigned char * get_ipv6_extension(const struct ip_packet *ip,
                                    const int index);
@@ -1177,7 +1177,7 @@ int c_create_current_list(const int index,
 			rohc_debugf(3, "new extension to encode with same size "
 			            "than previously\n");
 			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
-			comp->create_item(ext, index_table, size, comp);
+			comp->create_item(comp, index_table, ext, size);
 			comp->trans_table[index_table].known = 0;
 			comp->trans_table[index_table].counter = 0;
 
@@ -1251,7 +1251,7 @@ int c_create_current_list(const int index,
 		/* the extension is modified or new */
 		rohc_debugf(3, "new extension to encode with new size \n");
 		curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
-		comp->create_item(ext, index_table, size, comp);
+		comp->create_item(comp, index_table, ext, size);
 		comp->trans_table[index_table].known = 0;
 		comp->trans_table[index_table].counter = 0;
 
@@ -2590,24 +2590,28 @@ int ipv6_compare(const unsigned char *ext,
 
 
 /**
- * @brief Update an IPv6 item with the extension
+ * @brief Update an IPv6 item with the given extension
  *
- * @param ext          The IPv6 extension
- * @param index_table  The index of this item in the based table
- * @param size         The size of the data
  * @param comp         The list compressor
+ * @param index_table  The index of this item in the based table
+ * @param ext          The IPv6 extension
+ * @param size         The size of the data (in bytes)
  */
-void create_ipv6_item(const unsigned char *ext,
-                      const int index_table,
-                      const int size,
-                      struct list_comp *const comp)
+static void create_ipv6_item(struct list_comp *const comp,
+                             const unsigned int index_table,
+                             const unsigned char *ext_data,
+                             const size_t ext_size)
 {
-	comp->based_table[index_table].length = size;
+	assert(comp != NULL);
+	assert(ext_data != NULL);
+	assert(ext_size > 0);
+
+	comp->based_table[index_table].length = ext_size;
 	if(comp->based_table[index_table].data != NULL)
 		zfree(comp->based_table[index_table].data);
-	comp->based_table[index_table].data = malloc(size);
+	comp->based_table[index_table].data = malloc(ext_size);
 	if(comp->based_table[index_table].data != NULL)
-		memcpy(comp->based_table[index_table].data, ext, size);
+		memcpy(comp->based_table[index_table].data, ext_data, ext_size);
 }
 
 
