@@ -1685,8 +1685,9 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
-			assert(elt->item->length > 0);
-			memcpy(dest + counter, elt->item->data, elt->item->length);
+			assert(elt->item->length > 1);
+			dest[counter] = elt->item->type & 0xff;
+			memcpy(dest + counter + 1, elt->item->data + 1, elt->item->length - 1);
 			counter += elt->item->length;
 		}
 	}
@@ -2003,8 +2004,9 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 		{
 			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
-			assert(elt->item->length > 0);
-			memcpy(dest + counter, elt->item->data, elt->item->length);
+			assert(elt->item->length > 1);
+			dest[counter] = elt->item->type & 0xff;
+			memcpy(dest + counter + 1, elt->item->data + 1, elt->item->length - 1);
 			counter += elt->item->length;
 		}
 	}
@@ -2559,8 +2561,9 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 		{
 			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
-			assert(elt->item->length > 0);
-			memcpy(dest + counter, elt->item->data, elt->item->length);
+			assert(elt->item->length > 1);
+			dest[counter] = elt->item->type & 0xff;
+			memcpy(dest + counter + 1, elt->item->data + 1, elt->item->length - 1);
 			counter += elt->item->length;
 		}
 	}
@@ -2611,7 +2614,9 @@ static void create_ipv6_item(struct list_comp *const comp,
 		zfree(comp->based_table[index_table].data);
 	comp->based_table[index_table].data = malloc(ext_size);
 	if(comp->based_table[index_table].data != NULL)
+	{
 		memcpy(comp->based_table[index_table].data, ext_data, ext_size);
+	}
 }
 
 
