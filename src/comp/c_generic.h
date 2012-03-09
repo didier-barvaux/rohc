@@ -292,7 +292,7 @@ struct list_comp
 	/// counter which indicates if ref_list is reference list
         int counter;
 	/// The compression based table
-	struct item  based_table[MAX_ITEM];
+	struct rohc_list_item based_table[MAX_ITEM];
 	/// The translation table
 	struct c_translation  trans_table[MAX_ITEM];
 	/// Boolean which equals to 1 if the update is done, 0 else
