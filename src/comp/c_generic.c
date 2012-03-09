@@ -1683,7 +1683,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
 			assert(elt->item->length > 0);
 			memcpy(dest + counter, elt->item->data, elt->item->length);
@@ -2001,7 +2001,7 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
 			assert(elt->item->length > 0);
 			memcpy(dest + counter, elt->item->data, elt->item->length);
@@ -2557,7 +2557,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
 			assert(elt->item->length > 0);
 			memcpy(dest + counter, elt->item->data, elt->item->length);

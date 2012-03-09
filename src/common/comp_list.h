@@ -50,7 +50,7 @@ struct rohc_list_item
 	/// item type
 	ext_header_version type;
 	/// size of the data in bytes
-	int length;
+	size_t length;
 	/// item data
 	unsigned char *data;
 };
