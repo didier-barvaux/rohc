@@ -42,27 +42,19 @@ typedef enum
 } ext_header_version;
 				
 
-
 /**
- * @brief Define the item
+ * @brief A list item
  */
-struct item
+struct rohc_list_item
 {
 	/// item type
-	ext_header_version type;	
-	/// item header
-	union
-	{
-		struct ip6_hbh * hbh;       ///< Hop by hop header
-		struct ip6_dest * dest;     ///< Destination header
-		struct ip6_rthdr * rthdr;   ///< Routing header
-		struct ip6_ahhdr * ahhdr;   ///< AH header
-	}header;
+	ext_header_version type;
 	/// size of the data in bytes
-	int length;
+	size_t length;
 	/// item data
-	unsigned char * data;
+	unsigned char *data;
 };
+
 
 /**
  * @brief Define a generic element in a compression list
@@ -70,7 +62,7 @@ struct item
 struct list_elt
 {
 	/// element 
-	struct item * item;
+	struct rohc_list_item *item;
 	/// index
 	int index_table;
 	/// next element of the list
@@ -78,6 +70,7 @@ struct list_elt
 	/// previous element
 	struct list_elt * prev_elt;
 };
+
 
 /**
  * @brief Define a list for compression
@@ -90,6 +83,7 @@ struct c_list
 	struct list_elt * first_elt;
 };
 
+
 /**
  * @brief Define a compression translation table element
  */
@@ -99,10 +93,11 @@ struct c_translation
 	/// 1 if the mapping is established, 0 if not
 	int known;
 	/// item
-	struct item * item;
+	struct rohc_list_item *item;
 	/// counter
 	int counter;
 };
+
 
 /**
  * @brief Define a decompression translation table element
@@ -110,25 +105,26 @@ struct c_translation
 struct d_translation
 {
 	/// flag which indicates the mapping between an item with its index
-        /// 1 if the mapping is established, 0 if not
+	/// 1 if the mapping is established, 0 if not
 	int known;
 	/// item
-	struct item * item;
-};				 
+	struct rohc_list_item *item;
+};
+
 
 /**
  * Functions prototypes
  */
 
 int create_list(struct c_list * list);
-int add_elt(struct c_list * list, struct item * item, int index);
-int push_back(struct c_list * list, struct item * item, int index);
-void delete_elt(struct c_list * list, struct item * item);
+int add_elt(struct c_list * list, struct rohc_list_item *item, int index);
+int push_back(struct c_list * list, struct rohc_list_item *item, int index);
+void delete_elt(struct c_list * list, struct rohc_list_item *item);
 struct list_elt * get_elt(struct c_list * list, int index);
-int elt_index(struct c_list * list, struct item * item);
-int type_is_present(struct c_list * list, struct item * item);
+int elt_index(struct c_list * list, struct rohc_list_item *item);
+int type_is_present(struct c_list * list, struct rohc_list_item *item);
 void destroy_list(struct c_list * list);
-int insert_elt(struct c_list * list, struct item * item, int index, int index_table);
+int insert_elt(struct c_list * list, struct rohc_list_item *item, int index, int index_table);
 size_t size_list(const struct c_list *const list);
 void empty_list(struct c_list * list);
 

@@ -192,7 +192,7 @@ struct list_decomp
 	/// The table of lists
 	struct c_list * list_table[LIST_COMP_WINDOW];
 	/// The compression based table
-	struct item  based_table[MAX_ITEM];
+	struct rohc_list_item based_table[MAX_ITEM];
 	/// The translation table
 	struct d_translation  trans_table[MAX_ITEM];
 	/// counter in list table

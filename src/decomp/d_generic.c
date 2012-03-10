@@ -250,7 +250,8 @@ void synchronize(struct d_generic_context *context);
 
 void update_inter_packet(struct d_generic_context *context);
 
-int check_id(struct list_decomp * decomp, int gen_id);
+static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
+                                      const unsigned int gen_id);
 
 int get_bit_index(unsigned char byte, int index);
 
@@ -445,28 +446,24 @@ void ip6_d_init_table(struct list_decomp * decomp)
 {
 	/* insert HBH type in table */
 	decomp->based_table[0].type = HBH;
-	decomp->based_table[0].header.hbh = malloc(sizeof(struct ip6_hbh));
 	decomp->based_table[0].length = 0;
 	decomp->based_table[0].data = NULL;
 	decomp->trans_table[0].known = 0;
 	decomp->trans_table[0].item = &decomp->based_table[0];
 	/* insert DEST type in table */
 	decomp->based_table[1].type = DEST;
-	decomp->based_table[1].header.dest = malloc(sizeof(struct ip6_dest));
 	decomp->based_table[1].length = 0;
 	decomp->based_table[1].data = NULL;
 	decomp->trans_table[1].known = 0;
 	decomp->trans_table[1].item = &decomp->based_table[1];
 	/* insert RTHDR type in table */
 	decomp->based_table[2].type = RTHDR;
-	decomp->based_table[2].header.rthdr = malloc(sizeof(struct ip6_rthdr));
 	decomp->based_table[2].length = 0;
 	decomp->based_table[2].data = NULL;
 	decomp->trans_table[2].known = 0;
 	decomp->trans_table[2].item = &decomp->based_table[2];
 	/* insert AHHDR type in table */
 	decomp->based_table[3].type = AH;
-	decomp->based_table[3].header.ahhdr = malloc(sizeof(struct ip6_ahhdr));
 	decomp->based_table[3].length = 0;
 	decomp->based_table[3].data = NULL;
 	decomp->trans_table[3].known = 0;
@@ -485,14 +482,6 @@ static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 		if(decomp->based_table[i].data != NULL)
 			free(decomp->based_table[i].data);
 	}
-	if(decomp->based_table[0].header.hbh != NULL)
-		free(decomp->based_table[0].header.hbh);
-	if(decomp->based_table[1].header.dest != NULL)
-		free(decomp->based_table[1].header.dest);
-	if(decomp->based_table[2].header.rthdr != NULL)
-		free(decomp->based_table[2].header.rthdr);
-	if(decomp->based_table[3].header.ahhdr != NULL)
-		free(decomp->based_table[3].header.ahhdr);
 }
 
 
@@ -612,35 +601,31 @@ error:
 
 
 /**
- * @brief Check if the gen_id is present in list table
- * @param decomp The list decompressor
- * @param gen_id The specified id
- * @return 1 if successful, 0 else
+ * @brief Check if the given gen_id is known, ie. present in list table
  *
- * @todo rework this function, could be shorter!
+ * @param decomp  The list decompressor
+ * @param gen_id  The gen_id to check for
+ * @return        true if successful, false otherwise
  */
-int check_id(struct list_decomp * decomp, int gen_id)
+static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
+                                      const unsigned int gen_id)
 {
-	int i = 0;
-	int curr_id = -1;
-	while(decomp->list_table[i] == NULL && i < LIST_COMP_WINDOW)
+	unsigned int i;
+
+	assert(decomp != NULL);
+	assert(decomp->list_table != NULL);
+
+	for(i = 0; i < LIST_COMP_WINDOW; i++)
 	{
-		i++;
-	}
-	if(decomp->list_table[i] != NULL)
-	{
-		curr_id = decomp->list_table[i]->gen_id;
-		while( gen_id != curr_id && i < LIST_COMP_WINDOW)
+		if(decomp->list_table[i] != NULL && decomp->list_table[i]->gen_id == gen_id)
 		{
-			i++;
-			if(decomp->list_table[i] != NULL)
-				curr_id = decomp->list_table[i]->gen_id;
+			/* entry found */
+			return true;
 		}
 	}
-	if(gen_id == curr_id)
-		return 1;
-	else
-		return 0;
+
+	/* entry not found */
+	return false;
 }
 
 
@@ -693,28 +678,6 @@ static bool create_ip6_item(const unsigned char *data,
 
 	decomp->based_table[index].length = length;
 	decomp->trans_table[index].known = 1;
-	switch (index)
-	{
-		case 0:
-			decomp->based_table[index].header.hbh->ip6h_nxt = * data;
-			decomp->based_table[index].header.hbh->ip6h_len = * (data + 1);
-			break;
-		case 1:
-			decomp->based_table[index].header.dest->ip6d_nxt = * data;
-			decomp->based_table[index].header.dest->ip6d_len = * (data + 1);
-			break;
-		case 2:
-			decomp->based_table[index].header.rthdr->ip6r_nxt = * data;
-			decomp->based_table[index].header.rthdr->ip6r_len = * (data + 1);
-			break;
-		case 3:
-			decomp->based_table[index].header.ahhdr->ip6ah_nxt = * data;
-			decomp->based_table[index].header.ahhdr->ip6ah_len = * (data + 1);
-			break;
-		default:
-			rohc_debugf(0, "no item defined for IPv6 with index %d\n", index);
-			goto error;
-	}
 
 	if(decomp->based_table[index].data != NULL)
 		zfree(decomp->based_table[index].data);
@@ -758,10 +721,10 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 	size_t xi_length; /* the length (in bytes) of the XI list */
 	unsigned int xi_index; /* the index of the current XI in XI list */
 	size_t item_read_length; /* the amount of bytes currently read in the item field */
-	int new_list;
+	bool new_list;
 
 	/* is the transmitted list a new one (ie. unknown gen_id) ? */
-	new_list = !check_id(decomp, gen_id);
+	new_list = !rohc_list_is_gen_id_known(decomp, gen_id);
 
 	if(new_list)//new list
 	{
@@ -1043,7 +1006,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	unsigned int ref_id;
 	size_t ref_list_size;
 	size_t ref_list_cur_pos; /* current position in reference list */
-	int new_list; /* whether we receive a new list or a known one */
+	bool new_list; /* whether we receive a new list or a known one */
 	int i;
 
 	assert(decomp != NULL);
@@ -1075,7 +1038,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	}
 
 	/* is the transmitted list a new one (ie. unknown gen_id) ? */
-	new_list = !check_id(decomp, gen_id);
+	new_list = !rohc_list_is_gen_id_known(decomp, gen_id);
 
 	/* parse ref_id */
 	ref_id = GET_BIT_0_7(packet);
@@ -1083,7 +1046,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	packet_read_length++;
 	packet_len--;
 	rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
-	if(!check_id(decomp, ref_id))
+	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
 		rohc_debugf(0, "unknown ID 0x%02x given for reference list\n", ref_id);
 		goto error;
@@ -1598,7 +1561,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	size_t mask_length; /* the length (in bits) of the removal mask */
 	struct list_elt *elt;
 	unsigned int ref_id;
-	int new_list;
+	bool new_list;
 	int i;
 
 	/* init mask[1] to avoid a false warning of GCC */
@@ -1615,7 +1578,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	}
 
 	/* is the transmitted list a new one (ie. unknown gen_id) ? */
-	new_list = !check_id(decomp, gen_id);
+	new_list = !rohc_list_is_gen_id_known(decomp, gen_id);
 
 	/* parse ref_id */
 	ref_id = GET_BIT_0_7(packet);
@@ -1623,7 +1586,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	packet_read_length++;
 	packet_len--;
 	rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
-	if(!check_id(decomp, ref_id))
+	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
 		rohc_debugf(0, "unknown ID 0x%02x given for reference list\n", ref_id);
 		goto error;
@@ -1882,7 +1845,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	struct c_list removal_list; /* list after removal scheme but before insertion scheme */
 	size_t removal_list_cur_pos; /* current position in list after removal */
 	size_t removal_list_size; /* size of list after removal */
-	int new_list;
+	bool new_list;
 	int i;
 
 	/* init rem_mask[1], ins_mask[1] and removal_list_size to avoid a false
@@ -1913,7 +1876,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	}
 
 	/* is the transmitted list a new one (ie. unknown gen_id) ? */
-	new_list = !check_id(decomp, gen_id);
+	new_list = !rohc_list_is_gen_id_known(decomp, gen_id);
 
 	/* parse ref_id */
 	ref_id = GET_BIT_0_7(packet);
@@ -1921,7 +1884,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	packet_read_length++;
 	packet_len--;
 	rohc_debugf(3, "ref_id = 0x%02x\n", ref_id);
-	if(!check_id(decomp, ref_id))
+	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
 		rohc_debugf(0, "unknown ID 0x%02x given for reference list\n", ref_id);
 		goto error;

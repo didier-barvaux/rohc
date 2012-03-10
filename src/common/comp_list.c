@@ -59,7 +59,7 @@ error:
  * @param index the index in based table
  * @return 1 if successful, 0 otherwise
  */
-int add_elt(struct c_list * list, struct item * item, int index)
+int add_elt(struct c_list * list, struct rohc_list_item *item, int index)
 {
 	struct list_elt * elt;
 	
@@ -98,7 +98,7 @@ error:
  * @param index the index in based table
  * @return 1 if successful, 0 otherwise
  */
-int push_back(struct c_list * list, struct item * item, int index)
+int push_back(struct c_list * list, struct rohc_list_item *item, int index)
 {
 	struct list_elt * elt;
 	int result = 0;
@@ -143,7 +143,7 @@ error:
  * @param list the list where the element is destroyed
  * @param item  the element to delete
  */
-void delete_elt(struct c_list * list, struct item * item)
+void delete_elt(struct c_list * list, struct rohc_list_item *item)
 {
 	struct list_elt * curr_elt;
 	
@@ -184,7 +184,7 @@ void delete_elt(struct c_list * list, struct item * item)
  *
  * @return the index, -1 if the element is not in the list
  */
-int elt_index(struct c_list * list, struct item * item)
+int elt_index(struct c_list * list, struct rohc_list_item *item)
 {
 	struct list_elt * curr_elt;
 	int i = 0;
@@ -238,7 +238,7 @@ error:
  *
  * @return 1 if present, 0 else
  */
-int type_is_present(struct c_list * list, struct item * item)
+int type_is_present(struct c_list * list, struct rohc_list_item *item)
 {
 	struct list_elt * curr_elt;
 	
@@ -316,7 +316,7 @@ void destroy_list(struct c_list * list)
  * @param index_table  The index in based_table
  * @return             1 if successful, 0 otherwise
  */
-int insert_elt(struct c_list *list, struct item *item, int index, int index_table)
+int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int index_table)
 {
 	int i;
 	int size_l = size_list(list);

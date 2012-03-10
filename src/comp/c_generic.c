@@ -179,10 +179,10 @@ int code_EXT3_packet(const struct c_context *context,
                      unsigned char *const dest,
                      int counter);
 
-void create_ipv6_item(const unsigned char *ext,
-                      const int index_table,
-                      const int size,
-                      struct list_comp *const comp);
+static void create_ipv6_item(struct list_comp *const comp,
+                             const unsigned int index_table,
+                             const unsigned char *ext_data,
+                             const size_t ext_size);
 
 unsigned char * get_ipv6_extension(const struct ip_packet *ip,
                                    const int index);
@@ -311,7 +311,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 {
 	/* insert HBH type in table */
 	comp->based_table[0].type = HBH;
-	comp->based_table[0].header.hbh = malloc(sizeof(struct ip6_hbh));
 	comp->based_table[0].length = 0;
 	comp->based_table[0].data = NULL;
 	comp->trans_table[0].known = 0;
@@ -319,7 +318,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[0].counter = 0;
 	/* insert DEST type in table */
 	comp->based_table[1].type = DEST;
-	comp->based_table[1].header.dest = malloc(sizeof(struct ip6_dest));
 	comp->based_table[1].length = 0;
 	comp->based_table[1].data = NULL;
 	comp->trans_table[1].known = 0;
@@ -327,7 +325,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[1].counter = 0;
 	/* insert RTHDR type in table */
 	comp->based_table[2].type = RTHDR;
-	comp->based_table[2].header.rthdr = malloc(sizeof(struct ip6_rthdr));
 	comp->based_table[2].length = 0;
 	comp->based_table[2].data = NULL;
 	comp->trans_table[2].known = 0;
@@ -335,7 +332,6 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[2].counter = 0;
 	/* insert AHHDR type in table */
 	comp->based_table[3].type = AH;
-	comp->based_table[3].header.ahhdr = malloc(sizeof(struct ip6_ahhdr));
 	comp->based_table[3].length = 0;
 	comp->based_table[3].data = NULL;
 	comp->trans_table[3].known = 0;
@@ -357,14 +353,6 @@ static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 		if(comp->based_table[i].data != NULL)
 			free(comp->based_table[i].data);
 	}
-	if(comp->based_table[0].header.hbh != NULL)
-		free(comp->based_table[0].header.hbh);
-	if(comp->based_table[1].header.dest != NULL)
-		free(comp->based_table[1].header.dest);
-	if(comp->based_table[2].header.rthdr != NULL)
-		free(comp->based_table[2].header.rthdr);
-	if(comp->based_table[3].header.ahhdr != NULL)
-		free(comp->based_table[3].header.ahhdr);
 }
 
 
@@ -1189,7 +1177,7 @@ int c_create_current_list(const int index,
 			rohc_debugf(3, "new extension to encode with same size "
 			            "than previously\n");
 			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
-			comp->create_item(ext, index_table, size, comp);
+			comp->create_item(comp, index_table, ext, size);
 			comp->trans_table[index_table].known = 0;
 			comp->trans_table[index_table].counter = 0;
 
@@ -1263,7 +1251,7 @@ int c_create_current_list(const int index,
 		/* the extension is modified or new */
 		rohc_debugf(3, "new extension to encode with new size \n");
 		curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
-		comp->create_item(ext, index_table, size, comp);
+		comp->create_item(comp, index_table, ext, size);
 		comp->trans_table[index_table].known = 0;
 		comp->trans_table[index_table].counter = 0;
 
@@ -1695,10 +1683,11 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
-			assert(elt->item->length > 0);
-			memcpy(dest + counter, elt->item->data, elt->item->length);
+			assert(elt->item->length > 1);
+			dest[counter] = elt->item->type & 0xff;
+			memcpy(dest + counter + 1, elt->item->data + 1, elt->item->length - 1);
 			counter += elt->item->length;
 		}
 	}
@@ -2013,10 +2002,11 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
-			assert(elt->item->length > 0);
-			memcpy(dest + counter, elt->item->data, elt->item->length);
+			assert(elt->item->length > 1);
+			dest[counter] = elt->item->type & 0xff;
+			memcpy(dest + counter + 1, elt->item->data + 1, elt->item->length - 1);
 			counter += elt->item->length;
 		}
 	}
@@ -2569,10 +2559,11 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!comp->trans_table[elt->index_table].known)
 		{
-			rohc_debugf(3, "add %d-byte unknown item #%d in packet\n",
+			rohc_debugf(3, "add %zd-byte unknown item #%d in packet\n",
 			            elt->item->length, k);
-			assert(elt->item->length > 0);
-			memcpy(dest + counter, elt->item->data, elt->item->length);
+			assert(elt->item->length > 1);
+			dest[counter] = elt->item->type & 0xff;
+			memcpy(dest + counter + 1, elt->item->data + 1, elt->item->length - 1);
 			counter += elt->item->length;
 		}
 	}
@@ -2602,46 +2593,30 @@ int ipv6_compare(const unsigned char *ext,
 
 
 /**
- * @brief Update an IPv6 item with the extension
+ * @brief Update an IPv6 item with the given extension
  *
- * @param ext          The IPv6 extension
- * @param index_table  The index of this item in the based table
- * @param size         The size of the data
  * @param comp         The list compressor
+ * @param index_table  The index of this item in the based table
+ * @param ext          The IPv6 extension
+ * @param size         The size of the data (in bytes)
  */
-void create_ipv6_item(const unsigned char *ext,
-                      const int index_table,
-                      const int size,
-                      struct list_comp *const comp)
+static void create_ipv6_item(struct list_comp *const comp,
+                             const unsigned int index_table,
+                             const unsigned char *ext_data,
+                             const size_t ext_size)
 {
-	comp->based_table[index_table].length = size;
-	switch(index_table)
-	{
-		case 0:
-			comp->based_table[index_table].header.hbh->ip6h_nxt = ext[0];
-			comp->based_table[index_table].header.hbh->ip6h_len = ext[1];
-			break;
-		case 1:
-			comp->based_table[index_table].header.dest->ip6d_nxt = ext[0];
-			comp->based_table[index_table].header.dest->ip6d_len = ext[1];
-			break;
-		case 2:
-			comp->based_table[index_table].header.rthdr->ip6r_nxt = ext[0];
-			comp->based_table[index_table].header.rthdr->ip6r_len = ext[1];
-			break;
-		case 3:
-			comp->based_table[index_table].header.ahhdr->ip6ah_nxt = ext[0];
-			comp->based_table[index_table].header.ahhdr->ip6ah_len = ext[1];
-			break;
-		default:
-			rohc_debugf(0, "no item defined for IPv6 with this index\n");
-			break;
-	}
+	assert(comp != NULL);
+	assert(ext_data != NULL);
+	assert(ext_size > 0);
+
+	comp->based_table[index_table].length = ext_size;
 	if(comp->based_table[index_table].data != NULL)
 		zfree(comp->based_table[index_table].data);
-	comp->based_table[index_table].data = malloc(size);
+	comp->based_table[index_table].data = malloc(ext_size);
 	if(comp->based_table[index_table].data != NULL)
-		memcpy(comp->based_table[index_table].data, ext, size);
+	{
+		memcpy(comp->based_table[index_table].data, ext_data, ext_size);
+	}
 }
 
 
