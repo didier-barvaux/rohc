@@ -6522,9 +6522,7 @@ int code_EXT3_packet(const struct c_context *context,
 		f_byte |= (rts & 0x01) << 4;
 
 		/* Tsc bit */
-		tsc = (rtp_context->ts_sc.state == SEND_SCALED &&
-		       !(packet_type == PACKET_UOR_2_ID &&
-		         is_deductible(rtp_context->ts_sc)));
+		tsc = (rtp_context->ts_sc.state == SEND_SCALED);
 		f_byte |= (tsc & 0x01) << 3;
 
 		/* rtp bit: set to 1 if RTP PT changed in this packet or changed
