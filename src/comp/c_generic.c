@@ -3007,10 +3007,11 @@ int update_variables(struct c_context *const context,
 		{
 			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - g_context->sn;
 		}
-		rohc_debugf(3, "new outer IP-ID delta = 0x%x / %u (NBO = %d)\n",
+		rohc_debugf(3, "new outer IP-ID delta = 0x%x / %u (NBO = %d, RND = %d)\n",
 		            g_context->ip_flags.info.v4.id_delta,
 		            g_context->ip_flags.info.v4.id_delta,
-		            g_context->ip_flags.info.v4.nbo);
+		            g_context->ip_flags.info.v4.nbo,
+		            g_context->ip_flags.info.v4.rnd);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
 		if(context->state == IR)
@@ -3057,10 +3058,11 @@ int update_variables(struct c_context *const context,
 		{
 			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
 		}
-		rohc_debugf(3, "new inner IP-ID delta = 0x%x / %u (NBO = %d)\n",
+		rohc_debugf(3, "new inner IP-ID delta = 0x%x / %u (NBO = %d, RND = %d)\n",
 		            g_context->ip2_flags.info.v4.id_delta,
 		            g_context->ip2_flags.info.v4.id_delta,
-		            g_context->ip2_flags.info.v4.nbo);
+		            g_context->ip2_flags.info.v4.nbo,
+		            g_context->ip2_flags.info.v4.rnd);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
 		if(context->state == IR)
@@ -3146,6 +3148,9 @@ int update_variables(struct c_context *const context,
 			rtp_context->tmp_variables.ts_send = ntohl(rtp->timestamp);
 			rtp_context->tmp_variables.nr_ts_bits = 32;
 		}
+
+		rohc_debugf(3, "%zd bits are required to encode new TS\n",
+		            rtp_context->tmp_variables.nr_ts_bits);
 	}
 
 	return ROHC_OK;
@@ -7212,7 +7217,7 @@ int header_fields(const struct c_context *context,
 /**
  * @brief Decide what extension shall be used in the UO-2 packet.
  *
- * Extentions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
  *
  * @param context The compression context
  * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
@@ -7244,6 +7249,8 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	/* force extension type 3 if at least one static or dynamic field changed */
 	if(send_static > 0 || send_dynamic > 0)
 	{
+		rohc_debugf(3, "force EXT-3 because at least one static or dynamic "
+		            "field changed\n");
 		return ext;
 	}
 
@@ -7254,6 +7261,8 @@ rohc_ext_t decide_extension(const struct c_context *context)
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 		if(rtp_context->tmp_variables.send_rtp_dynamic > 0)
 		{
+			rohc_debugf(3, "force EXT-3 because at least one RTP dynamic "
+			            "field changed\n");
 			return ext;
 		}
 	}
