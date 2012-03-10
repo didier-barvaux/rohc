@@ -24,7 +24,12 @@
 #define ROHC_PACKETS_H
 
 
-/** The different types of ROHC packets */
+/**
+ * @brief The different types of ROHC packets
+ *
+ * If you add a new packet type, please also add the corresponding textual
+ * description in \ref rohc_get_packet_descr.
+ */
 typedef enum
 {
 	/* IR and IR-DYN packets */
@@ -58,7 +63,12 @@ typedef enum
 } rohc_packet_t;
 
 
-/** The different types of extensions for UOR-2 packets */
+/**
+ * @brief The different types of extensions for UOR-2 packets
+ *
+ * If you add a new extension type, please also add the corresponding textual
+ * description in \ref rohc_get_ext_descr.
+ */
 typedef enum
 {
 	PACKET_EXT_0 = 0,  /**< The EXT-0 extension for the UOR-2 packet */
@@ -67,6 +77,15 @@ typedef enum
 	PACKET_EXT_3 = 3,  /**< The EXT-3 extension for the UOR-2 packet */
 	PACKET_NOEXT = 4,  /**< No extension for the UOR-2 packet */
 } rohc_ext_t;
+
+
+/*
+ * Prototypes of public functions
+ */
+
+const char * rohc_get_packet_descr(const rohc_packet_t packet_type);
+
+const char * rohc_get_ext_descr(const rohc_ext_t ext_type);
 
 
 #endif

@@ -3524,6 +3524,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			rohc_debugf(2, "IR state\n");
 			g_context->ir_count++;
 			packet = PACKET_IR;
+			rohc_debugf(2, "packet 'IR' chosen\n");
 
 			/* jamming mechanism: the IR packet is the packet that contains all
 			   the information, so there is no need to override the default
@@ -3536,6 +3537,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			rohc_debugf(2, "FO state\n");
 			g_context->fo_count++;
 			packet = decide_FO_packet(context);
+			rohc_debugf(2, "packet '%s' chosen\n", rohc_get_packet_descr(packet));
 
 			/* override the default decision algorithm if jamming is enabled */
 			if(context->compressor->jam_use)
@@ -3552,6 +3554,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			rohc_debugf(2, "SO state\n");
 			g_context->so_count++;
 			packet = decide_SO_packet(context);
+			rohc_debugf(2, "packet '%s' chosen\n", rohc_get_packet_descr(packet));
 
 			/* override the default decision algorithm if jamming is enabled */
 			if(context->compressor->jam_use)
@@ -5084,6 +5087,7 @@ int code_UO2_packet(struct c_context *const context,
 
 	/* part 6: decide which extension to use */
 	extension = decide_extension(context);
+	rohc_debugf(2, "extension '%s' chosen\n", rohc_get_ext_descr(extension));
 
 	/* parts 2, 4, 5: complete the three packet-specific bytes and copy them
 	 * in packet */

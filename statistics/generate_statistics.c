@@ -37,6 +37,7 @@
 
 /* ROHC includes */
 #include <rohc.h>
+#include <rohc_packets.h>
 #include <rohc_comp.h>
 
 
@@ -323,18 +324,6 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
 	int rohc_size;
 	rohc_comp_last_packet_info_t last_packet_info;
-	const char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
-	const char *states[] = { "error", "IR", "FO", "SO" };
-	const char *packet_types[] =
-	{
-		"IR", "IR-DYN",
-		"UO-0",
-		"UO-1", "UO-1-ID", "UO-1-TS", "UO-1-RTP",
-		"UOR-2", "UOR-2-RTP", "UOR-2-ID", "UOR-2-TS",
-		"CCE", "CCE(off)",
-		"Normal",
-		"unknown"
-	};
 	int ret;
 
 	/* check frame length */
@@ -397,11 +386,11 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	printf("STAT\t%lu\t%d\t%s\t%d\t%s\t%d\t%s\t%lu\t%lu\t%lu\t%lu\n",
 	       num_packet,
 	       last_packet_info.context_mode,
-	       modes[last_packet_info.context_mode],
+	       rohc_get_mode_descr(last_packet_info.context_mode),
 	       last_packet_info.context_state,
-	       states[last_packet_info.context_state],
+	       rohc_comp_get_state_descr(last_packet_info.context_state),
 	       last_packet_info.packet_type,
-	       packet_types[last_packet_info.packet_type],
+	       rohc_get_packet_descr(last_packet_info.packet_type),
 	       last_packet_info.total_last_uncomp_size,
 	       last_packet_info.header_last_uncomp_size,
 	       last_packet_info.total_last_comp_size,

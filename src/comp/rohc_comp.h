@@ -45,6 +45,9 @@ struct rohc_comp;
  * @brief The different ROHC compressor states
  *
  * See 4.3.1 in the RFC 3095.
+ *
+ * If you add a new compressor state, please also add the corresponding
+ * textual description in \ref rohc_comp_get_state_descr.
  */
 typedef enum
 {
@@ -131,6 +134,7 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent,
                    char *buffer);
 int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
                                    rohc_comp_last_packet_info_t *const info);
+const char * rohc_comp_get_state_descr(const rohc_c_state state);
 
 #endif
 

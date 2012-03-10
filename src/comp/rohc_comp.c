@@ -1173,6 +1173,35 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 }
 
 
+/**
+ * @brief Give a description for the given ROHC compression context state
+ *
+ * The descriptions are not part of the API. They may change between
+ * releases without any warning. Do NOT use them for other means that
+ * providing to users a textual description of compression context states
+ * used by the library. If unsure, ask on the mailing list.
+ *
+ * @param state  The compression context state to get a description for
+ * @return       A string that describes the given compression context state
+ *
+ * @ingroup rohc_comp
+ */
+const char * rohc_comp_get_state_descr(const rohc_c_state state)
+{
+	switch(state)
+	{
+		case IR:
+			return "IR";
+		case FO:
+			return "FO";
+		case SO:
+			return "SO";
+		default:
+			return "no description";
+	}
+}
+
+
 /*
  * Definitions of private functions
  */

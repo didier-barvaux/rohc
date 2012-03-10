@@ -42,3 +42,32 @@ char *rohc_version(void)
 	return VERSION;
 }
 
+
+/**
+ * @brief Give a description for the given ROHC mode
+ *
+ * The descriptions are not part of the API. They may change between
+ * releases without any warning. Do NOT use them for other means that
+ * providing to users a textual description of modes used by the
+ * library. If unsure, ask on the mailing list.
+ *
+ * @param mode  The ROHC mode to get a description for
+ * @return      A string that describes the given ROHC mode
+ *
+ * @ingroup rohc_common
+ */
+const char * rohc_get_mode_descr(const rohc_mode mode)
+{
+	switch(mode)
+	{
+		case U_MODE:
+			return "U-mode";
+		case O_MODE:
+			return "O-mode";
+		case R_MODE:
+			return "R-mode";
+		default:
+			return "no description";
+	}
+}
+

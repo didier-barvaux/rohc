@@ -400,7 +400,10 @@
 
 
 /**
- * ROHC operation modes (see 4.4 in the RFC 3095)
+ * @brief ROHC operation modes (see 4.4 in the RFC 3095)
+ *
+ * If you add a new operation mode, please also add the corresponding textual
+ * description in \ref rohc_get_mode_descr.
  */
 typedef enum
 {
@@ -548,6 +551,8 @@ extern unsigned char crc_table_8[256]
  */
 
 char * rohc_version(void);
+
+const char * rohc_get_mode_descr(const rohc_mode mode);
 
 
 /*
