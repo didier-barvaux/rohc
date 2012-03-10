@@ -15,6 +15,7 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv4_ipv4_udplite_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_video1_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_video2_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_smallcid.sh \
@@ -62,6 +63,7 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_ipv4_udplite_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_video1_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_video2_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_largecid.sh \
