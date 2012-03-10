@@ -505,9 +505,41 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* output the size of the ROHC packet to the output file if asked */
 	if(size_ouput_file != NULL)
 	{
-		fprintf(size_ouput_file,
-		        "compressor_num = %d\tpacket_num = %d\trohc_size = %d\n",
-		        num_comp, num_packet, rohc_size);
+		rohc_comp_last_packet_info_t last_packet_info;
+
+		/* get some statistics about the last compressed packet */
+		ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
+		if(ret != ROHC_OK)
+		{
+			printf("\n");
+			printf("\t\t<rohc_comparison>\n");
+			printf("\t\t\t<log>\n");
+			printf("Getting statistics failed, cannot compare the packets!\n");
+			printf("\t\t\t</log>\n");
+			printf("\t\t\t<status>failed</status>\n");
+			printf("\t\t</rohc_comparison>\n");
+			printf("\n");
+			printf("\t\t<decompression>\n");
+			printf("\t\t\t<log>\n");
+			printf("Compression failed, cannot decompress the ROHC packet!\n");
+			printf("\t\t\t</log>\n");
+			printf("\t\t\t<status>failed</status>\n");
+			printf("\t\t</decompression>\n");
+			printf("\n");
+			printf("\t\t<ip_comparison>\n");
+			printf("\t\t\t<log>\n");
+			printf("Compression failed, cannot compare the packets!\n");
+			printf("\t\t\t</log>\n");
+			printf("\t\t\t<status>failed</status>\n");
+			printf("\t\t</ip_comparison>\n");
+	
+			ret = -1;
+			goto exit;
+		}
+
+		fprintf(size_ouput_file, "compressor_num = %d\tpacket_num = %d\t"
+		        "rohc_size = %d\tpacket_type = %d\n", num_comp, num_packet,
+		        rohc_size, last_packet_info.packet_type);
 	}
 	
 	/* compare the ROHC packets with the ones given by the user if asked */
