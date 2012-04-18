@@ -116,13 +116,13 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 
 	# check for libpcap presence
 	LPCAP=""
-	AC_CHECK_LIB(pcap, pcap_open_offline, , LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_datalink, , LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_next, , LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_close, , LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_dump_open, , LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_dump, , LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_dump_close, , LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_open_offline, [ ], LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_datalink, [ ], LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_next, [ ], LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_close, [ ], LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_dump_open, [ ], LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_dump, [ ], LPCAP="no")
+	AC_CHECK_LIB(pcap, pcap_dump_close, [ ], LPCAP="no")
 
 	# abort if libpcap is not found
     if test "x$LPCAP" = "xno"; then
