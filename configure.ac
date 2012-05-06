@@ -207,6 +207,21 @@ if test "x$build_doc" = "xyes" ; then
 		echo "using your package manager."
 		exit 1
 	fi
+
+	# check for the dot binary and abort if it is not found
+	AC_CHECK_PROG(is_dot_found, dot, "yes", "no")
+	if test "x$is_dot_found" != "xyes"; then
+		echo
+		echo "ERROR: dot binary not found"
+		echo
+		echo "dot is required by doxygen in order to generate the library documentation."
+		echo
+		echo "dot is part of Graphviz, a set of tools for creating graphs."
+		echo
+		echo "Go get it from http://graphviz.org/ or use your package manager "
+		echo "to install it on your system."
+		exit 1
+	fi
 fi
 
 
