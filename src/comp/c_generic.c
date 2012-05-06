@@ -2754,10 +2754,11 @@ void c_generic_feedback(struct c_context *const context,
 			unsigned char mode = (p[0] >> 4) & 3;
 			int remaining = feedback->specific_size - 2;
 			int opt, optlen;
+			uint16_t sn_nbo;
 
 			rohc_debugf(2, "feedback 2\n");
 
-			sn = ((p[0] & 15) << 8) + p[1];
+			sn_nbo = ((p[0] & 0xff) << 8) + p[1];
 			p += 2;
 
 			while(remaining > 0)
@@ -2777,7 +2778,7 @@ void c_generic_feedback(struct c_context *const context,
 						break;
 					case 4: /* SN */
 						/* TODO: how are several SN options combined? */
-						sn = (sn << 8) + p[1];
+						sn_nbo = (sn_nbo << 8) + p[1];
 						break;
 					case 2: /* Reject */
 					case 7: /* Loss */
@@ -2789,6 +2790,7 @@ void c_generic_feedback(struct c_context *const context,
 				remaining -= 1 + optlen;
 				p += 1 + optlen;
 			}
+			sn = ntohs(sn_nbo);
 
 			/* check CRC if present in feedback */
 			if(is_crc_used == true)
@@ -2820,12 +2822,20 @@ void c_generic_feedback(struct c_context *const context,
 			switch(feedback->acktype)
 			{
 				case ACK:
-					rohc_debugf(2, "ack\n");
+					rohc_debugf(2, "ack (SN = 0x%x, SN-not-valid = %d)\n",
+					            sn, sn_not_valid);
 					if(sn_not_valid == 0)
 					{
-						/* ack IP-ID only if IPv4, but always ack SN */
+						/* ack outer/inner IP-ID only if IPv4, but always ack SN */
 						if(g_context->ip_flags.version == IPV4)
+						{
 							c_ack_sn_wlsb(g_context->ip_flags.info.v4.ip_id_window, sn);
+						}
+						if(g_context->is_ip2_initialized &&
+						   g_context->ip2_flags.version == IPV4)
+						{
+							c_ack_sn_wlsb(g_context->ip2_flags.info.v4.ip_id_window, sn);
+						}
 						c_ack_sn_wlsb(g_context->sn_window, sn);
 					}
 					break;
