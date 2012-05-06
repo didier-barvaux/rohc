@@ -212,7 +212,19 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
  */
 int nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
 {
-	return c_get_k_wlsb(ts_sc.scaled_window, ts_sc.ts_scaled, bits_nr);
+	int is_success;
+
+	if(ts_sc.is_deductible)
+	{
+		*bits_nr = 0;
+		is_success = 1;
+	}
+	else
+	{
+		is_success = c_get_k_wlsb(ts_sc.scaled_window, ts_sc.ts_scaled, bits_nr);
+	}
+
+	return is_success;
 }
 
 
@@ -250,19 +262,6 @@ uint32_t get_ts_stride(const struct ts_sc_comp ts_sc)
 uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc)
 {
 	return ts_sc.ts_scaled;
-}
-
-
-/**
- * @brief Whether TimeStamp (TS) is deductible from the Sequence Number (SN)
- *        or not
- *
- * @param ts_sc        The ts_sc_comp object
- * @return             1 if TS is deductible from SN, 0 otherwise
- */
-int is_deductible(const struct ts_sc_comp ts_sc)
-{
-	return ts_sc.is_deductible;
 }
 
 

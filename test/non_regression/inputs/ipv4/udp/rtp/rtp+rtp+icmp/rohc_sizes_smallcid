@@ -34,8 +34,8 @@ compressor_num = 1	packet_num = 17	rohc_size = 68	packet_type = 2
 compressor_num = 2	packet_num = 17	rohc_size = 68	packet_type = 2
 compressor_num = 1	packet_num = 18	rohc_size = 68	packet_type = 2
 compressor_num = 2	packet_num = 18	rohc_size = 68	packet_type = 2
-compressor_num = 1	packet_num = 19	rohc_size = 121	packet_type = 10
-compressor_num = 2	packet_num = 19	rohc_size = 121	packet_type = 10
+compressor_num = 1	packet_num = 19	rohc_size = 117	packet_type = 5
+compressor_num = 2	packet_num = 19	rohc_size = 117	packet_type = 5
 compressor_num = 1	packet_num = 20	rohc_size = 68	packet_type = 2
 compressor_num = 2	packet_num = 20	rohc_size = 68	packet_type = 2
 compressor_num = 1	packet_num = 21	rohc_size = 68	packet_type = 2

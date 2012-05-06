@@ -43,9 +43,6 @@
  * Definitions of private constants and macros
  */
 
-/** Get the minimum of two values */
-#define MIN(a, b) \
-	((a) < (b) ? (a) : (b))
 
 /**
  * @brief The size (in bytes) of the IPv4 dynamic part
@@ -3699,7 +3696,8 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			goto error;
 	}
 
-	rohc_debugf(2, "decode the packet (type %d)\n", g_context->packet_type);
+	rohc_debugf(2, "decode packet as '%s'\n",
+	            rohc_get_packet_descr(g_context->packet_type));
 	length = decode_packet(decomp, context, rohc_packet, rohc_length,
 	                       second_byte, dest);
 #if RTP_BIT_TYPE
@@ -5244,6 +5242,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 	uint32_t ts_bits = 0;
 	size_t ts_bits_nr = 0;
 
+	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
+	unsigned int innermost_ipv4_non_rnd;
+
 	/* extracted bits and decoded value for outer IP-ID */
 	uint16_t ip_id_decoded = 0; /* initialized only because of GCC warning */
 	uint16_t ip_id_bits = 0;
@@ -5415,21 +5416,69 @@ int decode_uor2(struct rohc_decomp *decomp,
 		case PACKET_UOR_2_ID:
 		{
 			/* check extension usage */
-			if((ip_get_version(&g_context->active1->ip) != IPV4 &&
-			    !g_context->multiple_ip) ||
-			   (ip_get_version(&g_context->active1->ip) != IPV4 &&
-			    g_context->multiple_ip &&
-			    ip_get_version(&g_context->active2->ip) != IPV4))
+			if(!g_context->multiple_ip)
 			{
-				rohc_debugf(0, "cannot use the UOR-2-ID packet with no IPv4 header\n");
-				goto error;
+				/* the single IP header must be IPv4 with non-random IP-ID */
+				if(ip_get_version(&g_context->active1->ip) != IPV4 ||
+				   g_context->active1->rnd != 0)
+				{
+					rohc_debugf(0, "cannot use the UOR-2-ID packet with no 'IPv4 "
+					            "header with non-random IP-ID'\n");
+					goto error;
+				}
+
+				innermost_ipv4_non_rnd = 1;
+			}
+			else
+			{
+				/* only one of the 2 IP headers must be IPv4 with non-random IP-ID */
+				if(ip_get_version(&g_context->active2->ip) == IPV4 &&
+				   g_context->active2->rnd == 0)
+				{
+					/* inner IP header is IPv4 with non-random IP-ID,
+					 * outer IP header must not */
+					if(ip_get_version(&g_context->active1->ip) == IPV4 &&
+					   g_context->active1->rnd == 0)
+					{
+						rohc_debugf(0, "cannot use the UOR-2-ID packet with two "
+						            "IPv4 headers with non-random IP-ID\n");
+						goto error;
+					}
+
+					innermost_ipv4_non_rnd = 2;
+				}
+				else if(ip_get_version(&g_context->active1->ip) == IPV4 &&
+				        g_context->active1->rnd == 0)
+				{
+					/* inner IP header is not IPv4 with non-random IP-ID,
+					 * but outer IP header is */
+					innermost_ipv4_non_rnd = 1;
+				}
+				else
+				{
+					rohc_debugf(0, "cannot use the UOR-2-ID packet with no 'IPv4 "
+					            "header with non-random IP-ID' at all\n");
+					goto error;
+				}
 			}
 
 			/* part 2: 3-bit "110" + 5-bit IP-ID */
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			ip_id_bits = GET_BIT_0_4(rohc_remain_data);
-			ip_id_bits_nr = 5;
-			rohc_debugf(3, "%zd IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+			if(innermost_ipv4_non_rnd == 1)
+			{
+				ip_id_bits = GET_BIT_0_4(rohc_remain_data);
+				ip_id_bits_nr = 5;
+				rohc_debugf(3, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+				            ip_id_bits_nr, innermost_ipv4_non_rnd, ip_id_bits);
+			}
+			else
+			{
+				ip_id2_bits = GET_BIT_0_4(rohc_remain_data);
+				ip_id2_bits_nr = 5;
+				rohc_debugf(3, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+				            ip_id2_bits_nr, innermost_ipv4_non_rnd, ip_id2_bits);
+			}
+
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));

@@ -35,6 +35,7 @@ private_headers = \
 	rohc_debug.h \
 	rohc_traces.h \
 	rohc_time.h \
+	rohc_utils.h \
 	crc.h \
 	decode.h \
 	ip_id.h \

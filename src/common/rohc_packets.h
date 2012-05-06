@@ -33,32 +33,32 @@
 typedef enum
 {
 	/* IR and IR-DYN packets */
-	PACKET_IR,         /**< ROHC IR packet */
-	PACKET_IR_DYN,     /**< ROHC IR-DYN packet */
+	PACKET_IR        =  0, /**< ROHC IR packet */
+	PACKET_IR_DYN    =  1, /**< ROHC IR-DYN packet */
 
 	/* UO-0 packets */
-	PACKET_UO_0,       /**< ROHC UO-0 packet */
+	PACKET_UO_0      =  2, /**< ROHC UO-0 packet */
 
 	/* UO-1 packets */
-	PACKET_UO_1,       /**< ROHC UO-1 packet (for all profiles except RTP) */
-	PACKET_UO_1_ID,    /**< ROHC UO-1-ID packet (RTP profile only) */
-	PACKET_UO_1_TS,    /**< ROHC UO-1-TS packet (RTP profile only) */
-	PACKET_UO_1_RTP,   /**< ROHC UO-1-RTP packet (RTP profile only) */
+	PACKET_UO_1      =  3, /**< ROHC UO-1 packet (for all non-RTP profiles) */
+	PACKET_UO_1_ID   =  4, /**< ROHC UO-1-ID packet (RTP profile only) */
+	PACKET_UO_1_TS   =  5, /**< ROHC UO-1-TS packet (RTP profile only) */
+	PACKET_UO_1_RTP  =  6, /**< ROHC UO-1-RTP packet (RTP profile only) */
 
 	/* UOR-2 packets */
-	PACKET_UOR_2,      /**< ROHC UOR-2 packet (for all profiles except RTP) */
-	PACKET_UOR_2_RTP,  /**< ROHC UO-2 packet (RTP profile only) */
-	PACKET_UOR_2_ID,   /**< ROHC UO-2-ID packet (RTP profile only) */
-	PACKET_UOR_2_TS,   /**< ROHC UO-2-TS packet (RTP profile only) */
+	PACKET_UOR_2     =  7, /**< ROHC UOR-2 packet (for all non-RTP profiles) */
+	PACKET_UOR_2_RTP =  8, /**< ROHC UO-2 packet (RTP profile only) */
+	PACKET_UOR_2_ID  =  9, /**< ROHC UO-2-ID packet (RTP profile only) */
+	PACKET_UOR_2_TS  = 10, /**< ROHC UO-2-TS packet (RTP profile only) */
 
 	/* CCE packets (UDP-Lite profile only) */
-	PACKET_CCE,      /**< ROHC CCE packet (UDP-Lite profile only) */
-	PACKET_CCE_OFF,  /**< ROHC CCE(OFF) packet (UDP-Lite profile only) */
+	PACKET_CCE       = 11, /**< ROHC CCE packet (UDP-Lite profile only) */
+	PACKET_CCE_OFF   = 12, /**< ROHC CCE(OFF) packet (UDP-Lite profile only) */
 
 	/* Normal packet (Uncompressed profile only) */
-	PACKET_NORMAL,   /**< ROHC Normal packet (Uncompressed profile only) */
+	PACKET_NORMAL    = 13, /**< ROHC Normal packet (Uncompressed profile only) */
 
-	PACKET_UNKNOWN,  /**< Unknown packet type */
+	PACKET_UNKNOWN   = 14, /**< Unknown packet type */
 
 } rohc_packet_t;
 
