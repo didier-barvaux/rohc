@@ -32,13 +32,13 @@
 typedef enum
 {
 	/** Maximum value in 1 SDVL-encoded byte */
-	ROHC_SDVL_MAX_VALUE_IN_1_BYTE = ((2^ROHC_SDVL_MAX_BITS_IN_1_BYTE) - 1),
+	ROHC_SDVL_MAX_VALUE_IN_1_BYTE = ((1 << ROHC_SDVL_MAX_BITS_IN_1_BYTE) - 1),
 	/** Maximum value in 2 SDVL-encoded byte */
-	ROHC_SDVL_MAX_VALUE_IN_2_BYTES = ((2^ROHC_SDVL_MAX_BITS_IN_2_BYTES) - 1),
+	ROHC_SDVL_MAX_VALUE_IN_2_BYTES = ((1 << ROHC_SDVL_MAX_BITS_IN_2_BYTES) - 1),
 	/** Maximum value in 3 SDVL-encoded byte */
-	ROHC_SDVL_MAX_VALUE_IN_3_BYTES = ((2^ROHC_SDVL_MAX_BITS_IN_3_BYTES) - 1),
+	ROHC_SDVL_MAX_VALUE_IN_3_BYTES = ((1 << ROHC_SDVL_MAX_BITS_IN_3_BYTES) - 1),
 	/** Maximum value in 4 SDVL-encoded byte */
-	ROHC_SDVL_MAX_VALUE_IN_4_BYTES = ((2^ROHC_SDVL_MAX_BITS_IN_4_BYTES) - 1),
+	ROHC_SDVL_MAX_VALUE_IN_4_BYTES = ((1 << ROHC_SDVL_MAX_BITS_IN_4_BYTES) - 1),
 } rohc_sdvl_max_value_t;
 
 
