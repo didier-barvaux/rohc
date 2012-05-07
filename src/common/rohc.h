@@ -371,6 +371,21 @@
  */
 
 
+/** Macro that handles deprecated declarations gracefully */
+#if defined __GNUC__ && \
+    (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5))
+	/* __attribute__((deprecated(msg))) is supported by GCC 4.5 and later */
+	#define ROHC_DEPRECATED(msg) __attribute__((deprecated(msg)))
+#elif defined __GNUC__ && \
+      (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1))
+	/* __attribute__((deprecated)) is supported by GCC 3.1 and later */
+	#define ROHC_DEPRECATED(msg) __attribute__((deprecated))
+#else
+	/* no support */
+	#define ROHC_DEPRECATED(msg)
+#endif
+
+
 /**
  * @brief The Ethertype assigned to the ROHC protocol by the IEEE
  *
@@ -523,27 +538,27 @@ struct medium
 /** The table to enable fast CRC-2 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_2[256]
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-3 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_3[256]
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-6 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_6[256]
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-7 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_7[256]
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-8 computation
  * @deprecated please do not use this variable anymore */
 extern unsigned char crc_table_8[256]
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 
 /*
@@ -557,15 +572,15 @@ const char * rohc_get_mode_descr(const rohc_mode mode);
 
 /*
  * Prototypes of public deprecated functions
+ * 
+ * TODO API: remove this function once compatibility is not needed anymore
  */
 
-/* TODO API: define as private and move in crc.h */
 int crc_get_polynom(int type)
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
 
-/* TODO API: define as private and move in crc.h */
 void crc_init_table(unsigned char *table, unsigned char polynum)
-	__attribute__((deprecated));
+	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
 
 #endif
 
