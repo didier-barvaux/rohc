@@ -32,14 +32,20 @@
  * Constants related to fields length for SDVL-encoding
  */
 
-/** Maximum number of bits in 1 SDVL-encoded byte */
-#define MAX_BITS_IN_1_BYTE_SDVL 7U
-/** Maximum number of bits in 2 SDVL-encoded byte */
-#define MAX_BITS_IN_2_BYTE_SDVL 14U
-/** Maximum number of bits in 3 SDVL-encoded byte */
-#define MAX_BITS_IN_3_BYTE_SDVL 21U
-/** Maximum number of bits in 4 SDVL-encoded byte */
-#define MAX_BITS_IN_4_BYTE_SDVL 29U
+/** The maximum numbers of bits that can be SDVL-encoded in 1, 2, 3
+ *  and 4 bytes */
+typedef enum
+{
+	/** Maximum number of bits in 1 SDVL-encoded byte */
+	ROHC_SDVL_MAX_BITS_IN_1_BYTE = 7U,
+	/** Maximum number of bits in 2 SDVL-encoded byte */
+	ROHC_SDVL_MAX_BITS_IN_2_BYTES = 14U,
+	/** Maximum number of bits in 3 SDVL-encoded byte */
+	ROHC_SDVL_MAX_BITS_IN_3_BYTES = 21U,
+	/** Maximum number of bits in 4 SDVL-encoded byte */
+	ROHC_SDVL_MAX_BITS_IN_4_BYTES = 29U,
+} rohc_sdvl_max_bits_t;
+
 
 /*
  * Function prototypes.

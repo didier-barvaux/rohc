@@ -7087,19 +7087,19 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 		if(ts_sdvl_size == 1)
 		{
-			*ts_bits_nr = 7;
+			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
 		}
 		else if(ts_sdvl_size == 2)
 		{
-			*ts_bits_nr = 14;
+			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
 		}
 		else if(ts_sdvl_size == 3)
 		{
-			*ts_bits_nr = 21;
+			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
 		}
 		else if(ts_sdvl_size == 4)
 		{
-			*ts_bits_nr = MAX_BITS_IN_4_BYTE_SDVL;
+			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
 		}
 		else
 		{

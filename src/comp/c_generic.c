@@ -3300,7 +3300,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					            "header is not 'IPv4 with non-random IP-ID'\n");
 				}
 				else if(nr_ip_id_bits > 0 &&
-				        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+				        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 				{
 					/* a UOR-2-ID packet can only carry 29 bits of TS (with ext 3) */
 					packet = PACKET_UOR_2_ID;
@@ -3309,7 +3309,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					            "bits of IP-ID must be transmitted, and "
 					            "%zd <= %u bits of TS must be transmitted\n",
 					            nr_ip_id_bits, nr_ts_bits,
-					            MAX_BITS_IN_4_BYTE_SDVL);
+					            ROHC_SDVL_MAX_BITS_IN_4_BYTES);
 				}
 				else
 				{
@@ -3358,7 +3358,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					            "IP-ID'\n");
 				}
 				else if(nr_ipv4_non_rnd_with_bits == 1 &&
-				        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+				        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 				/* TODO: create a is_packet_UOR_2_ID() function */
 				{
 					packet = PACKET_UOR_2_ID;
@@ -3366,7 +3366,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					            "the 2 IP headers is IPv4 with non-random IP-ID "
 					            "with at least 1 bit of IP-ID to transmit, and "
 					            "%zd <= %u bits of TS must be transmitted\n",
-					            nr_ts_bits, MAX_BITS_IN_4_BYTE_SDVL);
+					            nr_ts_bits, ROHC_SDVL_MAX_BITS_IN_4_BYTES);
 				}
 				else if(nr_ipv4_non_rnd == 1)
 				{
@@ -3496,14 +3496,15 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				            "0 TS bit must be transmitted" : "TS bits are "
 				            "deductible"));
 			}
-			else if(nr_ip_id_bits > 0 && nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+			else if(nr_ip_id_bits > 0 &&
+			        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 			{
 				packet = PACKET_UOR_2_ID;
 				rohc_debugf(3, "choose packet UOR-2-ID because the single IP "
 				            "header is IPv4 with non-random IP-ID, %zd > 0 IP-ID "
 				            "bits and %zd <= %u TS bits must be "
 				            "transmitted\n", nr_sn_bits, nr_ts_bits,
-				            MAX_BITS_IN_4_BYTE_SDVL);
+				            ROHC_SDVL_MAX_BITS_IN_4_BYTES);
 			}
 			else
 			{
@@ -3600,7 +3601,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				            "IP headers are 'IPv4 with non-random IP-ID'\n");
 			}
 			else if(nr_ipv4_non_rnd_with_bits == 1 &&
-			        nr_ts_bits <= MAX_BITS_IN_4_BYTE_SDVL)
+			        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 			/* TODO: create a is_packet_UOR_2_ID() function */
 			{
 				packet = PACKET_UOR_2_ID;
@@ -3608,7 +3609,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				            "the 2 IP headers is IPv4 with non-random IP-ID "
 				            "with at least 1 bit of IP-ID to transmit, and "
 				            "%zd <= %u bits of TS must be transmitted\n",
-				            nr_ts_bits, MAX_BITS_IN_4_BYTE_SDVL);
+				            nr_ts_bits, ROHC_SDVL_MAX_BITS_IN_4_BYTES);
 			}
 			else if(nr_ipv4_non_rnd == 1)
 			{
@@ -5654,14 +5655,14 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 2: 5 bits of TS */
 			if(nr_ts_bits <= 6)
 				nr_ts_bits_ext3 = 0;
-			else if(nr_ts_bits <= 13)
-				nr_ts_bits_ext3 = 7;
-			else if(nr_ts_bits <= 20)
-				nr_ts_bits_ext3 = 14;
-			else if(nr_ts_bits <= 27)
-				nr_ts_bits_ext3 = 21;
+			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_1_BYTE))
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_2_BYTES))
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_3_BYTES))
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
 			else
-				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
 			assert(nr_ts_bits_ext3 <= nr_ts_bits);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
@@ -5905,14 +5906,14 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			/* part 2: 5 bits of TS */
 			if(nr_ts_bits <= 5)
 				nr_ts_bits_ext3 = 0;
-			else if(nr_ts_bits <= 12)
-				nr_ts_bits_ext3 = 7;
-			else if(nr_ts_bits <= 19)
-				nr_ts_bits_ext3 = 14;
-			else if(nr_ts_bits <= 26)
-				nr_ts_bits_ext3 = 21;
+			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_1_BYTE))
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_2_BYTES))
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_3_BYTES))
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
 			else
-				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, (nr_ts_bits_ext3 <= nr_ts_bits ?
@@ -6175,14 +6176,14 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			if(nr_ts_bits == 0)
 				nr_ts_bits_ext3 = 0;
-			if(nr_ts_bits <= 7)
-				nr_ts_bits_ext3 = 7;
-			else if(nr_ts_bits <= 14)
-				nr_ts_bits_ext3 = 14;
-			else if(nr_ts_bits <= 21)
-				nr_ts_bits_ext3 = 21;
+			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
 			else
-				nr_ts_bits_ext3 = MAX_BITS_IN_4_BYTE_SDVL;
+				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
 			if(g_context->tmp_variables.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;

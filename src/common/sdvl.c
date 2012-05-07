@@ -28,6 +28,20 @@
 #include <assert.h>
 
 
+/** The maximum values that can be SDVL-encoded in 1, 2, 3 and 4 bytes */
+typedef enum
+{
+	/** Maximum value in 1 SDVL-encoded byte */
+	ROHC_SDVL_MAX_VALUE_IN_1_BYTE = ((2^ROHC_SDVL_MAX_BITS_IN_1_BYTE) - 1),
+	/** Maximum value in 2 SDVL-encoded byte */
+	ROHC_SDVL_MAX_VALUE_IN_2_BYTES = ((2^ROHC_SDVL_MAX_BITS_IN_2_BYTES) - 1),
+	/** Maximum value in 3 SDVL-encoded byte */
+	ROHC_SDVL_MAX_VALUE_IN_3_BYTES = ((2^ROHC_SDVL_MAX_BITS_IN_3_BYTES) - 1),
+	/** Maximum value in 4 SDVL-encoded byte */
+	ROHC_SDVL_MAX_VALUE_IN_4_BYTES = ((2^ROHC_SDVL_MAX_BITS_IN_4_BYTES) - 1),
+} rohc_sdvl_max_value_t;
+
+
 /**
  * @brief Find out how many bytes are needed to represent the value using
  *        Self-Describing Variable-Length (SDVL) encoding
@@ -47,13 +61,13 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 	{
 		/* value length is unknown, find the length ourselves, then
 		 * find the length for SDVL-encoding */
-		if(value <= 127)
+		if(value <= ROHC_SDVL_MAX_VALUE_IN_1_BYTE)
 			size = 1;
-		else if(value <= 16383)
+		else if(value <= ROHC_SDVL_MAX_VALUE_IN_2_BYTES)
 			size = 2;
-		else if(value <= 2097151)
+		else if(value <= ROHC_SDVL_MAX_VALUE_IN_3_BYTES)
 			size = 3;
-		else if(value <= 536870911)
+		else if(value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES)
 			size = 4;
 		else
 		{
@@ -64,13 +78,13 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 	else
 	{
 		/* value length is known, find the length for SDVL-encoding */
-		if(length <= MAX_BITS_IN_1_BYTE_SDVL)
+		if(length <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
 			size = 1;
-		else if(length <= MAX_BITS_IN_2_BYTE_SDVL)
+		else if(length <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
 			size = 2;
-		else if(length <= MAX_BITS_IN_3_BYTE_SDVL)
+		else if(length <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
 			size = 3;
-		else if(length <= MAX_BITS_IN_4_BYTE_SDVL)
+		else if(length <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 			size = 4;
 		else
 		{
