@@ -206,12 +206,6 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context);
 static rohc_packet_t decide_SO_packet(const struct c_context *context);
 
 
-int update_variables(struct c_context *const context,
-                     const struct ip_packet *const ip,
-                     const struct ip_packet *const ip2);
-
-rohc_ext_t decide_extension(const struct c_context *context);
-
 int rtp_header_flags_and_fields(const struct c_context *context,
                                 const unsigned short changed_f,
                                 const struct ip_packet *ip,
@@ -262,8 +256,14 @@ void check_ip_identification(struct ip_header_info *const header_info,
 
 
 /*
- * Prototypes of miscellaneous private functions
+ * Prototypes of main private functions
  */
+
+static int update_variables(struct c_context *const context,
+                            const struct ip_packet *const ip,
+                            const struct ip_packet *const ip2);
+
+static rohc_ext_t decide_extension(const struct c_context *context);
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
                                             size_t *const nr_bits,
@@ -2953,230 +2953,6 @@ void decide_state(struct c_context *const context)
 
 	if(context->mode == U_MODE)
 		periodic_down_transition(context);
-}
-
-
-/**
- * @brief Update some context variables.
- *
- * This function is only used in encode. Everything in this function could
- * be in encode but to make it more readable we have it here instead.
- *
- * @param context The compression context
- * @param ip      The outer IP header
- * @param ip2     The inner IP header
- * @return        ROHC_OK in case of success,
- *                ROHC_ERROR otherwise
- */
-int update_variables(struct c_context *const context,
-                     const struct ip_packet *const ip,
-                     const struct ip_packet *const ip2)
-{
-	struct c_generic_context *g_context;
-	int ret;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	g_context = (struct c_generic_context *) context->specific;
-	assert(ip != NULL);
-	assert((g_context->tmp_variables.nr_of_ip_hdr == 1 && ip2 == NULL) ||
-	       (g_context->tmp_variables.nr_of_ip_hdr == 2 && ip2 != NULL));
-
-	rohc_debugf(2, "compressor is in state %u\n", context->state);
-
-	/* always update the info related to the SN */
-	{
-		rohc_debugf(2, "new SN = %u / 0x%x\n", g_context->sn, g_context->sn);
-
-		/* how many bits are required to encode the new SN ? */
-		if(context->state == IR)
-		{
-			/* send all bits in IR state */
-			g_context->tmp_variables.nr_sn_bits = 16;
-		}
-		else
-		{
-			/* send only required bits in FO or SO states */
-			ret = c_get_k_wlsb(g_context->sn_window, g_context->sn,
-			                   &(g_context->tmp_variables.nr_sn_bits));
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to find the minimal number of bits required "
-				            "for SN\n");
-				goto error;
-			}
-		}
-		rohc_debugf(2, "%zd bits are required to encode new SN\n",
-		            g_context->tmp_variables.nr_sn_bits);
-
-		/* add the new SN to the W-LSB encoding object */
-		c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
-	}
-
-	/* update info related to the IP-ID of the outer header
-	 * only if header is IPv4 */
-	if(ip_get_version(ip) == IPV4)
-	{
-		/* compute the new IP-ID / SN delta */
-		if(g_context->ip_flags.info.v4.nbo)
-		{
-			g_context->ip_flags.info.v4.id_delta =
-				ntohs(ipv4_get_id(ip)) - g_context->sn;
-		}
-		else
-		{
-			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - g_context->sn;
-		}
-		rohc_debugf(3, "new outer IP-ID delta = 0x%x / %u (NBO = %d, RND = %d)\n",
-		            g_context->ip_flags.info.v4.id_delta,
-		            g_context->ip_flags.info.v4.id_delta,
-		            g_context->ip_flags.info.v4.nbo,
-		            g_context->ip_flags.info.v4.rnd);
-
-		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == IR)
-		{
-			/* send all bits in IR state */
-			g_context->tmp_variables.nr_ip_id_bits = 16;
-		}
-		else
-		{
-			/* send only required bits in FO or SO states */
-			ret = c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
-			                   g_context->ip_flags.info.v4.id_delta,
-			                   &(g_context->tmp_variables.nr_ip_id_bits));
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to find the minimal number of bits required "
-				            "for new outer IP-ID delta\n");
-				goto error;
-			}
-		}
-		rohc_debugf(2, "%zd bits are required to encode new outer IP-ID delta\n",
-		            g_context->tmp_variables.nr_ip_id_bits);
-
-		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, g_context->sn,
-		           g_context->ip_flags.info.v4.id_delta);
-	}
-	else /* IPV6 */
-	{
-		g_context->tmp_variables.nr_ip_id_bits = 0;
-	}
-
-	/* update info related to the IP-ID of the inner header
-	 * only if header is IPv4 */
-	if(g_context->tmp_variables.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
-	{
-		/* compute the new IP-ID / SN delta */
-		if(g_context->ip2_flags.info.v4.nbo)
-		{
-			g_context->ip2_flags.info.v4.id_delta =
-				ntohs(ipv4_get_id(ip2)) - g_context->sn;
-		}
-		else
-		{
-			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
-		}
-		rohc_debugf(3, "new inner IP-ID delta = 0x%x / %u (NBO = %d, RND = %d)\n",
-		            g_context->ip2_flags.info.v4.id_delta,
-		            g_context->ip2_flags.info.v4.id_delta,
-		            g_context->ip2_flags.info.v4.nbo,
-		            g_context->ip2_flags.info.v4.rnd);
-
-		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == IR)
-		{
-			/* send all bits in IR state */
-			g_context->tmp_variables.nr_ip_id_bits2 = 16;
-		}
-		else
-		{
-			/* send only required bits in FO or SO states */
-			ret = c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
-			                   g_context->ip2_flags.info.v4.id_delta,
-			                   &(g_context->tmp_variables.nr_ip_id_bits2));
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to find the minimal number of bits required "
-				            "for new inner IP-ID delta\n");
-				goto error;
-			}
-		}
-		rohc_debugf(2, "%zd bits are required to encode new inner IP-ID delta\n",
-		            g_context->tmp_variables.nr_ip_id_bits2);
-
-		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn,
-		           g_context->ip2_flags.info.v4.id_delta);
-	}
-	else /* IPV6 */
-	{
-		g_context->tmp_variables.nr_ip_id_bits2 = 0;
-	}
-
-	/* update info related to RTP header */
-	if(context->profile->id == ROHC_PROFILE_RTP)
-	{
-		struct rtphdr *rtp;
-		struct udphdr *udp;
-		struct sc_rtp_context *rtp_context;
-
-		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
-			udp = (struct udphdr *) ip_get_next_layer(ip2);
-		else
-			udp = (struct udphdr *) ip_get_next_layer(ip);
-
-		rtp = (struct rtphdr *) (udp + 1);
-		rtp_context = g_context->specific;
-
-		if(rtp_context->ts_sc.state == SEND_SCALED)
-		{
-			/* TS_SCALED value will be send */
-			rtp_context->tmp_variables.ts_send = get_ts_scaled(rtp_context->ts_sc);
-			ret = nb_bits_scaled(rtp_context->ts_sc,
-			                     &(rtp_context->tmp_variables.nr_ts_bits));
-			if(ret != 1)
-			{
-				const uint32_t ts_send = rtp_context->tmp_variables.ts_send;
-				size_t nr_bits;
-				uint32_t mask;
-
-				/* this is the first TS scaled to be sent, we cannot code it with
-				 * W-LSB and we must find its size (in bits) */
-				for(nr_bits = 1, mask = 1;
-				    nr_bits <= 32 && (ts_send & mask) != ts_send;
-				    nr_bits++, mask |= (1 << (nr_bits - 1)));
-				rohc_assert((ts_send & mask) == ts_send, error,
-				            "size of TS scaled (0x%x) not found, this should "
-				            "never happen!", ts_send);
-
-				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
-				            "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
-				rtp_context->tmp_variables.nr_ts_bits = nr_bits;
-			}
-
-			/* save the new TS_SCALED value */
-			add_scaled(&rtp_context->ts_sc, g_context->sn);
-			rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
-			            rtp_context->tmp_variables.ts_send,
-			            rtp_context->tmp_variables.nr_ts_bits);
-		}
-		else if(rtp_context->ts_sc.state == INIT_STRIDE)
-		{
-			/* TS and TS_STRIDE will be send */
-			rtp_context->tmp_variables.ts_send = ntohl(rtp->timestamp);
-			rtp_context->tmp_variables.nr_ts_bits = 32;
-		}
-
-		rohc_debugf(3, "%zd bits are required to encode new TS\n",
-		            rtp_context->tmp_variables.nr_ts_bits);
-	}
-
-	return ROHC_OK;
-
-error:
-	return ROHC_ERROR;
 }
 
 
@@ -7524,179 +7300,6 @@ int header_fields(const struct c_context *context,
 
 
 /**
- * @brief Decide what extension shall be used in the UO-2 packet.
- *
- * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
- *
- * @param context The compression context
- * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
- *                PACKET_EXT_1 and PACKET_EXT_3 if successful,
- *                PACKET_EXT_UNKNOWN otherwise
- */
-rohc_ext_t decide_extension(const struct c_context *context)
-{
-	struct c_generic_context *g_context;
-	rohc_packet_t packet_type;
-	int send_static;
-	int send_dynamic;
-	size_t nr_ip_id_bits;
-	size_t nr_ip_id_bits2;
-	size_t nr_sn_bits;
-	int ext;
-	int is_rtp;
-
-	g_context = (struct c_generic_context *) context->specific;
-	send_static = g_context->tmp_variables.send_static;
-	send_dynamic = g_context->tmp_variables.send_dynamic;
-	nr_ip_id_bits = g_context->tmp_variables.nr_ip_id_bits;
-	nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
-	nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
-	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-	packet_type = g_context->tmp_variables.packet_type;
-
-	ext = PACKET_EXT_3; /* default extension */
-
-	/* force extension type 3 if at least one static or dynamic field changed */
-	if(send_static > 0 || send_dynamic > 0)
-	{
-		rohc_debugf(3, "force EXT-3 because at least one static or dynamic "
-		            "field changed\n");
-		return ext;
-	}
-
-	/* force extension type 3 if at least one RTP dynamic field changed */
-	if(is_rtp)
-	{
-		struct sc_rtp_context *rtp_context;
-		rtp_context = (struct sc_rtp_context *) g_context->specific;
-		if(rtp_context->tmp_variables.send_rtp_dynamic > 0)
-		{
-			rohc_debugf(3, "force EXT-3 because at least one RTP dynamic "
-			            "field changed\n");
-			return ext;
-		}
-	}
-
-	switch(packet_type)
-	{
-		case PACKET_UOR_2:
-		{
-			int is_ip_v4, is_rnd;
-
-			is_ip_v4 = g_context->ip_flags.version == IPV4;
-			is_rnd = g_context->ip_flags.info.v4.rnd;
-
-			if(g_context->tmp_variables.nr_of_ip_hdr == 1)
-			{
-				if(nr_sn_bits < 5 &&
-				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))))
-					ext = PACKET_NOEXT;
-				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 3))
-					ext = PACKET_EXT_0;
-				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 11))
-					ext = PACKET_EXT_1;
-			}
-			else /* double IP headers */
-			{
-				int is_ip2_v4, is_rnd2;
-
-				is_ip2_v4 = g_context->ip2_flags.version == IPV4;
-				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-
-				if(nr_sn_bits < 5 &&
-				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))) &&
-				   (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
-					ext = PACKET_NOEXT;
-				else if(nr_sn_bits <= 8 &&
-				        (is_ip_v4 && nr_ip_id_bits <= 3) &&
-				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
-					ext = PACKET_EXT_0; /* IPv4 only for outer header */
-				else if(nr_sn_bits <= 8 &&
-				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
-				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
-					ext = PACKET_EXT_1; /* IPv4 only for outer header */
-				else if(nr_sn_bits <= 3 &&
-				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
-				        (is_ip2_v4 && nr_ip_id_bits2 <= 8))
-					ext = PACKET_EXT_2; /* IPv4 only for both outer and inner header */
-			}
-
-			break;
-		}
-
-		case PACKET_UOR_2_RTP:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) g_context->specific;
-			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-
-			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ts_bits <= 6)
-				ext = PACKET_NOEXT;
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 9)
-				ext = PACKET_EXT_0;
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 17)
-				ext = PACKET_EXT_1;
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 25)
-				ext = PACKET_EXT_2;
-
-			break;
-		}
-
-		case PACKET_UOR_2_TS:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) g_context->specific;
-			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-
-			/* NO_EXT, EXT_0 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ts_bits <= 5)
-				ext = PACKET_NOEXT;
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 8)
-				ext = PACKET_EXT_0;
-
-			break;
-		}
-
-		case PACKET_UOR_2_ID:
-		{
-			const struct sc_rtp_context *rtp_context;
-			size_t nr_ts_bits;
-
-			rtp_context = (struct sc_rtp_context *) g_context->specific;
-			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
-
-			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
-				ext = PACKET_NOEXT;
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
-				ext = PACKET_EXT_0;
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
-				ext = PACKET_EXT_1;
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 16 && nr_ts_bits <= 8)
-				ext = PACKET_EXT_2;
-
-			break;
-		}
-
-		default:
-		{
-			rohc_assert(false, error, "bad packet type (%d)", packet_type);
-		}
-	}
-
-	return ext;
-
-error:
-	return PACKET_EXT_UNKNOWN;
-}
-
-
-/**
  * @brief Check if the static parts of the context changed in any of the two
  *        IP headers.
  *
@@ -8062,6 +7665,483 @@ void check_ip_identification(struct ip_header_info *const header_info,
 error:
 	;
 }
+
+
+
+/*
+ * Definitions of main private functions
+ */
+
+
+/**
+ * @brief Update some context variables.
+ *
+ * This function is only used in encode. Everything in this function could
+ * be in encode but to make it more readable we have it here instead.
+ *
+ * @param context The compression context
+ * @param ip      The outer IP header
+ * @param ip2     The inner IP header
+ * @return        ROHC_OK in case of success,
+ *                ROHC_ERROR otherwise
+ */
+static int update_variables(struct c_context *const context,
+                            const struct ip_packet *const ip,
+                            const struct ip_packet *const ip2)
+{
+	struct c_generic_context *g_context;
+	int ret;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+	assert(ip != NULL);
+	assert((g_context->tmp_variables.nr_of_ip_hdr == 1 && ip2 == NULL) ||
+	       (g_context->tmp_variables.nr_of_ip_hdr == 2 && ip2 != NULL));
+
+	rohc_debugf(2, "compressor is in state %u\n", context->state);
+
+	/* always update the info related to the SN */
+	{
+		rohc_debugf(2, "new SN = %u / 0x%x\n", g_context->sn, g_context->sn);
+
+		/* how many bits are required to encode the new SN ? */
+		if(context->state == IR)
+		{
+			/* send all bits in IR state */
+			g_context->tmp_variables.nr_sn_bits = 16;
+		}
+		else
+		{
+			/* send only required bits in FO or SO states */
+			ret = c_get_k_wlsb(g_context->sn_window, g_context->sn,
+			                   &(g_context->tmp_variables.nr_sn_bits));
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to find the minimal number of bits required "
+				            "for SN\n");
+				goto error;
+			}
+		}
+		rohc_debugf(2, "%zd bits are required to encode new SN\n",
+		            g_context->tmp_variables.nr_sn_bits);
+
+		/* add the new SN to the W-LSB encoding object */
+		c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
+	}
+
+	/* update info related to the IP-ID of the outer header
+	 * only if header is IPv4 */
+	if(ip_get_version(ip) == IPV4)
+	{
+		/* compute the new IP-ID / SN delta */
+		if(g_context->ip_flags.info.v4.nbo)
+		{
+			g_context->ip_flags.info.v4.id_delta =
+				ntohs(ipv4_get_id(ip)) - g_context->sn;
+		}
+		else
+		{
+			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - g_context->sn;
+		}
+		rohc_debugf(3, "new outer IP-ID delta = 0x%x / %u (NBO = %d, RND = %d)\n",
+		            g_context->ip_flags.info.v4.id_delta,
+		            g_context->ip_flags.info.v4.id_delta,
+		            g_context->ip_flags.info.v4.nbo,
+		            g_context->ip_flags.info.v4.rnd);
+
+		/* how many bits are required to encode the new IP-ID / SN delta ? */
+		if(context->state == IR)
+		{
+			/* send all bits in IR state */
+			g_context->tmp_variables.nr_ip_id_bits = 16;
+		}
+		else
+		{
+			/* send only required bits in FO or SO states */
+			ret = c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
+			                   g_context->ip_flags.info.v4.id_delta,
+			                   &(g_context->tmp_variables.nr_ip_id_bits));
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to find the minimal number of bits required "
+				            "for new outer IP-ID delta\n");
+				goto error;
+			}
+		}
+		rohc_debugf(2, "%zd bits are required to encode new outer IP-ID delta\n",
+		            g_context->tmp_variables.nr_ip_id_bits);
+
+		/* add the new IP-ID / SN delta to the W-LSB encoding object */
+		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, g_context->sn,
+		           g_context->ip_flags.info.v4.id_delta);
+	}
+	else /* IPV6 */
+	{
+		g_context->tmp_variables.nr_ip_id_bits = 0;
+	}
+
+	/* update info related to the IP-ID of the inner header
+	 * only if header is IPv4 */
+	if(g_context->tmp_variables.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
+	{
+		/* compute the new IP-ID / SN delta */
+		if(g_context->ip2_flags.info.v4.nbo)
+		{
+			g_context->ip2_flags.info.v4.id_delta =
+				ntohs(ipv4_get_id(ip2)) - g_context->sn;
+		}
+		else
+		{
+			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
+		}
+		rohc_debugf(3, "new inner IP-ID delta = 0x%x / %u (NBO = %d, RND = %d)\n",
+		            g_context->ip2_flags.info.v4.id_delta,
+		            g_context->ip2_flags.info.v4.id_delta,
+		            g_context->ip2_flags.info.v4.nbo,
+		            g_context->ip2_flags.info.v4.rnd);
+
+		/* how many bits are required to encode the new IP-ID / SN delta ? */
+		if(context->state == IR)
+		{
+			/* send all bits in IR state */
+			g_context->tmp_variables.nr_ip_id_bits2 = 16;
+		}
+		else
+		{
+			/* send only required bits in FO or SO states */
+			ret = c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
+			                   g_context->ip2_flags.info.v4.id_delta,
+			                   &(g_context->tmp_variables.nr_ip_id_bits2));
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to find the minimal number of bits required "
+				            "for new inner IP-ID delta\n");
+				goto error;
+			}
+		}
+		rohc_debugf(2, "%zd bits are required to encode new inner IP-ID delta\n",
+		            g_context->tmp_variables.nr_ip_id_bits2);
+
+		/* add the new IP-ID / SN delta to the W-LSB encoding object */
+		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn,
+		           g_context->ip2_flags.info.v4.id_delta);
+	}
+	else /* IPV6 */
+	{
+		g_context->tmp_variables.nr_ip_id_bits2 = 0;
+	}
+
+	/* update info related to RTP header */
+	if(context->profile->id == ROHC_PROFILE_RTP)
+	{
+		struct rtphdr *rtp;
+		struct udphdr *udp;
+		struct sc_rtp_context *rtp_context;
+
+		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
+			udp = (struct udphdr *) ip_get_next_layer(ip2);
+		else
+			udp = (struct udphdr *) ip_get_next_layer(ip);
+
+		rtp = (struct rtphdr *) (udp + 1);
+		rtp_context = g_context->specific;
+
+		if(rtp_context->ts_sc.state == SEND_SCALED)
+		{
+			/* TS_SCALED value will be send */
+			rtp_context->tmp_variables.ts_send = get_ts_scaled(rtp_context->ts_sc);
+			ret = nb_bits_scaled(rtp_context->ts_sc,
+			                     &(rtp_context->tmp_variables.nr_ts_bits));
+			if(ret != 1)
+			{
+				const uint32_t ts_send = rtp_context->tmp_variables.ts_send;
+				size_t nr_bits;
+				uint32_t mask;
+
+				/* this is the first TS scaled to be sent, we cannot code it with
+				 * W-LSB and we must find its size (in bits) */
+				for(nr_bits = 1, mask = 1;
+				    nr_bits <= 32 && (ts_send & mask) != ts_send;
+				    nr_bits++, mask |= (1 << (nr_bits - 1)));
+				rohc_assert((ts_send & mask) == ts_send, error,
+				            "size of TS scaled (0x%x) not found, this should "
+				            "never happen!", ts_send);
+
+				rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
+				            "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
+				rtp_context->tmp_variables.nr_ts_bits = nr_bits;
+			}
+
+			/* save the new TS_SCALED value */
+			add_scaled(&rtp_context->ts_sc, g_context->sn);
+			rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
+			            rtp_context->tmp_variables.ts_send,
+			            rtp_context->tmp_variables.nr_ts_bits);
+		}
+		else if(rtp_context->ts_sc.state == INIT_STRIDE)
+		{
+			/* TS and TS_STRIDE will be send */
+			rtp_context->tmp_variables.ts_send = ntohl(rtp->timestamp);
+			rtp_context->tmp_variables.nr_ts_bits = 32;
+		}
+
+		rohc_debugf(3, "%zd bits are required to encode new TS\n",
+		            rtp_context->tmp_variables.nr_ts_bits);
+	}
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UO-2 packet.
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context The compression context
+ * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
+ *                PACKET_EXT_1 and PACKET_EXT_3 if successful,
+ *                PACKET_EXT_UNKNOWN otherwise
+ */
+static rohc_ext_t decide_extension(const struct c_context *context)
+{
+	struct c_generic_context *g_context;
+	rohc_packet_t packet_type;
+	int send_static;
+	int send_dynamic;
+	size_t nr_ip_id_bits;
+	size_t nr_ip_id_bits2;
+	size_t nr_sn_bits;
+	int ext;
+	int is_rtp;
+
+	g_context = (struct c_generic_context *) context->specific;
+	send_static = g_context->tmp_variables.send_static;
+	send_dynamic = g_context->tmp_variables.send_dynamic;
+	nr_ip_id_bits = g_context->tmp_variables.nr_ip_id_bits;
+	nr_ip_id_bits2 = g_context->tmp_variables.nr_ip_id_bits2;
+	nr_sn_bits = g_context->tmp_variables.nr_sn_bits;
+	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+	packet_type = g_context->tmp_variables.packet_type;
+
+	ext = PACKET_EXT_3; /* default extension */
+
+	/* force extension type 3 if at least one static or dynamic field changed */
+	if(send_static > 0 || send_dynamic > 0)
+	{
+		rohc_debugf(3, "force EXT-3 because at least one static or dynamic "
+		            "field changed\n");
+		return ext;
+	}
+
+	/* force extension type 3 if at least one RTP dynamic field changed */
+	if(is_rtp)
+	{
+		struct sc_rtp_context *rtp_context;
+		rtp_context = (struct sc_rtp_context *) g_context->specific;
+		if(rtp_context->tmp_variables.send_rtp_dynamic > 0)
+		{
+			rohc_debugf(3, "force EXT-3 because at least one RTP dynamic "
+			            "field changed\n");
+			return ext;
+		}
+	}
+
+	switch(packet_type)
+	{
+		case PACKET_UOR_2:
+		{
+			int is_ip_v4, is_rnd;
+
+			is_ip_v4 = g_context->ip_flags.version == IPV4;
+			is_rnd = g_context->ip_flags.info.v4.rnd;
+
+			if(g_context->tmp_variables.nr_of_ip_hdr == 1)
+			{
+				if(nr_sn_bits < 5 &&
+				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))))
+					ext = PACKET_NOEXT;
+				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 3))
+					ext = PACKET_EXT_0;
+				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 11))
+					ext = PACKET_EXT_1;
+			}
+			else /* double IP headers */
+			{
+				int is_ip2_v4, is_rnd2;
+
+				is_ip2_v4 = g_context->ip2_flags.version == IPV4;
+				is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+
+				if(nr_sn_bits < 5 &&
+				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))) &&
+				   (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
+					ext = PACKET_NOEXT;
+				else if(nr_sn_bits <= 8 &&
+				        (is_ip_v4 && nr_ip_id_bits <= 3) &&
+				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
+					ext = PACKET_EXT_0; /* IPv4 only for outer header */
+				else if(nr_sn_bits <= 8 &&
+				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
+				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
+					ext = PACKET_EXT_1; /* IPv4 only for outer header */
+				else if(nr_sn_bits <= 3 &&
+				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
+				        (is_ip2_v4 && nr_ip_id_bits2 <= 8))
+					ext = PACKET_EXT_2; /* IPv4 only for both outer and inner header */
+			}
+
+			break;
+		}
+
+		case PACKET_UOR_2_RTP:
+		{
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+
+			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
+			if(nr_sn_bits <= 6 && nr_ts_bits <= 6)
+				ext = PACKET_NOEXT;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 9)
+				ext = PACKET_EXT_0;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 17)
+				ext = PACKET_EXT_1;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 25)
+				ext = PACKET_EXT_2;
+
+			break;
+		}
+
+		case PACKET_UOR_2_TS:
+		{
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+
+			/* NO_EXT, EXT_0 and EXT_3 */
+			if(nr_sn_bits <= 6 && nr_ts_bits <= 5)
+				ext = PACKET_NOEXT;
+			else if(nr_sn_bits <= 9 && nr_ts_bits <= 8)
+				ext = PACKET_EXT_0;
+
+			break;
+		}
+
+		case PACKET_UOR_2_ID:
+		{
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp_variables.nr_ts_bits;
+
+			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
+			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
+				ext = PACKET_NOEXT;
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
+				ext = PACKET_EXT_0;
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
+				ext = PACKET_EXT_1;
+			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 16 && nr_ts_bits <= 8)
+				ext = PACKET_EXT_2;
+
+			break;
+		}
+
+		default:
+		{
+			rohc_assert(false, error, "bad packet type (%d)", packet_type);
+		}
+	}
+
+	return ext;
+
+error:
+	return PACKET_EXT_UNKNOWN;
+}
+
+
+/**
+ * @brief Determine the number of IP-ID bits and the IP-ID offset of the
+ *        innermost IPv4 header with non-random IP-ID
+ *
+ * @warning At least one IP header must be one IPv4 header with a non-random
+ *          IP-ID
+ *
+ * @param context  The compression context
+ * @param nr_bits  OUT: the number of IP-ID bits of the found header
+ * @param offset   OUT: the IP-ID offset of the found header
+ */
+static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
+                                            size_t *const nr_bits,
+                                            uint16_t *const offset)
+{
+	struct c_generic_context *g_context;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+
+	assert(nr_bits != NULL);
+	assert(offset != NULL);
+
+	if(g_context->tmp_variables.nr_of_ip_hdr == 1)
+	{
+		/* only one IP header: it must be IPv4 with non-random IP-ID */
+		assert(g_context->ip_flags.version == IPV4);
+		assert(g_context->ip_flags.info.v4.rnd == 0);
+		*nr_bits = g_context->tmp_variables.nr_ip_id_bits;
+		*offset = g_context->ip_flags.info.v4.id_delta;
+	}
+	else
+	{
+		/* 2 IP headers: at least one of them must be IPv4 with non-random
+		 * IP-ID */
+		if(g_context->ip2_flags.version == IPV4)
+		{
+			/* inner IP header is IPv4 */
+			if(g_context->ip2_flags.info.v4.rnd == 0)
+			{
+				/* inner IPv4 header got a non-random IP-ID, that's fine */
+				*nr_bits = g_context->tmp_variables.nr_ip_id_bits2;
+				*offset = g_context->ip2_flags.info.v4.id_delta;
+			}
+			else
+			{
+				/* inner IPv4 header got a random IP-ID, outer IP header must
+				 * be IPv4 with non-random IP-ID */
+				assert(g_context->ip_flags.version == IPV4);
+				assert(!g_context->ip_flags.info.v4.rnd);
+				*nr_bits = g_context->tmp_variables.nr_ip_id_bits;
+				*offset = g_context->ip_flags.info.v4.id_delta;
+			}
+		}
+		else
+		{
+			/* inner IP header is not IPv4, outer IP header must be IPv4 with
+			 * non-random IP-ID */
+			assert(g_context->ip_flags.version == IPV4);
+			assert(!g_context->ip_flags.info.v4.rnd);
+			*nr_bits = g_context->tmp_variables.nr_ip_id_bits;
+			*offset = g_context->ip_flags.info.v4.id_delta;
+		}
+	}
+}
+
+
+
+/*
+ * Definitions of private functions related to the jamming mechanism
+ */
 
 
 /**
@@ -8538,73 +8618,5 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 
 error:
 	return PACKET_UNKNOWN;
-}
-
-
-/**
- * @brief Determine the number of IP-ID bits and the IP-ID offset of the
- *        innermost IPv4 header with non-random IP-ID
- *
- * @warning At least one IP header must be one IPv4 header with a non-random
- *          IP-ID
- *
- * @param context  The compression context
- * @param nr_bits  OUT: the number of IP-ID bits of the found header
- * @param offset   OUT: the IP-ID offset of the found header
- */
-static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
-                                            size_t *const nr_bits,
-                                            uint16_t *const offset)
-{
-	struct c_generic_context *g_context;
-
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	g_context = (struct c_generic_context *) context->specific;
-
-	assert(nr_bits != NULL);
-	assert(offset != NULL);
-
-	if(g_context->tmp_variables.nr_of_ip_hdr == 1)
-	{
-		/* only one IP header: it must be IPv4 with non-random IP-ID */
-		assert(g_context->ip_flags.version == IPV4);
-		assert(g_context->ip_flags.info.v4.rnd == 0);
-		*nr_bits = g_context->tmp_variables.nr_ip_id_bits;
-		*offset = g_context->ip_flags.info.v4.id_delta;
-	}
-	else
-	{
-		/* 2 IP headers: at least one of them must be IPv4 with non-random
-		 * IP-ID */
-		if(g_context->ip2_flags.version == IPV4)
-		{
-			/* inner IP header is IPv4 */
-			if(g_context->ip2_flags.info.v4.rnd == 0)
-			{
-				/* inner IPv4 header got a non-random IP-ID, that's fine */
-				*nr_bits = g_context->tmp_variables.nr_ip_id_bits2;
-				*offset = g_context->ip2_flags.info.v4.id_delta;
-			}
-			else
-			{
-				/* inner IPv4 header got a random IP-ID, outer IP header must
-				 * be IPv4 with non-random IP-ID */
-				assert(g_context->ip_flags.version == IPV4);
-				assert(!g_context->ip_flags.info.v4.rnd);
-				*nr_bits = g_context->tmp_variables.nr_ip_id_bits;
-				*offset = g_context->ip_flags.info.v4.id_delta;
-			}
-		}
-		else
-		{
-			/* inner IP header is not IPv4, outer IP header must be IPv4 with
-			 * non-random IP-ID */
-			assert(g_context->ip_flags.version == IPV4);
-			assert(!g_context->ip_flags.info.v4.rnd);
-			*nr_bits = g_context->tmp_variables.nr_ip_id_bits;
-			*offset = g_context->ip_flags.info.v4.id_delta;
-		}
-	}
 }
 
