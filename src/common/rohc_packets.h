@@ -64,18 +64,18 @@ typedef enum
 
 
 /**
- * @brief The different types of extensions for UOR-2 packets
+ * @brief The different types of extensions for UO-1-ID and UOR-2* packets
  *
  * If you add a new extension type, please also add the corresponding textual
  * description in \ref rohc_get_ext_descr.
  */
 typedef enum
 {
-	PACKET_EXT_0 = 0,  /**< The EXT-0 extension for the UOR-2 packet */
-	PACKET_EXT_1 = 1,  /**< The EXT-1 extension for the UOR-2 packet */
-	PACKET_EXT_2 = 2,  /**< The EXT-2 extension for the UOR-2 packet */
-	PACKET_EXT_3 = 3,  /**< The EXT-3 extension for the UOR-2 packet */
-	PACKET_NOEXT = 4,  /**< No extension for the UOR-2 packet */
+	PACKET_EXT_0 = 0,  /**< The EXT-0 extension for UO-1-ID/UOR-2* packets */
+	PACKET_EXT_1 = 1,  /**< The EXT-1 extension for UO-1-ID/UOR-2* packets */
+	PACKET_EXT_2 = 2,  /**< The EXT-2 extension for UO-1-ID/UOR-2* packets */
+	PACKET_EXT_3 = 3,  /**< The EXT-3 extension for UO-1-ID/UOR-2* packets */
+	PACKET_NOEXT = 4,  /**< No extension for UO-1-ID/UOR-2* packets */
 } rohc_ext_t;
 
 
