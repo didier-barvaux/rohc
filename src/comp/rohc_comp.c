@@ -42,6 +42,8 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
+
 
 extern struct c_profile c_rtp_profile,
                         c_udp_profile,
@@ -735,9 +737,10 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 
 	sprintf(buffer, "%s<instance>\n", prefix);
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<creator>%s</creator>\n", prefix, "LULEA/SMD143/2003");
+	sprintf(buffer, "%s\t<creator>%s</creator>\n", prefix,
+	        PACKAGE_NAME " (" PACKAGE_URL ")");
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<version>%s</version>\n", prefix, "1.0");
+	sprintf(buffer, "%s\t<version>%s</version>\n", prefix, PACKAGE_VERSION);
 	buffer += strlen(buffer);
 	sprintf(buffer, "%s\t<status>%s</status>\n", prefix, comp->enabled ? "enabled" : "disabled");
 	buffer += strlen(buffer);
