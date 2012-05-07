@@ -103,6 +103,8 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 			return "EXT-3";
 		case PACKET_NOEXT:
 			return "none";
+		case PACKET_EXT_UNKNOWN:
+			return "unknown";
 		default:
 			return "no description";
 	}

@@ -5298,6 +5298,11 @@ int code_UO2_packet(struct c_context *const context,
 
 	/* part 6: decide which extension to use */
 	extension = decide_extension(context);
+	if(extension == PACKET_EXT_UNKNOWN)
+	{
+		rohc_debugf(0, "failed to determine the extension to code\n");
+		goto error;
+	}
 	rohc_debugf(2, "extension '%s' chosen\n", rohc_get_ext_descr(extension));
 
 	/* parts 2, 4, 5: complete the three packet-specific bytes and copy them
@@ -7525,7 +7530,8 @@ int header_fields(const struct c_context *context,
  *
  * @param context The compression context
  * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
- *                PACKET_EXT_1 and PACKET_EXT_3 if successful, -1 otherwise
+ *                PACKET_EXT_1 and PACKET_EXT_3 if successful,
+ *                PACKET_EXT_UNKNOWN otherwise
  */
 rohc_ext_t decide_extension(const struct c_context *context)
 {
@@ -7686,7 +7692,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	return ext;
 
 error:
-	return -1;
+	return PACKET_EXT_UNKNOWN;
 }
 
 

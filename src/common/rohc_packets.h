@@ -76,6 +76,7 @@ typedef enum
 	PACKET_EXT_2 = 2,  /**< The EXT-2 extension for UO-1-ID/UOR-2* packets */
 	PACKET_EXT_3 = 3,  /**< The EXT-3 extension for UO-1-ID/UOR-2* packets */
 	PACKET_NOEXT = 4,  /**< No extension for UO-1-ID/UOR-2* packets */
+	PACKET_EXT_UNKNOWN = 5, /**< Unknown packet extension type */
 } rohc_ext_t;
 
 
