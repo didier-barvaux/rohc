@@ -263,7 +263,7 @@ static int test_comp_and_decomp(const char *filename,
 	if(is_large_cid)
 	{
 		rohc_c_set_large_cid(comp, 1);
-		rohc_c_set_max_cid(comp, 16383);
+		rohc_c_set_max_cid(comp, ROHC_LARGE_CID_MAX);
 	}
 	else
 	{

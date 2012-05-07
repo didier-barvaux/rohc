@@ -417,7 +417,7 @@ typedef enum
 
 
 /** The maximum value for large CIDs */
-#define ROHC_LARGE_CID_MAX  16383
+#define ROHC_LARGE_CID_MAX  ((1 << 14) - 1) /* 2^14 - 1 = 16383 */
 /** The maximum value for small CIDs */
 #define ROHC_SMALL_CID_MAX  15
 
