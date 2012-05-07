@@ -3200,7 +3200,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 	int is_rtp;
 	int is_rnd;
 	int is_ip_v4;
-	int nr_ip_id_bits;
+	size_t nr_ip_id_bits;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
@@ -3307,7 +3307,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					rohc_debugf(3, "choose packet UOR-2-ID because the single IP "
 					            "header is IPv4 with non-random IP-ID, %zd > 0 "
 					            "bits of IP-ID must be transmitted, and "
-					            "%zd <= %zd bits of TS must be transmitted\n",
+					            "%zd <= %u bits of TS must be transmitted\n",
 					            nr_ip_id_bits, nr_ts_bits,
 					            MAX_BITS_IN_4_BYTE_SDVL);
 				}
@@ -3365,7 +3365,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					rohc_debugf(3, "choose packet UOR-2-ID because only one of "
 					            "the 2 IP headers is IPv4 with non-random IP-ID "
 					            "with at least 1 bit of IP-ID to transmit, and "
-					            "%zd <= %zd bits of TS must be transmitted\n",
+					            "%zd <= %u bits of TS must be transmitted\n",
 					            nr_ts_bits, MAX_BITS_IN_4_BYTE_SDVL);
 				}
 				else if(nr_ipv4_non_rnd == 1)
@@ -3501,7 +3501,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				packet = PACKET_UOR_2_ID;
 				rohc_debugf(3, "choose packet UOR-2-ID because the single IP "
 				            "header is IPv4 with non-random IP-ID, %zd > 0 IP-ID "
-				            "bits and %zd <= %zd TS bits must be "
+				            "bits and %zd <= %u TS bits must be "
 				            "transmitted\n", nr_sn_bits, nr_ts_bits,
 				            MAX_BITS_IN_4_BYTE_SDVL);
 			}
@@ -3607,7 +3607,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				rohc_debugf(3, "choose packet UOR-2-ID because only one of "
 				            "the 2 IP headers is IPv4 with non-random IP-ID "
 				            "with at least 1 bit of IP-ID to transmit, and "
-				            "%zd <= %zd bits of TS must be transmitted\n",
+				            "%zd <= %u bits of TS must be transmitted\n",
 				            nr_ts_bits, MAX_BITS_IN_4_BYTE_SDVL);
 			}
 			else if(nr_ipv4_non_rnd == 1)

@@ -33,13 +33,13 @@
  */
 
 /** Maximum number of bits in 1 SDVL-encoded byte */
-#define MAX_BITS_IN_1_BYTE_SDVL 7
+#define MAX_BITS_IN_1_BYTE_SDVL 7U
 /** Maximum number of bits in 2 SDVL-encoded byte */
-#define MAX_BITS_IN_2_BYTE_SDVL 14
+#define MAX_BITS_IN_2_BYTE_SDVL 14U
 /** Maximum number of bits in 3 SDVL-encoded byte */
-#define MAX_BITS_IN_3_BYTE_SDVL 21
+#define MAX_BITS_IN_3_BYTE_SDVL 21U
 /** Maximum number of bits in 4 SDVL-encoded byte */
-#define MAX_BITS_IN_4_BYTE_SDVL 29
+#define MAX_BITS_IN_4_BYTE_SDVL 29U
 
 /*
  * Function prototypes.
