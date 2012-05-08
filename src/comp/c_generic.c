@@ -436,12 +436,6 @@ int c_init_header_info(struct ip_header_info *header_info,
 		header_info->info.v6.ext_comp->curr_list->gen_id = 0;
 		header_info->info.v6.ext_comp->curr_list->first_elt = NULL;
 
-		/*if(!create_list(header_info->info.v6.ext_comp->ref_list) ||
-		    !create_list(header_info->info.v6.ext_comp->curr_list))
-		{
-			rohc_debugf(0, "no memory to allocate compression list\n");
-			goto error;
-		}*/
 		header_info->info.v6.ext_comp->counter = 0;
 		header_info->info.v6.ext_comp->update_done = 0;
 		header_info->info.v6.ext_comp->list_compress = 0;
