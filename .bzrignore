@@ -5,6 +5,7 @@ Makefile.in
 *.lo
 *.la
 ./rohc-trunk.tar.gz
+./rohc-trunk.tar.bz2
 ./cscope.out
 ./aclocal.m4
 ./autom4te.cache

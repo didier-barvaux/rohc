@@ -18,11 +18,14 @@ m4_ifndef([AC_PACKAGE_URL],
 #    automake < 1.11 for the moment.
 #  - color-tests to get nice colored results for tests (currently disabled
 #    to keep compatibility with automake 1.10 for the moment.
-AM_INIT_AUTOMAKE([foreign])
+#  - prefer bzip2 over gzip for dist tarballs
+#  - tar-ustar to allow paths that exceeds 99 characters in the dist tarball
+AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 tar-pax])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-# Disable static libraries by default
-AC_DISABLE_STATIC
+# Init libtool (require >= 2.2.0, disable static libraries by default)
+LT_PREREQ([2.2.0])
+LT_INIT([disable-static])
 
 # Checks for programs.
 AC_PROG_CC
