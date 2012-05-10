@@ -61,9 +61,9 @@ struct c_wlsb
 {
 	/// @brief The window in which numerous previous values of the encoded value
 	///        are stored to help recreate the value
- 	struct c_window *window;
+	struct c_window *window;
 	/// The width of the window
- 	size_t window_width;
+	size_t window_width;
 
 	/// A pointer on the oldest entry in the window (change on acknowledgement)
 	size_t oldest;
@@ -71,9 +71,9 @@ struct c_wlsb
 	size_t next;
 
 	/// The maximal number of bits for representing the value
- 	size_t bits;
+	size_t bits;
 	/// Shift parameter (see 4.5.2 in the RFC 3095)
- 	int32_t p;
+	int32_t p;
 };
 
 

@@ -49,7 +49,7 @@ bool rohc_crc_init_table(unsigned char *const table, const int crc_type)
 	__attribute__((nonnull(1), warn_unused_result));
 
 unsigned int crc_calculate(const int crc_type,
-                           const unsigned char *const data, 
+                           const unsigned char *const data,
                            const int length,
                            const unsigned int init_val,
                            const unsigned char *const crc_table)

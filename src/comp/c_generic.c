@@ -361,7 +361,9 @@ static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 	for(i = 0; i < 4; i++)
 	{
 		if(comp->based_table[i].data != NULL)
+		{
 			free(comp->based_table[i].data);
+		}
 	}
 }
 
@@ -472,7 +474,7 @@ void c_init_tmp_variables(struct generic_tmp_variables *tmp_variables)
 	tmp_variables->nr_sn_bits = 0;
 	tmp_variables->nr_ip_id_bits = 0;
 	tmp_variables->nr_ip_id_bits2 = 0;
-	
+
 	tmp_variables->packet_type = PACKET_UNKNOWN;
 	tmp_variables->max_size = -1;
 }
@@ -513,8 +515,8 @@ int c_generic_create(struct c_context *const context,
 		(struct c_generic_context *) malloc(sizeof(struct c_generic_context));
 	if(g_context == NULL)
 	{
-	  rohc_debugf(0, "no memory for generic part of the profile context\n");
-	  goto quit;
+		rohc_debugf(0, "no memory for generic part of the profile context\n");
+		goto quit;
 	}
 	bzero(g_context, sizeof(struct c_generic_context));
 	context->specific = g_context;
@@ -570,7 +572,9 @@ int c_generic_create(struct c_context *const context,
 
 	/* step 5 */
 	if(!c_init_header_info(&g_context->ip_flags, ip))
+	{
 		goto clean;
+	}
 	g_context->is_ip2_initialized = 0;
 
 	/* step 6 */
@@ -615,18 +619,26 @@ void c_generic_destroy(struct c_context *const context)
 	{
 		if(g_context->ip_flags.version == IPV4 &&
 		   g_context->ip_flags.info.v4.ip_id_window != NULL)
+		{
 			c_destroy_wlsb(g_context->ip_flags.info.v4.ip_id_window);
+		}
 		if(g_context->is_ip2_initialized &&
 		   g_context->ip2_flags.version == IPV4 &&
 		   g_context->ip2_flags.info.v4.ip_id_window != NULL)
+		{
 			c_destroy_wlsb(g_context->ip2_flags.info.v4.ip_id_window);
+		}
 		if(g_context->ip_flags.version == IPV6 &&
 		   g_context->ip_flags.info.v6.ext_comp != NULL)
 		{
-			if(g_context->ip_flags.info.v6.ext_comp->curr_list!=NULL)
+			if(g_context->ip_flags.info.v6.ext_comp->curr_list != NULL)
+			{
 				destroy_list(g_context->ip_flags.info.v6.ext_comp->curr_list);
+			}
 			if(g_context->ip_flags.info.v6.ext_comp->ref_list != NULL)
+			{
 				destroy_list(g_context->ip_flags.info.v6.ext_comp->ref_list);
+			}
 			list_comp_ipv6_destroy_table(g_context->ip_flags.info.v6.ext_comp);
 			zfree(g_context->ip_flags.info.v6.ext_comp);
 		}
@@ -634,18 +646,26 @@ void c_generic_destroy(struct c_context *const context)
 		   g_context->ip2_flags.version == IPV6 &&
 		   g_context->ip2_flags.info.v6.ext_comp != NULL)
 		{
-			if(g_context->ip2_flags.info.v6.ext_comp->curr_list!=NULL)
+			if(g_context->ip2_flags.info.v6.ext_comp->curr_list != NULL)
+			{
 				destroy_list(g_context->ip2_flags.info.v6.ext_comp->curr_list);
+			}
 			if(g_context->ip2_flags.info.v6.ext_comp->ref_list != NULL)
+			{
 				destroy_list(g_context->ip2_flags.info.v6.ext_comp->ref_list);
+			}
 			list_comp_ipv6_destroy_table(g_context->ip2_flags.info.v6.ext_comp);
 			zfree(g_context->ip2_flags.info.v6.ext_comp);
 		}
 		if(g_context->sn_window != NULL)
+		{
 			c_destroy_wlsb(g_context->sn_window);
+		}
 
 		if(g_context->specific != NULL)
+		{
 			zfree(g_context->specific);
+		}
 
 		zfree(g_context);
 	}
@@ -821,10 +841,14 @@ int c_generic_encode(struct c_context *const context,
 	if(g_context->sn != 0) /* skip first packet (sn == 0) */
 	{
 		if(ip_get_version(ip) == IPV4)
+		{
 			check_ip_identification(&g_context->ip_flags, ip);
+		}
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1 &&
 		   ip_get_version(inner_ip) == IPV4)
+		{
 			check_ip_identification(&g_context->ip2_flags, inner_ip);
+		}
 	}
 
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
@@ -837,9 +861,13 @@ int c_generic_encode(struct c_context *const context,
 		rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
+		{
 			udp = (struct udphdr *) ip_get_next_layer(inner_ip);
+		}
 		else
+		{
 			udp = (struct udphdr *) ip_get_next_layer(ip);
+		}
 
 		/* initialisation of SN with the SN field of the RTP packet */
 		rtp = (struct rtphdr *) (udp + 1);
@@ -982,7 +1010,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	int index_table;
 	const unsigned char *ext;
 	int send_list_compressed = 0;
-	struct list_elt * elt;
+	struct list_elt *elt;
 
 	ext = ip_get_raw_data(ip) + sizeof(struct ip6_hdr);
 
@@ -1067,7 +1095,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 			int nb_deleted = 0;
 
 			comp->counter = 0;
-			for(j = i; j < size ; j++)
+			for(j = i; j < size; j++)
 			{
 				elt = get_elt(comp->curr_list, j - nb_deleted);
 				assert(elt != NULL);
@@ -1169,13 +1197,13 @@ int c_create_current_list(const int index,
 	int curr_index;
 	int i;
 	int size;
-	
+
 	size = comp->get_size(ext);
 
 	/* test if the extension is the same in tables */
 	if(size == comp->based_table[index_table].length)
 	{
-		if(comp->compare(ext, comp, size, index_table)!= 0)
+		if(comp->compare(ext, comp, size, index_table) != 0)
 		{
 			/* the extension is modified */
 			rohc_debugf(3, "new extension to encode with same size "
@@ -1623,7 +1651,9 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 
 			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
+			{
 				dest[counter] |= 1 << 7;
+			}
 
 			/* 7-bit Index */
 			dest[counter] |= elt->index_table & 0x7f;
@@ -1647,7 +1677,9 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 			/* first 4-bit XI */
 			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
+			{
 				dest[counter] |= 1 << 7;
+			}
 			/* 3-bit Index */
 			dest[counter] |= (elt->index_table & 0x07) << 4;
 
@@ -1662,7 +1694,9 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 
 				/* set the X bit if item is not already known */
 				if(!comp->trans_table[elt->index_table].known)
+				{
 					dest[counter] |= 1 << 3;
+				}
 				/* 3-bit Index */
 				dest[counter] |= (elt->index_table & 0x07) << 0;
 
@@ -1706,7 +1740,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
  * @todo this function is inefficient as it loops many times in the current
  *       and reference lists (see \ref get_elt and \ref type_is_present
  *       especially)
- 
+ *
  * @bug The insertion bit mask is wrong. See bug #778541.
  *
  * \verbatim
@@ -1892,7 +1926,9 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
+			{
 				dest[counter] |= 1 << 7;
+			}
 			/* 7-bit Index */
 			dest[counter] |= elt->index_table & 0x7f;
 
@@ -1931,12 +1967,14 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 				/* set the X bit if item is not already known */
 				if(!comp->trans_table[elt->index_table].known)
+				{
 					dest[counter - (3 + mask_size)] |= 1 << 3;
+				}
 				/* 3-bit Index */
 				dest[counter - (3 + mask_size)] |= elt->index_table & 0x07;
 
 				rohc_debugf(3, "add 4-bit XI #%d in part 1 = 0x%x\n", k,
-			            (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
+				            (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
 			}
 			else
 			{
@@ -1950,12 +1988,14 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 					/* set the X bit if item is not already known */
 					if(!comp->trans_table[elt->index_table].known)
+					{
 						dest[counter] |= 1 << 7;
+					}
 					/* 3-bit Index */
 					dest[counter] |= (elt->index_table & 0x07) << 4;
 
 					rohc_debugf(3, "add 4-bit XI #%d in MSB = 0x%x\n", k,
-				            (dest[counter] & 0xf0) >> 4);
+					            (dest[counter] & 0xf0) >> 4);
 				}
 				else
 				{
@@ -1963,7 +2003,9 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 					/* set the X bit if item is not already known */
 					if(!comp->trans_table[elt->index_table].known)
+					{
 						dest[counter] |= 1 << 3;
+					}
 					/* 3-bit Index */
 					dest[counter] |= (elt->index_table & 0x07) << 0;
 
@@ -2449,7 +2491,9 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 
 			/* set the X bit if item is not already known */
 			if(!comp->trans_table[elt->index_table].known)
+			{
 				dest[counter] |= 1 << 7;
+			}
 			/* 7-bit Index */
 			dest[counter] |= (elt->index_table & 0x7f);
 
@@ -2488,12 +2532,14 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 
 				/* set the X bit if item is not already known */
 				if(!comp->trans_table[elt->index_table].known)
+				{
 					dest[counter - (3 + mask_size)] |= 1 << 3;
+				}
 				/* 3-bit Index */
 				dest[counter - (3 + mask_size)] |= elt->index_table & 0x07;
 
 				rohc_debugf(3, "add 4-bit XI #%d in part 1 = 0x%x\n", k,
-			            (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
+				            (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
 			}
 			else
 			{
@@ -2507,12 +2553,14 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 
 					/* set the X bit if item is not already known */
 					if(!comp->trans_table[elt->index_table].known)
+					{
 						dest[counter] |= 1 << 7;
+					}
 					/* 3-bit Index */
 					dest[counter] |= (elt->index_table & 0x07) << 4;
 
 					rohc_debugf(3, "add 4-bit XI #%d in MSB = 0x%x\n", k,
-				            (dest[counter] & 0xf0) >> 4);
+					            (dest[counter] & 0xf0) >> 4);
 				}
 				else
 				{
@@ -2520,7 +2568,9 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 
 					/* set the X bit if item is not already known */
 					if(!comp->trans_table[elt->index_table].known)
+					{
 						dest[counter] |= 1 << 3;
+					}
 					/* 3-bit Index */
 					dest[counter] |= (elt->index_table & 0x07) << 0;
 
@@ -2615,7 +2665,9 @@ static void create_ipv6_item(struct list_comp *const comp,
 
 	comp->based_table[index_table].length = ext_size;
 	if(comp->based_table[index_table].data != NULL)
+	{
 		zfree(comp->based_table[index_table].data);
+	}
 	comp->based_table[index_table].data = malloc(ext_size);
 	if(comp->based_table[index_table].data != NULL)
 	{
@@ -2633,7 +2685,7 @@ static void create_ipv6_item(struct list_comp *const comp,
  * @param index  The index of the extension to retrieve in the IP packet
  * @return       the extension
  */
-unsigned char *get_ipv6_extension(const struct ip_packet *ip, const int index)
+unsigned char * get_ipv6_extension(const struct ip_packet *ip, const int index)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
@@ -2736,7 +2788,9 @@ void c_generic_feedback(struct c_context *const context,
 
 			/* ack IP-ID only if IPv4, but always ack SN */
 			if(g_context->ip_flags.version == IPV4)
+			{
 				c_ack_sn_wlsb(g_context->ip_flags.info.v4.ip_id_window, sn);
+			}
 			c_ack_sn_wlsb(g_context->sn_window, sn);
 			break;
 
@@ -2792,8 +2846,8 @@ void c_generic_feedback(struct c_context *const context,
 				unsigned int crc_computed;
 
 				/* compute the CRC of the feedback packet */
-			   crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
-			                                CRC_INIT_8, context->compressor->crc_table_8);
+				crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
+				                             CRC_INIT_8, context->compressor->crc_table_8);
 
 				/* ignore feedback in case of bad CRC */
 				if(crc_in_packet != crc_computed)
@@ -2808,9 +2862,13 @@ void c_generic_feedback(struct c_context *const context,
 			{
 				/* mode can be changed only if feedback is protected by a CRC */
 				if(is_crc_used == true)
+				{
 					change_mode(context, mode);
+				}
 				else
+				{
 					rohc_debugf(0, "mode change requested but no crc was given\n");
+				}
 			}
 
 			switch(feedback->acktype)
@@ -2842,7 +2900,9 @@ void c_generic_feedback(struct c_context *const context,
 						g_context->ir_dyn_count = 0;
 					}
 					else if(context->state == FO)
+					{
 						g_context->ir_dyn_count = 0;
+					}
 					break;
 
 				case STATIC_NACK:
@@ -2895,9 +2955,13 @@ void periodic_down_transition(struct c_context *context)
 	}
 
 	if(context->state == SO)
+	{
 		g_context->go_back_fo_count++;
+	}
 	if(context->state == SO || context->state == FO)
+	{
 		g_context->go_back_ir_count++;
+	}
 }
 
 
@@ -2927,26 +2991,44 @@ void decide_state(struct c_context *const context)
 	send_dynamic = g_context->tmp_variables.send_dynamic;
 
 	if(curr_state == IR && send_dynamic && ir_count >= MAX_IR_COUNT)
+	{
 		next_state = FO;
+	}
 	else if(curr_state == IR && send_static && ir_count >= MAX_IR_COUNT)
+	{
 		next_state = FO;
+	}
 	else if(curr_state == IR && ir_count >= MAX_IR_COUNT)
+	{
 		next_state = SO;
+	}
 	else if(curr_state == FO && send_dynamic && fo_count >= MAX_FO_COUNT)
+	{
 		next_state = FO;
+	}
 	else if(curr_state == FO && send_static && fo_count >= MAX_FO_COUNT)
+	{
 		next_state = FO;
+	}
 	else if(curr_state == FO && fo_count >= MAX_FO_COUNT)
+	{
 		next_state = SO;
+	}
 	else if(curr_state == SO && send_dynamic)
+	{
 		next_state = FO;
+	}
 	else if(curr_state == SO && send_static)
+	{
 		next_state = FO;
+	}
 
 	change_state(context, next_state);
 
 	if(context->mode == U_MODE)
+	{
 		periodic_down_transition(context);
+	}
 }
 
 
@@ -2985,9 +3067,13 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 	{
 		g_context->ir_dyn_count = 0;
 		if(is_rtp)
+		{
 			packet = PACKET_UOR_2_RTP;
+		}
 		else
+		{
 			packet = PACKET_UOR_2;
+		}
 		rohc_debugf(3, "choose packet UOR-2%s because at least one static "
 		            "field changed\n", (is_rtp ? "-RTP" : ""));
 	}
@@ -3022,14 +3108,14 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 			/* UOR-2 packet can not be used, use IR-DYN instead */
 			packet = PACKET_IR_DYN;
 			rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-		            "be transmitted\n", nr_sn_bits);
+			            "be transmitted\n", nr_sn_bits);
 		}
 		else
 		{
 			/* UOR-2 packet is possible */
 			packet = PACKET_UOR_2;
 			rohc_debugf(3, "choose packet UOR-2 because %zd <= 14 SN bits must "
-		            "be transmitted\n", nr_sn_bits);
+			            "be transmitted\n", nr_sn_bits);
 		}
 	}
 	else /* RTP profile */
@@ -3048,7 +3134,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 			/* UOR-2* packets can not be used, use IR-DYN instead */
 			packet = PACKET_IR_DYN;
 			rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-		            "be transmitted\n", nr_sn_bits);
+			            "be transmitted\n", nr_sn_bits);
 		}
 		else
 		{
@@ -3211,11 +3297,12 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			   rtp_context->tmp_variables.m_set == 0)
 			{
 				packet = PACKET_UO_0;
-				rohc_debugf(3, "choose packet UO-0 because the single IP header "
-				            "is not 'IPv4 with non-random IP-ID', %zd <= 4 SN "
-				            "bits must be transmitted, %s and RTP M bit is not "
-				            "set\n", nr_sn_bits, (nr_ts_bits == 0 ? "0 TS bit "
-				            "must be transmitted" : "TS bits are deductible"));
+				rohc_debugf(3, "choose packet UO-0 because the single IP header is "
+				            "not 'IPv4 with non-random IP-ID', %zd <= 4 SN bits "
+				            "must be transmitted, %s and RTP M bit is not set\n",
+				            nr_sn_bits,
+				            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
+				             "TS bits are deductible"));
 			}
 			else if(!is_ipv4_non_rnd && nr_sn_bits <= 4 && nr_ts_bits <= 6)
 			{
@@ -3236,12 +3323,12 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			        rtp_context->tmp_variables.m_set == 0)
 			{
 				packet = PACKET_UO_0;
-				rohc_debugf(3, "choose packet UO-0 because the single IP header "
-				            "is IPv4 with non-random IP-ID, %zd <= 4 SN bits "
-				            "must be transmitted, 0 IP-ID bit must be "
-				            "transmitted, %s and RTP M bit is not set"
-				            "\n", nr_sn_bits, (nr_ts_bits == 0 ? "0 TS bit "
-				            "must be transmitted" : "TS bits are deductible"));
+				rohc_debugf(3, "choose packet UO-0 because the single IP header is "
+				            "IPv4 with non-random IP-ID, %zd <= 4 SN bits must be "
+				            "transmitted, 0 IP-ID bit must be transmitted, %s and "
+				            "RTP M bit is not set\n", nr_sn_bits,
+				            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
+				             "TS bits are deductible"));
 			}
 			else if(nr_sn_bits <= 4 && nr_ip_id_bits == 0 && nr_ts_bits <= 5)
 			{
@@ -3258,13 +3345,12 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				 * packet, please check whether the "m_set == 0" condition
 				 * could be removed or not */
 				packet = PACKET_UO_1_ID;
-				rohc_debugf(3, "choose packet UO-1-ID because the single IP "
-				            "header is IPv4 with non-random IP-ID, %zd <= 4 SN "
-				            "must be transmitted, %zd <= 5 IP-ID bits must be "
-				            "transmitted, %s and RTP M bit is not set"
-				            "\n", nr_sn_bits, nr_ip_id_bits, (nr_ts_bits == 0 ?
-				            "0 TS bit must be transmitted" : "TS bits are "
-				            "deductible"));
+				rohc_debugf(3, "choose packet UO-1-ID because the single IP header "
+				            "is IPv4 with non-random IP-ID, %zd <= 4 SN must be "
+				            "transmitted, %zd <= 5 IP-ID bits must be transmitted, "
+				            "%s and RTP M bit is not set\n", nr_sn_bits, nr_ip_id_bits,
+				            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
+				             "TS bits are deductible"));
 			}
 			else if(nr_ip_id_bits > 0 &&
 			        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
@@ -3319,12 +3405,12 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			   nr_ts_bits == 0 && rtp_context->tmp_variables.m_set == 0)
 			{
 				packet = PACKET_UO_0;
-				rohc_debugf(3, "choose packet UO-0 because %zd <= 4 SN bits must "
-				            "be transmitted, neither of the 2 IP headers are "
-				            "IPv4 with non-random IP-ID with some IP-ID bits to "
-				            "to transmit, %s, and RTP M bit is not set\n",
-				            nr_sn_bits, (nr_ts_bits == 0 ? "0 TS bit must be "
-				            "transmitted" : "TS bits are deductible"));
+				rohc_debugf(3, "choose packet UO-0 because %zd <= 4 SN bits must be "
+				            "transmitted, neither of the 2 IP headers are IPv4 with "
+				            "non-random IP-ID with some IP-ID bits to transmit, %s, "
+				            "and RTP M bit is not set\n", nr_sn_bits,
+				            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
+				             "TS bits are deductible"));
 			}
 			else if(nr_ipv4_non_rnd == 0 &&
 			        nr_sn_bits <= 4 &&
@@ -3351,7 +3437,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				            "be transmitted, %s, and RTP M bit is not set\n",
 				            rohc_max(nr_ip_id_bits, nr_ip_id_bits2), nr_sn_bits,
 				            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
-				            "TS bits are deductible"));
+				             "TS bits are deductible"));
 			}
 			else if(nr_ipv4_non_rnd_with_bits == 0 &&
 			        nr_sn_bits <= 4 &&
@@ -3406,8 +3492,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				rohc_debugf(3, "choose packet UO-0 because %zd <= 4 SN bits must "
 				            "be transmitted, and the single IP header is either "
 				            "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 "
-				            "with non-random IP-ID but 0 IP-ID bit to "
-				            "transmit'\n", nr_sn_bits);
+				            "with non-random IP-ID but 0 IP-ID bit to transmit'\n",
+				            nr_sn_bits);
 			}
 			else if(nr_sn_bits == 5 &&
 			        (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
@@ -3416,8 +3502,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				rohc_debugf(3, "choose packet UOR-2 because %zd = 5 SN bits must "
 				            "be transmitted, and the single IP header is either "
 				            "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 "
-				            "with non-random IP-ID but 0 IP-ID bit to "
-				            "transmit'\n", nr_sn_bits);
+				            "with non-random IP-ID but 0 IP-ID bit to transmit'\n",
+				            nr_sn_bits);
 			}
 			else if(nr_sn_bits <= 5 &&
 			        is_ip_v4 && is_rnd != 1 && nr_ip_id_bits <= 6)
@@ -3779,8 +3865,10 @@ int code_IR_packet(struct c_context *const context,
 	assert((ip_get_version(ip) == IPV4 && g_context->tmp_variables.nr_ip_id_bits <= 16) ||
 	       (ip_get_version(ip) != IPV4 && g_context->tmp_variables.nr_ip_id_bits == 0));
 	assert((nr_of_ip_hdr == 1 && g_context->tmp_variables.nr_ip_id_bits2 == 0) ||
-	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) == IPV4 && g_context->tmp_variables.nr_ip_id_bits2 == 16) ||
-	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) != IPV4 && g_context->tmp_variables.nr_ip_id_bits2 == 0));
+	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) == IPV4 &&
+	        g_context->tmp_variables.nr_ip_id_bits2 == 16) ||
+	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) != IPV4 &&
+	        g_context->tmp_variables.nr_ip_id_bits2 == 0));
 
 	rohc_debugf(2, "code IR packet (CID = %d)\n", context->cid);
 
@@ -3898,7 +3986,6 @@ error:
 }
 
 
-
 /**
  * @brief Build the IR-DYN packet.
  *
@@ -3959,7 +4046,7 @@ int code_IR_DYN_packet(struct c_context *const context,
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp_variables.nr_of_ip_hdr;
-	
+
 	rohc_debugf(2, "code IR-DYN packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
@@ -4311,9 +4398,13 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	df = ipv4_get_df(ip);
 	df_rnd_nbo = df << 7;
 	if(header_info->info.v4.rnd)
+	{
 		df_rnd_nbo |= 0x40;
+	}
 	if(header_info->info.v4.nbo)
+	{
 		df_rnd_nbo |= 0x20;
+	}
 
 	dest[counter] = df_rnd_nbo;
 	counter++;
@@ -5229,9 +5320,13 @@ int code_UOR2_bytes(const struct c_context *context,
 
 			/* part 2: check if the s-field needs to be used */
 			if(g_context->tmp_variables.nr_sn_bits > 5)
+			{
 				*f_byte |= g_context->sn >> 8;
+			}
 			else
+			{
 				*f_byte |= g_context->sn & 0x1f;
+			}
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -5429,15 +5524,25 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of TS */
 			if(nr_ts_bits <= 6)
+			{
 				nr_ts_bits_ext3 = 0;
+			}
 			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_1_BYTE))
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+			}
 			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_2_BYTES))
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+			}
 			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_3_BYTES))
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+			}
 			else
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
+			}
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
 			assert(nr_ts_bits_ext3 <= nr_ts_bits);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
@@ -5680,19 +5785,29 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of TS */
 			if(nr_ts_bits <= 5)
+			{
 				nr_ts_bits_ext3 = 0;
+			}
 			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_1_BYTE))
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+			}
 			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_2_BYTES))
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+			}
 			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_3_BYTES))
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+			}
 			else
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
+			}
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, (nr_ts_bits_ext3 <= nr_ts_bits ?
-			            nr_ts_bits - nr_ts_bits_ext3 : 0),
+			                         nr_ts_bits - nr_ts_bits_ext3 : 0),
 			            rohc_min(nr_ts_bits_ext3, nr_ts_bits));
 			/* compute the mask for the TS field in the 1st byte: this is the
 			 * smaller mask in:
@@ -5950,15 +6065,25 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte |= (rtp_context->tmp_variables.m_set & 0x01) << 6;
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp_variables.m_set);
 			if(nr_ts_bits == 0)
+			{
 				nr_ts_bits_ext3 = 0;
+			}
 			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+			}
 			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+			}
 			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+			}
 			else
+			{
 				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
+			}
 			if(g_context->tmp_variables.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
@@ -6711,8 +6836,10 @@ int code_EXT3_packet(const struct c_context *context,
 	{
 		/* part 2 */
 		if(have_inner)
+		{
 			counter = header_flags(context, &g_context->ip_flags, changed_f, ip,
 			                       0, nr_ip_id_bits, dest, counter);
+		}
 
 		/* part 3: only one IP header */
 
@@ -6772,7 +6899,7 @@ int code_EXT3_packet(const struct c_context *context,
 		if(I)
 		{
 			uint16_t id_encoded;
-			
+
 			/* we only have one single IP header here, so if the I bit is set,
 			 * the only one IP header must be the innermost IPv4 header with
 			 * non-random IP-ID */
@@ -6858,7 +6985,7 @@ int code_EXT3_packet(const struct c_context *context,
 			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
 			{
 				rohc_debugf(0, "TS length greater than 29 (value = %u, "
-				               "length = %zd)\n", ts_send, nr_ts_bits_ext3);
+				            "length = %zd)\n", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
 			counter += sdvl_size;
@@ -7136,11 +7263,17 @@ int header_flags(const struct c_context *context,
 
 	/* for inner and outer flags (1 & 2) */
 	if(is_changed(changed_f, MOD_TOS) || header_info->tos_count < MAX_FO_COUNT)
+	{
 		flags |= 0x80;
+	}
 	if(is_changed(changed_f, MOD_TTL) || header_info->ttl_count < MAX_FO_COUNT)
+	{
 		flags |= 0x40;
+	}
 	if(is_changed(changed_f, MOD_PROTOCOL) || header_info->protocol_count < MAX_FO_COUNT)
+	{
 		flags |= 0x10;
+	}
 
 	/* DF, NBO, RND and I2 are IPv4 specific flags,
 	 * there are always set to 0 for IPv6 */
@@ -7162,7 +7295,7 @@ int header_flags(const struct c_context *context,
 		if(is_outer)
 		{
 			if((nr_ip_id_bits > 0 && header_info->info.v4.rnd == 0) ||
-			   (header_info->info.v4.rnd_count-1 < MAX_FO_COUNT &&
+			   ((header_info->info.v4.rnd_count - 1) < MAX_FO_COUNT &&
 			    header_info->info.v4.rnd == 0))
 			{
 				flags |= 0x01;
@@ -7581,11 +7714,17 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 	}
 
 	if(old_tos != ip_get_tos(ip))
+	{
 		ret_value |= MOD_TOS;
+	}
 	if(old_ttl != ip_get_ttl(ip))
+	{
 		ret_value |= MOD_TTL;
+	}
 	if(old_protocol != ip_get_protocol(ip))
+	{
 		ret_value |= MOD_PROTOCOL;
+	}
 
 	return ret_value;
 }
@@ -7653,13 +7792,12 @@ void check_ip_identification(struct ip_header_info *const header_info,
 		header_info->info.v4.nbo = nbo;
 	}
 
-	rohc_debugf(2, "NBO = %d, RND = %d\n",
-	           header_info->info.v4.nbo, header_info->info.v4.rnd);
+	rohc_debugf(2, "NBO = %d, RND = %d\n", header_info->info.v4.nbo,
+	            header_info->info.v4.rnd);
 
 error:
 	;
 }
-
 
 
 /*
@@ -7834,9 +7972,13 @@ static int update_variables(struct c_context *const context,
 		struct sc_rtp_context *rtp_context;
 
 		if(g_context->tmp_variables.nr_of_ip_hdr > 1)
+		{
 			udp = (struct udphdr *) ip_get_next_layer(ip2);
+		}
 		else
+		{
 			udp = (struct udphdr *) ip_get_next_layer(ip);
+		}
 
 		rtp = (struct rtphdr *) (udp + 1);
 		rtp_context = g_context->specific;
@@ -7857,7 +7999,9 @@ static int update_variables(struct c_context *const context,
 				 * W-LSB and we must find its size (in bits) */
 				for(nr_bits = 1, mask = 1;
 				    nr_bits <= 32 && (ts_send & mask) != ts_send;
-				    nr_bits++, mask |= (1 << (nr_bits - 1)));
+				    nr_bits++, mask |= (1 << (nr_bits - 1)))
+				{
+				}
 				rohc_assert((ts_send & mask) == ts_send, error,
 				            "size of TS scaled (0x%x) not found, this should "
 				            "never happen!", ts_send);
@@ -7958,11 +8102,17 @@ static rohc_ext_t decide_extension(const struct c_context *context)
 			{
 				if(nr_sn_bits < 5 &&
 				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))))
+				{
 					ext = PACKET_NOEXT;
+				}
 				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 3))
+				{
 					ext = PACKET_EXT_0;
+				}
 				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 11))
+				{
 					ext = PACKET_EXT_1;
+				}
 			}
 			else /* double IP headers */
 			{
@@ -7974,19 +8124,27 @@ static rohc_ext_t decide_extension(const struct c_context *context)
 				if(nr_sn_bits < 5 &&
 				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))) &&
 				   (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
+				{
 					ext = PACKET_NOEXT;
+				}
 				else if(nr_sn_bits <= 8 &&
 				        (is_ip_v4 && nr_ip_id_bits <= 3) &&
 				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
+				{
 					ext = PACKET_EXT_0; /* IPv4 only for outer header */
+				}
 				else if(nr_sn_bits <= 8 &&
 				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
 				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
+				{
 					ext = PACKET_EXT_1; /* IPv4 only for outer header */
+				}
 				else if(nr_sn_bits <= 3 &&
 				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
 				        (is_ip2_v4 && nr_ip_id_bits2 <= 8))
+				{
 					ext = PACKET_EXT_2; /* IPv4 only for both outer and inner header */
+				}
 			}
 
 			break;
@@ -8002,13 +8160,21 @@ static rohc_ext_t decide_extension(const struct c_context *context)
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
 			if(nr_sn_bits <= 6 && nr_ts_bits <= 6)
+			{
 				ext = PACKET_NOEXT;
+			}
 			else if(nr_sn_bits <= 9 && nr_ts_bits <= 9)
+			{
 				ext = PACKET_EXT_0;
+			}
 			else if(nr_sn_bits <= 9 && nr_ts_bits <= 17)
+			{
 				ext = PACKET_EXT_1;
+			}
 			else if(nr_sn_bits <= 9 && nr_ts_bits <= 25)
+			{
 				ext = PACKET_EXT_2;
+			}
 
 			break;
 		}
@@ -8023,9 +8189,13 @@ static rohc_ext_t decide_extension(const struct c_context *context)
 
 			/* NO_EXT, EXT_0 and EXT_3 */
 			if(nr_sn_bits <= 6 && nr_ts_bits <= 5)
+			{
 				ext = PACKET_NOEXT;
+			}
 			else if(nr_sn_bits <= 9 && nr_ts_bits <= 8)
+			{
 				ext = PACKET_EXT_0;
+			}
 
 			break;
 		}
@@ -8040,13 +8210,21 @@ static rohc_ext_t decide_extension(const struct c_context *context)
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
 			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
+			{
 				ext = PACKET_NOEXT;
+			}
 			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
+			{
 				ext = PACKET_EXT_0;
+			}
 			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
+			{
 				ext = PACKET_EXT_1;
+			}
 			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 16 && nr_ts_bits <= 8)
+			{
 				ext = PACKET_EXT_2;
+			}
 
 			break;
 		}
@@ -8130,7 +8308,6 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
 		}
 	}
 }
-
 
 
 /*
@@ -8421,7 +8598,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	{
 		return PACKET_IR;
 	}
-	
+
 	size_original = jamming_find_packet_size(comp, context, ip, packet,
 	                                         size_data, 1);
 	nb_packets_original = ceil((adapt_size + size_original) / encap_size);
@@ -8542,7 +8719,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 		/* the type of the packet is unknown */
 		rohc_assert(false, error, "unknown packet type (%d)", packet);
 	}
-	
+
 	/* the third test failed, so the last test uses type 1 packets */
 	if(packet == PACKET_UO_1 ||
 	   packet == PACKET_UO_1_RTP ||

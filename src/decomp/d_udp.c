@@ -57,7 +57,9 @@ void * d_udp_create(void)
 	/* create the generic context */
 	context = d_generic_create();
 	if(context == NULL)
+	{
 		goto quit;
+	}
 
 	/* create the UDP-specific part of the context */
 	udp_context = malloc(sizeof(struct d_udp_context));
@@ -88,7 +90,7 @@ void * d_udp_create(void)
 	if(context->last1->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		               "part of the header changes last1\n");
+		            "part of the header changes last1\n");
 		goto free_udp_context;
 	}
 	bzero(context->last1->next_header, sizeof(struct udphdr));
@@ -98,7 +100,7 @@ void * d_udp_create(void)
 	if(context->last2->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		               "part of the header changes last2\n");
+		            "part of the header changes last2\n");
 		goto free_last1_next_header;
 	}
 	bzero(context->last2->next_header, sizeof(struct udphdr));
@@ -108,7 +110,7 @@ void * d_udp_create(void)
 	if(context->active1->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		               "part of the header changes active1\n");
+		            "part of the header changes active1\n");
 		goto free_last2_next_header;
 	}
 	bzero(context->active1->next_header, sizeof(struct udphdr));
@@ -118,7 +120,7 @@ void * d_udp_create(void)
 	if(context->active2->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		               "part of the header changes active2\n");
+		            "part of the header changes active2\n");
 		goto free_active1_next_header;
 	}
 	bzero(context->active2->next_header, sizeof(struct udphdr));
@@ -145,7 +147,7 @@ quit:
 
 /**
  * @brief Destroy the context.
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -159,19 +161,28 @@ void d_udp_destroy(void *context)
 	{
 		/* clean UDP-specific memory */
 		if(c->last1 != NULL && c->last1->next_header != NULL)
+		{
 			zfree(c->last1->next_header);
+		}
 		if(c->last2 != NULL && c->last2->next_header != NULL)
+		{
 			zfree(c->last2->next_header);
+		}
 		if(c->active1 != NULL && c->active1->next_header != NULL)
+		{
 			zfree(c->active1->next_header);
+		}
 		if(c->active2 != NULL && c->active2->next_header != NULL)
+		{
 			zfree(c->active2->next_header);
+		}
 
 		/* destroy the generic decompression context (c->specific is
 		 * destroyed by d_generic_destroy) */
 		d_generic_destroy(c);
 	}
 }
+
 
 /**
  * @brief Get the size of the static part of an IR packet
@@ -181,6 +192,7 @@ int udp_get_static_size(void)
 {
 	return 4;
 }
+
 
 /**
  * @brief Decode one IR packet for the UDP profile.
@@ -281,15 +293,19 @@ unsigned int udp_detect_ir_size(struct d_context *context,
 	/* Profile and CRC fields + IP static & dynamic chains + SN */
 	length = ip_detect_ir_size(context, packet, plen, large_cid_len);
 	if(length == 0)
+	{
 		goto quit;
+	}
 
-	/* UDP static part (see 5.7.7.5 in RFC 3095) */ 
+	/* UDP static part (see 5.7.7.5 in RFC 3095) */
 	length += udp_get_static_size();
 
 	/* UDP dynamic part if included (see 5.7.7.5 in RFC 3095) */
 	d = GET_BIT_0(packet);
 	if(d)
+	{
 		length += 2;
+	}
 
 quit:
 	return length;
@@ -298,7 +314,7 @@ quit:
 
 /**
  * @brief Find the length of the IR-DYN header.
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -356,7 +372,9 @@ unsigned int udp_detect_ir_dyn_size(struct d_context *context,
 	/* Profile and CRC fields + IP dynamic chains */
 	length = ip_detect_ir_dyn_size(context, packet, plen, large_cid_len);
 	if(length == 0)
+	{
 		goto quit;
+	}
 
 	/* UDP dynamic part (see 5.7.7.5 in RFC 3095) */
 	length += 2;
@@ -427,7 +445,7 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
 	struct udphdr *udp;
 	int read = 0; /* number of bytes read from the packet */
 	int ret;
-	
+
 	udp_context = context->specific;
 	udp = (struct udphdr *) dest;
 
@@ -452,13 +470,17 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
 
 		/* init the UDP context if necessary */
 		if(udp_context->udp_checksum_present < 0)
+		{
 			udp_context->udp_checksum_present = udp->check;
+		}
 	}
 
 	/* SN field */
 	ret = ip_decode_dynamic_ip(context, packet, length - read, dest + read);
 	if(ret == -1)
+	{
 		goto error;
+	}
 	packet += ret;
 	read += ret;
 
@@ -514,7 +536,7 @@ int udp_decode_uo_tail_udp(struct d_generic_context *context,
 	else if(udp_context->udp_checksum_present < 0)
 	{
 		rohc_debugf(0, "udp_checksum_present not initialized and "
-		               "packet is not one IR packet\n");
+		            "packet is not one IR packet\n");
 		goto error;
 	}
 
@@ -561,7 +583,9 @@ int udp_build_uncompressed_udp(struct d_generic_context *context,
 		goto error;
 	}
 	else if(udp_context->udp_checksum_present == 0)
+	{
 		udp->check = 0;
+	}
 	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 
 	/* interfered fields */

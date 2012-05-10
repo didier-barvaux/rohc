@@ -244,7 +244,9 @@ int c_rtp_check_context(const struct c_context *context,
 	/* check IP and UDP headers */
 	udp_check = c_udp_check_context(context, ip);
 	if(udp_check != 1)
+	{
 		goto quit;
+	}
 
 	/* get the last IP header */
 	ip_proto = ip_get_protocol(ip);
@@ -361,7 +363,9 @@ int c_rtp_encode(struct c_context *const context,
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size,
 	                        packet_type, payload_offset);
 	if(size < 0)
+	{
 		goto quit;
+	}
 
 	/* update the context with the new UDP/RTP headers */
 	if(g_context->tmp_variables.packet_type == PACKET_IR ||
@@ -399,7 +403,9 @@ void rtp_decide_state(struct c_context *const context)
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 	if(rtp_context->ts_sc.state == INIT_TS)
+	{
 		change_state(context, IR);
+	}
 	else if(context->state == IR &&
 	        rtp_context->ts_sc.state == INIT_STRIDE &&
 	        is_ts_constant(rtp_context->ts_sc))
@@ -423,8 +429,10 @@ void rtp_decide_state(struct c_context *const context)
 		change_state(context, FO);
 	}
 	else
+	{
 		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
 		decide_state(context);
+	}
 }
 
 

@@ -185,14 +185,14 @@ uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb)
 }
 
 
-/** 
+/**
  * @brief Get the previous LSB reference value
  *
  * @param lsb  The LSB object
  * @return     The previous reference value
- */ 
+ */
 uint32_t d_get_lsb_old_ref(struct d_lsb_decode *const lsb)
-{   
+{
 	return lsb->old_v_ref_d;
 }
 

@@ -16,7 +16,7 @@
 
 /**
  * @file rohc.h
- * @brief ROHC common definitions and routines 
+ * @brief ROHC common definitions and routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
@@ -30,7 +30,7 @@
  *
  *
  * <h2>Introduction</h2>
- * 
+ *
  * <p>The ROHC library provides an easy and robust way for applications to
  * reduce their bandwidth usage on network links with limited capacity.
  * Headers of network packets are compressed with the ROHC protocol and
@@ -56,15 +56,15 @@
  *
  *
  * <h2>License</h2>
- * 
+ *
  * <p>The project is licensed under GPL2+.
  * See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/COPYING">COPYING</a>
  * and <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/AUTHORS">AUTHORS</a>
  * files for more details.</p>
- * 
+ *
  *
  * <h2>Libraries</h2>
- * 
+ *
  * <p>
  * The sources are in the src subdirectory. The sources are separated into
  * three libraries:
@@ -75,7 +75,7 @@
  *   <li>a library that handles the decompression process</li>
  *  </ul>
  * </p>
- * 
+ *
  * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL"> INSTALL file</a>
  * to learn to build the libraries.</p>
  *
@@ -89,17 +89,17 @@
  *    <li>\ref rohc_decomp</li>
  *  </ul>
  * </p>
- * 
+ *
  *
  * <h2>Non-regression tests</h2>
- * 
+ *
  * <p>
  * The test subdirectory contains several test applications. See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">INSTALL file</a> to learn how to use these tools.
  * </p>
- * 
+ *
  *
  * <h2>References</h2>
- * 
+ *
  * <table style="border-collapse: collapse; border: solid thin black;">
  *  <tr>
  *   <td>RFC 3095</td>
@@ -572,7 +572,7 @@ const char * rohc_get_mode_descr(const rohc_mode mode);
 
 /*
  * Prototypes of public deprecated functions
- * 
+ *
  * TODO API: remove this function once compatibility is not needed anymore
  */
 

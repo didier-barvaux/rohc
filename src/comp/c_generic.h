@@ -104,7 +104,7 @@ struct ipv6_header_info
 	/// The previous IPv6 header
 	struct ip6_hdr old_ip;
 	/// The extension compressor
-	struct list_comp * ext_comp;
+	struct list_comp *ext_comp;
 };
 
 
@@ -114,7 +114,7 @@ struct ipv6_header_info
  */
 struct ip_header_info
 {
-	ip_version  version;           ///< The version of the IP header
+	ip_version version;            ///< The version of the IP header
 
 	/// The number of times the TOS/TC field was added to the compressed header
 	int tos_count;
@@ -275,7 +275,7 @@ struct c_generic_context
 	                                    const unsigned int init_val,
 	                                    const unsigned char *const crc_table);
 
-	/// Profile-specific data	
+	/// Profile-specific data
 	void *specific;
 };
 
@@ -286,15 +286,15 @@ struct c_generic_context
 struct list_comp
 {
 	/// The reference list
-	struct c_list * ref_list;
+	struct c_list *ref_list;
 	/// The current list
-	struct c_list * curr_list;
+	struct c_list *curr_list;
 	/// counter which indicates if ref_list is reference list
-        int counter;
+	int counter;
 	/// The compression based table
 	struct rohc_list_item based_table[MAX_ITEM];
 	/// The translation table
-	struct c_translation  trans_table[MAX_ITEM];
+	struct c_translation trans_table[MAX_ITEM];
 	/// Boolean which equals to 1 if the update is done, 0 else
 	int update_done;
 	/// Boolean which equals to 1 if the list change
@@ -318,7 +318,7 @@ struct list_comp
 	               const int size,
 	               const int index_table);
 
-	/// @brief the handler used to create the item with the corresponding 
+	/// @brief the handler used to create the item with the corresponding
 	///        type of the extension
 	void (*create_item)(struct list_comp *const comp,
 	                    const unsigned int index_table,
@@ -328,7 +328,7 @@ struct list_comp
 	/// @brief the handler used to free the based table element
 	void (*free_table)(struct list_comp *const comp);
 };
-																									    
+
 
 /*
  * Function prototypes.

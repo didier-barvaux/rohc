@@ -42,7 +42,9 @@ void * d_ip_create(void)
 	/* create the generic context */
 	context = d_generic_create();
 	if(context == NULL)
+	{
 		goto quit;
+	}
 
 	/* some IP-specific values and functions */
 	context->decode_dynamic_next_header = ip_decode_dynamic_ip;
@@ -53,6 +55,7 @@ quit:
 	return NULL;
 }
 
+
 /**
  * @brief Get the size of the static part of an IR packet (without IP)
  * @return the size
@@ -61,6 +64,7 @@ int ip_get_static_part(void)
 {
 	return 0;
 }
+
 
 /**
  * @brief Decode the IP dynamic part of the ROHC packet.
@@ -99,11 +103,15 @@ int ip_decode_dynamic_ip(struct d_generic_context *context,
 
 		/* init the outer IP-ID (IPv4 only) */
 		if(ip_get_version(&context->active1->ip) == IPV4)
+		{
 			d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);
+		}
 
 		/* init the inner IP-ID (IPv4 only) */
 		if(context->multiple_ip && ip_get_version(&context->active2->ip) == IPV4)
+		{
 			d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
+		}
 	}
 
 	return read;
@@ -177,7 +185,9 @@ unsigned int ip_detect_ir_size(struct d_context *context,
 	/* Profile and CRC fields + IP static & dynamic chains */
 	length = d_generic_detect_ir_size(context, packet, plen, large_cid_len);
 	if(length == 0)
+	{
 		goto quit;
+	}
 
 	/* Sequence Number (SN) */
 	length += 2;
@@ -189,7 +199,7 @@ quit:
 
 /**
  * @brief Find the length of the IR-DYN header.
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -247,7 +257,9 @@ unsigned int ip_detect_ir_dyn_size(struct d_context *context,
 	/* Profile and CRC fields + IP dynamic chains */
 	length = d_generic_detect_ir_dyn_size(context, packet, plen, large_cid_len);
 	if(length == 0)
+	{
 		goto quit;
+	}
 
 	/* Sequence Number (SN) */
 	length += 2;

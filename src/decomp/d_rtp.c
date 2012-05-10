@@ -83,7 +83,9 @@ void * d_rtp_create(void)
 	/* create the generic context */
 	context = d_generic_create();
 	if(context == NULL)
+	{
 		goto quit;
+	}
 
 	/* create the RTP-specific part of the context */
 	rtp_context = malloc(sizeof(struct d_rtp_context));
@@ -114,7 +116,7 @@ void * d_rtp_create(void)
 	if(context->last1->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		               "part of the header changes last1\n");
+		            "part of the header changes last1\n");
 		goto free_rtp_context;
 	}
 	bzero(context->last1->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
@@ -124,7 +126,7 @@ void * d_rtp_create(void)
 	if(context->last2->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		               "part of the header changes last2\n");
+		            "part of the header changes last2\n");
 		goto free_last1_next_header;
 	}
 	bzero(context->last2->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
@@ -134,7 +136,7 @@ void * d_rtp_create(void)
 	if(context->active1->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		               "part of the header changes active1\n");
+		            "part of the header changes active1\n");
 		goto free_last2_next_header;
 	}
 	bzero(context->active1->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
@@ -144,7 +146,7 @@ void * d_rtp_create(void)
 	if(context->active2->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		               "part of the header changes active2\n");
+		            "part of the header changes active2\n");
 		goto free_active1_next_header;
 	}
 	bzero(context->active2->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
@@ -495,7 +497,9 @@ int rtp_decode_static_rtp(struct d_generic_context *context,
 	/* decode UDP static part */
 	read = udp_decode_static_udp(context, packet, length, dest);
 	if(read == -1)
+	{
 		goto error;
+	}
 	packet += read;
 	length -= read;
 
@@ -571,7 +575,9 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 		/* init the UDP context if necessary */
 		if(rtp_context->udp_checksum_present < 0)
+		{
 			rtp_context->udp_checksum_present = (udp->check > 0);
+		}
 	}
 
 	/* check the minimal length to decode the constant part of the RTP
@@ -616,9 +622,13 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	sn = ntohs(rtp->sn);
 	d_lsb_init(&context->sn, sn, 3);
 	if(ip_get_version(&context->active1->ip) == IPV4)
+	{
 		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);
+	}
 	if(context->multiple_ip && ip_get_version(&context->active2->ip) == IPV4)
+	{
 		d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
+	}
 
 	/* part 5: 4-byte TimeStamp (TS) */
 	memcpy(&ts_bits, packet, sizeof(uint32_t));
@@ -786,7 +796,7 @@ int rtp_decode_uo_tail_rtp(struct d_generic_context *context,
 	else if(rtp_context->udp_checksum_present < 0)
 	{
 		rohc_debugf(0, "udp_checksum_present not initialized and "
-		               "packet is not one IR packet\n");
+		            "packet is not one IR packet\n");
 		goto error;
 	}
 
@@ -833,7 +843,9 @@ int rtp_build_uncompressed_rtp(struct d_generic_context *context,
 		goto error;
 	}
 	else if(rtp_context->udp_checksum_present == 0)
+	{
 		udp->check = 0;
+	}
 	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 
 	/* interfered fields */

@@ -104,7 +104,7 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	{
 		rohc_debugf(3, "old TS_OFFSET %u kept unchanged\n", ts_sc->ts_offset);
 	}
- 
+
 	/* reset all the new TS_* values */
 	ts_sc->new_ts_scaled = 0;
 	ts_sc->new_ts_stride = 0;

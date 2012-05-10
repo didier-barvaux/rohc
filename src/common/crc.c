@@ -46,8 +46,8 @@ static bool rohc_crc_get_polynom(const int crc_type,
                                  unsigned char *const polynom)
 	__attribute__((nonnull(2), warn_unused_result));
 
-static unsigned char *ipv6_get_first_extension(const unsigned char *const ip,
-                                               uint8_t *const type)
+static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
+                                                uint8_t *const type)
 	__attribute__((nonnull(1, 2)));
 
 static inline unsigned char crc_calc_8(const unsigned char *const buf,
@@ -151,9 +151,13 @@ bool rohc_crc_init_table(unsigned char *const table, const int crc_type)
 		for(j = 0; j < 8; j++)
 		{
 			if(crc & 1)
+			{
 				crc = (crc >> 1) ^ polynom;
+			}
 			else
+			{
 				crc = crc >> 1;
+			}
 		}
 
 		table[i] = crc;
@@ -179,7 +183,7 @@ error:
  * @return           The checksum
  */
 unsigned int crc_calculate(const int crc_type,
-                           const unsigned char *const data, 
+                           const unsigned char *const data,
                            const int length,
                            const unsigned int init_val,
                            const unsigned char *const crc_table)
@@ -226,7 +230,7 @@ unsigned int crc_calculate(const int crc_type,
  *  all fields expect those for CRC-DYNAMIC
  *    - bytes 1-2, 7-10, 13-20 in original IPv4 header
  *    - bytes 1-4, 7-40 in original IPv6 header
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -332,7 +336,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
  * Concerned fields are:
  *   - bytes 3-4, 5-6, 11-12 in original IPv4 header
  *   - bytes 5-6 in original IPv6 header
- * 
+ *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
  * @param next_header The next header located after the IP header(s)
@@ -419,7 +423,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
  * Concerned fields are:
  *  all fields expect those for CRC-DYNAMIC
  *    - bytes 1-4 in original UDP header
- * 
+ *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
  * @param next_header The next header located after the IP header(s)
@@ -463,7 +467,7 @@ unsigned int udp_compute_crc_static(const unsigned char *const ip,
  *
  * Concerned fields are:
  *   - bytes 5-6, 7-8 in original UDP header
- * 
+ *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
  * @param next_header The next header located after the IP header(s)
@@ -508,7 +512,7 @@ unsigned int udp_compute_crc_dynamic(const unsigned char *const ip,
  * Concerned fields are:
  *  all fields expect those for CRC-DYNAMIC
  *    - bytes 1, 9-12 (and CSRC list) in original RTP header
- * 
+ *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
  * @param next_header The next header located after the IP header(s)
@@ -557,7 +561,7 @@ unsigned int rtp_compute_crc_static(const unsigned char *const ip,
  *
  * Concerned fields are:
  *   - bytes 2, 3-4, 5-8 in original RTP header
- * 
+ *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
  * @param next_header The next header located after the IP header(s)
@@ -731,8 +735,8 @@ error:
  * @param type The type of the extension
  * @return     The extension, NULL if there is no extension
  */
-static unsigned char *ipv6_get_first_extension(const unsigned char *const ip,
-                                               uint8_t *const type)
+static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
+                                                uint8_t *const type)
 {
 	struct ip6_hdr *ip_hdr;
 
@@ -781,7 +785,9 @@ static inline unsigned char crc_calc_8(const unsigned char *const buf,
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
+	{
 		crc = crc_table[buf[i] ^ crc];
+	}
 
 	return crc;
 }
@@ -808,7 +814,9 @@ static inline unsigned char crc_calc_7(const unsigned char *const buf,
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
+	{
 		crc = crc_table[buf[i] ^ (crc & 127)];
+	}
 
 	return crc;
 }
@@ -835,7 +843,9 @@ static inline unsigned char crc_calc_6(const unsigned char *const buf,
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
+	{
 		crc = crc_table[buf[i] ^ (crc & 63)];
+	}
 
 	return crc;
 }
@@ -862,7 +872,9 @@ static inline unsigned char crc_calc_3(const unsigned char *const buf,
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
+	{
 		crc = crc_table[buf[i] ^ (crc & 7)];
+	}
 
 	return crc;
 }
@@ -889,7 +901,9 @@ static inline unsigned char crc_calc_2(const unsigned char *const buf,
 	assert(crc_table != NULL);
 
 	for(i = 0; i < size; i++)
+	{
 		crc = crc_table[buf[i] ^ (crc & 3)];
+	}
 
 	return crc;
 }

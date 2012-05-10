@@ -203,7 +203,7 @@ int ip_get_inner_packet(const struct ip_packet *outer,
 
 /**
  * @brief Get the IP next header
- *        
+ *
  * The function does not handle \ref ip_packet whose \ref ip_packet::version
  * is \ref IP_UNKNOWN.
  *
@@ -211,8 +211,8 @@ int ip_get_inner_packet(const struct ip_packet *outer,
  * @param type OUT: The type of the next header
  * @return     The next header if successful, NULL otherwise
  */
-unsigned char *ip_get_next_header(const struct ip_packet *ip,
-                                  uint8_t *const type)
+unsigned char * ip_get_next_header(const struct ip_packet *ip,
+                                   uint8_t *const type)
 {
 	unsigned char *next_header;
 
@@ -224,7 +224,7 @@ unsigned char *ip_get_next_header(const struct ip_packet *ip,
 	}
 	else if(ip->version == IPV6)
 	{
-		*type = ip->header.v6.ip6_nxt; 
+		*type = ip->header.v6.ip6_nxt;
 		next_header = ((unsigned char *) ip->data) + sizeof(struct ip6_hdr);
 	}
 	else
@@ -240,14 +240,14 @@ unsigned char *ip_get_next_header(const struct ip_packet *ip,
 
 /**
  * @brief Get the next header (but skip IP extensions)
- *        
+ *
  * The function does not handle \ref ip_packet whose \ref ip_packet::version
  * is \ref IP_UNKNOWN.
  *
  * @param ip   The IP packet to analyze
  * @return     The next header that is not an IP extension
  */
-unsigned char *ip_get_next_layer(const struct ip_packet *ip)
+unsigned char * ip_get_next_layer(const struct ip_packet *ip)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
@@ -269,7 +269,7 @@ unsigned char *ip_get_next_layer(const struct ip_packet *ip)
 			   get the next header */
 			next_header_type = next_header[0];
 			length = next_header[1];
-			next_header = next_header + (length + 1) * 8 ;
+			next_header = next_header + (length + 1) * 8;
 		}
 	}
 
@@ -290,8 +290,8 @@ unsigned char *ip_get_next_layer(const struct ip_packet *ip)
  * @return     The next extension header,
  *             NULL if there is no extension
  */
-unsigned char *ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
-                                              uint8_t *type)
+unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
+                                               uint8_t *type)
 {
 	unsigned char *next_header;
 
@@ -334,14 +334,14 @@ end:
  * @return     The next extension header,
  *             NULL if there is no more extension
  */
-unsigned char *ip_get_next_ext_header_from_ext(const unsigned char *ext,
-                                               uint8_t *const type)
+unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *ext,
+                                                uint8_t *const type)
 {
 	unsigned char *next_header;
 	uint8_t length;
 
 	*type = ext[0];
-	
+
 	switch(*type)
 	{
 		case IPV6_EXT_HOP_BY_HOP:
@@ -372,7 +372,7 @@ end:
 unsigned short ip_get_extension_size(const unsigned char *ext)
 {
 	uint8_t ext_length;
-	
+
 	ext_length = ext[1];
 
 	return (ext_length + 1) * 8;
@@ -393,7 +393,7 @@ unsigned short ip_get_total_extension_size(const struct ip_packet *ip)
 	unsigned char *ext;
 	uint8_t next_hdr_type;
 	unsigned short total_ext_size = 0;
-	
+
 	ext = ip_get_next_ext_header_from_ip(ip, &next_hdr_type);
 	while(ext != NULL)
 	{
@@ -566,7 +566,7 @@ ip_version ip_get_version(const struct ip_packet *ip)
 unsigned int ip_get_protocol(const struct ip_packet *ip)
 {
 	uint8_t protocol;
-	unsigned char * next_header;
+	unsigned char *next_header;
 	uint8_t next_header_type;
 
 	if(ip->version == IPV4)
@@ -576,7 +576,7 @@ unsigned int ip_get_protocol(const struct ip_packet *ip)
 	else if(ip->version == IPV6)
 	{
 		next_header_type = ip->header.v6.ip6_nxt;
-		switch (next_header_type)
+		switch(next_header_type)
 		{
 			case IPV6_EXT_HOP_BY_HOP:
 			case IPV6_EXT_DESTINATION:
@@ -612,7 +612,7 @@ unsigned int ext_get_protocol(const unsigned char *ext)
 	uint8_t type;
 	uint8_t length;
 	uint8_t protocol;
-	unsigned char * next_header;
+	unsigned char *next_header;
 
 	type = ext[0];
 	length = ext[1];

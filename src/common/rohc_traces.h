@@ -37,8 +37,9 @@
 /// Print information depending on the debug level
 #define rohc_debugf_(level, format, ...) \
 	do { \
-		if((level) <= ROHC_DEBUG_LEVEL) \
+		if((level) <= ROHC_DEBUG_LEVEL) { \
 			printf(format, ##__VA_ARGS__); \
+		} \
 	} while(0)
 
 /**
@@ -61,3 +62,4 @@
 
 
 #endif
+

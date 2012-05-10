@@ -124,8 +124,8 @@ static int c_uncompressed_create(struct c_context *const context,
 	uncomp_context = malloc(sizeof(struct sc_uncompressed_context));
 	if(uncomp_context == NULL)
 	{
-	  rohc_debugf(0, "no memory for the uncompressed context\n");
-	  goto quit;
+		rohc_debugf(0, "no memory for the uncompressed context\n");
+		goto quit;
 	}
 	context->specific = uncomp_context;
 
@@ -151,7 +151,9 @@ quit:
 static void c_uncompressed_destroy(struct c_context *const context)
 {
 	if(context->specific != NULL)
+	{
 		zfree(context->specific);
+	}
 }
 
 
@@ -276,8 +278,8 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			unsigned int crc_computed;
 
 			/* compute the CRC of the feedback packet */
-		   crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
-		                                CRC_INIT_8, context->compressor->crc_table_8);
+			crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
+			                             CRC_INIT_8, context->compressor->crc_table_8);
 
 			/* ignore feedback in case of bad CRC */
 			if(crc_in_packet != crc_computed)
@@ -292,9 +294,13 @@ static void c_uncompressed_feedback(struct c_context *const context,
 		{
 			/* mode can be changed only if feedback is protected by a CRC */
 			if(is_crc_used == true)
+			{
 				uncompressed_change_mode(context, mode);
+			}
 			else
+			{
 				rohc_debugf(0, "mode change requested but no CRC was given\n");
+			}
 		}
 
 		switch(feedback->acktype)
@@ -330,10 +336,14 @@ static void uncompressed_decide_state(struct c_context *const context)
 		(struct sc_uncompressed_context *) context->specific;
 
 	if(context->state == IR && uncomp_context->ir_count >= MAX_IR_COUNT)
+	{
 		uncompressed_change_state(context, FO);
-	
+	}
+
 	if(context->mode == U_MODE)
+	{
 		uncompressed_periodic_down_transition(context);
+	}
 }
 
 
@@ -355,7 +365,9 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 	}
 
 	if(context->state == FO)
+	{
 		uncomp_context->go_back_ir_count++;
+	}
 }
 
 
@@ -394,7 +406,7 @@ static void uncompressed_change_state(struct c_context *const context,
 		/* reset counters */
 		uncomp_context->ir_count = 0;
 		uncomp_context->normal_count = 0;
-	
+
 		/* change state */
 		context->state = new_state;
 	}
@@ -452,7 +464,9 @@ static int uncompressed_code_packet(const struct c_context *context,
 	}
 
 	if(code_packet != NULL)
+	{
 		size = code_packet(context, ip, dest, payload_offset, dest_size);
+	}
 
 	return size;
 }
@@ -524,9 +538,9 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	counter++;
 
 	/* part 5 */
-	dest[counter]= 0;
-	dest[counter]= crc_calculate(CRC_TYPE_8, dest, counter + 1, CRC_INIT_8,
-	                             context->compressor->crc_table_8);
+	dest[counter] = 0;
+	dest[counter] = crc_calculate(CRC_TYPE_8, dest, counter + 1, CRC_INIT_8,
+	                              context->compressor->crc_table_8);
 	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter + 1, dest[counter]);
 	counter++;
 

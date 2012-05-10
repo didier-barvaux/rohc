@@ -40,7 +40,7 @@
 
 #define MAX_ITEM 15
 #if MAX_ITEM <= 7
-#	error "translation table must be larger enough for indexes stored on 3 bits"
+	#error "translation table must be larger enough for indexes stored on 3 bits"
 #endif
 
 #define LIST_COMP_WINDOW 100
@@ -69,7 +69,7 @@ struct d_generic_changes
 	int complist;
 	/// The size of the list
 	int size_list;
-	
+
 	/// The next header located after the IP header(s)
 	unsigned char *next_header;
 	/// The length of the next header
@@ -106,9 +106,9 @@ struct d_generic_context
 	struct d_ip_id_decode ip_id2;
 
 	/// The list decompressor of the outer IP header
-	struct list_decomp * list_decomp1;
+	struct list_decomp *list_decomp1;
 	/// The list decompressor of the inner IP header
-	struct list_decomp * list_decomp2;
+	struct list_decomp *list_decomp2;
 
 	/// Whether the decompressed packet contains a 2nd IP header
 	int multiple_ip;
@@ -117,7 +117,7 @@ struct d_generic_context
 	rohc_packet_t packet_type;
 
 	/* below are some information and handlers to manage the next header
- 	 * (if any) located just after the IP headers (1 or 2 IP headers) */
+	 * (if any) located just after the IP headers (1 or 2 IP headers) */
 
 	/// The IP protocol ID of the protocol the context is able to decompress
 	unsigned short next_header_proto;
@@ -188,33 +188,34 @@ struct d_generic_context
 struct list_decomp
 {
 	/// The reference list
-	struct c_list * ref_list;
+	struct c_list *ref_list;
 	/// The table of lists
-	struct c_list * list_table[LIST_COMP_WINDOW];
+	struct c_list *list_table[LIST_COMP_WINDOW];
 	/// The compression based table
 	struct rohc_list_item based_table[MAX_ITEM];
 	/// The translation table
-	struct d_translation  trans_table[MAX_ITEM];
+	struct d_translation trans_table[MAX_ITEM];
 	/// counter in list table
 	int counter_list;
 	/// counter which indicates if the list is reference list
 	int counter;
 	/// boolean which indicates if there is a list to decompress
 	int list_decomp;
-	/// boolean which indicates if the ref list must be decompress 
+	/// boolean which indicates if the ref list must be decompressed
 	int ref_ok;
 	/// Size of the last list extension received
 	int size_ext;
 
 	/// The handler used to free the based table
-	void (*free_table)(struct list_decomp * decomp);
+	void (*free_table)(struct list_decomp *decomp);
 	/// The handler used to add the extension to IP packet
-	int (*encode_extension)(struct d_generic_changes * active, 
-			struct list_decomp * decomp, unsigned char *dest);
+	int (*encode_extension)(struct d_generic_changes *active,
+	                        struct list_decomp *decomp,
+	                        unsigned char *dest);
 	/// The handler used to check if the index
 	/// corresponds to an existing item
-	int (*check_index)(struct list_decomp * decomp, int index);
-	/// The handler used to create the item at 
+	int (*check_index)(struct list_decomp *decomp, int index);
+	/// The handler used to create the item at
 	/// the corresponding index of the based table
 	bool (*create_item)(const unsigned char *data,
 	                    int length,
@@ -223,6 +224,7 @@ struct list_decomp
 	/// The handler used to get the size of an extension
 	int (*get_ext_size)(const unsigned char *data, const size_t data_len);
 };
+
 
 /*
  * Public function prototypes.

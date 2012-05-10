@@ -16,7 +16,7 @@
 
 /**
  * @file rohc.c
- * @brief ROHC common definitions and routines 
+ * @brief ROHC common definitions and routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
  */
@@ -37,7 +37,7 @@
  *
  * @ingroup rohc_common
  */
-char *rohc_version(void)
+char * rohc_version(void)
 {
 	return VERSION;
 }

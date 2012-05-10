@@ -246,11 +246,17 @@ static int test_comp_and_decomp(const char *const filename,
 
 	/* determine the length of the link layer header */
 	if(link_layer_type == DLT_EN10MB)
+	{
 		link_len = ETHER_HDR_LEN;
+	}
 	else if(link_layer_type == DLT_LINUX_SLL)
+	{
 		link_len = LINUX_COOKED_HDR_LEN;
+	}
 	else /* DLT_RAW */
+	{
 		link_len = 0;
+	}
 
 	/* create the ROHC compressor with MAX_CID = 15 (small CID) */
 	comp = rohc_alloc_compressor(15, 0, 0, 0);

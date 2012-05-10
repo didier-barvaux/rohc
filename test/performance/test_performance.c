@@ -79,14 +79,14 @@
 
 /** Get the current number of CPU tics */
 #define GET_CPU_TICS(cpu_tics_64bits) \
-  __asm__ __volatile__ ("rdtsc" : "=A" (cpu_tics_64bits))
+	__asm__ __volatile__ ("rdtsc" : "=A" (cpu_tics_64bits))
 
 /**
  * @brief Give the number of nanoseconds elapsed between 2 given
  *        measures of CPU tics
  */
 #define TICS_2_NSEC(coef_ns, end, start) \
-  ((unsigned long long)(((end) - (start)) * (coef_ns)))
+	((unsigned long long)(((end) - (start)) * (coef_ns)))
 
 
 static void usage(void);
@@ -354,11 +354,17 @@ static int test_compression_perfs(char *filename,
 	}
 
 	if(link_layer_type == DLT_EN10MB)
+	{
 		link_len = ETHER_HDR_LEN;
+	}
 	else if(link_layer_type == DLT_LINUX_SLL)
+	{
 		link_len = LINUX_COOKED_HDR_LEN;
+	}
 	else /* DLT_RAW */
+	{
 		link_len = 0;
+	}
 
 	/* create ROHC compressor */
 	comp = rohc_alloc_compressor(15, 0, 0, 0);
@@ -528,6 +534,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 error:
 	return is_failure;
 }
+
 
 #endif /* __i386__ */
 

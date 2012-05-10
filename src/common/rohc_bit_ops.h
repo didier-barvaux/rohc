@@ -85,13 +85,13 @@
  *        in Network Byte Order
  */
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-#	define GET_NEXT_16_BITS(x) \
+	#define GET_NEXT_16_BITS(x) \
 		((((*((x) + 1)) << 8) & 0xff00) | ((*(x)) & 0x00ff))
 #elif __BYTE_ORDER == __BIG_ENDIAN
-#	define GET_NEXT_16_BITS(x) \
+	#define GET_NEXT_16_BITS(x) \
 		((((*(x)) << 8) & 0xff00) | ((*((x) + 1)) & 0x00ff))
 #else
-#	error "Adjust your <bits/endian.h> defines"
+	#error "Adjust your <bits/endian.h> defines"
 #endif
 
 

@@ -1,0 +1,8 @@
+The contrib/ directory contains resources that are related to the ROHC library,
+but are not really part of it:
+
+* uncrustify.cfg
+
+  Uncrustify (http://uncrustify.sourceforge.net/) is source Code Beautifier for
+  C, C++, C#, ObjectiveC, D, Java, Pawn and VALA.
+

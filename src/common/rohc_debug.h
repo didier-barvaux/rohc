@@ -35,7 +35,7 @@
 /*
  * Debug macros
  */
- 
+
 #if ROHC_DEBUG_LEVEL > 0
 
 /** Free a pointer plus set it to NULL to avoid hidden bugs */

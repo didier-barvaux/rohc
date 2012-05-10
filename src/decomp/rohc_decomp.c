@@ -112,13 +112,15 @@ void context_array_increase(struct rohc_decomp *decomp, int highest_cid)
 {
 	struct d_context **new_contexts;
 	int calcsize, i;
-	
+
 	/* calculate the new size of the context array */
 	for(i = 4; i < 15; i++)
 	{
 		calcsize = 1 << i;
 		if(highest_cid < calcsize)
+		{
 			break;
+		}
 	}
 
 	/* check the new array size:
@@ -130,7 +132,9 @@ void context_array_increase(struct rohc_decomp *decomp, int highest_cid)
 		return;
 	}
 	else if(calcsize == decomp->num_contexts)
+	{
 		return;
+	}
 
 	/* allocate memory for the context array */
 	new_contexts = (struct d_context**) calloc(calcsize, sizeof(struct d_context*));
@@ -169,14 +173,18 @@ void context_array_decrease(struct rohc_decomp *decomp)
 	/* find the highest CID (from the end of the array and backwards) */
 	highest_cid = decomp->num_contexts - 1;
 	while(highest_cid >= 0 && decomp->contexts[highest_cid] == NULL)
+	{
 		highest_cid--;
+	}
 
 	/* calculate the new size of the context array */
 	for(i = 4; i < 15; i++)
 	{
 		calcsize = 1 << i;
 		if(highest_cid < calcsize)
+		{
 			break;
+		}
 	}
 
 	/* allocate memory for the context array */
@@ -189,7 +197,7 @@ void context_array_decrease(struct rohc_decomp *decomp)
 
 	/* reset all context pointers */
 	bzero(new_contexts, calcsize * sizeof(struct d_context*));
-	
+
 	/* fill in the new array with the existing contexts */
 	memcpy(new_contexts, decomp->contexts, calcsize * sizeof(struct d_context*));
 
@@ -212,7 +220,9 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid)
 	/* check the CID value: CID must not be equal or larger than the context
 	 * array size */
 	if(cid >= decomp->num_contexts)
+	{
 		return NULL;
+	}
 
 	return decomp->contexts[cid];
 }
@@ -227,9 +237,9 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid)
  * @return         The new context if successful, NULL otherwise
  */
 struct d_context * context_create(struct rohc_decomp *decomp, int with_cid,
-                                   struct d_profile *profile)
+                                  struct d_profile *profile)
 {
-	struct d_context * context;
+	struct d_context *context;
 
 	/* allocate memory for the decompression context */
 	context = (struct d_context *) malloc(sizeof(struct d_context));
@@ -354,7 +364,7 @@ void context_free(struct d_context *context)
 struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
 	struct medium medium = { ROHC_SMALL_CID, 15 };
-	struct rohc_decomp * decomp;
+	struct rohc_decomp *decomp;
 	bool is_fine;
 
 	/* allocate memory for the decompressor */
@@ -446,14 +456,18 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
 			for(i = 0; i < decomp->num_contexts; i++)
 			{
 				if(decomp->contexts[i] != NULL)
+				{
 					context_free(decomp->contexts[i]);
+				}
 			}
 			zfree(decomp->contexts);
 		}
 
 		/* destroy the decompressor medium */
 		if(decomp->medium != NULL)
+		{
 			zfree(decomp->medium);
+		}
 
 		/* destroy the decompressor itself */
 		zfree(decomp);
@@ -483,13 +497,15 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	decomp->statistics.packets_received++;
 	rohc_debugf(1, "decompress the %d-byte packet #%u\n",
 	            isize, decomp->statistics.packets_received);
-	
+
 	ret = d_decode_header(decomp, ibuf, isize, obuf, osize, &ddata);
 	if(ddata.active == NULL &&
 	   (ret == ROHC_ERROR_PACKET_FAILED ||
 	    ret == ROHC_ERROR ||
 	    ret == ROHC_ERROR_CRC))
+	{
 		ret = ROHC_ERROR_NO_CONTEXT;
+	}
 
 	if(ddata.active != NULL)
 	{
@@ -560,15 +576,19 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			}
 			break;
 
-		default:	/* ROHC_OK */
+		default: /* ROHC_OK */
 			decomp->curval -= decomp->okval; /* framework (S-NACK) */
 			ddata.active->curval -= decomp->okval; /* context (NACK) */
 			rohc_debugf(2, "feedback curr %d\n", ddata.active->curval);
 			if(decomp->curval < 0)
+			{
 				decomp->curval = 0;
+			}
 
 			if(ddata.active->curval < 0)
+			{
 				ddata.active->curval = 0;
+			}
 
 			rohc_debugf(2, "feedback curr %d\n", ddata.active->curval);
 			if(decomp->compressor != NULL && ddata.active->mode == U_MODE)
@@ -597,7 +617,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
  * @param large  Whether the packet use large CID or not
  * @return       The size of the decompressed packet
  */
-int rohc_decompress_both(struct rohc_decomp * decomp,
+int rohc_decompress_both(struct rohc_decomp *decomp,
                          unsigned char *ibuf, int isize,
                          unsigned char *obuf, int osize,
                          int large)
@@ -625,8 +645,8 @@ int d_decode_header(struct rohc_decomp *decomp,
                     struct d_decode_data *ddata)
 {
 	int size, casenew = 0;
-	struct d_profile * profile;
-	unsigned char * walk = ibuf;
+	struct d_profile *profile;
+	unsigned char *walk = ibuf;
 	unsigned int feedback_size;
 	int status;
 
@@ -732,9 +752,13 @@ int d_decode_header(struct rohc_decomp *decomp,
 		{
 			rohc_debugf(0, "IR packet has incorrect CRC, abort all changes\n");
 			if(casenew)
+			{
 				context_free(ddata->active);
+			}
 			else
-				decomp->contexts[ddata->cid] = ddata->active;							
+			{
+				decomp->contexts[ddata->cid] = ddata->active;
+			}
 			return ROHC_ERROR_CRC;
 		}
 
@@ -760,9 +784,13 @@ int d_decode_header(struct rohc_decomp *decomp,
 		/* the IR decompression failed, free ressources if necessary */
 		rohc_debugf(0, "failed to decompress IR packet (code = %d)\n", size);
 		if(casenew)
+		{
 			context_free(ddata->active);
+		}
 		else
+		{
 			decomp->contexts[ddata->cid] = ddata->active;
+		}
 
 		return size;
 	}
@@ -774,7 +802,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 
 		/* find the context associated with the CID */
 		ddata->active = find_context(decomp, ddata->cid);
-		
+
 		/* is the context valid? */
 		if(!ddata->active || !ddata->active->profile)
 		{
@@ -868,11 +896,15 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		   rohc_status == ROHC_ERROR_CRC)
 		{
 			if(context->state == STATIC_CONTEXT)
+			{
 				context->state = NO_CONTEXT;
+			}
 			else if(context->state == FULL_CONTEXT)
+			{
 				context->state = STATIC_CONTEXT;
+			}
 		}
-		
+
 		goto skip;
 	}
 
@@ -919,7 +951,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			if(ret != ROHC_OK)
 			{
 				rohc_debugf(0, "failed to add the SN-NOT-VALID option to the "
-				               "STATIC NACK feedback\n");
+				            "STATIC NACK feedback\n");
 				return;
 			}
 			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
@@ -956,7 +988,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
-			                                 WITH_CRC, decomp->crc_table_8,
+					                           WITH_CRC, decomp->crc_table_8,
 					                           &feedbacksize);
 					if(feedback == NULL)
 					{
@@ -984,7 +1016,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
-			                                 WITH_CRC, decomp->crc_table_8,
+					                           WITH_CRC, decomp->crc_table_8,
 					                           &feedbacksize);
 					if(feedback == NULL)
 					{
@@ -998,9 +1030,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 					/* change state */
 					if(context->state == STATIC_CONTEXT)
+					{
 						context->state = NO_CONTEXT;
+					}
 					if(context->state == FULL_CONTEXT)
+					{
 						context->state = STATIC_CONTEXT;
+					}
 
 					/* destroy the feedback */
 					zfree(feedback);
@@ -1095,7 +1131,9 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 	/* compute the indent prefix */
 	prefix = calloc(indent + 1, sizeof(char));
 	if(prefix == NULL)
+	{
 		return -1;
+	}
 
 	memset(prefix, '\t', indent);
 	prefix[indent] = '\0';
@@ -1131,7 +1169,9 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 	/* add the contexts part */
 	i = 0;
 	while(rohc_d_context(decomp, i, indent + 1, buffer) != -2)
+	{
 		i++;
+	}
 	buffer += strlen(buffer);
 
 	sprintf(buffer, "%s</instance>\n\n", prefix);
@@ -1167,17 +1207,23 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	char *save;
 	int v;
 
-	if (index >= decomp->num_contexts)
+	if(index >= decomp->num_contexts)
+	{
 		return -2;
+	}
 
 	c = decomp->contexts[index];
 	if(!c || !c->profile)
+	{
 		return -1;
+	}
 
 	/* compute the line prefix */
 	prefix = calloc(indent + 1, sizeof(char));
 	if(prefix == NULL)
+	{
 		return -1;
+	}
 
 	memset(prefix, '\t', indent);
 	prefix[indent] = '\0';
@@ -1201,29 +1247,41 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	sprintf(buffer, "%s\t<ratio>\n", prefix);
 	buffer += strlen(buffer);
 
-	if (c->total_uncompressed_size != 0)
-		v = (100*c->total_compressed_size) / c->total_uncompressed_size;
+	if(c->total_uncompressed_size != 0)
+	{
+		v = (100 * c->total_compressed_size) / c->total_uncompressed_size;
+	}
 	else
+	{
 		v = 0;
+	}
 	sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
 	buffer += strlen(buffer);
 
-	if (c->header_uncompressed_size != 0)
-		v = (100*c->header_compressed_size) / c->header_uncompressed_size;
+	if(c->header_uncompressed_size != 0)
+	{
+		v = (100 * c->header_compressed_size) / c->header_uncompressed_size;
+	}
 	else
+	{
 		v = 0;
+	}
 	sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
 	buffer += strlen(buffer);
 
 	v = c_sum_wlsb(c->total_16_uncompressed);
-	if (v != 0)
+	if(v != 0)
+	{
 		v = (100 * c_sum_wlsb(c->total_16_compressed)) / v;
+	}
 	sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
 	buffer += strlen(buffer);
 
 	v = c_sum_wlsb(c->header_16_uncompressed);
-	if (v != 0)
+	if(v != 0)
+	{
 		v = (100 * c_sum_wlsb(c->header_16_compressed)) / v;
+	}
 	sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
 	buffer += strlen(buffer);
 
@@ -1234,11 +1292,11 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	sprintf(buffer, "%s\t<mean>\n", prefix);
 	buffer += strlen(buffer);
 
-	v = c->total_compressed_size/c->num_recv_packets;
+	v = c->total_compressed_size / c->num_recv_packets;
 	sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
 	buffer += strlen(buffer);
 
-	v = c->header_compressed_size/c->num_recv_packets;
+	v = c->header_compressed_size / c->num_recv_packets;
 	sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
 	buffer += strlen(buffer);
 
@@ -1315,17 +1373,21 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	for(cid = 0; cid < decomp->num_contexts; cid++)
 	{
 		if(context == decomp->contexts[cid])
+		{
 			break;
+		}
 	}
 	if(cid >= decomp->num_contexts)
+	{
 		return;
+	}
 
 	/* create an ACK feedback */
 	f_feedback2(ACKTYPE_ACK, context->mode, context->profile->get_sn(context),
 	            &sfeedback);
 	feedback = f_wrap_feedback(&sfeedback, cid,
 	                           (decomp->medium->cid_type == ROHC_LARGE_CID ? 1 : 0),
-			                     WITH_CRC, decomp->crc_table_8,
+	                           WITH_CRC, decomp->crc_table_8,
 	                           &feedbacksize);
 
 	if(feedback == NULL)
@@ -1374,10 +1436,12 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 static struct d_profile * find_profile(int id)
 {
 	int i = 0;
-	
+
 	while(i < D_NUM_PROFILES && d_profiles[i]->id != id)
+	{
 		i++;
-	
+	}
+
 	if(i >= D_NUM_PROFILES)
 	{
 		rohc_debugf(0, "no profile found for decompression\n");
@@ -1479,7 +1543,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		}
 
 		rohc_debugf(2, "%u-byte large CID = %d (0x%02x)\n",
-		           ddata->large_cid_size, ddata->cid, ddata->cid);
+		            ddata->large_cid_size, ddata->cid, ddata->cid);
 	}
 	else
 	{
@@ -1552,7 +1616,7 @@ static int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
 		            realcrc, crc, profile->id, largecid, addcidUsed, ir_size);
 		goto bad;
 	}
-	
+
 	rohc_debugf(2, "CRC OK (crc = 0x%x, profile_id = %d, largecid = %d, "
 	            "addcidUsed = %d, ir_size = %d)\n", crc, profile->id,
 	            largecid, addcidUsed, ir_size);
@@ -1595,7 +1659,7 @@ static int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
 		goto bad;
 	}
 	realcrc = walk[largecid + 2];
-	
+
 	/* detect the size of the IR-DYN header */
 	irdyn_size = profile->detect_ir_dyn_size(context, walk, plen, largecid);
 	if(irdyn_size == 0)
@@ -1679,7 +1743,7 @@ static int d_decode_feedback_first(struct rohc_decomp *decomp,
 
 error:
 	return ROHC_ERROR;
-} 
+}
 
 
 /**

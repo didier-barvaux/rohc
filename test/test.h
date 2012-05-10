@@ -24,13 +24,13 @@
 #define TEST__H
 
 /// The maximal size for the ROHC packets
-#define MAX_ROHC_SIZE	(5 * 1024)
+#define MAX_ROHC_SIZE  (5 * 1024)
 
 /// The length of the Linux Cooked Sockets header
 #define LINUX_COOKED_HDR_LEN  16
 
 /// The minimum Ethernet length (in bytes)
-#define ETHER_FRAME_MIN_LEN 60
+#define ETHER_FRAME_MIN_LEN  60
 
 
 /** A simple maximum macro */

@@ -80,7 +80,7 @@ struct sc_udp_lite_context
 	int sent_cce_only_count;
 	/// The number of CCE(ON) packets sent by the compressor
 	int sent_cce_on_count;
-	 /// The number of CCE(OFF) packets sent by the compressor
+	/// The number of CCE(OFF) packets sent by the compressor
 	int sent_cce_off_count;
 
 	/// The previous UDP-Lite header

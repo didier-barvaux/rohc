@@ -67,8 +67,8 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 	wlsb = malloc(sizeof(struct c_wlsb));
 	if(wlsb == NULL)
 	{
-	  rohc_debugf(0, "cannot allocate memory for the W-LSB object\n");
-	  goto error;
+		rohc_debugf(0, "cannot allocate memory for the W-LSB object\n");
+		goto error;
 	}
 	bzero(wlsb, sizeof(struct c_wlsb));
 
@@ -162,7 +162,7 @@ int c_get_k_wlsb(const struct c_wlsb *const wlsb,
 	uint32_t min;
 	uint32_t max;
 	int is_success;
-	
+
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
 
@@ -184,9 +184,13 @@ int c_get_k_wlsb(const struct c_wlsb *const wlsb,
 
 		/* change the minimal and maximal values if appropriate */
 		if(wlsb->window[entry].value < min)
+		{
 			min = wlsb->window[entry].value;
+		}
 		if(wlsb->window[entry].value > max)
+		{
 			max = wlsb->window[entry].value;
+		}
 	}
 
 	/* if the window contained at least one value */
@@ -232,7 +236,9 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 
 	/* check the W-LSB object validity */
 	if(s == NULL)
+	{
 		return;
+	}
 
 	/* search for the window entry that matches the given SN
 	 * starting from the oldest one */
@@ -259,7 +265,9 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 
 	/* remove the window entry if found */
 	if(found)
+	{
 		c_ack_remove(s, i);
+	}
 }
 
 
@@ -331,7 +339,9 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 
 	/* check the W-LSB object validity */
 	if(s == NULL)
+	{
 		return;
+	}
 
 	rohc_debugf(2, "index is %d\n", index);
 
@@ -371,7 +381,9 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 	{
 		s->oldest = index;
 		if(s->oldest >= s->window_width)
+		{
 			s->oldest = 0;
+		}
 	}
 
 	/* fix the s->next pointer */
@@ -400,7 +412,9 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 	}
 
 	if(s->oldest >= s->window_width)
+	{
 		s->oldest = 0;
+	}
 }
 
 
@@ -428,7 +442,9 @@ static size_t g(const uint32_t v_ref, const uint32_t v,
 	{
 		f(v_ref, k, p, &min, &max);
 		if(v >= min && v <= max)
+		{
 			break;
+		}
 	}
 
 	return k;

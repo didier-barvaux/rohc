@@ -36,7 +36,7 @@
 
 /**
  * @brief Define the RTP part of the decompression profile context.
- * 
+ *
  * This object must be used with the generic part of the decompression
  * context d_generic_context.
  *

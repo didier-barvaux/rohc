@@ -29,7 +29,7 @@
 /// Header version
 typedef enum
 {
-        /// Hop by hop header
+	/// Hop by hop header
 	HBH = 0,
 	/// Destination header
 	DEST = 60,
@@ -37,10 +37,12 @@ typedef enum
 	RTHDR = 43,
 	/// AH header
 	AH = 51,
-/*	/// CSRC
-	CSRC = 10,*/
+#if 0 /* CSRC lists not supported yet */
+	/// CSRC
+	CSRC = 10,
+#endif
 } ext_header_version;
-				
+
 
 /**
  * @brief A list item
@@ -61,14 +63,14 @@ struct rohc_list_item
  */
 struct list_elt
 {
-	/// element 
+	/// element
 	struct rohc_list_item *item;
 	/// index
 	int index_table;
 	/// next element of the list
-	struct list_elt * next_elt;
+	struct list_elt *next_elt;
 	/// previous element
-	struct list_elt * prev_elt;
+	struct list_elt *prev_elt;
 };
 
 
@@ -80,7 +82,7 @@ struct c_list
 	///generation identifier
 	int gen_id;
 	/// first element of the list
-	struct list_elt * first_elt;
+	struct list_elt *first_elt;
 };
 
 
@@ -116,16 +118,17 @@ struct d_translation
  * Functions prototypes
  */
 
-int create_list(struct c_list * list);
-int add_elt(struct c_list * list, struct rohc_list_item *item, int index);
-int push_back(struct c_list * list, struct rohc_list_item *item, int index);
-void delete_elt(struct c_list * list, struct rohc_list_item *item);
-struct list_elt * get_elt(struct c_list * list, int index);
-int elt_index(struct c_list * list, struct rohc_list_item *item);
-int type_is_present(struct c_list * list, struct rohc_list_item *item);
-void destroy_list(struct c_list * list);
-int insert_elt(struct c_list * list, struct rohc_list_item *item, int index, int index_table);
+int create_list(struct c_list *list);
+int add_elt(struct c_list *list, struct rohc_list_item *item, int index);
+int push_back(struct c_list *list, struct rohc_list_item *item, int index);
+void delete_elt(struct c_list *list, struct rohc_list_item *item);
+struct list_elt * get_elt(struct c_list *list, int index);
+int elt_index(struct c_list *list, struct rohc_list_item *item);
+int type_is_present(struct c_list *list, struct rohc_list_item *item);
+void destroy_list(struct c_list *list);
+int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int index_table);
 size_t size_list(const struct c_list *const list);
-void empty_list(struct c_list * list);
+void empty_list(struct c_list *list);
 
 #endif
+

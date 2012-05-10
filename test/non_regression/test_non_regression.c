@@ -102,7 +102,7 @@
 
 
 /// The program version
-#define TEST_VERSION  	"ROHC non-regression test application, version 0.1\n"
+#define TEST_VERSION  "ROHC non-regression test application, version 0.1\n"
 
 
 /* prototypes of private functions */
@@ -418,7 +418,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	{
 		int version;
 		int tot_len;
-		
+
 		version = (ip_packet[0] >> 4) & 0x0f;
 
 		if(version == 4)
@@ -532,7 +532,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			printf("\t\t\t</log>\n");
 			printf("\t\t\t<status>failed</status>\n");
 			printf("\t\t</ip_comparison>\n");
-	
+
 			ret = -1;
 			goto exit;
 		}
@@ -541,7 +541,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		        "rohc_size = %d\tpacket_type = %d\n", num_comp, num_packet,
 		        rohc_size, last_packet_info.packet_type);
 	}
-	
+
 	/* compare the ROHC packets with the ones given by the user if asked */
 	printf("\t\t<rohc_comparison>\n");
 	printf("\t\t\t<log>\n");
@@ -586,7 +586,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	                                   decomp_packet, MAX_ROHC_SIZE,
 	                                   use_large_cid);
 	printf("\t\t\t</log>\n");
-	
+
 	if(decomp_size <= 0)
 	{
 		printf("\t\t\t<status>failed</status>\n");
@@ -673,8 +673,8 @@ static int test_comp_and_decomp(char *cid_type,
 	struct rohc_comp *comp1;
 	struct rohc_comp *comp2;
 
-	struct rohc_decomp * decomp1;
-	struct rohc_decomp * decomp2;
+	struct rohc_decomp *decomp1;
+	struct rohc_decomp *decomp2;
 
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
@@ -732,11 +732,17 @@ static int test_comp_and_decomp(char *cid_type,
 	}
 
 	if(link_layer_type_src == DLT_EN10MB)
+	{
 		link_len_src = ETHER_HDR_LEN;
+	}
 	else if(link_layer_type_src == DLT_LINUX_SLL)
+	{
 		link_len_src = LINUX_COOKED_HDR_LEN;
+	}
 	else /* DLT_RAW */
+	{
 		link_len_src = 0;
+	}
 
 	/* open the network dump file for ROHC storage if asked */
 	if(ofilename != NULL)
@@ -752,7 +758,9 @@ static int test_comp_and_decomp(char *cid_type,
 		}
 	}
 	else
+	{
 		dumper = NULL;
+	}
 
 	/* open the ROHC comparison dump file if asked */
 	if(cmp_filename != NULL)
@@ -783,14 +791,22 @@ static int test_comp_and_decomp(char *cid_type,
 		}
 
 		if(link_layer_type_cmp == DLT_EN10MB)
+		{
 			link_len_cmp = ETHER_HDR_LEN;
+		}
 		else if(link_layer_type_cmp == DLT_LINUX_SLL)
+		{
 			link_len_cmp = LINUX_COOKED_HDR_LEN;
+		}
 		else /* DLT_RAW */
+		{
 			link_len_cmp = 0;
+		}
 	}
 	else
+	{
 		cmp_handle = NULL;
+	}
 
 	/* open the file in which to write the sizes of the ROHC packets if asked */
 	if(rohc_size_ofilename != NULL)
@@ -872,7 +888,7 @@ static int test_comp_and_decomp(char *cid_type,
 		printf("\t\t<log>\n");
 		goto destroy_decomp1;
 	}
-	
+
 	printf("\t\t</log>\n");
 	printf("\t\t<status>ok</status>\n");
 	printf("\t</startup>\n\n");
@@ -885,9 +901,13 @@ static int test_comp_and_decomp(char *cid_type,
 
 		/* get next ROHC packet from the comparison dump file if asked */
 		if(cmp_handle != NULL)
+		{
 			cmp_packet = (unsigned char *) pcap_next(cmp_handle, &cmp_header);
+		}
 		else
+		{
 			cmp_packet = NULL;
+		}
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
 		ret = compress_decompress(comp1, decomp1, 1, counter, header, packet,
@@ -920,9 +940,13 @@ static int test_comp_and_decomp(char *cid_type,
 
 		/* get next ROHC packet from the comparison dump file if asked */
 		if(cmp_handle != NULL)
+		{
 			cmp_packet = (unsigned char *) pcap_next(cmp_handle, &cmp_header);
+		}
 		else
+		{
 			cmp_packet = NULL;
+		}
 
 		/* compress & decompress from compressor 2 to decompressor 2 */
 		ret = compress_decompress(comp2, decomp2, 2, counter, header, packet,
@@ -966,7 +990,7 @@ static int test_comp_and_decomp(char *cid_type,
 	printf("\t<infos>\n");
 	show_rohc_stats(comp1, decomp1, comp2, decomp2);
 	printf("\t</infos>\n\n");
-	
+
 	/* destroy the compressors and decompressors */
 	printf("\t<shutdown>\n");
 	printf("\t\t<log>\n\n");
@@ -1007,10 +1031,14 @@ close_output_size:
 	}
 close_comparison:
 	if(cmp_handle != NULL)
+	{
 		pcap_close(cmp_handle);
+	}
 close_output:
 	if(dumper != NULL)
+	{
 		pcap_dump_close(dumper);
+	}
 close_input:
 	pcap_close(handle);
 error:
@@ -1042,19 +1070,23 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 
 	/* do not compare more than 180 bytes to avoid huge output */
 	min_size = min(180, min_size);
-	
+
 	/* if packets are equal, do not print the packets */
 	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
+	{
 		goto skip;
+	}
 
 	/* packets are different */
 	valid = 0;
 
 	printf("------------------------------ Compare ------------------------------\n");
-	
+
 	if(pkt1_size != pkt2_size)
+	{
 		printf("packets have different sizes (%d != %d), compare only the %d "
 		       "first bytes\n", pkt1_size, pkt2_size, min_size);
+	}
 
 	j = 0;
 	for(i = 0; i < min_size; i++)
@@ -1079,22 +1111,30 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 			for(k = 0; k < 4; k++)
 			{
 				if(k < (j + 1))
+				{
 					printf("%s  ", str1[k]);
+				}
 				else /* fill the line with blanks if nothing to print */
+				{
 					printf("        ");
+				}
 			}
 
 			printf("      ");
 
 			for(k = 0; k < (j + 1); k++)
+			{
 				printf("%s  ", str2[k]);
+			}
 
 			printf("\n");
 
 			j = 0;
 		}
 		else
+		{
 			j++;
+		}
 	}
 
 	printf("----------------------- packets are different -----------------------\n");

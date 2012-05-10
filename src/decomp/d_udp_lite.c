@@ -56,7 +56,9 @@ void * d_udp_lite_create(void)
 	/* create the generic context */
 	context = d_generic_create();
 	if(context == NULL)
+	{
 		goto quit;
+	}
 
 	/* create the UDP-Lite-specific part of the context */
 	udp_lite_context = malloc(sizeof(struct d_udp_lite_context));
@@ -88,7 +90,7 @@ void * d_udp_lite_create(void)
 	if(context->last1->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-Lite-specific "
-		               "part of the header changes last1\n");
+		            "part of the header changes last1\n");
 		goto free_udp_context;
 	}
 	bzero(context->last1->next_header, sizeof(struct udphdr));
@@ -98,7 +100,7 @@ void * d_udp_lite_create(void)
 	if(context->last2->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-Lite-specific "
-		               "part of the header changes last2\n");
+		            "part of the header changes last2\n");
 		goto free_last1_next_header;
 	}
 	bzero(context->last2->next_header, sizeof(struct udphdr));
@@ -108,7 +110,7 @@ void * d_udp_lite_create(void)
 	if(context->active1->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-Lite-specific "
-		               "part of the header changes active1\n");
+		            "part of the header changes active1\n");
 		goto free_last2_next_header;
 	}
 	bzero(context->active1->next_header, sizeof(struct udphdr));
@@ -118,7 +120,7 @@ void * d_udp_lite_create(void)
 	if(context->active2->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-Lite-specific "
-		               "part of the header changes active2\n");
+		            "part of the header changes active2\n");
 		goto free_active1_next_header;
 	}
 	bzero(context->active2->next_header, sizeof(struct udphdr));
@@ -145,7 +147,7 @@ quit:
 
 /**
  * @brief Destroy the context.
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -160,17 +162,26 @@ void d_udp_lite_destroy(void *context)
 		c = context;
 
 		if(c->last1 != NULL && c->last1->next_header != NULL)
+		{
 			zfree(c->last1->next_header);
+		}
 		if(c->last2 != NULL && c->last2->next_header != NULL)
+		{
 			zfree(c->last2->next_header);
+		}
 		if(c->active1 != NULL && c->active1->next_header != NULL)
+		{
 			zfree(c->active1->next_header);
+		}
 		if(c->active2 != NULL && c->active2->next_header != NULL)
+		{
 			zfree(c->active2->next_header);
+		}
 
 		d_generic_destroy(context);
 	}
 }
+
 
 /**
  * @brief Get the size of the static part of an IR packet
@@ -178,8 +189,9 @@ void d_udp_lite_destroy(void *context)
  */
 int udp_lite_get_static_part(void)
 {
-	return 4;	
+	return 4;
 }
+
 
 /**
  * @brief Decode one IR packet for the UDP-Lite profile.
@@ -282,13 +294,17 @@ unsigned int udp_lite_detect_ir_size(struct d_context *context,
 	 * dynamic chain + SN */
 	length = udp_detect_ir_size(context, packet, plen, large_cid_len);
 	if(length == 0)
+	{
 		goto quit;
+	}
 
 	/* UDP-Lite dynamic part (if included) needs 2 bytes more than the UDP
 	 * dynamic part (see 5.7.7.5 in RFC 3095 and 5.2.1 in RFC 4019) */
 	d = GET_BIT_0(packet);
 	if(d)
+	{
 		length += 2;
+	}
 
 quit:
 	return length;
@@ -297,7 +313,7 @@ quit:
 
 /**
  * @brief Find the length of the IR-DYN header.
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -355,8 +371,10 @@ unsigned int udp_lite_detect_ir_dyn_size(struct d_context *context,
 	/* Profile and CRC fields + IP dynamic chains + UDP dynamic chain */
 	length = udp_detect_ir_dyn_size(context, packet, plen, large_cid_len);
 	if(length == 0)
+	{
 		goto quit;
-	
+	}
+
 	/* UDP-Lite dynamic part needs 2 bytes more than the UDP dynamic part
 	 * (see 5.7.7.5 in RFC 3095 and 5.2.1 in RFC 4019) */
 	length += 2;
@@ -492,7 +510,9 @@ int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
 	udp_lite_length = length - dynamic_length + sizeof(struct udphdr);
 	if(context->packet_type == PACKET_IR ||
 	   context->packet_type == PACKET_IR_DYN)
+	{
 		udp_lite_length -= 2;
+	}
 
 	/* checksum coverage if present or uninitialized */
 	if(udp_lite_context->cfp != 0)
@@ -532,7 +552,9 @@ int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
 	/* SN field */
 	ret = ip_decode_dynamic_ip(context, packet, length - read, dest + read);
 	if(ret == -1)
+	{
 		goto error;
+	}
 	packet += ret;
 	read += ret;
 
@@ -650,7 +672,9 @@ int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
 			rohc_debugf(2, "checksum coverage (%d) is inferred\n", udp_lite->len);
 		}
 		else
+		{
 			rohc_debugf(2, "checksum coverage (%d) is not inferred\n", udp_lite->len);
+		}
 	}
 
 	return sizeof(struct udphdr);

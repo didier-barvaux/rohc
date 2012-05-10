@@ -108,7 +108,9 @@ int code_cid_values(const rohc_cid_type_t cid_type,
 		/* print the SDVL-encoded large CID */
 		rohc_debugf(3, "SDVL-encoded large CID = ");
 		for(i = 0; i < len; i++)
+		{
 			rohc_debugf_(3, "0x%02x ", dest[counter + i]);
+		}
 		rohc_debugf_(3, "\n");
 
 		counter += len;

@@ -171,7 +171,7 @@ struct d_context
 	/// The average size of the uncompressed headers
 	int header_uncompressed_size;
 	/// The average size of the compressed headers
-	int header_compressed_size; 
+	int header_compressed_size;
 
 	/// The number of received packets
 	int num_recv_packets;
@@ -248,12 +248,12 @@ struct d_profile
 	                                   unsigned char *packet,
 	                                   unsigned int plen,
 	                                   unsigned int large_cid_len);
-	
+
 	/// The handler used to get the size of the specific static part of IR packets
 	int (*get_static_part)(void);
 
 	/// The handler used to retrieve the Sequence Number (SN)
-	int (*get_sn)(struct d_context * context);
+	int (*get_sn)(struct d_context *context);
 };
 
 /*
@@ -269,7 +269,7 @@ void rohc_free_decompressor(struct rohc_decomp *decomp);
 int rohc_decompress(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
                     unsigned char *obuf, int osize);
 int rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
-                         int isize, unsigned char * obuf, int osize, int large);
+                         int isize, unsigned char *obuf, int osize, int large);
 int d_decode_header(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
                     unsigned char *obuf, int osize,
                     struct d_decode_data *ddata);
@@ -279,8 +279,10 @@ int d_decode_header(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
  */
 
 struct d_context * find_context(struct rohc_decomp *decomp, int cid);
-struct d_context * context_create(struct rohc_decomp *decomp, int with_cid, struct d_profile * profile);
-void context_free(struct d_context * context);
+struct d_context * context_create(struct rohc_decomp *decomp,
+                                  int with_cid,
+                                  struct d_profile *profile);
+void context_free(struct d_context *context);
 
 
 /*

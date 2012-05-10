@@ -207,7 +207,9 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		/* move feedback data to make space for the SDVL-encoded large CID */
 		assert(feedback->size >= 1);
 		for(i = feedback->size; i > 0; i--)
+		{
 			feedback->data[i - 1 + largecidsize] = feedback->data[i - 1];
+		}
 
 		/* allocate memory for the large CID */
 		acid = (unsigned char *) malloc(largecidsize);
@@ -229,7 +231,7 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		/* copy the large CID to the feedback packet */
 		memcpy(feedback->data, acid, largecidsize);
 		feedback->size += largecidsize;
-		
+
 		/* free the large CID */
 		zfree(acid);
 	}
@@ -240,7 +242,9 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		/* move feedback data to make space for the small CID */
 		assert(feedback->size >= 1);
 		for(i = feedback->size; i > 0; i--)
+		{
 			feedback->data[i] = feedback->data[i - 1];
+		}
 
 		/* write the small CID to the feedback packet */
 		feedback->data[0] = 0xe0;
@@ -314,7 +318,7 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 
 	*final_size = feedback->size;
 	feedback->size = 0;
-	
+
 	return feedback_packet;
 }
 

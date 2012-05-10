@@ -106,8 +106,8 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	udp_context = malloc(sizeof(struct sc_udp_context));
 	if(udp_context == NULL)
 	{
-	  rohc_debugf(0, "no memory for the UDP part of the profile context\n");
-	  goto clean;
+		rohc_debugf(0, "no memory for the UDP part of the profile context\n");
+		goto clean;
 	}
 	g_context->specific = udp_context;
 
@@ -187,7 +187,9 @@ int c_udp_check_context(const struct c_context *context,
 	/* check the IP version of the first header */
 	version = ip_get_version(ip);
 	if(version != ip_flags->version)
+	{
 		goto bad_context;
+	}
 
 	/* compare the addresses of the first header */
 	if(version == IPV4)
@@ -203,12 +205,16 @@ int c_udp_check_context(const struct c_context *context,
 	}
 
 	if(!is_ip_same)
+	{
 		goto bad_context;
+	}
 
 	/* compare the Flow Label of the first header if IPv6 */
 	if(version == IPV6 && ipv6_get_flow_label(ip) !=
 	   IPV6_GET_FLOW_LABEL(ip_flags->info.v6.old_ip))
+	{
 		goto bad_context;
+	}
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
@@ -216,7 +222,9 @@ int c_udp_check_context(const struct c_context *context,
 	{
 		/* check if the context used to have a second IP header */
 		if(!g_context->is_ip2_initialized)
+		{
 			goto bad_context;
+		}
 
 		/* get the second IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -228,7 +236,9 @@ int c_udp_check_context(const struct c_context *context,
 		/* check the IP version of the second header */
 		version = ip_get_version(&ip2);
 		if(version != ip2_flags->version)
+		{
 			goto bad_context;
+		}
 
 		/* compare the addresses of the second header */
 		if(version == IPV4)
@@ -245,12 +255,16 @@ int c_udp_check_context(const struct c_context *context,
 		}
 
 		if(!is_ip2_same)
+		{
 			goto bad_context;
+		}
 
 		/* compare the Flow Label of the second header if IPv6 */
 		if(version == IPV6 && ipv6_get_flow_label(&ip2) !=
 		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
+		{
 			goto bad_context;
+		}
 
 		/* get the last IP header */
 		last_ip_header = &ip2;
@@ -262,7 +276,9 @@ int c_udp_check_context(const struct c_context *context,
 	{
 		/* check if the context used not to have a second header */
 		if(g_context->is_ip2_initialized)
+		{
 			goto bad_context;
+		}
 
 		/* only one single IP header, the last IP header is the first one */
 		last_ip_header = ip;
@@ -270,8 +286,10 @@ int c_udp_check_context(const struct c_context *context,
 
 	/* check the transport protocol */
 	if(ip_proto != IPPROTO_UDP)
+	{
 		goto bad_context;
-	
+	}
+
 	/* check UDP ports */
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
 	is_udp_same = udp_context->old_udp.source == udp->source &&
@@ -364,12 +382,16 @@ int c_udp_encode(struct c_context *const context,
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size,
 	                        packet_type, payload_offset);
 	if(size < 0)
+	{
 		goto quit;
+	}
 
 	/* update the context with the new UDP header */
 	if(g_context->tmp_variables.packet_type == PACKET_IR ||
 	   g_context->tmp_variables.packet_type == PACKET_IR_DYN)
+	{
 		udp_context->old_udp = *udp;
+	}
 
 quit:
 	return size;
@@ -396,10 +418,14 @@ void udp_decide_state(struct c_context *const context)
 	udp_context = (struct sc_udp_context *) g_context->specific;
 
 	if(udp_context->tmp_variables.send_udp_dynamic)
+	{
 		change_state(context, IR);
+	}
 	else
+	{
 		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
 		decide_state(context);
+	}
 }
 
 
@@ -420,7 +446,7 @@ void udp_decide_state(struct c_context *const context)
  * @param next_header The UDP header
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int udp_code_UO_packet_tail(const struct c_context *context,
                             const unsigned char *next_header,
@@ -447,7 +473,7 @@ int udp_code_UO_packet_tail(const struct c_context *context,
  * \verbatim
 
  Static part of UDP header (5.7.7.5):
- 
+
     +---+---+---+---+---+---+---+---+
  1  /          Source Port          /   2 octets
     +---+---+---+---+---+---+---+---+
@@ -460,7 +486,7 @@ int udp_code_UO_packet_tail(const struct c_context *context,
  * @param next_header The UDP header
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int udp_code_static_udp_part(const struct c_context *context,
                              const unsigned char *next_header,
@@ -500,7 +526,7 @@ int udp_code_static_udp_part(const struct c_context *context,
  * @param next_header The UDP header
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
- * @return            The new position in the rohc-packet-under-build buffer 
+ * @return            The new position in the rohc-packet-under-build buffer
  */
 int udp_code_dynamic_udp_part(const struct c_context *context,
                               const unsigned char *next_header,
@@ -548,11 +574,15 @@ int udp_changed_udp_dynamic(const struct c_context *context,
 	{
 		if((udp->check != 0 && udp_context->old_udp.check == 0) ||
 		   (udp->check == 0 && udp_context->old_udp.check != 0))
+		{
 			udp_context->udp_checksum_change_count = 0;
+		}
 		return 1;
 	}
 	else
+	{
 		return 0;
+	}
 }
 
 

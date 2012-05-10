@@ -81,7 +81,9 @@ int d_feedback_size(const unsigned char *data)
 	 *  - 0 indicates that a size field is present just after the code field
 	 *  - 1-7 indicates the size of the feedback data field in octets. */
 	if(code != 0)
+	{
 		size = code;
+	}
 	else
 	{
 		/* extract the size octet */
@@ -109,9 +111,13 @@ int d_feedback_headersize(const unsigned char *data)
 	code = GET_BIT_0_2(data);
 
 	if(code == 0)
+	{
 		size = 2; /* a size field is present */
+	}
 	else
+	{
 		size = 1; /* no size field is present */
+	}
 
 	return size;
 }
@@ -167,9 +173,13 @@ int d_decode_add_cid(const unsigned char *data)
 	int cid;
 
 	if(d_is_add_cid(data))
+	{
 		cid = GET_BIT_0_3(data);
+	}
 	else
+	{
 		cid = 0;
+	}
 
 	return cid;
 }

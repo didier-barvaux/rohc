@@ -30,7 +30,7 @@
  * @brief Create one compression_list
  * @return 1 if successful, 0 otherwise
  */
-int create_list(struct c_list * list)
+int create_list(struct c_list *list)
 {
 	rohc_debugf(1, "creating compression list\n");
 
@@ -51,20 +51,21 @@ error:
 	return 0;
 }
 
+
 /**
  * @brief Add an element at the begin of the list
- * 
+ *
  * @param list the list where the element is added
  * @param item the item of the new element
  * @param index the index in based table
  * @return 1 if successful, 0 otherwise
  */
-int add_elt(struct c_list * list, struct rohc_list_item *item, int index)
+int add_elt(struct c_list *list, struct rohc_list_item *item, int index)
 {
-	struct list_elt * elt;
-	
+	struct list_elt *elt;
+
 	elt = malloc(sizeof(struct list_elt));
-	if (elt == NULL)
+	if(elt == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the list element\n");
 		goto error;
@@ -91,6 +92,7 @@ error:
 	return 0;
 }
 
+
 /** @brief Add an element at the end of the list
  *
  * @param list the list where the element is added
@@ -98,20 +100,20 @@ error:
  * @param index the index in based table
  * @return 1 if successful, 0 otherwise
  */
-int push_back(struct c_list * list, struct rohc_list_item *item, int index)
+int push_back(struct c_list *list, struct rohc_list_item *item, int index)
 {
-	struct list_elt * elt;
+	struct list_elt *elt;
 	int result = 0;
 	struct list_elt *curr_elt;
-	
-	if (list->first_elt == NULL)
+
+	if(list->first_elt == NULL)
 	{
 		result = add_elt(list, item, index);
 	}
 	else
 	{
 		elt = malloc(sizeof(struct list_elt));
-		if (elt == NULL)
+		if(elt == NULL)
 		{
 			rohc_debugf(0, "cannot allocate memory for the list element\n");
 			goto error;
@@ -121,7 +123,7 @@ int push_back(struct c_list * list, struct rohc_list_item *item, int index)
 		elt->index_table = index;
 		elt->next_elt = NULL;
 		elt->prev_elt = NULL;
-		
+
 		curr_elt = list->first_elt;
 		while(curr_elt->next_elt != NULL)
 		{
@@ -134,8 +136,9 @@ int push_back(struct c_list * list, struct rohc_list_item *item, int index)
 	return result;
 
 error:
-	return 0; 
+	return 0;
 }
+
 
 /**
  * @brief Delete the specified element of the list
@@ -143,21 +146,21 @@ error:
  * @param list the list where the element is destroyed
  * @param item  the element to delete
  */
-void delete_elt(struct c_list * list, struct rohc_list_item *item)
+void delete_elt(struct c_list *list, struct rohc_list_item *item)
 {
-	struct list_elt * curr_elt;
-	
-	if (list->first_elt != NULL)
+	struct list_elt *curr_elt;
+
+	if(list->first_elt != NULL)
 	{
 		curr_elt = list->first_elt;
-		while (curr_elt != NULL && curr_elt->item != item)
+		while(curr_elt != NULL && curr_elt->item != item)
 		{
 			curr_elt = curr_elt->next_elt;
 		}
-		if (curr_elt != NULL)
+		if(curr_elt != NULL)
 		{
 			// current element is not first element
-			if (curr_elt->prev_elt != NULL)
+			if(curr_elt->prev_elt != NULL)
 			{
 				curr_elt->prev_elt->next_elt = curr_elt->next_elt;
 			}
@@ -166,15 +169,15 @@ void delete_elt(struct c_list * list, struct rohc_list_item *item)
 				list->first_elt = curr_elt->next_elt;
 			}
 			// current element is not last element
-			if (curr_elt->next_elt != NULL)
+			if(curr_elt->next_elt != NULL)
 			{
 				curr_elt->next_elt->prev_elt = curr_elt->prev_elt;
-				
 			}
 		}
-		free(curr_elt);	
+		free(curr_elt);
 	}
 }
+
 
 /**
  * @brief Get the index of the specified element in the list
@@ -184,28 +187,33 @@ void delete_elt(struct c_list * list, struct rohc_list_item *item)
  *
  * @return the index, -1 if the element is not in the list
  */
-int elt_index(struct c_list * list, struct rohc_list_item *item)
+int elt_index(struct c_list *list, struct rohc_list_item *item)
 {
-	struct list_elt * curr_elt;
+	struct list_elt *curr_elt;
 	int i = 0;
 
-	if (list->first_elt == NULL)
-                goto end;
+	if(list->first_elt == NULL)
+	{
+		goto end;
+	}
 
 	curr_elt = list->first_elt;
-	while (curr_elt != NULL && curr_elt->item != item)
+	while(curr_elt != NULL && curr_elt->item != item)
 	{
 		curr_elt = curr_elt->next_elt;
 		i++;
 	}
 
-	if (curr_elt == NULL)
+	if(curr_elt == NULL)
+	{
 		goto end;
-	
+	}
+
 	return i;
 end:
 	return -1;
-}	
+}
+
 
 /**
  * @brief Get the element at the specified index
@@ -214,13 +222,15 @@ end:
  * @param index the specified index
  * @return item, NULL if there is no element at this index
  */
-struct list_elt * get_elt(struct c_list * list, int index)
+struct list_elt * get_elt(struct c_list *list, int index)
 {
-	struct list_elt * curr_elt = list->first_elt;
+	struct list_elt *curr_elt = list->first_elt;
 	int i = 0;
-	if (index >= size_list(list))
+	if(index >= size_list(list))
+	{
 		goto error;
-	while(i<index)
+	}
+	while(i < index)
 	{
 		curr_elt = curr_elt->next_elt;
 		i++;
@@ -230,6 +240,7 @@ error:
 	return NULL;
 }
 
+
 /**
  * @brief Indicate if the type of the specified element is present
  *
@@ -238,44 +249,48 @@ error:
  *
  * @return 1 if present, 0 else
  */
-int type_is_present(struct c_list * list, struct rohc_list_item *item)
+int type_is_present(struct c_list *list, struct rohc_list_item *item)
 {
-	struct list_elt * curr_elt;
-	
-	if (list->first_elt == NULL)
+	struct list_elt *curr_elt;
+
+	if(list->first_elt == NULL)
 	{
 		rohc_debugf(0, "no element in the list\n");
 		goto end;
 	}
 
 	curr_elt = list->first_elt;
-	while (curr_elt != NULL && curr_elt->item->type != item->type)
+	while(curr_elt != NULL && curr_elt->item->type != item->type)
 	{
 		curr_elt = curr_elt->next_elt;
 	}
-	if (curr_elt == NULL)
+	if(curr_elt == NULL)
+	{
 		goto end;
-	
+	}
+
 	return 1;
 end:
 	return 0;
 }
+
+
 /**
  *@brief Empty the list
  *
  *@param list the list to empty
  */
-void empty_list(struct c_list * list)
+void empty_list(struct c_list *list)
 {
-	struct list_elt * curr_elt;
-	if (list->first_elt == NULL)
+	struct list_elt *curr_elt;
+	if(list->first_elt == NULL)
 	{
 		rohc_debugf(1, "no element in the list\n");
 	}
 	else
 	{
 		curr_elt = list->first_elt;
-		while (curr_elt->next_elt != NULL )
+		while(curr_elt->next_elt != NULL)
 		{
 			list->first_elt = curr_elt->next_elt;
 			curr_elt->next_elt->prev_elt = NULL;
@@ -286,13 +301,14 @@ void empty_list(struct c_list * list)
 	}
 	list->first_elt = NULL;
 }
-																							
+
+
 /**
  * @brief Destroy the list
  *
  * @param list the list to destroy
  */
-void destroy_list(struct c_list * list)
+void destroy_list(struct c_list *list)
 {
 	struct list_elt *curr_elt;
 	struct list_elt *next_elt;
@@ -326,7 +342,7 @@ int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int 
 		rohc_debugf(0, "bad index for insertion\n");
 		goto error;
 	}
-	
+
 	if(index == 0)
 	{
 		/* special case for first element */
@@ -351,14 +367,16 @@ int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int 
 		elt->item = item;
 		elt->next_elt = NULL;
 		elt->prev_elt = NULL;
-		elt->index_table = index_table;											
+		elt->index_table = index_table;
 
 		/* loop on list elements towards the given index */
 		curr_elt = list->first_elt;
 		for(i = 0; i < index; i++)
 		{
 			if(curr_elt->next_elt != NULL)
+			{
 				curr_elt = curr_elt->next_elt;
+			}
 		}
 
 		/* insert new element before current element */
@@ -375,7 +393,9 @@ int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int 
 			elt->prev_elt = curr_elt->prev_elt;
 			curr_elt->prev_elt = elt;
 			if(elt->prev_elt != NULL)
+			{
 				elt->prev_elt->next_elt = elt;
+			}
 		}
 	}
 

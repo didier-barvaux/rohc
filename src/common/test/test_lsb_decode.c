@@ -36,7 +36,7 @@
  * @param argv  The command line arguments
  * @return      0 if test succeeds, non-zero if test fails
  */
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
 	struct c_wlsb *wlsb; /* the W-LSB encoding context */
 	struct d_lsb_decode lsb; /* the LSB decoding context */

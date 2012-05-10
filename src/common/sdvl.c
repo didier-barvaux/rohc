@@ -62,13 +62,21 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 		/* value length is unknown, find the length ourselves, then
 		 * find the length for SDVL-encoding */
 		if(value <= ROHC_SDVL_MAX_VALUE_IN_1_BYTE)
+		{
 			size = 1;
+		}
 		else if(value <= ROHC_SDVL_MAX_VALUE_IN_2_BYTES)
+		{
 			size = 2;
+		}
 		else if(value <= ROHC_SDVL_MAX_VALUE_IN_3_BYTES)
+		{
 			size = 3;
+		}
 		else if(value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES)
+		{
 			size = 4;
+		}
 		else
 		{
 			rohc_debugf(0, "value %d is too large for SDVL-encoding\n", value);
@@ -79,13 +87,21 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 	{
 		/* value length is known, find the length for SDVL-encoding */
 		if(length <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
+		{
 			size = 1;
+		}
 		else if(length <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
+		{
 			size = 2;
+		}
 		else if(length <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
+		{
 			size = 3;
+		}
 		else if(length <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
+		{
 			size = 4;
+		}
 		else
 		{
 			rohc_debugf(0, "value %d on %zd bits is too large for SDVL-encoding\n",
@@ -179,15 +195,23 @@ error:
 int d_sdvalue_size(const unsigned char *data)
 {
 	int size;
-	
+
 	if(!GET_BIT_7(data)) /* bit == 0 */
+	{
 		size = 1;
+	}
 	else if(GET_BIT_6_7(data) == (0x8 >> 2)) /* bits == 0b10 */
+	{
 		size = 2;
+	}
 	else if(GET_BIT_5_7(data) == (0xc >> 1)) /* bits == 0b110 */
+	{
 		size = 3;
+	}
 	else if(GET_BIT_5_7(data) == (0xe >> 1)) /* bits == 0b111 */
+	{
 		size = 4;
+	}
 	else
 	{
 		size = -1;
@@ -211,20 +235,30 @@ int d_sdvalue_decode(const unsigned char *data)
 	int value;
 
 	if(!GET_BIT_7(data)) /* bit == 0 */
+	{
 		value = GET_BIT_0_6(data);
+	}
 	else if(GET_BIT_6_7(data) == (0x8 >> 2)) /* bits == 0b10 */
+	{
 		value = (GET_BIT_0_5(data) << 8 | GET_BIT_0_7(data + 1));
+	}
 	else if(GET_BIT_5_7(data) == (0xc >> 1)) /* bits == 0b110 */
+	{
 		value = (GET_BIT_0_4(data) << 16 |
 		         GET_BIT_0_7(data + 1) << 8 |
-		         GET_BIT_0_7(data + 2)); 
+		         GET_BIT_0_7(data + 2));
+	}
 	else if(GET_BIT_5_7(data) == (0xe >> 1)) /* bits == 0b111 */
+	{
 		value = (GET_BIT_0_4(data) << 24 |
 		         GET_BIT_0_7(data + 1) << 16 |
 		         GET_BIT_0_7(data + 2) << 8 |
 		         GET_BIT_0_7(data + 3));
+	}
 	else
+	{
 		value = -1; /* should not happen */
+	}
 
 	return value;
 }

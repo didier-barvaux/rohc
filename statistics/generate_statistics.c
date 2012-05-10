@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
-		       "expected\n", cid_type);
+		        "expected\n", cid_type);
 		usage();
 		goto error;
 	}
@@ -236,11 +236,17 @@ static int generate_comp_stats_all(const int use_large_cid,
 
 	/* determine the size of the link layer header */
 	if(link_layer_type == DLT_EN10MB)
+	{
 		link_len = ETHER_HDR_LEN;
+	}
 	else if(link_layer_type == DLT_LINUX_SLL)
+	{
 		link_len = LINUX_COOKED_HDR_LEN;
+	}
 	else /* DLT_RAW */
+	{
 		link_len = 0;
+	}
 
 	/* create the ROHC compressor */
 	comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
@@ -330,7 +336,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	if(header.len <= link_len || header.len != header.caplen)
 	{
 		fprintf(stderr, "packet #%lu: bad PCAP packet (len = %d, caplen = %d)\n",
-		       num_packet, header.len, header.caplen);
+		        num_packet, header.len, header.caplen);
 		goto error;
 	}
 

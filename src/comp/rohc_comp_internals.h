@@ -16,7 +16,7 @@
 
 /**
  * @file    rohc_comp_internals.h
- * @brief   Internal structures for ROHC compression 
+ * @brief   Internal structures for ROHC compression
  * @author  Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author  Didier Barvaux <didier@barvaux.org>
  * @author  The hackers from ROHC for Linux
@@ -268,7 +268,7 @@ struct c_context
 	/** The average size of the uncompressed headers */
 	int header_uncompressed_size;
 	/** The average size of the compressed headers */
-	int header_compressed_size; 
+	int header_compressed_size;
 
 	/** The total size of the last uncompressed packet */
 	int total_last_uncompressed_size;

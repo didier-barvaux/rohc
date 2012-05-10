@@ -36,7 +36,7 @@
  *    ones in the context
  *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
  *    context
- * 
+ *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
@@ -67,7 +67,9 @@ int c_ip_check_context(const struct c_context *context,
 	/* check the IP version of the first header */
 	version = ip_get_version(ip);
 	if(version != ip_flags->version)
+	{
 		goto bad_context;
+	}
 
 	/* compare the addresses of the first header */
 	if(version == IPV4)
@@ -84,12 +86,16 @@ int c_ip_check_context(const struct c_context *context,
 	}
 
 	if(!same_src || !same_dest)
+	{
 		goto bad_context;
+	}
 
 	/* compare the Flow Label of the first header if IPv6 */
 	if(version == IPV6 && ipv6_get_flow_label(ip) !=
 	   IPV6_GET_FLOW_LABEL(ip_flags->info.v6.old_ip))
+	{
 		goto bad_context;
+	}
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
@@ -97,7 +103,9 @@ int c_ip_check_context(const struct c_context *context,
 	{
 		/* check if the context used to have a second IP header */
 		if(!g_context->is_ip2_initialized)
+		{
 			goto bad_context;
+		}
 
 		/* get the second IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -109,7 +117,9 @@ int c_ip_check_context(const struct c_context *context,
 		/* check the IP version of the second header */
 		version = ip_get_version(&ip2);
 		if(version != ip2_flags->version)
+		{
 			goto bad_context;
+		}
 
 		/* compare the addresses of the second header */
 		if(version == IPV4)
@@ -126,18 +136,24 @@ int c_ip_check_context(const struct c_context *context,
 		}
 
 		if(!same_src2 || !same_dest2)
+		{
 			goto bad_context;
+		}
 
 		/* compare the Flow Label of the second header if IPv6 */
 		if(version == IPV6 && ipv6_get_flow_label(&ip2) !=
 		   IPV6_GET_FLOW_LABEL(ip2_flags->info.v6.old_ip))
+		{
 			goto bad_context;
+		}
 	}
 	else /* no second IP header */
 	{
 		/* check if the context used not to have a second header */
 		if(g_context->is_ip2_initialized)
+		{
 			goto bad_context;
+		}
 	}
 
 	return 1;
@@ -147,6 +163,7 @@ bad_context:
 error:
 	return -1;
 }
+
 
 /**
  * @brief Define the compression part of the IP-only profile as described

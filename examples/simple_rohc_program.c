@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 	}
 	if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
 	{
-	  printf("\n");
+		printf("\n");
 	}
 
 
@@ -185,7 +185,7 @@ release_compressor:
 	rohc_free_compressor(compressor);
 error:
 	fprintf(stderr, "an error occured during program execution, "
-	                "abort program\n");
+	        "abort program\n");
 	return 1;
 }
 
