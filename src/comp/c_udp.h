@@ -38,7 +38,7 @@
  *
  * @see sc_udp_context
  */
-struct udp_tmp_variables
+struct udp_tmp_vars
 {
 	/// The number of UDP fields that changed in the UDP header
 	int send_udp_dynamic;
@@ -63,7 +63,7 @@ struct sc_udp_context
 
 	/// @brief UDP-specific temporary variables that are used during one single
 	///        compression of packet
-	struct udp_tmp_variables tmp_variables;
+	struct udp_tmp_vars tmp;
 };
 
 

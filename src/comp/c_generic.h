@@ -142,7 +142,7 @@ struct ip_header_info
  *
  * @see c_init_tmp_variables
  */
-struct generic_tmp_variables
+struct generic_tmp_vars
 {
 	/// The number of IP headers in the packet to compress (1 or 2 only)
 	int nr_of_ip_hdr;
@@ -212,7 +212,7 @@ struct c_generic_context
 	int is_ip2_initialized;
 
 	/// Temporary variables that are used during one single compression of packet
-	struct generic_tmp_variables tmp_variables;
+	struct generic_tmp_vars tmp;
 
 	/* below are some information and handlers to manage the next header
 	 * (if any) located just after the IP headers (1 or 2 IP headers) */

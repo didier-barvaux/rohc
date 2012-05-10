@@ -116,7 +116,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	udp_context->old_udp = *udp;
 
 	/* init the UDP-specific temporary variables */
-	udp_context->tmp_variables.send_udp_dynamic = -1;
+	udp_context->tmp.send_udp_dynamic = -1;
 
 	/* init the UDP-specific variables and functions */
 	g_context->next_header_proto = IPPROTO_UDP;
@@ -376,7 +376,7 @@ int c_udp_encode(struct c_context *const context,
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
 
 	/* how many UDP fields changed? */
-	udp_context->tmp_variables.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);
+	udp_context->tmp.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size,
@@ -387,8 +387,8 @@ int c_udp_encode(struct c_context *const context,
 	}
 
 	/* update the context with the new UDP header */
-	if(g_context->tmp_variables.packet_type == PACKET_IR ||
-	   g_context->tmp_variables.packet_type == PACKET_IR_DYN)
+	if(g_context->tmp.packet_type == PACKET_IR ||
+	   g_context->tmp.packet_type == PACKET_IR_DYN)
 	{
 		udp_context->old_udp = *udp;
 	}
@@ -417,7 +417,7 @@ void udp_decide_state(struct c_context *const context)
 	g_context = (struct c_generic_context *) context->specific;
 	udp_context = (struct sc_udp_context *) g_context->specific;
 
-	if(udp_context->tmp_variables.send_udp_dynamic)
+	if(udp_context->tmp.send_udp_dynamic)
 	{
 		change_state(context, IR);
 	}

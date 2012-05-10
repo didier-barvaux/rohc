@@ -137,7 +137,7 @@ int c_udp_lite_create(struct c_context *const context,
 	udp_lite_context->old_udp_lite = *udp_lite;
 
 	/* init the UDP-Lite-specific temporary variables */
-	udp_lite_context->tmp_variables.udp_size = -1;
+	udp_lite_context->tmp.udp_size = -1;
 
 	/* init the UDP-Lite-specific variables and functions */
 	g_context->next_header_proto = IPPROTO_UDPLITE;
@@ -370,7 +370,7 @@ int c_udp_lite_encode(struct c_context *const context,
 		return -1;
 	}
 
-	udp_lite_context->tmp_variables.udp_size = packet_size - ip_get_hdrlen(ip);
+	udp_lite_context->tmp.udp_size = packet_size - ip_get_hdrlen(ip);
 
 	ip_proto = ip_get_protocol(ip);
 	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
@@ -387,7 +387,7 @@ int c_udp_lite_encode(struct c_context *const context,
 		ip_proto = ip_get_protocol(last_ip_header);
 
 		/* update the UDP-Lite payload size */
-		udp_lite_context->tmp_variables.udp_size -= ip_get_hdrlen(last_ip_header);
+		udp_lite_context->tmp.udp_size -= ip_get_hdrlen(last_ip_header);
 	}
 	else
 	{
@@ -411,8 +411,8 @@ int c_udp_lite_encode(struct c_context *const context,
 	}
 
 	/* update the context with the new UDP-Lite header */
-	if(g_context->tmp_variables.packet_type == PACKET_IR ||
-	   g_context->tmp_variables.packet_type == PACKET_IR_DYN)
+	if(g_context->tmp.packet_type == PACKET_IR ||
+	   g_context->tmp.packet_type == PACKET_IR_DYN)
 	{
 		udp_lite_context->old_udp_lite = *udp_lite;
 	}
@@ -621,7 +621,7 @@ void udp_lite_init_cc(const struct c_context *context,
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 
-	packet_length = udp_lite_context->tmp_variables.udp_size;
+	packet_length = udp_lite_context->tmp.udp_size;
 	udp_lite = (struct udphdr *) next_header;
 
 	if(g_context->ir_count == 1)
@@ -666,8 +666,7 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 	            udp_lite_context->cfi);
 
 	/* may the checksum coverage be inferred from UDP-Lite length ? */
-	is_coverage_inferred =
-		(ntohs(udp_lite->len) == udp_lite_context->tmp_variables.udp_size);
+	is_coverage_inferred = (ntohs(udp_lite->len) == udp_lite_context->tmp.udp_size);
 
 	/* is the checksum coverage unchanged since last packet ? */
 	if(udp_lite_context->sent_cce_only_count > 0)

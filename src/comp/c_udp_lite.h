@@ -44,7 +44,7 @@
  *
  * @see sc_udp_lite_context
  */
-struct udp_lite_tmp_variables
+struct udp_lite_tmp_vars
 {
 	/// The size of the UDP-Lite packet (header + payload)
 	int udp_size;
@@ -88,7 +88,7 @@ struct sc_udp_lite_context
 
 	/// @brief UDP-Lite-specific temporary variables that are used during one
 	///        single compression of packet
-	struct udp_lite_tmp_variables tmp_variables;
+	struct udp_lite_tmp_vars tmp;
 };
 
 

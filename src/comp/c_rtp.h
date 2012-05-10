@@ -41,7 +41,7 @@
  *
  * @see sc_rtp_context
  */
-struct rtp_tmp_variables
+struct rtp_tmp_vars
 {
 	/// The number of UDP/RTP fields that changed in the UDP/RTP headers
 	int send_rtp_dynamic;
@@ -95,7 +95,7 @@ struct sc_rtp_context
 
 	/// @brief RTP-specific temporary variables that are used during one single
 	///        compression of packet
-	struct rtp_tmp_variables tmp_variables;
+	struct rtp_tmp_vars tmp;
 
 	/// A window used to encode the TS field
 	struct c_wlsb *ts_window;

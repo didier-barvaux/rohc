@@ -143,14 +143,14 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	}
 
 	/* init the RTP-specific temporary variables */
-	rtp_context->tmp_variables.send_rtp_dynamic = -1;
-	rtp_context->tmp_variables.timestamp = 0;
-	rtp_context->tmp_variables.ts_send = 0;
+	rtp_context->tmp.send_rtp_dynamic = -1;
+	rtp_context->tmp.timestamp = 0;
+	rtp_context->tmp.ts_send = 0;
 	/* do not transmit any RTP TimeStamp (TS) bit by default */
-	rtp_context->tmp_variables.nr_ts_bits = 0;
+	rtp_context->tmp.nr_ts_bits = 0;
 	/* RTP Marker (M) bit is not set by default */
-	rtp_context->tmp_variables.m_set = 0;
-	rtp_context->tmp_variables.rtp_pt_changed = 0;
+	rtp_context->tmp.m_set = 0;
+	rtp_context->tmp.rtp_pt_changed = 0;
 
 	/* init the RTP-specific variables and functions */
 	g_context->next_header_proto = IPPROTO_UDP;
@@ -357,7 +357,7 @@ int c_rtp_encode(struct c_context *const context,
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* how many UDP/RTP fields changed? */
-	rtp_context->tmp_variables.send_rtp_dynamic = rtp_changed_rtp_dynamic(context, udp);
+	rtp_context->tmp.send_rtp_dynamic = rtp_changed_rtp_dynamic(context, udp);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size, dest, dest_size,
@@ -368,15 +368,15 @@ int c_rtp_encode(struct c_context *const context,
 	}
 
 	/* update the context with the new UDP/RTP headers */
-	if(g_context->tmp_variables.packet_type == PACKET_IR ||
-	   g_context->tmp_variables.packet_type == PACKET_IR_DYN)
+	if(g_context->tmp.packet_type == PACKET_IR ||
+	   g_context->tmp.packet_type == PACKET_IR_DYN)
 	{
 		rtp_context->old_udp = *udp;
 		rtp_context->old_rtp = *rtp;
 	}
 
 	/* update the context with new timestamp value */
-	rtp_context->tmp_variables.timestamp = ntohl(rtp->timestamp);
+	rtp_context->tmp.timestamp = ntohl(rtp->timestamp);
 
 quit:
 	return size;
@@ -422,8 +422,7 @@ void rtp_decide_state(struct c_context *const context)
 		rohc_debugf(3, "init ts_stride but timestamp is constant -> FO\n");
 		change_state(context, FO);
 	}
-	else if(rtp_context->tmp_variables.send_rtp_dynamic &&
-	        context->state != IR)
+	else if(rtp_context->tmp.send_rtp_dynamic && context->state != IR)
 	{
 		rohc_debugf(3, "send_rtp_dynamic != 0 -> FO\n");
 		change_state(context, FO);
@@ -557,7 +556,7 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte = 0;
 	if(!is_ts_constant(rtp_context->ts_sc) &&
 	   (rtp_context->ts_sc.state == INIT_STRIDE ||
-	    (g_context->tmp_variables.packet_type == PACKET_IR &&
+	    (g_context->tmp.packet_type == PACKET_IR &&
 	     rtp_context->ts_sc.state == SEND_SCALED)))
 	{
 		/* send ts_stride */
@@ -749,11 +748,11 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	if(rtp->m != 0)
 	{
 		rohc_debugf(3, "RTP Marker (M) bit is set\n");
-		rtp_context->tmp_variables.m_set = 1;
+		rtp_context->tmp.m_set = 1;
 	}
 	else
 	{
-		rtp_context->tmp_variables.m_set = 0;
+		rtp_context->tmp.m_set = 0;
 	}
 
 	/* check RTP Payload Type field */
@@ -764,7 +763,7 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 		{
 			rohc_debugf(3, "RTP Payload Type (PT) field changed (0x%x -> 0x%x)\n",
 			            rtp_context->old_rtp.pt, rtp->pt);
-			rtp_context->tmp_variables.rtp_pt_changed = 1;
+			rtp_context->tmp.rtp_pt_changed = 1;
 			rtp_context->rtp_pt_change_count = 0;
 		}
 		else
@@ -777,11 +776,11 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	}
 	else
 	{
-		rtp_context->tmp_variables.rtp_pt_changed = 0;
+		rtp_context->tmp.rtp_pt_changed = 0;
 	}
 
 	/* we verify if ts_stride changed */
-	rtp_context->tmp_variables.timestamp = ntohl(rtp->timestamp);
+	rtp_context->tmp.timestamp = ntohl(rtp->timestamp);
 
 	rohc_debugf(2, "%d RTP dynamic fields changed\n", fields);
 
