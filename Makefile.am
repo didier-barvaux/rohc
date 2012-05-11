@@ -28,7 +28,7 @@ else
 EXAMPLES_DIR =
 endif
 
-SUBDIRS = src $(TESTS_DIR) $(STATS_DIR) app $(DOC_DIR) $(EXAMPLES_DIR)
+SUBDIRS = src $(TESTS_DIR) $(STATS_DIR) app $(DOC_DIR) $(EXAMPLES_DIR) contrib
 
 dist_doc_DATA = \
 	README \

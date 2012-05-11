@@ -269,6 +269,7 @@ AC_CONFIG_FILES([ \
 	app/tunnel/Makefile \
 	doc/doxygen.conf \
 	doc/Makefile \
+	contrib/Makefile \
 	rohc.pc \
 ])
 
