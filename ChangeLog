@@ -1,15 +1,114 @@
-TODO - release 1.4.0
+17 May 2012 - release 1.4.0
   Compatibility:
     Version 1.4.0 is not compatible with versions < 1.4.0 because of several
     fixes related to IETF RFCs that change the format of ROHC packets.
   License/Authors:
-    Many thanks to Ahmed Fathy and Klaus Warnke for their bug reports.
+    Add Didier Barvaux's personal email address in addition to Viveris one.
+  Acknowledgments for bug reports and/or bug fixes:
+    Ahmed Fathy, Arne, François W., hzkjdxwktx, Klaus Warnke, laAnna Hao,
+    qingbaibai, Viveris Technologies.
+  Main changes:
+    Make the library completely thread-aware.
+    Add new API method rohc_comp_get_last_packet_info() to retrieve some
+	   information about the last compressed packet.
+    Add several new API functions for getting descriptions on packet types,
+      extension types, mode and states.
+    Deprecate crc_init_table(), crc_get_polynom() and crc_table_X from API
+	   (they are still available, but emit a warning).
+    Rework list compression in a more understandable and robust way.
+    Add a simple example program in subdir examples/.
+    Remove the outdated "measures" directory.
+    Remove context repair (maybe added again later).
+    Update main and features pages in API documentation.
+    Add new application and script to generate ROHC compression statistics
+	   (old broken statistics scripts removed).
+    Add new application for testing compression computing performance.
   Build system:
-    TODO
+    Install README, INSTALL, COPYING, AUTHORS, ChangeLog files.
+    Update the way API documentation is generated: configure option
+      --enable-doc and 'make install' replace 'make doc'.
+    Avoid installing private ROHC headers on the system during install.
+    Make 'make' less verbose to get output like Linux kernel build.
+    Remove useless or deprecated checks from configure.ac.
+    Remove support for 'make report', 'make check' supersedes it.
+    Configure: avoid adding -lpcap to LDFLAGS several times.
+    Configure: add support for PACKAGE_URL.
+    Fix build with CFLAGS="-DNDEBUG".
+  Q&A:
+    Move private functions/definitions from public headers to private headers.
+    Clearly separate public and private functions in several files.
+    Avoid useless system/internal header inclusions in order to reduce header
+      interdependencies.
+    Create enums for packet types, extension types, CID types and SDVL types.
+    Remove the ugly internal boolean type.
+    Remove duplicated checks for non-IPv4/IPv6 and fragmented packets.
+    Check pointers against NULL instead of 0.
+    Add many const and static keywords when appropriate.
+    Add many nonnull and warn_unused_result attributes when appropriate.
+    Use uint8_t, uint16_t, uint32_t and size_t instead of int or unsigned int
+      when appropriate.
+    Remove the 'version' fields in compression/decompression profiles.
+    Fix print formats: use %u instead of %d if type is unsigned.
+    Avoid modifying input parameters (data and length) in several functions.
+    Add debug traces to help debugging.
+    Add many assertion to ease debugging.
+    Improve code style (uncrustify config file stored in contrib/).
+    Improve English spelling.
+    Remove some dead code.
+    Improve the non-regression test application.
+    Add new network captures for the non-regression test.
+	 Add unit test for LSB encoding/decoding at wraparound.
+	 Add functional test for FEEDBACK-2 packets.
+	 Add robustness test for feedback-only packets.
+    Add robustness test for damaged packet handling.
+    Add robustness test for empty payload handling.
   Bug fixes:
-    TODO
-  ROHC tunnel:
-    TODO
+    Bug #409562: failed to run the statistics tool
+    Bug #549619: rohctunnel not installed in /usr/sbin
+    Bug #555695: GCC warnings on x86-64
+    Bug #555875: ROHC library mishandles RTP Payload Type (PT) changes
+    Bug #556049: rohc0 creation failed for rohc 1.3.0 library
+    Bug #560589: ROHC library mishandles non-IPv4/IPv6 packets
+    Bug #560994: inaccurate help printed by non-regression application
+    Bug #565470: Compression/decompression failure with large IPv6 extension
+    Bug #580462: Incorrect test for Uncompressed profile with non-IPv4/v6
+                 packets
+    Bug #580491: ROHC library fails to handle a specific ICMP stream
+    Bug #604517: Error in Decompressor for RTP profile
+    Bug #606919: Function rohc_feedback_flush() not referenced in the
+                 compression API
+    Bug #622128: FEEDBACK-2 without option contains 12 bits of SN, not 8 bits
+    Bug #622329: ROHC library fails to decompress ROHC packets with empty
+                 payloads
+    Bug #622402: Incorrect format for UO-1-ID packet
+    Bug #622736: coding sequence number in Extension 3
+    Bug #642850: The ROHC PCAP captures do not use the Ethertype assigned to
+                 ROHC
+    Bug #759460: don't compress a packet only with feedback
+    Bug #761955: IP-ID in extension-3 not compressed as it shall be
+    Bug #763496: Large CIDs shall be bound to the [0-16383] range
+    Bug #764707: R-TS = 0, Tsc = 0 in EXT3 no allowed
+    Bug #766277: crc calc outer ip hdr wrong
+    Bug #767354: Wrong packet decision in FO state
+    Bug #776482: RTP Marker (M) bit must be transmitted if set
+    Bug #777852: Wrong Next Header field in compressed IPv6 extension headers
+    Bug #778541: wrong bitmask format for insertion/removal schemes of list
+                 compression
+    Bug #799856: failure reported when decoding feedback-only packets
+    Bug #800829: No check for doxygen
+    Bug #800830: No check for gnuplot
+    Bug #800835: ROHC library build emits warnings on x86-64
+    Bug #800841: Setup buildbots for continuous integration
+    Bug #803648: Decompression failure for IPv4 stream with empty payload
+    Bug #804552: UOR-2 packets cannot be used if bits(SN) > 14
+    Bug #808475: Correctly handle the LSB wraparound
+    Bug #886523: Build of tests and apps fails with support for shared libs
+                 disabled
+    Bug #888287: tests fail on ARM
+    Bug #897831: Library fails to build with GCC < 4.5
+    Bug #897849: Library fails to build with GCC 4.6
+    Bug #948711: mode field not correctly parsed from RTP dynamic chain
+    Bug #970762: Wrong SN in feedback
 
 22 Mar 2010 - release 1.3.0
   Compatibility:
@@ -69,3 +168,4 @@ TODO - release 1.4.0
   UDP-Lite profile
   RTP profile
   some non-standard improvements (use of jamming, new RTP bit type)
+
