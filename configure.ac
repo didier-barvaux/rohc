@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ROHC library], [1.4.0], [http://launchpad.net/rohc/],
+AC_INIT([ROHC library], [trunk], [http://launchpad.net/rohc/],
         [rohc], [http://launchpad.net/rohc/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])

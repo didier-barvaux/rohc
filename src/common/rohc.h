@@ -58,8 +58,8 @@
  * <h2>License</h2>
  *
  * <p>The project is licensed under GPL2+.
- * See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/1.4.x/annotate/head%3A/COPYING">COPYING</a>
- * and <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/1.4.x/annotate/head%3A/AUTHORS">AUTHORS</a>
+ * See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/COPYING">COPYING</a>
+ * and <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/AUTHORS">AUTHORS</a>
  * files for more details.</p>
  *
  *
@@ -76,7 +76,7 @@
  *  </ul>
  * </p>
  *
- * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/1.4.x/annotate/head%3A/INSTALL"> INSTALL file</a>
+ * <p>See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL"> INSTALL file</a>
  * to learn to build the libraries.</p>
  *
  *
@@ -94,7 +94,7 @@
  * <h2>Non-regression tests</h2>
  *
  * <p>
- * The test subdirectory contains several test applications. See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/1.4.x/annotate/head%3A/INSTALL">INSTALL file</a> to learn how to use these tools.
+ * The test subdirectory contains several test applications. See the <a href="http://bazaar.launchpad.net/%7Edidier-barvaux/rohc/main/annotate/head%3A/INSTALL">INSTALL file</a> to learn how to use these tools.
  * </p>
  *
  *

@@ -1733,8 +1733,6 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
  *       and reference lists (see \ref get_elt and \ref type_is_present
  *       especially)
  *
- * @bug The insertion bit mask is wrong. See bug #778541.
- *
  * \verbatim
 
  Encoding type 1 (5.8.6.2):
@@ -2060,8 +2058,6 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
  *       and reference lists (see \ref get_elt and \ref type_is_present
  *       especially)
  *
- * @bug The removal bit mask is wrong. See bug #778541.
- *
  * \verbatim
 
  Encoding type 2 (5.8.6.3):
@@ -2215,8 +2211,6 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
  * @todo this function is inefficient as it loops many times in the current
  *       and reference lists (see \ref get_elt and \ref type_is_present
  *       especially)
- *
- * @bug The removal/insertion bit masks are wrong. See bug #778541.
  *
  * \verbatim
 

@@ -1,3 +1,19 @@
+TODO - release 1.5.0
+  Compatibility:
+    TODO
+  License/Authors:
+    TODO
+  Acknowledgments for bug reports and/or bug fixes:
+    TODO
+  Main changes:
+    TODO
+  Build system:
+    TODO
+  Q&A:
+    TODO
+  Bug fixes:
+    TODO
+
 17 May 2012 - release 1.4.0
   Compatibility:
     Version 1.4.0 is not compatible with versions < 1.4.0 because of several
@@ -10,18 +26,18 @@
   Main changes:
     Make the library completely thread-aware.
     Add new API method rohc_comp_get_last_packet_info() to retrieve some
-	   information about the last compressed packet.
+      information about the last compressed packet.
     Add several new API functions for getting descriptions on packet types,
       extension types, mode and states.
     Deprecate crc_init_table(), crc_get_polynom() and crc_table_X from API
-	   (they are still available, but emit a warning).
+     (they are still available, but emit a warning).
     Rework list compression in a more understandable and robust way.
     Add a simple example program in subdir examples/.
     Remove the outdated "measures" directory.
     Remove context repair (maybe added again later).
     Update main and features pages in API documentation.
     Add new application and script to generate ROHC compression statistics
-	   (old broken statistics scripts removed).
+      (old broken statistics scripts removed).
     Add new application for testing compression computing performance.
   Build system:
     Install README, INSTALL, COPYING, AUTHORS, ChangeLog files.
@@ -57,9 +73,9 @@
     Remove some dead code.
     Improve the non-regression test application.
     Add new network captures for the non-regression test.
-	 Add unit test for LSB encoding/decoding at wraparound.
-	 Add functional test for FEEDBACK-2 packets.
-	 Add robustness test for feedback-only packets.
+    Add unit test for LSB encoding/decoding at wraparound.
+    Add functional test for FEEDBACK-2 packets.
+    Add robustness test for feedback-only packets.
     Add robustness test for damaged packet handling.
     Add robustness test for empty payload handling.
   Bug fixes:
