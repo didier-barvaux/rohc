@@ -29,6 +29,15 @@
 #include <assert.h>
 
 
+/** Print trace on stdout only in verbose mode */
+#define trace(is_verbose, format, ...) \
+	do { \
+		if(is_verbose) { \
+			printf(format, ##__VA_ARGS__); \
+		} \
+	} while(0)
+
+
 /**
  * @brief Test LSB encoding/decoding at wraparound
  *
@@ -72,9 +81,6 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* start encoding with value 0 */
-	value16 = 0;
-
 	/* create the W-LSB encoding context */
 	wlsb = c_create_wlsb(16, C_WINDOW_WIDTH, p);
 	if(wlsb == NULL)
@@ -83,12 +89,19 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* init the LSB decoding context */
+	/* init the LSB decoding context with value 0 */
+	value16 = 0;
+	trace(be_verbose, "initialize with 16 bits of value 0x%04x ...\n", value16);
 	d_lsb_init(&lsb, value16, p);
 
 	/* initialize the W-LSB encoding context */
 	for(i = 1; i < 3; i++)
 	{
+		/* value to encode/decode */
+		value16 = i % 0xffff;
+
+		trace(be_verbose, "initialize with 16 bits of value 0x%04x ...\n", value16);
+
 		/* update encoding context */
 		c_add_wlsb(wlsb, value16, value16);
 
@@ -98,9 +111,6 @@ int main(int argc, char *argv[])
 
 		/* update decoding context */
 		d_lsb_update(&lsb, value16_decoded);
-
-		/* next value to encode/decode */
-		value16 = i % 0xffff;
 	}
 
 	/* encode then decode 16-bit values from ranges [3, 0xffff] and [0, 1] */
@@ -109,11 +119,11 @@ int main(int argc, char *argv[])
 		size_t required_bits;
 		uint16_t required_bits_mask;
 
+		/* value to encode/decode */
+		value16 = i % (0xffff + 1);
+
 		/* encode */
-		if(be_verbose)
-		{
-			printf("encode value 0x%04x ...\n", value16);
-		}
+		trace(be_verbose, "encode value 0x%04x ...\n", value16);
 		ret = c_get_k_wlsb(wlsb, value16, &required_bits);
 		if(ret != 1)
 		{
@@ -131,19 +141,15 @@ int main(int argc, char *argv[])
 			required_bits_mask = (1 << required_bits) - 1;
 		}
 		value16_encoded = value16 & required_bits_mask;
-		if(be_verbose)
-		{
-			printf("encoded on %zd bits: 0x%04x\n", required_bits, value16_encoded);
-		}
+		trace(be_verbose, "\tencoded on %zd bits: 0x%04x\n", required_bits,
+		      value16_encoded);
 
 		/* update encoding context */
 		c_add_wlsb(wlsb, value16, value16);
 
 		/* decode */
-		if(be_verbose)
-		{
-			printf("decode %zd-bit value 0x%04x ...\n", required_bits, value16_encoded);
-		}
+		trace(be_verbose, "\tdecode %zd-bit value 0x%04x ...\n", required_bits,
+		      value16_encoded);
 		ret = d_lsb_decode16(&lsb, value16_encoded, required_bits,
 		                     &value16_decoded);
 		if(ret != 1)
@@ -151,10 +157,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "failed to decode 16-bit value\n");
 			goto destroy_wlsb;
 		}
-		if(be_verbose)
-		{
-			printf("decoded: 0x%04x\n", value16_decoded);
-		}
+		trace(be_verbose, "\tdecoded: 0x%04x\n", value16_decoded);
 
 		/* update decoding context */
 		d_lsb_update(&lsb, value16_decoded);
@@ -162,15 +165,13 @@ int main(int argc, char *argv[])
 		/* check test result */
 		if(value16 != value16_decoded)
 		{
-			fprintf(stderr, "original and decoded values do not match\n");
+			fprintf(stderr, "\toriginal and decoded values do not match\n");
 			goto destroy_wlsb;
 		}
-
-		/* next value to encode/decode */
-		value16 = i & 0xffff;
 	}
 
 	/* test succeeds */
+	trace(be_verbose, "all tests are successful\n");
 	is_failure = 0;
 
 destroy_wlsb:
