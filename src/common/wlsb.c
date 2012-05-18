@@ -207,21 +207,23 @@ int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 	/* if the window contained at least one value */
 	if(valid)
 	{
-		size_t k1;
-		size_t k2;
-
 		/* find the minimal number of bits of the value required to be able
 		 * to recreate it thanks to the window */
-
-		/* find the minimal number of bits for the lower limit of the interval */
-		k1 = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
-		/* find the minimal number of bits for the upper limit of the interval */
-		k2 = rohc_g_16bits(max, value, wlsb->p, wlsb->bits);
-
-		/* keep the greatest one */
-		*bits_nr = (k1 > k2) ? k1 : k2;
+		if(min == max)
+		{
+			/* find the minimal number of bits for the lower/upper limit of the interval */
+			*bits_nr = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
+		}
+		else
+		{
+			/* find the minimal number of bits for the lower limit of the interval */
+			const size_t k1 = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
+			/* find the minimal number of bits for the upper limit of the interval */
+			const size_t k2 = rohc_g_16bits(max, value, wlsb->p, wlsb->bits);
+			/* keep the greatest one */
+			*bits_nr = (k1 > k2) ? k1 : k2;
+		}
 		assert((*bits_nr) <= 16);
-
 		is_success = 1;
 	}
 	else /* else no k matches */
