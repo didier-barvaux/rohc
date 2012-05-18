@@ -620,7 +620,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 	/* init SN and IP-IDs (IPv4 only) */
 	sn = ntohs(rtp->sn);
-	d_lsb_init(&context->sn, sn, 3);
+	d_lsb_init(&context->sn, sn, ROHC_LSB_SHIFT_RTP_SN);
 	if(ip_get_version(&context->active1->ip) == IPV4)
 	{
 		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);

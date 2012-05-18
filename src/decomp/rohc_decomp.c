@@ -281,28 +281,28 @@ struct d_context * context_create(struct rohc_decomp *decomp, int with_cid,
 	context->latest_used = get_milliseconds();
 
 	/* create 4 W-LSB windows */
-	context->total_16_uncompressed = c_create_wlsb(32, 16, 0);
+	context->total_16_uncompressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
 	if(context->total_16_uncompressed == NULL)
 	{
 		rohc_debugf(0, "cannot create the total_16_uncompressed W-LSB window\n");
 		goto destroy_profile_data;
 	}
 
-	context->total_16_compressed = c_create_wlsb(32, 16, 0);
+	context->total_16_compressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
 	if(context->total_16_compressed == NULL)
 	{
 		rohc_debugf(0, "cannot create the total_16_compressed W-LSB window\n");
 		goto destroy_window_tu;
 	}
 
-	context->header_16_uncompressed = c_create_wlsb(32, 16, 0);
+	context->header_16_uncompressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
 	if(context->header_16_uncompressed == NULL)
 	{
 		rohc_debugf(0, "cannot create the header_16_uncompressed W-LSB window\n");
 		goto destroy_window_tc;
 	}
 
-	context->header_16_compressed = c_create_wlsb(32, 16, 0);
+	context->header_16_compressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
 	if(context->header_16_compressed == NULL)
 	{
 		rohc_debugf(0, "cannot create the header_16_compressed W-LSB window\n");

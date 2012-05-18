@@ -86,7 +86,7 @@ int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
 	}
 
 	/* determine the interval in which the decoded value should be present */
-	rohc_f_16bits(offset_ref, k, 0, &min, &max);
+	rohc_f_16bits(offset_ref, k, ROHC_LSB_SHIFT_IP_ID, &min, &max);
 
 	/* search the value that matches the k lower bits of the value m to decode:
 	   try all values from the interval starting from the smallest one */

@@ -45,8 +45,11 @@
  * @param min   OUT: The lower limit of the interval
  * @param max   OUT: The upper limit of the interval
  */
-void rohc_f_16bits(const uint16_t v_ref, const size_t k, const int16_t p,
-                   uint16_t *const min, uint16_t *const max)
+void rohc_f_16bits(const uint16_t v_ref,
+                   const size_t k,
+                   const rohc_lsb_shift_t p,
+                   uint16_t *const min,
+                   uint16_t *const max)
 {
 	uint32_t min32;
 	uint32_t max32;
@@ -79,8 +82,11 @@ void rohc_f_16bits(const uint16_t v_ref, const size_t k, const int16_t p,
  * @param min   OUT: The lower limit of the interval
  * @param max   OUT: The upper limit of the interval
  */
-void rohc_f_32bits(const uint32_t v_ref, const size_t k, const int32_t p,
-                   uint32_t *const min, uint32_t *const max)
+void rohc_f_32bits(const uint32_t v_ref,
+                   const size_t k,
+                   const rohc_lsb_shift_t p,
+                   uint32_t *const min,
+                   uint32_t *const max)
 {
 	const uint32_t interval_width = (1 << k) - 1; /* (1 << k) = 2^k */
 	int32_t computed_p;
@@ -88,35 +94,39 @@ void rohc_f_32bits(const uint32_t v_ref, const size_t k, const int32_t p,
 	/* sanity check: check for value that will cause an integer overflow */
 	assert(k < 32);
 
-	/* determine the p value to use */
-	if(p == 2)
+	/* determine the real p value to use */
+	switch(p)
 	{
-		/* special computation for timestamp encoding */
-		if(k <= 2)
+		case ROHC_LSB_SHIFT_RTP_TS: /* special computation for RTP TS encoding */
 		{
-			computed_p = 0;
+			if(k <= 2)
+			{
+				computed_p = 0;
+			}
+			else
+			{
+				computed_p = (1 << (k - 2)) - 1;
+			}
 		}
-		else
+		break;
+
+		case ROHC_LSB_SHIFT_RTP_SN: /* special computation for SN encoding */
 		{
-			computed_p = (1 << (k - 2)) - 1;
+			if(k <= 4)
+			{
+				computed_p = 1;
+			}
+			else
+			{
+				computed_p = (1 << (k - 5)) - 1;
+			}
 		}
-	}
-	else if(p == 3)
-	{
-		/* special computation for SN encoding */
-		if(k <= 4)
+		break;
+
+		default: /* otherwise: use the p value given as parameter */
 		{
-			computed_p = 1;
+			computed_p = p;
 		}
-		else
-		{
-			computed_p = (1 << (k - 5)) - 1;
-		}
-	}
-	else
-	{
-		/* otherwise: use the p value given as parameter */
-		computed_p = p;
 	}
 
 	/* compute the minimal value of the interval:

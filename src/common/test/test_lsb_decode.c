@@ -53,7 +53,12 @@ int main(int argc, char *argv[])
 {
 	/* the shift parameters to run test with */
 	const size_t p_nums = 4;
-	const short p_params[] = { -1, 0, 2, 3 };
+	const short p_params[] = {
+		ROHC_LSB_SHIFT_IP_ID,
+		ROHC_LSB_SHIFT_RTP_TS,
+		ROHC_LSB_SHIFT_RTP_SN,
+		ROHC_LSB_SHIFT_SN
+	};
 	size_t p_index;
 
 	bool verbose; /* whether to run in verbose mode or not */

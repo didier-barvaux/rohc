@@ -24,6 +24,8 @@
 #ifndef LSB_H
 #define LSB_H
 
+#include "interval.h" /* for rohc_lsb_shift_t */
+
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -38,7 +40,7 @@ struct d_lsb_decode
 	/// The previous reference value
 	uint32_t old_v_ref_d;
 	/// The p shift parameter (see 4.5.1 in the RFC 3095)
-	short p;
+	rohc_lsb_shift_t p;
 };
 
 
@@ -48,7 +50,7 @@ struct d_lsb_decode
 
 void d_lsb_init(struct d_lsb_decode *const lsb,
                 const uint32_t v_ref_d,
-                const short p);
+                const rohc_lsb_shift_t p);
 
 int d_lsb_decode32(const struct d_lsb_decode *const lsb,
                    const uint32_t m,

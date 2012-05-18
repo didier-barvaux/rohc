@@ -22,7 +22,7 @@
  */
 
 #include "lsb.h"
-#include "interval.h" /* for the f() function */
+#include "interval.h" /* for the rohc_f_32bits() function */
 
 #include <assert.h>
 
@@ -38,7 +38,7 @@
  */
 void d_lsb_init(struct d_lsb_decode *const lsb,
                 const uint32_t v_ref_d,
-                const short p)
+                const rohc_lsb_shift_t p)
 {
 	lsb->p = p;
 	lsb->v_ref_d = v_ref_d;

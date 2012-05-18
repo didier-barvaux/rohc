@@ -1472,10 +1472,14 @@ static int c_alloc_contexts(struct rohc_comp *const comp, int size)
 		for(i = comp->num_contexts; i < size; i++)
 		{
 			/* create windows with 16 entries */
-			new_contexts[i].total_16_uncompressed = c_create_wlsb(32, 16, 0);
-			new_contexts[i].total_16_compressed = c_create_wlsb(32, 16, 0);
-			new_contexts[i].header_16_uncompressed = c_create_wlsb(32, 16, 0);
-			new_contexts[i].header_16_compressed = c_create_wlsb(32, 16, 0);
+			new_contexts[i].total_16_uncompressed =
+				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+			new_contexts[i].total_16_compressed =
+				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+			new_contexts[i].header_16_uncompressed =
+				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+			new_contexts[i].header_16_compressed =
+				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
 		}
 
 		comp->contexts = new_contexts;

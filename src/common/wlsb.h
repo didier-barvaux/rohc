@@ -25,6 +25,8 @@
 #ifndef WLSB_H
 #define WLSB_H
 
+#include "interval.h" /* for rohc_lsb_shift_t */
+
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -73,7 +75,7 @@ struct c_wlsb
 	/// The maximal number of bits for representing the value
 	size_t bits;
 	/// Shift parameter (see 4.5.2 in the RFC 3095)
-	int32_t p;
+	rohc_lsb_shift_t p;
 };
 
 
@@ -83,7 +85,7 @@ struct c_wlsb
 
 struct c_wlsb * c_create_wlsb(const size_t bits,
                               const size_t window_width,
-                              const int32_t p);
+                              const rohc_lsb_shift_t p);
 void c_destroy_wlsb(struct c_wlsb *s);
 
 void c_add_wlsb(struct c_wlsb *const wlsb,

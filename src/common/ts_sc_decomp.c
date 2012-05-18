@@ -49,7 +49,7 @@ void d_create_sc(struct ts_sc_decomp *const ts_sc)
 	ts_sc->new_ts_scaled = 0;
 	ts_sc->new_ts_offset = 0;
 
-	d_lsb_init(&ts_sc->lsb_ts_scaled, 0, 2);
+	d_lsb_init(&ts_sc->lsb_ts_scaled, 0, ROHC_LSB_SHIFT_RTP_TS);
 }
 
 

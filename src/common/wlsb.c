@@ -23,7 +23,7 @@
  */
 
 #include "wlsb.h"
-#include "interval.h" /* for the f() function */
+#include "interval.h" /* for the rohc_f_*bits() functions */
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 
@@ -37,11 +37,15 @@
 
 static void c_ack_remove(struct c_wlsb *s, int index);
 
-static size_t rohc_g_16bits(const uint16_t v_ref, const uint16_t v,
-                            const int16_t p, const size_t bits_nr);
+static size_t rohc_g_16bits(const uint16_t v_ref,
+                            const uint16_t v,
+                            const rohc_lsb_shift_t p,
+                            const size_t bits_nr);
 
-static size_t rohc_g_32bits(const uint32_t v_ref, const uint32_t v,
-                            const int32_t p, const size_t bits_nr);
+static size_t rohc_g_32bits(const uint32_t v_ref,
+                            const uint32_t v,
+                            const rohc_lsb_shift_t p,
+                            const size_t bits_nr);
 
 
 /*
@@ -59,7 +63,7 @@ static size_t rohc_g_32bits(const uint32_t v_ref, const uint32_t v,
  */
 struct c_wlsb * c_create_wlsb(const size_t bits,
                               const size_t window_width,
-                              const int32_t p)
+                              const rohc_lsb_shift_t p)
 {
 	struct c_wlsb *wlsb;
 	size_t entry;
@@ -523,8 +527,10 @@ static void c_ack_remove(struct c_wlsb *s, int index)
  *              LSB-encoded value
  * @return      The minimal k value as defined by the LSB calculation algorithm
  */
-static size_t rohc_g_16bits(const uint16_t v_ref, const uint16_t v,
-                            const int16_t p, const size_t bits_nr)
+static size_t rohc_g_16bits(const uint16_t v_ref,
+                            const uint16_t v,
+                            const rohc_lsb_shift_t p,
+                            const size_t bits_nr)
 {
 	uint16_t min;
 	uint16_t max;
@@ -572,8 +578,10 @@ static size_t rohc_g_16bits(const uint16_t v_ref, const uint16_t v,
  *              LSB-encoded value
  * @return      The minimal k value as defined by the LSB calculation algorithm
  */
-static size_t rohc_g_32bits(const uint32_t v_ref, const uint32_t v,
-                            const int32_t p, const size_t bits_nr)
+static size_t rohc_g_32bits(const uint32_t v_ref,
+                            const uint32_t v,
+                            const rohc_lsb_shift_t p,
+                            const size_t bits_nr)
 {
 	uint32_t min;
 	uint32_t max;

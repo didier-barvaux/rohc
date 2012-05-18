@@ -385,7 +385,8 @@ int c_init_header_info(struct ip_header_info *header_info,
 	if(header_info->version == IPV4)
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
-		header_info->info.v4.ip_id_window = c_create_wlsb(16, C_WINDOW_WIDTH, 0);
+		header_info->info.v4.ip_id_window =
+			c_create_wlsb(16, C_WINDOW_WIDTH, ROHC_LSB_SHIFT_IP_ID);
 		if(header_info->info.v4.ip_id_window == NULL)
 		{
 			rohc_debugf(0, "no memory to allocate W-LSB encoding for IP-ID\n");
@@ -495,7 +496,7 @@ int c_generic_create(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	unsigned int ip_proto;
-	int p; /* parameter for W-LSB encoding of SN */
+	rohc_lsb_shift_t p; /* parameter for W-LSB encoding of SN */
 
 	/* check the IP header(s) */
 	ip_proto = ip_get_protocol(ip);
@@ -541,18 +542,19 @@ int c_generic_create(struct c_context *const context,
 	switch(context->profile->id)
 	{
 		case ROHC_PROFILE_RTP:
-			p = 3;
+			p = ROHC_LSB_SHIFT_RTP_SN;
 			break;
 		case ROHC_PROFILE_UNCOMPRESSED:
 		case ROHC_PROFILE_UDP:
 		case ROHC_PROFILE_IP:
 		case ROHC_PROFILE_UDPLITE:
-			p = -1;
+			p = ROHC_LSB_SHIFT_SN;
 			break;
 		default:
 			rohc_debugf(0, "bad profile ID (0x%04x)\n", context->profile->id);
 			goto clean;
 	}
+	rohc_debugf(3, "use shift parameter %d for LSB-encoding of SN\n", p);
 	g_context->sn_window = c_create_wlsb(16, C_WINDOW_WIDTH, p);
 	if(g_context->sn_window == NULL)
 	{
