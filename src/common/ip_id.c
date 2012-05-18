@@ -62,11 +62,11 @@ int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
                    uint16_t *const decoded)
 {
 	uint16_t offset_ref;
-	uint32_t min;
-	uint32_t max;
-	uint32_t try;
-	uint32_t mask;
-	int is_success;
+	uint16_t min;
+	uint16_t max;
+	uint16_t try;
+	uint16_t mask;
+	int is_found = 0;
 
 	assert(ip_id != NULL);
 	assert(k <= 16);
@@ -86,30 +86,58 @@ int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
 	}
 
 	/* determine the interval in which the decoded value should be present */
-	f(offset_ref, k, 0, &min, &max);
+	rohc_f_16bits(offset_ref, k, 0, &min, &max);
 
 	/* search the value that matches the k lower bits of the value m to decode:
 	   try all values from the interval starting from the smallest one */
-	for(try = min; try <= max; try++)
+	if(min <= max)
 	{
-		if((try & mask) == (m & mask))
+		/* the interpretation interval does not straddle the field boundaries */
+		for(try = min; try <= max; try++)
 		{
-			/* corresponding value found */
-			break;
+			if((try & mask) == (m & mask))
+			{
+				/* corresponding value found */
+				is_found = 1;
+				break;
+			}
 		}
-	}
-
-	if((try & mask) == (m & mask))
-	{
-		*decoded = (sn + ((uint16_t) (try & 0xffff))) & 0xffff;
-		is_success = 1;
 	}
 	else
 	{
-		is_success = 0;
+		/* the interpretation interval does straddle the field boundaries:
+		 * search in the first part of the interval */
+		for(try = min; try <= 0xffff; try++)
+		{
+			if((try & mask) == (m & mask))
+			{
+				/* corresponding value found */
+				is_found = 1;
+				break;
+			}
+		}
+		/* then, if not successful, search in the last part of the interval */
+		if(!is_found)
+		{
+			for(try = 0; try <= max; try++)
+			{
+				if((try & mask) == (m & mask))
+				{
+					/* corresponding value found */
+					is_found = 1;
+					break;
+				}
+			}
+		}
 	}
 
-	return is_success;
+	if(is_found)
+	{
+		/* add the decoded offset (try) with SN taking care of overflow */
+		*decoded = (uint16_t) ((((uint32_t) sn) + ((uint32_t) try)) & 0xffff);
+	}
+
+	return is_found;
 }
 
 

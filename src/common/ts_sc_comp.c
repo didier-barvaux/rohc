@@ -221,7 +221,8 @@ int nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
 	}
 	else
 	{
-		is_success = c_get_k_wlsb(ts_sc.scaled_window, ts_sc.ts_scaled, bits_nr);
+		is_success = wlsb_get_k_32bits(ts_sc.scaled_window, ts_sc.ts_scaled,
+		                               bits_nr);
 	}
 
 	return is_success;

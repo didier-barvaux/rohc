@@ -26,8 +26,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-void f(const uint32_t v_ref, const size_t k, const int32_t p,
-       uint32_t *const min, uint32_t *const max);
+void rohc_f_16bits(const uint16_t v_ref, const size_t k, const int16_t p,
+                   uint16_t *const min, uint16_t *const max);
+
+void rohc_f_32bits(const uint32_t v_ref, const size_t k, const int32_t p,
+                   uint32_t *const min, uint32_t *const max);
 
 #endif
 

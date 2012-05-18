@@ -7801,8 +7801,8 @@ static int update_variables(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			ret = c_get_k_wlsb(g_context->sn_window, g_context->sn,
-			                   &(g_context->tmp.nr_sn_bits));
+			ret = wlsb_get_k_16bits(g_context->sn_window, g_context->sn,
+			                        &(g_context->tmp.nr_sn_bits));
 			if(ret != 1)
 			{
 				rohc_debugf(0, "failed to find the minimal number of bits required "
@@ -7846,9 +7846,9 @@ static int update_variables(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			ret = c_get_k_wlsb(g_context->ip_flags.info.v4.ip_id_window,
-			                   g_context->ip_flags.info.v4.id_delta,
-			                   &(g_context->tmp.nr_ip_id_bits));
+			ret = wlsb_get_k_16bits(g_context->ip_flags.info.v4.ip_id_window,
+			                        g_context->ip_flags.info.v4.id_delta,
+			                        &(g_context->tmp.nr_ip_id_bits));
 			if(ret != 1)
 			{
 				rohc_debugf(0, "failed to find the minimal number of bits required "
@@ -7897,9 +7897,9 @@ static int update_variables(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			ret = c_get_k_wlsb(g_context->ip2_flags.info.v4.ip_id_window,
-			                   g_context->ip2_flags.info.v4.id_delta,
-			                   &(g_context->tmp.nr_ip_id_bits2));
+			ret = wlsb_get_k_16bits(g_context->ip2_flags.info.v4.ip_id_window,
+			                        g_context->ip2_flags.info.v4.id_delta,
+			                        &(g_context->tmp.nr_ip_id_bits2));
 			if(ret != 1)
 			{
 				rohc_debugf(0, "failed to find the minimal number of bits required "

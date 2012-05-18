@@ -66,7 +66,7 @@ int d_lsb_decode32(const struct d_lsb_decode *const lsb,
 	uint32_t max;
 	uint32_t try;
 	uint32_t mask;
-	int is_success;
+	int is_found = 0;
 
 	assert(lsb != NULL);
 	assert(k <= 32);
@@ -83,30 +83,55 @@ int d_lsb_decode32(const struct d_lsb_decode *const lsb,
 	}
 
 	/* determine the interval in which the decoded value should be present */
-	f(lsb->v_ref_d, k, lsb->p, &min, &max);
+	rohc_f_32bits(lsb->v_ref_d, k, lsb->p, &min, &max);
 
 	/* search the value that matches the k lower bits of the value m to decode:
 	   try all values from the interval starting from the smallest one */
-	for(try = min; try <= max && (try & mask) != m; try++)
+	if(min <= max)
 	{
-		if((try & mask) == (m & mask))
+		/* the interpretation interval does not straddle the field boundaries */
+		for(try = min; try <= max; try++)
 		{
-			/* corresponding value found */
-			break;
+			if((try & mask) == (m & mask))
+			{
+				/* corresponding value found */
+				is_found = 1;
+				*decoded = try;
+				break;
+			}
 		}
-	}
-
-	if((try & mask) == (m & mask))
-	{
-		*decoded = try;
-		is_success = 1;
 	}
 	else
 	{
-		is_success = 0;
+		/* the interpretation interval does straddle the field boundaries:
+		 * search in the first part of the interval */
+		for(try = min; try <= 0xffffffff; try++)
+		{
+			if((try & mask) == (m & mask))
+			{
+				/* corresponding value found */
+				is_found = 1;
+				*decoded = try;
+				break;
+			}
+		}
+		/* then, if not successful, search in the last part of the interval */
+		if(!is_found)
+		{
+			for(try = 0; try <= max; try++)
+			{
+				if((try & mask) == (m & mask))
+				{
+					/* corresponding value found */
+					is_found = 1;
+					*decoded = try;
+					break;
+				}
+			}
+		}
 	}
 
-	return is_success;
+	return is_found;
 }
 
 

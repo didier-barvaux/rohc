@@ -29,10 +29,14 @@
 
 
 /**
- * @brief The f function as defined in the LSB calculation algorithm
+ * @brief The f function as defined in LSB encoding for 16-bit fields
  *
- * Find out the interval \f$[v\_ref - p, v\_ref + (2^k - 1) - p]\f$ for a given k.
- * See 4.5.1 in the RFC 3095.
+ * Find out the interval \f$[v\_ref - p, v\_ref + (2^k - 1) - p]\f$ for a
+ * given k. See 4.5.1 in the RFC 3095 for details.
+ *
+ * As stated RFC, the values to be encoded have a finite range and the
+ * interpretation interval can straddle the wraparound boundary. So, the min
+ * value may be greater than the max value!
  *
  * @param v_ref The reference value
  * @param k     The number of least significant bits of the value that are
@@ -41,8 +45,42 @@
  * @param min   OUT: The lower limit of the interval
  * @param max   OUT: The upper limit of the interval
  */
-void f(const uint32_t v_ref, const size_t k, const int32_t p,
-       uint32_t *const min, uint32_t *const max)
+void rohc_f_16bits(const uint16_t v_ref, const size_t k, const int16_t p,
+                   uint16_t *const min, uint16_t *const max)
+{
+	uint32_t min32;
+	uint32_t max32;
+
+	/* do not accept more bits than the field may contain */
+	assert(k <= 16);
+
+	/* use the function for 32-bit fields, then ensure that nothing is greater
+	 * than 0xffff */
+	rohc_f_32bits(v_ref, k, p, &min32, &max32);
+	*min = min32 & 0xfffff;
+	*max = max32 & 0xfffff;
+}
+
+
+/**
+ * @brief The f function as defined in LSB encoding for 32-bit fields
+ *
+ * Find out the interval \f$[v\_ref - p, v\_ref + (2^k - 1) - p]\f$ for a
+ * given k. See 4.5.1 in the RFC 3095 for details.
+ *
+ * As stated RFC, the values to be encoded have a finite range and the
+ * interpretation interval can straddle the wraparound boundary. So, the min
+ * value may be greater than the max value!
+ *
+ * @param v_ref The reference value
+ * @param k     The number of least significant bits of the value that are
+ *              transmitted
+ * @param p     The shift parameter (may be negative)
+ * @param min   OUT: The lower limit of the interval
+ * @param max   OUT: The upper limit of the interval
+ */
+void rohc_f_32bits(const uint32_t v_ref, const size_t k, const int32_t p,
+                   uint32_t *const min, uint32_t *const max)
 {
 	const uint32_t interval_width = (1 << k) - 1; /* (1 << k) = 2^k */
 	int32_t computed_p;
@@ -81,27 +119,92 @@ void f(const uint32_t v_ref, const size_t k, const int32_t p,
 		computed_p = p;
 	}
 
-	/* compute the minimal value of the interval */
-	if(v_ref > computed_p)
+	/* compute the minimal value of the interval:
+	 *   min = v_ref - p  */
+	if(computed_p >= 0)
 	{
-		*min = v_ref - computed_p;
+		/* shift is positive, be careful if straddling the lower wraparound
+		 * boundary */
+		if(v_ref >= computed_p)
+		{
+			/* no need to straddle the lower wraparound boundary */
+			*min = v_ref - computed_p;
+		}
+		else
+		{
+			/* straddle the lower wraparound boundary
+			 * (+ 1 at the end is for handling correctly the 0) */
+			*min = 0xffffffff - (computed_p - v_ref) + 1;
+		}
 	}
-	else
+	else /* computed_p < 0 */
 	{
-		/* do not straddle the wraparound boundary */
-		*min = 0;
+		/* shift is negative, be careful if straddling the upper wraparound
+		 * boundary */
+		if(v_ref <= (0xffffffff + computed_p))
+		{
+			/* no need to straddle the upper wraparound boundary */
+			*min = v_ref - computed_p;
+		}
+		else
+		{
+			/* straddle the upper wraparound boundary
+			 * (- 1 at the end is for handling correctly the 0) */
+			*min = 0 - computed_p - (0xffffffff - v_ref) - 1;
+		}
 	}
 
-	/* compute the maximal value of the interval */
-	if(interval_width <= computed_p ||
-	   v_ref <= (0xffffffff - (interval_width - computed_p)))
+	/* compute the maximal value of the interval:
+	 *   max = v_ref + interval_with - p  */
+	if(computed_p >= 0)
 	{
-		*max = v_ref + interval_width - computed_p;
+		/* shift is positive, be careful if straddling a wraparound boundary */
+		if(interval_width >= computed_p)
+		{
+			/* be careful if straddling the upper wraparound boundary */
+			if(v_ref <= (0xffffffff - (interval_width - computed_p)))
+			{
+				/* no need to straddle the upper wraparound boundary */
+				*max = v_ref + interval_width - computed_p;
+			}
+			else
+			{
+				/* straddle the upper wraparound boundary
+				 * (- 1 at the end is for handling correctly the 0) */
+				*max = 0 + interval_width - computed_p - (0xffffffff - v_ref) - 1;
+			}
+		}
+		else
+		{
+			/* be careful if straddling the lower wraparound boundary */
+			if((v_ref + interval_width) >= computed_p)
+			{
+				/* no need to straddle the lower wraparound boundary */
+				*max = v_ref + interval_width - computed_p;
+			}
+			else
+			{
+				/* straddle the lower wraparound boundary
+				 * (+ 1 at the end is for handling correctly the 0) */
+				*max = 0xffffffff - (computed_p - (v_ref + interval_width)) + 1;
+			}
+		}
 	}
-	else
+	else /* computed_p < 0 */
 	{
-		/* do not straddle the wraparound boundary */
-		*max = 0xffffffff;
+		/* shift is negative, be careful if straddling the upper wraparound
+		 * boundary */
+		if(v_ref <= (0xffffffff - (interval_width - computed_p)))
+		{
+			/* no need to straddle the upper wraparound boundary */
+			*max = v_ref + interval_width - computed_p;
+		}
+		else
+		{
+			/* straddle the upper wraparound boundary
+			 * (- 1 at the end is for handling correctly the 0) */
+			*max = 0 + interval_width - computed_p - (0xffffffff - v_ref) - 1;
+		}
 	}
 }
 

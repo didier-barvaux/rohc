@@ -37,8 +37,11 @@
 
 static void c_ack_remove(struct c_wlsb *s, int index);
 
-static size_t g(const uint32_t v_ref, const uint32_t v,
-                const int32_t p, const size_t bits_nr);
+static size_t rohc_g_16bits(const uint16_t v_ref, const uint16_t v,
+                            const int16_t p, const size_t bits_nr);
+
+static size_t rohc_g_32bits(const uint32_t v_ref, const uint32_t v,
+                            const int32_t p, const size_t bits_nr);
 
 
 /*
@@ -146,6 +149,8 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
  * @brief Find out the minimal number of bits of the to-be-encoded value
  *        required to be able to uniquely recreate it given the window
  *
+ * The function is dedicated to 16-bit fields.
+ *
  * @param wlsb     The W-LSB object
  * @param value    The value to encode using the LSB algorithm
  * @param bits_nr  OUT: The number of bits required to uniquely recreate the
@@ -153,9 +158,93 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
  * @return         1 in case of success,
  *                 0 if the minimal number of bits can not be found
  */
-int c_get_k_wlsb(const struct c_wlsb *const wlsb,
-                 const uint32_t value,
-                 size_t *const bits_nr)
+int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
+                      const uint16_t value,
+                      size_t *const bits_nr)
+{
+	size_t entry;
+	int valid;
+	uint16_t min;
+	uint16_t max;
+	int is_success;
+
+	assert(wlsb != NULL);
+	assert(wlsb->window != NULL);
+	assert(value <= 0xffff);
+	assert(bits_nr != NULL);
+
+	min = 0xffff;
+	max = 0;
+	valid = 0;
+
+	/* find out the interval in which all the values from the window stand */
+	for(entry = 0; entry < wlsb->window_width; entry++)
+	{
+		/* skip entry if not in use */
+		if(!(wlsb->window[entry].is_used))
+		{
+			continue;
+		}
+
+		/* the window contains at least one value */
+		valid = 1;
+
+		/* change the minimal and maximal values if appropriate */
+		if(wlsb->window[entry].value < min)
+		{
+			min = wlsb->window[entry].value;
+		}
+		if(wlsb->window[entry].value > max)
+		{
+			max = wlsb->window[entry].value;
+		}
+	}
+
+	/* if the window contained at least one value */
+	if(valid)
+	{
+		size_t k1;
+		size_t k2;
+
+		/* find the minimal number of bits of the value required to be able
+		 * to recreate it thanks to the window */
+
+		/* find the minimal number of bits for the lower limit of the interval */
+		k1 = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
+		/* find the minimal number of bits for the upper limit of the interval */
+		k2 = rohc_g_16bits(max, value, wlsb->p, wlsb->bits);
+
+		/* keep the greatest one */
+		*bits_nr = (k1 > k2) ? k1 : k2;
+		assert((*bits_nr) <= 16);
+
+		is_success = 1;
+	}
+	else /* else no k matches */
+	{
+		is_success = 0;
+	}
+
+	return is_success;
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 32-bit fields.
+ *
+ * @param wlsb     The W-LSB object
+ * @param value    The value to encode using the LSB algorithm
+ * @param bits_nr  OUT: The number of bits required to uniquely recreate the
+ *                      value
+ * @return         1 in case of success,
+ *                 0 if the minimal number of bits can not be found
+ */
+int wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
+                      const uint32_t value,
+                      size_t *const bits_nr)
 {
 	size_t entry;
 	int valid;
@@ -165,6 +254,8 @@ int c_get_k_wlsb(const struct c_wlsb *const wlsb,
 
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
+	assert(value <= 0xffffffff);
+	assert(bits_nr != NULL);
 
 	min = 0xffffffff;
 	max = 0;
@@ -203,12 +294,13 @@ int c_get_k_wlsb(const struct c_wlsb *const wlsb,
 		 * to recreate it thanks to the window */
 
 		/* find the minimal number of bits for the lower limit of the interval */
-		k1 = g(min, value, wlsb->p, wlsb->bits);
+		k1 = rohc_g_32bits(min, value, wlsb->p, wlsb->bits);
 		/* find the minimal number of bits for the upper limit of the interval */
-		k2 = g(max, value, wlsb->p, wlsb->bits);
+		k2 = rohc_g_32bits(max, value, wlsb->p, wlsb->bits);
 
 		/* keep the greatest one */
 		*bits_nr = (k1 > k2) ? k1 : k2;
+		assert((*bits_nr) <= 32);
 
 		is_success = 1;
 	}
@@ -419,7 +511,7 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 
 
 /**
- * @brief The g function as defined in the LSB calculation algorithm
+ * @brief The g function as defined in LSB encoding for 16-bit fields
  *
  * Find the minimal k value so that v falls into the interval given by
  * \f$f(v\_ref, k)\f$. See 4.5.1 in the RFC 3095.
@@ -431,19 +523,84 @@ static void c_ack_remove(struct c_wlsb *s, int index)
  *              LSB-encoded value
  * @return      The minimal k value as defined by the LSB calculation algorithm
  */
-static size_t g(const uint32_t v_ref, const uint32_t v,
-                const int32_t p, const size_t bits_nr)
+static size_t rohc_g_16bits(const uint16_t v_ref, const uint16_t v,
+                            const int16_t p, const size_t bits_nr)
+{
+	uint16_t min;
+	uint16_t max;
+	size_t k;
+
+	assert(bits_nr <= 16);
+
+	for(k = 0; k < bits_nr; k++)
+	{
+		rohc_f_16bits(v_ref, k, p, &min, &max);
+		if(min <= max)
+		{
+			/* interpretation interval does not straddle field boundaries,
+			 * check if value is in [min, max] */
+			if(v >= min && v <= max)
+			{
+				break;
+			}
+		}
+		else
+		{
+			/* the interpretation interval does straddle the field boundaries,
+			 * check if value is in [min, 0xffff] or [0, max] */
+			if(v >= min || v <= max)
+			{
+				break;
+			}
+		}
+	}
+
+	return k;
+}
+
+
+/**
+ * @brief The g function as defined in LSB encoding for 32-bit fields
+ *
+ * Find the minimal k value so that v falls into the interval given by
+ * \f$f(v\_ref, k)\f$. See 4.5.1 in the RFC 3095.
+ *
+ * @param v_ref The reference value
+ * @param v     The value to encode
+ * @param p     The shift parameter
+ * @param bits  The number of bits that may be used to represent the
+ *              LSB-encoded value
+ * @return      The minimal k value as defined by the LSB calculation algorithm
+ */
+static size_t rohc_g_32bits(const uint32_t v_ref, const uint32_t v,
+                            const int32_t p, const size_t bits_nr)
 {
 	uint32_t min;
 	uint32_t max;
 	size_t k;
 
+	assert(bits_nr <= 32);
+
 	for(k = 0; k < bits_nr; k++)
 	{
-		f(v_ref, k, p, &min, &max);
-		if(v >= min && v <= max)
+		rohc_f_32bits(v_ref, k, p, &min, &max);
+		if(min <= max)
 		{
-			break;
+			/* interpretation interval does not straddle field boundaries,
+			 * check if value is in [min, max] */
+			if(v >= min && v <= max)
+			{
+				break;
+			}
+		}
+		else
+		{
+			/* the interpretation interval does straddle the field boundaries,
+			 * check if value is in [min, 0xffff] or [0, max] */
+			if(v >= min || v <= max)
+			{
+				break;
+			}
 		}
 	}
 
