@@ -134,7 +134,6 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 		case SEND_SCALED:
 		{
 			uint32_t old_scaled = ts_sc->ts_scaled;
-			int wraparound;
 			uint32_t rest;
 
 			rohc_debugf(2, "state SEND_SCALED\n");
@@ -177,12 +176,9 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			}
 
 			/* Wraparound (See RFC 4815 Section 4.4.3) */
-			wraparound = (ts_sc->ts_scaled > 0 && ts_sc->ts < ts_sc->old_ts) ||
-			             (ts_sc->ts_scaled < 0 && ts_sc->ts > ts_sc->old_ts);
-
-			if(rest == 0 && wraparound)
+			if(rest == 0 && (ts_sc->ts < ts_sc->old_ts))
 			{
-				rohc_debugf(2, "wraparound detected\n");
+				rohc_debugf(2, "TS wraparound detected\n");
 				if(ts_sc->ts_stride % 2 != 0)
 				{
 					rohc_debugf(3, "ts_stride is not a power of two");

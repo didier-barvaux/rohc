@@ -1200,8 +1200,6 @@ int rohc_d_context(struct rohc_decomp *decomp,
                    unsigned int indent,
                    char *buffer)
 {
-	char *modes[4] = { "error", "U-mode", "O-mode", "R-mode" };
-	char *states[4] = { "error", "NC", "SC", "FC" };
 	struct d_context *c;
 	char *prefix;
 	char *save;
@@ -1234,11 +1232,11 @@ int rohc_d_context(struct rohc_decomp *decomp,
 
 	sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%d\">\n", prefix, index);
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<state>%s</state>\n",
-	        prefix, (c->state < 0 || c->state >= sizeof(states)) ? states[0] : states[c->state]);
+	sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
+	        rohc_decomp_get_state_descr(c->state));
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<mode>%s</mode>\n",
-	        prefix, (c->mode < 0 || c->mode >= sizeof(modes)) ? modes[0] : modes[c->mode]);
+	sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
+	        rohc_get_mode_descr(c->mode));
 	buffer += strlen(buffer);
 	sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
 	buffer += strlen(buffer);
@@ -1344,6 +1342,35 @@ int rohc_d_context(struct rohc_decomp *decomp,
 
 	free(prefix);
 	return strlen(save);
+}
+
+
+/**
+ * @brief Give a description for the given ROHC decompression context state
+ *
+ * The descriptions are not part of the API. They may change between
+ * releases without any warning. Do NOT use them for other means that
+ * providing to users a textual description of decompression context states
+ * used by the library. If unsure, ask on the mailing list.
+ *
+ * @param state  The decompression context state to get a description for
+ * @return       A string that describes the given decompression context state
+ *
+ * @ingroup rohc_decomp
+ */
+const char * rohc_decomp_get_state_descr(const rohc_d_state state)
+{
+	switch(state)
+	{
+		case NO_CONTEXT:
+			return "NC";
+		case STATIC_CONTEXT:
+			return "SC";
+		case FULL_CONTEXT:
+			return "FC";
+		default:
+			return "no description";
+	}
 }
 
 

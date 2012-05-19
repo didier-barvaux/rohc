@@ -304,6 +304,7 @@ int rohc_d_statistics(struct rohc_decomp *decomp, unsigned int indent,
 int rohc_d_context(struct rohc_decomp *decomp, int index, unsigned int indent,
                    char *buffer);
 void clear_statistics(struct rohc_decomp *decomp);
+const char * rohc_decomp_get_state_descr(const rohc_d_state state);
 
 
 /*

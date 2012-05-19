@@ -829,8 +829,6 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
  */
 int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *buffer)
 {
-	char *modes[4] = { "error", "U-mode", "O-mode", "R-mode" };
-	char *states[4] = { "error", "IR", "FO", "SO" };
 	struct c_context *c;
 	char *prefix;
 	char *save;
@@ -866,10 +864,10 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	sprintf(buffer, "%s\t<cid_state>%s</cid_state>\n", prefix, c->used ? "USED" : "UNUSED");
 	buffer += strlen(buffer);
 	sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
-	        (c->state < 0 || c->state >= sizeof(states)) ? states[0] : states[c->state]);
+	        rohc_comp_get_state_descr(c->state));
 	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<mode>%s</mode>\n",
-	        prefix, (c->mode < 0 || c->mode >= sizeof(modes)) ? modes[0] : modes[c->mode]);
+	sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
+	        rohc_get_mode_descr(c->mode));
 	buffer += strlen(buffer);
 	sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
 	buffer += strlen(buffer);
