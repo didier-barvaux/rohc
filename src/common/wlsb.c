@@ -174,7 +174,7 @@ int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
-	assert(value <= 0xffff);
+	/* (value <= 0xffff) always ensured because value is of type uint16_t */
 	assert(bits_nr != NULL);
 
 	min = 0xffff;

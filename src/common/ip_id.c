@@ -64,7 +64,7 @@ int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
 	uint16_t offset_ref;
 	uint16_t min;
 	uint16_t max;
-	uint16_t try;
+	uint32_t try;
 	uint16_t mask;
 	int is_found = 0;
 
@@ -134,7 +134,7 @@ int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
 	if(is_found)
 	{
 		/* add the decoded offset (try) with SN taking care of overflow */
-		*decoded = (uint16_t) ((((uint32_t) sn) + ((uint32_t) try)) & 0xffff);
+		*decoded = (uint16_t) ((((uint32_t) sn) + try) & 0xffff);
 	}
 
 	return is_found;
