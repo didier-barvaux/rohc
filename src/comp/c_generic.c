@@ -7779,7 +7779,7 @@ static int update_variables(struct c_context *const context,
                             const struct ip_packet *const ip2)
 {
 	struct c_generic_context *g_context;
-	int ret;
+	bool wlsb_k_ok;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -7805,9 +7805,9 @@ static int update_variables(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			ret = wlsb_get_k_16bits(g_context->sn_window, g_context->sn,
-			                        &(g_context->tmp.nr_sn_bits));
-			if(ret != 1)
+			wlsb_k_ok = wlsb_get_k_16bits(g_context->sn_window, g_context->sn,
+			                              &(g_context->tmp.nr_sn_bits));
+			if(!wlsb_k_ok)
 			{
 				rohc_debugf(0, "failed to find the minimal number of bits required "
 				            "for SN\n");
@@ -7852,10 +7852,10 @@ static int update_variables(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			ret = wlsb_get_k_16bits(g_context->ip_flags.info.v4.ip_id_window,
-			                        g_context->ip_flags.info.v4.id_delta,
-			                        &(g_context->tmp.nr_ip_id_bits));
-			if(ret != 1)
+			wlsb_k_ok = wlsb_get_k_16bits(g_context->ip_flags.info.v4.ip_id_window,
+			                              g_context->ip_flags.info.v4.id_delta,
+			                              &(g_context->tmp.nr_ip_id_bits));
+			if(!wlsb_k_ok)
 			{
 				rohc_debugf(0, "failed to find the minimal number of bits required "
 				            "for new outer IP-ID delta\n");
@@ -7905,10 +7905,10 @@ static int update_variables(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			ret = wlsb_get_k_16bits(g_context->ip2_flags.info.v4.ip_id_window,
-			                        g_context->ip2_flags.info.v4.id_delta,
-			                        &(g_context->tmp.nr_ip_id_bits2));
-			if(ret != 1)
+			wlsb_k_ok = wlsb_get_k_16bits(g_context->ip2_flags.info.v4.ip_id_window,
+			                              g_context->ip2_flags.info.v4.id_delta,
+			                              &(g_context->tmp.nr_ip_id_bits2));
+			if(!wlsb_k_ok)
 			{
 				rohc_debugf(0, "failed to find the minimal number of bits required "
 				            "for new inner IP-ID delta\n");
@@ -7950,8 +7950,7 @@ static int update_variables(struct c_context *const context,
 		{
 			/* TS_SCALED value will be send */
 			rtp_context->tmp.ts_send = get_ts_scaled(rtp_context->ts_sc);
-			ret = nb_bits_scaled(rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits));
-			if(ret != 1)
+			if(!nb_bits_scaled(rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
 			{
 				const uint32_t ts_send = rtp_context->tmp.ts_send;
 				size_t nr_bits;

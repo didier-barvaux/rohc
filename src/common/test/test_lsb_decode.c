@@ -149,8 +149,6 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	int is_success = false; /* test fails by default */
 
 	uint32_t i;
-	int ret;
-	bool decode_ok;
 
 	/* create the W-LSB encoding context */
 	wlsb = c_create_wlsb(16, C_WINDOW_WIDTH, p);
@@ -189,14 +187,16 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 	{
 		size_t required_bits;
 		uint16_t required_bits_mask;
+		bool wlsb_k_ok;
+		bool lsb_decode_ok;
 
 		/* value to encode/decode */
 		value16 = i % (((uint32_t) 0xffff) + 1);
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%04x ...\n", value16);
-		ret = wlsb_get_k_16bits(wlsb, value16, &required_bits);
-		if(ret != 1)
+		wlsb_k_ok = wlsb_get_k_16bits(wlsb, value16, &required_bits);
+		if(!wlsb_k_ok)
 		{
 			fprintf(stderr, "failed to determine how many bits are required "
 			        "to be sent\n");
@@ -221,9 +221,9 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		/* decode */
 		trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
 		      value16_encoded);
-		decode_ok = d_lsb_decode16(&lsb, value16_encoded, required_bits,
-		                           &value16_decoded);
-		if(!decode_ok)
+		lsb_decode_ok = d_lsb_decode16(&lsb, value16_encoded, required_bits,
+		                               &value16_decoded);
+		if(!lsb_decode_ok)
 		{
 			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
 			goto destroy_wlsb;
@@ -272,8 +272,6 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	int is_success = false; /* test fails by default */
 
 	uint64_t i;
-	int ret;
-	bool decode_ok;
 
 	/* create the W-LSB encoding context */
 	wlsb = c_create_wlsb(16, C_WINDOW_WIDTH, p);
@@ -312,14 +310,16 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	{
 		size_t required_bits;
 		uint32_t required_bits_mask;
+		bool wlsb_k_ok;
+		bool lsb_decode_ok;
 
 		/* value to encode/decode */
 		value32 = i % (((uint64_t) 0xffffffff) + 1);
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-		ret = wlsb_get_k_32bits(wlsb, value32, &required_bits);
-		if(ret != 1)
+		wlsb_k_ok = wlsb_get_k_32bits(wlsb, value32, &required_bits);
+		if(!wlsb_k_ok)
 		{
 			fprintf(stderr, "failed to determine how many bits are required "
 			        "to be sent\n");
@@ -344,9 +344,9 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		/* decode */
 		trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
 		      value32_encoded);
-		decode_ok = d_lsb_decode32(&lsb, value32_encoded, required_bits,
-		                           &value32_decoded);
-		if(!decode_ok)
+		lsb_decode_ok = d_lsb_decode32(&lsb, value32_encoded, required_bits,
+		                               &value32_decoded);
+		if(!lsb_decode_ok)
 		{
 			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
 			goto destroy_wlsb;
@@ -406,14 +406,16 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	{
 		size_t required_bits;
 		uint32_t required_bits_mask;
+		bool wlsb_k_ok;
+		bool lsb_decode_ok;
 
 		/* value to encode/decode */
 		value32 = i % (((uint64_t) 0xffffffff) + 1);
 
 		/* encode */
 		trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-		ret = wlsb_get_k_32bits(wlsb, value32, &required_bits);
-		if(ret != 1)
+		wlsb_k_ok = wlsb_get_k_32bits(wlsb, value32, &required_bits);
+		if(!wlsb_k_ok)
 		{
 			fprintf(stderr, "failed to determine how many bits are required "
 			        "to be sent\n");
@@ -438,9 +440,9 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		/* decode */
 		trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
 		      value32_encoded);
-		decode_ok = d_lsb_decode32(&lsb, value32_encoded, required_bits,
-		                           &value32_decoded);
-		if(!decode_ok)
+		lsb_decode_ok = d_lsb_decode32(&lsb, value32_encoded, required_bits,
+		                               &value32_decoded);
+		if(!lsb_decode_ok)
 		{
 			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
 			goto destroy_wlsb;

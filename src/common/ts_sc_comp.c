@@ -203,17 +203,17 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
  *
  * @param ts_sc    The ts_sc_comp object
  * @param bits_nr  OUT: The number of bits needed
- * @return         1 in case of success,
- *                 0 if the minimal number of bits can not be found
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
  */
-int nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
+bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
 {
-	int is_success;
+	bool is_success;
 
 	if(ts_sc.is_deductible)
 	{
 		*bits_nr = 0;
-		is_success = 1;
+		is_success = true;
 	}
 	else
 	{

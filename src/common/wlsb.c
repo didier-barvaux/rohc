@@ -159,18 +159,17 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
  * @param value    The value to encode using the LSB algorithm
  * @param bits_nr  OUT: The number of bits required to uniquely recreate the
  *                      value
- * @return         1 in case of success,
- *                 0 if the minimal number of bits can not be found
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
  */
-int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
-                      const uint16_t value,
-                      size_t *const bits_nr)
+bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
+                       const uint16_t value,
+                       size_t *const bits_nr)
 {
 	size_t entry;
-	int valid;
+	bool is_window_valid;
 	uint16_t min;
 	uint16_t max;
-	int is_success;
 
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
@@ -179,7 +178,7 @@ int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 
 	min = 0xffff;
 	max = 0;
-	valid = 0;
+	is_window_valid = false;
 
 	/* find out the interval in which all the values from the window stand */
 	for(entry = 0; entry < wlsb->window_width; entry++)
@@ -191,7 +190,7 @@ int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 		}
 
 		/* the window contains at least one value */
-		valid = 1;
+		is_window_valid = true;
 
 		/* change the minimal and maximal values if appropriate */
 		if(wlsb->window[entry].value < min)
@@ -204,34 +203,35 @@ int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 		}
 	}
 
-	/* if the window contained at least one value */
-	if(valid)
+	/* cannot do anything if the window contains no value */
+	if(!is_window_valid)
 	{
-		/* find the minimal number of bits of the value required to be able
-		 * to recreate it thanks to the window */
-		if(min == max)
-		{
-			/* find the minimal number of bits for the lower/upper limit of the interval */
-			*bits_nr = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
-		}
-		else
-		{
-			/* find the minimal number of bits for the lower limit of the interval */
-			const size_t k1 = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
-			/* find the minimal number of bits for the upper limit of the interval */
-			const size_t k2 = rohc_g_16bits(max, value, wlsb->p, wlsb->bits);
-			/* keep the greatest one */
-			*bits_nr = (k1 > k2) ? k1 : k2;
-		}
-		assert((*bits_nr) <= 16);
-		is_success = 1;
-	}
-	else /* else no k matches */
-	{
-		is_success = 0;
+		goto error;
 	}
 
-	return is_success;
+	/* find the minimal number of bits of the value required to be able
+	 * to recreate it thanks to the window */
+	if(min == max)
+	{
+		/* find the minimal number of bits for the lower/upper limit of the interval */
+		*bits_nr = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
+	}
+	else
+	{
+		/* find the minimal number of bits for the lower limit of the interval */
+		const size_t k1 = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
+		/* find the minimal number of bits for the upper limit of the interval */
+		const size_t k2 = rohc_g_16bits(max, value, wlsb->p, wlsb->bits);
+		/* keep the greatest one */
+		*bits_nr = (k1 > k2) ? k1 : k2;
+	}
+
+	assert((*bits_nr) <= 16);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -245,18 +245,17 @@ int wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
  * @param value    The value to encode using the LSB algorithm
  * @param bits_nr  OUT: The number of bits required to uniquely recreate the
  *                      value
- * @return         1 in case of success,
- *                 0 if the minimal number of bits can not be found
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
  */
-int wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
-                      const uint32_t value,
-                      size_t *const bits_nr)
+bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
+                       const uint32_t value,
+                       size_t *const bits_nr)
 {
 	size_t entry;
-	int valid;
+	bool is_window_valid;
 	uint32_t min;
 	uint32_t max;
-	int is_success;
 
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
@@ -265,7 +264,7 @@ int wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
 
 	min = 0xffffffff;
 	max = 0;
-	valid = 0;
+	is_window_valid = false;
 
 	/* find out the interval in which all the values from the window stand */
 	for(entry = 0; entry < wlsb->window_width; entry++)
@@ -277,7 +276,7 @@ int wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
 		}
 
 		/* the window contains at least one value */
-		valid = 1;
+		is_window_valid = true;
 
 		/* change the minimal and maximal values if appropriate */
 		if(wlsb->window[entry].value < min)
@@ -290,32 +289,35 @@ int wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
 		}
 	}
 
-	/* if the window contained at least one value */
-	if(valid)
+	/* cannot do anything if the window contains no value */
+	if(!is_window_valid)
 	{
-		size_t k1;
-		size_t k2;
+		goto error;
+	}
 
-		/* find the minimal number of bits of the value required to be able
-		 * to recreate it thanks to the window */
-
+	/* find the minimal number of bits of the value required to be able
+	 * to recreate it thanks to the window */
+	if(min == max)
+	{
+		/* find the minimal number of bits for the lower/upper limit of the interval */
+		*bits_nr = rohc_g_32bits(min, value, wlsb->p, wlsb->bits);
+	}
+	else
+	{
 		/* find the minimal number of bits for the lower limit of the interval */
-		k1 = rohc_g_32bits(min, value, wlsb->p, wlsb->bits);
+		const size_t k1 = rohc_g_32bits(min, value, wlsb->p, wlsb->bits);
 		/* find the minimal number of bits for the upper limit of the interval */
-		k2 = rohc_g_32bits(max, value, wlsb->p, wlsb->bits);
-
+		const size_t k2 = rohc_g_32bits(max, value, wlsb->p, wlsb->bits);
 		/* keep the greatest one */
 		*bits_nr = (k1 > k2) ? k1 : k2;
-		assert((*bits_nr) <= 32);
-
-		is_success = 1;
-	}
-	else /* else no k matches */
-	{
-		is_success = 0;
 	}
 
-	return is_success;
+	assert((*bits_nr) <= 32);
+
+	return true;
+
+error:
+	return false;
 }
 
 

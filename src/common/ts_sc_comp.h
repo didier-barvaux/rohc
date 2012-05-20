@@ -30,6 +30,8 @@
 
 #include "wlsb.h"
 
+#include <stdbool.h>
+
 
 /**
  * @brief State of scaled RTP Timestamp encoding
@@ -100,7 +102,7 @@ void c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
 void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t sn);
 
-int nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr);
+bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr);
 
 void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn);
 
