@@ -7799,6 +7799,8 @@ static int update_variables(struct c_context *const context,
 		{
 			/* send all bits in IR state */
 			g_context->tmp.nr_sn_bits = 16;
+			rohc_debugf(2, "IR state: force using %zd bits to encode new SN\n",
+			            g_context->tmp.nr_sn_bits);
 		}
 		else
 		{
@@ -7844,6 +7846,8 @@ static int update_variables(struct c_context *const context,
 		{
 			/* send all bits in IR state */
 			g_context->tmp.nr_ip_id_bits = 16;
+			rohc_debugf(2, "IR state: force using %zd bits to encode new outer "
+			            "IP-ID delta\n", g_context->tmp.nr_ip_id_bits);
 		}
 		else
 		{
@@ -7895,6 +7899,8 @@ static int update_variables(struct c_context *const context,
 		{
 			/* send all bits in IR state */
 			g_context->tmp.nr_ip_id_bits2 = 16;
+			rohc_debugf(2, "IR state: force using %zd bits to encode new inner "
+			            "IP-ID delta\n", g_context->tmp.nr_ip_id_bits2);
 		}
 		else
 		{
