@@ -148,7 +148,7 @@ int ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
                      uint32_t *const decoded_ts)
 {
 	uint32_t ts_scaled_decoded;
-	int lsb_decode_ok;
+	bool lsb_decode_ok;
 	int is_success;
 
 	/* update TS_SCALED in context */

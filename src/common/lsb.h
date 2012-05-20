@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 
 /**
@@ -52,14 +53,14 @@ void d_lsb_init(struct d_lsb_decode *const lsb,
                 const uint32_t v_ref_d,
                 const rohc_lsb_shift_t p);
 
-int d_lsb_decode32(const struct d_lsb_decode *const lsb,
-                   const uint32_t m,
-                   const size_t k,
-                   uint32_t *const decoded);
-int d_lsb_decode16(const struct d_lsb_decode *const lsb,
-                   const uint16_t m,
-                   const size_t k,
-                   uint16_t *const decoded);
+bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
+                    const uint32_t m,
+                    const size_t k,
+                    uint32_t *const decoded);
+bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
+                    const uint16_t m,
+                    const size_t k,
+                    uint16_t *const decoded);
 
 void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d);
 

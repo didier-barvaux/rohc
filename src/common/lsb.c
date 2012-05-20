@@ -55,18 +55,18 @@ void d_lsb_init(struct d_lsb_decode *const lsb,
  * @param m        The LSB value to decode
  * @param k        The length of the LSB value to decode
  * @param decoded  OUT: The decoded value
- * @return         1 in case of success, 0 otherwise
+ * @return         true in case of success, false otherwise
  */
-int d_lsb_decode32(const struct d_lsb_decode *const lsb,
-                   const uint32_t m,
-                   const size_t k,
-                   uint32_t *const decoded)
+bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
+                    const uint32_t m,
+                    const size_t k,
+                    uint32_t *const decoded)
 {
 	uint32_t min;
 	uint32_t max;
 	uint32_t try;
 	uint32_t mask;
-	int is_found = 0;
+	bool is_found = false;
 
 	assert(lsb != NULL);
 	assert(k <= 32);
@@ -95,7 +95,7 @@ int d_lsb_decode32(const struct d_lsb_decode *const lsb,
 			if((try & mask) == (m & mask))
 			{
 				/* corresponding value found */
-				is_found = 1;
+				is_found = true;
 				*decoded = try;
 				break;
 			}
@@ -110,7 +110,7 @@ int d_lsb_decode32(const struct d_lsb_decode *const lsb,
 			if((try & mask) == (m & mask))
 			{
 				/* corresponding value found */
-				is_found = 1;
+				is_found = true;
 				*decoded = try;
 				break;
 			}
@@ -123,7 +123,7 @@ int d_lsb_decode32(const struct d_lsb_decode *const lsb,
 				if((try & mask) == (m & mask))
 				{
 					/* corresponding value found */
-					is_found = 1;
+					is_found = true;
 					*decoded = try;
 					break;
 				}
@@ -144,16 +144,16 @@ int d_lsb_decode32(const struct d_lsb_decode *const lsb,
  * @param m        The LSB value to decode
  * @param k        The length of the LSB value to decode
  * @param decoded  OUT: The decoded value
- * @return         1 in case of success, 0 otherwise
+ * @return         true in case of success, false otherwise
  */
-int d_lsb_decode16(const struct d_lsb_decode *const lsb,
-                   const uint16_t m,
-                   const size_t k,
-                   uint16_t *const decoded)
+bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
+                    const uint16_t m,
+                    const size_t k,
+                    uint16_t *const decoded)
 {
 	uint32_t m32;
 	uint32_t decoded32;
-	int is_success;
+	bool is_success;
 
 	assert(lsb != NULL);
 	assert(k <= 16);

@@ -3980,6 +3980,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	size_t payload_len;
 
 	/* helper variables for values returned by functions */
+	bool decode_ok;
 	int size;
 	int ret;
 
@@ -4107,8 +4108,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	ret = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
-	if(ret != 1)
+	decode_ok = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	if(!decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
 		goto error;
@@ -4609,6 +4610,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	size_t payload_len;
 
 	/* helper variables for values returned by functions */
+	bool decode_ok;
 	int size;
 	int ret;
 
@@ -4858,8 +4860,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	ret = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
-	if(ret != 1)
+	decode_ok = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	if(!decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
 		goto error;
@@ -5415,6 +5417,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	size_t payload_len;
 
 	/* helper variables for values returned by functions */
+	bool decode_ok;
 	int size;
 	int ret;
 
@@ -6077,8 +6080,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	ret = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
-	if(ret != 1)
+	decode_ok = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	if(!decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
 		goto error;
