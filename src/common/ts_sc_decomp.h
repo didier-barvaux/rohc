@@ -27,6 +27,7 @@
 #include "lsb.h"
 
 #include <stdint.h>
+#include <stdbool.h>
 
 
 /**
@@ -86,10 +87,10 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
                         const uint32_t ts_stride);
 
-int ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
-                     const uint32_t ts_scaled,
-                     const size_t bits_nr,
-                     uint32_t *const decoded_ts);
+bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
+                      const uint32_t ts_scaled,
+                      const size_t bits_nr,
+                      uint32_t *const decoded_ts);
 
 uint32_t ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
                             const uint32_t ts_bits);

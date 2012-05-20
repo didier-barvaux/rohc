@@ -4936,10 +4936,12 @@ int decode_uo1(struct rohc_decomp *decomp,
 			}
 			else
 			{
+				bool ts_decode_ok;
+
 				rohc_debugf(3, "TS is scaled\n");
-				ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
-				                       &ts_decoded);
-				if(ret != 1)
+				ts_decode_ok = ts_decode_scaled(&rtp_context->ts_sc, ts_bits,
+				                                ts_bits_nr, &ts_decoded);
+				if(!ts_decode_ok)
 				{
 					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
 					            ts_bits_nr, ts_bits);
@@ -6156,10 +6158,12 @@ int decode_uor2(struct rohc_decomp *decomp,
 			}
 			else
 			{
+				bool ts_decode_ok;
+
 				rohc_debugf(3, "TS is scaled\n");
-				ret = ts_decode_scaled(&rtp_context->ts_sc, ts_bits, ts_bits_nr,
-				                       &ts_decoded);
-				if(ret != 1)
+				ts_decode_ok = ts_decode_scaled(&rtp_context->ts_sc, ts_bits,
+				                                ts_bits_nr, &ts_decoded);
+				if(!ts_decode_ok)
 				{
 					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
 					            ts_bits_nr, ts_bits);

@@ -140,16 +140,15 @@ void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
  * @param ts_scaled    The W-LSB-encoded TS_SCALED value
  * @param bits_nr      The number of bits of TS_SCALED (W-LSB)
  * @param decoded_ts   OUT: The decoded TS
- * @return             1 in case of success, 0 otherwise
+ * @return             true in case of success, false otherwise
  */
-int ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
-                     const uint32_t ts_scaled,
-                     const size_t bits_nr,
-                     uint32_t *const decoded_ts)
+bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
+                      const uint32_t ts_scaled,
+                      const size_t bits_nr,
+                      uint32_t *const decoded_ts)
 {
 	uint32_t ts_scaled_decoded;
 	bool lsb_decode_ok;
-	int is_success;
 
 	/* update TS_SCALED in context */
 	rohc_debugf(3, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
@@ -160,27 +159,26 @@ int ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 	{
 		rohc_debugf(0, "failed to decode %zd-bit TS_SCALED %u\n", bits_nr,
 		            ts_scaled);
-		is_success = 0;
-	}
-	else
-	{
-		rohc_debugf(3, "ts_scaled decoded = %u / 0x%x with %zd bits\n",
-		            ts_scaled_decoded, ts_scaled_decoded, bits_nr);
-
-		/* TS computation with the TS_SCALED we just decoded and the
-		   TS_STRIDE/TS_OFFSET values found in context */
-		*decoded_ts = ts_sc->ts_stride * ts_scaled_decoded + ts_sc->ts_offset;
-		rohc_debugf(3, "TS calculated = %u\n", *decoded_ts);
-
-		/* store the updated TS_* values in context */
-		ts_sc->new_ts_scaled = ts_scaled_decoded;
-		ts_sc->new_ts_stride = ts_sc->ts_stride;
-		ts_sc->new_ts_offset = ts_sc->ts_offset;
-
-		is_success = 1;
+		goto error;
 	}
 
-	return is_success;
+	rohc_debugf(3, "ts_scaled decoded = %u / 0x%x with %zd bits\n",
+	            ts_scaled_decoded, ts_scaled_decoded, bits_nr);
+
+	/* TS computation with the TS_SCALED we just decoded and the
+	   TS_STRIDE/TS_OFFSET values found in context */
+	*decoded_ts = ts_sc->ts_stride * ts_scaled_decoded + ts_sc->ts_offset;
+	rohc_debugf(3, "TS calculated = %u\n", *decoded_ts);
+
+	/* store the updated TS_* values in context */
+	ts_sc->new_ts_scaled = ts_scaled_decoded;
+	ts_sc->new_ts_stride = ts_sc->ts_stride;
+	ts_sc->new_ts_offset = ts_sc->ts_offset;
+
+	return true;
+
+error:
+	return false;
 }
 
 
