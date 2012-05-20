@@ -726,7 +726,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	int i,v;
 
 	/* compute the indent prefix */
-	prefix = calloc(indent + 1, sizeof(char));
+	prefix = malloc((indent + 1) * sizeof(char));
 	if(prefix == NULL)
 	{
 		return -1;
@@ -846,7 +846,7 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	}
 
 	/* compute the line prefix */
-	prefix = calloc(indent + 1, sizeof(char));
+	prefix = malloc((indent + 1) * sizeof(char));
 	if(prefix == NULL)
 	{
 		return -1;
@@ -1456,7 +1456,6 @@ static int c_alloc_contexts(struct rohc_comp *const comp, int size)
 			rohc_debugf(0, "cannot allocate memory for contexts\n");
 			return 0;
 		}
-		bzero(new_contexts, sizeof(struct c_context) * size);
 
 		/* move already-created contexts from the current array to the new one if any
 		 * and then destroy the current context array */

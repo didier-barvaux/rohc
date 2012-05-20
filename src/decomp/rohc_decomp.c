@@ -144,9 +144,6 @@ void context_array_increase(struct rohc_decomp *decomp, int highest_cid)
 		return;
 	}
 
-	/* reset all context pointers */
-	bzero(new_contexts, calcsize * sizeof(struct d_context*));
-
 	/* fill in the new array with the existing contexts */
 	memcpy(new_contexts, decomp->contexts,
 	       decomp->num_contexts * sizeof(struct d_context*));
@@ -194,9 +191,6 @@ void context_array_decrease(struct rohc_decomp *decomp)
 		rohc_debugf(0, "cannot allocate memory for the contexts\n");
 		return;
 	}
-
-	/* reset all context pointers */
-	bzero(new_contexts, calcsize * sizeof(struct d_context*));
 
 	/* fill in the new array with the existing contexts */
 	memcpy(new_contexts, decomp->contexts, calcsize * sizeof(struct d_context*));
@@ -1129,7 +1123,7 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 	int i;
 
 	/* compute the indent prefix */
-	prefix = calloc(indent + 1, sizeof(char));
+	prefix = malloc((indent + 1) * sizeof(char));
 	if(prefix == NULL)
 	{
 		return -1;
@@ -1217,7 +1211,7 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	}
 
 	/* compute the line prefix */
-	prefix = calloc(indent + 1, sizeof(char));
+	prefix = malloc((indent + 1) * sizeof(char));
 	if(prefix == NULL)
 	{
 		return -1;

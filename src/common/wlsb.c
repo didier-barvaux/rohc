@@ -89,7 +89,6 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 		rohc_debugf(0, "cannot allocate memory for the W-LSB window\n");
 		goto clean;
 	}
-	bzero(wlsb->window, sizeof(struct c_window) * window_width);
 
 	wlsb->bits = bits;
 	wlsb->p = p;
