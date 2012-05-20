@@ -262,10 +262,10 @@ AC_CONFIG_FILES([ \
 	test/robustness/damaged_packet/Makefile \
 	test/robustness/piggybacking_feedback/Makefile \
 	test/non_regression/Makefile \
-	test/performance/Makefile \
 	statistics/Makefile \
 	examples/Makefile \
 	app/Makefile \
+	app/performance/Makefile \
 	app/tunnel/Makefile \
 	doc/doxygen.conf \
 	doc/Makefile \

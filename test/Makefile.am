@@ -8,8 +8,7 @@
 SUBDIRS = \
 	functional \
 	robustness \
-	non_regression \
-	performance
+	non_regression
 
 EXTRA_DIST = \
 	test.h

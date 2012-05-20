@@ -53,8 +53,6 @@
  * of compressed packets and the average elapsed time per packet.
  */
 
-#include "test.h"
-
 /* system includes */
 #include <sched.h>
 #include <sys/mman.h>
@@ -87,6 +85,15 @@
  */
 #define TICS_2_NSEC(coef_ns, end, start) \
 	((unsigned long long)(((end) - (start)) * (coef_ns)))
+
+/** The maximal size for the ROHC packets */
+#define MAX_ROHC_SIZE  (5 * 1024)
+
+/** The length of the Linux Cooked Sockets header */
+#define LINUX_COOKED_HDR_LEN  16
+
+/** The minimum Ethernet length (in bytes) */
+#define ETHER_FRAME_MIN_LEN  60
 
 
 static void usage(void);

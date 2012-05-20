@@ -4,5 +4,7 @@
 #	Description: create the ROHC applications
 ################################################################################
 
-SUBDIRS = tunnel
+SUBDIRS = \
+	performance \
+	tunnel
 
