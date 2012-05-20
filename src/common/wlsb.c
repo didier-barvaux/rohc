@@ -95,7 +95,7 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 	wlsb->p = p;
 	for(entry = 0; entry < window_width; entry++)
 	{
-		wlsb->window[entry].is_used = 0;
+		wlsb->window[entry].is_used = false;
 	}
 
 	return wlsb;
@@ -144,7 +144,7 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 
 	wlsb->window[wlsb->next].sn = sn;
 	wlsb->window[wlsb->next].value = value;
-	wlsb->window[wlsb->next].is_used = 1;
+	wlsb->window[wlsb->next].is_used = true;
 	wlsb->next = (wlsb->next + 1) % wlsb->window_width;
 }
 
@@ -448,14 +448,14 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 	if(s->oldest == index)
 	{
 		/* remove only the oldest entry */
-		s->window[s->oldest].is_used = 0;
+		s->window[s->oldest].is_used = false;
 	}
 	else if(s->oldest < index)
 	{
 		/* remove all entries from oldest to (not including) index */
 		for(j = s->oldest; j < index; j++)
 		{
-			s->window[j].is_used = 0;
+			s->window[j].is_used = false;
 		}
 	}
 	else /* s->oldest > index */
@@ -464,11 +464,11 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 		 * to (excluding) index */
 		for(j = s->oldest; j < s->window_width; j++)
 		{
-			s->window[j].is_used = 0;
+			s->window[j].is_used = false;
 		}
 		for(j = 0; j < index; j++)
 		{
-			s->window[j].is_used = 0;
+			s->window[j].is_used = false;
 		}
 	}
 

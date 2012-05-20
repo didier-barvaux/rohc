@@ -41,19 +41,10 @@
  */
 struct c_window
 {
-	/// @brief The Sequence Number (SN) associated with the entry (used to
-	///        acknowledge the entry)
-	uint16_t sn;
-
-	/// The value stored in the window entry
-	uint32_t value;
-
-	/**
-	 * @brief Whether the window entry is used or not
-	 *
-	 * 1 if the window entry is used, 0 if not
-	 */
-	int is_used;
+	uint16_t sn;     /**< The Sequence Number (SN) associated with the entry
+	                      (used to acknowledge the entry) */
+	uint32_t value;  /**< The value stored in the window entry */
+	bool is_used;    /**< Whether the window entry is used or not */
 };
 
 
