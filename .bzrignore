@@ -34,8 +34,8 @@ Makefile.in
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback
 ./test/non_regression/test_non_regression
 ./test/non_regression/report/report.html
-./test/performance/test_performance
 ./statistics/generate_statistics
 ./statistics/html
+./app/performance/rohc_test_performance
 ./app/tunnel/rohctunnel
 ./examples/simple_rohc_program
