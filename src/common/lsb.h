@@ -36,10 +36,8 @@
  */
 struct d_lsb_decode
 {
-	/// The current reference value
+	/// The reference value
 	uint32_t v_ref_d;
-	/// The previous reference value
-	uint32_t old_v_ref_d;
 	/// The p shift parameter (see 4.5.1 in the RFC 3095)
 	rohc_lsb_shift_t p;
 };
@@ -64,10 +62,7 @@ bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
 
 void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d);
 
-void d_lsb_sync_ref(struct d_lsb_decode *const lsb);
-
 uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb);
-uint32_t d_get_lsb_old_ref(struct d_lsb_decode *const lsb);
 
 #endif
 

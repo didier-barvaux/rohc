@@ -111,7 +111,6 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	ts_sc->new_ts_offset = 0;
 
 	/* update the LSB object for TS_SCALED */
-	d_lsb_sync_ref(&ts_sc->lsb_ts_scaled);
 	d_lsb_update(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
 }
 

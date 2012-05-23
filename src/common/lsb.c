@@ -42,7 +42,6 @@ void d_lsb_init(struct d_lsb_decode *const lsb,
 {
 	lsb->p = p;
 	lsb->v_ref_d = v_ref_d;
-	lsb->old_v_ref_d = v_ref_d;
 }
 
 
@@ -188,17 +187,6 @@ void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d)
 
 
 /**
- * @brief Replace the previous LSB reference value with the current one
- *
- * @param lsb  The LSB object
- */
-void d_lsb_sync_ref(struct d_lsb_decode *const lsb)
-{
-	lsb->old_v_ref_d = lsb->v_ref_d;
-}
-
-
-/**
  * @brief Get the current LSB reference value
  *
  * @param lsb  The LSB object
@@ -207,17 +195,5 @@ void d_lsb_sync_ref(struct d_lsb_decode *const lsb)
 uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb)
 {
 	return lsb->v_ref_d;
-}
-
-
-/**
- * @brief Get the previous LSB reference value
- *
- * @param lsb  The LSB object
- * @return     The previous reference value
- */
-uint32_t d_get_lsb_old_ref(struct d_lsb_decode *const lsb)
-{
-	return lsb->old_v_ref_d;
 }
 

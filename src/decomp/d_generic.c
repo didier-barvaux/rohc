@@ -4306,7 +4306,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		d_lsb_sync_ref(&g_context->sn);
 		d_lsb_update(&g_context->sn, sn_decoded);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
@@ -4347,7 +4346,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
@@ -5110,7 +5108,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		d_lsb_sync_ref(&g_context->sn);
 		d_lsb_update(&g_context->sn, sn_decoded);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
@@ -5151,7 +5148,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
@@ -6341,7 +6337,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		d_lsb_sync_ref(&g_context->sn);
 		d_lsb_update(&g_context->sn, sn_decoded);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
@@ -6384,7 +6379,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	d_lsb_sync_ref(&g_context->sn);
 	d_lsb_update(&g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
