@@ -148,7 +148,7 @@ error:
 /**
  * @brief Destroy a Window-based LSB (W-LSB) encoding object
  *
- * @param wlsb  The W-LSB object to destory
+ * @param wlsb  The W-LSB object to destroy
  */
 void c_destroy_wlsb(struct c_wlsb *const wlsb)
 {
