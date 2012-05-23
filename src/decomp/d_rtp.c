@@ -51,6 +51,9 @@
  * Private function prototypes.
  */
 
+static void d_rtp_destroy(void *const context)
+	__attribute__((nonnull(1)));
+
 unsigned int rtp_detect_ir_size(struct d_context *context,
                                 unsigned char *packet,
                                 unsigned int plen,
@@ -79,6 +82,7 @@ void * d_rtp_create(void)
 {
 	struct d_generic_context *context;
 	struct d_rtp_context *rtp_context;
+	bool is_ok;
 
 	/* create the generic context */
 	context = d_generic_create();
@@ -96,6 +100,14 @@ void * d_rtp_create(void)
 	}
 	bzero(rtp_context, sizeof(struct d_rtp_context));
 	context->specific = rtp_context;
+
+	/* create the LSB decoding context for SN */
+	context->sn = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_SN);
+	if(context->sn == NULL)
+	{
+		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
+		goto free_rtp_context;
+	}
 
 	/* the UDP checksum field present flag will be initialized
 	 * with the IR packets */
@@ -117,7 +129,7 @@ void * d_rtp_create(void)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
 		            "part of the header changes last1\n");
-		goto free_rtp_context;
+		goto free_lsb_sn;
 	}
 	bzero(context->last1->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
 
@@ -155,22 +167,82 @@ void * d_rtp_create(void)
 	context->next_header_proto = IPPROTO_UDP;
 
 	/* init the scaled RTP Timestamp decoding */
-	d_create_sc(&rtp_context->ts_sc);
+	is_ok = d_create_sc(&rtp_context->ts_sc);
+	if(!is_ok)
+	{
+		rohc_debugf(0, "cannot init the scaled RTP Timestamp decoding object\n");
+		goto free_active2_next_header;
+	}
 
 	return context;
 
+free_active2_next_header:
+	zfree(context->active2->next_header);
 free_active1_next_header:
 	zfree(context->active1->next_header);
 free_last2_next_header:
 	zfree(context->last2->next_header);
 free_last1_next_header:
 	zfree(context->last1->next_header);
+free_lsb_sn:
+	rohc_lsb_free(context->sn);
 free_rtp_context:
 	zfree(rtp_context);
 destroy_context:
 	d_generic_destroy(context);
 quit:
 	return NULL;
+}
+
+
+/**
+ * @brief Destroy the given RTP context
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context The RTP compression context to destroy
+ */
+static void d_rtp_destroy(void *const context)
+{
+	struct d_generic_context *g_context;
+	struct d_rtp_context *rtp_context;
+
+	assert(context != NULL);
+	g_context = (struct d_generic_context *) context;
+	assert(g_context->specific != NULL);
+	rtp_context = (struct d_rtp_context *) g_context->specific;
+
+	/* destroy the scaled RTP Timestamp decoding object */
+	rohc_ts_scaled_free(&rtp_context->ts_sc);
+
+	/* clean UDP-specific memory */
+	assert(g_context->last1 != NULL);
+	if(g_context->last1->next_header != NULL)
+	{
+		zfree(g_context->last1->next_header);
+	}
+	assert(g_context->last2 != NULL);
+	if(g_context->last2->next_header != NULL)
+	{
+		zfree(g_context->last2->next_header);
+	}
+	assert(g_context->active1 != NULL);
+	if(g_context->active1->next_header != NULL)
+	{
+		zfree(g_context->active1->next_header);
+	}
+	assert(g_context->active2 != NULL);
+	if(g_context->active2->next_header != NULL)
+	{
+		zfree(g_context->active2->next_header);
+	}
+
+	/* destroy the LSB decoding context for SN */
+	rohc_lsb_free(g_context->sn);
+
+	/* destroy the resources of the generic context */
+	d_generic_destroy(context);
 }
 
 
@@ -620,7 +692,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 	/* init SN and IP-IDs (IPv4 only) */
 	sn = ntohs(rtp->sn);
-	d_lsb_init(&context->sn, sn, ROHC_LSB_SHIFT_RTP_SN);
+	d_lsb_update(context->sn, sn);
 	if(ip_get_version(&context->active1->ip) == IPV4)
 	{
 		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);
@@ -871,7 +943,7 @@ struct d_profile d_rtp_profile =
 	d_generic_decode,       /* profile handlers */
 	d_udp_decode_ir,
 	d_rtp_create,
-	d_udp_destroy,
+	d_rtp_destroy,
 	rtp_detect_ir_size,
 	rtp_detect_ir_dyn_size,
 	rtp_get_static_part,

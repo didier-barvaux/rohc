@@ -27,21 +27,62 @@
 #include <assert.h>
 
 
+/*
+ * Private structures and types
+ */
+
 /**
- * @brief Initialize a Least Significant Bits (LSB) encoding object
+ * @brief The Least Significant Bits (LSB) decoding object
+ *
+ * See RFC 3095, §4.5.1
+ */
+struct d_lsb_decode
+{
+	bool is_init;        /**< Whether the reference value was initialized */
+	uint32_t v_ref_d;    /**< The reference value */
+	rohc_lsb_shift_t p;  /**< The p shift parameter */
+};
+
+
+/*
+ * Public functions
+ */
+
+/**
+ * @brief Create a new Least Significant Bits (LSB) decoding context
  *
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
- * @param lsb     The LSB object to initialize
- * @param v_ref_d The reference value
- * @param p       The p value used to efficiently encode the values
+ * @param p        The p value used to efficiently encode/decode the values
+ * @return         The new LSB decoding context in case of success, NULL
+ *                 otherwise
  */
-void d_lsb_init(struct d_lsb_decode *const lsb,
-                const uint32_t v_ref_d,
-                const rohc_lsb_shift_t p)
+struct d_lsb_decode *const rohc_lsb_new(const rohc_lsb_shift_t p)
 {
-	lsb->p = p;
-	lsb->v_ref_d = v_ref_d;
+	struct d_lsb_decode *lsb;
+
+	lsb = malloc(sizeof(struct d_lsb_decode));
+	if(lsb != NULL)
+	{
+		lsb->p = p;
+		lsb->is_init = false;
+	}
+
+	return lsb;
+}
+
+
+/**
+ * @brief Destroy a given Least Significant Bits (LSB) decoding context
+ *
+ * See 4.5.1 in the RFC 3095 for details about LSB encoding.
+ *
+ * @param lsb  The LSB decoding context to destroy
+ */
+void rohc_lsb_free(struct d_lsb_decode *const lsb)
+{
+	assert(lsb != NULL);
+	free(lsb);
 }
 
 
@@ -68,6 +109,7 @@ bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
 	bool is_found = false;
 
 	assert(lsb != NULL);
+	assert(lsb->is_init == true);
 	assert(k <= 32);
 	assert(decoded != NULL);
 
@@ -155,6 +197,7 @@ bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
 	bool is_success;
 
 	assert(lsb != NULL);
+	assert(lsb->is_init == true);
 	assert(k <= 16);
 	assert(decoded != NULL);
 
@@ -183,6 +226,7 @@ bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
 void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d)
 {
 	lsb->v_ref_d = v_ref_d;
+	lsb->is_init = true;
 }
 
 
@@ -194,6 +238,7 @@ void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d)
  */
 uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb)
 {
+	assert(lsb->is_init == true);
 	return lsb->v_ref_d;
 }
 

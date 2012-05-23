@@ -33,8 +33,9 @@
  * @brief Create the ts_sc_decomp object
  *
  * @param ts_sc  The ts_sc_decomp object to create
+ * @return       Whether the creation succeeded or not
  */
-void d_create_sc(struct ts_sc_decomp *const ts_sc)
+bool d_create_sc(struct ts_sc_decomp *const ts_sc)
 {
 	ts_sc->ts_stride = 0;
 	ts_sc->ts_scaled = 0;
@@ -49,7 +50,29 @@ void d_create_sc(struct ts_sc_decomp *const ts_sc)
 	ts_sc->new_ts_scaled = 0;
 	ts_sc->new_ts_offset = 0;
 
-	d_lsb_init(&ts_sc->lsb_ts_scaled, 0, ROHC_LSB_SHIFT_RTP_TS);
+	ts_sc->lsb_ts_scaled = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS);
+	if(ts_sc->lsb_ts_scaled == NULL)
+	{
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Destroy the given ts_sc_decomp object
+ *
+ * @param ts_sc  The ts_sc_decomp object to destroy
+ */
+void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_sc)
+{
+	assert(ts_sc != NULL);
+	assert(ts_sc->lsb_ts_scaled != NULL);
+	rohc_lsb_free(ts_sc->lsb_ts_scaled);
 }
 
 
@@ -111,7 +134,7 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	ts_sc->new_ts_offset = 0;
 
 	/* update the LSB object for TS_SCALED */
-	d_lsb_update(&ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
+	d_lsb_update(ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
 }
 
 
@@ -151,8 +174,8 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 
 	/* update TS_SCALED in context */
 	rohc_debugf(3, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
-	            ts_scaled, d_get_lsb_ref(&ts_sc->lsb_ts_scaled));
-	lsb_decode_ok = d_lsb_decode32(&ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
+	            ts_scaled, d_get_lsb_ref(ts_sc->lsb_ts_scaled));
+	lsb_decode_ok = d_lsb_decode32(ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
 	                               &ts_scaled_decoded);
 	if(!lsb_decode_ok)
 	{

@@ -3830,7 +3830,7 @@ error:
 int d_generic_get_sn(struct d_context *context)
 {
 	struct d_generic_context *g_context = context->specific;
-	return d_get_lsb_ref(&g_context->sn);
+	return d_get_lsb_ref(g_context->sn);
 }
 
 
@@ -4108,7 +4108,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	decode_ok = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	decode_ok = d_lsb_decode16(g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
 	if(!decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
@@ -4306,7 +4306,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		d_lsb_update(&g_context->sn, sn_decoded);
+		d_lsb_update(g_context->sn, sn_decoded);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
@@ -4346,7 +4346,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	d_lsb_update(&g_context->sn, sn_decoded);
+	d_lsb_update(g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
 		d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
@@ -4858,7 +4858,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	decode_ok = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	decode_ok = d_lsb_decode16(g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
 	if(!decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
@@ -5108,7 +5108,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		d_lsb_update(&g_context->sn, sn_decoded);
+		d_lsb_update(g_context->sn, sn_decoded);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
@@ -5148,7 +5148,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	d_lsb_update(&g_context->sn, sn_decoded);
+	d_lsb_update(g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
 		d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
@@ -6078,7 +6078,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 */
 
 	/* decode SN */
-	decode_ok = d_lsb_decode16(&g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
+	decode_ok = d_lsb_decode16(g_context->sn, sn_bits, sn_bits_nr, &sn_decoded);
 	if(!decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
@@ -6337,7 +6337,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		d_lsb_update(&g_context->sn, sn_decoded);
+		d_lsb_update(g_context->sn, sn_decoded);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
@@ -6379,7 +6379,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	d_lsb_update(&g_context->sn, sn_decoded);
+	d_lsb_update(g_context->sn, sn_decoded);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
 		d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);

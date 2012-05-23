@@ -44,7 +44,7 @@ struct ts_sc_decomp
 	/// The last computed or received TS_SCALED value (validated by CRC)
 	uint32_t ts_scaled;
 	/// The LSB-encoded TS_SCALED value
-	struct d_lsb_decode lsb_ts_scaled;
+	struct d_lsb_decode *lsb_ts_scaled;
 
 	/// The last computed or received TS_OFFSET value (validated by CRC)
 	uint32_t ts_offset;
@@ -78,7 +78,10 @@ struct ts_sc_decomp
  * Function prototypes
  */
 
-void d_create_sc(struct ts_sc_decomp *const ts_sc);
+bool d_create_sc(struct ts_sc_decomp *const ts_sc)
+	__attribute__((nonnull(1)));
+void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled)
+	__attribute__((nonnull(1)));
 
 void ts_update_context(struct ts_sc_decomp *const ts_sc,
                        const uint32_t ts,

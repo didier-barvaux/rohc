@@ -31,25 +31,17 @@
 #include <stdbool.h>
 
 
-/**
- * @brief Least Significant Bits decoding object
- */
-struct d_lsb_decode
-{
-	/// The reference value
-	uint32_t v_ref_d;
-	/// The p shift parameter (see 4.5.1 in the RFC 3095)
-	rohc_lsb_shift_t p;
-};
+/* The definition of the Least Significant Bits decoding object is private */
+struct d_lsb_decode;
 
 
 /*
  * Function prototypes
  */
 
-void d_lsb_init(struct d_lsb_decode *const lsb,
-                const uint32_t v_ref_d,
-                const rohc_lsb_shift_t p);
+struct d_lsb_decode *const rohc_lsb_new(const rohc_lsb_shift_t p);
+void rohc_lsb_free(struct d_lsb_decode *const lsb)
+	__attribute__((nonnull(1)));
 
 bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
                     const uint32_t m,

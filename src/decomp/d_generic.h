@@ -99,7 +99,7 @@ struct d_generic_context
 	int first_packet_processed;
 
 	/// The LSB-encoded Sequence Number (SN)
-	struct d_lsb_decode sn;
+	struct d_lsb_decode *sn;
 	/// The IP-ID of the outer IP header
 	struct d_ip_id_decode ip_id1;
 	/// The IP-ID of the inner IP header

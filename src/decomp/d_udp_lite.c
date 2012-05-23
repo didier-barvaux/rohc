@@ -70,6 +70,14 @@ void * d_udp_lite_create(void)
 	bzero(udp_lite_context, sizeof(struct d_udp_lite_context));
 	context->specific = udp_lite_context;
 
+	/* create the LSB decoding context for SN */
+	context->sn = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
+	if(context->sn == NULL)
+	{
+		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
+		goto free_udp_context;
+	}
+
 	/* the UDP-Lite checksum coverage field present flag will be initialized
 	 * with the IR or IR-DYN packets */
 	udp_lite_context->cfp = -1;
@@ -91,7 +99,7 @@ void * d_udp_lite_create(void)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-Lite-specific "
 		            "part of the header changes last1\n");
-		goto free_udp_context;
+		goto free_lsb_sn;
 	}
 	bzero(context->last1->next_header, sizeof(struct udphdr));
 
@@ -136,6 +144,8 @@ free_last2_next_header:
 	zfree(context->last2->next_header);
 free_last1_next_header:
 	zfree(context->last1->next_header);
+free_lsb_sn:
+	rohc_lsb_free(context->sn);
 free_udp_context:
 	zfree(udp_lite_context);
 destroy_context:
@@ -178,6 +188,10 @@ void d_udp_lite_destroy(void *context)
 			zfree(c->active2->next_header);
 		}
 
+		/* destroy the LSB decoding context for SN */
+		rohc_lsb_free(c->sn);
+
+		/* destroy the resources of the generic context */
 		d_generic_destroy(context);
 	}
 }

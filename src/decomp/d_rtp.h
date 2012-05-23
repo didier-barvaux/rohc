@@ -48,7 +48,7 @@ struct d_rtp_context
 	int udp_checksum_present;
 
 	/// The LSB-encoded Timestamp
-	struct d_lsb_decode ts;
+	struct d_lsb_decode *ts;
 
 	/// The structure to decompress TS_STRIDE
 	struct ts_sc_decomp ts_sc;

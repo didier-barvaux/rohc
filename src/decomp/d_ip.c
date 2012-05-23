@@ -25,6 +25,15 @@
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 #include "rohc_packets.h"
+#include "rohc_debug.h" /* for zfree() */
+
+
+/*
+ * Private function prototypes.
+ */
+
+static void d_ip_destroy(void *const context)
+	__attribute__((nonnull(1)));
 
 
 /**
@@ -46,13 +55,43 @@ void * d_ip_create(void)
 		goto quit;
 	}
 
+	/* create the LSB decoding context for SN */
+	context->sn = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
+	if(context->sn == NULL)
+	{
+		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
+		goto free_context;
+	}
+
 	/* some IP-specific values and functions */
 	context->decode_dynamic_next_header = ip_decode_dynamic_ip;
 
 	return context;
 
+free_context:
+	zfree(context);
 quit:
 	return NULL;
+}
+
+
+/**
+ * @brief Destroy the given IP-only context
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context The compression context
+ */
+void d_ip_destroy(void *const context)
+{
+	struct d_generic_context *g_context;
+
+	assert(context != NULL);
+	g_context = (struct d_generic_context *) context;
+
+	rohc_lsb_free(g_context->sn);
+	d_generic_destroy(context);
 }
 
 
@@ -96,7 +135,7 @@ int ip_decode_dynamic_ip(struct d_generic_context *context,
 
 		/* init the SN */
 		sn = ntohs(GET_NEXT_16_BITS(packet));
-		d_lsb_init(&context->sn, sn, ROHC_LSB_SHIFT_SN);
+		d_lsb_update(context->sn, sn);
 		rohc_debugf(1, "SN = %d (0x%04x)\n", sn, sn);
 		packet += 2;
 		read += 2;
@@ -280,7 +319,7 @@ struct d_profile d_ip_profile =
 	d_generic_decode,             /* profile handlers */
 	d_generic_decode_ir,
 	d_ip_create,
-	d_generic_destroy,
+	d_ip_destroy,
 	ip_detect_ir_size,
 	ip_detect_ir_dyn_size,
 	ip_get_static_part,
