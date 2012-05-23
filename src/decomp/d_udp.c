@@ -35,6 +35,9 @@
  * Private function prototypes.
  */
 
+static void d_udp_destroy(void *const context)
+	__attribute__((nonnull(1)));
+
 int udp_decode_uo_tail_udp(struct d_generic_context *context,
                            const unsigned char *packet,
                            unsigned int length,
@@ -163,36 +166,40 @@ quit:
  *
  * @param context The compression context
  */
-void d_udp_destroy(void *context)
+static void d_udp_destroy(void *const context)
 {
-	struct d_generic_context *c = context;
+	struct d_generic_context *g_context;
 
-	if(c != NULL)
+	assert(context != NULL);
+	g_context = (struct d_generic_context *) context;
+
+	/* clean UDP-specific memory */
+	assert(g_context->last1 != NULL);
+	if(g_context->last1->next_header != NULL)
 	{
-		/* clean UDP-specific memory */
-		if(c->last1 != NULL && c->last1->next_header != NULL)
-		{
-			zfree(c->last1->next_header);
-		}
-		if(c->last2 != NULL && c->last2->next_header != NULL)
-		{
-			zfree(c->last2->next_header);
-		}
-		if(c->active1 != NULL && c->active1->next_header != NULL)
-		{
-			zfree(c->active1->next_header);
-		}
-		if(c->active2 != NULL && c->active2->next_header != NULL)
-		{
-			zfree(c->active2->next_header);
-		}
-
-		/* destroy the LSB decoding context for SN */
-		rohc_lsb_free(c->sn);
-
-		/* destroy the resources of the generic context */
-		d_generic_destroy(context);
+		zfree(g_context->last1->next_header);
 	}
+	assert(g_context->last2 != NULL);
+	if(g_context->last2->next_header != NULL)
+	{
+		zfree(g_context->last2->next_header);
+	}
+	assert(g_context->active1 != NULL);
+	if(g_context->active1->next_header != NULL)
+	{
+		zfree(g_context->active1->next_header);
+	}
+	assert(g_context->active2 != NULL);
+	if(g_context->active2->next_header != NULL)
+	{
+		zfree(g_context->active2->next_header);
+	}
+
+	/* destroy the LSB decoding context for SN */
+	rohc_lsb_free(g_context->sn);
+
+	/* destroy the resources of the generic context */
+	d_generic_destroy(context);
 }
 
 
