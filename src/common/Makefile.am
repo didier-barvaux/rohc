@@ -17,7 +17,7 @@ sources = \
 	decode.c \
 	ip_id.c \
 	interval.c \
-	lsb.c \
+	lsb_decode.c \
 	sdvl.c \
 	wlsb.c \
 	ip.c \
@@ -40,7 +40,7 @@ private_headers = \
 	decode.h \
 	ip_id.h \
 	interval.h \
-	lsb.h \
+	lsb_decode.h \
 	sdvl.h \
 	wlsb.h \
 	ip.h \

@@ -15,13 +15,14 @@
  */
 
 /**
- * @file lsb.c
- * @brief Least Significant Bits (LSB) encoding
+ * @file   lsb_decode.c
+ * @brief  Least Significant Bits (LSB) decoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
-#include "lsb.h"
+#include "lsb_decode.h"
 #include "interval.h" /* for the rohc_f_32bits() function */
 
 #include <assert.h>
@@ -36,7 +37,7 @@
  *
  * See RFC 3095, §4.5.1
  */
-struct d_lsb_decode
+struct rohc_lsb_decode
 {
 	bool is_init;        /**< Whether the reference value was initialized */
 	uint32_t v_ref_d;    /**< The reference value */
@@ -57,11 +58,11 @@ struct d_lsb_decode
  * @return         The new LSB decoding context in case of success, NULL
  *                 otherwise
  */
-struct d_lsb_decode *const rohc_lsb_new(const rohc_lsb_shift_t p)
+struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p)
 {
-	struct d_lsb_decode *lsb;
+	struct rohc_lsb_decode *lsb;
 
-	lsb = malloc(sizeof(struct d_lsb_decode));
+	lsb = malloc(sizeof(struct rohc_lsb_decode));
 	if(lsb != NULL)
 	{
 		lsb->p = p;
@@ -79,7 +80,7 @@ struct d_lsb_decode *const rohc_lsb_new(const rohc_lsb_shift_t p)
  *
  * @param lsb  The LSB decoding context to destroy
  */
-void rohc_lsb_free(struct d_lsb_decode *const lsb)
+void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 {
 	assert(lsb != NULL);
 	free(lsb);
@@ -97,10 +98,10 @@ void rohc_lsb_free(struct d_lsb_decode *const lsb)
  * @param decoded  OUT: The decoded value
  * @return         true in case of success, false otherwise
  */
-bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
-                    const uint32_t m,
-                    const size_t k,
-                    uint32_t *const decoded)
+bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                       const uint32_t m,
+                       const size_t k,
+                       uint32_t *const decoded)
 {
 	uint32_t min;
 	uint32_t max;
@@ -179,7 +180,7 @@ bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
 /**
  * @brief Decode a 16-bit LSB-encoded value
  *
- * See \ref d_lsb_decode32 for details.
+ * See \ref rohc_lsb_decode32 for details.
  *
  * @param lsb      The LSB object used to decode
  * @param m        The LSB value to decode
@@ -187,10 +188,10 @@ bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
  * @param decoded  OUT: The decoded value
  * @return         true in case of success, false otherwise
  */
-bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
-                    const uint16_t m,
-                    const size_t k,
-                    uint16_t *const decoded)
+bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                       const uint16_t m,
+                       const size_t k,
+                       uint16_t *const decoded)
 {
 	uint32_t m32;
 	uint32_t decoded32;
@@ -203,7 +204,7 @@ bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
 
 	m32 = ((uint32_t) m) & 0xffff;
 
-	is_success = d_lsb_decode32(lsb, m32, k, &decoded32);
+	is_success = rohc_lsb_decode32(lsb, m32, k, &decoded32);
 	if(is_success)
 	{
 		*decoded = (uint16_t) (decoded32 & 0xffff);
@@ -223,7 +224,8 @@ bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
  * @param lsb     The LSB object
  * @param v_ref_d The new reference value
  */
-void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d)
+void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
+                      const uint32_t v_ref_d)
 {
 	lsb->v_ref_d = v_ref_d;
 	lsb->is_init = true;
@@ -236,7 +238,7 @@ void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d)
  * @param lsb  The LSB object
  * @return     The current reference value
  */
-uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb)
+uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
 {
 	assert(lsb->is_init == true);
 	return lsb->v_ref_d;

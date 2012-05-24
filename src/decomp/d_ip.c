@@ -135,7 +135,7 @@ int ip_decode_dynamic_ip(struct d_generic_context *context,
 
 		/* init the SN */
 		sn = ntohs(GET_NEXT_16_BITS(packet));
-		d_lsb_update(context->sn, sn);
+		rohc_lsb_set_ref(context->sn, sn);
 		rohc_debugf(1, "SN = %d (0x%04x)\n", sn, sn);
 		packet += 2;
 		read += 2;

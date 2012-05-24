@@ -134,7 +134,7 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	ts_sc->new_ts_offset = 0;
 
 	/* update the LSB object for TS_SCALED */
-	d_lsb_update(ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
+	rohc_lsb_set_ref(ts_sc->lsb_ts_scaled, ts_sc->ts_scaled);
 }
 
 
@@ -174,9 +174,9 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 
 	/* update TS_SCALED in context */
 	rohc_debugf(3, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
-	            ts_scaled, d_get_lsb_ref(ts_sc->lsb_ts_scaled));
-	lsb_decode_ok = d_lsb_decode32(ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
-	                               &ts_scaled_decoded);
+	            ts_scaled, rohc_lsb_get_ref(ts_sc->lsb_ts_scaled));
+	lsb_decode_ok = rohc_lsb_decode32(ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
+	                                  &ts_scaled_decoded);
 	if(!lsb_decode_ok)
 	{
 		rohc_debugf(0, "failed to decode %zd-bit TS_SCALED %u\n", bits_nr,

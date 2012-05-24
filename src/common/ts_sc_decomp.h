@@ -24,7 +24,7 @@
 #ifndef TS_SC_DECOMP_H
 #define TS_SC_DECOMP_H
 
-#include "lsb.h"
+#include "lsb_decode.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -44,7 +44,7 @@ struct ts_sc_decomp
 	/// The last computed or received TS_SCALED value (validated by CRC)
 	uint32_t ts_scaled;
 	/// The LSB-encoded TS_SCALED value
-	struct d_lsb_decode *lsb_ts_scaled;
+	struct rohc_lsb_decode *lsb_ts_scaled;
 
 	/// The last computed or received TS_OFFSET value (validated by CRC)
 	uint32_t ts_offset;

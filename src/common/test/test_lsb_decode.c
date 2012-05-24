@@ -21,7 +21,7 @@
  */
 
 #include "wlsb.h"
-#include "lsb.h"
+#include "lsb_decode.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -140,7 +140,7 @@ error:
 bool run_test16_with_shift_param(bool be_verbose, const short p)
 {
 	struct c_wlsb *wlsb; /* the W-LSB encoding context */
-	struct d_lsb_decode *lsb; /* the LSB decoding context */
+	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
 
 	uint16_t value16; /* the value to encode */
 	uint16_t value16_encoded; /* the encoded value to decode */
@@ -167,7 +167,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
 		goto destroy_wlsb;
 	}
-	d_lsb_update(lsb, value16);
+	rohc_lsb_set_ref(lsb, value16);
 
 	/* initialize the W-LSB encoding context */
 	for(i = 1; i < 3; i++)
@@ -185,7 +185,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		value16_decoded = value16_encoded;
 
 		/* update decoding context */
-		d_lsb_update(lsb, value16_decoded);
+		rohc_lsb_set_ref(lsb, value16_decoded);
 	}
 
 	/* encode then decode 16-bit values from ranges [3, 0xffff] and [0, 100] */
@@ -227,8 +227,8 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		/* decode */
 		trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
 		      value16_encoded);
-		lsb_decode_ok = d_lsb_decode16(lsb, value16_encoded, required_bits,
-		                               &value16_decoded);
+		lsb_decode_ok = rohc_lsb_decode16(lsb, value16_encoded, required_bits,
+		                                  &value16_decoded);
 		if(!lsb_decode_ok)
 		{
 			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
@@ -237,7 +237,7 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		trace(be_verbose, "\t\tdecoded: 0x%04x\n", value16_decoded);
 
 		/* update decoding context */
-		d_lsb_update(lsb, value16_decoded);
+		rohc_lsb_set_ref(lsb, value16_decoded);
 
 		/* check test result */
 		if(value16 != value16_decoded)
@@ -271,7 +271,7 @@ error:
 bool run_test32_with_shift_param(bool be_verbose, const short p)
 {
 	struct c_wlsb *wlsb; /* the W-LSB encoding context */
-	struct d_lsb_decode *lsb; /* the LSB decoding context */
+	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
 
 	uint32_t value32; /* the value to encode */
 	uint32_t value32_encoded; /* the encoded value to decode */
@@ -298,7 +298,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
 		goto destroy_wlsb;
 	}
-	d_lsb_update(lsb, value32);
+	rohc_lsb_set_ref(lsb, value32);
 
 	/* initialize the W-LSB encoding context */
 	for(i = 1; i < 3; i++)
@@ -316,7 +316,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32_decoded = value32_encoded;
 
 		/* update decoding context */
-		d_lsb_update(lsb, value32_decoded);
+		rohc_lsb_set_ref(lsb, value32_decoded);
 	}
 
 	/* encode then decode 32-bit values from ranges [3, 100] */
@@ -358,8 +358,8 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		/* decode */
 		trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
 		      value32_encoded);
-		lsb_decode_ok = d_lsb_decode32(lsb, value32_encoded, required_bits,
-		                               &value32_decoded);
+		lsb_decode_ok = rohc_lsb_decode32(lsb, value32_encoded, required_bits,
+		                                  &value32_decoded);
 		if(!lsb_decode_ok)
 		{
 			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
@@ -368,7 +368,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);
 
 		/* update decoding context */
-		d_lsb_update(lsb, value32_decoded);
+		rohc_lsb_set_ref(lsb, value32_decoded);
 
 		/* check test result */
 		if(value32 != value32_decoded)
@@ -401,7 +401,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
 		goto destroy_wlsb;
 	}
-	d_lsb_update(lsb, value32);
+	rohc_lsb_set_ref(lsb, value32);
 
 	/* initialize the W-LSB encoding context */
 	for(i = (0xffffffff - 100 - 3); i < (0xffffffff - 100); i++)
@@ -419,7 +419,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		value32_decoded = value32_encoded;
 
 		/* update decoding context */
-		d_lsb_update(lsb, value32_decoded);
+		rohc_lsb_set_ref(lsb, value32_decoded);
 	}
 
 	/* encode then decode 32-bit values from ranges
@@ -462,8 +462,8 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		/* decode */
 		trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
 		      value32_encoded);
-		lsb_decode_ok = d_lsb_decode32(lsb, value32_encoded, required_bits,
-		                               &value32_decoded);
+		lsb_decode_ok = rohc_lsb_decode32(lsb, value32_encoded, required_bits,
+		                                  &value32_decoded);
 		if(!lsb_decode_ok)
 		{
 			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
@@ -472,7 +472,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);
 
 		/* update decoding context */
-		d_lsb_update(lsb, value32_decoded);
+		rohc_lsb_set_ref(lsb, value32_decoded);
 
 		/* check test result */
 		if(value32 != value32_decoded)

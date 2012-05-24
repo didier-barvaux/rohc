@@ -15,9 +15,10 @@
  */
 
 /**
- * @file lsb.h
- * @brief Least Significant Bits (LSB) encoding
+ * @file   lsb_decode.h
+ * @brief  Least Significant Bits (LSB) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -32,29 +33,36 @@
 
 
 /* The definition of the Least Significant Bits decoding object is private */
-struct d_lsb_decode;
+struct rohc_lsb_decode;
 
 
 /*
  * Function prototypes
  */
 
-struct d_lsb_decode *const rohc_lsb_new(const rohc_lsb_shift_t p);
-void rohc_lsb_free(struct d_lsb_decode *const lsb)
+struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p);
+
+void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 	__attribute__((nonnull(1)));
 
-bool d_lsb_decode32(const struct d_lsb_decode *const lsb,
-                    const uint32_t m,
-                    const size_t k,
-                    uint32_t *const decoded);
-bool d_lsb_decode16(const struct d_lsb_decode *const lsb,
-                    const uint16_t m,
-                    const size_t k,
-                    uint16_t *const decoded);
+bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                       const uint32_t m,
+                       const size_t k,
+                       uint32_t *const decoded)
+	__attribute__((nonnull(1, 4)));
 
-void d_lsb_update(struct d_lsb_decode *const lsb, const uint32_t v_ref_d);
+bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                       const uint16_t m,
+                       const size_t k,
+                       uint16_t *const decoded)
+	__attribute__((nonnull(1, 4)));
 
-uint32_t d_get_lsb_ref(struct d_lsb_decode *const lsb);
+void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
+                      const uint32_t v_ref_d)
+	__attribute__((nonnull(1)));
+
+uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
+	__attribute__((nonnull(1)));
 
 #endif
 
