@@ -56,8 +56,8 @@ void * d_ip_create(void)
 	}
 
 	/* create the LSB decoding context for SN */
-	context->sn = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
-	if(context->sn == NULL)
+	context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
+	if(context->sn_lsb_ctxt == NULL)
 	{
 		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
 		goto free_context;
@@ -90,7 +90,7 @@ void d_ip_destroy(void *const context)
 	assert(context != NULL);
 	g_context = (struct d_generic_context *) context;
 
-	rohc_lsb_free(g_context->sn);
+	rohc_lsb_free(g_context->sn_lsb_ctxt);
 	d_generic_destroy(context);
 }
 
@@ -135,7 +135,7 @@ int ip_decode_dynamic_ip(struct d_generic_context *context,
 
 		/* init the SN */
 		sn = ntohs(GET_NEXT_16_BITS(packet));
-		rohc_lsb_set_ref(context->sn, sn);
+		rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
 		rohc_debugf(1, "SN = %d (0x%04x)\n", sn, sn);
 		packet += 2;
 		read += 2;

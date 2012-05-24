@@ -102,8 +102,8 @@ void * d_rtp_create(void)
 	context->specific = rtp_context;
 
 	/* create the LSB decoding context for SN */
-	context->sn = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_SN);
-	if(context->sn == NULL)
+	context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_SN);
+	if(context->sn_lsb_ctxt == NULL)
 	{
 		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
 		goto free_rtp_context;
@@ -185,7 +185,7 @@ free_last2_next_header:
 free_last1_next_header:
 	zfree(context->last1->next_header);
 free_lsb_sn:
-	rohc_lsb_free(context->sn);
+	rohc_lsb_free(context->sn_lsb_ctxt);
 free_rtp_context:
 	zfree(rtp_context);
 destroy_context:
@@ -239,7 +239,7 @@ static void d_rtp_destroy(void *const context)
 	}
 
 	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(g_context->sn);
+	rohc_lsb_free(g_context->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
 	d_generic_destroy(context);
@@ -692,7 +692,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 
 	/* init SN and IP-IDs (IPv4 only) */
 	sn = ntohs(rtp->sn);
-	rohc_lsb_set_ref(context->sn, sn);
+	rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
 	if(ip_get_version(&context->active1->ip) == IPV4)
 	{
 		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);

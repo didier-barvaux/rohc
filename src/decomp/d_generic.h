@@ -98,8 +98,8 @@ struct d_generic_context
 	/// Whether at least packet was already processed by the context or not
 	int first_packet_processed;
 
-	/// The LSB-encoded Sequence Number (SN)
-	struct rohc_lsb_decode *sn;
+	/// The LSB decoding context for the Sequence Number (SN)
+	struct rohc_lsb_decode *sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header
 	struct d_ip_id_decode ip_id1;
 	/// The IP-ID of the inner IP header

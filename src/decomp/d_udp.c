@@ -75,8 +75,8 @@ void * d_udp_create(void)
 	context->specific = udp_context;
 
 	/* create the LSB decoding context for SN */
-	context->sn = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
-	if(context->sn == NULL)
+	context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
+	if(context->sn_lsb_ctxt == NULL)
 	{
 		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
 		goto free_udp_context;
@@ -148,7 +148,7 @@ free_last2_next_header:
 free_last1_next_header:
 	zfree(context->last1->next_header);
 free_lsb_sn:
-	rohc_lsb_free(context->sn);
+	rohc_lsb_free(context->sn_lsb_ctxt);
 free_udp_context:
 	zfree(udp_context);
 destroy_context:
@@ -196,7 +196,7 @@ static void d_udp_destroy(void *const context)
 	}
 
 	/* destroy the LSB decoding context for SN */
-	rohc_lsb_free(g_context->sn);
+	rohc_lsb_free(g_context->sn_lsb_ctxt);
 
 	/* destroy the resources of the generic context */
 	d_generic_destroy(context);
