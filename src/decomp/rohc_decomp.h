@@ -72,15 +72,15 @@ struct d_decode_data
 struct d_statistics
 {
 	/// The number of received packets
-	unsigned int packets_received;
+	unsigned int received;
 	/// The number of bad decompressions due to wrong CRC
-	unsigned int packets_failed_crc;
+	unsigned int failed_crc;
 	/// The number of bad decompressions due to being in the No Context state
-	unsigned int packets_failed_no_context;
+	unsigned int failed_no_context;
 	/// The number of bad decompressions
-	unsigned int packets_failed_decompression;
+	unsigned int failed_decomp;
 	/// The number of feedback packets sent to the associated compressor
-	unsigned int packets_feedback;
+	unsigned int feedbacks;
 };
 
 
@@ -134,7 +134,7 @@ struct rohc_decomp
 
 
 	/// Some statistics about the decompression processes
-	struct d_statistics statistics;
+	struct d_statistics stats;
 };
 
 

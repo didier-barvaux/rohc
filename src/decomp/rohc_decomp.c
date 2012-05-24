@@ -488,9 +488,9 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	int ret;
 	struct d_decode_data ddata = { -1, 0, 0, 0, NULL };
 
-	decomp->statistics.packets_received++;
+	decomp->stats.received++;
 	rohc_debugf(1, "decompress the %d-byte packet #%u\n",
-	            isize, decomp->statistics.packets_received);
+	            isize, decomp->stats.received);
 
 	ret = d_decode_header(decomp, ibuf, isize, obuf, osize, &ddata);
 	if(ddata.active == NULL &&
@@ -528,7 +528,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	{
 		case ROHC_ERROR_PACKET_FAILED:
 		case ROHC_ERROR:
-			decomp->statistics.packets_failed_decompression++;
+			decomp->stats.failed_decomp++;
 			ddata.active->curval += decomp->errval;
 			if(ddata.active->curval >= decomp->maxval)
 			{
@@ -541,7 +541,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			break;
 
 		case ROHC_ERROR_NO_CONTEXT:
-			decomp->statistics.packets_failed_no_context++;
+			decomp->stats.failed_no_context++;
 			decomp->curval += decomp->errval;
 			if(decomp->curval >= decomp->maxval)
 			{
@@ -553,11 +553,11 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			break;
 
 		case ROHC_FEEDBACK_ONLY:
-			decomp->statistics.packets_feedback++;
+			decomp->stats.feedbacks++;
 			break;
 
 		case ROHC_ERROR_CRC:
-			decomp->statistics.packets_failed_crc++;
+			decomp->stats.failed_crc++;
 			ddata.active->curval += decomp->errval;
 			rohc_debugf(2, "feedback curr %d\n", ddata.active->curval);
 			rohc_debugf(2, "feedback max %d\n", decomp->maxval);
@@ -1094,11 +1094,11 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
  */
 void clear_statistics(struct rohc_decomp *decomp)
 {
-	decomp->statistics.packets_received = 0;
-	decomp->statistics.packets_failed_crc = 0;
-	decomp->statistics.packets_failed_no_context = 0;
-	decomp->statistics.packets_failed_decompression = 0;
-	decomp->statistics.packets_feedback = 0;
+	decomp->stats.received = 0;
+	decomp->stats.failed_crc = 0;
+	decomp->stats.failed_no_context = 0;
+	decomp->stats.failed_decomp = 0;
+	decomp->stats.feedbacks = 0;
 }
 
 
