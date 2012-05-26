@@ -15,9 +15,10 @@
  */
 
 /**
- * @file rohc_traces.h
- * @brief ROHC macros for traces
+ * @file   rohc_traces.h
+ * @brief  ROHC macros and functions for traces
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef ROHC_TRACES_H
@@ -59,6 +60,12 @@
 			goto label; \
 		} \
 	} while(0)
+
+
+void rohc_dump_packet(const char *const descr,
+                      const unsigned char *const packet,
+                      const size_t length)
+	__attribute__((nonnull(1, 2)));
 
 
 #endif

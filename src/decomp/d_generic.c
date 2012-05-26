@@ -4277,16 +4277,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* try to guess the correct SN value in case of failure */
 	if(crc_computed != crc_packet)
 	{
-		size_t i;
-
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
 		            crc_computed, crc_packet);
-		rohc_debugf(3, "uncompressed headers (length = %zd): ", uncomp_header_len);
-		for(i = 0; i < uncomp_header_len; i++)
-		{
-			rohc_debugf_(3, "0x%02x ", uncomp_packet[i - uncomp_header_len]);
-		}
-		rohc_debugf_(3, "\n");
+		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
+		                 uncomp_header_len);
 
 		/* TODO: try to repair CRC failure */
 
@@ -5080,16 +5074,10 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* try to guess the correct SN value in case of failure */
 	if(crc_computed != crc_packet)
 	{
-		size_t i;
-
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
 		            crc_computed, crc_packet);
-		rohc_debugf(3, "uncompressed headers (length = %zd): ", uncomp_header_len);
-		for(i = 0; i < uncomp_header_len; i++)
-		{
-			rohc_debugf_(3, "0x%02x ", uncomp_packet[i - uncomp_header_len]);
-		}
-		rohc_debugf_(3, "\n");
+		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
+		                 uncomp_header_len);
 
 		/* TODO: try to repair CRC failure */
 
@@ -6310,16 +6298,10 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* try to guess the correct SN value in case of failure */
 	if(crc_computed != crc_packet)
 	{
-		size_t i;
-
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
 		            crc_computed, crc_packet);
-		rohc_debugf(3, "uncompressed headers (length = %zd): ", uncomp_header_len);
-		for(i = 0; i < uncomp_header_len; i++)
-		{
-			rohc_debugf_(3, "0x%02x ", uncomp_packet[i - uncomp_header_len]);
-		}
-		rohc_debugf_(3, "\n");
+		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
+		                 uncomp_header_len);
 
 		/* TODO: try to repair CRC failure */
 
