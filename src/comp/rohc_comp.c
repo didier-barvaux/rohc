@@ -109,6 +109,15 @@ static bool rohc_feedback_unlock(struct rohc_comp *const comp);
 
 
 /*
+ * Prototypes of miscellaneous private functions
+ */
+static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
+                                        void *const user_context)
+	__attribute__((nonnull(1)));
+
+
+
+/*
  * Definitions of public functions
  */
 
@@ -162,6 +171,10 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->jam_use = jam_use;
 	comp->adapt_size = adapt_size;
 	comp->encap_size = encap_size;
+
+	/* set default callback for random numbers */
+	comp->random_cb = rohc_comp_get_random_default;
+	comp->random_cb_ctxt = NULL;
 
 	/* init the tables for fast CRC computation */
 	is_fine = rohc_crc_init_table(comp->crc_table_2, CRC_TYPE_2);
@@ -237,6 +250,61 @@ void rohc_free_compressor(struct rohc_comp *comp)
 		/* free the compressor */
 		zfree(comp);
 	}
+}
+
+
+/**
+ * @brief Set the user-defined callback for random numbers
+ *
+ * If no callback is defined, an internal one that always returns 0 will be
+ * defined for compatibility reasons.
+ *
+ * @param comp      The ROHC compressor to set the random callback for
+ * @param callback  The random callback to set, maybe NULL to reset callback
+ * @param context   Private data that will be given to the callback, may be
+ *                  used as a context by user
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_random_callback(struct rohc_comp *const comp,
+                                   rohc_comp_random_cb_t callback,
+                                   const void *const context)
+{
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	comp->random_cb = callback;
+	comp->random_cb_ctxt = context;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief The default callback for random numbers
+ *
+ * The default callback for random numbers always returns 0 to keep
+ * compatibility with previous releases. That could be changed for the 2.0.0
+ * release.
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              Always 0
+ */
+static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
+                                        void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+
+	rohc_debugf(0, "please define a callback for random numbers\n");
+
+	return 0;
 }
 
 

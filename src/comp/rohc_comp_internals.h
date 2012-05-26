@@ -142,6 +142,14 @@ struct rohc_comp
 	struct c_context *last_context;
 
 
+	/* random callback */
+
+	/** The user-defined callback for random numbers */
+	rohc_comp_random_cb_t random_cb;
+	/** Private data that will be given to the callback for random numbers */
+	const void *random_cb_ctxt;
+
+
 	/* user interaction variables: */
 
 	/** Maximum Reconstructed Reception Unit (currently not used) */

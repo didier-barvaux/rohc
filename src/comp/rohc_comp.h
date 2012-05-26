@@ -27,6 +27,8 @@
 #include "rohc.h"
 #include "rohc_packets.h"
 
+#include <stdbool.h>
+
 
 /*
  * Declare the private ROHC compressor structure that is defined inside the
@@ -37,7 +39,7 @@ struct rohc_comp;
 
 
 /*
- * Public structures
+ * Public structures and types
  */
 
 
@@ -80,6 +82,12 @@ typedef struct
 } rohc_comp_last_packet_info_t;
 
 
+/** The prototype of the callback for random numbers */
+typedef int (*rohc_comp_random_cb_t) (const struct rohc_comp *const comp,
+                                      void *const user_context)
+	__attribute__((nonnull(1)));
+
+
 /*
  * Prototypes of main public functions related to ROHC compression
  */
@@ -89,6 +97,11 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
                                          int adapt_size,
                                          int encap_size);
 void rohc_free_compressor(struct rohc_comp *comp);
+
+bool rohc_comp_set_random_cb(struct rohc_comp *const comp,
+                             rohc_comp_random_cb_t callback,
+                             const void *const context)
+	__attribute__((nonnull(1)));
 
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
                   unsigned char *obuf, int osize);
