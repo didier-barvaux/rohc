@@ -49,7 +49,7 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 			(struct c_generic_context *) context->specific;
 
 		/* initialize SN to a random value (RFC 3095, 5.11.1) */
-		g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt);
+		g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
 		rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
 	}
 
