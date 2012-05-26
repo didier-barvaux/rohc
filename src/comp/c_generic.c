@@ -234,19 +234,19 @@ int changed_static_both_hdr(const struct c_context *context,
                             const struct ip_packet *ip,
                             const struct ip_packet *ip2);
 
-int changed_static_one_hdr(const unsigned short changed_fields,
+int changed_static_one_hdr(const struct c_context *const context,
+                           const unsigned short changed_fields,
                            struct ip_header_info *const header_info,
-                           const struct ip_packet *ip,
-                           const struct c_context *context);
+                           const struct ip_packet *ip);
 
 int changed_dynamic_both_hdr(const struct c_context *context,
                              const struct ip_packet *ip,
                              const struct ip_packet *ip2);
 
-int changed_dynamic_one_hdr(const unsigned short changed_fields,
+int changed_dynamic_one_hdr(const struct c_context *const context,
+                            const unsigned short changed_fields,
                             struct ip_header_info *const header_info,
-                            const struct ip_packet *ip,
-                            const struct c_context *context);
+                            const struct ip_packet *ip);
 
 unsigned short changed_fields(const struct ip_header_info *header_info,
                               const struct ip_packet *ip);
@@ -6707,8 +6707,8 @@ int code_EXT3_packet(const struct c_context *context,
 
 		/* ip bit */
 		rohc_debugf(3, "check for changed fields in the inner IP header\n");
-		if(changed_dynamic_one_hdr(changed_f & 0x01FF, &g_context->ip_flags, ip, context) ||
-		   changed_static_one_hdr(changed_f, &g_context->ip_flags, ip, context))
+		if(changed_dynamic_one_hdr(context, changed_f & 0x01FF, &g_context->ip_flags, ip) ||
+		   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
 		{
 			have_inner = 1;
 			f_byte |= 0x02;
@@ -6775,8 +6775,8 @@ int code_EXT3_packet(const struct c_context *context,
 		if(!is_rtp)
 		{
 			rohc_debugf(3, "check for changed fields in the outer IP header\n");
-			if(changed_dynamic_one_hdr(changed_f, &g_context->ip_flags, ip, context) ||
-			   changed_static_one_hdr(changed_f, &g_context->ip_flags, ip, context))
+			if(changed_dynamic_one_hdr(context, changed_f, &g_context->ip_flags, ip) ||
+			   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
 			{
 				have_outer = 1;
 				f_byte |= 0x01;
@@ -6785,8 +6785,8 @@ int code_EXT3_packet(const struct c_context *context,
 
 		/* ip bit */
 		rohc_debugf(3, "check for changed fields in the inner IP header\n");
-		if(changed_dynamic_one_hdr(changed_f2, &g_context->ip2_flags, ip2, context) ||
-		   changed_static_one_hdr(changed_f2, &g_context->ip2_flags, ip2, context))
+		if(changed_dynamic_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
+		   changed_static_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2))
 		{
 			have_inner = 1;
 			f_byte = f_byte | 0x02;
@@ -7411,15 +7411,14 @@ int changed_static_both_hdr(const struct c_context *context,
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	nb_fields = changed_static_one_hdr(g_context->tmp.changed_fields,
-	                                   &g_context->ip_flags,
-	                                   ip, context);
+	nb_fields = changed_static_one_hdr(context, g_context->tmp.changed_fields,
+	                                   &g_context->ip_flags, ip);
 
 	if(g_context->tmp.nr_of_ip_hdr > 1)
 	{
-		nb_fields += changed_static_one_hdr(g_context->tmp.changed_fields2,
-		                                    &g_context->ip2_flags,
-		                                    ip2, context);
+		nb_fields += changed_static_one_hdr(context,
+		                                    g_context->tmp.changed_fields2,
+		                                    &g_context->ip2_flags, ip2);
 	}
 
 	return nb_fields;
@@ -7446,17 +7445,17 @@ int changed_static_both_hdr(const struct c_context *context,
  *  - For IPv4, check the Protocol field for change.
  *  - For IPv6, check the Next Header field for change.
  *
+ * @param context        The compression context
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
  * @param header_info    The header info stored in the profile
  * @param ip             The header of the new IP packet
- * @param context        The compression context
  * @return               The number of fields that changed
  */
-int changed_static_one_hdr(const unsigned short changed_fields,
+int changed_static_one_hdr(const struct c_context *const context,
+                           const unsigned short changed_fields,
                            struct ip_header_info *const header_info,
-                           const struct ip_packet *ip,
-                           const struct c_context *context)
+                           const struct ip_packet *ip)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	struct c_generic_context *g_context;
@@ -7500,14 +7499,15 @@ int changed_dynamic_both_hdr(const struct c_context *context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	rohc_debugf(3, "check for changed fields in the outer IP header\n");
-	nb_fields = changed_dynamic_one_hdr(g_context->tmp.changed_fields,
-	                                    &g_context->ip_flags, ip, context);
+	nb_fields = changed_dynamic_one_hdr(context, g_context->tmp.changed_fields,
+	                                    &g_context->ip_flags, ip);
 
 	if(g_context->tmp.nr_of_ip_hdr > 1)
 	{
 		rohc_debugf(3, "check for changed fields in the inner IP header\n");
-		nb_fields += changed_dynamic_one_hdr(g_context->tmp.changed_fields2,
-		                                     &g_context->ip2_flags, ip2, context);
+		nb_fields += changed_dynamic_one_hdr(context,
+		                                     g_context->tmp.changed_fields2,
+		                                     &g_context->ip2_flags, ip2);
 	}
 
 	return nb_fields;
@@ -7532,17 +7532,17 @@ int changed_dynamic_both_hdr(const struct c_context *context,
  *  - RND: is the IP-ID random ?
  *  - NBO: is the IP-ID in Network Byte Order ?
  *
+ * @param context        The compression context
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
  * @param header_info    The header info stored in the profile
  * @param ip             The header of the new IP packet
- * @param context        The compression context
  * @return               The number of fields that changed
  */
-int changed_dynamic_one_hdr(const unsigned short changed_fields,
+int changed_dynamic_one_hdr(const struct c_context *const context,
+                            const unsigned short changed_fields,
                             struct ip_header_info *const header_info,
-                            const struct ip_packet *ip,
-                            const struct c_context *context)
+                            const struct ip_packet *ip)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	int nb_flags = 0; /* number of flags that changed */
