@@ -313,8 +313,8 @@ struct list_comp
 	unsigned short (*get_size)(const unsigned char *ext);
 
 	/// @brief the handler used to compare two extension of the same type
-	int (*compare)(const unsigned char *ext,
-	               const struct list_comp *comp,
+	int (*compare)(const struct list_comp *const comp,
+	               const unsigned char *const ext,
 	               const int size,
 	               const int index_table);
 

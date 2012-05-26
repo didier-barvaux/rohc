@@ -188,8 +188,8 @@ static void create_ipv6_item(struct list_comp *const comp,
 unsigned char * get_ipv6_extension(const struct ip_packet *ip,
                                    const int index);
 
-int ipv6_compare(const unsigned char *ext,
-                 const struct list_comp *comp,
+int ipv6_compare(const struct list_comp *const comp,
+                 const unsigned char *const ext,
                  const int size,
                  const int index_table);
 
@@ -1197,7 +1197,7 @@ int c_create_current_list(const int index,
 	/* test if the extension is the same in tables */
 	if(size == comp->based_table[index_table].length)
 	{
-		if(comp->compare(ext, comp, size, index_table) != 0)
+		if(comp->compare(comp, ext, size, index_table) != 0)
 		{
 			/* the extension is modified */
 			rohc_debugf(3, "new extension to encode with same size "
@@ -2623,8 +2623,8 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
  * @param index_table  The index of the IPv6 extention in based table
  * @return             1 if equal, 0 otherwise
  */
-int ipv6_compare(const unsigned char *ext,
-                 const struct list_comp *comp,
+int ipv6_compare(const struct list_comp *const comp,
+                 const unsigned char *const ext,
                  const int size,
                  const int index_table)
 {
