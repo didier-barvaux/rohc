@@ -259,24 +259,24 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * If no callback is defined, an internal one that always returns 0 will be
  * defined for compatibility reasons.
  *
- * @param comp      The ROHC compressor to set the random callback for
- * @param callback  The random callback to set, maybe NULL to reset callback
- * @param context   Private data that will be given to the callback, may be
- *                  used as a context by user
+ * @param comp          The ROHC compressor to set the random callback for
+ * @param callback      The random callback to set
+ * @param user_context  Private data that will be given to the callback, may
+ *                      be used as a context by user
  *
  * @ingroup rohc_comp
  */
-bool rohc_comp_set_random_callback(struct rohc_comp *const comp,
-                                   rohc_comp_random_cb_t callback,
-                                   const void *const context)
+bool rohc_comp_set_random_cb(struct rohc_comp *const comp,
+                             rohc_comp_random_cb_t callback,
+                             void *const user_context)
 {
-	if(comp == NULL)
+	if(comp == NULL || callback == NULL)
 	{
 		goto error;
 	}
 
 	comp->random_cb = callback;
-	comp->random_cb_ctxt = context;
+	comp->random_cb_ctxt = user_context;
 
 	return true;
 

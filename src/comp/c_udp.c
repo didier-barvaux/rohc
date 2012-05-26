@@ -55,6 +55,7 @@ int udp_changed_udp_dynamic(const struct c_context *context,
  */
 int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 {
+	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
 	struct ip_packet ip2;
@@ -69,6 +70,10 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
+
+	/* initialize SN to a random value (RFC 3095, 5.11.1) */
+	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt);
+	rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
 
 	/* check if packet is IP/UDP or IP/IP/UDP */
 	ip_proto = ip_get_protocol(ip);

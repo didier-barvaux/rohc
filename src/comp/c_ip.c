@@ -26,6 +26,38 @@
 
 
 /**
+ * @brief Create a new context and initialize it thanks to the given IP packet.
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context The compression context
+ * @param ip      The IP packet given to initialize the new context
+ * @return        1 if successful, 0 otherwise
+ */
+static int rohc_ip_ctxt_create(struct c_context *const context,
+                               const struct ip_packet *ip)
+{
+	int is_success;
+
+	/* call the generic function for all IP-based profiles */
+	is_success = c_generic_create(context, ip);
+	if(is_success)
+	{
+		const struct rohc_comp *const comp = context->compressor;
+		struct c_generic_context *const g_context =
+			(struct c_generic_context *) context->specific;
+
+		/* initialize SN to a random value (RFC 3095, 5.11.1) */
+		g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt);
+		rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
+	}
+
+	return is_success;
+}
+
+
+/**
  * @brief Check if an IP packet belongs to the context.
  *
  * Conditions are:
@@ -175,7 +207,7 @@ struct c_profile c_ip_profile =
 	NULL,               /* list of UDP ports, not relevant for IP-only */
 	ROHC_PROFILE_IP,    /* profile ID (see 5 in RFC 3843) */
 	"IP / Compressor",  /* profile description */
-	c_generic_create,   /* profile handlers */
+	rohc_ip_ctxt_create,
 	c_generic_destroy,
 	c_ip_check_context,
 	c_generic_encode,

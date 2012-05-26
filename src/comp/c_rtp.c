@@ -81,6 +81,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	struct ip_packet ip2;
 	const struct ip_packet *last_ip_header;
 	const struct udphdr *udp;
+	const struct rtphdr *rtp;
 	unsigned int ip_proto;
 
 	/* create and initialize the generic part of the profile context */
@@ -120,6 +121,12 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	}
 
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	rtp = (struct rtphdr *) (udp + 1);
+
+	/* initialize SN with the SN found in the RTP header */
+	g_context->sn = ntohs(rtp->sn);
+	rohc_debugf(1, "initialize context(SN) = hdr(SN) of first packet = %u\n",
+	            g_context->sn);
 
 	/* create the RTP part of the profile context */
 	rtp_context = malloc(sizeof(struct sc_rtp_context));
@@ -134,7 +141,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->udp_checksum_change_count = 0;
 	rtp_context->old_udp = *udp;
 	rtp_context->rtp_pt_change_count = 0;
-	rtp_context->old_rtp = *((struct rtphdr *) (udp + 1));
+	rtp_context->old_rtp = *rtp;
 	rtp_context->ts_window = c_create_wlsb(32, C_WINDOW_WIDTH,
 	                                       ROHC_LSB_SHIFT_RTP_TS);
 	if(!c_create_sc(&rtp_context->ts_sc))

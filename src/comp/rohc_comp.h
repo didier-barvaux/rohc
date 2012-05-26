@@ -100,8 +100,8 @@ void rohc_free_compressor(struct rohc_comp *comp);
 
 bool rohc_comp_set_random_cb(struct rohc_comp *const comp,
                              rohc_comp_random_cb_t callback,
-                             const void *const context)
-	__attribute__((nonnull(1)));
+                             void *const user_context)
+	__attribute__((nonnull(1, 2)));
 
 int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
                   unsigned char *obuf, int osize);

@@ -523,22 +523,16 @@ int c_generic_create(struct c_context *const context,
 	context->specific = g_context;
 
 	/* initialize some context variables:
-	 *  1. init the Sequence Number (SN) to 0
-	 *  2. init the parameters to encode the SN with W-LSB encoding
-	 *  3. init the counters of packet types
-	 *  4. init the counters for the periodic transition to lower states
-	 *  5. init the info related to the outer IP header, the info related to the
+	 *  1. init the parameters to encode the SN with W-LSB encoding
+	 *  2. init the counters of packet types
+	 *  3. init the counters for the periodic transition to lower states
+	 *  4. init the info related to the outer IP header, the info related to the
 	 *     inner IP header will be initialized later if necessary
-	 *  6. init the temporary variables
-	 *  7. init the profile-specific variables to safe values
+	 *  5. init the temporary variables
+	 *  6. init the profile-specific variables to safe values
 	 */
 
 	/* step 1 */
-	// TODO: should be initialized to a random value according
-	//       to 5.11.1 in RFC 3095, but 0 simplifies testing
-	g_context->sn = 0;
-
-	/* step 2 */
 	switch(context->profile->id)
 	{
 		case ROHC_PROFILE_RTP:
@@ -562,27 +556,27 @@ int c_generic_create(struct c_context *const context,
 		goto clean;
 	}
 
-	/* step 3 */
+	/* step 2 */
 	g_context->ir_count = 0;
 	g_context->fo_count = 0;
 	g_context->so_count = 0;
 
-	/* step 4 */
+	/* step 3 */
 	g_context->go_back_fo_count = 0;
 	g_context->go_back_ir_count = 0;
 	g_context->ir_dyn_count = 0;
 
-	/* step 5 */
+	/* step 4 */
 	if(!c_init_header_info(&g_context->ip_flags, ip))
 	{
 		goto clean;
 	}
 	g_context->is_ip2_initialized = 0;
 
-	/* step 6 */
+	/* step 5 */
 	c_init_tmp_variables(&g_context->tmp);
 
-	/* step 7 */
+	/* step 6 */
 	g_context->specific = NULL;
 	g_context->next_header_proto = 0;
 	g_context->next_header_len = 0;
@@ -836,11 +830,12 @@ int c_generic_encode(struct c_context *const context,
 
 	/* STEP 2:
 	 *  - check NBO and RND of the IP-ID of the outer and inner IP headers
-	 *    (IPv4 only)
+	 *    (IPv4 only, if the current packet is not the first one)
 	 *  - increase the Sequence Number (SN)
 	 *  - find how many static and dynamic IP fields changed
 	 */
-	if(g_context->sn != 0) /* skip first packet (sn == 0) */
+	/* IP-ID behaviour can be detected with only one packet */
+	if(context->num_sent_packets > 0)
 	{
 		if(ip_get_version(ip) == IPV4)
 		{
@@ -877,7 +872,7 @@ int c_generic_encode(struct c_context *const context,
 	}
 	else
 	{
-		/* increase the SN every time we encod something */
+		/* increase the SN every time we encode something */
 		g_context->sn++;
 	}
 

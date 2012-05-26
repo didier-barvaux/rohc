@@ -147,7 +147,7 @@ struct rohc_comp
 	/** The user-defined callback for random numbers */
 	rohc_comp_random_cb_t random_cb;
 	/** Private data that will be given to the callback for random numbers */
-	const void *random_cb_ctxt;
+	void *random_cb_ctxt;
 
 
 	/* user interaction variables: */
