@@ -116,14 +116,13 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 		rohc_debugf(0, "cannot allocate memory for the W-LSB object\n");
 		goto error;
 	}
-	bzero(wlsb, sizeof(struct c_wlsb) + (window_width - 1) * sizeof(struct c_window));
 
 	wlsb->oldest = 0;
 	wlsb->next = 0;
 	wlsb->window_width = window_width;
-
 	wlsb->bits = bits;
 	wlsb->p = p;
+
 	for(entry = 0; entry < window_width; entry++)
 	{
 		wlsb->window[entry].is_used = false;
