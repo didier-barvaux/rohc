@@ -34,12 +34,6 @@
 #include <netinet/ip.h>
 
 
-/**
- * @brief The maximal delta accepted between two consecutive IPv4 ID so that it
- *        can be considered as coded in Network Byte Order (NBO)
- */
-#define IPID_MAX_DELTA  20
-
 /// The number of compression list items
 #define MAX_ITEM 15
 
@@ -123,6 +117,10 @@ struct ip_header_info
 	/// @brief The number of times the Protocol/Next Header field was added to
 	///        the compressed header
 	int protocol_count;
+
+	/** Whether the old_* members of the struct and in its children are
+	 *  initialized or not */
+	bool is_first_header;
 
 	union
 	{

@@ -256,9 +256,14 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
  * Prototypes of main private functions
  */
 
+static void detect_ip_id_behaviours(struct c_context *const context,
+                                    const struct ip_packet *const outer_ip,
+                                    const struct ip_packet *const inner_ip)
+	__attribute__((nonnull(1, 2)));
 static void detect_ip_id_behaviour(struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 	__attribute__((nonnull(1, 2)));
+static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id);
 
 static int update_variables(struct c_context *const context,
                             const struct ip_packet *const ip,
@@ -382,6 +387,9 @@ int c_init_header_info(struct ip_header_info *header_info,
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
 
+	/* we haven't seen any header so far */
+	header_info->is_first_header = true;
+
 	/* version specific initialization */
 	if(header_info->version == IPV4)
 	{
@@ -394,14 +402,6 @@ int c_init_header_info(struct ip_header_info *header_info,
 			goto error;
 		}
 
-		/* store the IP packet and the random and NBO parameters
-		 * in the header info */
-		header_info->info.v4.old_ip = *(ipv4_get_header(ip));
-		header_info->info.v4.rnd = 0;
-		header_info->info.v4.old_rnd = header_info->info.v4.rnd;
-		header_info->info.v4.nbo = 1;
-		header_info->info.v4.old_nbo = header_info->info.v4.nbo;
-
 		/* init the thresholds the counters must reach before launching
 		 * an action */
 		header_info->tos_count = MAX_FO_COUNT;
@@ -413,8 +413,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	}
 	else
 	{
-		/* store the IP header in the header info */
-		header_info->info.v6.old_ip = *(ipv6_get_header(ip));
+		/* init the compression context for IPv6 extension header list */
 		header_info->info.v6.ext_comp = malloc(sizeof(struct list_comp));
 		if(header_info->info.v6.ext_comp == NULL)
 		{
@@ -835,18 +834,7 @@ int c_generic_encode(struct c_context *const context,
 	 *  - increase the Sequence Number (SN)
 	 *  - find how many static and dynamic IP fields changed
 	 */
-	/* IP-ID behaviour can be detected with only one packet */
-	if(context->num_sent_packets > 0)
-	{
-		if(ip_get_version(ip) == IPV4)
-		{
-			detect_ip_id_behaviour(&g_context->ip_flags, ip);
-		}
-		if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(inner_ip) == IPV4)
-		{
-			detect_ip_id_behaviour(&g_context->ip2_flags, inner_ip);
-		}
-	}
+	detect_ip_id_behaviours(context, ip, inner_ip);
 
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	if(is_rtp)
@@ -938,6 +926,7 @@ int c_generic_encode(struct c_context *const context,
 	}
 
 	/* update the context with the new headers */
+	g_context->ip_flags.is_first_header = false;
 	if(ip_get_version(ip) == IPV4)
 	{
 		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(ip));
@@ -951,6 +940,7 @@ int c_generic_encode(struct c_context *const context,
 
 	if(g_context->tmp.nr_of_ip_hdr > 1)
 	{
+		g_context->ip2_flags.is_first_header = false;
 		if(ip_get_version(inner_ip) == IPV4)
 		{
 			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(inner_ip));
@@ -7685,8 +7675,50 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 
 
 /**
- * @brief Determine whether the IPv4 Identification field of one IPv4 header is
- *        random and/or in Network Bit Order (NBO).
+ * @brief Detect the behaviour of the IP-ID fields of the IPv4 headers
+ *
+ * Detect how the IP-ID fields behave:
+ *  - constant (not handled yet),
+ *  - increase in Network Bit Order (NBO),
+ *  - increase in Little Endian,
+ *  - randomly.
+ *
+ * @param header_info  The header info stored in the profile
+ * @param ip           One IPv4 header
+ */
+static void detect_ip_id_behaviours(struct c_context *const context,
+                                    const struct ip_packet *const outer_ip,
+                                    const struct ip_packet *const inner_ip)
+{
+	struct c_generic_context *g_context;
+
+	assert(context != NULL);
+	assert(outer_ip != NULL);
+
+	g_context = (struct c_generic_context *) context->specific;
+
+	/* detect IP-ID behaviour for the outer IP header if IPv4 */
+	if(ip_get_version(outer_ip) == IPV4)
+	{
+		detect_ip_id_behaviour(&g_context->ip_flags, outer_ip);
+	}
+
+	/* detect IP-ID behaviour for the inner IP header if present and IPv4 */
+	if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(inner_ip) == IPV4)
+	{
+		detect_ip_id_behaviour(&g_context->ip2_flags, inner_ip);
+	}
+}
+
+
+/**
+ * @brief Detect the behaviour of the IP-ID field of the given IPv4 header
+ *
+ * Detect how the IP-ID field behave:
+ *  - constant (not handled yet),
+ *  - increase in Network Bit Order (NBO),
+ *  - increase in Little Endian,
+ *  - randomly.
  *
  * @param header_info  The header info stored in the profile
  * @param ip           One IPv4 header
@@ -7694,56 +7726,55 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 static void detect_ip_id_behaviour(struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 {
-	int old_id, new_id;
-	int nbo = -1;
-
 	rohc_assert(ip_get_version(ip) == IPV4, error,
 	            "cannot check IP-ID behaviour with IPv6");
 
-	old_id = ntohs(header_info->info.v4.old_ip.id);
-	new_id = ntohs(ipv4_get_id(ip));
-
-	rohc_debugf(2, "1) old_id = 0x%04x new_id = 0x%04x\n", old_id, new_id);
-
-	if((new_id - old_id) < IPID_MAX_DELTA && (new_id - old_id) > 0)
+	if(header_info->is_first_header)
 	{
-		nbo = 1;
-	}
-	else if((old_id + IPID_MAX_DELTA) > 0xffff &&
-	        new_id < ((old_id + IPID_MAX_DELTA) & 0xffff))
-	{
-		nbo = 1;
-	}
-
-	if(nbo == -1)
-	{
-		/* change byte ordering and check nbo = 0 */
-		old_id = (old_id >> 8) | ((old_id << 8) & 0xff00);
-		new_id = (new_id >> 8) | ((new_id << 8) & 0xff00);
-
-		rohc_debugf(2, "2) old_id = 0x%04x new_id = 0x%04x\n", old_id, new_id);
-
-		if((new_id - old_id) < IPID_MAX_DELTA && (new_id - old_id) > 0)
-		{
-			nbo = 0;
-		}
-		else if((old_id + IPID_MAX_DELTA) > 0xffff &&
-		        new_id < ((old_id + IPID_MAX_DELTA) & 0xffff))
-		{
-			nbo = 0;
-		}
-	}
-
-	if(nbo == -1)
-	{
-		rohc_debugf(2, "RND detected\n");
-		header_info->info.v4.rnd = 1;
-		header_info->info.v4.nbo = 1; /* do not change bit order if RND */
+		/* IP-ID behaviour cannot be detect for the first header (2 headers are
+		 * needed), so consider that IP-ID is not random and in NBO. */
+		rohc_debugf(2, "no previous IP-ID, consider non-random and NBO\n");
+		header_info->info.v4.rnd = 0;
+		header_info->info.v4.nbo = 1;
 	}
 	else
 	{
-		header_info->info.v4.rnd = 0;
-		header_info->info.v4.nbo = nbo;
+		/* we have seen at least one header before this one, so we can (try to)
+		 * detect IP-ID behaviour */
+
+		uint16_t old_id; /* the IP-ID of the previous IPv4 header */
+		uint16_t new_id; /* the IP-ID of the IPv4 header being compressed */
+
+		old_id = ntohs(header_info->info.v4.old_ip.id);
+		new_id = ntohs(ipv4_get_id(ip));
+
+		rohc_debugf(2, "1) old_id = 0x%04x new_id = 0x%04x\n", old_id, new_id);
+
+		if(is_ip_id_nbo(old_id, new_id))
+		{
+			header_info->info.v4.rnd = 0;
+			header_info->info.v4.nbo = 1;
+		}
+		else
+		{
+			/* change byte ordering and check NBO again */
+			old_id = swab16(old_id);
+			new_id = swab16(new_id);
+
+			rohc_debugf(2, "2) old_id = 0x%04x new_id = 0x%04x\n", old_id, new_id);
+
+			if(is_ip_id_nbo(old_id, new_id))
+			{
+				header_info->info.v4.rnd = 0;
+				header_info->info.v4.nbo = 1;
+			}
+			else
+			{
+				rohc_debugf(2, "RND detected\n");
+				header_info->info.v4.rnd = 1;
+				header_info->info.v4.nbo = 1; /* do not change bit order if RND */
+			}
+		}
 	}
 
 	rohc_debugf(2, "NBO = %d, RND = %d\n", header_info->info.v4.nbo,
@@ -7751,6 +7782,46 @@ static void detect_ip_id_behaviour(struct ip_header_info *const header_info,
 
 error:
 	;
+}
+
+
+/**
+ * @brief Whether the new IP-ID is transmitted in NBO or not
+ *
+ * The new IP-ID is considered as transmitted in NBO if it increases by a
+ * small delta from the previous IP-ID. Wraparound shall be taken into
+ * account.
+ *
+ * @param old_id  The IP-ID of the previous IPv4 header
+ * @param new_id  The IP-ID of the current IPv4 header
+ * @return        Whether the IP-ID is transmitted in NBO or not
+ */
+static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id)
+{
+	/* The maximal delta accepted between two consecutive IPv4 ID so that it
+	 * can be considered as coded in Network Byte Order (NBO) */
+	const uint16_t max_id_delta = 20;
+	bool is_nbo;
+
+	/* the new IP-ID is transmitted in NBO if it belongs to:
+	 *  - interval ]old_id ; old_id + IPID_MAX_DELTA[ (no wraparound)
+	 *  - intervals ]old_id ; 0xffff] or
+	 *    [0 ; (old_id + IPID_MAX_DELTA) % 0xffff[ (wraparound) */
+	if(new_id > old_id && (new_id - old_id) < max_id_delta)
+	{
+		is_nbo = true;
+	}
+	else if(old_id > (0xffff - max_id_delta) &&
+	        (new_id > old_id || new_id < (max_id_delta - (0xffff - old_id))))
+	{
+		is_nbo = true;
+	}
+	else
+	{
+		is_nbo = false;
+	}
+
+	return is_nbo;
 }
 
 
