@@ -251,13 +251,14 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 unsigned short changed_fields(const struct ip_header_info *header_info,
                               const struct ip_packet *ip);
 
-void check_ip_identification(struct ip_header_info *const header_info,
-                             const struct ip_packet *ip);
-
 
 /*
  * Prototypes of main private functions
  */
+
+static void detect_ip_id_behaviour(struct ip_header_info *const header_info,
+                                   const struct ip_packet *const ip)
+	__attribute__((nonnull(1, 2)));
 
 static int update_variables(struct c_context *const context,
                             const struct ip_packet *const ip,
@@ -839,11 +840,11 @@ int c_generic_encode(struct c_context *const context,
 	{
 		if(ip_get_version(ip) == IPV4)
 		{
-			check_ip_identification(&g_context->ip_flags, ip);
+			detect_ip_id_behaviour(&g_context->ip_flags, ip);
 		}
 		if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(inner_ip) == IPV4)
 		{
-			check_ip_identification(&g_context->ip2_flags, inner_ip);
+			detect_ip_id_behaviour(&g_context->ip2_flags, inner_ip);
 		}
 	}
 
@@ -7690,8 +7691,8 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
  * @param header_info  The header info stored in the profile
  * @param ip           One IPv4 header
  */
-void check_ip_identification(struct ip_header_info *const header_info,
-                             const struct ip_packet *ip)
+static void detect_ip_id_behaviour(struct ip_header_info *const header_info,
+                                   const struct ip_packet *const ip)
 {
 	int old_id, new_id;
 	int nbo = -1;
