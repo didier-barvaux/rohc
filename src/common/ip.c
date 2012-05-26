@@ -848,7 +848,7 @@ void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value)
  * is not \ref IPV4.
  *
  * @param ip The IP packet to analyze
- * @return   The IP header if IPv4, NULL otherwise
+ * @return   The IP header
  */
 const struct iphdr * ipv4_get_header(const struct ip_packet *const ip)
 {
@@ -867,7 +867,7 @@ const struct iphdr * ipv4_get_header(const struct ip_packet *const ip)
  * is not \ref IPV4.
  *
  * @param ip  The IP packet to analyze
- * @return    The IP-ID if the given packet is IPv4, -1 otherwise
+ * @return    The IP-ID
  */
 int ipv4_get_id(const struct ip_packet *const ip)
 {
@@ -884,7 +884,7 @@ int ipv4_get_id(const struct ip_packet *const ip)
  *
  * @param ip  The IP packet to analyze
  * @param nbo The NBO flag (if RND = 1, use NBO = 1)
- * @return    The IP-ID if the given packet is IPv4, -1 otherwise
+ * @return    The IP-ID
  */
 int ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo)
 {
@@ -930,8 +930,7 @@ void ipv4_set_id(struct ip_packet *const ip, const int value)
  * is not \ref IPV4.
  *
  * @param ip The IP packet to analyze
- * @return   The DF bit of the IPv4 header if the given packet is IPv4,
- *           -1 otherwise
+ * @return   The DF bit
  */
 int ipv4_get_df(const struct ip_packet *const ip)
 {
@@ -1000,7 +999,7 @@ uint32_t ipv4_get_daddr(const struct ip_packet *const ip)
  * is not \ref IPV6.
  *
  * @param ip The IP packet to analyze
- * @return   The IP header if IPv6, NULL otherwise
+ * @return   The IP header if IPv6
  */
 const struct ip6_hdr * ipv6_get_header(const struct ip_packet *const ip)
 {
