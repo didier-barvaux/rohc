@@ -52,9 +52,6 @@ struct c_window
  */
 struct c_wlsb
 {
-	/// @brief The window in which numerous previous values of the encoded value
-	///        are stored to help recreate the value
-	struct c_window *window;
 	/// The width of the window
 	size_t window_width;
 
@@ -67,6 +64,9 @@ struct c_wlsb
 	size_t bits;
 	/// Shift parameter (see 4.5.2 in the RFC 3095)
 	rohc_lsb_shift_t p;
+
+	/** The window in which previous values of the encoded value are stored */
+	struct c_window window[1];
 };
 
 
@@ -110,24 +110,17 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 	assert(bits > 0);
 	assert(window_width > 0);
 
-	wlsb = malloc(sizeof(struct c_wlsb));
+	wlsb = malloc(sizeof(struct c_wlsb) + (window_width - 1) * sizeof(struct c_window));
 	if(wlsb == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the W-LSB object\n");
 		goto error;
 	}
-	bzero(wlsb, sizeof(struct c_wlsb));
+	bzero(wlsb, sizeof(struct c_wlsb) + (window_width - 1) * sizeof(struct c_window));
 
 	wlsb->oldest = 0;
 	wlsb->next = 0;
 	wlsb->window_width = window_width;
-
-	wlsb->window = (struct c_window *) calloc(window_width, sizeof(struct c_window));
-	if(wlsb->window == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the W-LSB window\n");
-		goto clean;
-	}
 
 	wlsb->bits = bits;
 	wlsb->p = p;
@@ -138,8 +131,6 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 
 	return wlsb;
 
-clean:
-	zfree(wlsb);
 error:
 	return NULL;
 }
@@ -153,8 +144,6 @@ error:
 void c_destroy_wlsb(struct c_wlsb *const wlsb)
 {
 	assert(wlsb != NULL);
-	assert(wlsb->window != NULL);
-	free(wlsb->window);
 	free(wlsb);
 }
 
