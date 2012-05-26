@@ -83,7 +83,9 @@
 #include <signal.h>
 #include <errno.h>
 #include <math.h> /* for HUGE_VAL */
+#include <time.h> /* for time(2) */
 #include <sys/time.h> /* for gettimeofday(2) */
+#include <assert.h>
 
 /* TUN includes */
 #include <net/if.h> /* for IFNAMSIZ */
@@ -149,6 +151,9 @@ int is_timeout(struct timeval first,
                struct timeval second,
                unsigned int max);
 
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+	__attribute__((nonnull(1)));
 
 
 /*
@@ -251,6 +256,7 @@ int main(int argc, char *argv[])
 	int arg_count;
 	int is_umode;
 
+	unsigned long seed;
 	int ret;
 
 	int tun, udp;
@@ -515,6 +521,17 @@ int main(int argc, char *argv[])
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
+
+	/* initialize the random generator */
+	seed = time(NULL);
+	srand(seed);
+
+	/* set the callback for random numbers */
+	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto destroy_comp;
+	}
 
 	/* create the decompressor (associate it with the compressor) */
 	decomp = rohc_alloc_decompressor(is_umode ? NULL : comp);
@@ -1477,5 +1494,21 @@ int is_timeout(struct timeval first,
 		is_timeout = 0;
 
 	return is_timeout;
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+	return rand();
 }
 

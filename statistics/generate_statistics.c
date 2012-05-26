@@ -31,6 +31,8 @@
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
+#include <assert.h>
+#include <time.h> /* for time(2) */
 
 /* include for the PCAP library */
 #include <pcap.h>
@@ -61,6 +63,9 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const struct pcap_pkthdr header,
                                    const unsigned char *packet,
                                    const int link_len);
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+	__attribute__((nonnull(1)));
 
 
 /**
@@ -248,6 +253,9 @@ static int generate_comp_stats_all(const int use_large_cid,
 		link_len = 0;
 	}
 
+	/* initialize the random generator */
+	srand(time(NULL));
+
 	/* create the ROHC compressor */
 	comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
 	if(comp == NULL)
@@ -261,6 +269,13 @@ static int generate_comp_stats_all(const int use_large_cid,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_c_set_large_cid(comp, use_large_cid);
+
+	/* set the callback for random numbers */
+	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto destroy_comp;
+	}
 
 	/* output the statistics columns names */
 	printf("STAT\t"
@@ -407,5 +422,21 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 
 error:
 	return 1;
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+	return rand();
 }
 

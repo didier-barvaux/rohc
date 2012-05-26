@@ -33,6 +33,8 @@
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <errno.h>
+#include <assert.h>
+#include <time.h> /* for time(2) */
 
 /* ROHC includes */
 #include <rohc.h>
@@ -43,6 +45,9 @@
 static void usage(void);
 static int test_decomp(const unsigned char *const rohc_feedback,
                        const size_t rohc_feedback_len);
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+	__attribute__((nonnull(1)));
 
 
 /**
@@ -138,6 +143,16 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 		goto error;
 	}
 
+	/* initialize the random generator */
+	srand(time(NULL));
+
+	/* set the callback for random numbers */
+	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto destroy_comp;
+	}
+
 	/* create the ROHC decompressor in bi-directional mode */
 	decomp = rohc_alloc_decompressor(comp);
 	if(decomp == NULL)
@@ -167,5 +182,21 @@ destroy_comp:
 	rohc_free_compressor(comp);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+	return rand();
 }
 

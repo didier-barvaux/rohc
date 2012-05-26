@@ -37,6 +37,7 @@
 #include <netinet/ip6.h>
 #include <errno.h>
 #include <assert.h>
+#include <time.h> /* for time(2) */
 
 /* include for the PCAP library */
 #include <pcap.h>
@@ -52,6 +53,9 @@ static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int packet_to_damage,
                                 const rohc_packet_t expected_packet);
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+	__attribute__((nonnull(1)));
 
 
 /**
@@ -258,6 +262,9 @@ static int test_comp_and_decomp(const char *const filename,
 		link_len = 0;
 	}
 
+	/* initialize the random generator */
+	srand(time(NULL));
+
 	/* create the ROHC compressor with MAX_CID = 15 (small CID) */
 	comp = rohc_alloc_compressor(15, 0, 0, 0);
 	if(comp == NULL)
@@ -271,6 +278,13 @@ static int test_comp_and_decomp(const char *const filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_c_set_large_cid(comp, 0);
+
+	/* set the callback for random numbers on compressor A */
+	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto destroy_comp;
+	}
 
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_alloc_decompressor(NULL);
@@ -441,5 +455,21 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+	return rand();
 }
 

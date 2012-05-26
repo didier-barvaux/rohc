@@ -56,6 +56,7 @@
 #include <netinet/ip.h>
 #include <errno.h>
 #include <assert.h>
+#include <time.h> /* for time(2) */
 
 /* ROHC includes */
 #include <rohc.h>
@@ -66,6 +67,9 @@
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(void);
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+	__attribute__((nonnull(1)));
 
 
 /**
@@ -162,6 +166,10 @@ static int test_comp_and_decomp()
 /** The payload for the fake IP packet */
 #define FAKE_PAYLOAD "hello, ROHC world!"
 
+	/* initialize the random generator */
+	srand(time(NULL));
+
+	/* create the ROHC compressor with MAX_CID = 15 (small CID) */
 	/* create the ROHC compressor A with MAX_CID = 15 (small CID) */
 	compA = rohc_alloc_compressor(15, 0, 0, 0);
 	if(compA == NULL)
@@ -176,6 +184,14 @@ static int test_comp_and_decomp()
 	rohc_activate_profile(compA, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(compA, ROHC_PROFILE_RTP);
 
+	/* set the callback for random numbers on compressor A */
+	if(!rohc_comp_set_random_cb(compA, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers on "
+		        "compressor A\n");
+		goto destroy_compA;
+	}
+
 	/* create the ROHC compressor B with MAX_CID = 15 (small CID) */
 	compB = rohc_alloc_compressor(15, 0, 0, 0);
 	if(compB == NULL)
@@ -189,6 +205,14 @@ static int test_comp_and_decomp()
 	rohc_activate_profile(compB, ROHC_PROFILE_IP);
 	rohc_activate_profile(compB, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(compB, ROHC_PROFILE_RTP);
+
+	/* set the callback for random numbers on compressor B */
+	if(!rohc_comp_set_random_cb(compB, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers on "
+		        "compressor B\n");
+		goto destroy_compB;
+	}
 
 	/* create the ROHC decompressor A with associated compressor B for its
 	 * feedback channel */
@@ -331,5 +355,21 @@ destroy_compA:
 	rohc_free_compressor(compA);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+	return rand();
 }
 

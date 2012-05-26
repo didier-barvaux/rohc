@@ -29,6 +29,7 @@
 /* system includes */
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 /* includes required to create a fake IP packet */
 #include <netinet/ip.h>
@@ -44,6 +45,11 @@
 
 /** The payload for the fake IP packet */
 #define FAKE_PAYLOAD "hello, ROHC world!"
+
+
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context);
+
 
 
 /**
@@ -65,8 +71,12 @@ int main(int argc, char **argv)
 	                                           the resulting ROHC packet */
 	int rohc_packet_len;                    /* the length (in bytes) of the
 	                                           resulting ROHC packet */
+	unsigned int seed;
 	unsigned int i;
 
+	/* initialize the random generator */
+	seed = time(NULL);
+	srand(seed);
 
 	/* Create a ROHC compressor with small CIDs, no jamming and no adaptation
 	 * to encapsulation frames.
@@ -82,6 +92,12 @@ int main(int argc, char **argv)
 		goto error;
 	}
 
+	/* set the callback for random numbers */
+	if(!rohc_comp_set_random_cb(compressor, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto release_compressor;
+	}
 
 	/* Enable the compression profiles you need (comment or uncomment some lines).
 	 *
@@ -187,5 +203,19 @@ error:
 	fprintf(stderr, "an error occured during program execution, "
 	        "abort program\n");
 	return 1;
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	return rand();
 }
 

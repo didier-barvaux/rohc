@@ -63,6 +63,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 /* include for the PCAP library */
 #include <pcap.h>
@@ -118,6 +119,9 @@ static int time_compress_packet(struct rohc_comp *comp,
 
 #endif /* __i386__ */
 
+static int gen_false_random_num(const struct rohc_comp *const comp,
+                                void *const user_context)
+	__attribute__((nonnull(1)));
 
 
 /**
@@ -381,6 +385,13 @@ static int test_compression_perfs(char *filename,
 		goto close_input;
 	}
 
+	/* set the callback for random numbers */
+	if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto free_compresssor;
+	}
+
 	/* activate all the compression profiles */
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
@@ -544,4 +555,23 @@ error:
 
 
 #endif /* __i386__ */
+
+
+/**
+ * @brief Generate a false random number for testing the ROHC library
+ *
+ * We want to test the performances of the ROHC library, not the performances
+ * of a random generator, so disable it.
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              Always 0
+ */
+static int gen_false_random_num(const struct rohc_comp *const comp,
+                                void *const user_context)
+{
+	assert(comp != NULL);
+	assert(user_context == NULL);
+	return 0;
+}
 
