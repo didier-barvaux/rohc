@@ -169,9 +169,8 @@ static int test_comp_and_decomp()
 	/* initialize the random generator */
 	srand(time(NULL));
 
-	/* create the ROHC compressor with MAX_CID = 15 (small CID) */
-	/* create the ROHC compressor A with MAX_CID = 15 (small CID) */
-	compA = rohc_alloc_compressor(15, 0, 0, 0);
+	/* create the ROHC compressor A with small CID */
+	compA = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(compA == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor A\n");
@@ -192,8 +191,8 @@ static int test_comp_and_decomp()
 		goto destroy_compA;
 	}
 
-	/* create the ROHC compressor B with MAX_CID = 15 (small CID) */
-	compB = rohc_alloc_compressor(15, 0, 0, 0);
+	/* create the ROHC compressor B with small CID */
+	compB = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(compB == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor B\n");

@@ -378,7 +378,7 @@ static int test_compression_perfs(char *filename,
 	}
 
 	/* create ROHC compressor */
-	comp = rohc_alloc_compressor(15, 0, 0, 0);
+	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");

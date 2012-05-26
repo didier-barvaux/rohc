@@ -108,7 +108,7 @@
 
 /* prototypes of private functions */
 static void usage(void);
-static int test_comp_and_decomp(char *cid_type,
+static int test_comp_and_decomp(const int use_large_cid,
                                 const unsigned int max_contexts,
                                 char *src_filename,
                                 char *ofilename,
@@ -153,8 +153,9 @@ int main(int argc, char *argv[])
 	char *src_filename = NULL;
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
-	int max_contexts = 16;
+	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int status = 1;
+	int use_large_cid;
 	int args_used;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -224,12 +225,37 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* the maximum number of ROHC contexts should be valid */
-	if(max_contexts < 1 || max_contexts > 16384)
+	/* check CID type */
+	if(!strcmp(cid_type, "smallcid"))
 	{
-		fprintf(stderr, "the maximum number of ROHC contexts should be "
-		        "between 1 and 16384\n\n");
-		usage();
+		use_large_cid = 0;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
+		{
+			fprintf(stderr, "the maximum number of ROHC contexts should be "
+			        "between 1 and %u\n\n", ROHC_SMALL_CID_MAX + 1);
+			usage();
+			goto error;
+		}
+	}
+	else if(!strcmp(cid_type, "largecid"))
+	{
+		use_large_cid = 1;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
+		{
+			fprintf(stderr, "the maximum number of ROHC contexts should be "
+			        "between 1 and %u\n\n", ROHC_LARGE_CID_MAX + 1);
+			usage();
+			goto error;
+		}
+	}
+	else
+	{
+		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
+		        "expected\n", cid_type);
 		goto error;
 	}
 
@@ -241,8 +267,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(cid_type, max_contexts, src_filename, ofilename,
-	                              cmp_filename, rohc_size_ofilename);
+	status = test_comp_and_decomp(use_large_cid, max_contexts, src_filename,
+	                              ofilename, cmp_filename, rohc_size_ofilename);
 
 error:
 	return status;
@@ -637,7 +663,7 @@ exit:
  * @brief Test the ROHC library with a flow of IP packets going through
  *        two compressor/decompressor pairs
  *
- * @param cid_type             The type of CID to use within the ROHC library
+ * @param use_large_cid        Whether the compressor shall use large CIDs
  * @param max_contexts         The maximum number of ROHC contexts to use
  * @param src_filename         The name of the PCAP file that contains the
  *                             IP packets
@@ -651,7 +677,7 @@ exit:
  *                             1 in case of failure,
  *                             77 if test is skipped
  */
-static int test_comp_and_decomp(char *cid_type,
+static int test_comp_and_decomp(const int use_large_cid,
                                 const unsigned int max_contexts,
                                 char *src_filename,
                                 char *ofilename,
@@ -682,32 +708,12 @@ static int test_comp_and_decomp(char *cid_type,
 
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
-	int use_large_cid;
 	int status = 1;
 
 	printf("<?xml version=\"1.0\" encoding=\"ISO-8859-15\"?>\n");
 	printf("<test>\n");
 	printf("\t<startup>\n");
 	printf("\t\t<log>\n");
-
-	/* check CID type */
-	if(!strcmp(cid_type, "smallcid"))
-	{
-		use_large_cid = 0;
-	}
-	else if(!strcmp(cid_type, "largecid"))
-	{
-		use_large_cid = 1;
-	}
-	else
-	{
-		printf("invalid CID type '%s', only 'smallcid' and 'largecid' "
-		       "expected\n", cid_type);
-		printf("\t\t</log>\n");
-		printf("\t\t<status>failed</status>\n");
-		printf("\t</startup>\n\n");
-		goto error;
-	}
 
 	/* open the source dump file */
 	handle = pcap_open_offline(src_filename, errbuf);

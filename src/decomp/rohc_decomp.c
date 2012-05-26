@@ -103,7 +103,9 @@ static int d_decode_feedback(struct rohc_decomp *decomp,
 
 
 /**
- * @brief Increases the context array size in sizes of 2^x (max 16384).
+ * @brief Increases the context array size in sizes of 2^x
+ *
+ * The maximum size of the array is ROHC_LARGE_CID_MAX + 1.
  *
  * @param decomp       The ROHC decompressor
  * @param highest_cid  Highest CID to adapt context array size with
@@ -357,7 +359,7 @@ void context_free(struct d_context *context)
  */
 struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
-	struct medium medium = { ROHC_SMALL_CID, 15 };
+	struct medium medium = { ROHC_SMALL_CID, ROHC_LARGE_CID_MAX };
 	struct rohc_decomp *decomp;
 	bool is_fine;
 

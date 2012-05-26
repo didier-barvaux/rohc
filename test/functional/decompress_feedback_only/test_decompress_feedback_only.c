@@ -135,8 +135,8 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 
 	int is_failure = 1;
 
-	/* create the ROHC compressor with MAX_CID = 15 (small CID) */
-	comp = rohc_alloc_compressor(15, 0, 0, 0);
+	/* create the ROHC compressor with small CID */
+	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");

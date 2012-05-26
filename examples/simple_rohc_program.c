@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 	 * for details about rohc_alloc_compressor in the API documentation.
 	 */
 	printf("\ncreate the ROHC compressor\n");
-	compressor = rohc_alloc_compressor(15, 0, 0, 0);
+	compressor = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(compressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC compressor\n");

@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	char *cid_type = NULL;
 	char *source_filename = NULL;
 	int status = 1;
-	int max_contexts = 15;
+	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int use_large_cid;
 	int args_used;
 
@@ -127,23 +127,32 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* the maximum number of ROHC contexts should be valid */
-	if(max_contexts < 1 || max_contexts > 16384)
-	{
-		fprintf(stderr, "the maximum number of ROHC contexts should be "
-		        "between 1 and 16384\n\n");
-		usage();
-		goto error;
-	}
-
 	/* check CID type */
 	if(!strcmp(cid_type, "smallcid"))
 	{
 		use_large_cid = 0;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
+		{
+			fprintf(stderr, "the maximum number of ROHC contexts should be "
+			        "between 1 and %u\n\n", ROHC_SMALL_CID_MAX + 1);
+			usage();
+			goto error;
+		}
 	}
 	else if(!strcmp(cid_type, "largecid"))
 	{
 		use_large_cid = 1;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
+		{
+			fprintf(stderr, "the maximum number of ROHC contexts should be "
+			        "between 1 and %u\n\n", ROHC_LARGE_CID_MAX + 1);
+			usage();
+			goto error;
+		}
 	}
 	else
 	{

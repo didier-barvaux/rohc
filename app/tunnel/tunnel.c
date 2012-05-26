@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
 	 */
 
 	/* create the compressor and activate profiles */
-	comp = rohc_alloc_compressor(15, 0, 0, 0);
+	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
