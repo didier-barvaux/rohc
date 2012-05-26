@@ -4175,7 +4175,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 			(struct d_rtp_context *) g_context->specific;
 
 		rohc_debugf(3, "TS is deducted from SN\n");
-		ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+		ts_decoded = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt, sn_decoded);
 	}
 
 
@@ -4357,7 +4357,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(&rtp_context->ts_sc, ts_decoded, sn_decoded);
+		ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, sn_decoded);
 	}
 
 	/* payload */
@@ -4926,15 +4926,16 @@ int decode_uo1(struct rohc_decomp *decomp,
 			if(ts_bits_nr == 0)
 			{
 				rohc_debugf(3, "TS is deducted from SN\n");
-				ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+				ts_decoded = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
+				                               sn_decoded);
 			}
 			else
 			{
 				bool ts_decode_ok;
 
 				rohc_debugf(3, "TS is scaled\n");
-				ts_decode_ok = ts_decode_scaled(&rtp_context->ts_sc, ts_bits,
-				                                ts_bits_nr, &ts_decoded);
+				ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
+				                                ts_bits, ts_bits_nr, &ts_decoded);
 				if(!ts_decode_ok)
 				{
 					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
@@ -4957,7 +4958,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 				goto error;
 			}
 
-			ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
+			ts_decoded = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, ts_bits);
 		}
 
 		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
@@ -5154,7 +5155,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(&rtp_context->ts_sc, ts_decoded, sn_decoded);
+		ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, sn_decoded);
 	}
 
 	/* payload */
@@ -6141,15 +6142,16 @@ int decode_uor2(struct rohc_decomp *decomp,
 			if(ts_bits_nr == 0)
 			{
 				rohc_debugf(3, "TS is deducted from SN\n");
-				ts_decoded = ts_deduce_from_sn(&rtp_context->ts_sc, sn_decoded);
+				ts_decoded = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
+				                               sn_decoded);
 			}
 			else
 			{
 				bool ts_decode_ok;
 
 				rohc_debugf(3, "TS is scaled\n");
-				ts_decode_ok = ts_decode_scaled(&rtp_context->ts_sc, ts_bits,
-				                                ts_bits_nr, &ts_decoded);
+				ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
+				                                ts_bits, ts_bits_nr, &ts_decoded);
 				if(!ts_decode_ok)
 				{
 					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
@@ -6172,7 +6174,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 				goto error;
 			}
 
-			ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
+			ts_decoded = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, ts_bits);
 		}
 
 		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
@@ -6380,7 +6382,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(&rtp_context->ts_sc, ts_decoded, sn_decoded);
+		ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, sn_decoded);
 	}
 
 	/* payload */
@@ -7438,7 +7440,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 			rohc_debugf(3, "decoded ts_stride = %u / 0x%x\n", ts_stride, ts_stride);
 
 			/* temporarily store the decoded TS_STRIDE in context */
-			d_record_ts_stride(&rtp_context->ts_sc, ts_stride);
+			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
 		}
 
 		if(tis)

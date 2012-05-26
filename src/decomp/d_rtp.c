@@ -82,7 +82,6 @@ void * d_rtp_create(void)
 {
 	struct d_generic_context *context;
 	struct d_rtp_context *rtp_context;
-	bool is_ok;
 
 	/* create the generic context */
 	context = d_generic_create();
@@ -166,11 +165,11 @@ void * d_rtp_create(void)
 	/* set next header to UDP */
 	context->next_header_proto = IPPROTO_UDP;
 
-	/* init the scaled RTP Timestamp decoding */
-	is_ok = d_create_sc(&rtp_context->ts_sc);
-	if(!is_ok)
+	/* create the scaled RTP Timestamp decoding context */
+	rtp_context->ts_scaled_ctxt = d_create_sc();
+	if(rtp_context->ts_scaled_ctxt == NULL)
 	{
-		rohc_debugf(0, "cannot init the scaled RTP Timestamp decoding object\n");
+		rohc_debugf(0, "cannot create the scaled RTP Timestamp decoding context\n");
 		goto free_active2_next_header;
 	}
 
@@ -214,7 +213,7 @@ static void d_rtp_destroy(void *const context)
 	rtp_context = (struct d_rtp_context *) g_context->specific;
 
 	/* destroy the scaled RTP Timestamp decoding object */
-	rohc_ts_scaled_free(&rtp_context->ts_sc);
+	rohc_ts_scaled_free(rtp_context->ts_scaled_ctxt);
 
 	/* clean UDP-specific memory */
 	assert(g_context->last1 != NULL);
@@ -786,7 +785,7 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 			length -= ts_stride_sdvl_len;
 
 			/* temporarily store the decoded TS_STRIDE in context */
-			d_record_ts_stride(&rtp_context->ts_sc, ts_stride);
+			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
 		}
 
 		/* part 9 */
@@ -807,14 +806,14 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	}
 
 	/* decode the unscaled TS */
-	ts_decoded = ts_decode_unscaled(&rtp_context->ts_sc, ts_bits);
+	ts_decoded = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, ts_bits);
 
 	/* write TS in the uncompressed RTP header */
 	rtp->timestamp = htonl(ts_decoded);
 
 	/* update TS in decompression context (it is fine for IR / IR-DYN packets to
 	   do the update here since CRC correctness was checked before parsing) */
-	ts_update_context(&rtp_context->ts_sc, ts_decoded, ntohs(rtp->sn));
+	ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, ntohs(rtp->sn));
 
 	return read;
 

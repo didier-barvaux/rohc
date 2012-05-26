@@ -26,17 +26,73 @@
 
 
 /*
+ * Structure and types
+ */
+
+/**
+ * @brief The scaled RTP Timestamp decoding context
+ *
+ * See section 4.5.3 of RFC 3095 for details about Scaled RTP Timestamp
+ * decoding.
+ */
+struct ts_sc_decomp
+{
+	/// The last computed or received TS_STRIDE value (validated by CRC)
+	uint32_t ts_stride;
+
+	/// The last computed or received TS_SCALED value (validated by CRC)
+	uint32_t ts_scaled;
+	/// The LSB-encoded TS_SCALED value
+	struct rohc_lsb_decode *lsb_ts_scaled;
+
+	/// The last computed or received TS_OFFSET value (validated by CRC)
+	uint32_t ts_offset;
+
+	/// The timestamp (TS) value
+	uint32_t ts;
+	/// The previous timestamp value
+	uint32_t old_ts;
+
+	/// The sequence number (SN)
+	uint16_t sn;
+	/// The previous sequence number
+	uint16_t old_sn;
+
+
+	/* the attributes below are new TS_* values computed by not yet validated
+	   by CRC check */
+
+	/// The last computed or received TS_STRIDE value (not validated by CRC)
+	uint32_t new_ts_stride;
+	/// The last computed or received TS_SCALED value (not validated by CRC)
+	uint32_t new_ts_scaled;
+	/// The last computed or received TS_OFFSET value (not validated by CRC)
+	uint32_t new_ts_offset;
+
+};
+
+
+
+/*
  * Public functions
  */
 
 /**
- * @brief Create the ts_sc_decomp object
+ * @brief Create the scaled RTP Timestamp decoding context
  *
- * @param ts_sc  The ts_sc_decomp object to create
- * @return       Whether the creation succeeded or not
+ * @return  The scaled RTP Timestamp decoding context in case of success,
+ *          NULL otherwise
  */
-bool d_create_sc(struct ts_sc_decomp *const ts_sc)
+struct ts_sc_decomp * d_create_sc(void)
 {
+	struct ts_sc_decomp *ts_sc;
+
+	ts_sc = malloc(sizeof(struct ts_sc_decomp));
+	if(ts_sc == NULL)
+	{
+		goto error;
+	}
+
 	ts_sc->ts_stride = 0;
 	ts_sc->ts_scaled = 0;
 	ts_sc->ts_offset = 0;
@@ -53,13 +109,15 @@ bool d_create_sc(struct ts_sc_decomp *const ts_sc)
 	ts_sc->lsb_ts_scaled = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS);
 	if(ts_sc->lsb_ts_scaled == NULL)
 	{
-		goto error;
+		goto free_context;
 	}
 
-	return true;
+	return ts_sc;
 
+free_context:
+	free(ts_sc);
 error:
-	return false;
+	return NULL;
 }
 
 
