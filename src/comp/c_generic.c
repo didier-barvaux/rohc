@@ -6572,7 +6572,7 @@ int code_EXT3_packet(const struct c_context *context,
 	size_t nr_sn_bits;
 	size_t nr_ip_id_bits;
 	size_t nr_ip_id_bits2;
-	unsigned int innermost_ipv4_non_rnd;
+	ip_header_pos_t innermost_ipv4_non_rnd;
 	int have_inner = 0;
 	int have_outer = 0;
 	int S;
@@ -6678,7 +6678,7 @@ int code_EXT3_packet(const struct c_context *context,
 		 * the I bit must be set */
 		if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 0)
 		{
-			innermost_ipv4_non_rnd = 1;
+			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
 			if(g_context->tmp.packet_type != PACKET_UOR_2_ID && nr_ip_id_bits > 0)
 			{
@@ -6700,7 +6700,7 @@ int code_EXT3_packet(const struct c_context *context,
 		else
 		{
 			/* the IP header is not 'IPv4 with non-random IP-ID' */
-			innermost_ipv4_non_rnd = 0;
+			innermost_ipv4_non_rnd = ROHC_IP_HDR_NONE;
 			I = 0;
 		}
 		f_byte |= (I & 0x01) << 2;
@@ -6721,7 +6721,7 @@ int code_EXT3_packet(const struct c_context *context,
 		if(ip_get_version(ip2) == IPV4 && g_context->ip2_flags.info.v4.rnd == 0)
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
-			innermost_ipv4_non_rnd = 2;
+			innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 
 			if(g_context->tmp.packet_type != PACKET_UOR_2_ID && nr_ip_id_bits2 > 0)
 			{
@@ -6744,7 +6744,7 @@ int code_EXT3_packet(const struct c_context *context,
 		{
 			/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
 			 * IP header is */
-			innermost_ipv4_non_rnd = 1;
+			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
 			if(g_context->tmp.packet_type != PACKET_UOR_2_ID && nr_ip_id_bits > 0)
 			{
@@ -6766,7 +6766,7 @@ int code_EXT3_packet(const struct c_context *context,
 		else
 		{
 			/* none of the 2 IP headers are IPv4 with non-random IP-ID */
-			innermost_ipv4_non_rnd = 0;
+			innermost_ipv4_non_rnd = ROHC_IP_HDR_NONE;
 			I = 0;
 		}
 		f_byte |= (I & 0x01) << 2;
@@ -6869,7 +6869,7 @@ int code_EXT3_packet(const struct c_context *context,
 			/* we only have one single IP header here, so if the I bit is set,
 			 * the only one IP header must be the innermost IPv4 header with
 			 * non-random IP-ID */
-			assert(innermost_ipv4_non_rnd == 1);
+			assert(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST);
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
 			id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
@@ -6971,10 +6971,11 @@ int code_EXT3_packet(const struct c_context *context,
 
 			/* we have 2 IP headers here, so if the I bit is set, one of them
 			 * must be the innermost IPv4 header with non-random IP-ID */
-			assert(innermost_ipv4_non_rnd == 1 || innermost_ipv4_non_rnd == 2);
+			assert(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST ||
+			       innermost_ipv4_non_rnd == ROHC_IP_HDR_SECOND);
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
-			if(innermost_ipv4_non_rnd == 1)
+			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
 			{
 				id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
 			}

@@ -5352,7 +5352,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	size_t ts_bits_nr = 0;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
-	unsigned int innermost_ipv4_non_rnd;
+	ip_header_pos_t innermost_ipv4_non_rnd;
 
 	/* extracted bits and decoded value for outer IP-ID */
 	uint16_t ip_id_decoded = 0; /* initialized only because of GCC warning */
@@ -5541,7 +5541,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 					goto error;
 				}
 
-				innermost_ipv4_non_rnd = 1;
+				innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 			}
 			else
 			{
@@ -5559,14 +5559,14 @@ int decode_uor2(struct rohc_decomp *decomp,
 						goto error;
 					}
 
-					innermost_ipv4_non_rnd = 2;
+					innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 				}
 				else if(ip_get_version(&g_context->active1->ip) == IPV4 &&
 				        g_context->active1->rnd == 0)
 				{
 					/* inner IP header is not IPv4 with non-random IP-ID,
 					 * but outer IP header is */
-					innermost_ipv4_non_rnd = 1;
+					innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 				}
 				else
 				{
@@ -5578,7 +5578,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 			/* part 2: 3-bit "110" + 5-bit IP-ID */
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			if(innermost_ipv4_non_rnd == 1)
+			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
 			{
 				ip_id_bits = GET_BIT_0_4(rohc_remain_data);
 				ip_id_bits_nr = 5;
