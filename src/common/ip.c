@@ -171,7 +171,7 @@ void ip_new(struct ip_packet *const ip, const ip_version version)
  * @param ip The IP packet to analyze
  * @return   The IP raw data (header + payload)
  */
-const unsigned char * ip_get_raw_data(const struct ip_packet *ip)
+const unsigned char * ip_get_raw_data(const struct ip_packet *const ip)
 {
 	return ip->data;
 }
@@ -187,7 +187,7 @@ const unsigned char * ip_get_raw_data(const struct ip_packet *ip)
  * @param inner The inner IP packet to create
  * @return      Whether the inner IP header is successfully created or not
  */
-int ip_get_inner_packet(const struct ip_packet *outer,
+int ip_get_inner_packet(const struct ip_packet *const outer,
                         struct ip_packet *const inner)
 {
 	unsigned char *next_header;
@@ -211,7 +211,7 @@ int ip_get_inner_packet(const struct ip_packet *outer,
  * @param type OUT: The type of the next header
  * @return     The next header if successful, NULL otherwise
  */
-unsigned char * ip_get_next_header(const struct ip_packet *ip,
+unsigned char * ip_get_next_header(const struct ip_packet *const ip,
                                    uint8_t *const type)
 {
 	unsigned char *next_header;
@@ -247,7 +247,7 @@ unsigned char * ip_get_next_header(const struct ip_packet *ip,
  * @param ip   The IP packet to analyze
  * @return     The next header that is not an IP extension
  */
-unsigned char * ip_get_next_layer(const struct ip_packet *ip)
+unsigned char * ip_get_next_layer(const struct ip_packet *const ip)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
@@ -290,8 +290,8 @@ unsigned char * ip_get_next_layer(const struct ip_packet *ip)
  * @return     The next extension header,
  *             NULL if there is no extension
  */
-unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
-                                               uint8_t *type)
+unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *const ip,
+                                               uint8_t *const type)
 {
 	unsigned char *next_header;
 
@@ -334,7 +334,7 @@ end:
  * @return     The next extension header,
  *             NULL if there is no more extension
  */
-unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *ext,
+unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *const ext,
                                                 uint8_t *const type)
 {
 	unsigned char *next_header;
@@ -369,11 +369,9 @@ end:
  * @param ext The extension
  * @return    The size of the extension
  */
-unsigned short ip_get_extension_size(const unsigned char *ext)
+unsigned short ip_get_extension_size(const unsigned char *const ext)
 {
-	uint8_t ext_length;
-
-	ext_length = ext[1];
+	const uint8_t ext_length = ext[1];
 
 	return (ext_length + 1) * 8;
 }
@@ -388,7 +386,7 @@ unsigned short ip_get_extension_size(const unsigned char *ext)
  * @param ip The packet to analyse
  * @return   The size of extension list
  */
-unsigned short ip_get_total_extension_size(const struct ip_packet *ip)
+unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 {
 	unsigned char *ext;
 	uint8_t next_hdr_type;
@@ -418,7 +416,7 @@ unsigned short ip_get_total_extension_size(const struct ip_packet *ip)
  * @return   Whether the IP packet is an IP fragment or not if successful,
  *           0 otherwise
  */
-int ip_is_fragment(const struct ip_packet *ip)
+int ip_is_fragment(const struct ip_packet *const ip)
 {
 	int is_fragment;
 
@@ -450,7 +448,7 @@ int ip_is_fragment(const struct ip_packet *ip)
  * @param ip The IP packet to analyze
  * @return   The total length of the IP packet
  */
-unsigned int ip_get_totlen(const struct ip_packet *ip)
+unsigned int ip_get_totlen(const struct ip_packet *const ip)
 {
 	uint16_t len;
 
@@ -480,7 +478,7 @@ unsigned int ip_get_totlen(const struct ip_packet *ip)
  * @param ip The IP packet to analyze
  * @return   The length of the IP header if successful, 0 otherwise
  */
-unsigned int ip_get_hdrlen(const struct ip_packet *ip)
+unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 {
 	unsigned int len;
 
@@ -512,7 +510,7 @@ unsigned int ip_get_hdrlen(const struct ip_packet *ip)
  * @param ip The IPv4/IPv6 packet to analyze
  * @return   The length of the IPv4/IPv6 payload if successful, 0 otherwise
  */
-unsigned int ip_get_plen(const struct ip_packet *ip)
+unsigned int ip_get_plen(const struct ip_packet *const ip)
 {
 	unsigned int len;
 
@@ -544,7 +542,7 @@ unsigned int ip_get_plen(const struct ip_packet *ip)
  * @param ip The IP packet to analyze
  * @return   The version of the IP packet
  */
-ip_version ip_get_version(const struct ip_packet *ip)
+ip_version ip_get_version(const struct ip_packet *const ip)
 {
 	return ip->version;
 }
@@ -563,7 +561,7 @@ ip_version ip_get_version(const struct ip_packet *ip)
  * @return    The protocol number that identify the protocol transported
  *            by the given IP packet, 0 if the packet is not IPv4 nor IPv6
  */
-unsigned int ip_get_protocol(const struct ip_packet *ip)
+unsigned int ip_get_protocol(const struct ip_packet *const ip)
 {
 	uint8_t protocol;
 	unsigned char *next_header;
@@ -607,7 +605,7 @@ unsigned int ip_get_protocol(const struct ip_packet *ip)
  * @return    The protocol number that identify the protocol transported
  *            by the given IP extension
  */
-unsigned int ext_get_protocol(const unsigned char *ext)
+unsigned int ext_get_protocol(const unsigned char *const ext)
 {
 	uint8_t type;
 	uint8_t length;
@@ -672,7 +670,7 @@ void ip_set_protocol(struct ip_packet *const ip, const uint8_t value)
  * @param ip The IP packet to analyze
  * @return   The TOS or TC value if successful, 0 otherwise
  */
-unsigned int ip_get_tos(const struct ip_packet *ip)
+unsigned int ip_get_tos(const struct ip_packet *const ip)
 {
 	unsigned int tos;
 
@@ -733,7 +731,7 @@ void ip_set_tos(struct ip_packet *const ip, const uint8_t value)
  * @param ip The IP packet to analyze
  * @return   The TTL or HL value if successful, 0 otherwise
  */
-unsigned int ip_get_ttl(const struct ip_packet *ip)
+unsigned int ip_get_ttl(const struct ip_packet *const ip)
 {
 	unsigned int ttl;
 
@@ -852,7 +850,7 @@ void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value)
  * @param ip The IP packet to analyze
  * @return   The IP header if IPv4, NULL otherwise
  */
-const struct iphdr * ipv4_get_header(const struct ip_packet *ip)
+const struct iphdr * ipv4_get_header(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return &(ip->header.v4);
@@ -871,7 +869,7 @@ const struct iphdr * ipv4_get_header(const struct ip_packet *ip)
  * @param ip  The IP packet to analyze
  * @return    The IP-ID if the given packet is IPv4, -1 otherwise
  */
-int ipv4_get_id(const struct ip_packet *ip)
+int ipv4_get_id(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return ipv4_get_id_nbo(ip, 1);
@@ -888,7 +886,7 @@ int ipv4_get_id(const struct ip_packet *ip)
  * @param nbo The NBO flag (if RND = 1, use NBO = 1)
  * @return    The IP-ID if the given packet is IPv4, -1 otherwise
  */
-int ipv4_get_id_nbo(const struct ip_packet *ip, const unsigned int nbo)
+int ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo)
 {
 	uint16_t id;
 
@@ -935,7 +933,7 @@ void ipv4_set_id(struct ip_packet *const ip, const int value)
  * @return   The DF bit of the IPv4 header if the given packet is IPv4,
  *           -1 otherwise
  */
-int ipv4_get_df(const struct ip_packet *ip)
+int ipv4_get_df(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return IPV4_GET_DF(ip->header.v4);
@@ -967,7 +965,7 @@ void ipv4_set_df(struct ip_packet *const ip, const int value)
  * @param ip The IPv4 packet to analyze
  * @return   The source address of the given IPv4 packet
  */
-uint32_t ipv4_get_saddr(const struct ip_packet *ip)
+uint32_t ipv4_get_saddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return ip->header.v4.saddr;
@@ -983,7 +981,7 @@ uint32_t ipv4_get_saddr(const struct ip_packet *ip)
  * @param ip The IPv4 packet to analyze
  * @return   The source address of the given IPv4 packet
  */
-uint32_t ipv4_get_daddr(const struct ip_packet *ip)
+uint32_t ipv4_get_daddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return ip->header.v4.daddr;
@@ -1004,7 +1002,7 @@ uint32_t ipv4_get_daddr(const struct ip_packet *ip)
  * @param ip The IP packet to analyze
  * @return   The IP header if IPv6, NULL otherwise
  */
-const struct ip6_hdr * ipv6_get_header(const struct ip_packet *ip)
+const struct ip6_hdr * ipv6_get_header(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return &(ip->header.v6);
@@ -1020,7 +1018,7 @@ const struct ip6_hdr * ipv6_get_header(const struct ip_packet *ip)
  * @param ip The IPv6 packet to analyze
  * @return   The flow label of the given IPv6 packet
  */
-uint32_t ipv6_get_flow_label(const struct ip_packet *ip)
+uint32_t ipv6_get_flow_label(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return IPV6_GET_FLOW_LABEL(ip->header.v6);
@@ -1052,7 +1050,7 @@ void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value)
  * @param ip The IPv6 packet to analyze
  * @return   The source address of the given IPv6 packet
  */
-const struct in6_addr * ipv6_get_saddr(const struct ip_packet *ip)
+const struct in6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return &(ip->header.v6.ip6_src);
@@ -1068,7 +1066,7 @@ const struct in6_addr * ipv6_get_saddr(const struct ip_packet *ip)
  * @param ip The IPv6 packet to analyze
  * @return   The source address of the given IPv6 packet
  */
-const struct in6_addr * ipv6_get_daddr(const struct ip_packet *ip)
+const struct in6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return &(ip->header.v6.ip6_dst);
@@ -1092,7 +1090,7 @@ const struct in6_addr * ipv6_get_daddr(const struct ip_packet *ip)
  * @param version OUT: the version of the IP packet: IPV4, IPV6 or IP_UNKNOWN
  * @return        Whether the given packet was successfully parsed or not
  */
-int get_ip_version(const unsigned char *packet,
+int get_ip_version(const unsigned char *const packet,
                    const unsigned int size,
                    ip_version *const version)
 {

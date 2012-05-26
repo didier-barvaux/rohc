@@ -371,29 +371,29 @@ static inline uint16_t ip_fast_csum(const void *iph, unsigned int ihl)
 int ip_create(struct ip_packet *const ip,
               const unsigned char *packet,
               const unsigned int size);
-int ip_get_inner_packet(const struct ip_packet *outer,
+int ip_get_inner_packet(const struct ip_packet *const outer,
                         struct ip_packet *const inner);
 void ip_new(struct ip_packet *const ip, const ip_version version);
 
-const unsigned char * ip_get_raw_data(const struct ip_packet *ip);
-unsigned char * ip_get_next_header(const struct ip_packet *ip,
+const unsigned char * ip_get_raw_data(const struct ip_packet *const ip);
+unsigned char * ip_get_next_header(const struct ip_packet *const ip,
                                    uint8_t *const type);
-unsigned char * ip_get_next_layer(const struct ip_packet *ip);
-unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *ip,
+unsigned char * ip_get_next_layer(const struct ip_packet *const ip);
+unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *const ip,
                                                uint8_t *const type);
-unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *ext,
+unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *const ext,
                                                 uint8_t *const type);
 
-unsigned int ip_get_totlen(const struct ip_packet *ip);
-unsigned int ip_get_hdrlen(const struct ip_packet *ip);
-unsigned int ip_get_plen(const struct ip_packet *ip);
+unsigned int ip_get_totlen(const struct ip_packet *const ip);
+unsigned int ip_get_hdrlen(const struct ip_packet *const ip);
+unsigned int ip_get_plen(const struct ip_packet *const ip);
 
-int ip_is_fragment(const struct ip_packet *ip);
-ip_version ip_get_version(const struct ip_packet *ip);
-unsigned int ip_get_protocol(const struct ip_packet *ip);
-unsigned int ext_get_protocol(const unsigned char *ext);
-unsigned int ip_get_tos(const struct ip_packet *ip);
-unsigned int ip_get_ttl(const struct ip_packet *ip);
+int ip_is_fragment(const struct ip_packet *const ip);
+ip_version ip_get_version(const struct ip_packet *const ip);
+unsigned int ip_get_protocol(const struct ip_packet *const ip);
+unsigned int ext_get_protocol(const unsigned char *const ext);
+unsigned int ip_get_tos(const struct ip_packet *const ip);
+unsigned int ip_get_ttl(const struct ip_packet *const ip);
 
 void ip_set_protocol(struct ip_packet *const ip, const uint8_t value);
 void ip_set_tos(struct ip_packet *const ip, const uint8_t value);
@@ -403,28 +403,28 @@ void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value);
 
 /* IPv4 specific functions */
 
-const struct iphdr * ipv4_get_header(const struct ip_packet *ip);
-int ipv4_get_id(const struct ip_packet *ip);
-int ipv4_get_id_nbo(const struct ip_packet *ip, const unsigned int nbo);
-int ipv4_get_df(const struct ip_packet *ip);
-uint32_t ipv4_get_saddr(const struct ip_packet *ip);
-uint32_t ipv4_get_daddr(const struct ip_packet *ip);
+const struct iphdr * ipv4_get_header(const struct ip_packet *const ip);
+int ipv4_get_id(const struct ip_packet *const ip);
+int ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo);
+int ipv4_get_df(const struct ip_packet *const ip);
+uint32_t ipv4_get_saddr(const struct ip_packet *const ip);
+uint32_t ipv4_get_daddr(const struct ip_packet *const ip);
 
 void ipv4_set_id(struct ip_packet *const ip, const int value);
 void ipv4_set_df(struct ip_packet *const ip, const int value);
 
 /* IPv6 specific functions */
 
-const struct ip6_hdr * ipv6_get_header(const struct ip_packet *ip);
-uint32_t ipv6_get_flow_label(const struct ip_packet *ip);
-const struct in6_addr * ipv6_get_saddr(const struct ip_packet *ip);
-const struct in6_addr * ipv6_get_daddr(const struct ip_packet *ip);
+const struct ip6_hdr * ipv6_get_header(const struct ip_packet *const ip);
+uint32_t ipv6_get_flow_label(const struct ip_packet *const ip);
+const struct in6_addr * ipv6_get_saddr(const struct ip_packet *const ip);
+const struct in6_addr * ipv6_get_daddr(const struct ip_packet *const ip);
 void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value);
-unsigned short ip_get_extension_size(const unsigned char *ext);
-unsigned short ip_get_total_extension_size(const struct ip_packet *ip);
+unsigned short ip_get_extension_size(const unsigned char *const ext);
+unsigned short ip_get_total_extension_size(const struct ip_packet *const ip);
 
 /* Private functions (do not use directly) */
-int get_ip_version(const unsigned char *packet,
+int get_ip_version(const unsigned char *const packet,
                    const unsigned int size,
                    ip_version *const version);
 
