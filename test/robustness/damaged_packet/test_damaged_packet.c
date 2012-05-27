@@ -262,9 +262,6 @@ static int test_comp_and_decomp(const char *const filename,
 		link_len = 0;
 	}
 
-	/* initialize the random generator */
-	srand(time(NULL));
-
 	/* create the ROHC compressor with small CID */
 	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(comp == NULL)
