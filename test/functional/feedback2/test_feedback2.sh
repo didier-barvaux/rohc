@@ -52,14 +52,30 @@ fi
 
 CMD="${APP} ${CAPTURE_SOURCE} ${CID_TYPE} ${ACKTYPE} ${OPTIONS}"
 
-# run in verbose mode or quiet mode
+# source valgrind-related functions
+. ${BASEDIR}/../../valgrind.sh
+
+# run without valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
 	if [ "${VERY_VERBOSE}" = "verbose" ] ; then
-		${CMD} || exit $?
+		run_test_without_valgrind ${CMD} || exit $?
 	else
-		${CMD} > /dev/null || exit $?
+		run_test_without_valgrind ${CMD} > /dev/null || exit $?
 	fi
 else
-	${CMD} > /dev/null 2>&1 || exit $?
+	run_test_without_valgrind ${CMD} > /dev/null 2>&1 || exit $?
+fi
+
+[ "${USE_VALGRIND}" != "yes" ] && exit 0
+
+# run with valgrind in verbose mode or quiet mode
+if [ "${VERBOSE}" = "verbose" ] ; then
+	if [ "${VERY_VERBOSE}" = "verbose" ] ; then
+		run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} || exit $?
+	else
+		run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} >/dev/null || exit $?
+	fi
+else
+	run_test_with_valgrind ${BASEDIR}/../../valgrind.xsl ${CMD} > /dev/null 2>&1 || exit $?
 fi
 

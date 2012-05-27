@@ -20,7 +20,7 @@ m4_ifndef([AC_PACKAGE_URL],
 #    to keep compatibility with automake 1.10 for the moment.
 #  - prefer bzip2 over gzip for dist tarballs
 #  - tar-ustar to allow paths that exceeds 99 characters in the dist tarball
-AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 tar-pax])
+AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 tar-pax parallel-tests])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Init libtool (require >= 2.2.0, disable static libraries by default)
@@ -118,6 +118,15 @@ AC_ARG_ENABLE(rohc_tests,
 AM_CONDITIONAL([ROHC_TESTS], [test x$enable_rohc_tests = xyes])
 
 
+# check if valgrind support in tests is enabled
+AC_ARG_ENABLE(rohc_tests_valgrind,
+              AS_HELP_STRING([--enable-rohc-tests-valgrind],
+                             [enable valgrind support within tests [[default=no]]]),
+              enable_rohc_tests_valgrind=$enableval,
+              enable_rohc_tests_valgrind=no)
+AM_CONDITIONAL([ROHC_TESTS_VALGRIND], [test x$enable_rohc_tests_valgrind = xyes])
+
+
 # check if ROHC statistics application is enabled
 AC_ARG_ENABLE(rohc_stats,
               AS_HELP_STRING([--enable-rohc-stats],
@@ -162,6 +171,54 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		echo "in an unusual place."
 		exit 1
 	fi
+fi
+
+
+# check requirements for valgrind support to tests
+if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
+	# valgrind support for tests cannot be enabled if tests are not
+	if test "x$enable_rohc_tests" = "xno" ; then
+		echo
+		echo "ERROR: valgrind support for tests enabled but tests are not"
+		echo
+		echo "Please add the --enable-rohc-tests or the --enable-rohc-tests-valgrind "
+		echo "option to configure to solve the problem."
+		exit 1
+	fi
+
+	# check for the valgrind binary and abort if it is not found
+	AC_CHECK_PROG(is_valgrind_found, valgrind, "yes", "no")
+	if test "x$is_valgrind_found" != "xyes" ; then
+		echo
+		echo "ERROR: valgrind binary not found"
+		echo
+		echo "Valgrind is required in order to check for memory leaks during tests."
+		echo
+		echo "Either disable the feature with the --disable-rohc-tests-valgrind, "
+		echo "or install Valgrind to solve the problem. You may get Valgrind from "
+		echo "http://www.valgrind.org/ or use your package manager to install it on "
+		echo "your system."
+		exit 1
+	fi
+
+	# check for the xsltproc binary and abort if it is not found
+	AC_CHECK_PROG(is_xsltproc_found, xsltproc, "yes", "no")
+	if test "x$is_xsltproc_found" != "xyes" ; then
+		echo
+		echo "ERROR: xsltproc binary not found"
+		echo
+		echo "xsltproc is required in order to analyze Valgrind memory leak reports "
+		echo "during tests."
+		echo
+		echo "Either disable the feature with the --disable-rohc-tests-valgrind, "
+		echo "or install xsltproc to solve the problem. xsltproc is often bundled "
+		echo "with libxslt. You may get xsltproc from http://www.xmlsoft.org/ or "
+		echo "use your package manager to install it on your system."
+		exit 1
+	fi
+
+	# export the variable to indicate that valgrind is supported during tests
+	AC_SUBST([TESTS_ENVIRONMENT], ["USE_VALGRIND=yes"])
 fi
 
 

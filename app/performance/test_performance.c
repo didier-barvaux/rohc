@@ -117,11 +117,11 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 double coef_nanosec,
                                 unsigned long long *time_elapsed);
 
-#endif /* __i386__ */
-
 static int gen_false_random_num(const struct rohc_comp *const comp,
                                 void *const user_context)
 	__attribute__((nonnull(1)));
+
+#endif /* __i386__ */
 
 
 /**
@@ -554,9 +554,6 @@ error:
 }
 
 
-#endif /* __i386__ */
-
-
 /**
  * @brief Generate a false random number for testing the ROHC library
  *
@@ -575,3 +572,4 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
 	return 0;
 }
 
+#endif /* __i386__ */

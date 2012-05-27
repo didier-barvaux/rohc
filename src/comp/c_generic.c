@@ -325,6 +325,8 @@ inline int is_changed(const unsigned short changed_fields,
  */
 void ip6_c_init_table(struct list_comp *const comp)
 {
+	unsigned int i;
+
 	/* insert HBH type in table */
 	comp->based_table[0].type = HBH;
 	comp->based_table[0].length = 0;
@@ -353,6 +355,16 @@ void ip6_c_init_table(struct list_comp *const comp)
 	comp->trans_table[3].known = 0;
 	comp->trans_table[3].item = &comp->based_table[4];
 	comp->trans_table[3].counter = 0;
+	/* reset other headers */
+	for(i = 4; i < MAX_ITEM; i++)
+	{
+		comp->based_table[i].type = 0;
+		comp->based_table[i].length = 0;
+		comp->based_table[i].data = NULL;
+		comp->trans_table[i].known = 0;
+		comp->trans_table[i].item = NULL;
+		comp->trans_table[i].counter = 0;
+	}
 }
 
 

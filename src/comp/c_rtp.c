@@ -191,17 +191,17 @@ quit:
  */
 void c_rtp_destroy(struct c_context *const context)
 {
-	struct c_generic_context *g_context =
-		(struct c_generic_context *) context->specific;
+	struct c_generic_context *g_context;
+	struct sc_rtp_context *rtp_context;
 
-	if(g_context != NULL)
-	{
-		struct sc_rtp_context *rtp_context =
-			(struct sc_rtp_context *) g_context->specific;
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+	assert(g_context->specific != NULL);
+	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
-		c_destroy_sc(&rtp_context->ts_sc);
-	}
-
+	c_destroy_sc(&rtp_context->ts_sc);
+	c_destroy_wlsb(rtp_context->ts_window);
 	c_generic_destroy(context);
 }
 

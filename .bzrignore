@@ -4,6 +4,8 @@ Makefile.in
 .libs
 *.lo
 *.la
+test-suite.log
+test_*.sh.log
 ./rohc-trunk.tar.gz
 ./rohc-trunk.tar.bz2
 ./cscope.out
@@ -27,6 +29,7 @@ Makefile.in
 ./doc/doxygen.conf
 ./doc/html
 ./src/common/test/test_lsb_decode
+./src/common/test/test_lsb_decode.log
 ./test/functional/feedback2/test_feedback2
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only
 ./test/robustness/empty_payload/test_empty_payload
@@ -35,6 +38,7 @@ Makefile.in
 ./test/non_regression/test_non_regression
 ./test/non_regression/report/report.html
 ./statistics/generate_statistics
+./statistics/generate_statistics.sh.log
 ./statistics/html
 ./app/performance/rohc_test_performance
 ./app/tunnel/rohctunnel
