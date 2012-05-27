@@ -43,6 +43,23 @@ AC_C_INLINE
 # Checks for library functions.
 AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero ceil])
 
+# Check whether the compiler computes the bit-field lengths as expected
+# (added because such a problem was detected with tinycc http://tinycc.org/)
+AC_MSG_CHECKING([whether the compiler computes bit-field lengths as expected])
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <stdint.h>
+struct bitfield
+{
+	unsigned int foo:4;
+	unsigned int bar:4;
+	uint8_t other;
+	uint16_t other2;
+};]],
+                               [[if(sizeof(struct bitfield) != 4) return 1;]])],
+              [AC_MSG_RESULT([yes])],
+              [AC_MSG_RESULT([no])
+               AC_MSG_FAILURE([The compiler does not behave as expect for bit-field lengths, it would break the library])],
+              [AC_MSG_RESULT([yes])])
+
 
 # get debug level
 AC_ARG_ENABLE(rohc_debug,
