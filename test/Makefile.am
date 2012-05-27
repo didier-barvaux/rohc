@@ -11,5 +11,7 @@ SUBDIRS = \
 	non_regression
 
 EXTRA_DIST = \
-	test.h
+	test.h \
+	valgrind.sh \
+	valgrind.xsl
 
