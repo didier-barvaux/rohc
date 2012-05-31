@@ -379,10 +379,10 @@ const unsigned char * ip_get_raw_data(const struct ip_packet *const ip);
 unsigned char * ip_get_next_header(const struct ip_packet *const ip,
                                    uint8_t *const type);
 unsigned char * ip_get_next_layer(const struct ip_packet *const ip);
-unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *const ip,
-                                               uint8_t *const type);
-unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *const ext,
-                                                uint8_t *const type);
+unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
+                                        uint8_t *const type);
+unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
+                                         uint8_t *const type);
 
 unsigned int ip_get_totlen(const struct ip_packet *const ip);
 unsigned int ip_get_hdrlen(const struct ip_packet *const ip);

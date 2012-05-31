@@ -632,7 +632,7 @@ unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
 			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext),
 			                    crc, crc_table);
 		}
-		ext = ip_get_next_ext_header_from_ext(ext, &ext_type);
+		ext = ip_get_next_ext_from_ext(ext, &ext_type);
 	}
 
 	return crc;
@@ -671,7 +671,7 @@ unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
 			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext),
 			                    crc, crc_table);
 		}
-		ext = ip_get_next_ext_header_from_ext(ext, &ext_type);
+		ext = ip_get_next_ext_from_ext(ext, &ext_type);
 	}
 
 	return crc;

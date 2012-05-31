@@ -2678,12 +2678,11 @@ unsigned char * get_ipv6_extension(const struct ip_packet *ip, const int index)
 	int i = 0;
 
 	/* get the next known IP extension in packet */
-	next_header = ip_get_next_ext_header_from_ip(ip, &next_header_type);
+	next_header = ip_get_next_ext_from_ip(ip, &next_header_type);
 	while(i < index && next_header != NULL)
 	{
 		/* get the next known IP extension */
-		next_header = ip_get_next_ext_header_from_ext(next_header,
-		                                              &next_header_type);
+		next_header = ip_get_next_ext_from_ext(next_header, &next_header_type);
 		i++;
 	}
 
@@ -2706,12 +2705,11 @@ int get_index_ipv6_table(const struct ip_packet *ip, const int index)
 	int i = 0;
 
 	/* get the next known IP extension in packet */
-	next_header = ip_get_next_ext_header_from_ip(ip, &next_header_type);
+	next_header = ip_get_next_ext_from_ip(ip, &next_header_type);
 	while(i < index && next_header != NULL)
 	{
 		/* get the next known IP extension */
-		next_header = ip_get_next_ext_header_from_ext(next_header,
-		                                              &next_header_type);
+		next_header = ip_get_next_ext_from_ext(next_header, &next_header_type);
 		i++;
 	}
 

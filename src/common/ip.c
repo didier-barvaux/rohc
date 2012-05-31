@@ -290,8 +290,8 @@ unsigned char * ip_get_next_layer(const struct ip_packet *const ip)
  * @return     The next extension header,
  *             NULL if there is no extension
  */
-unsigned char * ip_get_next_ext_header_from_ip(const struct ip_packet *const ip,
-                                               uint8_t *const type)
+unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
+                                        uint8_t *const type)
 {
 	unsigned char *next_header;
 
@@ -334,8 +334,8 @@ end:
  * @return     The next extension header,
  *             NULL if there is no more extension
  */
-unsigned char * ip_get_next_ext_header_from_ext(const unsigned char *const ext,
-                                                uint8_t *const type)
+unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
+                                         uint8_t *const type)
 {
 	unsigned char *next_header;
 	uint8_t length;
@@ -392,11 +392,11 @@ unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
 	uint8_t next_hdr_type;
 	unsigned short total_ext_size = 0;
 
-	ext = ip_get_next_ext_header_from_ip(ip, &next_hdr_type);
+	ext = ip_get_next_ext_from_ip(ip, &next_hdr_type);
 	while(ext != NULL)
 	{
 		total_ext_size += ip_get_extension_size(ext);
-		ext = ip_get_next_ext_header_from_ext(ext, &next_hdr_type);
+		ext = ip_get_next_ext_from_ext(ext, &next_hdr_type);
 	}
 
 	return total_ext_size;
