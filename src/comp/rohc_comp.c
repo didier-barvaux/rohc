@@ -753,23 +753,18 @@ int rohc_c_info(char *buffer)
 	save = buffer;
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "<profiles>\n");
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "<profiles>\n");
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		sprintf(buffer, "\t<profile id=\"%d\" ", c_profiles[i]->id);
-		buffer += strlen(buffer);
-		sprintf(buffer, "name=\"%s\" ", c_profiles[i]->description);
-		buffer += strlen(buffer);
-		sprintf(buffer, "/>\n");
-		buffer += strlen(buffer);
+		buffer += sprintf(buffer, "\t<profile id=\"%d\" ", c_profiles[i]->id);
+		buffer += sprintf(buffer, "name=\"%s\" ", c_profiles[i]->description);
+		buffer += sprintf(buffer, "/>\n");
 	}
 
-	sprintf(buffer, "</profiles>\n");
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "</profiles>\n");
 
-	return strlen(save);
+	return buffer - save;
 }
 
 
@@ -807,19 +802,13 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	save = buffer;
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "%s<instance>\n", prefix);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<creator>%s</creator>\n", prefix,
+	buffer += sprintf(buffer, "%s<instance>\n", prefix);
+	buffer += sprintf(buffer, "%s\t<creator>%s</creator>\n", prefix,
 	        PACKAGE_NAME " (" PACKAGE_URL ")");
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<version>%s</version>\n", prefix, PACKAGE_VERSION);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<status>%s</status>\n", prefix, comp->enabled ? "enabled" : "disabled");
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<flows>%d</flows>\n", prefix, comp->num_contexts_used);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<packets>%d</packets>\n", prefix, comp->num_packets);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<version>%s</version>\n", prefix, PACKAGE_VERSION);
+	buffer += sprintf(buffer, "%s\t<status>%s</status>\n", prefix, comp->enabled ? "enabled" : "disabled");
+	buffer += sprintf(buffer, "%s\t<flows>%d</flows>\n", prefix, comp->num_contexts_used);
+	buffer += sprintf(buffer, "%s\t<packets>%d</packets>\n", prefix, comp->num_packets);
 
 	if(comp->total_uncompressed_size != 0)
 	{
@@ -829,40 +818,28 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t<compression_ratio>%d%%</compression_ratio>\n", prefix, v);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<max_cid>%d</max_cid>\n", prefix, comp->medium.max_cid);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<mrru>%d</mrru>\n", prefix, comp->mrru);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<large_cid>%s</large_cid>\n", prefix,
-	        comp->medium.cid_type == ROHC_LARGE_CID ? "yes" : "no");
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<connection_type>%d</connection_type>\n", prefix, 3);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<feedback_freq>%d</feedback_freq>\n\n", prefix, 7); // comp-> ??
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<compression_ratio>%d%%</compression_ratio>\n", prefix, v);
+	buffer += sprintf(buffer, "%s\t<max_cid>%d</max_cid>\n", prefix, comp->medium.max_cid);
+	buffer += sprintf(buffer, "%s\t<mrru>%d</mrru>\n", prefix, comp->mrru);
+	buffer += sprintf(buffer, "%s\t<large_cid>%s</large_cid>\n", prefix,
+	                  comp->medium.cid_type == ROHC_LARGE_CID ? "yes" : "no");
+	buffer += sprintf(buffer, "%s\t<connection_type>%d</connection_type>\n", prefix, 3);
+	buffer += sprintf(buffer, "%s\t<feedback_freq>%d</feedback_freq>\n\n", prefix, 7); // comp-> ??
 
 	/* profiles part */
-	sprintf(buffer, "%s\t<profiles>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<profiles>\n", prefix);
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		p = c_profiles[i];
 
-		sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
-		buffer += strlen(buffer);
-		sprintf(buffer, "name=\"%s\" ", p->description);
-		buffer += strlen(buffer);
-		sprintf(buffer, "active=\"%s\" ", comp->profiles[i] ? "yes" : "no");
-		buffer += strlen(buffer);
-		sprintf(buffer, "/>\n");
-		buffer += strlen(buffer);
+		buffer += sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
+		buffer += sprintf(buffer, "name=\"%s\" ", p->description);
+		buffer += sprintf(buffer, "active=\"%s\" ", comp->profiles[i] ? "yes" : "no");
+		buffer += sprintf(buffer, "/>\n");
 	}
 
-	sprintf(buffer, "%s\t</profiles>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t</profiles>\n", prefix);
 
 	/* contexts part */
 	i = 0;
@@ -872,13 +849,12 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	}
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "%s</instance>\n\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s</instance>\n\n", prefix);
 
 	/* clean the indent prefix */
 	zfree(prefix);
 
-	return strlen(save);
+	return buffer - save;
 }
 
 
@@ -927,22 +903,16 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	save = buffer;
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "\n%s<context type=\"compressor\" cid=\"%d\">\n", prefix, c->cid);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<cid_state>%s</cid_state>\n", prefix, c->used ? "USED" : "UNUSED");
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
-	        rohc_comp_get_state_descr(c->state));
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
-	        rohc_get_mode_descr(c->mode));
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "\n%s<context type=\"compressor\" cid=\"%d\">\n", prefix, c->cid);
+	buffer += sprintf(buffer, "%s\t<cid_state>%s</cid_state>\n", prefix, c->used ? "USED" : "UNUSED");
+	buffer += sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
+	                  rohc_comp_get_state_descr(c->state));
+	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
+	                  rohc_get_mode_descr(c->mode));
+	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
 
 	/* compression ratio */
-	sprintf(buffer, "%s\t<ratio>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<ratio>\n", prefix);
 
 	if(c->total_uncompressed_size != 0)
 	{
@@ -952,8 +922,7 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
 
 	if(c->header_uncompressed_size != 0)
 	{
@@ -963,31 +932,26 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
 
 	v = c_sum_wlsb(c->total_16_uncompressed);
 	if(v != 0)
 	{
 		v = (100 * c_sum_wlsb(c->total_16_compressed)) / v;
 	}
-	sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
 
 	v = c_sum_wlsb(c->header_16_uncompressed);
 	if(v != 0)
 	{
 		v = (100 * c_sum_wlsb(c->header_16_compressed)) / v;
 	}
-	sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
 
-	sprintf(buffer, "%s\t</ratio>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t</ratio>\n", prefix);
 
 	/* compression mean */
-	sprintf(buffer, "%s\t<mean>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<mean>\n", prefix);
 
 	if(c->num_sent_packets != 0)
 	{
@@ -997,8 +961,7 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
 
 	if(c->num_sent_packets != 0)
 	{
@@ -1008,43 +971,32 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
 
 	v = c_mean_wlsb(c->total_16_compressed);
-	sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
 
 	v = c_mean_wlsb(c->header_16_compressed);
-	sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
 
-	sprintf(buffer, "%s\t</mean>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);
 
 	/* times */
-	sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
-	        prefix, (get_milliseconds() - c->first_used) / 1000 );
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
-	        prefix, (get_milliseconds() - c->latest_used) / 1000);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
+	                  prefix, (get_milliseconds() - c->first_used) / 1000 );
+	buffer += sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
+	                  prefix, (get_milliseconds() - c->latest_used) / 1000);
 
 	/* packets */
-	sprintf(buffer, "%s\t<packets sent_total=\"%d\" ", prefix, c->num_sent_packets);
-	buffer += strlen(buffer);
-	sprintf(buffer, "sent_ir=\"%d\" ", c->num_sent_ir);
-	buffer += strlen(buffer);
-	sprintf(buffer, "sent_irdyn=\"%d\" ", c->num_sent_ir_dyn);
-	buffer += strlen(buffer);
-	sprintf(buffer, "recv_feedback=\"%d\" />\n", c->num_recv_feedbacks);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<packets sent_total=\"%d\" ", prefix, c->num_sent_packets);
+	buffer += sprintf(buffer, "sent_ir=\"%d\" ", c->num_sent_ir);
+	buffer += sprintf(buffer, "sent_irdyn=\"%d\" ", c->num_sent_ir_dyn);
+	buffer += sprintf(buffer, "recv_feedback=\"%d\" />\n", c->num_recv_feedbacks);
 
-	sprintf(buffer, "%s</context>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s</context>\n", prefix);
 
 	free(prefix);
-	return strlen(save);
+	return buffer - save;
 }
 
 

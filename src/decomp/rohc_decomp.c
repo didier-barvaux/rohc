@@ -1138,29 +1138,22 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 	save = buffer;
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "%s<instance>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s<instance>\n", prefix);
 
 	/* add the profiles part */
-	sprintf(buffer, "%s\t<profiles>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<profiles>\n", prefix);
 
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
 		p = d_profiles[i];
 
-		sprintf(buffer, "%s\t\t<profile ", prefix);
-		buffer += strlen(buffer);
-		sprintf(buffer, "id=\"%d\" ", p->id);
-		buffer += strlen(buffer);
-		sprintf(buffer, "name=\"%s\" ", p->description);
-		buffer += strlen(buffer);
-		sprintf(buffer, "active=\"yes\" />\n");
-		buffer += strlen(buffer);
+		buffer += sprintf(buffer, "%s\t\t<profile ", prefix);
+		buffer += sprintf(buffer, "id=\"%d\" ", p->id);
+		buffer += sprintf(buffer, "name=\"%s\" ", p->description);
+		buffer += sprintf(buffer, "active=\"yes\" />\n");
 	}
 
-	sprintf(buffer, "%s\t</profiles>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t</profiles>\n", prefix);
 
 	/* add the contexts part */
 	i = 0;
@@ -1170,13 +1163,12 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 	}
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "%s</instance>\n\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s</instance>\n\n", prefix);
 
 	/* clean the indent prefix */
 	zfree(prefix);
 
-	return strlen(save);
+	return buffer - save;
 }
 
 
@@ -1226,20 +1218,15 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	save = buffer;
 	buffer += strlen(buffer);
 
-	sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%d\">\n", prefix, index);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
-	        rohc_decomp_get_state_descr(c->state));
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
-	        rohc_get_mode_descr(c->mode));
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%d\">\n", prefix, index);
+	buffer += sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
+	                  rohc_decomp_get_state_descr(c->state));
+	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
+	                  rohc_get_mode_descr(c->mode));
+	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
 
 	/* compression ratio */
-	sprintf(buffer, "%s\t<ratio>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<ratio>\n", prefix);
 
 	if(c->total_uncompressed_size != 0)
 	{
@@ -1249,8 +1236,7 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_packets>%d%%</all_packets>\n", prefix, v);
 
 	if(c->header_uncompressed_size != 0)
 	{
@@ -1260,84 +1246,63 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	{
 		v = 0;
 	}
-	sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
 
 	v = c_sum_wlsb(c->total_16_uncompressed);
 	if(v != 0)
 	{
 		v = (100 * c_sum_wlsb(c->total_16_compressed)) / v;
 	}
-	sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
 
 	v = c_sum_wlsb(c->header_16_uncompressed);
 	if(v != 0)
 	{
 		v = (100 * c_sum_wlsb(c->header_16_compressed)) / v;
 	}
-	sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
 
-	sprintf(buffer, "%s\t</ratio>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t</ratio>\n", prefix);
 
 	/* compression mean */
-	sprintf(buffer, "%s\t<mean>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<mean>\n", prefix);
 
 	v = c->total_compressed_size / c->num_recv_packets;
-	sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_packets>%d</all_packets>\n", prefix, v);
 
 	v = c->header_compressed_size / c->num_recv_packets;
-	sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
 
 	v = c_mean_wlsb(c->total_16_compressed);
-	sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
 
 	v = c_mean_wlsb(c->header_16_compressed);
-	sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
 
-	sprintf(buffer, "%s\t</mean>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);
 
 	/* times */
-	sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
-	        prefix, (get_milliseconds() - c->first_used) / 1000 );
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
-	        prefix, (get_milliseconds() - c->latest_used) / 1000);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
+	                  prefix, (get_milliseconds() - c->first_used) / 1000 );
+	buffer += sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
+	                  prefix, (get_milliseconds() - c->latest_used) / 1000);
 
 	/* packets */
-	sprintf(buffer, "%s\t<packets recv_total=\"%d\" ", prefix, c->num_recv_packets);
-	buffer += strlen(buffer);
-	sprintf(buffer, "recv_ir=\"%d\" ", c->num_recv_ir);
-	buffer += strlen(buffer);
-	sprintf(buffer, "recv_irdyn=\"%d\" ", c->num_recv_ir_dyn);
-	buffer += strlen(buffer);
-	sprintf(buffer, "sent_feedback=\"%d\" />\n", c->num_sent_feedbacks);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<packets recv_total=\"%d\" ", prefix, c->num_recv_packets);
+	buffer += sprintf(buffer, "recv_ir=\"%d\" ", c->num_recv_ir);
+	buffer += sprintf(buffer, "recv_irdyn=\"%d\" ", c->num_recv_ir_dyn);
+	buffer += sprintf(buffer, "sent_feedback=\"%d\" />\n", c->num_sent_feedbacks);
 
 	/* failures/repairs */
-	sprintf(buffer, "%s\t<decomp>\n", prefix);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t\t<failures>%d</failures>\n", prefix, c->num_decomp_failures);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t\t<repairs>%d</repairs>\n", prefix, c->num_decomp_repairs);
-	buffer += strlen(buffer);
-	sprintf(buffer, "%s\t</decomp>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s\t<decomp>\n", prefix);
+	buffer += sprintf(buffer, "%s\t\t<failures>%d</failures>\n", prefix, c->num_decomp_failures);
+	buffer += sprintf(buffer, "%s\t\t<repairs>%d</repairs>\n", prefix, c->num_decomp_repairs);
+	buffer += sprintf(buffer, "%s\t</decomp>\n", prefix);
 
-	sprintf(buffer, "%s</context>\n", prefix);
-	buffer += strlen(buffer);
+	buffer += sprintf(buffer, "%s</context>\n", prefix);
 
 	free(prefix);
-	return strlen(save);
+	return buffer - save;
 }
 
 
