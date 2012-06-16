@@ -47,9 +47,6 @@ struct d_rtp_context
 	/// Whether the UDP checksum field is encoded in the ROHC packet or not
 	int udp_checksum_present;
 
-	/// The LSB-encoded Timestamp
-	struct d_lsb_decode *ts;
-
 	/// The scaled RTP Timestamp decoding context
 	struct ts_sc_decomp *ts_scaled_ctxt;
 };
