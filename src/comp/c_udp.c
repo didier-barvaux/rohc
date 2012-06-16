@@ -424,6 +424,8 @@ void udp_decide_state(struct c_context *const context)
 
 	if(udp_context->tmp.send_udp_dynamic)
 	{
+		rohc_debugf(3, "go back to IR state because UDP checksum behaviour "
+		            "changed in the last few packets\n");
 		change_state(context, IR);
 	}
 	else

@@ -623,33 +623,20 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	udp = (struct udphdr *) dest;
 	rtp = (struct rtphdr *) (udp + 1);
 
-	/* part 1 */
-	/* UDP checksum if necessary:
-	 *  udp_checksum_present < 0 <=> not initialized
-	 *  udp_checksum_present = 0 <=> UDP checksum field not present
-	 *  udp_checksum_present > 0 <=> UDP checksum field present */
-	if(rtp_context->udp_checksum_present != 0)
+	/* part 1: UDP checksum */
+	if(length < sizeof(uint16_t))
 	{
-		/* check the minimal length to decode the UDP dynamic part */
-		if(length < sizeof(uint16_t))
-		{
-			rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
-			goto error;
-		}
-
-		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = GET_NEXT_16_BITS(packet);
-		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
-		packet += sizeof(uint16_t);
-		read += sizeof(uint16_t);
-		length -= sizeof(uint16_t);
-
-		/* init the UDP context if necessary */
-		if(rtp_context->udp_checksum_present < 0)
-		{
-			rtp_context->udp_checksum_present = (udp->check > 0);
-		}
+		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
+		goto error;
 	}
+	udp->check = GET_NEXT_16_BITS(packet);
+	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+	packet += sizeof(uint16_t);
+	read += sizeof(uint16_t);
+	length -= sizeof(uint16_t);
+
+	/* determine whether the UDP checksum will be present in UO packets */
+	rtp_context->udp_checksum_present = (udp->check > 0);
 
 	/* check the minimal length to decode the constant part of the RTP
 	   dynamic part (parts 2-6) */
@@ -940,7 +927,7 @@ struct d_profile d_rtp_profile =
 	ROHC_PROFILE_RTP,       /* profile ID (see 8 in RFC 3095) */
 	"RTP / Decompressor",   /* profile description */
 	d_generic_decode,       /* profile handlers */
-	d_udp_decode_ir,
+	d_generic_decode_ir,
 	d_rtp_create,
 	d_rtp_destroy,
 	rtp_detect_ir_size,

@@ -51,14 +51,6 @@ struct d_udp_context
  * Public function prototypes.
  */
 
-int d_udp_decode_ir(struct rohc_decomp *decomp,
-                    struct d_context *context,
-                    const unsigned char *rohc_packet,
-                    const unsigned int rohc_length,
-                    int large_cid_len,
-                    int is_addcid_used,
-                    unsigned char *dest);
-
 unsigned int udp_detect_ir_size(struct d_context *context,
                                 unsigned char *packet,
                                 unsigned int plen,

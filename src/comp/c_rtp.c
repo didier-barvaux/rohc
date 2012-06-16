@@ -422,6 +422,14 @@ void rtp_decide_state(struct c_context *const context)
 		rohc_debugf(3, "init ts_stride but timestamp is constant -> stay in IR\n");
 		change_state(context, IR);
 	}
+	else if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
+	{
+		/* TODO: could be optimized: IR state is not required, only IR or
+		 * IR-DYN packet is */
+		rohc_debugf(3, "go back to IR state because UDP checksum behaviour "
+		            "changed in the last few packets\n");
+		change_state(context, IR);
+	}
 	else if(rtp_context->ts_sc.state == INIT_STRIDE &&
 	        context->state != IR &&
 	        is_ts_constant(rtp_context->ts_sc))
@@ -732,7 +740,9 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 			            "but changed in the last few packets\n");
 		}
 
-		fields++;
+		/* do not count the UDP checksum change as other RTP dynamic fields
+		 * because it requires a specific behaviour (IR or IR-DYN packet
+		 * required). */
 	}
 
 	/* check RTP CSRC Counter and CSRC field */

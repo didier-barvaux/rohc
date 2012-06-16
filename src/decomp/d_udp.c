@@ -214,41 +214,6 @@ int udp_get_static_size(void)
 
 
 /**
- * @brief Decode one IR packet for the UDP profile.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param decomp          The ROHC decompressor
- * @param context         The decompression context
- * @param rohc_packet     The ROHC packet to decode
- * @param rohc_length     The length of the ROHC packet to decode
- * @param large_cid_len   The length of the large CID field
- * @param is_addcid_used  Whether the add-CID field is present or not
- * @param dest            The decoded IP packet
- * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if packet is feedback only
- *                        or ROHC_ERROR if an error occurs
- */
-int d_udp_decode_ir(struct rohc_decomp *decomp,
-                    struct d_context *context,
-                    const unsigned char *rohc_packet,
-                    const unsigned int rohc_length,
-                    int large_cid_len,
-                    int is_addcid_used,
-                    unsigned char *dest)
-{
-	struct d_generic_context *g_context = context->specific;
-	struct d_udp_context *udp_context = g_context->specific;
-
-	udp_context->udp_checksum_present = -1;
-
-	return d_generic_decode_ir(decomp, context, rohc_packet, rohc_length,
-	                           large_cid_len, is_addcid_used, dest);
-}
-
-
-/**
  * @brief Find the length of the IR header.
  *
  * This function is one of the functions that must exist in one profile for the
@@ -468,31 +433,19 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
 	udp_context = context->specific;
 	udp = (struct udphdr *) dest;
 
-	/* UDP checksum if necessary:
-	 *  udp_checksum_present < 0 <=> not initialized
-	 *  udp_checksum_present = 0 <=> UDP checksum field not present
-	 *  udp_checksum_present > 0 <=> UDP checksum field present */
-	if(udp_context->udp_checksum_present != 0)
+	/* UDP checksum */
+	if(length < 2)
 	{
-		/* check the minimal length to decode the UDP dynamic part */
-		if(length < 2)
-		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
-			goto error;
-		}
-
-		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = GET_NEXT_16_BITS(packet);
-		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
-		packet += 2;
-		read += 2;
-
-		/* init the UDP context if necessary */
-		if(udp_context->udp_checksum_present < 0)
-		{
-			udp_context->udp_checksum_present = udp->check;
-		}
+		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+		goto error;
 	}
+	udp->check = GET_NEXT_16_BITS(packet);
+	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+	packet += 2;
+	read += 2;
+
+	/* determine whether the UDP checksum will be present in UO packets */
+	udp_context->udp_checksum_present = (udp->check > 0);
 
 	/* SN field */
 	ret = ip_decode_dynamic_ip(context, packet, length - read, dest + read);
@@ -627,7 +580,7 @@ struct d_profile d_udp_profile =
 	ROHC_PROFILE_UDP,       /* profile ID (see 8 in RFC 3095) */
 	"UDP / Decompressor",   /* profile description */
 	d_generic_decode,       /* profile handlers */
-	d_udp_decode_ir,
+	d_generic_decode_ir,
 	d_udp_create,
 	d_udp_destroy,
 	udp_detect_ir_size,
