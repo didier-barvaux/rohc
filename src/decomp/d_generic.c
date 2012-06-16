@@ -3685,6 +3685,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	                     const unsigned int rohc_length,
 	                     int second_byte,
 	                     unsigned char *dest);
+	rohc_packet_t packet_type;
 	int length = ROHC_ERROR;
 
 	synchronize(g_context);
@@ -3724,9 +3725,10 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	}
 
 	/* parse the packet according to its type */
-	switch(find_packet_type(decomp, context,
-	                        rohc_packet, rohc_length,
-	                        second_byte))
+	packet_type = find_packet_type(decomp, context,
+	                               rohc_packet, rohc_length,
+	                               second_byte);
+	switch(packet_type)
 	{
 		case PACKET_UO_0:
 			g_context->packet_type = PACKET_UO_0;
@@ -3791,7 +3793,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		default:
-			rohc_debugf(0, "unknown packet type\n");
+			rohc_debugf(0, "unknown packet type (%d)\n", packet_type);
 			goto error;
 	}
 
@@ -7746,6 +7748,8 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 	else
 	{
 		/* unknown packet */
+		rohc_debugf(0, "failed to recognize the packet type in byte 0x%02x\n",
+		            *packet);
 		type = PACKET_UNKNOWN;
 	}
 
