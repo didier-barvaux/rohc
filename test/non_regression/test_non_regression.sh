@@ -47,8 +47,13 @@ if [ -z "${CAPTURE_COMPARE}" ] ; then
 	exit 1
 fi
 
-#CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
-CMD="${APP} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+if [ "${VERBOSE}" = "generate" ] ; then
+	# generate ROHC output captures
+	CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+else
+	# normal mode: compare with existing ROHC output captures
+	CMD="${APP} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+fi
 
 # source valgrind-related functions
 . ${BASEDIR}/../valgrind.sh
