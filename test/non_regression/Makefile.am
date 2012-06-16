@@ -6,8 +6,10 @@
 ################################################################################
 
 TESTS_SMALLCID = \
+	test_non_regression_unknown_smallcid.sh \
 	test_non_regression_ipvx_smallcid.sh \
 	test_non_regression_ipv4fragmented_smallcid.sh \
+	test_non_regression_ipv4-with-options_smallcid.sh \
 	test_non_regression_ipv4_icmp_smallcid.sh \
 	test_non_regression_ipv4_icmp_bug580491_smallcid.sh \
 	test_non_regression_ipv4_icmp+tcp_smallcid.sh \
@@ -56,8 +58,10 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv6_udp_smallcid.sh
 
 TESTS_LARGECID = \
+	test_non_regression_unknown_largecid.sh \
 	test_non_regression_ipvx_largecid.sh \
 	test_non_regression_ipv4fragmented_largecid.sh \
+	test_non_regression_ipv4-with-options_largecid.sh \
 	test_non_regression_ipv4_icmp_largecid.sh \
 	test_non_regression_ipv4_icmp_bug580491_largecid.sh \
 	test_non_regression_ipv4_icmp+tcp_largecid.sh \

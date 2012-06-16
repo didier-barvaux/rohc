@@ -44,13 +44,13 @@ int ip_create(struct ip_packet *const ip,
               const unsigned int size)
 {
 	ip_version version;
-	int ret = 0;
 
-	/* get the version of the IP packet */
+	/* get the version of the IP packet
+	 * (may be IP_UNKNOWN if packet is not IP) */
 	if(!get_ip_version(packet, size, &version))
 	{
 		rohc_debugf(1, "bad IP version\n");
-		goto quit;
+		goto error;
 	}
 
 	ip->version = version;
@@ -65,7 +65,7 @@ int ip_create(struct ip_packet *const ip,
 		if(size < sizeof(struct iphdr))
 		{
 			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
-			goto quit;
+			goto unknown;
 		}
 
 		/* copy the IPv4 header */
@@ -75,14 +75,14 @@ int ip_create(struct ip_packet *const ip,
 		{
 			rohc_debugf(1, "bad IP header size (%d bytes)\n",
 			            ip_get_hdrlen(ip));
-			goto quit;
+			goto unknown;
 		}
 
 		if(ip_get_totlen(ip) != size)
 		{
 			rohc_debugf(1, "bad IP packet length (%d bytes != %d bytes)\n",
 			            ip_get_totlen(ip), size);
-			goto quit;
+			goto unknown;
 		}
 
 		/* point to the whole IPv4 packet */
@@ -97,7 +97,7 @@ int ip_create(struct ip_packet *const ip,
 		if(size < sizeof(struct ip6_hdr))
 		{
 			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
-			goto quit;
+			goto unknown;
 		}
 
 		/* copy the IPv6 header */
@@ -107,7 +107,7 @@ int ip_create(struct ip_packet *const ip,
 		{
 			rohc_debugf(1, "bad IP packet length (%d bytes != %d bytes)\n",
 			            ip_get_totlen(ip), size);
-			goto quit;
+			goto unknown;
 		}
 
 		/* point to the whole IPv6 packet */
@@ -116,15 +116,21 @@ int ip_create(struct ip_packet *const ip,
 	}
 	else /* IP_UNKNOWN */
 	{
-		/* point to the whole packet */
-		ip->data = packet;
-		ip->size = size;
+		goto unknown;
 	}
 
-	ret = 1;
+	return 1;
 
-quit:
-	return ret;
+unknown:
+	/* manage the IP packet that the library cannot handle as IPv4 nor IPv6
+	 * as unknown data */
+	ip->version = IP_UNKNOWN;
+	ip->data = packet;
+	ip->size = size;
+	return 1;
+
+error:
+	return 0;
 }
 
 

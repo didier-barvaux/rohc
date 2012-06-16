@@ -350,7 +350,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		goto error;
 	}
 	outer_ip = &ip;
-	rohc_debugf(3, "size of IP packet = %d bytes\n", isize);
+	rohc_debugf(3, "size of uncompressed packet = %d bytes\n", isize);
 
 	/* get the transport protocol in the IP packet (skip the second IP header
 	 * if present) */
