@@ -7212,12 +7212,16 @@ int decode_extension3(struct rohc_decomp *decomp,
 			goto error;
 		}
 
+		rohc_debugf(3, "%zd TS bits found in EXT-3 = 0x%x\n",
+		            *ts_bits_nr, *ts_bits);
+
 		rohc_remain_data += ts_sdvl_size;
 		rohc_remain_len -= ts_sdvl_size;
 	}
 	else /* non-RTP profiles or RTP profile without RTS flag set */
 	{
 		/* no TS bits */
+		rohc_debugf(3, "no TS bit found in EXT-3\n");
 		*ts_bits = 0;
 		*ts_bits_nr = 0;
 	}
