@@ -3463,9 +3463,9 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 			}
 			else
 			{
-				/* TODO: what to do here? */
-				packet = PACKET_UNKNOWN;
-				assert(0);
+				/* no UO packet fits, use IR-DYN */
+				packet = PACKET_IR_DYN;
+				rohc_debugf(3, "choose packet IR-DYN because no UO packet fits\n");
 			}
 		}
 	}

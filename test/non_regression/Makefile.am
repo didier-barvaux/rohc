@@ -115,9 +115,6 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
-XFAIL_TESTS = \
-	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_largecid.sh
 
 check_PROGRAMS = \
 	test_non_regression
