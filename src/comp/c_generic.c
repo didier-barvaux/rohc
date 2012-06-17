@@ -3202,7 +3202,7 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					            "the 2 IP headers are 'IPv4 with non-random "
 					            "IP-ID'\n");
 				}
-				else if(nr_ipv4_non_rnd_with_bits == 1 &&
+				else if(nr_ipv4_non_rnd_with_bits <= 1 &&
 				        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 				/* TODO: create a is_packet_UOR_2_ID() function */
 				{
@@ -3221,9 +3221,9 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 				}
 				else
 				{
-					/* TODO: what to do here? */
-					packet = PACKET_UNKNOWN;
-					assert(0);
+					/* no UO packet fits, use IR-DYN */
+					packet = PACKET_IR_DYN;
+					rohc_debugf(3, "choose packet IR-DYN because no UO packet fits\n");
 				}
 			}
 		}
@@ -3411,7 +3411,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				            "%zd <= 4 SN bits must be transmitted, %zd <= 6 TS "
 				            "bits must be transmitted\n", nr_sn_bits, nr_ts_bits);
 			}
-			else if(nr_ipv4_non_rnd_with_bits == 1 &&
+			else if(nr_ipv4_non_rnd_with_bits <= 1 &&
 			        (nr_ip_id_bits <= 5 || nr_ip_id_bits2 <= 5) &&
 			        nr_sn_bits <= 4 && nr_ts_bits == 0 && rtp_context->tmp.m_set == 0)
 			{
@@ -3444,7 +3444,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				rohc_debugf(3, "choose packet UOR-2-RTP because neither of the 2 "
 				            "IP headers are 'IPv4 with non-random IP-ID'\n");
 			}
-			else if(nr_ipv4_non_rnd_with_bits == 1 &&
+			else if(nr_ipv4_non_rnd_with_bits <= 1 &&
 			        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
 			/* TODO: create a is_packet_UOR_2_ID() function */
 			{
