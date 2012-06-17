@@ -62,7 +62,7 @@ fi
 if [ "${VERBOSE}" = "verbose" ] ; then
 	run_test_without_valgrind ${CMD} || exit $?
 else
-	run_test_without_valgrind ${CMD} > /dev/null 2>&1 || exit $?
+	run_test_without_valgrind ${CMD} > /dev/null || exit $?
 fi
 
 [ "${USE_VALGRIND}" != "yes" ] && exit 0
