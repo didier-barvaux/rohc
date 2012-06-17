@@ -3389,6 +3389,8 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 					nr_ipv4_non_rnd_with_bits++;
 				}
 			}
+			rohc_debugf(3, "nr_ipv4_non_rnd = %u, nr_ipv4_non_rnd_with_bits = %u\n",
+			            nr_ipv4_non_rnd, nr_ipv4_non_rnd_with_bits);
 
 			if(nr_sn_bits <= 4 && nr_ipv4_non_rnd_with_bits == 0 &&
 			   nr_ts_bits == 0 && rtp_context->tmp.m_set == 0)
