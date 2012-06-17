@@ -117,9 +117,6 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
-XFAIL_TESTS= \
-	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_largecid.sh
 
 check_PROGRAMS = \
 	test_non_regression

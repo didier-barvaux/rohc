@@ -7269,27 +7269,43 @@ int decode_extension3(struct rohc_decomp *decomp,
 
 		if(g_context->multiple_ip)
 		{
-			if(ip_get_version(&active2->ip) != IPV4)
+			/* determine which IP header is the innermost IPv4 header with
+			 * non-random IP-ID */
+			if(ip_get_version(&active2->ip) == IPV4 && active2->rnd == 0)
 			{
-				rohc_debugf(0, "extension 3 must not update the inner IP-ID "
-				            "because the inner header is IPv6\n");
+				/* inner IP header is IPv4 with non-random IP-ID */
+				*ip_id_bits = 0;
+				*ip_id_bits_nr = 0;
+				*ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+				*ip_id2_bits_nr = 16;
+			}
+			else if(ip_get_version(&active1->ip) == IPV4 && active1->rnd == 0)
+			{
+				/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
+				 * IP header is */
+				*ip_id_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+				*ip_id_bits_nr = 16;
+				*ip_id2_bits = 0;
+				*ip_id2_bits_nr = 0;
+			}
+			else
+			{
+				rohc_debugf(0, "extension 3 cannot contain IP-ID bits because "
+				            "no IP header is IPv4 with non-random IP-ID\n");
 				goto error;
 			}
 
-			*ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-			*ip_id2_bits_nr = 16;
-			*ip_id_bits = 0;
-			*ip_id_bits_nr = 0;
-
+			rohc_debugf(3, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
+			            *ip_id_bits_nr, *ip_id_bits);
 			rohc_debugf(3, "%zd bits of inner IP-ID in EXT3 = 0x%x\n",
 			            *ip_id2_bits_nr, *ip_id2_bits);
 		}
 		else
 		{
-			if(ip_get_version(&active1->ip) != IPV4)
+			if(ip_get_version(&active1->ip) != IPV4 || active1->rnd != 0)
 			{
-				rohc_debugf(0, "extension 3 must not update the outer IP-ID "
-				            "because the outer header is IPv6\n");
+				rohc_debugf(0, "extension 3 cannot contain IP-ID bits because "
+				            "no IP header is IPv4 with non-random IP-ID\n");
 				goto error;
 			}
 
