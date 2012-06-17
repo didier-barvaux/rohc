@@ -21,6 +21,7 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv4_ipv4_udp_rtp_video1_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_video2_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_smallcid.sh \
 	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_smallcid.sh \
 	test_non_regression_ipv4_ipv6_icmp_smallcid.sh \
@@ -74,6 +75,7 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_ipv4_udp_rtp_video1_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_video2_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_largecid.sh \
 	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_largecid.sh \
 	test_non_regression_ipv4_ipv6_icmp_largecid.sh \
@@ -115,6 +117,9 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
+XFAIL_TESTS= \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_largecid.sh
 
 check_PROGRAMS = \
 	test_non_regression
