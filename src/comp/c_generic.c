@@ -3348,7 +3348,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				rohc_debugf(3, "choose packet UOR-2-ID because the single IP "
 				            "header is IPv4 with non-random IP-ID, %zd > 0 IP-ID "
 				            "bits and %zd <= %u TS bits must be "
-				            "transmitted\n", nr_sn_bits, nr_ts_bits,
+				            "transmitted\n", nr_ip_id_bits, nr_ts_bits,
 				            ROHC_SDVL_MAX_BITS_IN_4_BYTES);
 			}
 			else
@@ -7136,7 +7136,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		}
 		counter += sdvl_size;
 
-		rohc_debugf(3, "ts_stride %u (0x%x) is SDVL-encoded on %zd bit(s)\n",
+		rohc_debugf(3, "ts_stride %u (0x%x) is SDVL-encoded on %zd byte(s)\n",
 		            ts_stride, ts_stride, sdvl_size);
 
 		/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */

@@ -7208,7 +7208,7 @@ int decode_extension3(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			rohc_debugf(3, "failed to decode SDVL-encoded TS\n");
+			rohc_debugf(0, "failed to decode SDVL-encoded TS\n");
 			goto error;
 		}
 
