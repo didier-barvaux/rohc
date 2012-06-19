@@ -39,7 +39,6 @@
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <math.h>
 #include <assert.h>
 
 
@@ -8632,12 +8631,12 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 
 	size_original = jamming_find_packet_size(comp, context, ip, packet,
 	                                         size_data, 1);
-	nb_packets_original = ceil((adapt_size + size_original) / encap_size);
+	nb_packets_original = (adapt_size + size_original) / encap_size;
 
 	/* for all types of packets, the first test is with IR packets */
 	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR,
 	                                    size_data, 0);
-	nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+	nb_packets_new = (adapt_size + size_new) / encap_size;
 	if(nb_packets_original == nb_packets_new)
 	{
 		return PACKET_IR;
@@ -8650,7 +8649,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	}
 	size_new = jamming_find_packet_size(comp, context, ip, PACKET_IR,
 	                                    size_data, 0);
-	nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+	nb_packets_new = (adapt_size + size_new) / encap_size;
 	if(nb_packets_original == nb_packets_new)
 	{
 		return PACKET_IR_DYN;
@@ -8670,7 +8669,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 		/* profile is not RTP profile */
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			return PACKET_UOR_2;
@@ -8681,7 +8680,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 		/* profile is RTP profile */
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			return PACKET_UOR_2_RTP;
@@ -8691,7 +8690,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	{
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_TS,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			return PACKET_UOR_2_TS;
@@ -8701,7 +8700,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	{
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_ID,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			return PACKET_UOR_2_ID;
@@ -8711,7 +8710,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 	{
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UOR_2_RTP,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			if(nr_of_ip_hdr == 1) /* single IP header */
@@ -8764,7 +8763,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 		/* profile is not RTP profile */
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			return PACKET_UO_1;
@@ -8775,7 +8774,7 @@ static rohc_packet_t jamming_decide_algo(const struct rohc_comp *comp,
 		/* profile is RTP profile */
 		size_new = jamming_find_packet_size(comp, context, ip, PACKET_UO_1_RTP,
 		                                    size_data, 0);
-		nb_packets_new = ceil((adapt_size + size_new) / encap_size);
+		nb_packets_new = (adapt_size + size_new) / encap_size;
 		if(nb_packets_original == nb_packets_new)
 		{
 			if(nr_of_ip_hdr == 1) /* single IP header */

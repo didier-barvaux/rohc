@@ -41,7 +41,7 @@ AC_CHECK_HEADERS([netinet/ip.h netinet/udp.h netinet/in.h])
 AC_C_INLINE
 
 # Checks for library functions.
-AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero ceil])
+AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero])
 
 # Check whether the compiler computes the bit-field lengths as expected
 # (added because such a problem was detected with tinycc http://tinycc.org/)
