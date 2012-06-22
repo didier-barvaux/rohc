@@ -43,7 +43,6 @@ struct c_window
 	uint16_t sn;     /**< The Sequence Number (SN) associated with the entry
 	                      (used to acknowledge the entry) */
 	uint32_t value;  /**< The value stored in the window entry */
-	bool is_used;    /**< Whether the window entry is used or not */
 };
 
 
@@ -55,10 +54,16 @@ struct c_wlsb
 	/// The width of the window
 	size_t window_width;
 
+	/// The size of the window (power of 2) minus 1
+	size_t window_mask;
+
 	/// A pointer on the oldest entry in the window (change on acknowledgement)
 	size_t oldest;
 	/// A pointer on the current entry in the window  (change on add and ack)
 	size_t next;
+
+	/// Count of entries in the window
+	size_t count;
 
 	/// The maximal number of bits for representing the value
 	size_t bits;
@@ -96,7 +101,7 @@ static size_t rohc_g_32bits(const uint32_t v_ref,
  *        object
  *
  * @param bits         The maximal number of bits for representing a value
- * @param window_width The number of entries in the window
+ * @param window_width The number of entries in the window (power of 2)
  * @param p            Shift parameter (see 4.5.2 in the RFC 3095)
  * @return             The newly-created W-LSB encoding object
  */
@@ -105,10 +110,11 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
                               const rohc_lsb_shift_t p)
 {
 	struct c_wlsb *wlsb;
-	size_t entry;
 
 	assert(bits > 0);
 	assert(window_width > 0);
+	/* window_width must be a power of 2! */
+	assert(window_width != 0 && (window_width & (window_width - 1)) == 0);
 
 	wlsb = malloc(sizeof(struct c_wlsb) + (window_width - 1) * sizeof(struct c_window));
 	if(wlsb == NULL)
@@ -119,14 +125,11 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 
 	wlsb->oldest = 0;
 	wlsb->next = 0;
+	wlsb->count = 0;
 	wlsb->window_width = window_width;
+	wlsb->window_mask = window_width - 1;
 	wlsb->bits = bits;
 	wlsb->p = p;
-
-	for(entry = 0; entry < window_width; entry++)
-	{
-		wlsb->window[entry].is_used = false;
-	}
 
 	return wlsb;
 
@@ -163,15 +166,18 @@ void c_add_wlsb(struct c_wlsb *const wlsb,
 	assert(wlsb->next < wlsb->window_width);
 
 	/* if window is full, an entry is overwritten */
-	if(wlsb->window[wlsb->next].is_used)
+	if(wlsb->count == wlsb->window_width)
 	{
-		wlsb->oldest = (wlsb->oldest + 1) % wlsb->window_width;
+		wlsb->oldest = (wlsb->oldest + 1) & wlsb->window_mask;
+	}
+	else
+	{
+		wlsb->count++;
 	}
 
 	wlsb->window[wlsb->next].sn = sn;
 	wlsb->window[wlsb->next].value = value;
-	wlsb->window[wlsb->next].is_used = true;
-	wlsb->next = (wlsb->next + 1) % wlsb->window_width;
+	wlsb->next = (wlsb->next + 1) & wlsb->window_mask;
 }
 
 
@@ -193,31 +199,29 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
                        size_t *const bits_nr)
 {
 	size_t entry;
-	bool is_window_valid;
 	uint16_t min;
 	uint16_t max;
+	size_t i;
 
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
 	/* (value <= 0xffff) always ensured because value is of type uint16_t */
 	assert(bits_nr != NULL);
 
+	/* cannot do anything if the window contains no value */
+	if(wlsb->count == 0)
+	{
+		goto error;
+	}
+
 	min = 0xffff;
 	max = 0;
-	is_window_valid = false;
 
 	/* find out the interval in which all the values from the window stand */
-	for(entry = 0; entry < wlsb->window_width; entry++)
+	for(i = wlsb->count, entry = wlsb->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & wlsb->window_mask)
 	{
-		/* skip entry if not in use */
-		if(!(wlsb->window[entry].is_used))
-		{
-			continue;
-		}
-
-		/* the window contains at least one value */
-		is_window_valid = true;
-
 		/* change the minimal and maximal values if appropriate */
 		if(wlsb->window[entry].value < min)
 		{
@@ -227,12 +231,6 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 		{
 			max = wlsb->window[entry].value;
 		}
-	}
-
-	/* cannot do anything if the window contains no value */
-	if(!is_window_valid)
-	{
-		goto error;
 	}
 
 	/* find the minimal number of bits of the value required to be able
@@ -279,31 +277,29 @@ bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                        size_t *const bits_nr)
 {
 	size_t entry;
-	bool is_window_valid;
 	uint32_t min;
 	uint32_t max;
+	size_t i;
 
 	assert(wlsb != NULL);
 	assert(wlsb->window != NULL);
 	assert(value <= 0xffffffff);
 	assert(bits_nr != NULL);
 
+	/* cannot do anything if the window contains no value */
+	if(wlsb->count==0)
+	{
+		goto error;
+	}
+
 	min = 0xffffffff;
 	max = 0;
-	is_window_valid = false;
 
 	/* find out the interval in which all the values from the window stand */
-	for(entry = 0; entry < wlsb->window_width; entry++)
+	for(i = wlsb->count, entry = wlsb->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & wlsb->window_mask)
 	{
-		/* skip entry if not in use */
-		if(!(wlsb->window[entry].is_used))
-		{
-			continue;
-		}
-
-		/* the window contains at least one value */
-		is_window_valid = true;
-
 		/* change the minimal and maximal values if appropriate */
 		if(wlsb->window[entry].value < min)
 		{
@@ -313,12 +309,6 @@ bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
 		{
 			max = wlsb->window[entry].value;
 		}
-	}
-
-	/* cannot do anything if the window contains no value */
-	if(!is_window_valid)
-	{
-		goto error;
 	}
 
 	/* find the minimal number of bits of the value required to be able
@@ -357,8 +347,8 @@ error:
  */
 void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 {
-	int found = 0;
-	int i;
+	size_t entry;
+	size_t i;
 
 	/* check the W-LSB object validity */
 	if(s == NULL)
@@ -368,31 +358,16 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 
 	/* search for the window entry that matches the given SN
 	 * starting from the oldest one */
-	for(i = s->oldest; i < s->window_width; i++)
+	for(i = s->count, entry = s->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & s->window_mask)
 	{
-		if(s->window[i].is_used && s->window[i].sn == sn)
+		if(s->window[i].sn == sn)
 		{
-			found = 1;
+			/* remove the window entry if found */
+			c_ack_remove(s, i);
 			break;
 		}
-	}
-
-	if(!found)
-	{
-		for(i = 0; i < s->oldest; i++)
-		{
-			if(s->window[i].is_used && s->window[i].sn == sn)
-			{
-				found = 1;
-				break;
-			}
-		}
-	}
-
-	/* remove the window entry if found */
-	if(found)
-	{
-		c_ack_remove(s, i);
 	}
 }
 
@@ -407,15 +382,15 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
  */
 int c_sum_wlsb(struct c_wlsb *s)
 {
-	int i;
+	size_t entry;
 	int sum = 0;
+	size_t i;
 
-	for(i = 0; i < s->window_width; i++)
+	for(i = s->count, entry = s->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & s->window_mask)
 	{
-		if(s->window[i].is_used)
-		{
-			sum += s->window[i].value;
-		}
+		sum += s->window[entry].value;
 	}
 
 	return sum;
@@ -432,20 +407,23 @@ int c_sum_wlsb(struct c_wlsb *s)
  */
 int c_mean_wlsb(struct c_wlsb *s)
 {
-	int i;
+	size_t entry;
 	int sum = 0;
-	int num = 0;
+	size_t i;
 
-	for(i = 0; i < s->window_width; i++)
+	if(s->count == 0)
 	{
-		if(s->window[i].is_used)
-		{
-			sum += s->window[i].value;
-			num++;
-		}
+		return 0;
 	}
 
-	return (num > 0 ? sum / num : 0);
+	for(i = s->count, entry = s->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & s->window_mask)
+	{
+		sum += s->window[entry].value;
+	}
+
+	return (sum / s->count);
 }
 
 
@@ -461,7 +439,8 @@ int c_mean_wlsb(struct c_wlsb *s)
  */
 static void c_ack_remove(struct c_wlsb *s, int index)
 {
-	int j;
+	size_t entry;
+	size_t i;
 
 	/* check the W-LSB object validity */
 	if(s == NULL)
@@ -471,75 +450,17 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 
 	rohc_debugf(2, "index is %d\n", index);
 
-	if(s->oldest == index)
+	for(i = s->count, entry = s->oldest;
+	    i > 0;
+	    i--, entry = (entry + 1) & s->window_mask)
 	{
-		/* remove only the oldest entry */
-		s->window[s->oldest].is_used = false;
-	}
-	else if(s->oldest < index)
-	{
-		/* remove all entries from oldest to (not including) index */
-		for(j = s->oldest; j < index; j++)
-		{
-			s->window[j].is_used = false;
-		}
-	}
-	else /* s->oldest > index */
-	{
-		/* remove all entries from oldest to wrap-around and all from start
-		 * to (excluding) index */
-		for(j = s->oldest; j < s->window_width; j++)
-		{
-			s->window[j].is_used = false;
-		}
-		for(j = 0; j < index; j++)
-		{
-			s->window[j].is_used = false;
-		}
-	}
-
-	/* fix the s->oldest pointer */
-	if(index >= (s->window_width - 1))
-	{
-		s->oldest = 0;
-	}
-	else
-	{
-		s->oldest = index;
-		if(s->oldest >= s->window_width)
-		{
-			s->oldest = 0;
-		}
-	}
-
-	/* fix the s->next pointer */
-	s->next = s->oldest;
-	for(j = s->oldest; j < s->window_width; j++)
-	{
-		if(s->window[j].is_used)
-		{
-			s->next = (s->next + 1) % s->window_width;
-		}
-		else
+		/* remove the oldest entry */
+		s->count--;
+		s->oldest = (s->oldest + 1) & s->window_mask;
+		if(entry == index)
 		{
 			break;
 		}
-	}
-	for(j = 0; j < s->oldest; j++)
-	{
-		if(s->window[j].is_used)
-		{
-			s->next = (s->next + 1) % s->window_width;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	if(s->oldest >= s->window_width)
-	{
-		s->oldest = 0;
 	}
 }
 
