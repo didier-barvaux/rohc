@@ -362,10 +362,10 @@ void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
 	    i > 0;
 	    i--, entry = (entry + 1) & s->window_mask)
 	{
-		if(s->window[i].sn == sn)
+		if(s->window[s->oldest].sn == sn)
 		{
 			/* remove the window entry if found */
-			c_ack_remove(s, i);
+			c_ack_remove(s, s->oldest);
 			break;
 		}
 	}
