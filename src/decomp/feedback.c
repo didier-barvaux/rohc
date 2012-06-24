@@ -65,7 +65,7 @@ int f_feedback1(int sn, struct d_feedback *feedback)
  * @return         ROHC_OK if the packet is successfully built,
  *                 ROHC_ERROR otherwise
  */
-int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
+int f_feedback2(int acktype, int mode, uint16_t sn, struct d_feedback *feedback)
 {
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
@@ -73,8 +73,8 @@ int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 
 	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
 	{
-		rohc_debugf(3, "FEEDBACK-2: transmit SN on 12 bits\n");
-		feedback->data[0] |= (htons(sn) & 0xf00) >> 8;
+		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%x on 12 bits\n", sn);
+		feedback->data[0] |= (htons(sn) >> 8) & 0xf;
 		feedback->data[1] = htons(sn) & 0xff;
 	}
 	else if(sn < (1 << 20)) /* SN may be stored on 20 bits */
@@ -82,10 +82,12 @@ int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 		const unsigned char sn_last_bits = htons(sn) & 0xff;
 		int ret;
 
-		rohc_debugf(3, "FEEDBACK-2: transmit SN on 20 bits (12 bits in base "
-		            "header, 8 bits in SN option)\n");
-		feedback->data[0] |= (htons(sn) & 0xf0000) >> 16;
-		feedback->data[1] = (htons(sn) & 0xff00) >> 8;
+		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%04x on 20 bits (12 bits "
+		            "in base header, 8 bits in SN option)\n", sn);
+		feedback->data[0] |= (htons(sn) >> 16) & 0xf;
+		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		feedback->data[1] = (htons(sn) >> 8) & 0xff;
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_last_bits,
 		                   sizeof(sn_last_bits));
 		if(ret != ROHC_OK)
@@ -93,11 +95,12 @@ int f_feedback2(int acktype, int mode, int sn, struct d_feedback *feedback)
 			rohc_debugf(0, "failed to add option to the feedback packet\n");
 			goto error;
 		}
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", sn_last_bits);
 	}
 	else /* SN cannot be stored on 20 bits */
 	{
 		/* should not happen */
-		rohc_debugf(3, "FEEDBACK-2: SN 0x%x cannot be stored on 20 bits\n", sn);
+		rohc_debugf(3, "FEEDBACK-2: SN 0x%04x cannot be stored on 20 bits\n", sn);
 		assert(0);
 		goto error;
 	}

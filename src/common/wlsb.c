@@ -345,7 +345,7 @@ error:
  * @param s  The W-LSB object
  * @param sn The SN to acknowledge
  */
-void c_ack_sn_wlsb(struct c_wlsb *s, int sn)
+void c_ack_sn_wlsb(struct c_wlsb *s, const uint16_t sn)
 {
 	size_t entry;
 	size_t i;

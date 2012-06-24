@@ -2758,7 +2758,7 @@ void c_generic_feedback(struct c_context *const context,
 	struct c_generic_context *g_context;
 	unsigned char *p; /* pointer to the profile-specific data
 	                     in the feedback packet */
-	unsigned int sn;
+	uint16_t sn;
 
 	g_context = (struct c_generic_context *) context->specific;
 	p = feedback->data + feedback->specific_offset;
@@ -2789,7 +2789,7 @@ void c_generic_feedback(struct c_context *const context,
 
 			rohc_debugf(2, "feedback 2\n");
 
-			sn_nbo = ((p[0] & 0xff) << 8) + p[1];
+			sn_nbo = ((p[0] & 0x0f) << 8) + (p[1] & 0xff);
 			p += 2;
 
 			while(remaining > 0)
@@ -2809,7 +2809,13 @@ void c_generic_feedback(struct c_context *const context,
 						break;
 					case 4: /* SN */
 						/* TODO: how are several SN options combined? */
-						sn_nbo = (sn_nbo << 8) + p[1];
+						if((sn_nbo & 0xff00) != 0)
+						{
+							rohc_debugf(0, "more than 16 bits used for feedback SN, "
+							            "this is not expected, truncate value\n");
+							sn_nbo &= 0xff;
+						}
+						sn_nbo = (sn_nbo << 8) + (p[1] & 0xff);
 						break;
 					case 2: /* Reject */
 					case 7: /* Loss */
@@ -2857,7 +2863,7 @@ void c_generic_feedback(struct c_context *const context,
 			switch(feedback->acktype)
 			{
 				case ACK:
-					rohc_debugf(2, "ack (SN = 0x%x, SN-not-valid = %d)\n",
+					rohc_debugf(2, "ack (SN = 0x%04x, SN-not-valid = %d)\n",
 					            sn, sn_not_valid);
 					if(sn_not_valid == 0)
 					{

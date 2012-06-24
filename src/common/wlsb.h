@@ -59,7 +59,7 @@ bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                        const uint32_t value,
                        size_t *const bits_nr);
 
-void c_ack_sn_wlsb(struct c_wlsb *s, int sn);
+void c_ack_sn_wlsb(struct c_wlsb *s, const uint16_t sn);
 
 int c_sum_wlsb(struct c_wlsb *s);
 int c_mean_wlsb(struct c_wlsb *s);
