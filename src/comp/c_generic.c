@@ -5494,27 +5494,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2-RTP packet with extension 3\n");
 
 			/* part 2: 5 bits of TS */
-			if(nr_ts_bits <= 6)
-			{
-				nr_ts_bits_ext3 = 0;
-			}
-			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_1_BYTE))
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
-			}
-			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_2_BYTES))
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
-			}
-			else if(nr_ts_bits <= (6 + ROHC_SDVL_MAX_BITS_IN_3_BYTES))
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
-			}
-			else
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
-			}
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
+			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 6);
 			assert(nr_ts_bits_ext3 <= nr_ts_bits);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3, nr_ts_bits_ext3);
@@ -5755,27 +5736,8 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2-TS packet with extension 3\n");
 
 			/* part 2: 5 bits of TS */
-			if(nr_ts_bits <= 5)
-			{
-				nr_ts_bits_ext3 = 0;
-			}
-			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_1_BYTE))
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
-			}
-			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_2_BYTES))
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
-			}
-			else if(nr_ts_bits <= (5 + ROHC_SDVL_MAX_BITS_IN_3_BYTES))
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
-			}
-			else
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
-			}
 			rohc_debugf(3, "TS to send = 0x%x\n", ts_send);
+			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 5);
 			rohc_debugf(3, "%zd bits of TS (%zd in header, %zd in EXT3)\n",
 			            nr_ts_bits, (nr_ts_bits_ext3 <= nr_ts_bits ?
 			                         nr_ts_bits - nr_ts_bits_ext3 : 0),
@@ -6034,26 +5996,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte &= ~0x80;
 			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
 			rohc_debugf(3, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
-			if(nr_ts_bits == 0)
-			{
-				nr_ts_bits_ext3 = 0;
-			}
-			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
-			}
-			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
-			}
-			else if(nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
-			}
-			else
-			{
-				nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
-			}
+			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;

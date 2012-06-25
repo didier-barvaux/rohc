@@ -55,6 +55,9 @@ typedef enum
 bool sdvl_can_value_be_encoded(uint32_t value);
 bool sdvl_can_length_be_encoded(size_t bits_nr);
 
+size_t sdvl_get_min_len(const size_t nr_min_required,
+                        const size_t nr_encoded);
+
 size_t c_bytesSdvl(uint32_t value, size_t length);
 
 int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length);

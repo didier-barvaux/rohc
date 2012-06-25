@@ -71,6 +71,52 @@ bool sdvl_can_length_be_encoded(size_t bits_nr)
 
 
 /**
+ * @brief Find out how many SDVL bits are needed to represent a value
+ *
+ * The number of bits already encoded in another field may be specified.
+ *
+ * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
+ *
+ * @param nr_min_required  The minimum required number of bits to encode
+ * @param nr_encoded       The number of bits already encoded in another field
+ * @return                 The number of bits needed to encode the value
+ */
+size_t sdvl_get_min_len(const size_t nr_min_required,
+                        const size_t nr_encoded)
+{
+	size_t nr_needed;
+
+	if(nr_min_required <= nr_encoded)
+	{
+		nr_needed = 0;
+	}
+	else
+	{
+		const size_t remaining = nr_min_required - nr_encoded;
+
+		if(remaining <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
+		{
+			nr_needed = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+		}
+		else if(remaining <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
+		{
+			nr_needed = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+		}
+		else if(remaining <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
+		{
+			nr_needed = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+		}
+		else
+		{
+			nr_needed = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
+		}
+	}
+
+	return nr_needed;
+}
+
+
+/**
  * @brief Find out how many bytes are needed to represent the value using
  *        Self-Describing Variable-Length (SDVL) encoding
  *
