@@ -26,6 +26,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 
 /*
@@ -50,6 +51,8 @@ typedef enum
 /*
  * Function prototypes.
  */
+
+bool sdvl_can_value_be_encoded(uint32_t value);
 
 size_t c_bytesSdvl(uint32_t value, size_t length);
 

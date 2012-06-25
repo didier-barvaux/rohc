@@ -23,6 +23,7 @@
  */
 
 #include "ts_sc_comp.h"
+#include "sdvl.h"
 #include "rohc_traces.h"
 
 #include <stdlib.h> /* for abs(3) */
@@ -113,12 +114,23 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 		case INIT_STRIDE:
 		{
 			rohc_debugf(2, "state INIT_STRIDE\n");
+
 			if(ts_sc->ts_delta == 0)
 			{
+				/* TS is constant */
 				rohc_debugf(3, "timestamp has not changed\n");
+			}
+			else if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+			{
+				/* TS is changing and TS_STRIDE is very large: go back to INIT_TS
+				 * state if TS_STRIDE cannot be SDVL-encoded */
+				rohc_debugf(2, "TS_STRIDE is too large for SDVL encoding, "
+				            "go in INIT_TS state\n");
+				ts_sc->state = INIT_TS;
 			}
 			else
 			{
+				/* TS is changing and TS_STRIDE is OK */
 				rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_delta);
 				ts_sc->ts_stride = ts_sc->ts_delta;
 				ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
@@ -138,6 +150,16 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 
 			rohc_debugf(2, "state SEND_SCALED\n");
 
+			/* go back to INIT_TS state if TS_STRIDE cannot be SDVL-encoded */
+			if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+			{
+				rohc_debugf(2, "TS_STRIDE is too large for SDVL encoding, "
+				            "go in INIT_TS state\n");
+				ts_sc->state = INIT_TS;
+				return;
+			}
+
+			/* TS_STRIDE is OK, let's use it */
 			rohc_debugf(3, "ts_stride calculated = %u\n", ts_sc->ts_delta);
 			rohc_debugf(3, "previous ts_stride = %u\n", ts_sc->ts_stride);
 			rest = ts_sc->ts_delta % ts_sc->ts_stride;

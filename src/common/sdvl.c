@@ -43,6 +43,20 @@ typedef enum
 
 
 /**
+ * @brief Can the given value be encoded with SDVL?
+ *
+ * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
+ *
+ * @param value  The value to encode
+ * @return       Whether the value can be encoded with SDVL or not
+ */
+bool sdvl_can_value_be_encoded(uint32_t value)
+{
+	return (value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES);
+}
+
+
+/**
  * @brief Find out how many bytes are needed to represent the value using
  *        Self-Describing Variable-Length (SDVL) encoding
  *

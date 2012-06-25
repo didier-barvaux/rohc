@@ -119,10 +119,6 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
-XFAIL_TESTS = \
-	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_largecid.sh
-
 
 check_PROGRAMS = \
 	test_non_regression
