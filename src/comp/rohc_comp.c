@@ -1088,9 +1088,19 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 	/* decode CID */
 	if(comp->medium.cid_type == ROHC_LARGE_CID)
 	{
-		/* decode large cid at p[0..3] */
-		feedback.cid =  d_sdvalue_decode(p);
-		p += d_sdvalue_size(p);
+		size_t large_cid_size;
+		size_t large_cid_bits_nr;
+		uint32_t large_cid;
+
+		/* decode SDVL-encoded large CID field */
+		large_cid_size = sdvl_decode(p, size, &large_cid, &large_cid_bits_nr);
+		if(large_cid_size != 1 && large_cid_size != 2)
+		{
+			rohc_debugf(0, "failed to decode SDVL-encoded large CID field\n");
+			goto quit;
+		}
+		feedback.cid = large_cid;
+		p += large_cid_size;
 	}
 	else
 	{

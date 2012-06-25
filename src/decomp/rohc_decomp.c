@@ -1486,7 +1486,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 	}
 	else if(decomp->medium->cid_type == ROHC_LARGE_CID)
 	{
-		int ret;
+		uint32_t large_cid;
 
 		/* large CID */
 		ddata->addcidUsed = 0;
@@ -1496,40 +1496,16 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		packet++;
 		len--;
 
-		/* get the length of the SDVL-encoded large CID **/
-		ret = d_sdvalue_size(packet);
-		if(ret < 0)
-		{
-			rohc_debugf(0, "malformed large CID SDVL-encoded field\n");
-			goto error;
-		}
-		ddata->large_cid_size = ret;
-
-		/* only 1-byte and 2-byte SDVL fields are allowed for large CID */
+		/* decode SDVL-encoded large CID
+		 * (only 1-byte and 2-byte SDVL fields are allowed) */
+		ddata->large_cid_size = sdvl_decode(packet, len,
+		                                    &large_cid, &ddata->large_cid_size);
 		if(ddata->large_cid_size != 1 && ddata->large_cid_size != 2)
 		{
-			rohc_debugf(0, "bad large CID SDVL-encoded field length (%u bytes)\n",
-			            ddata->large_cid_size);
+			rohc_debugf(0, "failed to decode SDVL-encoded large CID field\n");
 			goto error;
 		}
-
-		/* is feedback data large enough ? */
-		if(len < ddata->large_cid_size)
-		{
-			rohc_debugf(0, "feedback data too small (%u bytes) for %u-byte "
-			            "SDVL-encoded large CID field\n", len,
-			            ddata->large_cid_size);
-			goto error;
-		}
-
-		/* decode SDVL-encoded large CID */
-		ddata->cid = d_sdvalue_decode(packet);
-		if(ddata->cid == -1)
-		{
-			rohc_debugf(0, "bad large CID SDVL-encoded field\n");
-			goto error;
-		}
-
+		ddata->cid = large_cid;
 		rohc_debugf(2, "%u-byte large CID = %d (0x%02x)\n",
 		            ddata->large_cid_size, ddata->cid, ddata->cid);
 	}

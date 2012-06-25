@@ -7156,62 +7156,16 @@ int decode_extension3(struct rohc_decomp *decomp,
 	/* extract and decode TS if present (RTP profile only) */
 	if(rts)
 	{
-		int ts_sdvl_size;
-		int ret;
-
-		/* check the minimal length to read at least one byte of TS, then
-		 * extract TS field size and check if packet is large enough to
-		 * contain the whole field */
-		if(rohc_remain_len < 1)
-		{
-			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		ts_sdvl_size = d_sdvalue_size(rohc_remain_data);
-		if(ts_sdvl_size < 0)
-		{
-			rohc_debugf(0, "bad TS SDVL-encoded field length\n");
-			goto error;
-		}
-
-		if(rohc_remain_len < ts_sdvl_size)
-		{
-			rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
+		size_t ts_sdvl_size;
 
 		/* decode SDVL-encoded TS value */
-		ret = d_sdvalue_decode(rohc_remain_data);
-		if(ret < 0)
+		ts_sdvl_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
+		                           ts_bits, ts_bits_nr);
+		if(ts_sdvl_size <= 0)
 		{
-			rohc_debugf(0, "bad TS SDVL-encoded field\n");
+			rohc_debugf(0, "failed to decode SDVL-encoded TS field\n");
 			goto error;
 		}
-		*ts_bits = ret;
-
-		if(ts_sdvl_size == 1)
-		{
-			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
-		}
-		else if(ts_sdvl_size == 2)
-		{
-			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
-		}
-		else if(ts_sdvl_size == 3)
-		{
-			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
-		}
-		else if(ts_sdvl_size == 4)
-		{
-			*ts_bits_nr = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
-		}
-		else
-		{
-			rohc_debugf(0, "failed to decode SDVL-encoded TS\n");
-			goto error;
-		}
-
 		rohc_debugf(3, "%zd TS bits found in EXT-3 = 0x%x\n",
 		            *ts_bits_nr, *ts_bits);
 
@@ -7421,45 +7375,24 @@ int decode_extension3(struct rohc_decomp *decomp,
 		if(tss)
 		{
 			struct d_rtp_context *rtp_context;
-			int ts_stride;
-			int ts_stride_size;
+			uint32_t ts_stride;
+			size_t ts_stride_bits_nr;
+			size_t ts_stride_size;
 
 			rtp_context = (struct d_rtp_context *) g_context->specific;
 
-			/* check the minimal length to read at least one byte of TS_STRIDE,
-			 * then extract TS_STRIDE field size and check if packet is large
-			 * enough to contain the whole field */
-			if(rohc_remain_len < 1)
+			/* decode SDVL-encoded TS value */
+			ts_stride_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
+			                             &ts_stride, &ts_stride_bits_nr);
+			if(ts_stride_size <= 0)
 			{
-				rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+				rohc_debugf(0, "failed to decode SDVL-encoded TS_STRIDE field\n");
 				goto error;
 			}
-
-			ts_stride_size = d_sdvalue_size(rohc_remain_data);
-			if(ts_stride_size < 0)
-			{
-				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field length\n");
-				goto error;
-			}
-
-			if(rohc_remain_len < ts_stride_size)
-			{
-				rohc_debugf(0, "ROHC packet too small (len = %zd)\n", rohc_remain_len);
-				goto error;
-			}
-
-			/* decode SDVL-encoded TS_STRIDE value */
-			ts_stride = d_sdvalue_decode(rohc_remain_data);
-			if(ts_stride < 0)
-			{
-				rohc_debugf(0, "bad TS_STRIDE SDVL-encoded field\n");
-				goto error;
-			}
+			rohc_debugf(3, "decoded TS_STRIDE = %u / 0x%x\n", ts_stride, ts_stride);
 
 			rohc_remain_data += ts_stride_size;
 			rohc_remain_len -= ts_stride_size;
-
-			rohc_debugf(3, "decoded ts_stride = %u / 0x%x\n", ts_stride, ts_stride);
 
 			/* temporarily store the decoded TS_STRIDE in context */
 			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);

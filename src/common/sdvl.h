@@ -61,8 +61,10 @@ int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length);
 
 int d_sdvalue_size(const unsigned char *data);
 
-int d_sdvalue_decode(const unsigned char *data);
-
+size_t sdvl_decode(const unsigned char *data,
+                   const size_t length,
+                   uint32_t *const value,
+                   size_t *const bits_nr);
 
 #endif
 

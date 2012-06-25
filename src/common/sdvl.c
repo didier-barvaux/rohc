@@ -255,39 +255,86 @@ int d_sdvalue_size(const unsigned char *data)
  *
  * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
  *
- * @param data The SDVL data to decode
- * @return     The decoded value
+ * @param data     The SDVL data to decode
+ * @param length   The maximum data length available (in bytes)
+ * @param value    OUT: The decoded value
+ * @param bits_nr  OUT: The number of useful bits
+ * @return         The number of bytes used by the SDVL field
  */
-int d_sdvalue_decode(const unsigned char *data)
+size_t sdvl_decode(const unsigned char *data,
+                   const size_t length,
+                   uint32_t *const value,
+                   size_t *const bits_nr)
 {
-	int value;
+	size_t sdvl_len;
+
+	assert(data != NULL);
+	assert(value != NULL);
+	assert(bits_nr != NULL);
+
+	if(length < 1)
+	{
+		rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
+		            length);
+		goto error;
+	}
 
 	if(!GET_BIT_7(data)) /* bit == 0 */
 	{
-		value = GET_BIT_0_6(data);
+		*value = GET_BIT_0_6(data);
+		*bits_nr = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+		sdvl_len = 1;
 	}
 	else if(GET_BIT_6_7(data) == (0x8 >> 2)) /* bits == 0b10 */
 	{
-		value = (GET_BIT_0_5(data) << 8 | GET_BIT_0_7(data + 1));
+		if(length < 2)
+		{
+			rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
+			            length);
+			goto error;
+		}
+		*value = (GET_BIT_0_5(data) << 8 | GET_BIT_0_7(data + 1));
+		*bits_nr = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+		sdvl_len = 2;
 	}
 	else if(GET_BIT_5_7(data) == (0xc >> 1)) /* bits == 0b110 */
 	{
-		value = (GET_BIT_0_4(data) << 16 |
-		         GET_BIT_0_7(data + 1) << 8 |
-		         GET_BIT_0_7(data + 2));
+		if(length < 3)
+		{
+			rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
+			            length);
+			goto error;
+		}
+		*value = (GET_BIT_0_4(data) << 16 |
+		          GET_BIT_0_7(data + 1) << 8 |
+		          GET_BIT_0_7(data + 2));
+		*bits_nr = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+		sdvl_len = 3;
 	}
 	else if(GET_BIT_5_7(data) == (0xe >> 1)) /* bits == 0b111 */
 	{
-		value = (GET_BIT_0_4(data) << 24 |
-		         GET_BIT_0_7(data + 1) << 16 |
-		         GET_BIT_0_7(data + 2) << 8 |
-		         GET_BIT_0_7(data + 3));
+		if(length < 4)
+		{
+			rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
+			            length);
+			goto error;
+		}
+		*value = (GET_BIT_0_4(data) << 24 |
+		          GET_BIT_0_7(data + 1) << 16 |
+		          GET_BIT_0_7(data + 2) << 8 |
+		          GET_BIT_0_7(data + 3));
+		*bits_nr = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
+		sdvl_len = 4;
 	}
 	else
 	{
-		value = -1; /* should not happen */
+		rohc_debugf(0, "bad SDVL-encoded field length (0x%02x)\n", data[0]);
+		goto error;
 	}
 
-	return value;
+	return sdvl_len;
+
+error:
+	return 0;
 }
 
