@@ -57,6 +57,20 @@ bool sdvl_can_value_be_encoded(uint32_t value)
 
 
 /**
+ * @brief Is the given length (in bits) compatible with SDVL?
+ *
+ * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
+ *
+ * @param value  The length (in bits) of the value to encode
+ * @return       Whether the value can be encoded with SDVL or not
+ */
+bool sdvl_can_length_be_encoded(size_t bits_nr)
+{
+	return (bits_nr <= ROHC_SDVL_MAX_BITS_IN_4_BYTES);
+}
+
+
+/**
  * @brief Find out how many bytes are needed to represent the value using
  *        Self-Describing Variable-Length (SDVL) encoding
  *

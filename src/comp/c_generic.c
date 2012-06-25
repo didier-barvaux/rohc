@@ -3149,17 +3149,15 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					rohc_debugf(3, "choose packet UOR-2 because the single IP "
 					            "header is not 'IPv4 with non-random IP-ID'\n");
 				}
-				else if(nr_ip_id_bits > 0 &&
-				        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
+				else if(nr_ip_id_bits > 0 && sdvl_can_length_be_encoded(nr_ts_bits))
 				{
 					/* a UOR-2-ID packet can only carry 29 bits of TS (with ext 3) */
 					packet = PACKET_UOR_2_ID;
 					rohc_debugf(3, "choose packet UOR-2-ID because the single IP "
 					            "header is IPv4 with non-random IP-ID, %zd > 0 "
-					            "bits of IP-ID must be transmitted, and "
-					            "%zd <= %u bits of TS must be transmitted\n",
-					            nr_ip_id_bits, nr_ts_bits,
-					            ROHC_SDVL_MAX_BITS_IN_4_BYTES);
+					            "bits of IP-ID must be transmitted, and %zd TS "
+					            "bits can be SDVL-encoded\n", nr_ip_id_bits,
+					            nr_ts_bits);
 				}
 				else
 				{
@@ -3208,15 +3206,14 @@ static rohc_packet_t decide_FO_packet(const struct c_context *context)
 					            "IP-ID'\n");
 				}
 				else if(nr_ipv4_non_rnd_with_bits <= 1 &&
-				        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
+				        sdvl_can_length_be_encoded(nr_ts_bits))
 				/* TODO: create a is_packet_UOR_2_ID() function */
 				{
 					packet = PACKET_UOR_2_ID;
 					rohc_debugf(3, "choose packet UOR-2-ID because only one of "
 					            "the 2 IP headers is IPv4 with non-random IP-ID "
 					            "with at least 1 bit of IP-ID to transmit, and "
-					            "%zd <= %u bits of TS must be transmitted\n",
-					            nr_ts_bits, ROHC_SDVL_MAX_BITS_IN_4_BYTES);
+					            "%zd TS bits can be SDVL-encoded\n", nr_ts_bits);
 				}
 				else if(nr_ipv4_non_rnd == 1)
 				{
@@ -3347,14 +3344,13 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				             "TS bits are deductible"));
 			}
 			else if(nr_ip_id_bits > 0 &&
-			        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
+			        sdvl_can_length_be_encoded(nr_ts_bits))
 			{
 				packet = PACKET_UOR_2_ID;
 				rohc_debugf(3, "choose packet UOR-2-ID because the single IP "
 				            "header is IPv4 with non-random IP-ID, %zd > 0 IP-ID "
-				            "bits and %zd <= %u TS bits must be "
-				            "transmitted\n", nr_ip_id_bits, nr_ts_bits,
-				            ROHC_SDVL_MAX_BITS_IN_4_BYTES);
+				            "bits must be transmitted, and %zd TS bits can be "
+				            "SDVL-encoded\n", nr_ip_id_bits, nr_ts_bits);
 			}
 			else
 			{
@@ -3450,15 +3446,14 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
 				            "IP headers are 'IPv4 with non-random IP-ID'\n");
 			}
 			else if(nr_ipv4_non_rnd_with_bits <= 1 &&
-			        nr_ts_bits <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
+			        sdvl_can_length_be_encoded(nr_ts_bits))
 			/* TODO: create a is_packet_UOR_2_ID() function */
 			{
 				packet = PACKET_UOR_2_ID;
 				rohc_debugf(3, "choose packet UOR-2-ID because only one of "
 				            "the 2 IP headers is IPv4 with non-random IP-ID "
 				            "with at least 1 bit of IP-ID to transmit, and "
-				            "%zd <= %u bits of TS must be transmitted\n",
-				            nr_ts_bits, ROHC_SDVL_MAX_BITS_IN_4_BYTES);
+				            "%zd TS bits can be SDVL-encoded\n", nr_ts_bits);
 			}
 			else if(nr_ipv4_non_rnd == 1)
 			{
