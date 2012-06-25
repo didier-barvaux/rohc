@@ -61,8 +61,8 @@ bool sdvl_can_value_be_encoded(uint32_t value)
  *
  * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
  *
- * @param value  The length (in bits) of the value to encode
- * @return       Whether the value can be encoded with SDVL or not
+ * @param bits_nr  The length (in bits) of the value to encode
+ * @return         Whether the value can be encoded with SDVL or not
  */
 bool sdvl_can_length_be_encoded(size_t bits_nr)
 {
