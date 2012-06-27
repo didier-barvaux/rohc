@@ -1487,6 +1487,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 	else if(decomp->medium->cid_type == ROHC_LARGE_CID)
 	{
 		uint32_t large_cid;
+		size_t large_cid_bits_nr;
 
 		/* large CID */
 		ddata->addcidUsed = 0;
@@ -1499,7 +1500,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		/* decode SDVL-encoded large CID
 		 * (only 1-byte and 2-byte SDVL fields are allowed) */
 		ddata->large_cid_size = sdvl_decode(packet, len,
-		                                    &large_cid, &ddata->large_cid_size);
+		                                    &large_cid, &large_cid_bits_nr);
 		if(ddata->large_cid_size != 1 && ddata->large_cid_size != 2)
 		{
 			rohc_debugf(0, "failed to decode SDVL-encoded large CID field\n");
