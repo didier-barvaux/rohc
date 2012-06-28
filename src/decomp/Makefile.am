@@ -16,6 +16,10 @@ librohc_decomp_la_SOURCES = \
 	d_udp_lite.c \
 	d_rtp.c
 
+librohc_decomp_la_LIBADD = \
+	$(top_builddir)/src/common/librohc_common.la \
+	$(top_builddir)/src/comp/librohc_comp.la
+
 INCLUDES = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp

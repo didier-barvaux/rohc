@@ -15,6 +15,9 @@ librohc_comp_la_SOURCES = \
 	c_udp_lite.c \
 	c_rtp.c
 
+librohc_comp_la_LIBADD = \
+	$(top_builddir)/src/common/librohc_common.la
+
 INCLUDES = \
 	-I$(top_srcdir)/src/common
 
