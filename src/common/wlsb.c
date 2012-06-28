@@ -452,7 +452,7 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 
 	for(i = s->count, entry = s->oldest;
 	    i > 0;
-	    i--, entry = (entry + 1) & s->window_mask)
+	    i--, entry = s->oldest)
 	{
 		/* remove the oldest entry */
 		s->count--;
