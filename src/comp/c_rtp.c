@@ -142,8 +142,6 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->old_udp = *udp;
 	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->old_rtp = *rtp;
-	rtp_context->ts_window = c_create_wlsb(32, C_WINDOW_WIDTH,
-	                                       ROHC_LSB_SHIFT_RTP_TS);
 	if(!c_create_sc(&rtp_context->ts_sc))
 	{
 		rohc_debugf(0, "cannot create scaled RTP Timestamp encoding\n");
@@ -201,7 +199,6 @@ void c_rtp_destroy(struct c_context *const context)
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 	c_destroy_sc(&rtp_context->ts_sc);
-	c_destroy_wlsb(rtp_context->ts_window);
 	c_generic_destroy(context);
 }
 

@@ -97,9 +97,6 @@ struct sc_rtp_context
 	///        compression of packet
 	struct rtp_tmp_vars tmp;
 
-	/// A window used to encode the TS field
-	struct c_wlsb *ts_window;
-
 	/// Scaled RTP Time Stamp
 	int tss;
 
