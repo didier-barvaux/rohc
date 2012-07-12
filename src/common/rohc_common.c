@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rohc.c
+ * @file rohc_common.c
  * @brief ROHC common definitions and routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
