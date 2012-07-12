@@ -11,7 +11,7 @@ SUBDIRS = . test
 lib_LTLIBRARIES = librohc_common.la
 
 sources = \
-	rohc.c \
+	rohc_common.c \
 	rohc_packets.c \
 	rohc_traces.c \
 	crc.c \
