@@ -65,8 +65,20 @@ int f_feedback1(int sn, struct d_feedback *feedback)
  * @return         ROHC_OK if the packet is successfully built,
  *                 ROHC_ERROR otherwise
  */
-int f_feedback2(int acktype, int mode, uint16_t sn, struct d_feedback *feedback)
+int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 {
+	uint32_t sn_nbo;
+
+	/* handle 16-bit and 32-bit SN */
+	if((sn & 0xffff) == sn)
+	{
+		sn_nbo = htons((uint16_t) sn);
+	}
+	else
+	{
+		sn_nbo = htonl(sn);
+	}
+
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
 	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
@@ -74,19 +86,19 @@ int f_feedback2(int acktype, int mode, uint16_t sn, struct d_feedback *feedback)
 	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
 	{
 		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%x on 12 bits\n", sn);
-		feedback->data[0] |= (htons(sn) >> 8) & 0xf;
-		feedback->data[1] = htons(sn) & 0xff;
+		feedback->data[0] |= (sn_nbo >> 8) & 0xf;
+		feedback->data[1] = sn_nbo & 0xff;
 	}
 	else if(sn < (1 << 20)) /* SN may be stored on 20 bits */
 	{
-		const unsigned char sn_last_bits = htons(sn) & 0xff;
+		const uint8_t sn_last_bits = sn_nbo & 0xff;
 		int ret;
 
 		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%04x on 20 bits (12 bits "
 		            "in base header, 8 bits in SN option)\n", sn);
-		feedback->data[0] |= (htons(sn) >> 16) & 0xf;
+		feedback->data[0] |= (sn_nbo >> 16) & 0xf;
 		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		feedback->data[1] = (htons(sn) >> 8) & 0xff;
+		feedback->data[1] = (sn_nbo >> 8) & 0xff;
 		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_last_bits,
 		                   sizeof(sn_last_bits));

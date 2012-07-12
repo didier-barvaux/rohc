@@ -84,7 +84,7 @@ struct d_feedback
 
 int f_feedback1(int sn, struct d_feedback *feedback);
 
-int f_feedback2(int acktype, int mode, uint16_t sn, struct d_feedback *feedback);
+int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback);
 
 int f_add_option(struct d_feedback *feedback,
                  const uint8_t opt_type,
