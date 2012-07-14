@@ -36,7 +36,6 @@ test_*.sh.log
 ./test/robustness/damaged_packet/test_damaged_packet
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback
 ./test/non_regression/test_non_regression
-./test/non_regression/report/report.html
 ./statistics/generate_statistics
 ./statistics/generate_statistics.sh.log
 ./statistics/html
