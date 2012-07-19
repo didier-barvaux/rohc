@@ -87,6 +87,17 @@ if test "x$fail_on_warning" != "xno"; then
 fi
 
 
+# check if -D_FORTIFY_SOURCE=2 must be appended to CFLAGS
+AC_ARG_ENABLE(fortify_sources,
+              AS_HELP_STRING([--enable-fortify-sources],
+                             [build uses -D_FORTIFY_SOURCE=2 if enabled [[default=no]]]),
+              fortify_sources=$enableval,
+              fortify_sources=no)
+if test "x$fortify_sources" != "xno"; then
+	CFLAGS="${CFLAGS} -D_FORTIFY_SOURCE=2"
+fi
+
+
 # allow users to specify a special location for libpcap includes
 AC_ARG_WITH(libpcap_includes,
             AS_HELP_STRING([--with-libpcap-includes=DIR],
