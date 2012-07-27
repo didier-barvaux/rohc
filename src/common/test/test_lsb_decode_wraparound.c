@@ -15,7 +15,7 @@
  */
 
 /**
- * @file    test_lsb_decode.c
+ * @file    test_lsb_decode_wraparound.c
  * @brief   Test Least Significant Bits (LSB) encoding/decoding at wraparound
  * @author  Didier Barvaux <didier@barvaux.org>
  */

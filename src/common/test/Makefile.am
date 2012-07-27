@@ -6,11 +6,11 @@
 
 
 TESTS = \
-	test_lsb_decode
+	test_lsb_decode_wraparound
 
 
 check_PROGRAMS = \
-	test_lsb_decode
+	test_lsb_decode_wraparound
 
 
 INCLUDES = \
@@ -22,8 +22,8 @@ AM_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs
 
 
-test_lsb_decode_SOURCES = test_lsb_decode.c
-test_lsb_decode_LDADD = \
+test_lsb_decode_wraparound_SOURCES = test_lsb_decode_wraparound.c
+test_lsb_decode_wraparound_LDADD = \
 	-lrohc_common
 
 EXTRA_DIST =
