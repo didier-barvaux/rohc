@@ -784,7 +784,7 @@ int c_generic_encode(struct c_context *const context,
 
 	/* STEP 1:
 	 *  - check double IP headers
-	 *  - check the next header protocol if necessary
+	 *  - find the next header
 	 *  - compute the payload offset
 	 *  - discard IP fragments
 	 */
@@ -819,14 +819,7 @@ int c_generic_encode(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	/* check the next header protocol if necessary */
-	if(g_context->next_header_proto != 0 &&
-	   ip_get_protocol(last_ip_header) != g_context->next_header_proto)
-	{
-		/* the IP protocol field does not match the attended
-		 * next header protocol */
-		return -1;
-	}
+	/* find the next header */
 	next_header = ip_get_next_layer(last_ip_header);
 
 	/* find the offset of the payload and its size */

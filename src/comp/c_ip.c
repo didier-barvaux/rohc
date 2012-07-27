@@ -38,22 +38,47 @@
 static int rohc_ip_ctxt_create(struct c_context *const context,
                                const struct ip_packet *ip)
 {
-	int is_success;
+	const struct rohc_comp *const comp = context->compressor;
+	struct c_generic_context *g_context;
+	unsigned int ip_proto;
 
 	/* call the generic function for all IP-based profiles */
-	is_success = c_generic_create(context, ip);
-	if(is_success)
+	if(!c_generic_create(context, ip))
 	{
-		const struct rohc_comp *const comp = context->compressor;
-		struct c_generic_context *const g_context =
-			(struct c_generic_context *) context->specific;
-
-		/* initialize SN to a random value (RFC 3095, 5.11.1) */
-		g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-		rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
+		rohc_debugf(0, "generic context creation failed\n");
+		goto error;
 	}
+	g_context = (struct c_generic_context *) context->specific;
 
-	return is_success;
+	/* initialize SN to a random value (RFC 3095, 5.11.1) */
+	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
+
+	/* initialize the next header protocol (used later to match the best
+	 * IP-only context) */
+	ip_proto = ip_get_protocol(ip);
+	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	{
+		struct ip_packet ip2;
+
+		/* get the last IP header */
+		if(!ip_get_inner_packet(ip, &ip2))
+		{
+			rohc_debugf(0, "cannot create the inner IP header\n");
+			goto destroy_generic_context;
+		}
+
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(&ip2);
+	}
+	g_context->next_header_proto = ip_proto;
+
+	return 1;
+
+destroy_generic_context:
+	c_generic_destroy(context);
+error:
+	return 0;
 }
 
 
@@ -178,6 +203,9 @@ int c_ip_check_context(const struct c_context *context,
 		{
 			goto bad_context;
 		}
+
+		/* get the transport protocol */
+		ip_proto = ip_get_protocol(&ip2);
 	}
 	else /* no second IP header */
 	{
@@ -186,6 +214,12 @@ int c_ip_check_context(const struct c_context *context,
 		{
 			goto bad_context;
 		}
+	}
+
+	/* check the transport protocol */
+	if(ip_proto != g_context->next_header_proto)
+	{
+		goto bad_context;
 	}
 
 	return 1;
