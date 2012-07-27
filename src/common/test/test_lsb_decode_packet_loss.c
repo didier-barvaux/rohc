@@ -29,6 +29,10 @@
 #include <assert.h>
 
 
+/** The width of the W-LSB sliding window */
+#define ROHC_WLSB_WINDOW_WIDTH  4U
+
+
 /** Print trace on stdout only in verbose mode */
 #define trace(is_verbose, format, ...) \
 	do { \
@@ -71,7 +75,7 @@ int main(int argc, char *argv[])
 	bool extraverbose; /* whether to run in extra verbose mode or not */
 	int is_failure = 1; /* test fails by default */
 
-	const size_t win_size = C_WINDOW_WIDTH;
+	const size_t win_size = ROHC_WLSB_WINDOW_WIDTH;
 	assert(win_size > 0);
 	const size_t loss_nr = win_size - 1;
 
@@ -325,7 +329,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(32, C_WINDOW_WIDTH, p);
+	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, p);
 	if(wlsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");

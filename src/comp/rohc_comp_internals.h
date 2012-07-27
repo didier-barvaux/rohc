@@ -152,6 +152,14 @@ struct rohc_comp
 
 	/* user interaction variables: */
 
+	/** The width of the W-LSB sliding window */
+	size_t wlsb_window_width;
+	/** The maximal number of packets sent in > IR states (= FO and SO
+	 *  states) before changing back the state to IR (periodic refreshes) */
+	size_t periodic_refreshes_ir_timeout;
+	/** The maximal number of packets sent in > FO states (= SO state)
+	 *  before changing back the state to FO (periodic refreshes) */
+	size_t periodic_refreshes_fo_timeout;
 	/** Maximum Reconstructed Reception Unit (currently not used) */
 	int mrru;
 	/** Maximum header size that will be compressed (currently not used) */

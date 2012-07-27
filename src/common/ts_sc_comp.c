@@ -33,12 +33,16 @@
 /**
  * @brief Create the ts_sc_comp object
  *
- * @param ts_sc        The ts_sc_comp object to create
- * @return             1 if creation is successful, 0 otherwise
+ * @param ts_sc              The ts_sc_comp object to create
+ * @param wlsb_window_width  The width of the W-LSB sliding window to use
+ *                           for TS_STRIDE (must be > 0)
+ * @return                   1 if creation is successful, 0 otherwise
  */
-int c_create_sc(struct ts_sc_comp *const ts_sc)
+int c_create_sc(struct ts_sc_comp *const ts_sc,
+                const size_t wlsb_window_width)
 {
 	assert(ts_sc != NULL);
+	assert(wlsb_window_width > 0);
 
 	ts_sc->ts_stride = 0;
 	ts_sc->ts_scaled = 0;
@@ -52,7 +56,8 @@ int c_create_sc(struct ts_sc_comp *const ts_sc)
 	ts_sc->state = INIT_TS;
 	ts_sc->nr_init_stride_packets = 0;
 
-	ts_sc->scaled_window = c_create_wlsb(32, C_WINDOW_WIDTH, ROHC_LSB_SHIFT_RTP_TS);
+	ts_sc->scaled_window = c_create_wlsb(32, wlsb_window_width,
+	                                     ROHC_LSB_SHIFT_RTP_TS);
 	if(ts_sc->scaled_window == NULL)
 	{
 		rohc_debugf(0, "cannot create a W-LSB window for TS scaled\n");

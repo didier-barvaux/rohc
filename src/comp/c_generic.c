@@ -388,13 +388,20 @@ static void list_comp_ipv6_destroy_table(struct list_comp *const comp)
 /**
  * @brief Initialize the inner or outer IP header info stored in the context.
  *
- * @param header_info The inner or outer IP header info to initialize
- * @param ip          The inner or outer IP header
- * @return            1 if successful, 0 otherwise
+ * @param header_info        The inner or outer IP header info to initialize
+ * @param ip                 The inner or outer IP header
+ * @param wlsb_window_width  The width of the W-LSB sliding window for IPv4
+ *                           IP-ID (must be > 0)
+ * @return                   1 if successful, 0 otherwise
  */
 int c_init_header_info(struct ip_header_info *header_info,
-                       const struct ip_packet *ip)
+                       const struct ip_packet *ip,
+                       const size_t wlsb_window_width)
 {
+	assert(header_info != NULL);
+	assert(ip != NULL);
+	assert(wlsb_window_width > 0);
+
 	/* store the IP version in the header info */
 	header_info->version = ip_get_version(ip);
 
@@ -406,7 +413,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	{
 		/* init the parameters to encode the IP-ID with W-LSB encoding */
 		header_info->info.v4.ip_id_window =
-			c_create_wlsb(16, C_WINDOW_WIDTH, ROHC_LSB_SHIFT_IP_ID);
+			c_create_wlsb(16, wlsb_window_width, ROHC_LSB_SHIFT_IP_ID);
 		if(header_info->info.v4.ip_id_window == NULL)
 		{
 			rohc_debugf(0, "no memory to allocate W-LSB encoding for IP-ID\n");
@@ -560,7 +567,8 @@ int c_generic_create(struct c_context *const context,
 			goto clean;
 	}
 	rohc_debugf(3, "use shift parameter %d for LSB-encoding of SN\n", p);
-	g_context->sn_window = c_create_wlsb(16, C_WINDOW_WIDTH, p);
+	g_context->sn_window =
+		c_create_wlsb(16, context->compressor->wlsb_window_width, p);
 	if(g_context->sn_window == NULL)
 	{
 		rohc_debugf(0, "no memory to allocate W-LSB encoding for SN\n");
@@ -578,7 +586,8 @@ int c_generic_create(struct c_context *const context,
 	g_context->ir_dyn_count = 0;
 
 	/* step 4 */
-	if(!c_init_header_info(&g_context->ip_flags, ip))
+	if(!c_init_header_info(&g_context->ip_flags, ip,
+	                       context->compressor->wlsb_window_width))
 	{
 		goto clean;
 	}
@@ -804,7 +813,8 @@ int c_generic_encode(struct c_context *const context,
 		/* initialize IPv4 header info if the inner header is IPv4 */
 		if(!g_context->is_ip2_initialized)
 		{
-			if(!c_init_header_info(&g_context->ip2_flags, inner_ip))
+			if(!c_init_header_info(&g_context->ip2_flags, inner_ip,
+			                       context->compressor->wlsb_window_width))
 			{
 				return -1;
 			}
@@ -2929,14 +2939,16 @@ void periodic_down_transition(struct c_context *context)
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	if(g_context->go_back_fo_count >= CHANGE_TO_FO_COUNT)
+	if(g_context->go_back_fo_count >=
+	   context->compressor->periodic_refreshes_fo_timeout)
 	{
 		rohc_debugf(1, "periodic change to FO state\n");
 		g_context->go_back_fo_count = 0;
 		g_context->ir_dyn_count = 0;
 		change_state(context, FO);
 	}
-	else if(g_context->go_back_ir_count >= CHANGE_TO_IR_COUNT)
+	else if(g_context->go_back_ir_count >=
+	        context->compressor->periodic_refreshes_ir_timeout)
 	{
 		rohc_debugf(1, "periodic change to IR state\n");
 		g_context->go_back_ir_count = 0;

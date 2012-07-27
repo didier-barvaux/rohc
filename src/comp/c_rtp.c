@@ -142,7 +142,8 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->old_udp = *udp;
 	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->old_rtp = *rtp;
-	if(!c_create_sc(&rtp_context->ts_sc))
+	if(!c_create_sc(&rtp_context->ts_sc,
+	                context->compressor->wlsb_window_width))
 	{
 		rohc_debugf(0, "cannot create scaled RTP Timestamp encoding\n");
 		goto clean;

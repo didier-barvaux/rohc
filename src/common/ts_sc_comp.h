@@ -97,7 +97,8 @@ struct ts_sc_comp
  * Function prototypes
  */
 
-int c_create_sc(struct ts_sc_comp *const ts_sc);
+int c_create_sc(struct ts_sc_comp *const ts_sc,
+                const size_t wlsb_window_width);
 void c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
 void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t sn);

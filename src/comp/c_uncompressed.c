@@ -358,8 +358,10 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
 
-	if(uncomp_context->go_back_ir_count == CHANGE_TO_IR_COUNT)
+	if(uncomp_context->go_back_ir_count >=
+	   context->compressor->periodic_refreshes_ir_timeout)
 	{
+		rohc_debugf(2, "periodic change to IR state\n");
 		uncomp_context->go_back_ir_count = 0;
 		uncompressed_change_state(context, IR);
 	}

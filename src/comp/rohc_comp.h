@@ -27,6 +27,7 @@
 #include "rohc.h"
 #include "rohc_packets.h"
 
+#include <stdlib.h>
 #include <stdbool.h>
 
 
@@ -135,6 +136,14 @@ int rohc_feedback_flush(struct rohc_comp *comp,
                         unsigned char *obuf,
                         int osize);
 
+/* Configure robustness to packet loss/damage */
+bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
+                                     const size_t width)
+	__attribute__((nonnull(1), warn_unused_result));
+bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
+                                      const size_t ir_timeout,
+                                      const size_t fo_timeout)
+	__attribute__((nonnull(1), warn_unused_result));
 
 /*
  * Prototypes of public functions related to ROHC compression statistics

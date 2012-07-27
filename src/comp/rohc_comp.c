@@ -172,6 +172,22 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->adapt_size = adapt_size;
 	comp->encap_size = encap_size;
 
+	/* set the default W-LSB window width */
+	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+
+	/* set the default timeouts for periodic refreshes of contexts */
+	is_fine = rohc_comp_set_periodic_refreshes(comp,
+	                                           CHANGE_TO_IR_COUNT,
+	                                           CHANGE_TO_FO_COUNT);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+
 	/* set default callback for random numbers */
 	comp->random_cb = rohc_comp_get_random_default;
 	comp->random_cb_ctxt = NULL;
@@ -579,6 +595,104 @@ error_unlock_feedbacks:
 	}
 error:
 	return 0;
+}
+
+
+/**
+ * @brief Set the window width for the W-LSB algorithm
+ *
+ * W-LSB window width is set to \ref C_WINDOW_WIDTH by default.
+ *
+ * @warning The value can not be modified after library initialization
+ *
+ * @param comp   The ROHC compressor
+ * @param width  The width of the W-LSB sliding window
+ * @return       true in case of success, false in case of failure
+ */
+bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
+                                     const size_t width)
+{
+	/* we need a valid compressor and a positive non-zero window width */
+	if(comp == NULL)
+	{
+		return false;
+	}
+	if(width <= 0)
+	{
+		rohc_debugf(0, "failed to set width of W-LSB sliding window to %zd\n",
+		            width);
+		return false;
+	}
+
+	/* refuse to set a value if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_debugf(0, "unable to modify the W-LSB window width after "
+		            "initialization\n");
+		return false;
+	}
+
+	comp->wlsb_window_width = width;
+
+	rohc_debugf(2, "width of W-LSB sliding window set to %zd\n", width);
+
+	return true;
+}
+
+
+/**
+ * @brief Set the timeout values for IR and FO periodic refreshes
+ *
+ * The IR timeout shall be greater than the FO timeout. Both timeouts are
+ * expressed in number of compressed packets.
+ *
+ * IR timeout is set to \ref CHANGE_TO_IR_COUNT by default.
+ * FO timeout is set to \ref CHANGE_TO_FO_COUNT by default.
+ *
+ * @warning The values can not be modified after library initialization
+ *
+ * @param comp        The ROHC compressor
+ * @param ir_timeout  The number of packets to compress before going back
+ *                    to IR state to force a context refresh
+ * @param fo_timeout  The number of packets to compress before going back
+ *                    to FO state to force a context refresh
+ * @return            true in case of success, false in case of failure
+ */
+bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
+                                      const size_t ir_timeout,
+                                      const size_t fo_timeout)
+{
+	/* we need a valid compressor, positive non-zero timeouts,
+	 * and IR timeout > FO timeout */
+	if(comp == NULL)
+	{
+		return false;
+	}
+	if(ir_timeout <= 0 || fo_timeout <= 0 || ir_timeout <= fo_timeout)
+	{
+		rohc_debugf(0, "invalid timeouts for context periodic refreshes "
+		            "(IR timeout = %u, FO timeout = %u)\n",
+		            ir_timeout, fo_timeout);
+		return false;
+	}
+
+	/* refuse to set values if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_debugf(0, "unable to modify the timeouts for periodic refreshes "
+		            "after initialization\n");
+		return false;
+	}
+
+	comp->periodic_refreshes_ir_timeout = ir_timeout;
+	comp->periodic_refreshes_fo_timeout = fo_timeout;
+
+	rohc_debugf(2, "IR timeout for context periodic refreshes set to %zd\n",
+	            ir_timeout);
+	rohc_debugf(2, "FO timeout for context periodic refreshes set to %zd\n",
+	            fo_timeout);
+
+	return true;
 }
 
 
