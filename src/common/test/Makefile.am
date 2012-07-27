@@ -6,11 +6,13 @@
 
 
 TESTS = \
-	test_lsb_decode_wraparound
+	test_lsb_decode_wraparound \
+	test_lsb_decode_packet_loss
 
 
 check_PROGRAMS = \
-	test_lsb_decode_wraparound
+	test_lsb_decode_wraparound \
+	test_lsb_decode_packet_loss
 
 
 INCLUDES = \
@@ -24,6 +26,10 @@ AM_LDFLAGS = \
 
 test_lsb_decode_wraparound_SOURCES = test_lsb_decode_wraparound.c
 test_lsb_decode_wraparound_LDADD = \
+	-lrohc_common
+
+test_lsb_decode_packet_loss_SOURCES = test_lsb_decode_packet_loss.c
+test_lsb_decode_packet_loss_LDADD = \
 	-lrohc_common
 
 EXTRA_DIST =

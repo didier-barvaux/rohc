@@ -28,8 +28,10 @@ test_*.sh.log
 ./rohc.pc
 ./doc/doxygen.conf
 ./doc/html
-./src/common/test/test_lsb_decode
-./src/common/test/test_lsb_decode.log
+./src/common/test/test_lsb_decode_wraparound
+./src/common/test/test_lsb_decode_wraparound.log
+./src/common/test/test_lsb_decode_packet_loss
+./src/common/test/test_lsb_decode_packet_loss.log
 ./test/functional/feedback2/test_feedback2
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only
 ./test/robustness/empty_payload/test_empty_payload
