@@ -52,7 +52,7 @@ int c_create_sc(struct ts_sc_comp *const ts_sc)
 	ts_sc->state = INIT_TS;
 	ts_sc->nr_init_stride_packets = 0;
 
-	ts_sc->scaled_window = c_create_wlsb(16, 4, ROHC_LSB_SHIFT_RTP_TS);
+	ts_sc->scaled_window = c_create_wlsb(32, C_WINDOW_WIDTH, ROHC_LSB_SHIFT_RTP_TS);
 	if(ts_sc->scaled_window == NULL)
 	{
 		rohc_debugf(0, "cannot create a W-LSB window for TS scaled\n");

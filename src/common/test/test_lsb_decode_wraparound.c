@@ -282,7 +282,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	uint64_t i;
 
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(16, C_WINDOW_WIDTH, p);
+	wlsb = c_create_wlsb(32, C_WINDOW_WIDTH, p);
 	if(wlsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -385,7 +385,7 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	c_destroy_wlsb(wlsb);
 
 	/* create the W-LSB encoding context again */
-	wlsb = c_create_wlsb(16, C_WINDOW_WIDTH, p);
+	wlsb = c_create_wlsb(32, C_WINDOW_WIDTH, p);
 	if(wlsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
