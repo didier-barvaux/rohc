@@ -872,8 +872,15 @@ int c_generic_encode(struct c_context *const context,
 	}
 	else
 	{
-		/* increase the SN every time we encode something */
-		g_context->sn++;
+		/* increase the 16-bit SN every time we encode something */
+		if(g_context->sn == 0xffff)
+		{
+			g_context->sn = 0;
+		}
+		else
+		{
+			g_context->sn++;
+		}
 	}
 
 	rohc_debugf(3, "SN = %d\n",g_context->sn);
