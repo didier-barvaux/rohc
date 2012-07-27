@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	{
 		/* invalid usage */
 		printf("test the Least Significant Bits (LSB) encoding/decoding at wraparound\n");
-		printf("usage: %s [verbose]\n", argv[0]);
+		printf("usage: %s [verbose [verbose]]\n", argv[0]);
 		goto error;
 	}
 
