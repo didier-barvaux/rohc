@@ -199,8 +199,7 @@ static void list_comp_ipv6_destroy_table(struct list_comp *const comp);
 
 static rohc_packet_t decide_packet(const struct c_context *context,
                                    const struct ip_packet *ip,
-                                   const struct ip_packet *ip2,
-                                   const size_t size_data);
+                                   const struct ip_packet *ip2);
 static rohc_packet_t decide_FO_packet(const struct c_context *context);
 static rohc_packet_t decide_SO_packet(const struct c_context *context);
 
@@ -756,7 +755,6 @@ int c_generic_encode(struct c_context *const context,
 	unsigned char *next_header;
 	unsigned int ip_proto;
 	int size;
-	int size_data;
 	int is_rtp;
 	int ret;
 
@@ -821,7 +819,6 @@ int c_generic_encode(struct c_context *const context,
 		                   ip_get_total_extension_size(inner_ip);
 	}
 	*payload_offset += g_context->next_header_len;
-	size_data = packet_size - (*payload_offset);
 
 	/* STEP 2:
 	 *  - check NBO and RND of the IP-ID of the outer and inner IP headers
@@ -918,7 +915,7 @@ int c_generic_encode(struct c_context *const context,
 	}
 
 	/* STEP 5: decide which packet to send */
-	g_context->tmp.packet_type = decide_packet(context, ip, inner_ip, size_data);
+	g_context->tmp.packet_type = decide_packet(context, ip, inner_ip);
 
 	/* STEP 6: code the packet (and the extension if needed) */
 	size = code_packet(context, ip, inner_ip, next_header, dest);
@@ -3546,7 +3543,6 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
  * @param context   The compression context
  * @param ip        The ip packet to compress
  * @param ip2       The inner ip packet
- * @param size_data The size of the data in bytes
  * @return          \li The packet type among PACKET_IR, PACKET_IR_DYN,
  *                      PACKET_UO_0, PACKET_UO_1* and PACKET_UOR_2* in case
  *                      of success
@@ -3554,8 +3550,7 @@ static rohc_packet_t decide_SO_packet(const struct c_context *context)
  */
 static rohc_packet_t decide_packet(const struct c_context *context,
                                    const struct ip_packet *ip,
-                                   const struct ip_packet *ip2,
-                                   const size_t size_data)
+                                   const struct ip_packet *ip2)
 {
 	struct c_generic_context *g_context;
 	rohc_packet_t packet;
