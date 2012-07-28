@@ -580,6 +580,7 @@ int c_generic_create(struct c_context *const context,
 	g_context->decide_FO_packet = NULL;
 	g_context->decide_SO_packet = NULL;
 	g_context->init_at_IR = NULL;
+	g_context->get_next_sn = NULL;
 	g_context->code_static_part = NULL;
 	g_context->code_dynamic_part = NULL;
 	g_context->code_UO_packet_head = NULL;
@@ -753,7 +754,6 @@ int c_generic_encode(struct c_context *const context,
 	unsigned char *next_header;
 	unsigned int ip_proto;
 	int size;
-	int is_rtp;
 	int ret;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -821,47 +821,12 @@ int c_generic_encode(struct c_context *const context,
 	/* STEP 2:
 	 *  - check NBO and RND of the IP-ID of the outer and inner IP headers
 	 *    (IPv4 only, if the current packet is not the first one)
-	 *  - increase the Sequence Number (SN)
+	 *  - get the next the Sequence Number (SN)
 	 *  - find how many static and dynamic IP fields changed
 	 */
 	detect_ip_id_behaviours(context, ip, inner_ip);
 
-	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-	if(is_rtp)
-	{
-		/* RTP profile: SN is the RTP SN */
-		struct udphdr *udp;
-		struct rtphdr *rtp;
-		struct sc_rtp_context *rtp_context;;
-		rtp_context = (struct sc_rtp_context *) g_context->specific;
-
-		if(g_context->tmp.nr_of_ip_hdr > 1)
-		{
-			udp = (struct udphdr *) ip_get_next_layer(inner_ip);
-		}
-		else
-		{
-			udp = (struct udphdr *) ip_get_next_layer(ip);
-		}
-
-		/* initialisation of SN with the SN field of the RTP packet */
-		rtp = (struct rtphdr *) (udp + 1);
-		g_context->sn = ntohs(rtp->sn);
-		c_add_ts(&rtp_context->ts_sc, rtp_context->tmp.timestamp, g_context->sn);
-	}
-	else
-	{
-		/* increase the 16-bit SN every time we encode something */
-		if(g_context->sn == 0xffff)
-		{
-			g_context->sn = 0;
-		}
-		else
-		{
-			g_context->sn++;
-		}
-	}
-
+	g_context->sn = g_context->get_next_sn(context, ip, inner_ip);
 	rohc_debugf(3, "SN = %d\n",g_context->sn);
 
 	/* find IP fields that changed */
@@ -7435,7 +7400,24 @@ static int update_variables(struct c_context *const context,
 		rtp = (struct rtphdr *) (udp + 1);
 		rtp_context = g_context->specific;
 
-		if(rtp_context->ts_sc.state == SEND_SCALED)
+		c_add_ts(&rtp_context->ts_sc, rtp_context->tmp.timestamp, g_context->sn);
+
+		if(rtp_context->ts_sc.state == INIT_TS)
+		{
+			/* TS_STRIDE cannot be computed yet (first packet or TS is constant),
+			 * so send TS only */
+			rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
+			rtp_context->tmp.nr_ts_bits = 32;
+			rohc_debugf(2, "cannot send TS scaled, send TS only\n");
+		}
+		else if(rtp_context->ts_sc.state == INIT_STRIDE)
+		{
+			/* TS and TS_STRIDE will be send */
+			rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
+			rtp_context->tmp.nr_ts_bits = 32;
+			rohc_debugf(2, "cannot send TS scaled, send TS and TS_STRIDE\n");
+		}
+		else /* SEND_SCALED */
 		{
 			/* TS_SCALED value will be send */
 			rtp_context->tmp.ts_send = get_ts_scaled(rtp_context->ts_sc);
@@ -7465,12 +7447,6 @@ static int update_variables(struct c_context *const context,
 			add_scaled(&rtp_context->ts_sc, g_context->sn);
 			rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
 			            rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
-		}
-		else if(rtp_context->ts_sc.state == INIT_STRIDE)
-		{
-			/* TS and TS_STRIDE will be send */
-			rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
-			rtp_context->tmp.nr_ts_bits = 32;
 		}
 
 		rohc_debugf(3, "%zd bits are required to encode new TS\n",

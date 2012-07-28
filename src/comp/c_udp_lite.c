@@ -152,6 +152,7 @@ int c_udp_lite_create(struct c_context *const context,
 	g_context->decide_FO_packet = c_ip_decide_FO_packet;
 	g_context->decide_SO_packet = c_ip_decide_SO_packet;
 	g_context->init_at_IR = udp_lite_init_cc;
+	g_context->get_next_sn = c_ip_get_next_sn;
 	g_context->code_static_part = udp_code_static_udp_part; /* same as UDP */
 	g_context->code_dynamic_part = udp_lite_code_dynamic_udp_lite_part;
 	g_context->code_UO_packet_head = udp_lite_build_cce_packet;

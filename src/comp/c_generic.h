@@ -232,6 +232,11 @@ struct c_generic_context
 	void (*init_at_IR)(const struct c_context *context,
 	                   const unsigned char *next_header);
 
+	/** Determine the next SN value */
+	uint16_t (*get_next_sn)(const struct c_context *context,
+	                        const struct ip_packet *outer_ip,
+	                        const struct ip_packet *inner_ip);
+
 	/// @brief The handler used to add the static part of the next header to the
 	///        ROHC packet
 	int (*code_static_part)(const struct c_context *context,

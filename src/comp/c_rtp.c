@@ -53,6 +53,10 @@
 static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context);
 
+static uint16_t c_rtp_get_next_sn(const struct c_context *context,
+                                  const struct ip_packet *outer_ip,
+                                  const struct ip_packet *inner_ip);
+
 int rtp_code_static_rtp_part(const struct c_context *context,
                              const unsigned char *next_header,
                              unsigned char *const dest,
@@ -170,6 +174,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	g_context->decide_FO_packet = c_rtp_decide_FO_packet;
 	g_context->decide_SO_packet = c_rtp_decide_SO_packet;
 	g_context->init_at_IR = NULL;
+	g_context->get_next_sn = c_rtp_get_next_sn;
 	g_context->code_static_part = rtp_code_static_rtp_part;
 	g_context->code_dynamic_part = rtp_code_dynamic_rtp_part;
 	g_context->code_UO_packet_head = NULL;
@@ -785,9 +790,6 @@ int c_rtp_encode(struct c_context *const context,
 		rtp_context->old_rtp = *rtp;
 	}
 
-	/* update the context with new timestamp value */
-	rtp_context->tmp.timestamp = ntohl(rtp->timestamp);
-
 quit:
 	return size;
 }
@@ -850,6 +852,44 @@ void rtp_decide_state(struct c_context *const context)
 		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
 		decide_state(context);
 	}
+}
+
+
+/**
+ * @brief Determine the SN value for the next packet
+ *
+ * Profile SN is the RTP SN.
+ *
+ * @param context   The compression context
+ * @param outer_ip  The outer IP header
+ * @param inner_ip  The inner IP header if it exists, NULL otherwise
+ * @return          The SN
+ */
+static uint16_t c_rtp_get_next_sn(const struct c_context *context,
+                                  const struct ip_packet *outer_ip,
+                                  const struct ip_packet *inner_ip)
+{
+	struct c_generic_context *g_context;
+	struct udphdr *udp;
+	struct rtphdr *rtp;
+	uint16_t next_sn;
+
+	g_context = (struct c_generic_context *) context->specific;
+
+	/* get UDP and RTP headers */
+	if(g_context->tmp.nr_of_ip_hdr > 1)
+	{
+		udp = (struct udphdr *) ip_get_next_layer(inner_ip);
+	}
+	else
+	{
+		udp = (struct udphdr *) ip_get_next_layer(outer_ip);
+	}
+	rtp = (struct rtphdr *) (udp + 1);
+
+	next_sn = ntohs(rtp->sn);
+
+	return next_sn;
 }
 
 

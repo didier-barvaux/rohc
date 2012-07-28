@@ -76,6 +76,7 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	g_context->next_header_proto = ip_proto;
 	g_context->decide_FO_packet = c_ip_decide_FO_packet;
 	g_context->decide_SO_packet = c_ip_decide_SO_packet;
+	g_context->get_next_sn = c_ip_get_next_sn;
 
 	return 1;
 
@@ -397,6 +398,38 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 	}
 
 	return packet;
+}
+
+
+/**
+ * @brief Determine the SN value for the next packet
+ *
+ * Profile SN is an internal increasing 16-bit number.
+ *
+ * @param context   The compression context
+ * @param outer_ip  The outer IP header
+ * @param inner_ip  The inner IP header if it exists, NULL otherwise
+ * @return          The SN
+ */
+uint16_t c_ip_get_next_sn(const struct c_context *context,
+                          const struct ip_packet *outer_ip,
+                          const struct ip_packet *inner_ip)
+{
+	struct c_generic_context *g_context;
+	uint16_t next_sn;
+
+	g_context = (struct c_generic_context *) context->specific;
+
+	if(g_context->sn == 0xffff)
+	{
+		next_sn = 0;
+	}
+	else
+	{
+		next_sn = g_context->sn + 1;
+	}
+
+	return next_sn;
 }
 
 
