@@ -86,14 +86,10 @@ struct d_generic_changes
  */
 struct d_generic_context
 {
-	/// Information about the previous outer IP header
-	struct d_generic_changes *last1;
-	/// Information about the previous inner IP header
-	struct d_generic_changes *last2;
-	/// Information about the current outer IP header
-	struct d_generic_changes *active1;
-	/// Information about the current inner IP header
-	struct d_generic_changes *active2;
+	/// Information about the outer IP header
+	struct d_generic_changes *outer_ip_changes;
+	/// Information about the inner IP header
+	struct d_generic_changes *inner_ip_changes;
 
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode *sn_lsb_ctxt;

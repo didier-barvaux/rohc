@@ -214,7 +214,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 
 static int parse_static_part_ip(const unsigned char *packet,
                                 const unsigned int length,
-                                struct d_generic_changes *info);
+                                struct d_generic_changes *ip_changes);
 static int parse_static_part_ipv4(const unsigned char *packet,
                                   const unsigned int length,
                                   struct ip_packet *ip);
@@ -224,7 +224,7 @@ static int parse_static_part_ipv6(const unsigned char *packet,
 
 static int parse_dynamic_part_ip(const unsigned char *packet,
                                  unsigned int length,
-                                 struct d_generic_changes *info,
+                                 struct d_generic_changes *ip_changes,
                                  struct list_decomp *decomp);
 static int parse_dynamic_part_ipv4(const unsigned char *packet,
                                    unsigned int length,
@@ -246,7 +246,7 @@ static int parse_outer_header_flags(struct d_context *context,
                                     const unsigned char *flags,
                                     const unsigned char *fields,
                                     unsigned int length,
-                                    struct d_generic_changes *info,
+                                    struct d_generic_changes *ip_changes,
                                     uint16_t *const ext3_ip_id_bits,
                                     size_t *const ext3_ip_id_bits_nr);
 
@@ -254,7 +254,7 @@ static int parse_inner_header_flags(struct d_context *context,
                                     const unsigned char *flags,
                                     const unsigned char *fields,
                                     unsigned int length,
-                                    struct d_generic_changes *info);
+                                    struct d_generic_changes *ip_changes);
 
 
 /*
@@ -306,14 +306,14 @@ static bool decode_values_from_bits(const struct d_context *context,
  * Private function prototypes for building the uncompressed headers
  */
 
-unsigned int build_uncompressed_ip(struct d_generic_changes *active,
+unsigned int build_uncompressed_ip(struct d_generic_changes *ip_changes,
                                    unsigned char *dest,
                                    unsigned int payload_size,
                                    struct list_decomp *decomp);
-unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
+unsigned int build_uncompressed_ip4(struct d_generic_changes *ip_changes,
                                     unsigned char *dest,
                                     unsigned int payload_size);
-unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
+unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
                                     unsigned char *dest,
                                     unsigned int payload_size,
                                     struct list_decomp *decomp);
@@ -324,16 +324,6 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 
 static void update_context(const struct d_context *context,
                            const struct rohc_decoded_values decoded);
-
-void copy_generic_changes(struct d_generic_changes *dst,
-                          struct d_generic_changes *src);
-
-int cmp_generic_changes(struct d_generic_changes *first,
-                        struct d_generic_changes *second);
-
-void sync_on_failure(struct d_generic_context *context);
-
-void synchronize(struct d_generic_context *context);
 
 void update_inter_packet(struct d_generic_context *context);
 
@@ -346,7 +336,7 @@ int check_ip6_index(struct list_decomp *decomp, int index);
 
 static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp);
 
-static int rohc_build_ip6_extension(struct d_generic_changes *active,
+static int rohc_build_ip6_extension(struct d_generic_changes *ip_changes,
                                     struct list_decomp *decomp,
                                     unsigned char *dest);
 
@@ -382,44 +372,27 @@ void * d_generic_create(void)
 	}
 	bzero(context, sizeof(struct d_generic_context));
 
-	/* allocate memory for the header changes */
-	context->last1 = malloc(sizeof(struct d_generic_changes));
-	if(context->last1 == NULL)
+	context->outer_ip_changes = malloc(sizeof(struct d_generic_changes));
+	if(context->outer_ip_changes == NULL)
 	{
-		rohc_debugf(0, "cannot allocate memory for the header changes last1\n");
+		rohc_debugf(0, "cannot allocate memory for the outer IP header changes\n");
 		goto free_context;
 	}
-	bzero(context->last1, sizeof(struct d_generic_changes));
+	bzero(context->outer_ip_changes, sizeof(struct d_generic_changes));
 
-	context->last2 = malloc(sizeof(struct d_generic_changes));
-	if(context->last2 == NULL)
+	context->inner_ip_changes = malloc(sizeof(struct d_generic_changes));
+	if(context->inner_ip_changes == NULL)
 	{
-		rohc_debugf(0, "cannot allocate memory for the header changes last2\n");
-		goto free_last1;
+		rohc_debugf(0, "cannot allocate memory for the inner IP header changes\n");
+		goto free_outer_ip_changes;
 	}
-	bzero(context->last2, sizeof(struct d_generic_changes));
-
-	context->active1 = malloc(sizeof(struct d_generic_changes));
-	if(context->active1 == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the header changes active1\n");
-		goto free_last2;
-	}
-	bzero(context->active1, sizeof(struct d_generic_changes));
-
-	context->active2 = malloc(sizeof(struct d_generic_changes));
-	if(context->active2 == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the header changes active2\n");
-		goto free_active1;
-	}
-	bzero(context->active2, sizeof(struct d_generic_changes));
+	bzero(context->inner_ip_changes, sizeof(struct d_generic_changes));
 
 	context->list_decomp1 = malloc(sizeof(struct list_decomp));
 	if(context->list_decomp1 == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the list decompressor1\n");
-		goto free_active2;
+		goto free_inner_ip_changes;
 	}
 	bzero(context->list_decomp1, sizeof(struct list_decomp));
 
@@ -456,14 +429,10 @@ void * d_generic_create(void)
 
 free_decomp1:
 	zfree(context->list_decomp1);
-free_active2:
-	zfree(context->active2);
-free_active1:
-	zfree(context->active1);
-free_last2:
-	zfree(context->last2);
-free_last1:
-	zfree(context->last1);
+free_inner_ip_changes:
+	zfree(context->inner_ip_changes);
+free_outer_ip_changes:
+	zfree(context->outer_ip_changes);
 free_context:
 	zfree(context);
 quit:
@@ -486,22 +455,8 @@ void d_generic_destroy(void *context)
 
 	if(c != NULL)
 	{
-		if(c->last1 != NULL)
-		{
-			zfree(c->last1);
-		}
-		if(c->last2 != NULL)
-		{
-			zfree(c->last2);
-		}
-		if(c->active1 != NULL)
-		{
-			zfree(c->active1);
-		}
-		if(c->active2 != NULL)
-		{
-			zfree(c->active2);
-		}
+		zfree(c->outer_ip_changes);
+		zfree(c->inner_ip_changes);
 
 		if(c->specific != NULL)
 		{
@@ -2726,8 +2681,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
-	struct d_generic_changes *active1 = g_context->active1;
-	struct d_generic_changes *active2 = g_context->active2;
 
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
 	unsigned int rohc_header_len = 0;
@@ -2762,7 +2715,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	rohc_header_len += 3 + large_cid_len;
 
 	/* decode the static part of the outer header */
-	size = parse_static_part_ip(rohc_remain_data, rohc_remain_len, active1);
+	size = parse_static_part_ip(rohc_remain_data, rohc_remain_len,
+	                            g_context->outer_ip_changes);
 	if(size == -1)
 	{
 		rohc_debugf(0, "cannot decode the outer IP static part\n");
@@ -2773,7 +2727,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	rohc_header_len += size;
 
 	/* check for the presence of a second IP header */
-	protocol = ip_get_protocol(&active1->ip);
+	protocol = ip_get_protocol(&g_context->outer_ip_changes->ip);
 	if(protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6)
 	{
 		g_context->multiple_ip = 1;
@@ -2788,7 +2742,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	 * if multiple IP headers */
 	if(g_context->multiple_ip)
 	{
-		size = parse_static_part_ip(rohc_remain_data, rohc_remain_len, active2);
+		size = parse_static_part_ip(rohc_remain_data, rohc_remain_len,
+		                            g_context->inner_ip_changes);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the inner IP static part\n");
@@ -2799,7 +2754,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		rohc_header_len += size;
 
 		/* update the next header protocol */
-		protocol = ip_get_protocol(&active2->ip);
+		protocol = ip_get_protocol(&g_context->inner_ip_changes->ip);
 	}
 
 	/* decode the static part of the next header header if necessary */
@@ -2807,7 +2762,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	{
 		size = g_context->decode_static_next_header(g_context, rohc_remain_data,
 		                                            rohc_remain_len,
-		                                            active1->next_header);
+		                                            g_context->outer_ip_changes->next_header);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the next header static part\n");
@@ -2823,7 +2778,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	{
 		/* decode the dynamic part of the outer IP header */
 		size = parse_dynamic_part_ip(rohc_remain_data, rohc_remain_len,
-		                             active1, g_context->list_decomp1);
+		                             g_context->outer_ip_changes,
+		                             g_context->list_decomp1);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the inner IP dynamic part\n");
@@ -2837,7 +2793,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		if(g_context->multiple_ip)
 		{
 			size = parse_dynamic_part_ip(rohc_remain_data, rohc_remain_len,
-			                             active2, g_context->list_decomp2);
+			                             g_context->inner_ip_changes,
+			                             g_context->list_decomp2);
 			if(size == -1)
 			{
 				rohc_debugf(0, "cannot decode the outer IP dynamic part\n");
@@ -2853,7 +2810,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		{
 			size = g_context->decode_dynamic_next_header(g_context, rohc_remain_data,
 			                                             rohc_remain_len,
-			                                             active1->next_header);
+			                                             g_context->outer_ip_changes->next_header);
 			if(size == -1)
 			{
 				rohc_debugf(0, "cannot decode the next header dynamic part\n");
@@ -2887,17 +2844,17 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(active1, dest, payload_len +
-		                             ip_get_hdrlen(&active2->ip) +
-		                             active1->next_header_len +
-		                             active2->size_list,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
+		                             g_context->outer_ip_changes->next_header_len +
+		                             g_context->inner_ip_changes->size_list,
 		                             g_context->list_decomp1);
 		dest += size;
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(active2, dest, payload_len +
-		                             active2->next_header_len,
+		size = build_uncompressed_ip(g_context->inner_ip_changes, dest, payload_len +
+		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		dest += size;
 		uncomp_header_len += size;
@@ -2905,8 +2862,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(active1, dest, payload_len +
-		                             active1->next_header_len,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		dest += size;
 		uncomp_header_len += size;
@@ -2915,13 +2872,11 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
 	{
-		size = g_context->build_next_header(g_context, active1, dest, payload_len);
+		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
+		                                    dest, payload_len);
 		dest += size;
 		uncomp_header_len += size;
 	}
-
-	/* synchronize the IP header changes */
-	synchronize(g_context);
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);
@@ -2959,15 +2914,15 @@ error:
  *
  * See 5.7.7.3 and 5.7.7.4 in RFC 3095 for details.
  *
- * @param packet The ROHC packet to parse
- * @param length The length of the ROHC packet
- * @param info   The parsed IP header information
- * @return       The number of bytes read in the ROHC packet,
- *               -1 in case of failure
+ * @param packet      The ROHC packet to parse
+ * @param length      The length of the ROHC packet
+ * @param ip_changes  The parsed IP header information
+ * @return            The number of bytes read in the ROHC packet,
+ *                    -1 in case of failure
  */
 static int parse_static_part_ip(const unsigned char *packet,
                                 const unsigned int length,
-                                struct d_generic_changes *info)
+                                struct d_generic_changes *ip_changes)
 {
 	unsigned int ip_version;
 	int read; /* number of bytes read from the packet */
@@ -2990,16 +2945,16 @@ static int parse_static_part_ip(const unsigned char *packet,
 	}
 
 	/* create a new empty IP packet with no payload */
-	ip_new(&info->ip, ip_version);
+	ip_new(&ip_changes->ip, ip_version);
 
 	/* decode the static part of the IP header depending on the IP version */
 	if(ip_version == IPV4)
 	{
-		read = parse_static_part_ipv4(packet, length, &info->ip);
+		read = parse_static_part_ipv4(packet, length, &ip_changes->ip);
 	}
 	else /* IPV6 */
 	{
-		read = parse_static_part_ipv6(packet, length, &info->ip);
+		read = parse_static_part_ipv6(packet, length, &ip_changes->ip);
 	}
 
 	return read;
@@ -3144,29 +3099,30 @@ error:
  *
  * See 5.7.7.3 and 5.7.7.4 in RFC 3095 for details.
  *
- * @param packet The ROHC packet to parse
- * @param length The length of the ROHC packet
- * @param info   The decoded IP header information
- * @param decomp The list decompressor (only for IPv6)
- * @return       The number of bytes read in the ROHC packet,
- *               -1 in case of failure
+ * @param packet      The ROHC packet to parse
+ * @param length      The length of the ROHC packet
+ * @param ip_changes  The decoded IP header information
+ * @param decomp      The list decompressor (only for IPv6)
+ * @return            The number of bytes read in the ROHC packet,
+ *                    -1 in case of failure
  */
 static int parse_dynamic_part_ip(const unsigned char *packet,
                                  unsigned int length,
-                                 struct d_generic_changes *info,
+                                 struct d_generic_changes *ip_changes,
                                  struct list_decomp *decomp)
 {
 	int read; /* number of bytes read from the packet */
 
 	/* decode the dynamic part of the IP header depending on the IP version */
-	if(ip_get_version(&info->ip) == IPV4)
+	if(ip_get_version(&ip_changes->ip) == IPV4)
 	{
-		read = parse_dynamic_part_ipv4(packet, length, &info->ip,
-		                               &info->rnd, &info->nbo);
+		read = parse_dynamic_part_ipv4(packet, length, &ip_changes->ip,
+		                               &ip_changes->rnd, &ip_changes->nbo);
 	}
 	else /* IPV6 */
 	{
-		read = parse_dynamic_part_ipv6(packet, length, &info->ip, decomp, info);
+		read = parse_dynamic_part_ipv6(packet, length, &ip_changes->ip,
+		                               decomp, ip_changes);
 	}
 
 	return read;
@@ -3626,7 +3582,7 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
 	length += 3;
 
 	/* get the IP version of the outer header */
-	version = ip_get_version(&g_context->active1->ip);
+	version = ip_get_version(&g_context->outer_ip_changes->ip);
 
 	/* IP dynamic part of the outer header
 	 * (see 5.7.7.3 & 5.7.7.4 in RFC 3095) */
@@ -3650,11 +3606,11 @@ unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
 	}
 
 	/* analyze the second header if present */
-	protocol = ip_get_protocol(&g_context->active1->ip);
+	protocol = ip_get_protocol(&g_context->outer_ip_changes->ip);
 	if(protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6)
 	{
 		/* get the IP version of the inner header */
-		version2 = ip_get_version(&g_context->active2->ip);
+		version2 = ip_get_version(&g_context->inner_ip_changes->ip);
 
 		/* IP dynamic part of the inner header
 		 * (see 5.7.7.3 & 5.7.7.4 in RFC 3095) */
@@ -3720,34 +3676,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	rohc_packet_t packet_type;
 	int length = ROHC_ERROR;
 
-	synchronize(g_context);
 	g_context->current_packet_time = get_microseconds();
-
-	/* ---- DEBUG ---- */
-	struct d_generic_changes *active1 = g_context->active1;
-	struct d_generic_changes *active2 = g_context->active2;
-	struct d_generic_changes *last1 = g_context->last1;
-	struct d_generic_changes *last2 = g_context->last2;
-
-	if(ip_get_version(&last1->ip) == IPV4)
-	{
-		rohc_debugf(2, "nbo = %d rnd = %d\n", last1->nbo, last1->rnd);
-	}
-	if(g_context->multiple_ip && ip_get_version(&last2->ip) == IPV4)
-	{
-		rohc_debugf(2, "multiple IP header: nbo2 = %d rnd2 = %d\n",
-		            last2->nbo, last2->rnd);
-	}
-
-	if(!cmp_generic_changes(active1, last1))
-	{
-		rohc_debugf(0, "last1 and active1 structs are not synchronized\n");
-	}
-	if(!cmp_generic_changes(active2, last2))
-	{
-		rohc_debugf(0, "last2 and active2 structs are not synchronized\n");
-	}
-	/* ---- DEBUG ---- */
 
 	/* only the IR packet can be received in the No Context state,
 	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
@@ -4005,11 +3934,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 	int size;
 
 
-	if(g_context->active1->complist)
+	if(g_context->outer_ip_changes->complist)
 	{
 		g_context->list_decomp1->ref_ok = 1;
 	}
-	if(g_context->multiple_ip && g_context->active2->complist)
+	if(g_context->multiple_ip && g_context->inner_ip_changes->complist)
 	{
 		g_context->list_decomp2->ref_ok = 1;
 	}
@@ -4065,7 +3994,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* part 5: no extension for UO-0 packet */
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(ip_get_version(&g_context->active1->ip) == IPV4 && g_context->active1->rnd)
+	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+	   g_context->outer_ip_changes->rnd)
 	{
 		/* outer IP-ID is random, read its full 16-bit value */
 
@@ -4091,8 +4021,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
 	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4 &&
-	   g_context->active2->rnd)
+	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
+	   g_context->inner_ip_changes->rnd)
 	{
 		/* inner IP-ID is random, read its full 16-bit value */
 
@@ -4121,7 +4051,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		size = g_context->decode_uo_tail(g_context,
 		                                 rohc_remain_data, rohc_remain_len,
-		                                 g_context->active1->next_header);
+		                                 g_context->outer_ip_changes->next_header);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -4162,20 +4092,20 @@ int decode_uo0(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->active1, uncomp_packet,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             ip_get_hdrlen(&g_context->active2->ip) +
-		                             g_context->active1->next_header_len +
-		                             g_context->active2->size_list,
+		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
+		                             g_context->outer_ip_changes->next_header_len +
+		                             g_context->inner_ip_changes->size_list,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		uncomp_packet += size;
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->active2, uncomp_packet,
+		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             g_context->active2->next_header_len,
+		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		ip2_hdr = uncomp_packet;
 		uncomp_packet += size;
@@ -4184,9 +4114,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->active1, uncomp_packet,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             g_context->active1->next_header_len,
+		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		ip2_hdr = NULL;
@@ -4206,7 +4136,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 		const uint8_t rtp_m_flag = 0;
 
 
-		struct udphdr *const udp = (struct udphdr *) g_context->active1->next_header;
+		struct udphdr *const udp =
+			(struct udphdr *) g_context->outer_ip_changes->next_header;
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 		/* update TS, SN and M flag */
@@ -4220,7 +4151,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	next_header = uncomp_packet;
 	if(g_context->build_next_header != NULL)
 	{
-		size = g_context->build_next_header(g_context, g_context->active1,
+		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
 		                                    uncomp_packet, rohc_remain_len);
 		uncomp_packet += size;
 		uncomp_header_len += size;
@@ -4270,16 +4201,15 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
-		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(ip_get_version(&g_context->active1->ip) == IPV4)
+		if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip &&
-		   ip_get_version(&g_context->active2->ip) == IPV4)
+		   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
@@ -4555,11 +4485,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	if(g_context->active1->complist)
+	if(g_context->outer_ip_changes->complist)
 	{
 		g_context->list_decomp1->ref_ok = 1;
 	}
-	if(g_context->multiple_ip && g_context->active2->complist)
+	if(g_context->multiple_ip && g_context->inner_ip_changes->complist)
 	{
 		g_context->list_decomp2->ref_ok = 1;
 	}
@@ -4695,7 +4625,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(ip_get_version(&g_context->active1->ip) == IPV4 && g_context->active1->rnd)
+	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+	   g_context->outer_ip_changes->rnd)
 	{
 		/* outer IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -4733,8 +4664,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
 	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4 &&
-	   g_context->active2->rnd)
+	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
+	   g_context->inner_ip_changes->rnd)
 	{
 		/* inner IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -4775,7 +4706,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	{
 		size = g_context->decode_uo_tail(g_context,
 		                                 rohc_remain_data, rohc_remain_len,
-		                                 g_context->active1->next_header);
+		                                 g_context->outer_ip_changes->next_header);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -4817,20 +4748,20 @@ int decode_uo1(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->active1, uncomp_packet,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             ip_get_hdrlen(&g_context->active2->ip) +
-		                             g_context->active1->next_header_len +
-		                             g_context->active2->size_list,
+		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
+		                             g_context->outer_ip_changes->next_header_len +
+		                             g_context->inner_ip_changes->size_list,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		uncomp_packet += size;
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->active2, uncomp_packet,
+		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             g_context->active2->next_header_len,
+		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		ip2_hdr = uncomp_packet;
 		uncomp_packet += size;
@@ -4839,9 +4770,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->active1, uncomp_packet,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             g_context->active1->next_header_len,
+		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		ip2_hdr = NULL;
@@ -4853,7 +4784,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 	         profile */
 	if(is_rtp)
 	{
-		struct udphdr *const udp = (struct udphdr *) g_context->active1->next_header;
+		struct udphdr *const udp =
+			(struct udphdr *) g_context->outer_ip_changes->next_header;
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 		/* update TS, SN and M flag */
@@ -4886,7 +4818,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	next_header = uncomp_packet;
 	if(g_context->build_next_header != NULL)
 	{
-		size = g_context->build_next_header(g_context, g_context->active1,
+		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
 		                                    uncomp_packet, rohc_remain_len);
 		uncomp_packet += size;
 		uncomp_header_len += size;
@@ -4935,16 +4867,15 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
-		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(ip_get_version(&g_context->active1->ip) == IPV4)
+		if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip &&
-		   ip_get_version(&g_context->active2->ip) == IPV4)
+		   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
@@ -5225,11 +5156,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	if(g_context->active1->complist)
+	if(g_context->outer_ip_changes->complist)
 	{
 		g_context->list_decomp1->ref_ok = 1;
 	}
-	if(g_context->multiple_ip && g_context->active2->complist)
+	if(g_context->multiple_ip && g_context->inner_ip_changes->complist)
 	{
 		g_context->list_decomp2->ref_ok = 1;
 	}
@@ -5334,8 +5265,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 			if(!g_context->multiple_ip)
 			{
 				/* the single IP header must be IPv4 with non-random IP-ID */
-				if(ip_get_version(&g_context->active1->ip) != IPV4 ||
-				   g_context->active1->rnd != 0)
+				if(ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 ||
+				   g_context->outer_ip_changes->rnd != 0)
 				{
 					rohc_debugf(0, "cannot use the UOR-2-ID packet with no 'IPv4 "
 					            "header with non-random IP-ID'\n");
@@ -5347,13 +5278,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 			else
 			{
 				/* only one of the 2 IP headers must be IPv4 with non-random IP-ID */
-				if(ip_get_version(&g_context->active2->ip) == IPV4 &&
-				   g_context->active2->rnd == 0)
+				if(ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
+				   g_context->inner_ip_changes->rnd == 0)
 				{
 					/* inner IP header is IPv4 with non-random IP-ID,
 					 * outer IP header must not */
-					if(ip_get_version(&g_context->active1->ip) == IPV4 &&
-					   g_context->active1->rnd == 0)
+					if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+					   g_context->outer_ip_changes->rnd == 0)
 					{
 						rohc_debugf(0, "cannot use the UOR-2-ID packet with two "
 						            "IPv4 headers with non-random IP-ID\n");
@@ -5362,8 +5293,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 					innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 				}
-				else if(ip_get_version(&g_context->active1->ip) == IPV4 &&
-				        g_context->active1->rnd == 0)
+				else if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+				        g_context->outer_ip_changes->rnd == 0)
 				{
 					/* inner IP header is not IPv4 with non-random IP-ID,
 					 * but outer IP header is */
@@ -5490,11 +5421,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 				{
 					case PACKET_UOR_2:
 					case PACKET_UOR_2_ID:
-						if((ip_get_version(&g_context->active1->ip) != IPV4 &&
+						if((ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 &&
 						    !g_context->multiple_ip) ||
-						   (ip_get_version(&g_context->active1->ip) != IPV4 &&
+						   (ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 &&
 						    g_context->multiple_ip &&
-						    ip_get_version(&g_context->active2->ip) != IPV4))
+						    ip_get_version(&g_context->inner_ip_changes->ip) != IPV4))
 						{
 							rohc_debugf(0, "cannot use extension 0 for the UOR-2 or "
 							            "UOR-2-ID packet with no IPv4 header\n");
@@ -5528,11 +5459,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 					case PACKET_UOR_2:
 					case PACKET_UOR_2_ID:
 					case PACKET_UOR_2_TS:
-						if((ip_get_version(&g_context->active1->ip) != IPV4 &&
+						if((ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 &&
 						    !g_context->multiple_ip) ||
-						   (ip_get_version(&g_context->active1->ip) != IPV4 &&
+						   (ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 &&
 						    g_context->multiple_ip &&
-						    ip_get_version(&g_context->active2->ip) != IPV4))
+						    ip_get_version(&g_context->inner_ip_changes->ip) != IPV4))
 						{
 							rohc_debugf(0, "cannot use extension 1 for the UOR-2, UOR-2-ID or "
 							            "UOR-2-TS packet with no IPv4 header\n");
@@ -5565,11 +5496,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 				switch(packet_type)
 				{
 					case PACKET_UOR_2:
-						if(ip_get_version(&g_context->active1->ip) != IPV4 ||
-						   g_context->active1->rnd != 0 ||
+						if(ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 ||
+						   g_context->outer_ip_changes->rnd != 0 ||
 						   !g_context->multiple_ip ||
-						   ip_get_version(&g_context->active2->ip) != IPV4 ||
-						   g_context->active2->rnd != 0)
+						   ip_get_version(&g_context->inner_ip_changes->ip) != IPV4 ||
+						   g_context->inner_ip_changes->rnd != 0)
 						{
 							rohc_debugf(0, "cannot use extension 2 for the UOR-2 packet "
 							            "with no or only one IPv4 header that got a "
@@ -5579,11 +5510,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 						break;
 					case PACKET_UOR_2_ID:
 					case PACKET_UOR_2_TS:
-						if((ip_get_version(&g_context->active1->ip) != IPV4 &&
+						if((ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 &&
 						    !g_context->multiple_ip) ||
-						   (ip_get_version(&g_context->active1->ip) != IPV4 &&
+						   (ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 &&
 						    g_context->multiple_ip &&
-						    ip_get_version(&g_context->active2->ip) != IPV4))
+						    ip_get_version(&g_context->inner_ip_changes->ip) != IPV4))
 						{
 							rohc_debugf(0, "cannot use extension 2 for the UOR-2, UOR-2-ID or "
 							            "UOR-2-TS packet with no IPv4 header\n");
@@ -5601,15 +5532,15 @@ int decode_uor2(struct rohc_decomp *decomp,
 				/* determine which IP header is the innermost IPv4 header with
 				   value(RND) = 0 */
 				if(g_context->multiple_ip &&
-				   ip_get_version(&g_context->active2->ip) == IPV4 &&
-				   g_context->active2->rnd == 0)
+				   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
+				   g_context->inner_ip_changes->rnd == 0)
 				{
 					/* the second IP header is the innermost IPv4 header with
 					   value(RND) = 0 */
 					innermost_ip_hdr = 2;
 				}
-				else if(ip_get_version(&g_context->active1->ip) == IPV4 &&
-				        g_context->active1->rnd == 0)
+				else if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+				        g_context->outer_ip_changes->rnd == 0)
 				{
 					/* the first IP header is the innermost IPv4 header with
 					   value(RND) = 0 */
@@ -5780,7 +5711,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 */
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(ip_get_version(&g_context->active1->ip) == IPV4 && g_context->active1->rnd)
+	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+	   g_context->outer_ip_changes->rnd)
 	{
 		/* outer IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -5818,8 +5750,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
 	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4 &&
-	   g_context->active2->rnd)
+	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
+	   g_context->inner_ip_changes->rnd)
 	{
 		/* inner IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -5860,7 +5792,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	{
 		size = g_context->decode_uo_tail(g_context,
 		                                 rohc_remain_data, rohc_remain_len,
-		                                 g_context->active1->next_header);
+		                                 g_context->outer_ip_changes->next_header);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -5902,20 +5834,20 @@ int decode_uor2(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->active1, uncomp_packet,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             ip_get_hdrlen(&g_context->active2->ip) +
-		                             g_context->active1->next_header_len +
-		                             g_context->active2->size_list,
+		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
+		                             g_context->outer_ip_changes->next_header_len +
+		                             g_context->inner_ip_changes->size_list,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		uncomp_packet += size;
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->active2, uncomp_packet,
+		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             g_context->active2->next_header_len,
+		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		ip2_hdr = uncomp_packet;
 		uncomp_packet += size;
@@ -5924,9 +5856,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->active1, uncomp_packet,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             rohc_remain_len +
-		                             g_context->active1->next_header_len,
+		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		ip2_hdr = NULL;
@@ -5938,7 +5870,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 	         profile */
 	if(is_rtp)
 	{
-		struct udphdr *const udp = (struct udphdr *) g_context->active1->next_header;
+		struct udphdr *const udp =
+			(struct udphdr *) g_context->outer_ip_changes->next_header;
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 		/* update TS, SN and M flag */
@@ -5971,7 +5904,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	next_header = uncomp_packet;
 	if(g_context->build_next_header != NULL)
 	{
-		size = g_context->build_next_header(g_context, g_context->active1,
+		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
 		                                    uncomp_packet, rohc_remain_len);
 		uncomp_packet += size;
 		uncomp_header_len += size;
@@ -6029,16 +5962,15 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
-		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(ip_get_version(&g_context->active1->ip) == IPV4)
+		if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip &&
-		   ip_get_version(&g_context->active2->ip) == IPV4)
+		   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
 		{
 			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
@@ -6128,8 +6060,6 @@ int decode_irdyn(struct rohc_decomp *decomp,
                  unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
-	struct d_generic_changes *active1 = g_context->active1;
-	struct d_generic_changes *active2 = g_context->active2;
 	int size;
 
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
@@ -6152,7 +6082,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* decode the dynamic part of the outer IP header */
 	size = parse_dynamic_part_ip(rohc_remain_data, rohc_remain_len,
-	                             active1, g_context->list_decomp1);
+	                             g_context->outer_ip_changes,
+	                             g_context->list_decomp1);
 	if(size == -1)
 	{
 		rohc_debugf(0, "cannot decode the outer IP dynamic part\n");
@@ -6166,7 +6097,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		size = parse_dynamic_part_ip(rohc_remain_data, rohc_remain_len,
-		                             active2, g_context->list_decomp2);
+		                             g_context->inner_ip_changes, g_context->list_decomp2);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the outer IP dynamic part\n");
@@ -6182,7 +6113,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	{
 		size = g_context->decode_dynamic_next_header(g_context, rohc_remain_data,
 		                                             rohc_remain_len,
-		                                             active1->next_header);
+		                                             g_context->outer_ip_changes->next_header);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the next header dynamic part\n");
@@ -6197,9 +6128,6 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	payload_data = rohc_remain_data;
 	payload_len = rohc_remain_len;
 
-	/* synchronize the old headers with the new ones in the context */
-	synchronize(g_context);
-
 	/* reset the correction counter */
 	g_context->correction_counter = 0;
 
@@ -6207,17 +6135,17 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(active1, dest, payload_len +
-		                             ip_get_hdrlen(&active2->ip) +
-		                             active1->next_header_len +
-		                             active2->size_list,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
+		                             g_context->outer_ip_changes->next_header_len +
+		                             g_context->inner_ip_changes->size_list,
 		                             g_context->list_decomp1);
 		dest += size;
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(active2, dest, payload_len +
-		                             active2->next_header_len,
+		size = build_uncompressed_ip(g_context->inner_ip_changes, dest, payload_len +
+		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		dest += size;
 		uncomp_header_len += size;
@@ -6225,8 +6153,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(active1, dest, payload_len +
-		                             active1->next_header_len,
+		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		dest += size;
 		uncomp_header_len += size;
@@ -6235,7 +6163,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* build the next header if necessary */
 	if(g_context->build_next_header != NULL)
 	{
-		size = g_context->build_next_header(g_context, active1, dest, payload_len);
+		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
+		                                    dest, payload_len);
 		dest += size;
 		uncomp_header_len += size;
 	}
@@ -6707,8 +6636,6 @@ static int parse_extension3(struct rohc_decomp *decomp,
                             size_t *const rtp_pt_bits_nr)
 {
 	struct d_generic_context *g_context = context->specific;
-	struct d_generic_changes *active1 = g_context->active1;
-	struct d_generic_changes *active2 = g_context->active2;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
 	int S, rts, mode, I, ip, rtp, ip2;
@@ -6877,13 +6804,13 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		{
 			size = parse_inner_header_flags(context, ip2_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
-			                                active2);
+			                                g_context->inner_ip_changes);
 		}
 		else
 		{
 			size = parse_inner_header_flags(context, ip_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
-			                                active1);
+			                                g_context->outer_ip_changes);
 		}
 		if(size == -1)
 		{
@@ -6914,7 +6841,8 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		{
 			/* determine which IP header is the innermost IPv4 header with
 			 * non-random IP-ID */
-			if(ip_get_version(&active2->ip) == IPV4 && active2->rnd == 0)
+			if(ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
+			   g_context->inner_ip_changes->rnd == 0)
 			{
 				/* inner IP header is IPv4 with non-random IP-ID */
 				*ip_id_bits = 0;
@@ -6922,7 +6850,8 @@ static int parse_extension3(struct rohc_decomp *decomp,
 				*ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
 				*ip_id2_bits_nr = 16;
 			}
-			else if(ip_get_version(&active1->ip) == IPV4 && active1->rnd == 0)
+			else if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
+			        g_context->outer_ip_changes->rnd == 0)
 			{
 				/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
 				 * IP header is */
@@ -6945,7 +6874,8 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			if(ip_get_version(&active1->ip) != IPV4 || active1->rnd != 0)
+			if(ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 ||
+			   g_context->outer_ip_changes->rnd != 0)
 			{
 				rohc_debugf(0, "extension 3 cannot contain IP-ID bits because "
 				            "no IP header is IPv4 with non-random IP-ID\n");
@@ -6980,7 +6910,8 @@ static int parse_extension3(struct rohc_decomp *decomp,
 	{
 		size = parse_outer_header_flags(context, ip2_flags_pos,
 		                                rohc_remain_data, rohc_remain_len,
-		                                active1, ip_id_bits, ip_id_bits_nr);
+		                                g_context->outer_ip_changes,
+		                                ip_id_bits, ip_id_bits_nr);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the outer IP header flags & fields\n");
@@ -7146,10 +7077,10 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 {
 	rohc_packet_t type;
 	struct d_generic_context *g_context = context->specific;
-	int multiple_ip = g_context->multiple_ip;
-	int rnd = g_context->last1->rnd;
-	int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-	int is_ip_v4 = (ip_get_version(&g_context->last1->ip) == IPV4);
+	const int multiple_ip = g_context->multiple_ip;
+	const int rnd = g_context->outer_ip_changes->rnd;
+	const int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
+	const int is_ip_v4 = (ip_get_version(&g_context->outer_ip_changes->ip) == IPV4);
 
 	if(rohc_length < 1)
 	{
@@ -7193,8 +7124,8 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 			}
 			else /* double IP headers */
 			{
-				int rnd2 = g_context->last2->rnd;
-				int is_ip2_v4 = (ip_get_version(&g_context->last2->ip) == IPV4);
+				const int rnd2 = g_context->inner_ip_changes->rnd;
+				const int is_ip2_v4 = (ip_get_version(&g_context->inner_ip_changes->ip) == IPV4);
 
 				if(((is_ip_v4 && rnd) || !is_ip_v4) &&
 				   ((is_ip2_v4 && rnd2) || !is_ip2_v4))
@@ -7300,8 +7231,8 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 			}
 			else /* double IP headers */
 			{
-				int rnd2 = g_context->last2->rnd;
-				int is_ip2_v4 = (ip_get_version(&g_context->last2->ip) == IPV4);
+				const int rnd2 = g_context->inner_ip_changes->rnd;
+				const int is_ip2_v4 = (ip_get_version(&g_context->inner_ip_changes->ip) == IPV4);
 
 				if(!is_ip2_v4)
 				{
@@ -7446,22 +7377,22 @@ static uint8_t parse_extension_type(const unsigned char *const rohc_ext)
 
 \endverbatim
  *
- * @param context  The decompression context
- * @param flags    The ROHC flags that indicate which IP fields are present
- *                 in the packet
- * @param fields   The ROHC packet part that contains some IP header fields
- * @param length   The length of the ROHC packet part that contains some IP
- *                 header fields
- * @param info     The IP header info to store the parsed values in
- * @return         The data length read from the ROHC packet,
- *                 -2 in case packet must be parsed again,
- *                 -1 in case of error
+ * @param context     The decompression context
+ * @param flags       The ROHC flags that indicate which IP fields are present
+ *                    in the packet
+ * @param fields      The ROHC packet part that contains some IP header fields
+ * @param length      The length of the ROHC packet part that contains some IP
+ *                    header fields
+ * @param ip_changes  The IP header changes to store the parsed values in
+ * @return            The data length read from the ROHC packet,
+ *                    -2 in case packet must be parsed again,
+ *                    -1 in case of error
  */
 static int parse_inner_header_flags(struct d_context *context,
                                     const unsigned char *flags,
                                     const unsigned char *fields,
                                     unsigned int length,
-                                    struct d_generic_changes *info)
+                                    struct d_generic_changes *ip_changes)
 {
 	int is_tos, is_ttl, is_pr, is_ipx;
 	int df, nbo, rnd;
@@ -7495,7 +7426,7 @@ static int parse_inner_header_flags(struct d_context *context,
 	/* get the TOS/TC field if present */
 	if(is_tos)
 	{
-		ip_set_tos(&info->ip, *fields);
+		ip_set_tos(&ip_changes->ip, *fields);
 		rohc_debugf(3, "TOS/TC = 0x%02x\n", *fields);
 		fields++;
 		read++;
@@ -7504,17 +7435,17 @@ static int parse_inner_header_flags(struct d_context *context,
 	/* get the TTL/HL field if present */
 	if(is_ttl)
 	{
-		ip_set_ttl(&info->ip, *fields);
+		ip_set_ttl(&ip_changes->ip, *fields);
 		rohc_debugf(3, "TTL/HL = 0x%02x\n", *fields);
 		fields++;
 		read++;
 	}
 
 	/* get the DF flag if IPv4 */
-	if(ip_get_version(&info->ip) == IPV4)
+	if(ip_get_version(&ip_changes->ip) == IPV4)
 	{
-		ipv4_set_df(&info->ip, df);
-		rohc_debugf(3, "DF = %d\n", ipv4_get_df(&info->ip));
+		ipv4_set_df(&ip_changes->ip, df);
+		rohc_debugf(3, "DF = %d\n", ipv4_get_df(&ip_changes->ip));
 	}
 	else if(df) /* IPv6 and DF flag set */
 	{
@@ -7525,7 +7456,7 @@ static int parse_inner_header_flags(struct d_context *context,
 	/* get the Protocol field if present */
 	if(is_pr)
 	{
-		ip_set_protocol(&info->ip, *fields);
+		ip_set_protocol(&ip_changes->ip, *fields);
 		rohc_debugf(3, "Protocol/Next Header = 0x%02x\n", *fields);
 		fields++;
 		read++;
@@ -7540,16 +7471,17 @@ static int parse_inner_header_flags(struct d_context *context,
 	}
 
 	/* get the NBO and RND flags if IPv4 */
-	if(ip_get_version(&info->ip) == IPV4)
+	if(ip_get_version(&ip_changes->ip) == IPV4)
 	{
-		info->nbo = nbo;
+		ip_changes->nbo = nbo;
 
 		/* if RND changed, we must restart parsing for RTP profile
 		   (except if the RTP bit type mechanism is used) */
-		if(info->rnd != rnd)
+		if(ip_changes->rnd != rnd)
 		{
-			rohc_debugf(1, "RND change detected (%d -> %d)\n", info->rnd, rnd);
-			info->rnd = rnd;
+			rohc_debugf(1, "RND change detected (%d -> %d)\n",
+			            ip_changes->rnd, rnd);
+			ip_changes->rnd = rnd;
 
 			if(is_rtp)
 			{
@@ -7623,7 +7555,7 @@ error:
  *                            fields
  * @param length              The length of the ROHC packet part that contains
  *                            some IP header fields
- * @param info                The IP header info to store the parsed values
+ * @param ip_changes          The IP header changes to store the parsed values
  * @param ext3_ip_id_bits     OUT: The outer IP-ID bits found in extension 3
  * @param ext3_ip_id_bits_nr  IN/OUT: The number of outer IP-ID bits found in
  *                            extension 3
@@ -7634,7 +7566,7 @@ static int parse_outer_header_flags(struct d_context *context,
                                     const unsigned char *flags,
                                     const unsigned char *fields,
                                     unsigned int length,
-                                    struct d_generic_changes *info,
+                                    struct d_generic_changes *ip_changes,
                                     uint16_t *const ext3_ip_id_bits,
                                     size_t *const ext3_ip_id_bits_nr)
 {
@@ -7643,7 +7575,7 @@ static int parse_outer_header_flags(struct d_context *context,
 
 	/* decode the some outer IP header flags and fields that are identical
 	 * to inner IP header flags and fields */
-	read = parse_inner_header_flags(context, flags, fields, length, info);
+	read = parse_inner_header_flags(context, flags, fields, length, ip_changes);
 	if(read == -1)
 	{
 		goto error;
@@ -7668,7 +7600,7 @@ static int parse_outer_header_flags(struct d_context *context,
 	/* get the outer IP-ID if IPv4 */
 	if(is_I2)
 	{
-		if(ip_get_version(&info->ip) != IPV4)
+		if(ip_get_version(&ip_changes->ip) != IPV4)
 		{
 			rohc_debugf(0, "IP-ID field present (I2 = 1) and "
 			            "IP header is IPv6\n");
@@ -7704,7 +7636,7 @@ reparse:
 /**
  * @brief Build an uncompressed IP header.
  *
- * @param active       The IP header changes
+ * @param ip_changes   The IP header changes
  * @param dest         The buffer to store the IP header (MUST be at least
  *                     of sizeof(struct iphdr) or sizeof(struct ip6_hdr) bytes
  *                     depending on the IP version)
@@ -7712,20 +7644,20 @@ reparse:
  * @param decomp       The list decompressor (IPv6 only)
  * @return             The length of the IP header
  */
-unsigned int build_uncompressed_ip(struct d_generic_changes *active,
+unsigned int build_uncompressed_ip(struct d_generic_changes *ip_changes,
                                    unsigned char *dest,
                                    unsigned int payload_size,
                                    struct list_decomp *decomp)
 {
 	unsigned int length;
 
-	if(ip_get_version(&active->ip) == IPV4)
+	if(ip_get_version(&ip_changes->ip) == IPV4)
 	{
-		length = build_uncompressed_ip4(active, dest, payload_size);
+		length = build_uncompressed_ip4(ip_changes, dest, payload_size);
 	}
 	else
 	{
-		length = build_uncompressed_ip6(active, dest, payload_size, decomp);
+		length = build_uncompressed_ip6(ip_changes, dest, payload_size, decomp);
 	}
 
 	return length;
@@ -7735,23 +7667,23 @@ unsigned int build_uncompressed_ip(struct d_generic_changes *active,
 /**
  * @brief Build an uncompressed IPv4 header.
  *
- * @param active       The IPv4 header changes
+ * @param ip_changes   The IPv4 header changes
  * @param dest         The buffer to store the IPv4 header (MUST be at least
  *                     of sizeof(struct iphdr) bytes)
  * @param payload_size The length of the IPv4 payload
  * @return             The length of the IPv4 header
  */
-unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
+unsigned int build_uncompressed_ip4(struct d_generic_changes *ip_changes,
                                     unsigned char *dest,
                                     unsigned int payload_size)
 {
 	struct iphdr *ip = (struct iphdr *) dest;
 
 	/* static & changing */
-	memcpy(dest, &active->ip.header.v4, sizeof(struct iphdr));
+	memcpy(dest, &ip_changes->ip.header.v4, sizeof(struct iphdr));
 
 	/* IP-ID: reverse the byte order if necessary */
-	if(!active->nbo)
+	if(!ip_changes->nbo)
 	{
 		ip->id = swab16(ip->id);
 	}
@@ -7776,21 +7708,21 @@ unsigned int build_uncompressed_ip4(struct d_generic_changes *active,
 /**
  * @brief Build an uncompressed IPv6 header.
  *
- * @param active       The IPv6 header changes
+ * @param ip_changes   The IPv6 header changes
  * @param dest         The buffer to store the IPv6 header (MUST be at least
  *                     of sizeof(struct ip6_hdr) bytes)
  * @param payload_size The length of the IPv6 payload
  * @param decomp       The list decompressor
  * @return             The length of the IPv6 header
  */
-unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
+unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
                                     unsigned char *dest,
                                     unsigned int payload_size,
                                     struct list_decomp *decomp)
 {
 	struct ip6_hdr *ip = (struct ip6_hdr *) dest;
 	int size = 0;
-	uint8_t next_proto = active->ip.header.v6.ip6_nxt;
+	uint8_t next_proto_save = ip_changes->ip.header.v6.ip6_nxt;
 
 	/* static & changing */
 	if(decomp->list_decomp)
@@ -7808,21 +7740,22 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 		}
 		if(list != NULL && size_list(list) > 0)
 		{
-			active->ip.header.v6.ip6_nxt = (uint8_t) list->first_elt->item->type;
-			rohc_debugf(3, "set Next Header in IPv6 base header to 0x%02x because "
-			            "of IPv6 extension header\n", active->ip.header.v6.ip6_nxt);
+			ip_changes->ip.header.v6.ip6_nxt = (uint8_t) list->first_elt->item->type;
+			rohc_debugf(3, "set Next Header in IPv6 base header to 0x%02x "
+			            "because of IPv6 extension header\n",
+			            ip_changes->ip.header.v6.ip6_nxt);
 		}
 	}
-	memcpy(dest, &active->ip.header.v6, sizeof(struct ip6_hdr));
+	memcpy(dest, &ip_changes->ip.header.v6, sizeof(struct ip6_hdr));
 	dest += sizeof(struct ip6_hdr);
-	active->ip.header.v6.ip6_nxt = next_proto;
+	ip_changes->ip.header.v6.ip6_nxt = next_proto_save;
 
 	/* extension list */
 	if(decomp->list_decomp)
 	{
-		active->complist = 1;
-		size += decomp->encode_extension(active, decomp, dest);
-		active->size_list = size;
+		ip_changes->complist = 1;
+		size += decomp->encode_extension(ip_changes, decomp, dest);
+		ip_changes->size_list = size;
 	}
 
 	/* interfered fields */
@@ -7837,12 +7770,13 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
 
 /**
  * @brief Build an extension list in IPv6 header
- * @param active The IPv6 header changes
- * @param decomp The list decompressor
- * @param dest The buffer to store the IPv6 header
- * @return The size of the list
+ *
+ * @param ip_changes  The IPv6 header changes
+ * @param decomp      The list decompressor
+ * @param dest        The buffer to store the IPv6 header
+ * @return            The size of the list
  */
-static int rohc_build_ip6_extension(struct d_generic_changes *active,
+static int rohc_build_ip6_extension(struct d_generic_changes *ip_changes,
                                     struct list_decomp *decomp,
                                     unsigned char *dest)
 {
@@ -7883,11 +7817,10 @@ static int rohc_build_ip6_extension(struct d_generic_changes *active,
 			}
 			else // next_header is protocol header
 			{
-				next_header_type = active->ip.header.v6.ip6_nxt;
+				next_header_type = ip_changes->ip.header.v6.ip6_nxt;
 				dest[0] = next_header_type & 0xff;
 			}
 			dest++;
-
 
 			// length
 			size_data = elt->item->length;
@@ -7905,71 +7838,6 @@ static int rohc_build_ip6_extension(struct d_generic_changes *active,
 	}
 
 	return size;
-}
-
-
-/**
- * @brief Replace last header changes with the active ones.
- *
- * @param context The generic decompression context
- */
-void synchronize(struct d_generic_context *context)
-{
-	copy_generic_changes(context->last1, context->active1);
-	copy_generic_changes(context->last2, context->active2);
-}
-
-
-/**
- * @brief Replace the active header changes with the last ones.
- *
- * @param context The generic decompression context
- */
-void sync_on_failure(struct d_generic_context *context)
-{
-	copy_generic_changes(context->active1, context->last1);
-	copy_generic_changes(context->active2, context->last2);
-}
-
-
-/**
- * @brief Copy the header changes object into another one.
- *
- * @param dst The destination header changes
- * @param src The source header changes
- */
-void copy_generic_changes(struct d_generic_changes *dst,
-                          struct d_generic_changes *src)
-{
-	if(dst->next_header_len != src->next_header_len)
-	{
-		rohc_debugf(0, "src and dest next headers have not the same length "
-		            "(%u != %u)\n", src->next_header_len, dst->next_header_len);
-		return;
-	}
-
-	dst->rnd = src->rnd;
-	dst->nbo = src->nbo;
-	dst->ip = src->ip;
-
-	memcpy(dst->next_header, src->next_header, dst->next_header_len);
-}
-
-
-/**
- * @brief Compare two header changes objects.
- *
- * @param first  One header changes object
- * @param second Another header changes object
- * @return       1 if the two objects match, 0 otherwise
- */
-int cmp_generic_changes(struct d_generic_changes *first,
-                        struct d_generic_changes *second)
-{
-	return (first->rnd == second->rnd &&
-	        first->nbo == second->nbo &&
-	        memcmp(&first->ip, &second->ip, sizeof(struct ip_packet)) == 0 &&
-	        memcmp(first->next_header, second->next_header, first->next_header_len) == 0);
 }
 
 
@@ -8050,9 +7918,9 @@ static bool decode_values_from_bits(const struct d_context *context,
 	            decoded->sn, decoded->sn, bits.sn_nr, bits.sn, bits.sn);
 
 	/* decode outer IP-ID (IPv4 only) */
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
 	{
-		if(g_context->active1->rnd)
+		if(g_context->outer_ip_changes->rnd)
 		{
 			decoded->ip_id = bits.ip_id;
 		}
@@ -8068,16 +7936,17 @@ static bool decode_values_from_bits(const struct d_context *context,
 			}
 		}
 
-		ipv4_set_id(&g_context->active1->ip, htons(decoded->ip_id));
+		ipv4_set_id(&g_context->outer_ip_changes->ip, htons(decoded->ip_id));
 		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
-		            g_context->active1->rnd, bits.ip_id_nr, bits.ip_id);
+		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->outer_ip_changes->ip)),
+		            g_context->outer_ip_changes->rnd, bits.ip_id_nr, bits.ip_id);
 	}
 
 	/* decode inner IP-ID (IPv4 only) */
-	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
+	if(g_context->multiple_ip &&
+	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
 	{
-		if(g_context->active2->rnd)
+		if(g_context->inner_ip_changes->rnd)
 		{
 			decoded->ip_id2 = bits.ip_id2;
 		}
@@ -8093,10 +7962,10 @@ static bool decode_values_from_bits(const struct d_context *context,
 			}
 		}
 
-		ipv4_set_id(&g_context->active2->ip, htons(decoded->ip_id2));
+		ipv4_set_id(&g_context->inner_ip_changes->ip, htons(decoded->ip_id2));
 		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
-		            g_context->active2->rnd, bits.ip_id2_nr, bits.ip_id2);
+		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->inner_ip_changes->ip)),
+		            g_context->inner_ip_changes->rnd, bits.ip_id2_nr, bits.ip_id2);
 	}
 
 	/* decode TS (RTP profile only) */
@@ -8180,21 +8049,18 @@ static void update_context(const struct d_context *context,
 	assert(context != NULL);
 	g_context = context->specific;
 
-	/* sync infos about IP headers */
-	synchronize(g_context);
-
 	/* update SN */
 	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 
 	/* update IP-ID of outer IP header (if IPv4) */
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
 	{
 		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 	}
 
 	/* update IP-ID of inner IP header (if any, if IPv4) */
 	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4)
+	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
 	{
 		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 	}

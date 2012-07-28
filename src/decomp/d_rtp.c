@@ -82,6 +82,7 @@ void * d_rtp_create(void)
 {
 	struct d_generic_context *context;
 	struct d_rtp_context *rtp_context;
+	const size_t nh_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
 
 	/* create the generic context */
 	context = d_generic_create();
@@ -113,7 +114,7 @@ void * d_rtp_create(void)
 	rtp_context->udp_checksum_present = -1;
 
 	/* some RTP-specific values and functions */
-	context->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
+	context->next_header_len = nh_len;
 	context->build_next_header = rtp_build_uncompressed_rtp;
 	context->decode_static_next_header = rtp_decode_static_rtp;
 	context->decode_dynamic_next_header = rtp_decode_dynamic_rtp;
@@ -122,45 +123,25 @@ void * d_rtp_create(void)
 	context->compute_crc_dynamic = rtp_compute_crc_dynamic;
 
 	/* create the UDP-specific part of the header changes */
-	context->last1->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
-	context->last1->next_header = malloc(sizeof(struct udphdr) + sizeof(struct rtphdr));
-	if(context->last1->next_header == NULL)
+	context->outer_ip_changes->next_header_len = nh_len;
+	context->outer_ip_changes->next_header = malloc(nh_len);
+	if(context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		            "part of the header changes last1\n");
+		            "part of the outer IP header changes\n");
 		goto free_lsb_sn;
 	}
-	bzero(context->last1->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
+	bzero(context->outer_ip_changes->next_header, nh_len);
 
-	context->last2->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
-	context->last2->next_header = malloc(sizeof(struct udphdr) + sizeof(struct rtphdr));
-	if(context->last2->next_header == NULL)
+	context->inner_ip_changes->next_header_len = nh_len;
+	context->inner_ip_changes->next_header = malloc(nh_len);
+	if(context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		            "part of the header changes last2\n");
-		goto free_last1_next_header;
+		            "part of the inner IP header changes\n");
+		goto free_outer_ip_changes_next_header;
 	}
-	bzero(context->last2->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
-
-	context->active1->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
-	context->active1->next_header = malloc(sizeof(struct udphdr) + sizeof(struct rtphdr));
-	if(context->active1->next_header == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		            "part of the header changes active1\n");
-		goto free_last2_next_header;
-	}
-	bzero(context->active1->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
-
-	context->active2->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
-	context->active2->next_header = malloc(sizeof(struct udphdr) + sizeof(struct rtphdr));
-	if(context->active2->next_header == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the RTP-specific "
-		            "part of the header changes active2\n");
-		goto free_active1_next_header;
-	}
-	bzero(context->active2->next_header, sizeof(struct udphdr) + sizeof(struct rtphdr));
+	bzero(context->inner_ip_changes->next_header, nh_len);
 
 	/* set next header to UDP */
 	context->next_header_proto = IPPROTO_UDP;
@@ -170,19 +151,15 @@ void * d_rtp_create(void)
 	if(rtp_context->ts_scaled_ctxt == NULL)
 	{
 		rohc_debugf(0, "cannot create the scaled RTP Timestamp decoding context\n");
-		goto free_active2_next_header;
+		goto free_inner_ip_changes_next_header;
 	}
 
 	return context;
 
-free_active2_next_header:
-	zfree(context->active2->next_header);
-free_active1_next_header:
-	zfree(context->active1->next_header);
-free_last2_next_header:
-	zfree(context->last2->next_header);
-free_last1_next_header:
-	zfree(context->last1->next_header);
+free_inner_ip_changes_next_header:
+	zfree(context->inner_ip_changes->next_header);
+free_outer_ip_changes_next_header:
+	zfree(context->outer_ip_changes->next_header);
 free_lsb_sn:
 	rohc_lsb_free(context->sn_lsb_ctxt);
 free_rtp_context:
@@ -216,26 +193,12 @@ static void d_rtp_destroy(void *const context)
 	rohc_ts_scaled_free(rtp_context->ts_scaled_ctxt);
 
 	/* clean UDP-specific memory */
-	assert(g_context->last1 != NULL);
-	if(g_context->last1->next_header != NULL)
-	{
-		zfree(g_context->last1->next_header);
-	}
-	assert(g_context->last2 != NULL);
-	if(g_context->last2->next_header != NULL)
-	{
-		zfree(g_context->last2->next_header);
-	}
-	assert(g_context->active1 != NULL);
-	if(g_context->active1->next_header != NULL)
-	{
-		zfree(g_context->active1->next_header);
-	}
-	assert(g_context->active2 != NULL);
-	if(g_context->active2->next_header != NULL)
-	{
-		zfree(g_context->active2->next_header);
-	}
+	assert(g_context->outer_ip_changes != NULL);
+	assert(g_context->outer_ip_changes->next_header != NULL);
+	zfree(g_context->outer_ip_changes->next_header);
+	assert(g_context->inner_ip_changes != NULL);
+	assert(g_context->inner_ip_changes->next_header != NULL);
+	zfree(g_context->inner_ip_changes->next_header);
 
 	/* destroy the LSB decoding context for SN */
 	rohc_lsb_free(g_context->sn_lsb_ctxt);
@@ -679,13 +642,16 @@ int rtp_decode_dynamic_rtp(struct d_generic_context *context,
 	/* init SN and IP-IDs (IPv4 only) */
 	sn = ntohs(rtp->sn);
 	rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
-	if(ip_get_version(&context->active1->ip) == IPV4)
+	if(ip_get_version(&context->outer_ip_changes->ip) == IPV4)
 	{
-		d_ip_id_init(&context->ip_id1, ntohs(ipv4_get_id(&context->active1->ip)), sn);
+		d_ip_id_init(&context->ip_id1,
+		             ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
 	}
-	if(context->multiple_ip && ip_get_version(&context->active2->ip) == IPV4)
+	if(context->multiple_ip &&
+	   ip_get_version(&context->inner_ip_changes->ip) == IPV4)
 	{
-		d_ip_id_init(&context->ip_id2, ntohs(ipv4_get_id(&context->active2->ip)), sn);
+		d_ip_id_init(&context->ip_id2,
+		             ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
 	}
 
 	/* part 5: 4-byte TimeStamp (TS) */

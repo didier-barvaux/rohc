@@ -96,57 +96,33 @@ void * d_udp_create(void)
 	context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
 	/* create the UDP-specific part of the header changes */
-	context->last1->next_header_len = sizeof(struct udphdr);
-	context->last1->next_header = malloc(sizeof(struct udphdr));
-	if(context->last1->next_header == NULL)
+	context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
+	context->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	if(context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		            "part of the header changes last1\n");
+		            "part of the outer IP header changes\n");
 		goto free_lsb_sn;
 	}
-	bzero(context->last1->next_header, sizeof(struct udphdr));
+	bzero(context->outer_ip_changes->next_header, sizeof(struct udphdr));
 
-	context->last2->next_header_len = sizeof(struct udphdr);
-	context->last2->next_header = malloc(sizeof(struct udphdr));
-	if(context->last2->next_header == NULL)
+	context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
+	context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	if(context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		            "part of the header changes last2\n");
-		goto free_last1_next_header;
+		            "part of the inner IP header changes\n");
+		goto free_outer_ip_changes_next_header;
 	}
-	bzero(context->last2->next_header, sizeof(struct udphdr));
-
-	context->active1->next_header_len = sizeof(struct udphdr);
-	context->active1->next_header = malloc(sizeof(struct udphdr));
-	if(context->active1->next_header == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		            "part of the header changes active1\n");
-		goto free_last2_next_header;
-	}
-	bzero(context->active1->next_header, sizeof(struct udphdr));
-
-	context->active2->next_header_len = sizeof(struct udphdr);
-	context->active2->next_header = malloc(sizeof(struct udphdr));
-	if(context->active2->next_header == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the UDP-specific "
-		            "part of the header changes active2\n");
-		goto free_active1_next_header;
-	}
-	bzero(context->active2->next_header, sizeof(struct udphdr));
+	bzero(context->inner_ip_changes->next_header, sizeof(struct udphdr));
 
 	/* set next header to UDP */
 	context->next_header_proto = IPPROTO_UDP;
 
 	return context;
 
-free_active1_next_header:
-	zfree(context->active1->next_header);
-free_last2_next_header:
-	zfree(context->last2->next_header);
-free_last1_next_header:
-	zfree(context->last1->next_header);
+free_outer_ip_changes_next_header:
+	zfree(context->outer_ip_changes->next_header);
 free_lsb_sn:
 	rohc_lsb_free(context->sn_lsb_ctxt);
 free_udp_context:
@@ -174,26 +150,12 @@ static void d_udp_destroy(void *const context)
 	g_context = (struct d_generic_context *) context;
 
 	/* clean UDP-specific memory */
-	assert(g_context->last1 != NULL);
-	if(g_context->last1->next_header != NULL)
-	{
-		zfree(g_context->last1->next_header);
-	}
-	assert(g_context->last2 != NULL);
-	if(g_context->last2->next_header != NULL)
-	{
-		zfree(g_context->last2->next_header);
-	}
-	assert(g_context->active1 != NULL);
-	if(g_context->active1->next_header != NULL)
-	{
-		zfree(g_context->active1->next_header);
-	}
-	assert(g_context->active2 != NULL);
-	if(g_context->active2->next_header != NULL)
-	{
-		zfree(g_context->active2->next_header);
-	}
+	assert(g_context->outer_ip_changes != NULL);
+	assert(g_context->outer_ip_changes->next_header != NULL);
+	zfree(g_context->outer_ip_changes->next_header);
+	assert(g_context->inner_ip_changes != NULL);
+	assert(g_context->inner_ip_changes->next_header != NULL);
+	zfree(g_context->inner_ip_changes->next_header);
 
 	/* destroy the LSB decoding context for SN */
 	rohc_lsb_free(g_context->sn_lsb_ctxt);
