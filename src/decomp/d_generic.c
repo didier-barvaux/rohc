@@ -322,6 +322,9 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
  * Private function prototypes for miscellaneous functions
  */
 
+static void update_context(const struct d_context *context,
+                           const struct rohc_decoded_values decoded);
+
 void copy_generic_changes(struct d_generic_changes *dst,
                           struct d_generic_changes *src);
 
@@ -4366,27 +4369,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);
-	synchronize(g_context);
 
-	/* update SN (and IP-IDs if IPv4) in decompression context */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
-	{
-		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
-	}
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4)
-	{
-		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
-	}
+	/* update context with decoded values */
+	update_context(context, decoded);
 
-	/* update TS in decompression context (RTP profile only) */
-	if(is_rtp)
-	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
-	}
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
@@ -5048,27 +5034,10 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);
-	synchronize(g_context);
 
-	/* update SN (and IP-IDs if IPv4) in decompression context */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
-	{
-		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
-	}
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4)
-	{
-		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
-	}
+	/* update context with decoded values */
+	update_context(context, decoded);
 
-	/* update TS in decompression context (RTP profile only) */
-	if(is_rtp)
-	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
-	}
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
@@ -6161,27 +6130,10 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);
-	synchronize(g_context);
 
-	/* update SN (and IP-IDs if IPv4) in decompression context */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
-	{
-		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
-	}
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->active2->ip) == IPV4)
-	{
-		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
-	}
+	/* update context with decoded values */
+	update_context(context, decoded);
 
-	/* update TS in decompression context (RTP profile only) */
-	if(is_rtp)
-	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
-	}
 
 	/* payload */
 	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
@@ -8126,6 +8078,8 @@ void update_inter_packet(struct d_generic_context *context)
  *  - TS (RTP profile only)
  *
  * @param context  The decompression context
+ * @param bits     The extracted bits
+ * @param decoded  OUT: The corresponding decoded values
  * @return         true if decoding is successful, false otherwise
  */
 static bool decode_values_from_bits(const struct d_context *context,
@@ -8262,5 +8216,54 @@ static bool decode_values_from_bits(const struct d_context *context,
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Update context with decoded values
+ *
+ * The following decoded values are updated:
+ *  - SN
+ *  - IP-ID of outer IP header (if it is IPv4)
+ *  - IP-ID of inner IP header (if it exists and it is IPv4)
+ *  - TS (RTP profile only)
+ *
+ * @param context  The decompression context
+ * @param decoded  The decoded values to update in the context
+ */
+static void update_context(const struct d_context *context,
+                           const struct rohc_decoded_values decoded)
+{
+	struct d_generic_context *g_context;
+
+	assert(context != NULL);
+	g_context = context->specific;
+
+	/* sync infos about IP headers */
+	synchronize(g_context);
+
+	/* update SN */
+	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
+
+	/* update IP-ID of outer IP header (if IPv4) */
+	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	{
+		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
+	}
+
+	/* update IP-ID of inner IP header (if any, if IPv4) */
+	if(g_context->multiple_ip &&
+	   ip_get_version(&g_context->active2->ip) == IPV4)
+	{
+		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
+	}
+
+	/* update TS in decompression context (RTP profile only) */
+	if(context->profile->id == ROHC_PROFILE_RTP)
+	{
+		struct d_rtp_context *const rtp_context =
+			(struct d_rtp_context *) g_context->specific;
+		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
+	}
 }
 
