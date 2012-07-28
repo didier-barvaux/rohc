@@ -2808,18 +2808,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	/* decode the static part of the next header header if necessary */
 	if(g_context->decode_static_next_header != NULL)
 	{
-		/* check the next header protocol against the context if the IR packet is
-		 * not the first ROHC packet processed by the context, otherwise
-		 * initialize the context */
-		if(g_context->first_packet_processed &&
-		   protocol != g_context->next_header_proto)
-		{
-			rohc_debugf(0, "next header protocol mismatch (packet = %d, "
-			            "context = %d)\n", protocol,
-			            g_context->next_header_proto);
-			goto error;
-		}
-
 		size = g_context->decode_static_next_header(g_context, rohc_remain_data,
 		                                            rohc_remain_len,
 		                                            active1->next_header);

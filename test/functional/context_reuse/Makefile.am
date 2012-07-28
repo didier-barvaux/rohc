@@ -53,6 +53,10 @@ TESTS_PROFILE_CHANGE = \
 	test_context_reuse_many_ipv4_udp_rtp_then_ipv6_udp.sh \
 	test_context_reuse_many_ipv4_icmp_then_ipv4_tcp.sh
 
+TESTS_PROTOCOL_CHANGE = \
+	test_context_reuse_ipv4_icmp_then_ipv4_tcp.sh \
+	test_context_reuse_ipv4_tcp_then_ipv4_udp.sh
+
 TESTS = \
 	test_context_reuse_ipv4_icmp_then_ipv6_icmp.sh \
 	test_context_reuse_ipv4_icmp_then_ipv4_ipv4_icmp.sh \
@@ -62,7 +66,8 @@ TESTS = \
 	$(TESTS_IPv6) \
 	$(TESTS_IPv6_IPv4) \
 	$(TESTS_IPv6_IPv6) \
-	$(TESTS_PROFILE_CHANGE)
+	$(TESTS_PROFILE_CHANGE) \
+	$(TESTS_PROTOCOL_CHANGE)
 
 
 check_PROGRAMS = \
