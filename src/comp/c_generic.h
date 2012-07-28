@@ -227,6 +227,8 @@ struct c_generic_context
 	rohc_packet_t (*decide_FO_packet)(const struct c_context *context);
 	/** @brief The handler used to decide which packet to send in SO state */
 	rohc_packet_t (*decide_SO_packet)(const struct c_context *context);
+	/** The handler used to decide which extension to send */
+	rohc_ext_t (*decide_extension)(const struct c_context *context);
 
 	/// The handler used to initialize some data just before the IR packet build
 	void (*init_at_IR)(const struct c_context *context,
@@ -347,6 +349,8 @@ void c_generic_destroy(struct c_context *const context);
 
 void change_mode(struct c_context *const context, const rohc_mode new_mode);
 void change_state(struct c_context *const context, const rohc_c_state new_state);
+
+rohc_ext_t decide_extension(const struct c_context *context);
 
 void ip6_c_init_table(struct list_comp *const comp);
 

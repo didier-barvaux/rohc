@@ -130,6 +130,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	g_context->decide_state = udp_decide_state;
 	g_context->decide_FO_packet = c_ip_decide_FO_packet;
 	g_context->decide_SO_packet = c_ip_decide_SO_packet;
+	g_context->decide_extension = decide_extension;
 	g_context->init_at_IR = NULL;
 	g_context->get_next_sn = c_ip_get_next_sn;
 	g_context->code_static_part = udp_code_static_udp_part;

@@ -263,8 +263,6 @@ static int update_variables(struct c_context *const context,
                             const struct ip_packet *const ip,
                             const struct ip_packet *const ip2);
 
-static rohc_ext_t decide_extension(const struct c_context *context);
-
 static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
                                             size_t *const nr_bits,
                                             uint16_t *const offset);
@@ -579,6 +577,7 @@ int c_generic_create(struct c_context *const context,
 	g_context->decide_state = decide_state;
 	g_context->decide_FO_packet = NULL;
 	g_context->decide_SO_packet = NULL;
+	g_context->decide_extension = NULL;
 	g_context->init_at_IR = NULL;
 	g_context->get_next_sn = NULL;
 	g_context->code_static_part = NULL;
@@ -4560,7 +4559,7 @@ int code_UO2_packet(struct c_context *const context,
 	counter++;
 
 	/* part 6: decide which extension to use */
-	extension = decide_extension(context);
+	extension = g_context->decide_extension(context);
 	if(extension == PACKET_EXT_UNKNOWN)
 	{
 		rohc_debugf(0, "failed to determine the extension to code\n");
@@ -7461,7 +7460,7 @@ error:
 
 
 /**
- * @brief Decide what extension shall be used in the UO-2 packet.
+ * @brief Decide what extension shall be used in the UO-1/UO-2 packet.
  *
  * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
  *
@@ -7470,19 +7469,17 @@ error:
  *                PACKET_EXT_1 and PACKET_EXT_3 if successful,
  *                PACKET_EXT_UNKNOWN otherwise
  */
-static rohc_ext_t decide_extension(const struct c_context *context)
+rohc_ext_t decide_extension(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
 	size_t nr_ip_id_bits;
 	size_t nr_sn_bits;
 	int ext;
-	int is_rtp;
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_ip_id_bits = g_context->tmp.nr_ip_id_bits;
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
-	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	packet_type = g_context->tmp.packet_type;
 
 	ext = PACKET_EXT_3; /* default extension */
@@ -7493,19 +7490,6 @@ static rohc_ext_t decide_extension(const struct c_context *context)
 		rohc_debugf(3, "force EXT-3 because at least one static or dynamic "
 		            "field changed\n");
 		return ext;
-	}
-
-	/* force extension type 3 if at least one RTP dynamic field changed */
-	if(is_rtp)
-	{
-		struct sc_rtp_context *rtp_context;
-		rtp_context = (struct sc_rtp_context *) g_context->specific;
-		if(rtp_context->tmp.send_rtp_dynamic > 0)
-		{
-			rohc_debugf(3, "force EXT-3 because at least one RTP dynamic "
-			            "field changed\n");
-			return ext;
-		}
 	}
 
 	switch(packet_type)

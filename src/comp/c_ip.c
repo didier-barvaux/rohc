@@ -76,6 +76,7 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	g_context->next_header_proto = ip_proto;
 	g_context->decide_FO_packet = c_ip_decide_FO_packet;
 	g_context->decide_SO_packet = c_ip_decide_SO_packet;
+	g_context->decide_extension = decide_extension;
 	g_context->get_next_sn = c_ip_get_next_sn;
 
 	return 1;

@@ -52,6 +52,7 @@
 
 static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context);
+static rohc_ext_t c_rtp_decide_extension(const struct c_context *context);
 
 static uint16_t c_rtp_get_next_sn(const struct c_context *context,
                                   const struct ip_packet *outer_ip,
@@ -173,6 +174,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	g_context->decide_state = rtp_decide_state;
 	g_context->decide_FO_packet = c_rtp_decide_FO_packet;
 	g_context->decide_SO_packet = c_rtp_decide_SO_packet;
+	g_context->decide_extension = c_rtp_decide_extension;
 	g_context->init_at_IR = NULL;
 	g_context->get_next_sn = c_rtp_get_next_sn;
 	g_context->code_static_part = rtp_code_static_rtp_part;
@@ -696,6 +698,42 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 
 	return packet;
+}
+
+
+/**
+ * @brief Decide what extension shall be used in the UO-1/UO-2 packet.
+ *
+ * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
+ *
+ * @param context The compression context
+ * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
+ *                PACKET_EXT_1 and PACKET_EXT_3 if successful,
+ *                PACKET_EXT_UNKNOWN otherwise
+ */
+static rohc_ext_t c_rtp_decide_extension(const struct c_context *context)
+{
+	struct c_generic_context *g_context;
+	struct sc_rtp_context *rtp_context;
+	rohc_ext_t ext;
+
+	g_context = (struct c_generic_context *) context->specific;
+	rtp_context = (struct sc_rtp_context *) g_context->specific;
+
+	/* force extension type 3 if at least one RTP dynamic field changed */
+	if(rtp_context->tmp.send_rtp_dynamic > 0)
+	{
+		rohc_debugf(3, "force EXT-3 because at least one RTP dynamic "
+		            "field changed\n");
+		ext = PACKET_EXT_3;
+	}
+	else
+	{
+		/* fallback on the algorithm shared by all IP-based profiles */
+		ext = decide_extension(context);
+	}
+
+	return ext;
 }
 
 
