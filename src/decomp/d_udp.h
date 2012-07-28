@@ -61,15 +61,10 @@ unsigned int udp_detect_ir_dyn_size(struct d_context *context,
                                     unsigned int plen,
                                     unsigned int large_cid_len);
 
-int udp_decode_static_udp(struct d_generic_context *context,
-                          const unsigned char *packet,
-                          unsigned int length,
-                          unsigned char *dest);
-
-int udp_decode_dynamic_udp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest);
+int udp_parse_static_udp(struct d_generic_context *context,
+                         const unsigned char *packet,
+                         unsigned int length,
+                         unsigned char *dest);
 
 int udp_get_static_size(void);
 

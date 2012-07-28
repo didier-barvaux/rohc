@@ -79,11 +79,6 @@ struct d_udp_lite_context
  * Public function prototypes.
  */
 
-int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
-                                const unsigned char *packet,
-                                unsigned int length,
-                                unsigned char *dest);
-
 int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
                                     struct d_generic_changes *active,
                                     unsigned char *dest,

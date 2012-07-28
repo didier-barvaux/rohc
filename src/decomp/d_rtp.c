@@ -64,10 +64,20 @@ unsigned int rtp_detect_ir_dyn_size(struct d_context *context,
                                     unsigned int plen,
                                     unsigned int large_cid_len);
 
-int rtp_decode_uo_tail_rtp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest);
+static int rtp_parse_static_rtp(struct d_generic_context *context,
+                                const unsigned char *packet,
+                                unsigned int length,
+                                unsigned char *dest);
+
+static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest);
+
+static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest);
 
 
 /**
@@ -116,9 +126,9 @@ void * d_rtp_create(void)
 	/* some RTP-specific values and functions */
 	context->next_header_len = nh_len;
 	context->build_next_header = rtp_build_uncompressed_rtp;
-	context->decode_static_next_header = rtp_decode_static_rtp;
-	context->decode_dynamic_next_header = rtp_decode_dynamic_rtp;
-	context->decode_uo_tail = rtp_decode_uo_tail_rtp;
+	context->parse_static_next_hdr = rtp_parse_static_rtp;
+	context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
+	context->parse_uo_tail = rtp_parse_uo_tail_rtp;
 	context->compute_crc_static = rtp_compute_crc_static;
 	context->compute_crc_dynamic = rtp_compute_crc_dynamic;
 
@@ -510,26 +520,26 @@ error:
 
 
 /**
- * @brief Decode the UDP/RTP static part of the ROHC packet.
+ * @brief Parse the UDP/RTP static part of the ROHC packet.
  *
  * @param context The generic decompression context
- * @param packet  The ROHC packet to decode
+ * @param packet  The ROHC packet to parse
  * @param length  The length of the ROHC packet
  * @param dest    The decoded UDP/RTP header
  * @return        The number of bytes read in the ROHC packet,
  *                -1 in case of failure
  */
-int rtp_decode_static_rtp(struct d_generic_context *context,
-                          const unsigned char *packet,
-                          unsigned int length,
-                          unsigned char *dest)
+static int rtp_parse_static_rtp(struct d_generic_context *context,
+                                const unsigned char *packet,
+                                unsigned int length,
+                                unsigned char *dest)
 {
 	struct udphdr *udp = (struct udphdr *) dest;
 	struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
 	int read = 0; /* number of bytes read from the packet */
 
 	/* decode UDP static part */
-	read = udp_decode_static_udp(context, packet, length, dest);
+	read = udp_parse_static_udp(context, packet, length, dest);
 	if(read == -1)
 	{
 		goto error;
@@ -558,19 +568,19 @@ error:
 
 
 /**
- * @brief Decode the UDP/RTP dynamic part of the ROHC packet.
+ * @brief Parse the UDP/RTP dynamic part of the ROHC packet.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP/RTP header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int rtp_decode_dynamic_rtp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest)
+static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest)
 {
 	struct d_rtp_context *rtp_context;
 	struct udphdr *udp;
@@ -757,19 +767,19 @@ error:
 
 
 /**
- * @brief Decode the UDP/RTP tail of the UO* ROHC packets.
+ * @brief Parse the UDP/RTP tail of the UO* ROHC packets.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP/RTP header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int rtp_decode_uo_tail_rtp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest)
+static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest)
 
 {
 	struct d_rtp_context *rtp_context;

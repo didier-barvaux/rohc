@@ -125,25 +125,25 @@ struct d_generic_context
 	                         unsigned char *dest,
 	                         int payload_size);
 
-	/// @brief The handler used to decode the static part of the next header
+	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
-	int (*decode_static_next_header)(struct d_generic_context *context,
-	                                 const unsigned char *packet,
-	                                 unsigned int length,
-	                                 unsigned char *dest);
+	int (*parse_static_next_hdr)(struct d_generic_context *context,
+	                             const unsigned char *packet,
+	                             unsigned int length,
+	                             unsigned char *dest);
 
-	/// @brief The handler used to decode the dynamic part of the next header
+	/// @brief The handler used to parse the dynamic part of the next header
 	///        in the ROHC packet
-	int (*decode_dynamic_next_header)(struct d_generic_context *context,
-	                                  const unsigned char *packet,
-	                                  unsigned int length,
-	                                  unsigned char *dest);
+	int (*parse_dyn_next_hdr)(struct d_generic_context *context,
+	                          const unsigned char *packet,
+	                          unsigned int length,
+	                          unsigned char *dest);
 
-	/// The handler used to decode the tail of the UO* ROHC packet
-	int (*decode_uo_tail)(struct d_generic_context *context,
-	                      const unsigned char *packet,
-	                      unsigned int length,
-	                      unsigned char *dest);
+	/// The handler used to parse the tail of the UO* ROHC packet
+	int (*parse_uo_tail)(struct d_generic_context *context,
+	                     const unsigned char *packet,
+	                     unsigned int length,
+	                     unsigned char *dest);
 
 	/// @brief The handler used to compute the CRC-STATIC value
 	unsigned int (*compute_crc_static)(const unsigned char *const ip,

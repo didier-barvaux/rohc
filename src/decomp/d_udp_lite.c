@@ -37,10 +37,15 @@
 static void d_udp_lite_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-int udp_lite_decode_uo_tail_udp(struct d_generic_context *context,
-                                const unsigned char *packet,
-                                unsigned int length,
-                                unsigned char *dest);
+static int udp_lite_parse_dynamic_udp(struct d_generic_context *context,
+                                      const unsigned char *packet,
+                                      unsigned int length,
+                                      unsigned char *dest);
+
+static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
+                                      const unsigned char *packet,
+                                      unsigned int length,
+                                      unsigned char *dest);
 
 
 /**
@@ -89,9 +94,9 @@ void * d_udp_lite_create(void)
 	/* some UDP-Lite-specific values and functions */
 	context->next_header_len = sizeof(struct udphdr);
 	context->build_next_header = udp_lite_build_uncompressed_udp;
-	context->decode_static_next_header = udp_decode_static_udp;
-	context->decode_dynamic_next_header = udp_lite_decode_dynamic_udp;
-	context->decode_uo_tail = udp_lite_decode_uo_tail_udp;
+	context->parse_static_next_hdr = udp_parse_static_udp;
+	context->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
+	context->parse_uo_tail = udp_lite_parse_uo_tail_udp;
 	context->compute_crc_static = udp_compute_crc_static;
 	context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
@@ -454,19 +459,19 @@ error:
 
 
 /**
- * @brief Decode the UDP-Lite dynamic part of the ROHC packet.
+ * @brief Parse the UDP-Lite dynamic part of the ROHC packet.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
-                                const unsigned char *packet,
-                                unsigned int length,
-                                unsigned char *dest)
+static int udp_lite_parse_dynamic_udp(struct d_generic_context *context,
+                                      const unsigned char *packet,
+                                      unsigned int length,
+                                      unsigned char *dest)
 {
 	struct d_udp_lite_context *udp_lite_context;
 	struct udphdr *udp_lite;
@@ -532,7 +537,7 @@ int udp_lite_decode_dynamic_udp(struct d_generic_context *context,
 	read += 2;
 
 	/* SN field */
-	ret = ip_decode_dynamic_ip(context, packet, length - read, dest + read);
+	ret = ip_parse_dynamic_ip(context, packet, length - read, dest + read);
 	if(ret == -1)
 	{
 		goto error;
@@ -548,19 +553,19 @@ error:
 
 
 /**
- * @brief Decode the UDP-Lite tail of the UO* ROHC packets.
+ * @brief Parse the UDP-Lite tail of the UO* ROHC packets.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP-Lite header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int udp_lite_decode_uo_tail_udp(struct d_generic_context *context,
-                                const unsigned char *packet,
-                                unsigned int length,
-                                unsigned char *dest)
+static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
+                                      const unsigned char *packet,
+                                      unsigned int length,
+                                      unsigned char *dest)
 
 {
 	struct d_udp_lite_context *udp_lite_context;

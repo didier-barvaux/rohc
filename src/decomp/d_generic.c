@@ -2757,12 +2757,12 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		protocol = ip_get_protocol(&g_context->inner_ip_changes->ip);
 	}
 
-	/* decode the static part of the next header header if necessary */
-	if(g_context->decode_static_next_header != NULL)
+	/* parse the static part of the next header header if necessary */
+	if(g_context->parse_static_next_hdr != NULL)
 	{
-		size = g_context->decode_static_next_header(g_context, rohc_remain_data,
-		                                            rohc_remain_len,
-		                                            g_context->outer_ip_changes->next_header);
+		size = g_context->parse_static_next_hdr(g_context, rohc_remain_data,
+		                                        rohc_remain_len,
+		                                        g_context->outer_ip_changes->next_header);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the next header static part\n");
@@ -2805,12 +2805,12 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 			rohc_header_len += size;
 		}
 
-		/* decode the dynamic part of the next header header if necessary */
-		if(g_context->decode_dynamic_next_header != NULL)
+		/* parse the dynamic part of the next header header if necessary */
+		if(g_context->parse_dyn_next_hdr != NULL)
 		{
-			size = g_context->decode_dynamic_next_header(g_context, rohc_remain_data,
-			                                             rohc_remain_len,
-			                                             g_context->outer_ip_changes->next_header);
+			size = g_context->parse_dyn_next_hdr(g_context, rohc_remain_data,
+			                                     rohc_remain_len,
+			                                     g_context->outer_ip_changes->next_header);
 			if(size == -1)
 			{
 				rohc_debugf(0, "cannot decode the next header dynamic part\n");
@@ -4047,11 +4047,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->decode_uo_tail != NULL)
+	if(g_context->parse_uo_tail != NULL)
 	{
-		size = g_context->decode_uo_tail(g_context,
-		                                 rohc_remain_data, rohc_remain_len,
-		                                 g_context->outer_ip_changes->next_header);
+		size = g_context->parse_uo_tail(g_context,
+		                                rohc_remain_data, rohc_remain_len,
+		                                g_context->outer_ip_changes->next_header);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -4702,11 +4702,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->decode_uo_tail != NULL)
+	if(g_context->parse_uo_tail != NULL)
 	{
-		size = g_context->decode_uo_tail(g_context,
-		                                 rohc_remain_data, rohc_remain_len,
-		                                 g_context->outer_ip_changes->next_header);
+		size = g_context->parse_uo_tail(g_context,
+		                                rohc_remain_data, rohc_remain_len,
+		                                g_context->outer_ip_changes->next_header);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -5788,11 +5788,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->decode_uo_tail != NULL)
+	if(g_context->parse_uo_tail != NULL)
 	{
-		size = g_context->decode_uo_tail(g_context,
-		                                 rohc_remain_data, rohc_remain_len,
-		                                 g_context->outer_ip_changes->next_header);
+		size = g_context->parse_uo_tail(g_context,
+		                                rohc_remain_data, rohc_remain_len,
+		                                g_context->outer_ip_changes->next_header);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -6108,12 +6108,12 @@ int decode_irdyn(struct rohc_decomp *decomp,
 		rohc_header_len += size;
 	}
 
-	/* decode the dynamic part of the next header if necessary */
-	if(g_context->decode_dynamic_next_header != NULL)
+	/* parse the dynamic part of the next header if necessary */
+	if(g_context->parse_dyn_next_hdr != NULL)
 	{
-		size = g_context->decode_dynamic_next_header(g_context, rohc_remain_data,
-		                                             rohc_remain_len,
-		                                             g_context->outer_ip_changes->next_header);
+		size = g_context->parse_dyn_next_hdr(g_context, rohc_remain_data,
+		                                     rohc_remain_len,
+		                                     g_context->outer_ip_changes->next_header);
 		if(size == -1)
 		{
 			rohc_debugf(0, "cannot decode the next header dynamic part\n");

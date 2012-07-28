@@ -56,16 +56,6 @@ struct d_rtp_context
  * Public function prototypes.
  */
 
-int rtp_decode_static_rtp(struct d_generic_context *context,
-                          const unsigned char *packet,
-                          unsigned int length,
-                          unsigned char *dest);
-
-int rtp_decode_dynamic_rtp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest);
-
 int rtp_build_uncompressed_rtp(struct d_generic_context *context,
                                struct d_generic_changes *active,
                                unsigned char *dest,

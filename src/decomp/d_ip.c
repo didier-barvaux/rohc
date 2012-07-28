@@ -64,7 +64,7 @@ void * d_ip_create(void)
 	}
 
 	/* some IP-specific values and functions */
-	context->decode_dynamic_next_header = ip_decode_dynamic_ip;
+	context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
 
 	return context;
 
@@ -106,19 +106,19 @@ int ip_get_static_part(void)
 
 
 /**
- * @brief Decode the IP dynamic part of the ROHC packet.
+ * @brief Parse the IP dynamic part of the ROHC packet.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         Not used
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int ip_decode_dynamic_ip(struct d_generic_context *context,
-                         const unsigned char *packet,
-                         unsigned int length,
-                         unsigned char *dest)
+int ip_parse_dynamic_ip(struct d_generic_context *context,
+                        const unsigned char *packet,
+                        unsigned int length,
+                        unsigned char *dest)
 {
 	int read = 0; /* number of bytes read from the packet */
 	int sn;

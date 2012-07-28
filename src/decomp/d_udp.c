@@ -38,10 +38,16 @@
 static void d_udp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-int udp_decode_uo_tail_udp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest);
+static int udp_parse_dynamic_udp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest);
+
+
+static int udp_parse_uo_tail_udp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest);
 
 
 /**
@@ -89,9 +95,9 @@ void * d_udp_create(void)
 	/* some UDP-specific values and functions */
 	context->next_header_len = sizeof(struct udphdr);
 	context->build_next_header = udp_build_uncompressed_udp;
-	context->decode_static_next_header = udp_decode_static_udp;
-	context->decode_dynamic_next_header = udp_decode_dynamic_udp;
-	context->decode_uo_tail = udp_decode_uo_tail_udp;
+	context->parse_static_next_hdr = udp_parse_static_udp;
+	context->parse_dyn_next_hdr = udp_parse_dynamic_udp;
+	context->parse_uo_tail = udp_parse_uo_tail_udp;
 	context->compute_crc_static = udp_compute_crc_static;
 	context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
@@ -331,19 +337,19 @@ quit:
 
 
 /**
- * @brief Decode the UDP static part of the ROHC packet.
+ * @brief Parse the UDP static part of the ROHC packet.
  *
  * @param context The generic decompression context
- * @param packet  The ROHC packet to decode
+ * @param packet  The ROHC packet to parse
  * @param length  The length of the ROHC packet
  * @param dest    The decoded UDP header
  * @return        The number of bytes read in the ROHC packet,
  *                -1 in case of failure
  */
-int udp_decode_static_udp(struct d_generic_context *context,
-                          const unsigned char *packet,
-                          unsigned int length,
-                          unsigned char *dest)
+int udp_parse_static_udp(struct d_generic_context *context,
+                         const unsigned char *packet,
+                         unsigned int length,
+                         unsigned char *dest)
 {
 	struct udphdr *udp = (struct udphdr *) dest;
 	int read = 0; /* number of bytes read from the packet */
@@ -373,19 +379,19 @@ error:
 
 
 /**
- * @brief Decode the UDP dynamic part of the ROHC packet.
+ * @brief Parse the UDP dynamic part of the ROHC packet.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int udp_decode_dynamic_udp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest)
+static int udp_parse_dynamic_udp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest)
 {
 	struct d_udp_context *udp_context;
 	struct udphdr *udp;
@@ -410,7 +416,7 @@ int udp_decode_dynamic_udp(struct d_generic_context *context,
 	udp_context->udp_checksum_present = (udp->check > 0);
 
 	/* SN field */
-	ret = ip_decode_dynamic_ip(context, packet, length - read, dest + read);
+	ret = ip_parse_dynamic_ip(context, packet, length - read, dest + read);
 	if(ret == -1)
 	{
 		goto error;
@@ -426,20 +432,19 @@ error:
 
 
 /**
- * @brief Decode the UDP tail of the UO* ROHC packets.
+ * @brief Parse the UDP tail of the UO* ROHC packets.
  *
  * @param context      The generic decompression context
- * @param packet       The ROHC packet to decode
+ * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param dest         The decoded UDP header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int udp_decode_uo_tail_udp(struct d_generic_context *context,
-                           const unsigned char *packet,
-                           unsigned int length,
-                           unsigned char *dest)
-
+static int udp_parse_uo_tail_udp(struct d_generic_context *context,
+                                 const unsigned char *packet,
+                                 unsigned int length,
+                                 unsigned char *dest)
 {
 	struct d_udp_context *udp_context;
 	struct udphdr *udp;
