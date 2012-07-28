@@ -23,6 +23,7 @@
 
 #include "c_udp_lite.h"
 #include "c_udp.h"
+#include "c_ip.h"
 #include "rohc_traces.h"
 #include "rohc_packets.h"
 #include "crc.h"
@@ -148,6 +149,8 @@ int c_udp_lite_create(struct c_context *const context,
 	g_context->next_header_proto = IPPROTO_UDPLITE;
 	g_context->next_header_len = sizeof(struct udphdr);
 	g_context->decide_state = decide_state;
+	g_context->decide_FO_packet = c_ip_decide_FO_packet;
+	g_context->decide_SO_packet = c_ip_decide_SO_packet;
 	g_context->init_at_IR = udp_lite_init_cc;
 	g_context->code_static_part = udp_code_static_udp_part; /* same as UDP */
 	g_context->code_dynamic_part = udp_lite_code_dynamic_udp_lite_part;

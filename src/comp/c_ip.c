@@ -71,7 +71,11 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 		/* get the transport protocol */
 		ip_proto = ip_get_protocol(&ip2);
 	}
+
+	/* init the IP-only-specific variables and functions */
 	g_context->next_header_proto = ip_proto;
+	g_context->decide_FO_packet = c_ip_decide_FO_packet;
+	g_context->decide_SO_packet = c_ip_decide_SO_packet;
 
 	return 1;
 
@@ -228,6 +232,171 @@ bad_context:
 	return 0;
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Decide which packet to send when in First Order (FO) state.
+ *
+ * Packets that can be used are the IR-DYN and UO-2 packets.
+ *
+ * @see decide_packet
+ *
+ * @param context The compression context
+ * @return        The packet type among PACKET_IR_DYN and PACKET_UOR_2
+ */
+rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
+{
+	struct c_generic_context *g_context;
+	rohc_packet_t packet;
+
+	g_context = (struct c_generic_context *) context->specific;
+
+	if(g_context->tmp.send_static)
+	{
+		g_context->ir_dyn_count = 0;
+		packet = PACKET_UOR_2;
+		rohc_debugf(3, "choose packet UOR-2 because at least one static "
+		            "field changed\n");
+	}
+	else if(g_context->ir_dyn_count < MAX_FO_COUNT)
+	{
+		g_context->ir_dyn_count++;
+		packet = PACKET_IR_DYN;
+		rohc_debugf(3, "choose packet IR-DYN because not enough IR-DYN "
+		            "packets were transmitted yet (%d / %d)\n",
+		            g_context->ir_dyn_count, MAX_FO_COUNT);
+	}
+	else if(g_context->tmp.nr_of_ip_hdr == 1 && g_context->tmp.send_dynamic > 2)
+	{
+		packet = PACKET_IR_DYN;
+		rohc_debugf(3, "choose packet IR-DYN because %d > 2 dynamic fields changed "
+		            "with a single IP header\n", g_context->tmp.send_dynamic);
+	}
+	else if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->tmp.send_dynamic > 4)
+	{
+		packet = PACKET_IR_DYN;
+		rohc_debugf(3, "choose packet IR-DYN because %d > 4 dynamic fields changed "
+		            "with double IP header\n", g_context->tmp.send_dynamic);
+	}
+	else if(g_context->tmp.nr_sn_bits <= 14)
+	{
+		/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
+		   base header + 8 bits in extension 3) */
+		packet = PACKET_UOR_2;
+		rohc_debugf(3, "choose packet UOR-2 because %zd <= 14 SN bits must "
+		            "be transmitted\n", g_context->tmp.nr_sn_bits);
+	}
+	else
+	{
+		/* UOR-2 packet can not be used, use IR-DYN instead */
+		packet = PACKET_IR_DYN;
+		rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
+		            "be transmitted\n", g_context->tmp.nr_sn_bits);
+	}
+
+	return packet;
+}
+
+
+/**
+ * @brief Decide which packet to send when in Second Order (SO) state.
+ *
+ * Packets that can be used are the UO-0, UO-1 and UO-2 (with or without
+ * extensions) packets.
+ *
+ * @see decide_packet
+ *
+ * @param context The compression context
+ * @return        The packet type among PACKET_UO_0, PACKET_UO_1 and
+ *                PACKET_UOR_2
+ */
+rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
+{
+	struct c_generic_context *g_context;
+	int nr_of_ip_hdr;
+	size_t nr_sn_bits;
+	size_t nr_ip_id_bits;
+	rohc_packet_t packet;
+	int is_rnd;
+	int is_ip_v4;
+
+	g_context = (struct c_generic_context *) context->specific;
+	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
+	nr_sn_bits = g_context->tmp.nr_sn_bits;
+	nr_ip_id_bits = g_context->tmp.nr_ip_id_bits;
+	is_rnd = g_context->ip_flags.info.v4.rnd;
+	is_ip_v4 = g_context->ip_flags.version == IPV4;
+
+	rohc_debugf(3, "nr_ip_bits = %zd, nr_sn_bits = %zd, nr_of_ip_hdr = %d, "
+	            "rnd = %d\n", nr_ip_id_bits, nr_sn_bits, nr_of_ip_hdr, is_rnd);
+
+	if(nr_of_ip_hdr == 1) /* single IP header */
+	{
+		if(nr_sn_bits <= 4 &&
+		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
+		{
+			packet = PACKET_UO_0;
+			rohc_debugf(3, "choose packet UO-0 because %zd <= 4 SN bits must "
+			            "be transmitted, and the single IP header is either "
+			            "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 "
+			            "with non-random IP-ID but 0 IP-ID bit to transmit'\n",
+			            nr_sn_bits);
+		}
+		else if(nr_sn_bits == 5 &&
+		        (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
+		{
+			packet = PACKET_UOR_2;
+			rohc_debugf(3, "choose packet UOR-2 because %zd = 5 SN bits must "
+			            "be transmitted, and the single IP header is either "
+			            "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 "
+			            "with non-random IP-ID but 0 IP-ID bit to transmit'\n",
+			            nr_sn_bits);
+		}
+		else if(nr_sn_bits <= 5 &&
+		        is_ip_v4 && is_rnd != 1 && nr_ip_id_bits <= 6)
+		{
+			packet = PACKET_UO_1; /* IPv4 only */
+			rohc_debugf(3, "choose packet UO-1 because %zd <= 5 SN bits must "
+			            "be transmitted, and the single IP header is 'IPv4 "
+			            "with non-random IP-ID but %zd <= 6 IP-ID bits to "
+			            "transmit'\n", nr_sn_bits, nr_ip_id_bits);
+		}
+		else
+		{
+			packet = PACKET_UOR_2;
+			rohc_debugf(3, "choose packet UOR-2 because UO-0 / UO-1 packets "
+			            "do not fit\n");
+		}
+	}
+	else /* double IP headers */
+	{
+		const int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
+		const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+		const size_t nr_ip_id_bits2 = g_context->tmp.nr_ip_id_bits2;
+
+		if(nr_sn_bits <= 4 &&
+		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))) &&
+		   (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
+		{
+			packet = PACKET_UO_0;
+			rohc_debugf(3, "choose packet UO-0\n");
+		}
+		else if(nr_sn_bits <= 5 && (is_ip_v4 && nr_ip_id_bits <= 6) &&
+		        (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
+		{
+			packet = PACKET_UO_1; /* IPv4 only for outer header */
+			rohc_debugf(3, "choose packet UO-1\n");
+		}
+		else
+		{
+			packet = PACKET_UOR_2;
+			rohc_debugf(3, "choose packet UOR-2 because UO-0 / UO-1 packets "
+			            "do not fit\n");
+		}
+	}
+
+	return packet;
 }
 
 

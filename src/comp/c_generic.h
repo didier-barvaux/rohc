@@ -223,6 +223,10 @@ struct c_generic_context
 	/// @brief The handler used to decide the state that should be used for the
 	///        next packet
 	void (*decide_state)(struct c_context *const context);
+	/** @brief The handler used to decide which packet to send in FO state */
+	rohc_packet_t (*decide_FO_packet)(const struct c_context *context);
+	/** @brief The handler used to decide which packet to send in SO state */
+	rohc_packet_t (*decide_SO_packet)(const struct c_context *context);
 
 	/// The handler used to initialize some data just before the IR packet build
 	void (*init_at_IR)(const struct c_context *context,
