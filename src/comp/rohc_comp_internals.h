@@ -166,12 +166,6 @@ struct rohc_comp
 	int max_header_size;
 	/** The connection type (currently not used) */
 	int connection_type;
-	/** Whether to use jamming or not (option enabled/disabled by user) */
-	int jam_use;
-	/** The size (in bytes) of the adaptation packets */
-	int adapt_size;
-	/** The size (in bytes) of the encapsulation packets */
-	int encap_size;
 };
 
 

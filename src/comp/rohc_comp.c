@@ -126,10 +126,9 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
  * @brief Create one ROHC compressor
  *
  * @param max_cid     The maximal CID value the compressor should use for contexts
- * @param jam_use     The parameter which indicates if the use of the jamming is
- *                    activated: 0 if not activated, 1 otherwise
- * @param adapt_size  The size of the header or trailer of the adaptation layer
- * @param encap_size  The packet size of the encapsulation layer
+ * @param jam_use     not used anymore, must be 0
+ * @param adapt_size  not used anymore, ignored
+ * @param encap_size  not used anymore, ignored
  * @return            The newly-created compressor if successful,
  *                    NULL otherwise
  *
@@ -145,6 +144,13 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	int i;
 
 	rohc_debugf(1, "creating compressor\n");
+
+	if(jam_use != 0)
+	{
+		rohc_debugf(0, "the jamming algorithm was removed, please set "
+		            "jam_use to 0\n");
+		goto error;
+	}
 
 	comp = malloc(sizeof(struct rohc_comp));
 	if(comp == NULL)
@@ -168,9 +174,6 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->total_compressed_size = 0;
 	comp->total_uncompressed_size = 0;
 	comp->last_context = NULL;
-	comp->jam_use = jam_use;
-	comp->adapt_size = adapt_size;
-	comp->encap_size = encap_size;
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
