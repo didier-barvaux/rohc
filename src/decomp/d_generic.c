@@ -318,6 +318,7 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
                                     unsigned int payload_size,
                                     struct list_decomp *decomp);
 
+
 /*
  * Private function prototypes for miscellaneous functions
  */
@@ -350,6 +351,10 @@ void ip6_d_init_table(struct list_decomp *decomp);
 static int get_ip6_ext_size(const unsigned char *data, const size_t data_len);
 
 
+
+/*
+ * Definitions of public functions
+ */
 
 /**
  * @brief Create the generic decompression context.
@@ -3994,8 +3999,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* part 5: no extension for UO-0 packet */
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-	   g_context->outer_ip_changes->rnd)
+	if(is_outer_ipv4_rnd(g_context))
 	{
 		/* outer IP-ID is random, read its full 16-bit value */
 
@@ -4020,9 +4024,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* parts 7 and 8: not supported */
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
-	   g_context->inner_ip_changes->rnd)
+	if(g_context->multiple_ip && is_inner_ipv4_rnd(g_context))
 	{
 		/* inner IP-ID is random, read its full 16-bit value */
 
@@ -4204,12 +4206,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 		/* update SN (and IP-IDs if IPv4) */
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
+		if(is_outer_ipv4(g_context))
 		{
 			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
-		if(g_context->multiple_ip &&
-		   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
+		if(g_context->multiple_ip && is_inner_ipv4(g_context))
 		{
 			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
@@ -4625,8 +4626,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-	   g_context->outer_ip_changes->rnd)
+	if(is_outer_ipv4_rnd(g_context))
 	{
 		/* outer IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -4663,9 +4663,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* parts 7 and 8: not supported */
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
-	   g_context->inner_ip_changes->rnd)
+	if(g_context->multiple_ip && is_inner_ipv4_rnd(g_context))
 	{
 		/* inner IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -4870,12 +4868,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		/* update SN (and IP-IDs if IPv4) */
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
+		if(is_outer_ipv4(g_context))
 		{
 			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
-		if(g_context->multiple_ip &&
-		   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
+		if(g_context->multiple_ip && is_inner_ipv4(g_context))
 		{
 			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
@@ -5265,8 +5262,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 			if(!g_context->multiple_ip)
 			{
 				/* the single IP header must be IPv4 with non-random IP-ID */
-				if(ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 ||
-				   g_context->outer_ip_changes->rnd != 0)
+				if(!is_outer_ipv4_non_rnd(g_context))
 				{
 					rohc_debugf(0, "cannot use the UOR-2-ID packet with no 'IPv4 "
 					            "header with non-random IP-ID'\n");
@@ -5278,13 +5274,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 			else
 			{
 				/* only one of the 2 IP headers must be IPv4 with non-random IP-ID */
-				if(ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
-				   g_context->inner_ip_changes->rnd == 0)
+				if(is_inner_ipv4_non_rnd(g_context))
 				{
 					/* inner IP header is IPv4 with non-random IP-ID,
 					 * outer IP header must not */
-					if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-					   g_context->outer_ip_changes->rnd == 0)
+					if(is_outer_ipv4_non_rnd(g_context))
 					{
 						rohc_debugf(0, "cannot use the UOR-2-ID packet with two "
 						            "IPv4 headers with non-random IP-ID\n");
@@ -5293,8 +5287,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 					innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 				}
-				else if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-				        g_context->outer_ip_changes->rnd == 0)
+				else if(is_outer_ipv4_non_rnd(g_context))
 				{
 					/* inner IP header is not IPv4 with non-random IP-ID,
 					 * but outer IP header is */
@@ -5496,11 +5489,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 				switch(packet_type)
 				{
 					case PACKET_UOR_2:
-						if(ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 ||
-						   g_context->outer_ip_changes->rnd != 0 ||
+						if(!is_outer_ipv4_non_rnd(g_context) ||
 						   !g_context->multiple_ip ||
-						   ip_get_version(&g_context->inner_ip_changes->ip) != IPV4 ||
-						   g_context->inner_ip_changes->rnd != 0)
+						   !is_inner_ipv4_non_rnd(g_context))
 						{
 							rohc_debugf(0, "cannot use extension 2 for the UOR-2 packet "
 							            "with no or only one IPv4 header that got a "
@@ -5531,16 +5522,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 				/* determine which IP header is the innermost IPv4 header with
 				   value(RND) = 0 */
-				if(g_context->multiple_ip &&
-				   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
-				   g_context->inner_ip_changes->rnd == 0)
+				if(g_context->multiple_ip && is_inner_ipv4_non_rnd(g_context))
 				{
 					/* the second IP header is the innermost IPv4 header with
 					   value(RND) = 0 */
 					innermost_ip_hdr = 2;
 				}
-				else if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-				        g_context->outer_ip_changes->rnd == 0)
+				else if(is_outer_ipv4_non_rnd(g_context))
 				{
 					/* the first IP header is the innermost IPv4 header with
 					   value(RND) = 0 */
@@ -5711,8 +5699,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 */
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-	   g_context->outer_ip_changes->rnd)
+	if(is_outer_ipv4_rnd(g_context))
 	{
 		/* outer IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -5749,9 +5736,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* parts 7 and 8: not supported */
 
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
-	   g_context->inner_ip_changes->rnd)
+	if(g_context->multiple_ip && is_inner_ipv4_rnd(g_context))
 	{
 		/* inner IP-ID is random, read its full 16-bit value and ignore any
 		   previous bits we may have read (they should be filled with zeroes) */
@@ -5965,12 +5950,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		/* update SN (and IP-IDs if IPv4) */
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
+		if(is_outer_ipv4(g_context))
 		{
 			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
-		if(g_context->multiple_ip &&
-		   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
+		if(g_context->multiple_ip && is_inner_ipv4(g_context))
 		{
 			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
@@ -6841,8 +6825,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		{
 			/* determine which IP header is the innermost IPv4 header with
 			 * non-random IP-ID */
-			if(ip_get_version(&g_context->inner_ip_changes->ip) == IPV4 &&
-			   g_context->inner_ip_changes->rnd == 0)
+			if(is_inner_ipv4_non_rnd(g_context))
 			{
 				/* inner IP header is IPv4 with non-random IP-ID */
 				*ip_id_bits = 0;
@@ -6850,8 +6833,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 				*ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
 				*ip_id2_bits_nr = 16;
 			}
-			else if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4 &&
-			        g_context->outer_ip_changes->rnd == 0)
+			else if(is_outer_ipv4_non_rnd(g_context))
 			{
 				/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
 				 * IP header is */
@@ -6874,8 +6856,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		}
 		else
 		{
-			if(ip_get_version(&g_context->outer_ip_changes->ip) != IPV4 ||
-			   g_context->outer_ip_changes->rnd != 0)
+			if(!is_outer_ipv4_non_rnd(g_context))
 			{
 				rohc_debugf(0, "extension 3 cannot contain IP-ID bits because "
 				            "no IP header is IPv4 with non-random IP-ID\n");
@@ -7078,9 +7059,7 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 	rohc_packet_t type;
 	struct d_generic_context *g_context = context->specific;
 	const int multiple_ip = g_context->multiple_ip;
-	const int rnd = g_context->outer_ip_changes->rnd;
 	const int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-	const int is_ip_v4 = (ip_get_version(&g_context->outer_ip_changes->ip) == IPV4);
 
 	if(rohc_length < 1)
 	{
@@ -7104,7 +7083,7 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 
 			if(!multiple_ip)
 			{
-				if((is_ip_v4 && rnd) || !is_ip_v4)
+				if(is_outer_ipv4_rnd(g_context) || !is_outer_ipv4(g_context))
 				{
 					/* UO-1-RTP packet */
 					type = PACKET_UO_1_RTP;
@@ -7124,11 +7103,8 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 			}
 			else /* double IP headers */
 			{
-				const int rnd2 = g_context->inner_ip_changes->rnd;
-				const int is_ip2_v4 = (ip_get_version(&g_context->inner_ip_changes->ip) == IPV4);
-
-				if(((is_ip_v4 && rnd) || !is_ip_v4) &&
-				   ((is_ip2_v4 && rnd2) || !is_ip2_v4))
+				if((is_outer_ipv4_rnd(g_context) || !is_outer_ipv4(g_context)) &&
+				   (is_inner_ipv4_rnd(g_context) || !is_inner_ipv4(g_context)))
 				{
 					/* UO-1-RTP packet */
 					type = PACKET_UO_1_RTP;
@@ -7163,12 +7139,12 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 
 			if(!multiple_ip)
 			{
-				if(!is_ip_v4)
+				if(!is_outer_ipv4(g_context))
 				{
 					/* UOR-2-RTP packet */
 					type = PACKET_UOR_2_RTP;
 				}
-				else if((is_ip_v4 && rnd))
+				else if(is_outer_ipv4_rnd(g_context))
 				{
 					/* UOR-2-RTP or UOR-2-ID packet */
 #if RTP_BIT_TYPE
@@ -7231,16 +7207,13 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
 			}
 			else /* double IP headers */
 			{
-				const int rnd2 = g_context->inner_ip_changes->rnd;
-				const int is_ip2_v4 = (ip_get_version(&g_context->inner_ip_changes->ip) == IPV4);
-
-				if(!is_ip2_v4)
+				if(!is_inner_ipv4(g_context))
 				{
 					/* UOR-2-RTP packet */
 					type = PACKET_UOR_2_RTP;
 				}
-				else if(((is_ip_v4 && rnd) && (is_ip2_v4 && rnd2)) ||
-				        ((!is_ip_v4) && (is_ip2_v4 && rnd2)))
+				else if((is_outer_ipv4_rnd(g_context) && is_inner_ipv4_rnd(g_context)) ||
+				        (!is_outer_ipv4(g_context) && is_inner_ipv4_rnd(g_context)))
 				{
 					/* UOR-2-RTP or UOR-2-ID packet */
 #if RTP_BIT_TYPE
@@ -7918,7 +7891,7 @@ static bool decode_values_from_bits(const struct d_context *context,
 	            decoded->sn, decoded->sn, bits.sn_nr, bits.sn, bits.sn);
 
 	/* decode outer IP-ID (IPv4 only) */
-	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
+	if(is_outer_ipv4(g_context))
 	{
 		if(g_context->outer_ip_changes->rnd)
 		{
@@ -7943,8 +7916,7 @@ static bool decode_values_from_bits(const struct d_context *context,
 	}
 
 	/* decode inner IP-ID (IPv4 only) */
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
+	if(g_context->multiple_ip && is_inner_ipv4(g_context))
 	{
 		if(g_context->inner_ip_changes->rnd)
 		{
@@ -8053,14 +8025,13 @@ static void update_context(const struct d_context *context,
 	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 
 	/* update IP-ID of outer IP header (if IPv4) */
-	if(ip_get_version(&g_context->outer_ip_changes->ip) == IPV4)
+	if(is_outer_ipv4(g_context))
 	{
 		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 	}
 
 	/* update IP-ID of inner IP header (if any, if IPv4) */
-	if(g_context->multiple_ip &&
-	   ip_get_version(&g_context->inner_ip_changes->ip) == IPV4)
+	if(g_context->multiple_ip && is_inner_ipv4(g_context))
 	{
 		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 	}
@@ -8072,5 +8043,81 @@ static void update_context(const struct d_context *context,
 			(struct d_rtp_context *) g_context->specific;
 		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
 	}
+}
+
+
+/*
+ * Helper functions
+ */
+
+/**
+ * @brief Is the outer IP header IPv4 ?
+ *
+ * @param context  The generic decompression context
+ * @return         true if IPv4, false if IPv6
+ */
+inline bool is_outer_ipv4(const struct d_generic_context *const context)
+{
+	return (ip_get_version(&context->outer_ip_changes->ip) == IPV4);
+}
+
+
+/**
+ * @brief Is the outer IP header IPv4 and its IP-ID random?
+ *
+ * @param context  The generic decompression context
+ * @return         true if IPv4, false if IPv6
+ */
+inline bool is_outer_ipv4_rnd(const struct d_generic_context *const context)
+{
+	return (is_outer_ipv4(context) && context->outer_ip_changes->rnd == 1);
+}
+
+
+/**
+ * @brief Is the outer IP header IPv4 and its IP-ID non-random?
+ *
+ * @param context  The generic decompression context
+ * @return         true if IPv4, false if IPv6
+ */
+inline bool is_outer_ipv4_non_rnd(const struct d_generic_context *const context)
+{
+	return (is_outer_ipv4(context) && context->outer_ip_changes->rnd == 0);
+}
+
+
+/**
+ * @brief Is the inner IP header IPv4 ?
+ *
+ * @param context  The generic decompression context
+ * @return         true if IPv4, false if IPv6
+ */
+inline bool is_inner_ipv4(const struct d_generic_context *const context)
+{
+	return (ip_get_version(&context->inner_ip_changes->ip) == IPV4);
+}
+
+
+/**
+ * @brief Is the inner IP header IPv4 and its IP-ID random?
+ *
+ * @param context  The generic decompression context
+ * @return         true if IPv4, false if IPv6
+ */
+inline bool is_inner_ipv4_rnd(const struct d_generic_context *const context)
+{
+	return (is_inner_ipv4(context) && context->inner_ip_changes->rnd == 1);
+}
+
+
+/**
+ * @brief Is the inner IP header IPv4 and its IP-ID non-random?
+ *
+ * @param context  The generic decompression context
+ * @return         true if IPv4, false if IPv6
+ */
+inline bool is_inner_ipv4_non_rnd(const struct d_generic_context *const context)
+{
+	return (is_inner_ipv4(context) && context->inner_ip_changes->rnd == 0);
 }
 

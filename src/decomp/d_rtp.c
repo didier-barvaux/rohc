@@ -652,13 +652,12 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 	/* init SN and IP-IDs (IPv4 only) */
 	sn = ntohs(rtp->sn);
 	rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
-	if(ip_get_version(&context->outer_ip_changes->ip) == IPV4)
+	if(is_outer_ipv4(context))
 	{
 		d_ip_id_init(&context->ip_id1,
 		             ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
 	}
-	if(context->multiple_ip &&
-	   ip_get_version(&context->inner_ip_changes->ip) == IPV4)
+	if(context->multiple_ip && is_inner_ipv4(context))
 	{
 		d_ip_id_init(&context->ip_id2,
 		             ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);

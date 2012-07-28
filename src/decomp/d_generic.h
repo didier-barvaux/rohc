@@ -47,6 +47,7 @@
 
 #define L 5
 
+
 /**
  * @brief Store information about an IP header between the different
  *        decompressions of IP packets.
@@ -175,6 +176,7 @@ struct d_generic_context
 	unsigned int inter_arrival_time;
 };
 
+
 /**
  * @brief The list decompressor
  */
@@ -259,6 +261,19 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
                                const unsigned char *packet,
                                const size_t rohc_length,
                                int second_byte);
+
+
+/*
+ * Helper functions
+ */
+
+inline bool is_outer_ipv4(const struct d_generic_context *const context);
+inline bool is_outer_ipv4_rnd(const struct d_generic_context *const context);
+inline bool is_outer_ipv4_non_rnd(const struct d_generic_context *const context);
+
+inline bool is_inner_ipv4(const struct d_generic_context *const context);
+inline bool is_inner_ipv4_rnd(const struct d_generic_context *const context);
+inline bool is_inner_ipv4_non_rnd(const struct d_generic_context *const context);
 
 #endif
 
