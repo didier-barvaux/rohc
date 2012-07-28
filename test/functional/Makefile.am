@@ -6,5 +6,6 @@
 
 SUBDIRS = \
 	feedback2 \
-	decompress_feedback_only
+	decompress_feedback_only \
+	context_reuse
 

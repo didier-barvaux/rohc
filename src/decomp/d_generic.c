@@ -2729,8 +2729,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
-	struct d_generic_changes *last1 = g_context->last1;
-	struct d_generic_changes *last2 = g_context->last2;
 	struct d_generic_changes *active1 = g_context->active1;
 	struct d_generic_changes *active2 = g_context->active2;
 
@@ -2749,7 +2747,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	int dynamic_present;
 	int size;
 	unsigned int protocol;
-	int multiple_ip;
 
 	rohc_debugf(2, "decode an IR packet\n");
 
@@ -2778,41 +2775,16 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	rohc_remain_len -= size;
 	rohc_header_len += size;
 
-	/* check the version of the outer IP header against the context if the IR
-	 * packet is not the first ROHC packet processed by the context */
-	if(g_context->first_packet_processed &&
-	   ip_get_version(&active1->ip) != ip_get_version(&last1->ip))
-	{
-		rohc_debugf(0, "IP version mismatch (packet = %d, context = %d)\n",
-		            ip_get_version(&active1->ip), ip_get_version(&last1->ip));
-		goto error;
-	}
-
 	/* check for the presence of a second IP header */
 	protocol = ip_get_protocol(&active1->ip);
 	if(protocol == IPPROTO_IPIP || protocol == IPPROTO_IPV6)
 	{
-		multiple_ip = 1;
+		g_context->multiple_ip = 1;
 		rohc_debugf(1, "second IP header detected\n");
 	}
 	else
 	{
-		multiple_ip = 0;
-	}
-
-	/* check the number of IP headers against the context if the IR packet is
-	 * not the first ROHC packet processed by the context, otherwise initialize
-	 * the context */
-	if(g_context->first_packet_processed &&
-	   multiple_ip != g_context->multiple_ip)
-	{
-		rohc_debugf(0, "number of IP headers mismatch (packet = %d, "
-		            "context = %d)\n", multiple_ip, g_context->multiple_ip);
-		goto error;
-	}
-	else
-	{
-		g_context->multiple_ip = multiple_ip;
+		g_context->multiple_ip = 0;
 	}
 
 	/* decode the static part of the inner IP header
@@ -2828,16 +2800,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
 		rohc_header_len += size;
-
-		/* check the version of the inner IP header against the context if the IR
-		 * packet is not the first ROHC packet processed by the context */
-		if(g_context->first_packet_processed &&
-		   ip_get_version(&active2->ip) != ip_get_version(&last2->ip))
-		{
-			rohc_debugf(0, "IP version mismatch (packet = %d, context = %d)\n",
-			            ip_get_version(&active2->ip), ip_get_version(&last2->ip));
-			goto error;
-		}
 
 		/* update the next header protocol */
 		protocol = ip_get_protocol(&active2->ip);
