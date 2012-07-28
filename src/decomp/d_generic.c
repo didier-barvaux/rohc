@@ -40,6 +40,56 @@
 
 
 /*
+ * Definitions of private structures
+ */
+
+/**
+ * @brief The bits extracted from ROHC header
+ *
+ * @see decode_uo0
+ * @see decode_uo1
+ * @see decode_uor2
+ */
+struct rohc_extracted_bits
+{
+	/* SN */
+	uint16_t sn;       /**< The SN bits found in ROHC header */
+	size_t sn_nr;      /**< The number of SN bits found in ROHC header */
+
+	/* IP-ID of outer IP header (IPv4 only) */
+	uint16_t ip_id;    /**< The outer IP-ID bits found in ROHC header */
+	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
+
+	/* IP-ID of inner IP header (if it exists, IPv4 only) */
+	uint16_t ip_id2;   /**< The inner IP-ID bits found in ROHC header */
+	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
+
+	/* TS (RTP profile only) */
+	/* @todo should be moved in d_rtp.c */
+	uint32_t ts;       /**< The TS bits found in ROHC header */
+	size_t ts_nr;      /**< The number of TS bits found in ROHC header */
+	int is_ts_scaled; /**< Whether TS is transmitted scaled or not */
+};
+
+
+/**
+ * @brief The values decoded from the bits extracted from ROHC header
+ *
+ * @see decode_uo0
+ * @see decode_uo1
+ * @see decode_uor2
+ */
+struct rohc_decoded_values
+{
+	uint16_t sn;     /**< The decoded SN value */
+	uint16_t ip_id;  /**< The decoded outer IP-ID value */
+	uint16_t ip_id2; /**< The decoded inner IP-ID value */
+	uint32_t ts;     /**< The decoded TS value */
+};
+
+
+
+/*
  * Definitions of private constants and macros
  */
 
@@ -64,7 +114,7 @@
 
 
 /*
- * Private function prototypes.
+ * Private function prototypes for decoding the different packet types
  */
 
 int decode_irdyn(struct rohc_decomp *decomp,
@@ -94,6 +144,13 @@ int decode_uor2(struct rohc_decomp *decomp,
                 const unsigned int rohc_length,
                 int second_byte,
                 unsigned char *uncomp_packet);
+
+
+/*
+ * Private function prototypes for parsing the different extensions
+ */
+
+uint8_t extension_type(const unsigned char *const rohc_extension);
 
 int decode_extension0(const unsigned char *const rohc_data,
                       const size_t rohc_data_len,
@@ -150,7 +207,10 @@ int decode_extension3(struct rohc_decomp *decomp,
                       uint8_t *const rtp_pt_bits,
                       size_t *const rtp_pt_bits_nr);
 
-uint8_t extension_type(const unsigned char *const rohc_extension);
+
+/*
+ * Private function prototypes for parsing the static and dynamic parts
+ */
 
 int d_decode_static_ip(const unsigned char *packet,
                        const unsigned int length,
@@ -176,6 +236,11 @@ int d_decode_dynamic_ip6(const unsigned char *packet,
                          struct list_decomp *decomp,
                          struct d_generic_changes *info);
 
+
+/*
+ * Private function prototypes for parsing the IP header flags
+ */
+
 int decode_outer_header_flags(struct d_context *context,
                               const unsigned char *flags,
                               const unsigned char *fields,
@@ -190,6 +255,10 @@ int decode_inner_header_flags(struct d_context *context,
                               unsigned int length,
                               struct d_generic_changes *info);
 
+
+/*
+ * Private function prototypes for decoding compressed lists
+ */
 
 static int rohc_list_decode(struct list_decomp *const decomp,
                             const unsigned char *packet,
@@ -223,6 +292,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
                                    const int xi_1);
 
 
+/*
+ * Private function prototypes for decoding the extracted bits
+ */
+
+static bool decode_values_from_bits(const struct d_context *context,
+                                    const struct rohc_extracted_bits bits,
+                                    struct rohc_decoded_values *const decoded);
+
+
+/*
+ * Private function prototypes for building the uncompressed headers
+ */
+
 unsigned int build_uncompressed_ip(struct d_generic_changes *active,
                                    unsigned char *dest,
                                    unsigned int payload_size,
@@ -234,6 +316,10 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *active,
                                     unsigned char *dest,
                                     unsigned int payload_size,
                                     struct list_decomp *decomp);
+
+/*
+ * Private function prototypes for miscellaneous functions
+ */
 
 void copy_generic_changes(struct d_generic_changes *dst,
                           struct d_generic_changes *src);
@@ -3942,23 +4028,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* Whether the current profile is RTP or not */
 	const int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 
-	/* extracted bits and decoded value for SN */
-	uint16_t sn_decoded;
-	uint16_t sn_bits;
-	size_t sn_bits_nr;
-
-	/* decoded value for TS */
-	uint32_t ts_decoded = 0; /* initialized only because of GCC warning */
-
-	/* extracted bits and decoded value for outer IP-ID */
-	uint16_t ip_id_decoded = 0; /* initialized only because of GCC warning */
-	uint16_t ip_id_bits = 0;
-	size_t ip_id_bits_nr = 0;
-
-	/* extracted bits and decoded value for inner IP-ID */
-	uint16_t ip_id2_decoded = 0; /* initialized only because of GCC warning */
-	uint16_t ip_id2_bits = 0;
-	size_t ip_id2_bits_nr = 0;
+	/* extracted bits for SN, outer IP-ID, inner IP-ID and TS */
+	struct rohc_extracted_bits bits;
+	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
+	struct rohc_decoded_values decoded;
 
 	/* CRC found in packet and computed one */
 	uint8_t crc_packet;
@@ -3984,7 +4057,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool decode_ok;
 	int size;
-	int ret;
 
 
 	if(g_context->active1->complist)
@@ -3995,6 +4067,21 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		g_context->list_decomp2->ref_ok = 1;
 	}
+
+
+	/* reset all extracted bits */
+	memset(&bits, 0, sizeof(struct rohc_extracted_bits));
+
+	/* According to RFC 3095 §5.7.5:
+	 *
+	 *   The TS field is scaled in all extensions, as it is in the base header,
+	 *   except optionally when using Extension 3 where the Tsc flag can
+	 *   indicate that the TS field is not scaled.
+	 *
+	 * So init the is_ts_scaled variable to 1 by default. As there is no
+	 * extension for UO-0, is_ts_scaled will remain unchanged.
+	 */
+	bits.is_ts_scaled = 1;
 
 
 	/* A. Parsing of ROHC header
@@ -4017,9 +4104,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 	/* part 2: 1-bit "0" + 4-bit SN + 3-bit CRC */
 	assert(GET_BIT_7(rohc_remain_data) == 0);
-	sn_bits = GET_BIT_3_6(rohc_remain_data);
-	sn_bits_nr = 4;
-	rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+	bits.sn = GET_BIT_3_6(rohc_remain_data);
+	bits.sn_nr = 4;
+	rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 	crc_packet = GET_BIT_0_2(rohc_remain_data);
 	rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 	/* part 3: large CID (handled elsewhere) */
@@ -4045,9 +4132,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 		}
 
 		/* retrieve the full outer IP-ID value */
-		ip_id_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		ip_id_bits_nr = 16;
-		rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+		bits.ip_id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits.ip_id_nr = 16;
+		rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", bits.ip_id_nr, bits.ip_id);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -4072,9 +4159,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 		}
 
 		/* retrieve the full inner IP-ID value */
-		ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		ip_id2_bits_nr = 16;
-		rohc_debugf(3, "%zd inner IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+		bits.ip_id2 = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits.ip_id2_nr = 16;
+		rohc_debugf(3, "%zd inner IP-ID bits = 0x%x\n", bits.ip_id_nr, bits.ip_id);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -4109,75 +4196,12 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 * All bits are now extracted from the packet, let's decode them.
 	 */
 
-	/* decode SN */
-	decode_ok = rohc_lsb_decode16(g_context->sn_lsb_ctxt, sn_bits, sn_bits_nr,
-	                              &sn_decoded);
+	decode_ok = decode_values_from_bits(context, bits, &decoded);
 	if(!decode_ok)
 	{
-		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
+		rohc_debugf(0, "failed to decode values from bits extracted from ROHC "
+		            "header\n");
 		goto error;
-	}
-	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
-	            sn_decoded, sn_decoded, sn_bits_nr, sn_bits, sn_bits);
-
-	/* decode outer IP-ID (IPv4 only) */
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
-	{
-		if(g_context->active1->rnd)
-		{
-			ip_id_decoded = ip_id_bits;
-		}
-		else
-		{
-			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
-			                     sn_decoded, &ip_id_decoded);
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
-				            ip_id_bits_nr, ip_id_bits);
-				goto error;
-			}
-		}
-
-		ipv4_set_id(&g_context->active1->ip, htons(ip_id_decoded));
-		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
-		            g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
-	}
-
-	/* decode inner IP-ID (IPv4 only) */
-	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
-	{
-		if(g_context->active2->rnd)
-		{
-			ip_id2_decoded = ip_id2_bits;
-		}
-		else
-		{
-			ret = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits, ip_id2_bits_nr,
-			                     sn_decoded, &ip_id2_decoded);
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
-				            ip_id2_bits_nr, ip_id2_bits);
-				goto error;
-			}
-		}
-
-		ipv4_set_id(&g_context->active2->ip, htons(ip_id2_decoded));
-		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
-		            g_context->active2->rnd, ip_id2_bits_nr, ip_id2_bits);
-	}
-
-	/* decode TS (RTP profile only) */
-	if(is_rtp)
-	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-
-		rohc_debugf(3, "TS is deducted from SN\n");
-		ts_decoded = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt, sn_decoded);
 	}
 
 
@@ -4240,8 +4264,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 		/* update TS, SN and M flag */
-		rtp->timestamp = htonl(ts_decoded);
-		rtp->sn = htons(sn_decoded);
+		rtp->timestamp = htonl(decoded.ts);
+		rtp->sn = htons(decoded.sn);
 		rtp->m = rtp_m_flag & 0x1;
 		rohc_debugf(3, "force RTP Marker (M) bit to %u\n", rtp->m);
 	}
@@ -4303,15 +4327,15 @@ int decode_uo0(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, sn_decoded);
+		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
-			d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
+			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip &&
 		   ip_get_version(&g_context->active2->ip) == IPV4)
 		{
-			d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
+			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
 
 		goto error_crc;
@@ -4343,15 +4367,15 @@ int decode_uo0(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, sn_decoded);
+	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
-		d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
+		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 	}
 	if(g_context->multiple_ip &&
 	   ip_get_version(&g_context->active2->ip) == IPV4)
 	{
-		d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
+		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 	}
 
 	/* update TS in decompression context (RTP profile only) */
@@ -4359,7 +4383,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, sn_decoded);
+		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
 	}
 
 	/* payload */
@@ -4535,25 +4559,10 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* Whether the current profile is RTP or not */
 	const int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 
-	/* extracted bits and decoded value for SN */
-	uint16_t sn_decoded;
-	uint16_t sn_bits;
-	size_t sn_bits_nr;
-
-	/* extracted bits and decoded value for TS */
-	uint32_t ts_decoded = 0; /* initialized only because of GCC warning */
-	uint32_t ts_bits = 0;
-	size_t ts_bits_nr = 0;
-
-	/* extracted bits and decoded value for outer IP-ID */
-	uint16_t ip_id_decoded = 0; /* initialized only because of GCC warning */
-	uint16_t ip_id_bits = 0;
-	size_t ip_id_bits_nr = 0;
-
-	/* extracted bits and decoded value for inner IP-ID */
-	uint16_t ip_id2_decoded = 0; /* initialized only because of GCC warning */
-	uint16_t ip_id2_bits = 0;
-	size_t ip_id2_bits_nr = 0;
+	/* extracted bits for SN, outer IP-ID, inner IP-ID and TS */
+	struct rohc_extracted_bits bits;
+	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
+	struct rohc_decoded_values decoded;
 
 	/* CRC found in packet and computed one */
 	uint8_t crc_packet;
@@ -4574,15 +4583,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* RTP Payload Type (RTP-PT) */
 	uint8_t rtp_pt_bits = 0;
 	size_t rtp_pt_bits_nr = 0;
-
-	/* According to RFC 3095 §5.7.5:
-	 *   The TS field is scaled in all extensions, as it is in the base header,
-	 *   except optionally when using Extension 3 where the Tsc flag can
-	 *   indicate that the TS field is not scaled.
-	 * So init the is_ts_scaled variable to 1 by default. \ref decode_extension3
-	 * will reset it to 0 if needed.
-	 */
-	const int is_ts_scaled = 1;
 
 	/* X (extension) flag */
 	uint8_t ext_flag = 0; /* no extension by default */
@@ -4607,7 +4607,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool decode_ok;
 	int size;
-	int ret;
 
 
 	/* check packet usage */
@@ -4637,6 +4636,21 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 
+	/* reset all extracted bits */
+	memset(&bits, 0, sizeof(struct rohc_extracted_bits));
+
+	/* According to RFC 3095 §5.7.5:
+	 *
+	 *   The TS field is scaled in all extensions, as it is in the base header,
+	 *   except optionally when using Extension 3 where the Tsc flag can
+	 *   indicate that the TS field is not scaled.
+	 *
+	 * So init the is_ts_scaled variable to 1 by default.
+	 * \ref decode_extension3 will reset it to 0 if needed.
+	 */
+	bits.is_ts_scaled = 1;
+
+
 	/* A. Parsing of ROHC base header
 	 *
 	 * Let's parse fields 2 to 13.
@@ -4659,14 +4673,14 @@ int decode_uo1(struct rohc_decomp *decomp,
 		{
 			/* part 2: 2-bit "10" + 6-bit IP-ID */
 			assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
-			ip_id_bits = GET_BIT_0_5(rohc_remain_data);
-			ip_id_bits_nr = 6;
-			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+			bits.ip_id = GET_BIT_0_5(rohc_remain_data);
+			bits.ip_id_nr = 6;
+			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", bits.ip_id_nr, bits.ip_id);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 5-bit SN + 3-bit CRC */
-			sn_bits = GET_BIT_3_7(rohc_remain_data + second_byte);
-			sn_bits_nr = 5;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_3_7(rohc_remain_data + second_byte);
+			bits.sn_nr = 5;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -4676,16 +4690,16 @@ int decode_uo1(struct rohc_decomp *decomp,
 		{
 			/* part 2: 2-bit "10" + 6-bit TS */
 			assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
-			ts_bits = GET_BIT_0_5(rohc_remain_data);
-			ts_bits_nr = 6;
-			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			bits.ts = GET_BIT_0_5(rohc_remain_data);
+			bits.ts_nr = 6;
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", bits.ts_nr, bits.ts);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 			rtp_m_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			rohc_debugf(3, "1-bit RTP Marker (M) = %u\n", rtp_m_flag);
-			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
-			sn_bits_nr = 4;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_3_6(rohc_remain_data + second_byte);
+			bits.sn_nr = 4;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -4696,16 +4710,16 @@ int decode_uo1(struct rohc_decomp *decomp,
 			/* part 2: 2-bit "10" + 1-bit "T=0" + 5-bit IP-ID */
 			assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
 			assert(GET_BIT_5(rohc_remain_data) == 0);
-			ip_id_bits = GET_BIT_0_4(rohc_remain_data);
-			ip_id_bits_nr = 5;
-			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", ip_id_bits_nr, ip_id_bits);
+			bits.ip_id = GET_BIT_0_4(rohc_remain_data);
+			bits.ip_id_nr = 5;
+			rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", bits.ip_id_nr, bits.ip_id);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 1-bit X + 4-bit SN + 3-bit CRC */
 			ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			rohc_debugf(3, "1-bit extension (X) = %u\n", ext_flag);
-			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
-			sn_bits_nr = 4;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_3_6(rohc_remain_data + second_byte);
+			bits.sn_nr = 4;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -4716,16 +4730,16 @@ int decode_uo1(struct rohc_decomp *decomp,
 			/* part 2: 2-bit "10" + 1-bit "T=1" + 5-bit TS */
 			assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
 			assert(GET_BIT_5(rohc_remain_data) != 0);
-			ts_bits = GET_BIT_0_4(rohc_remain_data);
-			ts_bits_nr = 5;
-			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			bits.ts = GET_BIT_0_4(rohc_remain_data);
+			bits.ts_nr = 5;
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", bits.ts_nr, bits.ts);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 			rtp_m_flag = GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
 			rohc_debugf(3, "1-bit RTP Marker (M) = %u\n", rtp_m_flag);
-			sn_bits = GET_BIT_3_6(rohc_remain_data + second_byte);
-			sn_bits_nr = 4;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_3_6(rohc_remain_data + second_byte);
+			bits.sn_nr = 4;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			crc_packet = GET_BIT_0_2(rohc_remain_data + second_byte);
 			rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
 			break;
@@ -4766,20 +4780,20 @@ int decode_uo1(struct rohc_decomp *decomp,
 		}
 
 		/* sanity check: all bits that are above 16 bits should be zero */
-		if(ip_id_bits_nr > 0 && ip_id_bits != 0)
+		if(bits.ip_id_nr > 0 && bits.ip_id != 0)
 		{
 			rohc_debugf(0, "bad packet format: outer IP-ID bits from the base ROHC "
 			            "header shall be filled with zeroes but 0x%x was found\n",
-			            ip_id_bits);
+			            bits.ip_id);
 		}
 
 		/* retrieve the full outer IP-ID value */
-		ip_id_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		ip_id_bits_nr = 16;
+		bits.ip_id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits.ip_id_nr = 16;
 
 		rohc_debugf(3, "replace any existing outer IP-ID bits with the ones "
 		            "found at the end of the UO-1* packet (0x%x on %zd bits)\n",
-		            ip_id_bits, ip_id_bits_nr);
+		            bits.ip_id, bits.ip_id_nr);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -4805,20 +4819,20 @@ int decode_uo1(struct rohc_decomp *decomp,
 		}
 
 		/* sanity check: all bits that are above 16 bits should be zero */
-		if(ip_id2_bits_nr > 0 && ip_id2_bits != 0)
+		if(bits.ip_id2_nr > 0 && bits.ip_id2 != 0)
 		{
 			rohc_debugf(0, "bad packet format: inner IP-ID bits from the base ROHC "
 			            "header shall be filled with zeroes but 0x%x was found\n",
-			            ip_id2_bits);
+			            bits.ip_id2);
 		}
 
 		/* retrieve the full inner IP-ID value */
-		ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		ip_id2_bits_nr = 16;
+		bits.ip_id2 = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits.ip_id2_nr = 16;
 
 		rohc_debugf(3, "replace any existing inner IP-ID bits with the ones "
 		            "found at the end of the UO-1* packet (0x%x on %zd bits)\n",
-		            ip_id2_bits, ip_id2_bits_nr);
+		            bits.ip_id2, bits.ip_id2_nr);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -4854,118 +4868,12 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 * All bits are now extracted from the packet, let's decode them.
 	 */
 
-	/* decode SN */
-	decode_ok = rohc_lsb_decode16(g_context->sn_lsb_ctxt, sn_bits, sn_bits_nr,
-	                              &sn_decoded);
+	decode_ok = decode_values_from_bits(context, bits, &decoded);
 	if(!decode_ok)
 	{
-		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
+		rohc_debugf(0, "failed to decode values from bits extracted from ROHC "
+		            "header\n");
 		goto error;
-	}
-	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
-	            sn_decoded, sn_decoded, sn_bits_nr, sn_bits, sn_bits);
-
-	/* decode outer IP-ID (IPv4 only) */
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
-	{
-		if(g_context->active1->rnd)
-		{
-			ip_id_decoded = ip_id_bits;
-		}
-		else
-		{
-			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
-			                     sn_decoded, &ip_id_decoded);
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
-				            ip_id_bits_nr, ip_id_bits);
-				goto error;
-			}
-		}
-
-		ipv4_set_id(&g_context->active1->ip, htons(ip_id_decoded));
-		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
-		            g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
-	}
-
-	/* decode inner IP-ID (IPv4 only) */
-	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
-	{
-		if(g_context->active2->rnd)
-		{
-			ip_id2_decoded = ip_id2_bits;
-		}
-		else
-		{
-			ret = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits, ip_id2_bits_nr,
-			                     sn_decoded, &ip_id2_decoded);
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
-				            ip_id2_bits_nr, ip_id2_bits);
-				goto error;
-			}
-		}
-
-		ipv4_set_id(&g_context->active2->ip, htons(ip_id2_decoded));
-		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
-		            g_context->active2->rnd, ip_id2_bits_nr, ip_id2_bits);
-	}
-
-	/* decode TS (RTP profile only) */
-	if(is_rtp)
-	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-
-		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
-
-		if(is_ts_scaled)
-		{
-			if(ts_bits_nr == 0)
-			{
-				rohc_debugf(3, "TS is deducted from SN\n");
-				ts_decoded = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
-				                               sn_decoded);
-			}
-			else
-			{
-				bool ts_decode_ok;
-
-				rohc_debugf(3, "TS is scaled\n");
-				ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
-				                                ts_bits, ts_bits_nr, &ts_decoded);
-				if(!ts_decode_ok)
-				{
-					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
-					            ts_bits_nr, ts_bits);
-					goto error;
-				}
-			}
-		}
-		else /* TS not scaled */
-		{
-			rohc_debugf(3, "TS is not scaled\n");
-
-			/* RFC 4815, §4.2 says:
-			 *   If a packet with no TS bits is received with Tsc = 0, the
-			 *   decompressor MUST discard the packet. */
-			if(ts_bits_nr == 0)
-			{
-				rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bits "
-				            "received, discard the packet\n", is_ts_scaled);
-				goto error;
-			}
-
-			ts_decoded = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, ts_bits);
-		}
-
-		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
-		            "bits = %u / 0x%x)\n", ts_decoded, ts_decoded,
-		            ts_bits_nr, ts_bits, ts_bits);
 	}
 
 
@@ -5020,8 +4928,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 		/* update TS, SN and M flag */
-		rtp->timestamp = htonl(ts_decoded);
-		rtp->sn = htons(sn_decoded);
+		rtp->timestamp = htonl(decoded.ts);
+		rtp->sn = htons(decoded.sn);
 		rtp->m = rtp_m_flag & 0x1;
 		rohc_debugf(3, "force RTP Marker (M) bit to %u\n", rtp->m);
 
@@ -5101,15 +5009,15 @@ int decode_uo1(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, sn_decoded);
+		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
-			d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
+			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip &&
 		   ip_get_version(&g_context->active2->ip) == IPV4)
 		{
-			d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
+			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
 
 		goto error_crc;
@@ -5141,15 +5049,15 @@ int decode_uo1(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, sn_decoded);
+	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
-		d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
+		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 	}
 	if(g_context->multiple_ip &&
 	   ip_get_version(&g_context->active2->ip) == IPV4)
 	{
-		d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
+		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 	}
 
 	/* update TS in decompression context (RTP profile only) */
@@ -5157,7 +5065,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, sn_decoded);
+		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
 	}
 
 	/* payload */
@@ -5332,28 +5240,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* Whether the current profile is RTP or not */
 	const int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
 
-	/* extracted bits and decoded value for SN */
-	uint16_t sn_decoded;
-	uint16_t sn_bits;
-	size_t sn_bits_nr;
-
-	/* extracted bits and decoded value for TS */
-	uint32_t ts_decoded = 0; /* initialized only because of GCC warning */
-	uint32_t ts_bits = 0;
-	size_t ts_bits_nr = 0;
+	/* extracted bits for SN, outer IP-ID, inner IP-ID and TS */
+	struct rohc_extracted_bits bits;
+	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
+	struct rohc_decoded_values decoded;
 
 	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
 	ip_header_pos_t innermost_ipv4_non_rnd;
-
-	/* extracted bits and decoded value for outer IP-ID */
-	uint16_t ip_id_decoded = 0; /* initialized only because of GCC warning */
-	uint16_t ip_id_bits = 0;
-	size_t ip_id_bits_nr = 0;
-
-	/* extracted bits and decoded value for inner IP-ID */
-	uint16_t ip_id2_decoded = 0; /* initialized only because of GCC warning */
-	uint16_t ip_id2_bits = 0;
-	size_t ip_id2_bits_nr = 0;
 
 	/* CRC found in packet and computed one */
 	uint8_t crc_packet;
@@ -5381,15 +5274,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* X (extension) flag */
 	uint8_t ext_flag;
 
-	/* According to RFC 3095 §5.7.5:
-	 *   The TS field is scaled in all extensions, as it is in the base header,
-	 *   except optionally when using Extension 3 where the Tsc flag can
-	 *   indicate that the TS field is not scaled.
-	 * So init the is_ts_scaled variable to 1 by default. \ref decode_extension3
-	 * will reset it to 0 if needed.
-	 */
-	int is_ts_scaled = 1;
-
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
 	const unsigned char *rohc_remain_data;
@@ -5410,7 +5294,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool decode_ok;
 	int size;
-	int ret;
 
 
 	/* check packet usage */
@@ -5440,6 +5323,21 @@ int decode_uor2(struct rohc_decomp *decomp,
 	}
 
 
+	/* reset all extracted bits */
+	memset(&bits, 0, sizeof(struct rohc_extracted_bits));
+
+	/* According to RFC 3095 §5.7.5:
+	 *
+	 *   The TS field is scaled in all extensions, as it is in the base header,
+	 *   except optionally when using Extension 3 where the Tsc flag can
+	 *   indicate that the TS field is not scaled.
+	 *
+	 * So init the is_ts_scaled variable to 1 by default.
+	 * \ref decode_extension3 will reset it to 0 if needed.
+	 */
+	bits.is_ts_scaled = 1;
+
+
 	/* A. Parsing of ROHC base header
 	 *
 	 * Let's parse fields 2 and 4.
@@ -5463,9 +5361,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 		{
 			/* part 2: 3-bit "110" + 5-bit SN */
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			sn_bits = GET_BIT_0_4(rohc_remain_data);
-			sn_bits_nr = 5;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_0_4(rohc_remain_data);
+			bits.sn_nr = 5;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			/* part 3: large CID (handled elsewhere) */
 			/* first byte read, second byte is CRC (part 4) */
 			rohc_remain_data += second_byte;
@@ -5478,18 +5376,18 @@ int decode_uor2(struct rohc_decomp *decomp,
 		{
 			/* part 2: 3-bit "110" + 5-bit TS */
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			ts_bits = GET_BIT_0_4(rohc_remain_data) << 1;
-			ts_bits_nr = 5;
+			bits.ts = GET_BIT_0_4(rohc_remain_data) << 1;
+			bits.ts_nr = 5;
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4a: 1-bit TS (ignored) + 1-bit M flag + 6-bit SN */
-			ts_bits |= GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
-			ts_bits_nr += 1;
-			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			bits.ts |= GET_REAL(GET_BIT_7(rohc_remain_data + second_byte));
+			bits.ts_nr += 1;
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", bits.ts_nr, bits.ts);
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));
 			rohc_debugf(3, "M flag = %u\n", rtp_m_flag);
-			sn_bits = GET_BIT_0_5(rohc_remain_data + second_byte);
-			sn_bits_nr = 6;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_0_5(rohc_remain_data + second_byte);
+			bits.sn_nr = 6;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			/* first and second bytes read, third byte is CRC (part 4b) */
 			rohc_remain_data += second_byte + 1;
 			rohc_remain_len -= second_byte + 1;
@@ -5501,16 +5399,16 @@ int decode_uor2(struct rohc_decomp *decomp,
 		{
 			/* part 2: 3-bit "110" + 5-bit TS */
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			ts_bits = GET_BIT_0_4(rohc_remain_data);
-			ts_bits_nr = 5;
-			rohc_debugf(3, "%zd TS bits = 0x%x\n", ts_bits_nr, ts_bits);
+			bits.ts = GET_BIT_0_4(rohc_remain_data);
+			bits.ts_nr = 5;
+			rohc_debugf(3, "%zd TS bits = 0x%x\n", bits.ts_nr, bits.ts);
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));
 			rohc_debugf(3, "M flag = %u\n", rtp_m_flag);
-			sn_bits = GET_BIT_0_5(rohc_remain_data + second_byte);
-			sn_bits_nr = 6;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_0_5(rohc_remain_data + second_byte);
+			bits.sn_nr = 6;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			/* first and second bytes read, third byte is CRC (part 4b) */
 			rohc_remain_data += second_byte + 1;
 			rohc_remain_len -= second_byte + 1;
@@ -5571,26 +5469,26 @@ int decode_uor2(struct rohc_decomp *decomp,
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
 			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
 			{
-				ip_id_bits = GET_BIT_0_4(rohc_remain_data);
-				ip_id_bits_nr = 5;
+				bits.ip_id = GET_BIT_0_4(rohc_remain_data);
+				bits.ip_id_nr = 5;
 				rohc_debugf(3, "%zd IP-ID bits for IP header #%u = 0x%x\n",
-				            ip_id_bits_nr, innermost_ipv4_non_rnd, ip_id_bits);
+				            bits.ip_id_nr, innermost_ipv4_non_rnd, bits.ip_id);
 			}
 			else
 			{
-				ip_id2_bits = GET_BIT_0_4(rohc_remain_data);
-				ip_id2_bits_nr = 5;
+				bits.ip_id2 = GET_BIT_0_4(rohc_remain_data);
+				bits.ip_id2_nr = 5;
 				rohc_debugf(3, "%zd IP-ID bits for IP header #%u = 0x%x\n",
-				            ip_id2_bits_nr, innermost_ipv4_non_rnd, ip_id2_bits);
+				            bits.ip_id2_nr, innermost_ipv4_non_rnd, bits.ip_id2);
 			}
 
 			/* part 3: large CID (handled elsewhere) */
 			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 			rtp_m_flag = GET_REAL(GET_BIT_6(rohc_remain_data + second_byte));
 			rohc_debugf(3, "M flag = %u\n", rtp_m_flag);
-			sn_bits = GET_BIT_0_5(rohc_remain_data + second_byte);
-			sn_bits_nr = 6;
-			rohc_debugf(3, "%zd SN bits = 0x%x\n", sn_bits_nr, sn_bits);
+			bits.sn = GET_BIT_0_5(rohc_remain_data + second_byte);
+			bits.sn_nr = 6;
+			rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
 			/* first and second bytes read, third byte is CRC (part 4b) */
 			rohc_remain_data += second_byte + 1;
 			rohc_remain_len -= second_byte + 1;
@@ -5847,7 +5745,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 				                             &ext_ip_id_bits, &ext_ip_id_bits_nr,
 				                             &ext_ip_id2_bits, &ext_ip_id2_bits_nr,
 				                             &ext_ts_bits, &ext_ts_bits_nr,
-				                             &is_ts_scaled,
+				                             &(bits.is_ts_scaled),
 				                             &rtp_m_bits_ext3, &rtp_m_bits_ext3_nr,
 				                             &rtp_x_bits, &rtp_x_bits_nr,
 				                             &rtp_p_bits, &rtp_p_bits_nr,
@@ -5899,60 +5797,60 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		/* append bits extracted from extension to already-extracted bits */
 		/* SN bits */
-		if((sn_bits_nr + ext_sn_bits_nr) <= 16)
+		if((bits.sn_nr + ext_sn_bits_nr) <= 16)
 		{
-			sn_bits = (sn_bits << ext_sn_bits_nr) | ext_sn_bits;
-			sn_bits_nr += ext_sn_bits_nr;
+			bits.sn = (bits.sn << ext_sn_bits_nr) | ext_sn_bits;
+			bits.sn_nr += ext_sn_bits_nr;
 		}
 		else
 		{
 			assert(ext_sn_bits_nr <= 16);
 			assert(ext_sn_bits_nr > 0);
-			sn_bits &= (1 << (16 - ext_sn_bits_nr)) - 1;
-			sn_bits = (sn_bits << ext_sn_bits_nr) | ext_sn_bits;
-			sn_bits_nr = 16;
+			bits.sn &= (1 << (16 - ext_sn_bits_nr)) - 1;
+			bits.sn = (bits.sn << ext_sn_bits_nr) | ext_sn_bits;
+			bits.sn_nr = 16;
 		}
 		/* outer IP-ID bits */
-		if((ip_id_bits_nr + ext_ip_id_bits_nr) <= 16)
+		if((bits.ip_id_nr + ext_ip_id_bits_nr) <= 16)
 		{
-			ip_id_bits = (ip_id_bits << ext_ip_id_bits_nr) | ext_ip_id_bits;
-			ip_id_bits_nr += ext_ip_id_bits_nr;
+			bits.ip_id = (bits.ip_id << ext_ip_id_bits_nr) | ext_ip_id_bits;
+			bits.ip_id_nr += ext_ip_id_bits_nr;
 		}
 		else
 		{
 			assert(ext_ip_id_bits_nr <= 16);
 			assert(ext_ip_id_bits_nr > 0);
-			ip_id_bits &= (1 << (16 - ext_ip_id_bits_nr)) - 1;
-			ip_id_bits = (ip_id_bits << ext_ip_id_bits_nr) | ext_ip_id_bits;
-			ip_id_bits_nr = 16;
+			bits.ip_id &= (1 << (16 - ext_ip_id_bits_nr)) - 1;
+			bits.ip_id = (bits.ip_id << ext_ip_id_bits_nr) | ext_ip_id_bits;
+			bits.ip_id_nr = 16;
 		}
 		/* inner IP-ID bits */
-		if((ip_id2_bits_nr + ext_ip_id2_bits_nr) <= 16)
+		if((bits.ip_id2_nr + ext_ip_id2_bits_nr) <= 16)
 		{
-			ip_id2_bits = (ip_id2_bits << ext_ip_id2_bits_nr) | ext_ip_id2_bits;
-			ip_id2_bits_nr += ext_ip_id2_bits_nr;
+			bits.ip_id2 = (bits.ip_id2 << ext_ip_id2_bits_nr) | ext_ip_id2_bits;
+			bits.ip_id2_nr += ext_ip_id2_bits_nr;
 		}
 		else
 		{
 			assert(ext_ip_id2_bits_nr <= 16);
 			assert(ext_ip_id2_bits_nr > 0);
-			ip_id2_bits &= (1 << (16 - ext_ip_id2_bits_nr)) - 1;
-			ip_id2_bits = (ip_id2_bits << ext_ip_id2_bits_nr) | ext_ip_id2_bits;
-			ip_id2_bits_nr = 16;
+			bits.ip_id2 &= (1 << (16 - ext_ip_id2_bits_nr)) - 1;
+			bits.ip_id2 = (bits.ip_id2 << ext_ip_id2_bits_nr) | ext_ip_id2_bits;
+			bits.ip_id2_nr = 16;
 		}
 		/* TS bits */
-		if((ts_bits_nr + ext_ts_bits_nr) <= 32)
+		if((bits.ts_nr + ext_ts_bits_nr) <= 32)
 		{
-			ts_bits = (ts_bits << ext_ts_bits_nr) | ext_ts_bits;
-			ts_bits_nr += ext_ts_bits_nr;
+			bits.ts = (bits.ts << ext_ts_bits_nr) | ext_ts_bits;
+			bits.ts_nr += ext_ts_bits_nr;
 		}
 		else
 		{
 			assert(ext_ts_bits_nr <= 32);
 			assert(ext_ts_bits_nr > 0);
-			ts_bits &= (1 << (32 - ext_ts_bits_nr)) - 1;
-			ts_bits = (ts_bits << ext_ts_bits_nr) | ext_ts_bits;
-			ts_bits_nr = 32;
+			bits.ts &= (1 << (32 - ext_ts_bits_nr)) - 1;
+			bits.ts = (bits.ts << ext_ts_bits_nr) | ext_ts_bits;
+			bits.ts_nr = 32;
 		}
 
 		/* now, skip the extension in the ROHC header */
@@ -5982,20 +5880,20 @@ int decode_uor2(struct rohc_decomp *decomp,
 		}
 
 		/* sanity check: all bits that are above 16 bits should be zero */
-		if(ip_id_bits_nr > 0 && ip_id_bits != 0)
+		if(bits.ip_id_nr > 0 && bits.ip_id != 0)
 		{
 			rohc_debugf(0, "bad packet format: outer IP-ID bits from the base ROHC "
 			            "header shall be filled with zeroes but 0x%x was found\n",
-			            ip_id_bits);
+			            bits.ip_id);
 		}
 
 		/* retrieve the full outer IP-ID value */
-		ip_id_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		ip_id_bits_nr = 16;
+		bits.ip_id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits.ip_id_nr = 16;
 
 		rohc_debugf(3, "replace any existing outer IP-ID bits with the ones "
 		            "found at the end of the UOR-2* packet (0x%x on %zd bits)\n",
-		            ip_id_bits, ip_id_bits_nr);
+		            bits.ip_id, bits.ip_id_nr);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -6021,20 +5919,20 @@ int decode_uor2(struct rohc_decomp *decomp,
 		}
 
 		/* sanity check: all bits that are above 16 bits should be zero */
-		if(ip_id2_bits_nr > 0 && ip_id2_bits != 0)
+		if(bits.ip_id2_nr > 0 && bits.ip_id2 != 0)
 		{
 			rohc_debugf(0, "bad packet format: inner IP-ID bits from the base ROHC "
 			            "header shall be filled with zeroes but 0x%x was found\n",
-			            ip_id2_bits);
+			            bits.ip_id2);
 		}
 
 		/* retrieve the full inner IP-ID value */
-		ip_id2_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		ip_id2_bits_nr = 16;
+		bits.ip_id2 = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits.ip_id2_nr = 16;
 
 		rohc_debugf(3, "replace any existing inner IP-ID bits with the ones "
 		            "found at the end of the UOR-2* packet (0x%x on %zd bits)\n",
-		            ip_id2_bits, ip_id2_bits_nr);
+		            bits.ip_id2, bits.ip_id2_nr);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -6070,118 +5968,12 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 * All bits are now extracted from the packet, let's decode them.
 	 */
 
-	/* decode SN */
-	decode_ok = rohc_lsb_decode16(g_context->sn_lsb_ctxt, sn_bits, sn_bits_nr,
-	                              &sn_decoded);
+	decode_ok = decode_values_from_bits(context, bits, &decoded);
 	if(!decode_ok)
 	{
-		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n", sn_bits_nr, sn_bits);
+		rohc_debugf(0, "failed to decode values from bits extracted from ROHC "
+		            "header\n");
 		goto error;
-	}
-	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
-	            sn_decoded, sn_decoded, sn_bits_nr, sn_bits, sn_bits);
-
-	/* decode outer IP-ID (IPv4 only) */
-	if(ip_get_version(&g_context->active1->ip) == IPV4)
-	{
-		if(g_context->active1->rnd)
-		{
-			ip_id_decoded = ip_id_bits;
-		}
-		else
-		{
-			ret = d_ip_id_decode(&g_context->ip_id1, ip_id_bits, ip_id_bits_nr,
-			                     sn_decoded, &ip_id_decoded);
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
-				            ip_id_bits_nr, ip_id_bits);
-				goto error;
-			}
-		}
-
-		ipv4_set_id(&g_context->active1->ip, htons(ip_id_decoded));
-		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
-		            g_context->active1->rnd, ip_id_bits_nr, ip_id_bits);
-	}
-
-	/* decode inner IP-ID (IPv4 only) */
-	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
-	{
-		if(g_context->active2->rnd)
-		{
-			ip_id2_decoded = ip_id2_bits;
-		}
-		else
-		{
-			ret = d_ip_id_decode(&g_context->ip_id2, ip_id2_bits, ip_id2_bits_nr,
-			                     sn_decoded, &ip_id2_decoded);
-			if(ret != 1)
-			{
-				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
-				            ip_id2_bits_nr, ip_id2_bits);
-				goto error;
-			}
-		}
-
-		ipv4_set_id(&g_context->active2->ip, htons(ip_id2_decoded));
-		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
-		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
-		            g_context->active2->rnd, ip_id2_bits_nr, ip_id2_bits);
-	}
-
-	/* decode TS (RTP profile only) */
-	if(is_rtp)
-	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-
-		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", ts_bits_nr, ts_bits);
-
-		if(is_ts_scaled)
-		{
-			if(ts_bits_nr == 0)
-			{
-				rohc_debugf(3, "TS is deducted from SN\n");
-				ts_decoded = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
-				                               sn_decoded);
-			}
-			else
-			{
-				bool ts_decode_ok;
-
-				rohc_debugf(3, "TS is scaled\n");
-				ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
-				                                ts_bits, ts_bits_nr, &ts_decoded);
-				if(!ts_decode_ok)
-				{
-					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
-					            ts_bits_nr, ts_bits);
-					goto error;
-				}
-			}
-		}
-		else /* TS not scaled */
-		{
-			rohc_debugf(3, "TS is not scaled\n");
-
-			/* RFC 4815, §4.2 says:
-			 *   If a packet with no TS bits is received with Tsc = 0, the
-			 *   decompressor MUST discard the packet. */
-			if(ts_bits_nr == 0)
-			{
-				rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bits "
-				            "received, discard the packet\n", is_ts_scaled);
-				goto error;
-			}
-
-			ts_decoded = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, ts_bits);
-		}
-
-		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
-		            "bits = %u / 0x%x)\n", ts_decoded, ts_decoded,
-		            ts_bits_nr, ts_bits, ts_bits);
 	}
 
 
@@ -6236,8 +6028,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
 		/* update TS, SN and M flag */
-		rtp->timestamp = htonl(ts_decoded);
-		rtp->sn = htons(sn_decoded);
+		rtp->timestamp = htonl(decoded.ts);
+		rtp->sn = htons(decoded.sn);
 		rtp->m = rtp_m_flag & 0x1;
 		rohc_debugf(3, "force RTP Marker (M) bit to %u\n", rtp->m);
 
@@ -6326,15 +6118,15 @@ int decode_uor2(struct rohc_decomp *decomp,
 		synchronize(g_context);
 
 		/* update SN (and IP-IDs if IPv4) */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, sn_decoded);
+		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 		if(ip_get_version(&g_context->active1->ip) == IPV4)
 		{
-			d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
+			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip &&
 		   ip_get_version(&g_context->active2->ip) == IPV4)
 		{
-			d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
+			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
 
 		goto error_crc;
@@ -6368,15 +6160,15 @@ int decode_uor2(struct rohc_decomp *decomp,
 	synchronize(g_context);
 
 	/* update SN (and IP-IDs if IPv4) in decompression context */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, sn_decoded);
+	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 	if(ip_get_version(&g_context->active1->ip) == IPV4)
 	{
-		d_ip_id_update(&g_context->ip_id1, ip_id_decoded, sn_decoded);
+		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 	}
 	if(g_context->multiple_ip &&
 	   ip_get_version(&g_context->active2->ip) == IPV4)
 	{
-		d_ip_id_update(&g_context->ip_id2, ip_id2_decoded, sn_decoded);
+		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 	}
 
 	/* update TS in decompression context (RTP profile only) */
@@ -6384,7 +6176,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
-		ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, sn_decoded);
+		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
 	}
 
 	/* payload */
@@ -8317,5 +8109,154 @@ void update_inter_packet(struct d_generic_context *context)
 
 	rohc_debugf(2, "inter_arrival_time = %u and current arrival delta is = %d\n",
 	            context->inter_arrival_time, delta);
+}
+
+
+/**
+ * @brief Decode values from extracted bits
+ *
+ * The following values are decoded:
+ *  - SN
+ *  - IP-ID of outer IP header (if it is IPv4)
+ *  - IP-ID of inner IP header (if it exists and it is IPv4)
+ *  - TS (RTP profile only)
+ *
+ * @param context  The decompression context
+ * @return         true if decoding is successful, false otherwise
+ */
+static bool decode_values_from_bits(const struct d_context *context,
+                                    const struct rohc_extracted_bits bits,
+                                    struct rohc_decoded_values *const decoded)
+{
+	struct d_generic_context *g_context;
+	bool decode_ok;
+	int ret;
+
+	assert(context != NULL);
+	assert(decoded != NULL);
+
+	g_context = context->specific;
+
+	/* decode SN */
+	decode_ok = rohc_lsb_decode16(g_context->sn_lsb_ctxt,
+	                              bits.sn, bits.sn_nr,
+	                              &decoded->sn);
+	if(!decode_ok)
+	{
+		rohc_debugf(0, "failed to decode %zd SN bits 0x%x\n",
+		            bits.sn_nr, bits.sn);
+		goto error;
+	}
+	rohc_debugf(3, "decoded SN = %u / 0x%x (nr bits = %zd, bits = %u / 0x%x)\n",
+	            decoded->sn, decoded->sn, bits.sn_nr, bits.sn, bits.sn);
+
+	/* decode outer IP-ID (IPv4 only) */
+	if(ip_get_version(&g_context->active1->ip) == IPV4)
+	{
+		if(g_context->active1->rnd)
+		{
+			decoded->ip_id = bits.ip_id;
+		}
+		else
+		{
+			ret = d_ip_id_decode(&g_context->ip_id1, bits.ip_id, bits.ip_id_nr,
+			                     decoded->sn, &decoded->ip_id);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd outer IP-ID bits 0x%x\n",
+				            bits.ip_id_nr, bits.ip_id);
+				goto error;
+			}
+		}
+
+		ipv4_set_id(&g_context->active1->ip, htons(decoded->ip_id));
+		rohc_debugf(3, "decoded outer IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
+		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active1->ip)),
+		            g_context->active1->rnd, bits.ip_id_nr, bits.ip_id);
+	}
+
+	/* decode inner IP-ID (IPv4 only) */
+	if(g_context->multiple_ip && ip_get_version(&g_context->active2->ip) == IPV4)
+	{
+		if(g_context->active2->rnd)
+		{
+			decoded->ip_id2 = bits.ip_id2;
+		}
+		else
+		{
+			ret = d_ip_id_decode(&g_context->ip_id2, bits.ip_id2, bits.ip_id2_nr,
+			                     decoded->sn, &decoded->ip_id2);
+			if(ret != 1)
+			{
+				rohc_debugf(0, "failed to decode %zd inner IP-ID bits 0x%x\n",
+				            bits.ip_id2_nr, bits.ip_id2);
+				goto error;
+			}
+		}
+
+		ipv4_set_id(&g_context->active2->ip, htons(decoded->ip_id2));
+		rohc_debugf(3, "decoded inner IP-ID = 0x%04x (rnd = %d, nr bits = %zd, "
+		            "bits = 0x%x)\n", ntohs(ipv4_get_id(&g_context->active2->ip)),
+		            g_context->active2->rnd, bits.ip_id2_nr, bits.ip_id2);
+	}
+
+	/* decode TS (RTP profile only) */
+	if(context->profile->id == ROHC_PROFILE_RTP)
+	{
+		struct d_rtp_context *const rtp_context =
+			(struct d_rtp_context *) g_context->specific;
+
+		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
+
+		if(bits.is_ts_scaled)
+		{
+			if(bits.ts_nr == 0)
+			{
+				rohc_debugf(3, "TS is deducted from SN\n");
+				decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
+				                                decoded->sn);
+			}
+			else
+			{
+				bool ts_decode_ok;
+
+				rohc_debugf(3, "TS is scaled\n");
+				ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
+				                                bits.ts, bits.ts_nr,
+				                                &decoded->ts);
+				if(!ts_decode_ok)
+				{
+					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
+					            bits.ts_nr, bits.ts);
+					goto error;
+				}
+			}
+		}
+		else /* TS not scaled */
+		{
+			rohc_debugf(3, "TS is not scaled\n");
+
+			/* RFC 4815, §4.2 says:
+			 *   If a packet with no TS bits is received with Tsc = 0, the
+			 *   decompressor MUST discard the packet. */
+			if(bits.ts_nr == 0)
+			{
+				rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bits "
+				            "received, discard the packet\n", bits.is_ts_scaled);
+				goto error;
+			}
+
+			decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
+		}
+
+		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
+		            "bits = %u / 0x%x)\n", decoded->ts, decoded->ts,
+		            bits.ts_nr, bits.ts, bits.ts);
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
