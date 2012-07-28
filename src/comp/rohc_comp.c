@@ -671,7 +671,7 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 	if(ir_timeout <= 0 || fo_timeout <= 0 || ir_timeout <= fo_timeout)
 	{
 		rohc_debugf(0, "invalid timeouts for context periodic refreshes "
-		            "(IR timeout = %u, FO timeout = %u)\n",
+		            "(IR timeout = %zd, FO timeout = %zd)\n",
 		            ir_timeout, fo_timeout);
 		return false;
 	}
