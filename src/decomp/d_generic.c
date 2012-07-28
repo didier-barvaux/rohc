@@ -445,9 +445,6 @@ void * d_generic_create(void)
 	ip6_d_init_table(context->list_decomp1);
 	ip6_d_init_table(context->list_decomp2);
 
-	/* no packet was successfully processed for the moment */
-	context->first_packet_processed = 0;
-
 	/* no default next header */
 	context->next_header_proto = 0;
 
@@ -2925,12 +2922,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	/* synchronize the IP header changes */
 	synchronize(g_context);
-
-	/* the first packet is now processed */
-	if(!g_context->first_packet_processed)
-	{
-		g_context->first_packet_processed = 1;
-	}
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);

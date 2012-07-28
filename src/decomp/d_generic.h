@@ -95,9 +95,6 @@ struct d_generic_context
 	/// Information about the current inner IP header
 	struct d_generic_changes *active2;
 
-	/// Whether at least packet was already processed by the context or not
-	int first_packet_processed;
-
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode *sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header
