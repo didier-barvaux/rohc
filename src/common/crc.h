@@ -44,11 +44,11 @@
 /** The different types of CRC used to protect ROHC headers */
 typedef enum
 {
-	ROHC_CRC_TYPE_2 = 1, /**< The CRC-2 type */
-	ROHC_CRC_TYPE_3 = 2, /**< The CRC-3 type */
-	ROHC_CRC_TYPE_6 = 3, /**< The CRC-6 type */
-	ROHC_CRC_TYPE_7 = 4, /**< The CRC-7 type */
-	ROHC_CRC_TYPE_8 = 5, /**< The CRC-8 type */
+	ROHC_CRC_TYPE_2 = 2, /**< The CRC-2 type */
+	ROHC_CRC_TYPE_3 = 3, /**< The CRC-3 type */
+	ROHC_CRC_TYPE_6 = 6, /**< The CRC-6 type */
+	ROHC_CRC_TYPE_7 = 7, /**< The CRC-7 type */
+	ROHC_CRC_TYPE_8 = 8, /**< The CRC-8 type */
 } rohc_crc_type_t;
 
 
