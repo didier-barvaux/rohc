@@ -230,9 +230,8 @@ static void d_rtp_destroy(void *const context)
  */
 int rtp_get_static_part(void)
 {
-	/* UDP static part (source and destination ports = 4 bytes) and
-	   RTP static part (RTP SSRC = 4 bytes) */
-	return 8;
+	/* UDP static part and RTP static part (RTP SSRC = 4 bytes) */
+	return udp_get_static_size() + 4;
 }
 
 

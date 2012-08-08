@@ -183,6 +183,7 @@ static void d_udp_destroy(void *const context)
  */
 int udp_get_static_size(void)
 {
+	/* UDP static part (source and destination ports = 4 bytes) */
 	return 4;
 }
 

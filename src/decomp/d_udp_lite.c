@@ -236,7 +236,8 @@ static void d_udp_lite_destroy(void *const context)
  */
 int udp_lite_get_static_part(void)
 {
-	return 4;
+	/* same as UDP */
+	return udp_get_static_size();
 }
 
 
