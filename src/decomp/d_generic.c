@@ -4322,16 +4322,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
 
-		/* update SN (and IP-IDs if IPv4) */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(is_outer_ipv4(g_context))
-		{
-			d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
-		}
-		if(g_context->multiple_ip && is_inner_ipv4(g_context))
-		{
-			d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
-		}
+		/* update context with decoded values even if we drop the packet */
+		update_context(context, decoded);
 
 		goto error_crc;
 	}
@@ -5017,16 +5009,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
 
-		/* update SN (and IP-IDs if IPv4) */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(is_outer_ipv4(g_context))
-		{
-			d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
-		}
-		if(g_context->multiple_ip && is_inner_ipv4(g_context))
-		{
-			d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
-		}
+		/* update context with decoded values even if we drop the packet */
+		update_context(context, decoded);
 
 		goto error_crc;
 	}
@@ -6121,16 +6105,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 		/* update the inter-packet variable */
 		update_inter_packet(g_context);
 
-		/* update SN (and IP-IDs if IPv4) */
-		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
-		if(is_outer_ipv4(g_context))
-		{
-			d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
-		}
-		if(g_context->multiple_ip && is_inner_ipv4(g_context))
-		{
-			d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
-		}
+		/* update context with decoded values even if we drop the packet */
+		update_context(context, decoded);
 
 		goto error_crc;
 	}
