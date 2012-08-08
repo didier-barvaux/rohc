@@ -660,13 +660,13 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 	rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
 	if(is_outer_ipv4(context))
 	{
-		d_ip_id_init(&context->ip_id1,
-		             ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
+		d_ip_id_set_ref(&context->ip_id1,
+		                ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
 	}
 	if(context->multiple_ip && is_inner_ipv4(context))
 	{
-		d_ip_id_init(&context->ip_id2,
-		             ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
+		d_ip_id_set_ref(&context->ip_id2,
+		                ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
 	}
 
 	/* part 5: 4-byte TimeStamp (TS) */

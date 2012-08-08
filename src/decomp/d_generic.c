@@ -4208,11 +4208,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 		if(is_outer_ipv4(g_context))
 		{
-			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
+			d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip && is_inner_ipv4(g_context))
 		{
-			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
+			d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
 
 		goto error_crc;
@@ -4870,11 +4870,11 @@ int decode_uo1(struct rohc_decomp *decomp,
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 		if(is_outer_ipv4(g_context))
 		{
-			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
+			d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip && is_inner_ipv4(g_context))
 		{
-			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
+			d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
 
 		goto error_crc;
@@ -5952,11 +5952,11 @@ int decode_uor2(struct rohc_decomp *decomp,
 		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
 		if(is_outer_ipv4(g_context))
 		{
-			d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
+			d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 		}
 		if(g_context->multiple_ip && is_inner_ipv4(g_context))
 		{
-			d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
+			d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 		}
 
 		goto error_crc;
@@ -8027,13 +8027,13 @@ static void update_context(const struct d_context *context,
 	/* update IP-ID of outer IP header (if IPv4) */
 	if(is_outer_ipv4(g_context))
 	{
-		d_ip_id_update(&g_context->ip_id1, decoded.ip_id, decoded.sn);
+		d_ip_id_set_ref(&g_context->ip_id1, decoded.ip_id, decoded.sn);
 	}
 
 	/* update IP-ID of inner IP header (if any, if IPv4) */
 	if(g_context->multiple_ip && is_inner_ipv4(g_context))
 	{
-		d_ip_id_update(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
+		d_ip_id_set_ref(&g_context->ip_id2, decoded.ip_id2, decoded.sn);
 	}
 
 	/* update TS in decompression context (RTP profile only) */

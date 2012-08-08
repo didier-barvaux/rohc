@@ -143,15 +143,15 @@ int ip_parse_dynamic_ip(struct d_generic_context *context,
 		/* init the outer IP-ID (IPv4 only) */
 		if(is_outer_ipv4(context))
 		{
-			d_ip_id_init(&context->ip_id1,
-			             ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
+			d_ip_id_set_ref(&context->ip_id1,
+			                ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
 		}
 
 		/* init the inner IP-ID (IPv4 only) */
 		if(context->multiple_ip && is_inner_ipv4(context))
 		{
-			d_ip_id_init(&context->ip_id2,
-			             ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
+			d_ip_id_set_ref(&context->ip_id2,
+			                ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
 		}
 	}
 
