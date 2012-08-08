@@ -3806,14 +3806,7 @@ int d_generic_get_sn(struct d_context *context)
 
 
 /**
- * @brief Decode one UO-0 packet.
- *
- * Steps:
- *  A. Parsing of ROHC header
- *  B. Decode extracted bits
- *  C. Build uncompressed headers
- *  D. Check for correct decompression
- *  E. Update the compression context
+ * @brief Parse one UO-0 header
  *
  * \verbatim
 
