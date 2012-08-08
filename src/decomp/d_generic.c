@@ -364,17 +364,17 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
                              const unsigned int crc_packet,
                              unsigned char *uncomp_hdrs,
                              size_t *const uncomp_hdrs_len);
-unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
-                             unsigned char *dest,
-                             unsigned int payload_size,
-                             struct list_decomp *decomp);
-unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
-                               unsigned char *dest,
-                               unsigned int payload_size);
-unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
-                               unsigned char *dest,
-                               unsigned int payload_size,
-                               struct list_decomp *decomp);
+static unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
+                                    unsigned char *dest,
+                                    unsigned int payload_size,
+                                    struct list_decomp *decomp);
+static unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
+                                      unsigned char *dest,
+                                      unsigned int payload_size);
+static unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
+                                      unsigned char *dest,
+                                      unsigned int payload_size,
+                                      struct list_decomp *decomp);
 
 
 /*
@@ -7595,10 +7595,10 @@ error:
  * @param decomp       The list decompressor (IPv6 only)
  * @return             The length of the IP header
  */
-unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
-                                   unsigned char *dest,
-                                   unsigned int payload_size,
-                                   struct list_decomp *decomp)
+static unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
+                                    unsigned char *dest,
+                                    unsigned int payload_size,
+                                    struct list_decomp *decomp)
 {
 	unsigned int length;
 
@@ -7624,9 +7624,9 @@ unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
  * @param payload_size The length of the IPv4 payload
  * @return             The length of the IPv4 header
  */
-unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
-                               unsigned char *dest,
-                              unsigned int payload_size)
+static unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
+                                      unsigned char *dest,
+                                      unsigned int payload_size)
 {
 	struct iphdr *ip = (struct iphdr *) dest;
 
@@ -7666,10 +7666,10 @@ unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
  * @param decomp       The list decompressor
  * @return             The length of the IPv6 header
  */
-unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
-                               unsigned char *dest,
-                               unsigned int payload_size,
-                               struct list_decomp *decomp)
+static unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
+                                      unsigned char *dest,
+                                      unsigned int payload_size,
+                                      struct list_decomp *decomp)
 {
 	struct ip6_hdr *ip = (struct ip6_hdr *) dest;
 	int size = 0;
