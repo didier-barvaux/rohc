@@ -153,10 +153,10 @@ void * d_udp_lite_create(void)
 
 	/* some UDP-Lite-specific values and functions */
 	context->next_header_len = sizeof(struct udphdr);
-	context->build_next_header = udp_lite_build_uncomp_udp;
 	context->parse_static_next_hdr = udp_parse_static_udp;
 	context->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
 	context->parse_uo_tail = udp_lite_parse_uo_tail_udp;
+	context->build_next_header = udp_lite_build_uncomp_udp;
 	context->compute_crc_static = udp_compute_crc_static;
 	context->compute_crc_dynamic = udp_compute_crc_dynamic;
 

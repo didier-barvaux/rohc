@@ -40,122 +40,6 @@
 
 
 /*
- * Definitions of private structures
- */
-
-/**
- * @brief The bits extracted from ROHC extension headers
- *
- * @see parse_uo1
- * @see parse_uor2
- */
-struct rohc_extr_ext_bits
-{
-	/* SN */
-	uint16_t sn;       /**< The SN bits found in extension header */
-	size_t sn_nr;      /**< The number of SN bits found in extension header */
-
-	/* IP-ID of outer IP header (IPv4 only) */
-	uint16_t ip_id;    /**< The outer IP-ID bits found in extension header */
-	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
-
-	/* IP-ID of inner IP header (if it exists, IPv4 only) */
-	uint16_t ip_id2;   /**< The inner IP-ID bits found in extension header */
-	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
-
-
-	/* bits below are for RTP profile only
-	   @todo should be moved in d_rtp.c */
-
-	/* RTP TimeStamp (TS) */
-	uint32_t ts;       /**< The TS bits found in extension header */
-	size_t ts_nr;      /**< The number of TS bits found in extension header */
-	bool is_ts_scaled; /**< Whether TS is transmitted scaled or not */
-
-	/* RTP Marker (M) flag */
-	uint8_t rtp_m;     /**< The RTP Marker (M) flag in extension header */
-	size_t rtp_m_nr;   /**< The number of RTP Marker (M) bits */
-
-	/* RTP eXtension (R-X) flag */
-	uint8_t rtp_x;     /**< The RTP eXtension (R-X) bits found in extension */
-	size_t rtp_x_nr;   /**< The number of RTP X bits */
-
-	/* RTP Padding (R-P) flag */
-	uint8_t rtp_p;     /**< The RTP Padding bits found in extension header */
-	size_t rtp_p_nr;   /**< The number of RTP Padding bits */
-
-	/* RTP Payload Type (RTP-PT) */
-	uint8_t rtp_pt;    /**< The RTP Payload Type (PT) bits found in header */
-	size_t rtp_pt_nr;  /**< The number of RTP PT bits found in ROHC header */
-};
-
-
-/**
- * @brief The bits extracted from ROHC UO* base headers
- *
- * @see parse_uo0
- * @see parse_uo1
- * @see parse_uor2
- */
-struct rohc_extr_base_bits
-{
-	/* SN */
-	uint16_t sn;       /**< The SN bits found in ROHC header */
-	size_t sn_nr;      /**< The number of SN bits found in ROHC header */
-
-	/* IP-ID of outer IP header (IPv4 only) */
-	uint16_t ip_id;    /**< The outer IP-ID bits found in ROHC header */
-	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
-
-	/* IP-ID of inner IP header (if it exists, IPv4 only) */
-	uint16_t ip_id2;   /**< The inner IP-ID bits found in ROHC header */
-	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
-
-	/* CRC */
-	uint8_t crc;       /**< The CRC bits found in ROHC header */
-	size_t crc_nr;     /**< The number of CRC bits found in ROHC header */
-
-	/* X (extension) flag */
-	uint8_t ext_flag;  /**< X (extension) flag */
-
-	/** The bits extracted from extension headers */
-	struct rohc_extr_ext_bits ext;
-
-
-	/* bits below are for RTP profile only
-	   @todo should be moved in d_rtp.c */
-
-	/* RTP TimeStamp (TS) */
-	uint32_t ts;       /**< The TS bits found in ROHC header */
-	size_t ts_nr;      /**< The number of TS bits found in ROHC header */
-
-	/* RTP Marker (M) flag */
-	uint8_t rtp_m;     /**< The RTP Marker (M) flag */
-};
-
-
-/**
- * @brief The values decoded from the bits extracted from ROHC header
- *
- * @see decode_uo0
- * @see decode_uo1
- * @see decode_uor2
- */
-struct rohc_decoded_values
-{
-	uint16_t sn;     /**< The decoded SN value */
-	uint16_t ip_id;  /**< The decoded outer IP-ID value */
-	uint16_t ip_id2; /**< The decoded inner IP-ID value */
-	uint32_t ts;     /**< The decoded TS value */
-	bool rtp_m;      /**< The decoded RTP Marker (M) flag */
-	bool rtp_x;      /**< The decoded RTP eXtension (R-X) flag */
-	bool rtp_p;      /**< The decoded RTP Padding (R-P) flag */
-	uint8_t rtp_pt;  /**< The decoded RTP Payload Type (RTP-PT) */
-};
-
-
-
-/*
  * Definitions of private constants and macros
  */
 
@@ -349,15 +233,6 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 
 
 /*
- * Private function prototypes for decoding the extracted bits
- */
-
-static bool decode_values_from_bits(const struct d_context *context,
-                                    const struct rohc_extr_base_bits bits,
-                                    struct rohc_decoded_values *const decoded);
-
-
-/*
  * Private function prototypes for building the uncompressed headers
  */
 
@@ -379,6 +254,16 @@ static unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
                                       unsigned char *dest,
                                       unsigned int payload_size,
                                       struct list_decomp *decomp);
+
+
+/*
+ * Private function prototypes for decoding the extracted bits
+ */
+
+static bool decode_values_from_bits(const struct d_context *context,
+                                    const struct rohc_extr_base_bits bits,
+                                    struct rohc_decoded_values *const decoded);
+
 
 
 /*
@@ -7838,11 +7723,9 @@ void update_inter_packet(struct d_generic_context *context)
  *  - SN
  *  - IP-ID of outer IP header (if it is IPv4)
  *  - IP-ID of inner IP header (if it exists and it is IPv4)
- *  - RTP TimeStamp (TS) (RTP profile only)
- *  - RTP Marker (M) flag (RTP profile only)
- *  - RTP eXtension (R-X) flag (RTP profile only)
- *  - RTP Padding (R-P) flag (RTP profile only)
- *  - RTP Payload Type (R-PT) (RTP profile only)
+ *
+ * Other fields may be decoded by the profile-specific callback named
+ * decode_values_from_bits.
  *
  * @param context  The decompression context
  * @param bits     The extracted bits
@@ -7925,120 +7808,15 @@ static bool decode_values_from_bits(const struct d_context *context,
 		            g_context->inner_ip_changes->rnd, bits.ip_id2_nr, bits.ip_id2);
 	}
 
-	/* decode values for RTP profile only */
-	if(context->profile->id == ROHC_PROFILE_RTP)
+	/* decode fields of next header if required */
+	if(g_context->decode_values_from_bits != NULL)
 	{
-		struct d_rtp_context *const rtp_context =
-			(struct d_rtp_context *) g_context->specific;
-		struct udphdr *const udp =
-			(struct udphdr *) g_context->outer_ip_changes->next_header;
-		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
-
-		/* decode RTP TimeStamp (TS) */
-		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
-		if(bits.ext.is_ts_scaled)
+		decode_ok = g_context->decode_values_from_bits(context, bits, decoded);
+		if(!decode_ok)
 		{
-			if(bits.ts_nr == 0)
-			{
-				rohc_debugf(3, "TS is deducted from SN\n");
-				decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
-				                                decoded->sn);
-			}
-			else
-			{
-				bool ts_decode_ok;
-
-				rohc_debugf(3, "TS is scaled\n");
-				ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
-				                                bits.ts, bits.ts_nr,
-				                                &decoded->ts);
-				if(!ts_decode_ok)
-				{
-					rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
-					            bits.ts_nr, bits.ts);
-					goto error;
-				}
-			}
-		}
-		else /* TS not scaled */
-		{
-			rohc_debugf(3, "TS is not scaled\n");
-
-			/* RFC 4815, §4.2 says:
-			 *   If a packet with no TS bits is received with Tsc = 0, the
-			 *   decompressor MUST discard the packet. */
-			if(bits.ts_nr == 0)
-			{
-				rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bit received, "
-				            "discard the packet\n", bits.ext.is_ts_scaled);
-				goto error;
-			}
-
-			decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
-		}
-		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
-		            "bits = %u / 0x%x)\n", decoded->ts, decoded->ts,
-		            bits.ts_nr, bits.ts, bits.ts);
-
-		/* check that the RTP Marker (M) value found in the extension is the
-		 * same as the one we previously found. RFC 4815 §8.4 says:
-		 *   The RTP header part of Extension 3, as defined by RFC 3095
-		 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
-		 *   This field is also present in all compressed base header formats
-		 *   except for UO-1-ID; meaning, there may be two occurrences of the
-		 *   field within one single compressed header. In such cases, the
-		 *   two M fields must have the same value.
-		 */
-		if(bits.ext.rtp_m_nr > 0 && bits.rtp_m != bits.ext.rtp_m)
-		{
-			assert(bits.ext.rtp_m_nr == 1); /* sanity check */
-			rohc_debugf(0, "RTP Marker flag mismatch (base header = %u, "
-			            "extension 3 = %u)\n", bits.rtp_m, bits.ext.rtp_m);
+			rohc_debugf(0, "failed to decode fields of the next header\n");
 			goto error;
 		}
-
-		/* decode RTP Marker (M) flag */
-		decoded->rtp_m = GET_BOOL(bits.rtp_m);
-		rohc_debugf(3, "decoded RTP M flag = %u\n", decoded->rtp_m);
-
-		/* decode RTP eXtension (R-X) flag */
-		if(bits.ext.rtp_x_nr > 0)
-		{
-			/* take packet value */
-			decoded->rtp_x = GET_BOOL(bits.ext.rtp_x);
-		}
-		else
-		{
-			/* keep context value */
-			decoded->rtp_x = GET_BOOL(rtp->extension);
-		}
-		rohc_debugf(3, "decoded R-X flag = %u\n", decoded->rtp_x);
-
-		/* decode RTP Padding (R-P) flag */
-		if(bits.ext.rtp_p_nr > 0)
-		{
-			/* take packet value */
-			decoded->rtp_p = GET_BOOL(bits.ext.rtp_p);
-		}
-		else
-		{
-			/* keep context value */
-			decoded->rtp_p = GET_BOOL(rtp->padding);
-		}
-		rohc_debugf(3, "decoded R-P flag = %u\n", decoded->rtp_p);
-
-		/* decode RTP Payload Type (R-PT) */
-		if(bits.ext.rtp_pt_nr > 0)
-		{
-			/* take packet value */
-			decoded->rtp_pt = bits.ext.rtp_pt & 0x7f;
-		}
-		else
-		{
-			/* keep context value */
-			decoded->rtp_pt = rtp->pt;
-		}
-		rohc_debugf(3, "decoded R-PT = %u\n", decoded->rtp_pt);
 	}
 
 	return true;

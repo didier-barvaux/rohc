@@ -70,16 +70,18 @@ static int rtp_parse_static_rtp(struct d_generic_context *context,
                                 const unsigned char *packet,
                                 unsigned int length,
                                 unsigned char *dest);
-
 static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
                                  unsigned char *dest);
-
 static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
                                  unsigned char *dest);
+
+static bool rtp_decode_values_from_bits(const struct d_context *context,
+                                        const struct rohc_extr_base_bits bits,
+                                        struct rohc_decoded_values *const decoded);
 
 static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
                                 const struct d_generic_changes *const hdr_chges,
@@ -132,10 +134,11 @@ void * d_rtp_create(void)
 
 	/* some RTP-specific values and functions */
 	context->next_header_len = nh_len;
-	context->build_next_header = rtp_build_uncomp_rtp;
 	context->parse_static_next_hdr = rtp_parse_static_rtp;
 	context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
 	context->parse_uo_tail = rtp_parse_uo_tail_rtp;
+	context->decode_values_from_bits = rtp_decode_values_from_bits;
+	context->build_next_header = rtp_build_uncomp_rtp;
 	context->compute_crc_static = rtp_compute_crc_static;
 	context->compute_crc_dynamic = rtp_compute_crc_dynamic;
 
@@ -824,6 +827,155 @@ static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Decode values from extracted bits
+ *
+ * The following values are decoded:
+ *  - RTP TimeStamp (TS)
+ *  - RTP Marker (M) flag
+ *  - RTP eXtension (R-X) flag
+ *  - RTP Padding (R-P) flag
+ *  - RTP Payload Type (R-PT)
+ *
+ * The SN and IP-ID fields are decoded in @see decode_values_from_bits
+ *
+ * @param context  The decompression context
+ * @param bits     The extracted bits
+ * @param decoded  OUT: The corresponding decoded values
+ * @return         true if decoding is successful, false otherwise
+ */
+static bool rtp_decode_values_from_bits(const struct d_context *context,
+                                        const struct rohc_extr_base_bits bits,
+                                        struct rohc_decoded_values *const decoded)
+{
+	struct d_generic_context *g_context;
+	struct d_rtp_context *rtp_context;
+	struct udphdr *udp;
+	struct rtphdr *rtp;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	rtp_context = g_context->specific;
+	assert(decoded != NULL);
+
+	udp = (struct udphdr *) g_context->outer_ip_changes->next_header;
+	rtp = (struct rtphdr *) (udp + 1);
+
+	/* decode RTP TimeStamp (TS) */
+	rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
+	if(bits.ext.is_ts_scaled)
+	{
+		if(bits.ts_nr == 0)
+		{
+			rohc_debugf(3, "TS is deducted from SN\n");
+			decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
+			                                decoded->sn);
+		}
+		else
+		{
+			bool ts_decode_ok;
+
+			rohc_debugf(3, "TS is scaled\n");
+			ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
+			                                bits.ts, bits.ts_nr,
+			                                &decoded->ts);
+			if(!ts_decode_ok)
+			{
+				rohc_debugf(0, "failed to decode %zd-bit TS_SCALED 0x%x\n",
+				            bits.ts_nr, bits.ts);
+				goto error;
+			}
+		}
+	}
+	else /* TS not scaled */
+	{
+		rohc_debugf(3, "TS is not scaled\n");
+
+		/* RFC 4815, §4.2 says:
+		 *   If a packet with no TS bits is received with Tsc = 0, the
+		 *   decompressor MUST discard the packet. */
+		if(bits.ts_nr == 0)
+		{
+			rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bit received, "
+			            "discard the packet\n", bits.ext.is_ts_scaled);
+			goto error;
+		}
+
+		decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
+	}
+	rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
+	            "bits = %u / 0x%x)\n", decoded->ts, decoded->ts,
+	            bits.ts_nr, bits.ts, bits.ts);
+
+	/* check that the RTP Marker (M) value found in the extension is the
+	 * same as the one we previously found. RFC 4815 §8.4 says:
+	 *   The RTP header part of Extension 3, as defined by RFC 3095
+	 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
+	 *   This field is also present in all compressed base header formats
+	 *   except for UO-1-ID; meaning, there may be two occurrences of the
+	 *   field within one single compressed header. In such cases, the
+	 *   two M fields must have the same value.
+	 */
+	if(bits.ext.rtp_m_nr > 0 && bits.rtp_m != bits.ext.rtp_m)
+	{
+		assert(bits.ext.rtp_m_nr == 1); /* sanity check */
+		rohc_debugf(0, "RTP Marker flag mismatch (base header = %u, "
+		            "extension 3 = %u)\n", bits.rtp_m, bits.ext.rtp_m);
+		goto error;
+	}
+
+	/* decode RTP Marker (M) flag */
+	decoded->rtp_m = GET_BOOL(bits.rtp_m);
+	rohc_debugf(3, "decoded RTP M flag = %u\n", decoded->rtp_m);
+
+	/* decode RTP eXtension (R-X) flag */
+	if(bits.ext.rtp_x_nr > 0)
+	{
+		/* take packet value */
+		decoded->rtp_x = GET_BOOL(bits.ext.rtp_x);
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_x = GET_BOOL(rtp->extension);
+	}
+	rohc_debugf(3, "decoded R-X flag = %u\n", decoded->rtp_x);
+
+	/* decode RTP Padding (R-P) flag */
+	if(bits.ext.rtp_p_nr > 0)
+	{
+		/* take packet value */
+		decoded->rtp_p = GET_BOOL(bits.ext.rtp_p);
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_p = GET_BOOL(rtp->padding);
+	}
+	rohc_debugf(3, "decoded R-P flag = %u\n", decoded->rtp_p);
+
+	/* decode RTP Payload Type (R-PT) */
+	if(bits.ext.rtp_pt_nr > 0)
+	{
+		/* take packet value */
+		decoded->rtp_pt = bits.ext.rtp_pt & 0x7f;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_pt = rtp->pt;
+	}
+	rohc_debugf(3, "decoded R-PT = %u\n", decoded->rtp_pt);
+
+	return true;
+
+error:
+	return false;
 }
 
 

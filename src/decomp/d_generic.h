@@ -49,6 +49,119 @@
 
 
 /**
+ * @brief The bits extracted from ROHC extension headers
+ *
+ * @see parse_uo1
+ * @see parse_uor2
+ */
+struct rohc_extr_ext_bits
+{
+	/* SN */
+	uint16_t sn;       /**< The SN bits found in extension header */
+	size_t sn_nr;      /**< The number of SN bits found in extension header */
+
+	/* IP-ID of outer IP header (IPv4 only) */
+	uint16_t ip_id;    /**< The outer IP-ID bits found in extension header */
+	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
+
+	/* IP-ID of inner IP header (if it exists, IPv4 only) */
+	uint16_t ip_id2;   /**< The inner IP-ID bits found in extension header */
+	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
+
+
+	/* bits below are for RTP profile only
+	   @todo should be moved in d_rtp.c */
+
+	/* RTP TimeStamp (TS) */
+	uint32_t ts;       /**< The TS bits found in extension header */
+	size_t ts_nr;      /**< The number of TS bits found in extension header */
+	bool is_ts_scaled; /**< Whether TS is transmitted scaled or not */
+
+	/* RTP Marker (M) flag */
+	uint8_t rtp_m;     /**< The RTP Marker (M) flag in extension header */
+	size_t rtp_m_nr;   /**< The number of RTP Marker (M) bits */
+
+	/* RTP eXtension (R-X) flag */
+	uint8_t rtp_x;     /**< The RTP eXtension (R-X) bits found in extension */
+	size_t rtp_x_nr;   /**< The number of RTP X bits */
+
+	/* RTP Padding (R-P) flag */
+	uint8_t rtp_p;     /**< The RTP Padding bits found in extension header */
+	size_t rtp_p_nr;   /**< The number of RTP Padding bits */
+
+	/* RTP Payload Type (RTP-PT) */
+	uint8_t rtp_pt;    /**< The RTP Payload Type (PT) bits found in header */
+	size_t rtp_pt_nr;  /**< The number of RTP PT bits found in ROHC header */
+};
+
+
+/**
+ * @brief The bits extracted from ROHC UO* base headers
+ *
+ * @see parse_uo0
+ * @see parse_uo1
+ * @see parse_uor2
+ */
+struct rohc_extr_base_bits
+{
+	/* SN */
+	uint16_t sn;       /**< The SN bits found in ROHC header */
+	size_t sn_nr;      /**< The number of SN bits found in ROHC header */
+
+	/* IP-ID of outer IP header (IPv4 only) */
+	uint16_t ip_id;    /**< The outer IP-ID bits found in ROHC header */
+	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
+
+	/* IP-ID of inner IP header (if it exists, IPv4 only) */
+	uint16_t ip_id2;   /**< The inner IP-ID bits found in ROHC header */
+	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
+
+	/* CRC */
+	uint8_t crc;       /**< The CRC bits found in ROHC header */
+	size_t crc_nr;     /**< The number of CRC bits found in ROHC header */
+
+	/* X (extension) flag */
+	uint8_t ext_flag;  /**< X (extension) flag */
+
+	/** The bits extracted from extension headers */
+	struct rohc_extr_ext_bits ext;
+
+
+	/* bits below are for RTP profile only
+	   @todo should be moved in d_rtp.c */
+
+	/* RTP TimeStamp (TS) */
+	uint32_t ts;       /**< The TS bits found in ROHC header */
+	size_t ts_nr;      /**< The number of TS bits found in ROHC header */
+
+	/* RTP Marker (M) flag */
+	uint8_t rtp_m;     /**< The RTP Marker (M) flag */
+};
+
+
+/**
+ * @brief The values decoded from the bits extracted from ROHC header
+ *
+ * @see decode_uo0
+ * @see decode_uo1
+ * @see decode_uor2
+ * @see decode_values_from_bits
+ * @see rtp_decode_values_from_bits
+ */
+struct rohc_decoded_values
+{
+	uint16_t sn;     /**< The decoded SN value */
+	uint16_t ip_id;  /**< The decoded outer IP-ID value */
+	uint16_t ip_id2; /**< The decoded inner IP-ID value */
+	uint32_t ts;     /**< The decoded TS value */
+	bool rtp_m;      /**< The decoded RTP Marker (M) flag */
+	bool rtp_x;      /**< The decoded RTP eXtension (R-X) flag */
+	bool rtp_p;      /**< The decoded RTP Padding (R-P) flag */
+	uint8_t rtp_pt;  /**< The decoded RTP Payload Type (RTP-PT) */
+};
+
+
+/**
  * @brief Store information about an IP header between the different
  *        decompressions of IP packets.
  *
@@ -119,13 +232,6 @@ struct d_generic_context
 	/// The length of the next header
 	unsigned int next_header_len;
 
-	/// @brief The handler used to build the uncompressed next header thanks
-	///        to context information
-	int (*build_next_header)(const struct d_generic_context *const context,
-	                         const struct d_generic_changes *const hdr_chges,
-	                         unsigned char *dest,
-	                         const unsigned int payload_len);
-
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
 	int (*parse_static_next_hdr)(struct d_generic_context *context,
@@ -145,6 +251,18 @@ struct d_generic_context
 	                     const unsigned char *packet,
 	                     unsigned int length,
 	                     unsigned char *dest);
+
+	/** The handler used to decoded bits extracted from ROHC headers */
+	bool (*decode_values_from_bits)(const struct d_context *context,
+	                                const struct rohc_extr_base_bits bits,
+	                                struct rohc_decoded_values *const decoded);
+
+	/** The handler used to build the uncompressed next header */
+	int (*build_next_header)(const struct d_generic_context *const context,
+	                         const struct d_generic_changes *const hdr_chges,
+	                         unsigned char *dest,
+	                         const unsigned int payload_len);
+
 
 	/// @brief The handler used to compute the CRC-STATIC value
 	unsigned int (*compute_crc_static)(const unsigned char *const ip,
