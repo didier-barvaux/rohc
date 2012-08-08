@@ -371,21 +371,8 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
 
 
 /*
- * Private function prototypes for miscellaneous functions
+ * Private function prototypes for list compression
  */
-
-static bool check_uo_crc(const struct rohc_decomp *const decomp,
-                         const struct d_generic_context *const g_context,
-                         const unsigned char *const outer_ip_hdr,
-                         const unsigned char *const inner_ip_hdr,
-                         const unsigned char *const next_header,
-                         const rohc_crc_type_t crc_type,
-                         const unsigned int crc_packet);
-
-static void update_context(const struct d_context *context,
-                           const struct rohc_decoded_values decoded);
-
-void update_inter_packet(struct d_generic_context *context);
 
 static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
                                       const unsigned int gen_id);
@@ -409,6 +396,27 @@ void ip6_d_init_table(struct list_decomp *decomp);
 
 static int get_ip6_ext_size(const unsigned char *data, const size_t data_len);
 
+
+/*
+ * Private function prototypes for miscellaneous functions
+ */
+
+static bool check_uo_crc(const struct rohc_decomp *const decomp,
+                         const struct d_generic_context *const g_context,
+                         const unsigned char *const outer_ip_hdr,
+                         const unsigned char *const inner_ip_hdr,
+                         const unsigned char *const next_header,
+                         const rohc_crc_type_t crc_type,
+                         const unsigned int crc_packet);
+
+static void update_context(const struct d_context *context,
+                           const struct rohc_decoded_values decoded);
+
+void update_inter_packet(struct d_generic_context *context);
+
+static void stats_add_decomp_success(struct d_context *const context,
+                                     const unsigned int comp_hdr_len,
+                                     const unsigned int uncomp_hdr_len);
 
 
 /*
@@ -2960,11 +2968,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		memcpy(dest, payload_data, payload_len);
 	}
 
-	/* statistics */
-	context->header_compressed_size += is_addcid_used + rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, is_addcid_used + rohc_header_len);
-	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
+	/* update statistics */
+	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -4371,11 +4376,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 		memcpy(uncomp_packet, payload_data, payload_len);
 	}
 
-	/* statistics */
-	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
-	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
+	/* update statistics */
+	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -5058,11 +5060,8 @@ int decode_uo1(struct rohc_decomp *decomp,
 		memcpy(uncomp_packet, payload_data, payload_len);
 	}
 
-	/* statistics */
-	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
-	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
+	/* update statistics */
+	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -6156,11 +6155,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 		memcpy(uncomp_packet, payload_data, payload_len);
 	}
 
-	/* statistics */
-	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
-	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
+	/* update statistics */
+	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -6322,11 +6318,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 		memcpy(dest, payload_data, payload_len);
 	}
 
-	/* statistics */
-	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
-	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
+	/* update statistics */
+	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 
@@ -8208,6 +8201,25 @@ static void update_context(const struct d_context *context,
 			(struct d_rtp_context *) g_context->specific;
 		ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
 	}
+}
+
+
+/**
+ * @brief Update statistics upon successful decompression
+ *
+ * @param context         The decompression context
+ * @param comp_hdr_len    The length (in bytes) of the compressed header
+ * @param uncomp_hdr_len  The length (in bytes) of the uncompressed header
+ */
+static void stats_add_decomp_success(struct d_context *const context,
+                                     const unsigned int comp_hdr_len,
+                                     const unsigned int uncomp_hdr_len)
+{
+	assert(context != NULL);
+	context->header_compressed_size += comp_hdr_len;
+	c_add_wlsb(context->header_16_compressed, 0, comp_hdr_len);
+	context->header_uncompressed_size += uncomp_hdr_len;
+	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_hdr_len);
 }
 
 
