@@ -98,10 +98,10 @@ static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
                                       unsigned int length,
                                       unsigned char *dest);
 
-static int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
-                                           struct d_generic_changes *hdr_changes,
-                                           unsigned char *dest,
-                                           int payload_size);
+static int udp_lite_build_uncomp_udp(struct d_generic_context *context,
+                                     struct d_generic_changes *hdr_changes,
+                                     unsigned char *dest,
+                                     int payload_size);
 
 
 /*
@@ -153,7 +153,7 @@ void * d_udp_lite_create(void)
 
 	/* some UDP-Lite-specific values and functions */
 	context->next_header_len = sizeof(struct udphdr);
-	context->build_next_header = udp_lite_build_uncompressed_udp;
+	context->build_next_header = udp_lite_build_uncomp_udp;
 	context->parse_static_next_hdr = udp_parse_static_udp;
 	context->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
 	context->parse_uo_tail = udp_lite_parse_uo_tail_udp;
@@ -692,10 +692,10 @@ error:
  * @return             The length of the next header (ie. the UDP-Lite header),
  *                     -1 in case of error
  */
-static int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
-                                           struct d_generic_changes *hdr_changes,
-                                           unsigned char *dest,
-                                           int payload_size)
+static int udp_lite_build_uncomp_udp(struct d_generic_context *context,
+                                     struct d_generic_changes *hdr_changes,
+                                     unsigned char *dest,
+                                     int payload_size)
 {
 	struct d_udp_lite_context *udp_lite_context = context->specific;
 	struct udphdr *udp_lite_hdr_chg = (struct udphdr *) hdr_changes->next_header;

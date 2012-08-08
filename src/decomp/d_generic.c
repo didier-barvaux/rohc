@@ -357,17 +357,17 @@ static bool decode_values_from_bits(const struct d_context *context,
  * Private function prototypes for building the uncompressed headers
  */
 
-unsigned int build_uncompressed_ip(struct d_generic_changes *ip_changes,
-                                   unsigned char *dest,
-                                   unsigned int payload_size,
-                                   struct list_decomp *decomp);
-unsigned int build_uncompressed_ip4(struct d_generic_changes *ip_changes,
-                                    unsigned char *dest,
-                                    unsigned int payload_size);
-unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
-                                    unsigned char *dest,
-                                    unsigned int payload_size,
-                                    struct list_decomp *decomp);
+unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
+                             unsigned char *dest,
+                             unsigned int payload_size,
+                             struct list_decomp *decomp);
+unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
+                               unsigned char *dest,
+                               unsigned int payload_size);
+unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
+                               unsigned char *dest,
+                               unsigned int payload_size,
+                               struct list_decomp *decomp);
 
 
 /*
@@ -2916,7 +2916,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
 		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                             g_context->outer_ip_changes->next_header_len +
 		                             g_context->inner_ip_changes->size_list,
@@ -2925,7 +2925,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->inner_ip_changes, dest, payload_len +
+		size = build_uncomp_ip(g_context->inner_ip_changes, dest, payload_len +
 		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		dest += size;
@@ -2934,7 +2934,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
 		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		dest += size;
@@ -4215,7 +4215,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                             g_context->outer_ip_changes->next_header_len +
 		                             g_context->inner_ip_changes->size_list +
@@ -4226,7 +4226,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_packet,
 		                             g_context->inner_ip_changes->next_header_len +
 		                             payload_len,
 		                             g_context->list_decomp2);
@@ -4237,7 +4237,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             g_context->outer_ip_changes->next_header_len +
 		                             payload_len,
 		                             g_context->list_decomp1);
@@ -4900,7 +4900,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                             g_context->outer_ip_changes->next_header_len +
 		                             g_context->inner_ip_changes->size_list +
@@ -4911,7 +4911,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_packet,
 		                             g_context->inner_ip_changes->next_header_len +
 		                             payload_len,
 		                             g_context->list_decomp2);
@@ -4922,7 +4922,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             g_context->outer_ip_changes->next_header_len +
 		                             payload_len,
 		                             g_context->list_decomp1);
@@ -5977,7 +5977,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                             g_context->outer_ip_changes->next_header_len +
 		                             g_context->inner_ip_changes->size_list +
@@ -5988,7 +5988,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_packet,
 		                             g_context->inner_ip_changes->next_header_len +
 		                             payload_len,
 		                             g_context->list_decomp2);
@@ -5999,7 +5999,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
 		                             g_context->outer_ip_changes->next_header_len +
 		                             payload_len,
 		                             g_context->list_decomp1);
@@ -6264,7 +6264,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	if(g_context->multiple_ip)
 	{
 		/* build the outer IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
 		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                             g_context->outer_ip_changes->next_header_len +
 		                             g_context->inner_ip_changes->size_list,
@@ -6273,7 +6273,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 		uncomp_header_len += size;
 
 		/* build the inner IP header */
-		size = build_uncompressed_ip(g_context->inner_ip_changes, dest, payload_len +
+		size = build_uncomp_ip(g_context->inner_ip_changes, dest, payload_len +
 		                             g_context->inner_ip_changes->next_header_len,
 		                             g_context->list_decomp2);
 		dest += size;
@@ -6282,7 +6282,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	else
 	{
 		/* build the single IP header */
-		size = build_uncompressed_ip(g_context->outer_ip_changes, dest, payload_len +
+		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
 		                             g_context->outer_ip_changes->next_header_len,
 		                             g_context->list_decomp1);
 		dest += size;
@@ -7690,7 +7690,7 @@ reparse:
  * @param decomp       The list decompressor (IPv6 only)
  * @return             The length of the IP header
  */
-unsigned int build_uncompressed_ip(struct d_generic_changes *ip_changes,
+unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
                                    unsigned char *dest,
                                    unsigned int payload_size,
                                    struct list_decomp *decomp)
@@ -7699,11 +7699,11 @@ unsigned int build_uncompressed_ip(struct d_generic_changes *ip_changes,
 
 	if(ip_get_version(&ip_changes->ip) == IPV4)
 	{
-		length = build_uncompressed_ip4(ip_changes, dest, payload_size);
+		length = build_uncomp_ipv4(ip_changes, dest, payload_size);
 	}
 	else
 	{
-		length = build_uncompressed_ip6(ip_changes, dest, payload_size, decomp);
+		length = build_uncomp_ipv6(ip_changes, dest, payload_size, decomp);
 	}
 
 	return length;
@@ -7719,9 +7719,9 @@ unsigned int build_uncompressed_ip(struct d_generic_changes *ip_changes,
  * @param payload_size The length of the IPv4 payload
  * @return             The length of the IPv4 header
  */
-unsigned int build_uncompressed_ip4(struct d_generic_changes *ip_changes,
-                                    unsigned char *dest,
-                                    unsigned int payload_size)
+unsigned int build_uncomp_ipv4(struct d_generic_changes *ip_changes,
+                               unsigned char *dest,
+                              unsigned int payload_size)
 {
 	struct iphdr *ip = (struct iphdr *) dest;
 
@@ -7761,10 +7761,10 @@ unsigned int build_uncompressed_ip4(struct d_generic_changes *ip_changes,
  * @param decomp       The list decompressor
  * @return             The length of the IPv6 header
  */
-unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
-                                    unsigned char *dest,
-                                    unsigned int payload_size,
-                                    struct list_decomp *decomp)
+unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
+                               unsigned char *dest,
+                               unsigned int payload_size,
+                               struct list_decomp *decomp)
 {
 	struct ip6_hdr *ip = (struct ip6_hdr *) dest;
 	int size = 0;

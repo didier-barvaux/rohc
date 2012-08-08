@@ -81,10 +81,10 @@ static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
                                  unsigned int length,
                                  unsigned char *dest);
 
-static int rtp_build_uncompressed_rtp(struct d_generic_context *context,
-                                      struct d_generic_changes *hdr_changes,
-                                      unsigned char *dest,
-                                      int payload_size);
+static int rtp_build_uncomp_rtp(struct d_generic_context *context,
+                                struct d_generic_changes *hdr_changes,
+                                unsigned char *dest,
+                                int payload_size);
 
 
 /**
@@ -132,7 +132,7 @@ void * d_rtp_create(void)
 
 	/* some RTP-specific values and functions */
 	context->next_header_len = nh_len;
-	context->build_next_header = rtp_build_uncompressed_rtp;
+	context->build_next_header = rtp_build_uncomp_rtp;
 	context->parse_static_next_hdr = rtp_parse_static_rtp;
 	context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
 	context->parse_uo_tail = rtp_parse_uo_tail_rtp;
@@ -838,10 +838,10 @@ error:
  * @return             The length of the next header (ie. the UDP/RTP header),
  *                     -1 in case of error
  */
-static int rtp_build_uncompressed_rtp(struct d_generic_context *context,
-                                      struct d_generic_changes *hdr_changes,
-                                      unsigned char *dest,
-                                      int payload_size)
+static int rtp_build_uncomp_rtp(struct d_generic_context *context,
+                                struct d_generic_changes *hdr_changes,
+                                unsigned char *dest,
+                                int payload_size)
 {
 	struct d_rtp_context *rtp_context = context->specific;
 	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_changes->next_header;
