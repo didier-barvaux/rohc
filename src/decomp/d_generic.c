@@ -374,6 +374,14 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
  * Private function prototypes for miscellaneous functions
  */
 
+static bool check_uo_crc(const struct rohc_decomp *const decomp,
+                         const struct d_generic_context *const g_context,
+                         const unsigned char *const outer_ip_hdr,
+                         const unsigned char *const inner_ip_hdr,
+                         const unsigned char *const next_header,
+                         const rohc_crc_type_t crc_type,
+                         const unsigned int crc_packet);
+
 static void update_context(const struct d_context *context,
                            const struct rohc_decoded_values decoded);
 
@@ -4130,9 +4138,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* length of the parsed ROHC header */
 	size_t rohc_header_len;
 
-	/* computed CRC */
-	uint8_t crc_computed;
-
 	/* length of the uncompressed headers and pointers on uncompressed outer
 	   IP, inner IP and next headers (will be computed during building) */
 	size_t uncomp_header_len;
@@ -4147,6 +4152,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
 	bool decode_ok;
+	bool crc_ok;
 	int size;
 
 
@@ -4288,27 +4294,17 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 * correct.
 	 */
 
-	/* check CRC
-	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
-	 * if the CRC-STATIC fields did not change */
-	crc_computed = CRC_INIT_3;
-	crc_computed = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
-	                                             ROHC_CRC_TYPE_3, crc_computed,
-	                                             decomp->crc_table_3);
-	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
-	                                              ROHC_CRC_TYPE_3, crc_computed,
-	                                              decomp->crc_table_3);
-	rohc_debugf(3, "CRC-3 on %zd-byte uncompressed header = 0x%x\n",
-	            uncomp_header_len, crc_computed);
-
-	/* try to guess the correct SN value in case of failure */
-	if(crc_computed != bits.crc)
+	/* compute and check CRC */
+	crc_ok = check_uo_crc(decomp, g_context,
+	                      ip_hdr, ip2_hdr, next_header,
+	                      ROHC_CRC_TYPE_3, bits.crc);
+	if(!crc_ok)
 	{
-		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
-		            crc_computed, bits.crc);
+		rohc_debugf(0, "CRC detected a decompression failure\n");
 		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
 		                 uncomp_header_len);
 
+		/* try to guess the correct SN value in case of failure */
 		/* TODO: try to repair CRC failure */
 
 		goto error_crc;
@@ -4821,9 +4817,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* length of the parsed ROHC header */
 	size_t rohc_header_len;
 
-	/* computed CRC */
-	uint8_t crc_computed;
-
 	/* length of the uncompressed headers and pointers on uncompressed outer
 	   IP, inner IP and next headers (will be computed during building) */
 	size_t uncomp_header_len;
@@ -4838,6 +4831,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
 	bool decode_ok;
+	bool crc_ok;
 	int size;
 
 
@@ -4995,27 +4989,17 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 * correct.
 	 */
 
-	/* CRC check
-	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
-	 * if the CRC-STATIC fields did not change */
-	crc_computed = CRC_INIT_3;
-	crc_computed = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
-	                                             ROHC_CRC_TYPE_3, crc_computed,
-	                                             decomp->crc_table_3);
-	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
-	                                              ROHC_CRC_TYPE_3, crc_computed,
-	                                              decomp->crc_table_3);
-	rohc_debugf(3, "CRC-3 on %zd-byte uncompressed header = 0x%x\n",
-	            uncomp_header_len, crc_computed);
-
-	/* try to guess the correct SN value in case of failure */
-	if(crc_computed != bits.crc)
+	/* compute and check CRC */
+	crc_ok = check_uo_crc(decomp, g_context,
+	                      ip_hdr, ip2_hdr, next_header,
+	                      ROHC_CRC_TYPE_3, bits.crc);
+	if(!crc_ok)
 	{
-		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
-		            crc_computed, bits.crc);
+		rohc_debugf(0, "CRC detected a decompression failure\n");
 		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
 		                 uncomp_header_len);
 
+		/* try to guess the correct SN value in case of failure */
 		/* TODO: try to repair CRC failure */
 
 		goto error_crc;
@@ -5905,10 +5889,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
 	struct rohc_decoded_values decoded;
 
-	/* computed CRC */
-	uint8_t crc_computed;
-	int crc_type;
-	unsigned char *crc_table;
+	/* the type of CRC that protect the ROHC header */
+	rohc_crc_type_t crc_type;
 
 	/* length of the parsed ROHC header */
 	size_t rohc_header_len;
@@ -5927,6 +5909,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	int parsing_ret;
 	bool decode_ok;
+	bool crc_ok;
 	int size;
 
 
@@ -6095,35 +6078,32 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 * correct.
 	 */
 
-	/* CRC check
-	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
-	 * if the CRC-STATIC fields did not change */
-	crc_computed = CRC_INIT_7;
-	crc_type = ROHC_CRC_TYPE_7;
-	crc_table = decomp->crc_table_7;
+	/* if the RTP bit type feature is enabled at build time, CRC is one bit
+	 * less than in ROHC standard for RTP-specific UOR-2 packets */
 #if RTP_BIT_TYPE
-	if(is_rtp)
+	if(packet_type == PACKET_UOR_2_RTP ||
+	   packet_type == PACKET_UOR_2_TS ||
+	   packet_type == PACKET_UOR_2_ID)
 	{
-		crc_computed = CRC_INIT_6;
 		crc_type = ROHC_CRC_TYPE_6;
-		crc_table = decomp->crc_table_6;
 	}
+	else
 #endif
-	crc_computed = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
-	                                             crc_type, crc_computed, crc_table);
-	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
-	                                              crc_type, crc_computed, crc_table);
-	rohc_debugf(3, "CRC on %zd-byte uncompressed header = 0x%x\n",
-	            uncomp_header_len, crc_computed);
-
-	/* try to guess the correct SN value in case of failure */
-	if(crc_computed != bits.crc)
 	{
-		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
-		            crc_computed, bits.crc);
+		crc_type = ROHC_CRC_TYPE_7;
+	}
+
+	/* compute and check CRC */
+	crc_ok = check_uo_crc(decomp, g_context,
+	                      ip_hdr, ip2_hdr, next_header,
+	                      crc_type, bits.crc);
+	if(!crc_ok)
+	{
+		rohc_debugf(0, "CRC detected a decompression failure\n");
 		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
 		                 uncomp_header_len);
 
+		/* try to guess the correct SN value in case of failure */
 		/* TODO: try to repair CRC failure */
 
 		goto error_crc;
@@ -7862,6 +7842,91 @@ unsigned int build_uncompressed_ip6(struct d_generic_changes *ip_changes,
 	            ntohs(payload_size));
 
 	return sizeof(struct ip6_hdr) + size;
+}
+
+
+/**
+ * @brief Check whether the CRC of the UO* packet is correct or not
+ *
+ * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
+ *       if the CRC-STATIC fields did not change.
+ *
+ * @param decomp        The ROHC decompressor
+ * @param g_context     The generic decompression context
+ * @param outer_ip_hdr  The outer IP header
+ * @param inner_ip_hdr  The inner IP header if it exists, NULL otherwise
+ * @param next_header   The transport header, eg. UDP
+ * @param crc_type      The type of CRC
+ * @param crc_packet    The CRC extracted from the ROHC header
+ */
+static bool check_uo_crc(const struct rohc_decomp *const decomp,
+                         const struct d_generic_context *const g_context,
+                         const unsigned char *const outer_ip_hdr,
+                         const unsigned char *const inner_ip_hdr,
+                         const unsigned char *const next_header,
+                         const rohc_crc_type_t crc_type,
+                         const unsigned int crc_packet)
+{
+	const unsigned char *crc_table;
+	unsigned int crc_computed;
+
+	assert(decomp != NULL);
+	assert(g_context != NULL);
+	assert(outer_ip_hdr != NULL);
+	assert(next_header != NULL);
+
+	/* determine the initial value and the pre-computed table for the CRC */
+	switch(crc_type)
+	{
+		case ROHC_CRC_TYPE_2:
+			crc_computed = CRC_INIT_2;
+			crc_table = decomp->crc_table_2;
+			break;
+		case ROHC_CRC_TYPE_3:
+			crc_computed = CRC_INIT_3;
+			crc_table = decomp->crc_table_3;
+			break;
+		case ROHC_CRC_TYPE_6:
+			crc_computed = CRC_INIT_6;
+			crc_table = decomp->crc_table_6;
+			break;
+		case ROHC_CRC_TYPE_7:
+			crc_computed = CRC_INIT_7;
+			crc_table = decomp->crc_table_7;
+			break;
+		case ROHC_CRC_TYPE_8:
+			crc_computed = CRC_INIT_8;
+			crc_table = decomp->crc_table_8;
+			break;
+		default:
+			rohc_debugf(0, "unknown CRC type %d\n", crc_type);
+			assert(0);
+			goto error;
+	}
+
+	/* compute the CRC from built uncompressed headers */
+	crc_computed = g_context->compute_crc_static(outer_ip_hdr, inner_ip_hdr,
+	                                             next_header, crc_type,
+	                                             crc_computed, crc_table);
+	crc_computed = g_context->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
+	                                              next_header, crc_type,
+	                                              crc_computed, crc_table);
+	rohc_debugf(3, "CRC-%d on uncompressed header = 0x%x\n",
+	            crc_type, crc_computed);
+
+	/* does the computed CRC match the one in packet? */
+	if(crc_computed != crc_packet)
+	{
+		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
+		            crc_computed, crc_packet);
+		goto error;
+	}
+
+	/* computed CRC matches the one in packet */
+	return true;
+
+error:
+	return false;
 }
 
 
