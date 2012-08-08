@@ -42,7 +42,7 @@ unsigned char crc_table_2[256];
  * Prototypes of private functions
  */
 
-static bool rohc_crc_get_polynom(const int crc_type,
+static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
                                  unsigned char *const polynom)
 	__attribute__((nonnull(2), warn_unused_result));
 
@@ -126,7 +126,8 @@ void crc_init_table(unsigned char *table, unsigned char poly)
  * @param crc_type  The type of CRC to initialize the table for
  * @return          true in case of success, false in case of failure
  */
-bool rohc_crc_init_table(unsigned char *const table, const int crc_type)
+bool rohc_crc_init_table(unsigned char *const table,
+                         const rohc_crc_type_t crc_type)
 {
 	unsigned char crc;
 	unsigned char polynom;
@@ -174,15 +175,14 @@ error:
 /**
  * @brief Calculate the checksum for the given data.
  *
- * @param crc_type   The CRC type among CRC_TYPE_2, CRC_TYPE_3, CRC_TYPE_6,
- *                   CRC_TYPE_7 or CRC_TYPE_8
+ * @param crc_type   The CRC type
  * @param data       The data to calculate the checksum on
  * @param length     The length of the data
  * @param init_val   The initial CRC value
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The checksum
  */
-unsigned int crc_calculate(const int crc_type,
+unsigned int crc_calculate(const rohc_crc_type_t crc_type,
                            const unsigned char *const data,
                            const int length,
                            const unsigned int init_val,
@@ -197,19 +197,19 @@ unsigned int crc_calculate(const int crc_type,
 	/* call the function that corresponds to the CRC type */
 	switch(crc_type)
 	{
-		case CRC_TYPE_8:
+		case ROHC_CRC_TYPE_8:
 			crc = crc_calc_8(data, length, init_val, crc_table);
 			break;
-		case CRC_TYPE_7:
+		case ROHC_CRC_TYPE_7:
 			crc = crc_calc_7(data, length, init_val, crc_table);
 			break;
-		case CRC_TYPE_6:
+		case ROHC_CRC_TYPE_6:
 			crc = crc_calc_6(data, length, init_val, crc_table);
 			break;
-		case CRC_TYPE_3:
+		case ROHC_CRC_TYPE_3:
 			crc = crc_calc_3(data, length, init_val, crc_table);
 			break;
-		case CRC_TYPE_2:
+		case ROHC_CRC_TYPE_2:
 			crc = crc_calc_2(data, length, init_val, crc_table);
 			break;
 		default:
@@ -245,7 +245,7 @@ unsigned int crc_calculate(const int crc_type,
 unsigned int compute_crc_static(const unsigned char *const ip,
                                 const unsigned char *const ip2,
                                 const unsigned char *const next_header,
-                                const unsigned int crc_type,
+                                const rohc_crc_type_t crc_type,
                                 const unsigned int init_val,
                                 const unsigned char *const crc_table)
 {
@@ -348,7 +348,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 unsigned int compute_crc_dynamic(const unsigned char *const ip,
                                  const unsigned char *const ip2,
                                  const unsigned char *const next_header,
-                                 const unsigned int crc_type,
+                                 const rohc_crc_type_t crc_type,
                                  const unsigned int init_val,
                                  const unsigned char *const crc_table)
 {
@@ -435,7 +435,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 unsigned int udp_compute_crc_static(const unsigned char *const ip,
                                     const unsigned char *const ip2,
                                     const unsigned char *const next_header,
-                                    const unsigned int crc_type,
+                                    const rohc_crc_type_t crc_type,
                                     const unsigned int init_val,
                                     const unsigned char *const crc_table)
 {
@@ -479,7 +479,7 @@ unsigned int udp_compute_crc_static(const unsigned char *const ip,
 unsigned int udp_compute_crc_dynamic(const unsigned char *const ip,
                                      const unsigned char *const ip2,
                                      const unsigned char *const next_header,
-                                     const unsigned int crc_type,
+                                     const rohc_crc_type_t crc_type,
                                      const unsigned int init_val,
                                      const unsigned char *const crc_table)
 {
@@ -524,7 +524,7 @@ unsigned int udp_compute_crc_dynamic(const unsigned char *const ip,
 unsigned int rtp_compute_crc_static(const unsigned char *const ip,
                                     const unsigned char *const ip2,
                                     const unsigned char *const next_header,
-                                    const unsigned int crc_type,
+                                    const rohc_crc_type_t crc_type,
                                     const unsigned int init_val,
                                     const unsigned char *const crc_table)
 {
@@ -573,7 +573,7 @@ unsigned int rtp_compute_crc_static(const unsigned char *const ip,
 unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
                                      const unsigned char *const ip2,
                                      const unsigned char *const next_header,
-                                     const unsigned int crc_type,
+                                     const rohc_crc_type_t crc_type,
                                      const unsigned int init_val,
                                      const unsigned char *const crc_table)
 {
@@ -612,7 +612,7 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
  * @return            The checksum
  */
 unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
-                                         const unsigned int crc_type,
+                                         const rohc_crc_type_t crc_type,
                                          const unsigned int init_val,
                                          const unsigned char *const crc_table)
 {
@@ -651,7 +651,7 @@ unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
  * @return            The checksum
  */
 unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
-                                          const unsigned int crc_type,
+                                          const rohc_crc_type_t crc_type,
                                           const unsigned int init_val,
                                           const unsigned char *const crc_table)
 {
@@ -690,7 +690,7 @@ unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
  * @param polynom  IN/OUT: the polynom for the requested CRC type
  * @return         true in case of success, false otherwise
  */
-static bool rohc_crc_get_polynom(const int crc_type,
+static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
                                  unsigned char *const polynom)
 {
 	/* sanity check */
@@ -699,19 +699,19 @@ static bool rohc_crc_get_polynom(const int crc_type,
 	/* determine the polynom for CRC */
 	switch(crc_type)
 	{
-		case CRC_TYPE_2:
+		case ROHC_CRC_TYPE_2:
 			*polynom = 0x3;
 			break;
-		case CRC_TYPE_3:
+		case ROHC_CRC_TYPE_3:
 			*polynom = 0x6;
 			break;
-		case CRC_TYPE_6:
+		case ROHC_CRC_TYPE_6:
 			*polynom = 0x30;
 			break;
-		case CRC_TYPE_7:
+		case ROHC_CRC_TYPE_7:
 			*polynom = 0x79;
 			break;
-		case CRC_TYPE_8:
+		case ROHC_CRC_TYPE_8:
 			*polynom = 0xe0;
 			break;
 		default:

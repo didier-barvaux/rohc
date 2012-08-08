@@ -4293,10 +4293,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 * if the CRC-STATIC fields did not change */
 	crc_computed = CRC_INIT_3;
 	crc_computed = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
-	                                             CRC_TYPE_3, crc_computed,
+	                                             ROHC_CRC_TYPE_3, crc_computed,
 	                                             decomp->crc_table_3);
 	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
-	                                              CRC_TYPE_3, crc_computed,
+	                                              ROHC_CRC_TYPE_3, crc_computed,
 	                                              decomp->crc_table_3);
 	rohc_debugf(3, "CRC-3 on %zd-byte uncompressed header = 0x%x\n",
 	            uncomp_header_len, crc_computed);
@@ -5000,10 +5000,10 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 * if the CRC-STATIC fields did not change */
 	crc_computed = CRC_INIT_3;
 	crc_computed = g_context->compute_crc_static(ip_hdr, ip2_hdr, next_header,
-	                                             CRC_TYPE_3, crc_computed,
+	                                             ROHC_CRC_TYPE_3, crc_computed,
 	                                             decomp->crc_table_3);
 	crc_computed = g_context->compute_crc_dynamic(ip_hdr, ip2_hdr, next_header,
-	                                              CRC_TYPE_3, crc_computed,
+	                                              ROHC_CRC_TYPE_3, crc_computed,
 	                                              decomp->crc_table_3);
 	rohc_debugf(3, "CRC-3 on %zd-byte uncompressed header = 0x%x\n",
 	            uncomp_header_len, crc_computed);
@@ -6099,13 +6099,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	crc_computed = CRC_INIT_7;
-	crc_type = CRC_TYPE_7;
+	crc_type = ROHC_CRC_TYPE_7;
 	crc_table = decomp->crc_table_7;
 #if RTP_BIT_TYPE
 	if(is_rtp)
 	{
 		crc_computed = CRC_INIT_6;
-		crc_type = CRC_TYPE_6;
+		crc_type = ROHC_CRC_TYPE_6;
 		crc_table = decomp->crc_table_6;
 	}
 #endif

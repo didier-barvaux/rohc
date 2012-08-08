@@ -2785,7 +2785,8 @@ void c_generic_feedback(struct c_context *const context,
 				unsigned int crc_computed;
 
 				/* compute the CRC of the feedback packet */
-				crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
+				crc_computed = crc_calculate(ROHC_CRC_TYPE_8,
+				                             feedback->data, feedback->size,
 				                             CRC_INIT_8, context->compressor->crc_table_8);
 
 				/* ignore feedback in case of bad CRC */
@@ -3393,7 +3394,8 @@ int code_IR_packet(struct c_context *const context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8,
+	dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
+	                                   CRC_INIT_8,
 	                                   context->compressor->crc_table_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
@@ -3531,7 +3533,8 @@ int code_IR_DYN_packet(struct c_context *const context,
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(CRC_TYPE_8, dest, counter, CRC_INIT_8,
+	dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
+	                                   CRC_INIT_8,
 	                                   context->compressor->crc_table_8);
 	rohc_debugf(3, "CRC (header length = %d, crc = 0x%x)\n",
 	            counter, dest[crc_position]);
@@ -4142,10 +4145,10 @@ int code_UO0_packet(struct c_context *const context,
 	crc = CRC_INIT_3;
 	ip2_hdr = (g_context->tmp.nr_of_ip_hdr > 1) ? ip2->data : NULL;
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    CRC_TYPE_3, crc,
+	                                    ROHC_CRC_TYPE_3, crc,
 	                                    context->compressor->crc_table_3);
 	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     CRC_TYPE_3, crc,
+	                                     ROHC_CRC_TYPE_3, crc,
 	                                     context->compressor->crc_table_3);
 	f_byte |= crc;
 	rohc_debugf(2, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
@@ -4328,10 +4331,10 @@ int code_UO1_packet(struct c_context *const context,
 	crc = CRC_INIT_3;
 	ip2_hdr = (g_context->tmp.nr_of_ip_hdr > 1) ? ip2->data : NULL;
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    CRC_TYPE_3, crc,
+	                                    ROHC_CRC_TYPE_3, crc,
 	                                    context->compressor->crc_table_3);
 	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     CRC_TYPE_3, crc,
+	                                     ROHC_CRC_TYPE_3, crc,
 	                                     context->compressor->crc_table_3);
 	s_byte = crc & 0x07;
 	switch(packet_type)
@@ -4537,13 +4540,13 @@ int code_UO2_packet(struct c_context *const context,
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	crc = CRC_INIT_7;
-	crc_type = CRC_TYPE_7;
+	crc_type = ROHC_CRC_TYPE_7;
 	crc_table = context->compressor->crc_table_7;
 #if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
 	if(is_rtp)
 	{
 		crc = CRC_INIT_6;
-		crc_type = CRC_TYPE_6;
+		crc_type = ROHC_CRC_TYPE_6;
 		crc_table = context->compressor->crc_table_6;
 	}
 #endif

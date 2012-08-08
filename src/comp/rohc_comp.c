@@ -196,27 +196,27 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->random_cb_ctxt = NULL;
 
 	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(comp->crc_table_2, CRC_TYPE_2);
+	is_fine = rohc_crc_init_table(comp->crc_table_2, ROHC_CRC_TYPE_2);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
 	}
-	is_fine = rohc_crc_init_table(comp->crc_table_3, CRC_TYPE_3);
+	is_fine = rohc_crc_init_table(comp->crc_table_3, ROHC_CRC_TYPE_3);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
 	}
-	is_fine = rohc_crc_init_table(comp->crc_table_6, CRC_TYPE_6);
+	is_fine = rohc_crc_init_table(comp->crc_table_6, ROHC_CRC_TYPE_6);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
 	}
-	is_fine = rohc_crc_init_table(comp->crc_table_7, CRC_TYPE_7);
+	is_fine = rohc_crc_init_table(comp->crc_table_7, ROHC_CRC_TYPE_7);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
 	}
-	is_fine = rohc_crc_init_table(comp->crc_table_8, CRC_TYPE_8);
+	is_fine = rohc_crc_init_table(comp->crc_table_8, ROHC_CRC_TYPE_8);
 	if(is_fine != true)
 	{
 		goto destroy_comp;

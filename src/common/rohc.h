@@ -517,19 +517,18 @@ struct medium
 /*
  * The different CRC types and tables for ROHC compression/decompression
  *
- * TODO API: define constants as private and move in crc.h or even crc.c
- * TODO API: use an enum instead of constants
+ * TODO API: remove these public constants since a private enum was created
  */
 
-/** The CRC-2 type */
+/** The CRC-2 type (deprecated) */
 #define CRC_TYPE_2 1
-/** The CRC-3 type */
+/** The CRC-3 type (deprecated) */
 #define CRC_TYPE_3 2
-/** The CRC-6 type */
+/** The CRC-6 type (deprecated) */
 #define CRC_TYPE_6 3
-/** The CRC-7 type */
+/** The CRC-7 type (deprecated) */
 #define CRC_TYPE_7 4
-/** The CRC-8 type */
+/** The CRC-8 type (deprecated) */
 #define CRC_TYPE_8 5
 
 

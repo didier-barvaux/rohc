@@ -278,7 +278,8 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			unsigned int crc_computed;
 
 			/* compute the CRC of the feedback packet */
-			crc_computed = crc_calculate(CRC_TYPE_8, feedback->data, feedback->size,
+			crc_computed = crc_calculate(ROHC_CRC_TYPE_8,
+			                             feedback->data, feedback->size,
 			                             CRC_INIT_8, context->compressor->crc_table_8);
 
 			/* ignore feedback in case of bad CRC */
@@ -541,7 +542,8 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 
 	/* part 5 */
 	dest[counter] = 0;
-	dest[counter] = crc_calculate(CRC_TYPE_8, dest, counter + 1, CRC_INIT_8,
+	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter + 1,
+	                              CRC_INIT_8,
 	                              context->compressor->crc_table_8);
 	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter + 1, dest[counter]);
 	counter++;

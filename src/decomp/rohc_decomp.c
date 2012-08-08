@@ -395,27 +395,27 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	decomp->curval = 0;
 
 	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(decomp->crc_table_2, CRC_TYPE_2);
+	is_fine = rohc_crc_init_table(decomp->crc_table_2, ROHC_CRC_TYPE_2);
 	if(is_fine != true)
 	{
 		goto destroy_decomp;
 	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_3, CRC_TYPE_3);
+	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
 	if(is_fine != true)
 	{
 		goto destroy_decomp;
 	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_6, CRC_TYPE_6);
+	is_fine = rohc_crc_init_table(decomp->crc_table_6, ROHC_CRC_TYPE_6);
 	if(is_fine != true)
 	{
 		goto destroy_decomp;
 	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_7, CRC_TYPE_7);
+	is_fine = rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
 	if(is_fine != true)
 	{
 		goto destroy_decomp;
 	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_8, CRC_TYPE_8);
+	is_fine = rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
 	if(is_fine != true)
 	{
 		goto destroy_decomp;
@@ -1568,7 +1568,7 @@ static int rohc_ir_packet_crc_ok(struct rohc_decomp *decomp,
 
 	/* compute the CRC of the IR packet */
 	walk[largecid + 2] = 0;
-	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
+	crc = crc_calculate(ROHC_CRC_TYPE_8, walk - addcidUsed,
 	                    ir_size + largecid + addcidUsed, CRC_INIT_8,
 	                    decomp->crc_table_8);
 	walk[largecid + 2] = realcrc;
@@ -1635,7 +1635,7 @@ static int rohc_ir_dyn_packet_crc_ok(struct rohc_decomp *decomp,
 
 	/* compute the CRC of the IR-DYN packet */
 	walk[largecid + 2] = 0;
-	crc = crc_calculate(CRC_TYPE_8, walk - addcidUsed,
+	crc = crc_calculate(ROHC_CRC_TYPE_8, walk - addcidUsed,
 	                    irdyn_size + largecid + addcidUsed, CRC_INIT_8,
 	                    decomp->crc_table_8);
 	walk[largecid + 2] = realcrc;
