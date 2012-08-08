@@ -81,6 +81,14 @@
 
 
 /**
+ * @brief Convert GET_BIT_* values to boolean
+ *
+ * example: GET_BOOL(GET_BIT_5(data_ptr));
+ */
+#define GET_BOOL(x)  ((x) ? true : false)
+
+
+/**
  * @brief Get the next 16 bits at the given memory location
  *        in Network Byte Order
  */

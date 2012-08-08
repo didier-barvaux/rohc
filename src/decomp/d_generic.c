@@ -147,6 +147,10 @@ struct rohc_decoded_values
 	uint16_t ip_id;  /**< The decoded outer IP-ID value */
 	uint16_t ip_id2; /**< The decoded inner IP-ID value */
 	uint32_t ts;     /**< The decoded TS value */
+	bool rtp_m;      /**< The decoded RTP Marker (M) flag */
+	bool rtp_x;      /**< The decoded RTP eXtension (R-X) flag */
+	bool rtp_p;      /**< The decoded RTP Padding (R-P) flag */
+	uint8_t rtp_pt;  /**< The decoded RTP Payload Type (RTP-PT) */
 };
 
 
@@ -2922,8 +2926,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	/* build the uncompressed headers (no CRC check because already done) */
 	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
-	                             ROHC_CRC_TYPE_NONE, 0 /* no CRC */,
-	                             dest, &uncomp_header_len);
+	                              ROHC_CRC_TYPE_NONE, 0 /* no CRC */,
+	                              dest, &uncomp_header_len);
 	if(build_ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to build uncompressed headers\n");
@@ -4195,37 +4199,19 @@ int decode_uo0(struct rohc_decomp *decomp,
 			(struct udphdr *) g_context->outer_ip_changes->next_header;
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
-		/* update TS, SN and M flag */
+		/* update TS, SN, M flag, R-X flag, R-P flag and R-PT */
 		rtp->timestamp = htonl(decoded.ts);
 		rtp->sn = htons(decoded.sn);
-		rtp->m = bits.rtp_m & 0x1;
-		rohc_debugf(3, "force RTP Marker (M) bit to %u\n", rtp->m);
-
-		/* update the RTP eXtension (R-X) flag if present */
-		if(bits.ext.rtp_x_nr > 0)
-		{
-			rtp->extension = bits.ext.rtp_x;
-		}
-
-		/* update RTP Padding (R-P) flag if present */
-		if(bits.ext.rtp_p_nr > 0)
-		{
-			rtp->padding = bits.ext.rtp_p;
-		}
-
-		/* update RTP Payload Type (R-PT) field if present */
-		if(bits.ext.rtp_pt_nr > 0)
-		{
-			rtp->pt = bits.ext.rtp_pt;
-			rohc_debugf(3, "force RTP Payload Type (R-PT) = 0x%x\n",
-			            bits.ext.rtp_pt);
-		}
+		rtp->m = GET_REAL(decoded.rtp_m);
+		rtp->extension = GET_REAL(decoded.rtp_x);
+		rtp->padding = GET_REAL(decoded.rtp_p);
+		rtp->pt = decoded.rtp_pt & 0x7f;
 	}
 
 	/* build the uncompressed headers */
 	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
-	                             ROHC_CRC_TYPE_3, bits.crc,
-	                             uncomp_packet, &uncomp_header_len);
+	                              ROHC_CRC_TYPE_3, bits.crc,
+	                              uncomp_packet, &uncomp_header_len);
 	if(build_ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to build uncompressed headers\n");
@@ -4470,13 +4456,6 @@ static bool parse_uo1(struct d_generic_context *g_context,
 	 * \ref parse_extension3 will reset it to 0 if needed.
 	 */
 	bits->ext.is_ts_scaled = 1;
-
-	/* RTP Marker (M) bit.
-	 * Set default value to 0 because RFC 3095 §5.7 says:
-	 *   Context(M) is initially zero and is never updated. value(M) = 1
-	 *   only when field(M) = 1.
-	 */
-	bits->rtp_m = 0;
 
 	/* check if the ROHC packet is large enough to read the second byte */
 	if(rohc_remain_len <= second_byte)
@@ -4825,37 +4804,19 @@ int decode_uo1(struct rohc_decomp *decomp,
 			(struct udphdr *) g_context->outer_ip_changes->next_header;
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
-		/* update TS, SN and M flag */
+		/* update TS, SN, M flag, R-X flag, R-P flag and R-PT */
 		rtp->timestamp = htonl(decoded.ts);
 		rtp->sn = htons(decoded.sn);
-		rtp->m = bits.rtp_m & 0x1;
-		rohc_debugf(3, "force RTP Marker (M) bit to %u\n", rtp->m);
-
-		/* update the RTP eXtension (R-X) flag if present */
-		if(bits.ext.rtp_x_nr > 0)
-		{
-			rtp->extension = bits.ext.rtp_x;
-		}
-
-		/* update RTP Padding (R-P) flag if present */
-		if(bits.ext.rtp_p_nr > 0)
-		{
-			rtp->padding = bits.ext.rtp_p;
-		}
-
-		/* update RTP Payload Type (R-PT) field if present */
-		if(bits.ext.rtp_pt_nr > 0)
-		{
-			rtp->pt = bits.ext.rtp_pt;
-			rohc_debugf(3, "force RTP Payload Type (R-PT) = 0x%x\n",
-			            bits.ext.rtp_pt);
-		}
+		rtp->m = GET_REAL(decoded.rtp_m);
+		rtp->extension = GET_REAL(decoded.rtp_x);
+		rtp->padding = GET_REAL(decoded.rtp_p);
+		rtp->pt = decoded.rtp_pt & 0x7f;
 	}
 
 	/* build the uncompressed headers */
 	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
-	                             ROHC_CRC_TYPE_3, bits.crc,
-	                             uncomp_packet, &uncomp_header_len);
+	                              ROHC_CRC_TYPE_3, bits.crc,
+	                              uncomp_packet, &uncomp_header_len);
 	if(build_ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to build uncompressed headers\n");
@@ -5106,13 +5067,6 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 	 * \ref parse_extension3 will reset it to 0 if needed.
 	 */
 	bits->ext.is_ts_scaled = 1;
-
-	/* RTP Marker (M) bit.
-	 * Set default value to 0 because RFC 3095 §5.7 says:
-	 *   Context(M) is initially zero and is never updated. value(M) = 1
-	 *   only when field(M) = 1.
-	 */
-	bits->rtp_m = 0;
 
 
 	/*
@@ -5487,27 +5441,6 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 				                            rohc_remain_data, rohc_remain_len,
 				                            &(bits->ext));
 
-				/* check that the RTP Marker (M) value found in the extension is the
-				 * same as the one we previously found. RFC 4815 §8.4 says:
-				 *   The RTP header part of Extension 3, as defined by RFC 3095
-				 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
-				 *   This field is also present in all compressed base header formats
-				 *   except for UO-1-ID; meaning, there may be two occurrences of the
-				 *   field within one single compressed header. In such cases, the
-				 *   two M fields must have the same value.
-				 */
-				if(bits->ext.rtp_m_nr > 0)
-				{
-					assert(bits->ext.rtp_m_nr == 1);
-					if(bits->rtp_m != bits->ext.rtp_m)
-					{
-						rohc_debugf(0, "RTP Marker flag mismatch (base header = %u, "
-						            "extension 3 = %u)\n", bits->rtp_m,
-						            bits->ext.rtp_m);
-						goto error;
-					}
-				}
-
 				break;
 			}
 
@@ -5848,31 +5781,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 			(struct udphdr *) g_context->outer_ip_changes->next_header;
 		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
-		/* update TS, SN and M flag */
+		/* update TS, SN, M flag, R-X flag, R-P flag and R-PT */
 		rtp->timestamp = htonl(decoded.ts);
 		rtp->sn = htons(decoded.sn);
-		rtp->m = bits.rtp_m & 0x1;
-		rohc_debugf(3, "force RTP Marker (M) bit to %u\n", rtp->m);
-
-		/* update the RTP eXtension (R-X) flag if present */
-		if(bits.ext.rtp_x_nr > 0)
-		{
-			rtp->extension = bits.ext.rtp_x;
-		}
-
-		/* update RTP Padding (R-P) flag if present */
-		if(bits.ext.rtp_p_nr > 0)
-		{
-			rtp->padding = bits.ext.rtp_p;
-		}
-
-		/* update RTP Payload Type (R-PT) field if present */
-		if(bits.ext.rtp_pt_nr > 0)
-		{
-			rtp->pt = bits.ext.rtp_pt;
-			rohc_debugf(3, "force RTP Payload Type (R-PT) = 0x%x\n",
-			            bits.ext.rtp_pt);
-		}
+		rtp->m = GET_REAL(decoded.rtp_m);
+		rtp->extension = GET_REAL(decoded.rtp_x);
+		rtp->padding = GET_REAL(decoded.rtp_p);
+		rtp->pt = decoded.rtp_pt & 0x7f;
 	}
 
 	/* if the RTP bit type feature is enabled at build time, CRC is one bit
@@ -5892,8 +5807,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 	/* build the uncompressed headers */
 	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
-	                             crc_type, bits.crc,
-	                             uncomp_packet, &uncomp_header_len);
+	                              crc_type, bits.crc,
+	                              uncomp_packet, &uncomp_header_len);
 	if(build_ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to build uncompressed headers\n");
@@ -6082,8 +5997,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* build the uncompressed headers (no CRC check because already done) */
 	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
-	                             ROHC_CRC_TYPE_NONE, 0 /* no CRC */,
-	                             dest, &uncomp_header_len);
+	                              ROHC_CRC_TYPE_NONE, 0 /* no CRC */,
+	                              dest, &uncomp_header_len);
 	if(build_ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to build uncompressed headers\n");
@@ -7923,7 +7838,11 @@ void update_inter_packet(struct d_generic_context *context)
  *  - SN
  *  - IP-ID of outer IP header (if it is IPv4)
  *  - IP-ID of inner IP header (if it exists and it is IPv4)
- *  - TS (RTP profile only)
+ *  - RTP TimeStamp (TS) (RTP profile only)
+ *  - RTP Marker (M) flag (RTP profile only)
+ *  - RTP eXtension (R-X) flag (RTP profile only)
+ *  - RTP Padding (R-P) flag (RTP profile only)
+ *  - RTP Payload Type (R-PT) (RTP profile only)
  *
  * @param context  The decompression context
  * @param bits     The extracted bits
@@ -8006,14 +7925,17 @@ static bool decode_values_from_bits(const struct d_context *context,
 		            g_context->inner_ip_changes->rnd, bits.ip_id2_nr, bits.ip_id2);
 	}
 
-	/* decode TS (RTP profile only) */
+	/* decode values for RTP profile only */
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
 		struct d_rtp_context *const rtp_context =
 			(struct d_rtp_context *) g_context->specific;
+		struct udphdr *const udp =
+			(struct udphdr *) g_context->outer_ip_changes->next_header;
+		struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 
+		/* decode RTP TimeStamp (TS) */
 		rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
-
 		if(bits.ext.is_ts_scaled)
 		{
 			if(bits.ts_nr == 0)
@@ -8054,10 +7976,69 @@ static bool decode_values_from_bits(const struct d_context *context,
 
 			decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
 		}
-
 		rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
 		            "bits = %u / 0x%x)\n", decoded->ts, decoded->ts,
 		            bits.ts_nr, bits.ts, bits.ts);
+
+		/* check that the RTP Marker (M) value found in the extension is the
+		 * same as the one we previously found. RFC 4815 §8.4 says:
+		 *   The RTP header part of Extension 3, as defined by RFC 3095
+		 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
+		 *   This field is also present in all compressed base header formats
+		 *   except for UO-1-ID; meaning, there may be two occurrences of the
+		 *   field within one single compressed header. In such cases, the
+		 *   two M fields must have the same value.
+		 */
+		if(bits.ext.rtp_m_nr > 0 && bits.rtp_m != bits.ext.rtp_m)
+		{
+			assert(bits.ext.rtp_m_nr == 1); /* sanity check */
+			rohc_debugf(0, "RTP Marker flag mismatch (base header = %u, "
+			            "extension 3 = %u)\n", bits.rtp_m, bits.ext.rtp_m);
+			goto error;
+		}
+
+		/* decode RTP Marker (M) flag */
+		decoded->rtp_m = GET_BOOL(bits.rtp_m);
+		rohc_debugf(3, "decoded RTP M flag = %u\n", decoded->rtp_m);
+
+		/* decode RTP eXtension (R-X) flag */
+		if(bits.ext.rtp_x_nr > 0)
+		{
+			/* take packet value */
+			decoded->rtp_x = GET_BOOL(bits.ext.rtp_x);
+		}
+		else
+		{
+			/* keep context value */
+			decoded->rtp_x = GET_BOOL(rtp->extension);
+		}
+		rohc_debugf(3, "decoded R-X flag = %u\n", decoded->rtp_x);
+
+		/* decode RTP Padding (R-P) flag */
+		if(bits.ext.rtp_p_nr > 0)
+		{
+			/* take packet value */
+			decoded->rtp_p = GET_BOOL(bits.ext.rtp_p);
+		}
+		else
+		{
+			/* keep context value */
+			decoded->rtp_p = GET_BOOL(rtp->padding);
+		}
+		rohc_debugf(3, "decoded R-P flag = %u\n", decoded->rtp_p);
+
+		/* decode RTP Payload Type (R-PT) */
+		if(bits.ext.rtp_pt_nr > 0)
+		{
+			/* take packet value */
+			decoded->rtp_pt = bits.ext.rtp_pt & 0x7f;
+		}
+		else
+		{
+			/* keep context value */
+			decoded->rtp_pt = rtp->pt;
+		}
+		rohc_debugf(3, "decoded R-PT = %u\n", decoded->rtp_pt);
 	}
 
 	return true;
