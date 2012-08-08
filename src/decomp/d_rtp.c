@@ -81,10 +81,10 @@ static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
                                  unsigned int length,
                                  unsigned char *dest);
 
-static int rtp_build_uncomp_rtp(struct d_generic_context *context,
-                                struct d_generic_changes *hdr_changes,
+static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
+                                const struct d_generic_changes *const hdr_chges,
                                 unsigned char *dest,
-                                int payload_size);
+                                const unsigned int payload_len);
 
 
 /**
@@ -831,20 +831,20 @@ error:
  * @brief Build an uncompressed UDP/RTP header.
  *
  * @param context      The generic decompression context
- * @param hdr_changes  The UDP/RTP header changes
+ * @param hdr_chges    The UDP/RTP header changes
  * @param dest         The buffer to store the UDP/RTP header (MUST be at least
  *                     of sizeof(struct udphdr) + sizeof(struct rtphdr) length)
- * @param payload_size The length of the UDP/RTP payload
+ * @param payload_len  The length of the UDP/RTP payload
  * @return             The length of the next header (ie. the UDP/RTP header),
  *                     -1 in case of error
  */
-static int rtp_build_uncomp_rtp(struct d_generic_context *context,
-                                struct d_generic_changes *hdr_changes,
+static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
+                                const struct d_generic_changes *const hdr_chges,
                                 unsigned char *dest,
-                                int payload_size)
+                                const unsigned int payload_len)
 {
 	struct d_rtp_context *rtp_context = context->specific;
-	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_changes->next_header;
+	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_chges->next_header;
 	struct udphdr *udp = (struct udphdr *) dest;
 
 	/* static + checksum */
@@ -869,7 +869,7 @@ static int rtp_build_uncomp_rtp(struct d_generic_context *context,
 	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 
 	/* interfered fields */
-	udp->len = htons(payload_size + sizeof(struct udphdr) +
+	udp->len = htons(payload_len + sizeof(struct udphdr) +
 	                 sizeof(struct rtphdr));
 	rohc_debugf(3, "UDP + RTP length = 0x%04x\n", ntohs(udp->len));
 

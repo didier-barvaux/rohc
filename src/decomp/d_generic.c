@@ -357,6 +357,13 @@ static bool decode_values_from_bits(const struct d_context *context,
  * Private function prototypes for building the uncompressed headers
  */
 
+static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
+                             const struct d_generic_context *const g_context,
+                             const unsigned int payload_len,
+                             const rohc_crc_type_t crc_type,
+                             const unsigned int crc_packet,
+                             unsigned char *uncomp_hdrs,
+                             size_t *const uncomp_hdrs_len);
 unsigned int build_uncomp_ip(struct d_generic_changes *ip_changes,
                              unsigned char *dest,
                              unsigned int payload_size,
@@ -401,13 +408,13 @@ static int get_ip6_ext_size(const unsigned char *data, const size_t data_len);
  * Private function prototypes for miscellaneous functions
  */
 
-static bool check_uo_crc(const struct rohc_decomp *const decomp,
-                         const struct d_generic_context *const g_context,
-                         const unsigned char *const outer_ip_hdr,
-                         const unsigned char *const inner_ip_hdr,
-                         const unsigned char *const next_header,
-                         const rohc_crc_type_t crc_type,
-                         const unsigned int crc_packet);
+static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
+                             const struct d_generic_context *const g_context,
+                             const unsigned char *const outer_ip_hdr,
+                             const unsigned char *const inner_ip_hdr,
+                             const unsigned char *const next_header,
+                             const rohc_crc_type_t crc_type,
+                             const unsigned int crc_packet);
 
 static void update_context(const struct d_context *context,
                            const struct rohc_decoded_values decoded);
@@ -415,8 +422,8 @@ static void update_context(const struct d_context *context,
 void update_inter_packet(struct d_generic_context *context);
 
 static void stats_add_decomp_success(struct d_context *const context,
-                                     const unsigned int comp_hdr_len,
-                                     const unsigned int uncomp_hdr_len);
+                                     const size_t comp_hdr_len,
+                                     const size_t uncomp_hdr_len);
 
 
 /*
@@ -786,7 +793,7 @@ error:
  * @param length  The length of the item
  * @param index   The index of the item in based table
  * @param decomp  The list decompressor
- * @return        true in case of success, false otherwise0
+ * @return        true in case of success, false otherwise
 */
 static bool create_ip6_item(const unsigned char *data,
                             int length,
@@ -2755,8 +2762,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	struct d_generic_context *g_context = context->specific;
 
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
-	unsigned int rohc_header_len = 0;
-	unsigned int uncomp_header_len = 0;
+	size_t rohc_header_len = 0;
+	size_t uncomp_header_len;
 
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
@@ -2769,6 +2776,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	int dynamic_present;
 	int size;
 	unsigned int protocol;
+	int build_ret;
 
 	rohc_debugf(2, "decode an IR packet\n");
 
@@ -2912,53 +2920,27 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	payload_data = rohc_remain_data;
 	payload_len = rohc_remain_len;
 
-	/* build the IP headers */
-	if(g_context->multiple_ip)
+	/* build the uncompressed headers (no CRC check because already done) */
+	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
+	                             ROHC_CRC_TYPE_NONE, 0 /* no CRC */,
+	                             dest, &uncomp_header_len);
+	if(build_ret != ROHC_OK)
 	{
-		/* build the outer IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
-		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
-		                             g_context->outer_ip_changes->next_header_len +
-		                             g_context->inner_ip_changes->size_list,
-		                             g_context->list_decomp1);
-		dest += size;
-		uncomp_header_len += size;
-
-		/* build the inner IP header */
-		size = build_uncomp_ip(g_context->inner_ip_changes, dest, payload_len +
-		                             g_context->inner_ip_changes->next_header_len,
-		                             g_context->list_decomp2);
-		dest += size;
-		uncomp_header_len += size;
+		rohc_debugf(0, "failed to build uncompressed headers\n");
+		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
+		return ROHC_ERROR;
 	}
-	else
-	{
-		/* build the single IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
-		                             g_context->outer_ip_changes->next_header_len,
-		                             g_context->list_decomp1);
-		dest += size;
-		uncomp_header_len += size;
-	}
-
-	/* build the next header if necessary */
-	if(g_context->build_next_header != NULL)
-	{
-		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
-		                                    dest, payload_len);
-		dest += size;
-		uncomp_header_len += size;
-	}
+	dest += uncomp_header_len;
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);
 
 	/* payload */
-	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
+	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %zd\n",
 	            payload_len, rohc_header_len);
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC IR header (%u bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC IR header (%zd bytes) and payload (%u bytes) "
 		            "do not match the full ROHC IR packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -4109,9 +4091,9 @@ error:
  * Steps:
  *  A. Parsing of ROHC header (@see parse_uo0)
  *  B. Decode extracted bits (@see decode_values_from_bits)
- *  C. Build uncompressed headers
- *  D. Check for correct decompression
- *  E. Update the compression context
+ *  C. Build uncompressed headers & check for correct decompression
+ *     (@see build_uncomp_hdrs)
+ *  D. Update the compression context
  *
  * @param decomp         The decompressor
  * @param context        The decompression context
@@ -4140,15 +4122,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
 	struct rohc_decoded_values decoded;
 
-	/* length of the parsed ROHC header */
+	/* length of the parsed ROHC header and of the uncompressed headers */
 	size_t rohc_header_len;
-
-	/* length of the uncompressed headers and pointers on uncompressed outer
-	   IP, inner IP and next headers (will be computed during building) */
 	size_t uncomp_header_len;
-	unsigned char *ip_hdr;
-	unsigned char *ip2_hdr;
-	unsigned char *next_header;
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
@@ -4157,8 +4133,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
 	bool decode_ok;
-	bool crc_ok;
-	int size;
+	int build_ret;
 
 
 	if(g_context->outer_ip_changes->complist)
@@ -4204,48 +4179,13 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 
 
-	/* C. Build uncompressed headers
+	/* C. Build uncompressed headers & check for correct decompression
 	 *
 	 * All fields are now decoded, let's build the uncompressed headers.
+	 *
+	 * Use the CRC on decompressed headers to check whether decompression was
+	 * correct.
 	 */
-
-	uncomp_header_len = 0;
-
-	/* build the IP headers */
-	if(g_context->multiple_ip)
-	{
-		/* build the outer IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
-		                             g_context->outer_ip_changes->next_header_len +
-		                             g_context->inner_ip_changes->size_list +
-		                             payload_len,
-		                             g_context->list_decomp1);
-		ip_hdr = uncomp_packet;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-
-		/* build the inner IP header */
-		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_packet,
-		                             g_context->inner_ip_changes->next_header_len +
-		                             payload_len,
-		                             g_context->list_decomp2);
-		ip2_hdr = uncomp_packet;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
-	else
-	{
-		/* build the single IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             g_context->outer_ip_changes->next_header_len +
-		                             payload_len,
-		                             g_context->list_decomp1);
-		ip_hdr = uncomp_packet;
-		ip2_hdr = NULL;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
 
 	/* TODO: next block of code should be in build_next_header() of the RTP
 	         profile */
@@ -4282,38 +4222,25 @@ int decode_uo0(struct rohc_decomp *decomp,
 		}
 	}
 
-	/* build the next header if necessary */
-	next_header = uncomp_packet;
-	if(g_context->build_next_header != NULL)
+	/* build the uncompressed headers */
+	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
+	                             ROHC_CRC_TYPE_3, bits.crc,
+	                             uncomp_packet, &uncomp_header_len);
+	if(build_ret != ROHC_OK)
 	{
-		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
-		                                    uncomp_packet, payload_len);
-		uncomp_packet += size;
-		uncomp_header_len += size;
+		rohc_debugf(0, "failed to build uncompressed headers\n");
+		if(build_ret == ROHC_ERROR_CRC)
+		{
+			/* try to guess the correct SN value in case of failure */
+			/* TODO: try to repair CRC failure */
+			goto error_crc;
+		}
+		else
+		{
+			goto error;
+		}
 	}
-
-
-	/* D. Check for correct decompression
-	 *
-	 * Use the CRC on decompressed headers to check whether decompression was
-	 * correct.
-	 */
-
-	/* compute and check CRC */
-	crc_ok = check_uo_crc(decomp, g_context,
-	                      ip_hdr, ip2_hdr, next_header,
-	                      ROHC_CRC_TYPE_3, bits.crc);
-	if(!crc_ok)
-	{
-		rohc_debugf(0, "CRC detected a decompression failure\n");
-		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
-		                 uncomp_header_len);
-
-		/* try to guess the correct SN value in case of failure */
-		/* TODO: try to repair CRC failure */
-
-		goto error_crc;
-	}
+	uncomp_packet += uncomp_header_len;
 
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
@@ -4346,7 +4273,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 
 
-	/* E. Update the compression context
+	/* D. Update the compression context
 	 *
 	 * Once CRC check is done, update the compression context with the values
 	 * that were decoded earlier.
@@ -4776,9 +4703,8 @@ error:
  * Steps:
  *  A. Parsing of ROHC header (@see parse_uo1)
  *  B. Decode extracted bits (@see decode_values_from_bits)
- *  C. Build uncompressed headers
- *  D. Check for correct decompression
- *  E. Update the compression context
+ *  C. Build uncompressed headers & check for correct decompression
+ *  D. Update the compression context
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
@@ -4808,15 +4734,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
 	struct rohc_decoded_values decoded;
 
-	/* length of the parsed ROHC header */
+	/* length of the parsed ROHC header and of the uncompressed headers */
 	size_t rohc_header_len;
-
-	/* length of the uncompressed headers and pointers on uncompressed outer
-	   IP, inner IP and next headers (will be computed during building) */
 	size_t uncomp_header_len;
-	unsigned char *ip_hdr;
-	unsigned char *ip2_hdr;
-	unsigned char *next_header;
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
@@ -4825,8 +4745,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
 	bool decode_ok;
-	bool crc_ok;
-	int size;
+	int build_ret;
 
 
 	/* check packet usage */
@@ -4889,48 +4808,13 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 
-	/* C. Build uncompressed headers
+	/* C. Build uncompressed headers & check for correct decompression
 	 *
 	 * All fields are now decoded, let's build the uncompressed headers.
+	 *
+	 * Use the CRC on decompressed headers to check whether decompression was
+	 * correct.
 	 */
-
-	uncomp_header_len = 0;
-
-	/* build the IP headers */
-	if(g_context->multiple_ip)
-	{
-		/* build the outer IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
-		                             g_context->outer_ip_changes->next_header_len +
-		                             g_context->inner_ip_changes->size_list +
-		                             payload_len,
-		                             g_context->list_decomp1);
-		ip_hdr = uncomp_packet;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-
-		/* build the inner IP header */
-		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_packet,
-		                             g_context->inner_ip_changes->next_header_len +
-		                             payload_len,
-		                             g_context->list_decomp2);
-		ip2_hdr = uncomp_packet;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
-	else
-	{
-		/* build the single IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             g_context->outer_ip_changes->next_header_len +
-		                             payload_len,
-		                             g_context->list_decomp1);
-		ip_hdr = uncomp_packet;
-		ip2_hdr = NULL;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
 
 	/* TODO: next block of code should be in build_next_header() of the RTP
 	         profile */
@@ -4967,37 +4851,25 @@ int decode_uo1(struct rohc_decomp *decomp,
 		}
 	}
 
-	/* build the next header if necessary */
-	next_header = uncomp_packet;
-	if(g_context->build_next_header != NULL)
+	/* build the uncompressed headers */
+	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
+	                             ROHC_CRC_TYPE_3, bits.crc,
+	                             uncomp_packet, &uncomp_header_len);
+	if(build_ret != ROHC_OK)
 	{
-		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
-		                                    uncomp_packet, payload_len);
-		uncomp_packet += size;
-		uncomp_header_len += size;
+		rohc_debugf(0, "failed to build uncompressed headers\n");
+		if(build_ret == ROHC_ERROR_CRC)
+		{
+			/* try to guess the correct SN value in case of failure */
+			/* TODO: try to repair CRC failure */
+			goto error_crc;
+		}
+		else
+		{
+			goto error;
+		}
 	}
-
-	/* D. Check for correct decompression
-	 *
-	 * Use the CRC on decompressed headers to check whether decompression was
-	 * correct.
-	 */
-
-	/* compute and check CRC */
-	crc_ok = check_uo_crc(decomp, g_context,
-	                      ip_hdr, ip2_hdr, next_header,
-	                      ROHC_CRC_TYPE_3, bits.crc);
-	if(!crc_ok)
-	{
-		rohc_debugf(0, "CRC detected a decompression failure\n");
-		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
-		                 uncomp_header_len);
-
-		/* try to guess the correct SN value in case of failure */
-		/* TODO: try to repair CRC failure */
-
-		goto error_crc;
-	}
+	uncomp_packet += uncomp_header_len;
 
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
@@ -5030,7 +4902,7 @@ int decode_uo1(struct rohc_decomp *decomp,
 	}
 
 
-	/* E. Update the compression context
+	/* D. Update the compression context
 	 *
 	 * Once CRC check is done, update the compression context with the values
 	 * that were decoded earlier.
@@ -5839,9 +5711,8 @@ error:
  *  A. Parsing of ROHC base header, extension header and tail of header
  *     (@see parse_uor2)
  *  B. Decode extracted bits (@see decode_values_from_bits)
- *  C. Build uncompressed headers
- *  D. Check for correct decompression
- *  E. Update the compression context
+ *  C. Build uncompressed headers & check for correct decompression
+ *  D. Update the compression context
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
@@ -5875,15 +5746,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* the type of CRC that protect the ROHC header */
 	rohc_crc_type_t crc_type;
 
-	/* length of the parsed ROHC header */
+	/* length of the parsed ROHC header and of the uncompressed headers */
 	size_t rohc_header_len;
-
-	/* length of the uncompressed headers and pointers on uncompressed outer
-	   IP, inner IP and next headers (will be computed during building) */
 	size_t uncomp_header_len;
-	unsigned char *ip_hdr;
-	unsigned char *ip2_hdr;
-	unsigned char *next_header;
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
@@ -5892,8 +5757,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	/* helper variables for values returned by functions */
 	int parsing_ret;
 	bool decode_ok;
-	bool crc_ok;
-	int size;
+	int build_ret;
 
 
 	/* check packet usage */
@@ -5966,48 +5830,13 @@ int decode_uor2(struct rohc_decomp *decomp,
 	}
 
 
-	/* C. Build uncompressed headers
+	/* C. Build uncompressed headers & check for correct decompression
 	 *
 	 * All fields are now decoded, let's build the uncompressed headers.
+	 *
+	 * Use the CRC on decompressed headers to check whether decompression was
+	 * correct.
 	 */
-
-	uncomp_header_len = 0;
-
-	/* build the IP headers */
-	if(g_context->multiple_ip)
-	{
-		/* build the outer IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
-		                             g_context->outer_ip_changes->next_header_len +
-		                             g_context->inner_ip_changes->size_list +
-		                             payload_len,
-		                             g_context->list_decomp1);
-		ip_hdr = uncomp_packet;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-
-		/* build the inner IP header */
-		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_packet,
-		                             g_context->inner_ip_changes->next_header_len +
-		                             payload_len,
-		                             g_context->list_decomp2);
-		ip2_hdr = uncomp_packet;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
-	else
-	{
-		/* build the single IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             g_context->outer_ip_changes->next_header_len +
-		                             payload_len,
-		                             g_context->list_decomp1);
-		ip_hdr = uncomp_packet;
-		ip2_hdr = NULL;
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
 
 	/* TODO: next block of code should be in build_next_header() of the RTP
 	         profile */
@@ -6044,23 +5873,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 		}
 	}
 
-	/* build the next header if necessary */
-	next_header = uncomp_packet;
-	if(g_context->build_next_header != NULL)
-	{
-		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
-		                                    uncomp_packet, payload_len);
-		uncomp_packet += size;
-		uncomp_header_len += size;
-	}
-
-
-	/* D. Check for correct decompression
-	 *
-	 * Use the CRC on decompressed headers to check whether decompression was
-	 * correct.
-	 */
-
 	/* if the RTP bit type feature is enabled at build time, CRC is one bit
 	 * less than in ROHC standard for RTP-specific UOR-2 packets */
 #if RTP_BIT_TYPE
@@ -6076,21 +5888,25 @@ int decode_uor2(struct rohc_decomp *decomp,
 		crc_type = ROHC_CRC_TYPE_7;
 	}
 
-	/* compute and check CRC */
-	crc_ok = check_uo_crc(decomp, g_context,
-	                      ip_hdr, ip2_hdr, next_header,
-	                      crc_type, bits.crc);
-	if(!crc_ok)
+	/* build the uncompressed headers */
+	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
+	                             crc_type, bits.crc,
+	                             uncomp_packet, &uncomp_header_len);
+	if(build_ret != ROHC_OK)
 	{
-		rohc_debugf(0, "CRC detected a decompression failure\n");
-		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
-		                 uncomp_header_len);
-
-		/* try to guess the correct SN value in case of failure */
-		/* TODO: try to repair CRC failure */
-
-		goto error_crc;
+		rohc_debugf(0, "failed to build uncompressed headers\n");
+		if(build_ret == ROHC_ERROR_CRC)
+		{
+			/* try to guess the correct SN value in case of failure */
+			/* TODO: try to repair CRC failure */
+			goto error_crc;
+		}
+		else
+		{
+			goto error;
+		}
 	}
+	uncomp_packet += uncomp_header_len;
 
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
@@ -6123,7 +5939,7 @@ int decode_uor2(struct rohc_decomp *decomp,
 	}
 
 
-	/* E. Update the compression context
+	/* D. Update the compression context
 	 *
 	 * Once CRC check is done, update the compression context with the values
 	 * that were decoded earlier.
@@ -6192,8 +6008,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	int size;
 
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
-	unsigned int rohc_header_len = 0;
-	unsigned int uncomp_header_len = 0;
+	size_t rohc_header_len = 0;
+	size_t uncomp_header_len;
 
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
@@ -6202,6 +6018,8 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
 	unsigned int payload_len;
+
+	int build_ret;
 
 	/* skip the first bytes:
 	 *  IR-DYN type + Profile ID + CRC (+ eventually CID bytes) */
@@ -6260,55 +6078,30 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* reset the correction counter */
 	g_context->correction_counter = 0;
 
-	/* build the IP headers */
-	if(g_context->multiple_ip)
+	/* build the uncompressed headers (no CRC check because already done) */
+	build_ret = build_uncomp_hdrs(decomp, g_context, payload_len,
+	                             ROHC_CRC_TYPE_NONE, 0 /* no CRC */,
+	                             dest, &uncomp_header_len);
+	if(build_ret != ROHC_OK)
 	{
-		/* build the outer IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
-		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
-		                             g_context->outer_ip_changes->next_header_len +
-		                             g_context->inner_ip_changes->size_list,
-		                             g_context->list_decomp1);
-		dest += size;
-		uncomp_header_len += size;
-
-		/* build the inner IP header */
-		size = build_uncomp_ip(g_context->inner_ip_changes, dest, payload_len +
-		                             g_context->inner_ip_changes->next_header_len,
-		                             g_context->list_decomp2);
-		dest += size;
-		uncomp_header_len += size;
+		rohc_debugf(0, "failed to build uncompressed headers\n");
+		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
+		return ROHC_ERROR;
 	}
-	else
-	{
-		/* build the single IP header */
-		size = build_uncomp_ip(g_context->outer_ip_changes, dest, payload_len +
-		                             g_context->outer_ip_changes->next_header_len,
-		                             g_context->list_decomp1);
-		dest += size;
-		uncomp_header_len += size;
-	}
+	dest += uncomp_header_len;
 
-	/* build the next header if necessary */
-	if(g_context->build_next_header != NULL)
-	{
-		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
-		                                    dest, payload_len);
-		dest += size;
-		uncomp_header_len += size;
-	}
-
+	/* go in Full Context state */
 	context->state = FULL_CONTEXT;
 
 	/* update the inter-packet variable */
 	update_inter_packet(g_context);
 
 	/* copy the payload */
-	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %u\n",
+	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %zd\n",
 	            payload_len, rohc_header_len);
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC IR-DYN header (%u bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC IR-DYN header (%zd bytes) and payload (%u bytes) "
 		            "do not match the full ROHC IR-DYN packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -7680,6 +7473,118 @@ reparse:
 
 
 /**
+ * @brief Build the uncompressed headers
+ *
+ * @todo check for uncomp_hdrs size before writing into it
+ *
+ * @param decomp          The ROHC decompressor
+ * @param g_context       The generic decompression context
+ * @param payload_len     The length of the packet payload
+ * @param do_compute_crc  Whether to compute CRC on the uncompressed headers
+ * @param crc_type        The type of CRC
+ * @param crc_packet      The CRC extracted from the ROHC header
+ * @param uncomp_hdrs     OUT: The buffer to store the uncompressed headers
+ * @param uncomp_hdrs_len OUT: The length of the uncompressed headers written
+ *                             into the buffer
+ * @return                ROHC_OK if headers are built successfully,
+ *                        ROHC_ERROR_CRC if the headers do not match the CRC,
+ *                        ROHC_ERROR for other errors
+ */
+static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
+                             const struct d_generic_context *const g_context,
+                             const unsigned int payload_len,
+                             const rohc_crc_type_t crc_type,
+                             const unsigned int crc_packet,
+                             unsigned char *uncomp_hdrs,
+                             size_t *const uncomp_hdrs_len)
+{
+	unsigned char *outer_ip_hdr;
+	unsigned char *inner_ip_hdr;
+	unsigned char *next_header;
+	unsigned int size;
+
+	assert(decomp != NULL);
+	assert(g_context != NULL);
+	assert(uncomp_hdrs != NULL);
+	assert(uncomp_hdrs_len != NULL);
+
+	*uncomp_hdrs_len = 0;
+
+	/* build the IP headers */
+	if(g_context->multiple_ip)
+	{
+		/* build the outer IP header */
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_hdrs,
+		                       ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
+		                       g_context->outer_ip_changes->next_header_len +
+		                       g_context->inner_ip_changes->size_list +
+		                       payload_len,
+		                       g_context->list_decomp1);
+		outer_ip_hdr = uncomp_hdrs;
+		uncomp_hdrs += size;
+		*uncomp_hdrs_len += size;
+
+		/* build the inner IP header */
+		size = build_uncomp_ip(g_context->inner_ip_changes, uncomp_hdrs,
+		                       g_context->inner_ip_changes->next_header_len +
+		                       payload_len,
+		                       g_context->list_decomp2);
+		inner_ip_hdr = uncomp_hdrs;
+		uncomp_hdrs += size;
+		*uncomp_hdrs_len += size;
+	}
+	else
+	{
+		/* build the single IP header */
+		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_hdrs,
+		                       g_context->outer_ip_changes->next_header_len +
+		                       payload_len,
+		                       g_context->list_decomp1);
+		outer_ip_hdr = uncomp_hdrs;
+		inner_ip_hdr = NULL;
+		uncomp_hdrs += size;
+		*uncomp_hdrs_len += size;
+	}
+
+	/* build the next header if present */
+	next_header = uncomp_hdrs;
+	if(g_context->build_next_header != NULL)
+	{
+		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
+		                                    uncomp_hdrs, payload_len);
+		uncomp_hdrs += size;
+		*uncomp_hdrs_len += size;
+	}
+
+	/* compute CRC on uncompressed headers if asked */
+	if(crc_type != ROHC_CRC_TYPE_NONE)
+	{
+		bool crc_ok;
+
+		crc_ok = check_uncomp_crc(decomp, g_context,
+		                          outer_ip_hdr, inner_ip_hdr, next_header,
+		                          crc_type, crc_packet);
+		if(!crc_ok)
+		{
+			rohc_debugf(0, "CRC detected a decompression failure\n");
+			rohc_dump_packet("uncompressed headers", outer_ip_hdr,
+			                 *uncomp_hdrs_len);
+			goto error_crc;
+		}
+	}
+
+	return ROHC_OK;
+
+error_crc:
+	return ROHC_ERROR_CRC;
+#if 0 /* TODO: handle cases where uncomp_hdrs is too short */
+error:
+	return ROHC_ERROR;
+#endif
+}
+
+
+/**
  * @brief Build an uncompressed IP header.
  *
  * @param ip_changes   The IP header changes
@@ -7815,7 +7720,7 @@ unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
 
 
 /**
- * @brief Check whether the CRC of the UO* packet is correct or not
+ * @brief Check whether the CRC on uncompressed header is correct or not
  *
  * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
  *       if the CRC-STATIC fields did not change.
@@ -7828,13 +7733,13 @@ unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
  * @param crc_type      The type of CRC
  * @param crc_packet    The CRC extracted from the ROHC header
  */
-static bool check_uo_crc(const struct rohc_decomp *const decomp,
-                         const struct d_generic_context *const g_context,
-                         const unsigned char *const outer_ip_hdr,
-                         const unsigned char *const inner_ip_hdr,
-                         const unsigned char *const next_header,
-                         const rohc_crc_type_t crc_type,
-                         const unsigned int crc_packet)
+static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
+                             const struct d_generic_context *const g_context,
+                             const unsigned char *const outer_ip_hdr,
+                             const unsigned char *const inner_ip_hdr,
+                             const unsigned char *const next_header,
+                             const rohc_crc_type_t crc_type,
+                             const unsigned int crc_packet)
 {
 	const unsigned char *crc_table;
 	unsigned int crc_computed;
@@ -7843,6 +7748,7 @@ static bool check_uo_crc(const struct rohc_decomp *const decomp,
 	assert(g_context != NULL);
 	assert(outer_ip_hdr != NULL);
 	assert(next_header != NULL);
+	assert(crc_type != ROHC_CRC_TYPE_NONE);
 
 	/* determine the initial value and the pre-computed table for the CRC */
 	switch(crc_type)
@@ -8212,8 +8118,8 @@ static void update_context(const struct d_context *context,
  * @param uncomp_hdr_len  The length (in bytes) of the uncompressed header
  */
 static void stats_add_decomp_success(struct d_context *const context,
-                                     const unsigned int comp_hdr_len,
-                                     const unsigned int uncomp_hdr_len)
+                                     const size_t comp_hdr_len,
+                                     const size_t uncomp_hdr_len)
 {
 	assert(context != NULL);
 	context->header_compressed_size += comp_hdr_len;

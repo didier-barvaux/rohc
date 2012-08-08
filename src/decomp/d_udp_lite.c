@@ -98,10 +98,10 @@ static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
                                       unsigned int length,
                                       unsigned char *dest);
 
-static int udp_lite_build_uncomp_udp(struct d_generic_context *context,
-                                     struct d_generic_changes *hdr_changes,
+static int udp_lite_build_uncomp_udp(const struct d_generic_context *const context,
+                                     const struct d_generic_changes *const hdr_changes,
                                      unsigned char *dest,
-                                     int payload_size);
+                                     const unsigned int payload_len);
 
 
 /*
@@ -684,18 +684,19 @@ error:
 /**
  * @brief Build an uncompressed UDP-Lite header.
  *
+ * @todo check for dest size before writing into it
+ *
  * @param context      The generic decompression context
- * @param hdr_changes  The UDP-Lite header changes
- * @param dest         The buffer to store the UDP-Lite header (MUST be at least
- *                     of sizeof(struct udphdr) length)
- * @param payload_size The length of the UDP-Lite payload
+ * @param hdr_chges    The UDP-Lite header changes
+ * @param dest         The buffer to store the UDP-Lite header
+ * @param payload_len  The length of the UDP-Lite payload
  * @return             The length of the next header (ie. the UDP-Lite header),
  *                     -1 in case of error
  */
-static int udp_lite_build_uncomp_udp(struct d_generic_context *context,
-                                     struct d_generic_changes *hdr_changes,
+static int udp_lite_build_uncomp_udp(const struct d_generic_context *const context,
+                                     const struct d_generic_changes *const hdr_changes,
                                      unsigned char *dest,
-                                     int payload_size)
+                                     const unsigned int payload_len)
 {
 	struct d_udp_lite_context *udp_lite_context = context->specific;
 	struct udphdr *udp_lite_hdr_chg = (struct udphdr *) hdr_changes->next_header;
@@ -716,7 +717,7 @@ static int udp_lite_build_uncomp_udp(struct d_generic_context *context,
 	{
 		if(udp_lite_context->cfi)
 		{
-			udp_lite->len = htons(payload_size + sizeof(struct udphdr));
+			udp_lite->len = htons(payload_len + sizeof(struct udphdr));
 			rohc_debugf(2, "checksum coverage (%d) is inferred\n", udp_lite->len);
 		}
 		else

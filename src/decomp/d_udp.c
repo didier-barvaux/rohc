@@ -50,10 +50,10 @@ static int udp_parse_uo_tail_udp(struct d_generic_context *context,
                                  unsigned int length,
                                  unsigned char *dest);
 
-static int udp_build_uncomp_udp(struct d_generic_context *context,
-                                struct d_generic_changes *hdr_changes,
+static int udp_build_uncomp_udp(const struct d_generic_context *const context,
+                                const struct d_generic_changes *const hdr_chges,
                                 unsigned char *dest,
-                                int payload_size);
+                                const unsigned int payload_len);
 
 
 /**
@@ -497,20 +497,20 @@ error:
  * @brief Build an uncompressed UDP header.
  *
  * @param context      The generic decompression context
- * @param hdr_changes  The UDP header changes
+ * @param hdr_chges    The UDP header changes
  * @param dest         The buffer to store the UDP header (MUST be at least
  *                     of sizeof(struct udphdr) length)
- * @param payload_size The length of the UDP payload
+ * @param payload_len  The length of the UDP payload
  * @return             The length of the next header (ie. the UDP header),
  *                     -1 in case of error
  */
-static int udp_build_uncomp_udp(struct d_generic_context *context,
-                                struct d_generic_changes *hdr_changes,
+static int udp_build_uncomp_udp(const struct d_generic_context *const context,
+                                const struct d_generic_changes *const hdr_chges,
                                 unsigned char *dest,
-                                int payload_size)
+                                const unsigned int payload_len)
 {
 	struct d_udp_context *udp_context = context->specific;
-	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_changes->next_header;
+	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_chges->next_header;
 	struct udphdr *udp = (struct udphdr *) dest;
 
 	/* static + checksum */
@@ -535,7 +535,7 @@ static int udp_build_uncomp_udp(struct d_generic_context *context,
 	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 
 	/* interfered fields */
-	udp->len = htons(payload_size + sizeof(struct udphdr));
+	udp->len = htons(payload_len + sizeof(struct udphdr));
 	rohc_debugf(3, "UDP length = 0x%04x\n", ntohs(udp->len));
 
 	return sizeof(struct udphdr);

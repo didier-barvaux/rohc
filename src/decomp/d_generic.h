@@ -121,10 +121,10 @@ struct d_generic_context
 
 	/// @brief The handler used to build the uncompressed next header thanks
 	///        to context information
-	int (*build_next_header)(struct d_generic_context *context,
-	                         struct d_generic_changes *hdr_changes,
+	int (*build_next_header)(const struct d_generic_context *const context,
+	                         const struct d_generic_changes *const hdr_chges,
 	                         unsigned char *dest,
-	                         int payload_size);
+	                         const unsigned int payload_len);
 
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
