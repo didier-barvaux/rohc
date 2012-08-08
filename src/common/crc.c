@@ -42,13 +42,25 @@ unsigned char crc_table_2[256];
  * Prototypes of private functions
  */
 
+static unsigned int ipv6_ext_calc_crc_static(const unsigned char *const ip,
+                                             const rohc_crc_type_t crc_type,
+                                             const unsigned int init_val,
+                                             const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+static unsigned int ipv6_ext_calc_crc_dyn(const unsigned char *const ip,
+                                          const rohc_crc_type_t crc_type,
+                                          const unsigned int init_val,
+                                          const unsigned char *const crc_table)
+	__attribute__((nonnull(1, 4)));
+static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
+                                                uint8_t *const type)
+	__attribute__((nonnull(1, 2)));
+
+
 static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
                                  unsigned char *const polynom)
 	__attribute__((nonnull(2), warn_unused_result));
 
-static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
-                                                uint8_t *const type)
-	__attribute__((nonnull(1, 2)));
 
 static inline unsigned char crc_calc_8(const unsigned char *const buf,
                                        const int size,
@@ -75,6 +87,7 @@ static inline unsigned char crc_calc_2(const unsigned char *const buf,
                                        const unsigned int init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 4)));
+
 
 
 /**
@@ -287,7 +300,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 		crc = crc_calculate(crc_type, (unsigned char *)(&ip_hdr->ip6_nxt), 34,
 		                    crc, crc_table);
 		/* IPv6 extensions */
-		crc = ipv6_ext_compute_crc_static(ip, crc_type, crc, crc_table);
+		crc = ipv6_ext_calc_crc_static(ip, crc_type, crc, crc_table);
 	}
 
 	/* second header */
@@ -322,7 +335,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 			crc = crc_calculate(crc_type, (unsigned char *)(&ip2_hdr->ip6_nxt), 34,
 			                    crc, crc_table);
 			/* IPv6 extensions */
-			crc = ipv6_ext_compute_crc_static(ip2, crc_type, crc, crc_table);
+			crc = ipv6_ext_calc_crc_static(ip2, crc_type, crc, crc_table);
 		}
 	}
 
@@ -382,7 +395,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 		crc = crc_calculate(crc_type, (unsigned char *)(&ip_hdr->ip6_plen), 2,
 		                    crc, crc_table);
 		/* IPv6 extensions (only AH is CRC-DYNAMIC) */
-		crc = ipv6_ext_compute_crc_dynamic(ip, crc_type, crc, crc_table);
+		crc = ipv6_ext_calc_crc_dyn(ip, crc_type, crc, crc_table);
 	}
 
 	/* second_header */
@@ -409,7 +422,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 			crc = crc_calculate(crc_type, (unsigned char *)(&ip2_hdr->ip6_plen), 2,
 			                    crc, crc_table);
 			/* IPv6 extensions (only AH is CRC-DYNAMIC) */
-			crc = ipv6_ext_compute_crc_dynamic(ip2, crc_type, crc, crc_table);
+			crc = ipv6_ext_calc_crc_dyn(ip2, crc_type, crc, crc_table);
 		}
 	}
 
@@ -601,6 +614,10 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
 
 
 /**
+ * Private functions
+ */
+
+/**
  * @brief Compute the CRC-STATIC part of IPv6 extensions
  *
  * All extensions are concerned except entire AH header.
@@ -611,10 +628,10 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
-                                         const rohc_crc_type_t crc_type,
-                                         const unsigned int init_val,
-                                         const unsigned char *const crc_table)
+static unsigned int ipv6_ext_calc_crc_static(const unsigned char *const ip,
+                                             const rohc_crc_type_t crc_type,
+                                             const unsigned int init_val,
+                                             const unsigned char *const crc_table)
 {
 	unsigned int crc;
 	unsigned char *ext;
@@ -650,7 +667,7 @@ unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
+static unsigned int ipv6_ext_calc_crc_dyn(const unsigned char *const ip,
                                           const rohc_crc_type_t crc_type,
                                           const unsigned int init_val,
                                           const unsigned char *const crc_table)
@@ -676,11 +693,6 @@ unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
 
 	return crc;
 }
-
-
-/**
- * Private functions
- */
 
 
 /**

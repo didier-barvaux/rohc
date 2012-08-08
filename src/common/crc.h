@@ -112,17 +112,5 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
                                      const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 3, 6)));
 
-unsigned int ipv6_ext_compute_crc_static(const unsigned char *const ip,
-                                         const rohc_crc_type_t crc_type,
-                                         const unsigned int init_val,
-                                         const unsigned char *const crc_table)
-	__attribute__((nonnull(1, 4)));
-unsigned int ipv6_ext_compute_crc_dynamic(const unsigned char *const ip,
-                                          const rohc_crc_type_t crc_type,
-                                          const unsigned int init_val,
-                                          const unsigned char *const crc_table)
-	__attribute__((nonnull(1, 4)));
-
-
 #endif
 
