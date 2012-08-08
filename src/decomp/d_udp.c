@@ -18,6 +18,7 @@
  * @file d_udp.c
  * @brief ROHC decompression context for the UDP profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -48,6 +49,11 @@ static int udp_parse_uo_tail_udp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
                                  unsigned char *dest);
+
+static int udp_build_uncompressed_udp(struct d_generic_context *context,
+                                      struct d_generic_changes *hdr_changes,
+                                      unsigned char *dest,
+                                      int payload_size);
 
 
 /**
@@ -490,24 +496,24 @@ error:
  * @brief Build an uncompressed UDP header.
  *
  * @param context      The generic decompression context
- * @param active       The UDP header changes
+ * @param hdr_changes  The UDP header changes
  * @param dest         The buffer to store the UDP header (MUST be at least
  *                     of sizeof(struct udphdr) length)
  * @param payload_size The length of the UDP payload
  * @return             The length of the next header (ie. the UDP header),
  *                     -1 in case of error
  */
-int udp_build_uncompressed_udp(struct d_generic_context *context,
-                               struct d_generic_changes *active,
-                               unsigned char *dest,
-                               int payload_size)
+static int udp_build_uncompressed_udp(struct d_generic_context *context,
+                                      struct d_generic_changes *hdr_changes,
+                                      unsigned char *dest,
+                                      int payload_size)
 {
 	struct d_udp_context *udp_context = context->specific;
-	struct udphdr *udp_active = (struct udphdr *) active->next_header;
+	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_changes->next_header;
 	struct udphdr *udp = (struct udphdr *) dest;
 
 	/* static + checksum */
-	memcpy(dest, udp_active, sizeof(struct udphdr));
+	memcpy(dest, udp_hdr_chg, sizeof(struct udphdr));
 
 	/* UDP checksum:
 	 *  - error if udp_checksum_present not initialized,

@@ -47,6 +47,11 @@ static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
                                       unsigned int length,
                                       unsigned char *dest);
 
+static int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
+                                           struct d_generic_changes *hdr_changes,
+                                           unsigned char *dest,
+                                           int payload_size);
+
 
 /**
  * @brief Create the UDP-Lite decompression context.
@@ -624,24 +629,24 @@ error:
  * @brief Build an uncompressed UDP-Lite header.
  *
  * @param context      The generic decompression context
- * @param active       The UDP-Lite header changes
+ * @param hdr_changes  The UDP-Lite header changes
  * @param dest         The buffer to store the UDP-Lite header (MUST be at least
  *                     of sizeof(struct udphdr) length)
  * @param payload_size The length of the UDP-Lite payload
  * @return             The length of the next header (ie. the UDP-Lite header),
  *                     -1 in case of error
  */
-int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
-                                    struct d_generic_changes *active,
-                                    unsigned char *dest,
-                                    int payload_size)
+static int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
+                                           struct d_generic_changes *hdr_changes,
+                                           unsigned char *dest,
+                                           int payload_size)
 {
 	struct d_udp_lite_context *udp_lite_context = context->specific;
-	struct udphdr *udp_lite_active = (struct udphdr *) active->next_header;
+	struct udphdr *udp_lite_hdr_chg = (struct udphdr *) hdr_changes->next_header;
 	struct udphdr *udp_lite = (struct udphdr *) dest;
 
 	/* static + checksum + checksum coverage */
-	memcpy(dest, udp_lite_active, sizeof(struct udphdr));
+	memcpy(dest, udp_lite_hdr_chg, sizeof(struct udphdr));
 	rohc_debugf(2, "checksum = 0x%04x\n", ntohs(udp_lite->check));
 
 	rohc_debugf(2, "CFP = %d, CFI = %d, cce_packet = %d\n",

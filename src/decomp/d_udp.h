@@ -18,6 +18,7 @@
  * @file d_udp.h
  * @brief ROHC decompression context for the UDP profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -67,12 +68,6 @@ int udp_parse_static_udp(struct d_generic_context *context,
                          unsigned char *dest);
 
 int udp_get_static_size(void);
-
-int udp_build_uncompressed_udp(struct d_generic_context *context,
-                               struct d_generic_changes *active,
-                               unsigned char *dest,
-                               int payload_size);
-
 
 #endif
 

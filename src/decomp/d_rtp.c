@@ -79,6 +79,11 @@ static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
                                  unsigned int length,
                                  unsigned char *dest);
 
+static int rtp_build_uncompressed_rtp(struct d_generic_context *context,
+                                      struct d_generic_changes *hdr_changes,
+                                      unsigned char *dest,
+                                      int payload_size);
+
 
 /**
  * @brief Create the RTP decompression context.
@@ -825,24 +830,24 @@ error:
  * @brief Build an uncompressed UDP/RTP header.
  *
  * @param context      The generic decompression context
- * @param active       The UDP/RTP header changes
+ * @param hdr_changes  The UDP/RTP header changes
  * @param dest         The buffer to store the UDP/RTP header (MUST be at least
  *                     of sizeof(struct udphdr) + sizeof(struct rtphdr) length)
  * @param payload_size The length of the UDP/RTP payload
  * @return             The length of the next header (ie. the UDP/RTP header),
  *                     -1 in case of error
  */
-int rtp_build_uncompressed_rtp(struct d_generic_context *context,
-                               struct d_generic_changes *active,
-                               unsigned char *dest,
-                               int payload_size)
+static int rtp_build_uncompressed_rtp(struct d_generic_context *context,
+                                      struct d_generic_changes *hdr_changes,
+                                      unsigned char *dest,
+                                      int payload_size)
 {
 	struct d_rtp_context *rtp_context = context->specific;
-	struct udphdr *udp_active = (struct udphdr *) active->next_header;
+	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_changes->next_header;
 	struct udphdr *udp = (struct udphdr *) dest;
 
 	/* static + checksum */
-	memcpy(dest, udp_active, sizeof(struct udphdr) + sizeof(struct rtphdr));
+	memcpy(dest, udp_hdr_chg, sizeof(struct udphdr) + sizeof(struct rtphdr));
 
 	/* UDP checksum:
 	 *  - error if udp_checksum_present not initialized,

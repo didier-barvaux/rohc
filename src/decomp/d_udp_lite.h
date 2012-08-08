@@ -18,6 +18,7 @@
  * @file d_udp_lite.h
  * @brief ROHC decompression context for the UDP-Lite profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -73,17 +74,6 @@ struct d_udp_lite_context
 	 */
 	int cce_packet;
 };
-
-
-/*
- * Public function prototypes.
- */
-
-int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
-                                    struct d_generic_changes *active,
-                                    unsigned char *dest,
-                                    int payload_size);
-
 
 #endif
 

@@ -19,6 +19,7 @@
  * @brief ROHC decompression context for the RTP profile.
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef D_RTP_H
@@ -56,10 +57,6 @@ struct d_rtp_context
  * Public function prototypes.
  */
 
-int rtp_build_uncompressed_rtp(struct d_generic_context *context,
-                               struct d_generic_changes *active,
-                               unsigned char *dest,
-                               int payload_size);
 int rtp_get_static_part(void);
 
 #endif

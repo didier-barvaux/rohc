@@ -122,7 +122,7 @@ struct d_generic_context
 	/// @brief The handler used to build the uncompressed next header thanks
 	///        to context information
 	int (*build_next_header)(struct d_generic_context *context,
-	                         struct d_generic_changes *active,
+	                         struct d_generic_changes *hdr_changes,
 	                         unsigned char *dest,
 	                         int payload_size);
 
@@ -204,7 +204,7 @@ struct list_decomp
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
 	/// The handler used to add the extension to IP packet
-	int (*encode_extension)(struct d_generic_changes *active,
+	int (*encode_extension)(struct d_generic_changes *ip_changes,
 	                        struct list_decomp *decomp,
 	                        unsigned char *dest);
 	/// The handler used to check if the index
