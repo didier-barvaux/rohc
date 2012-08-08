@@ -54,6 +54,8 @@
 static void d_rtp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
+static int rtp_get_static_part(void);
+
 unsigned int rtp_detect_ir_size(struct d_context *context,
                                 unsigned char *packet,
                                 unsigned int plen,
@@ -228,7 +230,7 @@ static void d_rtp_destroy(void *const context)
  *
  * @return  The size of the static part of an IR packet
  */
-int rtp_get_static_part(void)
+static int rtp_get_static_part(void)
 {
 	/* UDP static part and RTP static part (RTP SSRC = 4 bytes) */
 	return udp_get_static_size() + 4;

@@ -57,7 +57,6 @@ struct d_rtp_context
  * Public function prototypes.
  */
 
-int rtp_get_static_part(void);
 
 #endif
 
