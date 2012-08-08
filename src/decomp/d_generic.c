@@ -209,32 +209,8 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 
 /*
- * Private function prototypes for parsing the different extensions
- */
-
-static uint8_t parse_extension_type(const unsigned char *const rohc_ext);
-static int parse_extension0(const unsigned char *const rohc_data,
-                            const size_t rohc_data_len,
-                            const rohc_packet_t packet_type,
-                            struct rohc_extr_ext_bits *const bits);
-static int parse_extension1(const unsigned char *const rohc_data,
-                            const size_t rohc_data_len,
-                            const rohc_packet_t packet_type,
-                            struct rohc_extr_ext_bits *const bits);
-static int parse_extension2(const unsigned char *const rohc_data,
-                            const size_t rohc_data_len,
-                            const rohc_packet_t packet_type,
-                            const int innermost_ip_hdr,
-                            struct rohc_extr_ext_bits *const bits);
-static int parse_extension3(struct rohc_decomp *decomp,
-                            struct d_context *context,
-                            const unsigned char *const rohc_data,
-                            const size_t rohc_data_len,
-                            struct rohc_extr_ext_bits *const bits);
-
-
-/*
  * Private function prototypes for parsing the static and dynamic parts
+ * of the IR and IR-DYN headers
  */
 
 static int parse_static_part_ip(const unsigned char *packet,
@@ -261,6 +237,56 @@ static int parse_dynamic_part_ipv6(const unsigned char *packet,
                                    struct ip_packet *ip,
                                    struct list_decomp *decomp,
                                    struct d_generic_changes *info);
+
+
+/*
+ * Private function prototypes for parsing the different UO* headers
+ */
+
+static bool parse_uo0(struct d_generic_context *g_context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      size_t second_byte,
+                      struct rohc_extr_base_bits *const bits,
+                      size_t *const rohc_hdr_len);
+static bool parse_uo1(struct d_generic_context *g_context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      size_t second_byte,
+                      struct rohc_extr_base_bits *const bits,
+                      size_t *const rohc_hdr_len);
+static int parse_uor2(struct rohc_decomp *const decomp,
+                      struct d_context *const context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      size_t second_byte,
+                      struct rohc_extr_base_bits *const bits,
+                      size_t *const rohc_hdr_len);
+
+
+/*
+ * Private function prototypes for parsing the different extensions
+ */
+
+static uint8_t parse_extension_type(const unsigned char *const rohc_ext);
+static int parse_extension0(const unsigned char *const rohc_data,
+                            const size_t rohc_data_len,
+                            const rohc_packet_t packet_type,
+                            struct rohc_extr_ext_bits *const bits);
+static int parse_extension1(const unsigned char *const rohc_data,
+                            const size_t rohc_data_len,
+                            const rohc_packet_t packet_type,
+                            struct rohc_extr_ext_bits *const bits);
+static int parse_extension2(const unsigned char *const rohc_data,
+                            const size_t rohc_data_len,
+                            const rohc_packet_t packet_type,
+                            const int innermost_ip_hdr,
+                            struct rohc_extr_ext_bits *const bits);
+static int parse_extension3(struct rohc_decomp *decomp,
+                            struct d_context *context,
+                            const unsigned char *const rohc_data,
+                            const size_t rohc_data_len,
+                            struct rohc_extr_ext_bits *const bits);
 
 
 /*
@@ -3912,12 +3938,12 @@ Here are the first octet and remainder of UO-0 header:
  * @param rohc_hdr_len  OUT: The size of the UO-0 header
  * @return              true if UO-0 is successfully parsed, false otherwise
  */
-bool parse_uo0(struct d_generic_context *g_context,
-               const unsigned char *const rohc_packet,
-               const size_t rohc_length,
-               size_t second_byte,
-               struct rohc_extr_base_bits *const bits,
-               size_t *const rohc_hdr_len)
+static bool parse_uo0(struct d_generic_context *g_context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      size_t second_byte,
+                      struct rohc_extr_base_bits *const bits,
+                      size_t *const rohc_hdr_len)
 {
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -4493,12 +4519,12 @@ Here are the first octet and remainder of UO-1 base headers:
  * @param rohc_hdr_len  OUT: The size of the UO-1 header
  * @return              true if UO-1 is successfully parsed, false otherwise
  */
-bool parse_uo1(struct d_generic_context *g_context,
-               const unsigned char *const rohc_packet,
-               const size_t rohc_length,
-               size_t second_byte,
-               struct rohc_extr_base_bits *const bits,
-               size_t *const rohc_hdr_len)
+static bool parse_uo1(struct d_generic_context *g_context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      size_t second_byte,
+                      struct rohc_extr_base_bits *const bits,
+                      size_t *const rohc_hdr_len)
 {
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
@@ -5199,13 +5225,13 @@ Here are the first octet and remainder of UOR-2 base headers:
  *                      ROHC_NEED_REPARSE if packet needs to be parsed again,
  *                      ROHC_ERROR otherwise
  */
-int parse_uor2(struct rohc_decomp *const decomp,
-               struct d_context *const context,
-               const unsigned char *const rohc_packet,
-               const size_t rohc_length,
-               size_t second_byte,
-               struct rohc_extr_base_bits *const bits,
-               size_t *const rohc_hdr_len)
+static int parse_uor2(struct rohc_decomp *const decomp,
+                      struct d_context *const context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      size_t second_byte,
+                      struct rohc_extr_base_bits *const bits,
+                      size_t *const rohc_hdr_len)
 {
 	struct d_generic_context *g_context;
 
