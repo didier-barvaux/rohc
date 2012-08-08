@@ -4704,6 +4704,7 @@ error:
  *  A. Parsing of ROHC header (@see parse_uo1)
  *  B. Decode extracted bits (@see decode_values_from_bits)
  *  C. Build uncompressed headers & check for correct decompression
+ *     (@see build_uncomp_hdrs)
  *  D. Update the compression context
  *
  * @param decomp         The ROHC decompressor
@@ -5712,6 +5713,7 @@ error:
  *     (@see parse_uor2)
  *  B. Decode extracted bits (@see decode_values_from_bits)
  *  C. Build uncompressed headers & check for correct decompression
+ *     (@see build_uncomp_hdrs)
  *  D. Update the compression context
  *
  * @param decomp         The ROHC decompressor
