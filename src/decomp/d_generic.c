@@ -64,6 +64,9 @@ struct rohc_extracted_bits
 	uint16_t ip_id2;   /**< The inner IP-ID bits found in ROHC header */
 	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
 
+	/* CRC */
+	uint8_t crc;       /**< The CRC bits found in ROHC header */
+
 	/* TS (RTP profile only) */
 	/* @todo should be moved in d_rtp.c */
 	uint32_t ts;       /**< The TS bits found in ROHC header */
@@ -3886,7 +3889,168 @@ Here are the first octet and remainder of UO-0 header:
  * Parts 4 and 5 do not exist in the UO-0 packet.
  * Part 13 is parsed in profile-specific function.
  *
- * @param decomp         The ROHC decompressor
+ * @param g_context     The generic decompression context
+ * @param rohc_packet   The ROHC packet to decode
+ * @param rohc_length   The length of the ROHC packet
+ * @param second_byte   The offset of the 2nd byte in the ROHC packet
+ * @param bits          OUT: The bits extracted from the UO-0 header
+ * @param rohc_hdr_len  OUT: The size of the UO-0 header
+ * @return              true if UO-0 is successfully parsed, false otherwise
+ */
+int parse_uo0(struct d_generic_context *g_context,
+              const unsigned char *const rohc_packet,
+              const size_t rohc_length,
+              size_t second_byte,
+              struct rohc_extracted_bits *const bits,
+              size_t *const rohc_hdr_len)
+{
+	/* remaining ROHC data not parsed yet and the length of the ROHC headers
+	   (will be computed during parsing) */
+	const unsigned char *rohc_remain_data;
+	size_t rohc_remain_len;
+
+	assert(g_context != NULL);
+	assert(rohc_packet != NULL);
+	assert(bits != NULL);
+	assert(rohc_hdr_len != NULL);
+
+	rohc_remain_data = rohc_packet;
+	rohc_remain_len = rohc_length;
+	*rohc_hdr_len = 0;
+
+	/* reset all extracted bits */
+	memset(bits, 0, sizeof(struct rohc_extracted_bits));
+
+	/* According to RFC 3095 §5.7.5:
+	 *
+	 *   The TS field is scaled in all extensions, as it is in the base header,
+	 *   except optionally when using Extension 3 where the Tsc flag can
+	 *   indicate that the TS field is not scaled.
+	 *
+	 * So init the is_ts_scaled variable to 1 by default. As there is no
+	 * extension for UO-0, is_ts_scaled will remain unchanged.
+	 */
+	bits->is_ts_scaled = 1;
+
+	/* check if the ROHC packet is large enough to read the second byte
+	 * OR that there is no second byte (no parts 4, 5...) */
+	if(rohc_remain_len < second_byte)
+	{
+		rohc_debugf(0, "ROHC packet too small to read the second byte "
+		            "(%zd bytes available while at least %d are required)\n",
+		            rohc_remain_len, second_byte + 1);
+		goto error;
+	}
+
+	/* part 2: 1-bit "0" + 4-bit SN + 3-bit CRC */
+	assert(GET_BIT_7(rohc_remain_data) == 0);
+	bits->sn = GET_BIT_3_6(rohc_remain_data);
+	bits->sn_nr = 4;
+	rohc_debugf(3, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	bits->crc = GET_BIT_0_2(rohc_remain_data);
+	rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", bits->crc);
+
+	/* part 3: large CID (handled elsewhere) */
+	/* first byte read, second byte is parts 4, 5... or maybe empty! */
+	rohc_remain_data += second_byte;
+	rohc_remain_len -= second_byte;
+	*rohc_hdr_len += second_byte;
+
+	/* part 4: no remainder of base header for UO-0 packet */
+	/* part 5: no extension for UO-0 packet */
+
+	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
+	if(is_outer_ipv4_rnd(g_context))
+	{
+		/* outer IP-ID is random, read its full 16-bit value */
+
+		/* check if the ROHC packet is large enough to read the outer IP-ID */
+		if(rohc_remain_len < 2)
+		{
+			rohc_debugf(0, "ROHC packet too small for random outer IP-ID bits "
+			            "(len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
+
+		/* retrieve the full outer IP-ID value */
+		bits->ip_id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->ip_id_nr = 16;
+		rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n",
+		            bits->ip_id_nr, bits->ip_id);
+
+		rohc_remain_data += 2;
+		rohc_remain_len -= 2;
+		*rohc_hdr_len += 2;
+	}
+
+	/* parts 7 and 8: not supported */
+
+	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
+	if(g_context->multiple_ip && is_inner_ipv4_rnd(g_context))
+	{
+		/* inner IP-ID is random, read its full 16-bit value */
+
+		/* check if the ROHC packet is large enough to read the inner IP-ID */
+		if(rohc_remain_len < 2)
+		{
+			rohc_debugf(0, "ROHC packet too small for random inner IP-ID bits "
+			            "(len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
+
+		/* retrieve the full inner IP-ID value */
+		bits->ip_id2 = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->ip_id2_nr = 16;
+		rohc_debugf(3, "%zd inner IP-ID bits = 0x%x\n",
+		            bits->ip_id_nr, bits->ip_id);
+
+		rohc_remain_data += 2;
+		rohc_remain_len -= 2;
+		*rohc_hdr_len += 2;
+	}
+
+	/* parts 10, 11 and 12: not supported */
+
+	/* part 13: decode the tail of UO* packet */
+	if(g_context->parse_uo_tail != NULL)
+	{
+		int size;
+
+		size = g_context->parse_uo_tail(g_context,
+		                                rohc_remain_data, rohc_remain_len,
+		                                g_context->outer_ip_changes->next_header);
+		if(size < 0)
+		{
+			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
+			goto error;
+		}
+		rohc_remain_data += size;
+		rohc_remain_len -= size;
+		*rohc_hdr_len += size;
+	}
+
+	/* sanity checks */
+	assert((*rohc_hdr_len) <= rohc_length);
+
+	/* UO-0 packet was successfully parsed */
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Decode one UO-0 packet.
+ *
+ * Steps:
+ *  A. Parsing of ROHC header (@see parse_uo0)
+ *  B. Decode extracted bits (@see decode_values_from_bits)
+ *  C. Build uncompressed headers
+ *  D. Check for correct decompression
+ *  E. Update the compression context
+ *
+ * @param decomp         The decompressor
  * @param context        The decompression context
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet
@@ -3913,15 +4077,11 @@ int decode_uo0(struct rohc_decomp *decomp,
 	/* decoded values for SN, outer IP-ID, inner IP-ID and TS */
 	struct rohc_decoded_values decoded;
 
-	/* CRC found in packet and computed one */
-	uint8_t crc_packet;
-	uint8_t crc_computed;
+	/* length of the parsed ROHC header */
+	size_t rohc_header_len;
 
-	/* remaining ROHC data not parsed yet and the length of the ROHC headers
-	   (will be computed during parsing) */
-	const unsigned char *rohc_remain_data;
-	size_t rohc_remain_len;
-	size_t rohc_header_len = 0;
+	/* computed CRC */
+	uint8_t crc_computed;
 
 	/* length of the uncompressed headers and pointers on uncompressed outer
 	   IP, inner IP and next headers (will be computed during building) */
@@ -3935,6 +4095,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	size_t payload_len;
 
 	/* helper variables for values returned by functions */
+	bool parsing_ok;
 	bool decode_ok;
 	int size;
 
@@ -3949,124 +4110,23 @@ int decode_uo0(struct rohc_decomp *decomp,
 	}
 
 
-	/* reset all extracted bits */
-	memset(&bits, 0, sizeof(struct rohc_extracted_bits));
-
-	/* According to RFC 3095 §5.7.5:
-	 *
-	 *   The TS field is scaled in all extensions, as it is in the base header,
-	 *   except optionally when using Extension 3 where the Tsc flag can
-	 *   indicate that the TS field is not scaled.
-	 *
-	 * So init the is_ts_scaled variable to 1 by default. As there is no
-	 * extension for UO-0, is_ts_scaled will remain unchanged.
-	 */
-	bits.is_ts_scaled = 1;
-
-
 	/* A. Parsing of ROHC header
 	 *
 	 * Let's parse fields 2 to 13.
 	 */
 
-	rohc_remain_data = rohc_packet;
-	rohc_remain_len = rohc_length;
-
-	/* check if the ROHC packet is large enough to read the second byte
-	 * OR that there is no second byte (no parts 4, 5...) */
-	if(rohc_remain_len < second_byte)
+	parsing_ok = parse_uo0(g_context,
+	                       rohc_packet, rohc_length, second_byte,
+	                       &bits, &rohc_header_len);
+	if(!parsing_ok)
 	{
-		rohc_debugf(0, "ROHC packet too small to read the second byte "
-		            "(%zd bytes available while at least %d are required)\n",
-		            rohc_remain_len, second_byte + 1);
+		rohc_debugf(0, "failed to parse the UO-0 header\n");
 		goto error;
 	}
 
-	/* part 2: 1-bit "0" + 4-bit SN + 3-bit CRC */
-	assert(GET_BIT_7(rohc_remain_data) == 0);
-	bits.sn = GET_BIT_3_6(rohc_remain_data);
-	bits.sn_nr = 4;
-	rohc_debugf(3, "%zd SN bits = 0x%x\n", bits.sn_nr, bits.sn);
-	crc_packet = GET_BIT_0_2(rohc_remain_data);
-	rohc_debugf(3, "CRC-3 found in packet = 0x%02x\n", crc_packet);
-	/* part 3: large CID (handled elsewhere) */
-	/* first byte read, second byte is parts 4, 5... or maybe empty! */
-	rohc_remain_data += second_byte;
-	rohc_remain_len -= second_byte;
-	rohc_header_len += second_byte;
-
-	/* part 4: no remainder of base header for UO-0 packet */
-	/* part 5: no extension for UO-0 packet */
-
-	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(is_outer_ipv4_rnd(g_context))
-	{
-		/* outer IP-ID is random, read its full 16-bit value */
-
-		/* check if the ROHC packet is large enough to read the outer IP-ID */
-		if(rohc_remain_len < 2)
-		{
-			rohc_debugf(0, "ROHC packet too small for random outer IP-ID bits "
-			            "(len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		/* retrieve the full outer IP-ID value */
-		bits.ip_id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		bits.ip_id_nr = 16;
-		rohc_debugf(3, "%zd outer IP-ID bits = 0x%x\n", bits.ip_id_nr, bits.ip_id);
-
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-		rohc_header_len += 2;
-	}
-
-	/* parts 7 and 8: not supported */
-
-	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip && is_inner_ipv4_rnd(g_context))
-	{
-		/* inner IP-ID is random, read its full 16-bit value */
-
-		/* check if the ROHC packet is large enough to read the inner IP-ID */
-		if(rohc_remain_len < 2)
-		{
-			rohc_debugf(0, "ROHC packet too small for random inner IP-ID bits "
-			            "(len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		/* retrieve the full inner IP-ID value */
-		bits.ip_id2 = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
-		bits.ip_id2_nr = 16;
-		rohc_debugf(3, "%zd inner IP-ID bits = 0x%x\n", bits.ip_id_nr, bits.ip_id);
-
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-		rohc_header_len += 2;
-	}
-
-	/* parts 10, 11 and 12: not supported */
-
-	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_tail != NULL)
-	{
-		size = g_context->parse_uo_tail(g_context,
-		                                rohc_remain_data, rohc_remain_len,
-		                                g_context->outer_ip_changes->next_header);
-		if(size < 0)
-		{
-			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
-			goto error;
-		}
-		rohc_remain_data += size;
-		rohc_remain_len -= size;
-		rohc_header_len += size;
-	}
-
 	/* ROHC UO-0 header is now fully decoded, remaining data is the payload */
-	payload_data = rohc_remain_data;
-	payload_len = rohc_remain_len;
+	payload_data = rohc_packet + rohc_header_len;
+	payload_len = rohc_length - rohc_header_len;
 
 
 	/* B. Decode extracted bits
@@ -4095,10 +4155,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		/* build the outer IP header */
 		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             rohc_remain_len +
 		                             ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                             g_context->outer_ip_changes->next_header_len +
-		                             g_context->inner_ip_changes->size_list,
+		                             g_context->inner_ip_changes->size_list +
+		                             payload_len,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		uncomp_packet += size;
@@ -4106,8 +4166,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 		/* build the inner IP header */
 		size = build_uncompressed_ip(g_context->inner_ip_changes, uncomp_packet,
-		                             rohc_remain_len +
-		                             g_context->inner_ip_changes->next_header_len,
+		                             g_context->inner_ip_changes->next_header_len +
+		                             payload_len,
 		                             g_context->list_decomp2);
 		ip2_hdr = uncomp_packet;
 		uncomp_packet += size;
@@ -4117,8 +4177,8 @@ int decode_uo0(struct rohc_decomp *decomp,
 	{
 		/* build the single IP header */
 		size = build_uncompressed_ip(g_context->outer_ip_changes, uncomp_packet,
-		                             rohc_remain_len +
-		                             g_context->outer_ip_changes->next_header_len,
+		                             g_context->outer_ip_changes->next_header_len +
+		                             payload_len,
 		                             g_context->list_decomp1);
 		ip_hdr = uncomp_packet;
 		ip2_hdr = NULL;
@@ -4154,7 +4214,7 @@ int decode_uo0(struct rohc_decomp *decomp,
 	if(g_context->build_next_header != NULL)
 	{
 		size = g_context->build_next_header(g_context, g_context->outer_ip_changes,
-		                                    uncomp_packet, rohc_remain_len);
+		                                    uncomp_packet, payload_len);
 		uncomp_packet += size;
 		uncomp_header_len += size;
 	}
@@ -4180,10 +4240,10 @@ int decode_uo0(struct rohc_decomp *decomp,
 	            uncomp_header_len, crc_computed);
 
 	/* try to guess the correct SN value in case of failure */
-	if(crc_computed != crc_packet)
+	if(crc_computed != bits.crc)
 	{
 		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
-		            crc_computed, crc_packet);
+		            crc_computed, bits.crc);
 		rohc_dump_packet("uncompressed headers", uncomp_packet - uncomp_header_len,
 		                 uncomp_header_len);
 
