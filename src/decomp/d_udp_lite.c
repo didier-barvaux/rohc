@@ -23,11 +23,62 @@
  */
 
 #include "d_udp_lite.h"
+#include "d_udp.h"
+#include "d_generic.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "crc.h"
+
+#include <netinet/udp.h>
+
+
+/*
+ * Private structures.
+ */
+
+/**
+ * @brief Define the UDP-Lite part of the decompression profile context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context d_generic_context.
+ *
+ * @see d_generic_context
+ */
+struct d_udp_lite_context
+{
+	/**
+	 * @brief Whether the UDP-Lite checksum coverage field is present or not
+	 *
+	 * Possible values are:
+	 *   -1 if not initialized
+	 *    0 if not present
+	 *    1 if present
+	 */
+	int cfp;
+
+	/**
+	 * @brief Whether the UDP-Lite checksum coverage field can be inferred
+	 *        or not
+	 *
+	 * Possible values are:
+	 *   -1 if not initialized
+	 *    0 if not present
+	 *    1 if present
+	 */
+	int cfi;
+
+	/**
+	 * @brief Checksum Coverage Extension
+	 *
+	 * Possible values are:
+	 *  - 0 if not present
+	 *  - PACKET_CCE if present and ON
+	 *  - PACKET_CCE_OFF if present and OFF
+	 */
+	int cce_packet;
+};
 
 
 /*
@@ -52,6 +103,10 @@ static int udp_lite_build_uncompressed_udp(struct d_generic_context *context,
                                            unsigned char *dest,
                                            int payload_size);
 
+
+/*
+ * Definitions of functions.
+ */
 
 /**
  * @brief Create the UDP-Lite decompression context.
