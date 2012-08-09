@@ -18,6 +18,7 @@
  * @file comp_list.c
  * @brief Define list compression with its function
  * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "comp_list.h"
@@ -28,9 +29,10 @@
 
 /**
  * @brief Create one compression_list
- * @return 1 if successful, 0 otherwise
+ *
+ * @return  1 if successful, 0 otherwise
  */
-int create_list(struct c_list *list)
+int list_create(struct c_list *list)
 {
 	rohc_debugf(1, "creating compression list\n");
 
@@ -53,14 +55,36 @@ error:
 
 
 /**
- * @brief Add an element at the begin of the list
+ * @brief Destroy the list
  *
- * @param list the list where the element is added
- * @param item the item of the new element
- * @param index the index in based table
- * @return 1 if successful, 0 otherwise
+ * @param list  the list to destroy
  */
-int add_elt(struct c_list *list, struct rohc_list_item *item, int index)
+void list_destroy(struct c_list *list)
+{
+	struct list_elt *curr_elt;
+	struct list_elt *next_elt;
+
+	for(curr_elt = list->first_elt; curr_elt != NULL; curr_elt = next_elt)
+	{
+		next_elt = curr_elt->next_elt;
+		free(curr_elt);
+	}
+
+	free(list);
+}
+
+
+/**
+ * @brief Add an element at the beginning of the list
+ *
+ * @param list   the list where the element is added
+ * @param item   the item of the new element
+ * @param index  the index in based table
+ * @return       1 if successful, 0 otherwise
+ */
+int list_add_at_beginning(struct c_list *list,
+                          struct rohc_list_item *item,
+                          int index)
 {
 	struct list_elt *elt;
 
@@ -93,14 +117,17 @@ error:
 }
 
 
-/** @brief Add an element at the end of the list
+/**
+ * @brief Add an element at the end of the list
  *
- * @param list the list where the element is added
- * @param item the item of the new element
- * @param index the index in based table
- * @return 1 if successful, 0 otherwise
+ * @param list   the list where the element is added
+ * @param item   the item of the new element
+ * @param index  the index in based table
+ * @return       1 if successful, 0 otherwise
  */
-int push_back(struct c_list *list, struct rohc_list_item *item, int index)
+int list_add_at_end(struct c_list *list,
+                    struct rohc_list_item *item,
+                    int index)
 {
 	struct list_elt *elt;
 	int result = 0;
@@ -108,7 +135,7 @@ int push_back(struct c_list *list, struct rohc_list_item *item, int index)
 
 	if(list->first_elt == NULL)
 	{
-		result = add_elt(list, item, index);
+		result = list_add_at_beginning(list, item, index);
 	}
 	else
 	{
@@ -141,189 +168,6 @@ error:
 
 
 /**
- * @brief Delete the specified element of the list
- *
- * @param list the list where the element is destroyed
- * @param item  the element to delete
- */
-void delete_elt(struct c_list *list, struct rohc_list_item *item)
-{
-	struct list_elt *curr_elt;
-
-	if(list->first_elt != NULL)
-	{
-		curr_elt = list->first_elt;
-		while(curr_elt != NULL && curr_elt->item != item)
-		{
-			curr_elt = curr_elt->next_elt;
-		}
-		if(curr_elt != NULL)
-		{
-			// current element is not first element
-			if(curr_elt->prev_elt != NULL)
-			{
-				curr_elt->prev_elt->next_elt = curr_elt->next_elt;
-			}
-			else
-			{
-				list->first_elt = curr_elt->next_elt;
-			}
-			// current element is not last element
-			if(curr_elt->next_elt != NULL)
-			{
-				curr_elt->next_elt->prev_elt = curr_elt->prev_elt;
-			}
-		}
-		free(curr_elt);
-	}
-}
-
-
-/**
- * @brief Get the index of the specified element in the list
- *
- * @param list the list where is the element
- * @param item the specified element
- *
- * @return the index, -1 if the element is not in the list
- */
-int elt_index(struct c_list *list, struct rohc_list_item *item)
-{
-	struct list_elt *curr_elt;
-	int i = 0;
-
-	if(list->first_elt == NULL)
-	{
-		goto end;
-	}
-
-	curr_elt = list->first_elt;
-	while(curr_elt != NULL && curr_elt->item != item)
-	{
-		curr_elt = curr_elt->next_elt;
-		i++;
-	}
-
-	if(curr_elt == NULL)
-	{
-		goto end;
-	}
-
-	return i;
-end:
-	return -1;
-}
-
-
-/**
- * @brief Get the element at the specified index
- *
- * @param list the list where is the element
- * @param index the specified index
- * @return item, NULL if there is no element at this index
- */
-struct list_elt * get_elt(struct c_list *list, int index)
-{
-	struct list_elt *curr_elt = list->first_elt;
-	int i = 0;
-	if(index >= size_list(list))
-	{
-		goto error;
-	}
-	while(i < index)
-	{
-		curr_elt = curr_elt->next_elt;
-		i++;
-	}
-	return curr_elt;
-error:
-	return NULL;
-}
-
-
-/**
- * @brief Indicate if the type of the specified element is present
- *
- * @param list the list where is the element
- * @param item the specified element
- *
- * @return 1 if present, 0 else
- */
-int type_is_present(struct c_list *list, struct rohc_list_item *item)
-{
-	struct list_elt *curr_elt;
-
-	if(list->first_elt == NULL)
-	{
-		rohc_debugf(0, "no element in the list\n");
-		goto end;
-	}
-
-	curr_elt = list->first_elt;
-	while(curr_elt != NULL && curr_elt->item->type != item->type)
-	{
-		curr_elt = curr_elt->next_elt;
-	}
-	if(curr_elt == NULL)
-	{
-		goto end;
-	}
-
-	return 1;
-end:
-	return 0;
-}
-
-
-/**
- *@brief Empty the list
- *
- *@param list the list to empty
- */
-void empty_list(struct c_list *list)
-{
-	struct list_elt *curr_elt;
-	if(list->first_elt == NULL)
-	{
-		rohc_debugf(1, "no element in the list\n");
-	}
-	else
-	{
-		curr_elt = list->first_elt;
-		while(curr_elt->next_elt != NULL)
-		{
-			list->first_elt = curr_elt->next_elt;
-			curr_elt->next_elt->prev_elt = NULL;
-			free(curr_elt);
-			curr_elt = list->first_elt;
-		}
-		free(list->first_elt);
-	}
-	list->first_elt = NULL;
-}
-
-
-/**
- * @brief Destroy the list
- *
- * @param list the list to destroy
- */
-void destroy_list(struct c_list *list)
-{
-	struct list_elt *curr_elt;
-	struct list_elt *next_elt;
-
-	for(curr_elt = list->first_elt; curr_elt != NULL; curr_elt = next_elt)
-	{
-		next_elt = curr_elt->next_elt;
-		free(curr_elt);
-	}
-
-	free(list);
-}
-
-
-/**
  * @brief Insert an element at the specified position
  *
  * @param list         The list in which the element is inserted
@@ -332,10 +176,13 @@ void destroy_list(struct c_list *list)
  * @param index_table  The index in based_table
  * @return             1 if successful, 0 otherwise
  */
-int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int index_table)
+int list_add_at_index(struct c_list *list,
+                      struct rohc_list_item *item,
+                      int index,
+                      int index_table)
 {
 	int i;
-	int size_l = size_list(list);
+	int size_l = list_get_size(list);
 
 	if(index > size_l)
 	{
@@ -346,7 +193,7 @@ int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int 
 	if(index == 0)
 	{
 		/* special case for first element */
-		if(!add_elt(list, item, index_table))
+		if(!list_add_at_beginning(list, item, index_table))
 		{
 			rohc_debugf(0, "failed to add element in list\n");
 			goto error;
@@ -407,12 +254,173 @@ error:
 
 
 /**
+ * @brief Get the element at the specified index
+ *
+ * @param list   the list where is the element
+ * @param index  the specified index
+ * @return       item, NULL if there is no element at this index
+ */
+struct list_elt * list_get_elt_by_index(struct c_list *list, int index)
+{
+	struct list_elt *curr_elt = list->first_elt;
+	int i = 0;
+	if(index >= list_get_size(list))
+	{
+		goto error;
+	}
+	while(i < index)
+	{
+		curr_elt = curr_elt->next_elt;
+		i++;
+	}
+	return curr_elt;
+error:
+	return NULL;
+}
+
+
+/**
+ * @brief Get the index of the specified element in the list
+ *
+ * @param list  the list where is the element
+ * @param item  the specified element
+ * @return      the index, -1 if the element is not in the list
+ */
+int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item)
+{
+	struct list_elt *curr_elt;
+	int i = 0;
+
+	if(list->first_elt == NULL)
+	{
+		goto end;
+	}
+
+	curr_elt = list->first_elt;
+	while(curr_elt != NULL && curr_elt->item != item)
+	{
+		curr_elt = curr_elt->next_elt;
+		i++;
+	}
+
+	if(curr_elt == NULL)
+	{
+		goto end;
+	}
+
+	return i;
+end:
+	return -1;
+}
+
+
+/**
+ * @brief Delete the specified element of the list
+ *
+ * @param list  the list where the element is destroyed
+ * @param item  the element to delete
+ */
+void list_remove(struct c_list *list, struct rohc_list_item *item)
+{
+	struct list_elt *curr_elt;
+
+	if(list->first_elt != NULL)
+	{
+		curr_elt = list->first_elt;
+		while(curr_elt != NULL && curr_elt->item != item)
+		{
+			curr_elt = curr_elt->next_elt;
+		}
+		if(curr_elt != NULL)
+		{
+			// current element is not first element
+			if(curr_elt->prev_elt != NULL)
+			{
+				curr_elt->prev_elt->next_elt = curr_elt->next_elt;
+			}
+			else
+			{
+				list->first_elt = curr_elt->next_elt;
+			}
+			// current element is not last element
+			if(curr_elt->next_elt != NULL)
+			{
+				curr_elt->next_elt->prev_elt = curr_elt->prev_elt;
+			}
+		}
+		free(curr_elt);
+	}
+}
+
+
+/**
+ * @brief Empty the list
+ *
+ * @param list the list to empty
+ */
+void list_empty(struct c_list *list)
+{
+	struct list_elt *curr_elt;
+	if(list->first_elt == NULL)
+	{
+		rohc_debugf(1, "no element in the list\n");
+	}
+	else
+	{
+		curr_elt = list->first_elt;
+		while(curr_elt->next_elt != NULL)
+		{
+			list->first_elt = curr_elt->next_elt;
+			curr_elt->next_elt->prev_elt = NULL;
+			free(curr_elt);
+			curr_elt = list->first_elt;
+		}
+		free(list->first_elt);
+	}
+	list->first_elt = NULL;
+}
+
+
+/**
+ * @brief Indicate if the type of the specified element is present
+ *
+ * @param list  the list where is the element
+ * @param item  the specified element
+ * @return      1 if present, 0 else
+ */
+int list_type_is_present(struct c_list *list, struct rohc_list_item *item)
+{
+	struct list_elt *curr_elt;
+
+	if(list->first_elt == NULL)
+	{
+		rohc_debugf(0, "no element in the list\n");
+		goto end;
+	}
+
+	curr_elt = list->first_elt;
+	while(curr_elt != NULL && curr_elt->item->type != item->type)
+	{
+		curr_elt = curr_elt->next_elt;
+	}
+	if(curr_elt == NULL)
+	{
+		goto end;
+	}
+
+	return 1;
+end:
+	return 0;
+}
+
+
+/**
  * @brief Get the size of the given list
  *
  * @param list  The list
  * @return      The size of the list
  */
-size_t size_list(const struct c_list *const list)
+size_t list_get_size(const struct c_list *const list)
 {
 	struct list_elt *curr_elt;
 	size_t size = 0;

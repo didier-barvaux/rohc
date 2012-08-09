@@ -627,11 +627,11 @@ void c_generic_destroy(struct c_context *const context)
 		{
 			if(g_context->ip_flags.info.v6.ext_comp->curr_list != NULL)
 			{
-				destroy_list(g_context->ip_flags.info.v6.ext_comp->curr_list);
+				list_destroy(g_context->ip_flags.info.v6.ext_comp->curr_list);
 			}
 			if(g_context->ip_flags.info.v6.ext_comp->ref_list != NULL)
 			{
-				destroy_list(g_context->ip_flags.info.v6.ext_comp->ref_list);
+				list_destroy(g_context->ip_flags.info.v6.ext_comp->ref_list);
 			}
 			list_comp_ipv6_destroy_table(g_context->ip_flags.info.v6.ext_comp);
 			zfree(g_context->ip_flags.info.v6.ext_comp);
@@ -642,11 +642,11 @@ void c_generic_destroy(struct c_context *const context)
 		{
 			if(g_context->ip2_flags.info.v6.ext_comp->curr_list != NULL)
 			{
-				destroy_list(g_context->ip2_flags.info.v6.ext_comp->curr_list);
+				list_destroy(g_context->ip2_flags.info.v6.ext_comp->curr_list);
 			}
 			if(g_context->ip2_flags.info.v6.ext_comp->ref_list != NULL)
 			{
-				destroy_list(g_context->ip2_flags.info.v6.ext_comp->ref_list);
+				list_destroy(g_context->ip2_flags.info.v6.ext_comp->ref_list);
 			}
 			list_comp_ipv6_destroy_table(g_context->ip2_flags.info.v6.ext_comp);
 			zfree(g_context->ip2_flags.info.v6.ext_comp);
@@ -960,7 +960,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	rohc_debugf(3, "current list (gen_id = %d) before update:\n",
 	            comp->curr_list->gen_id);
 	i = 0;
-	while((elt = get_elt(comp->curr_list, i)) != NULL)
+	while((elt = list_get_elt_by_index(comp->curr_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -971,7 +971,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	rohc_debugf(3, "reference list (gen_id = %d) before update:\n",
 	            comp->ref_list->gen_id);
 	i = 0;
-	while((elt = get_elt(comp->ref_list, i)) != NULL)
+	while((elt = list_get_elt_by_index(comp->ref_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -979,7 +979,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	}
 #endif
 
-	size = size_list(comp->curr_list);
+	size = list_get_size(comp->curr_list);
 
 	/* do we update the reference list ? we update it if a list was sent at
 	 * least L times */
@@ -990,11 +990,11 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 		            "L = %d times\n", comp->ref_list->gen_id,
 		            comp->curr_list->gen_id, L);
 
-		empty_list(comp->ref_list);
+		list_empty(comp->ref_list);
 		for(j = 0; j < size; j++)
 		{
-			elt = get_elt(comp->curr_list, j);
-			if(!insert_elt(comp->ref_list, elt->item, j, elt->index_table))
+			elt = list_get_elt_by_index(comp->curr_list, j);
+			if(!list_add_at_index(comp->ref_list, elt->item, j, elt->index_table))
 			{
 				goto error;
 			}
@@ -1038,13 +1038,13 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 			comp->counter = 0;
 			for(j = i; j < size; j++)
 			{
-				elt = get_elt(comp->curr_list, j - nb_deleted);
+				elt = list_get_elt_by_index(comp->curr_list, j - nb_deleted);
 				assert(elt != NULL);
 
 				rohc_debugf(3, "delete IPv6 extension of type %d from "
 				            "current list because it is not transmitted "
 				            "anymore\n", elt->item->type);
-				delete_elt(comp->curr_list, elt->item);
+				list_remove(comp->curr_list, elt->item);
 				nb_deleted++;
 			}
 		}
@@ -1092,7 +1092,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	rohc_debugf(3, "current list (gen_id = %d) after update:\n",
 	            comp->curr_list->gen_id);
 	i = 0;
-	while((elt = get_elt(comp->curr_list, i)) != NULL)
+	while((elt = list_get_elt_by_index(comp->curr_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1103,7 +1103,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	rohc_debugf(3, "reference list (gen_id = %d) before update:\n",
 	            comp->ref_list->gen_id);
 	i = 0;
-	while((elt = get_elt(comp->ref_list, i)) != NULL)
+	while((elt = list_get_elt_by_index(comp->ref_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1149,7 +1149,8 @@ int c_create_current_list(const int index,
 			/* the extension is modified */
 			rohc_debugf(3, "new extension to encode with same size "
 			            "than previously\n");
-			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
+			curr_index = list_get_index_by_elt(comp->curr_list,
+			                                   &(comp->based_table[index_table]));
 			comp->create_item(comp, index_table, ext, size);
 			comp->trans_table[index_table].known = 0;
 			comp->trans_table[index_table].counter = 0;
@@ -1161,20 +1162,20 @@ int c_create_current_list(const int index,
 				   the extension which was modified is deleted */
 				for(i = index; i < (curr_index + 1); i++)
 				{
-					elt = get_elt(comp->curr_list,i);
+					elt = list_get_elt_by_index(comp->curr_list, i);
 					rohc_debugf(3, "delete IPv6 extension of type %d from current "
 					            "list because it is not transmitted anymore\n",
 					            elt->item->type);
-					delete_elt(comp->curr_list,elt->item);
+					list_remove(comp->curr_list,elt->item);
 				}
 			}
 			else if(index == curr_index)
 			{
 				/* the extension which was modified is deleted */
-				elt = get_elt(comp->curr_list,index);
+				elt = list_get_elt_by_index(comp->curr_list, index);
 				rohc_debugf(3, "delete IPv6 extension of type %d from current "
 				            "list because it was modified\n", elt->item->type);
-				delete_elt(comp->curr_list,elt->item);
+				list_remove(comp->curr_list,elt->item);
 			}
 
 			comp->counter = 0;
@@ -1183,22 +1184,26 @@ int c_create_current_list(const int index,
 			rohc_debugf(3, "add IPv6 extension of type %d to current list "
 			            "to replace the one we deleted because it was modified\n",
 			            comp->based_table[index_table].type);
-			if(!insert_elt(comp->curr_list,&(comp->based_table[index_table]), index, index_table))
+			if(!list_add_at_index(comp->curr_list,
+			                      &(comp->based_table[index_table]),
+			                      index, index_table))
 			{
 				goto error;
 			}
 		}
 		else
 		{
-			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
+			curr_index = list_get_index_by_elt(comp->curr_list,
+			                                   &(comp->based_table[index_table]));
 			if(curr_index < 0)
 			{
 				/* the element is not present in current list, add it */
 				rohc_debugf(3, "add IPv6 extension of type %d to current list "
 				            "because it is a new extension not present yet\n",
 				            comp->based_table[index_table].type);
-				if(!insert_elt(comp->curr_list, &comp->based_table[index_table],
-				               index, index_table))
+				if(!list_add_at_index(comp->curr_list,
+				                      &comp->based_table[index_table],
+				                      index, index_table))
 				{
 					goto error;
 				}
@@ -1209,11 +1214,11 @@ int c_create_current_list(const int index,
 				/* some elements are not transmitted anymore, delete them */
 				for(i = index; i < curr_index; i++)
 				{
-					elt = get_elt(comp->curr_list,i);
+					elt = list_get_elt_by_index(comp->curr_list, i);
 					rohc_debugf(3, "delete IPv6 extension of type %d from current "
 					            "list because it is not transmitted anymore\n",
 					            elt->item->type);
-					delete_elt(comp->curr_list,elt->item);
+					list_remove(comp->curr_list,elt->item);
 				}
 				comp->counter = 0;
 			}
@@ -1223,7 +1228,8 @@ int c_create_current_list(const int index,
 	{
 		/* the extension is modified or new */
 		rohc_debugf(3, "new extension to encode with new size \n");
-		curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
+		curr_index = list_get_index_by_elt(comp->curr_list,
+		                                   &(comp->based_table[index_table]));
 		comp->create_item(comp, index_table, ext, size);
 		comp->trans_table[index_table].known = 0;
 		comp->trans_table[index_table].counter = 0;
@@ -1234,23 +1240,24 @@ int c_create_current_list(const int index,
 			rohc_debugf(3, "add IPv6 extension of type %d to current list "
 			            "because it is a new extension not present yet\n",
 			            comp->based_table[index_table].type);
-			if(!push_back(comp->curr_list, &comp->based_table[index_table],
-			              index_table))
+			if(!list_add_at_end(comp->curr_list, &comp->based_table[index_table],
+			                    index_table))
 			{
 				goto error;
 			}
 
-			curr_index = elt_index(comp->curr_list, &(comp->based_table[index_table]));
+			curr_index = list_get_index_by_elt(comp->curr_list,
+			                                   &(comp->based_table[index_table]));
 			if(index < curr_index)
 			{
 				/* some elements are not transmitted anymore, delete them */
 				for(i = index; i < curr_index; i++)
 				{
-					elt = get_elt(comp->curr_list,i);
+					elt = list_get_elt_by_index(comp->curr_list, i);
 					rohc_debugf(3, "delete IPv6 extension of type %d from current "
 					            "list because it is not transmitted anymore\n",
 					            elt->item->type);
-					delete_elt(comp->curr_list,elt->item);
+					list_remove(comp->curr_list,elt->item);
 				}
 			}
 		}
@@ -1263,28 +1270,29 @@ int c_create_current_list(const int index,
 				   the extension which was modified is deleted */
 				for(i = index; i < (curr_index + 1); i++)
 				{
-					elt = get_elt(comp->curr_list, i);
+					elt = list_get_elt_by_index(comp->curr_list, i);
 					rohc_debugf(3, "delete IPv6 extension of type %d from current "
 					            "list because it is not transmitted anymore\n",
 					            elt->item->type);
-					delete_elt(comp->curr_list,elt->item);
+					list_remove(comp->curr_list,elt->item);
 				}
 			}
 			else if(index == curr_index)
 			{
 				/* the extension which was modified is deleted */
-				elt = get_elt(comp->curr_list,index);
+				elt = list_get_elt_by_index(comp->curr_list, index);
 				rohc_debugf(3, "delete IPv6 extension of type %d from current "
 				            "list because it was modified\n", elt->item->type);
-				delete_elt(comp->curr_list,elt->item);
+				list_remove(comp->curr_list,elt->item);
 			}
 
 			/* add the new version of the extension */
 			rohc_debugf(3, "add IPv6 extension of type %d to current list "
 			            "to replace the one we deleted because it was modified\n",
 			            comp->based_table[index_table].type);
-			if(!insert_elt(comp->curr_list, &comp->based_table[index_table],
-			               index, index_table))
+			if(!list_add_at_index(comp->curr_list,
+			                      &comp->based_table[index_table],
+			                      index, index_table))
 			{
 				goto error;
 			}
@@ -1336,8 +1344,8 @@ int rohc_list_decide_type(struct list_comp *const comp)
 		int i;
 
 		/* determine the sizes of current and reference lists */
-		ref_size = size_list(comp->ref_list);
-		curr_size = size_list(comp->curr_list);
+		ref_size = list_get_size(comp->ref_list);
+		curr_size = list_get_size(comp->curr_list);
 
 		if(curr_size <= ref_size)
 		{
@@ -1348,8 +1356,8 @@ int rohc_list_decide_type(struct list_comp *const comp)
 			are_all_items_present = true;
 			while(are_all_items_present && i < curr_size)
 			{
-				elt = get_elt(comp->curr_list, i);
-				if(!type_is_present(comp->ref_list, elt->item) ||
+				elt = list_get_elt_by_index(comp->curr_list, i);
+				if(!list_type_is_present(comp->ref_list, elt->item) ||
 				   !comp->trans_table[elt->index_table].known)
 				{
 					are_all_items_present = false;
@@ -1381,8 +1389,8 @@ int rohc_list_decide_type(struct list_comp *const comp)
 			are_all_items_present = true;
 			while(are_all_items_present && i < ref_size)
 			{
-				elt = get_elt(comp->ref_list, i);
-				if(!type_is_present(comp->curr_list, elt->item) ||
+				elt = list_get_elt_by_index(comp->ref_list, i);
+				if(!list_type_is_present(comp->curr_list, elt->item) ||
 				   !comp->trans_table[elt->index_table].known)
 				{
 					are_all_items_present = 0;
@@ -1474,7 +1482,7 @@ error:
  * @brief Build encoding type 0 for list compression
  *
  * @todo this function is inefficient as it loops many times on the same list
- *       (see \ref get_elt especially)
+ *       (see \ref list_get_elt_by_index especially)
  *
  * \verbatim
 
@@ -1560,7 +1568,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 	int m; /* the number of elements in current list = number of XIs */
 	int k; /* the index of the current element in list */
 
-	m = size_list(comp->curr_list);
+	m = list_get_size(comp->curr_list);
 	assert(m <= 15);
 
 	/* part 1: ET, GP, PS, CC */
@@ -1587,7 +1595,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			dest[counter] = 0;
 
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* set the X bit if item is not already known */
@@ -1612,7 +1620,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 		{
 			dest[counter] = 0;
 
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* first 4-bit XI */
@@ -1630,7 +1638,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 			/* second 4-bit XI or padding? */
 			if((k + 1) < m)
 			{
-				elt = get_elt(comp->curr_list, k + 1);
+				elt = list_get_elt_by_index(comp->curr_list, k + 1);
 				assert(elt != NULL);
 
 				/* set the X bit if item is not already known */
@@ -1656,7 +1664,7 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
 	/* part 4: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		elt = get_elt(comp->curr_list, k);
+		elt = list_get_elt_by_index(comp->curr_list, k);
 		assert(elt != NULL);
 
 		/* copy the list element if not known yet */
@@ -1679,8 +1687,8 @@ int rohc_list_encode_type_0(struct list_comp *const comp,
  * @brief Build encoding type 1 for list compression
  *
  * @todo this function is inefficient as it loops many times in the current
- *       and reference lists (see \ref get_elt and \ref type_is_present
- *       especially)
+ *       and reference lists (see \ref list_get_elt_by_index and
+ *       \ref list_type_is_present especially)
  *
  * \verbatim
 
@@ -1768,7 +1776,7 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 	int m; /* the number of elements in current list = number of XIs */
 	int k; /* the index of the current element in list */
 
-	m = size_list(comp->curr_list);
+	m = list_get_size(comp->curr_list);
 	assert(m <= 15);
 
 	/* part 1: ET, GP, PS, CC */
@@ -1803,12 +1811,12 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 	}
 	for(k = 0; k < m && k < 7; k++)
 	{
-		elt = get_elt(comp->curr_list, k);
+		elt = list_get_elt_by_index(comp->curr_list, k);
 		assert(elt != NULL);
 
 		/* set bit to 1 in the insertion mask if the list item is not present
 		   in the reference list */
-		if(!type_is_present(comp->ref_list, elt->item))
+		if(!list_type_is_present(comp->ref_list, elt->item))
 		{
 			dest[counter] |= 1 << (6 - k);
 		}
@@ -1822,12 +1830,12 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 	{
 		for(k = 7; k < m && k < 15; k++)
 		{
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* set bit to 1 in the insertion mask if the list item is not present
 			   in the reference list */
-			if(!type_is_present(comp->ref_list, elt->item))
+			if(!list_type_is_present(comp->ref_list, elt->item))
 			{
 				dest[counter] |= 1 << (7 - (k - 7));
 			}
@@ -1847,11 +1855,11 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 		for(k = 0; k < m; k++)
 		{
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* skip element if it present in the reference list */
-			if(type_is_present(comp->ref_list, elt->item) &&
+			if(list_type_is_present(comp->ref_list, elt->item) &&
 			   comp->trans_table[elt->index_table].known)
 			{
 				rohc_debugf(3, "ignore element #%d because it is present in the "
@@ -1886,11 +1894,11 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 
 		for(k = 0; k < m; k++)
 		{
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* skip element if it present in the reference list */
-			if(type_is_present(comp->ref_list, elt->item) &&
+			if(list_type_is_present(comp->ref_list, elt->item) &&
 			   comp->trans_table[elt->index_table].known)
 			{
 				rohc_debugf(3, "ignore element #%d because it is present in the "
@@ -1972,11 +1980,11 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
 	/* part 6: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		elt = get_elt(comp->curr_list, k);
+		elt = list_get_elt_by_index(comp->curr_list, k);
 		assert(elt != NULL);
 
 		/* skip element if it present in the reference list */
-		if(type_is_present(comp->ref_list, elt->item) &&
+		if(list_type_is_present(comp->ref_list, elt->item) &&
 		   comp->trans_table[elt->index_table].known)
 		{
 			rohc_debugf(3, "ignore element #%d because it is present in the "
@@ -2004,8 +2012,8 @@ int rohc_list_encode_type_1(struct list_comp *const comp,
  * @brief Build encoding type 2 for list compression
  *
  * @todo this function is inefficient as it loops many times in the current
- *       and reference lists (see \ref get_elt and \ref type_is_present
- *       especially)
+ *       and reference lists (see \ref list_get_elt_by_index and
+ *       \ref list_type_is_present especially)
  *
  * \verbatim
 
@@ -2066,7 +2074,7 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
 	int size_ref_list; /* size of reference list */
 	int k; /* the index of the current element in list */
 
-	size_ref_list = size_list(comp->ref_list);
+	size_ref_list = list_get_size(comp->ref_list);
 	assert(size_ref_list <= 15);
 
 	/* part 1: ET, GP, res and Count */
@@ -2102,10 +2110,10 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
 	}
 	for(k = 0; k < size_ref_list && k < 7; k++)
 	{
-		elt = get_elt(comp->ref_list, k);
+		elt = list_get_elt_by_index(comp->ref_list, k);
 		assert(elt != NULL);
 
-		if(type_is_present(comp->curr_list, elt->item))
+		if(list_type_is_present(comp->curr_list, elt->item))
 		{
 			/* element shall not be removed, clear its corresponding bit in the
 			   removal bit mask */
@@ -2126,11 +2134,11 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
 		dest[counter] = 0xff;
 		for(k = 7; k < size_ref_list && k < 15; k++)
 		{
-			elt = get_elt(comp->ref_list, k);
+			elt = list_get_elt_by_index(comp->ref_list, k);
 			assert(elt != NULL);
 
 			/* @bug: shouldn't the condition be inversed? */
-			if(!type_is_present(comp->curr_list, elt->item))
+			if(!list_type_is_present(comp->curr_list, elt->item))
 			{
 				/* element shall not be removed, clear its corresponding bit in
 				   the removal bit mask */
@@ -2158,8 +2166,8 @@ int rohc_list_encode_type_2(struct list_comp *const comp,
  * @brief Build encoding type 3 for list compression
  *
  * @todo this function is inefficient as it loops many times in the current
- *       and reference lists (see \ref get_elt and \ref type_is_present
- *       especially)
+ *       and reference lists (see \ref list_get_elt_by_index and
+ *       \ref list_type_is_present especially)
  *
  * \verbatim
 
@@ -2285,7 +2293,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	counter++;
 
 	/* part 4: removal bit mask (first byte) */
-	size_ref_list = size_list(comp->ref_list);
+	size_ref_list = list_get_size(comp->ref_list);
 	assert(size_ref_list <= 15);
 	dest[counter] = 0xff;
 	if(size_ref_list <= 7)
@@ -2300,10 +2308,10 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	}
 	for(k = 0; k < size_ref_list && k < 7; k++)
 	{
-		elt = get_elt(comp->ref_list, k);
+		elt = list_get_elt_by_index(comp->ref_list, k);
 		assert(elt != NULL);
 
-		if(type_is_present(comp->curr_list, elt->item) &&
+		if(list_type_is_present(comp->curr_list, elt->item) &&
 		   comp->trans_table[elt->index_table].known)
 		{
 			/* element shall not be removed, clear its corresponding bit in the
@@ -2321,10 +2329,10 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 		dest[counter] = 0xff;
 		for(k = 7; k < size_ref_list && k < 15; k++)
 		{
-			elt = get_elt(comp->ref_list, k);
+			elt = list_get_elt_by_index(comp->ref_list, k);
 			assert(elt != NULL);
 
-			if(type_is_present(comp->curr_list, elt->item) &&
+			if(list_type_is_present(comp->curr_list, elt->item) &&
 			   comp->trans_table[elt->index_table].known)
 			{
 				/* element shall not be removed, clear its corresponding bit in
@@ -2342,7 +2350,7 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	}
 
 	/* part 5: insertion mask */
-	m = size_list(comp->curr_list);
+	m = list_get_size(comp->curr_list);
 	assert(m <= 15);
 	dest[counter] = 0;
 	if(m <= 7)
@@ -2357,12 +2365,12 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	}
 	for(k = 0; k < m && k < 7; k++)
 	{
-		elt = get_elt(comp->curr_list, k);
+		elt = list_get_elt_by_index(comp->curr_list, k);
 		assert(elt != NULL);
 
 		/* set bit to 1 in the insertion mask if the list item is not present
 		   in the reference list */
-		if(!type_is_present(comp->ref_list, elt->item) ||
+		if(!list_type_is_present(comp->ref_list, elt->item) ||
 		   !comp->trans_table[elt->index_table].known)
 		{
 			dest[counter] |= 1 << (6 - k);
@@ -2377,12 +2385,12 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	{
 		for(k = 7; k < m && k < 15; k++)
 		{
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* set bit to 1 in the insertion mask if the list item is not present
 			   in the reference list */
-			if(!type_is_present(comp->ref_list, elt->item) ||
+			if(!list_type_is_present(comp->ref_list, elt->item) ||
 			   !comp->trans_table[elt->index_table].known)
 			{
 				dest[counter] |= 1 << (7 - (k - 7));
@@ -2408,11 +2416,11 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 
 		for(k = 0; k < m; k++)
 		{
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* skip element if it present in the reference list and already known */
-			if(type_is_present(comp->ref_list, elt->item) &&
+			if(list_type_is_present(comp->ref_list, elt->item) &&
 			   comp->trans_table[elt->index_table].known)
 			{
 				rohc_debugf(3, "ignore element #%d because it is present in the "
@@ -2447,11 +2455,11 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 
 		for(k = 0; k < m; k++)
 		{
-			elt = get_elt(comp->curr_list, k);
+			elt = list_get_elt_by_index(comp->curr_list, k);
 			assert(elt != NULL);
 
 			/* skip element if it present in the reference list and already known */
-			if(type_is_present(comp->ref_list, elt->item) &&
+			if(list_type_is_present(comp->ref_list, elt->item) &&
 			   comp->trans_table[elt->index_table].known)
 			{
 				rohc_debugf(3, "ignore element #%d because it is present in the "
@@ -2533,11 +2541,11 @@ int rohc_list_encode_type_3(struct list_comp *const comp,
 	/* part 7: n items (only unknown items) */
 	for(k = 0; k < m; k++)
 	{
-		elt = get_elt(comp->curr_list, k);
+		elt = list_get_elt_by_index(comp->curr_list, k);
 		assert(elt != NULL);
 
 		/* skip element if it present in the reference list */
-		if(type_is_present(comp->ref_list, elt->item) &&
+		if(list_type_is_present(comp->ref_list, elt->item) &&
 		   comp->trans_table[elt->index_table].known)
 		{
 			rohc_debugf(3, "ignore element #%d because it is present in the "
@@ -3912,7 +3920,7 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	else if(header_info->info.v6.ext_comp->list_compress)
 	{
 		rohc_debugf(3, "extension header list: there is an extension to encode\n");
-		size = size_list(header_info->info.v6.ext_comp->curr_list);
+		size = list_get_size(header_info->info.v6.ext_comp->curr_list);
 		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
 		                           0, size);
 		if(counter < 0)
@@ -3928,7 +3936,7 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	}
 	else if(header_info->info.v6.ext_comp->islist)
 	{
-		size = size_list(header_info->info.v6.ext_comp->ref_list);
+		size = list_get_size(header_info->info.v6.ext_comp->ref_list);
 		rohc_debugf(3, "extension header list: same extension than previously\n");
 		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
 		                           0, size);

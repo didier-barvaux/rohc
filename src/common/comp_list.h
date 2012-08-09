@@ -18,6 +18,7 @@
  * @file comp_list.h
  * @brief Define list compression with its function
  * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef COMP_LIST_H
@@ -118,17 +119,35 @@ struct d_translation
  * Functions prototypes
  */
 
-int create_list(struct c_list *list);
-int add_elt(struct c_list *list, struct rohc_list_item *item, int index);
-int push_back(struct c_list *list, struct rohc_list_item *item, int index);
-void delete_elt(struct c_list *list, struct rohc_list_item *item);
-struct list_elt * get_elt(struct c_list *list, int index);
-int elt_index(struct c_list *list, struct rohc_list_item *item);
-int type_is_present(struct c_list *list, struct rohc_list_item *item);
-void destroy_list(struct c_list *list);
-int insert_elt(struct c_list *list, struct rohc_list_item *item, int index, int index_table);
-size_t size_list(const struct c_list *const list);
-void empty_list(struct c_list *list);
+/* create, destroy list */
+int list_create(struct c_list *list);
+void list_destroy(struct c_list *list);
+
+/* add elements */
+int list_add_at_beginning(struct c_list *list,
+                          struct rohc_list_item *item,
+                          int index);
+int list_add_at_end(struct c_list *list,
+                    struct rohc_list_item *item,
+                    int index);
+int list_add_at_index(struct c_list *list,
+                      struct rohc_list_item *item,
+                      int index,
+                      int index_table);
+
+/* get an element from its position or the position from the element */
+struct list_elt * list_get_elt_by_index(struct c_list *list, int index);
+int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item);
+
+/* remove an element or empty the list */
+void list_remove(struct c_list *list, struct rohc_list_item *item);
+void list_empty(struct c_list *list);
+
+/* retrieve information about an element of the list */
+int list_type_is_present(struct c_list *list, struct rohc_list_item *item);
+
+/* get the size of the list */
+size_t list_get_size(const struct c_list *const list);
 
 #endif
 

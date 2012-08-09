@@ -437,7 +437,7 @@ void d_generic_destroy(void *context)
 			{
 				if(c->list_decomp1->list_table[i] != NULL)
 				{
-					destroy_list(c->list_decomp1->list_table[i]);
+					list_destroy(c->list_decomp1->list_table[i]);
 				}
 			}
 			zfree(c->list_decomp1);
@@ -449,7 +449,7 @@ void d_generic_destroy(void *context)
 			{
 				if(c->list_decomp2->list_table[i] != NULL)
 				{
-					destroy_list(c->list_decomp2->list_table[i]);
+					list_destroy(c->list_decomp2->list_table[i]);
 				}
 			}
 			zfree(c->list_decomp2);
@@ -765,7 +765,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		}
 		if(decomp->list_table[decomp->counter_list] != NULL)
 		{
-			empty_list(decomp->list_table[decomp->counter_list]);
+			list_empty(decomp->list_table[decomp->counter_list]);
 		}
 		else
 		{
@@ -946,9 +946,9 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		{
 			rohc_debugf(3, "insert a new item of type 0x%02x in list\n",
 			            decomp->based_table[xi_index_value].type);
-			if(!insert_elt(decomp->list_table[decomp->counter_list],
-			               &(decomp->based_table[xi_index_value]),
-			               xi_index, xi_index_value))
+			if(!list_add_at_index(decomp->list_table[decomp->counter_list],
+			                      &(decomp->based_table[xi_index_value]),
+			                      xi_index, xi_index_value))
 			{
 				rohc_debugf(0, "failed to insert new item transmitted in "
 				            "ROHC header at position #%d in new list\n", xi_index);
@@ -986,7 +986,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		rohc_debugf(3, "current list (gen_id = %d) after reception:\n",
 		            decomp->list_table[decomp->counter_list]->gen_id);
 		i = 0;
-		while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+		while((elt = list_get_elt_by_index(decomp->list_table[decomp->counter_list], i)) != NULL)
 		{
 			rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 			            elt->item->type, elt->item->type);
@@ -1093,7 +1093,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 				{
-					empty_list(decomp->list_table[i]);
+					list_empty(decomp->list_table[i]);
 				}
 				if(decomp->list_table[i]->gen_id == ref_id)
 				{
@@ -1108,7 +1108,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	rohc_debugf(3, "current list (gen_id = %d) before update:\n",
 	            decomp->list_table[decomp->counter_list]->gen_id);
 	i = 0;
-	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	while((elt = list_get_elt_by_index(decomp->list_table[decomp->counter_list], i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1135,7 +1135,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		list = decomp->list_table[decomp->counter_list];
 		if(list != NULL && list->first_elt != NULL)
 		{
-			empty_list(list);
+			list_empty(list);
 		}
 		else
 		{
@@ -1237,7 +1237,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	xi_index = 0;
 	item_read_length = 0;
 	ref_list_cur_pos = 0;
-	ref_list_size = size_list(decomp->ref_list);
+	ref_list_size = list_get_size(decomp->ref_list);
 	for(i = 0; i < mask_length; i++)
 	{
 		int new_item_to_insert;
@@ -1264,9 +1264,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				rohc_debugf(3, "insert item from reference list (index %zd) "
 				            "into current list (index %d)\n",
 				            ref_list_cur_pos, i);
-				elt = get_elt(decomp->ref_list, ref_list_cur_pos);
-				if(!insert_elt(decomp->list_table[decomp->counter_list],
-				               elt->item, i, elt->index_table))
+				elt = list_get_elt_by_index(decomp->ref_list, ref_list_cur_pos);
+				if(!list_add_at_index(decomp->list_table[decomp->counter_list],
+				                      elt->item, i, elt->index_table))
 				{
 					rohc_debugf(0, "failed to insert item from reference list "
 					            "(index %zd) into current list (index %d)\n",
@@ -1508,9 +1508,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 			{
 				rohc_debugf(3, "insert new item #%d into current list "
 				            "(index %d)\n", xi_index, i);
-				if(!insert_elt(decomp->list_table[decomp->counter_list],
-				               &(decomp->based_table[xi_index_value]),
-				               i, xi_index_value))
+				if(!list_add_at_index(decomp->list_table[decomp->counter_list],
+				                      &(decomp->based_table[xi_index_value]),
+				                      i, xi_index_value))
 				{
 					rohc_debugf(0, "failed to insert new item #%d into current "
 					            "list (index %d)\n", xi_index, i);
@@ -1548,7 +1548,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	rohc_debugf(3, "current list (gen_id = %d) after update:\n",
 	            decomp->list_table[decomp->counter_list]->gen_id);
 	i = 0;
-	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	while((elt = list_get_elt_by_index(decomp->list_table[decomp->counter_list], i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1645,7 +1645,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 				{
-					empty_list(decomp->list_table[i]);
+					list_empty(decomp->list_table[i]);
 				}
 				if(decomp->list_table[i]->gen_id == ref_id)
 				{
@@ -1660,7 +1660,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	rohc_debugf(3, "reference list (gen_id = %d) used as base:\n",
 	            decomp->ref_list->gen_id);
 	i = 0;
-	while((elt = get_elt(decomp->ref_list, i)) != NULL)
+	while((elt = list_get_elt_by_index(decomp->ref_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1724,7 +1724,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		list = decomp->list_table[decomp->counter_list];
 		if(list != NULL && list->first_elt != NULL)
 		{
-			empty_list(list);
+			list_empty(list);
 		}
 		else
 		{
@@ -1741,7 +1741,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		}
 
 		new_list_len = 0;
-		ref_list_size = size_list(decomp->ref_list);
+		ref_list_size = list_get_size(decomp->ref_list);
 		for(i = 0; i < mask_length; i++)
 		{
 			int item_to_remove;
@@ -1782,9 +1782,9 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 				}
 
 				/* retrieve item from reference list and insert it in current list */
-				elt = get_elt(decomp->ref_list, i);
-				if(!insert_elt(decomp->list_table[decomp->counter_list],
-				               elt->item, new_list_len, elt->index_table))
+				elt = list_get_elt_by_index(decomp->ref_list, i);
+				if(!list_add_at_index(decomp->list_table[decomp->counter_list],
+				                      elt->item, new_list_len, elt->index_table))
 				{
 					rohc_debugf(0, "failed to insert item at index %zd "
 					            "in current list\n", new_list_len);
@@ -1801,7 +1801,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	rohc_debugf(3, "current list (gen_id = %d) decoded:\n",
 	            decomp->list_table[decomp->counter_list]->gen_id);
 	i = 0;
-	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	while((elt = list_get_elt_by_index(decomp->list_table[decomp->counter_list], i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1949,7 +1949,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 				{
-					empty_list(decomp->list_table[i]);
+					list_empty(decomp->list_table[i]);
 				}
 				if(decomp->list_table[i]->gen_id == ref_id)
 				{
@@ -1964,7 +1964,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	rohc_debugf(3, "reference list (gen_id = %d) used as base:\n",
 	            decomp->ref_list->gen_id);
 	i = 0;
-	while((elt = get_elt(decomp->ref_list, i)) != NULL)
+	while((elt = list_get_elt_by_index(decomp->ref_list, i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -1989,7 +1989,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		if(decomp->list_table[decomp->counter_list] != NULL &&
 		   decomp->list_table[decomp->counter_list]->first_elt != NULL)
 		{
-			empty_list(decomp->list_table[decomp->counter_list]);
+			list_empty(decomp->list_table[decomp->counter_list]);
 		}
 		else
 		{
@@ -2058,7 +2058,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		size_t new_list_len = 0;
 		size_t ref_list_size;
 
-		ref_list_size = size_list(decomp->ref_list);
+		ref_list_size = list_get_size(decomp->ref_list);
 		for(i = 0; i < rem_mask_length; i++)
 		{
 			int item_to_remove;
@@ -2099,8 +2099,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				}
 
 				/* retrieve item from reference list and insert it in current list */
-				elt = get_elt(decomp->ref_list, i);
-				if(!insert_elt(&removal_list, elt->item, new_list_len, elt->index_table))
+				elt = list_get_elt_by_index(decomp->ref_list, i);
+				if(!list_add_at_index(&removal_list, elt->item, new_list_len,
+				                      elt->index_table))
 				{
 					rohc_debugf(0, "failed to insert element at position #%zd "
 					            "in current list\n", new_list_len + 1);
@@ -2116,7 +2117,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		rohc_debugf(3, "current list (gen_id = %d) after removal scheme:\n",
 		            removal_list.gen_id);
 		i = 0;
-		while((elt = get_elt(&removal_list, i)) != NULL)
+		while((elt = list_get_elt_by_index(&removal_list, i)) != NULL)
 		{
 			rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 			            elt->item->type, elt->item->type);
@@ -2225,7 +2226,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	removal_list_cur_pos = 0;
 	if(new_list)
 	{
-		removal_list_size = size_list(&removal_list);
+		removal_list_size = list_get_size(&removal_list);
 	}
 	for(i = 0; i < ins_mask_length; i++)
 	{
@@ -2254,9 +2255,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				rohc_debugf(3, "insert item from reference list (index %zd) "
 				            "into current list (index %d)\n",
 				            removal_list_cur_pos, i);
-				elt = get_elt(&removal_list, removal_list_cur_pos);
-				if(!insert_elt(decomp->list_table[decomp->counter_list],
-				               elt->item, i, elt->index_table))
+				elt = list_get_elt_by_index(&removal_list, removal_list_cur_pos);
+				if(!list_add_at_index(decomp->list_table[decomp->counter_list],
+				                      elt->item, i, elt->index_table))
 				{
 					rohc_debugf(0, "failed to insert item from reference list "
 					            "(index %zd) into current list (index %d)\n",
@@ -2507,9 +2508,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			{
 				rohc_debugf(3, "insert new item from context (index %u) into "
 				            "current list (index %d)\n", xi_index_value, i);
-				if(!insert_elt(decomp->list_table[decomp->counter_list],
-				               &(decomp->based_table[xi_index_value]),
-				               i, xi_index_value))
+				if(!list_add_at_index(decomp->list_table[decomp->counter_list],
+				                      &(decomp->based_table[xi_index_value]),
+				                      i, xi_index_value))
 				{
 					rohc_debugf(0, "failed to insert new item from context "
 					            "(index %u) into current list (index %d)\n",
@@ -2548,7 +2549,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	rohc_debugf(3, "current list (gen_id = %d) decoded:\n",
 	            decomp->list_table[decomp->counter_list]->gen_id);
 	i = 0;
-	while((elt = get_elt(decomp->list_table[decomp->counter_list], i)) != NULL)
+	while((elt = list_get_elt_by_index(decomp->list_table[decomp->counter_list], i)) != NULL)
 	{
 		rohc_debugf(3, "   IPv6 extension of type 0x%02x / %d\n",
 		            elt->item->type, elt->item->type);
@@ -3213,11 +3214,11 @@ static int parse_dynamic_part_ipv6(const unsigned char *packet,
 
 			if(list->first_elt != NULL)
 			{
-				length_list = size_list(list);
+				length_list = list_get_size(list);
 			}
 			for(i = 0; i < length_list; i++)
 			{
-				elt = get_elt(list, i);
+				elt = list_get_elt_by_index(list, i);
 				size += elt->item->length;
 			}
 			info->size_list = size;
@@ -7476,7 +7477,7 @@ static unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
 		{
 			list = decomp->list_table[decomp->counter_list];
 		}
-		if(list != NULL && size_list(list) > 0)
+		if(list != NULL && list_get_size(list) > 0)
 		{
 			ip_changes->ip.header.v6.ip6_nxt = (uint8_t) list->first_elt->item->type;
 			rohc_debugf(3, "set Next Header in IPv6 base header to 0x%02x "
@@ -7624,7 +7625,7 @@ static int rohc_build_ip6_extension(struct d_generic_changes *ip_changes,
 		int length; // number of element in reference list
 		int i;
 
-		length = size_list(list);
+		length = list_get_size(list);
 		for(i = 0; i < length; i++)
 		{
 			unsigned char next_header_type;
@@ -7632,7 +7633,7 @@ static int rohc_build_ip6_extension(struct d_generic_changes *ip_changes,
 			int size_data; // size of one of the extension
 
 			// next header
-			elt = get_elt(list, i);
+			elt = list_get_elt_by_index(list, i);
 			if(elt->next_elt != NULL)
 			{
 				next_header_type = elt->next_elt->item->type;
