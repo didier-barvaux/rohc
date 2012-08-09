@@ -3168,11 +3168,6 @@ static int parse_dynamic_part_ipv6(const unsigned char *packet,
                                    struct d_generic_changes *info)
 {
 	int read = 0; /* number of bytes read from the packet */
-	struct c_list *list;
-	int i;
-	struct list_elt *elt;
-	int length_list = 0; // number of element in reference list
-	int size = 0; // size of the list
 
 	/* check the minimal length to decode the IPv6 dynamic part */
 	if(length < 2)
@@ -3203,6 +3198,10 @@ static int parse_dynamic_part_ipv6(const unsigned char *packet,
 		read += decomp->size_ext;
 		if(decomp->list_decomp)
 		{
+			struct c_list *list;
+			int length_list; // number of element in reference list
+			int i;
+
 			if(decomp->ref_ok)
 			{
 				list = decomp->ref_list;
@@ -3212,18 +3211,17 @@ static int parse_dynamic_part_ipv6(const unsigned char *packet,
 				list = decomp->list_table[decomp->counter_list];
 			}
 
-			if(list->first_elt != NULL)
-			{
-				length_list = list_get_size(list);
-			}
+			length_list = list_get_size(list);
+			decomp->data_len = 0;
 			for(i = 0; i < length_list; i++)
 			{
+				struct list_elt *elt;
 				elt = list_get_elt_by_index(list, i);
-				size += elt->item->length;
+				decomp->data_len += elt->item->length;
 			}
-			info->size_list = size;
 		}
 	}
+
 	return read;
 
 error:
@@ -7305,7 +7303,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		size = build_uncomp_ip(g_context->outer_ip_changes, uncomp_hdrs,
 		                       ip_get_hdrlen(&g_context->inner_ip_changes->ip) +
 		                       g_context->outer_ip_changes->next_header_len +
-		                       g_context->inner_ip_changes->size_list +
+		                       g_context->list_decomp2->data_len +
 		                       payload_len,
 		                       g_context->list_decomp1);
 		outer_ip_hdr = uncomp_hdrs;
@@ -7493,14 +7491,14 @@ static unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
 	if(decomp->list_decomp)
 	{
 		size += decomp->encode_extension(ip_changes, decomp, dest);
-		ip_changes->size_list = size;
+		decomp->data_len = size;
 	}
 
 	/* interfered fields */
 	ip->ip6_plen = htons(payload_size + size);
 	rohc_debugf(3, "Payload Length = 0x%04x (extensions = %d bytes, "
-	            "payload = %u bytes)\n", ntohs(payload_size), size,
-	            ntohs(payload_size));
+	            "payload = %u bytes)\n", ntohs(ip->ip6_plen), size,
+	            payload_size);
 
 	return sizeof(struct ip6_hdr) + size;
 }

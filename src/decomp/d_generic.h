@@ -179,9 +179,6 @@ struct d_generic_changes
 	/// Whether the IP-ID is considered as coded in NBO or not (IPv4 only)
 	int nbo;
 
-	/// The size of the list
-	int size_list;
-
 	/// The next header located after the IP header(s)
 	unsigned char *next_header;
 	/// The length of the next header
@@ -316,6 +313,9 @@ struct list_decomp
 	int ref_ok;
 	/// Size of the last list extension received
 	int size_ext;
+
+	/** The length (in bytes) of all the elements stored in the list */
+	size_t data_len;
 
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
