@@ -179,8 +179,6 @@ struct d_generic_changes
 	/// Whether the IP-ID is considered as coded in NBO or not (IPv4 only)
 	int nbo;
 
-	/// Whether the compression list is used or not(IPv6 only)
-	int complist;
 	/// The size of the list
 	int size_list;
 

@@ -4025,14 +4025,9 @@ int decode_uo0(struct rohc_decomp *decomp,
 	int build_ret;
 
 
-	if(g_context->outer_ip_changes->complist)
-	{
-		g_context->list_decomp1->ref_ok = 1;
-	}
-	if(g_context->multiple_ip && g_context->inner_ip_changes->complist)
-	{
-		g_context->list_decomp2->ref_ok = 1;
-	}
+	/* TODO: check why ref_ok is set to 1 here */
+	g_context->list_decomp1->ref_ok = 1;
+	g_context->list_decomp2->ref_ok = 1;
 
 
 	/* A. Parsing of ROHC header
@@ -4630,14 +4625,9 @@ int decode_uo1(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	if(g_context->outer_ip_changes->complist)
-	{
-		g_context->list_decomp1->ref_ok = 1;
-	}
-	if(g_context->multiple_ip && g_context->inner_ip_changes->complist)
-	{
-		g_context->list_decomp2->ref_ok = 1;
-	}
+	/* TODO: check why ref_ok is set to 1 here */
+	g_context->list_decomp1->ref_ok = 1;
+	g_context->list_decomp2->ref_ok = 1;
 
 
 	/* A. Parsing of ROHC base header
@@ -5597,14 +5587,9 @@ int decode_uor2(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	if(g_context->outer_ip_changes->complist)
-	{
-		g_context->list_decomp1->ref_ok = 1;
-	}
-	if(g_context->multiple_ip && g_context->inner_ip_changes->complist)
-	{
-		g_context->list_decomp2->ref_ok = 1;
-	}
+	/* TODO: check why ref_ok is set to 1 here */
+	g_context->list_decomp1->ref_ok = 1;
+	g_context->list_decomp2->ref_ok = 1;
 
 
 	/* A. Parsing of ROHC base header, extension header and tail of header
@@ -7506,7 +7491,6 @@ static unsigned int build_uncomp_ipv6(struct d_generic_changes *ip_changes,
 	/* extension list */
 	if(decomp->list_decomp)
 	{
-		ip_changes->complist = 1;
 		size += decomp->encode_extension(ip_changes, decomp, dest);
 		ip_changes->size_list = size;
 	}
