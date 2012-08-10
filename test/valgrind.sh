@@ -19,6 +19,8 @@ run_test_with_valgrind()
 	shift
 	CMD="$@"
 
+	local global_ret=0
+
 	# compute a unique temporary file
 	TMP_FILE="/tmp/valgrind_$(id -u)_$( echo "${CMD}" | md5sum | cut -d' ' -f1 )_$(date '+%s').xml"
 
@@ -44,6 +46,7 @@ run_test_with_valgrind()
 		echo "test failed inside valgrind (exit code ${ret})" >&2
 		# do not return here because the valgrind report may be useful
 		# to find the problem
+		global_ret=${ret}
 	fi
 
 	# workaround a valgrind bug that writes several closing valgrindoutput
@@ -78,11 +81,11 @@ run_test_with_valgrind()
 		return 1
 	fi
 
-	echo "test run with valgrind without any error"
+	[ ${global_ret} -eq 0 ] && echo "test run with valgrind without any error"
 
 	rm -f "${TMP_FILE}"
 	rm -f "${TMP_FILE}.filtered"
-	return 0
+	return ${global_ret}
 }
 
 
