@@ -383,13 +383,13 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
  * Helper functions
  */
 
-inline bool is_outer_ipv4(const struct d_generic_context *const context);
-inline bool is_outer_ipv4_rnd(const struct d_generic_context *const context);
-inline bool is_outer_ipv4_non_rnd(const struct d_generic_context *const context);
+bool is_outer_ipv4(const struct d_generic_context *const context);
+bool is_outer_ipv4_rnd(const struct d_generic_context *const context);
+bool is_outer_ipv4_non_rnd(const struct d_generic_context *const context);
 
-inline bool is_inner_ipv4(const struct d_generic_context *const context);
-inline bool is_inner_ipv4_rnd(const struct d_generic_context *const context);
-inline bool is_inner_ipv4_non_rnd(const struct d_generic_context *const context);
+bool is_inner_ipv4(const struct d_generic_context *const context);
+bool is_inner_ipv4_rnd(const struct d_generic_context *const context);
+bool is_inner_ipv4_non_rnd(const struct d_generic_context *const context);
 
 #endif
 
