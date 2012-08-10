@@ -3634,17 +3634,15 @@ int code_ipv4_static_part(const struct c_context *context,
 	/* part 3 */
 	saddr = ipv4_get_saddr(ip);
 	memcpy(&dest[counter], &saddr, 4);
-	rohc_debugf(3, "src addr = %02x %02x %02x %02x\n",
-	            dest[counter], dest[counter + 1],
-	            dest[counter + 2], dest[counter + 3]);
+	rohc_debugf(3, "src addr = " IPV4_ADDR_FORMAT "\n",
+	            IPV4_ADDR_RAW(dest + counter));
 	counter += 4;
 
 	/* part 4 */
 	daddr = ipv4_get_daddr(ip);
 	memcpy(&dest[counter], &daddr, 4);
-	rohc_debugf(3, "dst addr = %02x %02x %02x %02x\n",
-	            dest[counter], dest[counter + 1],
-	            dest[counter + 2], dest[counter + 3]);
+	rohc_debugf(3, "dst addr = " IPV4_ADDR_FORMAT "\n",
+	            IPV4_ADDR_RAW(dest + counter));
 	counter += 4;
 
 	return counter;
@@ -3714,15 +3712,13 @@ int code_ipv6_static_part(const struct c_context *context,
 	/* part 4 */
 	saddr = ipv6_get_saddr(ip);
 	memcpy(&dest[counter], saddr, 16);
-	rohc_debugf(3, "src addr = " IPV6_ADDR_FORMAT "\n",
-	            IPV6_ADDR(saddr));
+	rohc_debugf(3, "src addr = " IPV6_ADDR_FORMAT "\n", IPV6_ADDR_IN6(saddr));
 	counter += 16;
 
 	/* part 5 */
 	daddr = ipv6_get_daddr(ip);
 	memcpy(&dest[counter], daddr, 16);
-	rohc_debugf(3, "dst addr = " IPV6_ADDR_FORMAT "\n",
-	            IPV6_ADDR(daddr));
+	rohc_debugf(3, "dst addr = " IPV6_ADDR_FORMAT "\n", IPV6_ADDR_IN6(daddr));
 	counter += 16;
 
 	return counter;

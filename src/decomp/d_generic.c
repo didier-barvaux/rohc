@@ -3017,14 +3017,14 @@ static int parse_static_part_ipv6(const unsigned char *packet,
 	/* read the source IP address */
 	ip_set_saddr(ip, packet);
 	rohc_debugf(3, "Source Address = " IPV6_ADDR_FORMAT "\n",
-	            IPV6_ADDR(ipv6_get_saddr(ip)));
+	            IPV6_ADDR_IN6(ipv6_get_saddr(ip)));
 	packet += 16;
 	read += 16;
 
 	/* read the destination IP address */
 	ip_set_daddr(ip, packet);
 	rohc_debugf(3, "Destination Address = " IPV6_ADDR_FORMAT "\n",
-	            IPV6_ADDR(ipv6_get_daddr(ip)));
+	            IPV6_ADDR_IN6(ipv6_get_daddr(ip)));
 	packet += 16;
 	read += 16;
 

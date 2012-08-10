@@ -142,6 +142,15 @@ struct ip6_ahhdr
 #define IPV4_SET_DF(ip4, value) \
 	IP_SET_16_SUBFIELD((ip4)->frag_off, IP_DF, IPV4_DF_OFFSET, (value))
 
+/// The format to print an IPv4 address
+#define IPV4_ADDR_FORMAT \
+	"%02x%02x%02x%02x (%u.%u.%u.%u)"
+
+/// The data to print an IPv4 address in raw format
+#define IPV4_ADDR_RAW(x) \
+	(x)[0], (x)[1], (x)[2], (x)[3], \
+	(x)[0], (x)[1], (x)[2], (x)[3]
+
 
 /*
  * IPv6 definitions & macros:
@@ -189,11 +198,13 @@ struct ip6_ahhdr
 	"%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x"
 
 /// The data to print an IPv6 address in (struct in6_addr *) format
-#define IPV6_ADDR(x) \
-	(x)->s6_addr[0], (x)->s6_addr[1], (x)->s6_addr[2], (x)->s6_addr[3], \
-	(x)->s6_addr[4], (x)->s6_addr[5], (x)->s6_addr[6], (x)->s6_addr[7], \
-	(x)->s6_addr[8], (x)->s6_addr[9], (x)->s6_addr[10], (x)->s6_addr[11], \
-	(x)->s6_addr[12], (x)->s6_addr[13], (x)->s6_addr[14], (x)->s6_addr[15]
+#define IPV6_ADDR_IN6(x) \
+	IPV6_ADDR_RAW((x)->s6_addr)
+
+/// The data to print an IPv6 address in raw format
+#define IPV6_ADDR_RAW(x) \
+	(x)[0], (x)[1], (x)[2], (x)[3], (x)[4], (x)[5], (x)[6], (x)[7], \
+	(x)[8], (x)[9], (x)[10], (x)[11], (x)[12], (x)[13], (x)[14], (x)[15]
 
 /// Compare two IPv6 addresses in (struct in6_addr *) format
 #define IPV6_ADDR_CMP(x, y) \
