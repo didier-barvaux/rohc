@@ -232,9 +232,9 @@ static inline uint16_t swab16(uint16_t value)
  * @param ihl The length of the IPv4 header
  * @return    The IPv4 checksum
  */
-static inline unsigned short ip_fast_csum(unsigned char *iph, unsigned int ihl)
+static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 {
-	unsigned int sum;
+	uint32_t sum;
 
 	__asm__ __volatile__(
 	   " \n\
@@ -260,15 +260,16 @@ static inline unsigned short ip_fast_csum(unsigned char *iph, unsigned int ihl)
 	      are modified, we must also specify them as outputs, or gcc
 	      will assume they contain their original values. */
 		: "=r" (sum), "=r" (iph), "=r" (ihl)
-		: "1" (iph), "2" (ihl));
+		: "1" (iph), "2" (ihl)
+		: "memory");
 
-	return(sum);
+	return (uint16_t) (sum & 0xffff);
 }
 
 
 #else
 
-static inline unsigned short from32to16(unsigned long x)
+static inline uint16_t from32to16(uint32_t x)
 {
 	/* add up 16-bit and 16-bit for 16+c bit */
 	x = (x & 0xffff) + (x >> 16);
@@ -277,17 +278,23 @@ static inline unsigned short from32to16(unsigned long x)
 	return x;
 }
 
-
-static unsigned int do_csum(const unsigned char *buff, int len)
+/**
+ *  This is a version of ip_compute_csum() optimized for IP headers,
+ *  which always checksum on 4 octet boundaries.
+ */
+static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 {
-	int odd, count;
-	unsigned long result = 0;
+	const unsigned char *buff = iph;
+	size_t len = ihl * 4;
+	size_t odd;
+	size_t count;
+	uint32_t result = 0;
 
 	if(len <= 0)
 	{
 		goto out;
 	}
-	odd = 1 & (unsigned long) buff;
+	odd = 1 & (uint32_t) buff;
 	if(odd)
 	{
 #ifdef __LITTLE_ENDIAN
@@ -301,9 +308,9 @@ static unsigned int do_csum(const unsigned char *buff, int len)
 	count = len >> 1; /* nr of 16-bit words.. */
 	if(count)
 	{
-		if(2 & (unsigned long) buff)
+		if(2 & (uint32_t) buff)
 		{
-			result += *(unsigned short *) buff;
+			result += *(uint16_t *) buff;
 			count--;
 			len -= 2;
 			buff += 2;
@@ -311,15 +318,15 @@ static unsigned int do_csum(const unsigned char *buff, int len)
 		count >>= 1; /* nr of 32-bit words.. */
 		if(count)
 		{
-			unsigned long carry = 0;
+			uint32_t carry = 0;
 			do
 			{
-				unsigned long w = *(unsigned int *) buff;
+				uint32_t word = *(uint32_t *) buff;
 				count--;
-				buff += 4;
+				buff += sizeof(uint32_t);
 				result += carry;
-				result += w;
-				carry = (w > result);
+				result += word;
+				carry = (word > result);
 			}
 			while(count);
 			result += carry;
@@ -327,7 +334,7 @@ static unsigned int do_csum(const unsigned char *buff, int len)
 		}
 		if(len & 2)
 		{
-			result += *(unsigned short *) buff;
+			result += *(uint16_t *) buff;
 			buff += 2;
 		}
 	}
@@ -345,17 +352,7 @@ static unsigned int do_csum(const unsigned char *buff, int len)
 		result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
 	}
 out:
-	return result;
-}
-
-
-/**
- *  This is a version of ip_compute_csum() optimized for IP headers,
- *  which always checksum on 4 octet boundaries.
- */
-static inline uint16_t ip_fast_csum(const void *iph, unsigned int ihl)
-{
-	return (uint16_t) ~do_csum(iph, ihl * 4);
+	return ~result;
 }
 
 
