@@ -789,8 +789,6 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 	int feedbacksize;
 	int ret;
 
-	assert(cid >= 0);
-
 	/* check associated compressor availability */
 	if(decomp->compressor == NULL)
 	{
@@ -830,7 +828,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 	/* check CID wrt MAX_CID if context was found */
 	if(rohc_status != ROHC_ERROR_NO_CONTEXT)
 	{
-		if(cid < 0 || cid > decomp->medium.max_cid)
+		if(cid > decomp->medium.max_cid)
 		{
 			rohc_debugf(0, "unexpected CID %d: not in range [0, %d]\n", cid,
 			            decomp->medium.max_cid);
