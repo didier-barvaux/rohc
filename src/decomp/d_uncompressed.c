@@ -62,23 +62,23 @@ void uncompressed_free_decode_data(void *context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp          The ROHC decompressor
- * @param context         The decompression context
- * @param rohc_packet     The ROHC packet to decode
- * @param rohc_length     The length of the ROHC packet to decode
- * @param large_cid_len   The length of the large CID field
- * @param is_addcid_used  Whether the add-CID field is present or not
- * @param dest            The decoded IP packet
- * @return                The length of the uncompressed IP packet
- *                        or ROHC_ERROR_CRC if CRC on IR header is wrong
- *                        or ROHC_ERROR if an error occurs
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet to decode
+ * @param add_cid_len    The length of the optional Add-CID field
+ * @param large_cid_len  The length of the large CID field
+ * @param dest           The decoded IP packet
+ * @return               The length of the uncompressed IP packet
+ *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
+ *                       or ROHC_ERROR if an error occurs
  */
 int uncompressed_decode_ir(struct rohc_decomp *decomp,
                            struct d_context *context,
                            const unsigned char *const rohc_packet,
                            const unsigned int rohc_length,
+                           const size_t add_cid_len,
                            int large_cid_len,
-                           int is_addcid_used,
                            unsigned char *dest)
 {
 	/* remaining ROHC data not parsed yet */
@@ -114,8 +114,8 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	 * through the Profile octet of the IR packet, i.e. it does not cover the
 	 * CRC itself or the IP packet */
 	crc_computed = crc_calculate(ROHC_CRC_TYPE_8,
-	                             rohc_packet - is_addcid_used,
-	                             is_addcid_used + large_cid_len + 2,
+	                             rohc_packet - add_cid_len,
+	                             add_cid_len + large_cid_len + 2,
 	                             CRC_INIT_8, decomp->crc_table_8);
 	rohc_debugf(3, "CRC-8 on compressed ROHC header = 0x%x\n", crc_computed);
 

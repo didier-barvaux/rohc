@@ -241,23 +241,23 @@ static void d_udp_lite_destroy(void *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp          The ROHC decompressor
- * @param context         The decompression context
- * @param rohc_packet     The ROHC packet to decode
- * @param rohc_length     The length of the ROHC packet to decode
- * @param large_cid_len   The length of the large CID field
- * @param is_addcid_used  Whether the add-CID field is present or not
- * @param dest            The decoded IP packet
- * @return                The length of the uncompressed IP packet
- *                        or ROHC_ERROR_CRC if CRC on IR header is wrong
- *                        or ROHC_ERROR if another error occurs
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet to decode
+ * @param add_cid_len    The length of the optional Add-CID field
+ * @param large_cid_len  The length of the large CID field
+ * @param dest           The decoded IP packet
+ * @return               The length of the uncompressed IP packet
+ *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
+ *                       or ROHC_ERROR if another error occurs
  */
 int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
                          struct d_context *context,
                          const unsigned char *const rohc_packet,
                          const unsigned int rohc_length,
+                         const size_t add_cid_len,
                          int large_cid_len,
-                         int is_addcid_used,
                          unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
@@ -267,7 +267,7 @@ int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
 	udp_lite_context->cfi = -1;
 
 	return d_generic_decode_ir(decomp, context, rohc_packet, rohc_length,
-	                           large_cid_len, is_addcid_used, dest);
+	                           add_cid_len, large_cid_len, dest);
 }
 
 

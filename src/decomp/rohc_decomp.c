@@ -683,8 +683,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 		/* decode the IR packet thanks to the profile-specific routines */
 		size = ddata->active->profile->decode_ir(decomp, ddata->active,
 		                                         walk, isize,
-		                                         ddata->large_cid_size,
 		                                         ddata->addcidUsed,
+		                                         ddata->large_cid_size,
 		                                         obuf);
 		if(size > 0)
 		{

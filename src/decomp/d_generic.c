@@ -370,8 +370,8 @@ static int get_ip6_ext_size(const unsigned char *data, const size_t data_len);
 static bool check_ir_crc(const struct rohc_decomp *const decomp,
                          const unsigned char *const rohc_hdr,
                          const size_t rohc_hdr_len,
+                         const size_t add_cid_len,
                          const size_t large_cid_len,
-                         const int is_addcid_used,
                          const unsigned int crc_packet);
 
 static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
@@ -2775,8 +2775,8 @@ int get_bit_index(unsigned char byte, int index)
  * @param context         The decompression context
  * @param rohc_packet     The ROHC packet to decode
  * @param rohc_length     The length of the ROHC packet to decode
- * @param large_cid_len   The length of the large CID field
- * @param is_addcid_used  Whether the add-CID field is present or not
+ * @param add_cid_len     The length of the optional Add-CID field
+ * @param large_cid_len   The length of the optional large CID field
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
  *                        or ROHC_ERROR_CRC if CRC on IR header is wrong
@@ -2786,8 +2786,8 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         struct d_context *context,
                         const unsigned char *const rohc_packet,
                         const unsigned int rohc_length,
+                        const size_t add_cid_len,
                         int large_cid_len,
-                        int is_addcid_used,
                         unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
@@ -2982,14 +2982,14 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	 * correctly received. The optional Add-CID is part of the CRC.
 	 */
 
-	crc_ok = check_ir_crc(decomp, rohc_packet - is_addcid_used,
-	                      is_addcid_used + rohc_header_len,
-	                      large_cid_len, is_addcid_used, bits.crc);
+	crc_ok = check_ir_crc(decomp, rohc_packet - add_cid_len,
+	                      add_cid_len + rohc_header_len,
+	                      large_cid_len, add_cid_len, bits.crc);
 	if(!crc_ok)
 	{
 		rohc_debugf(0, "CRC detected a transmission failure for IR packet\n");
-		rohc_dump_packet("IR headers", rohc_packet - is_addcid_used,
-		                 rohc_header_len + is_addcid_used);
+		rohc_dump_packet("IR headers", rohc_packet - add_cid_len,
+		                 rohc_header_len + add_cid_len);
 		goto error_crc;
 	}
 
@@ -7440,16 +7440,16 @@ static unsigned int build_uncomp_ipv6(const struct rohc_decoded_ip_values decode
  * @param decomp          The ROHC decompressor
  * @param rohc_hdr        The compressed IR or IR-DYN header
  * @param rohc_hdr_len    The length (in bytes) of the compressed header
- * @param large_cid_len   The length of the large CID field
- * @param is_addcid_used  Whether the optional Add-CID byte is present or not
+ * @param add_cid_len     The length of the optional Add-CID field
+ * @param large_cid_len   The length of the optional large CID field
  * @param crc_packet      The CRC extracted from the ROHC header
  * @return                true if the CRC is correct, false otherwise
  */
 static bool check_ir_crc(const struct rohc_decomp *const decomp,
                          const unsigned char *const rohc_hdr,
                          const size_t rohc_hdr_len,
+                         const size_t add_cid_len,
                          const size_t large_cid_len,
-                         const int is_addcid_used,
                          const unsigned int crc_packet)
 {
 	const unsigned char *crc_table;
@@ -7466,7 +7466,7 @@ static bool check_ir_crc(const struct rohc_decomp *const decomp,
 	/* ROHC header before CRC field:
 	 * optional Add-CID + IR type + Profile ID + optional large CID */
 	crc_comp = crc_calculate(crc_type, rohc_hdr,
-	                         is_addcid_used + 2 + large_cid_len,
+	                         add_cid_len + 2 + large_cid_len,
 	                         CRC_INIT_8, crc_table);
 
 	/* zeroed CRC field */
@@ -7474,8 +7474,8 @@ static bool check_ir_crc(const struct rohc_decomp *const decomp,
 
 	/* ROHC header after CRC field */
 	crc_comp = crc_calculate(crc_type,
-	                         rohc_hdr + is_addcid_used + 2 + large_cid_len + 1,
-	                         rohc_hdr_len - is_addcid_used - 2 - large_cid_len - 1,
+	                         rohc_hdr + add_cid_len + 2 + large_cid_len + 1,
+	                         rohc_hdr_len - add_cid_len - 2 - large_cid_len - 1,
 	                         crc_comp, crc_table);
 
 	rohc_debugf(3, "CRC-%d on compressed ROHC header = 0x%x\n",

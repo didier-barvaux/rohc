@@ -202,8 +202,8 @@ struct d_profile
 	                 struct d_context *context,
 	                 const unsigned char *const rohc_packet,
 	                 const unsigned int rohc_length,
+	                 const size_t add_cid_len,
 	                 int large_cid_len,
-	                 int is_addcid_used,
 	                 unsigned char *dest);
 
 	/// @brief The handler used to create the profile-specific part of the
