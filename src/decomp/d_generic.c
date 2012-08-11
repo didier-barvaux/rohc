@@ -301,7 +301,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
                              const struct d_generic_context *const g_context,
                              const struct rohc_decoded_values decoded,
-                             const unsigned int payload_len,
+                             const size_t payload_len,
                              const rohc_crc_type_t crc_type,
                              const unsigned int crc_packet,
                              unsigned char *uncomp_hdrs,
@@ -2807,7 +2807,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
-	unsigned int payload_len;
+	size_t payload_len;
 
 	int dynamic_present;
 
@@ -2971,7 +2971,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	/* ROHC IR header is now fully decoded, remaining data is the payload */
 	payload_data = rohc_remain_data;
 	payload_len = rohc_remain_len;
-	rohc_debugf(3, "ROHC payload (length = %u bytes) starts at offset %zd\n",
+	rohc_debugf(3, "ROHC payload (length = %zd bytes) starts at offset %zd\n",
 	            payload_len, rohc_header_len);
 
 
@@ -3042,7 +3042,7 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	/* payload */
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC IR header (%zd bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC IR header (%zd bytes) and payload (%zd bytes) "
 		            "do not match the full ROHC IR packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -5658,7 +5658,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
-	unsigned int payload_len;
+	size_t payload_len;
 
 	/* helper variables for values returned by functions */
 	int size;
@@ -5813,7 +5813,7 @@ int decode_irdyn(struct rohc_decomp *decomp,
 	/* copy the payload */
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
-		rohc_debugf(0, "ROHC IR-DYN header (%zd bytes) and payload (%u bytes) "
+		rohc_debugf(0, "ROHC IR-DYN header (%zd bytes) and payload (%zd bytes) "
 		            "do not match the full ROHC IR-DYN packet (%u bytes)\n",
 		            rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -7147,7 +7147,7 @@ error:
 static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
                              const struct d_generic_context *const g_context,
                              const struct rohc_decoded_values decoded,
-                             const unsigned int payload_len,
+                             const size_t payload_len,
                              const rohc_crc_type_t crc_type,
                              const unsigned int crc_packet,
                              unsigned char *uncomp_hdrs,
@@ -7208,7 +7208,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		rohc_debugf(3, "length of extension headers for inner IP header "
 		            "= %zd bytes\n", inner_ip_ext_hdrs_len);
 
-		rohc_debugf(3, "length of transport header = %zd bytes\n",
+		rohc_debugf(3, "length of transport header = %u bytes\n",
 		            g_context->outer_ip_changes->next_header_len);
 
 		/* build the outer IP header */
@@ -7232,7 +7232,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 	}
 	else
 	{
-		rohc_debugf(3, "length of transport header = %zd bytes\n",
+		rohc_debugf(3, "length of transport header = %u bytes\n",
 		            g_context->outer_ip_changes->next_header_len);
 
 		/* build the single IP header */
