@@ -26,6 +26,8 @@
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 
 /*
@@ -297,7 +299,7 @@ static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 {
 	const unsigned char *buff = iph;
 	size_t len = ihl * 4;
-	size_t odd;
+	bool odd;
 	size_t count;
 	uint32_t result = 0;
 
@@ -305,7 +307,7 @@ static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 	{
 		goto out;
 	}
-	odd = 1 & (uint32_t) buff;
+	odd = 1 & (unsigned long) buff;
 	if(odd)
 	{
 #ifdef __LITTLE_ENDIAN
@@ -319,7 +321,7 @@ static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 	count = len >> 1; /* nr of 16-bit words.. */
 	if(count)
 	{
-		if(2 & (uint32_t) buff)
+		if(2 & (unsigned long) buff)
 		{
 			result += *(uint16_t *) buff;
 			count--;

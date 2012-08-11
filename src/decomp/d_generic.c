@@ -3868,7 +3868,7 @@ static bool parse_uo0(struct d_generic_context *g_context,
 	if(rohc_remain_len < second_byte)
 	{
 		rohc_debugf(0, "ROHC packet too small to read the second byte "
-		            "(%zd bytes available while at least %d are required)\n",
+		            "(%zd bytes available while at least %zd are required)\n",
 		            rohc_remain_len, second_byte + 1);
 		goto error;
 	}
