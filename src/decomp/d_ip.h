@@ -46,7 +46,7 @@ unsigned int ip_detect_ir_dyn_size(struct d_context *context,
 int ip_parse_dynamic_ip(struct d_generic_context *context,
                         const unsigned char *packet,
                         unsigned int length,
-                        unsigned char *dest);
+                        struct rohc_extr_bits *const bits);
 
 int ip_get_static_part(void);
 

@@ -135,40 +135,6 @@ error:
 
 
 /**
- * @brief Create an empty IP packet
- *
- * @param ip      OUT: The IP packet to create
- * @param version The version of the IP packet
- * @return        Whether the IP packet was successfully created or not
- */
-void ip_new(struct ip_packet *const ip, const ip_version version)
-{
-	/* initialize the IP info to zero */
-	bzero(ip, sizeof(*ip));
-
-	/* set the IP version of the packet */
-	ip->version = version;
-
-	/* set the IP version and the STATIC-KNOWN fields */
-	if(version == IPV4)
-	{
-		ip->header.v4.version = version;
-
-		/* STATIC-KNOWN fields */
-		ip->header.v4.ihl = 5;
-		/* the Reserved flag, the Don't Fragment flag and the Fragment Offset
-		 * field are already set to 0 by the bzero() call */
-	}
-	else /* IPV6 */
-	{
-		IPV6_SET_VERSION(&ip->header.v6, version);
-
-		/* no STATIC-KNOWN field */
-	}
-}
-
-
-/**
  * @brief Get the IP raw data (header + payload)
  *
  * The function handles \ref ip_packet whose \ref ip_packet::version is
@@ -551,6 +517,18 @@ unsigned int ip_get_plen(const struct ip_packet *const ip)
 ip_version ip_get_version(const struct ip_packet *const ip)
 {
 	return ip->version;
+}
+
+
+/**
+ * @brief Set the IP version of an IP packet
+ *
+ * @param ip     The IP packet to modify
+ * @param value  The version value
+ */
+void ip_set_version(struct ip_packet *const ip, const ip_version value)
+{
+	ip->version = value;
 }
 
 

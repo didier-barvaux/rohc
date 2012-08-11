@@ -69,22 +69,22 @@ unsigned int rtp_detect_ir_dyn_size(struct d_context *context,
 static int rtp_parse_static_rtp(struct d_generic_context *context,
                                 const unsigned char *packet,
                                 unsigned int length,
-                                unsigned char *dest);
+                                struct rohc_extr_bits *const bits);
 static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
-                                 unsigned char *dest);
+                                 struct rohc_extr_bits *const bits);
 static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
-                                 unsigned char *dest);
+                                 struct rohc_extr_bits *const bits);
 
 static bool rtp_decode_values_from_bits(const struct d_context *context,
-                                        const struct rohc_extr_base_bits bits,
+                                        const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded);
 
 static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
-                                const struct d_generic_changes *const hdr_chges,
+                                const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
@@ -534,21 +534,23 @@ error:
  * @param context The generic decompression context
  * @param packet  The ROHC packet to parse
  * @param length  The length of the ROHC packet
- * @param dest    The decoded UDP/RTP header
+ * @param bits    OUT: The bits extracted from the ROHC header
  * @return        The number of bytes read in the ROHC packet,
  *                -1 in case of failure
  */
 static int rtp_parse_static_rtp(struct d_generic_context *context,
                                 const unsigned char *packet,
                                 unsigned int length,
-                                unsigned char *dest)
+                                struct rohc_extr_bits *const bits)
 {
-	struct udphdr *udp = (struct udphdr *) dest;
-	struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
 	int read = 0; /* number of bytes read from the packet */
 
+	assert(context != NULL);
+	assert(packet != NULL);
+	assert(bits != NULL);
+
 	/* decode UDP static part */
-	read = udp_parse_static_udp(context, packet, length, dest);
+	read = udp_parse_static_udp(context, packet, length, bits);
 	if(read == -1)
 	{
 		goto error;
@@ -564,8 +566,9 @@ static int rtp_parse_static_rtp(struct d_generic_context *context,
 	}
 
 	/* decode RTP static part */
-	memcpy(&(rtp->ssrc), packet, sizeof(uint32_t));
-	rohc_debugf(3, "SSRC = 0x%08x\n", rtp->ssrc);
+	memcpy(&(bits->rtp_ssrc), packet, sizeof(uint32_t));
+	bits->rtp_ssrc_nr = 32;
+	rohc_debugf(3, "SSRC = 0x%08x\n", bits->rtp_ssrc);
 	packet += sizeof(uint32_t);
 	read += sizeof(uint32_t);
 
@@ -582,28 +585,26 @@ error:
  * @param context      The generic decompression context
  * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
- * @param dest         The decoded UDP/RTP header
+ * @param bits         OUT: The bits extracted from the ROHC header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
 static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
-                                 unsigned char *dest)
+                                 struct rohc_extr_bits *const bits)
 {
 	struct d_rtp_context *rtp_context;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
-	uint32_t ts_bits;
-	uint32_t ts_decoded;
 	int read = 0; /* number of bytes read from the packet */
 	unsigned char byte;
 	int rx;
-	int sn;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	assert(packet != NULL);
+	assert(bits != NULL);
 
 	rtp_context = context->specific;
-	udp = (struct udphdr *) dest;
-	rtp = (struct rtphdr *) (udp + 1);
 
 	/* part 1: UDP checksum */
 	if(length < sizeof(uint16_t))
@@ -611,14 +612,15 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 		rohc_debugf(0, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
-	udp->check = GET_NEXT_16_BITS(packet);
-	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+	bits->udp_check = GET_NEXT_16_BITS(packet);
+	bits->udp_check_nr = 16;
+	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
 	packet += sizeof(uint16_t);
 	read += sizeof(uint16_t);
 	length -= sizeof(uint16_t);
 
 	/* determine whether the UDP checksum will be present in UO packets */
-	rtp_context->udp_checksum_present = (udp->check > 0);
+	rtp_context->udp_checksum_present = (bits->udp_check > 0);
 
 	/* check the minimal length to decode the constant part of the RTP
 	   dynamic part (parts 2-6) */
@@ -630,55 +632,48 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 
 	/* part 2 */
 	byte = *packet;
-	rtp->version = (byte >> 6) & 0x03;
-	rtp->padding = (byte >> 5) & 0x01;
-	rtp->cc = byte & 0x0f;
+	bits->rtp_version = (byte >> 6) & 0x03;
+	bits->rtp_version_nr = 2;
+	rohc_debugf(3, "version = 0x%x\n", bits->rtp_version);
+	bits->rtp_p = (byte >> 5) & 0x01;
+	bits->rtp_p_nr = 1;
+	rohc_debugf(3, "padding = 0x%x\n", bits->rtp_p);
+	bits->rtp_cc = byte & 0x0f;
+	bits->rtp_cc_nr = 4;
+	rohc_debugf(3, "CSRC Count = 0x%x\n", bits->rtp_cc);
 	rx = (byte >> 4) & 0x01;
 	packet++;
 	read++;
 	length--;
-	rohc_debugf(3, "version = 0x%x\n", rtp->version);
-	rohc_debugf(3, "padding = 0x%x\n", rtp->padding);
-	rohc_debugf(3, "cc = 0x%x\n", rtp->cc);
 
 	/* part 3 */
 	byte = *packet;
-	rtp->m = (byte >> 7) & 0x01;
-	rohc_debugf(3, "M = 0x%x\n", rtp->m);
-	rtp->pt = byte & 0x7f;
-	rohc_debugf(3, "payload type = %d / 0x%x\n", ntohs(rtp->pt), rtp->pt);
+	bits->rtp_m = (byte >> 7) & 0x01;
+	bits->rtp_m_nr = 1;
+	rohc_debugf(3, "M = 0x%x\n", bits->rtp_m);
+	bits->rtp_pt = byte & 0x7f;
+	bits->rtp_pt_nr = 7;
+	rohc_debugf(3, "payload type = 0x%x\n", bits->rtp_pt);
 	packet++;
 	read++;
 	length--;
 
 	/* part 4 */
-	rtp->sn = GET_NEXT_16_BITS(packet);
+	bits->sn = ntohs(GET_NEXT_16_BITS(packet));
+	bits->sn_nr = 16;
 	packet += sizeof(uint16_t);
 	read += sizeof(uint16_t);
 	length -= sizeof(uint16_t);
-	rohc_debugf(3, "SN = %d\n", ntohs(rtp->sn));
-
-	/* init SN and IP-IDs (IPv4 only) */
-	sn = ntohs(rtp->sn);
-	rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
-	if(is_outer_ipv4(context))
-	{
-		d_ip_id_set_ref(&context->ip_id1,
-		                ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
-	}
-	if(context->multiple_ip && is_inner_ipv4(context))
-	{
-		d_ip_id_set_ref(&context->ip_id2,
-		                ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
-	}
+	rohc_debugf(2, "SN = %d (0x%04x)\n", bits->sn, bits->sn);
 
 	/* part 5: 4-byte TimeStamp (TS) */
-	memcpy(&ts_bits, packet, sizeof(uint32_t));
-	ts_bits = ntohl(ts_bits);
+	memcpy(&bits->ts, packet, sizeof(uint32_t));
+	bits->ts = ntohl(bits->ts);
+	bits->ts_nr = 32;
 	read += sizeof(uint32_t);
 	packet += sizeof(uint32_t);
 	length -= sizeof(uint32_t);
-	rohc_debugf(3, "timestamp = 0x%08x\n", ts_bits);
+	rohc_debugf(3, "timestamp = 0x%08x\n", bits->ts);
 
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)
@@ -757,16 +752,6 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 		}
 	}
 
-	/* decode the unscaled TS */
-	ts_decoded = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, ts_bits);
-
-	/* write TS in the uncompressed RTP header */
-	rtp->timestamp = htonl(ts_decoded);
-
-	/* update TS in decompression context (it is fine for IR / IR-DYN packets to
-	   do the update here since CRC correctness was checked before parsing) */
-	ts_update_context(rtp_context->ts_scaled_ctxt, ts_decoded, ntohs(rtp->sn));
-
 	return read;
 
 error:
@@ -780,22 +765,24 @@ error:
  * @param context      The generic decompression context
  * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
- * @param dest         The decoded UDP/RTP header
+ * @param bits         OUT: The bits extracted from the ROHC header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
 static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
-                                 unsigned char *dest)
-
+                                 struct rohc_extr_bits *const bits)
 {
 	struct d_rtp_context *rtp_context;
-	struct udphdr *udp;
 	int read = 0; /* number of bytes read from the packet */
 
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	assert(packet != NULL);
+	assert(bits != NULL);
+
 	rtp_context = context->specific;
-	udp = (struct udphdr *) dest;
 
 	/* UDP checksum if necessary:
 	 *  udp_checksum_present < 0 <=> not initialized
@@ -811,8 +798,9 @@ static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
 		}
 
 		/* retrieve the UDP checksum from the ROHC packet */
-		udp->check = GET_NEXT_16_BITS(packet);
-		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+		bits->udp_check = GET_NEXT_16_BITS(packet);
+		bits->udp_check_nr = 16;
+		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
 		packet += 2;
 		read += 2;
 	}
@@ -831,16 +819,17 @@ error:
 
 
 /**
- * @brief Decode values from extracted bits
+ * @brief Decode UDP values from extracted bits
  *
  * The following values are decoded:
+ *  - UDP source port
+ *  - UDP destination port
+ *  - UDP checksum
  *  - RTP TimeStamp (TS)
  *  - RTP Marker (M) flag
  *  - RTP eXtension (R-X) flag
  *  - RTP Padding (R-P) flag
  *  - RTP Payload Type (R-PT)
- *
- * The SN and IP-ID fields are decoded in @see decode_values_from_bits
  *
  * @param context  The decompression context
  * @param bits     The extracted bits
@@ -848,7 +837,7 @@ error:
  * @return         true if decoding is successful, false otherwise
  */
 static bool rtp_decode_values_from_bits(const struct d_context *context,
-                                        const struct rohc_extr_base_bits bits,
+                                        const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded)
 {
 	struct d_generic_context *g_context;
@@ -866,9 +855,175 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 	udp = (struct udphdr *) g_context->outer_ip_changes->next_header;
 	rtp = (struct rtphdr *) (udp + 1);
 
+	/* decode UDP source port */
+	if(bits.udp_src_nr > 0)
+	{
+		/* take packet value */
+		assert(bits.udp_src_nr == 16);
+		decoded->udp_src = bits.udp_src;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->udp_src = udp->source;
+	}
+	rohc_debugf(3, "decoded UDP source port = 0x%04x\n",
+	            ntohs(decoded->udp_src));
+
+	/* decode UDP destination port */
+	if(bits.udp_dst_nr > 0)
+	{
+		/* take packet value */
+		assert(bits.udp_dst_nr == 16);
+		decoded->udp_dst = bits.udp_dst;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->udp_dst = udp->dest;
+	}
+	rohc_debugf(3, "decoded UDP destination port = 0x%04x\n",
+	            ntohs(decoded->udp_dst));
+
+	/* UDP checksum:
+	 *  - error if udp_checksum_present not initialized,
+	 *    ie. udp_checksum_present < 0
+	 *  - copy from packet if checksum is present,
+	 *    ie. udp_checksum_present > 0
+	 *  - set checksum to zero if checksum is not present,
+	 *    ie. udp_checksum_present = 0  */
+	if(rtp_context->udp_checksum_present < 0)
+	{
+		rohc_debugf(0, "udp_checksum_present not initialized\n");
+		goto error;
+	}
+	else if(rtp_context->udp_checksum_present > 0)
+	{
+		assert(bits.udp_check_nr == 16);
+		decoded->udp_check = bits.udp_check;
+	}
+	else if(g_context->packet_type == PACKET_IR ||
+	        g_context->packet_type == PACKET_IR_DYN)
+	{
+		assert(bits.udp_check_nr == 16);
+		assert(bits.udp_check == 0);
+		decoded->udp_check = 0;
+	}
+	else
+	{
+		assert(bits.udp_check_nr == 0);
+		decoded->udp_check = 0;
+	}
+	rohc_debugf(3, "decoded UDP checksum = 0x%04x (checksum present = %d)\n",
+	            ntohs(decoded->udp_check), rtp_context->udp_checksum_present);
+
+	/* decode version field */
+	if(bits.rtp_version_nr > 0)
+	{
+		/* take packet value */
+		assert(bits.rtp_version_nr == 2);
+		decoded->rtp_version = bits.rtp_version;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_version = rtp->version;
+	}
+	rohc_debugf(3, "decoded RTP version = %u\n", decoded->rtp_version);
+
+	/* decode RTP Padding (R-P) flag */
+	if(bits.rtp_p_nr > 0)
+	{
+		/* take packet value */
+		assert(bits.rtp_p_nr == 1);
+		decoded->rtp_p = bits.rtp_p;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_p = rtp->padding;
+	}
+	rohc_debugf(3, "decoded R-P flag = %u\n", decoded->rtp_p);
+
+	/* decode RTP eXtension (R-X) flag */
+	if(bits.rtp_x_nr > 0)
+	{
+		/* take packet value */
+		assert(bits.rtp_x_nr == 1);
+		decoded->rtp_x = bits.rtp_x;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_x = rtp->extension;
+	}
+	rohc_debugf(3, "decoded R-X flag = %u\n", decoded->rtp_x);
+
+	/* decode RTP CC */
+	if(bits.rtp_cc_nr > 0)
+	{
+		/* take packet value */
+		assert(bits.rtp_cc_nr == 4);
+		decoded->rtp_cc = bits.rtp_cc;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_cc = rtp->cc;
+	}
+	rohc_debugf(3, "decoded CC = %u\n", decoded->rtp_cc);
+
+	/* decode RTP Marker (M) flag */
+	if(bits.rtp_m_nr > 0)
+	{
+		assert(bits.rtp_m_nr == 1);
+		decoded->rtp_m = bits.rtp_m;
+	}
+	else
+	{
+		/* RFC 3095 §5.7 says:
+		 *   Context(M) is initially zero and is never updated. value(M) = 1
+		 *   only when field(M) = 1.
+		 */
+		decoded->rtp_m = 0;
+	}
+	rohc_debugf(3, "decoded RTP M flag = %u\n", decoded->rtp_m);
+
+	/* decode RTP Payload Type (R-PT) */
+	if(bits.rtp_pt_nr > 0)
+	{
+		/* take value from base header */
+		assert(bits.rtp_pt_nr == 7);
+		decoded->rtp_pt = bits.rtp_pt;
+	}
+	else
+	{
+		/* keep context value */
+		decoded->rtp_pt = rtp->pt;
+	}
+	rohc_debugf(3, "decoded R-PT = %u\n", decoded->rtp_pt);
+
 	/* decode RTP TimeStamp (TS) */
 	rohc_debugf(3, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
-	if(bits.ext.is_ts_scaled)
+	if(g_context->packet_type == PACKET_IR ||
+	   g_context->packet_type == PACKET_IR_DYN ||
+	   !bits.is_ts_scaled)
+	{
+		rohc_debugf(3, "TS is not scaled\n");
+
+		/* RFC 4815, §4.2 says:
+		 *   If a packet with no TS bits is received with Tsc = 0, the
+		 *   decompressor MUST discard the packet. */
+		if(bits.ts_nr == 0)
+		{
+			rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bit received, "
+			            "discard the packet\n", bits.is_ts_scaled);
+			goto error;
+		}
+
+		decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
+	}
+	else /* TS is scaled */
 	{
 		if(bits.ts_nr == 0)
 		{
@@ -892,85 +1047,23 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 			}
 		}
 	}
-	else /* TS not scaled */
-	{
-		rohc_debugf(3, "TS is not scaled\n");
-
-		/* RFC 4815, §4.2 says:
-		 *   If a packet with no TS bits is received with Tsc = 0, the
-		 *   decompressor MUST discard the packet. */
-		if(bits.ts_nr == 0)
-		{
-			rohc_debugf(0, "TS not scaled (Tsc = %d) and no TS bit received, "
-			            "discard the packet\n", bits.ext.is_ts_scaled);
-			goto error;
-		}
-
-		decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
-	}
 	rohc_debugf(3, "decoded timestamp = %u / 0x%x (nr bits = %zd, "
 	            "bits = %u / 0x%x)\n", decoded->ts, decoded->ts,
 	            bits.ts_nr, bits.ts, bits.ts);
 
-	/* check that the RTP Marker (M) value found in the extension is the
-	 * same as the one we previously found. RFC 4815 §8.4 says:
-	 *   The RTP header part of Extension 3, as defined by RFC 3095
-	 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
-	 *   This field is also present in all compressed base header formats
-	 *   except for UO-1-ID; meaning, there may be two occurrences of the
-	 *   field within one single compressed header. In such cases, the
-	 *   two M fields must have the same value.
-	 */
-	if(bits.ext.rtp_m_nr > 0 && bits.rtp_m != bits.ext.rtp_m)
-	{
-		assert(bits.ext.rtp_m_nr == 1); /* sanity check */
-		rohc_debugf(0, "RTP Marker flag mismatch (base header = %u, "
-		            "extension 3 = %u)\n", bits.rtp_m, bits.ext.rtp_m);
-		goto error;
-	}
-
-	/* decode RTP Marker (M) flag */
-	decoded->rtp_m = GET_BOOL(bits.rtp_m);
-	rohc_debugf(3, "decoded RTP M flag = %u\n", decoded->rtp_m);
-
-	/* decode RTP eXtension (R-X) flag */
-	if(bits.ext.rtp_x_nr > 0)
+	/* decode RTP SSRC */
+	if(bits.rtp_ssrc_nr > 0)
 	{
 		/* take packet value */
-		decoded->rtp_x = GET_BOOL(bits.ext.rtp_x);
+		assert(bits.rtp_ssrc_nr == 32);
+		decoded->rtp_ssrc = bits.rtp_ssrc;
 	}
 	else
 	{
 		/* keep context value */
-		decoded->rtp_x = GET_BOOL(rtp->extension);
+		decoded->rtp_ssrc = rtp->ssrc;
 	}
-	rohc_debugf(3, "decoded R-X flag = %u\n", decoded->rtp_x);
-
-	/* decode RTP Padding (R-P) flag */
-	if(bits.ext.rtp_p_nr > 0)
-	{
-		/* take packet value */
-		decoded->rtp_p = GET_BOOL(bits.ext.rtp_p);
-	}
-	else
-	{
-		/* keep context value */
-		decoded->rtp_p = GET_BOOL(rtp->padding);
-	}
-	rohc_debugf(3, "decoded R-P flag = %u\n", decoded->rtp_p);
-
-	/* decode RTP Payload Type (R-PT) */
-	if(bits.ext.rtp_pt_nr > 0)
-	{
-		/* take packet value */
-		decoded->rtp_pt = bits.ext.rtp_pt & 0x7f;
-	}
-	else
-	{
-		/* keep context value */
-		decoded->rtp_pt = rtp->pt;
-	}
-	rohc_debugf(3, "decoded R-PT = %u\n", decoded->rtp_pt);
+	rohc_debugf(3, "decoded SSRC = %u\n", decoded->rtp_ssrc);
 
 	return true;
 
@@ -983,7 +1076,7 @@ error:
  * @brief Build an uncompressed UDP/RTP header.
  *
  * @param context      The generic decompression context
- * @param hdr_chges    The UDP/RTP header changes
+ * @param decoded      The values decoded from the ROHC header
  * @param dest         The buffer to store the UDP/RTP header (MUST be at least
  *                     of sizeof(struct udphdr) + sizeof(struct rtphdr) length)
  * @param payload_len  The length of the UDP/RTP payload
@@ -991,44 +1084,37 @@ error:
  *                     -1 in case of error
  */
 static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
-                                const struct d_generic_changes *const hdr_chges,
+                                const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len)
 {
-	struct d_rtp_context *rtp_context = context->specific;
-	struct udphdr *udp_hdr_chg = (struct udphdr *) hdr_chges->next_header;
 	struct udphdr *udp = (struct udphdr *) dest;
+	struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
 
-	/* static + checksum */
-	memcpy(dest, udp_hdr_chg, sizeof(struct udphdr) + sizeof(struct rtphdr));
+	/* UDP static fields */
+	udp->source = decoded.udp_src;
+	udp->dest = decoded.udp_dst;
 
-	/* UDP checksum:
-	 *  - error if udp_checksum_present not initialized,
-	 *    ie. udp_checksum_present < 0
-	 *  - already copied if checksum is present,
-	 *    ie. udp_checksum_present > 0
-	 *  - set checksum to zero if checksum is not present,
-	 *    ie. udp_checksum_present = 0  */
-	if(rtp_context->udp_checksum_present < 0)
-	{
-		rohc_debugf(0, "udp_checksum_present not initialized\n");
-		goto error;
-	}
-	else if(rtp_context->udp_checksum_present == 0)
-	{
-		udp->check = 0;
-	}
-	rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+	/* UDP changing fields */
+	udp->check = decoded.udp_check;
 
-	/* interfered fields */
+	/* UDP interfered fields */
 	udp->len = htons(payload_len + sizeof(struct udphdr) +
 	                 sizeof(struct rtphdr));
 	rohc_debugf(3, "UDP + RTP length = 0x%04x\n", ntohs(udp->len));
 
-	return sizeof(struct udphdr) + sizeof(struct rtphdr);
+	/* RTP fields: version, R-P flag, R-X flag, M flag, R-PT, TS and SN */
+	rtp->version = decoded.rtp_version;
+	rtp->padding = decoded.rtp_p;
+	rtp->extension = decoded.rtp_x;
+	rtp->cc = decoded.rtp_cc;
+	rtp->m = decoded.rtp_m;
+	rtp->pt = decoded.rtp_pt & 0x7f;
+	rtp->sn = htons(decoded.sn);
+	rtp->timestamp = htonl(decoded.ts);
+	rtp->ssrc = decoded.rtp_ssrc;
 
-error:
-	return -1;
+	return sizeof(struct udphdr) + sizeof(struct rtphdr);
 }
 
 

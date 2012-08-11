@@ -48,50 +48,52 @@
 #define L 5
 
 
-/**
- * @brief The bits extracted from ROHC extension headers
- *
- * @see parse_uo1
- * @see parse_uor2
- */
-struct rohc_extr_ext_bits
+/** The outer or inner IP bits extracted from ROHC headers */
+struct rohc_extr_ip_bits
 {
-	/* SN */
-	uint16_t sn;       /**< The SN bits found in extension header */
-	size_t sn_nr;      /**< The number of SN bits found in extension header */
+	uint8_t version:4;  /**< The version bits found in static chain of IR
+	                         header */
 
-	/* IP-ID of outer IP header (IPv4 only) */
-	uint16_t ip_id;    /**< The outer IP-ID bits found in extension header */
-	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
+	uint8_t tos;     /**< The TOS/TC bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t tos_nr;   /**< The number of TOS/TC bits found */
 
-	/* IP-ID of inner IP header (if it exists, IPv4 only) */
-	uint16_t ip_id2;   /**< The inner IP-ID bits found in extension header */
-	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
+	uint16_t id;     /**< The IP-ID bits found in dynamic chain of IR/IR-DYN
+	                      header, in UO* base header, in extension header and
+	                      in remainder of UO* header */
+	size_t id_nr;    /**< The number of IP-ID bits found */
 
+	uint8_t df:1;    /**< The DF bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t df_nr;    /**< The number of DF bits found */
 
-	/* bits below are for RTP profile only
-	   @todo should be moved in d_rtp.c */
+	uint8_t ttl;     /**< The TTL/HL bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t ttl_nr;   /**< The number of TTL/HL bits found */
 
-	/* RTP TimeStamp (TS) */
-	uint32_t ts;       /**< The TS bits found in extension header */
-	size_t ts_nr;      /**< The number of TS bits found in extension header */
-	bool is_ts_scaled; /**< Whether TS is transmitted scaled or not */
+	uint8_t proto;   /**< The protocol/next header bits found static chain
+	                      of IR header or in extension header */
+	size_t proto_nr; /**< The number of protocol/next header bits */
 
-	/* RTP Marker (M) flag */
-	uint8_t rtp_m;     /**< The RTP Marker (M) flag in extension header */
-	size_t rtp_m_nr;   /**< The number of RTP Marker (M) bits */
+	uint8_t nbo:1;   /**< The NBO bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t nbo_nr;   /**< The number of NBO bits found */
 
-	/* RTP eXtension (R-X) flag */
-	uint8_t rtp_x;     /**< The RTP eXtension (R-X) bits found in extension */
-	size_t rtp_x_nr;   /**< The number of RTP X bits */
+	uint8_t rnd:1;   /**< The RND bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t rnd_nr;   /**< The number of RND bits found */
 
-	/* RTP Padding (R-P) flag */
-	uint8_t rtp_p;     /**< The RTP Padding bits found in extension header */
-	size_t rtp_p_nr;   /**< The number of RTP Padding bits */
+	uint32_t flowid:20;  /**< The IPv6 flow ID bits found in static chain of
+	                          IR header */
+	size_t flowid_nr;    /**< The number of flow label bits */
 
-	/* RTP Payload Type (RTP-PT) */
-	uint8_t rtp_pt;    /**< The RTP Payload Type (PT) bits found in header */
-	size_t rtp_pt_nr;  /**< The number of RTP PT bits found in ROHC header */
+	uint8_t saddr[16];   /**< The source address bits found in static chain of
+	                          IR header */
+	size_t saddr_nr;     /**< The number of source address bits */
+
+	uint8_t daddr[16];   /**< The destination address bits found in static
+	                          chain of IR header */
+	size_t daddr_nr;     /**< The number of source address bits */
 };
 
 
@@ -102,40 +104,115 @@ struct rohc_extr_ext_bits
  * @see parse_uo1
  * @see parse_uor2
  */
-struct rohc_extr_base_bits
+struct rohc_extr_bits
 {
 	/* SN */
-	uint16_t sn;       /**< The SN bits found in ROHC header */
-	size_t sn_nr;      /**< The number of SN bits found in ROHC header */
+	uint16_t sn;            /**< The SN bits found in ROHC header */
+	size_t sn_nr;           /**< The number of SN bits found in ROHC header */
 
-	/* IP-ID of outer IP header (IPv4 only) */
-	uint16_t ip_id;    /**< The outer IP-ID bits found in ROHC header */
-	size_t ip_id_nr;   /**< The number of outer IP-ID bits */
+	/** bits related to outer IP header */
+	struct rohc_extr_ip_bits outer_ip;
 
-	/* IP-ID of inner IP header (if it exists, IPv4 only) */
-	uint16_t ip_id2;   /**< The inner IP-ID bits found in ROHC header */
-	size_t ip_id2_nr;  /**< The number of inner IP-ID bits */
+	/** bits related to inner IP header */
+	struct rohc_extr_ip_bits inner_ip;
 
 	/* CRC */
-	uint8_t crc;       /**< The CRC bits found in ROHC header */
-	size_t crc_nr;     /**< The number of CRC bits found in ROHC header */
+	uint8_t crc;            /**< The CRC bits found in ROHC header */
+	size_t crc_nr;          /**< The number of CRC bits found in ROHC header */
 
 	/* X (extension) flag */
-	uint8_t ext_flag;  /**< X (extension) flag */
+	uint8_t ext_flag:1;     /**< X (extension) flag */
 
-	/** The bits extracted from extension headers */
-	struct rohc_extr_ext_bits ext;
+
+	/* bits below are for UDP-based profiles only
+	   @todo TODO should be moved in d_udp.c */
+
+	uint16_t udp_src;     /**< The UDP source port bits found in static chain
+	                           of IR header */
+	size_t udp_src_nr;    /**< The number of UDP source port bits */
+
+	uint16_t udp_dst;     /**< The UDP destination port bits in static chain
+	                           of IR header */
+	size_t udp_dst_nr;    /**< The number of UDP destination port bits */
+
+	uint16_t udp_check;   /**< The UDP checksum bits found in dynamic chain
+	                           of IR/IR-DYN header or in remainder of UO*
+	                           header */
+	size_t udp_check_nr;  /**< The number of UDP checksum bits */
+
+
+	/* bits below are for UDP-Lite-based profiles only
+	   @todo TODO should be moved in d_udp_lite.c */
+
+	uint16_t udp_lite_cc;     /**< The UDP-Lite CC bits found in dynamic
+	                               chain of IR/IR-DYN header or in remainder
+	                               of UO* header */
+	size_t udp_lite_cc_nr;    /**< The number of UDP-Lite CC bits */
 
 
 	/* bits below are for RTP profile only
-	   @todo should be moved in d_rtp.c */
+	   @todo TODO should be moved in d_rtp.c */
 
-	/* RTP TimeStamp (TS) */
-	uint32_t ts;       /**< The TS bits found in ROHC header */
-	size_t ts_nr;      /**< The number of TS bits found in ROHC header */
+	/* RTP version */
+	uint8_t rtp_version:2;  /**< The RTP version bits found in dynamic chain
+	                             of IR/IR-DYN header */
+	size_t rtp_version_nr;  /**< The number of RTP version bits */
+
+	/* RTP Padding (R-P) flag */
+	uint8_t rtp_p:1;        /**< The RTP Padding bits found in dynamic chain
+	                             of IR/IR-DYN header or in extension header */
+	size_t rtp_p_nr;        /**< The number of RTP Padding bits */
+
+	/* RTP eXtension (R-X) flag */
+	uint8_t rtp_x:1;        /**< The RTP eXtension (R-X) bits found in
+	                             extension header */
+	size_t rtp_x_nr;        /**< The number of RTP X bits */
+
+	/* RTP CSRC Count (CC) */
+	uint8_t rtp_cc:4;       /**< The RTP CSRC Count bits found in dynamic
+	                             chain of IR/IR-DYN header */
+	size_t rtp_cc_nr;       /**< The number of the RTP CSRC Count bits */
 
 	/* RTP Marker (M) flag */
-	uint8_t rtp_m;     /**< The RTP Marker (M) flag */
+	uint8_t rtp_m:1;        /**< The RTP Marker (M) bits found in dynamic chain
+	                             of IR/IR-DYN header, UO* base header and
+	                             extension header */
+	size_t rtp_m_nr;        /**< The number of the RTP Marker (M) bits */
+
+	/* RTP Payload Type (RTP-PT) */
+	uint8_t rtp_pt:7;       /**< The RTP Payload Type (PT) bits found in
+	                             dynamic chain of IR/IR-DYN header or in
+	                             extension header */
+	size_t rtp_pt_nr;       /**< The number of RTP PT bits found in header */
+
+	/* RTP TimeStamp (TS) */
+	uint32_t ts;            /**< The TS bits found in dynamic chain of
+	                             IR/IR-DYN header, in UO* base header or in
+	                             extension header */
+	size_t ts_nr;           /**< The number of TS bits found in ROHC header */
+	bool is_ts_scaled;      /**< Whether TS is transmitted scaled or not */
+
+	/* RTP Synchronization SouRCe (SSRC)  identifier */
+	uint32_t rtp_ssrc;      /**< The SSRC bits found in static chain of
+	                             IR header */
+	size_t rtp_ssrc_nr;     /**< The number of SSRC bits found in header */
+};
+
+
+/** The outer or inner IP values decoded from the extracted ROHC bits */
+struct rohc_decoded_ip_values
+{
+	uint8_t version:4;   /**< The decoded version field */
+	uint8_t tos;         /**< The decoded TOS/TC field */
+	uint16_t id;         /**< The decoded IP-ID field (IPv4 only) */
+	uint8_t df:1;        /**< The decoded DF field (IPv4 only) */
+	uint8_t ttl;         /**< The decoded TTL/HL field */
+	uint8_t proto;       /**< The decoded protocol/NH field */
+	uint8_t nbo:1;       /**< The decoded NBO field (IPv4 only) */
+	uint8_t rnd:1;       /**< The decoded RND field (IPv4 only) */
+	uint32_t flowid:20;  /**< The decoded flow ID field (IPv6 only) */
+	uint8_t saddr[16];   /**< The decoded source address field */
+	uint8_t daddr[16];   /**< The decoded destination address field */
 };
 
 
@@ -150,14 +227,33 @@ struct rohc_extr_base_bits
  */
 struct rohc_decoded_values
 {
-	uint16_t sn;     /**< The decoded SN value */
-	uint16_t ip_id;  /**< The decoded outer IP-ID value */
-	uint16_t ip_id2; /**< The decoded inner IP-ID value */
-	uint32_t ts;     /**< The decoded TS value */
-	bool rtp_m;      /**< The decoded RTP Marker (M) flag */
-	bool rtp_x;      /**< The decoded RTP eXtension (R-X) flag */
-	bool rtp_p;      /**< The decoded RTP Padding (R-P) flag */
-	uint8_t rtp_pt;  /**< The decoded RTP Payload Type (RTP-PT) */
+	uint16_t sn;  /**< The decoded SN value */
+
+	/** The decoded values for the outer IP header */
+	struct rohc_decoded_ip_values outer_ip;
+	/** The decoded values for the inner IP header */
+	struct rohc_decoded_ip_values inner_ip;
+
+	/* bits below are for UDP-based profile only
+	   @todo TODO should be moved in d_udp.c */
+	uint16_t udp_src;   /**< The decoded UDP source port */
+	uint16_t udp_dst;   /**< The decoded UDP destination port bits */
+	uint16_t udp_check; /**< The decoded UDP checksum */
+
+	/* bits below are for UDP-Lite-based profile only
+	   @todo TODO should be moved in d_udp_lite.c */
+	uint16_t udp_lite_cc;   /**< The decoded UDP-Lite CC */
+
+	/* bits below are for RTP profile only
+	   @todo TODO should be moved in d_rtp.c */
+	uint8_t rtp_version:2;  /**< The decoded RTP version */
+	uint8_t rtp_p:1;        /**< The decoded RTP Padding (R-P) flag */
+	uint8_t rtp_x:1;        /**< The decoded RTP eXtension (R-X) flag */
+	uint8_t rtp_cc:4;       /**< The decoded RTP CSRC Count */
+	uint8_t rtp_m:1;        /**< The decoded RTP Marker (M) flag */
+	uint8_t rtp_pt:7;       /**< The decoded RTP Payload Type (RTP-PT) */
+	uint32_t ts;            /**< The decoded RTP TimeStamp (TS) value */
+	uint32_t rtp_ssrc;      /**< The decoded SSRC value */
 };
 
 
@@ -232,29 +328,29 @@ struct d_generic_context
 	int (*parse_static_next_hdr)(struct d_generic_context *context,
 	                             const unsigned char *packet,
 	                             unsigned int length,
-	                             unsigned char *dest);
+	                             struct rohc_extr_bits *const bits);
 
 	/// @brief The handler used to parse the dynamic part of the next header
 	///        in the ROHC packet
 	int (*parse_dyn_next_hdr)(struct d_generic_context *context,
 	                          const unsigned char *packet,
 	                          unsigned int length,
-	                          unsigned char *dest);
+	                          struct rohc_extr_bits *const bits);
 
 	/// The handler used to parse the tail of the UO* ROHC packet
 	int (*parse_uo_tail)(struct d_generic_context *context,
 	                     const unsigned char *packet,
 	                     unsigned int length,
-	                     unsigned char *dest);
+	                     struct rohc_extr_bits *const bits);
 
 	/** The handler used to decoded bits extracted from ROHC headers */
 	bool (*decode_values_from_bits)(const struct d_context *context,
-	                                const struct rohc_extr_base_bits bits,
+	                                const struct rohc_extr_bits bits,
 	                                struct rohc_decoded_values *const decoded);
 
 	/** The handler used to build the uncompressed next header */
 	int (*build_next_header)(const struct d_generic_context *const context,
-	                         const struct d_generic_changes *const hdr_chges,
+	                         const struct rohc_decoded_values decoded,
 	                         unsigned char *dest,
 	                         const unsigned int payload_len);
 
@@ -320,8 +416,8 @@ struct list_decomp
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
 	/// The handler used to add the extension to IP packet
-	int (*encode_extension)(struct d_generic_changes *ip_changes,
-	                        struct list_decomp *decomp,
+	int (*encode_extension)(struct list_decomp *const decomp,
+	                        const uint8_t ip_nh_type,
 	                        unsigned char *dest);
 	/// The handler used to check if the index
 	/// corresponds to an existing item
@@ -377,19 +473,6 @@ rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
                                const unsigned char *packet,
                                const size_t rohc_length,
                                int second_byte);
-
-
-/*
- * Helper functions
- */
-
-bool is_outer_ipv4(const struct d_generic_context *const context);
-bool is_outer_ipv4_rnd(const struct d_generic_context *const context);
-bool is_outer_ipv4_non_rnd(const struct d_generic_context *const context);
-
-bool is_inner_ipv4(const struct d_generic_context *const context);
-bool is_inner_ipv4_rnd(const struct d_generic_context *const context);
-bool is_inner_ipv4_non_rnd(const struct d_generic_context *const context);
 
 #endif
 

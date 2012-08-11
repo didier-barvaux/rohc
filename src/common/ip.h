@@ -383,7 +383,6 @@ int ip_create(struct ip_packet *const ip,
               const unsigned int size);
 int ip_get_inner_packet(const struct ip_packet *const outer,
                         struct ip_packet *const inner);
-void ip_new(struct ip_packet *const ip, const ip_version version);
 
 const unsigned char * ip_get_raw_data(const struct ip_packet *const ip);
 unsigned char * ip_get_next_header(const struct ip_packet *const ip,
@@ -405,6 +404,7 @@ unsigned int ext_get_protocol(const unsigned char *const ext);
 unsigned int ip_get_tos(const struct ip_packet *const ip);
 unsigned int ip_get_ttl(const struct ip_packet *const ip);
 
+void ip_set_version(struct ip_packet *const ip, const ip_version value);
 void ip_set_protocol(struct ip_packet *const ip, const uint8_t value);
 void ip_set_tos(struct ip_packet *const ip, const uint8_t value);
 void ip_set_ttl(struct ip_packet *const ip, const uint8_t value);

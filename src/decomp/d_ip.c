@@ -111,17 +111,20 @@ int ip_get_static_part(void)
  * @param context      The generic decompression context
  * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
- * @param dest         Not used
+ * @param bits         OUT: The bits extracted from the ROHC header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
 int ip_parse_dynamic_ip(struct d_generic_context *context,
                         const unsigned char *packet,
                         unsigned int length,
-                        unsigned char *dest)
+                        struct rohc_extr_bits *const bits)
 {
 	int read = 0; /* number of bytes read from the packet */
-	int sn;
+
+	assert(context != NULL);
+	assert(packet != NULL);
+	assert(bits != NULL);
 
 	if(context->packet_type == PACKET_IR ||
 	   context->packet_type == PACKET_IR_DYN)
@@ -133,26 +136,12 @@ int ip_parse_dynamic_ip(struct d_generic_context *context,
 			goto error;
 		}
 
-		/* init the SN */
-		sn = ntohs(GET_NEXT_16_BITS(packet));
-		rohc_lsb_set_ref(context->sn_lsb_ctxt, sn);
-		rohc_debugf(1, "SN = %d (0x%04x)\n", sn, sn);
+		/* parse SN */
+		bits->sn = ntohs(GET_NEXT_16_BITS(packet));
+		bits->sn_nr = 16;
+		rohc_debugf(2, "SN = %d (0x%04x)\n", bits->sn, bits->sn);
 		packet += 2;
 		read += 2;
-
-		/* init the outer IP-ID (IPv4 only) */
-		if(is_outer_ipv4(context))
-		{
-			d_ip_id_set_ref(&context->ip_id1,
-			                ntohs(ipv4_get_id(&context->outer_ip_changes->ip)), sn);
-		}
-
-		/* init the inner IP-ID (IPv4 only) */
-		if(context->multiple_ip && is_inner_ipv4(context))
-		{
-			d_ip_id_set_ref(&context->ip_id2,
-			                ntohs(ipv4_get_id(&context->inner_ip_changes->ip)), sn);
-		}
 	}
 
 	return read;

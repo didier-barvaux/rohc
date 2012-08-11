@@ -65,7 +65,7 @@ unsigned int udp_detect_ir_dyn_size(struct d_context *context,
 int udp_parse_static_udp(struct d_generic_context *context,
                          const unsigned char *packet,
                          unsigned int length,
-                         unsigned char *dest);
+                         struct rohc_extr_bits *const bits);
 
 int udp_get_static_size(void);
 
