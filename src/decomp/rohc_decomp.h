@@ -193,7 +193,8 @@ struct d_profile
 	              struct d_context *context,
 	              const unsigned char *const rohc_packet,
 	              const unsigned int rohc_length,
-	              int second_byte,
+	              const size_t add_cid_len,
+	              const size_t large_cid_len,
 	              unsigned char *dest);
 
 	/// The handler used to decode the IR packets
@@ -212,21 +213,6 @@ struct d_profile
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        decompression context
 	void (*free_decode_data)(void *);
-
-	/// The handler used to find out the size of IR packets
-	unsigned int (*detect_ir_size)(struct d_context *context,
-	                               unsigned char *packet,
-	                               unsigned int plen,
-	                               unsigned int large_cid_len);
-
-	/// The handler used to find out the size of IR-DYN packets
-	unsigned int (*detect_ir_dyn_size)(struct d_context *context,
-	                                   unsigned char *packet,
-	                                   unsigned int plen,
-	                                   unsigned int large_cid_len);
-
-	/// The handler used to get the size of the specific static part of IR packets
-	int (*get_static_part)(void);
 
 	/// The handler used to retrieve the Sequence Number (SN)
 	int (*get_sn)(struct d_context *context);

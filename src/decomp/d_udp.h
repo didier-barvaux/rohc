@@ -52,22 +52,10 @@ struct d_udp_context
  * Public function prototypes.
  */
 
-unsigned int udp_detect_ir_size(struct d_context *context,
-                                unsigned char *packet,
-                                unsigned int plen,
-                                unsigned int large_cid_len);
-
-unsigned int udp_detect_ir_dyn_size(struct d_context *context,
-                                    unsigned char *packet,
-                                    unsigned int plen,
-                                    unsigned int large_cid_len);
-
 int udp_parse_static_udp(struct d_generic_context *context,
                          const unsigned char *packet,
                          unsigned int length,
                          struct rohc_extr_bits *const bits);
-
-int udp_get_static_size(void);
 
 #endif
 

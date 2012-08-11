@@ -542,10 +542,10 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 
 	/* part 5 */
 	dest[counter] = 0;
-	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter + 1,
+	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                              CRC_INIT_8,
 	                              context->compressor->crc_table_8);
-	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter + 1, dest[counter]);
+	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
 	counter++;
 
 	*payload_offset = 0;
@@ -608,6 +608,9 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 
 	/* part 2 */
 	dest[first_position] = (ip_get_raw_data(ip))[0];
+
+	rohc_debugf(3, "header length = %d, payload length = %d\n", counter - 1,
+	            ip_get_totlen(ip));
 
 	*payload_offset = 1;
 	return counter;

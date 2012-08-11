@@ -1089,6 +1089,7 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	/* part 6 not supported yet  but the field is mandatory,
 	   so add a zero byte */
 	dest[counter] = 0x00;
+	rohc_debugf(3, "Generic CSRC list not supported yet, put a 0x00 byte\n");
 	counter++;
 
 	/* parts 7, 8 & 9 */

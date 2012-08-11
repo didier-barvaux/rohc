@@ -418,10 +418,24 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 		else if(decomp_size <= 0)
 		{
-			/* non-CRC failure is NOT expected */
-			fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
-			        "ROHC packet\n");
-			goto destroy_decomp;
+			/* non-CRC failure is NOT expected except for damaged IR/IR-DYN packet */
+			if(counter != packet_to_damage)
+			{
+				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
+				        "ROHC packet\n");
+				goto destroy_decomp;
+			}
+			else if(expected_packet != PACKET_IR && expected_packet != PACKET_IR_DYN)
+			{
+				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
+				        "ROHC non-IR/IR-DYN packet\n");
+				goto destroy_decomp;
+			}
+			else
+			{
+				fprintf(stderr, "\texpected failure to decompress generated ROHC "
+				        "IR or IR-DYN packet\n");
+			}
 		}
 		else
 		{

@@ -24,6 +24,7 @@
 #include "d_uncompressed.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
+#include "crc.h"
 
 
 /**
@@ -69,7 +70,7 @@ void uncompressed_free_decode_data(void *context)
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if no data is returned
+ *                        or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                        or ROHC_ERROR if an error occurs
  */
 int uncompressed_decode_ir(struct rohc_decomp *decomp,
@@ -84,6 +85,10 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	const unsigned char *rohc_remain_data = rohc_packet;
 	unsigned int rohc_remain_len = rohc_length;
 
+	/* packet and computed CRCs */
+	unsigned int crc_packet;
+	unsigned int crc_computed;
+
 	/* ROHC and uncompressed payloads (they are the same) */
 	const unsigned char *payload_data;
 	unsigned int payload_len;
@@ -91,14 +96,36 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	/* change state to Full Context */
 	context->state = FULL_CONTEXT;
 
-	/* skip the first bytes:
-	 *    IR type + Profile ID + CRC (+ eventually CID bytes) */
-	rohc_remain_data += 3 + large_cid_len;
-	rohc_remain_len -= 3 + large_cid_len;
+	/* skip the IR type, optional large CID bytes, and Profile ID */
+	rohc_remain_data += large_cid_len + 2;
+	rohc_remain_len -= large_cid_len + 2;
+
+	/* parse CRC */
+	crc_packet = GET_BIT_0_7(rohc_remain_data);
+	rohc_debugf(3, "CRC-8 found in packet = 0x%02x\n", crc_packet);
+	rohc_remain_data++;
+	rohc_remain_len--;
 
 	/* ROHC header is now fully decoded */
 	payload_data = rohc_remain_data;
 	payload_len = rohc_remain_len;
+
+	/* compute header CRC: the CRC covers the first octet of the IR packet
+	 * through the Profile octet of the IR packet, i.e. it does not cover the
+	 * CRC itself or the IP packet */
+	crc_computed = crc_calculate(ROHC_CRC_TYPE_8,
+	                             rohc_packet - is_addcid_used,
+	                             is_addcid_used + large_cid_len + 2,
+	                             CRC_INIT_8, decomp->crc_table_8);
+	rohc_debugf(3, "CRC-8 on compressed ROHC header = 0x%x\n", crc_computed);
+
+	/* does the computed CRC match the one in packet? */
+	if(crc_computed != crc_packet)
+	{
+		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
+		            crc_computed, crc_packet);
+		goto error_crc;
+	}
 
 	/* copy IR payload to uncompressed packet */
 	if(payload_len != 0)
@@ -107,59 +134,9 @@ int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	}
 
 	return payload_len;
-}
 
-
-/**
- * @brief Find the length of data in an IR packet.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context         The decompression context
- * @param packet          The IR packet after the Add-CID byte if present
- * @param plen            The length of the IR-DYN packet minus the Add-CID byte
- * @param large_cid_len   The size of the large CID field
- * @return                The length of data in the IR packet,
- *                        0 if an error occurs
- */
-unsigned int uncompressed_detect_ir_size(struct d_context *context,
-                                         unsigned char *packet,
-                                         unsigned int plen,
-                                         unsigned int large_cid_len)
-{
-	/* check if ROHC packet is large enough to contain
-	   the first byte + Profile ID + CRC in addition to the large CID */
-	if(plen < (1 + large_cid_len + 1 + 1))
-	{
-		return 0;
-	}
-
-	/* first byte + Profile ID + CRC */
-	return 3;
-}
-
-
-/**
- * @brief Find the length of data in an IR-DYN packet.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context         The decompression context
- * @param packet          The IR-DYN packet after the Add-CID byte if present
- * @param plen            The length of the IR-DYN packet minus the Add-CID byte
- * @param large_cid_len   The size of the large CID field
- * @return                The length of data in the IR-DYN packet,
- *                        0 if an error occurs
- */
-unsigned int uncompressed_detect_ir_dyn_size(struct d_context *context,
-                                             unsigned char *packet,
-                                             unsigned int plen,
-                                             unsigned int large_cid_len)
-{
-	rohc_debugf(0, "IR-DYN packet is not defined in uncompressed profile\n");
-	return 0;
+error_crc:
+	return ROHC_ERROR_CRC;
 }
 
 
@@ -169,26 +146,29 @@ unsigned int uncompressed_detect_ir_dyn_size(struct d_context *context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp      The ROHC decompressor
- * @param context     The decompression context
- * @param rohc_packet The ROHC packet to decode
- * @param rohc_length The length of the ROHC packet
- * @param second_byte The offset for the second byte of the ROHC packet
- *                    (depends on the CID encoding and the packet type)
- * @param dest        The decoded IP packet
- * @return            The length of the uncompressed IP packet
- *                    or ROHC_ERROR if an error occurs
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param add_cid_len    The length of the optional Add-CID field
+ * @param large_cid_len  The length of the optional large CID field
+ * @param dest           The uncompressed packet
+ * @return               The length of the uncompressed packet
+ *                       or ROHC_ERROR if an error occurs
  */
 int uncompressed_decode(struct rohc_decomp *decomp,
                         struct d_context *context,
                         const unsigned char *const rohc_packet,
                         const unsigned int rohc_length,
-                        int second_byte,
+                        const size_t add_cid_len,
+                        const size_t large_cid_len,
                         unsigned char *dest)
 {
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
 	unsigned int rohc_remain_len = rohc_length;
+
+	rohc_debugf(1, "decode Normal packet\n");
 
 	/* state must not be No Context */
 	if(context->state == NO_CONTEXT)
@@ -197,8 +177,9 @@ int uncompressed_decode(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	/* check if the ROHC packet is large enough to read the second byte */
-	if(second_byte >= rohc_length)
+	/* check if the ROHC packet is large enough for the first byte, the
+	 * optional large CID field, and at least one more byte of data */
+	if(rohc_remain_len < (1 + large_cid_len + 1))
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_length);
 		goto error;
@@ -206,15 +187,19 @@ int uncompressed_decode(struct rohc_decomp *decomp,
 
 	/* copy the first byte of the ROHC packet to the decompressed packet */
 	*dest = GET_BIT_0_7(rohc_packet);
-	dest += 1;
-	rohc_remain_data += second_byte;
-	rohc_remain_len -= second_byte;
+	dest++;
+	rohc_remain_data++;
+	rohc_remain_len--;
+
+	/* skip the optional large CID field */
+	rohc_remain_data += large_cid_len;
+	rohc_remain_len -= large_cid_len;
 
 	/* copy the second byte and the following bytes of the ROHC packet
 	 * to the decompressed packet */
 	memcpy(dest, rohc_remain_data, rohc_remain_len);
 
-	return (1 + rohc_remain_len);
+	return (rohc_length - large_cid_len);
 
 error:
 	return ROHC_ERROR;
@@ -249,9 +234,6 @@ struct d_profile d_uncomp_profile =
 	uncompressed_decode_ir,
 	uncompressed_allocate_decode_data,
 	uncompressed_free_decode_data,
-	uncompressed_detect_ir_size,
-	uncompressed_detect_ir_dyn_size,
-	NULL,
 	uncompressed_get_sn,
 };
 

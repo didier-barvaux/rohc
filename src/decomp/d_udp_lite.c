@@ -236,17 +236,6 @@ static void d_udp_lite_destroy(void *const context)
 
 
 /**
- * @brief Get the size of the static part of an IR packet
- * @return the size
- */
-int udp_lite_get_static_part(void)
-{
-	/* same as UDP */
-	return udp_get_static_size();
-}
-
-
-/**
  * @brief Decode one IR packet for the UDP-Lite profile.
  *
  * This function is one of the functions that must exist in one profile for the
@@ -260,8 +249,8 @@ int udp_lite_get_static_part(void)
  * @param is_addcid_used  Whether the add-CID field is present or not
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
- *                        or ROHC_OK_NO_DATA if packet is feedback only
- *                        or ROHC_ERROR if an error occurs
+ *                        or ROHC_ERROR_CRC if CRC on IR header is wrong
+ *                        or ROHC_ERROR if another error occurs
  */
 int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
                          struct d_context *context,
@@ -283,192 +272,39 @@ int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
 
 
 /**
- * @brief Find the length of the IR header.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * \verbatim
-
- Basic structure of the IR packet (5.7.7.1):
-
-      0   1   2   3   4   5   6   7
-     --- --- --- --- --- --- --- ---
- 1  |         Add-CID octet         |  if for small CIDs and CID != 0
-    +---+---+---+---+---+---+---+---+
- 2  | 1   1   1   1   1   1   0 | D |
-    +---+---+---+---+---+---+---+---+
-    |                               |
- 3  /    0-2 octets of CID info     /  1-2 octets if for large CIDs
-    |                               |
-    +---+---+---+---+---+---+---+---+
- 4  |            Profile            |  1 octet
-    +---+---+---+---+---+---+---+---+
- 5  |              CRC              |  1 octet
-    +---+---+---+---+---+---+---+---+
-    |                               |
- 6  |         Static chain          |  variable length
-    |                               |
-    +---+---+---+---+---+---+---+---+
-    |                               |
- 7  |         Dynamic chain         |  present if D = 1, variable length
-    |                               |
-    +---+---+---+---+---+---+---+---+
- 8  |             SN                |  2 octets if not RTP
-    +---+---+---+---+---+---+---+---+
-    |                               |
- 9  |           Payload             |  variable length
-    |                               |
-     - - - - - - - - - - - - - - - -
-
-\endverbatim
- *
- * The function computes the length of the fields 2 + 4-8, ie. the first byte,
- * the Profile and CRC fields, the static and dynamic chains (outer and inner
- * IP headers + UDP-Lite header) and the SN.
- *
- * @param context         The decompression context
- * @param packet          The pointer on the IR packet minus the Add-CID byte
- *                        (ie. the field 2 in the figure)
- * @param plen            The length of the IR packet minus the Add-CID byte
- * @param large_cid_len   The size of the large CID field
- *                        (ie. field 3 in the figure)
- * @return                The length of the IR header,
- *                        0 if an error occurs
- */
-unsigned int udp_lite_detect_ir_size(struct d_context *context,
-                                     unsigned char *packet,
-                                     unsigned int plen,
-                                     unsigned int large_cid_len)
-{
-	unsigned int length, d;
-
-	/* Profile and CRC fields + IP static & dynamic chains + UDP static &
-	 * dynamic chain + SN */
-	length = udp_detect_ir_size(context, packet, plen, large_cid_len);
-	if(length == 0)
-	{
-		goto quit;
-	}
-
-	/* UDP-Lite dynamic part (if included) needs 2 bytes more than the UDP
-	 * dynamic part (see 5.7.7.5 in RFC 3095 and 5.2.1 in RFC 4019) */
-	d = GET_BIT_0(packet);
-	if(d)
-	{
-		length += 2;
-	}
-
-quit:
-	return length;
-}
-
-
-/**
- * @brief Find the length of the IR-DYN header.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * \verbatim
-
- Basic structure of the IR-DYN packet (5.7.7.2):
-
-      0   1   2   3   4   5   6   7
-     --- --- --- --- --- --- --- ---
- 1  :         Add-CID octet         : if for small CIDs and CID != 0
-    +---+---+---+---+---+---+---+---+
- 2  | 1   1   1   1   1   0   0   0 | IR-DYN packet type
-    +---+---+---+---+---+---+---+---+
-    :                               :
- 3  /     0-2 octets of CID info    / 1-2 octets if for large CIDs
-    :                               :
-    +---+---+---+---+---+---+---+---+
- 4  |            Profile            | 1 octet
-    +---+---+---+---+---+---+---+---+
- 5  |              CRC              | 1 octet
-    +---+---+---+---+---+---+---+---+
-    |                               |
- 6  /         Dynamic chain         / variable length
-    |                               |
-    +---+---+---+---+---+---+---+---+
- 7  |             SN                | 2 octets if not RTP
-    +---+---+---+---+---+---+---+---+
-    :                               :
- 8  /           Payload             / variable length
-    :                               :
-     - - - - - - - - - - - - - - - -
-
-\endverbatim
- *
- * The function computes the length of the fields 2 + 4-8, ie. the first byte,
- * the Profile and CRC fields, the dynamic chains (outer and inner IP headers +
- * UDP-Lite header) and the SN.
- *
- * @param context         The decompression context
- * @param packet          The IR-DYN packet after the Add-CID byte if present
- *                        (ie. field 2 in the figure)
- * @param plen            The length of the IR-DYN packet minus the Add-CID byte
- * @param large_cid_len   The size of the large CID field
- *                        (ie. field 3 in the figure)
- * @return                The length of the IR-DYN header,
- *                        0 if an error occurs
- */
-unsigned int udp_lite_detect_ir_dyn_size(struct d_context *context,
-                                         unsigned char *packet,
-                                         unsigned int plen,
-                                         unsigned int large_cid_len)
-{
-	unsigned int length;
-
-	/* Profile and CRC fields + IP dynamic chains + UDP dynamic chain */
-	length = udp_detect_ir_dyn_size(context, packet, plen, large_cid_len);
-	if(length == 0)
-	{
-		goto quit;
-	}
-
-	/* UDP-Lite dynamic part needs 2 bytes more than the UDP dynamic part
-	 * (see 5.7.7.5 in RFC 3095 and 5.2.1 in RFC 4019) */
-	length += 2;
-
-quit:
-	return length;
-}
-
-
-/**
  * @brief Decode one IR-DYN, UO-0, UO-1 or UOR-2 packet, but not IR packet.
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp      The ROHC decompressor
- * @param context     The decompression context
- * @param rohc_packet The ROHC packet to decode
- * @param rohc_length The length of the ROHC packet
- * @param second_byte The offset for the second byte of the ROHC packet
- *                    (depends on the CID encoding and the packet type)
- * @param dest        The decoded IP packet
- * @return            The length of the uncompressed IP packet
- *                    or ROHC_ERROR if an error occurs
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param add_cid_len    The length of the optional Add-CID field
+ * @param large_cid_len  The length of the optional large CID field
+ * @param dest           The decoded IP packet
+ * @return               The length of the uncompressed IP packet
+ *                       or ROHC_ERROR if an error occurs
  */
 int d_udp_lite_decode(struct rohc_decomp *decomp,
                       struct d_context *context,
                       const unsigned char *const rohc_packet,
                       const unsigned int rohc_length,
-                      int second_byte,
+                      const size_t add_cid_len,
+                      const size_t large_cid_len,
                       unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
 	rohc_packet_t packet_type;
+	size_t new_large_cid_len;
 
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
 	unsigned int rohc_remain_len = rohc_length;
 
-	/* check if the ROHC packet is large enough to read the one byte */
+	/* check if the ROHC packet is large enough to read the first byte */
 	if(rohc_remain_len < 2)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
@@ -501,15 +337,19 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	 * and go to the second byte */
 	if(udp_lite_context->cce_packet)
 	{
-		rohc_remain_data += second_byte;
-		second_byte = 1;
-		rohc_remain_len--;
+		rohc_remain_data += 1 + large_cid_len;
+		rohc_remain_len -= 1 + large_cid_len;
+		new_large_cid_len = 0;
+	}
+	else
+	{
+		new_large_cid_len = large_cid_len;
 	}
 
 	/* reset the coverage infos if IR-DYN packet */
 	packet_type = find_packet_type(decomp, context,
 	                               rohc_remain_data, rohc_remain_len,
-	                               second_byte);
+	                               new_large_cid_len);
 	if(packet_type == PACKET_IR_DYN)
 	{
 		udp_lite_context->cfp = -1;
@@ -517,7 +357,7 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	}
 
 	return d_generic_decode(decomp, context, rohc_remain_data, rohc_remain_len,
-	                        second_byte, dest);
+	                        add_cid_len, new_large_cid_len, dest);
 
 error:
 	return ROHC_ERROR;
@@ -838,9 +678,6 @@ struct d_profile d_udplite_profile =
 	d_udp_lite_decode_ir,
 	d_udp_lite_create,
 	d_udp_lite_destroy,
-	udp_lite_detect_ir_size,
-	udp_lite_detect_ir_dyn_size,
-	udp_lite_get_static_part,
 	d_generic_get_sn,
 };
 

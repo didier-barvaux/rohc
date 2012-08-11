@@ -404,14 +404,9 @@ struct list_decomp
 	/// counter which indicates if the list is reference list
 	int counter;
 	/// boolean which indicates if there is a list to decompress
-	int list_decomp;
+	bool is_present;
 	/// boolean which indicates if the ref list must be decompressed
 	int ref_ok;
-	/// Size of the last list extension received
-	int size_ext;
-
-	/** The length (in bytes) of all the elements stored in the list */
-	size_t data_len;
 
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
@@ -445,7 +440,8 @@ int d_generic_decode(struct rohc_decomp *decomp,
                      struct d_context *context,
                      const unsigned char *const rohc_packet,
                      const unsigned int rohc_length,
-                     int second_byte,
+                     const size_t add_cid_len,
+                     const size_t large_cid_len,
                      unsigned char *dest);
 
 int d_generic_decode_ir(struct rohc_decomp *decomp,
@@ -456,23 +452,13 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
                         int is_addcid_used,
                         unsigned char *dest);
 
-unsigned int d_generic_detect_ir_size(struct d_context *context,
-                                      unsigned char *packet,
-                                      unsigned int plen,
-                                      unsigned int large_cid_len);
-
-unsigned int d_generic_detect_ir_dyn_size(struct d_context *context,
-                                          unsigned char *first_byte,
-                                          unsigned int plen,
-                                          unsigned int large_cid_len);
-
 int d_generic_get_sn(struct d_context *context);
 
 rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
                                struct d_context *context,
                                const unsigned char *packet,
                                const size_t rohc_length,
-                               int second_byte);
+                               const size_t large_cid_len);
 
 #endif
 

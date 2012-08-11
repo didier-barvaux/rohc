@@ -33,22 +33,10 @@
  * Public function prototypes.
  */
 
-unsigned int ip_detect_ir_size(struct d_context *context,
-                               unsigned char *packet,
-                               unsigned int plen,
-                               unsigned int large_cid_len);
-
-unsigned int ip_detect_ir_dyn_size(struct d_context *context,
-                                   unsigned char *packet,
-                                   unsigned int plen,
-                                   unsigned int large_cid_len);
-
 int ip_parse_dynamic_ip(struct d_generic_context *context,
                         const unsigned char *packet,
                         unsigned int length,
                         struct rohc_extr_bits *const bits);
-
-int ip_get_static_part(void);
 
 #endif
 
