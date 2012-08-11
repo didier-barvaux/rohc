@@ -618,12 +618,28 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	if(decomp_size <= 0)
 	{
+		int i;
+
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</decompression>\n");
 		printf("\n");
 		printf("\t\t<ip_comparison>\n");
 		printf("\t\t\t<log>\n");
 		printf("Decompression failed, cannot compare the packets!\n");
+		printf("Original %d-byte non-compressed packet:\n", ip_size);
+		for(i = 0; i < ip_size; i++)
+		{
+			if(i > 0 && (i % 16) == 0)
+			{
+				printf("\n");
+			}
+			else if(i > 0 && (i % 8) == 0)
+			{
+				printf("  ");
+			}
+			printf("%02x ", ip_packet[i]);
+		}
+		printf("\n");
 		printf("\t\t\t</log>\n");
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</ip_comparison>\n");
