@@ -299,6 +299,38 @@ static int test_comp_and_decomp(const char *filename,
 		goto destroy_comp;
 	}
 
+	/* set CID type and MAX_CID for decompressor */
+	if(is_large_cid)
+	{
+		if(!rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID))
+		{
+			fprintf(stderr, "failed to set CID type to large CIDs for "
+			        "decompressor\n");
+			goto destroy_decomp;
+		}
+		if(!rohc_decomp_set_max_cid(decomp, ROHC_LARGE_CID_MAX))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for "
+			        "decompressor\n", ROHC_LARGE_CID_MAX);
+			goto destroy_decomp;
+		}
+	}
+	else
+	{
+		if(!rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID))
+		{
+			fprintf(stderr, "failed to set CID type to small CIDs for "
+			        "decompressor\n");
+			goto destroy_decomp;
+		}
+		if(!rohc_decomp_set_max_cid(decomp, ROHC_SMALL_CID_MAX))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for "
+			        "decompressor\n", ROHC_SMALL_CID_MAX);
+			goto destroy_decomp;
+		}
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
@@ -334,10 +366,9 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_size = header.len - link_len;
 
 		/* decompress the ROHC packet with the ROHC decompressor */
-		ip_size = rohc_decompress_both(decomp,
-		                               rohc_packet, rohc_size,
-		                               ip_packet, MAX_ROHC_SIZE,
-		                               is_large_cid);
+		ip_size = rohc_decompress(decomp,
+		                          rohc_packet, rohc_size,
+		                          ip_packet, MAX_ROHC_SIZE);
 		if(ip_size <= 0)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");

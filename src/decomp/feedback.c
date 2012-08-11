@@ -33,7 +33,9 @@
  * Prototypes of private functions.
  */
 
-int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed);
+int f_append_cid(struct d_feedback *feedback,
+                 const uint16_t cid,
+                 const rohc_cid_type_t cid_type);
 
 
 /**
@@ -186,19 +188,22 @@ int f_add_option(struct d_feedback *feedback,
  *
  * @param feedback     The feedback packet to which the CID must be appended
  * @param cid          The Context ID (CID) to append
- * @param largecidUsed Whether large CIDs are used or not
+ * @param cid_type     The type of CID used for the feedback
  * @return             Whether the CID is successfully appended or not
  */
-int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
+int f_append_cid(struct d_feedback *feedback,
+                 const uint16_t cid,
+                 const rohc_cid_type_t cid_type)
 {
 	size_t i;
 
-	if(largecidUsed)
+	if(cid_type == ROHC_LARGE_CID)
 	{
 		unsigned char *acid;
 		size_t largecidsize;
 
 		/* large CIDs are used */
+		assert(cid <= ROHC_LARGE_CID_MAX);
 
 		/* determine the number of bits required for the SDVL-encoded large CID */
 		largecidsize = c_bytesSdvl(cid, 0 /* length detection */);
@@ -206,7 +211,7 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		if(largecidsize <= 0 || largecidsize > 4)
 		{
 			rohc_debugf(0, "failed to determine the number of bits required to "
-			            "SDVL-encode the large CID %d\n", cid);
+			            "SDVL-encode the large CID %u\n", cid);
 			return 0;
 		}
 
@@ -237,8 +242,8 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		/* SDVL-encode the large CID */
 		if(!c_encodeSdvl(acid, cid, 0 /* length detection */))
 		{
-			rohc_debugf(0, "failed to SDVL-encoded large CID %d: this should never "
-			            "happen!\n", cid);
+			rohc_debugf(0, "failed to SDVL-encoded large CID %u: this should "
+			            "never happen!\n", cid);
 			zfree(acid);
 			return 0;
 		}
@@ -250,21 +255,28 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 		/* free the large CID */
 		zfree(acid);
 	}
-	else if(cid > 0 && cid < 16)
+	else /* small CID */
 	{
-		rohc_debugf(2, "add 1 byte for small CID to feedback\n");
+		/* small CIDs are used */
+		assert(cid <= ROHC_SMALL_CID_MAX);
 
-		/* move feedback data to make space for the small CID */
-		assert(feedback->size >= 1);
-		for(i = feedback->size; i > 0; i--)
+		/* add 1 byte only if CID is non-zero */
+		if(cid != 0)
 		{
-			feedback->data[i] = feedback->data[i - 1];
-		}
+			rohc_debugf(2, "add 1 byte for small CID to feedback\n");
 
-		/* write the small CID to the feedback packet */
-		feedback->data[0] = 0xe0;
-		feedback->data[0] = (cid & 0xf) | feedback->data[0];
-		feedback->size++;
+			/* move feedback data to make space for the small CID */
+			assert(feedback->size >= 1);
+			for(i = feedback->size; i > 0; i--)
+			{
+				feedback->data[i] = feedback->data[i - 1];
+			}
+
+			/* write the small CID to the feedback packet */
+			feedback->data[0] = 0xe0;
+			feedback->data[0] = (cid & 0xf) | feedback->data[0];
+			feedback->size++;
+		}
 	}
 
 	return 1;
@@ -274,16 +286,20 @@ int f_append_cid(struct d_feedback *feedback, int cid, int largecidUsed)
 /**
  * @brief Wrap the feedback packet and add a CRC option if specified.
  *
+ * @warning CID may be greater than MAX_CID if the context was not found and
+ *          generated a No Context feedback; it must however respect CID type
+ *
  * @param feedback     The feedback packet to which the CID must be appended
  * @param cid          The Context ID (CID) to append
- * @param largecidUsed Whether large CIDs are used or not
+ * @param cid_type     The type of CID used for the feedback
  * @param with_crc     Whether the CRC option must be added or not
  * @param crc_table    The pre-computed table for fast CRC computation
  * @param final_size   OUT: The final size of the feedback packet
  * @return             The feedback packet if successful, NULL otherwise
  */
 unsigned char * f_wrap_feedback(struct d_feedback *feedback,
-                                int cid, int largecidUsed,
+                                const uint16_t cid,
+                                const rohc_cid_type_t cid_type,
                                 int with_crc,
                                 unsigned char *crc_table,
                                 int *final_size)
@@ -293,7 +309,7 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	int ret;
 
 	/* append the CID to the feedback packet */
-	if(!f_append_cid(feedback, cid, largecidUsed))
+	if(!f_append_cid(feedback, cid, cid_type))
 	{
 		feedback->size = 0;
 		return NULL;

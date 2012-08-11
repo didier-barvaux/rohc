@@ -610,10 +610,9 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* decompress the ROHC packet */
 	printf("\t\t<decompression>\n");
 	printf("\t\t\t<log>\n");
-	decomp_size = rohc_decompress_both(decomp,
-	                                   rohc_packet, rohc_size,
-	                                   decomp_packet, MAX_ROHC_SIZE,
-	                                   use_large_cid);
+	decomp_size = rohc_decompress(decomp,
+	                              rohc_packet, rohc_size,
+	                              decomp_packet, MAX_ROHC_SIZE);
 	printf("\t\t\t</log>\n");
 
 	if(decomp_size <= 0)
@@ -917,6 +916,38 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp2;
 	}
 
+	/* set CID type and MAX_CID for decompressor 1 */
+	if(use_large_cid)
+	{
+		if(!rohc_decomp_set_cid_type(decomp1, ROHC_LARGE_CID))
+		{
+			fprintf(stderr, "failed to set CID type to large CIDs for "
+			        "decompressor 1\n");
+			goto destroy_decomp1;
+		}
+		if(!rohc_decomp_set_max_cid(decomp1, ROHC_LARGE_CID_MAX))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for "
+			        "decompressor 1\n", ROHC_LARGE_CID_MAX);
+			goto destroy_decomp1;
+		}
+	}
+	else
+	{
+		if(!rohc_decomp_set_cid_type(decomp1, ROHC_SMALL_CID))
+		{
+			fprintf(stderr, "failed to set CID type to small CIDs for "
+			        "decompressor 1\n");
+			goto destroy_decomp1;
+		}
+		if(!rohc_decomp_set_max_cid(decomp1, ROHC_SMALL_CID_MAX))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for "
+			        "decompressor 1\n", ROHC_SMALL_CID_MAX);
+			goto destroy_decomp1;
+		}
+	}
+
 	/* create the decompressor 2 */
 	decomp2 = rohc_alloc_decompressor(comp1);
 	if(decomp2 == NULL)
@@ -928,6 +959,38 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t<shutdown>\n");
 		printf("\t\t<log>\n");
 		goto destroy_decomp1;
+	}
+
+	/* set CID type and MAX_CID for decompressor 2 */
+	if(use_large_cid)
+	{
+		if(!rohc_decomp_set_cid_type(decomp2, ROHC_LARGE_CID))
+		{
+			fprintf(stderr, "failed to set CID type to large CIDs for "
+			        "decompressor 2\n");
+			goto destroy_decomp2;
+		}
+		if(!rohc_decomp_set_max_cid(decomp2, ROHC_LARGE_CID_MAX))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for "
+			        "decompressor 2\n", ROHC_LARGE_CID_MAX);
+			goto destroy_decomp2;
+		}
+	}
+	else
+	{
+		if(!rohc_decomp_set_cid_type(decomp2, ROHC_SMALL_CID))
+		{
+			fprintf(stderr, "failed to set CID type to small CIDs for "
+			        "decompressor 2\n");
+			goto destroy_decomp2;
+		}
+		if(!rohc_decomp_set_max_cid(decomp2, ROHC_SMALL_CID_MAX))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for "
+			        "decompressor 2\n", ROHC_SMALL_CID_MAX);
+			goto destroy_decomp2;
+		}
 	}
 
 	printf("\t\t</log>\n");
@@ -1055,6 +1118,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	}
 #endif
 
+destroy_decomp2:
 	rohc_free_decompressor(decomp2);
 destroy_decomp1:
 	rohc_free_decompressor(decomp1);

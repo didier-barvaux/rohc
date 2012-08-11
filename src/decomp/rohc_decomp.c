@@ -30,6 +30,7 @@
 #include "rohc_decomp.h"
 #include "rohc_traces.h"
 #include "rohc_time.h"
+#include "rohc_utils.h"
 #include "rohc_debug.h"
 #include "feedback.h"
 #include "wlsb.h"
@@ -45,6 +46,7 @@ extern struct d_profile d_uncomp_profile,
                         d_udplite_profile,
                         d_rtp_profile;
 
+
 /**
  * @brief The decompression parts of the ROHC profiles.
  */
@@ -59,8 +61,42 @@ static struct d_profile *d_profiles[D_NUM_PROFILES] =
 
 
 /*
+ * Definitions of private structures
+ */
+
+/**
+ * @brief Decompression-related data.
+ *
+ * This object stores the information related to the decompression of one
+ * ROHC packet (CID and context for example). The lifetime of this object is
+ * the time needed to decompress one single packet.
+ */
+struct d_decode_data
+{
+	/// The Context ID of the context to which the packet is related
+	uint16_t cid;
+	/// Whether the ROHC packet uses add-CID or not
+	int addcidUsed;
+	/// The size (in bytes) of the large CID field
+	unsigned int large_cid_size;
+	/// The context to which the packet is related
+	struct d_context *active;
+};
+
+
+/*
  * Prototypes of private functions
  */
+
+static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
+                                        const size_t max_cid);
+
+int d_decode_header(struct rohc_decomp *decomp,
+                    unsigned char *ibuf,
+                    int isize,
+                    unsigned char *obuf,
+                    int osize,
+                    struct d_decode_data *ddata);
 
 static struct d_profile * find_profile(int id);
 
@@ -94,114 +130,18 @@ static int d_decode_feedback(struct rohc_decomp *decomp,
                              unsigned char *packet,
                              unsigned int len,
                              unsigned int *feedback_size);
-
+void d_operation_mode_feedback(struct rohc_decomp *decomp,
+                               int rohc_status,
+                               const uint16_t cid,
+                               int addcidUsed,
+                               const rohc_cid_type_t cid_type,
+                               int mode,
+                               struct d_context *context);
 
 
 /*
  * Public functions
  */
-
-
-/**
- * @brief Increases the context array size in sizes of 2^x
- *
- * The maximum size of the array is ROHC_LARGE_CID_MAX + 1.
- *
- * @param decomp       The ROHC decompressor
- * @param highest_cid  Highest CID to adapt context array size with
- */
-void context_array_increase(struct rohc_decomp *decomp, int highest_cid)
-{
-	struct d_context **new_contexts;
-	int calcsize, i;
-
-	/* calculate the new size of the context array */
-	for(i = 4; i < 15; i++)
-	{
-		calcsize = 1 << i;
-		if(highest_cid < calcsize)
-		{
-			break;
-		}
-	}
-
-	/* check the new array size:
-	 *  - error if new size is smaller than the current one
-	 *  - ignore if sizes are equal */
-	if(calcsize < decomp->num_contexts)
-	{
-		rohc_debugf(0, "new array size is smaller than current one\n");
-		return;
-	}
-	else if(calcsize == decomp->num_contexts)
-	{
-		return;
-	}
-
-	/* allocate memory for the context array */
-	new_contexts = (struct d_context**) calloc(calcsize, sizeof(struct d_context*));
-	if(new_contexts == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the contexts\n");
-		return;
-	}
-
-	/* fill in the new array with the existing contexts */
-	memcpy(new_contexts, decomp->contexts,
-	       decomp->num_contexts * sizeof(struct d_context*));
-
-	/* replace the existing array with the new one */
-	decomp->num_contexts = calcsize;
-	zfree(decomp->contexts);
-	decomp->contexts = new_contexts;
-}
-
-
-/**
- * @brief Decreases the context array size in sizes of 2^x (min 16).
- *
- * @param decomp The ROHC decompressor
- */
-void context_array_decrease(struct rohc_decomp *decomp)
-{
-	struct d_context **new_contexts;
-	int highest_cid = 0;
-	int calcsize;
-	int i;
-
-	/* find the highest CID (from the end of the array and backwards) */
-	highest_cid = decomp->num_contexts - 1;
-	while(highest_cid >= 0 && decomp->contexts[highest_cid] == NULL)
-	{
-		highest_cid--;
-	}
-
-	/* calculate the new size of the context array */
-	for(i = 4; i < 15; i++)
-	{
-		calcsize = 1 << i;
-		if(highest_cid < calcsize)
-		{
-			break;
-		}
-	}
-
-	/* allocate memory for the context array */
-	new_contexts = (struct d_context **) calloc(calcsize, sizeof(struct d_context*));
-	if(new_contexts == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the contexts\n");
-		return;
-	}
-
-	/* fill in the new array with the existing contexts */
-	memcpy(new_contexts, decomp->contexts, calcsize * sizeof(struct d_context*));
-
-	/* replace the existing array with the new one */
-	decomp->num_contexts = calcsize;
-	zfree(decomp->contexts);
-	decomp->contexts = new_contexts;
-}
 
 
 /**
@@ -213,13 +153,8 @@ void context_array_decrease(struct rohc_decomp *decomp)
  */
 struct d_context * find_context(struct rohc_decomp *decomp, int cid)
 {
-	/* check the CID value: CID must not be equal or larger than the context
-	 * array size */
-	if(cid >= decomp->num_contexts)
-	{
-		return NULL;
-	}
-
+	/* CID must be valid wrt MAX_CID */
+	assert(cid >= 0 && cid <= decomp->medium.max_cid);
 	return decomp->contexts[cid];
 }
 
@@ -359,7 +294,6 @@ void context_free(struct d_context *context)
  */
 struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
-	struct medium medium = { ROHC_SMALL_CID, ROHC_LARGE_CID_MAX };
 	struct rohc_decomp *decomp;
 	bool is_fine;
 
@@ -371,22 +305,22 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 		goto error;
 	}
 
-	/* allocate memory for the decompressor medium and initialize it */
-	decomp->medium = (struct medium *) malloc(sizeof(struct medium));
-	if(decomp->medium == NULL)
-	{
-		rohc_debugf(0, "cannot allocate memory for the decompressor medium\n");
-		goto destroy_decomp;
-	}
-	memcpy(decomp->medium, &medium, sizeof(struct medium));
+	/* init decompressor medium */
+	decomp->medium.cid_type = ROHC_SMALL_CID;
+	decomp->medium.max_cid = ROHC_SMALL_CID_MAX;
 
 	/* associate the compressor and the decompressor */
 	decomp->compressor = compressor;
 
 	/* initialize the array of decompression contexts to its minimal value */
-	decomp->num_contexts = 0;
 	decomp->contexts = NULL;
-	context_array_increase(decomp, 0);
+	is_fine = rohc_decomp_create_contexts(decomp, decomp->medium.max_cid);
+	if(!is_fine)
+	{
+		rohc_debugf(0, "failed to allocate %d decompression contexts\n",
+		            decomp->medium.max_cid + 1);
+		goto destroy_decomp;
+	}
 	decomp->last_context = NULL;
 
 	decomp->maxval = 300;
@@ -398,27 +332,27 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	is_fine = rohc_crc_init_table(decomp->crc_table_2, ROHC_CRC_TYPE_2);
 	if(is_fine != true)
 	{
-		goto destroy_decomp;
+		goto destroy_contexts;
 	}
 	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
 	if(is_fine != true)
 	{
-		goto destroy_decomp;
+		goto destroy_contexts;
 	}
 	is_fine = rohc_crc_init_table(decomp->crc_table_6, ROHC_CRC_TYPE_6);
 	if(is_fine != true)
 	{
-		goto destroy_decomp;
+		goto destroy_contexts;
 	}
 	is_fine = rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
 	if(is_fine != true)
 	{
-		goto destroy_decomp;
+		goto destroy_contexts;
 	}
 	is_fine = rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
 	if(is_fine != true)
 	{
-		goto destroy_decomp;
+		goto destroy_contexts;
 	}
 
 	/* reset the decompressor statistics */
@@ -426,6 +360,8 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 
 	return decomp;
 
+destroy_contexts:
+	zfree(decomp->contexts);
 destroy_decomp:
 	zfree(decomp);
 error:
@@ -444,30 +380,25 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
 {
 	int i;
 
-	if(decomp != NULL)
+	if(decomp == NULL)
 	{
-		/* destroy all the contexts owned by the decompressor */
-		if(decomp->contexts != NULL)
-		{
-			for(i = 0; i < decomp->num_contexts; i++)
-			{
-				if(decomp->contexts[i] != NULL)
-				{
-					context_free(decomp->contexts[i]);
-				}
-			}
-			zfree(decomp->contexts);
-		}
-
-		/* destroy the decompressor medium */
-		if(decomp->medium != NULL)
-		{
-			zfree(decomp->medium);
-		}
-
-		/* destroy the decompressor itself */
-		zfree(decomp);
+		rohc_debugf(0, "invalid decompressor\n");
+		return;
 	}
+
+	/* destroy all the contexts owned by the decompressor */
+	assert(decomp->contexts != NULL);
+	for(i = 0; i <= decomp->medium.max_cid; i++)
+	{
+		if(decomp->contexts[i] != NULL)
+		{
+			context_free(decomp->contexts[i]);
+		}
+	}
+	zfree(decomp->contexts);
+
+	/* destroy the decompressor itself */
+	zfree(decomp);
 }
 
 
@@ -488,7 +419,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
                     unsigned char *obuf, int osize)
 {
 	int ret;
-	struct d_decode_data ddata = { -1, 0, 0, 0, NULL };
+	struct d_decode_data ddata = { 0, 0, 0, NULL };
 
 	decomp->stats.received++;
 	rohc_debugf(1, "decompress the %d-byte packet #%u\n",
@@ -537,7 +468,8 @@ int rohc_decompress(struct rohc_decomp *decomp,
 				ddata.active->curval = 0;
 				d_operation_mode_feedback(decomp, ROHC_ERROR_PACKET_FAILED,
 				                          ddata.cid, ddata.addcidUsed,
-				                          ddata.largecidUsed, ddata.active->mode,
+				                          decomp->medium.cid_type,
+				                          ddata.active->mode,
 				                          ddata.active);
 			}
 			break;
@@ -549,7 +481,8 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			{
 				decomp->curval = 0;
 				d_operation_mode_feedback(decomp, ROHC_ERROR_NO_CONTEXT, ddata.cid,
-				                          ddata.addcidUsed, ddata.largecidUsed,
+				                          ddata.addcidUsed,
+				                          decomp->medium.cid_type,
 				                          O_MODE, NULL);
 			}
 			break;
@@ -567,7 +500,8 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			{
 				ddata.active->curval = 0;
 				d_operation_mode_feedback(decomp, ROHC_ERROR_CRC, ddata.cid,
-				                          ddata.addcidUsed, ddata.largecidUsed,
+				                          ddata.addcidUsed,
+				                          decomp->medium.cid_type,
 				                          ddata.active->mode, ddata.active);
 			}
 			break;
@@ -591,8 +525,10 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			{
 				/* switch active context to O-mode */
 				ddata.active->mode = O_MODE;
-				d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid, ddata.addcidUsed,
-				                          ddata.largecidUsed, ddata.active->mode,
+				d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
+				                          ddata.addcidUsed,
+				                          decomp->medium.cid_type,
+				                          ddata.active->mode,
 				                          ddata.active);
 			}
 			break;
@@ -605,6 +541,10 @@ int rohc_decompress(struct rohc_decomp *decomp,
 /**
  * @brief Decompress both large and small CID packets.
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid()
+ *             instead
+ *
  * @param decomp The ROHC decompressor
  * @param ibuf   The ROHC packet to decompress
  * @param isize  The size of the ROHC packet
@@ -612,14 +552,25 @@ int rohc_decompress(struct rohc_decomp *decomp,
  * @param osize  The size of the buffer for the decompressed packet
  * @param large  Whether the packet use large CID or not
  * @return       The size of the decompressed packet
+ *
+ * @ingroup rohc_decomp
  */
 int rohc_decompress_both(struct rohc_decomp *decomp,
                          unsigned char *ibuf, int isize,
                          unsigned char *obuf, int osize,
                          int large)
 {
-	decomp->medium->cid_type = large ? ROHC_LARGE_CID : ROHC_SMALL_CID;
+	bool is_ok;
 
+	/* change CID type on the fly */
+	is_ok = rohc_decomp_set_cid_type(decomp,
+	                                 large ? ROHC_LARGE_CID : ROHC_SMALL_CID);
+	if(!is_ok)
+	{
+		return ROHC_ERROR;
+	}
+
+	/* decompress the packet with the new CID type */
 	return rohc_decompress(decomp, ibuf, isize, obuf, osize);
 }
 
@@ -680,6 +631,14 @@ int d_decode_header(struct rohc_decomp *decomp,
 		return status;
 	}
 
+	/* check whether the decoded CID is allowed by the decompressor */
+	if(ddata->cid > decomp->medium.max_cid)
+	{
+		rohc_debugf(0, "unexpected CID %d received: MAX_CID was set to %d\n",
+		            ddata->cid, decomp->medium.max_cid);
+		return ROHC_ERROR_NO_CONTEXT;
+	}
+
 	/* skip add-CID if present */
 	if(ddata->addcidUsed)
 	{
@@ -707,16 +666,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 		}
 		rohc_debugf(1, "profile 0x%04x found in IR packet\n", profile_id);
 
-		/* do we need more space in the array of contexts? */
-		if(ddata->cid >= decomp->num_contexts)
-		{
-			rohc_debugf(2, "CID in ROHC packet (%d) is greater than the current "
-			            "number of contexts (%d), so enlarge the context array\n",
-			            ddata->cid, decomp->num_contexts);
-			context_array_increase(decomp, ddata->cid);
-		}
-
-		if(decomp->contexts[ddata->cid] && decomp->contexts[ddata->cid]->profile == profile)
+		if(decomp->contexts[ddata->cid] != NULL &&
+		   decomp->contexts[ddata->cid]->profile == profile)
 		{
 			/* the decompression context associated with the CID already exists
 			 * and the context profile and the packet profile match. */
@@ -869,18 +820,22 @@ int d_decode_header(struct rohc_decomp *decomp,
  *                     -1 = ContextInvalid (S-nack), -2 = PackageFailed (Nack)
  * @param cid          The Context ID (CID) to which the feedback is related
  * @param addcidUsed   Whether add-CID is used or not
- * @param largecidUsed Whether large CIDs are used or not
+ * @param cid_type     The type of CID used for the feedback
  * @param context      The context to which the feedback is related
  */
 void d_optimistic_feedback(struct rohc_decomp *decomp,
-                           int rohc_status, int cid,
-                           int addcidUsed, int largecidUsed,
+                           int rohc_status,
+                           const uint16_t cid,
+                           int addcidUsed,
+                           const rohc_cid_type_t cid_type,
                            struct d_context *context)
 {
 	struct d_feedback sfeedback;
 	unsigned char *feedback;
 	int feedbacksize;
 	int ret;
+
+	assert(cid >= 0);
 
 	/* check associated compressor availability */
 	if(decomp->compressor == NULL)
@@ -904,6 +859,31 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		goto skip;
 	}
 
+	/* check CID wrt CID type */
+	if(decomp->medium.cid_type == ROHC_SMALL_CID && cid > ROHC_SMALL_CID_MAX)
+	{
+		rohc_debugf(0, "unexpected small CID %d: not in range [0, %d]\n", cid,
+		            ROHC_SMALL_CID_MAX);
+		return;
+	}
+	else if(cid > ROHC_LARGE_CID_MAX) /* large CID */
+	{
+		rohc_debugf(0, "unexpected large CID %d: not in range [0, %d]\n", cid,
+		            ROHC_LARGE_CID_MAX);
+		return;
+	}
+
+	/* check CID wrt MAX_CID if context was found */
+	if(rohc_status != ROHC_ERROR_NO_CONTEXT)
+	{
+		if(cid < 0 || cid > decomp->medium.max_cid)
+		{
+			rohc_debugf(0, "unexpected CID %d: not in range [0, %d]\n", cid,
+			            decomp->medium.max_cid);
+			return;
+		}
+	}
+
 	switch(rohc_status)
 	{
 		case ROHC_OK:
@@ -916,7 +896,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				rohc_debugf(0, "failed to build the ACK feedback\n");
 				return;
 			}
-			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
 			                           WITH_CRC, decomp->crc_table_8,
 			                           &feedbacksize);
 			if(feedback == NULL)
@@ -950,7 +930,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				            "STATIC NACK feedback\n");
 				return;
 			}
-			feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
 			                           NO_CRC, NULL /* CRC table not required */,
 			                           &feedbacksize);
 			if(feedback == NULL)
@@ -983,7 +963,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 						rohc_debugf(0, "failed to build the STATIC NACK feedback\n");
 						return;
 					}
-					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
 					                           WITH_CRC, decomp->crc_table_8,
 					                           &feedbacksize);
 					if(feedback == NULL)
@@ -1011,7 +991,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 						rohc_debugf(0, "failed to build the NACK feedback\n");
 						return;
 					}
-					feedback = f_wrap_feedback(&sfeedback, cid, largecidUsed,
+					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
 					                           WITH_CRC, decomp->crc_table_8,
 					                           &feedbacksize);
 					if(feedback == NULL)
@@ -1059,15 +1039,18 @@ skip:
  *                     -1 = ContextInvalid (S-nack), -2 = PackageFailed (Nack)
  * @param cid          The Context ID (CID) to which the feedback is related
  * @param addcidUsed   Whether add-CID is used or not
- * @param largecidUsed Whether large CIDs are used or not
+ * @param cid_type     The type of CID used for the feedback
  * @param mode         The mode in which the ROHC decompressor operates:
  *                     U_MODE, O_MODE or R_MODE
  * @param context      The context to which the feedback is related
  */
 void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                               int rohc_status, int cid,
-                               int addcidUsed, int largecidUsed,
-                               int mode, struct d_context *context)
+                               int rohc_status,
+                               const uint16_t cid,
+                               int addcidUsed,
+                               const rohc_cid_type_t cid_type,
+                               int mode,
+                               struct d_context *context)
 {
 	switch(mode)
 	{
@@ -1077,7 +1060,7 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
 
 		case O_MODE:
 			d_optimistic_feedback(decomp, rohc_status, cid, addcidUsed,
-			                      largecidUsed, context);
+			                      cid_type, context);
 			break;
 
 		case R_MODE:
@@ -1193,7 +1176,7 @@ int rohc_d_context(struct rohc_decomp *decomp,
 	char *save;
 	int v;
 
-	if(index >= decomp->num_contexts)
+	if(index > decomp->medium.max_cid)
 	{
 		return -2;
 	}
@@ -1358,23 +1341,25 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	}
 
 	/* check context validity */
-	for(cid = 0; cid < decomp->num_contexts; cid++)
+	for(cid = 0; cid <= decomp->medium.max_cid; cid++)
 	{
 		if(context == decomp->contexts[cid])
 		{
 			break;
 		}
 	}
-	if(cid >= decomp->num_contexts)
+	if(cid > decomp->medium.max_cid)
 	{
+		rohc_debugf(0, "failed to find CID for decompression context %p, "
+		            "shall not happen\n", context);
+		assert(0);
 		return;
 	}
 
 	/* create an ACK feedback */
 	f_feedback2(ACKTYPE_ACK, context->mode, context->profile->get_sn(context),
 	            &sfeedback);
-	feedback = f_wrap_feedback(&sfeedback, cid,
-	                           (decomp->medium->cid_type == ROHC_LARGE_CID ? 1 : 0),
+	feedback = f_wrap_feedback(&sfeedback, cid, decomp->medium.cid_type,
 	                           WITH_CRC, decomp->crc_table_8,
 	                           &feedbacksize);
 
@@ -1407,6 +1392,141 @@ skip:
 void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 {
 	decomp->maxval = feedback_maxval * 100;
+}
+
+
+/**
+ * @brief Set the type of CID to use for the given decompressor
+ *
+ * @warning Changing the CID type while library is used may lead to
+ *          destruction of decompression contexts
+ *
+ * @param decomp   The decompressor for which to set CID type
+ * @param cid_type The new CID type among \ref ROHC_SMALL_CID or
+ *                                 \ref ROHC_LARGE_CID
+ * @return         true if the CID type was successfully set, false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+
+bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
+                              const rohc_cid_type_t cid_type)
+{
+	rohc_cid_type_t old_cid_type;
+
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		rohc_debugf(0, "decompressor is not valid\n");
+		goto error;
+	}
+
+	/* new CID type value must be ROHC_SMALL_CID or ROHC_LARGE_CID */
+	if(cid_type != ROHC_SMALL_CID && cid_type != ROHC_LARGE_CID)
+	{
+		rohc_debugf(0, "unexpected CID type: must be ROHC_SMALL_CID or "
+		            "ROHC_LARGE_CID\n");
+		goto error;
+	}
+
+	/* set the new CID type (make a backup to be able to revert) */
+	if(cid_type != decomp->medium.cid_type)
+	{
+		old_cid_type = decomp->medium.cid_type;
+		decomp->medium.cid_type = cid_type;
+
+		/* reduce MAX_CID if required */
+		if(!rohc_decomp_set_max_cid(decomp, decomp->medium.max_cid))
+		{
+			rohc_debugf(0, "failed to reduce MAX_CID after changing CID type\n");
+			goto revert_cid_type;
+		}
+
+		rohc_debugf(1, "CID type is now set to %d\n", decomp->medium.cid_type);
+	}
+
+	return true;
+
+revert_cid_type:
+	decomp->medium.cid_type = old_cid_type;
+error:
+	return false;
+}
+
+
+/**
+ * @brief Set the MAX_CID allowed for the given decompressor
+ *
+ * @warning Changing the MAX_CID value while library is used may lead to
+ *          destruction of decompression contexts
+ *
+ * @param decomp   The decompressor for which to set MAX_CID
+ * @param max_cid  The new MAX_CID value:
+ *                  - in range [0, \ref ROHC_SMALL_CID_MAX] if CID type is
+ *                    \ref ROHC_SMALL_CID
+ *                  - in range [0, \ref ROHC_LARGE_CID_MAX] if CID type is
+ *                    \ref ROHC_LARGE_CID
+ * @return         true if the MAX_CID was successfully set, false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
+                             const size_t max_cid)
+{
+	int max_possible_cid;
+
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		rohc_debugf(0, "decompressor is not valid\n");
+		goto error;
+	}
+
+	/* what is the maximum possible MAX_CID value wrt CID type? */
+	if(decomp->medium.cid_type == ROHC_SMALL_CID)
+	{
+		max_possible_cid = ROHC_SMALL_CID_MAX;
+	}
+	else
+	{
+		max_possible_cid = ROHC_LARGE_CID_MAX;
+	}
+
+	/* new MAX_CID value must not be in range [0, max_possible_cid] */
+	if(max_cid > max_possible_cid)
+	{
+		rohc_debugf(0, "unexpected MAX_CID value: must be in range [0, %d]\n",
+		            max_possible_cid);
+		goto error;
+	}
+
+	/* set the new MAX_CID value (make a backup to be able to revert) */
+	if(max_cid != decomp->medium.max_cid)
+	{
+		/* resize the array of decompression contexts */
+		if(!rohc_decomp_create_contexts(decomp, max_cid))
+		{
+			rohc_debugf(0, "failed to re-create decompression contexts after "
+			            "changing MAX_CID\n");
+			goto error;
+		}
+
+		/* warn about destroyed contexts */
+		if(max_cid < decomp->medium.max_cid)
+		{
+			rohc_debugf(1, "%u decompression contexts are about to be destroyed "
+			            "due to MAX_CID change\n",
+			            (unsigned int) (decomp->medium.max_cid - max_cid));
+		}
+
+		decomp->medium.max_cid = max_cid;
+		rohc_debugf(1, "MAX_CID is now set to %d\n", decomp->medium.max_cid);
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -1462,11 +1582,10 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	if(decomp->medium->cid_type == ROHC_SMALL_CID)
+	if(decomp->medium.cid_type == ROHC_SMALL_CID)
 	{
 		/* small CID */
 		ddata->large_cid_size = 0;
-		ddata->largecidUsed = 0;
 
 		/* if add-CID is present, extract the CID value */
 		if(d_is_add_cid(packet))
@@ -1484,14 +1603,13 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 			rohc_debugf(2, "no add-CID found, CID defaults to 0\n");
 		}
 	}
-	else if(decomp->medium->cid_type == ROHC_LARGE_CID)
+	else if(decomp->medium.cid_type == ROHC_LARGE_CID)
 	{
 		uint32_t large_cid;
 		size_t large_cid_bits_nr;
 
 		/* large CID */
 		ddata->addcidUsed = 0;
-		ddata->largecidUsed = 1;
 
 		/* skip the first byte of packet located just before the large CID */
 		packet++;
@@ -1513,7 +1631,8 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 	else
 	{
 		rohc_debugf(0, "unexpected CID type (%d), should not happen\n",
-		            decomp->medium->cid_type);
+		            decomp->medium.cid_type);
+		assert(0);
 		goto error;
 	}
 
@@ -1767,5 +1886,47 @@ static int d_decode_feedback(struct rohc_decomp *decomp,
 
 error:
 	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Create the array of decompression contexts
+ *
+ * The maximum size of the array is \ref ROHC_LARGE_CID_MAX + 1.
+ *
+ * @param decomp   The ROHC decompressor
+ * @param max_cid  The MAX_CID value to used (may be different from the one
+ *                 in decompressor if the MAX_CID value is being changed)
+ * @return         true if the contexts were created, false otherwise
+ */
+static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
+                                        const size_t max_cid)
+{
+	struct d_context **new_contexts;
+
+	assert(decomp != NULL);
+	assert(max_cid <= ROHC_LARGE_CID_MAX);
+
+	/* allocate memory for the new context array */
+	new_contexts = calloc(max_cid + 1, sizeof(struct d_context *));
+	if(new_contexts == NULL)
+	{
+		rohc_debugf(0, "cannot allocate memory for the contexts\n");
+		return false;
+	}
+
+	/* move as many existing contexts as possible if needed */
+	if(decomp->contexts != NULL)
+	{
+		memcpy(new_contexts, decomp->contexts,
+		       rohc_min(decomp->medium.max_cid, max_cid) + 1);
+		zfree(decomp->contexts);
+	}
+	decomp->contexts = new_contexts;
+
+	rohc_debugf(1, "room for %zd decompression contexts created\n",
+	            (size_t) (max_cid + 1));
+
+	return true;
 }
 

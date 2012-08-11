@@ -91,8 +91,10 @@ int f_add_option(struct d_feedback *feedback,
                  const unsigned char *data,
                  const size_t data_len);
 
-unsigned char * f_wrap_feedback(struct d_feedback *feedback, int cid,
-                                int largecidUsed, int with_crc,
+unsigned char * f_wrap_feedback(struct d_feedback *feedback,
+                                const uint16_t cid,
+                                const rohc_cid_type_t cid_type,
+                                int with_crc,
                                 unsigned char *crc_table,
                                 int *final_size);
 

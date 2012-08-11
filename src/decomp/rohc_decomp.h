@@ -45,28 +45,6 @@ typedef enum
 
 
 /**
- * @brief Decompression-related data.
- *
- * This object stores the information related to the decompression of one
- * ROHC packet (CID and context for example). The lifetime of this object is
- * the time needed to decompress one single packet.
- */
-struct d_decode_data
-{
-	/// The Context ID of the context to which the packet is related
-	int cid;
-	/// Whether the ROHC packet uses add-CID or not
-	int addcidUsed;
-	/// Whether the ROHC packet uses large CID or not
-	int largecidUsed;
-	/// The size (in bytes) of the large CID field
-	unsigned int large_cid_size;
-	/// The context to which the packet is related
-	struct d_context *active;
-};
-
-
-/**
  * @brief Some compressor statistics.
  */
 struct d_statistics
@@ -93,12 +71,10 @@ struct rohc_decomp
 	struct rohc_comp *compressor;
 
 	/// The medium associated with the decompressor
-	struct medium *medium;
+	struct medium medium;
 
 	/// The array of decompression contexts that use the decompressor
 	struct d_context **contexts;
-	/// The number of decompression contexts stored in the array
-	int num_contexts;
 	/// The last decompression context used by the decompressor
 	struct d_context *last_context;
 
@@ -256,12 +232,10 @@ struct d_profile
 	int (*get_sn)(struct d_context *context);
 };
 
+
 /*
  * Functions related to decompressor:
  */
-
-void context_array_increase(struct rohc_decomp *decomp, int highestcid);
-void context_array_decrease(struct rohc_decomp *decomp);
 
 struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor);
 void rohc_free_decompressor(struct rohc_decomp *decomp);
@@ -269,10 +243,11 @@ void rohc_free_decompressor(struct rohc_decomp *decomp);
 int rohc_decompress(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
                     unsigned char *obuf, int osize);
 int rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
-                         int isize, unsigned char *obuf, int osize, int large);
-int d_decode_header(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
-                    unsigned char *obuf, int osize,
-                    struct d_decode_data *ddata);
+                         int isize, unsigned char *obuf, int osize, int large)
+	ROHC_DEPRECATED("please do not use this function anymore, use "
+	                "rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid() "
+	                "instead");
+
 
 /*
  * Functions related to context:
@@ -289,9 +264,6 @@ void context_free(struct d_context *context);
  * Functions related to feedback:
  */
 
-void d_operation_mode_feedback(struct rohc_decomp *decomp, int rohc_status, int cid,
-                               int addcidUsed, int largecidUsed, int mode,
-                               struct d_context *context);
 void d_change_mode_feedback(struct rohc_decomp *decomp, struct d_context *context);
 
 
@@ -313,6 +285,14 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state);
 
 void user_interactions(struct rohc_decomp *decomp, int feedback_maxval);
 
+bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
+                              const rohc_cid_type_t cid_type)
+	__attribute__((nonnull(1), warn_unused_result));
+
+
+bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
+                             const size_t max_cid)
+	__attribute__((nonnull(1), warn_unused_result));
 
 #endif
 
