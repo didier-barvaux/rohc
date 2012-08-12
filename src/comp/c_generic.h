@@ -316,8 +316,6 @@ struct list_comp
 	struct rohc_list_item based_table[MAX_ITEM];
 	/// The translation table
 	struct c_translation trans_table[MAX_ITEM];
-	/// Boolean which equals to 1 if the update is done, 0 else
-	int update_done;
 	/// Boolean which equals to 1 if the list change
 	int list_compress;
 	/// Boolean which equals to 1 if there is a list, 0 else

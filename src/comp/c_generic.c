@@ -433,7 +433,6 @@ int c_init_header_info(struct ip_header_info *header_info,
 		header_info->info.v6.ext_comp->curr_list->first_elt = NULL;
 
 		header_info->info.v6.ext_comp->counter = 0;
-		header_info->info.v6.ext_comp->update_done = 0;
 		header_info->info.v6.ext_comp->list_compress = 0;
 		ip6_c_init_table(header_info->info.v6.ext_comp);
 		header_info->info.v6.ext_comp->get_extension = get_ipv6_extension;
@@ -1091,8 +1090,6 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 		i++;
 	}
 #endif
-
-	comp->update_done = 1;
 
 	return send_list_compressed;
 
@@ -3049,11 +3046,33 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 
 	/* IPv6 extension headers: do we need to change the packet type to send
 	   the compressed list? */
-	if(packet != PACKET_IR && packet != PACKET_IR_DYN)
+	if(g_context->tmp.nr_of_ip_hdr == 1 &&
+	   g_context->ip_flags.version == IPV6)
 	{
-		const int nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
-
-		if(nr_of_ip_hdr == 1 && g_context->ip_flags.version == IPV6)
+		next_header_type = ip->header.v6.ip6_nxt;
+		/* extension list to compress */
+		if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+		   next_header_type == IPV6_EXT_DESTINATION ||
+		   next_header_type == IPV6_EXT_ROUTING ||
+		   next_header_type == IPV6_EXT_AUTH)
+		{
+			g_context->ip_flags.info.v6.ext_comp->list_compress =
+				rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
+			if(packet != PACKET_IR &&
+			   g_context->ip_flags.info.v6.ext_comp->list_compress)
+			{
+				/* there are some modifications */
+				rohc_debugf(2, "change packet type to IR-DYN because of IPv6 "
+				            "extension headers\n");
+				packet = PACKET_IR_DYN;
+			}
+		}
+	}
+	else if(g_context->tmp.nr_of_ip_hdr == 2 &&
+	        (g_context->ip_flags.version == IPV6 ||
+	         g_context->ip2_flags.version == IPV6))
+	{
+		if(g_context->ip_flags.version == IPV6)
 		{
 			next_header_type = ip->header.v6.ip6_nxt;
 			/* extension list to compress */
@@ -3062,66 +3081,36 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			   next_header_type == IPV6_EXT_ROUTING ||
 			   next_header_type == IPV6_EXT_AUTH)
 			{
-				g_context->ip_flags.info.v6.ext_comp->update_done = 0;
 				g_context->ip_flags.info.v6.ext_comp->list_compress =
 					rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
-				if(g_context->ip_flags.info.v6.ext_comp->list_compress)
+				if(packet != PACKET_IR &&
+				   g_context->ip_flags.info.v6.ext_comp->list_compress)
 				{
 					/* there are some modifications */
-					rohc_debugf(2, "change packet type to IR-DYN because of IPv6 "
-					            "extension headers\n");
+					rohc_debugf(2, "change packet type to IR-DYN because of "
+					            "IPv6 extension headers\n");
 					packet = PACKET_IR_DYN;
 				}
 			}
 		}
-		else if(nr_of_ip_hdr == 2 &&
-		        (g_context->ip_flags.version == IPV6 ||
-		         g_context->ip2_flags.version == IPV6))
+		if(g_context->ip2_flags.version == IPV6)
 		{
-			if(g_context->ip2_flags.version == IPV6)
+			next_header_type = ip2->header.v6.ip6_nxt;
+			/* extension list to compress */
+			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
+			   next_header_type == IPV6_EXT_DESTINATION ||
+			   next_header_type == IPV6_EXT_ROUTING ||
+			   next_header_type == IPV6_EXT_AUTH)
 			{
-				g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
-			}
-			if(g_context->ip_flags.version == IPV6)
-			{
-				next_header_type = ip->header.v6.ip6_nxt;
-				/* extension list to compress */
-				if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
-				   next_header_type == IPV6_EXT_DESTINATION ||
-				   next_header_type == IPV6_EXT_ROUTING ||
-				   next_header_type == IPV6_EXT_AUTH)
+				g_context->ip2_flags.info.v6.ext_comp->list_compress =
+					rohc_list_decide_ipv6_compression(g_context->ip2_flags.info.v6.ext_comp, ip2);
+				if(packet != PACKET_IR &&
+				   g_context->ip2_flags.info.v6.ext_comp->list_compress)
 				{
-					g_context->ip_flags.info.v6.ext_comp->update_done = 0;
-					g_context->ip_flags.info.v6.ext_comp->list_compress =
-						rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
-					if(g_context->ip_flags.info.v6.ext_comp->list_compress)
-					{
-						/* there are some modifications */
-						rohc_debugf(2, "change packet type to IR-DYN because of "
-						            "IPv6 extension headers\n");
-						packet = PACKET_IR_DYN;
-					}
-				}
-			}
-			if(packet != PACKET_IR_DYN && g_context->ip2_flags.version == IPV6)
-			{
-				next_header_type = ip2->header.v6.ip6_nxt;
-				/* extension list to compress */
-				if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
-				   next_header_type == IPV6_EXT_DESTINATION ||
-				   next_header_type == IPV6_EXT_ROUTING ||
-				   next_header_type == IPV6_EXT_AUTH)
-				{
-					g_context->ip2_flags.info.v6.ext_comp->update_done = 0;
-					g_context->ip2_flags.info.v6.ext_comp->list_compress =
-						rohc_list_decide_ipv6_compression(g_context->ip2_flags.info.v6.ext_comp, ip2);
-					if(g_context->ip2_flags.info.v6.ext_comp->list_compress)
-					{
-						/* there are some modifications */
-						rohc_debugf(2, "change packet type to IR-DYN because of "
-						            "IPv6 extension headers\n");
-						packet = PACKET_IR_DYN;
-					}
+					/* there are some modifications */
+					rohc_debugf(2, "change packet type to IR-DYN because of "
+					            "IPv6 extension headers\n");
+					packet = PACKET_IR_DYN;
 				}
 			}
 		}
@@ -3884,12 +3873,6 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	size_dyn_ip6_part++;
 
 	/* part 3: Generic extension header list */
-	if(!header_info->info.v6.ext_comp->update_done)
-	{
-		rohc_debugf(3, "extension header list: update not done\n");
-		header_info->info.v6.ext_comp->list_compress =
-			rohc_list_decide_ipv6_compression(header_info->info.v6.ext_comp, ip);
-	}
 	if(header_info->info.v6.ext_comp->list_compress < 0)
 	{
 		rohc_debugf(0, "extension header list: error with extension\n");
@@ -3910,7 +3893,6 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 		size_dyn_ip6_part -= counter_org;
 		rohc_debugf(3, "extension header list: compressed list size = %d\n",
 		            size_dyn_ip6_part - 2);
-		header_info->info.v6.ext_comp->update_done = 0;
 	}
 	else if(header_info->info.v6.ext_comp->islist)
 	{
