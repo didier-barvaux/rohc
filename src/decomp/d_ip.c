@@ -26,6 +26,7 @@
 #include "rohc_traces.h"
 #include "rohc_packets.h"
 #include "rohc_debug.h" /* for zfree() */
+#include "decode.h"
 
 
 /*
@@ -64,6 +65,7 @@ void * d_ip_create(void)
 	}
 
 	/* some IP-specific values and functions */
+	context->detect_packet_type = ip_detect_packet_type;
 	context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
 
 	return context;
@@ -92,6 +94,71 @@ void d_ip_destroy(void *const context)
 
 	rohc_lsb_free(g_context->sn_lsb_ctxt);
 	d_generic_destroy(context);
+}
+
+
+/**
+ * @brief Detect the type of ROHC packet for IP-based non-RTP profiles
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param packet         The ROHC packet
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               The packet type
+ */
+rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
+                                    struct d_context *context,
+                                    const unsigned char *packet,
+                                    const size_t rohc_length,
+                                    const size_t large_cid_len)
+{
+	rohc_packet_t type;
+
+	if(rohc_length < 1)
+	{
+		rohc_debugf(0, "ROHC packet too small to read the first byte that "
+		            "contains the packet type (len = %zd)\n", rohc_length);
+		goto error;
+	}
+
+	if(d_is_uo0(packet, rohc_length))
+	{
+		/* UO-0 packet */
+		type = PACKET_UO_0;
+	}
+	else if(d_is_uo1(packet, rohc_length))
+	{
+		/* UO-1 packet */
+		type = PACKET_UO_1;
+	}
+	else if(d_is_uor2(packet, rohc_length))
+	{
+		/* UOR-2 packet */
+		type = PACKET_UOR_2;
+	}
+	else if(d_is_irdyn(packet, rohc_length))
+	{
+		/* IR-DYN packet */
+		type = PACKET_IR_DYN;
+	}
+	else if(d_is_ir(packet, rohc_length))
+	{
+		/* IR packet */
+		type = PACKET_IR;
+	}
+	else
+	{
+		/* unknown packet */
+		rohc_debugf(0, "failed to recognize the packet type in byte 0x%02x\n",
+		            *packet);
+		type = PACKET_UNKNOWN;
+	}
+
+	return type;
+
+error:
+	return PACKET_UNKNOWN;
 }
 
 

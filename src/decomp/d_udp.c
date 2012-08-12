@@ -103,6 +103,7 @@ void * d_udp_create(void)
 
 	/* some UDP-specific values and functions */
 	context->next_header_len = sizeof(struct udphdr);
+	context->detect_packet_type = ip_detect_packet_type;
 	context->parse_static_next_hdr = udp_parse_static_udp;
 	context->parse_dyn_next_hdr = udp_parse_dynamic_udp;
 	context->parse_uo_remainder = udp_parse_uo_remainder;

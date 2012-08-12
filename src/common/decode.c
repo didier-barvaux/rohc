@@ -25,6 +25,8 @@
 #include "decode.h"
 #include "rohc_bit_ops.h"
 
+#include "config.h" /* for RTP_BIT_TYPE definition */
+
 
 /**
  * @brief Find out whether the field is a segment field or not
@@ -130,7 +132,7 @@ int d_feedback_headersize(const unsigned char *data)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an IR packet or not
  */
-int d_is_ir(const unsigned char *data, const size_t len)
+bool d_is_ir(const unsigned char *data, const size_t len)
 {
 	return (len > 0 && GET_BIT_1_7(data) == D_IR_PACKET);
 }
@@ -143,9 +145,95 @@ int d_is_ir(const unsigned char *data, const size_t len)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an IR-DYN packet or not
  */
-int d_is_irdyn(const unsigned char *data, const size_t len)
+bool d_is_irdyn(const unsigned char *data, const size_t len)
 {
 	return (len > 0 && GET_BIT_0_7(data) == D_IR_DYN_PACKET);
+}
+
+
+/**
+ * @brief Find out whether a ROHC packet is an UO-0 packet or not
+ *
+ * @param data  The ROHC packet to analyze
+ * @param len   The length of the ROHC packet
+ * @return      Whether the ROHC packet is an UO-0 packet or not
+ */
+bool d_is_uo0(const unsigned char *data, const size_t len)
+{
+	return (len > 0 && GET_BIT_7(data) == 0);
+}
+
+
+/**
+ * @brief Find out whether a ROHC packet is an UO-1* packet or not
+ *
+ * @param data  The ROHC packet to analyze
+ * @param len   The length of the ROHC packet
+ * @return      Whether the ROHC packet is an UO-1* packet or not
+ */
+bool d_is_uo1(const unsigned char *data, const size_t len)
+{
+	return (len > 0 && GET_BIT_6_7(data) == 0x02);
+}
+
+
+/**
+ * @brief Find out whether a ROHC packet is an UOR-2* packet or not
+ *
+ * @param data  The ROHC packet to analyze
+ * @param len   The length of the ROHC packet
+ * @return      Whether the ROHC packet is an UOR-2* packet or not
+ */
+bool d_is_uor2(const unsigned char *data, const size_t len)
+{
+	return (len > 0 && GET_BIT_5_7(data) == 0x06);
+}
+
+
+/**
+ * @brief Find out whether a ROHC packet is an UOR-2-TS packet or not
+ *
+ * Check the T field that discriminates between UOR-2-TS and UOR-2-ID.
+ *
+ * @param data           The ROHC packet to analyze
+ * @param data_len       The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               Whether the ROHC packet is an UOR-2-TS packet or not
+ */
+bool d_is_uor2_ts(const unsigned char *const data,
+                  const size_t data_len,
+                  const size_t large_cid_len)
+{
+	return (data_len > (1 + large_cid_len) &&
+	        GET_BIT_7(data + 1 + large_cid_len) != 0);
+}
+
+
+/**
+ * @brief Find out whether a ROHC packet is an UOR-2-RTP packet or not
+ *
+ * If RTP disambiguation bit is enabled, check it. Otherwise, always return
+ * true.
+ *
+ * The RTP disambiguation bit type is a proprietary extension to the ROHC
+ * standard. It was introduced to avoid reparsing the UOR-2* headers in cases
+ * where RND changes in extension 3.
+ *
+ * @param data           The ROHC packet to analyze
+ * @param data_len       The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               Whether the ROHC packet is an UOR-2-RTP packet or not
+ */
+bool d_is_uor2_rtp(const unsigned char *const data,
+                   const size_t data_len,
+                   const size_t large_cid_len)
+{
+#if RTP_BIT_TYPE
+	return (data_len > (1 + large_cid_len + 1) &&
+	        GET_BIT_6(data + 1 + large_cid_len + 1) == 0);
+#else
+	return true;
+#endif
 }
 
 

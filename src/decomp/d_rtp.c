@@ -29,6 +29,7 @@
 #include "ts_sc_decomp.h"
 #include "sdvl.h"
 #include "crc.h"
+#include "decode.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -54,6 +55,12 @@
 static void d_rtp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
+static rohc_packet_t rtp_detect_packet_type(struct rohc_decomp *decomp,
+                                            struct d_context *context,
+                                            const unsigned char *packet,
+                                            const size_t rohc_length,
+                                            const size_t large_cid_len);
+
 static int rtp_parse_static_rtp(struct d_generic_context *context,
                                 const unsigned char *packet,
                                 unsigned int length,
@@ -76,6 +83,20 @@ static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
+
+/*
+ * Prototypes of private helper functions
+ */
+
+static inline bool is_outer_ipv4_ctxt(const struct d_generic_context *const ctxt);
+static inline bool is_outer_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt);
+static inline bool is_inner_ipv4_ctxt(const struct d_generic_context *const ctxt);
+static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt);
+
+
+/*
+ * Definitions of functions
+ */
 
 /**
  * @brief Create the RTP decompression context.
@@ -122,6 +143,7 @@ void * d_rtp_create(void)
 
 	/* some RTP-specific values and functions */
 	context->next_header_len = nh_len;
+	context->detect_packet_type = rtp_detect_packet_type;
 	context->parse_static_next_hdr = rtp_parse_static_rtp;
 	context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
 	context->parse_uo_remainder = rtp_parse_uo_remainder;
@@ -213,6 +235,202 @@ static void d_rtp_destroy(void *const context)
 
 	/* destroy the resources of the generic context */
 	d_generic_destroy(context);
+}
+
+
+/**
+ * @brief Detect the type of ROHC packet for RTP profile
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param packet         The ROHC packet
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               The packet type
+ */
+static rohc_packet_t rtp_detect_packet_type(struct rohc_decomp *decomp,
+                                            struct d_context *context,
+                                            const unsigned char *packet,
+                                            const size_t rohc_length,
+                                            const size_t large_cid_len)
+{
+	rohc_packet_t type;
+	struct d_generic_context *g_context = context->specific;
+	const int multiple_ip = g_context->multiple_ip;
+
+	if(rohc_length < 1)
+	{
+		rohc_debugf(0, "ROHC packet too small to read the first byte that "
+		            "contains the packet type (len = %zd)\n", rohc_length);
+		goto error;
+	}
+
+	if(d_is_uo0(packet, rohc_length))
+	{
+		/* UO-0 packet */
+		type = PACKET_UO_0;
+	}
+	else if(d_is_uo1(packet, rohc_length))
+	{
+		/* UO-1* packet */
+		if(!multiple_ip)
+		{
+			if(is_outer_ipv4_rnd_ctxt(g_context) ||
+			   !is_outer_ipv4_ctxt(g_context))
+			{
+				/* UO-1-RTP packet */
+				type = PACKET_UO_1_RTP;
+			}
+			else
+			{
+				/* UO-1-ID or UO-1-TS packet */
+				if(GET_BIT_5(packet) == 0)
+				{
+					type = PACKET_UO_1_ID;
+				}
+				else
+				{
+					type = PACKET_UO_1_TS;
+				}
+			}
+		}
+		else /* double IP headers */
+		{
+			if((is_outer_ipv4_rnd_ctxt(g_context) ||
+			    !is_outer_ipv4_ctxt(g_context)) &&
+			   (is_inner_ipv4_rnd_ctxt(g_context) ||
+			    !is_inner_ipv4_ctxt(g_context)))
+			{
+				/* UO-1-RTP packet */
+				type = PACKET_UO_1_RTP;
+			}
+			else
+			{
+				/* UO-1-ID or UO-1-TS packet */
+				if(GET_BIT_5(packet) == 0)
+				{
+					type = PACKET_UO_1_ID;
+				}
+				else
+				{
+					type = PACKET_UO_1_TS;
+				}
+			}
+		}
+	}
+	else if(d_is_uor2(packet, rohc_length))
+	{
+		/* UOR-2* packet */
+		if(!multiple_ip)
+		{
+			if(!is_outer_ipv4_ctxt(g_context))
+			{
+				/* UOR-2-RTP packet */
+				rohc_debugf(3, "decode as UOR-2-RTP because there is no IPv4 "
+				            "header\n");
+				type = PACKET_UOR_2_RTP;
+			}
+			else if(is_outer_ipv4_rnd_ctxt(g_context))
+			{
+				/* UOR-2-RTP or UOR-2-ID packet, check the RTP disambiguation bit
+				 * or optimistically try UOR-2-RTP */
+				if(d_is_uor2_rtp(packet, rohc_length, large_cid_len))
+				{
+					/* UOR-2-RTP packet */
+					type = PACKET_UOR_2_RTP;
+				}
+				else
+				{
+					/* UOR-2-ID packet */
+					type = PACKET_UOR_2_ID;
+				}
+			}
+			else
+			{
+				/* UOR-2-ID or UOR-2-TS packet, check the T field */
+				if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
+				{
+					/* UOR-2-TS packet */
+					rohc_debugf(3, "decode as UOR-2-TS because there is one "
+					            "IPv4 header with non-random IP-ID, and the "
+					            "T field is set to 1, fallback on UOR-2-RTP "
+					            "later if RND changes in extension 3\n");
+					type = PACKET_UOR_2_TS;
+				}
+				else
+				{
+					/* UOR-2-ID packet */
+					rohc_debugf(3, "decode as UOR-2-ID because there is one "
+					            "IPv4 header with non-random IP-ID, and the "
+					            "T field is set to 0, fallback on UOR-2-RTP "
+					            "later if RND changes in extension 3\n");
+					type = PACKET_UOR_2_ID;
+				}
+			}
+		}
+		else /* double IP headers */
+		{
+			if(!is_inner_ipv4_ctxt(g_context))
+			{
+				/* UOR-2-RTP packet */
+				type = PACKET_UOR_2_RTP;
+			}
+			else if((is_outer_ipv4_rnd_ctxt(g_context) &&
+			         is_inner_ipv4_rnd_ctxt(g_context)) ||
+			        (!is_outer_ipv4_ctxt(g_context) &&
+			         is_inner_ipv4_rnd_ctxt(g_context)))
+			{
+				/* UOR-2-RTP or UOR-2-ID packet, check the RTP disambiguation bit
+				 * or optimistically try UOR-2-RTP */
+				if(d_is_uor2_rtp(packet, rohc_length, large_cid_len))
+				{
+					/* UOR-2-RTP packet */
+					type = PACKET_UOR_2_RTP;
+				}
+				else
+				{
+					/* UOR-2-ID packet */
+					type = PACKET_UOR_2_ID;
+				}
+			}
+			else
+			{
+				/* UOR-2-ID or UOR-2-TS packet, check the T field */
+				if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
+				{
+					/* UOR-2-TS packet */
+					type = PACKET_UOR_2_TS;
+				}
+				else
+				{
+					/* UOR-2-ID packet */
+					type = PACKET_UOR_2_ID;
+				}
+			}
+		}
+	}
+	else if(d_is_irdyn(packet, rohc_length))
+	{
+		/* IR-DYN packet */
+		type = PACKET_IR_DYN;
+	}
+	else if(d_is_ir(packet, rohc_length))
+	{
+		/* IR packet */
+		type = PACKET_IR;
+	}
+	else
+	{
+		/* unknown packet */
+		rohc_debugf(0, "failed to recognize the packet type in byte 0x%02x\n",
+		            *packet);
+		type = PACKET_UNKNOWN;
+	}
+
+	return type;
+
+error:
+	return PACKET_UNKNOWN;
 }
 
 
@@ -803,6 +1021,59 @@ static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
 	rtp->ssrc = decoded.rtp_ssrc;
 
 	return sizeof(struct udphdr) + sizeof(struct rtphdr);
+}
+
+
+/*
+ * Private helper functions
+ */
+
+/**
+ * @brief Is the outer IP header IPv4 wrt context?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if IPv4, false otherwise
+ */
+static inline bool is_outer_ipv4_ctxt(const struct d_generic_context *const ctxt)
+{
+	return (ip_get_version(&ctxt->outer_ip_changes->ip) == IPV4);
+}
+
+
+/**
+ * @brief Is the outer IP header IPv4 and its IP-ID random wrt context?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if IPv4, false otherwise
+ */
+static inline bool is_outer_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt)
+{
+	return (is_outer_ipv4_ctxt(ctxt) && ctxt->outer_ip_changes->rnd == 1);
+}
+
+
+/**
+ * @brief Is the inner IP header IPv4 wrt context?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if IPv4, false otherwise
+ */
+static inline bool is_inner_ipv4_ctxt(const struct d_generic_context *const ctxt)
+{
+	return (ctxt->multiple_ip &&
+	        ip_get_version(&ctxt->inner_ip_changes->ip) == IPV4);
+}
+
+
+/**
+ * @brief Is the inner IP header IPv4 and its IP-ID random wrt context?
+ *
+ * @param ctxt  The generic decompression context
+ * @return      true if IPv4, false otherwise
+ */
+static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt)
+{
+	return (is_inner_ipv4_ctxt(ctxt) && ctxt->inner_ip_changes->rnd == 1);
 }
 
 

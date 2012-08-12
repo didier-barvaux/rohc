@@ -33,6 +33,12 @@
  * Public function prototypes.
  */
 
+rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
+                                    struct d_context *context,
+                                    const unsigned char *packet,
+                                    const size_t rohc_length,
+                                    const size_t large_cid_len);
+
 int ip_parse_dynamic_ip(struct d_generic_context *context,
                         const unsigned char *packet,
                         unsigned int length,

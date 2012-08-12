@@ -88,6 +88,12 @@ struct d_udp_lite_context
 static void d_udp_lite_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
+static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
+                                                 struct d_context *context,
+                                                 const unsigned char *packet,
+                                                 const size_t rohc_length,
+                                                 const size_t large_cid_len);
+
 static int udp_lite_parse_dynamic_udp(struct d_generic_context *context,
                                       const unsigned char *packet,
                                       unsigned int length,
@@ -157,6 +163,7 @@ void * d_udp_lite_create(void)
 
 	/* some UDP-Lite-specific values and functions */
 	context->next_header_len = sizeof(struct udphdr);
+	context->detect_packet_type = udp_lite_detect_packet_type;
 	context->parse_static_next_hdr = udp_parse_static_udp;
 	context->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
 	context->parse_uo_remainder = udp_lite_parse_uo_remainder;
@@ -236,6 +243,86 @@ static void d_udp_lite_destroy(void *const context)
 
 
 /**
+ * @brief Detect the type of ROHC packet for the UDP-Lite profile
+ *
+ * Parse optional CCE packet type, then normal packet type.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param packet         The ROHC packet
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               The packet type
+ */
+static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
+                                                 struct d_context *context,
+                                                 const unsigned char *packet,
+                                                 const size_t rohc_length,
+                                                 const size_t large_cid_len)
+{
+	struct d_generic_context *g_context = context->specific;
+	struct d_udp_lite_context *udp_lite_context = g_context->specific;
+	size_t new_large_cid_len;
+
+	/* remaining ROHC data not parsed yet */
+	const unsigned char *rohc_remain_data = packet;
+	size_t rohc_remain_len = rohc_length;
+
+	/* check if the ROHC packet is large enough to read the first byte */
+	if(rohc_remain_len < (1 + large_cid_len))
+	{
+		rohc_debugf(0, "ROHC packet too small to read the first byte that "
+		            "contains the packet type (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* find whether the IR packet owns an Coverage Checksum Extension or not */
+	switch(rohc_remain_data[0])
+	{
+		case 0xf9: /* CCE() */
+			rohc_debugf(2, "CCE()\n");
+			udp_lite_context->cce_packet = PACKET_CCE;
+			/* skip CCE byte (and optional large CID field) */
+			rohc_remain_data += 1 + large_cid_len;
+			rohc_remain_len -= 1 + large_cid_len;
+			new_large_cid_len = 0;
+			break;
+		case 0xfa: /* CEC(ON) */
+			rohc_debugf(2, "CCE(ON)\n");
+			udp_lite_context->cfp = 1;
+			udp_lite_context->cce_packet = PACKET_CCE;
+			/* skip CCE byte (and optional large CID field) */
+			rohc_remain_data += 1 + large_cid_len;
+			rohc_remain_len -= 1 + large_cid_len;
+			new_large_cid_len = 0;
+			break;
+		case 0xfb: /* CCE(OFF) */
+			rohc_debugf(2, "CCE(OFF)\n");
+			udp_lite_context->cfp = 0;
+			udp_lite_context->cce_packet = PACKET_CCE_OFF;
+			/* no CCE byte to skip */
+			new_large_cid_len = large_cid_len;
+			break;
+		default:
+			rohc_debugf(2, "CCE not present\n");
+			udp_lite_context->cce_packet = 0;
+			/* no CCE byte to skip */
+			new_large_cid_len = large_cid_len;
+			break;
+	}
+
+	/* CCE is now parsed, fallback on same detection scheme as other IP-based
+	 * non-RTP profiles */
+	return ip_detect_packet_type(decomp, context,
+	                             rohc_remain_data, rohc_remain_len,
+	                             new_large_cid_len);
+
+error:
+	return PACKET_UNKNOWN;
+}
+
+
+/**
  * @brief Decode one IR, IR-DYN or UO* packet for UDP-Lite profile
  *
  * This function is one of the functions that must exist in one profile for the
@@ -261,7 +348,6 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
-	rohc_packet_t packet_type;
 	size_t new_large_cid_len;
 
 	/* remaining ROHC data not parsed yet */
@@ -269,36 +355,14 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	unsigned int rohc_remain_len = rohc_length;
 
 	/* check if the ROHC packet is large enough to read the first byte */
-	if(rohc_remain_len < 2)
+	if(rohc_remain_len < (1 + large_cid_len))
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_remain_len);
 		goto error;
 	}
 
-	/* find whether the IR packet owns an Coverage Checksum Extension or not */
-	switch(rohc_remain_data[0])
-	{
-		case 0xf9: /* CCE() */
-			rohc_debugf(2, "CCE()\n");
-			udp_lite_context->cce_packet = PACKET_CCE;
-			break;
-		case 0xfa: /* CEC(ON) */
-			rohc_debugf(2, "CCE(ON)\n");
-			udp_lite_context->cfp = 1;
-			udp_lite_context->cce_packet = PACKET_CCE;
-			break;
-		case 0xfb: /* CCE(OFF) */
-			rohc_debugf(2, "CCE(OFF)\n");
-			udp_lite_context->cfp = 0;
-			udp_lite_context->cce_packet = PACKET_CCE_OFF;
-			break;
-		default:
-			rohc_debugf(2, "CCE not present\n");
-			udp_lite_context->cce_packet = 0;
-	}
-
-	/* if the CE extension is present, skip the first byte
-	 * and go to the second byte */
+	/* if the CE extension is present, skip the CCE byte type (and the
+	 * optional large CID field) */
 	if(udp_lite_context->cce_packet)
 	{
 		rohc_remain_data += 1 + large_cid_len;
@@ -310,16 +374,8 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 		new_large_cid_len = large_cid_len;
 	}
 
-	/* reset the coverage infos if IR-DYN packet */
-	packet_type = find_packet_type(decomp, context,
-	                               rohc_remain_data, rohc_remain_len,
-	                               new_large_cid_len);
-	if(packet_type == PACKET_IR || packet_type == PACKET_IR_DYN)
-	{
-		udp_lite_context->cfp = -1;
-		udp_lite_context->cfi = -1;
-	}
-
+	/* decode the remaining part of the part as a normal IP-based packet
+	 * (with a fake length for the large CID field eventually) */
 	return d_generic_decode(decomp, context, rohc_remain_data, rohc_remain_len,
 	                        add_cid_len, new_large_cid_len, dest);
 
@@ -377,13 +433,13 @@ static int udp_lite_parse_dynamic_udp(struct d_generic_context *context,
 
 	/* init the Coverage Field Present (CFP) (see 5.2.2 in RFC 4019) */
 	udp_lite_context->cfp = (udp_lite_length != ntohs(bits->udp_lite_cc));
-	rohc_debugf(1, "init CFP to %d (length = %d, CC = %d)\n",
+	rohc_debugf(1, "init CFP to %d (length = %zd, CC = %d)\n",
 	            udp_lite_context->cfp, udp_lite_length,
 	            ntohs(bits->udp_lite_cc));
 
 	/* init Coverage Field Inferred (CFI) (see 5.2.2 in RFC 4019) */
 	udp_lite_context->cfi = (udp_lite_length == ntohs(bits->udp_lite_cc));
-	rohc_debugf(1, "init CFI to %d (length = %d, CC = %d)\n",
+	rohc_debugf(1, "init CFI to %d (length = %zd, CC = %d)\n",
 	            udp_lite_context->cfi, udp_lite_length,
 	            ntohs(bits->udp_lite_cc));
 
@@ -435,6 +491,10 @@ static int udp_lite_parse_uo_remainder(struct d_generic_context *context,
 	assert(bits != NULL);
 
 	udp_lite_context = context->specific;
+
+	rohc_debugf(2, "CFP = %d, CFI = %d, cce_packet = %d\n",
+	            udp_lite_context->cfp, udp_lite_context->cfi,
+	            udp_lite_context->cce_packet);
 
 	remainder_length = (udp_lite_context->cfp != 0 ? 2 : 0) + 2;
 

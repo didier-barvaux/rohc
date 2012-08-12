@@ -406,13 +406,8 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
 
 
 /*
- * Helper functions
+ * Prototypes of private helper functions
  */
-
-static inline bool is_outer_ipv4_ctxt(const struct d_generic_context *const ctxt);
-static inline bool is_outer_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt);
-static inline bool is_inner_ipv4_ctxt(const struct d_generic_context *const ctxt);
-static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt);
 
 static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits);
 static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits);
@@ -3451,9 +3446,9 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	int length = ROHC_ERROR;
 
 	/* parse the packet according to its type */
-	g_context->packet_type = find_packet_type(decomp, context,
-	                                          rohc_packet, rohc_length,
-	                                          large_cid_len);
+	g_context->packet_type =
+		g_context->detect_packet_type(decomp, context, rohc_packet, rohc_length,
+		                              large_cid_len);
 
 	rohc_debugf(2, "decode packet as '%s'\n",
 	            rohc_get_packet_descr(g_context->packet_type));
@@ -3467,7 +3462,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-
+	/* what function to call for parsing the packet? */
 	switch(g_context->packet_type)
 	{
 		case PACKET_IR:
@@ -6534,294 +6529,6 @@ reparse:
 
 
 /**
- * @brief Find out of which type is the ROHC packet.
- *
- * @param decomp         The ROHC decompressor
- * @param context        The decompression context
- * @param packet         The ROHC packet
- * @param rohc_length    The length of the ROHC packet
- * @param large_cid_len  The length of the optional large CID field
- * @return               The packet type among PACKET_UO_0, PACKET_UO_1,
- *                       PACKET_UO_1_RTP, PACKET_UO_1_TS, PACKET_UO_1_ID,
- *                       PACKET_UOR_2, PACKET_UOR_2_RTP, PACKET_UOR_2_TS,
- *                       PACKET_UOR_2_ID, PACKET_IR_DYN, PACKET_IR or
- *                       PACKET_UNKNOWN
- */
-rohc_packet_t find_packet_type(struct rohc_decomp *decomp,
-                               struct d_context *context,
-                               const unsigned char *packet,
-                               const size_t rohc_length,
-                               const size_t large_cid_len)
-{
-	rohc_packet_t type;
-	struct d_generic_context *g_context = context->specific;
-	const int multiple_ip = g_context->multiple_ip;
-	const int is_rtp = context->profile->id == ROHC_PROFILE_RTP;
-
-	if(rohc_length < 1)
-	{
-		rohc_debugf(0, "ROHC packet too small to read the first byte that "
-		            "contains the packet type (len = %zd)\n", rohc_length);
-		goto error;
-	}
-
-	if(GET_BIT_7(packet) == 0x00)
-	{
-		/* UO-0 packet */
-		type = PACKET_UO_0;
-	}
-	else if(GET_BIT_6_7(packet) == 0x02)
-	{
-		/* UO-1* packet */
-
-		if(is_rtp)
-		{
-			/* UO-1-* packet */
-
-			if(!multiple_ip)
-			{
-				if(is_outer_ipv4_rnd_ctxt(g_context) ||
-				   !is_outer_ipv4_ctxt(g_context))
-				{
-					/* UO-1-RTP packet */
-					type = PACKET_UO_1_RTP;
-				}
-				else
-				{
-					/* UO-1-ID or UO-1-TS packet */
-					if(GET_BIT_5(packet) == 0)
-					{
-						type = PACKET_UO_1_ID;
-					}
-					else
-					{
-						type = PACKET_UO_1_TS;
-					}
-				}
-			}
-			else /* double IP headers */
-			{
-				if((is_outer_ipv4_rnd_ctxt(g_context) ||
-				    !is_outer_ipv4_ctxt(g_context)) &&
-				   (is_inner_ipv4_rnd_ctxt(g_context) ||
-				    !is_inner_ipv4_ctxt(g_context)))
-				{
-					/* UO-1-RTP packet */
-					type = PACKET_UO_1_RTP;
-				}
-				else
-				{
-					/* UO-1-ID or UO-1-TS packet */
-					if(GET_BIT_5(packet) == 0)
-					{
-						type = PACKET_UO_1_ID;
-					}
-					else
-					{
-						type = PACKET_UO_1_TS;
-					}
-				}
-			}
-		}
-		else /* non-RTP profiles */
-		{
-			/* UO-1 packet */
-			type = PACKET_UO_1;
-		}
-	}
-	else if(GET_BIT_5_7(packet) == 0x06)
-	{
-		/* UOR-2* packet */
-
-		if(is_rtp)
-		{
-			/* UOR-2-* packet */
-
-			if(!multiple_ip)
-			{
-				if(!is_outer_ipv4_ctxt(g_context))
-				{
-					/* UOR-2-RTP packet */
-					rohc_debugf(3, "decode as UOR-2-RTP because there is no IPv4 "
-					            "header\n");
-					type = PACKET_UOR_2_RTP;
-				}
-				else if(is_outer_ipv4_rnd_ctxt(g_context))
-				{
-					/* UOR-2-RTP or UOR-2-ID packet */
-#if RTP_BIT_TYPE
-					/* check the RTP disambiguation bit type to avoid reparsing
-					 * (proprietary extension of the ROHC standard) */
-
-					/* check if the ROHC packet is large enough to read the
-					 * byte that contains the RTP disambiguation bit */
-					if(rohc_length <= (1 + large_cid_len + 1))
-					{
-						rohc_debugf(0, "ROHC packet too small to read the byte "
-						            "that contains the RTP disambiguation bit "
-						            "(len = %zd)\n", rohc_length);
-						goto error;
-					}
-
-					/* check the RTP disambiguation bit type */
-					if(GET_BIT_6(packet + 1 + large_cid_len + 1) == 0)
-					{
-						/* UOR-2-RTP packet */
-						type = PACKET_UOR_2_RTP;
-					}
-					else
-					{
-						/* UOR-2-ID packet */
-						type = PACKET_UOR_2_ID;
-					}
-#else
-					/* try to decode as UOR-2-RTP packet and change to UOR-2-ID
-					 * later if UOR-2-RTP was the wrong choice */
-					rohc_debugf(3, "try to decode as UOR-2-RTP because there is "
-					            "one IPv4 header with random IP-ID, fallback on "
-					            "UOR-2-ID later if RND changes in extension 3\n");
-					type = PACKET_UOR_2_RTP;
-#endif
-				}
-				else
-				{
-					/* UOR-2-ID or UOR-2-TS packet, check the T field */
-
-					/* check if the ROHC packet is large enough to read the
-					 * byte that contains the T field */
-					if(rohc_length <= (1 + large_cid_len))
-					{
-						rohc_debugf(0, "ROHC packet too small to read the byte "
-						            "that contains the T field (len = %zd)\n",
-						            rohc_length);
-						goto error;
-					}
-
-					/* check the T field */
-					if(GET_BIT_7(packet + 1 + large_cid_len) == 0)
-					{
-						/* UOR-2-ID packet */
-						rohc_debugf(3, "decode as UOR-2-ID because there is one "
-						            "IPv4 header with non-random IP-ID, and the "
-						            "T field is set to 0, fallback on UOR-2-RTP "
-						            "later if RND changes in extension 3\n");
-						type = PACKET_UOR_2_ID;
-					}
-					else
-					{
-						/* UOR-2-TS packet */
-						rohc_debugf(3, "decode as UOR-2-TS because there is one "
-						            "IPv4 header with non-random IP-ID, and the "
-						            "T field is set to 1, fallback on UOR-2-RTP "
-						            "later if RND changes in extension 3\n");
-						type = PACKET_UOR_2_TS;
-					}
-				}
-			}
-			else /* double IP headers */
-			{
-				if(!is_inner_ipv4_ctxt(g_context))
-				{
-					/* UOR-2-RTP packet */
-					type = PACKET_UOR_2_RTP;
-				}
-				else if((is_outer_ipv4_rnd_ctxt(g_context) &&
-				         is_inner_ipv4_rnd_ctxt(g_context)) ||
-				        (!is_outer_ipv4_ctxt(g_context) &&
-				         is_inner_ipv4_rnd_ctxt(g_context)))
-				{
-					/* UOR-2-RTP or UOR-2-ID packet */
-#if RTP_BIT_TYPE
-					/* check the RTP disambiguation bit type to avoid reparsing
-					 * (proprietary extension of the ROHC standard) */
-
-					/* check if the ROHC packet is large enough to read the
-					 * byte that contains the RTP disambiguation bit */
-					if(rohc_length <= (1 + large_cid_len + 1))
-					{
-						rohc_debugf(0, "ROHC packet too small to read the byte "
-						            "that contains the RTP disambiguation bit "
-						            "(len = %zd)\n", rohc_length);
-						goto error;
-					}
-
-					/* check the RTP disambiguation bit type */
-					if(GET_BIT_6(packet + 1 + large_cid_len + 1) == 0)
-					{
-						/* UOR-2-RTP packet */
-						type = PACKET_UOR_2_RTP;
-					}
-					else
-					{
-						/* UOR-2-ID packet */
-						type = PACKET_UOR_2_ID;
-					}
-#else
-					/* try to decode as UOR-2-RTP packet and change to UOR-2-ID
-					 * later if UOR-2-RTP was the wrong choice */
-					type = PACKET_UOR_2_RTP;
-#endif
-				}
-				else
-				{
-					/* UOR-2-ID or UOR-2-TS packet, check the T field */
-
-					/* check if the ROHC packet is large enough to read the
-					 * byte that contains the T field */
-					if(rohc_length <= (1 + large_cid_len))
-					{
-						rohc_debugf(0, "ROHC packet too small to read the byte "
-						            "that contains the T field (len = %zd)\n",
-						            rohc_length);
-						goto error;
-					}
-
-					/* check the T field */
-					if(GET_BIT_7(packet + 1 + large_cid_len) == 0)
-					{
-						/* UOR-2-ID packet */
-						type = PACKET_UOR_2_ID;
-					}
-					else
-					{
-						/* UOR-2-TS packet */
-						type = PACKET_UOR_2_TS;
-					}
-				}
-			}
-		}
-		else /* non-RTP profiles */
-		{
-			/* UOR-2 packet */
-			type = PACKET_UOR_2;
-		}
-	}
-	else if(*packet == 0xf8)
-	{
-		/* IR-DYN packet */
-		type = PACKET_IR_DYN;
-	}
-	else if((*packet & 0xfe) == 0xfc)
-	{
-		/* IR packet */
-		type = PACKET_IR;
-	}
-	else
-	{
-		/* unknown packet */
-		rohc_debugf(0, "failed to recognize the packet type in byte 0x%02x\n",
-		            *packet);
-		type = PACKET_UNKNOWN;
-	}
-
-	return type;
-
-error:
-	return PACKET_UNKNOWN;
-}
-
-
-/**
  * @brief Find out which extension is carried by the UOR-2 packet.
  *
  * @param rohc_extension  The ROHC UOR-2 packet
@@ -8153,55 +7860,6 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
 /*
  * Helper functions
  */
-
-/**
- * @brief Is the outer IP header IPv4 wrt context?
- *
- * @param ctxt  The generic decompression context
- * @return      true if IPv4, false otherwise
- */
-static inline bool is_outer_ipv4_ctxt(const struct d_generic_context *const ctxt)
-{
-	return (ip_get_version(&ctxt->outer_ip_changes->ip) == IPV4);
-}
-
-
-/**
- * @brief Is the outer IP header IPv4 and its IP-ID random wrt context?
- *
- * @param ctxt  The generic decompression context
- * @return      true if IPv4, false otherwise
- */
-static inline bool is_outer_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt)
-{
-	return (is_outer_ipv4_ctxt(ctxt) && ctxt->outer_ip_changes->rnd == 1);
-}
-
-
-/**
- * @brief Is the inner IP header IPv4 wrt context?
- *
- * @param ctxt  The generic decompression context
- * @return      true if IPv4, false otherwise
- */
-static inline bool is_inner_ipv4_ctxt(const struct d_generic_context *const ctxt)
-{
-	return (ctxt->multiple_ip &&
-	        ip_get_version(&ctxt->inner_ip_changes->ip) == IPV4);
-}
-
-
-/**
- * @brief Is the inner IP header IPv4 and its IP-ID random wrt context?
- *
- * @param ctxt  The generic decompression context
- * @return      true if IPv4, false otherwise
- */
-static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const ctxt)
-{
-	return (is_inner_ipv4_ctxt(ctxt) && ctxt->inner_ip_changes->rnd == 1);
-}
-
 
 /**
  * @brief Is the given IP header IPV4 wrt packet?
