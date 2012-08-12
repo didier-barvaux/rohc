@@ -27,19 +27,6 @@
 
 
 /**
- * @brief Get the current time in microseconds
- *
- * @return The current time in microseconds
- */
-static inline unsigned int get_microseconds(void)
-{
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec * 1000000 + tv.tv_usec;
-}
-
-
-/**
  * @brief Get the current time in milliseconds
  *
  * @return The current time in milliseconds

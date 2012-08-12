@@ -376,13 +376,6 @@ struct d_generic_context
 
 	/// Correction counter (see e and f in 5.3.2.2.4 of the RFC 3095)
 	unsigned int correction_counter;
-
-	/// The timestamp of the last CRC-approved packet
-	unsigned int last_packet_time;
-	/// The timestamp of the current packet (not yet CRC-tested)
-	unsigned int current_packet_time;
-	/// The average inter-packet time over the last few packets
-	unsigned int inter_arrival_time;
 };
 
 

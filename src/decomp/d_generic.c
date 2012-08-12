@@ -393,8 +393,6 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 static void update_context(const struct d_context *context,
                            const struct rohc_decoded_values decoded);
 
-void update_inter_packet(struct d_generic_context *context);
-
 static void stats_add_decomp_success(struct d_context *const context,
                                      const size_t comp_hdr_len,
                                      const size_t uncomp_hdr_len);
@@ -3030,9 +3028,6 @@ static int decode_ir(struct rohc_decomp *decomp,
 	 * earlier.
 	 */
 
-	/* update the inter-packet variable */
-	update_inter_packet(g_context);
-
 	/* update context with decoded values */
 	update_context(context, decoded);
 
@@ -3454,8 +3449,6 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	                     const size_t large_cid_len,
 	                     unsigned char *dest);
 	int length = ROHC_ERROR;
-
-	g_context->current_packet_time = get_microseconds();
 
 	/* parse the packet according to its type */
 	g_context->packet_type = find_packet_type(decomp, context,
@@ -3919,9 +3912,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 
 		g_context->correction_counter++;
 
-		/* update the inter-packet variable */
-		update_inter_packet(g_context);
-
 		/* update context with decoded values even if we drop the packet */
 		update_context(context, decoded);
 
@@ -3948,9 +3938,6 @@ int decode_uo0(struct rohc_decomp *decomp,
 	 *
 	 * TODO: check what fields shall be updated in the context
 	 */
-
-	/* update the inter-packet variable */
-	update_inter_packet(g_context);
 
 	/* update context with decoded values */
 	update_context(context, decoded);
@@ -4526,9 +4513,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 
 		g_context->correction_counter++;
 
-		/* update the inter-packet variable */
-		update_inter_packet(g_context);
-
 		/* update context with decoded values even if we drop the packet */
 		update_context(context, decoded);
 
@@ -4555,9 +4539,6 @@ int decode_uo1(struct rohc_decomp *decomp,
 	 *
 	 * TODO: check what fields shall be updated in the context
 	 */
-
-	/* update the inter-packet variable */
-	update_inter_packet(g_context);
 
 	/* update context with decoded values */
 	update_context(context, decoded);
@@ -5523,9 +5504,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 
 		g_context->correction_counter++;
 
-		/* update the inter-packet variable */
-		update_inter_packet(g_context);
-
 		/* update context with decoded values even if we drop the packet */
 		update_context(context, decoded);
 
@@ -5554,9 +5532,6 @@ int decode_uor2(struct rohc_decomp *decomp,
 	 */
 
 	context->state = FULL_CONTEXT;
-
-	/* update the inter-packet variable */
-	update_inter_packet(g_context);
 
 	/* update context with decoded values */
 	update_context(context, decoded);
@@ -5807,9 +5782,6 @@ int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* go in Full Context state */
 	context->state = FULL_CONTEXT;
-
-	/* update the inter-packet variable */
-	update_inter_packet(g_context);
 
 	/* update context with decoded values */
 	update_context(context, decoded);
@@ -7665,42 +7637,6 @@ static int rohc_build_ip6_extension(struct list_decomp *const decomp,
 	}
 
 	return size;
-}
-
-
-/**
- * @brief Update the inter-packet time, a sort of average over the last
- *        inter-packet times.
- *
- * @param context The generic decompression context
- */
-void update_inter_packet(struct d_generic_context *context)
-{
-	unsigned int last_time = context->last_packet_time;
-	int delta = 0;
-
-	rohc_debugf(2, "current time = %u and last time = %u\n",
-	            context->current_packet_time, last_time);
-
-	if(last_time)
-	{
-		delta = context->current_packet_time - last_time;
-	}
-
-	context->last_packet_time = context->current_packet_time;
-
-	if(context->inter_arrival_time)
-	{
-		context->inter_arrival_time = (context->inter_arrival_time >> WEIGHT_OLD)
-		                              + (delta >> WEIGHT_NEW);
-	}
-	else
-	{
-		context->inter_arrival_time = delta;
-	}
-
-	rohc_debugf(2, "inter_arrival_time = %u and current arrival delta is = %d\n",
-	            context->inter_arrival_time, delta);
 }
 
 
