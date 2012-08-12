@@ -43,7 +43,7 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	unsigned int ip_proto;
 
 	/* call the generic function for all IP-based profiles */
-	if(!c_generic_create(context, ip))
+	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, ip))
 	{
 		rohc_debugf(0, "generic context creation failed\n");
 		goto error;

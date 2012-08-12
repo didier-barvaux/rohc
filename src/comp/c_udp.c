@@ -65,7 +65,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	unsigned int ip_proto;
 
 	/* create and initialize the generic part of the profile context */
-	if(!c_generic_create(context, ip))
+	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, ip))
 	{
 		rohc_debugf(0, "generic context creation failed\n");
 		goto quit;

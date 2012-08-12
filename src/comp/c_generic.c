@@ -476,19 +476,17 @@ void c_init_tmp_variables(struct generic_tmp_vars *tmp_vars)
 /**
  * @brief Create a new context and initialize it thanks to the given IP packet.
  *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param context The compression context
- * @param ip      The IP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @param context   The compression context
+ * @param sn_shift  The shift parameter (p) to use for encoding SN with W-LSB
+ * @param ip        The IP packet given to initialize the new context
+ * @return          1 if successful, 0 otherwise
  */
 int c_generic_create(struct c_context *const context,
+                     const rohc_lsb_shift_t sn_shift,
                      const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	unsigned int ip_proto;
-	rohc_lsb_shift_t p; /* parameter for W-LSB encoding of SN */
 
 	/* check the IP header(s) */
 	ip_proto = ip_get_protocol(ip);
@@ -525,24 +523,9 @@ int c_generic_create(struct c_context *const context,
 	 */
 
 	/* step 1 */
-	switch(context->profile->id)
-	{
-		case ROHC_PROFILE_RTP:
-			p = ROHC_LSB_SHIFT_RTP_SN;
-			break;
-		case ROHC_PROFILE_UNCOMPRESSED:
-		case ROHC_PROFILE_UDP:
-		case ROHC_PROFILE_IP:
-		case ROHC_PROFILE_UDPLITE:
-			p = ROHC_LSB_SHIFT_SN;
-			break;
-		default:
-			rohc_debugf(0, "bad profile ID (0x%04x)\n", context->profile->id);
-			goto clean;
-	}
-	rohc_debugf(3, "use shift parameter %d for LSB-encoding of SN\n", p);
+	rohc_debugf(3, "use shift parameter %d for LSB-encoding of SN\n", sn_shift);
 	g_context->sn_window =
-		c_create_wlsb(16, context->compressor->wlsb_window_width, p);
+		c_create_wlsb(16, context->compressor->wlsb_window_width, sn_shift);
 	if(g_context->sn_window == NULL)
 	{
 		rohc_debugf(0, "no memory to allocate W-LSB encoding for SN\n");

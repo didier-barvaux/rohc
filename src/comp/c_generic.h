@@ -344,6 +344,7 @@ struct list_comp
  */
 
 int c_generic_create(struct c_context *const context,
+                     const rohc_lsb_shift_t sn_shift,
                      const struct ip_packet *ip);
 void c_generic_destroy(struct c_context *const context);
 
