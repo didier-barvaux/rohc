@@ -269,10 +269,10 @@ struct c_generic_context
 
 	/// @brief The handler used to add an additional header in the tail of the
 	///        UO-0, UO-1 and UO-2 packets
-	int (*code_UO_packet_tail)(const struct c_context *context,
-	                           const unsigned char *next_header,
-	                           unsigned char *const dest,
-	                           int counter);
+	int (*code_uo_remainder)(const struct c_context *context,
+	                         const unsigned char *next_header,
+	                         unsigned char *const dest,
+	                         int counter);
 
 	/// @brief The handler used to compute the CRC-STATIC value
 	unsigned int (*compute_crc_static)(const unsigned char *const ip,

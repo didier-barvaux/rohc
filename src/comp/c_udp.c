@@ -137,7 +137,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	g_context->code_dynamic_part = udp_code_dynamic_udp_part;
 	g_context->code_ir_remainder = c_ip_code_ir_remainder;
 	g_context->code_UO_packet_head = NULL;
-	g_context->code_UO_packet_tail = udp_code_UO_packet_tail;
+	g_context->code_uo_remainder = udp_code_uo_remainder;
 	g_context->compute_crc_static = udp_compute_crc_static;
 	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
@@ -461,10 +461,10 @@ void udp_decide_state(struct c_context *const context)
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_code_UO_packet_tail(const struct c_context *context,
-                            const unsigned char *next_header,
-                            unsigned char *const dest,
-                            int counter)
+int udp_code_uo_remainder(const struct c_context *context,
+                          const unsigned char *next_header,
+                          unsigned char *const dest,
+                          int counter)
 {
 	const struct udphdr *udp = (struct udphdr *) next_header;
 

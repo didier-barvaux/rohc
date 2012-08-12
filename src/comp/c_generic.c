@@ -116,12 +116,12 @@ int code_ipv6_dynamic_part(const struct c_context *context,
                            unsigned char *const dest,
                            int counter);
 
-int code_UO_packet_tail(struct c_context *const context,
-                        const struct ip_packet *ip,
-                        const struct ip_packet *ip2,
-                        const unsigned char *next_header,
-                        unsigned char *const dest,
-                        int counter);
+int code_uo_remainder(struct c_context *const context,
+                      const struct ip_packet *ip,
+                      const struct ip_packet *ip2,
+                      const unsigned char *next_header,
+                      unsigned char *const dest,
+                      int counter);
 
 int code_UO0_packet(struct c_context *const context,
                     const struct ip_packet *ip,
@@ -566,7 +566,7 @@ int c_generic_create(struct c_context *const context,
 	g_context->code_static_part = NULL;
 	g_context->code_dynamic_part = NULL;
 	g_context->code_UO_packet_head = NULL;
-	g_context->code_UO_packet_tail = NULL;
+	g_context->code_uo_remainder = NULL;
 	g_context->compute_crc_static = compute_crc_static;
 	g_context->compute_crc_dynamic = compute_crc_dynamic;
 
@@ -4013,12 +4013,12 @@ error:
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int code_UO_packet_tail(struct c_context *const context,
-                        const struct ip_packet *ip,
-                        const struct ip_packet *ip2,
-                        const unsigned char *next_header,
-                        unsigned char *const dest,
-                        int counter)
+int code_uo_remainder(struct c_context *const context,
+                      const struct ip_packet *ip,
+                      const struct ip_packet *ip2,
+                      const unsigned char *next_header,
+                      unsigned char *const dest,
+                      int counter)
 {
 	struct c_generic_context *g_context;
 	unsigned int id;
@@ -4052,9 +4052,9 @@ int code_UO_packet_tail(struct c_context *const context,
 
 	/* part 13 */
 	/* add fields related to the next header */
-	if(g_context->code_UO_packet_tail != NULL && next_header != NULL)
+	if(g_context->code_uo_remainder != NULL && next_header != NULL)
 	{
-		counter = g_context->code_UO_packet_tail(context, next_header,
+		counter = g_context->code_uo_remainder(context, next_header,
 		                                         dest, counter);
 	}
 
@@ -4143,7 +4143,7 @@ int code_UO0_packet(struct c_context *const context,
 	dest[first_position] = f_byte;
 
 	/* build the UO tail */
-	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
+	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
 
 	return counter;
 }
@@ -4355,7 +4355,7 @@ int code_UO1_packet(struct c_context *const context,
 	counter++;
 
 	/* build the UO tail */
-	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
+	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
 
 	return counter;
 
@@ -4605,7 +4605,7 @@ int code_UO2_packet(struct c_context *const context,
 	}
 
 	/* build the UO tail */
-	counter = code_UO_packet_tail(context, ip, ip2, next_header, dest, counter);
+	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
 
 	return counter;
 

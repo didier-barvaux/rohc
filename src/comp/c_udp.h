@@ -86,10 +86,10 @@ int c_udp_encode(struct c_context *const context,
 
 void udp_decide_state(struct c_context *const context);
 
-int udp_code_UO_packet_tail(const struct c_context *context,
-                            const unsigned char *next_header,
-                            unsigned char *const dest,
-                            int counter);
+int udp_code_uo_remainder(const struct c_context *context,
+                          const unsigned char *next_header,
+                          unsigned char *const dest,
+                          int counter);
 
 int udp_code_static_udp_part(const struct c_context *context,
                              const unsigned char *next_header,

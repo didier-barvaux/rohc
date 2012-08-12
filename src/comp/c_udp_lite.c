@@ -49,10 +49,10 @@ int udp_lite_build_cce_packet(const struct c_context *context,
 int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
                              const struct udphdr *udp_lite);
 
-int udp_lite_code_UO_packet_tail(const struct c_context *context,
-                                 const unsigned char *next_header,
-                                 unsigned char *const dest,
-                                 int counter);
+int udp_lite_code_uo_remainder(const struct c_context *context,
+                               const unsigned char *next_header,
+                               unsigned char *const dest,
+                               int counter);
 
 void udp_lite_init_cc(const struct c_context *context,
                       const unsigned char *next_header);
@@ -158,7 +158,7 @@ int c_udp_lite_create(struct c_context *const context,
 	g_context->code_dynamic_part = udp_lite_code_dynamic_udp_lite_part;
 	g_context->code_ir_remainder = c_ip_code_ir_remainder;
 	g_context->code_UO_packet_head = udp_lite_build_cce_packet;
-	g_context->code_UO_packet_tail = udp_lite_code_UO_packet_tail;
+	g_context->code_uo_remainder = udp_lite_code_uo_remainder;
 	g_context->compute_crc_static = udp_compute_crc_static;
 	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
@@ -536,10 +536,10 @@ int udp_lite_build_cce_packet(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_lite_code_UO_packet_tail(const struct c_context *context,
-                                 const unsigned char *next_header,
-                                 unsigned char *const dest,
-                                 int counter)
+int udp_lite_code_uo_remainder(const struct c_context *context,
+                               const unsigned char *next_header,
+                               unsigned char *const dest,
+                               int counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
