@@ -220,6 +220,12 @@ struct c_generic_context
 	/// The length of the next header
 	unsigned int next_header_len;
 
+	/** The handler for encoding profile-specific uncompressed header fields */
+	int (*encode_uncomp_fields)(struct c_context *const context,
+	                            const struct ip_packet *const ip,
+	                            const struct ip_packet *const ip2,
+	                            const unsigned char *const next_header);
+
 	/// @brief The handler used to decide the state that should be used for the
 	///        next packet
 	void (*decide_state)(struct c_context *const context);

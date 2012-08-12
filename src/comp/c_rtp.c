@@ -58,6 +58,11 @@ static uint16_t c_rtp_get_next_sn(const struct c_context *context,
                                   const struct ip_packet *outer_ip,
                                   const struct ip_packet *inner_ip);
 
+static int rtp_encode_uncomp_fields(struct c_context *const context,
+                                    const struct ip_packet *const ip,
+                                    const struct ip_packet *const ip2,
+                                    const unsigned char *const next_header);
+
 int rtp_code_static_rtp_part(const struct c_context *context,
                              const unsigned char *next_header,
                              unsigned char *const dest,
@@ -171,6 +176,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	/* init the RTP-specific variables and functions */
 	g_context->next_header_proto = IPPROTO_UDP;
 	g_context->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
+	g_context->encode_uncomp_fields = rtp_encode_uncomp_fields;
 	g_context->decide_state = rtp_decide_state;
 	g_context->decide_FO_packet = c_rtp_decide_FO_packet;
 	g_context->decide_SO_packet = c_rtp_decide_SO_packet;
@@ -929,6 +935,99 @@ static uint16_t c_rtp_get_next_sn(const struct c_context *context,
 	next_sn = ntohs(rtp->sn);
 
 	return next_sn;
+}
+
+
+/**
+ * @brief Encode uncompressed RTP fields
+ *
+ * Handle the RTP TS field.
+ *
+ * @param context      The compression context
+ * @param ip           The outer IP header
+ * @param ip2          The inner IP header
+ * @param next_header  The next header
+ * @return             ROHC_OK in case of success,
+ *                     ROHC_ERROR otherwise
+ */
+static int rtp_encode_uncomp_fields(struct c_context *const context,
+                                    const struct ip_packet *const ip,
+                                    const struct ip_packet *const ip2,
+                                    const unsigned char *const next_header)
+{
+	struct c_generic_context *g_context;
+	struct sc_rtp_context *rtp_context;
+	struct udphdr *udp;
+	struct rtphdr *rtp;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+	assert(g_context->specific != NULL);
+	rtp_context = g_context->specific;
+	assert(next_header != NULL);
+	udp = (struct udphdr *)  next_header;
+	rtp = (struct rtphdr *) (udp + 1);
+	assert(ip != NULL);
+
+	/* add new TS value to context */
+	c_add_ts(&rtp_context->ts_sc, rtp_context->tmp.timestamp, g_context->sn);
+
+	/* determine the number of TS bits to send wrt compression state */
+	if(rtp_context->ts_sc.state == INIT_TS)
+	{
+		/* TS_STRIDE cannot be computed yet (first packet or TS is constant),
+		 * so send TS only */
+		rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
+		rtp_context->tmp.nr_ts_bits = 32;
+		rohc_debugf(2, "cannot send TS scaled, send TS only\n");
+	}
+	else if(rtp_context->ts_sc.state == INIT_STRIDE)
+	{
+		/* TS and TS_STRIDE will be send */
+		rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
+		rtp_context->tmp.nr_ts_bits = 32;
+		rohc_debugf(2, "cannot send TS scaled, send TS and TS_STRIDE\n");
+	}
+	else /* SEND_SCALED */
+	{
+		/* TS_SCALED value will be send */
+		rtp_context->tmp.ts_send = get_ts_scaled(rtp_context->ts_sc);
+		if(!nb_bits_scaled(rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
+		{
+			const uint32_t ts_send = rtp_context->tmp.ts_send;
+			size_t nr_bits;
+			uint32_t mask;
+
+			/* this is the first TS scaled to be sent, we cannot code it with
+			 * W-LSB and we must find its size (in bits) */
+			for(nr_bits = 1, mask = 1;
+			    nr_bits <= 32 && (ts_send & mask) != ts_send;
+			    nr_bits++, mask |= (1 << (nr_bits - 1)))
+			{
+			}
+			rohc_assert((ts_send & mask) == ts_send, error,
+			            "size of TS scaled (0x%x) not found, this should "
+			            "never happen!", ts_send);
+
+			rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
+			            "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
+			rtp_context->tmp.nr_ts_bits = nr_bits;
+		}
+
+		/* save the new TS_SCALED value */
+		add_scaled(&rtp_context->ts_sc, g_context->sn);
+		rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
+		            rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
+	}
+
+	rohc_debugf(3, "%zd bits are required to encode new TS\n",
+	            rtp_context->tmp.nr_ts_bits);
+
+	return ROHC_OK;
+
+error:
+	return ROHC_ERROR;
 }
 
 
