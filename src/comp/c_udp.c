@@ -135,6 +135,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	g_context->get_next_sn = c_ip_get_next_sn;
 	g_context->code_static_part = udp_code_static_udp_part;
 	g_context->code_dynamic_part = udp_code_dynamic_udp_part;
+	g_context->code_ir_remainder = c_ip_code_ir_remainder;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_UO_packet_tail = udp_code_UO_packet_tail;
 	g_context->compute_crc_static = udp_compute_crc_static;

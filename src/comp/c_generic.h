@@ -253,6 +253,12 @@ struct c_generic_context
 	                         unsigned char *const dest,
 	                         int counter);
 
+	/// @brief The handler used to add the IR/IR-DYN remainder header to the
+	///        ROHC pachet
+	int (*code_ir_remainder)(const struct c_context *context,
+	                         unsigned char *const dest,
+	                         int counter);
+
 	/// @brief The handler used to add an additional header in the head of the
 	///        UO-0, UO-1 and UO-2 packets
 	int (*code_UO_packet_head)(const struct c_context *context,

@@ -41,5 +41,9 @@ uint16_t c_ip_get_next_sn(const struct c_context *context,
                           const struct ip_packet *outer_ip,
                           const struct ip_packet *inner_ip);
 
+int c_ip_code_ir_remainder(const struct c_context *context,
+	                        unsigned char *const dest,
+	                        int counter);
+
 #endif
 

@@ -179,6 +179,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	g_context->get_next_sn = c_rtp_get_next_sn;
 	g_context->code_static_part = rtp_code_static_rtp_part;
 	g_context->code_dynamic_part = rtp_code_dynamic_rtp_part;
+	g_context->code_ir_remainder = NULL;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_UO_packet_tail = udp_code_UO_packet_tail;
 	g_context->compute_crc_static = rtp_compute_crc_static;

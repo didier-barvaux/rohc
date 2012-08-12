@@ -78,6 +78,7 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	g_context->decide_SO_packet = c_ip_decide_SO_packet;
 	g_context->decide_extension = decide_extension;
 	g_context->get_next_sn = c_ip_get_next_sn;
+	g_context->code_ir_remainder = c_ip_code_ir_remainder;
 
 	return 1;
 
@@ -431,6 +432,49 @@ uint16_t c_ip_get_next_sn(const struct c_context *context,
 	}
 
 	return next_sn;
+}
+
+
+/**
+ * @brief Code the remainder header for the IR or IR-DYN packets
+ *
+ * \verbatim
+
+ Remainder of IR/IR-DYN packet (5.7.7.1):
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 1  |             SN                |  2 octets if not RTP
+    +---+---+---+---+---+---+---+---+
+
+\endverbatim
+ *
+ * @param context  The compression context
+ * @param dest     The rohc-packet-under-build buffer
+ * @param counter  The current position in the rohc-packet-under-build buffer
+ * @return         The new position in the rohc-packet-under-build buffer
+ */
+int c_ip_code_ir_remainder(const struct c_context *context,
+	                        unsigned char *const dest,
+	                        int counter)
+{
+	struct c_generic_context *g_context;
+	uint16_t sn;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	assert(dest != NULL);
+
+	g_context = (struct c_generic_context *) context->specific;
+
+	/* part 1 */
+	sn = htons(g_context->sn);
+	memcpy(&dest[counter], &sn, sizeof(uint16_t));
+	counter += 2;
+	rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", g_context->sn,
+	            dest[counter - 2], dest[counter - 1]);
+
+	return counter;
 }
 
 

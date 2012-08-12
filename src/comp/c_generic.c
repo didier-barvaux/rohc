@@ -3373,15 +3373,15 @@ int code_IR_packet(struct c_context *const context,
 		}
 	}
 
-	/* part 8 */
-	if(context->profile->id != ROHC_PROFILE_RTP)
+	/* part 8: IR remainder header */
+	if(g_context->code_ir_remainder != NULL)
 	{
-		uint16_t sn;
-		sn = htons(g_context->sn);
-		memcpy(&dest[counter], &sn, sizeof(uint16_t));
-		counter += 2;
-		rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", g_context->sn,
-		            dest[counter - 2], dest[counter - 1]);
+		counter = g_context->code_ir_remainder(context, dest, counter);
+		if(counter < 0)
+		{
+			rohc_debugf(0, "failed to code IR remainder header\n");
+			goto error;
+		}
 	}
 
 	/* part 5 */
@@ -3513,14 +3513,15 @@ int code_IR_DYN_packet(struct c_context *const context,
 		}
 	}
 
-	/* part 7 */
-	if(context->profile->id != ROHC_PROFILE_RTP)
+	/* part 7: IR-DYN remainder header */
+	if(g_context->code_ir_remainder != NULL)
 	{
-		rohc_debugf(3, "SN = %d\n", g_context->sn);
-		dest[counter] = g_context->sn >> 8;
-		counter++;
-		dest[counter] = g_context->sn & 0xff;
-		counter++;
+		counter = g_context->code_ir_remainder(context, dest, counter);
+		if(counter < 0)
+		{
+			rohc_debugf(0, "failed to code IR remainder header\n");
+			goto error;
+		}
 	}
 
 	/* part 5 */
