@@ -344,8 +344,8 @@ static int udp_lite_parse_dynamic_udp(struct d_generic_context *context,
                                       struct rohc_extr_bits *const bits)
 {
 	struct d_udp_lite_context *udp_lite_context;
-	int dynamic_length;
-	int udp_lite_length;
+	const size_t udplite_dyn_length = 4; /* checksum coverage + checksum */
+	size_t udp_lite_length;
 	int read = 0;
 	int ret;
 
@@ -356,54 +356,36 @@ static int udp_lite_parse_dynamic_udp(struct d_generic_context *context,
 
 	udp_lite_context = context->specific;
 
-	dynamic_length = (udp_lite_context->cfp != 0 ? 2 : 0) + 2;
-
 	/* check the minimal length to decode the UDP-Lite dynamic part */
-	if(length < dynamic_length)
+	if(length < udplite_dyn_length)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 		goto error;
 	}
 
-	/* compute the length of the UDP-Lite packet: the IR and IR-DYN packets
-	 * own a 2-byte SN field after the dynamic chain, the UO* packets do not */
-	udp_lite_length = length - dynamic_length + sizeof(struct udphdr);
-	if(context->packet_type == PACKET_IR ||
-	   context->packet_type == PACKET_IR_DYN)
-	{
-		udp_lite_length -= 2;
-	}
+	/* compute the length of the UDP-Lite packet: UDP-Lite dynamic chain
+	 * contains a 2-byte checksum coverage, a 2-byte checksum and a 2-byte SN
+	 * fields */
+	udp_lite_length = sizeof(struct udphdr) + length - udplite_dyn_length - 2;
 
-	/* checksum coverage if present or uninitialized */
-	if(udp_lite_context->cfp != 0)
-	{
-		/* retrieve the checksum coverage field from the ROHC packet */
-		bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
-		bits->udp_lite_cc_nr = 16;
-		rohc_debugf(2, "checksum coverage = 0x%04x\n", ntohs(bits->udp_lite_cc));
-		read += 2;
-		packet += 2;
+	/* retrieve the checksum coverage field from the ROHC packet */
+	bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
+	bits->udp_lite_cc_nr = 16;
+	rohc_debugf(2, "checksum coverage = 0x%04x\n", ntohs(bits->udp_lite_cc));
+	read += 2;
+	packet += 2;
 
-		/* init the Coverage Field Present (CFP) if uninitialized (see 5.2.2
-		 * in RFC 4019) */
-		if(udp_lite_context->cfp < 0)
-		{
-			udp_lite_context->cfp = (udp_lite_length != ntohs(bits->udp_lite_cc));
-			rohc_debugf(1, "init CFP to %d (length = %d, CC = %d)\n",
-			            udp_lite_context->cfp, udp_lite_length,
-			            ntohs(bits->udp_lite_cc));
-		}
-	}
+	/* init the Coverage Field Present (CFP) (see 5.2.2 in RFC 4019) */
+	udp_lite_context->cfp = (udp_lite_length != ntohs(bits->udp_lite_cc));
+	rohc_debugf(1, "init CFP to %d (length = %d, CC = %d)\n",
+	            udp_lite_context->cfp, udp_lite_length,
+	            ntohs(bits->udp_lite_cc));
 
-	/* init Coverage Field Inferred (CFI) if uninitialized (see 5.2.2 in
-	 * RFC 4019) */
-	if(udp_lite_context->cfi < 0)
-	{
-		udp_lite_context->cfi = (udp_lite_length == ntohs(bits->udp_lite_cc));
-		rohc_debugf(1, "init CFI to %d (length = %d, CC = %d)\n",
-		            udp_lite_context->cfi, udp_lite_length,
-		            ntohs(bits->udp_lite_cc));
-	}
+	/* init Coverage Field Inferred (CFI) (see 5.2.2 in RFC 4019) */
+	udp_lite_context->cfi = (udp_lite_length == ntohs(bits->udp_lite_cc));
+	rohc_debugf(1, "init CFI to %d (length = %d, CC = %d)\n",
+	            udp_lite_context->cfi, udp_lite_length,
+	            ntohs(bits->udp_lite_cc));
 
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
