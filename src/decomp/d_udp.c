@@ -44,10 +44,10 @@ static int udp_parse_dynamic_udp(struct d_generic_context *context,
                                  unsigned int length,
                                  struct rohc_extr_bits *const bits);
 
-static int udp_parse_uo_tail_udp(struct d_generic_context *context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
-                                 struct rohc_extr_bits *const bits);
+static int udp_parse_uo_remainder(struct d_generic_context *context,
+                                  const unsigned char *packet,
+                                  unsigned int length,
+                                  struct rohc_extr_bits *const bits);
 
 static bool udp_decode_values_from_bits(const struct d_context *context,
                                         const struct rohc_extr_bits bits,
@@ -105,7 +105,7 @@ void * d_udp_create(void)
 	context->next_header_len = sizeof(struct udphdr);
 	context->parse_static_next_hdr = udp_parse_static_udp;
 	context->parse_dyn_next_hdr = udp_parse_dynamic_udp;
-	context->parse_uo_tail = udp_parse_uo_tail_udp;
+	context->parse_uo_remainder = udp_parse_uo_remainder;
 	context->decode_values_from_bits = udp_decode_values_from_bits;
 	context->build_next_header = udp_build_uncomp_udp;
 	context->compute_crc_static = udp_compute_crc_static;
@@ -296,10 +296,10 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int udp_parse_uo_tail_udp(struct d_generic_context *context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
-                                 struct rohc_extr_bits *const bits)
+static int udp_parse_uo_remainder(struct d_generic_context *context,
+                                  const unsigned char *packet,
+                                  unsigned int length,
+                                  struct rohc_extr_bits *const bits)
 {
 	struct d_udp_context *udp_context;
 	int read = 0; /* number of bytes read from the packet */

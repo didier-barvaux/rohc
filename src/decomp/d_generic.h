@@ -338,10 +338,10 @@ struct d_generic_context
 	                          struct rohc_extr_bits *const bits);
 
 	/// The handler used to parse the tail of the UO* ROHC packet
-	int (*parse_uo_tail)(struct d_generic_context *context,
-	                     const unsigned char *packet,
-	                     unsigned int length,
-	                     struct rohc_extr_bits *const bits);
+	int (*parse_uo_remainder)(struct d_generic_context *context,
+	                          const unsigned char *packet,
+	                          unsigned int length,
+	                          struct rohc_extr_bits *const bits);
 
 	/** The handler used to decoded bits extracted from ROHC headers */
 	bool (*decode_values_from_bits)(const struct d_context *context,

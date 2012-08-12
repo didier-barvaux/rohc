@@ -62,10 +62,10 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
                                  const unsigned char *packet,
                                  unsigned int length,
                                  struct rohc_extr_bits *const bits);
-static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
-                                 struct rohc_extr_bits *const bits);
+static int rtp_parse_uo_remainder(struct d_generic_context *context,
+                                  const unsigned char *packet,
+                                  unsigned int length,
+                                  struct rohc_extr_bits *const bits);
 
 static bool rtp_decode_values_from_bits(const struct d_context *context,
                                         const struct rohc_extr_bits bits,
@@ -124,7 +124,7 @@ void * d_rtp_create(void)
 	context->next_header_len = nh_len;
 	context->parse_static_next_hdr = rtp_parse_static_rtp;
 	context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
-	context->parse_uo_tail = rtp_parse_uo_tail_rtp;
+	context->parse_uo_remainder = rtp_parse_uo_remainder;
 	context->decode_values_from_bits = rtp_decode_values_from_bits;
 	context->build_next_header = rtp_build_uncomp_rtp;
 	context->compute_crc_static = rtp_compute_crc_static;
@@ -457,10 +457,10 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int rtp_parse_uo_tail_rtp(struct d_generic_context *context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
-                                 struct rohc_extr_bits *const bits)
+static int rtp_parse_uo_remainder(struct d_generic_context *context,
+                                  const unsigned char *packet,
+                                  unsigned int length,
+                                  struct rohc_extr_bits *const bits)
 {
 	struct d_rtp_context *rtp_context;
 	int read = 0; /* number of bytes read from the packet */

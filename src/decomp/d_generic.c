@@ -3758,12 +3758,12 @@ static bool parse_uo0(struct d_generic_context *g_context,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_tail != NULL)
+	if(g_context->parse_uo_remainder != NULL)
 	{
 		int size;
 
-		size = g_context->parse_uo_tail(g_context, rohc_remain_data,
-		                                rohc_remain_len, bits);
+		size = g_context->parse_uo_remainder(g_context, rohc_remain_data,
+		                                     rohc_remain_len, bits);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -4338,12 +4338,12 @@ static bool parse_uo1(struct d_generic_context *g_context,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_tail != NULL)
+	if(g_context->parse_uo_remainder != NULL)
 	{
 		int size;
 
-		size = g_context->parse_uo_tail(g_context, rohc_remain_data,
-		                                rohc_remain_len, bits);
+		size = g_context->parse_uo_remainder(g_context, rohc_remain_data,
+		                                     rohc_remain_len, bits);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
@@ -5214,12 +5214,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 	/* parts 10, 11 and 12: not supported */
 
 	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_tail != NULL)
+	if(g_context->parse_uo_remainder != NULL)
 	{
 		int size;
 
-		size = g_context->parse_uo_tail(g_context, rohc_remain_data,
-		                                rohc_remain_len, bits);
+		size = g_context->parse_uo_remainder(g_context, rohc_remain_data,
+		                                     rohc_remain_len, bits);
 		if(size < 0)
 		{
 			rohc_debugf(0, "cannot decode the tail of UO* packet\n");
