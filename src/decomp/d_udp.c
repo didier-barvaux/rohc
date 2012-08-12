@@ -486,7 +486,6 @@ struct d_profile d_udp_profile =
 	ROHC_PROFILE_UDP,       /* profile ID (see 8 in RFC 3095) */
 	"UDP / Decompressor",   /* profile description */
 	d_generic_decode,       /* profile handlers */
-	d_generic_decode_ir,
 	d_udp_create,
 	d_udp_destroy,
 	d_generic_get_sn,

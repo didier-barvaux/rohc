@@ -444,14 +444,6 @@ int d_generic_decode(struct rohc_decomp *decomp,
                      const size_t large_cid_len,
                      unsigned char *dest);
 
-int d_generic_decode_ir(struct rohc_decomp *decomp,
-                        struct d_context *context,
-                        const unsigned char *const rohc_packet,
-                        const unsigned int rohc_length,
-                        const size_t add_cid_len,
-                        int large_cid_len,
-                        unsigned char *dest);
-
 int d_generic_get_sn(struct d_context *context);
 
 rohc_packet_t find_packet_type(struct rohc_decomp *decomp,

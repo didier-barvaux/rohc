@@ -25,7 +25,41 @@
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 #include "crc.h"
+#include "decode.h" /* for d_is_ir() */
 
+
+/*
+ * Prototypes of private functions
+ */
+
+static int uncompressed_decode(struct rohc_decomp *decomp,
+                               struct d_context *context,
+                               const unsigned char *const rohc_packet,
+                               const unsigned int rohc_length,
+                               const size_t add_cid_len,
+                               const size_t large_cid_len,
+                               unsigned char *dest);
+
+static int uncompressed_decode_ir(struct rohc_decomp *decomp,
+                                  struct d_context *context,
+                                  const unsigned char *const rohc_packet,
+                                  const unsigned int rohc_length,
+                                  const size_t add_cid_len,
+                                  const size_t large_cid_len,
+                                  unsigned char *dest);
+
+static int uncompressed_decode_normal(struct rohc_decomp *decomp,
+                                      struct d_context *context,
+                                      const unsigned char *const rohc_packet,
+                                      const unsigned int rohc_length,
+                                      const size_t add_cid_len,
+                                      const size_t large_cid_len,
+                                      unsigned char *dest);
+
+
+/*
+ * Definitions of private functions
+ */
 
 /**
  * @brief Allocate profile-specific data, nothing to allocate for the
@@ -57,7 +91,7 @@ void uncompressed_free_decode_data(void *context)
 
 
 /**
- * @brief Decode one IR packet.
+ * @brief Decode one IR or Normal packet for the Uncompressed profile.
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -73,13 +107,49 @@ void uncompressed_free_decode_data(void *context)
  *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                       or ROHC_ERROR if an error occurs
  */
-int uncompressed_decode_ir(struct rohc_decomp *decomp,
-                           struct d_context *context,
-                           const unsigned char *const rohc_packet,
-                           const unsigned int rohc_length,
-                           const size_t add_cid_len,
-                           int large_cid_len,
-                           unsigned char *dest)
+static int uncompressed_decode(struct rohc_decomp *decomp,
+                               struct d_context *context,
+                               const unsigned char *const rohc_packet,
+                               const unsigned int rohc_length,
+                               const size_t add_cid_len,
+                               const size_t large_cid_len,
+                               unsigned char *dest)
+{
+	if(d_is_ir(rohc_packet, rohc_length))
+	{
+		return uncompressed_decode_ir(decomp, context, rohc_packet, rohc_length,
+		                              add_cid_len, large_cid_len, dest);
+	}
+	else
+	{
+		return uncompressed_decode_normal(decomp, context,
+		                                  rohc_packet, rohc_length,
+		                                  add_cid_len, large_cid_len, dest);
+	}
+}
+
+
+/**
+ * @brief Decode one IR packet for the Uncompressed profile.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet to decode
+ * @param add_cid_len    The length of the optional Add-CID field
+ * @param large_cid_len  The length of the large CID field
+ * @param dest           The decoded IP packet
+ * @return               The length of the uncompressed IP packet
+ *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
+ *                       or ROHC_ERROR if an error occurs
+ */
+static int uncompressed_decode_ir(struct rohc_decomp *decomp,
+                                  struct d_context *context,
+                                  const unsigned char *const rohc_packet,
+                                  const unsigned int rohc_length,
+                                  const size_t add_cid_len,
+                                  const size_t large_cid_len,
+                                  unsigned char *dest)
 {
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
@@ -141,10 +211,7 @@ error_crc:
 
 
 /**
- * @brief Decode one IR-DYN, UO-0, UO-1 or UOR-2 packet, but not IR packet.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
+ * @brief Decode one Normal packet for the Uncompressed profile.
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
@@ -156,13 +223,13 @@ error_crc:
  * @return               The length of the uncompressed packet
  *                       or ROHC_ERROR if an error occurs
  */
-int uncompressed_decode(struct rohc_decomp *decomp,
-                        struct d_context *context,
-                        const unsigned char *const rohc_packet,
-                        const unsigned int rohc_length,
-                        const size_t add_cid_len,
-                        const size_t large_cid_len,
-                        unsigned char *dest)
+int uncompressed_decode_normal(struct rohc_decomp *decomp,
+                               struct d_context *context,
+                               const unsigned char *const rohc_packet,
+                               const unsigned int rohc_length,
+                               const size_t add_cid_len,
+                               const size_t large_cid_len,
+                               unsigned char *dest)
 {
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
@@ -231,7 +298,6 @@ struct d_profile d_uncomp_profile =
 	ROHC_PROFILE_UNCOMPRESSED,     /* profile ID (see 8 in RFC 3095) */
 	"Uncompressed / Decompressor", /* profile description */
 	uncompressed_decode,           /* profile handlers */
-	uncompressed_decode_ir,
 	uncompressed_allocate_decode_data,
 	uncompressed_free_decode_data,
 	uncompressed_get_sn,

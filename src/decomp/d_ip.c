@@ -150,7 +150,6 @@ struct d_profile d_ip_profile =
 	ROHC_PROFILE_IP,              /* profile ID (see 5 in RFC 3843) */
 	"IP / Decompressor",          /* profile description */
 	d_generic_decode,             /* profile handlers */
-	d_generic_decode_ir,
 	d_ip_create,
 	d_ip_destroy,
 	d_generic_get_sn,

@@ -815,7 +815,6 @@ struct d_profile d_rtp_profile =
 	ROHC_PROFILE_RTP,       /* profile ID (see 8 in RFC 3095) */
 	"RTP / Decompressor",   /* profile description */
 	d_generic_decode,       /* profile handlers */
-	d_generic_decode_ir,
 	d_rtp_create,
 	d_rtp_destroy,
 	d_generic_get_sn,

@@ -681,11 +681,11 @@ int d_decode_header(struct rohc_decomp *decomp,
 		ddata->active->num_recv_ir++;
 
 		/* decode the IR packet thanks to the profile-specific routines */
-		size = ddata->active->profile->decode_ir(decomp, ddata->active,
-		                                         walk, isize,
-		                                         ddata->addcidUsed,
-		                                         ddata->large_cid_size,
-		                                         obuf);
+		size = ddata->active->profile->decode(decomp, ddata->active,
+		                                      walk, isize,
+		                                      ddata->addcidUsed,
+		                                      ddata->large_cid_size,
+		                                      obuf);
 		if(size > 0)
 		{
 			/* the IR decompression was successful,

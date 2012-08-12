@@ -128,6 +128,14 @@
  * Private function prototypes for decoding the different packet types
  */
 
+static int decode_ir(struct rohc_decomp *decomp,
+                     struct d_context *context,
+                     const unsigned char *const rohc_packet,
+                     const unsigned int rohc_length,
+                     const size_t add_cid_len,
+                     const size_t large_cid_len,
+                     unsigned char *dest);
+
 int decode_irdyn(struct rohc_decomp *decomp,
                  struct d_context *context,
                  const unsigned char *const rohc_packet,
@@ -2726,9 +2734,6 @@ int get_bit_index(unsigned char byte, int index)
 /**
  * @brief Decode one IR packet.
  *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
  * Steps:
  *  A. Parsing of ROHC header (TODO split code in parse_ir)
  *  B. Check for correct compressed header (CRC)
@@ -2782,13 +2787,13 @@ int get_bit_index(unsigned char byte, int index)
  *                        or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                        or ROHC_ERROR if another error occurs
  */
-int d_generic_decode_ir(struct rohc_decomp *decomp,
-                        struct d_context *context,
-                        const unsigned char *const rohc_packet,
-                        const unsigned int rohc_length,
-                        const size_t add_cid_len,
-                        int large_cid_len,
-                        unsigned char *dest)
+static int decode_ir(struct rohc_decomp *decomp,
+                     struct d_context *context,
+                     const unsigned char *const rohc_packet,
+                     const unsigned int rohc_length,
+                     const size_t add_cid_len,
+                     const size_t large_cid_len,
+                     unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 
@@ -2816,13 +2821,6 @@ int d_generic_decode_ir(struct rohc_decomp *decomp,
 	bool crc_ok;
 	bool decode_ok;
 	int build_ret;
-
-	rohc_debugf(2, "decode an IR packet\n");
-
-	/* set the packet type */
-	g_context->packet_type = PACKET_IR;
-
-	g_context->current_packet_time = get_microseconds();
 
 
 	/* A. Parsing of ROHC header
@@ -3423,7 +3421,7 @@ error:
 
 
 /**
- * @brief Decode one IR-DYN, UO-0, UO-1 or UOR-2 packet, but not IR packet.
+ * @brief Decode one IR, IR-DYN or UO* packet.
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -3455,26 +3453,39 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	                     const size_t add_cid_len,
 	                     const size_t large_cid_len,
 	                     unsigned char *dest);
-	rohc_packet_t packet_type;
 	int length = ROHC_ERROR;
 
 	g_context->current_packet_time = get_microseconds();
 
+	/* parse the packet according to its type */
+	g_context->packet_type = find_packet_type(decomp, context,
+	                                          rohc_packet, rohc_length,
+	                                          large_cid_len);
+
+	rohc_debugf(2, "decode packet as '%s'\n",
+	            rohc_get_packet_descr(g_context->packet_type));
+
 	/* only the IR packet can be received in the No Context state,
 	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
-	if(context->state == NO_CONTEXT)
+	if(g_context->packet_type != PACKET_IR && context->state == NO_CONTEXT)
 	{
+		rohc_debugf(0, "non-IR packet (%d) received in No Context state\n",
+		            g_context->packet_type);
 		goto error;
 	}
 
-	/* parse the packet according to its type */
-	packet_type = find_packet_type(decomp, context,
-	                               rohc_packet, rohc_length,
-	                               large_cid_len);
-	switch(packet_type)
+
+	switch(g_context->packet_type)
 	{
+		case PACKET_IR:
+			decode_packet = decode_ir;
+			break;
+
+		case PACKET_IR_DYN:
+			decode_packet = decode_irdyn;
+			break;
+
 		case PACKET_UO_0:
-			g_context->packet_type = PACKET_UO_0;
 			if(context->state == STATIC_CONTEXT)
 			{
 				goto error;
@@ -3483,7 +3494,6 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UO_1:
-			g_context->packet_type = PACKET_UO_1;
 			if(context->state  == STATIC_CONTEXT)
 			{
 				goto error;
@@ -3492,17 +3502,22 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UO_1_RTP:
-			g_context->packet_type = PACKET_UO_1_RTP;
+			if(context->state  == STATIC_CONTEXT)
+			{
+				goto error;
+			}
 			decode_packet = decode_uo1;
 			break;
 
 		case PACKET_UO_1_TS:
-			g_context->packet_type = PACKET_UO_1_TS;
+			if(context->state  == STATIC_CONTEXT)
+			{
+				goto error;
+			}
 			decode_packet = decode_uo1;
 			break;
 
 		case PACKET_UO_1_ID:
-			g_context->packet_type = PACKET_UO_1_ID;
 			if(context->state  == STATIC_CONTEXT)
 			{
 				goto error;
@@ -3511,40 +3526,30 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UOR_2:
-			g_context->packet_type = PACKET_UOR_2;
 			decode_packet = decode_uor2;
 			break;
 
 		case PACKET_UOR_2_RTP:
-			g_context->packet_type = PACKET_UOR_2_RTP;
 			decode_packet = decode_uor2;
 			break;
 
 		case PACKET_UOR_2_TS:
-			g_context->packet_type = PACKET_UOR_2_TS;
 			decode_packet = decode_uor2;
 			break;
 
 		case PACKET_UOR_2_ID:
-			g_context->packet_type = PACKET_UOR_2_ID;
 			decode_packet = decode_uor2;
 			break;
 
-		case PACKET_IR_DYN:
-			g_context->packet_type = PACKET_IR_DYN;
-			decode_packet = decode_irdyn;
-			break;
-
 		default:
-			rohc_debugf(0, "unknown packet type (%d)\n", packet_type);
+			rohc_debugf(0, "unknown packet type (%d)\n", g_context->packet_type);
 			goto error;
 	}
 
-	rohc_debugf(2, "decode packet as '%s'\n",
-	            rohc_get_packet_descr(g_context->packet_type));
+	/* let's decode the packet! */
 	length = decode_packet(decomp, context, rohc_packet, rohc_length,
 	                       add_cid_len, large_cid_len, dest);
-	if(length > 0)
+	if(length >= 0)
 	{
 		rohc_debugf(2, "uncompressed packet length = %d bytes\n", length);
 	}

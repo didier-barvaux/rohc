@@ -236,43 +236,7 @@ static void d_udp_lite_destroy(void *const context)
 
 
 /**
- * @brief Decode one IR packet for the UDP-Lite profile.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
- *
- * @param decomp         The ROHC decompressor
- * @param context        The decompression context
- * @param rohc_packet    The ROHC packet to decode
- * @param rohc_length    The length of the ROHC packet to decode
- * @param add_cid_len    The length of the optional Add-CID field
- * @param large_cid_len  The length of the large CID field
- * @param dest           The decoded IP packet
- * @return               The length of the uncompressed IP packet
- *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
- *                       or ROHC_ERROR if another error occurs
- */
-int d_udp_lite_decode_ir(struct rohc_decomp *decomp,
-                         struct d_context *context,
-                         const unsigned char *const rohc_packet,
-                         const unsigned int rohc_length,
-                         const size_t add_cid_len,
-                         int large_cid_len,
-                         unsigned char *dest)
-{
-	struct d_generic_context *g_context = context->specific;
-	struct d_udp_lite_context *udp_lite_context = g_context->specific;
-
-	udp_lite_context->cfp = -1;
-	udp_lite_context->cfi = -1;
-
-	return d_generic_decode_ir(decomp, context, rohc_packet, rohc_length,
-	                           add_cid_len, large_cid_len, dest);
-}
-
-
-/**
- * @brief Decode one IR-DYN, UO-0, UO-1 or UOR-2 packet, but not IR packet.
+ * @brief Decode one IR, IR-DYN or UO* packet for UDP-Lite profile
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -350,7 +314,7 @@ int d_udp_lite_decode(struct rohc_decomp *decomp,
 	packet_type = find_packet_type(decomp, context,
 	                               rohc_remain_data, rohc_remain_len,
 	                               new_large_cid_len);
-	if(packet_type == PACKET_IR_DYN)
+	if(packet_type == PACKET_IR || packet_type == PACKET_IR_DYN)
 	{
 		udp_lite_context->cfp = -1;
 		udp_lite_context->cfi = -1;
@@ -675,7 +639,6 @@ struct d_profile d_udplite_profile =
 	ROHC_PROFILE_UDPLITE,        /* profile ID (see 7 in RFC 4019) */
 	"UDP-Lite / Decompressor",   /* profile description */
 	d_udp_lite_decode,           /* profile handlers */
-	d_udp_lite_decode_ir,
 	d_udp_lite_create,
 	d_udp_lite_destroy,
 	d_generic_get_sn,
