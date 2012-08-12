@@ -306,6 +306,11 @@ struct c_generic_context
  */
 struct list_comp
 {
+	/** Whether the extension list is present in IP header or not */
+	bool is_present;
+	/** Whether the extension list changed in the last IP header or not */
+	bool changed;
+
 	/// The reference list
 	struct c_list *ref_list;
 	/// The current list
@@ -316,10 +321,6 @@ struct list_comp
 	struct rohc_list_item based_table[MAX_ITEM];
 	/// The translation table
 	struct c_translation trans_table[MAX_ITEM];
-	/// Boolean which equals to 1 if the list change
-	int list_compress;
-	/// Boolean which equals to 1 if there is a list, 0 else
-	int islist;
 
 	/// @brief the handler used to get the extension in the IP packet
 	unsigned char * (*get_extension)(const struct ip_packet *ip,
@@ -364,9 +365,6 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
 rohc_ext_t decide_extension(const struct c_context *context);
 
 void ip6_c_init_table(struct list_comp *const comp);
-
-int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
-                                      const struct ip_packet *const ip);
 
 int c_create_current_list(const int index,
                           struct list_comp *const comp,

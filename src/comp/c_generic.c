@@ -269,6 +269,13 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
                                             uint16_t *const offset);
 
 
+/*
+ * Prototypes of private functions related to list compression
+ */
+
+bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
+                                       const struct ip_packet *const ip);
+
 
 /*
  * Definitions of public functions
@@ -433,7 +440,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 		header_info->info.v6.ext_comp->curr_list->first_elt = NULL;
 
 		header_info->info.v6.ext_comp->counter = 0;
-		header_info->info.v6.ext_comp->list_compress = 0;
+		header_info->info.v6.ext_comp->changed = false;
 		ip6_c_init_table(header_info->info.v6.ext_comp);
 		header_info->info.v6.ext_comp->get_extension = get_ipv6_extension;
 		header_info->info.v6.ext_comp->create_item = create_ipv6_item;
@@ -918,20 +925,20 @@ int c_generic_encode(struct c_context *const context,
  *
  * @param comp  The list compressor which is specific to the extension type
  * @param ip    The IP packet to compress
- * @return      \li 1 if a compressed list must be sent,
- *              \li 0 if not,
- *              \li -1 if error
+ * @return      true if the decision was successful taken, false otherwise
  */
-int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
-                                      const struct ip_packet *const ip)
+bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
+                                       const struct ip_packet *const ip)
 {
 	int i;
 	int size;
 	int j;
 	int index_table;
 	const unsigned char *ext;
-	int send_list_compressed = 0;
 	struct list_elt *elt;
+
+	/* default the list does not change */
+	comp->changed = false;
 
 	ext = ip_get_raw_data(ip) + sizeof(struct ip6_hdr);
 
@@ -988,13 +995,13 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	if(index_table == -1)
 	{
 		/* there is no list of IPv6 extension headers */
-		comp->islist = 0;
+		comp->is_present = false;
 	}
 	else
 	{
 		/* there is one extension or more */
 		rohc_debugf(3, "there is at least one IPv6 extension in packet\n");
-		comp->islist = 1;
+		comp->is_present = true;
 
 		/* add new extensions and update modified extensions in current list */
 		ext = comp->get_extension(ip, i);
@@ -1043,7 +1050,7 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 			rohc_debugf(3, "list with gen_id %d was not sent at least L = %d "
 			            "times (%d times), send it compressed\n",
 			            comp->curr_list->gen_id, L, comp->counter);
-			send_list_compressed = 1;
+			comp->changed = true;
 		}
 
 		/* list is sent another time */
@@ -1091,10 +1098,10 @@ int rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	}
 #endif
 
-	return send_list_compressed;
+	return true;
 
 error:
-	return -1;
+	return false;
 }
 
 
@@ -1298,6 +1305,7 @@ int rohc_list_decide_type(struct list_comp *const comp)
 
 	/* sanity checks */
 	assert(comp != NULL);
+	assert(comp->is_present == true);
 
 	if(comp->ref_list->first_elt == NULL)
 	{
@@ -1306,7 +1314,7 @@ int rohc_list_decide_type(struct list_comp *const comp)
 		            "list yet\n");
 		encoding_type = 0;
 	}
-	else if(comp->islist && !comp->list_compress)
+	else if(!comp->changed)
 	{
 		/* the list did not change, so use encoding type 0 */
 		rohc_debugf(1, "use list encoding type 0 because the list did not "
@@ -2991,7 +2999,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	rohc_packet_t packet;
-	unsigned char next_header_type;
+	bool is_fine;
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -3044,75 +3052,43 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 	}
 	rohc_debugf(2, "packet '%s' chosen\n", rohc_get_packet_descr(packet));
 
-	/* IPv6 extension headers: do we need to change the packet type to send
-	   the compressed list? */
-	if(g_context->tmp.nr_of_ip_hdr == 1 &&
-	   g_context->ip_flags.version == IPV6)
+	/* IPv6 extension headers */
+	if(g_context->ip_flags.version == IPV6)
 	{
-		next_header_type = ip->header.v6.ip6_nxt;
-		/* extension list to compress */
-		if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
-		   next_header_type == IPV6_EXT_DESTINATION ||
-		   next_header_type == IPV6_EXT_ROUTING ||
-		   next_header_type == IPV6_EXT_AUTH)
+		/* update context with changes on the outer IPv6 extension headers */
+		is_fine = rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
+		if(!is_fine)
 		{
-			g_context->ip_flags.info.v6.ext_comp->list_compress =
-				rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
-			if(packet != PACKET_IR &&
-			   g_context->ip_flags.info.v6.ext_comp->list_compress)
-			{
-				/* there are some modifications */
-				rohc_debugf(2, "change packet type to IR-DYN because of IPv6 "
-				            "extension headers\n");
-				packet = PACKET_IR_DYN;
-			}
+			rohc_debugf(0, "failed to update context with changes on the outer "
+			            "IPv6 extension headers\n");
+			goto error;
+		}
+		/* does the current packet fit the changes on outer IPv6 extension
+		 * headers? */
+		if(packet != PACKET_IR && g_context->ip_flags.info.v6.ext_comp->changed)
+		{
+			rohc_debugf(2, "change packet type to IR-DYN because outer IPv6 "
+			            "extension headers changed\n");
+			packet = PACKET_IR_DYN;
 		}
 	}
-	else if(g_context->tmp.nr_of_ip_hdr == 2 &&
-	        (g_context->ip_flags.version == IPV6 ||
-	         g_context->ip2_flags.version == IPV6))
+	if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->ip2_flags.version == IPV6)
 	{
-		if(g_context->ip_flags.version == IPV6)
+		/* update context with changes on the inner IPv6 extension headers */
+		is_fine = rohc_list_decide_ipv6_compression(g_context->ip2_flags.info.v6.ext_comp, ip2);
+		if(!is_fine)
 		{
-			next_header_type = ip->header.v6.ip6_nxt;
-			/* extension list to compress */
-			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
-			   next_header_type == IPV6_EXT_DESTINATION ||
-			   next_header_type == IPV6_EXT_ROUTING ||
-			   next_header_type == IPV6_EXT_AUTH)
-			{
-				g_context->ip_flags.info.v6.ext_comp->list_compress =
-					rohc_list_decide_ipv6_compression(g_context->ip_flags.info.v6.ext_comp, ip);
-				if(packet != PACKET_IR &&
-				   g_context->ip_flags.info.v6.ext_comp->list_compress)
-				{
-					/* there are some modifications */
-					rohc_debugf(2, "change packet type to IR-DYN because of "
-					            "IPv6 extension headers\n");
-					packet = PACKET_IR_DYN;
-				}
-			}
+			rohc_debugf(0, "failed to update context with changes on the inner "
+			            "IPv6 extension headers\n");
+			goto error;
 		}
-		if(g_context->ip2_flags.version == IPV6)
+		/* does the current packet fit the changes on inner IPv6 extension
+		 * headers? */
+		if(packet != PACKET_IR && g_context->ip2_flags.info.v6.ext_comp->changed)
 		{
-			next_header_type = ip2->header.v6.ip6_nxt;
-			/* extension list to compress */
-			if(next_header_type == IPV6_EXT_HOP_BY_HOP ||
-			   next_header_type == IPV6_EXT_DESTINATION ||
-			   next_header_type == IPV6_EXT_ROUTING ||
-			   next_header_type == IPV6_EXT_AUTH)
-			{
-				g_context->ip2_flags.info.v6.ext_comp->list_compress =
-					rohc_list_decide_ipv6_compression(g_context->ip2_flags.info.v6.ext_comp, ip2);
-				if(packet != PACKET_IR &&
-				   g_context->ip2_flags.info.v6.ext_comp->list_compress)
-				{
-					/* there are some modifications */
-					rohc_debugf(2, "change packet type to IR-DYN because of "
-					            "IPv6 extension headers\n");
-					packet = PACKET_IR_DYN;
-				}
-			}
+			rohc_debugf(2, "change packet type to IR-DYN because inner IPv6 "
+			            "extension headers changed\n");
+			packet = PACKET_IR_DYN;
 		}
 	}
 
@@ -3873,13 +3849,30 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 	size_dyn_ip6_part++;
 
 	/* part 3: Generic extension header list */
-	if(header_info->info.v6.ext_comp->list_compress < 0)
+	if(!header_info->info.v6.ext_comp->is_present)
 	{
-		rohc_debugf(0, "extension header list: error with extension\n");
-		goto error;
+		/* no extension, write a zero byte in packet */
+		rohc_debugf(3, "extension header list: no extension to encode\n");
+		dest[counter] = 0x00;
+		counter++;
+		size_dyn_ip6_part++;
 	}
-	else if(header_info->info.v6.ext_comp->list_compress)
+	else if(!header_info->info.v6.ext_comp->changed)
 	{
+		/* extension list is present, but did not change */
+		size = list_get_size(header_info->info.v6.ext_comp->ref_list);
+		rohc_debugf(3, "extension header list: same extension than previously\n");
+		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
+		                           0, size);
+		if(counter < 0)
+		{
+			rohc_debugf(0, "failed to encode list\n");
+			goto error;
+		}
+	}
+	else
+	{
+		/* extension list is present, and changed */
 		rohc_debugf(3, "extension header list: there is an extension to encode\n");
 		size = list_get_size(header_info->info.v6.ext_comp->curr_list);
 		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
@@ -3893,26 +3886,6 @@ int code_ipv6_dynamic_part(const struct c_context *context,
 		size_dyn_ip6_part -= counter_org;
 		rohc_debugf(3, "extension header list: compressed list size = %d\n",
 		            size_dyn_ip6_part - 2);
-	}
-	else if(header_info->info.v6.ext_comp->islist)
-	{
-		size = list_get_size(header_info->info.v6.ext_comp->ref_list);
-		rohc_debugf(3, "extension header list: same extension than previously\n");
-		counter = rohc_list_encode(header_info->info.v6.ext_comp, dest, counter,
-		                           0, size);
-		if(counter < 0)
-		{
-			rohc_debugf(0, "failed to encode list\n");
-			goto error;
-		}
-	}
-	else /* no extension */
-	{
-		/* no extension, write a zero byte in packet */
-		rohc_debugf(3, "extension header list: no extension to encode\n");
-		dest[counter] = 0x00;
-		counter++;
-		size_dyn_ip6_part++;
 	}
 
 	rohc_debugf(3, "TC = 0x%02x, HL = 0x%02x, size dyn ip6 part = %d\n",
