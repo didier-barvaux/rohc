@@ -884,6 +884,8 @@ int c_generic_encode(struct c_context *const context,
 	else /* IPV6 */
 	{
 		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(ip));
+		/* replace Next Header by the one of the last extension header */
+		g_context->ip_flags.info.v6.old_ip.ip6_nxt = ip_get_protocol(ip);
 	}
 
 	if(g_context->tmp.nr_of_ip_hdr > 1)
@@ -898,6 +900,8 @@ int c_generic_encode(struct c_context *const context,
 		else /* IPV6 */
 		{
 			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(inner_ip));
+			/* replace Next Header by the one of the last extension header */
+			g_context->ip2_flags.info.v6.old_ip.ip6_nxt = ip_get_protocol(inner_ip);
 		}
 	}
 
@@ -6964,8 +6968,11 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 {
 	unsigned short ret_value = 0;
 	uint8_t old_tos;
+	uint8_t new_tos;
 	uint8_t old_ttl;
+	uint8_t new_ttl;
 	uint8_t old_protocol;
+	uint8_t new_protocol;
 
 	if(ip_get_version(ip) == IPV4)
 	{
@@ -6986,16 +6993,27 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 		old_protocol = old_ip->ip6_nxt;
 	}
 
-	if(old_tos != ip_get_tos(ip))
+	new_tos = ip_get_tos(ip);
+	if(old_tos != new_tos)
 	{
+		rohc_debugf(3, "TOS/TC changed from 0x%02x to 0x%02x\n",
+		            old_tos, new_tos);
 		ret_value |= MOD_TOS;
 	}
-	if(old_ttl != ip_get_ttl(ip))
+
+	new_ttl = ip_get_ttl(ip);
+	if(old_ttl != new_ttl)
 	{
+		rohc_debugf(3, "TTL/HL changed from 0x%02x to 0x%02x\n",
+		            old_ttl, new_ttl);
 		ret_value |= MOD_TTL;
 	}
-	if(old_protocol != ip_get_protocol(ip))
+
+	new_protocol = ip_get_protocol(ip);
+	if(old_protocol != new_protocol)
 	{
+		rohc_debugf(3, "Protocol/NH changed from 0x%02x to 0x%02x\n",
+		            old_protocol, new_protocol);
 		ret_value |= MOD_PROTOCOL;
 	}
 
