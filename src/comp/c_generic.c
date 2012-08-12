@@ -259,9 +259,9 @@ static void detect_ip_id_behaviour(struct ip_header_info *const header_info,
 	__attribute__((nonnull(1, 2)));
 static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id);
 
-static int update_variables(struct c_context *const context,
-                            const struct ip_packet *const ip,
-                            const struct ip_packet *const ip2);
+static int encode_uncomp_fields(struct c_context *const context,
+                                const struct ip_packet *const ip,
+                                const struct ip_packet *const ip2);
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
                                             size_t *const nr_bits,
@@ -848,11 +848,8 @@ int c_generic_encode(struct c_context *const context,
 		rohc_debugf(2, "context_sn = %d\n", g_context->sn);
 	}
 
-	/* STEP 4:
-	 *  - compute how many bits are needed to send the IP-ID and SN fields
-	 *  - update the sliding windows
-	 */
-	ret = update_variables(context, ip, inner_ip);
+	/* STEP 4: compute how many bits are needed to send header fields */
+	ret = encode_uncomp_fields(context, ip, inner_ip);
 	if(ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to update the compression context\n");
@@ -7207,10 +7204,7 @@ static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id)
 
 
 /**
- * @brief Update some context variables.
- *
- * This function is only used in encode. Everything in this function could
- * be in encode but to make it more readable we have it here instead.
+ * @brief Encode uncompressed fields with the corresponding encoding scheme
  *
  * @param context The compression context
  * @param ip      The outer IP header
@@ -7218,9 +7212,9 @@ static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id)
  * @return        ROHC_OK in case of success,
  *                ROHC_ERROR otherwise
  */
-static int update_variables(struct c_context *const context,
-                            const struct ip_packet *const ip,
-                            const struct ip_packet *const ip2)
+static int encode_uncomp_fields(struct c_context *const context,
+                                const struct ip_packet *const ip,
+                                const struct ip_packet *const ip2)
 {
 	struct c_generic_context *g_context;
 	bool wlsb_k_ok;
