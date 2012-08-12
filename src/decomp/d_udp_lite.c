@@ -426,7 +426,7 @@ static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
                                       struct rohc_extr_bits *const bits)
 {
 	struct d_udp_lite_context *udp_lite_context;
-	int dynamic_length;
+	size_t remainder_length; /* optional checksum coverage + checksum */
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
@@ -436,10 +436,10 @@ static int udp_lite_parse_uo_tail_udp(struct d_generic_context *context,
 
 	udp_lite_context = context->specific;
 
-	dynamic_length = (udp_lite_context->cfp != 0 ? 2 : 0) + 2;
+	remainder_length = (udp_lite_context->cfp != 0 ? 2 : 0) + 2;
 
 	/* check the minimal length to decode the tail of UO* packet */
-	if(length < dynamic_length)
+	if(length < remainder_length)
 	{
 		rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
 		goto error;
