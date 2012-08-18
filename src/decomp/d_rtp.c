@@ -502,7 +502,6 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 {
 	struct d_rtp_context *rtp_context;
 	int read = 0; /* number of bytes read from the packet */
-	unsigned char byte;
 	int rx;
 
 	assert(context != NULL);
@@ -537,27 +536,26 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 	}
 
 	/* part 2 */
-	byte = *packet;
-	bits->rtp_version = (byte >> 6) & 0x03;
+	bits->rtp_version = GET_BIT_6_7(packet);
 	bits->rtp_version_nr = 2;
 	rohc_debugf(3, "version = 0x%x\n", bits->rtp_version);
-	bits->rtp_p = (byte >> 5) & 0x01;
+	bits->rtp_p = GET_REAL(GET_BIT_5(packet));
 	bits->rtp_p_nr = 1;
 	rohc_debugf(3, "padding = 0x%x\n", bits->rtp_p);
-	bits->rtp_cc = byte & 0x0f;
+	bits->rtp_cc = GET_BIT_0_3(packet);
 	bits->rtp_cc_nr = 4;
 	rohc_debugf(3, "CSRC Count = 0x%x\n", bits->rtp_cc);
-	rx = (byte >> 4) & 0x01;
+	rx = GET_REAL(GET_BIT_4(packet));
+	rohc_debugf(3, "RX = 0x%x\n", rx);
 	packet++;
 	read++;
 	length--;
 
 	/* part 3 */
-	byte = *packet;
-	bits->rtp_m = (byte >> 7) & 0x01;
+	bits->rtp_m = GET_REAL(GET_BIT_7(packet));
 	bits->rtp_m_nr = 1;
 	rohc_debugf(3, "M = 0x%x\n", bits->rtp_m);
-	bits->rtp_pt = byte & 0x7f;
+	bits->rtp_pt = GET_BIT_0_6(packet);
 	bits->rtp_pt_nr = 7;
 	rohc_debugf(3, "payload type = 0x%x\n", bits->rtp_pt);
 	packet++;
@@ -584,7 +582,8 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)
 	{
-		rohc_debugf(0, "generic CSRC list not supported yet\n");
+		rohc_debugf(0, "generic CSRC list not supported yet, but first CSRC "
+		            "byte was set to 0x%02x\n", GET_BIT_0_7(packet));
 		goto error;
 	}
 	packet++;
@@ -604,11 +603,10 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 			goto error;
 		}
 
-		byte = *packet;
-		x = (byte & 0x10) >> 4;
-		mode = (byte >> 2) & 0x03;
-		tis = (byte >> 1) & 0x01;
-		tss = byte & 0x01;
+		x = GET_REAL(GET_BIT_4(packet));
+		mode = ((*packet) >> 2) & 0x03;
+		tis = GET_REAL(GET_BIT_1(packet));
+		tss = GET_REAL(GET_BIT_0(packet));
 		rohc_debugf(3, "x = %d, rohc_mode = %d, tis = %d, tss = %d\n",
 		            x, mode, tis, tss);
 		read++;
