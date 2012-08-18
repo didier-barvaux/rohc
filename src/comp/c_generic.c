@@ -210,7 +210,7 @@ int header_flags(const struct c_context *context,
                  struct ip_header_info *const header_info,
                  const unsigned short changed_f,
                  const struct ip_packet *ip,
-                 const int is_outer,
+                 const int ip2_or_I2,
                  const size_t nr_ip_id_bits,
                  unsigned char *const dest,
                  int counter);
@@ -2942,7 +2942,7 @@ void decide_state(struct c_context *const context)
 	}
 	else if(curr_state == FO && g_context->fo_count >= MAX_FO_COUNT)
 	{
-		if(g_context->tmp.send_static || g_context->tmp.send_static)
+		if(g_context->tmp.send_static || g_context->tmp.send_dynamic)
 		{
 			rohc_debugf(3, "%d STATIC and %d DYNAMIC fields changed now or in "
 			            "the last few packets, so stay in FO state\n",
@@ -5899,6 +5899,7 @@ int code_EXT3_packet(const struct c_context *context,
 	int have_outer = 0;
 	int S;
 	int I;
+	int I2 = 0;
 	int is_rtp;
 	int rtp = 0;     /* RTP bit */
 	int rts = 0;     /* R-TS bit */
@@ -6061,6 +6062,26 @@ int code_EXT3_packet(const struct c_context *context,
 			{
 				I = 0;
 			}
+
+			/* the innermost IPv4 header with non-random IP-ID is the inner IP
+			 * header, maybe there is a need for a second IP-ID for for the
+			 * outer IP header */
+			if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 0)
+			{
+				/* outer IP header is also IPv4 with non-random IP-ID */
+				if(nr_ip_id_bits > 0)
+				{
+					I2 = 1;
+				}
+				else if(g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
+				{
+					I2 = 1;
+				}
+				else
+				{
+					I2 = 0;
+				}
+			}
 		}
 		else if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 0)
 		{
@@ -6084,37 +6105,45 @@ int code_EXT3_packet(const struct c_context *context,
 			{
 				I = 0;
 			}
+
+			/* the innermost IPv4 header with non-random IP-ID is the outer IP
+			 * header, so there is no need for a second IP-ID field */
+			I2 = 0;
 		}
 		else
 		{
 			/* none of the 2 IP headers are IPv4 with non-random IP-ID */
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_NONE;
 			I = 0;
+			I2 = 0;
 		}
 		f_byte |= (I & 0x01) << 2;
 
 		/* ip2 bit if non-RTP */
-		if(!is_rtp)
+		rohc_debugf(3, "check for changed fields in the outer IP header\n");
+		if(changed_dynamic_one_hdr(context, changed_f, &g_context->ip_flags, ip) ||
+		   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
 		{
-			rohc_debugf(3, "check for changed fields in the outer IP header\n");
-			if(changed_dynamic_one_hdr(context, changed_f, &g_context->ip_flags, ip) ||
-			   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
+			have_outer = 1;
+			if(!is_rtp)
 			{
-				have_outer = 1;
 				f_byte |= 0x01;
 			}
 		}
 
-		/* ip bit */
+		/* ip bit
+		 * (force ip=1 if ip2=1 and RTP profile, otherwise ip2 is not send) */
 		rohc_debugf(3, "check for changed fields in the inner IP header\n");
 		if(changed_dynamic_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
-		   changed_static_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2))
+		   changed_static_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
+		   (is_rtp && ip2))
 		{
 			have_inner = 1;
 			f_byte = f_byte | 0x02;
 		}
 	}
-	rohc_debugf(3, "I = %d, ip = %d, ip2 = %d\n", I, have_inner, have_outer);
+	rohc_debugf(3, "I = %d, ip = %d, I2 = %d, ip2 = %d\n", I, have_inner,
+	            I2, have_outer);
 
 	rohc_debugf(3, "part 1 = 0x%02x\n", f_byte);
 	dest[counter] = f_byte;
@@ -6126,7 +6155,7 @@ int code_EXT3_packet(const struct c_context *context,
 		if(have_inner)
 		{
 			counter = header_flags(context, &g_context->ip_flags, changed_f, ip,
-			                       0, nr_ip_id_bits, dest, counter);
+			                       have_outer, nr_ip_id_bits, dest, counter);
 		}
 
 		/* part 3: only one IP header */
@@ -6220,20 +6249,14 @@ int code_EXT3_packet(const struct c_context *context,
 		if(have_inner)
 		{
 			counter = header_flags(context, &g_context->ip2_flags, changed_f2, ip2,
-			                       0, nr_ip_id_bits2, dest, counter);
-
-			/* add ip2 flag in inner IP header flags if needed */
-			if(is_rtp && have_outer)
-			{
-				dest[counter - 1] |= 0x01;
-			}
+			                       have_outer, nr_ip_id_bits2, dest, counter);
 		}
 
 		/* part 3 */
 		if(have_outer)
 		{
 			counter = header_flags(context, &g_context->ip_flags, changed_f, ip,
-			                       1, nr_ip_id_bits, dest, counter);
+			                       I2, nr_ip_id_bits, dest, counter);
 		}
 
 		/* part 4 */
@@ -6513,7 +6536,7 @@ error:
 
     +-----+-----+-----+-----+-----+-----+-----+-----+
  1  |            Inner IP header flags        |     |  if ip = 1
-    | TOS | TTL | DF  | PR  | IPX | NBO | RND | 0** |  0** reserved
+    | TOS | TTL | DF  | PR  | IPX | NBO | RND | ip2 |  ip2 = 0 if non-RTP
     +-----+-----+-----+-----+-----+-----+-----+-----+
 
  or for outer flags:
@@ -6530,7 +6553,8 @@ error:
  * @param changed_f      The fields that changed, created by the function
  *                       changed_fields
  * @param ip             One inner or outer IP header
- * @param is_outer       Whether the IP header is the outer header or not
+ * @param ip2_or_I2      Whether the ip2 (inner, RTP only) or I2 (outer) flag
+ *                       is set or not
  * @param nr_ip_id_bits  The number of bits needed to transmit the IP-ID field
  * @param dest           The rohc-packet-under-build buffer
  * @param counter        The current position in the rohc-packet-under-build
@@ -6543,7 +6567,7 @@ int header_flags(const struct c_context *context,
                  struct ip_header_info *const header_info,
                  const unsigned short changed_f,
                  const struct ip_packet *ip,
-                 const int is_outer,
+                 const int ip2_or_I2,
                  const size_t nr_ip_id_bits,
                  unsigned char *const dest,
                  int counter)
@@ -6579,23 +6603,17 @@ int header_flags(const struct c_context *context,
 
 		header_info->info.v4.rnd_count++;
 		flags |= header_info->info.v4.rnd << 1;
-
-		/* only for outer flags (only 2) */
-		if(is_outer)
-		{
-			if((nr_ip_id_bits > 0 && header_info->info.v4.rnd == 0) ||
-			   ((header_info->info.v4.rnd_count - 1) < MAX_FO_COUNT &&
-			    header_info->info.v4.rnd == 0))
-			{
-				flags |= 0x01;
-			}
-		}
 	}
 
+	/* the ip2 flag for inner IP flags if non-RTP profile,
+	 * the I2 flag for outer IP flags */
+	flags |= ip2_or_I2 & 0x01;
+
 	rohc_debugf(2, "Header flags: TOS = %d, TTL = %d, DF = %d, PR = %d, "
-	            "IPX = %d, NBO = %d, RND = %d\n", (flags >> 7) & 0x1,
-	            (flags >> 6) & 0x1, (flags >> 5) & 0x1, (flags >> 4) & 0x1,
-	            (flags >> 3) & 0x1, (flags >> 2) & 0x1, (flags >> 1) & 0x1);
+	            "IPX = %d, NBO = %d, RND = %d, ip2/I2 = %d\n",
+	            (flags >> 7) & 0x1, (flags >> 6) & 0x1, (flags >> 5) & 0x1,
+	            (flags >> 4) & 0x1, (flags >> 3) & 0x1, (flags >> 2) & 0x1,
+	            (flags >> 1) & 0x1, flags & 0x1);
 
 	/* for inner and outer flags (1 & 2) */
 	dest[counter] = flags;

@@ -137,6 +137,14 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			else
 			{
 				/* TS is changing and TS_STRIDE is OK */
+
+				/* reset TS_STRIDE transmission counter if TS_STRIDE changes */
+				if(ts_sc->ts_delta != ts_sc->ts_stride)
+				{
+					rohc_debugf(2, "/!\\ TS_STRIDE changed\n");
+					ts_sc->nr_init_stride_packets = 0;
+				}
+
 				rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_delta);
 				ts_sc->ts_stride = ts_sc->ts_delta;
 				ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;

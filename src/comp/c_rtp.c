@@ -1141,10 +1141,7 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 
 	/* part 2 */
 	byte = 0;
-	if(!is_ts_constant(rtp_context->ts_sc) &&
-	   (rtp_context->ts_sc.state == INIT_STRIDE ||
-	    (g_context->tmp.packet_type == PACKET_IR &&
-	     rtp_context->ts_sc.state == SEND_SCALED)))
+	if(rtp_context->ts_sc.state == INIT_STRIDE)
 	{
 		/* send ts_stride */
 		rx_byte = 1;
@@ -1191,7 +1188,7 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 
 		/* part 7 */
 		tis = 0; /* TIS flag not supported yet */
-		tss = rtp_context->ts_sc.state != INIT_TS ? 1 : 0;
+		tss = (rtp_context->ts_sc.state == INIT_STRIDE);
 
 		byte = 0;
 		byte |= (rtp->extension & 0x01) << 4;
@@ -1239,24 +1236,21 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			counter += ts_stride_sdvl_len;
 
 			/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
-			if(rtp_context->ts_sc.state == INIT_STRIDE)
+			rtp_context->ts_sc.nr_init_stride_packets++;
+			if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
 			{
-				rtp_context->ts_sc.nr_init_stride_packets++;
-				if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
-				{
-					rohc_debugf(3, "TS_STRIDE transmitted at least %u times, so change "
-					            "from state INIT_STRIDE to SEND_SCALED\n",
-					            ROHC_INIT_TS_STRIDE_MIN);
-					rtp_context->ts_sc.state = SEND_SCALED;
-				}
-				else
-				{
-					rohc_debugf(3, "TS_STRIDE transmitted only %zd times, so stay in "
-					            "state INIT_STRIDE (at least %u times are required "
-					            "to change to state SEND_SCALED)\n",
-					            rtp_context->ts_sc.nr_init_stride_packets,
-					            ROHC_INIT_TS_STRIDE_MIN);
-				}
+				rohc_debugf(3, "TS_STRIDE transmitted at least %u times, so change "
+				            "from state INIT_STRIDE to SEND_SCALED\n",
+				            ROHC_INIT_TS_STRIDE_MIN);
+				rtp_context->ts_sc.state = SEND_SCALED;
+			}
+			else
+			{
+				rohc_debugf(3, "TS_STRIDE transmitted only %zd times, so stay in "
+				            "state INIT_STRIDE (at least %u times are required "
+				            "to change to state SEND_SCALED)\n",
+				            rtp_context->ts_sc.nr_init_stride_packets,
+				            ROHC_INIT_TS_STRIDE_MIN);
 			}
 		}
 

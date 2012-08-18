@@ -6190,8 +6190,9 @@ static int parse_extension3(struct rohc_decomp *decomp,
 			{
 				ip2 = 0;
 			}
-			rohc_debugf(3, "S = %d, R-TS = %d, Tsc = %d, I = %d, ip = %d, rtp = %d\n",
-			            S, rts, bits->is_ts_scaled, I, ip, rtp);
+			rohc_debugf(3, "S = %d, R-TS = %d, Tsc = %d, I = %d, ip = %d, "
+			            "rtp = %d, ip2 = %d\n",
+			            S, rts, bits->is_ts_scaled, I, ip, rtp, ip2);
 			break;
 		}
 
@@ -6606,8 +6607,9 @@ static int parse_inner_header_flags(struct d_context *context,
 	is_ipx = GET_REAL(GET_BIT_3(flags));
 	nbo = GET_REAL(GET_BIT_2(flags));
 	rnd = GET_REAL(GET_BIT_1(flags));
-	rohc_debugf(3, "header flags: TOS = %d, TTL = %d, PR = %d, IPX = %d\n",
-	            is_tos, is_ttl, is_pr, is_ipx);
+	rohc_debugf(3, "header flags: TOS = %d, TTL = %d, PR = %d, IPX = %d, "
+	            "NBO = %d, RND = %d\n", is_tos, is_ttl, is_pr, is_ipx,
+	            nbo, rnd);
 
 	/* force the NBO flag to 1 if RND is detected */
 	if(rnd)
@@ -6784,6 +6786,15 @@ static int parse_outer_header_flags(struct d_context *context,
 			            "IP header is IPv6\n");
 			goto error;
 		}
+
+		assert(bits->rnd_nr == 1);
+		if(bits->rnd)
+		{
+			rohc_debugf(0, "IP-ID field present (I2 = 1) and "
+			            "IPv4 header got a random IP-ID\n");
+			goto error;
+		}
+
 
 		if(bits->id_nr > 0 && bits->id != 0)
 		{
