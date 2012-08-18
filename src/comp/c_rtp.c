@@ -1381,6 +1381,11 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 
 	/* we verify if ts_stride changed */
 	rtp_context->tmp.timestamp = ntohl(rtp->timestamp);
+	if(rtp_context->ts_sc.state != SEND_SCALED)
+	{
+		rohc_debugf(3, "TS_STRIDE changed now or in the last few packets\n");
+		fields++;
+	}
 
 	rohc_debugf(2, "%d RTP dynamic fields changed\n", fields);
 

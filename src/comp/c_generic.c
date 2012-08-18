@@ -2926,46 +2926,56 @@ void decide_state(struct c_context *const context)
 
 	if(curr_state == IR && g_context->ir_count >= MAX_IR_COUNT)
 	{
-		if(g_context->tmp.send_dynamic)
+		if(g_context->tmp.send_static)
 		{
-			next_state = FO;
+			rohc_debugf(3, "%d STATIC fields changed now or in the last few "
+			            "packets, so stay in IR state\n",
+			            g_context->tmp.send_static);
+			next_state = IR;
 		}
-		else if(g_context->tmp.send_static)
+		else if(g_context->tmp.send_dynamic)
 		{
+			rohc_debugf(3, "no STATIC field, but %d DYNAMIC fields changed now "
+			            "or in the last few packets, so go in FO state\n",
+			            g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
 		else
 		{
+			rohc_debugf(3, "no STATIC nor DYNAMIC field changed in the last few "
+			            "packets, so go in SO state\n");
 			next_state = SO;
 		}
 	}
 	else if(curr_state == FO && g_context->fo_count >= MAX_FO_COUNT)
 	{
-		if(g_context->tmp.send_dynamic)
+		if(g_context->tmp.send_static || g_context->tmp.send_static)
 		{
-			next_state = FO;
-		}
-		else if(g_context->tmp.send_static)
-		{
+			rohc_debugf(3, "%d STATIC and %d DYNAMIC fields changed now or in "
+			            "the last few packets, so stay in FO state\n",
+			            g_context->tmp.send_static, g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
 		else
 		{
+			rohc_debugf(3, "no STATIC nor DYNAMIC field changed in the last few "
+			            "packets, so go in SO state\n");
 			next_state = SO;
 		}
 	}
 	else if(curr_state == SO)
 	{
-		if(g_context->tmp.send_dynamic)
+		if(g_context->tmp.send_static || g_context->tmp.send_dynamic)
 		{
-			next_state = FO;
-		}
-		else if(g_context->tmp.send_static)
-		{
+			rohc_debugf(3, "%d STATIC and %d DYNAMIC fields changed now or in "
+			            "the last few packets, so go in FO state\n",
+			            g_context->tmp.send_static, g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
 		else
 		{
+			rohc_debugf(3, "no STATIC nor DYNAMIC field changed in the last few "
+			            "packets, so stay in SO state\n");
 			next_state = SO;
 		}
 	}
