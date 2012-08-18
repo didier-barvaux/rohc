@@ -547,7 +547,6 @@ int c_generic_create(struct c_context *const context,
 	/* step 3 */
 	g_context->go_back_fo_count = 0;
 	g_context->go_back_ir_count = 0;
-	g_context->ir_dyn_count = 0;
 
 	/* step 4 */
 	if(!c_init_header_info(&g_context->ip_flags, ip,
@@ -2835,11 +2834,6 @@ void c_generic_feedback(struct c_context *const context,
 					if(context->state == SO)
 					{
 						change_state(context, FO);
-						g_context->ir_dyn_count = 0;
-					}
-					else if(context->state == FO)
-					{
-						g_context->ir_dyn_count = 0;
 					}
 					break;
 
@@ -2883,7 +2877,6 @@ void periodic_down_transition(struct c_context *context)
 	{
 		rohc_debugf(1, "periodic change to FO state\n");
 		g_context->go_back_fo_count = 0;
-		g_context->ir_dyn_count = 0;
 		change_state(context, FO);
 	}
 	else if(g_context->go_back_ir_count >=

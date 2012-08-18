@@ -198,9 +198,6 @@ struct c_generic_context
 	///        periodic refreshes of the context
 	/// @see periodic_down_transition
 	int go_back_ir_count;
-	/// @brief The minimal number of IR-DYN packets the compressor must sent
-	///        before sending UO* packets
-	int ir_dyn_count;
 
 	/// Information about the outer IP header
 	struct ip_header_info ip_flags;

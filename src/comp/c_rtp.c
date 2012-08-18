@@ -337,18 +337,9 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 
 	if(g_context->tmp.send_static)
 	{
-		g_context->ir_dyn_count = 0;
 		packet = PACKET_UOR_2_RTP;
 		rohc_debugf(3, "choose packet UOR-2-RTP because at least one static "
 		            "field changed\n");
-	}
-	else if(g_context->ir_dyn_count < MAX_FO_COUNT)
-	{
-		g_context->ir_dyn_count++;
-		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because not enough IR-DYN "
-		            "packets were transmitted yet (%d / %d)\n",
-		            g_context->ir_dyn_count, MAX_FO_COUNT);
 	}
 	else if(nr_of_ip_hdr == 1 && g_context->tmp.send_dynamic > 2)
 	{
