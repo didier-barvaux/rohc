@@ -6878,8 +6878,13 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 	{
 		if(is_changed(changed_fields, MOD_TOS))
 		{
+			rohc_debugf(1, "TOS/TC changed in the current packet\n");
 			header_info->tos_count = 0;
 			g_context->fo_count = 0;
+		}
+		else
+		{
+			rohc_debugf(1, "TOS/TC changed in the last few packets\n");
 		}
 		nb_fields += 1;
 	}
@@ -6890,8 +6895,13 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 	{
 		if(is_changed(changed_fields, MOD_TTL))
 		{
+			rohc_debugf(1, "TTL/HL changed in the current packet\n");
 			header_info->ttl_count = 0;
 			g_context->fo_count = 0;
+		}
+		else
+		{
+			rohc_debugf(1, "TTL/HL changed in the last few packets\n");
 		}
 		nb_fields += 1;
 	}
@@ -6908,8 +6918,13 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 		{
 			if(df != old_df)
 			{
+				rohc_debugf(1, "DF changed in the current packet\n");
 				header_info->info.v4.df_count = 0;
 				g_context->fo_count = 0;
+			}
+			else
+			{
+				rohc_debugf(1, "DF changed in the last few packets\n");
 			}
 			nb_fields += 1;
 		}
@@ -6920,11 +6935,15 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 		{
 			if(header_info->info.v4.rnd != header_info->info.v4.old_rnd)
 			{
-				rohc_debugf(1, "RND changed (%x -> %x), reset counter\n",
+				rohc_debugf(1, "RND changed (%x -> %x) in the current packet\n",
 				            header_info->info.v4.old_rnd,
 				            header_info->info.v4.rnd);
 				header_info->info.v4.rnd_count = 0;
 				g_context->fo_count = 0;
+			}
+			else
+			{
+				rohc_debugf(1, "RND changed in the last few packets\n");
 			}
 			nb_flags += 1;
 		}
@@ -6935,11 +6954,15 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 		{
 			if(header_info->info.v4.nbo != header_info->info.v4.old_nbo)
 			{
-				rohc_debugf(1, "NBO changed (%x -> %x), reset counter\n",
+				rohc_debugf(1, "NBO changed (%x -> %x) in the current packet\n",
 				            header_info->info.v4.old_nbo,
 				            header_info->info.v4.nbo);
 				header_info->info.v4.nbo_count = 0;
 				g_context->fo_count = 0;
+			}
+			else
+			{
+				rohc_debugf(1, "NBO changed in the last few packets\n");
 			}
 			nb_flags += 1;
 		}
