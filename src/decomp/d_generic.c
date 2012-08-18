@@ -6365,14 +6365,14 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		rohc_remain_len -= 2;
 	}
 
-	/* decode the outer IP header fields (pointed by packet) according to the
-	 * outer IP header flags (pointed by ip2_flags_pos) if present */
+	/* decode the outer IP header fields according to the outer IP header
+	 * flags if present */
 	if(ip2)
 	{
 		uint8_t rnd_ctxt; /* the RND value in context */
 		uint8_t rnd_pkt;  /* the RND value in packet */
 
-		size = parse_outer_header_flags(context, ip2_flags_pos,
+		size = parse_outer_header_flags(context, ip_flags_pos,
 		                                rohc_remain_data, rohc_remain_len,
 		                                &bits->outer_ip);
 		if(size == -1)
