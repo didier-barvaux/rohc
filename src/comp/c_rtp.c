@@ -432,27 +432,21 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 				            "the 2 IP headers are 'IPv4 with non-random "
 				            "IP-ID'\n");
 			}
-			else if(nr_ipv4_non_rnd_with_bits <= 1 &&
+			else if(nr_ipv4_non_rnd_with_bits >= 1 &&
 			        sdvl_can_length_be_encoded(nr_ts_bits))
 			/* TODO: create a is_packet_UOR_2_ID() function */
 			{
 				packet = PACKET_UOR_2_ID;
-				rohc_debugf(3, "choose packet UOR-2-ID because only one of "
+				rohc_debugf(3, "choose packet UOR-2-ID because at least one of "
 				            "the 2 IP headers is IPv4 with non-random IP-ID "
 				            "with at least 1 bit of IP-ID to transmit, and "
 				            "%zd TS bits can be SDVL-encoded\n", nr_ts_bits);
 			}
-			else if(nr_ipv4_non_rnd == 1)
-			{
-				packet = PACKET_UOR_2_TS;
-				rohc_debugf(3, "choose packet UOR-2-TS because only one of "
-				            "the 2 IP headers is IPv4 with non-random IP-ID\n");
-			}
 			else
 			{
-				/* no UO packet fits, use IR-DYN */
-				packet = PACKET_IR_DYN;
-				rohc_debugf(3, "choose packet IR-DYN because no UO packet fits\n");
+				packet = PACKET_UOR_2_TS;
+				rohc_debugf(3, "choose packet UOR-2-TS because at least one of "
+				            "the 2 IP headers is IPv4 with non-random IP-ID\n");
 			}
 		}
 	}

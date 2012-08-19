@@ -7552,7 +7552,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			rtp_context = (struct sc_rtp_context *) g_context->specific;
 			nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
-			/* NO_EXT, EXT_0 and EXT_3 */
+			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
 			if(nr_sn_bits <= 6 &&
 			   nr_ts_bits <= 5 &&
 			   nr_innermost_ip_id_bits == 0 &&
@@ -7566,6 +7566,20 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_0;
+			}
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits == 0)
+			{
+				ext = PACKET_EXT_1;
+			}
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 16 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits == 0)
+			{
+				ext = PACKET_EXT_2;
 			}
 			else
 			{
