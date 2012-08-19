@@ -403,8 +403,7 @@ static void reset_extr_bits(const struct d_generic_context *g_context,
                             struct rohc_extr_bits *const bits);
 
 static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
-                                            const uint8_t rnd_pkt,
-                                            const uint8_t rnd_ctxt);
+                                            const int are_all_ipv4_rnd);
 
 
 /*
@@ -4722,9 +4721,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 	reset_extr_bits(g_context, bits);
 
 	/* force extracted RND values (for reparsing) */
-	bits->outer_ip.rnd = outer_rnd & 0x1;
-	bits->outer_ip.rnd_nr = 1;
-	if(g_context->multiple_ip)
+	if(bits->outer_ip.version == IPV4)
+	{
+		bits->outer_ip.rnd = outer_rnd & 0x1;
+		bits->outer_ip.rnd_nr = 1;
+	}
+	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
 	{
 		bits->inner_ip.rnd = inner_rnd & 0x1;
 		bits->inner_ip.rnd_nr = 1;
@@ -5383,21 +5385,22 @@ int decode_uor2(struct rohc_decomp *decomp,
 			outer_rnd = g_context->outer_ip_changes->rnd;
 			inner_rnd = bits.inner_ip.rnd;
 		}
-		else if(bits.outer_ip.rnd_nr > 0 &&
-		        bits.outer_ip.rnd != g_context->outer_ip_changes->rnd)
+		else
+		{
+			/* inner RND flag did not change */
+			inner_rnd = g_context->inner_ip_changes->rnd;
+		}
+		if(bits.outer_ip.rnd_nr > 0 &&
+		   bits.outer_ip.rnd != g_context->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits.outer_ip.rnd_nr == 1);
 			outer_rnd = bits.outer_ip.rnd;
-			inner_rnd = g_context->inner_ip_changes->rnd;
 		}
 		else
 		{
-			/* no RND flag changed, strange... */
-			rohc_debugf(0, "reparsed required but no RND flag changed, it "
-			            "looks like an internal problem\n");
-			assert(0);
-			goto error;
+			/* inner RND flag did not change */
+			outer_rnd = g_context->outer_ip_changes->rnd;
 		}
 
 		parsing_ret = parse_uor2(decomp, context,
@@ -6163,12 +6166,18 @@ static int parse_extension3(struct rohc_decomp *decomp,
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
 	int S, rts, mode, I, ip, rtp, ip2;
+	uint16_t I_bits = 0; /* initialized to avoid GCC warning */
 	int size;
 	rohc_packet_t packet_type;
 
 	/* remaining ROHC data */
 	const unsigned char *rohc_remain_data;
 	size_t rohc_remain_len;
+
+	/* whether all RND values for outer and inner IP headers are set to 1 or
+	 * not (use value(RND) if RND bits are present in the extension, use
+	 * context(RND) = 1 otherwise) */
+	int are_all_ipv4_rnd = 1;
 
 	/* sanity checks */
 	assert(decomp != NULL);
@@ -6317,24 +6326,49 @@ static int parse_extension3(struct rohc_decomp *decomp,
 	 * inner IP header flags (pointed by ip(2)_flags_pos) if present */
 	if(ip)
 	{
-		uint8_t rnd_ctxt; /* the RND value in context */
-		uint8_t rnd_pkt;  /* the RND value in packet */
-
 		if(g_context->multiple_ip)
 		{
 			size = parse_inner_header_flags(context, ip2_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
 			                                &bits->inner_ip);
-			rnd_ctxt = g_context->inner_ip_changes->rnd;
-			rnd_pkt = (bits->inner_ip.rnd_nr > 0 ? bits->inner_ip.rnd : rnd_ctxt);
+
+			/* inner RND changed? */
+			if(bits->inner_ip.rnd_nr > 0)
+			{
+				are_all_ipv4_rnd &= bits->inner_ip.rnd;
+				if(bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+				{
+					rohc_debugf(2, "RND changed for inner IP header (%u -> %u)\n",
+					            g_context->inner_ip_changes->rnd,
+					            bits->inner_ip.rnd);
+				}
+			}
+			else if(bits->inner_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->inner_ip_changes->rnd;
+			}
 		}
 		else
 		{
 			size = parse_inner_header_flags(context, ip_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
 			                                &bits->outer_ip);
-			rnd_ctxt = g_context->outer_ip_changes->rnd;
-			rnd_pkt = (bits->outer_ip.rnd_nr > 0 ? bits->outer_ip.rnd : rnd_ctxt);
+
+			/* outer RND changed? */
+			if(bits->outer_ip.rnd_nr > 0)
+			{
+				are_all_ipv4_rnd &= bits->outer_ip.rnd;
+				if(bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+				{
+					rohc_debugf(2, "RND changed for outer IP header (%u -> %u)\n",
+					            g_context->outer_ip_changes->rnd,
+					            bits->outer_ip.rnd);
+				}
+			}
+			else if(bits->outer_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+			}
 		}
 		if(size < 0)
 		{
@@ -6342,21 +6376,33 @@ static int parse_extension3(struct rohc_decomp *decomp,
 			goto error;
 		}
 
-		/* if RND changed while parsing UOR-2-RTP, UOR-2-ID or UOR-2-TS,
-		 * we must restart parsing */
-		if(is_uor2_reparse_required(packet_type, rnd_pkt, rnd_ctxt))
-		{
-			rohc_debugf(1, "RND changed for inner IP header (%u -> %u), we "
-			            "must reparse the UOR-2* packet with a different packet "
-			            "type\n", rnd_ctxt, rnd_pkt);
-			goto reparse;
-		}
-
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
 	}
+	else
+	{
+		/* no inner IP header flags, so get context(RND) */
+		if(g_context->multiple_ip)
+		{
+			if(bits->inner_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->inner_ip_changes->rnd;
+			}
+		}
+		else
+		{
+			if(bits->outer_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+			}
+		}
+	}
 
-	/* decode the IP-ID if present */
+	/* skip the IP-ID if present, it will be parsed later once all RND bits
+	 * have been parsed (ie. outer IP header flags), otherwise a problem
+	 * may occur: if you have context(outer RND) = 1 and context(inner RND) = 0
+	 * and value(outer RND) = 0 and value(inner RND) = 1, then here in the
+	 * code, we have no IP header with non-random IP-ID */
 	if(I)
 	{
 		/* check the minimal length to decode the IP-ID field */
@@ -6366,6 +6412,62 @@ static int parse_extension3(struct rohc_decomp *decomp,
 			goto error;
 		}
 
+		/* both inner and outer IP-ID fields are 2-byte long */
+		I_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		rohc_remain_data += 2;
+		rohc_remain_len -= 2;
+	}
+
+	/* decode the outer IP header fields according to the outer IP header
+	 * flags if present */
+	if(ip2)
+	{
+		size = parse_outer_header_flags(context, ip_flags_pos,
+		                                rohc_remain_data, rohc_remain_len,
+		                                &bits->outer_ip);
+		if(size == -1)
+		{
+			rohc_debugf(0, "cannot decode the outer IP header flags & fields\n");
+			goto error;
+		}
+
+		/* outer RND changed? */
+		if(bits->outer_ip.rnd_nr > 0)
+		{
+			are_all_ipv4_rnd &= bits->outer_ip.rnd;
+			if(bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+			{
+				rohc_debugf(2, "RND changed for outer IP header (%u -> %u)\n",
+				            g_context->outer_ip_changes->rnd,
+				            bits->outer_ip.rnd);
+			}
+		}
+		else if(bits->outer_ip.version == IPV4)
+		{
+			are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+		}
+
+		rohc_remain_data += size;
+		rohc_remain_len -= size;
+	}
+	else if(g_context->multiple_ip && bits->outer_ip.version == IPV4)
+	{
+		/* no outer IP header flags, so get context(RND) */
+		are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+	}
+
+	/* if RND changed while parsing UOR-2-RTP, UOR-2-ID or UOR-2-TS,
+	 * we might have to restart parsing */
+	if(is_uor2_reparse_required(packet_type, are_all_ipv4_rnd))
+	{
+		rohc_debugf(1, "at least one RND changed and it makes our choice of "
+		            "packet type wrong, we must reparse the UOR-2* packet "
+		            "with a different packet type\n");
+		goto reparse;
+	}
+
+	if(I)
+	{
 		/* determine which IP header is the innermost IPv4 header with
 		 * non-random IP-ID */
 		if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
@@ -6377,7 +6479,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 				            "already updated\n");
 				goto error;
 			}
-			bits->inner_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+			bits->inner_ip.id = I_bits;
 			bits->inner_ip.id_nr = 16;
 			rohc_debugf(3, "%zd bits of inner IP-ID in EXT3 = 0x%x\n",
 			            bits->inner_ip.id_nr, bits->inner_ip.id);
@@ -6392,7 +6494,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 				            "already updated\n");
 				goto error;
 			}
-			bits->outer_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+			bits->outer_ip.id = I_bits;
 			bits->outer_ip.id_nr = 16;
 			rohc_debugf(3, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
 			            bits->outer_ip.id_nr, bits->outer_ip.id);
@@ -6403,42 +6505,6 @@ static int parse_extension3(struct rohc_decomp *decomp,
 			            "no IP header is IPv4 with non-random IP-ID\n");
 			goto error;
 		}
-
-		/* both inner and outer IP-ID fields are 2-byte long */
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-	}
-
-	/* decode the outer IP header fields according to the outer IP header
-	 * flags if present */
-	if(ip2)
-	{
-		uint8_t rnd_ctxt; /* the RND value in context */
-		uint8_t rnd_pkt;  /* the RND value in packet */
-
-		size = parse_outer_header_flags(context, ip_flags_pos,
-		                                rohc_remain_data, rohc_remain_len,
-		                                &bits->outer_ip);
-		if(size == -1)
-		{
-			rohc_debugf(0, "cannot decode the outer IP header flags & fields\n");
-			goto error;
-		}
-		rnd_ctxt = g_context->outer_ip_changes->rnd;
-		rnd_pkt = (bits->outer_ip.rnd_nr > 0 ? bits->outer_ip.rnd : rnd_ctxt);
-
-		/* if RND changed while parsing UOR-2-RTP, UOR-2-ID or UOR-2-TS,
-		 * we must restart parsing */
-		if(is_uor2_reparse_required(packet_type, rnd_pkt, rnd_ctxt))
-		{
-			rohc_debugf(1, "RND changed for outer IP header (%u -> %u), we "
-			            "must reparse the UOR-2* packet with a different packet "
-			            "type\n", rnd_ctxt, rnd_pkt);
-			goto reparse;
-		}
-
-		rohc_remain_data += size;
-		rohc_remain_len -= size;
 	}
 
 	/* decode RTP header flags & fields if present */
@@ -7885,29 +7951,26 @@ static void reset_extr_bits(const struct d_generic_context *g_context,
 /**
  * @brief Does the packet need to be parsed again?
  *
- * When parsing a UOR-2* packet, if RND changes, the packet needs to be
+ * When parsing a UOR-2* packet, if RND changes, the packet might need to be
  * parsed again with another UOR-2* packet type in mind:
  *  - UOR-2-RTP needs to be parsed again as UOR-2-ID or UOR-2-TS
+ *    if one of the RND flags becomes 0.
  *  - UOR-2-ID needs to be parsed again as UOR-2-RTP
+ *    if none of the RND flags is 0 anymore.
  *  - UOR-2-TS needs to be parsed again as UOR-2-RTP
+ *    if none of the RND flags is 0 anymore.
  *
- * The function is also called when the packet is parsed again. Be careful
- * not to parse packet in loop. This is ensured by checking the RND bit
- * against the packet type: UOR-2-RTP is incompatible with RND=0, and
- * UOR-2-ID/TS are incompatible with RND=1.
- *
- * @param packet_type  The packet type
- * @param rnd_pkt      The RND flag extracted from packet
- * @param rnd_ctxt     The RND flag stored in the context
+ * @param packet_type       The packet type
+ * @param are_all_ipv4_rnd  Whether all RND values for outer and inner IP
+ *                          headers are set to 1
+ * @return                  Whether packet shall be parsed again or not
  */
 static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
-                                            const uint8_t rnd_pkt,
-                                            const uint8_t rnd_ctxt)
+                                            const int are_all_ipv4_rnd)
 {
-	return (rnd_pkt != rnd_ctxt &&
-	        ((packet_type == PACKET_UOR_2_RTP && rnd_pkt == 0) ||
-	         (packet_type == PACKET_UOR_2_ID && rnd_pkt == 1) ||
-	         (packet_type == PACKET_UOR_2_TS && rnd_pkt == 1)));
+	return ((packet_type == PACKET_UOR_2_RTP && !are_all_ipv4_rnd) ||
+	        (packet_type == PACKET_UOR_2_ID && are_all_ipv4_rnd) ||
+	        (packet_type == PACKET_UOR_2_TS && are_all_ipv4_rnd));
 }
 
 

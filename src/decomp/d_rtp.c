@@ -321,93 +321,117 @@ static rohc_packet_t rtp_detect_packet_type(struct rohc_decomp *decomp,
 	else if(d_is_uor2(packet, rohc_length))
 	{
 		/* UOR-2* packet */
-		if(!multiple_ip)
+
+#if RTP_BIT_TYPE
+
+		/* UOR-2-RTP or UOR-2-ID/TS packet, check the RTP disambiguation bit */
+		if(d_is_uor2_rtp(packet, rohc_length, large_cid_len))
 		{
-			if(!is_outer_ipv4_ctxt(g_context))
+			/* UOR-2-RTP packet */
+			type = PACKET_UOR_2_RTP;
+		}
+		else if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
+		{
+			/* UOR-2-TS packet */
+			type = PACKET_UOR_2_TS;
+		}
+		else
+		{
+			/* UOR-2-ID packet */
+			type = PACKET_UOR_2_ID;
+		}
+
+#else /* !RTP_BIT_TYPE */
+
+		size_t nr_ipv4;
+		size_t nr_ipv4_non_rnd;
+
+		/* number of IPv4 headers, and IPv4 with context(RND) = 0 */
+		nr_ipv4 = 0;
+		nr_ipv4_non_rnd = 0;
+		if(is_outer_ipv4_ctxt(g_context))
+		{
+			nr_ipv4++;
+			if(!is_outer_ipv4_rnd_ctxt(g_context))
 			{
-				/* UOR-2-RTP packet */
-				rohc_debugf(3, "decode as UOR-2-RTP because there is no IPv4 "
-				            "header\n");
-				type = PACKET_UOR_2_RTP;
+				nr_ipv4_non_rnd++;
 			}
-			else if(is_outer_ipv4_rnd_ctxt(g_context))
+		}
+		if(is_inner_ipv4_ctxt(g_context))
+		{
+			nr_ipv4++;
+			if(!is_inner_ipv4_rnd_ctxt(g_context))
 			{
-				/* UOR-2-RTP or UOR-2-ID packet, check the RTP disambiguation bit
-				 * or optimistically try UOR-2-RTP */
-				if(d_is_uor2_rtp(packet, rohc_length, large_cid_len))
-				{
-					/* UOR-2-RTP packet */
-					type = PACKET_UOR_2_RTP;
-				}
-				else
-				{
-					/* UOR-2-ID packet */
-					type = PACKET_UOR_2_ID;
-				}
+				nr_ipv4_non_rnd++;
+			}
+		}
+
+		/* There is no easy way to disambiguate UOR-2-ID/TS and UOR-2-RTP
+		 * packets. The following algorithm is based on notes you may
+		 * read in RFC 3095, section 5.7.4:
+		 *  - UOR-2-RTP cannot be used if the context contains at least one
+		 *    IPv4 header with value(RND) = 0. This disambiguates it from
+		 *    UOR-2-ID and UOR-2-TS.
+		 *  - UOR-2-ID cannot be used if there is no IPv4 header in the
+		 *    context or if value(RND) and value(RND2) are both 1.
+		 *  - UOR-2-TS cannot be used if there is no IPv4 header in the
+		 *    context or if value(RND) and value(RND2) are both 1.
+		 *  - T: T = 0 indicates format UOR-2-ID;
+		 *       T = 1 indicates format UOR-2-TS.
+		 */
+
+		if(nr_ipv4 == 0)
+		{
+			/* no IPv4 header at all, so only UOR-2-RTP packet can be used */
+			rohc_debugf(1, "UOR-2* packet disambiguation: no IPv4 header at "
+			            "all, so only UOR-2-RTP is possible\n");
+			type = PACKET_UOR_2_RTP;
+		}
+		else if(nr_ipv4_non_rnd == 0)
+		{
+			/* there is no IPv4 header with context(RND) = 0, but maybe there is
+			 * a IPv4 header with value(RND) = 0 (the ROHC packet may contain a
+			 * RND field and update context). So try parsing UOR-2-RTP, and
+			 * fallback on UOR-2-TS/ID if value(RND) = 0 is found. */
+			rohc_debugf(1, "UOR-2* packet disambiguation: no IPv4 header with "
+			            "context(RND) = 0, so try parsing as UOR-2-RTP, and "
+			            "fallback on UOR-2-ID/TS later if value(RND) = 0 in "
+			            "packet\n");
+			type = PACKET_UOR_2_RTP;
+		}
+		else
+		{
+			/* there is at least one IPv4 header with context(RND) = 0, but
+			 * maybe there is a IPv4 header with value(RND) = 1 (the ROHC packet
+			 * may contain a RND field and update context), so try parsing
+			 * UOR-2-TS/ID, and fallback on UOR-2-RTP if value(RND) = 1 is
+			 * found */
+			rohc_debugf(1, "UOR-2* packet disambiguation: at least one IP "
+			            "header is IPv4 with context(RND) = 0, so try parsing "
+			            "as UOR-2-ID/TS, and fallback on UOR-2-RTP later if "
+			            "value(RND) = 1 in packet\n");
+
+			/* UOR-2-ID or UOR-2-TS packet, check the T field */
+			if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
+			{
+				/* UOR-2-TS packet */
+				rohc_debugf(3, "UOR-2* packet disambiguation: T = 1, so try "
+				            "parsing as UOR-2-TS, and fallback on UOR-2-RTP "
+				            "later if value(RND) = 1 in packet\n");
+				type = PACKET_UOR_2_TS;
 			}
 			else
 			{
-				/* UOR-2-ID or UOR-2-TS packet, check the T field */
-				if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
-				{
-					/* UOR-2-TS packet */
-					rohc_debugf(3, "decode as UOR-2-TS because there is one "
-					            "IPv4 header with non-random IP-ID, and the "
-					            "T field is set to 1, fallback on UOR-2-RTP "
-					            "later if RND changes in extension 3\n");
-					type = PACKET_UOR_2_TS;
-				}
-				else
-				{
-					/* UOR-2-ID packet */
-					rohc_debugf(3, "decode as UOR-2-ID because there is one "
-					            "IPv4 header with non-random IP-ID, and the "
-					            "T field is set to 0, fallback on UOR-2-RTP "
-					            "later if RND changes in extension 3\n");
-					type = PACKET_UOR_2_ID;
-				}
+				/* UOR-2-ID packet */
+				rohc_debugf(3, "UOR-2* packet disambiguation: T = 0, so try "
+				            "parsing as UOR-2-ID, and fallback on UOR-2-RTP "
+				            "later if value(RND) = 1 in packet\n");
+				type = PACKET_UOR_2_ID;
 			}
 		}
-		else /* double IP headers */
-		{
-			if(!is_inner_ipv4_ctxt(g_context))
-			{
-				/* UOR-2-RTP packet */
-				type = PACKET_UOR_2_RTP;
-			}
-			else if((is_outer_ipv4_rnd_ctxt(g_context) &&
-			         is_inner_ipv4_rnd_ctxt(g_context)) ||
-			        (!is_outer_ipv4_ctxt(g_context) &&
-			         is_inner_ipv4_rnd_ctxt(g_context)))
-			{
-				/* UOR-2-RTP or UOR-2-ID packet, check the RTP disambiguation bit
-				 * or optimistically try UOR-2-RTP */
-				if(d_is_uor2_rtp(packet, rohc_length, large_cid_len))
-				{
-					/* UOR-2-RTP packet */
-					type = PACKET_UOR_2_RTP;
-				}
-				else
-				{
-					/* UOR-2-ID packet */
-					type = PACKET_UOR_2_ID;
-				}
-			}
-			else
-			{
-				/* UOR-2-ID or UOR-2-TS packet, check the T field */
-				if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
-				{
-					/* UOR-2-TS packet */
-					type = PACKET_UOR_2_TS;
-				}
-				else
-				{
-					/* UOR-2-ID packet */
-					type = PACKET_UOR_2_ID;
-				}
-			}
-		}
+
+#endif /* RTP_BIT_TYPE */
+
 	}
 	else if(d_is_irdyn(packet, rohc_length))
 	{

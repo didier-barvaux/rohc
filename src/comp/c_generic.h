@@ -403,6 +403,9 @@ void c_generic_feedback(struct c_context *const context,
 
 void decide_state(struct c_context *const context);
 
+void rohc_get_ipid_bits(const struct c_context *context,
+                        size_t *const nr_innermost_bits,
+                        size_t *const nr_outermost_bits);
 
 #endif
 

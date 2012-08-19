@@ -268,9 +268,6 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
                                             ip_header_pos_t *const pos,
                                             size_t *const nr_bits,
                                             uint16_t *const offset);
-static void rohc_get_ipid_bits(const struct c_context *context,
-                               size_t *const nr_innermost_bits,
-                               size_t *const nr_outermost_bits);
 
 
 /*
@@ -6636,11 +6633,11 @@ int header_flags(const struct c_context *context,
 	 * the I2 flag for outer IP flags */
 	flags |= ip2_or_I2 & 0x01;
 
-	rohc_debugf(2, "Header flags: TOS = %d, TTL = %d, DF = %d, PR = %d, "
+	rohc_debugf(2, "IPv%d header flags: TOS = %d, TTL = %d, DF = %d, PR = %d, "
 	            "IPX = %d, NBO = %d, RND = %d, ip2/I2 = %d\n",
-	            (flags >> 7) & 0x1, (flags >> 6) & 0x1, (flags >> 5) & 0x1,
-	            (flags >> 4) & 0x1, (flags >> 3) & 0x1, (flags >> 2) & 0x1,
-	            (flags >> 1) & 0x1, flags & 0x1);
+	            header_info->version, (flags >> 7) & 0x1, (flags >> 6) & 0x1,
+	            (flags >> 5) & 0x1, (flags >> 4) & 0x1, (flags >> 3) & 0x1,
+	            (flags >> 2) & 0x1, (flags >> 1) & 0x1, flags & 0x1);
 
 	/* for inner and outer flags (1 & 2) */
 	dest[counter] = flags;
@@ -7709,7 +7706,7 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
  * @param nr_outermost_bits  OUT: the maximum number of IP-ID bits
  *                                for the outermost IP header
  */
-static void rohc_get_ipid_bits(const struct c_context *context,
+inline void rohc_get_ipid_bits(const struct c_context *context,
                                size_t *const nr_innermost_bits,
                                size_t *const nr_outermost_bits)
 {

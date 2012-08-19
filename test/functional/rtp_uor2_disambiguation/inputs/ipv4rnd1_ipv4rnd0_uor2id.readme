@@ -1,0 +1,20 @@
+>>> packets = []
+>>> for i in range(0, 6):
+...   packets.append(Ether()/IP(id=i)/UDP(dport=1234)/RTP(sequence=i, timestamp=i*240))
+... 
+>>> packets.append(Ether()/IP(id=6+40)/UDP(dport=1234)/RTP(sequence=6+20, timestamp=(6+20)*240))
+>>> packets[0][IP].id = 0
+>>> packets[0][IP].chksum = None
+>>> packets[1][IP].id = 5000
+>>> packets[1][IP].chksum = None
+>>> packets[2][IP].id = 0
+>>> packets[2][IP].chksum = None
+>>> packets[3][IP].id = 5000
+>>> packets[3][IP].chksum = None
+>>> packets[4][IP].id = 0
+>>> packets[4][IP].chksum = None
+>>> packets[5][IP].id = 5000
+>>> packets[5][IP].chksum = None
+>>> packets[6][IP].id = 5001
+>>> packets[6][IP].chksum = None
+>>> wrpcap('ipv4rnd0_ipv4rnd1_uor2rtp.pcap', packets)

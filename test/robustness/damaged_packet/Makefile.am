@@ -9,7 +9,7 @@
 TESTS = \
 	test_damaged_packet_3_ir_with_tss_set.sh \
 	test_damaged_packet_3_ir_with_tss_not_set.sh \
-	test_damaged_packet_4_irdyn_with_tss_set.sh \
+	test_damaged_packet_5_irdyn_with_tss_set.sh \
 	test_damaged_packet_5_irdyn_with_tss_not_set.sh \
 	test_damaged_packet_5_uo0.sh \
 	test_damaged_packet_8_uo1id.sh \
