@@ -232,10 +232,12 @@ static uint8_t parse_extension_type(const unsigned char *const rohc_ext);
 static int parse_extension0(const unsigned char *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
+                            const ip_header_pos_t innermost_ip_hdr,
                             struct rohc_extr_bits *const bits);
 static int parse_extension1(const unsigned char *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
+                            const ip_header_pos_t innermost_ip_hdr,
                             struct rohc_extr_bits *const bits);
 static int parse_extension2(const unsigned char *const rohc_data,
                             const size_t rohc_data_len,
@@ -4844,17 +4846,6 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 				            "header with non-random IP-ID'\n");
 				goto error;
 			}
-			else if(innermost_ipv4_non_rnd == ROHC_IP_HDR_SECOND)
-			{
-				/* inner IP header is IPv4 with non-random IP-ID,
-				 * outer IP header must not */
-				if(is_ipv4_non_rnd_pkt(bits->outer_ip))
-				{
-					rohc_debugf(0, "cannot use the UOR-2-ID packet with two "
-					            "IPv4 headers with non-random IP-ID\n");
-					goto error;
-				}
-			}
 
 			/* part 2: 3-bit "110" + 5-bit IP-ID */
 			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
@@ -4989,7 +4980,8 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 
 				/* decode extension 0 */
 				ext_size = parse_extension0(rohc_remain_data, rohc_remain_len,
-				                            g_context->packet_type, bits);
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
 
 				break;
 			}
@@ -5023,7 +5015,8 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 
 				/* decode extension 1 */
 				ext_size = parse_extension1(rohc_remain_data, rohc_remain_len,
-				                            g_context->packet_type, bits);
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
 
 				break;
 			}
@@ -5812,20 +5805,22 @@ error:
  *
  * Bits extracted:
  *  - 3 bits of SN
- *  - UOR-2 or UOR-2-ID: 3 bits of IP-ID
+ *  - UOR-2 or UOR-2-ID: 3 bits of innermost non-random IP-ID
  *  - UOR-2-RTP or UOR-2-TS: 3 bits of TS
  *
- * @param rohc_data      The ROHC data to parse
- * @param rohc_data_len  The length of the ROHC data to parse
- * @param packet_type    The type of ROHC packet
- * @param bits           IN: the bits already found in base header
- *                       OUT: the bits found in the extension header 0
- * @return               The data length read from the ROHC packet,
- *                       -1 in case of error
+ * @param rohc_data         The ROHC data to parse
+ * @param rohc_data_len     The length of the ROHC data to parse
+ * @param packet_type       The type of ROHC packet
+ * @param innermost_ip_hdr  The innermost IPv4 header with non-random IP-ID
+ * @param bits              IN: the bits already found in base header
+ *                          OUT: the bits found in the extension header 0
+ * @return                  The data length read from the ROHC packet,
+ *                          -1 in case of error
  */
 static int parse_extension0(const unsigned char *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
+                            const ip_header_pos_t innermost_ip_hdr,
                             struct rohc_extr_bits *const bits)
 {
 	const size_t rohc_ext0_len = 1;
@@ -5851,8 +5846,20 @@ static int parse_extension0(const unsigned char *const rohc_data,
 		case PACKET_UOR_2:
 		case PACKET_UOR_2_ID:
 		{
-			/* read 3 bits of IP-ID */
-			APPEND_OUTER_IP_ID_BITS(PACKET_EXT_0, bits, GET_BIT_0_2(rohc_data), 3);
+			/* sanity check */
+			assert(innermost_ip_hdr == ROHC_IP_HDR_FIRST ||
+			       innermost_ip_hdr == ROHC_IP_HDR_SECOND);
+			/* parse 3 bits of the innermost IP-ID */
+			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
+			{
+				APPEND_OUTER_IP_ID_BITS(PACKET_EXT_0, bits,
+				                        GET_BIT_0_2(rohc_data), 3);
+			}
+			else
+			{
+				APPEND_INNER_IP_ID_BITS(PACKET_EXT_0, bits,
+				                        GET_BIT_0_2(rohc_data), 3);
+			}
 			break;
 		}
 
@@ -5883,22 +5890,24 @@ error:
  *
  * Bits extracted:
  *  - 3 bits of SN
- *  - UOR-2: 11 bits of IP-ID
+ *  - UOR-2: 11 bits of innermost IP-ID
  *  - UOR-2-RTP: 11 bits of TS
- *  - UOR-2-TS: 3 bits of TS / 8 bits of IP-ID
- *  - UOR-2-ID: 3 bits of IP-ID / 8 bits of TS
+ *  - UOR-2-TS: 3 bits of TS / 8 bits of innermost IP-ID
+ *  - UOR-2-ID: 3 bits of innermost IP-ID / 8 bits of TS
  *
- * @param rohc_data      The ROHC data to parse
- * @param rohc_data_len  The length of the ROHC data to parse
- * @param packet_type    The type of ROHC packet
- * @param bits           IN: the bits already found in base header
- *                       OUT: the bits found in the extension header 1
- * @return               The data length read from the ROHC packet,
- *                       -1 in case of error
+ * @param rohc_data         The ROHC data to parse
+ * @param rohc_data_len     The length of the ROHC data to parse
+ * @param packet_type       The type of ROHC packet
+ * @param innermost_ip_hdr  The innermost IPv4 header with non-random IP-ID
+ * @param bits              IN: the bits already found in base header
+ *                          OUT: the bits found in the extension header 1
+ * @return                  The data length read from the ROHC packet,
+ *                          -1 in case of error
  */
 static int parse_extension1(const unsigned char *const rohc_data,
                             const size_t rohc_data_len,
                             const rohc_packet_t packet_type,
+                            const ip_header_pos_t innermost_ip_hdr,
                             struct rohc_extr_bits *const bits)
 {
 	const size_t rohc_ext1_len = 2;
@@ -5920,10 +5929,22 @@ static int parse_extension1(const unsigned char *const rohc_data,
 	{
 		case PACKET_UOR_2:
 		{
-			/* parse 11 bits of IP-ID */
-			APPEND_OUTER_IP_ID_BITS(PACKET_EXT_1, bits,
-			                        (GET_BIT_0_2(rohc_data) << 8) |
-			                        GET_BIT_0_7(rohc_data + 1), 11);
+			/* sanity check */
+			assert(innermost_ip_hdr == ROHC_IP_HDR_FIRST ||
+			       innermost_ip_hdr == ROHC_IP_HDR_SECOND);
+			/* parse 11 bits of the innermost IP-ID */
+			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
+			{
+				APPEND_OUTER_IP_ID_BITS(PACKET_EXT_1, bits,
+				                        (GET_BIT_0_2(rohc_data) << 8) |
+				                        GET_BIT_0_7(rohc_data + 1), 11);
+			}
+			else
+			{
+				APPEND_INNER_IP_ID_BITS(PACKET_EXT_1, bits,
+				                        (GET_BIT_0_2(rohc_data) << 8) |
+				                        GET_BIT_0_7(rohc_data + 1), 11);
+			}
 			break;
 		}
 
@@ -5938,19 +5959,41 @@ static int parse_extension1(const unsigned char *const rohc_data,
 
 		case PACKET_UOR_2_TS:
 		{
+			/* sanity check */
+			assert(innermost_ip_hdr == ROHC_IP_HDR_FIRST ||
+			       innermost_ip_hdr == ROHC_IP_HDR_SECOND);
 			/* parse 3 bits of TS */
 			APPEND_TS_BITS(PACKET_EXT_1, bits, GET_BIT_0_2(rohc_data), 3);
-			/* parse 8 bits of IP-ID */
-			APPEND_OUTER_IP_ID_BITS(PACKET_EXT_1, bits,
-			                        GET_BIT_0_7(rohc_data + 1), 8);
+			/* parse 8 bits of the innermost IP-ID */
+			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
+			{
+				APPEND_OUTER_IP_ID_BITS(PACKET_EXT_1, bits,
+				                        GET_BIT_0_7(rohc_data + 1), 8);
+			}
+			else
+			{
+				APPEND_INNER_IP_ID_BITS(PACKET_EXT_1, bits,
+				                        GET_BIT_0_7(rohc_data + 1), 8);
+			}
 			break;
 		}
 
 		case PACKET_UOR_2_ID:
 		{
-			/* parse 3 bits of IP-ID */
-			APPEND_OUTER_IP_ID_BITS(PACKET_EXT_1, bits,
-			                        GET_BIT_0_2(rohc_data), 3);
+			/* sanity check */
+			assert(innermost_ip_hdr == ROHC_IP_HDR_FIRST ||
+			       innermost_ip_hdr == ROHC_IP_HDR_SECOND);
+			/* parse 3 bits of the innermost IP-ID */
+			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
+			{
+				APPEND_OUTER_IP_ID_BITS(PACKET_EXT_1, bits,
+				                        GET_BIT_0_2(rohc_data), 3);
+			}
+			else
+			{
+				APPEND_INNER_IP_ID_BITS(PACKET_EXT_1, bits,
+				                        GET_BIT_0_2(rohc_data), 3);
+			}
 			/* parse 8 bits of TS */
 			APPEND_TS_BITS(PACKET_EXT_1, bits, GET_BIT_0_7(rohc_data + 1), 8);
 			break;

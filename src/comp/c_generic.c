@@ -219,8 +219,8 @@ int header_fields(const struct c_context *context,
                   struct ip_header_info *const header_info,
                   const unsigned short changed_f,
                   const struct ip_packet *ip,
-                  const int is_outer,
-                  const size_t nr_ip_id_bits,
+                  const int I,
+                  const ip_header_pos_t ip_hdr_pos,
                   unsigned char *const dest,
                   int counter);
 
@@ -265,8 +265,12 @@ static int encode_uncomp_fields(struct c_context *const context,
                                 const unsigned char *const next_header);
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
+                                            ip_header_pos_t *const pos,
                                             size_t *const nr_bits,
                                             uint16_t *const offset);
+static void rohc_get_ipid_bits(const struct c_context *context,
+                               size_t *const nr_innermost_bits,
+                               size_t *const nr_outermost_bits);
 
 
 /*
@@ -5227,6 +5231,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 	const int rtp_type_bit = 1;
 #endif
 	/* number of IP-ID bits and IP-ID offset to transmit  */
+	ip_header_pos_t innermost_ip_hdr;
 	size_t nr_innermost_ip_id_bits;
 	uint16_t innermost_ip_id_delta;
 
@@ -5238,8 +5243,10 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 	/* determine the number of IP-ID bits and the IP-ID offset of the
 	 * innermost IPv4 header with non-random IP-ID */
-	rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+	rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+	                                &nr_innermost_ip_id_bits,
 	                                &innermost_ip_id_delta);
+	assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 	/* which extension to code? */
 	switch(extension)
@@ -5481,13 +5488,16 @@ int code_EXT0_packet(const struct c_context *context,
 		case PACKET_UOR_2:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
+			ip_header_pos_t innermost_ip_hdr;
 			size_t nr_innermost_ip_id_bits;
 			uint16_t innermost_ip_id_delta;
 
 			/* determine the number of IP-ID bits and the IP-ID offset of the
 			 * innermost IPv4 header with non-random IP-ID */
-			rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+			rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+			                                &nr_innermost_ip_id_bits,
 			                                &innermost_ip_id_delta);
+			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= innermost_ip_id_delta & 0x07;
 			break;
@@ -5567,13 +5577,16 @@ int code_EXT1_packet(const struct c_context *context,
 		case PACKET_UOR_2:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
+			ip_header_pos_t innermost_ip_hdr;
 			size_t nr_innermost_ip_id_bits;
 			uint16_t innermost_ip_id_delta;
 
 			/* determine the number of IP-ID bits and the IP-ID offset of the
 			 * innermost IPv4 header with non-random IP-ID */
-			rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+			rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+			                                &nr_innermost_ip_id_bits,
 			                                &innermost_ip_id_delta);
+			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= (innermost_ip_id_delta >> 8) & 0x07;
 			s_byte = innermost_ip_id_delta & 0xff;
@@ -5591,14 +5604,17 @@ int code_EXT1_packet(const struct c_context *context,
 		case PACKET_UOR_2_TS:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
+			ip_header_pos_t innermost_ip_hdr;
 			size_t nr_innermost_ip_id_bits;
 			uint16_t innermost_ip_id_delta;
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
 			/* determine the number of IP-ID bits and the IP-ID offset of the
 			 * innermost IPv4 header with non-random IP-ID */
-			rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+			rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+			                                &nr_innermost_ip_id_bits,
 			                                &innermost_ip_id_delta);
+			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= rtp_context->tmp.ts_send & 0x07;
 			s_byte = innermost_ip_id_delta & 0xff;
@@ -5608,14 +5624,17 @@ int code_EXT1_packet(const struct c_context *context,
 		case PACKET_UOR_2_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
+			ip_header_pos_t innermost_ip_hdr;
 			size_t nr_innermost_ip_id_bits;
 			uint16_t innermost_ip_id_delta;
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
 			/* determine the number of IP-ID bits and the IP-ID offset of the
 			 * innermost IPv4 header with non-random IP-ID */
-			rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+			rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+			                                &nr_innermost_ip_id_bits,
 			                                &innermost_ip_id_delta);
+			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= innermost_ip_id_delta & 0x07;
 			s_byte = rtp_context->tmp.ts_send & 0xff;
@@ -5746,6 +5765,7 @@ int code_EXT2_packet(const struct c_context *context,
 		case PACKET_UOR_2_TS:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
+			ip_header_pos_t innermost_ip_hdr;
 			size_t nr_innermost_ip_id_bits;
 			uint16_t innermost_ip_id_delta;
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
@@ -5753,8 +5773,10 @@ int code_EXT2_packet(const struct c_context *context,
 
 			/* determine the number of IP-ID bits and the IP-ID offset of the
 			 * innermost IPv4 header with non-random IP-ID */
-			rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+			rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+			                                &nr_innermost_ip_id_bits,
 			                                &innermost_ip_id_delta);
+			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= (ts_send >> 8) & 0x07;
 			rohc_debugf(3, "3 bits of TS = 0x%x\n", f_byte & 0x07);
@@ -5769,14 +5791,17 @@ int code_EXT2_packet(const struct c_context *context,
 		case PACKET_UOR_2_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
+			ip_header_pos_t innermost_ip_hdr;
 			size_t nr_innermost_ip_id_bits;
 			uint16_t innermost_ip_id_delta;
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 
 			/* determine the number of IP-ID bits and the IP-ID offset of the
 			 * innermost IPv4 header with non-random IP-ID */
-			rohc_get_innermost_ipv4_non_rnd(context, &nr_innermost_ip_id_bits,
+			rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+			                                &nr_innermost_ip_id_bits,
 			                                &innermost_ip_id_delta);
+			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= (innermost_ip_id_delta >> 8) & 0x07;
 			rohc_debugf(3, "3 bits of innermost non-random IP-ID = 0x%x\n",
@@ -6119,9 +6144,11 @@ int code_EXT3_packet(const struct c_context *context,
 		}
 		f_byte |= (I & 0x01) << 2;
 
-		/* ip2 bit if non-RTP */
+		/* ip2 bit if non-RTP
+		 * (force ip2=1 if I2=1, otherwise I2 is not send) */
 		rohc_debugf(3, "check for changed fields in the outer IP header\n");
-		if(changed_dynamic_one_hdr(context, changed_f, &g_context->ip_flags, ip) ||
+		if(I2 ||
+		   changed_dynamic_one_hdr(context, changed_f, &g_context->ip_flags, ip) ||
 		   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
 		{
 			have_outer = 1;
@@ -6134,9 +6161,9 @@ int code_EXT3_packet(const struct c_context *context,
 		/* ip bit
 		 * (force ip=1 if ip2=1 and RTP profile, otherwise ip2 is not send) */
 		rohc_debugf(3, "check for changed fields in the inner IP header\n");
-		if(changed_dynamic_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
-		   changed_static_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
-		   (is_rtp && ip2))
+		if((is_rtp && ip2) ||
+		   changed_dynamic_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
+		   changed_static_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2))
 		{
 			have_inner = 1;
 			f_byte = f_byte | 0x02;
@@ -6205,11 +6232,11 @@ int code_EXT3_packet(const struct c_context *context,
 			counter += sdvl_size;
 		}
 
-		/* part 5 */
+		/* parts */
 		if(have_inner)
 		{
-			counter = header_fields(context, &g_context->ip_flags, changed_f, ip,
-			                        0, nr_ip_id_bits, dest, counter);
+			counter = header_fields(context, &g_context->ip_flags, changed_f,
+			                        ip, 0, ROHC_IP_HDR_FIRST, dest, counter);
 		}
 
 		/* part 6 */
@@ -6305,8 +6332,8 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 5 */
 		if(have_inner)
 		{
-			counter = header_fields(context, &g_context->ip2_flags, changed_f2, ip2,
-			                        0, nr_ip_id_bits2, dest, counter);
+			counter = header_fields(context, &g_context->ip2_flags, changed_f2,
+			                        ip2, 0, ROHC_IP_HDR_SECOND, dest, counter);
 		}
 
 		/* part 6 */
@@ -6337,8 +6364,8 @@ int code_EXT3_packet(const struct c_context *context,
 		/* part 7 */
 		if(have_outer)
 		{
-			counter = header_fields(context, &g_context->ip_flags, changed_f, ip,
-			                        1, nr_ip_id_bits, dest, counter);
+			counter = header_fields(context, &g_context->ip_flags, changed_f,
+			                        ip, I2, ROHC_IP_HDR_FIRST, dest, counter);
 		}
 
 		/* part 8 */
@@ -6644,11 +6671,10 @@ int header_flags(const struct c_context *context,
  4  /         IP extension headers                  /  variable, if IPX = 1
      ..... ..... ..... ..... ..... ..... ..... .....
 
-    IP-ID is coded here for outer header fields although it doesn't look that
-    way in the extension 3 picture in 5.7.5 and 5.11.4 of RFC 3095.
-    +-----+-----+-----+-----+-----+-----+-----+-----+
- 5  |                  IP-ID                        |  2 octets, if I = 1
-    +-----+-----+-----+-----+-----+-----+-----+-----+
+ For outer IP-ID:
+     ..... ..... ..... ..... ..... ..... ..... .....
+ 5  |                  IP-ID                        |  2 octets,
+     ..... ..... ..... ..... ..... ..... ..... .....    if I2 = 1
 
 \endverbatim
  *
@@ -6659,8 +6685,8 @@ int header_flags(const struct c_context *context,
  * @param changed_f      The fields that changed, created by the function
  *                       changed_fields
  * @param ip             One inner or outer IP header
- * @param is_outer       Whether the IP header is the outer header or not
- * @param nr_ip_id_bits  The number of bits needed to transmit the IP-ID field
+ * @param I              The I flag of the IP header
+ * @param ip_hdr_pos     The position of the IP header
  * @param dest           The rohc-packet-under-build buffer
  * @param counter        The current position in the rohc-packet-under-build
  *                       buffer
@@ -6672,21 +6698,20 @@ int header_fields(const struct c_context *context,
                   struct ip_header_info *const header_info,
                   const unsigned short changed_f,
                   const struct ip_packet *ip,
-                  const int is_outer,
-                  const size_t nr_ip_id_bits,
+                  const int I,
+                  const ip_header_pos_t ip_hdr_pos,
                   unsigned char *const dest,
                   int counter)
 {
 	unsigned int tos;
 	unsigned int ttl;
 	unsigned int protocol;
-	unsigned int id;
 
 	/* part 1 */
 	if(is_changed(changed_f, MOD_TOS) || header_info->tos_count < MAX_FO_COUNT)
 	{
 		tos = ip_get_tos(ip);
-		rohc_debugf(3, "(outer = %d) IP TOS/TC = 0x%02x\n", is_outer, tos);
+		rohc_debugf(3, "IP TOS/TC of IP header #%u = 0x%02x\n", ip_hdr_pos, tos);
 		header_info->tos_count++;
 		dest[counter] = tos;
 		counter++;
@@ -6696,7 +6721,7 @@ int header_fields(const struct c_context *context,
 	if(is_changed(changed_f, MOD_TTL) || header_info->ttl_count < MAX_FO_COUNT)
 	{
 		ttl = ip_get_ttl(ip);
-		rohc_debugf(3, "(outer = %d) IP TTL/HL = 0x%02x\n", is_outer, ttl);
+		rohc_debugf(3, "IP TTL/HL of IP header #%u = 0x%02x\n", ip_hdr_pos, ttl);
 		header_info->ttl_count++;
 		dest[counter] = ttl;
 		counter++;
@@ -6706,27 +6731,24 @@ int header_fields(const struct c_context *context,
 	if(is_changed(changed_f, MOD_PROTOCOL) || header_info->protocol_count < MAX_FO_COUNT)
 	{
 		protocol = ip_get_protocol(ip);
-		rohc_debugf(3, "(outer = %d) IP Protocol/Next Header = 0x%02x\n",
-		            is_outer, protocol);
+		rohc_debugf(3, "IP Protocol/Next Header of IP header #%u = 0x%02x\n",
+		            ip_hdr_pos, protocol);
 		header_info->protocol_count++;
 		dest[counter] = protocol;
 		counter++;
 	}
 
-	/* part 5: only if IPv4 */
-	if(is_outer && header_info->version == IPV4)
+	/* part 5: only for outer IP header if IPv4 */
+	if(ip_hdr_pos == ROHC_IP_HDR_FIRST && I == 1)
 	{
-		if((nr_ip_id_bits > 0 && header_info->info.v4.rnd == 0) ||
-		   (header_info->info.v4.rnd_count - 1 < MAX_FO_COUNT &&
-		    header_info->info.v4.rnd == 0))
-		{
-			/* always transmit IP-ID in Network Byte Order */
-			id = ipv4_get_id_nbo(ip, header_info->info.v4.nbo);
-			memcpy(&dest[counter], &id, 2);
-			rohc_debugf(3, "(outer = %d) IP ID = 0x%02x 0x%02x\n", is_outer,
-			            dest[counter], dest[counter + 1]);
-			counter += 2;
-		}
+		uint16_t id_encoded;
+
+		/* always transmit the IP-ID encoded, in Network Byte Order */
+		id_encoded = htons(header_info->info.v4.id_delta);
+		memcpy(&dest[counter], &id_encoded, 2);
+		rohc_debugf(3, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
+		            ip_hdr_pos, dest[counter], dest[counter + 1]);
+		counter += 2;
 	}
 
 	return counter;
@@ -7418,79 +7440,60 @@ error:
 rohc_ext_t decide_extension(const struct c_context *context)
 {
 	struct c_generic_context *g_context;
-	rohc_packet_t packet_type;
-	size_t nr_ip_id_bits;
+	size_t nr_innermost_ip_id_bits;
+	size_t nr_outermost_ip_id_bits;
 	size_t nr_sn_bits;
-	int ext;
+	rohc_ext_t ext;
 
 	g_context = (struct c_generic_context *) context->specific;
-	nr_ip_id_bits = g_context->tmp.nr_ip_id_bits;
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
-	packet_type = g_context->tmp.packet_type;
-
-	ext = PACKET_EXT_3; /* default extension */
 
 	/* force extension type 3 if at least one static or dynamic field changed */
 	if(g_context->tmp.send_static > 0 || g_context->tmp.send_dynamic > 0)
 	{
 		rohc_debugf(3, "force EXT-3 because at least one static or dynamic "
 		            "field changed\n");
-		return ext;
+		ext = PACKET_EXT_3;
+		goto skip;
 	}
 
-	switch(packet_type)
+	/* determine the number of IP-ID bits and the IP-ID offset of the
+	 * innermost IPv4 header with non-random IP-ID */
+	rohc_get_ipid_bits(context, &nr_innermost_ip_id_bits,
+	                   &nr_outermost_ip_id_bits);
+
+	switch(g_context->tmp.packet_type)
 	{
 		case PACKET_UOR_2:
 		{
-			const int is_ip_v4 = (g_context->ip_flags.version == IPV4);
-			const int is_rnd = g_context->ip_flags.info.v4.rnd;
-
-			if(g_context->tmp.nr_of_ip_hdr == 1)
+			if(nr_sn_bits < 5 &&
+			   nr_innermost_ip_id_bits == 0 &&
+			   nr_outermost_ip_id_bits == 0)
 			{
-				if(nr_sn_bits < 5 &&
-				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))))
-				{
-					ext = PACKET_NOEXT;
-				}
-				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 3))
-				{
-					ext = PACKET_EXT_0;
-				}
-				else if(nr_sn_bits <= 8 && (is_ip_v4 && nr_ip_id_bits <= 11))
-				{
-					ext = PACKET_EXT_1;
-				}
+				ext = PACKET_NOEXT;
 			}
-			else /* double IP headers */
+			else if(nr_sn_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 3 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
-				const int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
-				const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
-				const size_t nr_ip_id_bits2 = g_context->tmp.nr_ip_id_bits2;
-
-				if(nr_sn_bits < 5 &&
-				   (!is_ip_v4 || (is_ip_v4 && (nr_ip_id_bits == 0 || is_rnd == 1))) &&
-				   (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
-				{
-					ext = PACKET_NOEXT;
-				}
-				else if(nr_sn_bits <= 8 &&
-				        (is_ip_v4 && nr_ip_id_bits <= 3) &&
-				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
-				{
-					ext = PACKET_EXT_0; /* IPv4 only for outer header */
-				}
-				else if(nr_sn_bits <= 8 &&
-				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
-				        (!is_ip2_v4 || (is_ip2_v4 && (nr_ip_id_bits2 == 0 || is_rnd2 == 1))))
-				{
-					ext = PACKET_EXT_1; /* IPv4 only for outer header */
-				}
-				else if(nr_sn_bits <= 3 &&
-				        (is_ip_v4 && nr_ip_id_bits <= 11) &&
-				        (is_ip2_v4 && nr_ip_id_bits2 <= 8))
-				{
-					ext = PACKET_EXT_2; /* IPv4 only for both outer and inner header */
-				}
+				ext = PACKET_EXT_0;
+			}
+			else if(nr_sn_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 11 &&
+			        nr_outermost_ip_id_bits == 0)
+			{
+				ext = PACKET_EXT_1;
+			}
+			else if(g_context->tmp.nr_of_ip_hdr > 1 &&
+			        nr_sn_bits <= 3 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits <= 11)
+			{
+				ext = PACKET_EXT_2;
+			}
+			else
+			{
+				ext = PACKET_EXT_3;
 			}
 
 			break;
@@ -7505,21 +7508,37 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ts_bits <= 6)
+			if(nr_sn_bits <= 6 &&
+			   nr_ts_bits <= 6 &&
+			   nr_innermost_ip_id_bits == 0 &&
+			   nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_NOEXT;
 			}
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 9)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 9 &&
+			        nr_innermost_ip_id_bits == 0 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_0;
 			}
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 17)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 17 &&
+			        nr_innermost_ip_id_bits == 0 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_1;
 			}
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 25)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 25 &&
+			        nr_innermost_ip_id_bits == 0 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_2;
+			}
+			else
+			{
+				ext = PACKET_EXT_3;
 			}
 
 			break;
@@ -7534,13 +7553,23 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
 			/* NO_EXT, EXT_0 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ts_bits <= 5)
+			if(nr_sn_bits <= 6 &&
+			   nr_ts_bits <= 5 &&
+			   nr_innermost_ip_id_bits == 0 &&
+			   nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_NOEXT;
 			}
-			else if(nr_sn_bits <= 9 && nr_ts_bits <= 8)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 8 &&
+			        nr_innermost_ip_id_bits == 0 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_0;
+			}
+			else
+			{
+				ext = PACKET_EXT_3;
 			}
 
 			break;
@@ -7555,21 +7584,37 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
 			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
-			if(nr_sn_bits <= 6 && nr_ip_id_bits <= 5 && nr_ts_bits == 0)
+			if(nr_sn_bits <= 6 &&
+			   nr_ts_bits == 0 &&
+			   nr_innermost_ip_id_bits <= 5 &&
+			   nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_NOEXT;
 			}
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits == 0)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits == 0 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_0;
 			}
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 8 && nr_ts_bits <= 8)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_1;
 			}
-			else if(nr_sn_bits <= 9 && nr_ip_id_bits <= 16 && nr_ts_bits <= 8)
+			else if(nr_sn_bits <= 9 &&
+			        nr_ts_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 16 &&
+			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_2;
+			}
+			else
+			{
+				ext = PACKET_EXT_3;
 			}
 
 			break;
@@ -7577,10 +7622,12 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 		default:
 		{
-			rohc_assert(false, error, "bad packet type (%d)", packet_type);
+			rohc_assert(false, error, "bad packet type (%d)",
+			            g_context->tmp.packet_type);
 		}
 	}
 
+skip:
 	return ext;
 
 error:
@@ -7592,14 +7639,13 @@ error:
  * @brief Determine the number of IP-ID bits and the IP-ID offset of the
  *        innermost IPv4 header with non-random IP-ID
  *
- * @warning At least one IP header must be one IPv4 header with a non-random
- *          IP-ID
- *
  * @param context  The compression context
+ * @param pos      OUT: The position of the header
  * @param nr_bits  OUT: the number of IP-ID bits of the found header
  * @param offset   OUT: the IP-ID offset of the found header
  */
 static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
+                                            ip_header_pos_t *const pos,
                                             size_t *const nr_bits,
                                             uint16_t *const offset)
 {
@@ -7609,49 +7655,89 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
 	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
 
+	assert(pos != NULL);
 	assert(nr_bits != NULL);
 	assert(offset != NULL);
 
-	if(g_context->tmp.nr_of_ip_hdr == 1)
+	if(g_context->tmp.nr_of_ip_hdr > 1 &&
+	   g_context->ip2_flags.version == IPV4 &&
+	   g_context->ip2_flags.info.v4.rnd == 0)
 	{
-		/* only one IP header: it must be IPv4 with non-random IP-ID */
-		assert(g_context->ip_flags.version == IPV4);
-		assert(g_context->ip_flags.info.v4.rnd == 0);
+		/* inner IP header exists and is IPv4 with a non-random IP-ID */
+		*pos = ROHC_IP_HDR_SECOND;
+		*nr_bits = g_context->tmp.nr_ip_id_bits2;
+		*offset = g_context->ip2_flags.info.v4.id_delta;
+	}
+	else if(g_context->ip_flags.version == IPV4 &&
+	        g_context->ip_flags.info.v4.rnd == 0)
+	{
+		/* outer IP header is IPv4 with a non-random IP-ID */
+		*pos = ROHC_IP_HDR_FIRST;
 		*nr_bits = g_context->tmp.nr_ip_id_bits;
 		*offset = g_context->ip_flags.info.v4.id_delta;
 	}
 	else
 	{
-		/* 2 IP headers: at least one of them must be IPv4 with non-random
-		 * IP-ID */
-		if(g_context->ip2_flags.version == IPV4)
+		/* there is no IPv4 header with a non-random IP-ID */
+		*pos = ROHC_IP_HDR_NONE;
+		*nr_bits = 0;
+		*offset = 0;
+	}
+}
+
+
+/**
+ * @brief Get the number of non-random outer/inner IP-ID bits
+ *
+ * @param context            The compression context
+ * @param nr_innermost_bits  OUT: the maximum number of IP-ID bits
+ *                                for the innermost IPv4 header
+ * @param nr_outermost_bits  OUT: the maximum number of IP-ID bits
+ *                                for the outermost IP header
+ */
+static void rohc_get_ipid_bits(const struct c_context *context,
+                               size_t *const nr_innermost_bits,
+                               size_t *const nr_outermost_bits)
+{
+	struct c_generic_context *g_context;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+
+	assert(nr_innermost_bits != NULL);
+	assert(nr_outermost_bits != NULL);
+
+	if(g_context->tmp.nr_of_ip_hdr > 1 &&
+	   g_context->ip2_flags.version == IPV4 &&
+	   g_context->ip2_flags.info.v4.rnd == 0)
+	{
+		/* inner IP header exists and is IPv4 with a non-random IP-ID */
+		*nr_innermost_bits = g_context->tmp.nr_ip_id_bits2;
+
+		/* how many bits for the outer IP-ID? */
+		if(g_context->ip_flags.version == IPV4 &&
+		   g_context->ip_flags.info.v4.rnd == 0)
 		{
-			/* inner IP header is IPv4 */
-			if(g_context->ip2_flags.info.v4.rnd == 0)
-			{
-				/* inner IPv4 header got a non-random IP-ID, that's fine */
-				*nr_bits = g_context->tmp.nr_ip_id_bits2;
-				*offset = g_context->ip2_flags.info.v4.id_delta;
-			}
-			else
-			{
-				/* inner IPv4 header got a random IP-ID, outer IP header must
-				 * be IPv4 with non-random IP-ID */
-				assert(g_context->ip_flags.version == IPV4);
-				assert(!g_context->ip_flags.info.v4.rnd);
-				*nr_bits = g_context->tmp.nr_ip_id_bits;
-				*offset = g_context->ip_flags.info.v4.id_delta;
-			}
+			*nr_outermost_bits = g_context->tmp.nr_ip_id_bits;
 		}
 		else
 		{
-			/* inner IP header is not IPv4, outer IP header must be IPv4 with
-			 * non-random IP-ID */
-			assert(g_context->ip_flags.version == IPV4);
-			assert(!g_context->ip_flags.info.v4.rnd);
-			*nr_bits = g_context->tmp.nr_ip_id_bits;
-			*offset = g_context->ip_flags.info.v4.id_delta;
+			*nr_outermost_bits = 0;
 		}
+	}
+	else if(g_context->ip_flags.version == IPV4 &&
+	        g_context->ip_flags.info.v4.rnd == 0)
+	{
+		/* outer IP header is IPv4 with a non-random IP-ID */
+		*nr_innermost_bits = 0;
+		*nr_outermost_bits = g_context->tmp.nr_ip_id_bits;
+	}
+	else
+	{
+		/* there is no IPv4 header with a non-random IP-ID */
+		*nr_innermost_bits = 0;
+		*nr_outermost_bits = 0;
 	}
 }
 
