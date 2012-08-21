@@ -5,6 +5,22 @@
 #	Description: create and run the ROHC non-regression tests
 ################################################################################
 
+TESTS_BUG804552_SMALLCID = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_smallcid.sh
+
 TESTS_SMALLCID = \
 	test_non_regression_unknown_smallcid.sh \
 	test_non_regression_ipvx_smallcid.sh \
@@ -58,7 +74,25 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv6_udp_rtp_audio-vlc_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_video2_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_video1_smallcid.sh \
-	test_non_regression_ipv6_udp_smallcid.sh
+	test_non_regression_ipv6_udp_smallcid.sh \
+	$(TESTS_BUG804552_SMALLCID)
+
+
+TESTS_BUG804552_LARGECID = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_largecid.sh
 
 TESTS_LARGECID = \
 	test_non_regression_unknown_largecid.sh \
@@ -113,11 +147,17 @@ TESTS_LARGECID = \
 	test_non_regression_ipv6_udp_rtp_audio-vlc_largecid.sh \
 	test_non_regression_ipv6_udp_rtp_video2_largecid.sh \
 	test_non_regression_ipv6_udp_rtp_video1_largecid.sh \
-	test_non_regression_ipv6_udp_largecid.sh
+	test_non_regression_ipv6_udp_largecid.sh \
+	$(TESTS_BUG804552_LARGECID)
+
 
 TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
+
+XFAIL_TESTS = \
+	$(TESTS_BUG804552_SMALLCID) \
+	$(TESTS_BUG804552_LARGECID)
 
 
 check_PROGRAMS = \

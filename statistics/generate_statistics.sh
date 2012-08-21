@@ -26,7 +26,7 @@ if [ ! -d "${SRC_ROOTDIR}/statistics/inputs" ] ; then
 fi
 
 # generate statistics for all captures found in the inputs/ subdirectory
-for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | sort) ; do
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | grep -v bug804552 | sort) ; do
 
 	# determine the name of the stream stored in the capture
 	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"

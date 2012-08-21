@@ -4620,6 +4620,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2 packet with no extension\n");
 
 			/* part 2: SN bits */
+			assert(g_context->tmp.nr_sn_bits <= 5);
 			*f_byte |= g_context->sn & 0x1f;
 
 			/* part 5: set the X bit to 0 */
@@ -4633,6 +4634,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2 packet with extension 0\n");
 
 			/* part 2 */
+			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
 			*f_byte |= (g_context->sn & 0xff) >> 3;
 
 			/* part 5: set the X bit to 1 */
@@ -4646,6 +4648,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2 packet with extension 1\n");
 
 			/* part 2 */
+			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
 			*f_byte |= (g_context->sn & 0xff) >> 3;
 
 			/* part 5: set the X bit to 1 */
@@ -4659,6 +4662,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2 packet with extension 2\n");
 
 			/* part 2 */
+			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
 			*f_byte |= (g_context->sn & 0xff) >> 3;
 
 			/* part 5: set the X bit to 1 */
@@ -4672,13 +4676,14 @@ int code_UOR2_bytes(const struct c_context *context,
 			rohc_debugf(3, "code UOR-2 packet with extension 3\n");
 
 			/* part 2: check if the s-field needs to be used */
-			if(g_context->tmp.nr_sn_bits > 5)
+			if(g_context->tmp.nr_sn_bits <= 5)
 			{
-				*f_byte |= g_context->sn >> 8;
+				*f_byte |= g_context->sn & 0x1f;
 			}
 			else
 			{
-				*f_byte |= g_context->sn & 0x1f;
+				assert(g_context->tmp.nr_sn_bits <= (5 + 8));
+				*f_byte |= g_context->sn >> 8;
 			}
 
 			/* part 5: set the X bit to 1 */
@@ -5389,6 +5394,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			}
 			else
 			{
+				assert(g_context->tmp.nr_sn_bits <= (6 + 8));
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
 				rohc_debugf(3, "6 bits of 14-bit SN = 0x%x\n", (*s_byte) & 0x3f);
 			}

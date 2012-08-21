@@ -1,0 +1,13 @@
+Made with scapy:
+
+>>> pcap = []
+>>> ts = 300
+>>> for i in range(0, 20):
+...   pcap.append(Ether(src="00:00:00:00:00", dst="00:00:00:00:00")/IPv6()/IPv6()/UDP(dport=1234)/RTP(sequence=i, timestamp=ts))
+...   ts = ts + 300
+... 
+>>> len(pcap)
+20
+>>> pcap.append(Ether(src="00:00:00:00:00", dst="00:00:00:00:00")/IPv6()/IPv6()/UDP(dport=1234)/RTP(sequence=20000, timestamp=6000300))
+>>> wrpcap('test/non_regression/inputs/ipv6/ipv6/udp/rtp/bugXXXXX-uor2rtp-with-too-many-sn-bits/source.pcap', pcap)
+
