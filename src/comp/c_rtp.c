@@ -318,7 +318,11 @@ error:
  * @see decide_packet
  *
  * @param context The compression context
- * @return        The packet type among PACKET_IR_DYN and PACKET_UOR_2
+ * @return        The packet type among:
+ *                 - PACKET_UOR_2_RTP
+ *                 - PACKET_UOR_2_TS
+ *                 - PACKET_UOR_2_ID
+ *                 - PACKET_IR_DYN
  */
 static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 {
@@ -445,8 +449,13 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
  * @see decide_packet
  *
  * @param context The compression context
- * @return        The packet type among PACKET_UO_0, PACKET_UO_1 and
- *                PACKET_UOR_2
+ * @return        The packet type among:
+ *                 - PACKET_UO_0
+ *                 - PACKET_UO_1
+ *                 - PACKET_UOR_2_RTP
+ *                 - PACKET_UOR_2_TS
+ *                 - PACKET_UOR_2_ID
+ *                 - PACKET_IR_DYN
  */
 static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 {
@@ -573,29 +582,45 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 		            "must be transmitted, %zd <= 6 TS bits must be "
 		            "transmitted\n", nr_of_ip_hdr, nr_sn_bits, nr_ts_bits);
 	}
-	/* TODO: the 3 next if/else could be merged with the ones from
-	 * c_rtp_decide_FO_packet */
-	else if(nr_ipv4_non_rnd == 0)
+	else if(nr_sn_bits <= 14)
 	{
-		packet = PACKET_UOR_2_RTP;
-		rohc_debugf(3, "choose packet UOR-2-RTP because neither of the %zd IP "
-		            "header(s) are IPv4 with non-random IP-ID\n", nr_of_ip_hdr);
-	}
-	else if(nr_ipv4_non_rnd_with_bits >= 1 &&
-	        sdvl_can_length_be_encoded(nr_ts_bits))
-	{
-		packet = PACKET_UOR_2_ID;
-		rohc_debugf(3, "choose packet UOR-2-ID because at least one of the %zd "
-		            "IP header(s) is IPv4 with non-random IP-ID with at least "
-		            "1 bit of IP-ID to transmit, and %zd TS bits can be "
-		            "SDVL-encoded\n", nr_of_ip_hdr, nr_ts_bits);
+		/* UOR-2* packets can be used only if SN stand on <= 14 bits (6 bits
+		 * in base header + 8 bits in extension 3): determine which UOR-2*
+		 * packet to choose */
+
+		/* what UOR-2* packet do we choose? */
+		/* TODO: the 3 next if/else could be merged with the ones from
+		 * c_rtp_decide_FO_packet */
+		if(nr_ipv4_non_rnd == 0)
+		{
+			packet = PACKET_UOR_2_RTP;
+			rohc_debugf(3, "choose packet UOR-2-RTP because neither of the %zd "
+			            "IP header(s) are IPv4 with non-random IP-ID\n",
+			            nr_of_ip_hdr);
+		}
+		else if(nr_ipv4_non_rnd_with_bits >= 1 &&
+		        sdvl_can_length_be_encoded(nr_ts_bits))
+		{
+			packet = PACKET_UOR_2_ID;
+			rohc_debugf(3, "choose packet UOR-2-ID because at least one of the "
+			            "%zd IP header(s) is IPv4 with non-random IP-ID with at "
+			            "least 1 bit of IP-ID to transmit, and %zd TS bits can "
+			            "be SDVL-encoded\n", nr_of_ip_hdr, nr_ts_bits);
+		}
+		else
+		{
+			packet = PACKET_UOR_2_TS;
+			rohc_debugf(3, "choose packet UOR-2-TS because at least one of the "
+			            "%zd IP header(s) is IPv4 with non-random IP-ID\n",
+			            nr_of_ip_hdr);
+		}
 	}
 	else
 	{
-		packet = PACKET_UOR_2_TS;
-		rohc_debugf(3, "choose packet UOR-2-TS because at least one of the %zd "
-		            "IP header(s) is IPv4 with non-random IP-ID\n",
-		            nr_of_ip_hdr);
+		/* UOR-2* packets can not be used, use IR-DYN instead */
+		packet = PACKET_IR_DYN;
+		rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
+		            "be transmitted\n", nr_sn_bits);
 	}
 
 	return packet;
