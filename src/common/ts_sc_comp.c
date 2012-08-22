@@ -121,18 +121,21 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 		{
 			rohc_debugf(2, "state INIT_STRIDE\n");
 
-			if(ts_sc->ts_delta == 0)
-			{
-				/* TS is constant */
-				rohc_debugf(3, "timestamp has not changed\n");
-			}
-			else if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+			if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
 			{
 				/* TS is changing and TS_STRIDE is very large: go back to INIT_TS
 				 * state if TS_STRIDE cannot be SDVL-encoded */
 				rohc_debugf(2, "TS_STRIDE is too large for SDVL encoding, "
 				            "go in INIT_TS state\n");
 				ts_sc->state = INIT_TS;
+			}
+			else if(ts_sc->ts_delta == 0)
+			{
+				/* TS is constant (TS_STRIDE = 0), TS_SCALED cannot be computed,
+				 * so stay in INIT_STRIDE state */
+				rohc_debugf(2, "TS is constant (TS_STRIDE = 0), stay in "
+				            "INIT_STRIDE state\n");
+				ts_sc->nr_init_stride_packets = 0;
 			}
 			else
 			{
@@ -147,6 +150,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 
 				rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_delta);
 				ts_sc->ts_stride = ts_sc->ts_delta;
+				assert(ts_sc->ts_stride != 0);
 				ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
 				rohc_debugf(3, "ts_offset = %u modulo %d = %d\n",
 				            ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
@@ -164,9 +168,21 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 
 			rohc_debugf(2, "state SEND_SCALED\n");
 
-			/* go back to INIT_TS state if TS_STRIDE cannot be SDVL-encoded */
-			if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+			/* go back to lower states if TS_STRIDE = 0 or if TS_STRIDE is
+			 * too large to be SDVL-encoded */
+			if(ts_sc->ts_delta == 0)
 			{
+				/* TS is constant, go back in INIT_STRIDE state because TS_SCALED
+				 * cannot be used if TS_STRIDE = 0 (see RFC 4815 section 4.4.1) */
+				rohc_debugf(3, "TS_STRIDE = 0, go in INIT_STRIDE state\n");
+				ts_sc->state = INIT_STRIDE;
+				ts_sc->nr_init_stride_packets = 0;
+				return;
+			}
+			else if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+			{
+				/* TS is changing and TS_STRIDE is very large: go back to INIT_TS
+				 * state if TS_STRIDE cannot be SDVL-encoded */
 				rohc_debugf(2, "TS_STRIDE is too large for SDVL encoding, "
 				            "go in INIT_TS state\n");
 				ts_sc->state = INIT_TS;
@@ -176,8 +192,9 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			/* TS_STRIDE is OK, let's use it */
 			rohc_debugf(3, "ts_stride calculated = %u\n", ts_sc->ts_delta);
 			rohc_debugf(3, "previous ts_stride = %u\n", ts_sc->ts_stride);
+			assert(ts_sc->ts_stride != 0);
 			rest = ts_sc->ts_delta % ts_sc->ts_stride;
-			if(rest != 0 && ts_sc->ts_delta != 0)
+			if(rest != 0)
 			{
 				/* ts_stride has changed */
 				rohc_debugf(2, "/!\\ ts_stride changed\n");
@@ -188,15 +205,16 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			}
 
 			rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_stride);
+			assert(ts_sc->ts_stride != 0);
 			ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
 			rohc_debugf(3, "ts_offset = %u modulo %u = %u\n",
 			            ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
+			assert(ts_sc->ts_stride != 0);
 			ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
 			rohc_debugf(3, "ts_scaled = (%u - %u) / %u = %u\n", ts_sc->ts,
 			            ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
 
-			if(ts_sc->state != INIT_STRIDE &&
-			   (ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
+			if((ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
 			{
 				rohc_debugf(2, "TS can be deducted from SN (old TS_SCALED = %u, "
 				            "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
@@ -295,17 +313,5 @@ uint32_t get_ts_stride(const struct ts_sc_comp ts_sc)
 uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc)
 {
 	return ts_sc.ts_scaled;
-}
-
-
-/**
- * @brief Whether TimeStamp (TS) did not change or not
- *
- * @param ts_sc        The ts_sc_comp object
- * @return             1 if TS did not change, 0 otherwise
- */
-int is_ts_constant(const struct ts_sc_comp ts_sc)
-{
-	return (ts_sc.ts_delta == 0);
 }
 

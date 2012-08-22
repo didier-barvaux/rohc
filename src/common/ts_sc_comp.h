@@ -110,8 +110,5 @@ void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn);
 uint32_t get_ts_stride(const struct ts_sc_comp ts_sc);
 uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc);
 
-int is_ts_constant(const struct ts_sc_comp ts_sc);
-
-
 #endif
 

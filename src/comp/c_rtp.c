@@ -782,14 +782,6 @@ void rtp_decide_state(struct c_context *const context)
 	{
 		change_state(context, IR);
 	}
-	else if(context->state == IR &&
-	        rtp_context->ts_sc.state == INIT_STRIDE &&
-	        is_ts_constant(rtp_context->ts_sc))
-	{
-		/* init ts_stride but timestamp is constant so we stay in IR */
-		rohc_debugf(3, "init ts_stride but timestamp is constant -> stay in IR\n");
-		change_state(context, IR);
-	}
 	else if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
 	{
 		/* TODO: could be optimized: IR state is not required, only IR or
@@ -797,14 +789,6 @@ void rtp_decide_state(struct c_context *const context)
 		rohc_debugf(3, "go back to IR state because UDP checksum behaviour "
 		            "changed in the last few packets\n");
 		change_state(context, IR);
-	}
-	else if(rtp_context->ts_sc.state == INIT_STRIDE &&
-	        context->state != IR &&
-	        is_ts_constant(rtp_context->ts_sc))
-	{
-		/* init ts_stride but timestamp is contant -> FO */
-		rohc_debugf(3, "init ts_stride but timestamp is constant -> FO\n");
-		change_state(context, FO);
 	}
 	else if(rtp_context->tmp.send_rtp_dynamic)
 	{
