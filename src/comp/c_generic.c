@@ -7712,9 +7712,9 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
  * @param nr_outermost_bits  OUT: the maximum number of IP-ID bits
  *                                for the outermost IP header
  */
-inline void rohc_get_ipid_bits(const struct c_context *context,
-                               size_t *const nr_innermost_bits,
-                               size_t *const nr_outermost_bits)
+void rohc_get_ipid_bits(const struct c_context *context,
+                        size_t *const nr_innermost_bits,
+                        size_t *const nr_outermost_bits)
 {
 	struct c_generic_context *g_context;
 
