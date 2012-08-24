@@ -749,7 +749,7 @@ int c_generic_encode(struct c_context *const context,
 	if(g_context == NULL)
 	{
 		rohc_debugf(0, "generic context not valid\n");
-		return -1;
+		goto error;
 	}
 
 	g_context->tmp.changed_fields2 = 0;
@@ -769,7 +769,7 @@ int c_generic_encode(struct c_context *const context,
 		/* there are 2 IP headers */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			return -1;
+			goto error;
 		}
 
 		g_context->tmp.nr_of_ip_hdr = 2;
@@ -782,7 +782,7 @@ int c_generic_encode(struct c_context *const context,
 			if(!c_init_header_info(&g_context->ip2_flags, inner_ip,
 			                       context->compressor->wlsb_window_width))
 			{
-				return -1;
+				goto error;
 			}
 			g_context->is_ip2_initialized = 1;
 		}
@@ -860,7 +860,7 @@ int c_generic_encode(struct c_context *const context,
 	if(ret != ROHC_OK)
 	{
 		rohc_debugf(0, "failed to update the compression context\n");
-		return -1;
+		goto error;
 	}
 
 	/* STEP 5: decide which packet to send */
@@ -870,7 +870,7 @@ int c_generic_encode(struct c_context *const context,
 	size = code_packet(context, ip, inner_ip, next_header, dest);
 	if(size < 0)
 	{
-		return -1;
+		goto error;
 	}
 
 	/* update the context with the new headers */
@@ -920,6 +920,9 @@ int c_generic_encode(struct c_context *const context,
 
 	/* return the length of the ROHC packet */
 	return size;
+
+error:
+	return -1;
 }
 
 
