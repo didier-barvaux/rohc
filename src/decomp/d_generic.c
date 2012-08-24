@@ -487,6 +487,12 @@ void * d_generic_create(void)
 		goto free_inner_ip_changes;
 	}
 	bzero(context->list_decomp1, sizeof(struct list_decomp));
+	ip6_d_init_table(context->list_decomp1);
+	context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
+	context->list_decomp1->encode_extension = rohc_build_ip6_extension;
+	context->list_decomp1->check_index = check_ip6_index;
+	context->list_decomp1->create_item = create_ip6_item;
+	context->list_decomp1->get_ext_size = get_ip6_ext_size;
 
 	context->list_decomp2 = malloc(sizeof(struct list_decomp));
 	if(context->list_decomp2 == NULL)
@@ -495,19 +501,11 @@ void * d_generic_create(void)
 		goto free_decomp1;
 	}
 	bzero(context->list_decomp2, sizeof(struct list_decomp));
-
-	context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
-	context->list_decomp1->encode_extension = rohc_build_ip6_extension;
-	context->list_decomp1->check_index = check_ip6_index;
-	context->list_decomp1->create_item = create_ip6_item;
-	context->list_decomp1->get_ext_size = get_ip6_ext_size;
 	context->list_decomp2->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp2->encode_extension = rohc_build_ip6_extension;
 	context->list_decomp2->check_index = check_ip6_index;
 	context->list_decomp2->create_item = create_ip6_item;
 	context->list_decomp2->get_ext_size = get_ip6_ext_size;
-
-	ip6_d_init_table(context->list_decomp1);
 	ip6_d_init_table(context->list_decomp2);
 
 	/* no default next header */
@@ -546,46 +544,54 @@ quit:
  */
 void d_generic_destroy(void *context)
 {
-	struct d_generic_context *c = context;
+	struct d_generic_context *g_context;
 	int i;
 
-	if(c != NULL)
-	{
-		ip_id_offset_free(c->outer_ip_id_offset_ctxt);
-		ip_id_offset_free(c->inner_ip_id_offset_ctxt);
-		zfree(c->outer_ip_changes);
-		zfree(c->inner_ip_changes);
+	assert(context != NULL);
+	g_context = (struct d_generic_context *) context;
 
-		if(c->specific != NULL)
+	/* destroy Offset IP-ID decoding contexts */
+	ip_id_offset_free(g_context->outer_ip_id_offset_ctxt);
+	ip_id_offset_free(g_context->inner_ip_id_offset_ctxt);
+
+	/* destroy the information about the IP headers */
+	assert(g_context->outer_ip_changes != NULL);
+	zfree(g_context->outer_ip_changes);
+	assert(g_context->inner_ip_changes != NULL);
+	zfree(g_context->inner_ip_changes);
+
+	/* destroy list decompression for outer IP header */
+	assert(g_context->list_decomp1 != NULL);
+	g_context->list_decomp1->free_table(g_context->list_decomp1);
+	for(i = 0; i < LIST_COMP_WINDOW; i++)
+	{
+		if(g_context->list_decomp1->list_table[i] != NULL)
 		{
-			zfree(c->specific);
+			list_destroy(g_context->list_decomp1->list_table[i]);
 		}
-		if(c->list_decomp1 != NULL)
-		{
-			c->list_decomp1->free_table(c->list_decomp1);
-			for(i = 0; i < LIST_COMP_WINDOW; i++)
-			{
-				if(c->list_decomp1->list_table[i] != NULL)
-				{
-					list_destroy(c->list_decomp1->list_table[i]);
-				}
-			}
-			zfree(c->list_decomp1);
-		}
-		if(c->list_decomp2 != NULL)
-		{
-			c->list_decomp2->free_table(c->list_decomp2);
-			for(i = 0; i < LIST_COMP_WINDOW; i++)
-			{
-				if(c->list_decomp2->list_table[i] != NULL)
-				{
-					list_destroy(c->list_decomp2->list_table[i]);
-				}
-			}
-			zfree(c->list_decomp2);
-		}
-		zfree(c);
 	}
+	zfree(g_context->list_decomp1);
+
+	/* destroy list decompression for inner IP header */
+	assert(g_context->list_decomp2 != NULL);
+	g_context->list_decomp2->free_table(g_context->list_decomp2);
+	for(i = 0; i < LIST_COMP_WINDOW; i++)
+	{
+		if(g_context->list_decomp2->list_table[i] != NULL)
+		{
+			list_destroy(g_context->list_decomp2->list_table[i]);
+		}
+	}
+	zfree(g_context->list_decomp2);
+
+	/* destroy profile-specific part */
+	if(g_context->specific != NULL)
+	{
+		zfree(g_context->specific);
+	}
+
+	/* destroy generic context itself */
+	zfree(g_context);
 }
 
 
