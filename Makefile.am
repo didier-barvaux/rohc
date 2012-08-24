@@ -58,6 +58,9 @@ dist-hook:
 		-not -name source.pcap -and \
 		-not -name rohc_smallcid.pcap -and \
 		-not -name rohc_largecid.pcap -and \
-		-not -name description \
+		-not -name description -and \
+		-not -name rohc_sizes_smallcid -and \
+		-not -name rohc_sizes_largecid -and \
+		-not -name README \
 		-exec $(RM) \{\} \;
 
