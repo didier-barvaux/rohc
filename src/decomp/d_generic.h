@@ -31,7 +31,7 @@
 #include "rohc_packets.h"
 #include "comp_list.h"
 #include "lsb_decode.h"
-#include "ip_id.h"
+#include "ip_id_offset_decode.h"
 #include "ip.h"
 
 #include <stddef.h>
@@ -312,9 +312,9 @@ struct d_generic_context
 	/// The LSB decoding context for the Sequence Number (SN)
 	struct rohc_lsb_decode *sn_lsb_ctxt;
 	/// The IP-ID of the outer IP header
-	struct d_ip_id_decode ip_id1;
+	struct ip_id_offset_decode *outer_ip_id_offset_ctxt;
 	/// The IP-ID of the inner IP header
-	struct d_ip_id_decode ip_id2;
+	struct ip_id_offset_decode *inner_ip_id_offset_ctxt;
 
 	/// The list decompressor of the outer IP header
 	struct list_decomp *list_decomp1;

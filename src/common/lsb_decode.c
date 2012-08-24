@@ -227,6 +227,7 @@ bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
 void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
                       const uint32_t v_ref_d)
 {
+	assert(lsb != NULL);
 	lsb->v_ref_d = v_ref_d;
 	lsb->is_init = true;
 }

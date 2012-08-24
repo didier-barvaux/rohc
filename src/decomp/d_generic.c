@@ -343,7 +343,7 @@ static bool decode_values_from_bits(const struct d_context *context,
                                     const struct rohc_extr_bits bits,
                                     struct rohc_decoded_values *const decoded);
 static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctxt,
-                                       const struct d_ip_id_decode *const ip_id_decode,
+                                       const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
                                        const struct rohc_extr_ip_bits bits,
                                        const rohc_packet_t packet_type,
@@ -446,11 +446,29 @@ void * d_generic_create(void)
 	}
 	bzero(context, sizeof(struct d_generic_context));
 
+	/* create the Offset IP-ID decoding context for outer IP header */
+	context->outer_ip_id_offset_ctxt = ip_id_offset_new();
+	if(context->outer_ip_id_offset_ctxt == NULL)
+	{
+		rohc_debugf(0, "failed to create the Offset IP-ID decoding context "
+		            "for outer IP header\n");
+		goto free_context;
+	}
+
+	/* create the Offset IP-ID decoding context for inner IP header */
+	context->inner_ip_id_offset_ctxt = ip_id_offset_new();
+	if(context->inner_ip_id_offset_ctxt == NULL)
+	{
+		rohc_debugf(0, "failed to create the Offset IP-ID decoding context "
+		            "for inner IP header\n");
+		goto free_outer_ip_id_offset_ctxt;
+	}
+
 	context->outer_ip_changes = malloc(sizeof(struct d_generic_changes));
 	if(context->outer_ip_changes == NULL)
 	{
 		rohc_debugf(0, "cannot allocate memory for the outer IP header changes\n");
-		goto free_context;
+		goto free_inner_ip_id_offset_ctxt;
 	}
 	bzero(context->outer_ip_changes, sizeof(struct d_generic_changes));
 
@@ -507,6 +525,10 @@ free_inner_ip_changes:
 	zfree(context->inner_ip_changes);
 free_outer_ip_changes:
 	zfree(context->outer_ip_changes);
+free_inner_ip_id_offset_ctxt:
+	ip_id_offset_free(context->inner_ip_id_offset_ctxt);
+free_outer_ip_id_offset_ctxt:
+	ip_id_offset_free(context->outer_ip_id_offset_ctxt);
 free_context:
 	zfree(context);
 quit:
@@ -529,6 +551,8 @@ void d_generic_destroy(void *context)
 
 	if(c != NULL)
 	{
+		ip_id_offset_free(c->outer_ip_id_offset_ctxt);
+		ip_id_offset_free(c->inner_ip_id_offset_ctxt);
 		zfree(c->outer_ip_changes);
 		zfree(c->inner_ip_changes);
 
@@ -7528,7 +7552,7 @@ static bool decode_values_from_bits(const struct d_context *context,
 
 	/* decode fields related to the outer IP header */
 	decode_ok = decode_ip_values_from_bits(g_context->outer_ip_changes,
-	                                       &g_context->ip_id1,
+	                                       g_context->outer_ip_id_offset_ctxt,
 	                                       decoded->sn, bits.outer_ip,
 	                                       g_context->packet_type,
 	                                       "outer", &decoded->outer_ip);
@@ -7542,7 +7566,7 @@ static bool decode_values_from_bits(const struct d_context *context,
 	if(g_context->multiple_ip)
 	{
 		decode_ok = decode_ip_values_from_bits(g_context->inner_ip_changes,
-		                                       &g_context->ip_id2,
+		                                       g_context->inner_ip_id_offset_ctxt,
 		                                       decoded->sn, bits.inner_ip,
 		                                       g_context->packet_type,
 		                                       "inner", &decoded->inner_ip);
@@ -7586,7 +7610,7 @@ error:
  * @return              true if decoding is successful, false otherwise
  */
 static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctxt,
-                                       const struct d_ip_id_decode *const ip_id_decode,
+                                       const struct ip_id_offset_decode *const ip_id_decode,
                                        const uint32_t decoded_sn,
                                        const struct rohc_extr_ip_bits bits,
                                        const rohc_packet_t packet_type,
@@ -7680,8 +7704,8 @@ static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctx
 		{
 			/* decode packet value with decoded SN */
 			int ret;
-			ret = d_ip_id_decode(ip_id_decode, bits.id, bits.id_nr,
-			                     decoded_sn, &decoded->id);
+			ret = ip_id_offset_decode(ip_id_decode, bits.id, bits.id_nr,
+			                          decoded_sn, &decoded->id);
 			if(ret != 1)
 			{
 				rohc_debugf(0, "failed to decode %zd %s IP-ID bits 0x%x\n",
@@ -7827,7 +7851,8 @@ static void update_context(const struct d_context *context,
 	ip_set_daddr(&g_context->outer_ip_changes->ip, decoded.outer_ip.daddr);
 	if(decoded.outer_ip.version == IPV4)
 	{
-		d_ip_id_set_ref(&g_context->ip_id1, decoded.outer_ip.id, decoded.sn);
+		ip_id_offset_set_ref(g_context->outer_ip_id_offset_ctxt,
+		                     decoded.outer_ip.id, decoded.sn);
 		ipv4_set_df(&g_context->outer_ip_changes->ip, decoded.outer_ip.df);
 		g_context->outer_ip_changes->nbo = decoded.outer_ip.nbo;
 		g_context->outer_ip_changes->rnd = decoded.outer_ip.rnd;
@@ -7848,7 +7873,8 @@ static void update_context(const struct d_context *context,
 		ip_set_daddr(&g_context->inner_ip_changes->ip, decoded.inner_ip.daddr);
 		if(decoded.inner_ip.version == IPV4)
 		{
-			d_ip_id_set_ref(&g_context->ip_id2, decoded.inner_ip.id, decoded.sn);
+			ip_id_offset_set_ref(g_context->inner_ip_id_offset_ctxt,
+			                     decoded.inner_ip.id, decoded.sn);
 			ipv4_set_df(&g_context->inner_ip_changes->ip, decoded.inner_ip.df);
 			g_context->inner_ip_changes->nbo = decoded.inner_ip.nbo;
 			g_context->inner_ip_changes->rnd = decoded.inner_ip.rnd;

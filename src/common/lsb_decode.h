@@ -55,7 +55,7 @@ bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
                        const uint16_t m,
                        const size_t k,
                        uint16_t *const decoded)
-	__attribute__((nonnull(1, 4)));
+	__attribute__((nonnull(1, 4), warn_unused_result));
 
 void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
                       const uint32_t v_ref_d)
