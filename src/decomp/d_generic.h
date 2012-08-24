@@ -350,7 +350,7 @@ struct d_generic_context
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
 
-	/** The handler used to decoded bits extracted from ROHC headers */
+	/** The handler used to decode extracted for next header */
 	bool (*decode_values_from_bits)(const struct d_context *context,
 	                                const struct rohc_extr_bits bits,
 	                                struct rohc_decoded_values *const decoded);
@@ -360,7 +360,6 @@ struct d_generic_context
 	                         const struct rohc_decoded_values decoded,
 	                         unsigned char *dest,
 	                         const unsigned int payload_len);
-
 
 	/// @brief The handler used to compute the CRC-STATIC value
 	unsigned int (*compute_crc_static)(const unsigned char *const ip,
@@ -377,6 +376,10 @@ struct d_generic_context
 	                                    const unsigned int crc_type,
 	                                    const unsigned int init_val,
 	                                    const unsigned char *const crc_table);
+
+	/** The handler used to update context with decoded next header fields */
+	void (*update_context)(const struct d_context *context,
+	                       const struct rohc_decoded_values decoded);
 
 	/// Profile-specific data
 	void *specific;

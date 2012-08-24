@@ -36,7 +36,6 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
-#include "protocols/rtp.h"
 
 #include <assert.h>
 
@@ -7809,6 +7808,7 @@ static void update_context(const struct d_context *context,
 	struct d_generic_context *g_context;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
 	g_context = context->specific;
 
 	/* update SN */
@@ -7855,36 +7855,10 @@ static void update_context(const struct d_context *context,
 		}
 	}
 
-	/* UDP-based and UDP-Lite-based profiles only */
-	if(context->profile->id == ROHC_PROFILE_UDP ||
-	   context->profile->id == ROHC_PROFILE_UDPLITE ||
-	   context->profile->id == ROHC_PROFILE_RTP)
+	/* update context with decoded fields for next header if required */
+	if(g_context->update_context != NULL)
 	{
-		struct udphdr *const udp =
-			(struct udphdr *) g_context->outer_ip_changes->next_header;
-
-		udp->source = decoded.udp_src;
-		udp->dest = decoded.udp_dst;
-
-		/* RTP profile only */
-		if(context->profile->id == ROHC_PROFILE_RTP)
-		{
-			struct d_rtp_context *const rtp_context =
-				(struct d_rtp_context *) g_context->specific;
-			struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
-
-			/* update TS in decompression context */
-			ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
-
-			/* update M flag, R-X flag, R-P flag and R-PT */
-			rtp->version = decoded.rtp_version;
-			rtp->padding = decoded.rtp_p;
-			rtp->extension = decoded.rtp_x;
-			rtp->cc = decoded.rtp_cc;
-			rtp->m = decoded.rtp_m;
-			rtp->pt = decoded.rtp_pt;
-			rtp->ssrc = decoded.rtp_ssrc;
-		}
+		g_context->update_context(context, decoded);
 	}
 }
 

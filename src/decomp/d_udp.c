@@ -111,6 +111,7 @@ void * d_udp_create(void)
 	context->build_next_header = udp_build_uncomp_udp;
 	context->compute_crc_static = udp_compute_crc_static;
 	context->compute_crc_dynamic = udp_compute_crc_dynamic;
+	context->update_context = udp_update_context;
 
 	/* create the UDP-specific part of the header changes */
 	context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
@@ -475,6 +476,32 @@ static int udp_build_uncomp_udp(const struct d_generic_context *const context,
 	rohc_debugf(3, "UDP length = 0x%04x\n", ntohs(udp->len));
 
 	return sizeof(struct udphdr);
+}
+
+
+/**
+ * @brief Update context with decoded UDP values
+ *
+ * The following decoded values are updated in context:
+ *  - UDP source port
+ *  - UDP destination port
+ *
+ * @param context  The decompression context
+ * @param decoded  The decoded values to update in the context
+ */
+void udp_update_context(const struct d_context *context,
+                        const struct rohc_decoded_values decoded)
+{
+	struct d_generic_context *g_context;
+	struct udphdr *udp;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+
+	udp = (struct udphdr *) g_context->outer_ip_changes->next_header;
+	udp->source = decoded.udp_src;
+	udp->dest = decoded.udp_dst;
 }
 
 

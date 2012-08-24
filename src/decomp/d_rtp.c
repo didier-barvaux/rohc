@@ -84,6 +84,9 @@ static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
+static void rtp_update_context(const struct d_context *context,
+                               const struct rohc_decoded_values decoded);
+
 
 /*
  * Prototypes of private helper functions
@@ -152,6 +155,7 @@ void * d_rtp_create(void)
 	context->build_next_header = rtp_build_uncomp_rtp;
 	context->compute_crc_static = rtp_compute_crc_static;
 	context->compute_crc_dynamic = rtp_compute_crc_dynamic;
+	context->update_context = rtp_update_context;
 
 	/* create the UDP-specific part of the header changes */
 	context->outer_ip_changes->next_header_len = nh_len;
@@ -1044,6 +1048,50 @@ static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
 	rtp->ssrc = decoded.rtp_ssrc;
 
 	return sizeof(struct udphdr) + sizeof(struct rtphdr);
+}
+
+
+/**
+ * @brief Update context with decoded UDP/RTP values
+ *
+ * The following decoded values are updated in context:
+ *  - UDP source port
+ *  - UDP destination port
+ *  - RTP TimeStamp (TS)
+ *  - all other static/dynamic RTP fields
+ *
+ * @param context  The decompression context
+ * @param decoded  The decoded values to update in the context
+ */
+static void rtp_update_context(const struct d_context *context,
+                               const struct rohc_decoded_values decoded)
+{
+	struct d_generic_context *g_context;
+	struct d_rtp_context *rtp_context;
+	struct udphdr *udp;
+	struct rtphdr *rtp;
+
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	rtp_context = (struct d_rtp_context *) g_context->specific;
+
+	/* update context for UDP fields */
+	udp = (struct udphdr *) g_context->outer_ip_changes->next_header;
+	udp->source = decoded.udp_src;
+	udp->dest = decoded.udp_dst;
+
+	/* update context for RTP fields */
+	rtp = (struct rtphdr *) (udp + 1);
+	ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
+	rtp->version = decoded.rtp_version;
+	rtp->padding = decoded.rtp_p;
+	rtp->extension = decoded.rtp_x;
+	rtp->cc = decoded.rtp_cc;
+	rtp->m = decoded.rtp_m;
+	rtp->pt = decoded.rtp_pt;
+	rtp->ssrc = decoded.rtp_ssrc;
 }
 
 

@@ -57,5 +57,8 @@ int udp_parse_static_udp(struct d_generic_context *context,
                          unsigned int length,
                          struct rohc_extr_bits *const bits);
 
+void udp_update_context(const struct d_context *context,
+                        const struct rohc_decoded_values decoded);
+
 #endif
 

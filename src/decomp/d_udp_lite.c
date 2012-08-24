@@ -172,6 +172,7 @@ void * d_udp_lite_create(void)
 	context->build_next_header = udp_lite_build_uncomp_udp;
 	context->compute_crc_static = udp_compute_crc_static;
 	context->compute_crc_dynamic = udp_compute_crc_dynamic;
+	context->update_context = udp_update_context;
 
 	/* create the UDP-Lite-specific part of the header changes */
 	context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
