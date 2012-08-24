@@ -193,10 +193,10 @@ int ip_parse_dynamic_ip(struct d_generic_context *context,
 			goto error;
 		}
 
-		/* parse SN */
+		/* parse 16-bit SN */
 		bits->sn = ntohs(GET_NEXT_16_BITS(packet));
 		bits->sn_nr = 16;
-		rohc_debugf(2, "SN = %d (0x%04x)\n", bits->sn, bits->sn);
+		rohc_debugf(2, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
 		packet += 2;
 		read += 2;
 	}

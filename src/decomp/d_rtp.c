@@ -591,13 +591,13 @@ static int rtp_parse_dynamic_rtp(struct d_generic_context *context,
 	read++;
 	length--;
 
-	/* part 4 */
+	/* part 4: 16-bit RTP SN */
 	bits->sn = ntohs(GET_NEXT_16_BITS(packet));
 	bits->sn_nr = 16;
 	packet += sizeof(uint16_t);
 	read += sizeof(uint16_t);
 	length -= sizeof(uint16_t);
-	rohc_debugf(2, "SN = %d (0x%04x)\n", bits->sn, bits->sn);
+	rohc_debugf(2, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
 
 	/* part 5: 4-byte TimeStamp (TS) */
 	memcpy(&bits->ts, packet, sizeof(uint32_t));
@@ -961,6 +961,7 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 		if(bits.ts_nr == 0)
 		{
 			rohc_debugf(3, "TS is deducted from SN\n");
+			assert(decoded->sn <= 0xffff);
 			decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
 			                                decoded->sn);
 		}
@@ -1043,7 +1044,8 @@ static int rtp_build_uncomp_rtp(const struct d_generic_context *const context,
 	rtp->cc = decoded.rtp_cc;
 	rtp->m = decoded.rtp_m;
 	rtp->pt = decoded.rtp_pt & 0x7f;
-	rtp->sn = htons(decoded.sn);
+	assert(decoded.sn <= 0xffff);
+	rtp->sn = htons((uint16_t) decoded.sn);
 	rtp->timestamp = htonl(decoded.ts);
 	rtp->ssrc = decoded.rtp_ssrc;
 
@@ -1084,6 +1086,7 @@ static void rtp_update_context(const struct d_context *context,
 
 	/* update context for RTP fields */
 	rtp = (struct rtphdr *) (udp + 1);
+	assert(decoded.sn <= 0xffff);
 	ts_update_context(rtp_context->ts_scaled_ctxt, decoded.ts, decoded.sn);
 	rtp->version = decoded.rtp_version;
 	rtp->padding = decoded.rtp_p;

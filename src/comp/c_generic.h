@@ -178,8 +178,8 @@ struct generic_tmp_vars
  */
 struct c_generic_context
 {
-	/// The Sequence Number (SN)
-	unsigned int sn;
+	/// The Sequence Number (SN), may be 16-bit or 32-bit long
+	uint32_t sn;
 	/// A window used to encode the SN
 	struct c_wlsb *sn_window;
 
@@ -238,7 +238,7 @@ struct c_generic_context
 	                   const unsigned char *next_header);
 
 	/** Determine the next SN value */
-	uint16_t (*get_next_sn)(const struct c_context *context,
+	uint32_t (*get_next_sn)(const struct c_context *context,
 	                        const struct ip_packet *outer_ip,
 	                        const struct ip_packet *inner_ip);
 

@@ -41,6 +41,7 @@ typedef enum
 	ROHC_LSB_SHIFT_IP_ID  =  0,  /**< real value for IP-ID */
 	ROHC_LSB_SHIFT_RTP_TS =  2,  /**< need to compute real value for RTP TS */
 	ROHC_LSB_SHIFT_RTP_SN =  3,  /**< need to compute real value for RTP SN */
+	ROHC_LSB_SHIFT_ESP_SN =  3,  /**< need to compute real value for ESP SN */
 	ROHC_LSB_SHIFT_SN     = -1,  /**< real value for non-RTP SN */
 	ROHC_LSB_SHIFT_STATS  = -1,  /**< real value for internal statistics */
 } rohc_lsb_shift_t;

@@ -87,8 +87,14 @@
 			/* not enough room: drop some MSB */ \
 			assert((_bits_nr) > 0); \
 			assert((_bits_nr) <= (max)); \
-			/* remove extra MSB */ \
-			field &= (1 << ((max) - (_bits_nr))) - 1; \
+			/* remove extra MSB (warn if dropped MSB are non-zero) */ \
+			typeof(field) _mask = (1 << ((max) - (_bits_nr))) - 1; \
+			rohc_assert((field & _mask) == field, error, \
+			            "too many bits for " #field_descr ": %zd bits " \
+			            "found in %s, and %zd bits already found before " \
+			            "for a %zd-bit field\n", (_bits_nr), \
+			            rohc_get_ext_descr(ext_no), (field_nr), (max)); \
+			field &= _mask; \
 			/* make room and clear that room for new LSB */ \
 			field <<= (_bits_nr); \
 			field &= ~((1 << (_bits_nr)) - 1); \
@@ -103,7 +109,7 @@
 #define APPEND_SN_BITS(ext_no, base, bits, bits_nr) \
 	APPEND_BITS(SN, ext_no, \
 	            (base)->sn, (base)->sn_nr, \
-	            (bits), (bits_nr), 16)
+	            (bits), (bits_nr), 32)
 
 /** Outer IP-ID: append new LSB bits to already extracted bits */
 #define APPEND_OUTER_IP_ID_BITS(ext_no, base, bits, bits_nr) \
@@ -338,7 +344,7 @@ static bool decode_values_from_bits(const struct d_context *context,
                                     struct rohc_decoded_values *const decoded);
 static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctxt,
                                        const struct d_ip_id_decode *const ip_id_decode,
-                                       const uint16_t decoded_sn,
+                                       const uint32_t decoded_sn,
                                        const struct rohc_extr_ip_bits bits,
                                        const rohc_packet_t packet_type,
                                        const char *const descr,
@@ -7501,13 +7507,13 @@ static bool decode_values_from_bits(const struct d_context *context,
 	   g_context->packet_type == PACKET_IR_DYN)
 	{
 		/* take packet value unchanged */
-		assert(bits.sn_nr == 16);
+		assert(bits.sn_nr == 16 || bits.sn_nr == 32);
 		decoded->sn = bits.sn;
 	}
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode16(g_context->sn_lsb_ctxt,
+		decode_ok = rohc_lsb_decode32(g_context->sn_lsb_ctxt,
 		                              bits.sn, bits.sn_nr,
 		                              &decoded->sn);
 		if(!decode_ok)
@@ -7581,7 +7587,7 @@ error:
  */
 static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctxt,
                                        const struct d_ip_id_decode *const ip_id_decode,
-                                       const uint16_t decoded_sn,
+                                       const uint32_t decoded_sn,
                                        const struct rohc_extr_ip_bits bits,
                                        const rohc_packet_t packet_type,
                                        const char *const descr,
@@ -7795,9 +7801,7 @@ error:
  *  - SN
  *  - static & dynamic fields of the outer IP header
  *  - static & dynamic fields of the inner IP header (if it exists)
- *  - static fields of the UDP header (UDP-based profiles only)
- *  - static fields of the UDP-Lite header (UDP-Lite-based profiles only)
- *  - static fields of the RTP header (RTP profile only)
+ *  - fields for the next header (optional, depends on profile)
  *
  * @param context  The decompression context
  * @param decoded  The decoded values to update in the context

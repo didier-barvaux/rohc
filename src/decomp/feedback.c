@@ -87,36 +87,110 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 
 	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
 	{
-		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%x on 12 bits\n", sn);
+		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn);
 		feedback->data[0] |= (sn_nbo >> 8) & 0xf;
 		feedback->data[1] = sn_nbo & 0xff;
 	}
-	else if(sn < (1 << 20)) /* SN may be stored on 20 bits */
+	else if(sn < (1 << (12 + 8))) /* SN may be stored on 20 bits */
 	{
-		const uint8_t sn_last_bits = sn_nbo & 0xff;
+		const uint8_t sn_opt = sn_nbo & 0xff;
 		int ret;
 
-		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%04x on 20 bits (12 bits "
+		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits "
 		            "in base header, 8 bits in SN option)\n", sn);
+
+		/* base header */
 		feedback->data[0] |= (sn_nbo >> 16) & 0xf;
 		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		feedback->data[1] = (sn_nbo >> 8) & 0xff;
 		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_last_bits,
-		                   sizeof(sn_last_bits));
+
+		/* SN option */
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt, sizeof(sn_opt));
 		if(ret != ROHC_OK)
 		{
 			rohc_debugf(0, "failed to add option to the feedback packet\n");
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", sn_last_bits);
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt);
 	}
-	else /* SN cannot be stored on 20 bits */
+	else if(sn < (1 << (12 + 8 + 8))) /* SN may be stored on 28 bits */
 	{
-		/* should not happen */
-		rohc_debugf(3, "FEEDBACK-2: SN 0x%04x cannot be stored on 20 bits\n", sn);
-		assert(0);
-		goto error;
+		const uint8_t sn_opt1 = (sn_nbo >> 8) & 0xff;
+		const uint8_t sn_opt2 = sn_nbo & 0xff;
+		int ret;
+
+		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits "
+		            "in base header, 8 bits in SN option, then 8 bits in SN "
+		            "option)\n", sn);
+
+		/* base header */
+		feedback->data[0] |= (sn_nbo >> 24) & 0xf;
+		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		feedback->data[1] = (sn_nbo >> 16) & 0xff;
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+
+		/* first SN option */
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
+		if(ret != ROHC_OK)
+		{
+			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			goto error;
+		}
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
+
+		/* second SN option */
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
+		if(ret != ROHC_OK)
+		{
+			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			goto error;
+		}
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
+	}
+	else /* SN may be stored on 12 + 8 + 8 + 8 = 36 bits */
+	{
+		const uint8_t sn_opt1 = (sn_nbo >> 16) & 0xff;
+		const uint8_t sn_opt2 = (sn_nbo >> 8) & 0xff;
+		const uint8_t sn_opt3 = sn_nbo & 0xff;
+		int ret;
+
+		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits "
+		            "in base header, 8 bits in SN option, 8 bits in SN option, "
+		            "then 8 bits in SN option)\n", sn);
+
+		/* base header */
+		feedback->data[0] |= 0;
+		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		feedback->data[1] = (sn_nbo >> 24) & 0xff;
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+
+		/* first SN option */
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
+		if(ret != ROHC_OK)
+		{
+			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			goto error;
+		}
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
+
+		/* second SN option */
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
+		if(ret != ROHC_OK)
+		{
+			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			goto error;
+		}
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
+
+		/* third SN option */
+		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt3, sizeof(sn_opt3));
+		if(ret != ROHC_OK)
+		{
+			rohc_debugf(0, "failed to add option to the feedback packet\n");
+			goto error;
+		}
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt3);
 	}
 
 	return ROHC_OK;

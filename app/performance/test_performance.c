@@ -398,6 +398,7 @@ static int test_compression_perfs(char *filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
+	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
 
 	/* for each packet in the dump */
 	*packet_count = 0;

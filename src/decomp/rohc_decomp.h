@@ -29,7 +29,7 @@
 #include "rohc_comp.h"
 
 /// The number of ROHC profiles ready to be used
-#define D_NUM_PROFILES 5
+#define D_NUM_PROFILES 6
 
 
 /// ROHC decompressor states (see 4.3.2 in the RFC 3095)

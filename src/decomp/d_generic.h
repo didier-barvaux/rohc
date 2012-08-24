@@ -107,7 +107,7 @@ struct rohc_extr_ip_bits
 struct rohc_extr_bits
 {
 	/* SN */
-	uint16_t sn;            /**< The SN bits found in ROHC header */
+	uint32_t sn;            /**< The SN bits found in ROHC header */
 	size_t sn_nr;           /**< The number of SN bits found in ROHC header */
 
 	/** bits related to outer IP header */
@@ -196,6 +196,15 @@ struct rohc_extr_bits
 	uint32_t rtp_ssrc;      /**< The SSRC bits found in static chain of
 	                             IR header */
 	size_t rtp_ssrc_nr;     /**< The number of SSRC bits found in header */
+
+
+	/* bits below are for ESP profile only
+	   @todo TODO should be moved in d_esp.c */
+
+	/* ESP Security Parameters Index (SPI) */
+	uint32_t esp_spi;      /**< The SPI bits found in static chain of
+	                             IR header */
+	size_t esp_spi_nr;     /**< The number of SPI bits found in header */
 };
 
 
@@ -227,7 +236,7 @@ struct rohc_decoded_ip_values
  */
 struct rohc_decoded_values
 {
-	uint16_t sn;  /**< The decoded SN value */
+	uint32_t sn;  /**< The decoded SN value */
 
 	/** The decoded values for the outer IP header */
 	struct rohc_decoded_ip_values outer_ip;
@@ -254,6 +263,10 @@ struct rohc_decoded_values
 	uint8_t rtp_pt:7;       /**< The decoded RTP Payload Type (RTP-PT) */
 	uint32_t ts;            /**< The decoded RTP TimeStamp (TS) value */
 	uint32_t rtp_ssrc;      /**< The decoded SSRC value */
+
+	/* bits below are for ESP profile only
+	   @todo TODO should be moved in d_esp.c */
+	uint32_t esp_spi;       /**< The decoded ESP SPI */
 };
 
 

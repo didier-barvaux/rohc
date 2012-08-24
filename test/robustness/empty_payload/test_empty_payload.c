@@ -147,6 +147,10 @@ int main(int argc, char *argv[])
 	{
 		profile_id = ROHC_PROFILE_RTP;
 	}
+	else if(strcmp(profile_name, "espprofile") == 0)
+	{
+		profile_id = ROHC_PROFILE_ESP;
+	}
 	else if(strcmp(profile_name, "auto") == 0)
 	{
 		profile_id = 0xFFFF;
@@ -317,6 +321,7 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_activate_profile(comp, ROHC_PROFILE_IP);
 		rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 		rohc_activate_profile(comp, ROHC_PROFILE_RTP);
+		rohc_activate_profile(comp, ROHC_PROFILE_ESP);
 	}
 
 	/* create the ROHC decompressor in unidirectional mode */

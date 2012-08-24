@@ -20,11 +20,13 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author The hackers from ROHC for Linux
  * @author Didier Barvaux <didier@barvaux.org>
+ * @author FWX <rohc_team@dialine.fr>
  */
 
 #include "crc.h"
 #include "rohc.h"
 #include "protocols/rtp.h"
+#include "protocols/esp.h"
 
 #include <netinet/udp.h>
 #include <assert.h>
@@ -513,6 +515,95 @@ unsigned int udp_compute_crc_dynamic(const unsigned char *const ip,
 
 	/* bytes 5-8 (Length, Checksum) */
 	crc = crc_calculate(crc_type, (unsigned char *)(&udp->len), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-STATIC part of an ESP header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1-4 in original ESP header
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+unsigned int esp_compute_crc_static(const unsigned char *const ip,
+                                    const unsigned char *const ip2,
+                                    const unsigned char *const next_header,
+                                    const unsigned int crc_type,
+                                    const unsigned int init_val,
+                                    const unsigned char *const crc_table)
+{
+	unsigned int crc;
+	struct esphdr *esp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+	assert(crc_table != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-STATIC value for IP and IP2 headers */
+	crc = compute_crc_static(ip, ip2, next_header, crc_type, crc, crc_table);
+
+	/* get the start of ESP header */
+	esp = (struct esphdr *) next_header;
+
+	/* bytes 1-4 (Security parameters index) */
+	crc = crc_calculate(crc_type, (unsigned char *)(&esp->spi), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of an ESP header
+ *
+ * Concerned fields are:
+ *   - bytes 5-8 in original ESP header
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+unsigned int esp_compute_crc_dynamic(const unsigned char *const ip,
+                                     const unsigned char *const ip2,
+                                     const unsigned char *const next_header,
+                                     const unsigned int crc_type,
+                                     const unsigned int init_val,
+                                     const unsigned char *const crc_table)
+{
+	unsigned int crc;
+	struct esphdr *esp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+	assert(crc_table != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
+	crc = compute_crc_dynamic(ip, ip2, next_header, crc_type, crc, crc_table);
+
+	/* get the start of ESP header */
+	esp = (struct esphdr *) next_header;
+
+	/* bytes 5-8 (Sequence number) */
+	crc = crc_calculate(crc_type, (unsigned char *)(&esp->sn), 4,
 	                    crc, crc_table);
 
 	return crc;

@@ -16,8 +16,8 @@
 
 /**
  * @file c_generic.c
- * @brief ROHC generic compression context for IP-only, UDP and UDP Lite
- *        profiles.
+ * @brief ROHC generic compression context for IP-only, UDP, UDP-Lite, ESP, and
+ *        RTP profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
@@ -816,7 +816,7 @@ int c_generic_encode(struct c_context *const context,
 	detect_ip_id_behaviours(context, ip, inner_ip);
 
 	g_context->sn = g_context->get_next_sn(context, ip, inner_ip);
-	rohc_debugf(3, "SN = %d\n",g_context->sn);
+	rohc_debugf(3, "SN = %u\n", g_context->sn);
 
 	/* find IP fields that changed */
 	if(g_context->tmp.nr_of_ip_hdr == 1)
@@ -847,12 +847,12 @@ int c_generic_encode(struct c_context *const context,
 
 	if(ip_get_version(ip) == IPV4)
 	{
-		rohc_debugf(2, "ip_id = 0x%04x, context_sn = %d\n",
+		rohc_debugf(2, "ip_id = 0x%04x, context_sn = %u\n",
 		            ntohs(ipv4_get_id(ip)), g_context->sn);
 	}
 	else /* IPV6 */
 	{
-		rohc_debugf(2, "context_sn = %d\n", g_context->sn);
+		rohc_debugf(2, "context_sn = %u\n", g_context->sn);
 	}
 
 	/* STEP 4: compute how many bits are needed to send header fields */
@@ -2709,7 +2709,7 @@ void c_generic_feedback(struct c_context *const context,
 	struct c_generic_context *g_context;
 	unsigned char *p; /* pointer to the profile-specific data
 	                     in the feedback packet */
-	uint16_t sn;
+	uint32_t sn;
 
 	g_context = (struct c_generic_context *) context->specific;
 	p = feedback->data + feedback->specific_offset;
@@ -2718,7 +2718,7 @@ void c_generic_feedback(struct c_context *const context,
 	{
 		case 1: /* FEEDBACK-1 */
 			rohc_debugf(2, "feedback 1\n");
-			sn = p[0];
+			sn = p[0] & 0xff;
 
 			/* ack IP-ID only if IPv4, but always ack SN */
 			if(g_context->ip_flags.version == IPV4)
@@ -2736,11 +2736,12 @@ void c_generic_feedback(struct c_context *const context,
 			unsigned char mode = (p[0] >> 4) & 3;
 			int remaining = feedback->specific_size - 2;
 			int opt, optlen;
-			uint16_t sn_nbo;
+			uint32_t sn_nbo;
 
 			rohc_debugf(2, "feedback 2\n");
 
 			sn_nbo = ((p[0] & 0x0f) << 8) + (p[1] & 0xff);
+			assert((sn_nbo & 0x0fff) == sn_nbo);
 			p += 2;
 
 			while(remaining > 0)
@@ -2759,12 +2760,11 @@ void c_generic_feedback(struct c_context *const context,
 						sn_not_valid = 1;
 						break;
 					case 4: /* SN */
-						/* TODO: how are several SN options combined? */
-						if((sn_nbo & 0xff00) != 0)
+						if((sn_nbo & 0xff000000) != 0)
 						{
-							rohc_debugf(0, "more than 16 bits used for feedback SN, "
+							rohc_debugf(0, "more than 32 bits used for feedback SN, "
 							            "this is not expected, truncate value\n");
-							sn_nbo &= 0xff;
+							sn_nbo &= 0x00ffffff;
 						}
 						sn_nbo = (sn_nbo << 8) + (p[1] & 0xff);
 						break;
@@ -2778,7 +2778,7 @@ void c_generic_feedback(struct c_context *const context,
 				remaining -= 1 + optlen;
 				p += 1 + optlen;
 			}
-			sn = ntohs(sn_nbo);
+			sn = ntohl(sn_nbo);
 
 			/* check CRC if present in feedback */
 			if(is_crc_used == true)
@@ -2815,7 +2815,7 @@ void c_generic_feedback(struct c_context *const context,
 			switch(feedback->acktype)
 			{
 				case ACK:
-					rohc_debugf(2, "ack (SN = 0x%04x, SN-not-valid = %d)\n",
+					rohc_debugf(2, "ack (SN = 0x%08x, SN-not-valid = %u)\n",
 					            sn, sn_not_valid);
 					if(sn_not_valid == 0)
 					{
@@ -3205,7 +3205,7 @@ error:
  7  |         Dynamic chain         |  present if D = 1, variable length
     |                               |
     +---+---+---+---+---+---+---+---+
- 8  |             SN                |  2 octets if not RTP
+ 8  |             SN                |  2 octets if not RTP nor ESP
     +---+---+---+---+---+---+---+---+
     |                               |
     |           Payload             |  variable length
@@ -3395,7 +3395,7 @@ error:
  6  /         Dynamic chain         / variable length
     |                               |
     +---+---+---+---+---+---+---+---+
- 7  |             SN                | 2 octets if not RTP
+ 7  |             SN                | 2 octets if not RTP nor ESP
     +---+---+---+---+---+---+---+---+
     :                               :
     /           Payload             / variable length
@@ -4294,23 +4294,25 @@ int code_UO1_packet(struct c_context *const context,
 		case PACKET_UO_1:
 			/* SN + CRC (CRC was added before) */
 			s_byte |= (g_context->sn & 0x1f) << 3;
-			rohc_debugf(3, "SN (%d) + CRC (%x) = 0x%02x\n",
-			            g_context->sn, crc, s_byte);
+			rohc_debugf(3, "SN (%u) + CRC (%x) = 0x%02x\n",
+			            g_context->sn & 0x1f, crc, s_byte);
 			break;
 		case PACKET_UO_1_RTP:
 		case PACKET_UO_1_TS:
 			/* M + SN + CRC (CRC was added before) */
 			s_byte |= (g_context->sn & 0x0f) << 3;
 			s_byte |= (rtp_context->tmp.m_set & 0x01) << 7;
-			rohc_debugf(3, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-			            rtp_context->tmp.m_set, g_context->sn, crc, s_byte);
+			rohc_debugf(3, "M (%d) + SN (%u) + CRC (%x) = 0x%02x\n",
+			            rtp_context->tmp.m_set, g_context->sn & 0x0f, crc,
+			            s_byte);
 			break;
 		case PACKET_UO_1_ID:
 			/* X + SN + CRC (CRC was added before) */
 			s_byte |= (g_context->sn & 0x0f) << 3;
 			s_byte |= (0 /* TODO: handle X bit */ & 0x01) << 7;
-			rohc_debugf(3, "X (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-			            0 /* TODO: handle X bit */, g_context->sn, crc, s_byte);
+			rohc_debugf(3, "X (%d) + SN (%u) + CRC (%x) = 0x%02x\n",
+			            0 /* TODO: handle X bit */, g_context->sn & 0x0f, crc,
+			            s_byte);
 			break;
 		default:
 			rohc_assert(false, error, "bad packet type (%d)\n", packet_type);
@@ -7291,7 +7293,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			wlsb_k_ok = wlsb_get_k_16bits(g_context->sn_window, g_context->sn,
+			wlsb_k_ok = wlsb_get_k_32bits(g_context->sn_window, g_context->sn,
 			                              &(g_context->tmp.nr_sn_bits));
 			if(!wlsb_k_ok)
 			{

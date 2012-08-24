@@ -274,6 +274,7 @@ static int test_comp_and_decomp(const char *filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
+	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
 	if(is_large_cid)
 	{
 		rohc_c_set_large_cid(comp, 1);

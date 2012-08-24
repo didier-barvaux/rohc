@@ -1,0 +1,16 @@
+ESP stream with large SN (> 16 bits) and non-random IP-ID.
+
+Created with scapy:
+
+>>> pcap = []
+>>> pcap.append(Ether()/IP(proto=50, id=0)/"\x00\x00\x00\x01\x01\x00\x00\x00")
+>>> pcap.append(Ether()/IP(proto=50, id=1)/"\x00\x00\x00\x01\x01\x00\x00\x01")
+>>> pcap.append(Ether()/IP(proto=50, id=2)/"\x00\x00\x00\x01\x01\x00\x00\x02")
+>>> pcap.append(Ether()/IP(proto=50, id=3)/"\x00\x00\x00\x01\x01\x00\x00\x03")
+>>> pcap.append(Ether()/IP(proto=50, id=4)/"\x00\x00\x00\x01\x01\x00\x00\x04")
+>>> pcap.append(Ether()/IP(proto=50, id=5)/"\x00\x00\x00\x01\x01\x00\x00\x05")
+>>> pcap.append(Ether()/IP(proto=50, id=6)/"\x00\x00\x00\x01\x01\x00\x00\x06")
+>>> pcap.append(Ether()/IP(proto=50, id=7)/"\x00\x00\x00\x01\x01\x00\x00\x07")
+>>> pcap.append(Ether()/IP(proto=50, id=15)/"\x00\x00\x00\x01\x01\x00\x00\x08")
+>>> wrpcap('test/non_regression/inputs/ipv4/esp/large-sn-and-nonrnd-ip-id/source.pcap', pcap)
+

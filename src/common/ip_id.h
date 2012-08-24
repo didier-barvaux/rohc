@@ -35,7 +35,7 @@
 struct d_ip_id_decode
 {
 	uint16_t id_ref; ///< The reference IP-ID
-	uint16_t sn_ref; ///< The reference Sequence Number (SN)
+	uint32_t sn_ref; ///< The reference Sequence Number (SN)
 };
 
 
@@ -46,12 +46,12 @@ struct d_ip_id_decode
 int d_ip_id_decode(const struct d_ip_id_decode *const ip_id,
                    const uint16_t m,
                    const size_t k,
-                   const uint16_t sn,
+                   const uint32_t sn,
                    uint16_t *const decoded);
 
 void d_ip_id_set_ref(struct d_ip_id_decode *const ip_id,
                      const uint16_t id_ref,
-                     const uint16_t sn_ref);
+                     const uint32_t sn_ref);
 
 #endif
 

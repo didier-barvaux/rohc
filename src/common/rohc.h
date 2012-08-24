@@ -482,12 +482,14 @@ struct medium
  * ROHC profiles numbers allocated by the IANA (see 8 in the RFC 3095):
  */
 
-/// The number allocated for the ROHC Uncompressed profile
+/// The number allocated for the ROHC Uncompressed profile (RFC 3095, 5.10)
 #define ROHC_PROFILE_UNCOMPRESSED  0x0000
-/// The number allocated for the ROHC RTP profile
+/// The number allocated for the ROHC RTP profile (RFC 3095, 8)
 #define ROHC_PROFILE_RTP           0x0001
-/// The number allocated for the ROHC UDP profile
+/// The number allocated for the ROHC UDP profile (RFC 3095, 5.11)
 #define ROHC_PROFILE_UDP           0x0002
+/// The number allocated for the ROHC ESP profile (RFC 3095, 5.12)
+#define ROHC_PROFILE_ESP           0x0003
 /// The number allocated for the ROHC IP-only profile (see 5 in the RFC 3843)
 #define ROHC_PROFILE_IP            0x0004
 /// The number allocated for the ROHC UDP-Lite profile (see 7 in the RFC 4019)

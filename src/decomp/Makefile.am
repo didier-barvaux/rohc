@@ -14,6 +14,7 @@ librohc_decomp_la_SOURCES = \
 	d_ip.c \
 	d_udp.c \
 	d_udp_lite.c \
+	d_esp.c \
 	d_rtp.c
 
 librohc_decomp_la_LIBADD = \
@@ -35,5 +36,6 @@ noinst_HEADERS = \
 	d_ip.h \
 	d_udp.h \
 	d_udp_lite.h \
+	d_esp.h \
 	d_rtp.h
 

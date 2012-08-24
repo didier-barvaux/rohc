@@ -422,12 +422,12 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
  * @param inner_ip  The inner IP header if it exists, NULL otherwise
  * @return          The SN
  */
-uint16_t c_ip_get_next_sn(const struct c_context *context,
+uint32_t c_ip_get_next_sn(const struct c_context *context,
                           const struct ip_packet *outer_ip,
                           const struct ip_packet *inner_ip)
 {
 	struct c_generic_context *g_context;
-	uint16_t next_sn;
+	uint32_t next_sn;
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -440,6 +440,7 @@ uint16_t c_ip_get_next_sn(const struct c_context *context,
 		next_sn = g_context->sn + 1;
 	}
 
+	assert(next_sn <= 0xffff);
 	return next_sn;
 }
 
@@ -477,10 +478,11 @@ int c_ip_code_ir_remainder(const struct c_context *context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* part 1 */
-	sn = htons(g_context->sn);
+	sn = g_context->sn & 0xffff;
+	sn = htons(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
 	counter += 2;
-	rohc_debugf(3, "SN = %d -> 0x%02x%02x\n", g_context->sn,
+	rohc_debugf(3, "SN = %u -> 0x%02x%02x\n", g_context->sn,
 	            dest[counter - 2], dest[counter - 1]);
 
 	return counter;

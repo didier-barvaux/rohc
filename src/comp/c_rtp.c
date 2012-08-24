@@ -54,7 +54,7 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context);
 static rohc_ext_t c_rtp_decide_extension(const struct c_context *context);
 
-static uint16_t c_rtp_get_next_sn(const struct c_context *context,
+static uint32_t c_rtp_get_next_sn(const struct c_context *context,
                                   const struct ip_packet *outer_ip,
                                   const struct ip_packet *inner_ip);
 
@@ -138,7 +138,8 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* initialize SN with the SN found in the RTP header */
-	g_context->sn = ntohs(rtp->sn);
+	g_context->sn = (uint32_t) ntohs(rtp->sn);
+	assert(g_context->sn <= 0xffff);
 	rohc_debugf(1, "initialize context(SN) = hdr(SN) of first packet = %u\n",
 	            g_context->sn);
 
@@ -831,21 +832,21 @@ void rtp_decide_state(struct c_context *const context)
 /**
  * @brief Determine the SN value for the next packet
  *
- * Profile SN is the RTP SN.
+ * Profile SN is the 16-bit RTP SN.
  *
  * @param context   The compression context
  * @param outer_ip  The outer IP header
  * @param inner_ip  The inner IP header if it exists, NULL otherwise
  * @return          The SN
  */
-static uint16_t c_rtp_get_next_sn(const struct c_context *context,
+static uint32_t c_rtp_get_next_sn(const struct c_context *context,
                                   const struct ip_packet *outer_ip,
                                   const struct ip_packet *inner_ip)
 {
 	struct c_generic_context *g_context;
 	struct udphdr *udp;
 	struct rtphdr *rtp;
-	uint16_t next_sn;
+	uint32_t next_sn;
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -860,8 +861,9 @@ static uint16_t c_rtp_get_next_sn(const struct c_context *context,
 	}
 	rtp = (struct rtphdr *) (udp + 1);
 
-	next_sn = ntohs(rtp->sn);
+	next_sn = (uint32_t) ntohs(rtp->sn);
 
+	assert(next_sn <= 0xffff);
 	return next_sn;
 }
 
@@ -899,6 +901,7 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 	assert(ip != NULL);
 
 	/* add new TS value to context */
+	assert(g_context->sn <= 0xffff);
 	c_add_ts(&rtp_context->ts_sc, rtp_context->tmp.timestamp, g_context->sn);
 
 	/* determine the number of TS bits to send wrt compression state */
@@ -944,6 +947,7 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 		}
 
 		/* save the new TS_SCALED value */
+		assert(g_context->sn <= 0xffff);
 		add_scaled(&rtp_context->ts_sc, g_context->sn);
 		rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
 		            rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);

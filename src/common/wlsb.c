@@ -40,7 +40,7 @@
  */
 struct c_window
 {
-	uint16_t sn;     /**< The Sequence Number (SN) associated with the entry
+	uint32_t sn;     /**< The Sequence Number (SN) associated with the entry
 	                      (used to acknowledge the entry) */
 	uint32_t value;  /**< The value stored in the window entry */
 };
@@ -158,7 +158,7 @@ void c_destroy_wlsb(struct c_wlsb *const wlsb)
  * @param value The value to base the LSB coding on
  */
 void c_add_wlsb(struct c_wlsb *const wlsb,
-                const uint16_t sn,
+                const uint32_t sn,
                 const uint32_t value)
 {
 	assert(wlsb != NULL);
@@ -345,7 +345,7 @@ error:
  * @param s  The W-LSB object
  * @param sn The SN to acknowledge
  */
-void c_ack_sn_wlsb(struct c_wlsb *s, const uint16_t sn)
+void c_ack_sn_wlsb(struct c_wlsb *s, const uint32_t sn)
 {
 	size_t entry;
 	size_t i;

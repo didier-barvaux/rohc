@@ -13,6 +13,7 @@ librohc_comp_la_SOURCES = \
 	c_ip.c \
 	c_udp.c \
 	c_udp_lite.c \
+	c_esp.c \
 	c_rtp.c
 
 librohc_comp_la_LIBADD = \
@@ -32,5 +33,6 @@ noinst_HEADERS = \
 	c_ip.h \
 	c_udp.h \
 	c_udp_lite.h \
+	c_esp.h \
 	c_rtp.h
 

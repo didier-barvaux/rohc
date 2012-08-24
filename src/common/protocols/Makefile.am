@@ -6,5 +6,6 @@
 
 noinst_HEADERS = \
 	rtp.h \
-	udp_lite.h
+	udp_lite.h \
+	esp.h
 

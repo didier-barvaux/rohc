@@ -110,7 +110,8 @@ void rohc_f_32bits(const uint32_t v_ref,
 		}
 		break;
 
-		case ROHC_LSB_SHIFT_RTP_SN: /* special computation for SN encoding */
+		/* special computation for RTP and ESP SN encoding */
+		case ROHC_LSB_SHIFT_RTP_SN: /* = ROHC_LSB_SHIFT_ESP_SN */
 		{
 			if(k <= 4)
 			{
