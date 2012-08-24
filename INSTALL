@@ -4,11 +4,10 @@ Requirements
 The library itself does not require external resources. Optional configure
 flags require external resources:
 
- --enable-doc         requires doxygen and latex.
- --enable-rohc-stats  requires libpcap.
- --enable-rohc-tests  requires libpcap.
-
-
+ --enable-doc                  requires doxygen and latex.
+ --enable-rohc-stats           requires libpcap.
+ --enable-rohc-tests           requires libpcap.
+ --enable-rohc-tests-valgrind  requires valgrind.
 
 
 Libraries and tools
@@ -18,15 +17,15 @@ Configure the libraries and tools:
 
  $ ./configure --prefix=/path/to/installation/directory
 
-  (use ./autogen.sh if you are building from the source repository)
+ Note:
+  - Use ./autogen.sh instead of ./configure if you are building from the source
+    repository.
+  - Add option --enable-examples if you want ot build the examples located in
+    the examples/ directory.
 
 Build the libraries and tools:
 
  $ make all
-
-If you want to run all the automated tests:
-
- $ make -C test check
 
 Install the libraries and tools:
 
@@ -53,29 +52,20 @@ HTML documentation can be generated from the source code thanks to Doxygen:
 Open the ./doc/html/index.html file in your favorite web browser.
 
 
-Non-regression tool
--------------------
+Tests
+-----
 
-Please, note that the non-regression tool is often used through the "make check"
-command or the report tool described below because their interfaces are simplier.
+The functional, robustness and non-regression tests may be run:
 
-Run the non-regression tool:
+ $ ./configure --enable-rohc-tests
+ $ make check
 
- $ ./test/non_regression/test_non_regression <smallcid OR largecid> <source PCAP file>
-
-The application:
- - outputs the results (status & logs) in XML on stdout,
- - optionally outputs the ROHC packets in a PCAP file,
- - optionally compares the generated ROHC packets with ROHC packets given as
-   input.
-
-For usage details, run:
-
- $ ./test/non_regression/test_non_regression -h
+Add option --enable-rohc-tests-valgrind if you want to run tests within
+valgrind.
 
 
-Test and Statistic tool
------------------------
+Statistic tool
+--------------
 
 A HTML summary of compression statistics may be generated:
 
@@ -83,4 +73,13 @@ A HTML summary of compression statistics may be generated:
  $ make -C statistics check
 
 Open the ./statistics/html/index.html file in your favorite web browser.
+
+
+Developers
+-----------
+
+Developers may be interested in additional configure options:
+  --enable-fail-on-warning  causes the build to fail if a warning is emitted
+                            by the compiler (-Werror)
+  --enable-fortify_sources  enables some protections (-D_FORTIFY_SOURCE=2)
 
