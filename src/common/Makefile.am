@@ -5,7 +5,7 @@
 ################################################################################
 
 
-SUBDIRS = . test
+SUBDIRS = protocols . test
 
 
 lib_LTLIBRARIES = librohc_common.la
@@ -45,8 +45,6 @@ private_headers = \
 	sdvl.h \
 	wlsb.h \
 	ip.h \
-	udp_lite.h \
-	rtp.h \
 	ts_sc_comp.h \
 	ts_sc_decomp.h \
 	comp_list.h \

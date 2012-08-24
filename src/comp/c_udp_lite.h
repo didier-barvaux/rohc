@@ -27,7 +27,6 @@
 #include <netinet/udp.h>
 
 #include "c_generic.h"
-#include "udp_lite.h"
 
 
 /// @brief The maximal number of times the checksum coverage dit not change

@@ -18,10 +18,11 @@
  * @file udp_lite.h
  * @brief Define the UDP-Lite protocol.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef UDP_LITE_H
-#define UDP_LITE_H
+#ifndef ROHC_PROTOCOLS_UDP_LITE_H
+#define ROHC_PROTOCOLS_UDP_LITE_H
 
 #include <netinet/udp.h>
 

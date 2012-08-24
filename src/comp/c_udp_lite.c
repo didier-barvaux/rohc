@@ -27,6 +27,7 @@
 #include "rohc_traces.h"
 #include "rohc_packets.h"
 #include "crc.h"
+#include "protocols/udp_lite.h"
 
 #include <stdlib.h>
 

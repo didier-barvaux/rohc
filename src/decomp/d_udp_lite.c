@@ -30,6 +30,7 @@
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "crc.h"
+#include "protocols/udp_lite.h"
 
 #include <netinet/udp.h>
 

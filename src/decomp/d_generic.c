@@ -36,6 +36,7 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
+#include "protocols/rtp.h"
 
 #include <assert.h>
 

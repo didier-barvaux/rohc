@@ -30,6 +30,7 @@
 #include "sdvl.h"
 #include "crc.h"
 #include "decode.h"
+#include "protocols/rtp.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>

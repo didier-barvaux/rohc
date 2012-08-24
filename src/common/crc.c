@@ -24,7 +24,7 @@
 
 #include "crc.h"
 #include "rohc.h"
-#include "rtp.h"
+#include "protocols/rtp.h"
 
 #include <netinet/udp.h>
 #include <assert.h>

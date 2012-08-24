@@ -18,12 +18,13 @@
  * @file rtp.h
  * @brief RTP header
  * @author David Moreau from TAS
+ * @author Didier Barvaux <didier@barvaux.org>
  *
  * See section 5.1 of RFC 1889 for details.
  */
 
-#ifndef RTP_H
-#define RTP_H
+#ifndef ROHC_PROTOCOLS_RTP_H
+#define ROHC_PROTOCOLS_RTP_H
 
 #include <sys/types.h>
 

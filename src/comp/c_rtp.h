@@ -26,7 +26,7 @@
 
 #include "c_generic.h"
 #include "ts_sc_comp.h"
-#include "rtp.h"
+#include "protocols/rtp.h"
 
 #include <netinet/ip.h>
 #include <netinet/udp.h>
