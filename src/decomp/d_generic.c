@@ -67,14 +67,15 @@
 #define APPEND_BITS(field_descr, ext_no, field, field_nr, bits, bits_nr, max) \
 	do \
 	{ \
-		/* ensure not to eval bits and bits_nr several times */ \
+		/* ensure not to eval variables several times */ \
 		typeof(bits) _bits = (bits); \
 		size_t _bits_nr = (bits_nr); \
+		size_t _max = (max); \
 		/* print a description of what we do */ \
 		rohc_debugf(3, "%zd bits of " #field_descr " found in %s = 0x%x\n", \
 		            (_bits_nr), rohc_get_ext_descr(ext_no), (_bits)); \
 		/* is there enough room for all existing and new bits? */ \
-		if(((field_nr) + (_bits_nr)) <= (max)) \
+		if(((field_nr) + (_bits_nr)) <= (_max)) \
 		{ \
 			/* enough room: make and clear room, copy LSB */ \
 			field <<= (_bits_nr); \
@@ -86,21 +87,21 @@
 		{ \
 			/* not enough room: drop some MSB */ \
 			assert((_bits_nr) > 0); \
-			assert((_bits_nr) <= (max)); \
+			assert((_bits_nr) <= (_max)); \
 			/* remove extra MSB (warn if dropped MSB are non-zero) */ \
-			typeof(field) _mask = (1 << ((max) - (_bits_nr))) - 1; \
+			typeof(field) _mask = (1 << ((_max) - (_bits_nr))) - 1; \
 			rohc_assert((field & _mask) == field, error, \
 			            "too many bits for " #field_descr ": %zd bits " \
 			            "found in %s, and %zd bits already found before " \
 			            "for a %zd-bit field\n", (_bits_nr), \
-			            rohc_get_ext_descr(ext_no), (field_nr), (max)); \
+			            rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
 			field &= _mask; \
 			/* make room and clear that room for new LSB */ \
 			field <<= (_bits_nr); \
 			field &= ~((1 << (_bits_nr)) - 1); \
 			/* add new LSB */ \
 			field |= (_bits); \
-			field_nr = (max); \
+			field_nr = (_max); \
 		} \
 	} \
 	while(0)
