@@ -1014,7 +1014,7 @@ bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 		ext = comp->get_extension(ip, i);
 		while(index_table != -1)
 		{
-			if(!c_create_current_list(i, comp, ext, index_table))
+			if(!rohc_list_create_current(i, comp, ext, index_table))
 			{
 				goto error;
 			}
@@ -1115,16 +1115,16 @@ error:
 /**
  * @brief Create the current list
  *
- * @param comp         The list compressor which is specific to the extension type
- * @param ext          The extension
  * @param index        The number of the extension
+ * @param comp         The list compressor
+ * @param ext          The extension
  * @param index_table  The index of the item in the based table
- * @return             1 if successful, 0 otherwise
+ * @return             true if successful, false otherwise
  */
-int c_create_current_list(const int index,
-                          struct list_comp *const comp,
-                          const unsigned char *ext,
-                          const int index_table)
+bool rohc_list_create_current(const int index,
+                              struct list_comp *const comp,
+                              const unsigned char *ext,
+                              const int index_table)
 {
 	struct list_elt *elt;
 	int curr_index;
@@ -1293,10 +1293,10 @@ int c_create_current_list(const int index,
 		comp->counter = 0;
 	}
 
-	return 1;
+	return true;
 
 error:
-	return 0;
+	return false;
 }
 
 

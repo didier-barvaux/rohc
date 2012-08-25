@@ -363,10 +363,10 @@ rohc_ext_t decide_extension(const struct c_context *context);
 
 void ip6_c_init_table(struct list_comp *const comp);
 
-int c_create_current_list(const int index,
-                          struct list_comp *const comp,
-                          const unsigned char *ext,
-                          const int index_table);
+bool rohc_list_create_current(const int index,
+                              struct list_comp *const comp,
+                              const unsigned char *ext,
+                              const int index_table);
 int rohc_list_decide_type(struct list_comp *const comp);
 int rohc_list_encode(struct list_comp *const comp,
                      unsigned char *const dest,
