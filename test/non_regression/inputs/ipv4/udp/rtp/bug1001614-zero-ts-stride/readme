@@ -1,0 +1,10 @@
+Use scapy to create a RTP stream with TS_STRIDE = 0.
+
+>>> packets = []
+>>> for i in range(0, 20):
+...   packets.append(Ether()/IP(id=i)/UDP(sport=1324, dport=1234)/RTP(sequence=i, timestamp=i*240)/"hello, ROHC world!")
+... 
+>>> for i in range(20, 40):
+...   packets.append(Ether()/IP(id=i)/UDP(sport=1324, dport=1234)/RTP(sequence=i, timestamp=19*240)/"hello, ROHC world!")
+... 
+>>> wrpcap('bug1001614-zero-ts-stride.pcap', packets)

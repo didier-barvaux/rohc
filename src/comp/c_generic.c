@@ -4204,8 +4204,7 @@ int code_EXT3_packet(const struct c_context *context,
 		 * in the last few packets or RTP TS and TS_STRIDE must be initialized */
 		rtp = (rtp_context->tmp.rtp_pt_changed ||
 		       rtp_context->rtp_pt_change_count < MAX_FO_COUNT ||
-		       (rtp_context->ts_sc.state == INIT_STRIDE &&
-		        !is_ts_constant(rtp_context->ts_sc)));
+		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
 		rohc_debugf(3, "S = %d, R-TS = %d, Tsc = %u, rtp = %d\n", S, rts, tsc, rtp);
