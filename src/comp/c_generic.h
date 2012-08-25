@@ -361,35 +361,6 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
 
 rohc_ext_t decide_extension(const struct c_context *context);
 
-void ip6_c_init_table(struct list_comp *const comp);
-
-bool rohc_list_create_current(const int index,
-                              struct list_comp *const comp,
-                              const unsigned char *ext,
-                              const int index_table);
-int rohc_list_decide_type(struct list_comp *const comp);
-int rohc_list_encode(struct list_comp *const comp,
-                     unsigned char *const dest,
-                     int counter,
-                     const int ps,
-                     const int size);
-int rohc_list_encode_type_0(struct list_comp *const comp,
-                            unsigned char *const dest,
-                            int counter,
-                            const int ps);
-int rohc_list_encode_type_1(struct list_comp *const comp,
-                            unsigned char *const dest,
-                            int counter,
-                            const int ps);
-int rohc_list_encode_type_2(struct list_comp *const comp,
-                            unsigned char *const dest,
-                            int counter,
-                            const int ps);
-int rohc_list_encode_type_3(struct list_comp *const comp,
-                            unsigned char *const dest,
-                            int counter,
-                            const int ps);
-
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,
                      const int packet_size,
