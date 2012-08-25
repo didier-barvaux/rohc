@@ -414,8 +414,9 @@ void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value);
 /* IPv4 specific functions */
 
 const struct iphdr * ipv4_get_header(const struct ip_packet *const ip);
-int ipv4_get_id(const struct ip_packet *const ip);
-int ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo);
+uint16_t ipv4_get_id(const struct ip_packet *const ip);
+uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip,
+                         const unsigned int nbo);
 int ipv4_get_df(const struct ip_packet *const ip);
 uint32_t ipv4_get_saddr(const struct ip_packet *const ip);
 uint32_t ipv4_get_daddr(const struct ip_packet *const ip);

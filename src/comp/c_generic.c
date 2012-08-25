@@ -2180,7 +2180,7 @@ int code_uo_remainder(struct c_context *const context,
                       int counter)
 {
 	struct c_generic_context *g_context;
-	unsigned int id;
+	uint16_t id;
 
 	g_context = (struct c_generic_context *) context->specific;
 

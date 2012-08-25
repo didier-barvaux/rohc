@@ -853,7 +853,7 @@ const struct iphdr * ipv4_get_header(const struct ip_packet *const ip)
  * @param ip  The IP packet to analyze
  * @return    The IP-ID
  */
-int ipv4_get_id(const struct ip_packet *const ip)
+uint16_t ipv4_get_id(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return ipv4_get_id_nbo(ip, 1);
@@ -870,7 +870,8 @@ int ipv4_get_id(const struct ip_packet *const ip)
  * @param nbo The NBO flag (if RND = 1, use NBO = 1)
  * @return    The IP-ID
  */
-int ipv4_get_id_nbo(const struct ip_packet *const ip, const unsigned int nbo)
+uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip,
+                         const unsigned int nbo)
 {
 	uint16_t id;
 
