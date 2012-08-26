@@ -29,10 +29,10 @@ fi
 
 # extract the CID type and capture name from the name of the script
 CID_TYPE=$( echo "${SCRIPT}" | \
-            sed -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\2#' )
+            ${SED} -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\2#' )
 STREAM=$( echo "${SCRIPT}" | \
-          sed -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\1#' | \
-          sed -e 's#_#/#g' )
+          ${SED} -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\1#' | \
+          ${SED} -e 's#_#/#g' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${STREAM}/source.pcap"
 CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_${CID_TYPE}.pcap"
 SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_sizes_${CID_TYPE}"

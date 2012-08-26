@@ -127,6 +127,7 @@ AC_ARG_ENABLE(rohc_tests,
               enable_rohc_tests=$enableval,
               enable_rohc_tests=no)
 AM_CONDITIONAL([ROHC_TESTS], [test x$enable_rohc_tests = xyes])
+tests_environment=""
 
 
 # check if valgrind support in tests is enabled
@@ -185,8 +186,26 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 fi
 
 
+# sed is mandatory if ROHC tests are enabled
+if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
+	# check for sed and abort if it is not found
+	AC_PROG_SED
+	if test "x$SED" = "x" ; then
+		echo
+		echo "ERROR: no sed implementation found"
+		echo
+		echo "sed is required in order to run tests."
+		echo
+		echo "Please install one of the sed tool."
+		exit 1
+	fi
+	tests_environment="${tests_environment} SED=$SED"
+fi
+
+
 # check requirements for valgrind support to tests
 if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
+
 	# valgrind support for tests cannot be enabled if tests are not
 	if test "x$enable_rohc_tests" = "xno" ; then
 		echo
@@ -227,14 +246,26 @@ if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 		echo "use your package manager to install it on your system."
 		exit 1
 	fi
+	tests_environment="${tests_environment} USE_VALGRIND=yes"
 
-	# export the variable to indicate that valgrind is supported during tests
-	AC_SUBST([TESTS_ENVIRONMENT], ["USE_VALGRIND=yes"])
+	# check for grep and abort if it is not found
+	AC_PROG_GREP
+	if test "x$GREP" = "x" ; then
+		echo
+		echo "ERROR: no grep implementation found"
+		echo
+		echo "grep is required in order to run tests within valgrind."
+		echo
+		echo "Please install one of the grep, or ggrep tool."
+		exit 1
+	fi
+	tests_environment="${tests_environment} GREP=$GREP"
 fi
 
 
-# gnuplot is mandatory if ROHC statistics is enabled
+# gnuplot, awk, and grep are mandatory if ROHC statistics are enabled
 if test "x$enable_rohc_stats" = "xyes" ; then
+
 	# check for the gnuplot binary and abort if it is not found
 	AC_CHECK_PROG(is_gnuplot_found, gnuplot, "yes", "no")
 	if test "x$is_gnuplot_found" != "xyes"; then
@@ -247,6 +278,32 @@ if test "x$enable_rohc_stats" = "xyes" ; then
 		echo "to install it on your system."
 		exit 1
 	fi
+
+	# check for awk and abort if it is not found
+	AC_PROG_AWK
+	if test "x$AWK" = "x" ; then
+		echo
+		echo "ERROR: no awk implementation found"
+		echo
+		echo "awk is required in order to generate compression statistics."
+		echo
+		echo "Please install one of the gawk, mawk, nawk, or awk tool."
+		exit 1
+	fi
+	tests_environment="${tests_environment} AWK=$AWK"
+
+	# check for grep and abort if it is not found
+	AC_PROG_GREP
+	if test "x$GREP" = "x" ; then
+		echo
+		echo "ERROR: no grep implementation found"
+		echo
+		echo "grep is required in order to generate compression statistics."
+		echo
+		echo "Please install one of the grep, or ggrep tool."
+		exit 1
+	fi
+	tests_environment="${tests_environment} GREP=$GREP"
 fi
 
 
@@ -328,6 +385,9 @@ AC_ARG_ENABLE(examples,
               [build_examples=no])
 AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$build_examples" = "xyes"])
 
+
+# export TESTS_ENVIRONMENT
+AC_SUBST([TESTS_ENVIRONMENT], [$tests_environment])
 
 AM_DEP_TRACK
 

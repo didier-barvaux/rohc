@@ -29,7 +29,7 @@ fi
 
 # extract the ACK type and test type from the name of the script
 TESTTYPE=$( echo "${SCRIPT}" | \
-            sed -e 's#^.*/test_context_reuse_\(.\+\)\.sh#\1#' )
+            ${SED} -e 's#^.*/test_context_reuse_\(.\+\)\.sh#\1#' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${TESTTYPE}.pcap"
 
 # check that capture exists

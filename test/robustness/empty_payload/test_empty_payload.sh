@@ -30,11 +30,11 @@ fi
 
 # extract the packet type from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                sed -e 's#^.*/test_empty_payload_\(.\+\)\.sh#\1#' )
+                ${SED} -e 's#^.*/test_empty_payload_\(.\+\)\.sh#\1#' )
 PACKET_TYPE=$( echo "${SCRIPT}" | \
-               sed -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_[^.]\+\)\?\.sh#\1#' )
+               ${SED} -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_[^.]\+\)\?\.sh#\1#' )
 PROFILE_NAME=$( echo "${SCRIPT}" | \
-                sed -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_\([^.]\+\)\)\?\.sh#\3#' )
+                ${SED} -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_\([^.]\+\)\)\?\.sh#\3#' )
 if [ -z "${PROFILE_NAME}" ] ; then
 	PROFILE_NAME="auto"
 fi

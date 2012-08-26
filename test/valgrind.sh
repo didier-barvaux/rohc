@@ -38,6 +38,12 @@ run_test_with_valgrind()
 		return 1
 	fi
 
+	if [ -z "${GREP}" ] ; then
+		echo "no grep-like tool available, please install one of the grep, or "\
+		     "ggrep, tool."
+		return 1
+	fi
+
 	libtool --mode=execute \
 		${valgrind} -q ${OPTIONS} --xml=yes --xml-file="${TMP_FILE}" \
 		${CMD}
@@ -51,7 +57,7 @@ run_test_with_valgrind()
 
 	# workaround a valgrind bug that writes several closing valgrindoutput
 	# tags to the XML stream
-	( grep -v '</valgrindoutput>' "${TMP_FILE}" ; \
+	( ${GREP} -v '</valgrindoutput>' "${TMP_FILE}" ; \
 	  echo '</valgrindoutput>' ) > "${TMP_FILE}.filtered"
 	ret=$?
 	if [ ${ret} -ne 0 ] ; then

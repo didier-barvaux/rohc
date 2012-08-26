@@ -25,11 +25,31 @@ if [ ! -d "${SRC_ROOTDIR}/statistics/inputs" ] ; then
 	exit 1
 fi
 
+# Check that a awk-like tool is available
+if [ -z "${AWK}" ] ; then
+	echo "no awk-like tool available, please install one of the gawk, mawk, "\
+	     "nawk, or awk tool."
+	exit 1
+fi
+
+# Check that a grep-like tool is available
+if [ -z "${GREP}" ] ; then
+	echo "no grep-like tool available, please install one of the grep, or "\
+	     "ggrep, tool."
+	exit 1
+fi
+
+# Check that the sed tool is available
+if [ -z "${SED}" ] ; then
+	echo "sed tool not available, please install it."
+	exit 1
+fi
+
 # generate statistics for all captures found in the inputs/ subdirectory
-for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | grep -v bug804552 | sort) ; do
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | ${GREP} -v bug804552 | sort) ; do
 
 	# determine the name of the stream stored in the capture
-	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
+	STREAM="./$(dirname ${CAPTURE} | ${SED} -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
 
 	# check that stream name is not empty
 	if [ -z "${STREAM}" ] ; then
@@ -48,7 +68,7 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 	RAW_OUTPUT="${BUILD_ROOTDIR}/statistics/html/${STREAM}/raw.txt"
 
 	# determine type of packet in capture
-	PACKET_TYPE=$(echo $STREAM | sed -e 's|^./||' | sed -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
+	PACKET_TYPE=$(echo $STREAM | ${SED} -e 's|^./||' | ${SED} -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
 
 	if [ "${VERBOSE}" = "verbose" ] ; then
 		echo "generate statistics for ${PACKET_TYPE} packets:"
@@ -61,7 +81,7 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 
 	# create the raw output
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\trun statistics application... "
-	echo -e "${OUTPUT}" | grep "^STAT" > ${RAW_OUTPUT} || exit 1
+	echo -e "${OUTPUT}" | ${GREP} "^STAT" > ${RAW_OUTPUT} || exit 1
 	[ "${VERBOSE}" = "verbose" ] && echo "done"
 
 	# create the graph with context modes
@@ -126,8 +146,8 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 	# create context mode counters
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate context mode counters... "
 	for CONTEXT_MODE in "U-mode" "O-mode" "R-mode" ; do
-		gawk "\$4 == \"${CONTEXT_MODE}\" { print \$11 }" \
-		     "${RAW_OUTPUT}" \
+		${AWK} "\$4 == \"${CONTEXT_MODE}\" { print \$11 }" \
+		       "${RAW_OUTPUT}" \
 			| wc -l > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/context_mode_${CONTEXT_MODE}.count \
 			|| exit 1
 	done
@@ -136,8 +156,8 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 	# create context state counters
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate context state counters... "
 	for CONTEXT_STATE in "IR" "FO" "SO" ; do
-		gawk "\$6 == \"${CONTEXT_STATE}\" { print \$11 }" \
-		     "${RAW_OUTPUT}" \
+		${AWK} "\$6 == \"${CONTEXT_STATE}\" { print \$11 }" \
+		       "${RAW_OUTPUT}" \
 			| wc -l > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/context_state_${CONTEXT_STATE}.count \
 			|| exit 1
 	done
@@ -152,8 +172,8 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 	                   "CCE" "CCE(off)" \
 	                   "Normal"
 	do
-		gawk "\$8 == \"${PACKET_TYPE}\" { print \$11 }" \
-		     "${RAW_OUTPUT}" \
+		${AWK} "\$8 == \"${PACKET_TYPE}\" { print \$11 }" \
+		       "${RAW_OUTPUT}" \
 			| wc -l > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_type_${PACKET_TYPE}.count \
 			|| exit 1
 	done
@@ -161,9 +181,9 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 
 	# create packet compression gain
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate packet compression gain... "
-	gawk 'BEGIN { uncomp=0 ; comp=0 }\
-	      $2 != "\"packet" { uncomp+=$9 ; comp+=$11 }\
-	      END { printf "scale=2\n100-" comp "*100/" uncomp "\n" }' \
+	${AWK} 'BEGIN { uncomp=0 ; comp=0 }\
+	        $2 != "\"packet" { uncomp+=$9 ; comp+=$11 }\
+	        END { printf "scale=2\n100-" comp "*100/" uncomp "\n" }' \
 	     "${RAW_OUTPUT}" \
 		| bc > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/packet_compression.gain \
 		|| exit 1
@@ -171,9 +191,9 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | gr
 
 	# create header compression gain
 	[ "${VERBOSE}" = "verbose" ] && echo -ne "\tcreate header compression gain... "
-	gawk 'BEGIN { uncomp=0 ; comp=0 }\
-	      $2 != "\"packet" { uncomp+=$10 ; comp+=$12 }\
-	      END { printf "scale=2\n100-" comp "*100/" uncomp "\n" }' \
+	${AWK} 'BEGIN { uncomp=0 ; comp=0 }\
+	        $2 != "\"packet" { uncomp+=$10 ; comp+=$12 }\
+	        END { printf "scale=2\n100-" comp "*100/" uncomp "\n" }' \
 	     "${RAW_OUTPUT}" \
 		| bc > ${BUILD_ROOTDIR}/statistics/html/${STREAM}/header_compression.gain \
 		|| exit 1
@@ -241,8 +261,8 @@ echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 
 for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | sort ) ; do
 
-	STREAM="./$(dirname ${CAPTURE} | sed -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
-	PACKET_TYPE=$(echo $STREAM | sed -e 's|^./||' | sed -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
+	STREAM="./$(dirname ${CAPTURE} | ${SED} -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
+	PACKET_TYPE=$(echo $STREAM | ${SED} -e 's|^./||' | ${SED} -e 's/_/\//g' | tr '[a-z]' '[A-Z]')
 
 	echo -e "\t\t<tr>" >> ${HTML_OUTPUT}
 	echo -e "\t\t\t<td>${PACKET_TYPE} packets</td>" >> ${HTML_OUTPUT}
