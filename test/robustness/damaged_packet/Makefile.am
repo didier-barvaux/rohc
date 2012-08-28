@@ -41,8 +41,7 @@ test_damaged_packet_LDADD = \
 	-lpcap \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 EXTRA_DIST = \
 	test_damaged_packet.sh \

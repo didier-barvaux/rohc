@@ -93,8 +93,7 @@ test_context_reuse_LDADD = \
 	-lpcap \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 EXTRA_DIST = \
 	test_context_reuse.sh \

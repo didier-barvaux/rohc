@@ -123,8 +123,7 @@ test_rtp_uor2_disambiguation_LDADD = \
 	-lpcap \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 EXTRA_DIST = \
 	test_rtp_uor2_disambiguation.sh \

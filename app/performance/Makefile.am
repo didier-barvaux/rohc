@@ -23,6 +23,5 @@ rohc_test_performance_SOURCES = test_performance.c
 rohc_test_performance_LDADD = \
 	-lpcap \
 	-lrohc_comp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 

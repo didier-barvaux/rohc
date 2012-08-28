@@ -33,8 +33,7 @@ test_piggybacking_feedback_LDADD = \
 	-lpcap \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 EXTRA_DIST = \
 	$(TESTS)

@@ -29,6 +29,5 @@ simple_rohc_program_SOURCES = \
 
 simple_rohc_program_LDADD = \
 	-lrohc_comp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 

@@ -192,8 +192,7 @@ test_non_regression_LDADD = \
 	-lpcap \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 EXTRA_DIST = \
 	test_non_regression.sh \

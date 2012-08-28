@@ -27,8 +27,7 @@ generate_statistics_SOURCES = generate_statistics.c
 generate_statistics_LDADD = \
 	-lpcap \
 	-lrohc_comp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 
 distclean-am: clean-am distclean-compile distclean-generic distclean-tags

@@ -32,8 +32,7 @@ test_decompress_feedback_only_SOURCES = test_decompress_feedback_only.c
 test_decompress_feedback_only_LDADD = \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common \
-	-lm
+	-lrohc_common
 
 EXTRA_DIST = \
 	$(TESTS)
