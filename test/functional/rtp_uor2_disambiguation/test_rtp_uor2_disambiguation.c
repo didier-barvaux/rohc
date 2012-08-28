@@ -38,7 +38,7 @@
 #include <assert.h>
 
 /* include for the PCAP library */
-#include <pcap.h>
+#include <pcap/pcap.h>
 
 /* ROHC includes */
 #include <rohc.h>

@@ -162,6 +162,9 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		exit 1
 	fi
 
+	# check for libpcap header presence
+	AC_CHECK_HEADERS([pcap/pcap.h])
+
 	# check for libpcap presence
 	LPCAP=""
 	AC_CHECK_LIB(pcap, pcap_open_offline, [ ], LPCAP="no")

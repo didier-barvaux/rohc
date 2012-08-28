@@ -42,7 +42,7 @@
 #include <time.h> /* for time(2) */
 
 /* include for the PCAP library */
-#include <pcap.h>
+#include <pcap/pcap.h>
 
 /* ROHC includes */
 #include <rohc.h>
