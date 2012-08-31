@@ -5,9 +5,11 @@ The library itself does not require external resources. Optional configure
 flags require external resources:
 
  --enable-doc                  requires doxygen and latex.
- --enable-rohc-stats           requires libpcap and gnuplot.
- --enable-rohc-tests           requires libpcap.
- --enable-rohc-tests-valgrind  requires valgrind and xsltproc.
+ --enable-rohc-stats           requires libpcap, gnuplot, grep, sed, awk, sort,
+                               and tr.
+ --enable-rohc-tests           requires libpcap, and sed.
+ --enable-rohc-tests-valgrind  requires --enable-rohc-tests to be selected,
+                               valgrind, xsltproc, and grep.
 
 
 Libraries and tools

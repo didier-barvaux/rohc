@@ -263,7 +263,7 @@ if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 fi
 
 
-# gnuplot, awk, and grep are mandatory if ROHC statistics are enabled
+# gnuplot, awk, grep, sort, and tr are mandatory if ROHC statistics are enabled
 if test "x$enable_rohc_stats" = "xyes" ; then
 
 	# check for the gnuplot binary and abort if it is not found
@@ -304,6 +304,32 @@ if test "x$enable_rohc_stats" = "xyes" ; then
 		exit 1
 	fi
 	tests_environment="${tests_environment} GREP=$GREP"
+
+	# check for the sort binary and abort if it is not found
+	AC_CHECK_PROG(is_sort_found, sort, "yes", "no")
+	if test "x$is_sort_found" != "xyes"; then
+		echo
+		echo "ERROR: sort binary not found"
+		echo
+		echo "sort is required in order to generate compression statistics."
+		echo
+		echo "Go get it from http://www.gnu.org/software/coreutils/ or use your "
+		echo "package manager to install it on your system."
+		exit 1
+	fi
+
+	# check for the tr binary and abort if it is not found
+	AC_CHECK_PROG(is_tr_found, tr, "yes", "no")
+	if test "x$is_tr_found" != "xyes"; then
+		echo
+		echo "ERROR: tr binary not found"
+		echo
+		echo "tr is required in order to generate compression statistics."
+		echo
+		echo "Go get it from http://www.gnu.org/software/coreutils/ or use your "
+		echo "package manager to install it on your system."
+		exit 1
+	fi
 fi
 
 
