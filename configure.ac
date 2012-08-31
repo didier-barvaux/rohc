@@ -150,7 +150,8 @@ AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 # if ROHC tests or statistics are enabled:
 #  - fail if cross-compiling
-#  - libpcap is mandatory if ROHC tests or statistics are enabled
+#  - libpcap is mandatory
+#  - sed is mandatory
 if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
 	# cross-compiling is not compatible with tests and stats yet
 	if test "x$cross_compiling" = "xyes" ; then
@@ -186,11 +187,7 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		echo "in an unusual place."
 		exit 1
 	fi
-fi
 
-
-# sed is mandatory if ROHC tests are enabled
-if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
 	# check for sed and abort if it is not found
 	AC_PROG_SED
 	if test "x$SED" = "x" ; then
