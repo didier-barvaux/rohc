@@ -30,18 +30,11 @@
 /// Header version
 typedef enum
 {
-	/// Hop by hop header
-	HBH = 0,
-	/// Destination header
-	DEST = 60,
-	/// Routing header
-	RTHDR = 43,
-	/// AH header
-	AH = 51,
-#if 0 /* CSRC lists not supported yet */
-	/// CSRC
-	CSRC = 10,
-#endif
+	HBH    = IPPROTO_HOPOPTS,  /**< Hop by hop header */
+	RTHDR  = IPPROTO_ROUTING,  /**< Routing header */
+	AH     = IPPROTO_AH,       /**< AH header */
+	DEST   = IPPROTO_DSTOPTS,  /**< Destination header */
+	/* CSRC lists not supported yet */
 } ext_header_version;
 
 
