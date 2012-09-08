@@ -148,6 +148,15 @@ AC_ARG_ENABLE(rohc_stats,
 AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 
+# check if ROHC applications (located in the app/ subdir) are enabled
+AC_ARG_ENABLE(rohc_apps,
+              AS_HELP_STRING([--enable-rohc-apps],
+                             [enable ROHC applications found in the app/ subdir [[default=no]]]),
+              enable_rohc_apps=$enableval,
+              enable_rohc_apps=no)
+AM_CONDITIONAL([ROHC_APPS], [test x$enable_rohc_apps = xyes])
+
+
 # if ROHC tests or statistics are enabled:
 #  - fail if cross-compiling
 #  - libpcap is mandatory
