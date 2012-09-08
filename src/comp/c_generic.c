@@ -37,8 +37,17 @@
 #include "sdvl.h"
 #include "crc.h"
 
-#include <netinet/ip.h>
-#include <netinet/udp.h>
+#include <string.h>
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
 #include <assert.h>
 
 
@@ -480,7 +489,7 @@ int c_generic_create(struct c_context *const context,
 		rohc_debugf(0, "no memory for generic part of the profile context\n");
 		goto quit;
 	}
-	bzero(g_context, sizeof(struct c_generic_context));
+	memset(g_context, 0, sizeof(struct c_generic_context));
 	context->specific = g_context;
 
 	/* initialize some context variables:

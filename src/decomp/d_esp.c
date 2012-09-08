@@ -22,13 +22,14 @@
  */
 
 #include "d_esp.h"
-#include "rohc_traces.h"
-#include "crc.h"
-#include "rohc_debug.h"
-#include "rohc_bit_ops.h"
-#include "protocols/esp.h"
 #include "d_generic.h"
 #include "d_ip.h"
+#include "rohc_bit_ops.h"
+#include "rohc_traces.h"
+#include "rohc_debug.h"
+#include "crc.h"
+#include "protocols/esp.h"
+#include "lsb_decode.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -117,7 +118,7 @@ static void * d_esp_create(void)
 		            "part of the outer IP header changes\n");
 		goto free_lsb_sn;
 	}
-	bzero(context->outer_ip_changes->next_header, sizeof(struct esphdr));
+	memset(context->outer_ip_changes->next_header, 0, sizeof(struct esphdr));
 
 	context->inner_ip_changes->next_header_len = sizeof(struct esphdr);
 	context->inner_ip_changes->next_header = malloc(sizeof(struct esphdr));
@@ -127,7 +128,7 @@ static void * d_esp_create(void)
 		            "part of the inner IP header changes\n");
 		goto free_outer_ip_changes_next_header;
 	}
-	bzero(context->inner_ip_changes->next_header, sizeof(struct esphdr));
+	memset(context->inner_ip_changes->next_header, 0, sizeof(struct esphdr));
 
 	/* set next header to ESP */
 	context->next_header_proto = IPPROTO_ESP;

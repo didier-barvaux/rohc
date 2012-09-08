@@ -26,6 +26,7 @@
 #define LSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
+#include "dllexport.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -40,28 +41,28 @@ struct rohc_lsb_decode;
  * Function prototypes
  */
 
-struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p);
+struct rohc_lsb_decode * ROHC_EXPORT rohc_lsb_new(const rohc_lsb_shift_t p);
 
-void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
+void ROHC_EXPORT rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 	__attribute__((nonnull(1)));
 
-bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
-                       const uint32_t m,
-                       const size_t k,
-                       uint32_t *const decoded)
+bool ROHC_EXPORT rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                                   const uint32_t m,
+                                   const size_t k,
+                                   uint32_t *const decoded)
 	__attribute__((nonnull(1, 4)));
 
-bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
-                       const uint16_t m,
-                       const size_t k,
-                       uint16_t *const decoded)
+bool ROHC_EXPORT rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                                   const uint16_t m,
+                                   const size_t k,
+                                   uint16_t *const decoded)
 	__attribute__((nonnull(1, 4), warn_unused_result));
 
-void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
-                      const uint32_t v_ref_d)
+void ROHC_EXPORT rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
+                                  const uint32_t v_ref_d)
 	__attribute__((nonnull(1)));
 
-uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
+uint32_t ROHC_EXPORT rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
 	__attribute__((nonnull(1)));
 
 #endif

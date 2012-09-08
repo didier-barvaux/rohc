@@ -29,6 +29,7 @@
 #define TS_SC_COMP_H
 
 #include "wlsb.h"
+#include "dllexport.h"
 
 #include <stdbool.h>
 
@@ -97,18 +98,22 @@ struct ts_sc_comp
  * Function prototypes
  */
 
-int c_create_sc(struct ts_sc_comp *const ts_sc,
-                const size_t wlsb_window_width);
-void c_destroy_sc(struct ts_sc_comp *const ts_sc);
+int ROHC_EXPORT c_create_sc(struct ts_sc_comp *const ts_sc,
+                            const size_t wlsb_window_width);
+void ROHC_EXPORT c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
-void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t sn);
+void ROHC_EXPORT c_add_ts(struct ts_sc_comp *const ts_sc,
+                          const uint32_t ts,
+                          const uint16_t sn);
 
-bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr);
+bool ROHC_EXPORT nb_bits_scaled(const struct ts_sc_comp ts_sc,
+                                size_t *const bits_nr);
 
-void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn);
+void ROHC_EXPORT add_scaled(const struct ts_sc_comp *const ts_sc,
+                            uint16_t sn);
 
-uint32_t get_ts_stride(const struct ts_sc_comp ts_sc);
-uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc);
+uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp ts_sc);
+uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp ts_sc);
 
 #endif
 

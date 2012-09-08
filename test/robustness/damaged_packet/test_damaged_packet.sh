@@ -19,16 +19,22 @@
 #                    library
 #
 
+# skip test in case of cross-compilation
+if [ "${CROSS_COMPILATION}" = "yes" ] && \
+   [ -z "${CROSS_COMPILATION_EMULATOR}" ] ; then
+	exit 77
+fi
+
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
 VERY_VERBOSE="$2"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_damaged_packet"
+	APP="./test_damaged_packet${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_damaged_packet"
+	APP="${BASEDIR}/test_damaged_packet${CROSS_COMPILATION_EXEEXT}"
 fi
 
 # extract the packet to damage and source capture from the name of the script
@@ -52,7 +58,7 @@ if [ -z "${PACKET_TO_DAMAGE}" ] || [ -z "${EXPECTED_PACKET}" ] ; then
 	exit 1
 fi
 
-CMD="${APP} ${CAPTURE_SOURCE} ${PACKET_TO_DAMAGE} ${EXPECTED_PACKET}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${PACKET_TO_DAMAGE} ${EXPECTED_PACKET}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

@@ -104,26 +104,26 @@ check_PROGRAMS = \
 	test_rtp_uor2_disambiguation
 
 
-INCLUDES = \
+test_rtp_uor2_disambiguation_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+test_rtp_uor2_disambiguation_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
 
-
 test_rtp_uor2_disambiguation_SOURCES = test_rtp_uor2_disambiguation.c
 test_rtp_uor2_disambiguation_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common
+	-lrohc_common \
+	$(additional_platform_libs)
 
 EXTRA_DIST = \
 	test_rtp_uor2_disambiguation.sh \

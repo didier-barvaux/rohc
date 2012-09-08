@@ -23,9 +23,12 @@ m4_ifndef([AC_PACKAGE_URL],
 AM_INIT_AUTOMAKE([foreign no-dist-gzip dist-bzip2 tar-pax parallel-tests])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-# Init libtool (require >= 2.2.0, disable static libraries by default)
+# Init libtool:
+#  - require >= 2.2.0,
+#  - disable static libraries by default,
+#  - ready for Windows DLL
 LT_PREREQ([2.2.0])
-LT_INIT([disable-static])
+LT_INIT([disable-static win32-dll])
 
 # Checks for programs.
 AC_PROG_CC
@@ -35,13 +38,83 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])
-AC_CHECK_HEADERS([netinet/ip.h netinet/udp.h netinet/in.h])
+AC_CHECK_HEADERS([net/ethernet.h netinet/ip.h netinet/ip6.h netinet/udp.h netinet/in.h])
+AC_CHECK_HEADERS([winsock2.h]) # ntohl, htonl, ntohs, htons on Windows
+AC_CHECK_HEADERS([linux/if_tun.h]) # TUN/TAP support on Linux
+AC_CHECK_HEADERS([sched.h]) # scheduling priority on Linux
+AC_CHECK_HEADERS([sys/mman.h]) # memory management on Linux
+
+# Handle library flags according to the platform
+if test "x$ac_cv_header_winsock2_h" = "xyes" ; then
+	# for windows platforms
+	additional_platform_libs="-lws2_32"
+else
+	# other platforms
+	additional_platform_libs=""
+fi
+AC_SUBST([additional_platform_libs], [$additional_platform_libs])
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
+AC_C_BIGENDIAN
+AC_PROG_CC_C99
+if test "x$ac_cv_prog_cc_c99" = "xno" ; then
+	echo
+	echo "ERROR: your compiler cannot run in C99 mode"
+	echo
+	echo "Please use another compiler or tweak compiler options and try again."
+	exit 1
+fi
 
 # Checks for library functions.
-AC_CHECK_FUNCS([malloc calloc free memcpy memcmp bzero])
+AC_CHECK_FUNCS([malloc calloc free memcpy memcmp])
+AC_CHECK_FUNCS([ntohl htonl ntohs htons])
+
+# If sched.h is present, check sched_setscheduler() availability & usage
+if test "x$ac_cv_header_sched_h" = "xyes" ; then
+	# Check if sched_setscheduler() is available without external library then with libpthread
+	sched_lib=""
+	AC_CHECK_FUNC([sched_setscheduler], ,
+	              [AC_CHECK_LIB([pthread], sched_setscheduler, sched_lib="-lpthread",
+	                            [AC_MSG_ERROR([sched.h header found, but sched_setscheduler not found])])])
+	AC_SUBST([sched_lib], [$sched_lib])
+	# Check whether sched_setscheduler() takes 2 or 3 arguments
+	AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
+	                                     #include <string.h>
+	                                     struct sched_param param;]],
+	                                   [[memset(&param, 0, sizeof(struct sched_param));
+	                                     sched_setscheduler(0, SCHED_FIFO, &param);]])],
+	                  [sched_setscheduler_params=3],
+	                  [sched_setscheduler_params=2])
+	AC_DEFINE_UNQUOTED([SCHED_SETSCHEDULER_PARAMS], [$sched_setscheduler_params],
+	                   [Define the number of arguments that sched_setscheduler takes])
+	AC_MSG_RESULT([$sched_setscheduler_params])
+fi
+
+# Define uint*_t and u_int*_t if not defined on target platform
+AC_TYPE_UINT8_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_CHECK_TYPES([u_int8_t], [],
+               [AC_DEFINE_UNQUOTED([u_int8_t], [uint8_t], [unsigned 8-bit integer])])
+AC_CHECK_TYPES([u_int16_t], [],
+               [AC_DEFINE_UNQUOTED([u_int16_t], [uint16_t], [unsigned 16-bit integer])])
+AC_CHECK_TYPES([u_int32_t], [],
+               [AC_DEFINE_UNQUOTED([u_int32_t], [uint32_t], [unsigned 32-bit integer])])
+
+
+# Special tweaks for mingw
+AC_CANONICAL_HOST
+if test "x$host_os" = "xmingw32" || \
+   test "x$host_os" = "xmingw64" ; then
+	# Avoid warnings about 'unknown conversion type character ‘z’ in format'
+	CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
+	if test "x$enable_shared" = "xyes" ; then
+		LDFLAGS="${LDFLAGS} -no-undefined"
+	fi
+fi
 
 # Check whether the compiler computes the bit-field lengths as expected
 # (added because such a problem was detected with tinycc http://tinycc.org/)
@@ -148,44 +221,58 @@ AC_ARG_ENABLE(rohc_stats,
 AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 
+# check if ROHC applications (located in the app/ subdir) are enabled
+AC_ARG_ENABLE(rohc_apps,
+              AS_HELP_STRING([--enable-rohc-apps],
+                             [enable ROHC applications found in the app/ subdir [[default=no]]]),
+              enable_rohc_apps=$enableval,
+              enable_rohc_apps=no)
+if test "x$enable_rohc_apps" = "xyes" && \
+   test "x$ac_cv_header_linux_if_tun_h" != "xyes" ; then
+	echo
+	echo "ERROR: --enable-rohc-apps cannot be enabled on non Linux platforms yet"
+	echo
+	echo "Please disable both the option and try again."
+	exit 1
+fi
+AM_CONDITIONAL([ROHC_APPS], [test x$enable_rohc_apps = xyes])
+
+
 # if ROHC tests or statistics are enabled:
-#  - fail if cross-compiling
-#  - libpcap is mandatory
+#  - build but do not run tests/stats if cross-compiling except if an emulator
+#    is available
 #  - sed is mandatory
 if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
-	# cross-compiling is not compatible with tests and stats yet
+
+	# cross-compiling is not fully compatible with tests and stats yet
 	if test "x$cross_compiling" = "xyes" ; then
-		echo
-		echo "ERROR: --enable-rohc-tests and --enable-rohc-stats are not compatible"
-		echo "       with cross-compiling"
-		echo
-		echo "Please disable both options and try again."
-		exit 1
-	fi
 
-	# check for libpcap header presence
-	AC_CHECK_HEADERS([pcap/pcap.h])
+		# mingw cross-compilation may run the tests/stats if wine is installed,
+		# others cannot yet
+		cross_compiling_emulator=""
+		if test "x$host_os" = "xmingw32" || \
+		   test "x$host_os" = "xmingw64" ; then
+			AC_CHECK_PROG(is_wine_found, wine, "yes", "no")
+			if test "x$is_wine_found" = "xyes"; then
+				cross_compiling_emulator="wine"
+			fi
+		fi
 
-	# check for libpcap presence
-	LPCAP=""
-	AC_CHECK_LIB(pcap, pcap_open_offline, [ ], LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_datalink, [ ], LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_next, [ ], LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_close, [ ], LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_dump_open, [ ], LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_dump, [ ], LPCAP="no")
-	AC_CHECK_LIB(pcap, pcap_dump_close, [ ], LPCAP="no")
+		if test "x$cross_compiling_emulator" = "x"; then
+			echo
+			echo "WARNING: --enable-rohc-tests and/or --enable-rohc-stats are enabled "
+			echo "         and you are cross-compiling, binaries will be built but none "
+			echo "         will be run."
+			echo
+		else
+			echo
+			echo "WARNING: --enable-rohc-tests and/or --enable-rohc-stats are enabled "
+			echo "         and you are cross-compiling, binaries will be built and run "
+			echo "         with the '$cross_compiling_emulator' emulator."
+			echo
+		fi
 
-	# abort if libpcap is not found
-    if test "x$LPCAP" = "xno"; then
-		echo
-		echo "ERROR: libpcap library/headers not found"
-		echo
-		echo "Go get it from http://www.tcpdump.org/ or use the --with-libpcap-* "
-		echo "options, if you have it installed in unusual place. Also check if "
-		echo "your libpcap depends on another shared library that may be installed "
-		echo "in an unusual place."
-		exit 1
+		tests_environment="${tests_environment} CROSS_COMPILATION=yes CROSS_COMPILATION_EXEEXT=$EXEEXT CROSS_COMPILATION_EMULATOR=$cross_compiling_emulator"
 	fi
 
 	# check for sed and abort if it is not found
@@ -200,6 +287,53 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		exit 1
 	fi
 	tests_environment="${tests_environment} SED=$SED"
+fi
+
+
+# if ROHC tests, statistics, or apps are enabled:
+#  - libpcap is mandatory
+if test "x$enable_rohc_tests" = "xyes" || \
+   test "x$enable_rohc_stats" = "xyes" || \
+   test "x$enable_rohc_apps" = "xyes" ; then
+
+	# use winpcap for mingw, libpcap for other platforms
+	if test "x$host_os" = "xmingw32" || \
+	   test "x$host_os" = "xmingw64" ; then
+		pcap_lib_name="wpcap"
+		pcap_lib_pretty_name="WinPcap"
+		pcap_lib_url="http://www.winpcap.org/"
+	else
+		pcap_lib_name="pcap"
+		pcap_lib_pretty_name="libpcap"
+		pcap_lib_url="http://www.tcpdump.org/"
+	fi
+
+	# check for libpcap header presence
+	AC_CHECK_HEADERS([pcap/pcap.h])
+
+	# check for libpcap presence
+	LPCAP=""
+	AC_CHECK_LIB([$pcap_lib_name], pcap_open_offline, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_datalink, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_next, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_close, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_open, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_dump, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_close, [ ], LPCAP="no")
+
+	# abort if libpcap is not found
+	if test "x$LPCAP" = "xno"; then
+		echo
+		echo "ERROR: $pcap_lib_pretty_name library/headers not found"
+		echo
+		echo "Go get it from $pcap_lib_url or use the --with-libpcap-* "
+		echo "options, if you have it installed in unusual place. Also check if "
+		echo "it depends on another shared library that may be installed in an "
+		echo "unusual place."
+		exit 1
+	fi
+
+	AC_SUBST([pcap_lib_name], [$pcap_lib_name])
 fi
 
 
@@ -420,6 +554,7 @@ AM_DEP_TRACK
 AC_CONFIG_FILES([ \
 	Makefile \
 	src/Makefile \
+	src/compat/Makefile \
 	src/common/Makefile \
 	src/common/protocols/Makefile \
 	src/common/test/Makefile \

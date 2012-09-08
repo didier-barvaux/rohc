@@ -1,7 +1,8 @@
 ################################################################################
-#	Name       : Makefile
-#	Author     : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
-#	Description: create the ROHC common library
+# Name       : Makefile
+# Authors    : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#              Didier Barvaux <didier@barvaux.org>
+# Description: create the ROHC common library
 ################################################################################
 
 
@@ -51,11 +52,12 @@ private_headers = \
 	cid.h
 
 librohc_common_la_SOURCES = $(sources)
+librohc_common_la_LIBADD = $(additional_platform_libs)
+librohc_common_la_LDFLAGS =
+librohc_common_la_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat
 
 include_HEADERS = $(public_headers)
 noinst_HEADERS = $(private_headers)
-
-INCLUDES =
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
 

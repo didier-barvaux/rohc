@@ -21,9 +21,9 @@
  * @author The hackers from ROHC for Linux
  */
 
-#include "rohc_traces.h"
 #include "cid.h"
 #include "sdvl.h"
+#include "rohc_traces.h"
 
 #include <stdint.h>
 #include <assert.h>

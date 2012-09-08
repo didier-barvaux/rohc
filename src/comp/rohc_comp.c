@@ -36,7 +36,20 @@
 #include "ip.h"
 #include "crc.h"
 
-#include <netinet/udp.h>
+#include "config.h" /* for HAVE_NETINET_*_H */
+
+#if HAVE_NETINET_IN_H == 1
+#	include <netinet/in.h>
+#else
+#	include "netinet_in.h"  /* use an internal definition for compatibility */
+#endif
+
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -160,7 +173,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 		rohc_debugf(0, "cannot allocate memory for the compressor\n");
 		goto error;
 	}
-	bzero(comp, sizeof(struct rohc_comp));
+	memset(comp, 0, sizeof(struct rohc_comp));
 
 	comp->enabled = 1;
 	comp->medium.max_cid = max_cid;

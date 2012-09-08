@@ -24,12 +24,16 @@
 #ifndef ROHC_PROTOCOLS_UDP_LITE_H
 #define ROHC_PROTOCOLS_UDP_LITE_H
 
-#include <netinet/udp.h>
+#if HAVE_NETINET_UDP_H == 1
+#  include <netinet/udp.h>
+#else
+#  include "netinet_udp.h"
+#endif
 
 
 #ifndef IPPROTO_UDPLITE
 /// define the UDP-Lite protocol number if not already defined by the system
-#define IPPROTO_UDPLITE  136
+#  define IPPROTO_UDPLITE  136
 #endif
 
 

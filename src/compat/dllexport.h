@@ -15,29 +15,20 @@
  */
 
 /**
- * @file cid.h
- * @brief Context ID (CID) routines.
- * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
+ * @file   dllexport.h
+ * @brief  Define the ROHC_EXPORT macro if needed by the platform
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef CID_H
-#define CID_H
+#ifndef ROHC_DLL_EXPORT_H
+#define ROHC_DLL_EXPORT_H
 
-#include "rohc.h"
-#include "dllexport.h"
-
-
-/*
- * Prototypes of functions that may used by other ROHC modules
- */
-
-int ROHC_EXPORT code_cid_values(const rohc_cid_type_t cid_type,
-                                const int cid,
-                                unsigned char *const dest,
-                                const int dest_size,
-                                int *const first_position);
-
+/** Macro that handles DLL export declarations gracefully */
+#ifdef DLL_EXPORT /* passed by autotools on command line */
+	#define ROHC_EXPORT __declspec(dllexport)
+#else
+	#define ROHC_EXPORT 
+#endif
 
 #endif
 

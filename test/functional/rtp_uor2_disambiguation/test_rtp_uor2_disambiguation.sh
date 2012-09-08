@@ -17,16 +17,22 @@
 #                    library
 #
 
+# skip test in case of cross-compilation
+if [ "${CROSS_COMPILATION}" = "yes" ] && \
+   [ -z "${CROSS_COMPILATION_EMULATOR}" ] ; then
+	exit 77
+fi
+
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
 VERY_VERBOSE="$2"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_rtp_uor2_disambiguation"
+	APP="./test_rtp_uor2_disambiguation${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_rtp_uor2_disambiguation"
+	APP="${BASEDIR}/test_rtp_uor2_disambiguation${CROSS_COMPILATION_EXEEXT}"
 fi
 
 # extract the source capture and the expected packet from the name of the script
@@ -48,7 +54,7 @@ if [ -z "${EXPECTED_PACKET}" ] ; then
 	exit 1
 fi
 
-CMD="${APP} ${CAPTURE_SOURCE} ${EXPECTED_PACKET}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${EXPECTED_PACKET}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

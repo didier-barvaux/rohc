@@ -14,26 +14,28 @@ check_PROGRAMS = \
 	test_piggybacking_feedback
 
 
-INCLUDES = \
+test_piggybacking_feedback_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+test_piggybacking_feedback_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
 
+test_piggybacking_feedback_SOURCES = \
+	test_piggybacking_feedback.c
 
-test_piggybacking_feedback_SOURCES = test_piggybacking_feedback.c
 test_piggybacking_feedback_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common
+	-lrohc_common \
+	$(additional_platform_libs)
 
 EXTRA_DIST = \
 	$(TESTS)

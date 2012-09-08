@@ -27,6 +27,9 @@
 #define ROHC_PROTOCOLS_RTP_H
 
 #include <sys/types.h>
+#include <stdint.h>
+
+#include "config.h" /* for WORDS_BIGENDIAN + u_int*_t */
 
 
 /**
@@ -36,14 +39,7 @@
  */
 struct rtphdr
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int16_t cc:4;          ///< CSRC Count
-	u_int16_t extension:1;   ///< Extension bit
-	u_int16_t padding:1;     ///< Padding bit
-	u_int16_t version:2;     ///< RTP version
-	u_int16_t pt:7;          ///< Payload Type
-	u_int16_t m:1;           ///< Marker
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#if WORDS_BIGENDIAN == 1
 	u_int16_t version:2;
 	u_int16_t padding:1;
 	u_int16_t extension:1;
@@ -51,7 +47,12 @@ struct rtphdr
 	u_int16_t m:1;
 	u_int16_t pt:7;
 #else
-#	error "Adjust your <bits/endian.h> defines"
+	u_int16_t cc:4;          ///< CSRC Count
+	u_int16_t extension:1;   ///< Extension bit
+	u_int16_t padding:1;     ///< Padding bit
+	u_int16_t version:2;     ///< RTP version
+	u_int16_t pt:7;          ///< Payload Type
+	u_int16_t m:1;           ///< Marker
 #endif
 	u_int16_t sn;            ///< Sequence Number
 	u_int32_t timestamp;     ///< Timestamp

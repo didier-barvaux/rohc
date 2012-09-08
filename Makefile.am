@@ -16,6 +16,12 @@ else
 STATS_DIR = 
 endif
 
+if ROHC_APPS
+APPS_DIR = app
+else
+APPS_DIR =
+endif
+
 if BUILD_DOC
 DOC_DIR = doc
 else
@@ -28,7 +34,7 @@ else
 EXAMPLES_DIR =
 endif
 
-SUBDIRS = src $(TESTS_DIR) $(STATS_DIR) app $(DOC_DIR) $(EXAMPLES_DIR) contrib
+SUBDIRS = src $(TESTS_DIR) $(STATS_DIR) $(APPS_DIR) $(DOC_DIR) $(EXAMPLES_DIR) contrib
 
 dist_doc_DATA = \
 	README \

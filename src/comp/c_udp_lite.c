@@ -30,6 +30,7 @@
 #include "protocols/udp_lite.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 
 /*

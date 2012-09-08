@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "config.h" /* for ROHC_DEBUG_LEVEL */
+#include "dllexport.h"
 
 /// @brief Print information depending on the debug level and prefixed
 ///        with the function name
@@ -62,9 +63,9 @@
 	} while(0)
 
 
-void rohc_dump_packet(const char *const descr,
-                      const unsigned char *const packet,
-                      const size_t length)
+void ROHC_EXPORT rohc_dump_packet(const char *const descr,
+                                  const unsigned char *const packet,
+                                  const size_t length)
 	__attribute__((nonnull(1, 2)));
 
 

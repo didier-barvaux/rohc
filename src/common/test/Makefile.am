@@ -6,8 +6,8 @@
 
 
 TESTS = \
-	test_lsb_decode_wraparound \
-	test_lsb_decode_packet_loss
+	test_lsb_decode_wraparound.sh \
+	test_lsb_decode_packet_loss.sh
 
 
 check_PROGRAMS = \
@@ -15,22 +15,28 @@ check_PROGRAMS = \
 	test_lsb_decode_packet_loss
 
 
-INCLUDES = \
-	-I$(top_srcdir)/src/common
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
-	-L$(top_builddir)/src/common/.libs
-
-
 test_lsb_decode_wraparound_SOURCES = test_lsb_decode_wraparound.c
 test_lsb_decode_wraparound_LDADD = \
 	-lrohc_common
+test_lsb_decode_wraparound_LDFLAGS = \
+	-L$(top_builddir)/src/common/.libs
+test_lsb_decode_wraparound_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src/common
 
 test_lsb_decode_packet_loss_SOURCES = test_lsb_decode_packet_loss.c
 test_lsb_decode_packet_loss_LDADD = \
 	-lrohc_common
+test_lsb_decode_packet_loss_LDFLAGS = \
+	-L$(top_builddir)/src/common/.libs
+test_lsb_decode_packet_loss_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src/common
 
-EXTRA_DIST =
+
+EXTRA_DIST = \
+	test_lsb_decode_wraparound.sh \
+	test_lsb_decode_packet_loss.sh
 

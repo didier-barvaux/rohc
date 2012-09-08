@@ -130,6 +130,15 @@
 #endif
 
 
+/** Macro that handles DLL export declarations gracefully */
+#ifdef DLL_EXPORT /* passed by autotools on command line */
+	#define ROHC_EXPORT __declspec(dllexport)
+#else
+	#define ROHC_EXPORT 
+#endif
+
+
+
 /**
  * @brief The Ethertype assigned to the ROHC protocol by the IEEE
  *
@@ -288,27 +297,27 @@ struct medium
 
 /** The table to enable fast CRC-2 computation
  * @deprecated please do not use this variable anymore */
-extern unsigned char crc_table_2[256]
+extern unsigned char ROHC_EXPORT crc_table_2[256]
 	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-3 computation
  * @deprecated please do not use this variable anymore */
-extern unsigned char crc_table_3[256]
+extern unsigned char ROHC_EXPORT crc_table_3[256]
 	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-6 computation
  * @deprecated please do not use this variable anymore */
-extern unsigned char crc_table_6[256]
+extern unsigned char ROHC_EXPORT crc_table_6[256]
 	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-7 computation
  * @deprecated please do not use this variable anymore */
-extern unsigned char crc_table_7[256]
+extern unsigned char ROHC_EXPORT crc_table_7[256]
 	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 /** The table to enable fast CRC-8 computation
  * @deprecated please do not use this variable anymore */
-extern unsigned char crc_table_8[256]
+extern unsigned char ROHC_EXPORT crc_table_8[256]
 	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
 
@@ -316,9 +325,9 @@ extern unsigned char crc_table_8[256]
  * Prototypes of public up-to-date functions
  */
 
-char * rohc_version(void);
+char * ROHC_EXPORT rohc_version(void);
 
-const char * rohc_get_mode_descr(const rohc_mode mode);
+const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode mode);
 
 
 /*
@@ -327,11 +336,14 @@ const char * rohc_get_mode_descr(const rohc_mode mode);
  * TODO API: remove this function once compatibility is not needed anymore
  */
 
-int crc_get_polynom(int type)
+int ROHC_EXPORT crc_get_polynom(int type)
 	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
 
-void crc_init_table(unsigned char *table, unsigned char polynum)
+void ROHC_EXPORT crc_init_table(unsigned char *table, unsigned char polynum)
 	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
+
+
+#undef ROHC_EXPORT /* do not pollute outside this header */
 
 #endif
 

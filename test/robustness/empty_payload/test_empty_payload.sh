@@ -16,16 +16,22 @@
 #   verbose          prints the traces of test application
 #
 
+# skip test in case of cross-compilation
+if [ "${CROSS_COMPILATION}" = "yes" ] && \
+   [ -z "${CROSS_COMPILATION_EMULATOR}" ] ; then
+	exit 77
+fi
+
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
 VERY_VERBOSE="$2"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_empty_payload"
+	APP="./test_empty_payload${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_empty_payload"
+	APP="${BASEDIR}/test_empty_payload${CROSS_COMPILATION_EXEEXT}"
 fi
 
 # extract the packet type from the name of the script
@@ -46,7 +52,7 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 	exit 1
 fi
 
-CMD="${APP} ${CAPTURE_SOURCE} ${PROFILE_NAME} ${PACKET_TYPE}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${PROFILE_NAME} ${PACKET_TYPE}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

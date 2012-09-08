@@ -28,7 +28,13 @@
 #include "protocols/rtp.h"
 #include "protocols/esp.h"
 
-#include <netinet/udp.h>
+#include "config.h" /* for HAVE_NETINET_UDP_H */
+#include <stdlib.h>
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
 #include <assert.h>
 
 

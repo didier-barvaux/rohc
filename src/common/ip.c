@@ -23,6 +23,7 @@
 #include "ip.h"
 #include "rohc_traces.h"
 
+#include <string.h>
 #include <assert.h>
 
 

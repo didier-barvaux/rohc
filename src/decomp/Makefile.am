@@ -1,7 +1,8 @@
 ################################################################################
-#	Name       : Makefile
-#	Author     : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
-#	Description: create the ROHC decompression library
+# Name       : Makefile
+# Authors    : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#              Didier Barvaux <didier@barvaux.org>
+# Description: create the ROHC decompression library
 ################################################################################
 
 lib_LTLIBRARIES = librohc_decomp.la
@@ -18,14 +19,19 @@ librohc_decomp_la_SOURCES = \
 	d_rtp.c
 
 librohc_decomp_la_LIBADD = \
-	$(top_builddir)/src/common/librohc_common.la \
-	$(top_builddir)/src/comp/librohc_comp.la
+	-lrohc_common \
+	-lrohc_comp \
+	$(additional_platform_libs)
 
-INCLUDES = \
+librohc_decomp_la_LDFLAGS = \
+	-L$(top_builddir)/src/common/.libs \
+	-L$(top_builddir)/src/comp/.libs
+
+librohc_decomp_la_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 include_HEADERS = rohc_decomp.h
 

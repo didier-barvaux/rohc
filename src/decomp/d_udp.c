@@ -28,8 +28,19 @@
 #include "rohc_debug.h"
 #include "crc.h"
 
-#include <netinet/ip.h>
-#include <netinet/udp.h>
+#include "config.h" /* for HAVE_NETINET_*_H */
+
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
 
 
 /*
@@ -86,7 +97,7 @@ void * d_udp_create(void)
 		rohc_debugf(0, "cannot allocate memory for the UDP-specific context\n");
 		goto destroy_context;
 	}
-	bzero(udp_context, sizeof(struct d_udp_context));
+	memset(udp_context, 0, sizeof(struct d_udp_context));
 	context->specific = udp_context;
 
 	/* create the LSB decoding context for SN */
@@ -122,7 +133,7 @@ void * d_udp_create(void)
 		            "part of the outer IP header changes\n");
 		goto free_lsb_sn;
 	}
-	bzero(context->outer_ip_changes->next_header, sizeof(struct udphdr));
+	memset(context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
 	context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
@@ -132,7 +143,7 @@ void * d_udp_create(void)
 		            "part of the inner IP header changes\n");
 		goto free_outer_ip_changes_next_header;
 	}
-	bzero(context->inner_ip_changes->next_header, sizeof(struct udphdr));
+	memset(context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	/* set next header to UDP */
 	context->next_header_proto = IPPROTO_UDP;

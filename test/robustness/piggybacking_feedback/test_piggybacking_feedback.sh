@@ -13,19 +13,25 @@
 #   verbose          prints the traces of test application, then library traces
 #
 
+# skip test in case of cross-compilation
+if [ "${CROSS_COMPILATION}" = "yes" ] && \
+   [ -z "${CROSS_COMPILATION_EMULATOR}" ] ; then
+	exit 77
+fi
+
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
 VERY_VERBOSE="$2"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_piggybacking_feedback"
+	APP="./test_piggybacking_feedback${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_piggybacking_feedback"
+	APP="${BASEDIR}/test_piggybacking_feedback${CROSS_COMPILATION_EXEEXT}"
 fi
 
-CMD="${APP}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

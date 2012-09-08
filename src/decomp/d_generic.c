@@ -445,7 +445,7 @@ void * d_generic_create(void)
 		rohc_debugf(0, "no memory for the generic decompression context\n");
 		goto quit;
 	}
-	bzero(context, sizeof(struct d_generic_context));
+	memset(context, 0, sizeof(struct d_generic_context));
 
 	/* create the Offset IP-ID decoding context for outer IP header */
 	context->outer_ip_id_offset_ctxt = ip_id_offset_new();
@@ -471,7 +471,7 @@ void * d_generic_create(void)
 		rohc_debugf(0, "cannot allocate memory for the outer IP header changes\n");
 		goto free_inner_ip_id_offset_ctxt;
 	}
-	bzero(context->outer_ip_changes, sizeof(struct d_generic_changes));
+	memset(context->outer_ip_changes, 0, sizeof(struct d_generic_changes));
 
 	context->inner_ip_changes = malloc(sizeof(struct d_generic_changes));
 	if(context->inner_ip_changes == NULL)
@@ -479,7 +479,7 @@ void * d_generic_create(void)
 		rohc_debugf(0, "cannot allocate memory for the inner IP header changes\n");
 		goto free_outer_ip_changes;
 	}
-	bzero(context->inner_ip_changes, sizeof(struct d_generic_changes));
+	memset(context->inner_ip_changes, 0, sizeof(struct d_generic_changes));
 
 	context->list_decomp1 = malloc(sizeof(struct list_decomp));
 	if(context->list_decomp1 == NULL)
@@ -487,7 +487,7 @@ void * d_generic_create(void)
 		rohc_debugf(0, "cannot allocate memory for the list decompressor1\n");
 		goto free_inner_ip_changes;
 	}
-	bzero(context->list_decomp1, sizeof(struct list_decomp));
+	memset(context->list_decomp1, 0, sizeof(struct list_decomp));
 	ip6_d_init_table(context->list_decomp1);
 	context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp1->encode_extension = rohc_build_ip6_extension;
@@ -501,13 +501,13 @@ void * d_generic_create(void)
 		rohc_debugf(0, "cannot allocate memory for the list decompressor2\n");
 		goto free_decomp1;
 	}
-	bzero(context->list_decomp2, sizeof(struct list_decomp));
+	memset(context->list_decomp2, 0, sizeof(struct list_decomp));
+	ip6_d_init_table(context->list_decomp2);
 	context->list_decomp2->free_table = list_decomp_ipv6_destroy_table;
 	context->list_decomp2->encode_extension = rohc_build_ip6_extension;
 	context->list_decomp2->check_index = check_ip6_index;
 	context->list_decomp2->create_item = create_ip6_item;
 	context->list_decomp2->get_ext_size = get_ip6_ext_size;
-	ip6_d_init_table(context->list_decomp2);
 
 	/* no default next header */
 	context->next_header_proto = 0;

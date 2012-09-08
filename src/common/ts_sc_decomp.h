@@ -25,6 +25,7 @@
 #define TS_SC_DECOMP_H
 
 #include "lsb_decode.h"
+#include "dllexport.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -38,27 +39,27 @@ struct ts_sc_decomp;
  * Function prototypes
  */
 
-struct ts_sc_decomp * d_create_sc(void);
-void rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled)
+struct ts_sc_decomp * ROHC_EXPORT d_create_sc(void);
+void ROHC_EXPORT rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled)
 	__attribute__((nonnull(1)));
 
-void ts_update_context(struct ts_sc_decomp *const ts_sc,
-                       const uint32_t ts,
-                       const uint16_t sn);
+void ROHC_EXPORT ts_update_context(struct ts_sc_decomp *const ts_sc,
+                                   const uint32_t ts,
+                                   const uint16_t sn);
 
-void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
-                        const uint32_t ts_stride);
+void ROHC_EXPORT d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
+                                    const uint32_t ts_stride);
 
-bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
-                      const uint32_t ts_scaled,
-                      const size_t bits_nr,
-                      uint32_t *const decoded_ts);
+bool ROHC_EXPORT ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
+                                  const uint32_t ts_scaled,
+                                  const size_t bits_nr,
+                                  uint32_t *const decoded_ts);
 
-uint32_t ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
-                            const uint32_t ts_bits);
+uint32_t ROHC_EXPORT ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
+                                        const uint32_t ts_bits);
 
-uint32_t ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
-                           const uint16_t sn);
+uint32_t ROHC_EXPORT ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
+                                       const uint16_t sn);
 
 #endif
 

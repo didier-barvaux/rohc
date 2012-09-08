@@ -31,7 +31,15 @@
 #include "ip.h"
 
 #include <stdlib.h>
-#include <netinet/ip.h>
+
+#include "config.h" /* for HAVE_NETINET_*_H */
+
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+
 
 
 /// The number of compression list items

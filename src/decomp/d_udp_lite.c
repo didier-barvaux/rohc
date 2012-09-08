@@ -32,7 +32,11 @@
 #include "crc.h"
 #include "protocols/udp_lite.h"
 
-#include <netinet/udp.h>
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
 
 
 /*
@@ -146,7 +150,7 @@ void * d_udp_lite_create(void)
 		rohc_debugf(0, "cannot allocate memory for the UDP-Lite-specific context\n");
 		goto destroy_context;
 	}
-	bzero(udp_lite_context, sizeof(struct d_udp_lite_context));
+	memset(udp_lite_context, 0, sizeof(struct d_udp_lite_context));
 	context->specific = udp_lite_context;
 
 	/* create the LSB decoding context for SN */
@@ -183,7 +187,7 @@ void * d_udp_lite_create(void)
 		            "part of the outer IP header changes\n");
 		goto free_lsb_sn;
 	}
-	bzero(context->outer_ip_changes->next_header, sizeof(struct udphdr));
+	memset(context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
 	context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
@@ -193,7 +197,7 @@ void * d_udp_lite_create(void)
 		            "part of the inner IP header changes\n");
 		goto free_outer_ip_changes_next_header;
 	}
-	bzero(context->inner_ip_changes->next_header, sizeof(struct udphdr));
+	memset(context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	/* set next header to UDP-Lite */
 	context->next_header_proto = IPPROTO_UDPLITE;
