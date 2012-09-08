@@ -696,7 +696,7 @@ int tun_create(char *name)
 	/* flags: IFF_TUN   - TUN device (no Ethernet headers)
 	 *        IFF_TAP   - TAP device
 	 *        IFF_NO_PI - Do not provide packet information */
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, name, IFNAMSIZ);
 	ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 	ifr.ifr_flags = IFF_TUN;
@@ -831,7 +831,7 @@ int udp_create(struct in_addr laddr, int port)
 	}
 
 	/* bind the socket on given port */
-	bzero(&addr, sizeof(addr));
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr = laddr;
 	addr.sin_port = htons(port);
@@ -868,7 +868,7 @@ int read_from_udp(int sock, unsigned char *buffer, unsigned int *length)
 	int ret;
 
 	addr_len = sizeof(struct sockaddr_in);
-	bzero(&addr, addr_len);
+	memset(&addr, 0, addr_len);
 
 	/* read data from the UDP socket */
 	ret = recvfrom(sock, buffer, *length, 0, (struct sockaddr *) &addr,
@@ -922,7 +922,7 @@ int write_to_udp(int sock, struct in_addr raddr, int port,
 	struct sockaddr_in addr;
 	int ret;
 
-	bzero(&addr, sizeof(addr));
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = raddr.s_addr;
 	addr.sin_port = htons(port);

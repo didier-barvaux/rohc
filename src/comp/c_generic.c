@@ -480,7 +480,7 @@ int c_generic_create(struct c_context *const context,
 		rohc_debugf(0, "no memory for generic part of the profile context\n");
 		goto quit;
 	}
-	bzero(g_context, sizeof(struct c_generic_context));
+	memset(g_context, 0, sizeof(struct c_generic_context));
 	context->specific = g_context;
 
 	/* initialize some context variables:

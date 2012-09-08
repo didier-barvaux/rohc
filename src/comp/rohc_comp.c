@@ -160,7 +160,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 		rohc_debugf(0, "cannot allocate memory for the compressor\n");
 		goto error;
 	}
-	bzero(comp, sizeof(struct rohc_comp));
+	memset(comp, 0, sizeof(struct rohc_comp));
 
 	comp->enabled = 1;
 	comp->medium.max_cid = max_cid;

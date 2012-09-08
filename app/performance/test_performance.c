@@ -271,7 +271,7 @@ static int tune_env_for_perfs(double *coef_nanosec)
 	int ret;
 
 	/* set the process to realtime priority */
-	bzero(&param, sizeof(struct sched_param));
+	memset(&param, 0, sizeof(struct sched_param));
 	param.sched_priority = sched_get_priority_max(SCHED_FIFO);
 	if(param.sched_priority == -1)
 	{
