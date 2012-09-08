@@ -1,21 +1,20 @@
 ################################################################################
-#	Name       : Makefile
-#	Author     : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
-#	             Didier Barvaux <didier@barvaux.org>
-#	Description: create the ROHC performance application
+# Name       : Makefile
+# Author     : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#              Didier Barvaux <didier@barvaux.org>
+# Description: create the ROHC performance application
 ################################################################################
 
 sbin_PROGRAMS = \
 	rohc_test_performance
 
 
-INCLUDES = \
+rohc_test_performance_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+rohc_test_performance_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs
 

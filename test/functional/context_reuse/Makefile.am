@@ -74,21 +74,17 @@ check_PROGRAMS = \
 	test_context_reuse
 
 
-INCLUDES = \
+test_context_reuse_SOURCES = test_context_reuse.c
+test_context_reuse_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+test_context_reuse_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
-
-
-test_context_reuse_SOURCES = test_context_reuse.c
 test_context_reuse_LDADD = \
 	-lpcap \
 	-lrohc_comp \

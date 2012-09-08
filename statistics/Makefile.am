@@ -12,18 +12,18 @@ check_PROGRAMS = \
 	generate_statistics
 
 
-INCLUDES = \
+generate_statistics_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+generate_statistics_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs
 
+generate_statistics_SOURCES = \
+	generate_statistics.c
 
-generate_statistics_SOURCES = generate_statistics.c
 generate_statistics_LDADD = \
 	-lpcap \
 	-lrohc_comp \

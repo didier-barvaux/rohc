@@ -1,7 +1,8 @@
 ################################################################################
-#	Name       : Makefile
-#	Author     : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
-#	Description: create the ROHC compression library
+# Name       : Makefile
+# Authors    : Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#              Didier Barvaux <didier@barvaux.org>
+# Description: create the ROHC compression library
 ################################################################################
 
 lib_LTLIBRARIES = librohc_comp.la
@@ -17,12 +18,14 @@ librohc_comp_la_SOURCES = \
 	c_rtp.c
 
 librohc_comp_la_LIBADD = \
-	$(top_builddir)/src/common/librohc_common.la
+	-lrohc_common
 
-INCLUDES = \
+librohc_comp_la_LDFLAGS = \
+	-L$(top_builddir)/src/common/.libs
+
+librohc_comp_la_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/src/common
-
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
 
 include_HEADERS = \
 	rohc_comp.h

@@ -16,21 +16,21 @@ check_PROGRAMS = \
 	test_feedback2
 
 
-INCLUDES = \
+test_feedback2_CFLAGS = \
+	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+test_feedback2_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
 
+test_feedback2_SOURCES = \
+	test_feedback2.c
 
-test_feedback2_SOURCES = test_feedback2.c
 test_feedback2_LDADD = \
 	-lpcap \
 	-lrohc_comp \
