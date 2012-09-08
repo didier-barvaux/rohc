@@ -11,6 +11,7 @@ sbin_PROGRAMS = \
 
 rohc_test_performance_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
@@ -20,7 +21,9 @@ rohc_test_performance_LDFLAGS = \
 
 rohc_test_performance_SOURCES = test_performance.c
 rohc_test_performance_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
-	-lrohc_common
+	-lrohc_common \
+	$(sched_lib) \
+	$(additional_platform_libs)
 

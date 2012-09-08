@@ -25,6 +25,8 @@
 #ifndef DECODE_H
 #define DECODE_H
 
+#include "dllexport.h"
+
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -50,27 +52,28 @@
  * Function prototypes.
  */
 
-int d_is_segment(const unsigned char *);
-int d_is_padding(const unsigned char *);
+int ROHC_EXPORT d_is_segment(const unsigned char *);
+int ROHC_EXPORT d_is_padding(const unsigned char *);
 
-int d_is_feedback(const unsigned char *);
-int d_feedback_size(const unsigned char *);
-int d_feedback_headersize(const unsigned char *);
+int ROHC_EXPORT d_is_feedback(const unsigned char *);
+int ROHC_EXPORT d_feedback_size(const unsigned char *);
+int ROHC_EXPORT d_feedback_headersize(const unsigned char *);
 
-bool d_is_ir(const unsigned char *data, const size_t len);
-bool d_is_irdyn(const unsigned char *data, const size_t len);
-bool d_is_uo0(const unsigned char *data, const size_t len);
-bool d_is_uo1(const unsigned char *data, const size_t len);
-bool d_is_uor2(const unsigned char *data, const size_t len);
-bool d_is_uor2_ts(const unsigned char *const data,
-                  const size_t data_len,
-                  const size_t large_cid_len);
-bool d_is_uor2_rtp(const unsigned char *const data,
-                   const size_t data_len,
-                   const size_t large_cid_len);
+bool ROHC_EXPORT d_is_ir(const unsigned char *data, const size_t len);
+bool ROHC_EXPORT d_is_irdyn(const unsigned char *data, const size_t len);
+bool ROHC_EXPORT d_is_uo0(const unsigned char *data, const size_t len);
+bool ROHC_EXPORT d_is_uo1(const unsigned char *data, const size_t len);
+bool ROHC_EXPORT d_is_uor2(const unsigned char *data, const size_t len);
+bool ROHC_EXPORT d_is_uor2_ts(const unsigned char *const data,
+                              const size_t data_len,
+                              const size_t large_cid_len);
+bool ROHC_EXPORT d_is_uor2_rtp(const unsigned char *const data,
+                               const size_t data_len,
+                               const size_t large_cid_len);
 
-int d_is_add_cid(const unsigned char *);
-int d_decode_add_cid(const unsigned char *);
+int ROHC_EXPORT d_is_add_cid(const unsigned char *);
+int ROHC_EXPORT d_decode_add_cid(const unsigned char *);
+
 
 #endif
 

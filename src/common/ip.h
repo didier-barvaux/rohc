@@ -15,17 +15,35 @@
  */
 
 /**
- * @file ip.h
- * @brief IP-agnostic packet
+ * @file   common/ip.h
+ * @brief  IP-agnostic packet
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #ifndef IP_H
 #define IP_H
 
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <string.h>
+#include "dllexport.h"
+#include "config.h" /* for HAVE_NETINET_*_H */
+
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+
+#if HAVE_NETINET_IP6_H == 1
+#	include <netinet/ip6.h>
+#else
+#	include "netinet_ip6.h"  /* use an internal definition for compatibility */
+#endif
+
+#if HAVE_NETINET_IN_H == 1
+#	include <netinet/in.h>
+#else
+#	include "netinet_in.h"  /* use an internal definition for compatibility */
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -378,61 +396,66 @@ out:
 
 /* Generic functions */
 
-int ip_create(struct ip_packet *const ip,
-              const unsigned char *packet,
-              const unsigned int size);
-int ip_get_inner_packet(const struct ip_packet *const outer,
-                        struct ip_packet *const inner);
+int ROHC_EXPORT ip_create(struct ip_packet *const ip,
+                          const unsigned char *packet,
+                          const unsigned int size);
+int ROHC_EXPORT ip_get_inner_packet(const struct ip_packet *const outer,
+                                    struct ip_packet *const inner);
 
-const unsigned char * ip_get_raw_data(const struct ip_packet *const ip);
-unsigned char * ip_get_next_header(const struct ip_packet *const ip,
-                                   uint8_t *const type);
-unsigned char * ip_get_next_layer(const struct ip_packet *const ip);
-unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
-                                        uint8_t *const type);
-unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
-                                         uint8_t *const type);
+const unsigned char * ROHC_EXPORT ip_get_raw_data(const struct ip_packet *const ip);
+unsigned char * ROHC_EXPORT ip_get_next_header(const struct ip_packet *const ip,
+                                               uint8_t *const type);
+unsigned char * ROHC_EXPORT ip_get_next_layer(const struct ip_packet *const ip);
+unsigned char * ROHC_EXPORT ip_get_next_ext_from_ip(const struct ip_packet *const ip,
+                                                    uint8_t *const type);
+unsigned char * ROHC_EXPORT ip_get_next_ext_from_ext(const unsigned char *const ext,
+                                                     uint8_t *const type);
 
-unsigned int ip_get_totlen(const struct ip_packet *const ip);
-unsigned int ip_get_hdrlen(const struct ip_packet *const ip);
-unsigned int ip_get_plen(const struct ip_packet *const ip);
+unsigned int ROHC_EXPORT ip_get_totlen(const struct ip_packet *const ip);
+unsigned int ROHC_EXPORT ip_get_hdrlen(const struct ip_packet *const ip);
+unsigned int ROHC_EXPORT ip_get_plen(const struct ip_packet *const ip);
 
-int ip_is_fragment(const struct ip_packet *const ip);
-ip_version ip_get_version(const struct ip_packet *const ip);
-unsigned int ip_get_protocol(const struct ip_packet *const ip);
-unsigned int ext_get_protocol(const unsigned char *const ext);
-unsigned int ip_get_tos(const struct ip_packet *const ip);
-unsigned int ip_get_ttl(const struct ip_packet *const ip);
+int ROHC_EXPORT ip_is_fragment(const struct ip_packet *const ip);
+ip_version ROHC_EXPORT ip_get_version(const struct ip_packet *const ip);
+unsigned int ROHC_EXPORT ip_get_protocol(const struct ip_packet *const ip);
+unsigned int ROHC_EXPORT ext_get_protocol(const unsigned char *const ext);
+unsigned int ROHC_EXPORT ip_get_tos(const struct ip_packet *const ip);
+unsigned int ROHC_EXPORT ip_get_ttl(const struct ip_packet *const ip);
 
-void ip_set_version(struct ip_packet *const ip, const ip_version value);
-void ip_set_protocol(struct ip_packet *const ip, const uint8_t value);
-void ip_set_tos(struct ip_packet *const ip, const uint8_t value);
-void ip_set_ttl(struct ip_packet *const ip, const uint8_t value);
-void ip_set_saddr(struct ip_packet *const ip, const unsigned char *value);
-void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value);
+void ROHC_EXPORT ip_set_version(struct ip_packet *const ip, const ip_version value);
+void ROHC_EXPORT ip_set_protocol(struct ip_packet *const ip, const uint8_t value);
+void ROHC_EXPORT ip_set_tos(struct ip_packet *const ip,
+                            const uint8_t value);
+void ROHC_EXPORT ip_set_ttl(struct ip_packet *const ip,
+                            const uint8_t value);
+void ROHC_EXPORT ip_set_saddr(struct ip_packet *const ip,
+                              const unsigned char *value);
+void ROHC_EXPORT ip_set_daddr(struct ip_packet *const ip,
+                              const unsigned char *value);
 
 /* IPv4 specific functions */
 
-const struct iphdr * ipv4_get_header(const struct ip_packet *const ip);
-uint16_t ipv4_get_id(const struct ip_packet *const ip);
-uint16_t ipv4_get_id_nbo(const struct ip_packet *const ip,
-                         const unsigned int nbo);
-int ipv4_get_df(const struct ip_packet *const ip);
-uint32_t ipv4_get_saddr(const struct ip_packet *const ip);
-uint32_t ipv4_get_daddr(const struct ip_packet *const ip);
+const struct iphdr * ROHC_EXPORT ipv4_get_header(const struct ip_packet *const ip);
+uint16_t ROHC_EXPORT ipv4_get_id(const struct ip_packet *const ip);
+uint16_t ROHC_EXPORT ipv4_get_id_nbo(const struct ip_packet *const ip,
+                                     const unsigned int nbo);
+int ROHC_EXPORT ipv4_get_df(const struct ip_packet *const ip);
+uint32_t ROHC_EXPORT ipv4_get_saddr(const struct ip_packet *const ip);
+uint32_t ROHC_EXPORT ipv4_get_daddr(const struct ip_packet *const ip);
 
-void ipv4_set_id(struct ip_packet *const ip, const int value);
-void ipv4_set_df(struct ip_packet *const ip, const int value);
+void ROHC_EXPORT ipv4_set_id(struct ip_packet *const ip, const int value);
+void ROHC_EXPORT ipv4_set_df(struct ip_packet *const ip, const int value);
 
 /* IPv6 specific functions */
 
-const struct ip6_hdr * ipv6_get_header(const struct ip_packet *const ip);
-uint32_t ipv6_get_flow_label(const struct ip_packet *const ip);
-const struct in6_addr * ipv6_get_saddr(const struct ip_packet *const ip);
-const struct in6_addr * ipv6_get_daddr(const struct ip_packet *const ip);
-void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value);
-unsigned short ip_get_extension_size(const unsigned char *const ext);
-unsigned short ip_get_total_extension_size(const struct ip_packet *const ip);
+const struct ip6_hdr * ROHC_EXPORT ipv6_get_header(const struct ip_packet *const ip);
+uint32_t ROHC_EXPORT ipv6_get_flow_label(const struct ip_packet *const ip);
+const struct in6_addr * ROHC_EXPORT ipv6_get_saddr(const struct ip_packet *const ip);
+const struct in6_addr * ROHC_EXPORT ipv6_get_daddr(const struct ip_packet *const ip);
+void ROHC_EXPORT ipv6_set_flow_label(struct ip_packet *const ip,
+                                     const uint32_t value);
+unsigned short ROHC_EXPORT ip_get_extension_size(const unsigned char *const ext);
+unsigned short ROHC_EXPORT ip_get_total_extension_size(const struct ip_packet *const ip);
 
 /* Private functions (do not use directly) */
 int get_ip_version(const unsigned char *const packet,

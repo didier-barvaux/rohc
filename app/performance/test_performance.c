@@ -53,13 +53,31 @@
  * of compressed packets and the average elapsed time per packet.
  */
 
+#include "config.h" /* for HAVE_*_H and SCHED_SETSCHEDULER_PARAMS */
+
 /* system includes */
-#include <sched.h>
-#include <sys/mman.h>
+#if HAVE_SCHED_H == 1
+#  include <sched.h>
+#endif
+#if HAVE_SYS_MMAN_H == 1
+#  include <sys/mman.h>
+#endif
 #include <unistd.h>
-#include <net/ethernet.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
+#if HAVE_NET_ETHERNET_H == 1
+#  include <net/ethernet.h>
+#else
+#  include "net_ethernet.h" /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_IP_H == 1
+#  include <netinet/ip.h>
+#else
+#  include <netinet_ip.h>  /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_IP6_H == 1
+#  include <netinet/ip6.h>
+#else
+#  include <netinet_ip6.h>  /* use an internal definition for compatibility */
+#endif
 #include <errno.h>
 #include <stdarg.h>
 #include <string.h>
@@ -264,13 +282,19 @@ static void usage(void)
  */
 static int tune_env_for_perfs(double *coef_nanosec)
 {
+#if HAVE_SCHED_H == 1 && SCHED_SETSCHEDULER_PARAMS == 3
 	struct sched_param param;
+#endif
 	unsigned long long tics1;
 	unsigned long long tics2;
 	unsigned int i;
+#if HAVE_SCHED_H == 1 || HAVE_SYS_MMAN_H == 1
 	int ret;
+#endif
 
+#if HAVE_SCHED_H == 1
 	/* set the process to realtime priority */
+#if SCHED_SETSCHEDULER_PARAMS == 3
 	memset(&param, 0, sizeof(struct sched_param));
 	param.sched_priority = sched_get_priority_max(SCHED_FIFO);
 	if(param.sched_priority == -1)
@@ -280,13 +304,21 @@ static int tune_env_for_perfs(double *coef_nanosec)
 		goto error;
 	}
 	ret = sched_setscheduler(0, SCHED_FIFO, &param);
+#else /* SCHED_SETSCHEDULER_PARAMS != 3 */
+	ret = sched_setscheduler(0, SCHED_FIFO);
+#endif
 	if(ret != 0)
 	{
 		fprintf(stderr, "failed to set high scheduler priority: %s (%d)\n",
 		        strerror(errno), errno);
 		goto error;
 	}
+#else
+	fprintf(stderr, "do not set maximum scheduler priority: not implemented "
+	        "for the platform yet\n");
+#endif
 
+#if HAVE_SYS_MMAN_H == 1
 	/* avoid swapping */
 	ret = mlockall(MCL_CURRENT | MCL_FUTURE);
 	if(ret != 0)
@@ -295,13 +327,17 @@ static int tune_env_for_perfs(double *coef_nanosec)
 		        strerror(errno), errno);
 		goto error;
 	}
+#else
+	fprintf(stderr, "do not lock memory to avoid swapping: not implemented "
+	        "for the platform yet\n");
+#endif
 
 	/* determine CPU tics to nanoseconds coefficient */
 	*coef_nanosec = 0;
 	for(i = 0; i < 10; i++)
 	{
 		GET_CPU_TICS(tics1);
-		sleep(1);
+		usleep(10e6);
 		GET_CPU_TICS(tics2);
 		*coef_nanosec += 1.e9 / (tics2 - tics1);
 	}
@@ -311,8 +347,10 @@ static int tune_env_for_perfs(double *coef_nanosec)
 
 	return 0;
 
+#if HAVE_SCHED_H == 1 || HAVE_SYS_MMAN_H == 1
 error:
 	return 1;
+#endif
 }
 
 

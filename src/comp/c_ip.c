@@ -24,6 +24,8 @@
 #include "c_ip.h"
 #include "rohc_traces.h"
 
+#include <string.h>
+
 
 /**
  * @brief Create a new context and initialize it thanks to the given IP packet.

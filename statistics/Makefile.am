@@ -14,6 +14,7 @@ check_PROGRAMS = \
 
 generate_statistics_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
@@ -25,9 +26,10 @@ generate_statistics_SOURCES = \
 	generate_statistics.c
 
 generate_statistics_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
-	-lrohc_common
+	-lrohc_common \
+	$(additional_platform_libs)
 
 
 distclean-am: clean-am distclean-compile distclean-generic distclean-tags

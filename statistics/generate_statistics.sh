@@ -5,16 +5,22 @@
 # author:      Didier Barvaux <didier@barvaux.org>
 #
 
+# skip test in case of cross-compilation
+if [ "${CROSS_COMPILATION}" = "yes" ] && \
+   [ -z "${CROSS_COMPILATION_EMULATOR}" ] ; then
+	exit 77
+fi
+
 # determine the base directory and the application path
 SCRIPT="$0"
 VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./generate_statistics"
+	APP="./generate_statistics${CROSS_COMPILATION_EXEEXT}"
 	BUILD_ROOTDIR=".."
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/generate_statistics"
+	APP="${BASEDIR}/generate_statistics${CROSS_COMPILATION_EXEEXT}"
 	BUILD_ROOTDIR="${BASEDIR}/.."
 fi
 SRC_ROOTDIR="${BASEDIR}/.."
@@ -58,7 +64,7 @@ for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | ${
 	fi
 
 	# run the statistics application and retrieve its output
-	OUTPUT=$( ${APP} smallcid ${CAPTURE} 2>/dev/null )
+	OUTPUT=$( ${CROSS_COMPILATION_EMULATOR} ${APP} smallcid ${CAPTURE} 2>/dev/null )
 	if [ $? -ne 0 ] ; then
 		echo "compression failed for capture ${CAPTURE} !"
 		exit 1

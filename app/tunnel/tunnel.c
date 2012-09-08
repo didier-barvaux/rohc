@@ -74,6 +74,8 @@
  */
 
 
+#include "config.h" /* for HAVE_LINUX_IF_TUN_H */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -88,8 +90,12 @@
 #include <assert.h>
 
 /* TUN includes */
+#if HAVE_LINUX_IF_TUN_H == 1
+#  include <linux/if_tun.h>
+#else
+#  error "No TUN/TAP support for non-Linux platforms yet"
+#endif
 #include <net/if.h> /* for IFNAMSIZ */
-#include <linux/if_tun.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 

@@ -22,13 +22,14 @@
  */
 
 #include "d_esp.h"
-#include "rohc_traces.h"
-#include "crc.h"
-#include "rohc_debug.h"
-#include "rohc_bit_ops.h"
-#include "protocols/esp.h"
 #include "d_generic.h"
 #include "d_ip.h"
+#include "rohc_bit_ops.h"
+#include "rohc_traces.h"
+#include "rohc_debug.h"
+#include "crc.h"
+#include "protocols/esp.h"
+#include "lsb_decode.h"
 
 #include <stdint.h>
 #include <string.h>

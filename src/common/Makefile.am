@@ -52,10 +52,11 @@ private_headers = \
 	cid.h
 
 librohc_common_la_SOURCES = $(sources)
-librohc_common_la_LIBADD =
+librohc_common_la_LIBADD = $(additional_platform_libs)
 librohc_common_la_LDFLAGS =
 librohc_common_la_CFLAGS = \
-	-g -Wall -Wstrict-prototypes
+	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat
 
 include_HEADERS = $(public_headers)
 noinst_HEADERS = $(private_headers)

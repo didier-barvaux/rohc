@@ -25,16 +25,19 @@
  */
 
 #include "test.h"
+#include "config.h" /* for HAVE_NET_ETHERNET_H */
 
 /* system includes */
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
-#include <net/ethernet.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
 #include <errno.h>
+#if HAVE_NET_ETHERNET_H == 1
+#  include <net/ethernet.h>
+#else
+#  include "net_ethernet.h" /* use an internal definition for compatibility */
+#endif
 #include <assert.h>
 #include <time.h> /* for time(2) */
 

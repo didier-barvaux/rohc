@@ -23,14 +23,32 @@
  * generate some ROHC compression statistics with them.
  */
 
+#include "config.h" /* for HAVE_*_H */
+
 /* system includes */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <net/ethernet.h>
-#include <arpa/inet.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
+#if HAVE_NET_ETHERNET_H == 1
+#  include <net/ethernet.h>
+#else
+#  include "net_ethernet.h" /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip6.h>
+#else
+#	include "netinet_ip6.h"  /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
 #include <assert.h>
 #include <time.h> /* for time(2) */
 

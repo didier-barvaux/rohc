@@ -32,7 +32,11 @@
 #include "crc.h"
 #include "protocols/udp_lite.h"
 
-#include <netinet/udp.h>
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
 
 
 /*

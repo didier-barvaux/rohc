@@ -19,6 +19,7 @@ check_PROGRAMS = \
 test_feedback2_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
@@ -32,10 +33,11 @@ test_feedback2_SOURCES = \
 	test_feedback2.c
 
 test_feedback2_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common
+	-lrohc_common \
+	$(additional_platform_libs)
 
 EXTRA_DIST = \
 	test_feedback2.sh \

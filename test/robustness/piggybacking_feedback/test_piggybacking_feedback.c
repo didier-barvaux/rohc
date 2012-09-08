@@ -48,12 +48,22 @@
  */
 
 #include "test.h"
+#include "config.h" /* for HAVE_NETINET_*_H */
 
 /* system includes */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <netinet/ip.h>
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_IN_H == 1
+#	include <netinet/in.h>
+#else
+#	include "netinet_in.h"  /* use an internal definition for compatibility */
+#endif
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */

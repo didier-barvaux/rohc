@@ -24,6 +24,15 @@
 #define ROHC_PACKETS_H
 
 
+/** Macro that handles DLL export declarations gracefully */
+#ifdef DLL_EXPORT /* passed by autotools on command line */
+	#define ROHC_EXPORT __declspec(dllexport)
+#else
+	#define ROHC_EXPORT 
+#endif
+
+
+
 /**
  * @brief The different types of ROHC packets
  *
@@ -84,10 +93,12 @@ typedef enum
  * Prototypes of public functions
  */
 
-const char * rohc_get_packet_descr(const rohc_packet_t packet_type);
+const char * ROHC_EXPORT rohc_get_packet_descr(const rohc_packet_t packet_type);
 
-const char * rohc_get_ext_descr(const rohc_ext_t ext_type);
+const char * ROHC_EXPORT rohc_get_ext_descr(const rohc_ext_t ext_type);
 
+
+#undef ROHC_EXPORT /* do not pollute outside this header */
 
 #endif
 

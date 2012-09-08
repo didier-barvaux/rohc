@@ -25,7 +25,7 @@
 #ifndef ROHC_BIT_OPS_H
 #define ROHC_BIT_OPS_H
 
-#include <endian.h>
+#include "config.h" /* for WORDS_BIGENDIAN */
 
 
 /*
@@ -92,14 +92,12 @@
  * @brief Get the next 16 bits at the given memory location
  *        in Network Byte Order
  */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	#define GET_NEXT_16_BITS(x) \
-		((((*((x) + 1)) << 8) & 0xff00) | ((*(x)) & 0x00ff))
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#if WORDS_BIGENDIAN == 1
 	#define GET_NEXT_16_BITS(x) \
 		((((*(x)) << 8) & 0xff00) | ((*((x) + 1)) & 0x00ff))
 #else
-	#error "Adjust your <bits/endian.h> defines"
+	#define GET_NEXT_16_BITS(x) \
+		((((*((x) + 1)) << 8) & 0xff00) | ((*(x)) & 0x00ff))
 #endif
 
 

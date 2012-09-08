@@ -16,15 +16,21 @@
 #   verbose          prints the traces of test application
 #
 
+# skip test in case of cross-compilation
+if [ "${CROSS_COMPILATION}" = "yes" ] && \
+   [ -z "${CROSS_COMPILATION_EMULATOR}" ] ; then
+	exit 77
+fi
+
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_non_regression"
+	APP="./test_non_regression${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_non_regression"
+	APP="${BASEDIR}/test_non_regression${CROSS_COMPILATION_EXEEXT}"
 fi
 
 # extract the CID type and capture name from the name of the script
@@ -47,12 +53,13 @@ if [ -z "${CAPTURE_COMPARE}" ] ; then
 	exit 1
 fi
 
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
 if [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
-	CMD="${APP} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
-	CMD="${APP} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 fi
 
 # source valgrind-related functions

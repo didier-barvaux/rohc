@@ -24,7 +24,14 @@
 #ifndef COMP_LIST_H
 #define COMP_LIST_H
 
-#include <netinet/ip6.h>
+#include "config.h" /* for HAVE_NETINET_*_H */
+#include "dllexport.h"
+
+#if HAVE_NETINET_IN_H == 1
+#  include <netinet/in.h>
+#else
+#  include "netinet_in.h"  /* use an internal definition for compatibility */
+#endif
 
 
 /// Header version
@@ -113,34 +120,38 @@ struct d_translation
  */
 
 /* create, destroy list */
-int list_create(struct c_list *list);
-void list_destroy(struct c_list *list);
+int ROHC_EXPORT list_create(struct c_list *list);
+void ROHC_EXPORT list_destroy(struct c_list *list);
 
 /* add elements */
-int list_add_at_beginning(struct c_list *list,
+int ROHC_EXPORT list_add_at_beginning(struct c_list *list,
                           struct rohc_list_item *item,
                           int index);
-int list_add_at_end(struct c_list *list,
+int ROHC_EXPORT list_add_at_end(struct c_list *list,
                     struct rohc_list_item *item,
                     int index);
-int list_add_at_index(struct c_list *list,
+int ROHC_EXPORT list_add_at_index(struct c_list *list,
                       struct rohc_list_item *item,
                       int index,
                       int index_table);
 
 /* get an element from its position or the position from the element */
-struct list_elt * list_get_elt_by_index(struct c_list *list, int index);
-int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item);
+struct list_elt * ROHC_EXPORT list_get_elt_by_index(struct c_list *list,
+																	 int index);
+int ROHC_EXPORT list_get_index_by_elt(struct c_list *list,
+                                      struct rohc_list_item *item);
 
 /* remove an element or empty the list */
-void list_remove(struct c_list *list, struct rohc_list_item *item);
-void list_empty(struct c_list *list);
+void ROHC_EXPORT list_remove(struct c_list *list,
+                             struct rohc_list_item *item);
+void ROHC_EXPORT list_empty(struct c_list *list);
 
 /* retrieve information about an element of the list */
-int list_type_is_present(struct c_list *list, struct rohc_list_item *item);
+int ROHC_EXPORT list_type_is_present(struct c_list *list,
+                                     struct rohc_list_item *item);
 
 /* get the size of the list */
-size_t list_get_size(const struct c_list *const list);
+size_t ROHC_EXPORT list_get_size(const struct c_list *const list);
 
 #endif
 

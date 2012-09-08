@@ -25,6 +25,7 @@ check_PROGRAMS = \
 test_damaged_packet_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
@@ -38,10 +39,11 @@ test_damaged_packet_SOURCES = \
 	test_damaged_packet.c
 
 test_damaged_packet_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
 	-lrohc_decomp \
-	-lrohc_common
+	-lrohc_common \
+	$(additional_platform_libs)
 
 EXTRA_DIST = \
 	test_damaged_packet.sh \

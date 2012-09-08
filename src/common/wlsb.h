@@ -26,6 +26,7 @@
 #define WLSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
+#include "dllexport.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -43,26 +44,26 @@ struct c_wlsb;
  * Public function prototypes:
  */
 
-struct c_wlsb * c_create_wlsb(const size_t bits,
-                              const size_t window_width,
-                              const rohc_lsb_shift_t p);
-void c_destroy_wlsb(struct c_wlsb *s);
+struct c_wlsb * ROHC_EXPORT c_create_wlsb(const size_t bits,
+                                          const size_t window_width,
+                                          const rohc_lsb_shift_t p);
+void ROHC_EXPORT c_destroy_wlsb(struct c_wlsb *s);
 
-void c_add_wlsb(struct c_wlsb *const wlsb,
-                const uint32_t sn,
-                const uint32_t value);
+void ROHC_EXPORT c_add_wlsb(struct c_wlsb *const wlsb,
+                            const uint32_t sn,
+                            const uint32_t value);
 
-bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
-                       const uint16_t value,
-                       size_t *const bits_nr);
-bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
-                       const uint32_t value,
-                       size_t *const bits_nr);
+bool ROHC_EXPORT wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
+                                   const uint16_t value,
+                                   size_t *const bits_nr);
+bool ROHC_EXPORT wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
+                                   const uint32_t value,
+                                   size_t *const bits_nr);
 
-void c_ack_sn_wlsb(struct c_wlsb *s, const uint32_t sn);
+void ROHC_EXPORT c_ack_sn_wlsb(struct c_wlsb *s, const uint32_t sn);
 
-int c_sum_wlsb(struct c_wlsb *s);
-int c_mean_wlsb(struct c_wlsb *s);
+int ROHC_EXPORT c_sum_wlsb(struct c_wlsb *s);
+int ROHC_EXPORT c_mean_wlsb(struct c_wlsb *s);
 
 #endif
 

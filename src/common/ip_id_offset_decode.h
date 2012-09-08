@@ -26,6 +26,8 @@
 #define ROHC_IP_ID_OFFSET_H
 
 #include "lsb_decode.h"
+#include "dllexport.h"
+
 #include <stdint.h>
 
 
@@ -37,21 +39,21 @@ struct ip_id_offset_decode;
  * Function prototypes.
  */
 
-struct ip_id_offset_decode * ip_id_offset_new(void);
+struct ip_id_offset_decode * ROHC_EXPORT ip_id_offset_new(void);
 
-void ip_id_offset_free(struct ip_id_offset_decode *const ipid)
+void ROHC_EXPORT ip_id_offset_free(struct ip_id_offset_decode *const ipid)
 	__attribute__((nonnull(1)));
 
-bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
-                         const uint16_t m,
-                         const size_t k,
-                         const uint32_t sn,
-                         uint16_t *const decoded)
+bool ROHC_EXPORT ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
+                                     const uint16_t m,
+                                     const size_t k,
+                                     const uint32_t sn,
+                                     uint16_t *const decoded)
 	__attribute__((nonnull(1, 5), warn_unused_result));
 
-void ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
-                          const uint16_t id_ref,
-                          const uint32_t sn_ref)
+void ROHC_EXPORT ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
+                                      const uint16_t id_ref,
+                                      const uint32_t sn_ref)
 	__attribute__((nonnull(1)));
 
 #endif

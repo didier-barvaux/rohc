@@ -31,8 +31,19 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "config.h" /* for HAVE_NETINET_*_H */
+
 /* includes required to create a fake IP packet */
-#include <netinet/ip.h>
+#if HAVE_NETINET_IP_H == 1
+#	include <netinet/ip.h>
+#else
+#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#endif
+#if HAVE_NETINET_IN_H == 1
+#	include <netinet/in.h>
+#else
+#	include "netinet_in.h"  /* use an internal definition for compatibility */
+#endif
 #include <string.h>
 
 /* includes required to use the compression part of the ROHC library */

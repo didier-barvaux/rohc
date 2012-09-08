@@ -20,7 +20,8 @@ librohc_decomp_la_SOURCES = \
 
 librohc_decomp_la_LIBADD = \
 	-lrohc_common \
-	-lrohc_comp
+	-lrohc_comp \
+	$(additional_platform_libs)
 
 librohc_decomp_la_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs \
@@ -28,6 +29,7 @@ librohc_decomp_la_LDFLAGS = \
 
 librohc_decomp_la_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
+	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 

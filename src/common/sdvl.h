@@ -24,6 +24,8 @@
 #ifndef SDVL_H
 #define SDVL_H
 
+#include "dllexport.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -52,22 +54,24 @@ typedef enum
  * Function prototypes.
  */
 
-bool sdvl_can_value_be_encoded(uint32_t value);
-bool sdvl_can_length_be_encoded(size_t bits_nr);
+bool ROHC_EXPORT sdvl_can_value_be_encoded(uint32_t value);
+bool ROHC_EXPORT sdvl_can_length_be_encoded(size_t bits_nr);
 
-size_t sdvl_get_min_len(const size_t nr_min_required,
-                        const size_t nr_encoded);
+size_t ROHC_EXPORT sdvl_get_min_len(const size_t nr_min_required,
+                                    const size_t nr_encoded);
 
-size_t c_bytesSdvl(uint32_t value, size_t length);
+size_t ROHC_EXPORT c_bytesSdvl(uint32_t value, size_t length);
 
-int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length);
+int ROHC_EXPORT c_encodeSdvl(unsigned char *dest,
+                             uint32_t value,
+                             size_t length);
 
-int d_sdvalue_size(const unsigned char *data);
+int ROHC_EXPORT d_sdvalue_size(const unsigned char *data);
 
-size_t sdvl_decode(const unsigned char *data,
-                   const size_t length,
-                   uint32_t *const value,
-                   size_t *const bits_nr);
+size_t ROHC_EXPORT sdvl_decode(const unsigned char *data,
+                               const size_t length,
+                               uint32_t *const value,
+                               size_t *const bits_nr);
 
 #endif
 

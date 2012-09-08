@@ -36,7 +36,20 @@
 #include "ip.h"
 #include "crc.h"
 
-#include <netinet/udp.h>
+#include "config.h" /* for HAVE_NETINET_*_H */
+
+#if HAVE_NETINET_IN_H == 1
+#	include <netinet/in.h>
+#else
+#	include "netinet_in.h"  /* use an internal definition for compatibility */
+#endif
+
+#if HAVE_NETINET_UDP_H == 1
+#	include <netinet/udp.h>
+#else
+#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
