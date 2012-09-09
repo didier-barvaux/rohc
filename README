@@ -5,7 +5,7 @@ This piece of software is an implementation of RObust Header Compression for
 Linux (or other Unix-compatible OS). The library can be used to add ROHC
 compression/decompression capabilities to an application.
 
-Official website:      http://launchpad.net/rohc
+Official website:      http://rohc-lib.org/
 Mailing list:          rohc@lists.launchpad.net
 Mailing list archives: http://lists.launchpad.net/rohc/
 Bugtracker:            http://bugs.launchpad.net/rohc
@@ -71,7 +71,7 @@ RFC 4019      RObust Header Compression (ROHC): Profiles for User Datagram
 
 ROHC library  The Open Source ROHC library described by the README file you are
               currently reading.
-              http://launchpad.net/rohc
+              http://rohc-lib.org/
 
 ROHC Linux    A GPL-licensed implementation of ROHC over PPP for the 2.4 Linux
               kernel. The ROHC library is mainly based on this software.

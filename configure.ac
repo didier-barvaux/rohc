@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT([ROHC library], [trunk], [http://launchpad.net/rohc/],
-        [rohc], [http://launchpad.net/rohc/])
+AC_INIT([ROHC library], [trunk], [http://rohc-lib.org/],
+        [rohc], [http://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 
 # Define a package homepage in a way compatible with autoconf < 2.64
 m4_ifndef([AC_PACKAGE_URL],
-          [AC_DEFINE([PACKAGE_URL], ["http://launchpad.net/rohc/";],
+          [AC_DEFINE([PACKAGE_URL], ["http://rohc-lib.org/";],
                      [Define to home page for this package])
-           AC_SUBST([PACKAGE_URL], ["http://launchpad.net/rohc/";])])
+           AC_SUBST([PACKAGE_URL], ["http://rohc-lib.org/";])])
 
 # Init automake with:
 #  - silent rules enabled to make 'make' less verbose, but do not call the
