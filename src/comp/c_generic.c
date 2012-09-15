@@ -940,12 +940,11 @@ void c_generic_feedback(struct c_context *const context,
 			unsigned char mode = (p[0] >> 4) & 3;
 			int remaining = feedback->specific_size - 2;
 			int opt, optlen;
-			uint32_t sn_nbo;
 
 			rohc_debugf(2, "feedback 2\n");
 
-			sn_nbo = ((p[0] & 0x0f) << 8) + (p[1] & 0xff);
-			assert((sn_nbo & 0x0fff) == sn_nbo);
+			sn = ((p[0] & 0x0f) << 8) + (p[1] & 0xff);
+			assert((sn & 0x0fff) == sn);
 			p += 2;
 
 			while(remaining > 0)
@@ -964,13 +963,13 @@ void c_generic_feedback(struct c_context *const context,
 						sn_not_valid = 1;
 						break;
 					case 4: /* SN */
-						if((sn_nbo & 0xff000000) != 0)
+						if((sn & 0xff000000) != 0)
 						{
 							rohc_debugf(0, "more than 32 bits used for feedback SN, "
 							            "this is not expected, truncate value\n");
-							sn_nbo &= 0x00ffffff;
+							sn &= 0x00ffffff;
 						}
-						sn_nbo = (sn_nbo << 8) + (p[1] & 0xff);
+						sn = (sn << 8) + (p[1] & 0xff);
 						break;
 					case 2: /* Reject */
 					case 7: /* Loss */
@@ -982,7 +981,6 @@ void c_generic_feedback(struct c_context *const context,
 				remaining -= 1 + optlen;
 				p += 1 + optlen;
 			}
-			sn = ntohl(sn_nbo);
 
 			/* check CRC if present in feedback */
 			if(is_crc_used == true)

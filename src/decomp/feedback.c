@@ -69,40 +69,32 @@ int f_feedback1(int sn, struct d_feedback *feedback)
  */
 int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 {
-	uint32_t sn_nbo;
-
-	/* handle 16-bit and 32-bit SN */
-	if((sn & 0xffff) == sn)
-	{
-		sn_nbo = htons((uint16_t) sn);
-	}
-	else
-	{
-		sn_nbo = htonl(sn);
-	}
-
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
 	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
+	rohc_debugf(3, "FEEDBACK-2: first 4 bits = 0x%02x (ACK type = %d, mode = %d)\n",
+	            feedback->data[0], acktype, mode);
 
 	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
 	{
 		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn);
-		feedback->data[0] |= (sn_nbo >> 8) & 0xf;
-		feedback->data[1] = sn_nbo & 0xff;
+		feedback->data[0] |= (sn >> 8) & 0xf;
+		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		feedback->data[1] = sn & 0xff;
+		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 	}
 	else if(sn < (1 << (12 + 8))) /* SN may be stored on 20 bits */
 	{
-		const uint8_t sn_opt = sn_nbo & 0xff;
+		const uint8_t sn_opt = sn & 0xff;
 		int ret;
 
 		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits "
 		            "in base header, 8 bits in SN option)\n", sn);
 
 		/* base header */
-		feedback->data[0] |= (sn_nbo >> 16) & 0xf;
+		feedback->data[0] |= (sn >> 16) & 0xf;
 		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		feedback->data[1] = (sn_nbo >> 8) & 0xff;
+		feedback->data[1] = (sn >> 8) & 0xff;
 		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 
 		/* SN option */
@@ -116,8 +108,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 	}
 	else if(sn < (1 << (12 + 8 + 8))) /* SN may be stored on 28 bits */
 	{
-		const uint8_t sn_opt1 = (sn_nbo >> 8) & 0xff;
-		const uint8_t sn_opt2 = sn_nbo & 0xff;
+		const uint8_t sn_opt1 = (sn >> 8) & 0xff;
+		const uint8_t sn_opt2 = sn & 0xff;
 		int ret;
 
 		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits "
@@ -125,9 +117,9 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 		            "option)\n", sn);
 
 		/* base header */
-		feedback->data[0] |= (sn_nbo >> 24) & 0xf;
+		feedback->data[0] |= (sn >> 24) & 0xf;
 		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		feedback->data[1] = (sn_nbo >> 16) & 0xff;
+		feedback->data[1] = (sn >> 16) & 0xff;
 		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 
 		/* first SN option */
@@ -150,9 +142,9 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 	}
 	else /* SN may be stored on 12 + 8 + 8 + 8 = 36 bits */
 	{
-		const uint8_t sn_opt1 = (sn_nbo >> 16) & 0xff;
-		const uint8_t sn_opt2 = (sn_nbo >> 8) & 0xff;
-		const uint8_t sn_opt3 = sn_nbo & 0xff;
+		const uint8_t sn_opt1 = (sn >> 16) & 0xff;
+		const uint8_t sn_opt2 = (sn >> 8) & 0xff;
+		const uint8_t sn_opt3 = sn & 0xff;
 		int ret;
 
 		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits "
@@ -162,7 +154,7 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 		/* base header */
 		feedback->data[0] |= 0;
 		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
-		feedback->data[1] = (sn_nbo >> 24) & 0xff;
+		feedback->data[1] = (sn >> 24) & 0xff;
 		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
 
 		/* first SN option */
