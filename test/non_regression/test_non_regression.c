@@ -1217,6 +1217,7 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 	valid = 0;
 
 	printf("------------------------------ Compare ------------------------------\n");
+	printf("--------- reference ----------         ----------- new --------------\n");
 
 	if(pkt1_size != pkt2_size)
 	{
@@ -1256,7 +1257,7 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 				}
 			}
 
-			printf("      ");
+			printf("       ");
 
 			for(k = 0; k < (j + 1); k++)
 			{
