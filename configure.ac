@@ -247,18 +247,50 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 	# cross-compiling is not fully compatible with tests and stats yet
 	if test "x$cross_compiling" = "xyes" ; then
 
-		# mingw cross-compilation may run the tests/stats if wine is installed,
-		# others cannot yet
-		cross_compiling_emulator=""
+		# some cross-compiled binaries may be run:
+		#  - mingw cross-compilation may run the tests/stats if wine is installed,
+		#  - ARM cross-compilation may run the tests/stats if qemu-arm is installed
+		#    and static libraries only are used,
+		#  - PPC cross-compilation may run the tests/stats if qemu-ppc is installed
+		#    and static libraries only are used.
+		cross_compiling_emulator_name=""
+		cross_compiling_emulator_cmd=""
 		if test "x$host_os" = "xmingw32" || \
 		   test "x$host_os" = "xmingw64" ; then
 			AC_CHECK_PROG(is_wine_found, wine, "yes", "no")
 			if test "x$is_wine_found" = "xyes"; then
-				cross_compiling_emulator="wine"
+				cross_compiling_emulator_name="wine"
+				cross_compiling_emulator_cmd="wine"
+			fi
+		elif test "x$host_cpu" = "xarm" && \
+		     test "x$enable_shared" != "xyes" && \
+		     test "x$enable_static" = "xyes" ; then
+			AC_CHECK_PROG(is_qemu_found, qemu-arm, "yes", "no")
+			if test "x$is_qemu_found" = "xyes"; then
+				cross_compiling_libgcc_file="`${CC} -print-libgcc-file-name`"
+				cross_compiling_libgcc_dir="`dirname "${cross_compiling_libgcc_file}"`"
+				cross_compiling_sysroot="`${CC} -print-sysroot`"
+				cross_compiling_emulator_name="qemu-arm"
+				cross_compiling_emulator_cmd="qemu-arm -B 1048576 \
+				                              ${cross_compiling_sysroot}/lib/ld-linux.so.2 \
+				                              --library-path ${cross_compiling_sysroot}/lib:${cross_compiling_sysroot}/usr/lib:${cross_compiling_libgcc_dir}"
+			fi
+		elif test "x$host_cpu" = "xpowerpc" && \
+		     test "x$enable_shared" != "xyes" && \
+		     test "x$enable_static" = "xyes" ; then
+			AC_CHECK_PROG(is_qemu_found, qemu-ppc, "yes", "no")
+			if test "x$is_qemu_found" = "xyes"; then
+				cross_compiling_libgcc_file="`${CC} -print-libgcc-file-name`"
+				cross_compiling_libgcc_dir="`dirname "${cross_compiling_libgcc_file}"`"
+				cross_compiling_sysroot="`${CC} -print-sysroot`"
+				cross_compiling_emulator_name="qemu-ppc"
+				cross_compiling_emulator_cmd="qemu-ppc \
+				                              ${cross_compiling_sysroot}/lib/ld.so.1 \
+				                              --library-path ${cross_compiling_sysroot}/lib:${cross_compiling_sysroot}/usr/lib:${cross_compiling_libgcc_dir}"
 			fi
 		fi
 
-		if test "x$cross_compiling_emulator" = "x"; then
+		if test "x$cross_compiling_emulator_cmd" = "x" ; then
 			echo
 			echo "WARNING: --enable-rohc-tests and/or --enable-rohc-stats are enabled "
 			echo "         and you are cross-compiling, binaries will be built but none "
@@ -268,11 +300,14 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 			echo
 			echo "WARNING: --enable-rohc-tests and/or --enable-rohc-stats are enabled "
 			echo "         and you are cross-compiling, binaries will be built and run "
-			echo "         with the '$cross_compiling_emulator' emulator."
+			echo "         with the '$cross_compiling_emulator_name' emulator."
 			echo
 		fi
 
-		tests_environment="${tests_environment} CROSS_COMPILATION=yes CROSS_COMPILATION_EXEEXT=$EXEEXT CROSS_COMPILATION_EMULATOR=$cross_compiling_emulator"
+		tests_environment="${tests_environment} \
+		                   CROSS_COMPILATION=yes \
+		                   CROSS_COMPILATION_EXEEXT=$EXEEXT \
+		                   CROSS_COMPILATION_EMULATOR=\"$cross_compiling_emulator_cmd\""
 	fi
 
 	# check for sed and abort if it is not found
