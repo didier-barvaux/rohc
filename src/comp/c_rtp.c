@@ -30,9 +30,17 @@
 #include "sdvl.h"
 #include "crc.h"
 
+#include "config.h" /* for HAVE_*_H definitions */
+
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -109,7 +117,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	/* check if packet is IP/UDP/RTP or IP/IP/UDP/RTP */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -128,7 +136,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_UDP)
+	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
 		rohc_debugf(0, "next header is not UDP (%d), cannot use this profile\n",
 		            ip_proto);
@@ -176,7 +184,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->tmp.rtp_pt_changed = 0;
 
 	/* init the RTP-specific variables and functions */
-	g_context->next_header_proto = IPPROTO_UDP;
+	g_context->next_header_proto = ROHC_IPPROTO_UDP;
 	g_context->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
 	g_context->encode_uncomp_fields = rtp_encode_uncomp_fields;
 	g_context->decide_state = rtp_decide_state;
@@ -278,7 +286,7 @@ int c_rtp_check_context(const struct c_context *context,
 
 	/* get the last IP header */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* second IP header is last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -710,7 +718,7 @@ int c_rtp_encode(struct c_context *const context,
 	}
 
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -729,7 +737,7 @@ int c_rtp_encode(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_UDP)
+	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
 		rohc_debugf(0, "packet is not an UDP packet\n");
 		return -1;
@@ -1314,7 +1322,7 @@ int rtp_ports[] = { RTP_PORTS, 0 };
  */
 struct c_profile c_rtp_profile =
 {
-	IPPROTO_UDP,         /* IP protocol */
+	ROHC_IPPROTO_UDP,    /* IP protocol */
 	rtp_ports,           /* list of UDP ports */
 	ROHC_PROFILE_RTP,    /* profile ID */
 	"RTP / Compressor",  /* profile description */

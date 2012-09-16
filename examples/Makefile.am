@@ -15,7 +15,6 @@ noinst_PROGRAMS = \
 
 simple_rohc_program_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 

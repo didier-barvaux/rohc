@@ -27,28 +27,25 @@
 
 #include "c_generic.h"
 #include "c_rtp.h"
-#include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 #include "rohc_packets.h"
-#include "rohc_bit_ops.h"
 #include "rohc_utils.h"
 #include "cid.h"
 #include "sdvl.h"
 #include "crc.h"
 
+#include "config.h" /* for RTP_BIT_TYPE, ROHC_DEBUG_LEVEL and
+                       HAVE_*_H definitions */
+
 #include <string.h>
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
-#endif
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
-#endif
 #include <assert.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -333,8 +330,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
  *
  * @see changed_fields
  */
-inline int is_changed(const unsigned short changed_fields,
-                      const unsigned short check_field)
+int is_changed(const unsigned short changed_fields,
+               const unsigned short check_field)
 {
 	return ((changed_fields & check_field) != 0);
 }
@@ -470,7 +467,7 @@ int c_generic_create(struct c_context *const context,
 
 	/* check the IP header(s) */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		struct ip_packet ip2;
 
@@ -736,7 +733,7 @@ int c_generic_encode(struct c_context *const context,
 	 *  - discard IP fragments
 	 */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* there are 2 IP headers */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -1845,8 +1842,8 @@ int code_ipv6_static_part(const struct c_context *context,
 {
 	unsigned int flow_label;
 	unsigned int protocol;
-	const struct in6_addr *saddr;
-	const struct in6_addr *daddr;
+	const struct ipv6_addr *saddr;
+	const struct ipv6_addr *daddr;
 
 	/* part 1 */
 	flow_label = ipv6_get_flow_label(ip);
@@ -5251,7 +5248,7 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 
 	if(ip_get_version(ip) == IPV4)
 	{
-		const struct iphdr *old_ip;
+		const struct ipv4_hdr *old_ip;
 
 		old_ip = &header_info->info.v4.old_ip;
 		old_tos = old_ip->tos;
@@ -5260,7 +5257,7 @@ unsigned short changed_fields(const struct ip_header_info *header_info,
 	}
 	else /* IPV6 */
 	{
-		const struct ip6_hdr *old_ip;
+		const struct ipv6_hdr *old_ip;
 
 		old_ip = &header_info->info.v6.old_ip;
 		old_tos = IPV6_GET_TC(*old_ip);
@@ -6191,7 +6188,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	/* default the list does not change */
 	comp->changed = false;
 
-	ext = ip_get_raw_data(ip) + sizeof(struct ip6_hdr);
+	ext = ip_get_raw_data(ip) + sizeof(struct ipv6_hdr);
 
 #if ROHC_DEBUG_LEVEL >= 3
 	/* print current list before update */

@@ -35,27 +35,21 @@
 #include "decode.h"
 #include "ip.h"
 #include "crc.h"
+#include "protocols/udp.h"
+#include "protocols/ip_numbers.h"
 
-#include "config.h" /* for HAVE_NETINET_*_H */
-
-#if HAVE_NETINET_IN_H == 1
-#	include <netinet/in.h>
-#else
-#	include "netinet_in.h"  /* use an internal definition for compatibility */
-#endif
-
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
-#endif
+#include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-
-#include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 extern struct c_profile c_rtp_profile,
@@ -389,7 +383,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	/* get the transport protocol in the IP packet (skip the second IP header
 	 * if present) */
 	proto = ip_get_protocol(outer_ip);
-	if(proto == IPPROTO_IPIP || proto == IPPROTO_IPV6)
+	if(proto == ROHC_IPPROTO_IPIP || proto == ROHC_IPPROTO_IPV6)
 	{
 		/* create the second IP header */
 		if(!ip_get_inner_packet(outer_ip, &ip2))
@@ -1547,7 +1541,7 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 
 		/* skip profile if it uses UDP as transport protocol and the UDP ports
 		   are not reserved for the profile */
-		if(c_profiles[i]->protocol == IPPROTO_UDP &&
+		if(c_profiles[i]->protocol == ROHC_IPPROTO_UDP &&
 		   c_profiles[i]->ports != NULL &&
 		   c_profiles[i]->ports[0] != 0)
 		{

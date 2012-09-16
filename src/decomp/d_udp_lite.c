@@ -32,10 +32,13 @@
 #include "crc.h"
 #include "protocols/udp_lite.h"
 
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#include "config.h" /* for HAVE_*_H definitions */
+
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
 
 
@@ -200,7 +203,7 @@ void * d_udp_lite_create(void)
 	memset(context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	/* set next header to UDP-Lite */
-	context->next_header_proto = IPPROTO_UDPLITE;
+	context->next_header_proto = ROHC_IPPROTO_UDPLITE;
 
 	return context;
 

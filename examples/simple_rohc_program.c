@@ -30,21 +30,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-
-#include "config.h" /* for HAVE_NETINET_*_H */
-
-/* includes required to create a fake IP packet */
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
-#endif
-#if HAVE_NETINET_IN_H == 1
-#	include <netinet/in.h>
-#else
-#	include "netinet_in.h"  /* use an internal definition for compatibility */
-#endif
 #include <string.h>
+
+#include "config.h" /* for HAVE_*_H definitions */
+
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for htons() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for htons() on Linux */
+#endif
 
 /* includes required to use the compression part of the ROHC library */
 #include <rohc.h>
@@ -77,7 +72,6 @@ int main(int argc, char **argv)
 	                                           the IPv4 packet to compress */
 	unsigned int ip_packet_len;             /* the length (in bytes) of the
 	                                           IPv4 packet */
-	struct iphdr *ip_header;                /* the header of the IPv4 packet */
 	unsigned char rohc_packet[BUFFER_SIZE]; /* the buffer that will contain
 	                                           the resulting ROHC packet */
 	int rohc_packet_len;                    /* the length (in bytes) of the
@@ -126,25 +120,31 @@ int main(int argc, char **argv)
 
 	/* create a fake IP packet for the purpose of this simple program */
 	printf("\nbuild a fake IP packet\n");
-	ip_header = (struct iphdr *) ip_packet;
-	ip_header->version = 4; /* we create an IPv4 header */
-	ip_header->ihl = 5; /* minimal IPv4 header length (in 32-bit words) */
-	ip_header->tos = 0;
-	ip_packet_len = ip_header->ihl * 4 + strlen(FAKE_PAYLOAD);
-	ip_header->tot_len = htons(ip_packet_len);
-	ip_header->id = 0;
-	ip_header->frag_off = 0;
-	ip_header->ttl = 1;
-	ip_header->protocol = 134; /* unassigned number according to /etc/protocols */
-	ip_header->check = 0; /* set to 0 for checksum computation */
-	ip_header->saddr = htonl(0x01020304);
-	ip_header->daddr = htonl(0x05060708);
-
-	/* header is now built, put a fake IP checksum for this example */
-	ip_header->check = 0xbeef;
+	ip_packet[0] = 4 << 4; /* IP version 4 */
+	ip_packet[0] |= 5; /* IHL: minimal IPv4 header length (in 32-bit words) */
+	ip_packet[1] = 0; /* TOS */
+	ip_packet_len = 5 * 4 + strlen(FAKE_PAYLOAD);
+	ip_packet[2] = (htons(ip_packet_len) >> 8) & 0xff; /* Total Length */
+	ip_packet[3] = htons(ip_packet_len) & 0xff;
+	ip_packet[4] = 0; /* IP-ID */
+	ip_packet[5] = 0;
+	ip_packet[6] = 0; /* Fragment Offset and IP flags */
+	ip_packet[7] = 0;
+	ip_packet[8] = 1; /* TTL */
+	ip_packet[9] = 134; /* Protocol: unassigned number */
+	ip_packet[10] = 0xbe; /* fake Checksum */
+	ip_packet[11] = 0xef;
+	ip_packet[12] = 0x01; /* Source address */
+	ip_packet[13] = 0x02;
+	ip_packet[14] = 0x03;
+	ip_packet[15] = 0x04;
+	ip_packet[16] = 0x05; /* Destination address */
+	ip_packet[17] = 0x06;
+	ip_packet[18] = 0x07;
+	ip_packet[19] = 0x08;
 
 	/* copy the payload just after the IP header */
-	memcpy(ip_packet + ip_header->ihl * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
+	memcpy(ip_packet + 5 * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
 
 	/* dump the newly-created IP packet on terminal */
 	for(i = 0; i < ip_packet_len; i++)

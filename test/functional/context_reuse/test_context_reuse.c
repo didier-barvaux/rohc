@@ -32,27 +32,26 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
-#if HAVE_NET_ETHERNET_H == 1
-#  include <net/ethernet.h>
-#else
-#  include "net_ethernet.h" /* use an internal definition for compatibility */
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
 #endif
-#if HAVE_NETINET_IP_H == 1
-#  include <netinet/ip.h>
-#else
-#  include <netinet_ip.h>  /* use an internal definition for compatibility */
-#endif
-#if HAVE_NETINET_IP6_H == 1
-#  include <netinet/ip6.h>
-#else
-#  include <netinet_ip6.h>  /* use an internal definition for compatibility */
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */
 
+/* includes for network headers */
+#include <protocols/ipv4.h>
+#include <protocols/ipv6.h>
+
 /* include for the PCAP library */
-#include <pcap/pcap.h>
+#if HAVE_PCAP_PCAP_H == 1
+#  include <pcap/pcap.h>
+#elif HAVE_PCAP_H == 1
+#  include <pcap.h>
+#endif
 
 /* ROHC includes */
 #include <rohc.h>
@@ -276,13 +275,13 @@ static int test_comp_and_decomp(const char *filename)
 
 			if(version == 4)
 			{
-				struct iphdr *ip = (struct iphdr *) ip_packet;
+				struct ipv4_hdr *ip = (struct ipv4_hdr *) ip_packet;
 				tot_len = ntohs(ip->tot_len);
 			}
 			else
 			{
-				struct ip6_hdr *ip = (struct ip6_hdr *) ip_packet;
-				tot_len = sizeof(struct ip6_hdr) + ntohs(ip->ip6_plen);
+				struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
+				tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 			}
 
 			if(tot_len < ip_size)

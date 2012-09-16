@@ -24,21 +24,8 @@
 #ifndef C_UDP_H
 #define C_UDP_H
 
-#include "config.h" /* for HAVE_NETINET_*_H */
-
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
-#endif
-
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
-#endif
-
 #include "c_generic.h"
+#include "protocols/udp.h"
 
 
 /**

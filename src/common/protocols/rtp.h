@@ -26,37 +26,36 @@
 #ifndef ROHC_PROTOCOLS_RTP_H
 #define ROHC_PROTOCOLS_RTP_H
 
-#include <sys/types.h>
 #include <stdint.h>
 
-#include "config.h" /* for WORDS_BIGENDIAN + u_int*_t */
+#include "config.h" /* for WORDS_BIGENDIAN */
 
 
 /**
- * @brief RTP header
+ * @brief The RTP header
  *
  * See section 5.1 of RFC 1889 for details.
  */
 struct rtphdr
 {
 #if WORDS_BIGENDIAN == 1
-	u_int16_t version:2;
-	u_int16_t padding:1;
-	u_int16_t extension:1;
-	u_int16_t cc:4;
-	u_int16_t m:1;
-	u_int16_t pt:7;
+	uint16_t version:2;
+	uint16_t padding:1;
+	uint16_t extension:1;
+	uint16_t cc:4;
+	uint16_t m:1;
+	uint16_t pt:7;
 #else
-	u_int16_t cc:4;          ///< CSRC Count
-	u_int16_t extension:1;   ///< Extension bit
-	u_int16_t padding:1;     ///< Padding bit
-	u_int16_t version:2;     ///< RTP version
-	u_int16_t pt:7;          ///< Payload Type
-	u_int16_t m:1;           ///< Marker
+	uint16_t cc:4;          ///< CSRC Count
+	uint16_t extension:1;   ///< Extension bit
+	uint16_t padding:1;     ///< Padding bit
+	uint16_t version:2;     ///< RTP version
+	uint16_t pt:7;          ///< Payload Type
+	uint16_t m:1;           ///< Marker
 #endif
-	u_int16_t sn;            ///< Sequence Number
-	u_int32_t timestamp;     ///< Timestamp
-	u_int32_t ssrc;          ///< Synchronization SouRCe (SSRC) identifier
+	uint16_t sn;            ///< Sequence Number
+	uint32_t timestamp;     ///< Timestamp
+	uint32_t ssrc;          ///< Synchronization SouRCe (SSRC) identifier
 } __attribute__((packed));
 
 

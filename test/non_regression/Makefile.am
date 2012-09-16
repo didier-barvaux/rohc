@@ -176,7 +176,6 @@ check_PROGRAMS = \
 test_non_regression_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
-	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp

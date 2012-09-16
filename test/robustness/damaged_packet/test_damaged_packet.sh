@@ -38,12 +38,12 @@ else
 fi
 
 # extract the packet to damage and source capture from the name of the script
-PACKET_TO_DAMAGE=$( echo "${SCRIPT}" | \
-                    ${SED} -e 's#^.*/test_damaged_packet_\([0-9]\+\)_.\+\.sh#\1#' )
-CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_damaged_packet_[0-9]\+_\(.\+\)\.sh#\1#' )
-EXPECTED_PACKET=$( echo "${SCRIPT}" | \
-                   ${SED} -e 's#^.*/test_damaged_packet_[0-9]\+_\([^_.]\+\)\(_.\+\)\?\.sh#\1#' )
+PARAMS=$( echo "${SCRIPT}" | \
+          ${SED} -e 's#^.*/test_damaged_packet_##' -e 's#\.sh$##' )
+PACKET_TO_DAMAGE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $1 }' )
+CAPTURE_NAME=$( echo "${PARAMS}" | \
+                ${AWK} -F'_' '{ if($3 == "") { print $2 } else { print $2 "_" $3 } }' )
+EXPECTED_PACKET=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $2 }' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists

@@ -26,7 +26,7 @@ librohc_comp_la_LDFLAGS = \
 
 librohc_comp_la_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
 include_HEADERS = \

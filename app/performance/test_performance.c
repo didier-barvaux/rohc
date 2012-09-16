@@ -53,6 +53,8 @@
  * of compressed packets and the average elapsed time per packet.
  */
 
+#include <test.h>
+
 #include "config.h" /* for HAVE_*_H and SCHED_SETSCHEDULER_PARAMS */
 
 /* system includes */
@@ -63,28 +65,28 @@
 #  include <sys/mman.h>
 #endif
 #include <unistd.h>
-#if HAVE_NET_ETHERNET_H == 1
-#  include <net/ethernet.h>
-#else
-#  include "net_ethernet.h" /* use an internal definition for compatibility */
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
 #endif
-#if HAVE_NETINET_IP_H == 1
-#  include <netinet/ip.h>
-#else
-#  include <netinet_ip.h>  /* use an internal definition for compatibility */
-#endif
-#if HAVE_NETINET_IP6_H == 1
-#  include <netinet/ip6.h>
-#else
-#  include <netinet_ip6.h>  /* use an internal definition for compatibility */
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
 #include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 
 /* include for the PCAP library */
-#include <pcap/pcap.h>
+#if HAVE_PCAP_PCAP_H == 1
+#  include <pcap/pcap.h>
+#elif HAVE_PCAP_H == 1
+#  include <pcap.h>
+#endif
+
+/* includes for network headers */
+#include <protocols/ipv4.h>
+#include <protocols/ipv6.h>
 
 /* ROHC includes */
 #include <rohc.h>
@@ -536,17 +538,17 @@ static int time_compress_packet(struct rohc_comp *comp,
 		ip_version = (ip_packet[0] >> 4) & 0x0f;
 		if(ip_version == 4) /* IPv4 */
 		{
-			struct iphdr *ip;
+			struct ipv4_hdr *ip;
 
-			ip = (struct iphdr *) ip_packet;
+			ip = (struct ipv4_hdr *) ip_packet;
 			tot_len = ntohs(ip->tot_len);
 		}
 		else if(ip_version == 6) /* IPv6 */
 		{
-			struct ip6_hdr *ip;
+			struct ipv6_hdr *ip;
 
-			ip = (struct ip6_hdr *) ip_packet;
-			tot_len = sizeof(struct ip6_hdr) + ntohs(ip->ip6_plen);
+			ip = (struct ipv6_hdr *) ip_packet;
+			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 		}
 		else /* unknown IP version */
 		{

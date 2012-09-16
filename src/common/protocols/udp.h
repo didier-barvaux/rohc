@@ -46,30 +46,29 @@
  */
 
 /**
- * @file   netinet_udp.h
- * @brief  Defines the UDP header for platforms that miss one
+ * @file   udp.h
+ * @brief  Defines the UDP header
  * @author Free Software Foundation, Inc
  *
  * This file contains a part of netinet/udp.h from the GNU C library. It is
- * used on platforms that miss the definition of struct udphdr, eg. Microsoft
- * Windows.
+ * copied here to be portable on all platforms, even the platforms that miss
+ * the declarations or got different declarations, such as Microsoft Windows
+ * or FreeBSD.
  */
 
-#ifndef __NETINET_UDP_H
-#define __NETINET_UDP_H    1
+#ifndef ROHC_PROTOCOLS_UDP_H
+#define ROHC_PROTOCOLS_UDP_H
 
 #include <stdint.h>
-
-#include "config.h" /* for u_int*_t */
 
 
 /* UDP header */
 struct udphdr
 {
-  u_int16_t source;
-  u_int16_t dest;
-  u_int16_t len;
-  u_int16_t check;
+  uint16_t source;
+  uint16_t dest;
+  uint16_t len;
+  uint16_t check;
 };
 
-#endif /* netinet/udp.h */
+#endif

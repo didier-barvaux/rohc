@@ -18,10 +18,13 @@
  * @file   test.h
  * @brief  Common definitions for test applications
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef TEST__H
 #define TEST__H
+
+#include <stdint.h>
 
 /// The maximal size for the ROHC packets
 #define MAX_ROHC_SIZE  (5 * 1024)
@@ -31,6 +34,20 @@
 
 /// The minimum Ethernet length (in bytes)
 #define ETHER_FRAME_MIN_LEN  60
+
+/** The length (in bytes) of the Ethernet address */
+#define ETH_ALEN  6
+
+/** The length (in bytes) of the Ethernet header */
+#define ETHER_HDR_LEN  14
+
+/** The 10Mb/s ethernet header */
+struct ether_header
+{
+	uint8_t  ether_dhost[ETH_ALEN]; /**< destination eth addr */
+	uint8_t  ether_shost[ETH_ALEN]; /**< source ether addr */
+	uint16_t ether_type;            /**< packet type ID field */
+} __attribute__ ((__packed__));
 
 
 /** A simple maximum macro */

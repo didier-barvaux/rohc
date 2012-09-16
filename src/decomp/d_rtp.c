@@ -23,27 +23,23 @@
  */
 
 #include "d_rtp.h"
-#include "rohc_bit_ops.h"
 #include "rohc_traces.h"
+#include "rohc_bit_ops.h"
 #include "rohc_debug.h"
 #include "ts_sc_decomp.h"
 #include "sdvl.h"
 #include "crc.h"
 #include "decode.h"
+#include "protocols/udp.h"
 #include "protocols/rtp.h"
 
-#include "config.h" /* for HAVE_NETINET_*_H */
+#include "config.h" /* for HAVE_*_H definitions */
 
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
 #endif
-
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
 
 
@@ -190,7 +186,7 @@ void * d_rtp_create(void)
 	memset(context->inner_ip_changes->next_header, 0, nh_len);
 
 	/* set next header to UDP */
-	context->next_header_proto = IPPROTO_UDP;
+	context->next_header_proto = ROHC_IPPROTO_UDP;
 
 	/* create the scaled RTP Timestamp decoding context */
 	rtp_context->ts_scaled_ctxt = d_create_sc();

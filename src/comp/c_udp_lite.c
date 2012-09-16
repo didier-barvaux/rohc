@@ -31,6 +31,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -96,7 +102,7 @@ int c_udp_lite_create(struct c_context *const context,
 
 	/* check if packet is IP/UDP-Lite or IP/IP/UDP-Lite */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -115,7 +121,7 @@ int c_udp_lite_create(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_UDPLITE)
+	if(ip_proto != ROHC_IPPROTO_UDPLITE)
 	{
 		rohc_debugf(0, "next header is not UDP-Lite (%d), cannot use this "
 		            "profile\n", ip_proto);
@@ -148,7 +154,7 @@ int c_udp_lite_create(struct c_context *const context,
 	udp_lite_context->tmp.udp_size = -1;
 
 	/* init the UDP-Lite-specific variables and functions */
-	g_context->next_header_proto = IPPROTO_UDPLITE;
+	g_context->next_header_proto = ROHC_IPPROTO_UDPLITE;
 	g_context->next_header_len = sizeof(struct udphdr);
 	g_context->decide_state = decide_state;
 	g_context->decide_FO_packet = c_ip_decide_FO_packet;
@@ -252,7 +258,7 @@ int c_udp_lite_check_context(const struct c_context *context,
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* check if the context used to have a second IP header */
 		if(!g_context->is_ip2_initialized)
@@ -319,7 +325,7 @@ int c_udp_lite_check_context(const struct c_context *context,
 	}
 
 	/* check the transport protocol */
-	if(ip_proto != IPPROTO_UDPLITE)
+	if(ip_proto != ROHC_IPPROTO_UDPLITE)
 	{
 		goto bad_context;
 	}
@@ -386,7 +392,7 @@ int c_udp_lite_encode(struct c_context *const context,
 	udp_lite_context->tmp.udp_size = packet_size - ip_get_hdrlen(ip);
 
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -408,7 +414,7 @@ int c_udp_lite_encode(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_UDPLITE)
+	if(ip_proto != ROHC_IPPROTO_UDPLITE)
 	{
 		rohc_debugf(0, "packet is not an UDP-Lite packet\n");
 		return -1;
@@ -834,7 +840,7 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
  */
 struct c_profile c_udp_lite_profile =
 {
-	IPPROTO_UDPLITE,          /* IP protocol */
+	ROHC_IPPROTO_UDPLITE,     /* IP protocol */
 	NULL,                     /* list of UDP ports, not relevant for UDP-Lite */
 	ROHC_PROFILE_UDPLITE,     /* profile ID (see 7 in RFC 4019) */
 	"UDP-Lite / Compressor",  /* profile description */

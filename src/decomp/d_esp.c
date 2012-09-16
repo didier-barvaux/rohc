@@ -24,15 +24,22 @@
 #include "d_esp.h"
 #include "d_generic.h"
 #include "d_ip.h"
-#include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 #include "crc.h"
 #include "protocols/esp.h"
 #include "lsb_decode.h"
 
+#include "config.h" /* for HAVE_*_H definitions */
+
 #include <stdint.h>
 #include <string.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -131,7 +138,7 @@ static void * d_esp_create(void)
 	memset(context->inner_ip_changes->next_header, 0, sizeof(struct esphdr));
 
 	/* set next header to ESP */
-	context->next_header_proto = IPPROTO_ESP;
+	context->next_header_proto = ROHC_IPPROTO_ESP;
 
 	return context;
 

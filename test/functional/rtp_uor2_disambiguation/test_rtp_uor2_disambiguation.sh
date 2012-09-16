@@ -37,9 +37,8 @@ fi
 
 # extract the source capture and the expected packet from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_rtp_uor2_disambiguation_\(.\+\)\.sh#\1#' )
-EXPECTED_PACKET=$( echo "${SCRIPT}" | \
-                   ${SED} -e 's#^.*/test_rtp_uor2_disambiguation_\(.\+\)_\([^_]\+\)\.sh#\2#' )
+                ${SED} -e 's#^.*/test_rtp_uor2_disambiguation_##' -e 's#\.sh$##' )
+EXPECTED_PACKET=$( echo "${CAPTURE_NAME}" | ${AWK} -F'_' '{ print $NF }' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists

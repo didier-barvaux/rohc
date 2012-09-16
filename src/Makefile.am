@@ -5,8 +5,11 @@
 ################################################################################
 
 SUBDIRS = \
-	compat \
+	. \
 	common \
 	comp \
 	decomp
+
+EXTRA_DIST = \
+	dllexport.h
 

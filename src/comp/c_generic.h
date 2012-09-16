@@ -32,15 +32,6 @@
 
 #include <stdlib.h>
 
-#include "config.h" /* for HAVE_NETINET_*_H */
-
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
-#endif
-
-
 
 /// The number of compression list items
 #define MAX_ITEM 15
@@ -64,7 +55,7 @@ struct ipv4_header_info
 	struct c_wlsb *ip_id_window;
 
 	/// The previous IP header
-	struct iphdr old_ip;
+	struct ipv4_hdr old_ip;
 
 	/// The number of times the DF field was added to the compressed header
 	int df_count;
@@ -104,7 +95,7 @@ struct ipv4_header_info
 struct ipv6_header_info
 {
 	/// The previous IPv6 header
-	struct ip6_hdr old_ip;
+	struct ipv6_hdr old_ip;
 	/// The extension compressor
 	struct list_comp *ext_comp;
 };

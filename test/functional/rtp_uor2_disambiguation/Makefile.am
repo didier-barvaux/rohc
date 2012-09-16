@@ -107,7 +107,7 @@ check_PROGRAMS = \
 test_rtp_uor2_disambiguation_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp

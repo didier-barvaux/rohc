@@ -34,11 +34,10 @@ else
 fi
 
 # extract the CID type and capture name from the name of the script
-CID_TYPE=$( echo "${SCRIPT}" | \
-            ${SED} -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\2#' )
-STREAM=$( echo "${SCRIPT}" | \
-          ${SED} -e 's#^.*/test_non_regression_\(.\+\)_\(.\+\)\.sh#\1#' | \
-          ${SED} -e 's#_#/#g' )
+PARAMS=$( echo "${SCRIPT}" | \
+          ${SED} -e 's#^.*/test_non_regression_##' -e 's#\.sh$##' )
+CID_TYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $NF }' )
+STREAM=$( echo "${PARAMS}" | ${AWK} -F'_' '{ OFS="/" ; $NF="" ; print $0 }' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${STREAM}/source.pcap"
 CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_${CID_TYPE}.pcap"
 SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_sizes_${CID_TYPE}"

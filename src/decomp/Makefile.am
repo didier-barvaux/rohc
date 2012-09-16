@@ -29,7 +29,7 @@ librohc_decomp_la_LDFLAGS = \
 
 librohc_decomp_la_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 

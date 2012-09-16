@@ -24,26 +24,10 @@
 #define IP_H
 
 #include "dllexport.h"
-#include "config.h" /* for HAVE_NETINET_*_H */
+#include "protocols/ipv4.h"
+#include "protocols/ipv6.h"
 
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
-#endif
-
-#if HAVE_NETINET_IP6_H == 1
-#	include <netinet/ip6.h>
-#else
-#	include "netinet_ip6.h"  /* use an internal definition for compatibility */
-#endif
-
-#if HAVE_NETINET_IN_H == 1
-#	include <netinet/in.h>
-#else
-#	include "netinet_in.h"  /* use an internal definition for compatibility */
-#endif
-
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -97,9 +81,9 @@ struct ip_packet
 	union
 	{
 		/// The IPv4 header
-		struct iphdr v4;
+		struct ipv4_hdr v4;
 		/// The IPv6 header
-		struct ip6_hdr v6;
+		struct ipv6_hdr v6;
 	} header;
 
 	/// The whole IP data (header + payload) if not NULL
@@ -151,14 +135,14 @@ struct ip6_ahhdr
  * IPv4 definitions & macros:
  */
 
-/// The offset for the DF flag in an iphdr->frag_off variable
+/// The offset for the DF flag in an ipv4_hdr->frag_off variable
 #define IPV4_DF_OFFSET  14
 
-/// Get the IPv4 Don't Fragment (DF) bit from an iphdr object
+/// Get the IPv4 Don't Fragment (DF) bit from an ipv4_hdr object
 #define IPV4_GET_DF(ip4) \
 	IP_GET_16_SUBFIELD((ip4).frag_off, IP_DF, IPV4_DF_OFFSET)
 
-/// Set the IPv4 Don't Fragment (DF) bit in an iphdr object
+/// Set the IPv4 Don't Fragment (DF) bit in an ipv4_hdr object
 #define IPV4_SET_DF(ip4, value) \
 	IP_SET_16_SUBFIELD((ip4)->frag_off, IP_DF, IPV4_DF_OFFSET, (value))
 
@@ -176,40 +160,40 @@ struct ip6_ahhdr
  * IPv6 definitions & macros:
  */
 
-/// The bitmask for the Version field in an ip6_hdr->ip6_flow variable
+/// The bitmask for the Version field in an ipv6_hdr->ip6_flow variable
 #define IPV6_VERSION_MASK  0xf0000000
-/// The offset for the Version field in an ip6_hdr->ip6_flow variable
+/// The offset for the Version field in an ipv6_hdr->ip6_flow variable
 #define IPV6_VERSION_OFFSET  28
 
-/// The bitmask for the Traffic Class (TC) field in an ip6_hdr->ip6_flow variable
+/// The bitmask for the Traffic Class (TC) field in an ipv6_hdr->ip6_flow variable
 #define IPV6_TC_MASK  0x0ff00000
-/// The offset for the Traffic Class (TC) field in an ip6_hdr->ip6_flow variable
+/// The offset for the Traffic Class (TC) field in an ipv6_hdr->ip6_flow variable
 #define IPV6_TC_OFFSET  20
 
-/// The bitmask for the FLow Label field in an ip6_hdr->ip6_flow variable
+/// The bitmask for the FLow Label field in an ipv6_hdr->ip6_flow variable
 #define IPV6_FLOW_LABEL_MASK  0x000fffff
 
-/// Get the IPv6 Version 4-bit field from ip6_hdr object
+/// Get the IPv6 Version 4-bit field from ipv6_hdr object
 #define IPV6_GET_VERSION(ip6) \
 	IP_GET_32_SUBFIELD((ip6).ip6_flow, IPV6_VERSION_MASK, IPV6_VERSION_OFFSET)
 
-/// Set the IPv6 Version 4-bit field in an ip6_hdr object
+/// Set the IPv6 Version 4-bit field in an ipv6_hdr object
 #define IPV6_SET_VERSION(ip6, value) \
 	IP_SET_32_SUBFIELD((ip6)->ip6_flow, IPV6_VERSION_MASK, IPV6_VERSION_OFFSET, (value))
 
-/// Get the IPv6 Traffic Class (TC) byte from an ip6_hdr object
+/// Get the IPv6 Traffic Class (TC) byte from an ipv6_hdr object
 #define IPV6_GET_TC(ip6) \
 	IP_GET_32_SUBFIELD((ip6).ip6_flow, IPV6_TC_MASK, IPV6_TC_OFFSET)
 
-/// Set the IPv6 Traffic Class (TC) byte in an ip6_hdr object
+/// Set the IPv6 Traffic Class (TC) byte in an ipv6_hdr object
 #define IPV6_SET_TC(ip6, value) \
 	IP_SET_32_SUBFIELD((ip6)->ip6_flow, IPV6_TC_MASK, IPV6_TC_OFFSET, (value))
 
-/// Get the IPv6 Flow Label 20-bit field from an ip6_hdr object
+/// Get the IPv6 Flow Label 20-bit field from an ipv6_hdr object
 #define IPV6_GET_FLOW_LABEL(ip6) \
 	IP_GET_32_SUBFIELD((ip6).ip6_flow, IPV6_FLOW_LABEL_MASK, 0)
 
-/// Set the IPv6 Flow Label 20-bit field in an ip6_hdr variable
+/// Set the IPv6 Flow Label 20-bit field in an ipv6_hdr variable
 #define IPV6_SET_FLOW_LABEL(ip6, value) \
 	IP_SET_32_SUBFIELD((ip6)->ip6_flow, IPV6_FLOW_LABEL_MASK, 0, (value))
 
@@ -217,7 +201,7 @@ struct ip6_ahhdr
 #define IPV6_ADDR_FORMAT \
 	"%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x"
 
-/// The data to print an IPv6 address in (struct in6_addr *) format
+/// The data to print an IPv6 address in (struct ipv6_addr *) format
 #define IPV6_ADDR_IN6(x) \
 	IPV6_ADDR_RAW((x)->s6_addr)
 
@@ -226,7 +210,7 @@ struct ip6_ahhdr
 	(x)[0], (x)[1], (x)[2], (x)[3], (x)[4], (x)[5], (x)[6], (x)[7], \
 	(x)[8], (x)[9], (x)[10], (x)[11], (x)[12], (x)[13], (x)[14], (x)[15]
 
-/// Compare two IPv6 addresses in (struct in6_addr *) format
+/// Compare two IPv6 addresses in (struct ipv6_addr *) format
 #define IPV6_ADDR_CMP(x, y) \
 	((x)->s6_addr32[0] == (y)->s6_addr32[0] && \
 	 (x)->s6_addr32[1] == (y)->s6_addr32[1] && \
@@ -435,7 +419,7 @@ void ROHC_EXPORT ip_set_daddr(struct ip_packet *const ip,
 
 /* IPv4 specific functions */
 
-const struct iphdr * ROHC_EXPORT ipv4_get_header(const struct ip_packet *const ip);
+const struct ipv4_hdr * ROHC_EXPORT ipv4_get_header(const struct ip_packet *const ip);
 uint16_t ROHC_EXPORT ipv4_get_id(const struct ip_packet *const ip);
 uint16_t ROHC_EXPORT ipv4_get_id_nbo(const struct ip_packet *const ip,
                                      const unsigned int nbo);
@@ -448,10 +432,10 @@ void ROHC_EXPORT ipv4_set_df(struct ip_packet *const ip, const int value);
 
 /* IPv6 specific functions */
 
-const struct ip6_hdr * ROHC_EXPORT ipv6_get_header(const struct ip_packet *const ip);
+const struct ipv6_hdr * ROHC_EXPORT ipv6_get_header(const struct ip_packet *const ip);
 uint32_t ROHC_EXPORT ipv6_get_flow_label(const struct ip_packet *const ip);
-const struct in6_addr * ROHC_EXPORT ipv6_get_saddr(const struct ip_packet *const ip);
-const struct in6_addr * ROHC_EXPORT ipv6_get_daddr(const struct ip_packet *const ip);
+const struct ipv6_addr * ROHC_EXPORT ipv6_get_saddr(const struct ip_packet *const ip);
+const struct ipv6_addr * ROHC_EXPORT ipv6_get_daddr(const struct ip_packet *const ip);
 void ROHC_EXPORT ipv6_set_flow_label(struct ip_packet *const ip,
                                      const uint32_t value);
 unsigned short ROHC_EXPORT ip_get_extension_size(const unsigned char *const ext);

@@ -38,8 +38,8 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])
-AC_CHECK_HEADERS([net/ethernet.h netinet/ip.h netinet/ip6.h netinet/udp.h netinet/in.h])
-AC_CHECK_HEADERS([winsock2.h]) # ntohl, htonl, ntohs, htons on Windows
+AC_CHECK_HEADERS([arpa/inet.h]) # ntohl, htonl, ntohs, htons on Linux
+AC_CHECK_HEADERS([winsock2.h])  # ntohl, htonl, ntohs, htons on Windows
 AC_CHECK_HEADERS([linux/if_tun.h]) # TUN/TAP support on Linux
 AC_CHECK_HEADERS([sched.h]) # scheduling priority on Linux
 AC_CHECK_HEADERS([sys/mman.h]) # memory management on Linux
@@ -53,7 +53,6 @@ else
 	additional_platform_libs=""
 fi
 AC_SUBST([additional_platform_libs], [$additional_platform_libs])
-
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -97,13 +96,6 @@ fi
 AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
-AC_CHECK_TYPES([u_int8_t], [],
-               [AC_DEFINE_UNQUOTED([u_int8_t], [uint8_t], [unsigned 8-bit integer])])
-AC_CHECK_TYPES([u_int16_t], [],
-               [AC_DEFINE_UNQUOTED([u_int16_t], [uint16_t], [unsigned 16-bit integer])])
-AC_CHECK_TYPES([u_int32_t], [],
-               [AC_DEFINE_UNQUOTED([u_int32_t], [uint32_t], [unsigned 32-bit integer])])
-
 
 # Special tweaks for mingw
 AC_CANONICAL_HOST
@@ -322,6 +314,19 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		exit 1
 	fi
 	tests_environment="${tests_environment} SED=$SED"
+
+	# check for awk and abort if it is not found
+	AC_PROG_AWK
+	if test "x$AWK" = "x" ; then
+		echo
+		echo "ERROR: no awk implementation found"
+		echo
+		echo "awk is required in order to generate compression statistics."
+		echo
+		echo "Please install one of the gawk, mawk, nawk, or awk tool."
+		exit 1
+	fi
+	tests_environment="${tests_environment} AWK=$AWK"
 fi
 
 
@@ -344,7 +349,7 @@ if test "x$enable_rohc_tests" = "xyes" || \
 	fi
 
 	# check for libpcap header presence
-	AC_CHECK_HEADERS([pcap/pcap.h])
+	AC_CHECK_HEADERS([pcap.h pcap/pcap.h])
 
 	# check for libpcap presence
 	LPCAP=""
@@ -432,7 +437,7 @@ if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 fi
 
 
-# gnuplot, awk, grep, sort, and tr are mandatory if ROHC statistics are enabled
+# gnuplot, grep, sort, and tr are mandatory if ROHC statistics are enabled
 if test "x$enable_rohc_stats" = "xyes" ; then
 
 	# check for the gnuplot binary and abort if it is not found
@@ -447,19 +452,6 @@ if test "x$enable_rohc_stats" = "xyes" ; then
 		echo "to install it on your system."
 		exit 1
 	fi
-
-	# check for awk and abort if it is not found
-	AC_PROG_AWK
-	if test "x$AWK" = "x" ; then
-		echo
-		echo "ERROR: no awk implementation found"
-		echo
-		echo "awk is required in order to generate compression statistics."
-		echo
-		echo "Please install one of the gawk, mawk, nawk, or awk tool."
-		exit 1
-	fi
-	tests_environment="${tests_environment} AWK=$AWK"
 
 	# check for grep and abort if it is not found
 	AC_PROG_GREP
@@ -589,7 +581,6 @@ AM_DEP_TRACK
 AC_CONFIG_FILES([ \
 	Makefile \
 	src/Makefile \
-	src/compat/Makefile \
 	src/common/Makefile \
 	src/common/protocols/Makefile \
 	src/common/test/Makefile \

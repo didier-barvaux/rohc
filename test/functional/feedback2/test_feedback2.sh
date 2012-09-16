@@ -38,16 +38,14 @@ else
 fi
 
 # extract the ACK type and test type from the name of the script
-ACKTYPE=$( echo "${SCRIPT}" | \
-           ${SED} -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\1#' )
-CID_TYPE=$( echo "${SCRIPT}" | \
-            ${SED} -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\2#' )
-SN_TYPE=$( echo "${SCRIPT}" | \
-           ${SED} -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\3#' )
-OPTIONS=$( echo "${SCRIPT}" | \
-           ${SED} -e 's#^.*/test_feedback2_\([^_]\+\)_\([^_]\+\)_\([^_]\+\)_\(.\+\)\.sh#\4#' | \
-           ${SED} -e 's/none//g' | \
-           ${SED} -e 's/_/ /g' )
+PARAMS=$( echo "${SCRIPT}" | \
+          ${SED} -e 's#^.*/test_feedback2_##' -e 's#\.sh$##' )
+ACKTYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $1 }' )
+CID_TYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $2 }' )
+SN_TYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $3 }' )
+OPTIONS=$( echo "${PARAMS}" | \
+           ${AWK} -F'_' '{ print $4 }' | \
+           ${SED} -e 's/none//g' -e 's/-/ /g' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${ACKTYPE}_${CID_TYPE}_${SN_TYPE}.pcap"
 
 # check that capture exists

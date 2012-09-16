@@ -25,7 +25,6 @@
  */
 
 #include "test.h"
-#include "config.h" /* for HAVE_NET_ETHERNET_H */
 
 /* system includes */
 #include <stdio.h>
@@ -33,16 +32,17 @@
 #include <strings.h>
 #include <string.h>
 #include <errno.h>
-#if HAVE_NET_ETHERNET_H == 1
-#  include <net/ethernet.h>
-#else
-#  include "net_ethernet.h" /* use an internal definition for compatibility */
-#endif
 #include <assert.h>
 #include <time.h> /* for time(2) */
 
+#include "config.h" /* for HAVE_*_H */
+
 /* include for the PCAP library */
-#include <pcap/pcap.h>
+#if HAVE_PCAP_PCAP_H == 1
+#  include <pcap/pcap.h>
+#elif HAVE_PCAP_H == 1
+#  include <pcap.h>
+#endif
 
 /* ROHC includes */
 #include <rohc.h>

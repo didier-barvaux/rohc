@@ -17,23 +17,43 @@
    02111-1307 USA.  */
 
 /**
- * @file   netinet_ip6.h
- * @brief  Defines the IPv6 header for platforms that miss one
+ * @file   ipv6.h
+ * @brief  Defines the IPv6 header
  * @author Free Software Foundation, Inc
  *
  * This file contains a part of netinet/ip6.h from the GNU C library. It is
- * used on platforms that miss the definition of struct ip6_hdr, eg. Microsoft
- * Windows.
+ * copied here to be portable on all platforms, even the platforms that miss
+ * the declarations or got different declarations, such as Microsoft Windows
+ * or FreeBSD.
  */
 
-#ifndef _NETINET_IP6_H
-#define _NETINET_IP6_H 1
+#ifndef ROHC_PROTOCOLS_IPV6_H
+#define ROHC_PROTOCOLS_IPV6_H
 
-#include "netinet_in.h"
+#include <stdint.h>
 
-#include <inttypes.h>
 
-struct ip6_hdr
+/**
+ * @brief The IPv6 address
+ */
+struct ipv6_addr
+{
+	union
+	{
+		uint8_t __u6_addr8[16];
+		uint16_t __u6_addr16[8];
+		uint32_t __u6_addr32[4];
+	} __in6_u;
+#define s6_addr		__in6_u.__u6_addr8
+#define s6_addr16		__in6_u.__u6_addr16
+#define s6_addr32		__in6_u.__u6_addr32
+};
+
+
+/**
+ * @brief The IPv6 header
+ */
+struct ipv6_hdr
 {
 	union
 	{
@@ -47,8 +67,8 @@ struct ip6_hdr
 		} ip6_un1;
 		uint8_t ip6_un2_vfc;       /* 4 bits version, top 4 bits tclass */
 	} ip6_ctlun;
-	struct in6_addr ip6_src;      /* source address */
-	struct in6_addr ip6_dst;      /* destination address */
+	struct ipv6_addr ip6_src;     /* source address */
+	struct ipv6_addr ip6_dst;     /* destination address */
 };
 
 #define ip6_vfc   ip6_ctlun.ip6_un2_vfc
@@ -58,4 +78,4 @@ struct ip6_hdr
 #define ip6_hlim  ip6_ctlun.ip6_un1.ip6_un1_hlim
 #define ip6_hops  ip6_ctlun.ip6_un1.ip6_un1_hlim
 
-#endif /* netinet/ip6.h */
+#endif

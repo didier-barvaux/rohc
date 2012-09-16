@@ -37,7 +37,15 @@
 #include "sdvl.h"
 #include "crc.h"
 
+#include "config.h" /* for HAVE_*_H definitions */
+
 #include <assert.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -2893,8 +2901,8 @@ static int decode_ir(struct rohc_decomp *decomp,
 
 	/* check for the presence of a second IP header */
 	assert(bits.outer_ip.proto_nr == 8);
-	if(bits.outer_ip.proto == IPPROTO_IPIP ||
-	   bits.outer_ip.proto == IPPROTO_IPV6)
+	if(bits.outer_ip.proto == ROHC_IPPROTO_IPIP ||
+	   bits.outer_ip.proto == ROHC_IPPROTO_IPV6)
 	{
 		g_context->multiple_ip = 1;
 		rohc_debugf(1, "second IP header detected\n");
@@ -7015,11 +7023,11 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		/* determine the length of the inner IP header */
 		if(decoded.inner_ip.version == IPV4)
 		{
-			inner_ip_hdr_len = sizeof(struct iphdr);
+			inner_ip_hdr_len = sizeof(struct ipv4_hdr);
 		}
 		else
 		{
-			inner_ip_hdr_len = sizeof(struct ip6_hdr);
+			inner_ip_hdr_len = sizeof(struct ipv6_hdr);
 		}
 		rohc_debugf(3, "length of inner IP header = %zd bytes\n", inner_ip_hdr_len);
 
@@ -7130,8 +7138,8 @@ error:
  *
  * @param decoded      The decoded IPv4 fields
  * @param dest         The buffer to store the IP header (MUST be at least
- *                     of sizeof(struct iphdr) or sizeof(struct ip6_hdr) bytes
- *                     depending on the IP version)
+ *                     of sizeof(struct ipv4_hdr) or sizeof(struct ipv6_hdr)
+ *                     bytes depending on the IP version)
  * @param payload_size The length of the IP payload
  * @param decomp       The list decompressor (IPv6 only)
  * @return             The length of the IP header
@@ -7161,7 +7169,7 @@ static unsigned int build_uncomp_ip(const struct rohc_decoded_ip_values decoded,
  *
  * @param decoded      The decoded IPv4 fields
  * @param dest         The buffer to store the IPv4 header (MUST be at least
- *                     of sizeof(struct iphdr) bytes)
+ *                     of sizeof(struct ipv4_hdr) bytes)
  * @param payload_size The length of the IPv4 payload
  * @return             The length of the IPv4 header
  */
@@ -7169,7 +7177,7 @@ static unsigned int build_uncomp_ipv4(const struct rohc_decoded_ip_values decode
                                       unsigned char *dest,
                                       unsigned int payload_size)
 {
-	struct iphdr *ip = (struct iphdr *) dest;
+	struct ipv4_hdr *ip = (struct ipv4_hdr *) dest;
 
 	/* static-known fields */
 	ip->ihl = 5;
@@ -7195,7 +7203,7 @@ static unsigned int build_uncomp_ipv4(const struct rohc_decoded_ip_values decode
 	ip->check = ip_fast_csum(dest, ip->ihl);
 	rohc_debugf(3, "IP checksum = 0x%04x\n", ntohs(ip->check));
 
-	return sizeof(struct iphdr);
+	return sizeof(struct ipv4_hdr);
 }
 
 
@@ -7204,7 +7212,7 @@ static unsigned int build_uncomp_ipv4(const struct rohc_decoded_ip_values decode
  *
  * @param decoded      The decoded IPv6 fields
  * @param dest         The buffer to store the IPv6 header (MUST be at least
- *                     of sizeof(struct ip6_hdr) bytes)
+ *                     of sizeof(struct ipv6_hdr) bytes)
  * @param payload_size The length of the IPv6 payload
  * @param decomp       The list decompressor
  * @return             The length of the IPv6 header
@@ -7214,7 +7222,7 @@ static unsigned int build_uncomp_ipv6(const struct rohc_decoded_ip_values decode
                                       unsigned int payload_size,
                                       struct list_decomp *decomp)
 {
-	struct ip6_hdr *ip = (struct ip6_hdr *) dest;
+	struct ipv6_hdr *ip = (struct ipv6_hdr *) dest;
 	size_t ext_size;
 
 	/* static fields */
@@ -7249,7 +7257,7 @@ static unsigned int build_uncomp_ipv6(const struct rohc_decoded_ip_values decode
 	IPV6_SET_TC(ip, decoded.tos);
 	ip->ip6_hlim = decoded.ttl;
 
-	dest += sizeof(struct ip6_hdr);
+	dest += sizeof(struct ipv6_hdr);
 
 	/* extension list */
 	if(decomp->is_present)
@@ -7268,7 +7276,7 @@ static unsigned int build_uncomp_ipv6(const struct rohc_decoded_ip_values decode
 	            "payload = %u bytes)\n", ntohs(ip->ip6_plen), ext_size,
 	            payload_size);
 
-	return sizeof(struct ip6_hdr) + ext_size;
+	return sizeof(struct ipv6_hdr) + ext_size;
 }
 
 
@@ -7795,7 +7803,7 @@ static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctx
 		else
 		{
 			/* keep context value */
-			const struct in6_addr *saddr_ctxt = ipv6_get_saddr(&ctxt->ip);
+			const struct ipv6_addr *saddr_ctxt = ipv6_get_saddr(&ctxt->ip);
 			memcpy(decoded->saddr, saddr_ctxt, 16);
 		}
 		rohc_debugf(3, "decoded %s source address = " IPV6_ADDR_FORMAT "\n",
@@ -7811,7 +7819,7 @@ static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctx
 		else
 		{
 			/* keep context value */
-			const struct in6_addr *daddr_ctxt = ipv6_get_daddr(&ctxt->ip);
+			const struct ipv6_addr *daddr_ctxt = ipv6_get_daddr(&ctxt->ip);
 			memcpy(decoded->daddr, daddr_ctxt, 16);
 		}
 		rohc_debugf(3, "decoded %s destination address = " IPV6_ADDR_FORMAT "\n",

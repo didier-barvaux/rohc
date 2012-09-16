@@ -27,8 +27,16 @@
 #include "rohc_packets.h"
 #include "crc.h"
 
+#include "config.h" /* for HAVE_*_H definitions */
+
 #include <stdlib.h>
 #include <string.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -79,7 +87,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	/* check if packet is IP/UDP or IP/IP/UDP */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -100,7 +108,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_UDP)
+	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
 		rohc_debugf(0, "next header is not UDP (%d), cannot use this profile\n",
 		            ip_proto);
@@ -126,7 +134,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 	udp_context->tmp.send_udp_dynamic = -1;
 
 	/* init the UDP-specific variables and functions */
-	g_context->next_header_proto = IPPROTO_UDP;
+	g_context->next_header_proto = ROHC_IPPROTO_UDP;
 	g_context->next_header_len = sizeof(struct udphdr);
 	g_context->decide_state = udp_decide_state;
 	g_context->decide_FO_packet = c_ip_decide_FO_packet;
@@ -230,7 +238,7 @@ int c_udp_check_context(const struct c_context *context,
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* check if the context used to have a second IP header */
 		if(!g_context->is_ip2_initialized)
@@ -297,7 +305,7 @@ int c_udp_check_context(const struct c_context *context,
 	}
 
 	/* check the transport protocol */
-	if(ip_proto != IPPROTO_UDP)
+	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
 		goto bad_context;
 	}
@@ -361,7 +369,7 @@ int c_udp_encode(struct c_context *const context,
 	}
 
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -380,7 +388,7 @@ int c_udp_encode(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_UDP)
+	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
 		rohc_debugf(0, "packet is not an UDP packet\n");
 		return -1;
@@ -606,7 +614,7 @@ int udp_changed_udp_dynamic(const struct c_context *context,
  */
 struct c_profile c_udp_profile =
 {
-	IPPROTO_UDP,         /* IP protocol */
+	ROHC_IPPROTO_UDP,    /* IP protocol */
 	NULL,                /* list of UDP ports, not relevant for UDP */
 	ROHC_PROFILE_UDP,    /* profile ID (see 8 in RFC 3095) */
 	"UDP / Compressor",  /* profile description */

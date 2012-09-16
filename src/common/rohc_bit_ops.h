@@ -25,8 +25,6 @@
 #ifndef ROHC_BIT_OPS_H
 #define ROHC_BIT_OPS_H
 
-#include "config.h" /* for WORDS_BIGENDIAN */
-
 
 /*
  * GET_BIT_n(x) macros: extract the (n+1) th bit from byte x starting from

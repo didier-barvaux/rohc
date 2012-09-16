@@ -26,21 +26,8 @@
 
 #include "c_generic.h"
 #include "ts_sc_comp.h"
+#include "protocols/udp.h"
 #include "protocols/rtp.h"
-
-#include "config.h" /* for HAVE_NETINET_*_H */
-
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
-#endif
-
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
-#endif
 
 
 /**

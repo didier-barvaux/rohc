@@ -7,15 +7,15 @@
 
 
 TESTS = \
-	test_damaged_packet_3_ir_with_tss_set.sh \
-	test_damaged_packet_3_ir_with_tss_not_set.sh \
-	test_damaged_packet_5_irdyn_with_tss_set.sh \
-	test_damaged_packet_5_irdyn_with_tss_not_set.sh \
+	test_damaged_packet_3_ir_with-tss-set.sh \
+	test_damaged_packet_3_ir_with-tss-not-set.sh \
+	test_damaged_packet_5_irdyn_with-tss-set.sh \
+	test_damaged_packet_5_irdyn_with-tss-not-set.sh \
 	test_damaged_packet_5_uo0.sh \
 	test_damaged_packet_8_uo1id.sh \
-	test_damaged_packet_8_uor2ts_without_ext3.sh \
-	test_damaged_packet_8_uor2ts_with_ext3_and_ts_stride.sh \
-	test_damaged_packet_8_uor2_with_ext3_but_not_ts_stride.sh
+	test_damaged_packet_8_uor2ts_without-ext3.sh \
+	test_damaged_packet_8_uor2ts_with-ext3-and-ts-stride.sh \
+	test_damaged_packet_8_uor2_with-ext3-but-not-ts-stride.sh
 
 
 check_PROGRAMS = \
@@ -25,7 +25,6 @@ check_PROGRAMS = \
 test_damaged_packet_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
-	-I$(top_srcdir)/src/compat \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp

@@ -5,7 +5,11 @@
 ################################################################################
 
 noinst_HEADERS = \
-	rtp.h \
+	ip_numbers.h \
+	ipv4.h \
+	ipv6.h \
+	udp.h \
 	udp_lite.h \
+	rtp.h \
 	esp.h
 

@@ -22,7 +22,7 @@ test_lsb_decode_wraparound_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs
 test_lsb_decode_wraparound_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
 test_lsb_decode_packet_loss_SOURCES = test_lsb_decode_packet_loss.c
@@ -32,7 +32,7 @@ test_lsb_decode_packet_loss_LDFLAGS = \
 	-L$(top_builddir)/src/common/.libs
 test_lsb_decode_packet_loss_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
 

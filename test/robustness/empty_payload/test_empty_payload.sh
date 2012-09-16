@@ -36,11 +36,9 @@ fi
 
 # extract the packet type from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_empty_payload_\(.\+\)\.sh#\1#' )
-PACKET_TYPE=$( echo "${SCRIPT}" | \
-               ${SED} -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_[^.]\+\)\?\.sh#\1#' )
-PROFILE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_empty_payload_\([^_.]\+\)\(_\([^.]\+\)\)\?\.sh#\3#' )
+                ${SED} -e 's#^.*/test_empty_payload_##' -e 's#\.sh$##' )
+PACKET_TYPE=$( echo "${CAPTURE_NAME}" | ${AWK} -F'_' '{ print $1 }' )
+PROFILE_NAME=$( echo "${CAPTURE_NAME}" | ${AWK} -F'_' '{ print $2 }' )
 if [ -z "${PROFILE_NAME}" ] ; then
 	PROFILE_NAME="auto"
 fi

@@ -25,16 +25,11 @@
 
 #include "crc.h"
 #include "rohc.h"
+#include "protocols/udp.h"
 #include "protocols/rtp.h"
 #include "protocols/esp.h"
 
-#include "config.h" /* for HAVE_NETINET_UDP_H */
 #include <stdlib.h>
-#if HAVE_NETINET_UDP_H == 1
-#	include <netinet/udp.h>
-#else
-#	include "netinet_udp.h"  /* use an internal definition for compatibility */
-#endif
 #include <assert.h>
 
 
@@ -285,7 +280,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 	/* first IPv4 header */
 	if(version == IPV4)
 	{
-		struct iphdr *ip_hdr = (struct iphdr *) ip;
+		struct ipv4_hdr *ip_hdr = (struct ipv4_hdr *) ip;
 
 		/* bytes 1-2 (Version, Header length, TOS) */
 		crc = crc_calculate(crc_type, (unsigned char *)(ip_hdr), 2,
@@ -299,7 +294,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 	}
 	else /* first IPv6 header */
 	{
-		struct ip6_hdr *ip_hdr = (struct ip6_hdr *) ip;
+		struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) ip;
 
 		/* bytes 1-4 (Version, TC, Flow Label) */
 		crc = crc_calculate(crc_type, (unsigned char *)(&ip_hdr->ip6_flow), 4,
@@ -320,7 +315,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 		/* IPv4 */
 		if(version == IPV4)
 		{
-			struct iphdr *ip2_hdr = (struct iphdr *) ip2;
+			struct ipv4_hdr *ip2_hdr = (struct ipv4_hdr *) ip2;
 
 			/* bytes 1-2 (Version, Header length, TOS) */
 			crc = crc_calculate(crc_type, (unsigned char *)(ip2_hdr), 2,
@@ -334,7 +329,7 @@ unsigned int compute_crc_static(const unsigned char *const ip,
 		}
 		else /* IPv6 */
 		{
-			struct ip6_hdr *ip2_hdr = (struct ip6_hdr *) ip2;
+			struct ipv6_hdr *ip2_hdr = (struct ipv6_hdr *) ip2;
 
 			/* bytes 1-4 (Version, TC, Flow Label) */
 			crc = crc_calculate(crc_type, (unsigned char *)(&ip2_hdr->ip6_flow), 4,
@@ -388,7 +383,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 	/* first IPv4 header */
 	if(version == IPV4)
 	{
-		struct iphdr *ip_hdr = (struct iphdr *) ip;
+		struct ipv4_hdr *ip_hdr = (struct ipv4_hdr *) ip;
 		/* bytes 3-6 (Total Length, Identification) */
 		crc = crc_calculate(crc_type, (unsigned char *)(&ip_hdr->tot_len), 4,
 		                    crc, crc_table);
@@ -398,7 +393,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 	}
 	else /* first IPv6 header */
 	{
-		struct ip6_hdr *ip_hdr = (struct ip6_hdr *) ip;
+		struct ipv6_hdr *ip_hdr = (struct ipv6_hdr *) ip;
 		/* bytes 5-6 (Payload Length) */
 		crc = crc_calculate(crc_type, (unsigned char *)(&ip_hdr->ip6_plen), 2,
 		                    crc, crc_table);
@@ -415,7 +410,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 		/* IPv4 */
 		if(version == IPV4)
 		{
-			struct iphdr *ip2_hdr = (struct iphdr *) ip2;
+			struct ipv4_hdr *ip2_hdr = (struct ipv4_hdr *) ip2;
 			/* bytes 3-6 (Total Length, Identification) */
 			crc = crc_calculate(crc_type, (unsigned char *)(&ip2_hdr->tot_len), 4,
 			                    crc, crc_table);
@@ -425,7 +420,7 @@ unsigned int compute_crc_dynamic(const unsigned char *const ip,
 		}
 		else /* IPv6 */
 		{
-			struct ip6_hdr *ip2_hdr = (struct ip6_hdr *) ip2;
+			struct ipv6_hdr *ip2_hdr = (struct ipv6_hdr *) ip2;
 			/* bytes 5-6 (Payload Length) */
 			crc = crc_calculate(crc_type, (unsigned char *)(&ip2_hdr->ip6_plen), 2,
 			                    crc, crc_table);
@@ -847,12 +842,12 @@ error:
 static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
                                                 uint8_t *const type)
 {
-	struct ip6_hdr *ip_hdr;
+	struct ipv6_hdr *ip_hdr;
 
 	assert(ip != NULL);
 	assert(type != NULL);
 
-	ip_hdr = (struct ip6_hdr *)ip;
+	ip_hdr = (struct ipv6_hdr *)ip;
 	*type = ip_hdr->ip6_nxt;
 	switch(*type)
 	{
@@ -866,7 +861,7 @@ static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
 			goto end;
 	}
 
-	return (((unsigned char *) ip) + sizeof(struct ip6_hdr));
+	return (((unsigned char *) ip) + sizeof(struct ipv6_hdr));
 
 end:
 	return NULL;

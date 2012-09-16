@@ -25,6 +25,12 @@
 
 #include <string.h>
 #include <assert.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -63,16 +69,16 @@ int ip_create(struct ip_packet *const ip,
 		 *       header must not contain options (= 20 bytes)
 		 *       packet length must be accurate with the Total Length field */
 
-		if(size < sizeof(struct iphdr))
+		if(size < sizeof(struct ipv4_hdr))
 		{
 			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
 			goto unknown;
 		}
 
 		/* copy the IPv4 header */
-		memcpy(&ip->header.v4, packet, sizeof(struct iphdr));
+		memcpy(&ip->header.v4, packet, sizeof(struct ipv4_hdr));
 
-		if(ip_get_hdrlen(ip) != sizeof(struct iphdr))
+		if(ip_get_hdrlen(ip) != sizeof(struct ipv4_hdr))
 		{
 			rohc_debugf(1, "bad IP header size (%d bytes)\n",
 			            ip_get_hdrlen(ip));
@@ -95,14 +101,14 @@ int ip_create(struct ip_packet *const ip,
 		/* IPv6: packet must be at least 40-byte long (= header length)
 		 *       packet length == header length + Payload Length field */
 
-		if(size < sizeof(struct ip6_hdr))
+		if(size < sizeof(struct ipv6_hdr))
 		{
 			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
 			goto unknown;
 		}
 
 		/* copy the IPv6 header */
-		memcpy(&ip->header.v6, packet, sizeof(struct ip6_hdr));
+		memcpy(&ip->header.v6, packet, sizeof(struct ipv6_hdr));
 
 		if(ip_get_totlen(ip) != size)
 		{
@@ -193,12 +199,12 @@ unsigned char * ip_get_next_header(const struct ip_packet *const ip,
 	if(ip->version == IPV4)
 	{
 		*type = ip->header.v4.protocol;
-		next_header = ((unsigned char *) ip->data) + sizeof(struct iphdr);
+		next_header = ((unsigned char *) ip->data) + sizeof(struct ipv4_hdr);
 	}
 	else if(ip->version == IPV6)
 	{
 		*type = ip->header.v6.ip6_nxt;
-		next_header = ((unsigned char *) ip->data) + sizeof(struct ip6_hdr);
+		next_header = ((unsigned char *) ip->data) + sizeof(struct ipv6_hdr);
 	}
 	else
 	{
@@ -431,7 +437,7 @@ unsigned int ip_get_totlen(const struct ip_packet *const ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		len = sizeof(struct ip6_hdr) + ntohs(ip->header.v6.ip6_plen);
+		len = sizeof(struct ipv6_hdr) + ntohs(ip->header.v6.ip6_plen);
 	}
 	else /* IP_UNKNOWN */
 	{
@@ -461,7 +467,7 @@ unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		len = sizeof(struct ip6_hdr);
+		len = sizeof(struct ipv6_hdr);
 	}
 	else
 	{
@@ -566,7 +572,7 @@ unsigned int ip_get_protocol(const struct ip_packet *const ip)
 			case IPV6_EXT_ROUTING:
 			case IPV6_EXT_AUTH:
 				/* known extension headers */
-				next_header = ((unsigned char *) ip->data) + sizeof(struct ip6_hdr);
+				next_header = ((unsigned char *) ip->data) + sizeof(struct ipv6_hdr);
 				protocol = ext_get_protocol(next_header);
 				break;
 			default:
@@ -780,11 +786,11 @@ void ip_set_saddr(struct ip_packet *const ip, const unsigned char *value)
 {
 	if(ip->version == IPV4)
 	{
-		memcpy(&ip->header.v4.saddr, value, sizeof(struct in_addr));
+		memcpy(&ip->header.v4.saddr, value, sizeof(uint32_t));
 	}
 	else if(ip->version == IPV6)
 	{
-		memcpy(&ip->header.v6.ip6_src, value, sizeof(struct in6_addr));
+		memcpy(&ip->header.v6.ip6_src, value, sizeof(struct ipv6_addr));
 	}
 	else
 	{
@@ -807,11 +813,11 @@ void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value)
 {
 	if(ip->version == IPV4)
 	{
-		memcpy(&ip->header.v4.daddr, value, sizeof(struct in_addr));
+		memcpy(&ip->header.v4.daddr, value, sizeof(uint32_t));
 	}
 	else if(ip->version == IPV6)
 	{
-		memcpy(&ip->header.v6.ip6_dst, value, sizeof(struct in6_addr));
+		memcpy(&ip->header.v6.ip6_dst, value, sizeof(struct ipv6_addr));
 	}
 	else
 	{
@@ -835,7 +841,7 @@ void ip_set_daddr(struct ip_packet *const ip, const unsigned char *value)
  * @param ip The IP packet to analyze
  * @return   The IP header
  */
-const struct iphdr * ipv4_get_header(const struct ip_packet *const ip)
+const struct ipv4_hdr * ipv4_get_header(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV4);
 	return &(ip->header.v4);
@@ -987,7 +993,7 @@ uint32_t ipv4_get_daddr(const struct ip_packet *const ip)
  * @param ip The IP packet to analyze
  * @return   The IP header if IPv6
  */
-const struct ip6_hdr * ipv6_get_header(const struct ip_packet *const ip)
+const struct ipv6_hdr * ipv6_get_header(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return &(ip->header.v6);
@@ -1035,7 +1041,7 @@ void ipv6_set_flow_label(struct ip_packet *const ip, const uint32_t value)
  * @param ip The IPv6 packet to analyze
  * @return   The source address of the given IPv6 packet
  */
-const struct in6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
+const struct ipv6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return &(ip->header.v6.ip6_src);
@@ -1051,7 +1057,7 @@ const struct in6_addr * ipv6_get_saddr(const struct ip_packet *const ip)
  * @param ip The IPv6 packet to analyze
  * @return   The source address of the given IPv6 packet
  */
-const struct in6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
+const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
 {
 	assert(ip->version == IPV6);
 	return &(ip->header.v6.ip6_dst);

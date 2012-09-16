@@ -24,7 +24,15 @@
 #include "c_ip.h"
 #include "rohc_traces.h"
 
+#include "config.h" /* for HAVE_*_H definitions */
+
 #include <string.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /**
@@ -59,7 +67,7 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	/* initialize the next header protocol (used later to match the best
 	 * IP-only context) */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		struct ip_packet ip2;
 
@@ -165,7 +173,7 @@ int c_ip_check_context(const struct c_context *context,
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* check if the context used to have a second IP header */
 		if(!g_context->is_ip2_initialized)

@@ -17,47 +17,50 @@
    02111-1307 USA.  */
 
 /**
- * @file   netinet_ip.h
- * @brief  Defines the IPv4 header for platforms that miss one
+ * @file   ipv4.h
+ * @brief  Defines the IPv4 header
  * @author Free Software Foundation, Inc
  *
  * This file contains a part of netinet/ip.h from the GNU C library. It is
- * used on platforms that miss the definition of struct iphdr, eg. Microsoft
- * Windows.
+ * copied here to be portable on all platforms, even the platforms that miss
+ * the declarations or got different declarations, such as Microsoft Windows
+ * or FreeBSD.
  */
 
-#ifndef __NETINET_IP_H
-#define __NETINET_IP_H 1
+#ifndef ROHC_PROTOCOLS_IPV4_H
+#define ROHC_PROTOCOLS_IPV4_H
 
 #include <stdint.h>
 
-#include "config.h" /* for WORDS_BIGENDIAN + u_int*_t */
+#include "config.h" /* for WORDS_BIGENDIAN */
 
 
-/* IPv4 header */
-struct iphdr
-  {
+/**
+ * @brief The IPv4 header
+ */
+struct ipv4_hdr
+{
 #if WORDS_BIGENDIAN == 1
-    unsigned int version:4;
-    unsigned int ihl:4;
+	unsigned int version:4;
+	unsigned int ihl:4;
 #else
-    unsigned int ihl:4;
-    unsigned int version:4;
+	unsigned int ihl:4;
+	unsigned int version:4;
 #endif
-    u_int8_t tos;
-    u_int16_t tot_len;
-    u_int16_t id;
-    u_int16_t frag_off;
+	uint8_t tos;
+	uint16_t tot_len;
+	uint16_t id;
+	uint16_t frag_off;
 #define	IP_RF 0x8000			/* reserved fragment flag */
 #define	IP_DF 0x4000			/* dont fragment flag */
 #define	IP_MF 0x2000			/* more fragments flag */
 #define	IP_OFFMASK 0x1fff		/* mask for fragmenting bits */
-    u_int8_t ttl;
-    u_int8_t protocol;
-    u_int16_t check;
-    u_int32_t saddr;
-    u_int32_t daddr;
-    /*The options start here. */
-  };
+	uint8_t ttl;
+	uint8_t protocol;
+	uint16_t check;
+	uint32_t saddr;
+	uint32_t daddr;
+	/* The options start here. */
+};
 
 #endif

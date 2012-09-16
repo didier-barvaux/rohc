@@ -14,7 +14,7 @@ check_PROGRAMS = \
 
 generate_statistics_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 

@@ -56,7 +56,7 @@ librohc_common_la_LIBADD = $(additional_platform_libs)
 librohc_common_la_LDFLAGS =
 librohc_common_la_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
-	-I$(top_srcdir)/src/compat
+	-I$(top_srcdir)/src
 
 include_HEADERS = $(public_headers)
 noinst_HEADERS = $(private_headers)

@@ -7,8 +7,8 @@
 
 TESTS = \
 	test_feedback2_ack_smallcid_smallsn_crc.sh \
-	test_feedback2_ack_smallcid_largesn_sn_crc.sh \
-	test_feedback2_ack_largecid_largesn_sn_crc.sh \
+	test_feedback2_ack_smallcid_largesn_sn-crc.sh \
+	test_feedback2_ack_largecid_largesn_sn-crc.sh \
 	test_feedback2_ack_largecid_smallsn_crc.sh
 
 
@@ -19,7 +19,7 @@ check_PROGRAMS = \
 test_feedback2_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/test \
-	-I$(top_srcdir)/src/compat \
+	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp

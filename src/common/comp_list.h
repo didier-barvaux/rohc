@@ -24,23 +24,20 @@
 #ifndef COMP_LIST_H
 #define COMP_LIST_H
 
-#include "config.h" /* for HAVE_NETINET_*_H */
 #include "dllexport.h"
+#include "protocols/ipv6.h"
+#include "protocols/ip_numbers.h"
 
-#if HAVE_NETINET_IN_H == 1
-#  include <netinet/in.h>
-#else
-#  include "netinet_in.h"  /* use an internal definition for compatibility */
-#endif
+#include <stdlib.h>
 
 
 /// Header version
 typedef enum
 {
-	HBH    = IPPROTO_HOPOPTS,  /**< Hop by hop header */
-	RTHDR  = IPPROTO_ROUTING,  /**< Routing header */
-	AH     = IPPROTO_AH,       /**< AH header */
-	DEST   = IPPROTO_DSTOPTS,  /**< Destination header */
+	HBH    = ROHC_IPPROTO_HOPOPTS,  /**< Hop by hop header */
+	RTHDR  = ROHC_IPPROTO_ROUTING,  /**< Routing header */
+	AH     = ROHC_IPPROTO_AH,       /**< AH header */
+	DEST   = ROHC_IPPROTO_DSTOPTS,  /**< Destination header */
 	/* CSRC lists not supported yet */
 } ext_header_version;
 

@@ -28,9 +28,17 @@
 #include "crc.h"
 #include "protocols/esp.h"
 
+#include "config.h" /* for HAVE_*_H definitions */
+
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
+#endif
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
+#endif
 
 
 /*
@@ -123,7 +131,7 @@ static int c_esp_create(struct c_context *const context,
 
 	/* check if packet is IP/ESP or IP/IP/ESP */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -144,7 +152,7 @@ static int c_esp_create(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_ESP)
+	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
 		rohc_debugf(0, "next header is not ESP (%d), cannot use this profile\n",
 		            ip_proto);
@@ -171,7 +179,7 @@ static int c_esp_create(struct c_context *const context,
 	memcpy(&(esp_context->old_esp), esp, sizeof(struct esphdr));
 
 	/* init the ESP-specific variables and functions */
-	g_context->next_header_proto = IPPROTO_ESP;
+	g_context->next_header_proto = ROHC_IPPROTO_ESP;
 	g_context->next_header_len = sizeof(struct esphdr);
 	g_context->encode_uncomp_fields = NULL;
 	g_context->decide_state = decide_state;
@@ -280,7 +288,7 @@ int c_esp_check_context(const struct c_context *context,
 
 	/* check the second IP header */
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		bool is_ip2_same;
 
@@ -349,7 +357,7 @@ int c_esp_check_context(const struct c_context *context,
 	}
 
 	/* check the transport protocol */
-	if(ip_proto != IPPROTO_ESP)
+	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
 		goto bad_context;
 	}
@@ -408,7 +416,7 @@ static int c_esp_encode(struct c_context *const context,
 	esp_context = (struct sc_esp_context *) g_context->specific;
 
 	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == IPPROTO_IPIP || ip_proto == IPPROTO_IPV6)
+	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
 	{
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
@@ -427,7 +435,7 @@ static int c_esp_encode(struct c_context *const context,
 		last_ip_header = ip;
 	}
 
-	if(ip_proto != IPPROTO_ESP)
+	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
 		rohc_debugf(0, "packet is not an ESP packet\n");
 		return -1;
@@ -571,7 +579,7 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
  */
 struct c_profile c_esp_profile =
 {
-	IPPROTO_ESP,         /* IP protocol */
+	ROHC_IPPROTO_ESP,    /* IP protocol */
 	NULL,                /* list of UDP ports, not relevant for UDP */
 	ROHC_PROFILE_ESP,    /* profile ID (see 8 in RFC 3095) */
 	"ESP / Compressor",  /* profile description */

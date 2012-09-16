@@ -48,25 +48,24 @@
  */
 
 #include "test.h"
-#include "config.h" /* for HAVE_NETINET_*_H */
+#include "config.h" /* for HAVE_*_H */
 
 /* system includes */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if HAVE_NETINET_IP_H == 1
-#	include <netinet/ip.h>
-#else
-#	include "netinet_ip.h"  /* use an internal definition for compatibility */
+#if HAVE_WINSOCK2_H == 1
+#  include <winsock2.h> /* for ntohs() on Windows */
 #endif
-#if HAVE_NETINET_IN_H == 1
-#	include <netinet/in.h>
-#else
-#	include "netinet_in.h"  /* use an internal definition for compatibility */
+#if HAVE_ARPA_INET_H == 1
+#  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */
+
+/* includes for network headers */
+#include <protocols/ipv4.h>
 
 /* ROHC includes */
 #include <rohc.h>
@@ -159,7 +158,7 @@ static int test_comp_and_decomp()
 	struct rohc_decomp *decompB;
 
 	/* original IP packet, ROHC packet and decompressed IP packet */
-	struct iphdr *ip_header;
+	struct ipv4_hdr *ip_header;
 	unsigned char ip_packet[MAX_ROHC_SIZE];
 	int ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
@@ -244,7 +243,7 @@ static int test_comp_and_decomp()
 	}
 
 	/* create a fake IP packet for the purpose of the test*/
-	ip_header = (struct iphdr *) ip_packet;
+	ip_header = (struct ipv4_hdr *) ip_packet;
 	ip_header->version = 4; /* we create an IPv4 header */
 	ip_header->ihl = 5; /* minimal IPv4 header length (in 32-bit words) */
 	ip_header->tos = 0;
