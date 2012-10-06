@@ -6,6 +6,27 @@ AC_INIT([ROHC library], [trunk], [http://rohc-lib.org/],
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
 
+# Define library versioning:
+#
+# Option -version-info current:revision:age <-> libXXX.so.current.age.revision
+#  - current  = the number of the current interface exported by the library.
+#  - revision = the implementation number of the current interface exported
+#               by this library.
+#  - age      = the number of previous additional interfaces supported by this
+#               library, ie. compatibility with previous versions.
+#
+# See http://sources.redhat.com/autobook/autobook/autobook_91.html for details.
+#
+# Basic rules are:
+#  - library code modified:                               REVISION++
+#  - interfaces changed/added/removed:  CURRENT++         REVISION=0
+#  - interfaces added:                             AGE++
+#  - interfaces removed:                           AGE=0
+#
+AC_SUBST([ROHC_API_CURRENT], 1)
+AC_SUBST([ROHC_API_REVISION], 0)
+AC_SUBST([ROHC_API_AGE], 1)
+
 # Define a package homepage in a way compatible with autoconf < 2.64
 m4_ifndef([AC_PACKAGE_URL],
           [AC_DEFINE([PACKAGE_URL], ["http://rohc-lib.org/";],

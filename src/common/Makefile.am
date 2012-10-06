@@ -53,7 +53,9 @@ private_headers = \
 
 librohc_common_la_SOURCES = $(sources)
 librohc_common_la_LIBADD = $(additional_platform_libs)
-librohc_common_la_LDFLAGS =
+librohc_common_la_LDFLAGS = \
+	-no-undefined \
+	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE)
 librohc_common_la_CFLAGS = \
 	-g -Wall -Wstrict-prototypes \
 	-I$(top_srcdir)/src

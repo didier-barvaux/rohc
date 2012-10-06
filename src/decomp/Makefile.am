@@ -24,6 +24,8 @@ librohc_decomp_la_LIBADD = \
 	$(additional_platform_libs)
 
 librohc_decomp_la_LDFLAGS = \
+	-no-undefined \
+	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs
 
