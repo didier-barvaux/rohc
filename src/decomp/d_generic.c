@@ -151,38 +151,37 @@ static int decode_ir(struct rohc_decomp *decomp,
                      const size_t large_cid_len,
                      unsigned char *dest);
 
-int decode_irdyn(struct rohc_decomp *decomp,
-                 struct d_context *context,
-                 const unsigned char *const rohc_packet,
-                 const unsigned int rohc_length,
-                 const size_t add_cid_len,
-                 const size_t large_cid_len,
-                 unsigned char *dest);
+static int decode_irdyn(struct rohc_decomp *decomp,
+                        struct d_context *context,
+                        const unsigned char *const rohc_packet,
+                        const unsigned int rohc_length,
+                        const size_t add_cid_len,
+                        const size_t large_cid_len,
+                        unsigned char *dest);
 
-int decode_uo0(struct rohc_decomp *decomp,
-               struct d_context *context,
-               const unsigned char *const rohc_packet,
-               const unsigned int rohc_length,
-               const size_t add_cid_len,
-               const size_t large_cid_len,
-               unsigned char *uncomp_packet);
+static int decode_uo0(struct rohc_decomp *decomp,
+                      struct d_context *context,
+                      const unsigned char *const rohc_packet,
+                      const unsigned int rohc_length,
+                      const size_t add_cid_len,
+                      const size_t large_cid_len,
+                      unsigned char *uncomp_packet);
 
-int decode_uo1(struct rohc_decomp *decomp,
-               struct d_context *context,
-               const unsigned char *const rohc_packet,
-               const unsigned int rohc_length,
-               const size_t add_cid_len,
-               const size_t large_cid_len,
-               unsigned char *uncomp_packet);
+static int decode_uo1(struct rohc_decomp *decomp,
+                      struct d_context *context,
+                      const unsigned char *const rohc_packet,
+                      const unsigned int rohc_length,
+                      const size_t add_cid_len,
+                      const size_t large_cid_len,
+                      unsigned char *uncomp_packet);
 
-int decode_uor2(struct rohc_decomp *decomp,
-                struct d_context *context,
-                const unsigned char *const rohc_packet,
-                const unsigned int rohc_length,
-                const size_t add_cid_len,
-                const size_t large_cid_len,
-                unsigned char *uncomp_packet);
-
+static int decode_uor2(struct rohc_decomp *decomp,
+                       struct d_context *context,
+                       const unsigned char *const rohc_packet,
+                       const unsigned int rohc_length,
+                       const size_t add_cid_len,
+                       const size_t large_cid_len,
+                       unsigned char *uncomp_packet);
 
 /*
  * Private function prototypes for parsing the static and dynamic parts
@@ -368,9 +367,9 @@ static bool decode_ip_values_from_bits(const struct d_generic_changes *const ctx
 static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
                                       const unsigned int gen_id);
 
-int get_bit_index(unsigned char byte, int index);
+static int get_bit_index(unsigned char byte, int index);
 
-int check_ip6_index(struct list_decomp *decomp, int index);
+static int check_ip6_index(struct list_decomp *decomp, int index);
 
 static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp);
 
@@ -383,7 +382,7 @@ static bool create_ip6_item(const unsigned char *data,
                             int index,
                             struct list_decomp *decomp);
 
-void ip6_d_init_table(struct list_decomp *decomp);
+static void ip6_d_init_table(struct list_decomp *decomp);
 
 static int get_ip6_ext_size(const unsigned char *data, const size_t data_len);
 
@@ -609,7 +608,7 @@ void d_generic_destroy(void *context)
  *
  * @param decomp The list decompressor
  */
-void ip6_d_init_table(struct list_decomp *decomp)
+static void ip6_d_init_table(struct list_decomp *decomp)
 {
 	/* insert HBH type in table */
 	decomp->based_table[0].type = HBH;
@@ -806,7 +805,7 @@ static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
  * @param index The specified index
  * @return 1 if successful, 0 else
  */
-int check_ip6_index(struct list_decomp *decomp, int index)
+static int check_ip6_index(struct list_decomp *decomp, int index)
 {
 	if(index > 3)
 	{
@@ -2731,7 +2730,7 @@ error:
  * @param index the specified index
  * @return the bit
  */
-int get_bit_index(unsigned char byte, int index)
+static int get_bit_index(unsigned char byte, int index)
 {
 	int bit;
 	switch(index)
@@ -3847,13 +3846,13 @@ error:
  *                       ROHC_ERROR if an error occurs
  *                       ROHC_ERROR_CRC if a CRC error occurs
  */
-int decode_uo0(struct rohc_decomp *decomp,
-               struct d_context *context,
-               const unsigned char *const rohc_packet,
-               const unsigned int rohc_length,
-               const size_t add_cid_len,
-               const size_t large_cid_len,
-               unsigned char *uncomp_packet)
+static int decode_uo0(struct rohc_decomp *decomp,
+                      struct d_context *context,
+                      const unsigned char *const rohc_packet,
+                      const unsigned int rohc_length,
+                      const size_t add_cid_len,
+                      const size_t large_cid_len,
+                      unsigned char *uncomp_packet)
 {
 	struct d_generic_context *const g_context = context->specific;
 
@@ -4427,13 +4426,13 @@ error:
  *                       ROHC_ERROR if an error occurs
  *                       ROHC_ERROR_CRC if a CRC error occurs
  */
-int decode_uo1(struct rohc_decomp *decomp,
-               struct d_context *context,
-               const unsigned char *const rohc_packet,
-               const unsigned int rohc_length,
-               const size_t add_cid_len,
-               const size_t large_cid_len,
-               unsigned char *uncomp_packet)
+static int decode_uo1(struct rohc_decomp *decomp,
+                      struct d_context *context,
+                      const unsigned char *const rohc_packet,
+                      const unsigned int rohc_length,
+                      const size_t add_cid_len,
+                      const size_t large_cid_len,
+                      unsigned char *uncomp_packet)
 {
 	struct d_generic_context *const g_context = context->specific;
 	const rohc_packet_t packet_type = g_context->packet_type;
@@ -5300,13 +5299,13 @@ error:
  *                       ROHC_ERROR if an error occurs
  *                       ROHC_ERROR_CRC if a CRC error occurs
  */
-int decode_uor2(struct rohc_decomp *decomp,
-                struct d_context *context,
-                const unsigned char *const rohc_packet,
-                const unsigned int rohc_length,
-                const size_t add_cid_len,
-                const size_t large_cid_len,
-                unsigned char *uncomp_packet)
+static int decode_uor2(struct rohc_decomp *decomp,
+                       struct d_context *context,
+                       const unsigned char *const rohc_packet,
+                       const unsigned int rohc_length,
+                       const size_t add_cid_len,
+                       const size_t large_cid_len,
+                       unsigned char *uncomp_packet)
 {
 	struct d_generic_context *const g_context = context->specific;
 	const rohc_packet_t packet_type = g_context->packet_type;
@@ -5649,13 +5648,13 @@ error_crc:
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  */
-int decode_irdyn(struct rohc_decomp *decomp,
-                 struct d_context *context,
-                 const unsigned char *const rohc_packet,
-                 const unsigned int rohc_length,
-                 const size_t add_cid_len,
-                 const size_t large_cid_len,
-                 unsigned char *dest)
+static int decode_irdyn(struct rohc_decomp *decomp,
+                        struct d_context *context,
+                        const unsigned char *const rohc_packet,
+                        const unsigned int rohc_length,
+                        const size_t add_cid_len,
+                        const size_t large_cid_len,
+                        unsigned char *dest)
 {
 	struct d_generic_context *g_context = context->specific;
 
