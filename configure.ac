@@ -180,7 +180,7 @@ AC_ARG_ENABLE(fortify_sources,
               fortify_sources=$enableval,
               fortify_sources=no)
 if test "x$fortify_sources" != "xno"; then
-	CFLAGS="${CFLAGS} -D_FORTIFY_SOURCE=2"
+	CFLAGS="${CFLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2"
 fi
 
 
