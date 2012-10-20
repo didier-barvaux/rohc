@@ -103,14 +103,14 @@ unsigned int ROHC_EXPORT udp_compute_crc_dynamic(const unsigned char *const ip,
 unsigned int ROHC_EXPORT esp_compute_crc_static(const unsigned char *const ip,
                                                 const unsigned char *const ip2,
                                                 const unsigned char *const next_header,
-                                                const unsigned int crc_type,
+                                                const rohc_crc_type_t crc_type,
                                                 const unsigned int init_val,
                                                 const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 3, 6)));
 unsigned int ROHC_EXPORT esp_compute_crc_dynamic(const unsigned char *const ip,
                                                  const unsigned char *const ip2,
                                                  const unsigned char *const next_header,
-                                                 const unsigned int crc_type,
+                                                 const rohc_crc_type_t crc_type,
                                                  const unsigned int init_val,
                                                  const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 3, 6)));

@@ -33,6 +33,7 @@
 #include "lsb_decode.h"
 #include "ip_id_offset_decode.h"
 #include "ip.h"
+#include "crc.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -378,7 +379,7 @@ struct d_generic_context
 	unsigned int (*compute_crc_static)(const unsigned char *const ip,
 	                                   const unsigned char *const ip2,
 	                                   const unsigned char *const next_header,
-	                                   const unsigned int crc_type,
+	                                   const rohc_crc_type_t crc_type,
 	                                   const unsigned int init_val,
 	                                   const unsigned char *const crc_table);
 
@@ -386,7 +387,7 @@ struct d_generic_context
 	unsigned int (*compute_crc_dynamic)(const unsigned char *const ip,
 	                                    const unsigned char *const ip2,
 	                                    const unsigned char *const next_header,
-	                                    const unsigned int crc_type,
+	                                    const rohc_crc_type_t crc_type,
 	                                    const unsigned int init_val,
 	                                    const unsigned char *const crc_table);
 
