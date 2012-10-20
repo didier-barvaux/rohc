@@ -128,7 +128,7 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	/* initialize the UDP part of the profile context */
 	udp_context->udp_checksum_change_count = 0;
-	udp_context->old_udp = *udp;
+	memcpy(&udp_context->old_udp, udp, sizeof(struct udphdr));
 
 	/* init the UDP-specific temporary variables */
 	udp_context->tmp.send_udp_dynamic = -1;
@@ -410,7 +410,7 @@ int c_udp_encode(struct c_context *const context,
 	if(g_context->tmp.packet_type == PACKET_IR ||
 	   g_context->tmp.packet_type == PACKET_IR_DYN)
 	{
-		udp_context->old_udp = *udp;
+		memcpy(&udp_context->old_udp, udp, sizeof(struct udphdr));
 	}
 
 quit:

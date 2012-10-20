@@ -163,9 +163,9 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	/* initialize the RTP part of the profile context */
 	rtp_context->udp_checksum_change_count = 0;
-	rtp_context->old_udp = *udp;
+	memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
 	rtp_context->rtp_pt_change_count = 0;
-	rtp_context->old_rtp = *rtp;
+	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	if(!c_create_sc(&rtp_context->ts_sc,
 	                context->compressor->wlsb_window_width))
 	{
@@ -760,8 +760,8 @@ int c_rtp_encode(struct c_context *const context,
 	if(g_context->tmp.packet_type == PACKET_IR ||
 	   g_context->tmp.packet_type == PACKET_IR_DYN)
 	{
-		rtp_context->old_udp = *udp;
-		rtp_context->old_rtp = *rtp;
+		memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
+		memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	}
 
 quit:

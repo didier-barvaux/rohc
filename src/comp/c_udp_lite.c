@@ -148,7 +148,7 @@ int c_udp_lite_create(struct c_context *const context,
 	udp_lite_context->sent_cce_only_count = 0;
 	udp_lite_context->sent_cce_on_count = MAX_IR_COUNT;
 	udp_lite_context->sent_cce_off_count = MAX_IR_COUNT;
-	udp_lite_context->old_udp_lite = *udp_lite;
+	memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 
 	/* init the UDP-Lite-specific temporary variables */
 	udp_lite_context->tmp.udp_size = -1;
@@ -433,7 +433,7 @@ int c_udp_lite_encode(struct c_context *const context,
 	if(g_context->tmp.packet_type == PACKET_IR ||
 	   g_context->tmp.packet_type == PACKET_IR_DYN)
 	{
-		udp_lite_context->old_udp_lite = *udp_lite;
+		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 	}
 
 quit:
@@ -661,7 +661,7 @@ void udp_lite_init_cc(const struct c_context *context,
 	            udp_lite_context->cfi);
 
 	udp_lite_context->tmp_coverage = udp_lite->len;
-	udp_lite_context->old_udp_lite = *udp_lite;
+	memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 }
 
 
@@ -737,7 +737,8 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 				udp_lite_context->sent_cce_only_count = 0;
 				udp_lite_context->sent_cce_off_count = 1;
 				udp_lite_context->FK = 0x03;
-				udp_lite_context->old_udp_lite = *udp_lite;
+				memcpy(&udp_lite_context->old_udp_lite, udp_lite,
+				       sizeof(struct udphdr));
 				return 1;
 			}
 			else
@@ -747,7 +748,8 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 				udp_lite_context->sent_cce_only_count = 0;
 				udp_lite_context->sent_cce_on_count = 1;
 				udp_lite_context->FK = 0x02;
-				udp_lite_context->old_udp_lite = *udp_lite;
+				memcpy(&udp_lite_context->old_udp_lite, udp_lite,
+				       sizeof(struct udphdr));
 				return 1;
 			}
 		}
@@ -769,7 +771,8 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 				udp_lite_context->sent_cce_only_count = 0;
 				udp_lite_context->sent_cce_off_count = 1;
 				udp_lite_context->FK = 0x03;
-				udp_lite_context->old_udp_lite = *udp_lite;
+				memcpy(&udp_lite_context->old_udp_lite, udp_lite,
+				       sizeof(struct udphdr));
 				return 1;
 			}
 			else
@@ -779,7 +782,8 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 				udp_lite_context->sent_cce_only_count = 0;
 				udp_lite_context->sent_cce_on_count = 1;
 				udp_lite_context->FK = 0x02;
-				udp_lite_context->old_udp_lite = *udp_lite;
+				memcpy(&udp_lite_context->old_udp_lite, udp_lite,
+				       sizeof(struct udphdr));
 				return 1;
 			}
 		}
@@ -795,7 +799,8 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 				udp_lite_context->cfp = 0;
 				udp_lite_context->cfi = 0;
 				udp_lite_context->FK = 0x03;
-				udp_lite_context->old_udp_lite = *udp_lite;
+				memcpy(&udp_lite_context->old_udp_lite, udp_lite,
+				       sizeof(struct udphdr));
 				return 1;
 			}
 			else if(udp_lite_context->coverage_inferred_count > MAX_LITE_COUNT)
@@ -805,7 +810,8 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 				udp_lite_context->cfp = 0;
 				udp_lite_context->cfi = 1;
 				udp_lite_context->FK = 0x03;
-				udp_lite_context->old_udp_lite = *udp_lite;
+				memcpy(&udp_lite_context->old_udp_lite, udp_lite,
+				       sizeof(struct udphdr));
 				return 1;
 			}
 		}
@@ -816,7 +822,7 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 		udp_lite_context->sent_cce_off_count++;
 		udp_lite_context->sent_cce_only_count = 0;
 		udp_lite_context->FK = 0x03;
-		udp_lite_context->old_udp_lite = *udp_lite;
+		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 		return 1;
 	}
 	else if(udp_lite_context->sent_cce_on_count < MAX_IR_COUNT)
@@ -824,7 +830,7 @@ int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
 		udp_lite_context->sent_cce_on_count++;
 		udp_lite_context->sent_cce_only_count = 0;
 		udp_lite_context->FK = 0x02;
-		udp_lite_context->old_udp_lite = *udp_lite;
+		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 		return 1;
 	}
 
