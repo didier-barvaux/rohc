@@ -8,8 +8,9 @@
     Change website URI for http://rohc-lib.org/
   Acknowledgments for bug reports and/or bug fixes:
     Ahmed Fathy, Arne, Audric Schiltknecht, FWX, Keith Harry, Mikhail Gruzdev,
-    qingbaibai, Viveris Technologies.
+    Olivier Bonhomme, qingbaibai, Viveris Technologies.
   Main changes:
+    ROHC ESP profile.
     Support for FreeBSD and Microsoft Windows (through MinGW) systems.
     Better support for ARM and PowerPC platforms.
     Enhance stream classifier efficiency: use next header to classify streams
