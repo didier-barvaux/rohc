@@ -1,19 +1,112 @@
-TODO - release 1.5.0
+21 Oct 2012 - release 1.5.0
   Compatibility:
-    TODO
+    Version 1.5.0 is not compatible with versions < 1.5.0 because of several
+    fixes related to IETF RFCs that change the format of ROHC packets.
+    The library API is however compatible with earlier versions.
   License/Authors:
     Add FWX for his ESP profile.
+    Change website URI for http://rohc-lib.org/
   Acknowledgments for bug reports and/or bug fixes:
-    FWX
-    TODO
+    Ahmed Fathy, Arne, Audric Schiltknecht, FWX, Keith Harry, Mikhail Gruzdev,
+    qingbaibai, Viveris Technologies.
   Main changes:
-    TODO
+    Support for FreeBSD and Microsoft Windows (through MinGW) systems.
+    Better support for ARM and PowerPC platforms.
+    Enhance stream classifier efficiency: use next header to classify streams
+      for IP-only profile.
+    Handle context re-use gracefully.
+    Do our best not to alter the decompression context before we are sure the
+      packet could be successfully decompressed.
+    Do not force the transmission of several IR-DYN packets when dynamic
+      fields changed. Packets of type UOR-2* may also be used.
+    Make sure IP-ID bits located in base headers are always for the innermost
+      IPv4 header with non-random IP-ID, except if stated otherwise.
+    Fix the disambiguation algorithm for RTP UOR-2* packets.
+    Handle TS wraprounds as stated in RFC 4815.
+    New API for user to specify a callback that generates random numbers.
+    New API for user to configure the size of the WLSB window.
+    New API for user to configure the timeouts for periodic refreshes.
+    New API for user to configure the CID type and the MAX_CID value.
+    Deprecate rohc_decompress_both() API function.
+    Remove the jamming algorithm (because of bad implementation).
+    The test_performance app is now installed by make install.
   Build system:
-    TODO
+    Add inter-library dependencies.
+    Use library versioning through libtool.
+    Check whether the compiler computes bit-field lengths as expected or not
+      (added because of TCC).
+    Valgrind can be used to check for memory problems while running tests:
+      configure option --enable-rohc-tests-valgrind added.
+    Rename rohc.c into rohc_common.c to avoid problems when building code for
+      Linux kernel.
+    Add option --enable-fortify_sources to add -D_FORTIFY_SOURCE=2 to CFLAGS.
+    Use the grep, sed, awk, sort, and tr tools found by autoconf in the
+      different shell scripts.
+    Remove -lm from LDFLAGS, as the library does not use math functions
+      anymore.
+    Use the newer pcap/pcap.h instead of the deprecated pcap.h include.
+    Enable parallel tests.
   Q&A:
-    TODO
+    Enhance LSB encoding/decoding test.
+    Add several new enums to make code clearer.
+    Replace several int by bool.
+    Remove useless members in some structs.
+    Remove some useless functions from LSB decoding module.
+    Make several structs private.
+    Make several functions private and static.
+    Shorten the names of several variables/functions for better code clarity.
+    Add the rohc_dump_packet() function to log the content of a packet.
+    Add many const keywords on the function parameters of the ip module.
+    Rework the detection of IP-ID behaviour to make code clearer.
+    Factorize code with new sdvl_decode() and sdvl_get_min_len() functions.
+    Move algorithm for packet type decision into profile-specific files.
+    Introduce new get_next_sn() callback for IP-based profiles.
+    Introduce new decide_extension() callback for IP-based profiles.
+    Split decode_uo*() functions to make them clearer and factorize code.
+    New helper functions to clarify code about IPv4 headers and their IP-ID.
+    Rework Offset IP-ID decoding module.
+    Update Doxygen and INSTALL.
+  Performances:
+    Remove useless calls to bzero or calloc.
+    Optimize memory allocation in the wlsb module.
+    Avoid several calls to strlen() in functions that return statistics.
+    Remove useless ceil() calls.
+    Improve W-LSB speed.
+    Allocate the array of decompression contexts to its full size to avoid
+      re-allocations during packet processing.
   Bug fixes:
-    TODO
+    Bug  #792801: packet decision: extension 2 not considered for UOR-2-TS
+                  packet
+    Bug  #799204: ROHC library does not build on BSD systems
+    Bug  #799205: Build ROHC library with LLVM / Clang
+    Bug  #801561: Add support for valgrind in tests
+    Bug  #804552: UOR-2 packets cannot be used if bits(SN) > 14
+    Bug  #952134: Add support for ESP profile (0x0003)
+    Bug  #953947: WLSB problems
+    Bug  #970770: Build ROHC library with mingw for Windows
+    Bug  #995644: Run regression tests between little endian and big-endian
+                  systems
+    Bug #1001435: LSB encoding/decoding fails with shift parameter -1
+    Bug #1001440: LSB decoding of SN should use shift parameter -1 for
+                  IP-only, UDP and UDP-Lite profiles
+    Bug #1001611: Handle TS wraprounds
+    Bug #1001614: Do not send RTP TS scaled if TS_STRIDE=0
+    Bug #1005800: when decoding uor-2-id packet, timestamp is wrong.
+    Bug #1014056: Changes of behaviour for UDP checksum not correctly
+                  supported
+    Bug #1014109: IPv4 packets with options not correctly handled
+    Bug #1014374: IPv4(RND=0)/IPv4(RND=0)/UDP/RTP stream with regular
+                  incrementing IP-ID causes segfault
+    Bug #1014405: Decompression failure with IPv4(RND=0)/IPv4(RND=1)/UDP/RTP
+                  stream
+    Bug #1017198: Compression fails if bits(TS_STRIDE) > 29
+    Bug #1030054: SN is a 16-bit unsigned value for IP/UDP and IP-only profiles
+    Bug #1030084: TS_SCALED shall be W-LSB encoded on 32 bits
+    Bug #1035918: STATIC field 'IPv6 Next Header' always detected as changed
+                  with IPv6 extension headers.
+    Bug #1041146: Release archives do not contain some test files
+    Bug #1047460: Test failure on PowerPC
+    Bug #1068998: Compression errors on ARM 9 TDMI
 
 17 May 2012 - release 1.4.0
   Compatibility:
