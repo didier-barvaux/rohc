@@ -164,7 +164,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 		case SEND_SCALED:
 		{
 			uint32_t old_scaled = ts_sc->ts_scaled;
-			uint32_t rest;
+			uint32_t old_offset = ts_sc->ts_offset;
 
 			rohc_debugf(2, "state SEND_SCALED\n");
 
@@ -193,8 +193,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			rohc_debugf(3, "ts_stride calculated = %u\n", ts_sc->ts_delta);
 			rohc_debugf(3, "previous ts_stride = %u\n", ts_sc->ts_stride);
 			assert(ts_sc->ts_stride != 0);
-			rest = ts_sc->ts_delta % ts_sc->ts_stride;
-			if(rest != 0)
+			if((ts_sc->ts_delta % ts_sc->ts_stride) != 0)
 			{
 				/* ts_stride has changed */
 				rohc_debugf(2, "/!\\ ts_stride changed\n");
@@ -230,14 +229,18 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			}
 
 			/* Wraparound (See RFC 4815 Section 4.4.3) */
-			if(rest == 0 && (ts_sc->ts < ts_sc->old_ts))
+			if(ts_sc->ts < ts_sc->old_ts)
 			{
 				rohc_debugf(2, "TS wraparound detected\n");
-				if(ts_sc->ts_stride % 2 != 0)
+				if(old_offset != ts_sc->ts_offset)
 				{
-					rohc_debugf(3, "ts_stride is not a power of two");
+					rohc_debugf(3, "TS_OFFSET changed, re-initialize TS_STRIDE\n");
 					ts_sc->state = INIT_STRIDE;
 					ts_sc->nr_init_stride_packets = 0;
+				}
+				else
+				{
+					rohc_debugf(3, "TS_OFFSET is unchanged\n");
 				}
 			}
 			break;
