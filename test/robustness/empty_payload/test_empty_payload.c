@@ -54,6 +54,9 @@
 #  include <pcap/pcap.h>
 #elif HAVE_PCAP_H == 1
 #  include <pcap.h>
+#else
+#  error "pcap.h header not found, did you specified --enable-rohc-tests \
+for ./configure ? If yes, check configure output and config.log"
 #endif
 
 /* ROHC includes */
