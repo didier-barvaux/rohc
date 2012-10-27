@@ -1,0 +1,103 @@
+raw TODO list for improving TCP profile.
+
+
+==== common ==== 
+
+=> src/common/ipproto.h:
+
+ - why a (partial) list of IP protocol numbers?
+
+=> tcp_profile/common/tcp.h:
+
+ - why are the *_(TO|FROM)_MPTR macro for?
+ - why defining the base_header_ip_t, multi_ptr_t, WB_t and LWB_t
+   unions?
+
+=> src/common/trace.[ch]:
+
+ - enhance src/common/rohc_traces.[ch] with that files
+
+
+==== compression ====
+
+=> src/comp/c_rohc_lib.[ch]
+
+ - c_lsb(): according to RFC 4997 section 4.11.5, it seems that the
+   'lsb' encoding scheme matches the W-LSB one already defined in
+   src/common/wlsb.c.
+ - c_ip_id_lsb(): could be merged with code from c_generic.c
+ - lsb_masks: I prefer avoiding global variables...
+ - unit tests should be written for these encoding functions
+
+=> src/comp/c_tcp.c
+
+ - private functions should be made static
+ - c_tcp_create(): the code that parse IP headers in IP/UDP/RTP
+   profiles could probably be re-used (and maybe enhanced if needed)
+ - the call to random() must be replaced by a call to the dedicated
+   callback function in the library
+ - c_tcp_check_context(): the code from c_generic could be re-used
+ - c_tcp_encode(): the code that parse IP headers in IP/UDP/RTP
+   profiles could probably be re-used (and maybe enhanced if needed)
+ - rohc_v2_code_dynamic_ipv6_option_part(): why "v2" ?
+ - tcp_changed_tcp_dynamic(): unused at the moment
+ - c_ts_lsb(): could probably be moved in c_rohc_lib.[ch]
+ - c_sack_pure_lsb(): same as c_ts_lsb()
+ - c_sack_block(): same as c_ts_lsb()
+ - c_tcp_opt_sack(): same as c_ts_lsb()
+ - tcp_compress_tcp_options(): goto is OK only for error handling, the
+   function should be reworked to get rid of
+   'new_index_with_compressed_value' and 'same_index_without_value'.
+ - co_baseheader(): same as tcp_compress_tcp_options()
+
+=> src/comp/c_tcp.h
+
+ - almost all the structs and functions should not be public
+
+
+==== decompression ====
+
+=> src/decomp/d_rohc_lib.[ch]
+
+ - lsb_xor_masks: global variable should be avoided if possible
+ - d_lsb(): seems very basic in comparison to the the lsb_decode module.
+ - variable_length_32_size: global variable should be avoided if possible
+ - d_ip_id_lsb(): could be merged with ip_id_offset_decode module
+
+=> src/decomp/d_tcp.c
+
+ - private functions should be made static
+ - my_ip_fast_csum(): duplicate ip_fast_csum() from src/common/ip.h
+ - d_size_ts_lsb(): looks like duplicated code with sdvl_decode().
+ - d_sack_pure_lsb(): move in d_rohc_lib.[ch] ?
+ - d_sack_block(): move in d_rohc_lib.[ch] ?
+ - d_tcp_opt_sack(): move in d_rohc_lib.[ch] ?
+
+=> src/decomp/d_tcp.h
+
+ - almost all the structs and functions should not be public
+ - PACKET_TCP_* should be added to enum rohc_packet_t in rohc_packets.h
+ - d_tcp_decode_CO(): the rnd_X/seq_X detection could be put in a
+   tcp_detect_packet_type() function.
+ - d_tcp_decode_CO(): goto is OK only for error handling, the function
+   should be reworked
+
+
+==== build / tests ====
+
+Test with pcc.
+Test with FreeBSD.
+Test with Windows/MinGW.
+Test with -O0, -O1, -O2, and -O3.
+Test with Valgrind.
+
+Add more unit tests for TCP encoding/decoding schemes.
+Add more non-regression TCP tests.
+
+Test with (future) sniffer.
+
+
+==== Misc ====
+
+Check coding style.
+

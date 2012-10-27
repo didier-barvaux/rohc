@@ -6,10 +6,12 @@
 
 noinst_HEADERS = \
 	ip_numbers.h \
+	ipproto.h \
 	ipv4.h \
 	ipv6.h \
 	udp.h \
 	udp_lite.h \
 	rtp.h \
+	tcp.h \
 	esp.h
 

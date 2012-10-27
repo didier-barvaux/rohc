@@ -15,6 +15,7 @@ sources = \
 	rohc_common.c \
 	rohc_packets.c \
 	rohc_traces.c \
+	trace.c \
 	crc.c \
 	decode.c \
 	ip_id_offset_decode.c \
@@ -26,7 +27,8 @@ sources = \
 	ts_sc_comp.c \
 	ts_sc_decomp.c \
 	comp_list.c \
-	cid.c
+	cid.c \
+	ipproto.c
 
 public_headers = \
 	rohc.h \
@@ -36,6 +38,7 @@ private_headers = \
 	rohc_bit_ops.h \
 	rohc_debug.h \
 	rohc_traces.h \
+	trace.h \
 	rohc_time.h \
 	rohc_utils.h \
 	crc.h \

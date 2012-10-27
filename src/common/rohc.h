@@ -245,6 +245,8 @@ struct medium
 #define ROHC_PROFILE_ESP           0x0003
 /// The number allocated for the ROHC IP-only profile (see 5 in the RFC 3843)
 #define ROHC_PROFILE_IP            0x0004
+/// The number allocated for the ROHC TCP profile (see the RFC 4996)
+#define ROHC_PROFILE_TCP           0x0006  // FWX2
 /// The number allocated for the ROHC UDP-Lite profile (see 7 in the RFC 4019)
 #define ROHC_PROFILE_UDPLITE       0x0008
 

@@ -25,6 +25,10 @@ TESTS_ESP_SMALLCID = \
 	test_non_regression_ipv4_esp_smallcid.sh \
 	test_non_regression_ipv6_esp_smallcid.sh
 
+TESTS_TCP_SMALLCID = \
+	test_non_regression_ipv4_tcp_smallcid.sh \
+	test_non_regression_ipv6_tcp_smallcid.sh
+
 TESTS_SMALLCID = \
 	test_non_regression_unknown_smallcid.sh \
 	test_non_regression_ipvx_smallcid.sh \
@@ -81,7 +85,8 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv6_udp_rtp_video1_smallcid.sh \
 	test_non_regression_ipv6_udp_smallcid.sh \
 	$(TESTS_BUG804552_SMALLCID) \
-	$(TESTS_ESP_SMALLCID)
+	$(TESTS_ESP_SMALLCID) \
+	$(TESTS_TCP_SMALLCID)
 
 
 TESTS_BUG804552_LARGECID = \
@@ -103,6 +108,10 @@ TESTS_BUG804552_LARGECID = \
 TESTS_ESP_LARGECID = \
 	test_non_regression_ipv4_esp_largecid.sh \
 	test_non_regression_ipv6_esp_largecid.sh
+
+TESTS_TCP_LARGECID = \
+	test_non_regression_ipv4_tcp_largecid.sh \
+	test_non_regression_ipv6_tcp_largecid.sh
 
 TESTS_LARGECID = \
 	test_non_regression_unknown_largecid.sh \
@@ -161,7 +170,8 @@ TESTS_LARGECID = \
 	test_non_regression_ipv6_udp_largecid.sh \
 	test_non_regression_ipv6_udp_largecid.sh \
 	$(TESTS_BUG804552_LARGECID) \
-	$(TESTS_ESP_LARGECID)
+	$(TESTS_ESP_LARGECID) \
+	$(TESTS_TCP_LARGECID)
 
 
 TESTS = \

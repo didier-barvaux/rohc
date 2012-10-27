@@ -57,19 +57,24 @@ extern struct c_profile c_rtp_profile,
                         c_udp_lite_profile,
                         c_esp_profile,
                         c_ip_profile,
+                        c_tcp_profile, //FWX2
                         c_uncompressed_profile;
 
 /**
  * @brief The compression parts of the ROHC profiles.
+ *
+ * The order of profiles declaration is important: they are evaluated in that
+ * order. The RTP profile shall be declared before the UDP one for example.
  */
 struct c_profile *c_profiles[C_NUM_PROFILES] =
 {
 	&c_rtp_profile,
-	&c_udp_profile,
+	&c_udp_profile,  /* must be declared after RTP profile */
 	&c_udp_lite_profile,
 	&c_esp_profile,
-	&c_ip_profile,
-	&c_uncompressed_profile,
+	&c_tcp_profile,
+	&c_ip_profile,  /* must be declared after all IP-based profiles */
+	&c_uncompressed_profile, /* must be declared last */
 };
 
 

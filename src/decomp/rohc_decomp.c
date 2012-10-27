@@ -45,7 +45,8 @@ extern struct d_profile d_uncomp_profile,
                         d_ip_profile,
                         d_udplite_profile,
                         d_esp_profile,
-                        d_rtp_profile;
+                        d_rtp_profile,
+                        d_tcp_profile; // FWX2
 
 
 /**
@@ -54,11 +55,12 @@ extern struct d_profile d_uncomp_profile,
 static struct d_profile *d_profiles[D_NUM_PROFILES] =
 {
 	&d_uncomp_profile,
-	&d_udp_profile,
-	&d_ip_profile,
-	&d_udplite_profile,
-	&d_esp_profile,
 	&d_rtp_profile,
+	&d_udp_profile,
+	&d_esp_profile,
+	&d_ip_profile,
+	&d_tcp_profile,
+	&d_udplite_profile,
 };
 
 

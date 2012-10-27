@@ -528,6 +528,7 @@ int main(int argc, char *argv[])
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 
 	/* initialize the random generator */
 	seed = time(NULL);

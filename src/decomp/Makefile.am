@@ -16,7 +16,9 @@ librohc_decomp_la_SOURCES = \
 	d_udp.c \
 	d_udp_lite.c \
 	d_esp.c \
-	d_rtp.c
+	d_rtp.c \
+	d_tcp.c \
+	rfc4996_decoding.c
 
 librohc_decomp_la_LIBADD = \
 	-lrohc_common \
@@ -45,5 +47,7 @@ noinst_HEADERS = \
 	d_udp.h \
 	d_udp_lite.h \
 	d_esp.h \
-	d_rtp.h
+	d_rtp.h \
+	d_tcp.h \
+	rfc4996_decoding.h
 
