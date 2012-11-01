@@ -251,20 +251,25 @@ error:
  */
 void context_free(struct d_context *context)
 {
-	if(context != NULL)
-	{
-		/* destroy the profile-specific data */
-		context->profile->free_decode_data(context->specific);
+	assert(context != NULL);
+	assert(context->profile != NULL);
+	assert(context->specific != NULL);
+	assert(context->total_16_uncompressed != NULL);
+	assert(context->total_16_compressed != NULL);
+	assert(context->header_16_uncompressed != NULL);
+	assert(context->header_16_compressed != NULL);
 
-		/* destroy the W-LSb windows */
-		c_destroy_wlsb(context->total_16_uncompressed);
-		c_destroy_wlsb(context->total_16_compressed);
-		c_destroy_wlsb(context->header_16_uncompressed);
-		c_destroy_wlsb(context->header_16_compressed);
+	/* destroy the profile-specific data */
+	context->profile->free_decode_data(context->specific);
 
-		/* destroy the context itself */
-		zfree(context);
-	}
+	/* destroy the W-LSb windows */
+	c_destroy_wlsb(context->total_16_uncompressed);
+	c_destroy_wlsb(context->total_16_compressed);
+	c_destroy_wlsb(context->header_16_uncompressed);
+	c_destroy_wlsb(context->header_16_compressed);
+
+	/* destroy the context itself */
+	zfree(context);
 }
 
 
@@ -366,14 +371,17 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
 {
 	int i;
 
+	rohc_debugf(1, "free decompressor\n");
+
+	/* sanity check */
 	if(decomp == NULL)
 	{
-		rohc_debugf(0, "invalid decompressor\n");
-		return;
+		rohc_debugf(0, "failed to free decompressor: NULL decompressor\n");
+		goto error;
 	}
+	assert(decomp->contexts != NULL);
 
 	/* destroy all the contexts owned by the decompressor */
-	assert(decomp->contexts != NULL);
 	for(i = 0; i <= decomp->medium.max_cid; i++)
 	{
 		if(decomp->contexts[i] != NULL)
@@ -385,6 +393,9 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
 
 	/* destroy the decompressor itself */
 	zfree(decomp);
+
+error:
+	return;
 }
 
 
@@ -693,7 +704,10 @@ int d_decode_header(struct rohc_decomp *decomp,
 			/* the IR decompression was successful,
 			 * replace the existing context with the new one */
 			rohc_debugf(2, "%d bytes of payload copied to uncompressed packet\n", size);
-			context_free(decomp->contexts[ddata->cid]);
+			if(casenew && decomp->contexts[ddata->cid] != NULL)
+			{
+				context_free(decomp->contexts[ddata->cid]);
+			}
 			decomp->contexts[ddata->cid] = ddata->active;
 			return size;
 		}
