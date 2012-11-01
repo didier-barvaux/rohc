@@ -422,6 +422,11 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	rohc_debugf(1, "decompress the %d-byte packet #%u\n",
 	            isize, decomp->stats.received);
 
+	/* print compressed bytes */
+	rohc_dump_packet("compressed data, max 100 bytes",
+	                 ibuf, rohc_min(isize, 100));
+
+	/* decode ROHC header */
 	ret = d_decode_header(decomp, ibuf, isize, obuf, osize, &ddata);
 	if(ddata.active == NULL &&
 	   (ret == ROHC_ERROR_PACKET_FAILED ||

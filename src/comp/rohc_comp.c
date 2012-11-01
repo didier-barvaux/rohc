@@ -366,6 +366,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		goto error;
 	}
 
+	/* print uncompressed bytes */
+	rohc_dump_packet("uncompressed data, max 100 bytes",
+	                 ibuf, rohc_min(isize, 100));
+
 	/* create the IP packet from raw data */
 	if(!ip_create(&ip, ibuf, isize))
 	{
