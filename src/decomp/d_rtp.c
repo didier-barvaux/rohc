@@ -720,7 +720,18 @@ static int rtp_parse_uo_remainder(struct d_generic_context *context,
 	 *  udp_checksum_present < 0 <=> not initialized
 	 *  udp_checksum_present = 0 <=> UDP checksum field not present
 	 *  udp_checksum_present > 0 <=> UDP checksum field present */
-	if(rtp_context->udp_checksum_present > 0)
+	if(rtp_context->udp_checksum_present < 0)
+	{
+		rohc_debugf(0, "udp_checksum_present not initialized and "
+		            "packet is not one IR packet\n");
+		goto error;
+	}
+	else if(rtp_context->udp_checksum_present == 0)
+	{
+		bits->udp_check_nr = 0;
+		rohc_debugf(3, "UDP checksum not present\n");
+	}
+	else
 	{
 		/* check the minimal length to decode the UDP checksum */
 		if(length < 2)
@@ -735,12 +746,6 @@ static int rtp_parse_uo_remainder(struct d_generic_context *context,
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
 		packet += 2;
 		read += 2;
-	}
-	else if(rtp_context->udp_checksum_present < 0)
-	{
-		rohc_debugf(0, "udp_checksum_present not initialized and "
-		            "packet is not one IR packet\n");
-		goto error;
 	}
 
 	return read;
