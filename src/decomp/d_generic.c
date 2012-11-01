@@ -2986,6 +2986,8 @@ static int decode_ir(struct rohc_decomp *decomp,
 		g_context->correction_counter = 0;
 
 		/* set the state to Full Context */
+		rohc_debugf(1, "change from state %d to state %d\n",
+		            context->state, FULL_CONTEXT);
 		context->state = FULL_CONTEXT;
 	}
 	else if(context->state != FULL_CONTEXT)
@@ -3522,7 +3524,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UO_1:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
 				rohc_debugf(0, "UO-1 packets cannot be received in Static "
 				            "Context state\n");
@@ -3532,7 +3534,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UO_1_RTP:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
 				rohc_debugf(0, "UO-1-RTP packets cannot be received in Static "
 				            "Context state\n");
@@ -3542,7 +3544,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UO_1_TS:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
 				rohc_debugf(0, "UO-1-TS packets cannot be received in Static "
 				            "Context state\n");
@@ -3552,7 +3554,7 @@ int d_generic_decode(struct rohc_decomp *decomp,
 			break;
 
 		case PACKET_UO_1_ID:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
 				rohc_debugf(0, "UO-1-ID packets cannot be received in Static "
 				            "Context state\n");
@@ -5569,6 +5571,8 @@ static int decode_uor2(struct rohc_decomp *decomp,
 	 * TODO: check what fields shall be updated in the context
 	 */
 
+	rohc_debugf(1, "change from state %d to state %d\n",
+	            context->state, FULL_CONTEXT);
 	context->state = FULL_CONTEXT;
 
 	/* update context with decoded values */
@@ -5819,6 +5823,8 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	 */
 
 	/* go in Full Context state */
+	rohc_debugf(1, "change from state %d to state %d\n",
+	            context->state, FULL_CONTEXT);
 	context->state = FULL_CONTEXT;
 
 	/* update context with decoded values */

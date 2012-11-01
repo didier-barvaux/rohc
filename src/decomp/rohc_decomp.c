@@ -802,10 +802,14 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		{
 			if(context->state == STATIC_CONTEXT)
 			{
+				rohc_debugf(1, "change from state %d to state %d\n",
+				            context->state, NO_CONTEXT);
 				context->state = NO_CONTEXT;
 			}
 			else if(context->state == FULL_CONTEXT)
 			{
+				rohc_debugf(1, "change from state %d to state %d\n",
+				            context->state, STATIC_CONTEXT);
 				context->state = STATIC_CONTEXT;
 			}
 		}
@@ -961,10 +965,14 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 					/* change state */
 					if(context->state == STATIC_CONTEXT)
 					{
+						rohc_debugf(1, "change from state %d to state %d\n",
+						            context->state, NO_CONTEXT);
 						context->state = NO_CONTEXT;
 					}
 					if(context->state == FULL_CONTEXT)
 					{
+						rohc_debugf(1, "change from state %d to state %d\n",
+						            context->state, STATIC_CONTEXT);
 						context->state = STATIC_CONTEXT;
 					}
 
