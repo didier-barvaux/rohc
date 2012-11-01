@@ -15,6 +15,7 @@ sources = \
 	rohc_common.c \
 	rohc_packets.c \
 	rohc_traces.c \
+	rohc_utils.c \
 	crc.c \
 	decode.c \
 	ip_id_offset_decode.c \

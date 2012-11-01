@@ -23,16 +23,9 @@
 
 #include "c_ip.h"
 #include "rohc_traces.h"
-
-#include "config.h" /* for HAVE_*_H definitions */
+#include "rohc_utils.h"
 
 #include <string.h>
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 /**
