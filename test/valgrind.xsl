@@ -19,6 +19,9 @@
 			<xsl:when test="kind = 'Leak_DefinitelyLost'">
 				<xsl:value-of select="xwhat/text" />
 			</xsl:when>
+			<xsl:when test="kind = 'InvalidRead'">
+				<xsl:value-of select="what" />
+			</xsl:when>
 			<xsl:otherwise>
 			 	<xsl:value-of select="xwhat/text" />
 			</xsl:otherwise>
