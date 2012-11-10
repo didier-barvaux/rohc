@@ -2987,7 +2987,7 @@ int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	            rohc_packet, rohc_length);
 	TraceData((unsigned char*)rohc_packet,rohc_length > 0x40 ? 0x40 : rohc_length);
 
-	rohc_debugf(3, "copy octet %2.2Xh to offset %d\n", *rohc_packet,
+	rohc_debugf(3, "copy octet %2.2Xh to offset %zd\n", *rohc_packet,
 	            large_cid_len);
 	c_base_header.uint8 = (u_int8_t*) rohc_packet + large_cid_len;
 	*c_base_header.uint8 = *rohc_packet;
