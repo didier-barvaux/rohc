@@ -35,17 +35,10 @@
 #include "sdvl.h"
 #include "crc.h"
 
-#include "config.h" /* for RTP_BIT_TYPE, ROHC_DEBUG_LEVEL and
-                       HAVE_*_H definitions */
+#include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 
 #include <string.h>
 #include <assert.h>
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 /*

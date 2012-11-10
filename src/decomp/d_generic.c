@@ -32,20 +32,13 @@
 #include "rohc_time.h"
 #include "rohc_debug.h"
 #include "rohc_packets.h"
+#include "rohc_utils.h"
 #include "rohc_bit_ops.h"
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
 
-#include "config.h" /* for HAVE_*_H definitions */
-
 #include <assert.h>
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 /*
@@ -2993,6 +2986,8 @@ static int decode_ir(struct rohc_decomp *decomp,
 		g_context->correction_counter = 0;
 
 		/* set the state to Full Context */
+		rohc_debugf(1, "change from state %d to state %d\n",
+		            context->state, FULL_CONTEXT);
 		context->state = FULL_CONTEXT;
 	}
 	else if(context->state != FULL_CONTEXT)
@@ -3502,8 +3497,8 @@ int d_generic_decode(struct rohc_decomp *decomp,
 	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
 	if(g_context->packet_type != PACKET_IR && context->state == NO_CONTEXT)
 	{
-		rohc_debugf(0, "non-IR packet (%d) received in No Context state\n",
-		            g_context->packet_type);
+		rohc_debugf(0, "non-IR packet (%d) cannot be received in No Context "
+		            "state\n", g_context->packet_type);
 		goto error;
 	}
 
@@ -3521,38 +3516,48 @@ int d_generic_decode(struct rohc_decomp *decomp,
 		case PACKET_UO_0:
 			if(context->state == STATIC_CONTEXT)
 			{
+				rohc_debugf(0, "UO-0 packets cannot be received in Static "
+				            "Context state\n");
 				goto error;
 			}
 			decode_packet = decode_uo0;
 			break;
 
 		case PACKET_UO_1:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
+				rohc_debugf(0, "UO-1 packets cannot be received in Static "
+				            "Context state\n");
 				goto error;
 			}
 			decode_packet = decode_uo1;
 			break;
 
 		case PACKET_UO_1_RTP:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
+				rohc_debugf(0, "UO-1-RTP packets cannot be received in Static "
+				            "Context state\n");
 				goto error;
 			}
 			decode_packet = decode_uo1;
 			break;
 
 		case PACKET_UO_1_TS:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
+				rohc_debugf(0, "UO-1-TS packets cannot be received in Static "
+				            "Context state\n");
 				goto error;
 			}
 			decode_packet = decode_uo1;
 			break;
 
 		case PACKET_UO_1_ID:
-			if(context->state  == STATIC_CONTEXT)
+			if(context->state == STATIC_CONTEXT)
 			{
+				rohc_debugf(0, "UO-1-ID packets cannot be received in Static "
+				            "Context state\n");
 				goto error;
 			}
 			decode_packet = decode_uo1;
@@ -5566,6 +5571,8 @@ static int decode_uor2(struct rohc_decomp *decomp,
 	 * TODO: check what fields shall be updated in the context
 	 */
 
+	rohc_debugf(1, "change from state %d to state %d\n",
+	            context->state, FULL_CONTEXT);
 	context->state = FULL_CONTEXT;
 
 	/* update context with decoded values */
@@ -5816,6 +5823,8 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	 */
 
 	/* go in Full Context state */
+	rohc_debugf(1, "change from state %d to state %d\n",
+	            context->state, FULL_CONTEXT);
 	context->state = FULL_CONTEXT;
 
 	/* update context with decoded values */

@@ -23,6 +23,10 @@
 #ifndef ROHC_UTILS_H
 #define ROHC_UTILS_H
 
+#include <stdint.h>
+
+#include "dllexport.h"
+
 /** Get the max value of the 2 given */
 #define rohc_max(value1, value2) \
 	( ((value1) >= (value2)) ? (value1) : (value2) )
@@ -30,6 +34,11 @@
 /** Get the max value of the 2 given */
 #define rohc_min(value1, value2) \
 	( ((value1) <= (value2)) ? (value1) : (value2) )
+
+uint32_t ROHC_EXPORT ntohl(const uint32_t netlong) __attribute__((const));
+uint16_t ROHC_EXPORT ntohs(const uint16_t netshort) __attribute__((const));
+uint32_t ROHC_EXPORT htonl(const uint32_t hostlong) __attribute__((const));
+uint16_t ROHC_EXPORT htons(const uint16_t hostshort) __attribute__((const));
 
 #endif
 

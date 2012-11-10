@@ -26,17 +26,9 @@
 #include "rohc_traces.h"
 #include "rohc_bit_ops.h"
 #include "rohc_debug.h"
+#include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/udp.h"
-
-#include "config.h" /* for HAVE_*_H definitions */
-
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 /*
@@ -324,7 +316,18 @@ static int udp_parse_uo_remainder(struct d_generic_context *context,
 	 *  udp_checksum_present < 0 <=> not initialized
 	 *  udp_checksum_present = 0 <=> UDP checksum field not present
 	 *  udp_checksum_present > 0 <=> UDP checksum field present */
-	if(udp_context->udp_checksum_present > 0)
+	if(udp_context->udp_checksum_present < 0)
+	{
+		rohc_debugf(0, "udp_checksum_present not initialized and "
+		            "packet is not one IR packet\n");
+		goto error;
+	}
+	else if(udp_context->udp_checksum_present == 0)
+	{
+		bits->udp_check_nr = 0;
+		rohc_debugf(3, "UDP checksum not present\n");
+	}
+	else
 	{
 		/* check the minimal length to decode the UDP checksum */
 		if(length < 2)
@@ -339,12 +342,6 @@ static int udp_parse_uo_remainder(struct d_generic_context *context,
 		rohc_debugf(3, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
 		packet += 2;
 		read += 2;
-	}
-	else if(udp_context->udp_checksum_present < 0)
-	{
-		rohc_debugf(0, "udp_checksum_present not initialized and "
-		            "packet is not one IR packet\n");
-		goto error;
 	}
 
 	return read;

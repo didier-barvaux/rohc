@@ -28,18 +28,10 @@
 #include "rohc_bit_ops.h"
 #include "rohc_traces.h"
 #include "rohc_debug.h"
+#include "rohc_utils.h"
 #include "rohc_packets.h"
 #include "crc.h"
 #include "protocols/udp_lite.h"
-
-#include "config.h" /* for HAVE_*_H definitions */
-
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 /*

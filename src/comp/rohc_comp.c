@@ -31,6 +31,7 @@
 #include "rohc_traces.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
+#include "rohc_utils.h"
 #include "sdvl.h"
 #include "decode.h"
 #include "ip.h"
@@ -44,12 +45,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 extern struct c_profile c_rtp_profile,
@@ -375,6 +370,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		rohc_debugf(0, "compressor not valid\n");
 		goto error;
 	}
+
+	/* print uncompressed bytes */
+	rohc_dump_packet("uncompressed data, max 100 bytes",
+	                 ibuf, rohc_min(isize, 100));
 
 	/* create the IP packet from raw data */
 	if(!ip_create(&ip, ibuf, isize))
