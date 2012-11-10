@@ -15,30 +15,28 @@
  */
 
 /**
- * @file rfc4996_decoding.c
- * @brief Library of decoding methods from RFC4997 and RFC4996
+ * @file   rfc4996_decoding.c
+ * @brief  Library of decoding methods from RFC4997 and RFC4996
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "d_generic.h"
-#include "d_rtp.h"
-#include "config.h" /* for RTP_BIT_TYPE definition */
 #include "rohc_traces.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
-#include "rohc_packets.h"
 #include "rohc_bit_ops.h"
+#include "rohc_utils.h"
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
-
-#include <assert.h>
-
 #include "trace.h" //FWX2
 #include "protocols/tcp.h" //FWX2
 #include "rfc4996_decoding.h"
-#include "d_tcp.h" // FWX2
-#include "../comp/rfc4996_encoding.h"
+#include "../comp/rfc4996_encoding.h" /* for c_lsb() */ /* TODO: remove!!! */
+#include "rohc_packets.h"
+
+#include <string.h>
+#include <assert.h>
 
 
 /**
@@ -67,7 +65,7 @@ unsigned int lsb_xor_masks[] =
  * @return                 The uncompressed value
  */
 
-u_int32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_value,
+uint32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_value,
                  unsigned int value )
 {
 	assert( num_lsbs_param < 20 );
@@ -89,7 +87,7 @@ u_int32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_valu
  * @return                 The uncompressed value
  */
 
-u_int8_t d_static_or_irreg8( multi_ptr_t *pmptr, u_int8_t context_value, int indicator )
+uint8_t d_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, int indicator )
 {
 	if(indicator == 0)
 	{
@@ -111,7 +109,7 @@ u_int8_t d_static_or_irreg8( multi_ptr_t *pmptr, u_int8_t context_value, int ind
  * @return                 The uncompressed value
  */
 
-u_int16_t d_static_or_irreg16( multi_ptr_t *pmptr, u_int16_t context_value, int indicator )
+uint16_t d_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, int indicator )
 {
 	if(indicator == 0)
 	{
@@ -142,9 +140,9 @@ unsigned int variable_length_32_size[4] =
  * @param indicator        Indicator of compression
  * @return                 The uncompressed value
  */
-u_int32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator )
+uint32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator )
 {
-	u_int32_t value;
+	uint32_t value;
 
 	switch(indicator)
 	{
@@ -190,7 +188,7 @@ u_int32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator )
  * @return                 The uncompressed value
  */
 
-u_int32_t d_optional32( multi_ptr_t *pmptr, int flag, u_int32_t context_value )
+uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value )
 {
 	if(flag == 1)
 	{
@@ -209,7 +207,7 @@ u_int32_t d_optional32( multi_ptr_t *pmptr, int flag, u_int32_t context_value )
  * @return                 The uncompressed value
  */
 
-u_int32_t d_lsb_7_31( multi_ptr_t *pmptr )
+uint32_t d_lsb_7_31( multi_ptr_t *pmptr )
 {
 	if( (*pmptr->uint8) & 0x80)
 	{
@@ -235,10 +233,10 @@ u_int32_t d_lsb_7_31( multi_ptr_t *pmptr )
  * @return                 The unscaled value
  */
 
-u_int32_t d_field_scaling( u_int32_t scaling_factor, u_int32_t scaled_value,
-                           u_int32_t residue_field )
+uint32_t d_field_scaling( uint32_t scaling_factor, uint32_t scaled_value,
+                           uint32_t residue_field )
 {
-	u_int32_t unscaled_value;
+	uint32_t unscaled_value;
 
 	if(scaling_factor == 0)
 	{
@@ -295,11 +293,11 @@ unsigned int rsf_index_dec( unsigned int rsf_index )
  * @return               The IP-ID
  */
 
-u_int16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
-                       u_int16_t value,
-                       u_int16_t msn )
+uint16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
+                       uint16_t value,
+                       uint16_t msn )
 {
-	u_int16_t ip_id_offset;
+	uint16_t ip_id_offset;
 	WB_t ip_id;
 
 
@@ -348,8 +346,8 @@ u_int16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t contex
  */
 
 void d_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, int indicator, WB_t context_ip_id,
-                           u_int16_t *ip_id,
-                           u_int16_t msn )
+                           uint16_t *ip_id,
+                           uint16_t msn )
 {
 	rohc_debugf(3, "behavior %d indicator %d context_ip_id %Xh msn %Xh\n",behavior,indicator,
 	            context_ip_id.uint16,
@@ -412,7 +410,7 @@ void d_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, int indicator, WB_t
  * @return               The DSCP decoded
  */
 
-u_int8_t dscp_decode( multi_ptr_t *pmptr, u_int8_t context_value, int indicator )
+uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator )
 {
 	if(indicator == 0)
 	{

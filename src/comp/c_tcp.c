@@ -15,36 +15,26 @@
  */
 
 /**
- * @file c_tcp.c
- * @brief ROHC compression context for the TCP profile.
- * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
+ * @file   c_tcp.c
+ * @brief  ROHC compression context for the TCP profile.
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
-#include "c_generic.h"
-#include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 
-//#include "protocols/tcp.h"
 #include "c_tcp.h"
 #include "rohc_traces.h"
+#include "rohc_utils.h"
 #include "rohc_packets.h"
 #include "rfc4996_encoding.h"
 #include "cid.h"
 #include "crc.h"
-
 #include "protocols/ipproto.h"
 #include "trace.h"
+#include "c_generic.h"
 
 #include <assert.h>
-
 #include <stdlib.h>
 #include <string.h>
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 //#define MAX_TCP_OPTION_INDEX  8
 #define MAX_TCP_OPTION_INDEX 16
@@ -91,36 +81,36 @@ unsigned char tcp_options_index[16] =
 /*
  * Private function prototypes.
  */
-static u_int8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tcp_context,
+static uint8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tcp_context,
                                                        ip_context_ptr_t ip_context,
                                                        multi_ptr_t mptr,
-                                                       u_int8_t protocol,
+                                                       uint8_t protocol,
                                                        base_header_ip_t base_header,
                                                        const int packet_size);
-static u_int8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *tcp_context,
+static uint8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *tcp_context,
                                                         ip_context_ptr_t ip_context,
                                                         multi_ptr_t mptr,
-                                                        u_int8_t protocol,
+                                                        uint8_t protocol,
                                                         base_header_ip_t base_header,
                                                         const int packet_size);
-static u_int8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context *tcp_context,
+static uint8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context *tcp_context,
                                                           ip_context_ptr_t ip_context,
                                                           multi_ptr_t mptr,
-                                                          u_int8_t protocol,
+                                                          uint8_t protocol,
                                                           base_header_ip_t base_header,
                                                           const int packet_size);
-static u_int8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
+static uint8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
                                           ip_context_ptr_t ip_context,
                                           base_header_ip_t base_header,
                                           const int packet_size,
                                           multi_ptr_t mptr);
-static u_int8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
                                            ip_context_ptr_t ip_context,
                                            base_header_ip_t base_header,
                                            const int packet_size,
                                            multi_ptr_t mptr,
                                            int is_innermost);
-static u_int8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
+static uint8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
                                              base_header_ip_t base_header,
                                              const int packet_size,
                                              multi_ptr_t mptr,
@@ -129,13 +119,13 @@ static u_int8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
                                              int ttl_irregular_chain_flag,
                                              int ip_inner_ecn);
 
-static u_int8_t * tcp_code_static_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_static_tcp_part(const struct c_context *context,
                                            const tcphdr_t *tcp,
                                            multi_ptr_t mptr);
-static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
                                             const unsigned char *next_header,
                                             multi_ptr_t mptr);
-static u_int8_t * tcp_code_irregular_tcp_part(struct sc_tcp_context *tcp_context,
+static uint8_t * tcp_code_irregular_tcp_part(struct sc_tcp_context *tcp_context,
                                               tcphdr_t *tcp,
                                               multi_ptr_t mptr,
                                               int ip_inner_ecn);
@@ -178,7 +168,7 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;   // Source
 	const tcphdr_t *tcp;
-	u_int8_t protocol;
+	uint8_t protocol;
 	int size_context;
 	int size_option;
 	int size;
@@ -232,35 +222,35 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 					TraceIpV6option(protocol,base_header);
 					switch(protocol)
 					{
-						case IPPROTO_HOPOPTS:            // IPv6 Hop-by-Hop options
+						case ROHC_IPPROTO_HOPOPTS: // IPv6 Hop-by-Hop options
 							size_option = ( base_header.ipv6_opt->length + 1 ) << 3;
 							size_context += MAX_IPV6_CONTEXT_OPTION_SIZE;
 							break;
-						case IPPROTO_ROUTING:            // IPv6 routing header
+						case ROHC_IPPROTO_ROUTING: // IPv6 routing header
 							size_option = ( base_header.ipv6_opt->length + 1 ) << 3;
 							size_context += MAX_IPV6_CONTEXT_OPTION_SIZE;
 							break;
-						case IPPROTO_GRE:
+						case ROHC_IPPROTO_GRE:
 							size_option = base_header.ip_gre_opt->c_flag +
 							              base_header.ip_gre_opt->k_flag +
 							              base_header.ip_gre_opt->s_flag + 1;
 							size_option <<= 3;
 							size_context = sizeof(ipv6_gre_option_context_t);
 							break;
-						case IPPROTO_DSTOPTS:            // IPv6 destination options
+						case ROHC_IPPROTO_DSTOPTS: // IPv6 destination options
 							size_option = ( base_header.ipv6_opt->length + 1 ) << 3;
 							size_context += MAX_IPV6_CONTEXT_OPTION_SIZE;
 							break;
-						case IPPROTO_MIME:
+						case ROHC_IPPROTO_MINE:
 							size_option = ( 2 + base_header.ip_mime_opt->s_bit ) << 3;
 							size_context = sizeof(ipv6_mime_option_context_t);
 							break;
-						case IPPROTO_AH:
-							size_option = sizeof(ip_ah_opt_t) - sizeof(u_int32_t) +
+						case ROHC_IPPROTO_AH:
+							size_option = sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
 							              ( base_header.ip_ah_opt->length << 4 ) - sizeof(int32_t);
 							size_context = sizeof(ipv6_ah_option_context_t);
 							break;
-						// case IPPROTO_ESP : ???
+						// case ROHC_IPPROTO_ESP : ???
 						default:
 							return -1;
 					}
@@ -333,22 +323,22 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 				ip_context.v6->ttl_hopl = base_header.ipv6->ttl_hopl;
 				ip_context.v6->flow_label1 = base_header.ipv6->flow_label1;
 				ip_context.v6->flow_label2 = base_header.ipv6->flow_label2;
-				memcpy(ip_context.v6->src_addr,base_header.ipv6->src_addr,sizeof(u_int32_t) * 4 * 2);
+				memcpy(ip_context.v6->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 				++base_header.ipv6;
 				++ip_context.v6;
 				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
 				{
 					switch(protocol)
 					{
-						case IPPROTO_HOPOPTS:           // IPv6 Hop-by-Hop options
-						case IPPROTO_ROUTING:           // IPv6 routing header
-						case IPPROTO_DSTOPTS:           // IPv6 destination options
+						case ROHC_IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
+						case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
+						case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 							size_option = ( base_header.ipv6_opt->length + 1 ) << 3;
 							ip_context.v6_option->context_length = 2 + size_option;
 							memcpy(&ip_context.v6_option->next_header,&base_header.ipv6_opt->next_header,
 							       size_option);
 							break;
-						case IPPROTO_GRE:
+						case ROHC_IPPROTO_GRE:
 							ip_context.v6_gre_option->context_length = sizeof(ipv6_gre_option_context_t);
 							size_option = base_header.ip_gre_opt->c_flag +
 							              base_header.ip_gre_opt->k_flag +
@@ -364,7 +354,7 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 							   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag +
 							                                 base_header.ip_gre_opt->k_flag];
 							break;
-						case IPPROTO_MIME:
+						case ROHC_IPPROTO_MINE:
 							size_option = ( 2 + base_header.ip_mime_opt->s_bit ) << 3;
 							ip_context.v6_mime_option->context_length = sizeof(ipv6_mime_option_context_t);
 							ip_context.v6_mime_option->next_header = base_header.ipv6_opt->next_header;
@@ -374,8 +364,8 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 							ip_context.v6_mime_option->orig_dest = base_header.ip_mime_opt->orig_dest;
 							ip_context.v6_mime_option->orig_src = base_header.ip_mime_opt->orig_src;
 							break;
-						case IPPROTO_AH:
-							size_option = sizeof(ip_ah_opt_t) - sizeof(u_int32_t) +
+						case ROHC_IPPROTO_AH:
+							size_option = sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
 							              ( base_header.ip_ah_opt->length << 4 ) - sizeof(int32_t);
 							ip_context.v6_ah_option->context_length = sizeof(ipv6_ah_option_context_t);
 							ip_context.v6_ah_option->next_header = base_header.ipv6_opt->next_header;
@@ -384,7 +374,7 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 							ip_context.v6_ah_option->sequence_number =
 							   base_header.ip_ah_opt->sequence_number;
 							break;
-						// case IPPROTO_ESP : ???
+						// case ROHC_IPPROTO_ESP : ???
 						default:
 							return -1;
 					}
@@ -411,7 +401,9 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 //	tcp_context->tmp_variables.send_tcp_dynamic = -1;
 
 	/* init the Master Sequence Number to a random value */
-	tcp_context->msn = random();
+	tcp_context->msn = 0xffff &
+		context->compressor->random_cb(context->compressor,
+		                               context->compressor->random_cb_ctxt);
 	rohc_debugf(3, "msn %4.4Xh\n", tcp_context->msn);
 
 	tcp_context->ack_stride = 0;
@@ -420,7 +412,7 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 	memset(tcp_context->tcp_options_list,0xFF,16);
 
 	/* init the TCP-specific variables and functions */
-	g_context->next_header_proto = IPPROTO_TCP;
+	g_context->next_header_proto = ROHC_IPPROTO_TCP;
 	g_context->next_header_len = sizeof(tcphdr_t); // + options ???
 //	g_context->decide_state = tcp_decide_state;
 	g_context->decide_state = NULL;
@@ -473,7 +465,7 @@ int c_tcp_check_context(const struct c_context *context,
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;   // Source
-	u_int8_t protocol;
+	uint8_t protocol;
 	tcphdr_t *tcp;
 	int is_tcp_same;
 	int size;
@@ -532,7 +524,7 @@ int c_tcp_check_context(const struct c_context *context,
 				size -= sizeof(base_header_ip_v4_t);
 				break;
 			case IPV6:
-				if(memcmp(base_header.ipv6->src_addr,ip_context.v6->src_addr,sizeof(u_int32_t) * 4 *
+				if(memcmp(base_header.ipv6->src_addr,ip_context.v6->src_addr,sizeof(uint32_t) * 4 *
 				          2) != 0)
 				{
 					rohc_debugf(3, "  Not same IPV6 addresses\n");
@@ -621,11 +613,11 @@ int c_tcp_encode(struct c_context *const context,
 	int first_position;
 	int crc_position;
 	int counter;
-	u_int8_t packet_id;
-	u_int8_t protocol;
+	uint8_t packet_id;
+	uint8_t protocol;
 	int ecn_used;
 	int size;
-//	u_int8_t new_context_state; // A REVOIR
+//	uint8_t new_context_state; // A REVOIR
 
 	rohc_debugf(
 	   3, "context %p ip %p packet_size %d dest %p dest_size %d packet_type %p payload_offset %p\n",
@@ -682,10 +674,10 @@ int c_tcp_encode(struct c_context *const context,
 				{
 					switch(protocol)
 					{
-						case IPPROTO_HOPOPTS:             // IPv6 Hop-by-Hop options
-						case IPPROTO_ROUTING:             // IPv6 routing header
-						case IPPROTO_DSTOPTS:             // IPv6 destination options
-						case IPPROTO_AH:
+						case ROHC_IPPROTO_HOPOPTS: // IPv6 Hop-by-Hop options
+						case ROHC_IPPROTO_ROUTING: // IPv6 routing header
+						case ROHC_IPPROTO_DSTOPTS: // IPv6 destination options
+						case ROHC_IPPROTO_AH:
 							if(base_header.ipv6_opt->length != ip_context.v6_option->length)
 							{
 								rohc_debugf(3, "IPv6 option %d length changed (%d -> %d)\n",protocol,
@@ -712,7 +704,7 @@ int c_tcp_encode(struct c_context *const context,
 								break;
 							}
 							break;
-						case IPPROTO_GRE:
+						case ROHC_IPPROTO_GRE:
 							if(base_header.ip_gre_opt->c_flag != ip_context.v6_gre_option->c_flag)
 							{
 								rohc_debugf(3, "IPv6 option %d c_flag changed (%d -> %d)\n",protocol,
@@ -722,7 +714,7 @@ int c_tcp_encode(struct c_context *const context,
 								break;
 							}
 							break;
-						case IPPROTO_MIME:
+						case ROHC_IPPROTO_MINE:
 							if(base_header.ip_mime_opt->s_bit != ip_context.v6_mime_option->s_bit)
 							{
 								rohc_debugf(3, "IPv6 option %d s_bit changed (%Xh -> %Xh)\n",protocol,
@@ -753,7 +745,7 @@ int c_tcp_encode(struct c_context *const context,
 		}
 
 	}
-	while(protocol != IPPROTO_TCP && size < ip->size);
+	while(protocol != ROHC_IPPROTO_TCP && size < ip->size);
 
 	tcp = base_header.tcphdr;
 	TraceTcp(tcp);
@@ -763,7 +755,7 @@ int c_tcp_encode(struct c_context *const context,
 	rohc_debugf(3, "ecn_used %d\n",tcp_context->ecn_used);
 
 	// Reinit source pointer
-	base_header.uint8 = (u_int8_t*) ip->data;
+	base_header.uint8 = (uint8_t*) ip->data;
 
 	/* how many TCP fields changed? */
 // DBX	tcp_context->tmp_variables.send_tcp_dynamic = tcp_changed_tcp_dynamic(context, tcp);
@@ -1135,7 +1127,7 @@ int c_tcp_encode(struct c_context *const context,
 		TraceData(dest,counter);
 
 		*packet_type = PACKET_IR;
-		*payload_offset = base_header.uint8 - (u_int8_t*) ip->data;
+		*payload_offset = base_header.uint8 - (uint8_t*) ip->data;
 	}
 
 	rohc_debugf(3, "payload_offset %d\n",*payload_offset);
@@ -1162,14 +1154,14 @@ int c_tcp_encode(struct c_context *const context,
  * @param packet_size    The size of packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tcp_context,
+static uint8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tcp_context,
                                                        ip_context_ptr_t ip_context,
                                                        multi_ptr_t mptr,
-                                                       u_int8_t protocol,
+                                                       uint8_t protocol,
                                                        base_header_ip_t base_header,
                                                        const int packet_size)
 {
-	u_int8_t size;
+	uint8_t size;
 
 	rohc_debugf(3, "tcp_context %p ip_context %p protocol %d base_header_ip %p\n",tcp_context,
 	            ip_context.uint8,protocol,
@@ -1180,16 +1172,16 @@ static u_int8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tc
 
 	switch(protocol)
 	{
-		case IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
+		case ROHC_IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
 			mptr.ip_hop_opt_static->length = base_header.ipv6_opt->length;
 			size = sizeof(ip_hop_opt_static_t);
 			break;
-		case IPPROTO_ROUTING:  // IPv6 routing header
+		case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
 			mptr.ip_hop_opt_static->length = base_header.ipv6_opt->length;
 			size = (base_header.ipv6_opt->length + 1) << 3;
 			memcpy(mptr.ip_rout_opt_static->value,base_header.ipv6_opt->value,size - 2);
 			break;
-		case IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:
 			if(ntohs(base_header.ip_gre_opt->protocol) == 0x0800)
 			{
 				mptr.ip_gre_opt_static->protocol = 0;
@@ -1210,14 +1202,14 @@ static u_int8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tc
 			}
 			else
 			{
-				size = sizeof(ip_gre_opt_static_t) - sizeof(u_int32_t);
+				size = sizeof(ip_gre_opt_static_t) - sizeof(uint32_t);
 			}
 			break;
-		case IPPROTO_DSTOPTS:  // IPv6 destination options
+		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 			mptr.ip_dest_opt_static->length = base_header.ipv6_opt->length;
 			size = sizeof(ip_dest_opt_static_t);
 			break;
-		case IPPROTO_MIME:
+		case ROHC_IPPROTO_MINE:
 			mptr.ip_mime_opt_static->s_bit = base_header.ip_mime_opt->s_bit;
 			mptr.ip_mime_opt_static->res_bits = base_header.ip_mime_opt->res_bits;
 			mptr.ip_mime_opt_static->orig_dest = base_header.ip_mime_opt->orig_dest;
@@ -1227,9 +1219,9 @@ static u_int8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tc
 				size = sizeof(ip_mime_opt_static_t);
 				break;
 			}
-			size = sizeof(ip_mime_opt_static_t) - sizeof(u_int32_t);
+			size = sizeof(ip_mime_opt_static_t) - sizeof(uint32_t);
 			break;
-		case IPPROTO_AH:
+		case ROHC_IPPROTO_AH:
 			mptr.ip_ah_opt_static->length = base_header.ip_ah_opt->length;
 			mptr.ip_ah_opt_static->spi = base_header.ip_ah_opt->spi;
 			size = sizeof(ip_ah_opt_static_t);
@@ -1259,10 +1251,10 @@ static u_int8_t * rohc_v2_code_static_ipv6_option_part(struct sc_tcp_context *tc
  * @param packet_size    The size of packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *tcp_context,
+static uint8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *tcp_context,
                                                         ip_context_ptr_t ip_context,
                                                         multi_ptr_t mptr,
-                                                        u_int8_t protocol,
+                                                        uint8_t protocol,
                                                         base_header_ip_t base_header,
                                                         const int packet_size)
 {
@@ -1274,24 +1266,24 @@ static u_int8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *t
 
 	switch(protocol)
 	{
-		case IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
-		case IPPROTO_DSTOPTS:  // IPv6 destination options
+		case ROHC_IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
+		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 			size = ( (base_header.ipv6_opt->length + 1) << 3 ) - 2;
 			memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,size);
 			memcpy(mptr.ip_opt_dynamic->value,base_header.ipv6_opt->value,size);
 			break;
-		case IPPROTO_ROUTING:  // IPv6 routing header
+		case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
 			size = 0;
 			break;
-		case IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:
 			size = 0;
 			// checksum_and_res =:= optional_checksum(c_flag.UVALUE)
 			if(base_header.ip_gre_opt->c_flag != 0)
 			{
-				u_int8_t *ptr = (u_int8_t*) base_header.ip_gre_opt->datas;
+				uint8_t *ptr = (uint8_t*) base_header.ip_gre_opt->datas;
 				*(mptr.uint8++) = *ptr++;
 				*(mptr.uint8++) = *ptr;
-				size += sizeof(u_int16_t);
+				size += sizeof(uint16_t);
 			}
 			// sequence_number =:= optional_32(s_flag.UVALUE)
 			if(base_header.ip_gre_opt->s_flag != 0)
@@ -1299,19 +1291,19 @@ static u_int8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *t
 				ip_context.v6_gre_option->sequence_number =
 				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
 				WRITE32_TO_MPTR(mptr,base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag]);
-				size += sizeof(u_int32_t);
+				size += sizeof(uint32_t);
 			}
 			mptr.uint8 -= size;
 			break;
-		case IPPROTO_MIME:
+		case ROHC_IPPROTO_MINE:
 			size = 0;
 			break;
-		case IPPROTO_AH:
+		case ROHC_IPPROTO_AH:
 			mptr.ip_ah_opt_dynamic->sequence_number = base_header.ip_ah_opt->sequence_number;
 			size = (base_header.ip_ah_opt->length - 1) << 2;
 			memcpy(mptr.ip_ah_opt_dynamic->auth_data,base_header.ip_ah_opt->auth_data,
 			       (base_header.ip_ah_opt->length - 1) << 2);
-			size += sizeof(u_int32_t);
+			size += sizeof(uint32_t);
 			break;
 		default:
 			size = 0;
@@ -1338,17 +1330,17 @@ static u_int8_t * rohc_v2_code_dynamic_ipv6_option_part(struct sc_tcp_context *t
  * @param packet_size    The size of packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context *tcp_context,
+static uint8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context *tcp_context,
                                                           ip_context_ptr_t ip_context,
                                                           multi_ptr_t mptr,
-                                                          u_int8_t protocol,
+                                                          uint8_t protocol,
                                                           base_header_ip_t base_header,
                                                           const int packet_size)
 {
 	#if ROHC_TCP_DEBUG
-	u_int8_t *ptr = mptr.uint8;
+	uint8_t *ptr = mptr.uint8;
 	#endif
-	u_int32_t sequence_number;
+	uint32_t sequence_number;
 	int size;
 
 	rohc_debugf(3, "tcp_context %p ip_context %p protocol %d base_header_ip %p\n",tcp_context,
@@ -1357,11 +1349,11 @@ static u_int8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context 
 
 	switch(protocol)
 	{
-		case IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:
 			// checksum_and_res =:= optional_checksum(c_flag.UVALUE)
 			if(base_header.ip_gre_opt->c_flag != 0)
 			{
-				u_int8_t *ptr = (u_int8_t*) base_header.ip_gre_opt->datas;
+				uint8_t *ptr = (uint8_t*) base_header.ip_gre_opt->datas;
 				*(mptr.uint8++) = *ptr++;
 				*(mptr.uint8++) = *ptr;
 			}
@@ -1384,7 +1376,7 @@ static u_int8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context 
 				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
 			}
 			break;
-		case IPPROTO_AH:
+		case ROHC_IPPROTO_AH:
 			sequence_number = ntohl(base_header.ip_ah_opt->sequence_number);
 			if( ( sequence_number & 0xFFFFFF80 ) ==
 			    ( ip_context.v6_ah_option->sequence_number & 0xFFFFFF80 ) )
@@ -1426,7 +1418,7 @@ static u_int8_t * rohc_v2_code_irregular_ipv6_option_part(struct sc_tcp_context 
  * @param mptr           The current pointer in the rohc-packet-under-build buffer
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
+static uint8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
                                           ip_context_ptr_t ip_context,
                                           base_header_ip_t base_header,
                                           const int packet_size,
@@ -1456,7 +1448,7 @@ static u_int8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
 			mptr.ipv6_static1->flow_label_enc_discriminator = 0;
 			mptr.ipv6_static1->reserved2 = 0;
 			mptr.ipv6_static1->next_header = base_header.ipv6->next_header;
-			memcpy(mptr.ipv6_static1->src_addr,base_header.ipv6->src_addr,sizeof(u_int32_t) * 4 * 2);
+			memcpy(mptr.ipv6_static1->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 			size = sizeof(ipv6_static1_t);
 		}
 		else
@@ -1467,7 +1459,7 @@ static u_int8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
 			mptr.ipv6_static2->flow_label1 = base_header.ipv6->flow_label1;
 			mptr.ipv6_static2->flow_label2 = base_header.ipv6->flow_label2;
 			mptr.ipv6_static2->next_header = base_header.ipv6->next_header;
-			memcpy(mptr.ipv6_static2->src_addr,base_header.ipv6->src_addr,sizeof(u_int32_t) * 4 * 2);
+			memcpy(mptr.ipv6_static2->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 			size = sizeof(ipv6_static2_t);
 		}
 		rohc_debugf(3, "next_header %d\n",base_header.ipv6->next_header);
@@ -1492,7 +1484,7 @@ static u_int8_t * tcp_code_static_ip_part(struct sc_tcp_context *tcp_context,
  * @param is_innermost   True if the IP header is the innermost of the packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
                                            ip_context_ptr_t ip_context,
                                            base_header_ip_t base_header,
                                            const int packet_size,
@@ -1623,7 +1615,7 @@ static u_int8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
  * @param ip_inner_ecn              The ECN flags of the IP innermost header
  * @return                          The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
+static uint8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
                                              base_header_ip_t base_header,
                                              const int packet_size,
                                              multi_ptr_t mptr,
@@ -1633,7 +1625,7 @@ static u_int8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
                                              int ip_inner_ecn)
 {
 #if ROHC_TCP_DEBUG
-	u_int8_t *ptr = mptr.uint8;
+	uint8_t *ptr = mptr.uint8;
 #endif
 	rohc_debugf(3, "ip_context %p base_header_ip %p\n",ip_context.uint8,base_header.uint8);
 	rohc_debugf(3, "ecn_used %d is_innermost %d ttl_irregular_chain_flag %d ip_inner_ecn %d\n",
@@ -1795,7 +1787,7 @@ static void tcp_decide_state(struct c_context *const context)
  * @param mptr        The current pointer in the rohc-packet-under-build buffer
  * @return            The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * tcp_code_static_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_static_tcp_part(const struct c_context *context,
                                            const tcphdr_t *tcp,
                                            multi_ptr_t mptr)
 {
@@ -1822,10 +1814,8 @@ static u_int8_t * tcp_code_static_tcp_part(const struct c_context *context,
 
  Dynamic part of TCP header:
 
-    +---+---+---+---+---+---+---+---+
- 1  /         Sequence Number       /   4 octets
-    +---+---+---+---+---+---+---+---+
-
+TODO
+ 
 \endverbatim
  *
  * @param context     The compression context
@@ -1833,7 +1823,7 @@ static u_int8_t * tcp_code_static_tcp_part(const struct c_context *context,
  * @param mptr        The current pointer in the rohc-packet-under-build buffer
  * @return            The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
                                             const unsigned char *next_header,
                                             multi_ptr_t mptr)
 {
@@ -1845,7 +1835,7 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	int options_length;
 	unsigned char *urgent_datas;
 	#if ROHC_TCP_DEBUG
-	u_int8_t *debug_ptr;
+	uint8_t *debug_ptr;
 	#endif
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -1857,7 +1847,7 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 
 	rohc_debugf(3, "TCP seq %4.4Xh ack_seq %4.4Xh\n", ntohl(tcp->seq_number), ntohl(tcp->ack_number));
 	rohc_debugf(3, "TCP begin %4.4Xh res_flags %d data offset %d rsf_flags %d ecn_flags %d %s%s%s\n",
-	            *(u_int16_t*)(((unsigned char*)tcp) + 12),
+	            *(uint16_t*)(((unsigned char*)tcp) + 12),
 	            tcp->tcp_res_flags, tcp->data_offset,
 	            tcp->rsf_flags, tcp->tcp_ecn_flags,
 	            (tcp->urg_flag != 0) ? "URG " : "", (tcp->ack_flag != 0) ? "ACK " : "",
@@ -1960,9 +1950,9 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	/* TCP header is at least 20 bytes */
 	if(tcp->data_offset > 5)
 	{
-		u_int8_t *pBeginList;
-		u_int8_t *pValue;
-		u_int8_t index;
+		uint8_t *pBeginList;
+		uint8_t *pValue;
+		uint8_t index;
 		int i;
 
 		/* init pointer to TCP options */
@@ -2026,7 +2016,7 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						break;
 					case TCP_OPT_TIMESTAMP:
 						rohc_debugf(3, "TCP OPT TIMESTAMP %Xh %Xh\n",ntohl(
-						               *(u_int32_t*)(options + 2)),ntohl(*(u_int32_t*)(options + 6)));
+						               *(uint32_t*)(options + 2)),ntohl(*(uint32_t*)(options + 6)));
 						memcpy(tcp_context->tcp_option_timestamp,options + 2,8);
 						break;
 					default:
@@ -2078,7 +2068,7 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						break;
 					case TCP_OPT_TIMESTAMP:
 						rohc_debugf(3, "TCP OPT TIMESTAMP %Xh %Xh\n",ntohl(
-						               *(u_int32_t*)(options + 2)),ntohl(*(u_int32_t*)(options + 6)));
+						               *(uint32_t*)(options + 2)),ntohl(*(uint32_t*)(options + 6)));
 						compare_value = memcmp(tcp_context->tcp_option_timestamp,options + 2,8);
 						break;
 					default:
@@ -2228,8 +2218,8 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		*(mptr.uint8++) = 0;
 	}
 
-	rohc_debugf(3, "TCP dynamic part, length %d:\n",(int)( mptr.uint8 - (u_int8_t*) tcp_dynamic ));
-	TraceData((unsigned char *)tcp_dynamic, mptr.uint8 - (u_int8_t*) tcp_dynamic);
+	rohc_debugf(3, "TCP dynamic part, length %d:\n",(int)( mptr.uint8 - (uint8_t*) tcp_dynamic ));
+	TraceData((unsigned char *)tcp_dynamic, mptr.uint8 - (uint8_t*) tcp_dynamic);
 
 	return mptr.uint8;
 }
@@ -2244,13 +2234,13 @@ static u_int8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
  * @param ip_inner_ecn              The ecn flags of the ip inner
  * @return                          The new pointer in the rohc-packet-under-build buffer
  */
-static u_int8_t * tcp_code_irregular_tcp_part(struct sc_tcp_context *tcp_context,
+static uint8_t * tcp_code_irregular_tcp_part(struct sc_tcp_context *tcp_context,
                                               tcphdr_t *tcp,
                                               multi_ptr_t mptr,
                                               int ip_inner_ecn)
 {
 #if ROHC_TCP_DEBUG
-	u_int8_t *ptr = mptr.uint8;
+	uint8_t *ptr = mptr.uint8;
 #endif
 	// ip_ecn_flags = := tcp_irreg_ip_ecn(ip_inner_ecn)
 	// tcp_res_flags =:= static_or_irreg(ecn_used.CVALUE,4)
@@ -2287,7 +2277,7 @@ static int tcp_changed_tcp_dynamic(const struct c_context *context,
 {
 	const struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
-	u_int32_t seq_number;
+	uint32_t seq_number;
 
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
@@ -2349,10 +2339,10 @@ static int tcp_changed_tcp_dynamic(const struct c_context *context,
  * @return                    Pointer after the compressed value
  */
 
-u_int8_t * c_ts_lsb( u_int8_t *ptr, u_int32_t *context_timestamp, u_int32_t *pTimestamp )      // Timestamp LSB
+uint8_t * c_ts_lsb( uint8_t *ptr, uint32_t *context_timestamp, uint32_t *pTimestamp )      // Timestamp LSB
 {
-	u_int32_t timestamp;
-	u_int32_t last_timestamp;
+	uint32_t timestamp;
+	uint32_t last_timestamp;
 
 	last_timestamp = ntohl(*context_timestamp);
 	timestamp = ntohl(*pTimestamp);
@@ -2469,9 +2459,9 @@ u_int8_t * c_ts_lsb( u_int8_t *ptr, u_int32_t *context_timestamp, u_int32_t *pTi
  * @return          Pointer after the compressed value
  */
 
-static u_int8_t * c_sack_pure_lsb( u_int8_t *ptr, u_int32_t base, u_int32_t field )
+static uint8_t * c_sack_pure_lsb( uint8_t *ptr, uint32_t base, uint32_t field )
 {
-	u_int32_t sack_field;
+	uint32_t sack_field;
 
 	sack_field = field - base;
 
@@ -2519,7 +2509,7 @@ static u_int8_t * c_sack_pure_lsb( u_int8_t *ptr, u_int32_t base, u_int32_t fiel
  * @return            Pointer after the compressed value
  */
 
-static u_int8_t * c_sack_block( u_int8_t *ptr, u_int32_t reference, sack_block_t *sack_block )
+static uint8_t * c_sack_block( uint8_t *ptr, uint32_t reference, sack_block_t *sack_block )
 {
 	rohc_debugf(3, "reference %Xh block_start %Xh block_end %Xh\n",reference,
 	            ntohl(sack_block->block_start),ntohl(sack_block->block_end));
@@ -2546,7 +2536,7 @@ static u_int8_t * c_sack_block( u_int8_t *ptr, u_int32_t reference, sack_block_t
  * @return            Pointer after the compressed value
  */
 
-static u_int8_t * c_tcp_opt_sack( u_int8_t *ptr, u_int32_t ack_value, u_int8_t length,
+static uint8_t * c_tcp_opt_sack( uint8_t *ptr, uint32_t ack_value, uint8_t length,
                                   sack_block_t *sack_block )
 {
 #ifdef VERSION_INITIALE
@@ -2611,9 +2601,9 @@ static u_int8_t * c_tcp_opt_sack( u_int8_t *ptr, u_int32_t ack_value, u_int8_t l
  * @return          Pointer after the compressed value
  */
 
-static u_int8_t * sack_var_length_enc( u_int8_t *ptr, u_int32_t base, u_int32_t field )
+static uint8_t * sack_var_length_enc( uint8_t *ptr, uint32_t base, uint32_t field )
 {
-	u_int32_t sack_offset;
+	uint32_t sack_offset;
 
 	sack_offset = field - base;
 
@@ -2658,7 +2648,7 @@ static u_int8_t * sack_var_length_enc( u_int8_t *ptr, u_int32_t base, u_int32_t 
  * @return                Pointer after the compressed value
  */
 
-static u_int8_t * c_sack_block( u_int8_t *ptr, u_int32_t prev_block_end, sack_block_t *sack_block )
+static uint8_t * c_sack_block( uint8_t *ptr, uint32_t prev_block_end, sack_block_t *sack_block )
 {
 	rohc_debugf(3, "prev_block_end %Xh block_start %Xh block_end %Xh\n",prev_block_end,
 	            ntohl(sack_block->block_start),ntohl(sack_block->block_end));
@@ -2683,7 +2673,7 @@ static u_int8_t * c_sack_block( u_int8_t *ptr, u_int32_t prev_block_end, sack_bl
  * @return            Pointer after the compressed value
  */
 
-static u_int8_t * c_tcp_opt_sack( u_int8_t *ptr, u_int32_t ack_value, u_int8_t length,
+static uint8_t * c_tcp_opt_sack( uint8_t *ptr, uint32_t ack_value, uint8_t length,
                                   sack_block_t *sack_block )
 {
 #ifdef VERSION_INITIALE
@@ -2749,8 +2739,8 @@ static u_int8_t * c_tcp_opt_sack( u_int8_t *ptr, u_int32_t ack_value, u_int8_t l
  * @return             Pointer after the compressed value
  */
 
-static u_int8_t * c_tcp_opt_generic( struct sc_tcp_context *tcp_context, u_int8_t *ptr,
-                                     u_int8_t *options )
+static uint8_t * c_tcp_opt_generic( struct sc_tcp_context *tcp_context, uint8_t *ptr,
+                                     uint8_t *options )
 {
 	// generic_static_irregular
 
@@ -2772,21 +2762,21 @@ static u_int8_t * c_tcp_opt_generic( struct sc_tcp_context *tcp_context, u_int8_
  * @return             Pointer after the compressed TCP options
  */
 
-static u_int8_t * tcp_compress_tcp_options( struct sc_tcp_context *tcp_context, tcphdr_t *tcp,
-                                            u_int8_t *ptr )
+static uint8_t * tcp_compress_tcp_options( struct sc_tcp_context *tcp_context, tcphdr_t *tcp,
+                                            uint8_t *ptr )
 {
-	u_int8_t compressed_options[40];
-	u_int8_t *ptr_compressed_options;
-	u_int8_t *options;
+	uint8_t compressed_options[40];
+	uint8_t *ptr_compressed_options;
+	uint8_t *options;
 	int options_length;
-	u_int8_t *pBeginList;
-	u_int8_t *pValue;
-	u_int8_t index;
-	u_int8_t m;
+	uint8_t *pBeginList;
+	uint8_t *pValue;
+	uint8_t index;
+	uint8_t m;
 	int i;
 
 	/* init pointer to TCP options */
-	options = ( (u_int8_t *) tcp ) + sizeof(tcphdr_t);
+	options = ( (uint8_t *) tcp ) + sizeof(tcphdr_t);
 	options_length = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 	rohc_debugf(3, "TCP options (length %d):\n",options_length);
 	TraceData(options,options_length);
@@ -2850,13 +2840,13 @@ static u_int8_t * tcp_compress_tcp_options( struct sc_tcp_context *tcp_context, 
 					if(memcmp(tcp_context->tcp_option_timestamp,options + 2,8) == 0)
 					{
 						rohc_debugf(3, "TCP OPT TIMESTAMP same value %Xh %Xh\n",
-						            ntohl(*(u_int32_t*)(options + 2)),ntohl(*(u_int32_t*)(options + 6)));
+						            ntohl(*(uint32_t*)(options + 2)),ntohl(*(uint32_t*)(options + 6)));
 						i -= TCP_OLEN_TIMESTAMP;
 						options += TCP_OLEN_TIMESTAMP;
 						goto same_index_without_value;
 					}
 					rohc_debugf(3, "TCP OPT TIMESTAMP not same value %Xh %Xh\n",
-					            ntohl(*(u_int32_t*)(options + 2)),ntohl(*(u_int32_t*)(options + 6)));
+					            ntohl(*(uint32_t*)(options + 2)),ntohl(*(uint32_t*)(options + 6)));
 					// Use same index because time always change!
 					// memcpy(tcp_context->tcp_option_timestamp,options+2,8);
 					// i -= TCP_OLEN_TIMESTAMP;
@@ -3058,16 +3048,16 @@ new_index_with_compressed_value:
 				options += *(options + 1);
 				break;
 			case TCP_OPT_TIMESTAMP:
-				rohc_debugf(3, "TCP OPT TIMESTAMP %Xh %Xh\n",ntohl(*(u_int32_t*)(options + 2)),
-				            ntohl(*(u_int32_t*)(options + 6)));
+				rohc_debugf(3, "TCP OPT TIMESTAMP %Xh %Xh\n",ntohl(*(uint32_t*)(options + 2)),
+				            ntohl(*(uint32_t*)(options + 6)));
 				// see RFC4996 page65
 				// ptr_compressed_options = c_tcp_opt_ts(ptr_compressed_options,options+2);
 				ptr_compressed_options =
-				   c_ts_lsb(ptr_compressed_options,(u_int32_t*)tcp_context->tcp_option_timestamp,
-				            (u_int32_t*)(options + 2));
+				   c_ts_lsb(ptr_compressed_options,(uint32_t*)tcp_context->tcp_option_timestamp,
+				            (uint32_t*)(options + 2));
 				ptr_compressed_options =
-				   c_ts_lsb(ptr_compressed_options,(u_int32_t*)(tcp_context->tcp_option_timestamp + 4),
-				            (u_int32_t*)(options + 2 + 4));
+				   c_ts_lsb(ptr_compressed_options,(uint32_t*)(tcp_context->tcp_option_timestamp + 4),
+				            (uint32_t*)(options + 2 + 4));
 				// Save value after compression
 				memcpy(tcp_context->tcp_option_timestamp,options + 2,8);
 				i -= TCP_OLEN_TIMESTAMP;
@@ -3209,19 +3199,19 @@ int code_CO_packet(struct c_context *const context,
 	base_header_ip_t base_header_inner;
 	base_header_ip_t base_header;
 	tcphdr_t *tcp;
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 	int ttl_irregular_chain_flag;
 	int remain_data_len;
 	int counter;
 	int first_position;
 	multi_ptr_t mptr;
-	u_int8_t save_first_byte;
-	u_int16_t payload_size;
+	uint8_t save_first_byte;
+	uint16_t payload_size;
 	int ip_inner_ecn;
 	#if ROHC_TCP_DEBUG
-	u_int8_t *puchar;
+	uint8_t *puchar;
 	#endif
-	u_int8_t protocol;
+	uint8_t protocol;
 	int i;
 
 	assert(context != NULL);
@@ -3315,7 +3305,7 @@ int code_CO_packet(struct c_context *const context,
 	tcp = base_header.tcphdr;
 //	TraceTcp(tcp);
 
-	*payload_offset = ( (u_int8_t*) tcp ) + ( tcp->data_offset << 2 ) - ip->data;
+	*payload_offset = ( (uint8_t*) tcp ) + ( tcp->data_offset << 2 ) - ip->data;
 	rohc_debugf(3, "payload_offset %d\n",*payload_offset);
 
 	/* parts 1 and 3:
@@ -3455,13 +3445,13 @@ int co_baseheader(struct c_context *const context,
 {
 	tcphdr_t *tcp;
 	multi_ptr_t c_base_header; // compressed
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 	int counter;
 	multi_ptr_t mptr;
 	WB_t ip_id;
 	WB_t wb;
 	#if ROHC_TCP_DEBUG
-	u_int8_t *puchar;
+	uint8_t *puchar;
 	#endif
 	int version;
 	int ecn_used;
@@ -3498,7 +3488,7 @@ int co_baseheader(struct c_context *const context,
 	rohc_debugf(3, "old seq %4.4Xh ack_seq %4.4Xh\n", tcp_context->seq_number,
 	            tcp_context->ack_number);
 	rohc_debugf(3, "TCP begin %4.4Xh res_flags %d data offset %d rsf_flags %d ecn_flags %d %s%s%s\n",
-	            *(u_int16_t*)(((unsigned char*)tcp) + 12),
+	            *(uint16_t*)(((unsigned char*)tcp) + 12),
 	            tcp->tcp_res_flags, tcp->data_offset,
 	            tcp->rsf_flags, tcp->tcp_ecn_flags,
 	            (tcp->urg_flag != 0) ? "URG " : "", (tcp->ack_flag != 0) ? "ACK " : "",
@@ -4166,11 +4156,11 @@ int co_baseheader(struct c_context *const context,
 
 code_rnd_1:
 	rohc_debugf(3, "code rnd_1\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd1 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd1 + 1);
 	c_base_header.rnd1->discriminator = 0x2E; // '101110'
 	// c_base_header.rnd1->seq_number = c_lsb(18, 65535,tcp_context->seq_number,ntohl(tcp->seq_number));
 	{
-		u_int32_t seq_number;
+		uint32_t seq_number;
 		seq_number = c_lsb(18, 65535,tcp_context->seq_number,ntohl(tcp->seq_number));
 		c_base_header.rnd1->seq_number1 = seq_number >> 16;
 		c_base_header.rnd1->seq_number2 = htons( seq_number & 0xFFFF );
@@ -4185,7 +4175,7 @@ code_rnd_1:
 
 code_rnd_2:
 	rohc_debugf(3, "code rnd_2\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd2 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd2 + 1);
 	c_base_header.rnd2->discriminator = 0x0C; // '1100'
 	c_base_header.rnd2->seq_number_scaled = c_lsb(4, 7,tcp_context->seq_number,
 	                                              tcp_context->seq_number_scaled);
@@ -4199,7 +4189,7 @@ code_rnd_2:
 
 code_rnd_3:
 	rohc_debugf(3, "code rnd_3\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd3 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd3 + 1);
 //	c_base_header.rnd3->discriminator = 0x00; // '0'
 //	c_base_header.rnd3->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
@@ -4222,7 +4212,7 @@ code_rnd_3:
 
 code_rnd_4:
 	rohc_debugf(3, "code rnd_4\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd4 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd4 + 1);
 	c_base_header.rnd4->discriminator = 0x0D; // '1101'
 	c_base_header.rnd4->ack_number_scaled = c_lsb(4, 3,/*tcp_context->ack_number*/ 0,
 	                                              tcp_context->ack_number_scaled);
@@ -4236,7 +4226,7 @@ code_rnd_4:
 
 code_rnd_5:
 	rohc_debugf(3, "code rnd_5\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd5 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd5 + 1);
 	c_base_header.rnd5->discriminator = 0x04; // '100'
 	c_base_header.rnd5->psh_flag = tcp->psh_flag;
 	c_base_header.rnd5->msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
@@ -4276,7 +4266,7 @@ code_rnd_5:
 
 code_rnd_6:
 	rohc_debugf(3, "code rnd_6\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd6 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd6 + 1);
 	c_base_header.rnd6->discriminator = 0x0A; // '1010'
 	c_base_header.rnd6->header_crc = 0;
 	c_base_header.rnd6->psh_flag = tcp->psh_flag;
@@ -4292,11 +4282,11 @@ code_rnd_6:
 
 code_rnd_7:
 	rohc_debugf(3, "code rnd_7\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd7 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd7 + 1);
 	c_base_header.rnd7->discriminator = 0x2F; // '101111'
 //	c_base_header.rnd7->ack_number = htonl( c_lsb(18, 65535,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	{
-		u_int32_t ack_number;
+		uint32_t ack_number;
 		ack_number = c_lsb(18, 65535,tcp_context->ack_number,ntohl(tcp->ack_number));
 		c_base_header.rnd7->ack_number1 = ack_number >> 16;
 		c_base_header.rnd7->ack_number2 = htons( ack_number & 0xFFFF );
@@ -4312,14 +4302,14 @@ code_rnd_7:
 
 code_rnd_8:
 	rohc_debugf(3, "code rnd_8\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.rnd8 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.rnd8 + 1);
 	c_base_header.rnd8->discriminator = 0x16; // '10110'
 	c_base_header.rnd8->rsf_flags = rsf_index_enc( tcp->rsf_flags );
 	c_base_header.rnd8->list_present = 0;
 	c_base_header.rnd8->header_crc = 0;
 	#if __BYTE_ORDER == __LITTLE_ENDIAN
 	{
-		u_int8_t msn;
+		uint8_t msn;
 		msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
 		c_base_header.rnd8->msn1 = ( msn & 0x08 ) >> 3;
 		c_base_header.rnd8->msn2 = msn & 0x07;
@@ -4356,7 +4346,7 @@ code_rnd_8:
 
 code_seq_1:
 	rohc_debugf(3, "code seq_1\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq1 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq1 + 1);
 	rohc_debugf(3, "dest %p seq_1 %p next %p\n", dest, c_base_header.seq1, mptr.uint8);
 	c_base_header.seq1->discriminator = 0x0A; // '1010'
 	c_base_header.seq1->ip_id =
@@ -4374,12 +4364,12 @@ code_seq_1:
 
 code_seq_2:
 	rohc_debugf(3, "code seq_2\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq2 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq2 + 1);
 	c_base_header.seq2->discriminator = 0x1A;  // '11010'
 	rohc_debugf(3, "discriminator %Xh\n",c_base_header.seq2->discriminator);
 	#if __BYTE_ORDER == __LITTLE_ENDIAN
 	{
-		u_int8_t ip_id_lsb;
+		uint8_t ip_id_lsb;
 		ip_id_lsb = c_ip_id_lsb(ip_context.v4->ip_id_behavior,7,3,ip_context.v4->last_ip_id,ip_id,
 		                        tcp_context->msn);
 		c_base_header.seq2->ip_id1 = ip_id_lsb >> 4;
@@ -4402,7 +4392,7 @@ code_seq_2:
 
 code_seq_3:
 	rohc_debugf(3, "code seq_3\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq3 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq3 + 1);
 	c_base_header.seq3->discriminator = 0x09;  // '1001'
 	c_base_header.seq3->ip_id =
 	   c_ip_id_lsb(ip_context.v4->ip_id_behavior,4,3,ip_context.v4->last_ip_id,ip_id,
@@ -4419,7 +4409,7 @@ code_seq_3:
 
 code_seq_4:
 	rohc_debugf(3, "code seq_4\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq4 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq4 + 1);
 	c_base_header.seq4->discriminator = 0x00;  // '0'
 	c_base_header.seq4->ack_number_scaled = c_lsb(4, 3,/*tcp_context->ack_number*/ 0,
 	                                              tcp_context->ack_number_scaled);
@@ -4436,7 +4426,7 @@ code_seq_4:
 
 code_seq_5:
 	rohc_debugf(3, "code seq_5\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq5 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq5 + 1);
 	c_base_header.seq5->discriminator = 0x08;  // '1000'
 	c_base_header.seq5->ip_id =
 	   c_ip_id_lsb(ip_context.v4->ip_id_behavior,4,3,ip_context.v4->last_ip_id,ip_id,
@@ -4455,11 +4445,11 @@ code_seq_5:
 
 code_seq_6:
 	rohc_debugf(3, "code seq_6\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq6 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq6 + 1);
 	c_base_header.seq6->discriminator = 0x1B;  // '11011'
 	#if __BYTE_ORDER == __LITTLE_ENDIAN
 	{
-		u_int8_t seq_number_scaled;
+		uint8_t seq_number_scaled;
 		seq_number_scaled = c_lsb(4, 7,tcp_context->seq_number,tcp_context->seq_number_scaled);
 		c_base_header.seq6->seq_number_scaled1 = seq_number_scaled >> 1;
 		c_base_header.seq6->seq_number_scaled2 = seq_number_scaled & 0x01;
@@ -4483,11 +4473,11 @@ code_seq_6:
 
 code_seq_7:
 	rohc_debugf(3, "code seq_7\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq7 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq7 + 1);
 	c_base_header.seq7->discriminator = 0x0C;  // '1100'
 //	c_base_header.seq7->window = htons( c_lsb(15, 16383,ntohs(tcp_context->old_tcphdr.window),ntohs(tcp->window)) );
 	{
-		u_int16_t window;
+		uint16_t window;
 		window = c_lsb(15, 16383,ntohs(tcp_context->old_tcphdr.window),ntohs(tcp->window));
 		c_base_header.seq7->window1 = window >> 11;
 		c_base_header.seq7->window2 = window >> 3;
@@ -4508,7 +4498,7 @@ code_seq_7:
 
 code_seq_8:
 	rohc_debugf(3, "code seq_8\n");
-	mptr.uint8 = (u_int8_t*)(c_base_header.seq8 + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.seq8 + 1);
 	c_base_header.seq8->discriminator = 0x0B;  // '1011'
 	c_base_header.seq8->ip_id =
 	   c_ip_id_lsb(ip_context.v4->ip_id_behavior,4,3,ip_context.v4->last_ip_id,ip_id,
@@ -4567,7 +4557,7 @@ code_common:
 	rohc_debugf(3, "code common\n");
 	// See RFC4996 page 80:
 	rohc_debugf(3, "ttl_irregular_chain_flag %d\n",ttl_irregular_chain_flag);
-	mptr.uint8 = (u_int8_t*)(c_base_header.co_common + 1);
+	mptr.uint8 = (uint8_t*)(c_base_header.co_common + 1);
 	rohc_debugf(3, "dest %p co_common %p seq_number %p\n", dest, c_base_header.co_common, mptr.uint8);
 
 	c_base_header.co_common->discriminator = 0x7D; // '1111101'
@@ -4733,7 +4723,7 @@ code_next:
  */
 struct c_profile c_tcp_profile =
 {
-	IPPROTO_TCP,         /* IP protocol */
+	ROHC_IPPROTO_TCP,    /* IP protocol */
 	NULL,                /* list of UDP ports, not relevant for UDP */
 	ROHC_PROFILE_TCP,    /* profile ID (see 8 in RFC 3095) */
 	"TCP / Compressor",  /* profile description */

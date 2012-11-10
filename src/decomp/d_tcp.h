@@ -15,22 +15,19 @@
  */
 
 /**
- * @file d_tcp.h
- * @brief ROHC decompression context for the TCP profile.
- * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
+ * @file   d_tcp.h
+ * @brief  ROHC decompression context for the TCP profile.
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef D_TCP_H
 #define D_TCP_H
 
-#include <netinet/ip.h>
-#include <string.h>
-
 #include "protocols/tcp.h"
-#include "d_generic.h"
-#include "d_ip.h"
+
+#include <string.h>
+#include <stdint.h>
 
 #define PACKET_TCP_RND1     1
 #define PACKET_TCP_RND2     2
@@ -61,13 +58,13 @@
 
 typedef struct __attribute__((packed)) ipv6_option_context
 {
-	u_int8_t context_length;
-	u_int8_t option_length;
+	uint8_t context_length;
+	uint8_t option_length;
 
-	u_int8_t next_header;
-	u_int8_t length;
+	uint8_t next_header;
+	uint8_t length;
 
-	u_int8_t value[6];
+	uint8_t value[6];
 
 } ipv6_option_context_t;
 
@@ -78,19 +75,19 @@ typedef struct __attribute__((packed)) ipv6_option_context
 
 typedef struct __attribute__((packed)) ipv6_gre_option_context
 {
-	u_int8_t context_length;
-	u_int8_t option_length;
+	uint8_t context_length;
+	uint8_t option_length;
 
-	u_int8_t next_header;
+	uint8_t next_header;
 
-	u_int8_t c_flag : 1;
-	u_int8_t k_flag : 1;
-	u_int8_t s_flag : 1;
-	u_int8_t protocol : 1;
-	u_int8_t padding : 4;
+	uint8_t c_flag : 1;
+	uint8_t k_flag : 1;
+	uint8_t s_flag : 1;
+	uint8_t protocol : 1;
+	uint8_t padding : 4;
 
-	u_int32_t key;               // if k_flag set
-	u_int32_t sequence_number;   // if s_flag set
+	uint32_t key;               // if k_flag set
+	uint32_t sequence_number;   // if s_flag set
 
 } ipv6_gre_option_context_t;
 
@@ -101,15 +98,15 @@ typedef struct __attribute__((packed)) ipv6_gre_option_context
 
 typedef struct __attribute__((packed)) ipv6_mime_option_context
 {
-	u_int8_t context_length;
-	u_int8_t option_length;
+	uint8_t context_length;
+	uint8_t option_length;
 
-	u_int8_t next_header;
+	uint8_t next_header;
 
-	u_int8_t s_bit : 1;
-	u_int8_t res_bits : 7;
-	u_int32_t orig_dest;
-	u_int32_t orig_src;         // if s_bit set
+	uint8_t s_bit : 1;
+	uint8_t res_bits : 7;
+	uint32_t orig_dest;
+	uint32_t orig_src;         // if s_bit set
 
 } ipv6_mime_option_context_t;
 
@@ -120,14 +117,14 @@ typedef struct __attribute__((packed)) ipv6_mime_option_context
 
 typedef struct __attribute__((packed)) ipv6_ah_option_context
 {
-	u_int8_t context_length;
-	u_int8_t option_length;
+	uint8_t context_length;
+	uint8_t option_length;
 
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int32_t spi;
-	u_int32_t sequence_number;
-	u_int32_t auth_data[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint32_t spi;
+	uint32_t sequence_number;
+	uint32_t auth_data[1];
 } ipv6_ah_option_context_t;
 
 /**
@@ -137,19 +134,19 @@ typedef struct __attribute__((packed)) ipv6_ah_option_context
 
 typedef struct __attribute__((packed)) ipvx_context
 {
-	u_int8_t version : 4;
-	u_int8_t unused : 4;
+	uint8_t version : 4;
+	uint8_t unused : 4;
 
-	u_int8_t context_length;
+	uint8_t context_length;
 
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 
-	u_int8_t next_header;
+	uint8_t next_header;
 
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 
-	u_int8_t ip_id_behavior;
+	uint8_t ip_id_behavior;
 
 } ipvx_context_t;
 
@@ -160,24 +157,24 @@ typedef struct __attribute__((packed)) ipvx_context
 
 typedef struct __attribute__((packed)) ipv4_context
 {
-	u_int8_t version : 4;
-	u_int8_t df : 1;
-	u_int8_t unused : 3;
+	uint8_t version : 4;
+	uint8_t df : 1;
+	uint8_t unused : 3;
 
-	u_int8_t context_length;
+	uint8_t context_length;
 
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 
-	u_int8_t protocol;
+	uint8_t protocol;
 
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 
-	u_int8_t ip_id_behavior;
+	uint8_t ip_id_behavior;
 	WB_t last_ip_id;
 
-	u_int32_t src_addr;
-	u_int32_t dst_addr;
+	uint32_t src_addr;
+	uint32_t dst_addr;
 
 } ipv4_context_t;
 
@@ -188,25 +185,25 @@ typedef struct __attribute__((packed)) ipv4_context
 
 typedef struct __attribute__((packed)) ipv6_context
 {
-	u_int8_t version : 4;
-	u_int8_t unused : 4;
+	uint8_t version : 4;
+	uint8_t unused : 4;
 
-	u_int8_t context_length;
+	uint8_t context_length;
 
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 
-	u_int8_t next_header;
+	uint8_t next_header;
 
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 
-	u_int8_t ip_id_behavior;
+	uint8_t ip_id_behavior;
 
-	u_int8_t flow_label1 : 4;
-	u_int16_t flow_label2;
+	uint8_t flow_label1 : 4;
+	uint16_t flow_label2;
 
-	u_int32_t src_addr[4];
-	u_int32_t dest_addr[4];
+	uint32_t src_addr[4];
+	uint32_t dest_addr[4];
 
 } ipv6_context_t;
 
@@ -217,7 +214,7 @@ typedef struct __attribute__((packed)) ipv6_context
 
 typedef union
 {
-	u_int8_t *uint8;
+	uint8_t *uint8;
 	ipvx_context_t *vx;
 	ipv4_context_t *v4;
 	ipv6_context_t *v6;
@@ -241,39 +238,39 @@ typedef union
 struct d_tcp_context
 {
 	// The Master Sequence Number
-	u_int16_t msn;
+	uint16_t msn;
 
 	// Explicit Congestion Notification used
-	u_int8_t ecn_used;
+	uint8_t ecn_used;
 
 	// The static part:
 	// The TCP source port
-	u_int16_t tcp_src_port;
+	uint16_t tcp_src_port;
 	// The TCP dest port
-	u_int16_t tcp_dst_port;
+	uint16_t tcp_dst_port;
 
-	u_int32_t seq_number_scaled;
-	u_int32_t seq_number_residue;
+	uint32_t seq_number_scaled;
+	uint32_t seq_number_residue;
 
-	u_int16_t ack_stride;
-	u_int32_t ack_number_scaled;
-	u_int32_t ack_number_residue;
+	uint16_t ack_stride;
+	uint32_t ack_number_scaled;
+	uint32_t ack_number_residue;
 
 	// Table of TCP options
-	u_int8_t tcp_options_list[16];      // see RFC4996 page 27
-	u_int8_t tcp_options_offset[16];
-	u_int16_t tcp_option_maxseg;
-	u_int8_t tcp_option_window;
-	u_int8_t tcp_option_timestamp[8];
-	u_int8_t tcp_option_sack_length;
-	u_int8_t tcp_option_sackblocks[8 * 4];
-	u_int8_t tcp_options_free_offset;
+	uint8_t tcp_options_list[16];      // see RFC4996 page 27
+	uint8_t tcp_options_offset[16];
+	uint16_t tcp_option_maxseg;
+	uint8_t tcp_option_window;
+	uint8_t tcp_option_timestamp[8];
+	uint8_t tcp_option_sack_length;
+	uint8_t tcp_option_sackblocks[8 * 4];
+	uint8_t tcp_options_free_offset;
 #define MAX_TCP_OPT_SIZE 64
-	u_int8_t tcp_options_values[MAX_TCP_OPT_SIZE];
+	uint8_t tcp_options_values[MAX_TCP_OPT_SIZE];
 
 	tcphdr_t old_tcphdr;
 
-	u_int8_t ip_context[MAX_IP_CONTEXT_SIZE];
+	uint8_t ip_context[MAX_IP_CONTEXT_SIZE];
 };
 
 

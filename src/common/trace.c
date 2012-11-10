@@ -15,18 +15,20 @@
  */
 
 /**
-  * @file trace.c
-  * @brief Trace funtions.
-  * @author FWX <rohc_team@dialine.fr>
-  */
+ * @file   trace.c
+ * @brief  Trace funtions.
+ * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
+ */
 
 
 #include <unistd.h>
 #include <stdio.h>
-#include <netinet/ip.h>
 
 #include "protocols/tcp.h"
 #include "protocols/ipproto.h"
+#include "protocols/ip_numbers.h"
+#include "rohc_utils.h"
 #include "rohc_traces.h"
 #include "trace.h"
 
@@ -139,7 +141,7 @@ void TraceIpV4( base_header_ip_v4_t *ip )
 	rohc_debugf(3, "rf %d mf %d df %d frag_offset %Xh\n",ip->rf,ip->mf,ip->df,
 	            (ip->frag_offset1 << 5) | ip->frag_offset2);
 	{
-		u_int8_t *ptr = (u_int8_t*) ip;
+		uint8_t *ptr = (uint8_t*) ip;
 		rohc_debugf(3, "=>frag_offset %Xh%Xh %2.2Xh %2.2Xh\n",ip->frag_offset1,ip->frag_offset2,
 		            ptr[6],
 		            ptr[7]);
@@ -168,33 +170,33 @@ void TraceIpV6( base_header_ip_v6_t *ip )
 }
 
 
-void TraceIpV6option( u_int8_t previous_header, base_header_ip_t base_header )
+void TraceIpV6option( uint8_t previous_header, base_header_ip_t base_header )
 {
 	char *name;
-	u_int8_t *ptr = NULL;
+	uint8_t *ptr = NULL;
 	int size;
 
 	switch(previous_header)
 	{
-		case IPPROTO_HOPOPTS:    // IPv6 Hop-by-Hop options
+		case ROHC_IPPROTO_HOPOPTS: /* IPv6 Hop-by-Hop option */
 			name = "Hop-by-Hop";
 			break;
-		case IPPROTO_ROUTING:    // IPv6 routing header
+		case ROHC_IPPROTO_ROUTING: /* IPv6 routing header */
 			name = "Routing";
 			break;
-		case IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:
 			name = "GRE";
 			break;
-		case IPPROTO_DSTOPTS:    // IPv6 destination options
+		case ROHC_IPPROTO_DSTOPTS: /* IPv6 destination option */
 			name = "Destination";
 			break;
-		case IPPROTO_MIME:
-			name = "MIME";
+		case ROHC_IPPROTO_MINE:
+			name = "MINE";
 			break;
-		case IPPROTO_AH:
+		case ROHC_IPPROTO_AH:
 			name = "Authentification";
 			break;
-		// case IPPROTO_ESP : ???
+		// case ROHC_IPPROTO_ESP : ???
 		default:
 			name = "Unknown";
 			break;
@@ -204,19 +206,19 @@ void TraceIpV6option( u_int8_t previous_header, base_header_ip_t base_header )
 
 	switch(previous_header)
 	{
-		case IPPROTO_HOPOPTS:    // IPv6 Hop-by-Hop options
+		case ROHC_IPPROTO_HOPOPTS:    // IPv6 Hop-by-Hop options
 			rohc_debugf(3, "next_header %d length %d\n",base_header.ipv6_opt->next_header,
 			            base_header.ipv6_opt->length);
 			ptr = base_header.ipv6_opt->value;
 			size = base_header.ipv6_opt->length << 3;
 			break;
-		case IPPROTO_ROUTING:    // IPv6 routing header
+		case ROHC_IPPROTO_ROUTING:    // IPv6 routing header
 			rohc_debugf(3, "next_header %d length %d\n",base_header.ipv6_opt->next_header,
 			            base_header.ipv6_opt->length);
 			ptr = base_header.ipv6_opt->value;
 			size = base_header.ipv6_opt->length << 3;
 			break;
-		case IPPROTO_GRE:
+		case ROHC_IPPROTO_GRE:
 			rohc_debugf(
 			   3,
 			   "c_flag %d k_flag %d s_flag %d protocol %Xh checksum %Xh key %Xh sequence_number %Xh\n",
@@ -232,13 +234,13 @@ void TraceIpV6option( u_int8_t previous_header, base_header_ip_t base_header )
 			                                           base_header.ip_gre_opt->k_flag]) : 0);
 			size = 0;
 			break;
-		case IPPROTO_DSTOPTS:    // IPv6 destination options
+		case ROHC_IPPROTO_DSTOPTS:    // IPv6 destination options
 			rohc_debugf(3, "next_header %d length %d\n",base_header.ipv6_opt->next_header,
 			            base_header.ipv6_opt->length);
 			ptr = base_header.ipv6_opt->value;
 			size = base_header.ipv6_opt->length << 3;
 			break;
-		case IPPROTO_MIME:
+		case ROHC_IPPROTO_MINE:
 			rohc_debugf(3, "next_header %d s_bit %d checksum %Xh orig_dest %Xh orig_src %Xh\n",
 			            base_header.ip_mime_opt->next_header,base_header.ip_mime_opt->s_bit,
 			            ntohs(base_header.ip_mime_opt->checksum),
@@ -247,14 +249,14 @@ void TraceIpV6option( u_int8_t previous_header, base_header_ip_t base_header )
 			               base_header.ip_mime_opt->orig_src) : 0);
 			size = 0;
 			break;
-		case IPPROTO_AH:
+		case ROHC_IPPROTO_AH:
 			rohc_debugf(3, "next_header %d length %d spi %Xh sequence_number %Xh\n",
 			            base_header.ip_ah_opt->next_header,base_header.ip_ah_opt->length,ntohl(
 			               base_header.ip_ah_opt->spi),ntohl(base_header.ip_ah_opt->sequence_number));
-			ptr = (u_int8_t*) base_header.ip_ah_opt->auth_data;
+			ptr = (uint8_t*) base_header.ip_ah_opt->auth_data;
 			size = base_header.ip_ah_opt->length << 2;
 			break;
-		// case IPPROTO_ESP : ???
+		// case ROHC_IPPROTO_ESP : ???
 		default:
 			size = 0;
 			break;
@@ -275,14 +277,14 @@ void TraceTcp( tcphdr_t *tcp )
 	rohc_debugf(3, "TCP seq %4.4Xh ack_seq %4.4Xh\n", ntohl(tcp->seq_number), ntohl(tcp->ack_number));
 	/*
 	rohc_debugf(3, "TCP begin %4.4Xh data offset %d %s%s%s%s%s%s%s%s\n",
-	               *(u_int16_t*)(((unsigned char*)tcp)+12), tcp->doff,
+	               *(uint16_t*)(((unsigned char*)tcp)+12), tcp->doff,
 	               (tcp->cwr!=0)?"CWR ":"", (tcp->ece!=0)?"ECE ":"",
 	          (tcp->urg!=0)?"URG ":"", (tcp->ack!=0)?"ACK ":"",
 	          (tcp->psh!=0)?"PSH ":"", (tcp->rst!=0)?"RST ":"",
 	               (tcp->syn!=0)?"SYN ":"", (tcp->fin!=0)?"FIN":"" );
 	*/
 	rohc_debugf(3, "TCP begin %4.4Xh res_flags %d data offset %d rsf_flags %d ecn_flags %d %s%s%s\n",
-	            *(u_int16_t*)(((unsigned char*)tcp) + 12),
+	            *(uint16_t*)(((unsigned char*)tcp) + 12),
 	            tcp->tcp_res_flags, tcp->data_offset,
 	            tcp->rsf_flags, tcp->tcp_ecn_flags,
 	            (tcp->urg_flag != 0) ? "URG " : "", (tcp->ack_flag != 0) ? "ACK " : "",

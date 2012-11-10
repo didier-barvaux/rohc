@@ -15,20 +15,25 @@
  */
 
 /**
-  * @file trace.h
-  * @brief Trace prototypes function.
-  * @author FWX <rohc_team@dialine.fr>
-  */
+ * @file   trace.h
+ * @brief  Trace prototypes function.
+ * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
+*/
 
+#include <stdint.h>
 
-void TraceData( unsigned char *Data, unsigned int NumBytes );
+#include "dllexport.h"
+
+void ROHC_EXPORT TraceData(unsigned char *Data, unsigned int NumBytes);
 
 #if ROHC_TCP_DEBUG
-void TraceIp( base_header_ip_vx_t *ip );
-void TraceIpV4( base_header_ip_v4_t *ip );
-void TraceIpV6( base_header_ip_v6_t *ip );
-void TraceIpV6option( u_int8_t previous_header, base_header_ip_t base_header );
-void TraceTcp( tcphdr_t *tcp );
+void ROHC_EXPORT TraceIp(base_header_ip_vx_t *ip);
+void ROHC_EXPORT TraceIpV4(base_header_ip_v4_t *ip);
+void ROHC_EXPORT TraceIpV6(base_header_ip_v6_t *ip);
+void ROHC_EXPORT TraceIpV6option(uint8_t previous_header,
+                                 base_header_ip_t base_header);
+void ROHC_EXPORT TraceTcp(tcphdr_t *tcp);
 #else
 #define TraceIp(ptr)
 #define TraceIpV4(ptr)

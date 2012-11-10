@@ -15,31 +15,22 @@
  */
 
 /**
- * @file rfc4996_encoding.c
- * @brief Library of encoding methods from RFC4997 and RFC4996
- * @author FWX <rohc_team@dialine.fr>
+ * @file   rfc4996_encoding.c
+ * @brief  Library of encoding methods from RFC4997 and RFC4996
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "c_generic.h"
-#include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
 #include "rohc_traces.h"
 #include "rohc_debug.h"
 #include "rohc_bit_ops.h"
-#include "crc.h"
-
+#include "rohc_utils.h"
 #include "protocols/tcp.h" // For IP_ID_BEHAVIOR
 #include "rfc4996_encoding.h"
 #include "trace.h" // FWX2
+#include "crc.h"
 
-#include <math.h>
+#include <math.h> // TODO: required?
 #include <assert.h>
-
-#if HAVE_WINSOCK2_H == 1
-#  include <winsock2.h> /* for ntohs() on Windows */
-#endif
-#if HAVE_ARPA_INET_H == 1
-#  include <arpa/inet.h> /* for ntohs() on Linux */
-#endif
 
 
 /**
@@ -93,7 +84,7 @@ static unsigned int lsb_power[] =
  * @return                 The compressed value with num_lsbs_param bits
  */
 
-u_int32_t c_lsb( int num_lsbs_param, unsigned int offset_param, unsigned int context_value,
+uint32_t c_lsb( int num_lsbs_param, unsigned int offset_param, unsigned int context_value,
                  unsigned int original_value )
 {
 	unsigned int lower_bound;
@@ -139,7 +130,7 @@ u_int32_t c_lsb( int num_lsbs_param, unsigned int offset_param, unsigned int con
  * @return                 The size of the compressed value in octets
  */
 
-u_int8_t c_static_or_irreg8( multi_ptr_t *pmptr, u_int8_t context_value, u_int8_t value )
+uint8_t c_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value )
 {
 	if(value == context_value)
 	{
@@ -162,7 +153,7 @@ u_int8_t c_static_or_irreg8( multi_ptr_t *pmptr, u_int8_t context_value, u_int8_
  * @return                 The size of the compressed value in octets
  */
 
-u_int16_t c_static_or_irreg16( multi_ptr_t *pmptr, u_int16_t context_value, u_int16_t value )
+uint16_t c_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, uint16_t value )
 {
 	if(value == context_value)
 	{
@@ -184,7 +175,7 @@ u_int16_t c_static_or_irreg16( multi_ptr_t *pmptr, u_int16_t context_value, u_in
  * @return                 1 if null value, 0 otherwise
  */
 
-u_int8_t c_zero_or_irreg8( multi_ptr_t *pmptr, u_int8_t value )
+uint8_t c_zero_or_irreg8( multi_ptr_t *pmptr, uint8_t value )
 {
 	if(value != 0)
 	{
@@ -206,7 +197,7 @@ u_int8_t c_zero_or_irreg8( multi_ptr_t *pmptr, u_int8_t value )
  * @return                 1 if null value, 0 otherwise
  */
 
-u_int16_t c_zero_or_irreg16( multi_ptr_t *pmptr, u_int16_t value )
+uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value )
 {
 	if(value != 0)
 	{
@@ -230,7 +221,7 @@ u_int16_t c_zero_or_irreg16( multi_ptr_t *pmptr, u_int16_t value )
 
 // See RFC4996 page 46
 
-unsigned int variable_length_32_enc( multi_ptr_t *pmptr, u_int32_t *puint32 )
+unsigned int variable_length_32_enc( multi_ptr_t *pmptr, uint32_t *puint32 )
 {
 	multi_ptr_t mptr;
 
@@ -272,7 +263,7 @@ unsigned int variable_length_32_enc( multi_ptr_t *pmptr, u_int32_t *puint32 )
  * @return                 Indicator 1 if compressed, 0 if same than context value
  */
 
-unsigned int c_optional32( multi_ptr_t *pmptr, u_int32_t context_value, u_int32_t value )
+unsigned int c_optional32( multi_ptr_t *pmptr, uint32_t context_value, uint32_t value )
 {
 	if(value == context_value)
 	{
@@ -293,7 +284,7 @@ unsigned int c_optional32( multi_ptr_t *pmptr, u_int32_t context_value, u_int32_
  * @return                 Nothing
  */
 
-void c_lsb_7_31( multi_ptr_t *pmptr, u_int32_t value )
+void c_lsb_7_31( multi_ptr_t *pmptr, uint32_t value )
 {
 	if(value > 0x7F)
 	{
@@ -318,8 +309,8 @@ void c_lsb_7_31( multi_ptr_t *pmptr, u_int32_t value )
  * @param scaling_factor   TODO
  * @param unscaled_value   TODO
  */
-void c_field_scaling( u_int32_t *scaled_value, u_int32_t *residue_field, u_int32_t scaling_factor,
-                      u_int32_t unscaled_value )
+void c_field_scaling( uint32_t *scaled_value, uint32_t *residue_field, uint32_t scaling_factor,
+                      uint32_t unscaled_value )
 {
 	if(scaling_factor == 0)
 	{
@@ -381,9 +372,9 @@ unsigned int rsf_index_enc( unsigned int rsf_flags )
 
 unsigned int c_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
                           WB_t ip_id,
-                          u_int16_t msn )
+                          uint16_t msn )
 {
-	u_int16_t ip_id_offset;
+	uint16_t ip_id_offset;
 	WB_t ip_id_nbo;
 	WB_t swapped_context_ip_id;
 
@@ -438,7 +429,7 @@ unsigned int c_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t con
  */
 
 unsigned int c_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, WB_t context_ip_id, WB_t ip_id,
-                                   u_int16_t msn )
+                                   uint16_t msn )
 {
 
 	rohc_debugf(3, "behavior %Xh context_ip_id %Xh ip_id %Xh msn %Xh\n",behavior,
@@ -499,7 +490,7 @@ unsigned int c_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, WB_t contex
  * @return                 Indicator 1 if value compressed, 0 otherwise
  */
 
-unsigned int dscp_encode( multi_ptr_t *pmptr, u_int8_t context_value, u_int8_t value )
+unsigned int dscp_encode( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value )
 {
 	if(value == context_value)
 	{

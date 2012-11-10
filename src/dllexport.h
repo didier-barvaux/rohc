@@ -20,15 +20,13 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_DLL_EXPORT_H
-#define ROHC_DLL_EXPORT_H
-
 /** Macro that handles DLL export declarations gracefully */
 #ifdef DLL_EXPORT /* passed by autotools on command line */
+	#ifdef ROHC_EXPORT
+		#undef ROHC_EXPORT
+	#endif
 	#define ROHC_EXPORT __declspec(dllexport)
 #else
 	#define ROHC_EXPORT 
-#endif
-
 #endif
 

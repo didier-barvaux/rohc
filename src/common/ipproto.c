@@ -15,14 +15,11 @@
  */
 
 /**
- * @file ipproto.c
- * @brief Description of IP protocole number.
+ * @file   ipproto.c
+ * @brief  Description of IP protocole number.
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
-#include <stdio.h>
-#include <netinet/ip.h>
-
-#include "protocols/tcp.h"
 
 #include "protocols/ipproto.h"
 
@@ -31,7 +28,7 @@
  * tunneling or IP v6 option.
  */
 
-u_int8_t ipproto_specifications[256] =
+uint8_t ipproto_specifications[256] =
 {
 /*   0 */ IPV6_OPTION,                   // IPPROTO_IP or IPPROTO_HOPOPTS IPv6 Hop-by-Hop options.
 /*   1 */ 0,                             // IPPROTO_ICMP Internet Control Message Protocol.

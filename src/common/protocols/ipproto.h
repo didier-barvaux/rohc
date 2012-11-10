@@ -18,12 +18,14 @@
  * @file ipproto.h
  * @brief Description of IP protocole number.
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
-extern u_int8_t ipproto_specifications[];
 
-#ifndef IPPROTO_MIME
-#define IPPROTO_MIME 55  // see RFC2004
-#endif
+#include <stdint.h>
+
+#include "dllexport.h"
+
+extern uint8_t ROHC_EXPORT ipproto_specifications[];
 
 #define IPV4_TUNNELING  0x01
 #define IPV6_TUNNELING  0x02

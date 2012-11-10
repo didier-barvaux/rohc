@@ -15,44 +15,47 @@
  */
 
 /**
- * @file rfc4996_decoding.h
- * @brief Library of decoding methods from RFC4997 and RFC4996
+ * @file   rfc4996_decoding.h
+ * @brief  Library of decoding methods from RFC4997 and RFC4996
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
+
+#include <stdint.h>
 
 extern unsigned int lsb_masks[];
 extern unsigned int lsb_xor_masks[];
 
 
 // RFC4997 page 27
-u_int32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_value,
+uint32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_value,
                  unsigned int value );
 
 // RFC4996 page 46
-u_int8_t d_static_or_irreg8( multi_ptr_t *pmptr, u_int8_t context_value, int indicator );
-u_int16_t d_static_or_irreg16( multi_ptr_t *pmptr, u_int16_t context_value, int indicator );
+uint8_t d_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
+uint16_t d_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, int indicator );
 // RFC4996 page 46
 extern unsigned int variable_length_32_size[];
-u_int32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator );
-u_int32_t d_optional32( multi_ptr_t *pmptr, int flag, u_int32_t context_value );
+uint32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator );
+uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value );
 // RFC4996 page 47
-u_int32_t d_lsb_7_31( multi_ptr_t *pmptr );
+uint32_t d_lsb_7_31( multi_ptr_t *pmptr );
 #ifdef USE_ROHC_TCP_MACROS
 // RFC4996 page 49
 #define d_field_scaling(scaling_factor,scaled_value,residue_field) \
    ( (scaled_value) * (scaling_factor) ) + (residue_field);
 #else
-u_int32_t d_field_scaling( u_int32_t stride_value, u_int32_t scaled_value, u_int32_t residue_field );
+uint32_t d_field_scaling( uint32_t stride_value, uint32_t scaled_value, uint32_t residue_field );
 #endif
 // RFC4996 page 71
 unsigned int rsf_index_dec( unsigned int rsf_index );
 // RFC4996 page 75
-u_int16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
-                       u_int16_t value,
-                       u_int16_t msn );
+uint16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
+                       uint16_t value,
+                       uint16_t msn );
 // RFC4996 page 76
 void d_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, int indicator, WB_t context_ip_id,
-                           u_int16_t *ip_id,
-                           u_int16_t msn );
-u_int8_t dscp_decode( multi_ptr_t *pmptr, u_int8_t context_value, int indicator );
+                           uint16_t *ip_id,
+                           uint16_t msn );
+uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
 

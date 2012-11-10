@@ -28,6 +28,15 @@
 #include "rohc.h"
 #include "rohc_comp.h"
 
+
+/** Macro that handles DLL export declarations gracefully */
+#ifdef DLL_EXPORT /* passed by autotools on command line */
+	#define ROHC_EXPORT __declspec(dllexport)
+#else
+	#define ROHC_EXPORT
+#endif
+
+
 /// The number of ROHC profiles ready to be used
 #define D_NUM_PROFILES 7 // FWX2
 
@@ -214,13 +223,20 @@ struct d_profile
  * Functions related to decompressor:
  */
 
-struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor);
-void rohc_free_decompressor(struct rohc_decomp *decomp);
+struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor);
+void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp);
 
-int rohc_decompress(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
-                    unsigned char *obuf, int osize);
-int rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
-                         int isize, unsigned char *obuf, int osize, int large)
+int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
+                                unsigned char *ibuf,
+                                int isize,
+                                unsigned char *obuf,
+                                int osize);
+int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
+                                     unsigned char *ibuf,
+                                     int isize,
+                                     unsigned char *obuf,
+                                     int osize,
+                                     int large)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
 	                "rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid() "
 	                "instead");
@@ -230,46 +246,55 @@ int rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
  * Functions related to context:
  */
 
-struct d_context * find_context(struct rohc_decomp *decomp, int cid);
-struct d_context * context_create(struct rohc_decomp *decomp,
-                                  int with_cid,
-                                  struct d_profile *profile);
-void context_free(struct d_context *context);
+struct d_context * ROHC_EXPORT find_context(struct rohc_decomp *decomp,
+                                            int cid);
+struct d_context * ROHC_EXPORT context_create(struct rohc_decomp *decomp,
+                                              int with_cid,
+                                              struct d_profile *profile);
+void ROHC_EXPORT context_free(struct d_context *context);
 
 
 /*
  * Functions related to feedback:
  */
 
-void d_change_mode_feedback(struct rohc_decomp *decomp, struct d_context *context);
+void ROHC_EXPORT d_change_mode_feedback(struct rohc_decomp *decomp,
+                                        struct d_context *context);
 
 
 /*
  * Functions related to statistics:
  */
 
-int rohc_d_statistics(struct rohc_decomp *decomp, unsigned int indent,
-                      char *buffer);
-int rohc_d_context(struct rohc_decomp *decomp, int index, unsigned int indent,
-                   char *buffer);
-void clear_statistics(struct rohc_decomp *decomp);
-const char * rohc_decomp_get_state_descr(const rohc_d_state state);
+int ROHC_EXPORT rohc_d_statistics(struct rohc_decomp *decomp,
+                                  unsigned int indent,
+                                  char *buffer);
+int ROHC_EXPORT rohc_d_context(struct rohc_decomp *decomp,
+                               int index,
+                               unsigned int indent,
+                               char *buffer);
+void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp);
+const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_d_state state);
 
 
 /*
  * Functions related to user interaction:
  */
 
-void user_interactions(struct rohc_decomp *decomp, int feedback_maxval);
+void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
+                                   int feedback_maxval);
 
-bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
-                              const rohc_cid_type_t cid_type)
+bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
+                                          const rohc_cid_type_t cid_type)
 	__attribute__((nonnull(1), warn_unused_result));
 
 
-bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
-                             const size_t max_cid)
+bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
+                                         const size_t max_cid)
 	__attribute__((nonnull(1), warn_unused_result));
+
+
+#undef ROHC_EXPORT /* do not pollute outside this header */
 
 #endif
 

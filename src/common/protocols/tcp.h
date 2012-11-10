@@ -15,21 +15,16 @@
  */
 
 /**
- * @file tcp.h
- * @brief TCP header description.
+ * @file   tcp.h
+ * @brief  TCP header description.
  * @author FWX <rohc_team@dialine.fr>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef TCP_H
 #define TCP_H
 
-#ifdef VERSION_1
-#include <netinet/tcp.h>
-//#include <sys/types.h>
-#endif
-#ifdef VERSION_2
-#include <linux/tcp.h>  // for ece/cwr bits
-#endif
+#include <stdint.h>
 
 #define USE_ROHC_TCP_MACROS    // Undef to use procedures
 
@@ -50,9 +45,9 @@
 
 typedef struct __attribute__((packed)) ipv6_opt
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int8_t value[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
 } ipv6_opt_t;
 
 /**
@@ -62,8 +57,8 @@ typedef struct __attribute__((packed)) ipv6_opt
 
 typedef struct __attribute__((packed)) ip_opt_static
 {
-	u_int8_t next_header;
-	u_int8_t length;
+	uint8_t next_header;
+	uint8_t length;
 } ip_opt_static_t;
 
 /**
@@ -73,7 +68,7 @@ typedef struct __attribute__((packed)) ip_opt_static
 
 typedef struct __attribute__((packed)) ip_opt_dynamic
 {
-	u_int8_t value[1];
+	uint8_t value[1];
 } ip_opt_dynamic_t;
 
 /**
@@ -83,9 +78,9 @@ typedef struct __attribute__((packed)) ip_opt_dynamic
 
 typedef struct __attribute__((packed)) ip_dest_opt
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int8_t value[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
 } ip_dest_opt_t;
 
 /**
@@ -95,8 +90,8 @@ typedef struct __attribute__((packed)) ip_dest_opt
 
 typedef struct __attribute__((packed)) ip_dest_opt_static
 {
-	u_int8_t next_header;
-	u_int8_t length;
+	uint8_t next_header;
+	uint8_t length;
 } ip_dest_opt_static_t;
 
 /**
@@ -106,7 +101,7 @@ typedef struct __attribute__((packed)) ip_dest_opt_static
 
 typedef struct __attribute__((packed)) ip_dest_opt_dynamic
 {
-	u_int8_t value[1];
+	uint8_t value[1];
 } ip_dest_opt_dynamic_t;
 
 /**
@@ -116,9 +111,9 @@ typedef struct __attribute__((packed)) ip_dest_opt_dynamic
 
 typedef struct __attribute__((packed)) ip_hop_opt
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int8_t value[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
 } ip_hop_opt_t;
 
 /**
@@ -128,8 +123,8 @@ typedef struct __attribute__((packed)) ip_hop_opt
 
 typedef struct __attribute__((packed)) ip_hop_opt_static
 {
-	u_int8_t next_header;
-	u_int8_t length;
+	uint8_t next_header;
+	uint8_t length;
 } ip_hop_opt_static_t;
 
 /**
@@ -139,7 +134,7 @@ typedef struct __attribute__((packed)) ip_hop_opt_static
 
 typedef struct __attribute__((packed)) ip_hop_opt_dynamic
 {
-	u_int8_t value[1];
+	uint8_t value[1];
 } ip_hop_opt_dynamic_t;
 
 /**
@@ -149,9 +144,9 @@ typedef struct __attribute__((packed)) ip_hop_opt_dynamic
 
 typedef struct __attribute__((packed)) ip_rout_opt
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int8_t value[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
 } ip_rout_opt_t;
 
 /**
@@ -161,9 +156,9 @@ typedef struct __attribute__((packed)) ip_rout_opt
 
 typedef struct __attribute__((packed)) ip_rout_opt_static
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int8_t value[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint8_t value[1];
 } ip_rout_opt_static_t;
 
 /**
@@ -175,24 +170,24 @@ typedef struct __attribute__((packed)) ip_rout_opt_static
 typedef struct __attribute__((packed)) ip_gre_opt
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t reserved2 : 4;
-	u_int8_t s_flag : 1;
-	u_int8_t k_flag : 1;
-	u_int8_t r_flag : 1;
-	u_int8_t c_flag : 1;
+	uint8_t reserved2 : 4;
+	uint8_t s_flag : 1;
+	uint8_t k_flag : 1;
+	uint8_t r_flag : 1;
+	uint8_t c_flag : 1;
 
-	u_int8_t version : 3;
-	u_int8_t reserved1 : 5;
+	uint8_t version : 3;
+	uint8_t reserved1 : 5;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t c_flag : 1;
-	u_int16_t r_flag : 1;
-	u_int16_t k_flag : 1;
-	u_int16_t s_flag : 1;
-	u_int16_t reserved0 : 9;
-	u_int16_t version : 3;
+	uint16_t c_flag : 1;
+	uint16_t r_flag : 1;
+	uint16_t k_flag : 1;
+	uint16_t s_flag : 1;
+	uint16_t reserved0 : 9;
+	uint16_t version : 3;
 #endif
-	u_int16_t protocol;
-	u_int32_t datas[1];
+	uint16_t protocol;
+	uint32_t datas[1];
 } ip_gre_opt_t;
 
 /**
@@ -203,19 +198,19 @@ typedef struct __attribute__((packed)) ip_gre_opt
 typedef struct __attribute__((packed)) ip_gre_opt_static
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t padding : 4;
-	u_int8_t s_flag : 1;
-	u_int8_t k_flag : 1;
-	u_int8_t c_flag : 1;
-	u_int8_t protocol : 1;
+	uint8_t padding : 4;
+	uint8_t s_flag : 1;
+	uint8_t k_flag : 1;
+	uint8_t c_flag : 1;
+	uint8_t protocol : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t protocol : 1;
-	u_int8_t c_flag : 1;
-	u_int8_t k_flag : 1;
-	u_int8_t s_flag : 1;
-	u_int8_t padding : 4;
+	uint8_t protocol : 1;
+	uint8_t c_flag : 1;
+	uint8_t k_flag : 1;
+	uint8_t s_flag : 1;
+	uint8_t padding : 4;
 #endif
-	u_int32_t key;     // if k_flag
+	uint32_t key;     // if k_flag
 } ip_gre_opt_static_t;
 
 /**
@@ -225,17 +220,17 @@ typedef struct __attribute__((packed)) ip_gre_opt_static
 
 typedef struct __attribute__((packed)) ip_mime_opt
 {
-	u_int8_t next_header;
+	uint8_t next_header;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t res_bits : 7;
-	u_int8_t s_bit : 1;
+	uint8_t res_bits : 7;
+	uint8_t s_bit : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t s_bit : 1;
-	u_int8_t res_bits : 7;
+	uint8_t s_bit : 1;
+	uint8_t res_bits : 7;
 #endif
-	u_int16_t checksum;
-	u_int32_t orig_dest;
-	u_int32_t orig_src;         // if s_bit set
+	uint16_t checksum;
+	uint32_t orig_dest;
+	uint32_t orig_src;         // if s_bit set
 } ip_mime_opt_t;
 
 /**
@@ -245,16 +240,16 @@ typedef struct __attribute__((packed)) ip_mime_opt
 
 typedef struct __attribute__((packed)) ip_mime_opt_static
 {
-	u_int8_t next_header;
+	uint8_t next_header;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t res_bits : 7;
-	u_int8_t s_bit : 1;
+	uint8_t res_bits : 7;
+	uint8_t s_bit : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t s_bit : 1;
-	u_int8_t res_bits : 7;
+	uint8_t s_bit : 1;
+	uint8_t res_bits : 7;
 #endif
-	u_int32_t orig_dest;
-	u_int32_t orig_src;         // if s_bit set
+	uint32_t orig_dest;
+	uint32_t orig_src;         // if s_bit set
 } ip_mime_opt_static_t;
 
 /**
@@ -264,12 +259,12 @@ typedef struct __attribute__((packed)) ip_mime_opt_static
 
 typedef struct __attribute__((packed)) ip_ah_opt
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int16_t res_bits;
-	u_int32_t spi;
-	u_int32_t sequence_number;
-	u_int32_t auth_data[1];
+	uint8_t next_header;
+	uint8_t length;
+	uint16_t res_bits;
+	uint32_t spi;
+	uint32_t sequence_number;
+	uint32_t auth_data[1];
 } ip_ah_opt_t;
 
 /**
@@ -279,9 +274,9 @@ typedef struct __attribute__((packed)) ip_ah_opt
 
 typedef struct __attribute__((packed)) ip_ah_opt_static
 {
-	u_int8_t next_header;
-	u_int8_t length;
-	u_int32_t spi;
+	uint8_t next_header;
+	uint8_t length;
+	uint32_t spi;
 } ip_ah_opt_static_t;
 
 /**
@@ -291,8 +286,8 @@ typedef struct __attribute__((packed)) ip_ah_opt_static
 
 typedef struct __attribute__((packed)) ip_ah_opt_dynamic
 {
-	u_int32_t sequence_number;
-	u_int32_t auth_data[1];
+	uint32_t sequence_number;
+	uint32_t auth_data[1];
 } ip_ah_opt_dynamic_t;
 
 /**
@@ -303,11 +298,11 @@ typedef struct __attribute__((packed)) ip_ah_opt_dynamic
 typedef struct __attribute__((packed)) base_header_ip_vx
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t reserved : 4;
-	u_int8_t version : 4;
+	uint8_t reserved : 4;
+	uint8_t version : 4;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t version : 4;
-	u_int8_t reserved : 4;
+	uint8_t version : 4;
+	uint8_t reserved : 4;
 #endif
 } base_header_ip_vx_t;
 
@@ -320,35 +315,35 @@ typedef struct __attribute__((packed)) base_header_ip_vx
 typedef struct __attribute__((packed)) base_header_ip_v4
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_length : 4;
-	u_int8_t version : 4;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
+	uint8_t header_length : 4;
+	uint8_t version : 4;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t version : 4;
-	u_int8_t header_length : 4;
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t version : 4;
+	uint8_t header_length : 4;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 #endif
-	u_int16_t length;
-	u_int16_t ip_id;
+	uint16_t length;
+	uint16_t ip_id;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t frag_offset1 : 5;
-	u_int8_t mf : 1;
-	u_int8_t df : 1;
-	u_int8_t rf : 1;
-	u_int8_t frag_offset2;
+	uint8_t frag_offset1 : 5;
+	uint8_t mf : 1;
+	uint8_t df : 1;
+	uint8_t rf : 1;
+	uint8_t frag_offset2;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t rf : 1;
-	u_int16_t df : 1;
-	u_int16_t mf : 1;
-	u_int16_t frag_offset : 13;
+	uint16_t rf : 1;
+	uint16_t df : 1;
+	uint16_t mf : 1;
+	uint16_t frag_offset : 13;
 #endif
-	u_int8_t ttl_hopl;
-	u_int8_t protocol;
-	u_int16_t checksum;
-	u_int32_t src_addr;
-	u_int32_t dest_addr;
+	uint8_t ttl_hopl;
+	uint8_t protocol;
+	uint16_t checksum;
+	uint32_t src_addr;
+	uint32_t dest_addr;
 	// extension_headers
 } base_header_ip_v4_t;
 
@@ -361,24 +356,24 @@ typedef struct __attribute__((packed)) base_header_ip_v4
 typedef struct __attribute__((packed)) base_header_ip_v6
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t dscp1 : 4;
-	u_int8_t version : 4;
+	uint8_t dscp1 : 4;
+	uint8_t version : 4;
 
-	u_int8_t flow_label1 : 4;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp2 : 2;
+	uint8_t flow_label1 : 4;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp2 : 2;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t version : 4;
-	u_int16_t dscp : 6;
-	u_int16_t ip_ecn_flags : 2;
-	u_int16_t flow_label1 : 4;
+	uint16_t version : 4;
+	uint16_t dscp : 6;
+	uint16_t ip_ecn_flags : 2;
+	uint16_t flow_label1 : 4;
 #endif
-	u_int16_t flow_label2;
-	u_int16_t payload_length;
-	u_int8_t next_header;
-	u_int8_t ttl_hopl;
-	u_int32_t src_addr[4];
-	u_int32_t dest_addr[4];
+	uint16_t flow_label2;
+	uint16_t payload_length;
+	uint8_t next_header;
+	uint8_t ttl_hopl;
+	uint32_t src_addr[4];
+	uint32_t dest_addr[4];
 	// extension_headers
 } base_header_ip_v6_t;
 
@@ -398,15 +393,15 @@ typedef struct __attribute__((packed)) base_header_ip_v6
 typedef struct __attribute__((packed)) ipv4_static
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t reserved : 7;
-	u_int8_t version_flag : 1;
+	uint8_t reserved : 7;
+	uint8_t version_flag : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t version_flag : 1;
-	u_int8_t reserved : 7;
+	uint8_t version_flag : 1;
+	uint8_t reserved : 7;
 #endif
-	u_int8_t protocol;
-	u_int32_t src_addr;
-	u_int32_t dst_addr;
+	uint8_t protocol;
+	uint32_t src_addr;
+	uint32_t dst_addr;
 } ipv4_static_t;
 
 #define IP_ID_BEHAVIOR_SEQUENTIAL          0
@@ -425,19 +420,19 @@ typedef struct __attribute__((packed)) ipv4_static
 typedef struct __attribute__((packed)) ipv4_dynamic1
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id_behavior : 2;
-	u_int8_t df : 1;
-	u_int8_t reserved : 5;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
+	uint8_t ip_id_behavior : 2;
+	uint8_t df : 1;
+	uint8_t reserved : 5;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t reserved : 5;
-	u_int8_t df : 1;
-	u_int8_t ip_id_behavior : 2;
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t reserved : 5;
+	uint8_t df : 1;
+	uint8_t ip_id_behavior : 2;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 #endif
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 } ipv4_dynamic1_t;
 
 /**
@@ -449,20 +444,20 @@ typedef struct __attribute__((packed)) ipv4_dynamic1
 typedef struct __attribute__((packed)) ipv4_dynamic2
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id_behavior : 2;
-	u_int8_t df : 1;
-	u_int8_t reserved : 5;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
+	uint8_t ip_id_behavior : 2;
+	uint8_t df : 1;
+	uint8_t reserved : 5;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t reserved : 5;
-	u_int8_t df : 1;
-	u_int8_t ip_id_behavior : 2;
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t reserved : 5;
+	uint8_t df : 1;
+	uint8_t ip_id_behavior : 2;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 #endif
-	u_int8_t ttl_hopl;
-	u_int16_t ip_id;
+	uint8_t ttl_hopl;
+	uint16_t ip_id;
 } ipv4_dynamic2_t;
 
 /**
@@ -474,22 +469,22 @@ typedef struct __attribute__((packed)) ipv4_dynamic2
 typedef struct __attribute__((packed)) ipv4_replicate
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t df : 1;
-	u_int8_t ttl_flag : 1;
-	u_int8_t ip_id_behavior : 2;
-	u_int8_t reserved : 4;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
+	uint8_t df : 1;
+	uint8_t ttl_flag : 1;
+	uint8_t ip_id_behavior : 2;
+	uint8_t reserved : 4;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t reserved : 4;
-	u_int8_t ip_id_behavior : 2;
-	u_int8_t ttl_flag : 1;
-	u_int8_t df : 1;
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t reserved : 4;
+	uint8_t ip_id_behavior : 2;
+	uint8_t ttl_flag : 1;
+	uint8_t df : 1;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 #endif
-//  u_int16_t	ip_id;
-//  u_int8_t	ttl_hopl;
+//  uint16_t	ip_id;
+//  uint8_t	ttl_hopl;
 } ipv4_replicate_t;
 
 /**
@@ -501,19 +496,19 @@ typedef struct __attribute__((packed)) ipv4_replicate
 typedef struct __attribute__((packed)) ipv6_static1
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t reserved2 : 4;
-	u_int8_t flow_label_enc_discriminator : 1;
-	u_int8_t reserved1 : 2;
-	u_int8_t version_flag : 1;
+	uint8_t reserved2 : 4;
+	uint8_t flow_label_enc_discriminator : 1;
+	uint8_t reserved1 : 2;
+	uint8_t version_flag : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t version_flag : 1;
-	u_int8_t reserved1 : 2;
-	u_int8_t flow_label_enc_discriminator : 1;
-	u_int8_t reserved2 : 4;
+	uint8_t version_flag : 1;
+	uint8_t reserved1 : 2;
+	uint8_t flow_label_enc_discriminator : 1;
+	uint8_t reserved2 : 4;
 #endif
-	u_int8_t next_header;
-	u_int32_t src_addr[4];
-	u_int32_t dst_addr[4];
+	uint8_t next_header;
+	uint32_t src_addr[4];
+	uint32_t dst_addr[4];
 } ipv6_static1_t;
 
 /**
@@ -525,20 +520,20 @@ typedef struct __attribute__((packed)) ipv6_static1
 typedef struct __attribute__((packed)) ipv6_static2
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t flow_label1 : 4;
-	u_int8_t flow_label_enc_discriminator : 1;
-	u_int8_t reserved : 2;
-	u_int8_t version_flag : 1;
+	uint8_t flow_label1 : 4;
+	uint8_t flow_label_enc_discriminator : 1;
+	uint8_t reserved : 2;
+	uint8_t version_flag : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t version_flag : 1;
-	u_int8_t reserved : 2;
-	u_int8_t flow_label_enc_discriminator : 1;
-	u_int8_t flow_label1 : 4;
+	uint8_t version_flag : 1;
+	uint8_t reserved : 2;
+	uint8_t flow_label_enc_discriminator : 1;
+	uint8_t flow_label1 : 4;
 #endif
-	u_int16_t flow_label2;
-	u_int8_t next_header;
-	u_int32_t src_addr[4];
-	u_int32_t dst_addr[4];
+	uint16_t flow_label2;
+	uint8_t next_header;
+	uint32_t src_addr[4];
+	uint32_t dst_addr[4];
 } ipv6_static2_t;
 
 /**
@@ -550,13 +545,13 @@ typedef struct __attribute__((packed)) ipv6_static2
 typedef struct __attribute__((packed)) ipv6_dynamic
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
 #endif
-	u_int8_t ttl_hopl;
+	uint8_t ttl_hopl;
 } ipv6_dynamic_t;
 
 /**
@@ -568,15 +563,15 @@ typedef struct __attribute__((packed)) ipv6_dynamic
 typedef struct __attribute__((packed)) ipv6_replicate1
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
-	u_int8_t flow_label : 5;
-	u_int8_t reserved : 3;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
+	uint8_t flow_label : 5;
+	uint8_t reserved : 3;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t reserved : 3;
-	u_int8_t flow_label : 5;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t reserved : 3;
+	uint8_t flow_label : 5;
 #endif
 } ipv6_replicate1_t;
 
@@ -589,17 +584,17 @@ typedef struct __attribute__((packed)) ipv6_replicate1
 typedef struct __attribute__((packed)) ipv6_replicate2
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t dscp : 6;
-	u_int8_t flow_label1 : 5;
-	u_int8_t reserved : 3;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t dscp : 6;
+	uint8_t flow_label1 : 5;
+	uint8_t reserved : 3;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t dscp : 6;
-	u_int8_t ip_ecn_flags : 2;
-	u_int8_t reserved : 3;
-	u_int8_t flow_label1 : 5;
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+	uint8_t reserved : 3;
+	uint8_t flow_label1 : 5;
 #endif
-	u_int16_t flow_label2;
+	uint16_t flow_label2;
 } ipv6_replicate2_t;
 
 /**
@@ -614,9 +609,9 @@ typedef struct __attribute__((packed)) ipv6_replicate2
 
 typedef struct  __attribute__((packed)) ipv6_extension
 {
-	u_int8_t next_header;
-	u_int8_t extension_length;
-	u_int8_t datas[1];
+	uint8_t next_header;
+	uint8_t extension_length;
+	uint8_t datas[1];
 } ipv6_extension_t;
 
 /**
@@ -628,8 +623,8 @@ typedef struct  __attribute__((packed)) ipv6_extension
 
 typedef struct __attribute__((packed))
 {
-	u_int32_t block_start;
-	u_int32_t block_end;
+	uint32_t block_start;
+	uint32_t block_end;
 } sack_block_t;
 
 /**
@@ -640,32 +635,32 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed)) tcphdr
 {
-	u_int16_t src_port;
-	u_int16_t dst_port;
-	u_int32_t seq_number;
-	u_int32_t ack_number;
+	uint16_t src_port;
+	uint16_t dst_port;
+	uint32_t seq_number;
+	uint32_t ack_number;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t tcp_res_flags : 4;
-	u_int8_t data_offset : 4;
-	u_int8_t rsf_flags : 3;
-	u_int8_t psh_flag : 1;
-	u_int8_t ack_flag : 1;
-	u_int8_t urg_flag : 1;
-	u_int8_t tcp_ecn_flags : 2;
+	uint8_t tcp_res_flags : 4;
+	uint8_t data_offset : 4;
+	uint8_t rsf_flags : 3;
+	uint8_t psh_flag : 1;
+	uint8_t ack_flag : 1;
+	uint8_t urg_flag : 1;
+	uint8_t tcp_ecn_flags : 2;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t data_offset : 4;
-	u_int8_t tcp_res_flags : 4;
-	u_int8_t tcp_ecn_flags : 2;
-	u_int8_t urg_flag : 1;
-	u_int8_t ack_flag : 1;
-	u_int8_t psh_flag : 1;
-	u_int8_t rsf_flags : 3;
+	uint8_t data_offset : 4;
+	uint8_t tcp_res_flags : 4;
+	uint8_t tcp_ecn_flags : 2;
+	uint8_t urg_flag : 1;
+	uint8_t ack_flag : 1;
+	uint8_t psh_flag : 1;
+	uint8_t rsf_flags : 3;
 #else
 #error  "Adjust your <asm/byteorder.h> defines"
 #endif
-	u_int16_t window;
-	u_int16_t checksum;
-	u_int16_t urg_ptr;
+	uint16_t window;
+	uint16_t checksum;
+	uint16_t urg_ptr;
 } tcphdr_t;
 
 /**
@@ -686,8 +681,8 @@ typedef struct __attribute__((packed)) tcphdr
 
 typedef struct __attribute__((packed)) tcp_static
 {
-	u_int16_t src_port;               // =:= irregular(16)                               [ 16 ];
-	u_int16_t dst_port;               // =:= irregular(16)                               [ 16 ];
+	uint16_t src_port;               // =:= irregular(16)                               [ 16 ];
+	uint16_t dst_port;               // =:= irregular(16)                               [ 16 ];
 } tcp_static_t;
 
 /**
@@ -700,43 +695,43 @@ typedef struct __attribute__((packed)) tcp_dynamic
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
-	u_int8_t tcp_res_flags : 4;     // =:= irregular(4)                                [ 4 ];
-	u_int8_t urp_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-	u_int8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
+	uint8_t tcp_res_flags : 4;     // =:= irregular(4)                                [ 4 ];
+	uint8_t urp_zero : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_zero : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
+	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
 
-	u_int8_t rsf_flags : 3;         // =:= irregular(3)                                [ 3 ];
-	u_int8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t tcp_ecn_flags : 2;     // =:= irregular(2)                                [ 2 ];
+	uint8_t rsf_flags : 3;         // =:= irregular(3)                                [ 3 ];
+	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t tcp_ecn_flags : 2;     // =:= irregular(2)                                [ 2 ];
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-	u_int8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
-	u_int8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t urp_zero : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t tcp_res_flags : 4;     // =:= irregular(4)                                [ 4 ];
+	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
+	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_zero : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t urp_zero : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t tcp_res_flags : 4;     // =:= irregular(4)                                [ 4 ];
 
-	u_int8_t tcp_ecn_flags : 2;     // =:= irregular(2)                                [ 2 ];
-	u_int8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t rsf_flags : 3;         // =:= irregular(3)                                [ 3 ];
+	uint8_t tcp_ecn_flags : 2;     // =:= irregular(2)                                [ 2 ];
+	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t rsf_flags : 3;         // =:= irregular(3)                                [ 3 ];
 
 #else
 #error "Adjust your <bits/endian.h> defines"
 #endif
 
-	u_int16_t msn;                   // =:= irregular(16)                               [ 16 ];
-	u_int32_t seq_number;            // =:= irregular(32)                               [ 32 ];
-//	u_int32_t	ack_number;          // =:= zero_or_irreg(ack_zero.CVALUE, 32)          [ 0, 32 ];
-//	u_int16_t	window;              // =:= irregular(16)                               [ 16 ];
-//	u_int16_t	checksum;            // =:= irregular(16)                               [ 16 ];
-//	u_int16_t	urg_ptr;             // =:= zero_or_irreg(urp_zero.CVALUE, 16)          [ 0, 16 ];
-//	u_int16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
+	uint16_t msn;                   // =:= irregular(16)                               [ 16 ];
+	uint32_t seq_number;            // =:= irregular(32)                               [ 32 ];
+//	uint32_t	ack_number;          // =:= zero_or_irreg(ack_zero.CVALUE, 32)          [ 0, 32 ];
+//	uint16_t	window;              // =:= irregular(16)                               [ 16 ];
+//	uint16_t	checksum;            // =:= irregular(16)                               [ 16 ];
+//	uint16_t	urg_ptr;             // =:= zero_or_irreg(urp_zero.CVALUE, 16)          [ 0, 16 ];
+//	uint16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
 //	options                          // =:= list_tcp_options                            [ VARIABLE ];
 } tcp_dynamic_t;
 
@@ -750,54 +745,54 @@ typedef struct __attribute__((packed)) tcp_replicate
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
-	u_int8_t dst_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-	u_int8_t src_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-	u_int8_t list_present : 1;      // =:= irregular(1)                                [ 1 ];
-	u_int8_t window_presence : 1;   // =:= irregular(1)                                [ 1 ];
-	u_int8_t reserved : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t dst_port_presence : 2; // =:= irregular(2)                                [ 2 ];
+	uint8_t src_port_presence : 2; // =:= irregular(2)                                [ 2 ];
+	uint8_t list_present : 1;      // =:= irregular(1)                                [ 1 ];
+	uint8_t window_presence : 1;   // =:= irregular(1)                                [ 1 ];
+	uint8_t reserved : 1;          // =:= irregular(1)                                [ 1 ];
 
-	u_int8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
-	u_int8_t rsf_flags : 2;         // =:= rsf_index_enc                               [ 2 ];
-	u_int8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t urp_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
+	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
+	uint8_t rsf_flags : 2;         // =:= rsf_index_enc                               [ 2 ];
+	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t urp_presence : 1;      // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_presence : 1;      // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-	u_int8_t reserved : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t window_presence : 1;   // =:= irregular(1)                                [ 1 ];
-	u_int8_t list_present : 1;      // =:= irregular(1)                                [ 1 ];
-	u_int8_t src_port_presence : 2; // =:= irregular(2)                                [ 2 ];
-	u_int8_t dst_port_presence : 2; // =:= irregular(2)                                [ 2 ];
+	uint8_t reserved : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t window_presence : 1;   // =:= irregular(1)                                [ 1 ];
+	uint8_t list_present : 1;      // =:= irregular(1)                                [ 1 ];
+	uint8_t src_port_presence : 2; // =:= irregular(2)                                [ 2 ];
+	uint8_t dst_port_presence : 2; // =:= irregular(2)                                [ 2 ];
 
-	u_int8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	u_int8_t urp_presence : 1;      // =:= irregular(1)                                [ 1 ];
-	u_int8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
-	u_int8_t rsf_flags : 2;         // =:= rsf_index_enc                               [ 2 ];
-	u_int8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
+	uint8_t ack_stride_flag : 1;   // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_presence : 1;      // =:= irregular(1)                                [ 1 ];
+	uint8_t urp_presence : 1;      // =:= irregular(1)                                [ 1 ];
+	uint8_t urg_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t ack_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t psh_flag : 1;          // =:= irregular(1)                                [ 1 ];
+	uint8_t rsf_flags : 2;         // =:= rsf_index_enc                               [ 2 ];
+	uint8_t ecn_used : 1;          // =:= one_bit_choice                              [ 1 ];
 
 #else
 #error "Adjust your <bits/endian.h> defines"
 #endif
 
-	u_int16_t msn;                   // =:= irregular(16)                               [ 16 ];
-	u_int32_t seq_number;            // =:= irregular(32)                               [ 32 ];
-//	u_int16_t	src_port;            // =:= port_replicate(src_port_presence)           [ 0, 8, 16 ];
-//	u_int16_t	dst_port;            // =:= port_replicate(dst_port_presence)           [ 0, 8, 16 ];
-//	u_int16_t	window;              // =:= static_or_irreg(window_presence, 16)        [ 0, 16 ];
-//	u_int16_t	urg_point;           // =:= static_or_irreg(urp_presence, 16)           [ 0, 16 ];
-//	u_int32_t	ack_number;          // =:= static_or_irreg(ack_presence, 32)           [ 0, 32 ];
-//	u_int8_t		ecn_padding:2;       // =:= optional_2bit_padding(ecn_used.CVALUE)      [ 0, 2 ];
-//	u_int8_t		tcp_res_flags:4;     // =:= static_or_irreg(ecn_used.CVALUE, 4)         [ 0, 4 ];
-//	u_int8_t		tcp_ecn_flags:2;     // =:= static_or_irreg(ecn_used.CVALUE, 2)         [ 0, 2 ];
-//	u_int16_t	checksum;            // =:= irregular(16)                               [ 16 ];
-//	u_int16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
+	uint16_t msn;                   // =:= irregular(16)                               [ 16 ];
+	uint32_t seq_number;            // =:= irregular(32)                               [ 32 ];
+//	uint16_t	src_port;            // =:= port_replicate(src_port_presence)           [ 0, 8, 16 ];
+//	uint16_t	dst_port;            // =:= port_replicate(dst_port_presence)           [ 0, 8, 16 ];
+//	uint16_t	window;              // =:= static_or_irreg(window_presence, 16)        [ 0, 16 ];
+//	uint16_t	urg_point;           // =:= static_or_irreg(urp_presence, 16)           [ 0, 16 ];
+//	uint32_t	ack_number;          // =:= static_or_irreg(ack_presence, 32)           [ 0, 32 ];
+//	uint8_t		ecn_padding:2;       // =:= optional_2bit_padding(ecn_used.CVALUE)      [ 0, 2 ];
+//	uint8_t		tcp_res_flags:4;     // =:= static_or_irreg(ecn_used.CVALUE, 4)         [ 0, 4 ];
+//	uint8_t		tcp_ecn_flags:2;     // =:= static_or_irreg(ecn_used.CVALUE, 2)         [ 0, 2 ];
+//	uint16_t	checksum;            // =:= irregular(16)                               [ 16 ];
+//	uint16_t	ack_stride;          // =:= static_or_irreg(ack_stride_flag.CVALUE, 16) [ 0, 16 ];
 //	options                          // =:= tcp_list_presence_enc(list_present.CVALUE)  [ VARIABLE ];
 
 } tcp_replicate_t;
@@ -841,59 +836,59 @@ typedef struct __attribute__((packed)) co_common
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
-	u_int8_t ttl_hopl_outer_flag : 1;   // =:= compressed_value(1, ttl_irregular_chain_flag) [ 1 ];
-	u_int8_t discriminator : 7;         // =:= '1111101'
+	uint8_t ttl_hopl_outer_flag : 1;   // =:= compressed_value(1, ttl_irregular_chain_flag) [ 1 ];
+	uint8_t discriminator : 7;         // =:= '1111101'
 
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                     [ 4 ];
-	u_int8_t rsf_flags : 2;             // =:= rsf_index_enc                                 [ 2 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ack_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                     [ 4 ];
+	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                 [ 2 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t ack_flag : 1;              // =:= irregular(1)                                  [ 1 ];
 
-	u_int8_t urg_ptr_present : 1;       // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ip_id_indicator : 1;       // =:= irregular(1)                                  [ 1 ];
-	u_int8_t window_indicator : 1;      // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ack_stride_indicator : 1;  // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ack_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
-	u_int8_t seq_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
+	uint8_t urg_ptr_present : 1;       // =:= irregular(1)                                  [ 1 ];
+	uint8_t ip_id_indicator : 1;       // =:= irregular(1)                                  [ 1 ];
+	uint8_t window_indicator : 1;      // =:= irregular(1)                                  [ 1 ];
+	uint8_t ack_stride_indicator : 1;  // =:= irregular(1)                                  [ 1 ];
+	uint8_t ack_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
+	uint8_t seq_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
 
-	u_int8_t urg_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ip_id_behavior : 2;        // =:= ip_id_behavior_choice(true)                   [ 2 ];
-	u_int8_t list_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ttl_hopl_present : 1;      // =:= irregular(1)                                  [ 1 ];
-	u_int8_t dscp_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ecn_used : 1;              // =:= one_bit_choice                                [ 1 ];
-	u_int8_t reserved : 1;              // =:= compressed_value(1, 0)                        [ 1 ];
+	uint8_t urg_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t ip_id_behavior : 2;        // =:= ip_id_behavior_choice(true)                   [ 2 ];
+	uint8_t list_present : 1;          // =:= irregular(1)                                  [ 1 ];
+	uint8_t ttl_hopl_present : 1;      // =:= irregular(1)                                  [ 1 ];
+	uint8_t dscp_present : 1;          // =:= irregular(1)                                  [ 1 ];
+	uint8_t ecn_used : 1;              // =:= one_bit_choice                                [ 1 ];
+	uint8_t reserved : 1;              // =:= compressed_value(1, 0)                        [ 1 ];
 
-	u_int8_t header_crc : 7;            // =:= crc7(THIS.UVALUE,THIS.ULENGTH)                [ 7 ];
-	u_int8_t df : 1;                    // =:= dont_fragment(version.UVALUE)                 [ 1 ];
+	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE,THIS.ULENGTH)                [ 7 ];
+	uint8_t df : 1;                    // =:= dont_fragment(version.UVALUE)                 [ 1 ];
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
 
-	u_int8_t discriminator : 7;         // =:= '1111101'
-	u_int8_t ttl_hopl_outer_flag : 1;   // =:= compressed_value(1, ttl_irregular_chain_flag) [ 1 ];
+	uint8_t discriminator : 7;         // =:= '1111101'
+	uint8_t ttl_hopl_outer_flag : 1;   // =:= compressed_value(1, ttl_irregular_chain_flag) [ 1 ];
 
-	u_int8_t ack_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                  [ 1 ];
-	u_int8_t rsf_flags : 2;             // =:= rsf_index_enc                                 [ 2 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                     [ 4 ];
+	uint8_t ack_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                 [ 2 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                     [ 4 ];
 
-	u_int8_t seq_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
-	u_int8_t ack_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
-	u_int8_t ack_stride_indicator : 1;  // =:= irregular(1)                                  [ 1 ];
-	u_int8_t window_indicator : 1;      // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ip_id_indicator : 1;       // =:= irregular(1)                                  [ 1 ];
-	u_int8_t urg_ptr_present : 1;       // =:= irregular(1)                                  [ 1 ];
+	uint8_t seq_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
+	uint8_t ack_indicator : 2;         // =:= irregular(2)                                  [ 2 ];
+	uint8_t ack_stride_indicator : 1;  // =:= irregular(1)                                  [ 1 ];
+	uint8_t window_indicator : 1;      // =:= irregular(1)                                  [ 1 ];
+	uint8_t ip_id_indicator : 1;       // =:= irregular(1)                                  [ 1 ];
+	uint8_t urg_ptr_present : 1;       // =:= irregular(1)                                  [ 1 ];
 
-	u_int8_t reserved : 1;              // =:= compressed_value(1, 0)                        [ 1 ];
-	u_int8_t ecn_used : 1;              // =:= one_bit_choice                                [ 1 ];
-	u_int8_t dscp_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ttl_hopl_present : 1;      // =:= irregular(1)                                  [ 1 ];
-	u_int8_t list_present : 1;          // =:= irregular(1)                                  [ 1 ];
-	u_int8_t ip_id_behavior : 2;        // =:= ip_id_behavior_choice(true)                   [ 2 ];
-	u_int8_t urg_flag : 1;              // =:= irregular(1)                                  [ 1 ];
+	uint8_t reserved : 1;              // =:= compressed_value(1, 0)                        [ 1 ];
+	uint8_t ecn_used : 1;              // =:= one_bit_choice                                [ 1 ];
+	uint8_t dscp_present : 1;          // =:= irregular(1)                                  [ 1 ];
+	uint8_t ttl_hopl_present : 1;      // =:= irregular(1)                                  [ 1 ];
+	uint8_t list_present : 1;          // =:= irregular(1)                                  [ 1 ];
+	uint8_t ip_id_behavior : 2;        // =:= ip_id_behavior_choice(true)                   [ 2 ];
+	uint8_t urg_flag : 1;              // =:= irregular(1)                                  [ 1 ];
 
-	u_int8_t df : 1;                    // =:= dont_fragment(version.UVALUE)                 [ 1 ];
-	u_int8_t header_crc : 7;            // =:= crc7(THIS.UVALUE,THIS.ULENGTH)                [ 7 ];
+	uint8_t df : 1;                    // =:= dont_fragment(version.UVALUE)                 [ 1 ];
+	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE,THIS.ULENGTH)                [ 7 ];
 
 #endif
 
@@ -919,19 +914,19 @@ typedef struct __attribute__((packed)) co_common
 typedef struct __attribute__((packed)) rnd_1
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t seq_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
-	u_int8_t discriminator : 6;         // =:= '101110'                                       [ 6 ];
-	u_int16_t seq_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t seq_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t discriminator : 6;         // =:= '101110'                                       [ 6 ];
+	uint16_t seq_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 6;         // =:= '101110'                                       [ 6 ];
-	u_int8_t seq_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
-	u_int16_t seq_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t discriminator : 6;         // =:= '101110'                                       [ 6 ];
+	uint8_t seq_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
+	uint16_t seq_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } rnd_1_t;
 
@@ -945,17 +940,17 @@ typedef struct __attribute__((packed)) rnd_1
 typedef struct __attribute__((packed)) rnd_2
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
-	u_int8_t discriminator : 4;         // =:= '1100'                                         [ 4 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1100'                                         [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1100'                                         [ 4 ];
-	u_int8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t discriminator : 4;         // =:= '1100'                                         [ 4 ];
+	uint8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } rnd_2_t;
 
@@ -969,18 +964,18 @@ typedef struct __attribute__((packed)) rnd_2
 typedef struct __attribute__((packed)) rnd_3
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
-	u_int8_t discriminator : 1;         // =:= '0'                                            [ 4 ];
-	u_int8_t ack_number2 : 8;           // =:= lsb(15, 8191)                                  [ 15 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t discriminator : 1;         // =:= '0'                                            [ 4 ];
+	uint8_t ack_number2 : 8;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t discriminator : 1;        // =:= '0'                                            [ 4 ];
-	u_int16_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint16_t discriminator : 1;        // =:= '0'                                            [ 4 ];
+	uint16_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } rnd_3_t;
 
@@ -996,19 +991,19 @@ typedef struct __attribute__((packed)) rnd_3
 typedef struct __attribute__((packed)) rnd_4
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
-	u_int8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
+	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
 
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
-	u_int8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
+	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
 
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } rnd_4_t;
 
@@ -1022,27 +1017,27 @@ typedef struct __attribute__((packed)) rnd_4
 typedef struct __attribute__((packed)) rnd_5
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
 
-	u_int8_t seq_number1 : 5;           // =:= lsb(15, 8191)                                  [ 15 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t seq_number1 : 5;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 
-	u_int8_t seq_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t seq_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
 
-	u_int8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
-	u_int8_t seq_number3 : 1;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t seq_number3 : 1;           // =:= lsb(15, 8191)                                  [ 15 ];
 
-	u_int8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 
-	u_int32_t header_crc : 3;           // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int32_t seq_number : 14;          // =:= lsb(14, 8191)                                  [ 14 ];
-	u_int32_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint32_t header_crc : 3;           // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint32_t seq_number : 14;          // =:= lsb(14, 8191)                                  [ 14 ];
+	uint32_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
 #endif
 } rnd_5_t;
 
@@ -1059,21 +1054,21 @@ typedef struct __attribute__((packed)) rnd_5
 typedef struct __attribute__((packed)) rnd_6
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 #endif
-	u_int16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
 #endif
 } rnd_6_t;
 
@@ -1087,23 +1082,23 @@ typedef struct __attribute__((packed)) rnd_6
 typedef struct __attribute__((packed)) rnd_7
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ack_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
-	u_int8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
-	u_int16_t ack_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t ack_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
+	uint16_t ack_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
-	u_int8_t ack_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
-	u_int16_t ack_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
+	uint8_t ack_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
+	uint16_t ack_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
 #endif
-	u_int16_t window;                   // =:= irregular(16)                                  [ 16 ];
+	uint16_t window;                   // =:= irregular(16)                                  [ 16 ];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } rnd_7_t;
 
@@ -1117,30 +1112,30 @@ typedef struct __attribute__((packed)) rnd_7
 typedef struct __attribute__((packed)) rnd_8
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
-	u_int8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	u_int8_t discriminator : 5;         // =:= '10110'                                        [ 5 ];
+	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
+	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
+	uint8_t discriminator : 5;         // =:= '10110'                                        [ 5 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 5;         // =:= '10110'                                        [ 5 ];
-	u_int8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	u_int8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
+	uint8_t discriminator : 5;         // =:= '10110'                                        [ 5 ];
+	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
+	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t msn1 : 1;                  // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	u_int8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	u_int8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn2 : 3;                  // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t msn1 : 1;                  // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
+	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
+	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn2 : 3;                  // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t header_crc : 7;           // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	u_int16_t msn : 4;                  // =:= lsb(4, 4)                                      [ 4 ];
-	u_int16_t psh_flag : 1;             // =:= irregular(1)                                   [ 1 ];
-	u_int16_t ttl_hopl : 3;             // =:= lsb(3, 3)                                      [ 3 ];
-	u_int16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
+	uint16_t header_crc : 7;           // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
+	uint16_t msn : 4;                  // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t psh_flag : 1;             // =:= irregular(1)                                   [ 1 ];
+	uint16_t ttl_hopl : 3;             // =:= lsb(3, 3)                                      [ 3 ];
+	uint16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
 #endif
-	u_int16_t seq_number;               // =:= lsb(16, 65535)                                 [ 16 ];
-	u_int16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t seq_number;               // =:= lsb(16, 65535)                                 [ 16 ];
+	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
 //	options                             // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
 } rnd_8_t;
 
@@ -1154,21 +1149,21 @@ typedef struct __attribute__((packed)) rnd_8
 typedef struct __attribute__((packed)) seq_1
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	u_int8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1010'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
 #endif
-	u_int16_t seq_number;               // =:= lsb(16, 32767)                                 [ 16 ];
+	uint16_t seq_number;               // =:= lsb(16, 32767)                                 [ 16 ];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_1_t;
 
@@ -1182,23 +1177,23 @@ typedef struct __attribute__((packed)) seq_1
 typedef struct __attribute__((packed)) seq_2
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id1 : 3;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)        [ 3 ];
-	u_int8_t discriminator : 5;         // =:= '11010'                                        [ 5 ];
-	u_int8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
-	u_int8_t ip_id2 : 4;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)        [ 4 ];
+	uint8_t ip_id1 : 3;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)        [ 3 ];
+	uint8_t discriminator : 5;         // =:= '11010'                                        [ 5 ];
+	uint8_t seq_number_scaled : 4;     // =:= lsb(4, 7)                                      [ 4 ];
+	uint8_t ip_id2 : 4;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)        [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t discriminator : 5;        // =:= '11010'                                        [ 5 ];
-	u_int16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
-	u_int16_t seq_number_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
+	uint16_t discriminator : 5;        // =:= '11010'                                        [ 5 ];
+	uint16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
+	uint16_t seq_number_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_2_t;
 
@@ -1212,21 +1207,21 @@ typedef struct __attribute__((packed)) seq_2
 typedef struct __attribute__((packed)) seq_3
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	u_int8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
 #endif
-	u_int16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_3_t;
 
@@ -1240,22 +1235,22 @@ typedef struct __attribute__((packed)) seq_3
 typedef struct __attribute__((packed)) seq_4
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
-	u_int8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
-	u_int8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
+	uint8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
+	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
-	u_int8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
-	u_int8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
+	uint8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
+	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_4_t;
 
@@ -1269,22 +1264,22 @@ typedef struct __attribute__((packed)) seq_4
 typedef struct __attribute__((packed)) seq_5
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	u_int8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
 #endif
-	u_int16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
-	u_int16_t seq_number;               // =:= lsb(16, 32767)                                 [ 16 ];
+	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t seq_number;               // =:= lsb(16, 32767)                                 [ 16 ];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_5_t;
 
@@ -1298,24 +1293,24 @@ typedef struct __attribute__((packed)) seq_5
 typedef struct __attribute__((packed)) seq_6
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t seq_number_scaled1 : 3;    // =:= lsb(4, 7)                                      [ 3 ];
-	u_int8_t discriminator : 5;         // =:= '11011'                                        [ 5 ];
-	u_int8_t ip_id : 7;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
-	u_int8_t seq_number_scaled2 : 1;    // =:= lsb(4, 7)                                      [ 1 ];
+	uint8_t seq_number_scaled1 : 3;    // =:= lsb(4, 7)                                      [ 3 ];
+	uint8_t discriminator : 5;         // =:= '11011'                                        [ 5 ];
+	uint8_t ip_id : 7;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
+	uint8_t seq_number_scaled2 : 1;    // =:= lsb(4, 7)                                      [ 1 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t discriminator : 5;        // =:= '11011'                                        [ 5 ];
-	u_int16_t seq_number_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
-	u_int16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
+	uint16_t discriminator : 5;        // =:= '11011'                                        [ 5 ];
+	uint16_t seq_number_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
+	uint16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
 #endif
-	u_int16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_6_t;
 
@@ -1329,33 +1324,33 @@ typedef struct __attribute__((packed)) seq_6
 typedef struct __attribute__((packed)) seq_7
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t window1 : 4;      // =:= lsb(15, 16383)                                 [ 15 ];
-	u_int8_t discriminator : 4;   // =:= '1100'                                         [ 4 ];
+	uint8_t window1 : 4;      // =:= lsb(15, 16383)                                 [ 15 ];
+	uint8_t discriminator : 4;   // =:= '1100'                                         [ 4 ];
 
-	u_int8_t window2;
+	uint8_t window2;
 
-	u_int8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
-	u_int8_t window3 : 3;
+	uint8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
+	uint8_t window3 : 3;
 
-	u_int16_t ack_number;      // =:= lsb(16, 32767)                                 [ 16 ];
+	uint16_t ack_number;      // =:= lsb(16, 32767)                                 [ 16 ];
 
-	u_int8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	u_int8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;   // =:= '1100'                                         [ 4 ];
-	u_int8_t window1 : 4;      // =:= lsb(15, 16383)                                 [ 15 ];
+	uint8_t discriminator : 4;   // =:= '1100'                                         [ 4 ];
+	uint8_t window1 : 4;      // =:= lsb(15, 16383)                                 [ 15 ];
 
-	u_int8_t window2;
+	uint8_t window2;
 
-	u_int8_t window3 : 3;
-	u_int8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
+	uint8_t window3 : 3;
+	uint8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
 
-	u_int16_t ack_number;      // =:= lsb(16, 32767)                                 [ 16 ];
+	uint16_t ack_number;      // =:= lsb(16, 32767)                                 [ 16 ];
 
-	u_int8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
+	uint8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 #endif
 } seq_7_t;
 
@@ -1369,43 +1364,43 @@ typedef struct __attribute__((packed)) seq_7
 typedef struct __attribute__((packed)) seq_8
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
-	u_int8_t discriminator : 4;         // =:= '1011'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1011'                                         [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t discriminator : 4;         // =:= '1011'                                         [ 4 ];
-	u_int8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
+	uint8_t discriminator : 4;         // =:= '1011'                                         [ 4 ];
+	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	u_int8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
+	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
-	u_int8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
+	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
+	uint8_t header_crc : 7;            // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	u_int8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
-	u_int8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
+	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
+	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
+	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
-	u_int8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	u_int8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
+	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
-	u_int16_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
+	uint16_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
 #endif
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t seq_number1 : 6;           // =:= lsb(14, 8191)                                  [ 14 ];
-	u_int8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
-	u_int8_t seq_number2 : 8;           // =:= lsb(14, 8191)                                  [ 14 ];
+	uint8_t seq_number1 : 6;           // =:= lsb(14, 8191)                                  [ 14 ];
+	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
+	uint8_t seq_number2 : 8;           // =:= lsb(14, 8191)                                  [ 14 ];
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int16_t rsf_flags : 2;            // =:= rsf_index_enc                                  [ 2 ];
-	u_int16_t seq_number : 14;          // =:= lsb(14, 8191)                                  [ 14 ];
+	uint16_t rsf_flags : 2;            // =:= rsf_index_enc                                  [ 2 ];
+	uint16_t seq_number : 14;          // =:= lsb(14, 8191)                                  [ 14 ];
 #endif
 //	options                             // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
 } seq_8_t;
@@ -1420,8 +1415,8 @@ typedef struct __attribute__((packed)) seq_8
 typedef union
 {
 	unsigned int uint;
-	u_int8_t *uint8;
-	u_int16_t *uint16;
+	uint8_t *uint8;
+	uint16_t *uint16;
 	base_header_ip_vx_t *ipvx;
 	base_header_ip_v4_t *ipv4;
 	base_header_ip_v6_t *ipv6;
@@ -1440,12 +1435,12 @@ typedef union
 
 typedef struct __attribute__((packed))
 {
-	u_int16_t uint16;
+	uint16_t uint16;
 } unaligned_uint16_t;
 
 typedef struct __attribute__((packed))
 {
-	u_int32_t uint32;
+	uint32_t uint32;
 } unaligned_uint32_t;
 
 #endif
@@ -1458,9 +1453,9 @@ typedef struct __attribute__((packed))
 typedef union
 {
 	unsigned int uint;
-	u_int8_t *uint8;
-	u_int16_t *uint16;
-	u_int32_t *uint32;
+	uint8_t *uint8;
+	uint16_t *uint16;
+	uint32_t *uint32;
 
 #if defined(__arm__) || defined(__ARM_EABI__)
 	unaligned_uint16_t *ua16;
@@ -1558,8 +1553,8 @@ typedef union
 
 typedef union __attribute__((packed))
 {
-	u_int8_t uint8[2];
-	u_int16_t uint16;
+	uint8_t uint8[2];
+	uint16_t uint16;
 } WB_t;
 
 
@@ -1570,9 +1565,9 @@ typedef union __attribute__((packed))
 
 typedef union __attribute__((packed))
 {
-	u_int8_t uint8[4];
-	u_int16_t uint16[2];
-	u_int32_t uint32;
+	uint8_t uint8[4];
+	uint16_t uint16[2];
+	uint32_t uint32;
 } LWB_t;
 
 #endif // TCP_H
