@@ -3268,7 +3268,7 @@ int code_CO_packet(struct c_context *const context,
 				}
 
 				/* skip IPv4 header */
-				rohc_debugf(3, "skip %zd-byte IPv4 header with Protocol 0x%02x\n",
+				rohc_debugf(3, "skip %d-byte IPv4 header with Protocol 0x%02x\n",
 				            base_header.ipv4->header_length << 2, protocol);
 				remain_data_len -= base_header.ipv4->header_length << 2;
 				base_header.uint8 += base_header.ipv4->header_length << 2;
@@ -3305,7 +3305,7 @@ int code_CO_packet(struct c_context *const context,
 				/* parse IPv6 extension headers */
 				while(  ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
 				{
-					rohc_debugf(3, "skip %zd-byte IPv6 extension header with Next "
+					rohc_debugf(3, "skip %d-byte IPv6 extension header with Next "
 					            "Header 0x%02x\n", ip_context.v6_option->option_length,
 					            protocol);
 					protocol = base_header.ipv6_opt->next_header;
