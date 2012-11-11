@@ -45,6 +45,10 @@ test_*.sh.log
 ./test/functional/context_reuse/test_context_reuse.exe
 ./test/functional/rtp_uor2_disambiguation/test_rtp_uor2_disambiguation
 ./test/functional/rtp_uor2_disambiguation/test_rtp_uor2_disambiguation.exe
+./test/functional/rtp_detection/test_rtp_ports
+./test/functional/rtp_detection/test_rtp_ports.exe
+./test/functional/rtp_detection/test_rtp_callback
+./test/functional/rtp_detection/test_rtp_callback.exe
 ./test/robustness/empty_payload/test_empty_payload
 ./test/robustness/empty_payload/test_empty_payload.exe
 ./test/robustness/damaged_packet/test_damaged_packet

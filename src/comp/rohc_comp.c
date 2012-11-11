@@ -83,8 +83,6 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
                                                           const struct ip_packet *inner_ip,
                                                           const int protocol);
 
-static int c_is_in_list(struct c_profile *profile, int port);
-
 
 /*
  * Prototypes of private functions related to ROHC compression contexts
@@ -181,6 +179,12 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 		comp->profiles[i] = 0;
 	}
 
+	/* reset the list of UDP ports for RTP */
+	for(i = 0; i < MAX_RTP_PORTS; i++)
+	{
+		comp->rtp_ports[i] = 0;
+	}
+
 	comp->num_packets = 0;
 	comp->total_compressed_size = 0;
 	comp->total_uncompressed_size = 0;
@@ -208,6 +212,22 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	/* set default callback for random numbers */
 	comp->random_cb = rohc_comp_get_random_default;
 	comp->random_cb_ctxt = NULL;
+
+	/* set default UDP ports dedicated to RTP traffic (for compatibility) */
+	{
+		const size_t default_rtp_ports_nr = 5;
+		unsigned int default_rtp_ports[] =
+			{ 1234, 36780, 33238, 5020, 5002 };
+
+		/* add default ports to the list of RTP ports */
+		for(i = 0; i < default_rtp_ports_nr; i++)
+		{
+			if(!rohc_comp_add_rtp_port(comp, default_rtp_ports[i]))
+			{
+				goto destroy_comp;
+			}
+		}
+	}
 
 	/* init the tables for fast CRC computation */
 	is_fine = rohc_crc_init_table(comp->crc_table_2, ROHC_CRC_TYPE_2);
@@ -817,6 +837,36 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 
 
 /**
+ * @brief Set the RTP detection callback function
+ *
+ * @param comp        The ROHC compressor
+ * @param callback    The callback function used to detect RTP packets
+ *                    The callback is deactivated if NULL is given as parameter
+ * @param rtp_private A pointer to an external memory area
+ *                    provided and used by the callback user
+ * @return            true on success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
+                                    rohc_rtp_detection_callback_t callback,
+                                    void *const rtp_private)
+{
+	/* sanity check on compressor */
+	if(comp == NULL)
+	{
+		return false;
+	}
+
+	/* set RTP detection callback */
+	comp->rtp_callback = callback;
+	comp->rtp_private = rtp_private;
+
+	return true;
+}
+
+
+/**
  * @brief Activate a profile for a compressor
  *
  * @param comp    The ROHC compressor
@@ -939,6 +989,236 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 			comp->medium.max_cid = ROHC_SMALL_CID_MAX;
 		}
 	}
+}
+
+
+/**
+ * @brief Add a port to the list of UDP ports dedicated for RTP traffic
+ *
+ * @param comp  The ROHC compressor
+ * @param port  The UDP port to add in the list
+ * @return      true on success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_add_rtp_port(struct rohc_comp *const comp,
+                            const unsigned int port)
+{
+	unsigned int idx;
+
+	/* sanity check on compressor */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* check port validity */
+	if(port <= 0 || port > 0xffff)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "invalid port number (%u)\n", port);
+		goto error;
+	}
+
+	/* explore the table (table is sorted in ascending order)
+	   and insert the new port if possible */
+	for(idx = 0; idx < MAX_RTP_PORTS; idx++)
+	{
+		/* if the current entry in table is empty, put the new port in it */
+		if(comp->rtp_ports[idx] == 0)
+		{
+			comp->rtp_ports[idx] = port;
+			break;
+		}
+
+		/* the port should not already be in the list */
+		if(comp->rtp_ports[idx] == port)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "port %u is already in the list\n", port);
+			goto error;
+		}
+
+		/* if the port is less than the one in table at the current index,
+		   insert the port in the table in order to get the port list in
+		   increasing order */
+		if(port < comp->rtp_ports[idx])
+		{
+			unsigned int i;
+
+			/* move the ports already in the table by one index
+			   to make room for the new port */
+			for(i = MAX_RTP_PORTS - 2; i > idx; i--)
+			{
+				comp->rtp_ports[i] = comp->rtp_ports[i - 1];
+			}
+
+			/* insert the new port in table at the current index */
+			comp->rtp_ports[idx] = port;
+
+			break;
+		}
+	}
+
+	/* was the table full? */
+	if(idx == MAX_RTP_PORTS)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "can not add a new RTP port, the list is full\n");
+		goto error;
+	}
+
+	/* everything is fine */
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "port %u added to the UDP port list for RTP traffic\n", port);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Remove a port from the list of UDP ports dedicated to RTP traffic
+ *
+ * @param comp  The ROHC compressor
+ * @param port  The UDP port to remove
+ * @return      true on success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
+                               const unsigned int port)
+{
+	unsigned int idx;
+	bool is_found = false;
+
+	/* sanity check on compressor */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* check port validity */
+	if(port <= 0 || port > 0xffff)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "invalid port number (%u)\n", port);
+		goto error;
+	}
+
+	if(comp->rtp_ports[0] == 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "can not remove UDP port %u, the list is empty\n", port);
+		goto error;
+	}
+
+	/* explore the table (table is sorted in ascending order)
+	   and remove the port if found */
+	for(idx = 0; idx < MAX_RTP_PORTS && !is_found; idx++)
+	{
+		int i;
+
+rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "test port %u\n", comp->rtp_ports[idx]);
+
+		/* if the current entry in table is empty or if the current entry
+		   in table is greater than the port to remove, stop search */
+		if(comp->rtp_ports[idx] == 0 || comp->rtp_ports[idx] > port)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "port %u is not in the list\n", port);
+			goto error;
+		}
+
+		/* skip the table entry if the searched port is greater */
+		if(port > comp->rtp_ports[idx])
+		{
+			continue;
+		}
+
+		/* the port matches, remove it from the table */
+		/* move other entries to erase the current entry */
+		for(i = idx; i < (MAX_RTP_PORTS - 1); i++)
+		{
+			comp->rtp_ports[i] = comp->rtp_ports[i + 1];
+		}
+
+		/* be sure to mark the last entry as unused */
+		comp->rtp_ports[MAX_RTP_PORTS - 1] = 0;
+
+		/* deactivate all contexts which used this port */
+		for(i = 0; i < comp->num_contexts; i++)
+		{
+			if(comp->contexts[i].used &&
+			   comp->contexts[i].profile->use_udp_port(&comp->contexts[i],
+			                                           htons(port)))
+			{
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "destroy context with CID %d because it uses "
+				           "UDP port %u that is removed from the list of "
+				           "RTP ports\n", i, port);
+				comp->contexts[i].profile->destroy(&comp->contexts[i]);
+				comp->contexts[i].used = 0;
+				comp->num_contexts_used--;
+			}
+		}
+
+		/* the port was found */
+		is_found = true;
+	}
+
+	/* all the list was explored, the port is not in the list */
+	if(idx == MAX_RTP_PORTS)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "port %u is not in the list\n", port);
+		goto error;
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "port %u removed from the RTP port list\n", port);
+
+	/* everything is fine */
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Reset the list of dedicated RTP ports
+ *
+ * @param comp  The ROHC compressor
+ * @return      true on success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_reset_rtp_ports(struct rohc_comp *const comp)
+{
+	unsigned int idx;
+
+	/* sanity check on compressor */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* set all the table entries to 0 stopping on the first unused entry */
+	for(idx = 0; idx < MAX_RTP_PORTS && comp->rtp_ports[idx] != 0; idx++)
+	{
+		comp->rtp_ports[idx] = 0;
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "RTP port list is now reset\n");
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -1628,30 +1908,6 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
 
 
 /**
- * @brief Check whether an UDP port is associated with a given profile or not
- *
- * @param profile  The ROHC profile
- * @param port     The UDP port
- * @return         1 if UDP port is associated with profile,
- *                 0 otherwise
- */
-static int c_is_in_list(struct c_profile *profile, int port)
-{
-	int match = 0;
-	int i;
-
-	i = 0;
-	while(profile->ports[i] != 0 && !match)
-	{
-		match = (port == profile->ports[i]);
-		i++;
-	}
-
-	return match;
-}
-
-
-/**
  * @brief Find out a ROHC profile given an IP protocol ID
  *
  * @param comp      The ROHC compressor
@@ -1673,6 +1929,8 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 	/* test all compression profiles */
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
+		bool check_profile;
+
 		/* skip profile if the profile is not enabled */
 		if(!comp->profiles[i])
 		{
@@ -1682,102 +1940,19 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 			continue;
 		}
 
-		/* for all profiles except the uncompressed profile, skip the profile:
-		    - if the outer IP header of the packet is not IPv4 nor IPv6,
-		    - if the outer IP header of the packet is an IPv4 fragment,
-		    - if the inner IP header of the packet is not IPv4 nor IPv6,
-		    - if the inner IP header of the packet is an IPv4 fragment. */
-		if(c_profiles[i]->id != ROHC_PROFILE_UNCOMPRESSED)
-		{
-			/* check outer IP header */
-			if(outer_ip->version != IPV4 && outer_ip->version != IPV6)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "skip profile '%s' (0x%04x) because it only support "
-				           "IPv4 or IPv6\n", c_profiles[i]->description,
-				           c_profiles[i]->id);
-				continue;
-			}
-
-			if(ip_is_fragment(outer_ip))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "skip profile '%s' (0x%04x) because it does not "
-				           "support IPv4 fragments\n", c_profiles[i]->description,
-				           c_profiles[i]->id);
-				continue;
-			}
-
-			/* check inner IP header if present */
-			if(inner_ip != NULL)
-			{
-				if(inner_ip->version != IPV4 && inner_ip->version != IPV6)
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "skip profile '%s' (0x%04x) because it only support "
-					           "IPv4 or IPv6\n", c_profiles[i]->description,
-					           c_profiles[i]->id);
-					continue;
-				}
-
-				if(ip_is_fragment(inner_ip))
-				{
-					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-					           "skip profile '%s' (0x%04x) because it does not "
-					           "support IPv4 fragments\n", c_profiles[i]->description,
-					           c_profiles[i]->id);
-					continue;
-				}
-			}
-		}
-
-		/* skip profile if the profile handles a specific transport protocol and
-		   this protocol does not match the transport protocol of the packet */
-		if(c_profiles[i]->protocol != 0 && c_profiles[i]->protocol != protocol)
+		/* does the profile accept the packet? */
+		check_profile = c_profiles[i]->check_profile(comp, outer_ip, inner_ip,
+		                                             protocol);
+		if(!check_profile)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "skip profile '%s' (0x%04x) because transport protocol "
-			           "does not match\n", c_profiles[i]->description,
+			           "skip profile '%s' (0x%04x) because it does not "
+			           "match packet\n", c_profiles[i]->description,
 			           c_profiles[i]->id);
 			continue;
 		}
 
-		/* skip profile if it uses UDP as transport protocol and the UDP ports
-		   are not reserved for the profile */
-		if(c_profiles[i]->protocol == ROHC_IPPROTO_UDP &&
-		   c_profiles[i]->ports != NULL &&
-		   c_profiles[i]->ports[0] != 0)
-		{
-			struct udphdr *udp;
-			int port;
-
-			/* retrieve the UDP header after the last IP header */
-			if(inner_ip == NULL)
-			{
-				udp = (struct udphdr *) ip_get_next_layer(outer_ip);
-			}
-			else
-			{
-				udp = (struct udphdr *) ip_get_next_layer(inner_ip);
-			}
-
-			/* retrieve the destination port in the UDP header */
-			port = ntohs(udp->dest);
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "UDP port = 0x%x (%u)\n", port, port);
-
-			/* check if UDP port is reserved by the ROHC profile */
-			if(!c_is_in_list(c_profiles[i], port))
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "skip profile '%s' (0x%04x) because UDP destination port "
-				           "is not reserved for profile\n", c_profiles[i]->description,
-				           c_profiles[i]->id);
-				continue;
-			}
-		}
-
-		/* the packet is compatible with the profile, let's go with it ! */
+		/* the packet is compatible with the profile, let's go with it! */
 		return c_profiles[i];
 	}
 

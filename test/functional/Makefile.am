@@ -8,5 +8,6 @@ SUBDIRS = \
 	feedback2 \
 	decompress_feedback_only \
 	context_reuse \
-	rtp_uor2_disambiguation
+	rtp_uor2_disambiguation \
+	rtp_detection
 

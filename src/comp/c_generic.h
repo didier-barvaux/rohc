@@ -368,6 +368,11 @@ int c_generic_create(struct c_context *const context,
                      const struct ip_packet *ip);
 void c_generic_destroy(struct c_context *const context);
 
+bool c_generic_check_profile(const struct rohc_comp *const comp,
+                             const struct ip_packet *const outer_ip,
+                             const struct ip_packet *const inner_ip,
+                             const uint8_t protocol);
+
 void change_mode(struct c_context *const context, const rohc_mode new_mode);
 void change_state(struct c_context *const context, const rohc_c_state new_state);
 
@@ -383,6 +388,9 @@ int c_generic_encode(struct c_context *const context,
 
 void c_generic_feedback(struct c_context *const context,
                         const struct c_feedback *feedback);
+
+bool c_generic_use_udp_port(const struct c_context *const context,
+                            const unsigned int port);
 
 void decide_state(struct c_context *const context);
 

@@ -250,6 +250,11 @@ static int generate_comp_stats_all(const int use_large_cid,
 	struct pcap_pkthdr header;
 	unsigned char *packet;
 
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+
+	unsigned int i;
 	int is_failure = 1;
 
 	/* open the source PCAP file */
@@ -323,6 +328,23 @@ static int generate_comp_stats_all(const int use_large_cid,
 		goto destroy_comp;
 	}
 
+	/* reset list of RTP ports for compressor */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
 	/* output the statistics columns names */
 	printf("STAT\t"
 	       "\"packet number\"\t"
@@ -391,7 +413,6 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
 	int rohc_size;
 	rohc_comp_last_packet_info2_t last_packet_info;
-	int ret;
 
 	/* check frame length */
 	if(header.len <= link_len || header.len != header.caplen)
@@ -443,8 +464,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	/* get some statistics about the last compressed packet */
 	last_packet_info.version_major = 0;
 	last_packet_info.version_minor = 0;
-	ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
-	if(ret != ROHC_OK)
+	if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
 	{
 		fprintf(stderr, "packet #%lu: cannot get stats about the last compressed "
 		        "packet\n", num_packet);

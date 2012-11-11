@@ -39,17 +39,19 @@
  * Constants and macros
  */
 
-/**
- * @brief The list of UDP ports associated with RTP streams
- *
- * The port numbers must be separated by a comma
- */
-#define RTP_PORTS  1234, 36780, 33238, 5020, 5002
-
 
 /*
  * Private function prototypes.
  */
+
+static bool c_rtp_check_profile(const struct rohc_comp *const comp,
+                                const struct ip_packet *const outer_ip,
+                                const struct ip_packet *const inner_ip,
+                                const uint8_t protocol);
+static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
+                                    const uint16_t port);
+static bool c_rtp_use_udp_port(const struct c_context *const context,
+                               const unsigned int port);
 
 static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context);
@@ -233,6 +235,171 @@ void c_rtp_destroy(struct c_context *const context)
 
 	c_destroy_sc(&rtp_context->ts_sc);
 	c_generic_destroy(context);
+}
+
+
+/**
+ * @brief Check if the given packet corresponds to the RTP profile
+ *
+ * Conditions are:
+ *  \li the transport protocol is UDP
+ *  \li the version of the outer IP header is 4 or 6
+ *  \li the outer IP header is not an IP fragment
+ *  \li if there are at least 2 IP headers, the version of the inner IP header
+ *      is 4 or 6
+ *  \li if there are at least 2 IP headers, the inner IP header is not an IP
+ *      fragment
+ *  \li the UDP ports are in the list of RTP ports
+ *
+ * @see c_udp_check_profile
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param comp      The ROHC compressor
+ * @param outer_ip  The outer IP header of the IP packet to check
+ * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
+ *                      packet contains at least 2 IP headers,
+ *                  \li NULL if the IP packet to check contains only one IP header
+ * @param protocol  The transport protocol carried by the IP packet:
+ *                    \li the protocol carried by the outer IP header if there
+ *                        is only one IP header,
+ *                    \li the protocol carried by the inner IP header if there
+ *                        are at least two IP headers.
+ * @return          Whether the IP packet corresponds to the profile:
+ *                    \li true if the IP packet corresponds to the profile,
+ *                    \li false if the IP packet does not correspond to
+ *                        the profile
+ */
+static bool c_rtp_check_profile(const struct rohc_comp *const comp,
+                                const struct ip_packet *const outer_ip,
+                                const struct ip_packet *const inner_ip,
+                                const uint8_t protocol)
+{
+	const struct ip_packet *last_ip_header;
+	const unsigned char *udp_payload;
+	unsigned int udp_payload_size;
+	const struct udphdr *udp_header;
+	bool udp_check;
+
+	/* check that:
+	 *  - the transport protocol is UDP,
+	 *  - that the versions of outer and inner IP headers are 4 or 6,
+	 *  - that outer and inner IP headers are not IP fragments.
+	 */
+	udp_check = c_udp_check_profile(comp, outer_ip, inner_ip, protocol);
+	if(!udp_check)
+	{
+		goto bad_profile;
+	}
+
+	/* determine the last IP header */
+	if(inner_ip != NULL)
+	{
+		/* two IP headers, the last IP header is the inner IP header */
+		last_ip_header = inner_ip;
+	}
+	else
+	{
+		/* only one IP header, last IP header is the outer IP header */
+		last_ip_header = outer_ip;
+	}
+
+	/* retrieve the UDP header and the UDP payload */
+	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
+	udp_payload = (unsigned char *) (udp_header + 1);
+	udp_payload_size = ip_get_plen(last_ip_header) - sizeof(struct udphdr);
+
+	/* check if the IP/UDP packet is a RTP packet */
+	if(comp->rtp_callback != NULL)
+	{
+		/* check if the IP/UDP packet is a RTP packet with the user callback
+		   dedicated to RTP stream detection: if the RTP callback returns 1,
+		   consider that the packet matches the RTP profile */
+
+		bool is_rtp_packet;
+
+		is_rtp_packet = comp->rtp_callback(last_ip_header->data,
+		                                   (unsigned char *) udp_header,
+		                                   udp_payload, udp_payload_size,
+		                                   comp->rtp_private);
+		if(!is_rtp_packet)
+		{
+			goto bad_profile;
+		}
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "RTP packet detected by the RTP callback\n");
+	}
+	else if(comp->rtp_ports[0] != 0)
+	{
+		/* check if the UDP destination port belongs to the list of RTP
+		   destination ports reserved for RTP traffic */
+
+		const uint16_t dest_port = ntohs(udp_header->dest);
+		bool is_rtp_packet;
+
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "destination port in UDP packet = 0x%04x (%u)\n",
+		           dest_port, dest_port);
+
+		is_rtp_packet = rtp_is_udp_port_for_rtp(comp, dest_port);
+		if(!is_rtp_packet)
+		{
+			goto bad_profile;
+		}
+
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "UDP destination port is in the list of RTP ports\n");
+	}
+	else
+	{
+		/* no callback for advanced RTP stream detection and no UDP
+		   destination port reserved for RTP trafic, so the IP/UDP packet will
+		   be compressed with another profile (the IP/UDP one probably) */
+		goto bad_profile;
+	}
+
+	return true;
+
+bad_profile:
+	return false;
+}
+
+
+/**
+ * @brief Check whether the given UDP port is reserved for RTP traffic
+ *
+ * @param comp  The compressor
+ * @param port  The UDP port to search for
+ * @return      true if the UDP port is reserved for RTP traffic,
+ *              false otherwise
+ */
+static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
+                                    const uint16_t port)
+{
+	bool match = false;
+	int i;
+
+	/* explore the list of UDP ports reserved for RTP and stop:
+	 *  - if a port is equal to 0 (current entry and next ones are unused)
+	 *  - if the port is found
+	 *  - if the port in the list is greater than the port in the packet
+	 *    because the list is sorted in ascending order
+	 *  - if the end of the list is reached
+	 */
+	i = 0;
+	while(comp->rtp_ports[i] != 0 &&
+	      !match &&
+	      port >= comp->rtp_ports[i] &&
+	      i < MAX_RTP_PORTS)
+	{
+		match = (port == comp->rtp_ports[i]);
+		i++;
+	}
+
+	return match;
 }
 
 
@@ -1331,8 +1498,27 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 }
 
 
-/// List of UDP ports which are associated with RTP streams
-int rtp_ports[] = { RTP_PORTS, 0 };
+/**
+ * @brief Tells if the selected profile uses the RTP port
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context The compression context
+ * @param port    The port number to check
+ * @return        true if the profile uses this port, false otherwise
+ */
+static bool c_rtp_use_udp_port(const struct c_context *const context,
+                                    const unsigned int port)
+{
+	const struct c_generic_context *g_context;
+	const struct sc_rtp_context *rtp_context;
+
+	g_context = (struct c_generic_context *) context->specific;
+	rtp_context = (struct sc_rtp_context *) g_context->specific;
+
+	return (rtp_context->old_udp.dest == port);
+}
 
 
 /**
@@ -1342,13 +1528,14 @@ int rtp_ports[] = { RTP_PORTS, 0 };
 struct c_profile c_rtp_profile =
 {
 	ROHC_IPPROTO_UDP,    /* IP protocol */
-	rtp_ports,           /* list of UDP ports */
 	ROHC_PROFILE_RTP,    /* profile ID */
 	"RTP / Compressor",  /* profile description */
 	c_rtp_create,        /* profile handlers */
 	c_rtp_destroy,
+	c_rtp_check_profile,
 	c_rtp_check_context,
 	c_rtp_encode,
 	c_generic_feedback,
+	c_rtp_use_udp_port,
 };
 

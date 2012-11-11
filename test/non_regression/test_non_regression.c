@@ -579,8 +579,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		/* get some statistics about the last compressed packet */
 		last_packet_info.version_major = 0;
 		last_packet_info.version_minor = 0;
-		ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
-		if(ret != ROHC_OK)
+		if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
 		{
 			printf("\n");
 			printf("\t\t<rohc_comparison>\n");
@@ -762,6 +761,11 @@ static int test_comp_and_decomp(const int use_large_cid,
 	struct rohc_decomp *decomp1;
 	struct rohc_decomp *decomp2;
 
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+	int i;
+
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
 	int status = 1;
@@ -939,6 +943,34 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp1;
 	}
 
+	/* reset list of RTP ports for compressor 1 */
+	if(!rohc_comp_reset_rtp_ports(comp1))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports for compressor 1\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_comp1;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp1, rtp_ports[i]))
+		{
+			printf("failed to enable RTP port %u for compressor 1\n",
+			       rtp_ports[i]);
+			printf("\t\t</log>\n");
+			printf("\t\t<status>failed</status>\n");
+			printf("\t</startup>\n\n");
+			printf("\t<shutdown>\n");
+			printf("\t\t<log>\n");
+			goto destroy_comp1;
+		}
+	}
+
 	/* create the compressor 2 */
 	comp2 = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
 	if(comp2 == NULL)
@@ -985,6 +1017,32 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t<shutdown>\n");
 		printf("\t\t<log>\n");
 		goto destroy_comp2;
+	}
+
+	/* reset list of RTP ports for compressor 2 */
+	if(!rohc_comp_reset_rtp_ports(comp2))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports for compressor 2\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_comp2;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp2, rtp_ports[i]))
+		{
+			printf("failed to enable RTP port %u for compressor 2\n",
+			       rtp_ports[i]);
+			printf("\t\t</log>\n");
+			printf("\t\t<status>failed</status>\n");
+			printf("\t</startup>\n\n");
+			goto destroy_comp2;
+		}
 	}
 
 	/* create the decompressor 1 */

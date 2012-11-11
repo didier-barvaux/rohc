@@ -59,6 +59,12 @@ struct sc_uncompressed_context
 static int c_uncompressed_create(struct c_context *const context,
                                  const struct ip_packet *ip);
 static void c_uncompressed_destroy(struct c_context *const context);
+static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
+                                         const struct ip_packet *const outer_ip,
+                                         const struct ip_packet *const inner_ip,
+                                         const uint8_t protocol);
+bool c_uncompressed_use_udp_port(const struct c_context *const context,
+                                 const unsigned int port);
 
 /* check whether a packet belongs to a context */
 static int c_uncompressed_check_context(const struct c_context *context,
@@ -100,6 +106,7 @@ static void uncompressed_change_mode(struct c_context *const context,
                                      const rohc_mode new_mode);
 static void uncompressed_change_state(struct c_context *const const,
                                       const rohc_c_state new_state);
+
 
 
 /*
@@ -161,6 +168,40 @@ static void c_uncompressed_destroy(struct c_context *const context)
 	{
 		zfree(context->specific);
 	}
+}
+
+
+/**
+ * @brief Check if the given packet corresponds to the Uncompressed profile
+ *
+ * There are no condition. If this function is called, the packet always matches
+ * the Uncompressed profile.
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param comp      The ROHC compressor
+ * @param outer_ip  The outer IP header of the IP packet to check
+ * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
+ *                      packet contains at least 2 IP headers,
+ *                  \li NULL if the IP packet to check contains only one IP header
+ * @param protocol  The transport protocol carried by the IP packet:
+ *                    \li the protocol carried by the outer IP header if there
+ *                        is only one IP header,
+ *                    \li the protocol carried by the inner IP header if there
+ *                        are at least two IP headers.
+ * @return          Whether the IP packet corresponds to the profile:
+ *                    \li true if the IP packet corresponds to the profile,
+ *                    \li false if the IP packet does not correspond to
+ *                        the profile
+
+ */
+static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
+                                         const struct ip_packet *const outer_ip,
+                                         const struct ip_packet *const inner_ip,
+                                         const uint8_t protocol)
+{
+	return true;
 }
 
 
@@ -643,19 +684,38 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 
 
 /**
+ * @brief Whether the profile uses the given UDP port
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context The compression context
+ * @param port    The port number to check
+ * @return        Always return false because the Uncompressed profile does not
+ *                use UDP port
+ */
+bool c_uncompressed_use_udp_port(const struct c_context *const context,
+                                 const unsigned int port)
+{
+	return false;
+}
+
+
+/**
  * @brief Define the compression part of the Uncompressed profile as described
  *        in the RFC 3095.
  */
 struct c_profile c_uncompressed_profile =
 {
 	0,                            /* IP protocol */
-	NULL,                         /* list of UDP ports, not relevant for Uncompressed */
 	ROHC_PROFILE_UNCOMPRESSED,    /* profile ID (see 8 in RFC 3095) */
 	"Uncompressed / Compressor",  /* profile description */
 	c_uncompressed_create,        /* profile handlers */
 	c_uncompressed_destroy,
+	c_uncompressed_check_profile,
 	c_uncompressed_check_context,
 	c_uncompressed_encode,
 	c_uncompressed_feedback,
+	c_uncompressed_use_udp_port,
 };
 

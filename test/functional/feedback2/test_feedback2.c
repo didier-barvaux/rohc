@@ -235,7 +235,12 @@ static int test_comp_and_decomp(const char *filename,
 	unsigned char *packet;
 	unsigned int counter;
 
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+
 	int is_failure = 1;
+	unsigned int i;
 	int ret;
 
 	/* open the source dump file */
@@ -316,6 +321,24 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "failed to set the callback for random numbers\n");
 		goto destroy_comp;
 	}
+
+	/* reset list of RTP ports for compressor */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
 
 	/* create the ROHC decompressor in bi-directional mode */
 	decomp = rohc_alloc_decompressor(comp);

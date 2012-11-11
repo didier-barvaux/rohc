@@ -617,6 +617,7 @@ AC_CONFIG_FILES([ \
 	test/functional/decompress_feedback_only/Makefile \
 	test/functional/context_reuse/Makefile \
 	test/functional/rtp_uor2_disambiguation/Makefile \
+	test/functional/rtp_detection/Makefile \
 	test/robustness/Makefile \
 	test/robustness/empty_payload/Makefile \
 	test/robustness/damaged_packet/Makefile \

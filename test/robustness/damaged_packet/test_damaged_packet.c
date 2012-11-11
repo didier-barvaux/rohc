@@ -248,6 +248,11 @@ static int test_comp_and_decomp(const char *const filename,
 	unsigned char *packet;
 	unsigned int counter;
 
+#define NB_RTP_PORTS 5
+	unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+	unsigned int i;
+
 	int is_failure = 1;
 
 	/* open the source dump file */
@@ -316,6 +321,23 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* reset list of RTP ports */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_alloc_decompressor(NULL);
 	if(decomp == NULL)
@@ -340,7 +362,6 @@ static int test_comp_and_decomp(const char *const filename,
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
 		int rohc_size;
 		rohc_comp_last_packet_info2_t packet_info;
-		int ret;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
 
@@ -404,8 +425,7 @@ static int test_comp_and_decomp(const char *const filename,
 		/* get packet statistics to retrieve the packet type */
 		packet_info.version_major = 0;
 		packet_info.version_minor = 0;
-		ret = rohc_comp_get_last_packet_info2(comp, &packet_info);
-		if(ret != ROHC_OK)
+		if(!rohc_comp_get_last_packet_info2(comp, &packet_info))
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");
 			goto destroy_decomp;

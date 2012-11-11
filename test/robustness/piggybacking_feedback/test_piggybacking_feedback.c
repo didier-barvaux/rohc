@@ -176,7 +176,11 @@ static int test_comp_and_decomp()
 	/* information about the last compressed packet */
 	rohc_comp_last_packet_info2_t last_packet_info;
 
-	int ret;
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+
+	unsigned int i;
 	int is_failure = 1;
 
 /** The payload for the fake IP packet */
@@ -220,6 +224,24 @@ static int test_comp_and_decomp()
 		goto destroy_compA;
 	}
 
+	/* reset list of RTP ports on compressor A */
+	if(!rohc_comp_reset_rtp_ports(compA))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports on compressor A\n");
+		goto destroy_compA;
+	}
+
+	/* add some ports to the list of RTP ports on compressor A */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(compA, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u on compressor A\n",
+			        rtp_ports[i]);
+			goto destroy_compA;
+		}
+	}
+
 	/* create the ROHC compressor B with small CID */
 	compB = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(compB == NULL)
@@ -253,6 +275,24 @@ static int test_comp_and_decomp()
 		fprintf(stderr, "failed to set the callback for random numbers on "
 		        "compressor B\n");
 		goto destroy_compB;
+	}
+
+	/* reset list of RTP ports on compressor B */
+	if(!rohc_comp_reset_rtp_ports(compB))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports on compressor B\n");
+		goto destroy_compB;
+	}
+
+	/* add some ports to the list of RTP ports on compressor B */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(compB, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u on compressor B\n",
+			        rtp_ports[i]);
+			goto destroy_compB;
+		}
 	}
 
 	/* create the ROHC decompressor A with associated compressor B for its
@@ -364,8 +404,7 @@ static int test_comp_and_decomp()
 	/* get packet statistics and remember the context mode */
 	last_packet_info.version_major = 0;
 	last_packet_info.version_minor = 0;
-	ret = rohc_comp_get_last_packet_info2(compA, &last_packet_info);
-	if(ret != ROHC_OK)
+	if(!rohc_comp_get_last_packet_info2(compA, &last_packet_info))
 	{
 		fprintf(stderr, "failed to get statistics on packet\n");
 		goto destroy_decompB;

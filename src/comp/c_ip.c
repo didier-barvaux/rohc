@@ -512,13 +512,14 @@ int c_ip_code_ir_remainder(const struct c_context *context,
 struct c_profile c_ip_profile =
 {
 	0,                  /* IP protocol */
-	NULL,               /* list of UDP ports, not relevant for IP-only */
 	ROHC_PROFILE_IP,    /* profile ID (see 5 in RFC 3843) */
 	"IP / Compressor",  /* profile description */
 	rohc_ip_ctxt_create,
 	c_generic_destroy,
+	c_generic_check_profile,
 	c_ip_check_context,
 	c_generic_encode,
 	c_generic_feedback,
+	c_generic_use_udp_port,
 };
 

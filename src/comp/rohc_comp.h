@@ -162,6 +162,23 @@ typedef struct
 } __attribute__((packed)) rohc_comp_last_packet_info2_t;
 
 
+/**
+ * @brief The prototype of the RTP detection callback
+ *
+ * @param ip           The innermost IP packet
+ * @param udp          The UDP header of the packet
+ * @param payload      The UDP payload of the packet
+ * @param payload_size The size of the UDP payload (in bytes)
+ * @param rtp_private  A pointer to a memory area to be used by the callback
+ *                     function.
+ * @return             true if the packet is an RTP packet, false otherwise
+ */
+typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
+                                              const unsigned char *const udp,
+                                              const unsigned char *const payload,
+                                              const unsigned int payload_size,
+                                              void *const rtp_private)
+	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 
 
 /** The prototype of the callback for random numbers */
@@ -211,6 +228,22 @@ void ROHC_EXPORT rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
 void ROHC_EXPORT rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
 void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value);
 
+/* RTP stream detection through UDP ports */
+bool ROHC_EXPORT rohc_comp_add_rtp_port(struct rohc_comp *const comp,
+                                        const unsigned int port)
+	__attribute__((nonnull(1), warn_unused_result));
+bool ROHC_EXPORT rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
+                                           const unsigned int port)
+	__attribute__((nonnull(1), warn_unused_result));
+bool ROHC_EXPORT rohc_comp_reset_rtp_ports(struct rohc_comp *const comp)
+	__attribute__((nonnull(1), warn_unused_result));
+
+/* RTP stream detection through callback */
+bool ROHC_EXPORT rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
+                                                rohc_rtp_detection_callback_t callback,
+                                                void *const rtp_private)
+	__attribute__((nonnull(1), warn_unused_result));
+
 
 /*
  * Prototypes of public functions related to ROHC feedback
@@ -234,6 +267,7 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
                                       const size_t ir_timeout,
                                       const size_t fo_timeout)
 	__attribute__((nonnull(1), warn_unused_result));
+
 
 /*
  * Prototypes of public functions related to ROHC compression statistics

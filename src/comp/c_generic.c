@@ -644,6 +644,87 @@ void c_generic_destroy(struct c_context *const context)
 
 
 /**
+ * @brief Check if the given packet corresponds to an IP-based profile
+ *
+ * Conditions are:
+ *  \li the version of the outer IP header is 4 or 6
+ *  \li the outer IP header is not an IP fragment
+ *  \li if there are at least 2 IP headers, the version of the inner IP header
+ *      is 4 or 6
+ *  \li if there are at least 2 IP headers, the inner IP header is not an IP
+ *      fragment
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param comp      The ROHC compressor
+ * @param outer_ip  The outer IP header of the IP packet to check
+ * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
+ *                      packet contains at least 2 IP headers,
+ *                  \li NULL if the IP packet to check contains only one IP header
+ * @param protocol  The transport protocol carried by the IP packet:
+ *                    \li the protocol carried by the outer IP header if there
+ *                        is only one IP header,
+ *                    \li the protocol carried by the inner IP header if there
+ *                        are at least two IP headers.
+ * @return          Whether the IP packet corresponds to the profile:
+ *                    \li true if the IP packet corresponds to the profile,
+ *                    \li false if the IP packet does not correspond to
+ *                        the profile
+ */
+bool c_generic_check_profile(const struct rohc_comp *const comp,
+                             const struct ip_packet *const outer_ip,
+                             const struct ip_packet *const inner_ip,
+                             const uint8_t protocol)
+{
+	ip_version version;
+
+	/* check the IP version of the outer header */
+	version = ip_get_version(outer_ip);
+	if(version != IPV4 && version != IPV6)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IP packet contains a bad version\n");
+		goto bad_profile;
+	}
+
+	/* check if the outer header is a fragment */
+	if(ip_is_fragment(outer_ip))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IP packet is fragmented\n");
+		goto bad_profile;
+	}
+
+	/* check the inner IP header if there is one */
+	if(inner_ip != NULL)
+	{
+		/* check the IP version of the inner header */
+		version = ip_get_version(inner_ip);
+		if(version != IPV4 && version != IPV6)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "the inner IP packet contains a bad version\n");
+			goto bad_profile;
+		}
+
+		/* check if the second header is a fragment */
+		if(ip_is_fragment(inner_ip))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "the inner IP packet is fragmented\n");
+			goto bad_profile;
+		}
+	}
+
+	return true;
+
+bad_profile:
+	return false;
+}
+
+
+/**
  * @brief Change the mode of the context.
  *
  * @param context  The compression context
@@ -1087,6 +1168,23 @@ void c_generic_feedback(struct c_context *const context,
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "feedback type not implemented (%d)\n", feedback->type);
 	}
+}
+
+
+/**
+ * @brief Whether the profile uses the given UDP port
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context  The compression context
+ * @param port     The UDP port number to check
+ * @return         always return true, it is used by non-RTP profiles
+ */
+bool c_generic_use_udp_port(const struct c_context *const context,
+                            const unsigned int port)
+{
+	return false;
 }
 
 

@@ -404,7 +404,12 @@ static int test_compression_perfs(char *filename,
 	unsigned char *packet;
 	struct rohc_comp *comp;
 	int is_failure = 1;
+	unsigned int i;
 	int ret;
+
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
 
 	/* open the PCAP file that contains the stream */
 	handle = pcap_open_offline(filename, errbuf);
@@ -468,6 +473,23 @@ static int test_compression_perfs(char *filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+
+	/* reset list of RTP ports */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto free_compresssor;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto free_compresssor;
+		}
+	}
 
 	/* for each packet in the dump */
 	*packet_count = 0;

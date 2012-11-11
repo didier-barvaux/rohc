@@ -135,6 +135,19 @@ struct rohc_comp
 	size_t feedbacks_next;
 
 
+	/* variables related to RTP detection */
+
+/** The maximal number of RTP ports (shall be > 2) */
+#define MAX_RTP_PORTS 15
+	/** The RTP ports table */
+	unsigned int rtp_ports[MAX_RTP_PORTS];
+
+	/** The callback function used to detect RTP packet */
+	rohc_rtp_detection_callback_t rtp_callback;
+	/** Pointer to an external memory area provided/used by the callback user */
+	void *rtp_private;
+
+
 	/* some statistics about the compression process: */
 
 	/** The number of sent packets */
@@ -192,15 +205,6 @@ struct c_profile
 	 */
 	const unsigned short protocol;
 
-	/**
-	 * @brief The UDP ports associated with this profile
-	 *
-	 * Only used with UDP as transport protocol. The pointer can be NULL if no
-	 * port is specified. If defined, the list must be terminated by 0.
-	 * example: { 5000, 5001, 0 }
-	 */
-	const int *ports;
-
 	/** The profile ID as reserved by IANA */
 	const unsigned short id;
 
@@ -219,6 +223,15 @@ struct c_profile
 	 *        compression context
 	 */
 	void (*destroy)(struct c_context *const context);
+
+	/**
+	 * @brief The handler used to check whether an uncompressed IP packet
+	 *        fits the current profile or not
+	 */
+	bool (*check_profile)(const struct rohc_comp *const comp,
+	                      const struct ip_packet *const outer_ip,
+	                      const struct ip_packet *const inner_ip,
+	                      const uint8_t protocol);
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
@@ -244,6 +257,12 @@ struct c_profile
 	 */
 	void (*feedback)(struct c_context *const context,
 	                 const struct c_feedback *feedback);
+
+	/**
+	 * @brief The handler used to detect if a UDP port is used by the profile
+	 */
+	bool (*use_udp_port)(const struct c_context *const context,
+	                     const unsigned int port);
 };
 
 
