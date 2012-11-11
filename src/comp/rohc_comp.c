@@ -119,12 +119,12 @@ static bool rohc_feedback_unlock(struct rohc_comp *const comp);
  * Prototypes of miscellaneous private functions
  */
 
-static void rohc_comp_print_trace_default(rohc_trace_level_t level,
-                                          rohc_trace_entity_t entity,
-                                          int profile,
-                                          const char *format,
+static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
+                                          const rohc_trace_entity_t entity,
+                                          const int profile,
+                                          const char *const format,
                                           ...)
-	__attribute__((format(printf, 4, 5)));
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
@@ -337,10 +337,10 @@ error:
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
  */
-static void rohc_comp_print_trace_default(rohc_trace_level_t level,
-                                          rohc_trace_entity_t entity,
-                                          int profile,
-                                          const char *format,
+static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
+                                          const rohc_trace_entity_t entity,
+                                          const int profile,
+                                          const char *const format,
                                           ...)
 {
 	va_list args;

@@ -159,12 +159,12 @@ int is_timeout(struct timeval first,
                struct timeval second,
                unsigned int max);
 
-static void print_rohc_traces(rohc_trace_level_t level,
-                              rohc_trace_entity_t entity,
-                              int profile,
-                              const char *format,
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
                               ...)
-	__attribute__((format(printf, 4, 5)));
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
@@ -1539,10 +1539,10 @@ int is_timeout(struct timeval first,
  *                 the trace is related to
  * @param format   The format string of the trace
  */
-static void print_rohc_traces(rohc_trace_level_t level,
-                              rohc_trace_entity_t entity,
-                              int profile,
-                              const char *format,
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
                               ...)
 {
 	va_list args;

@@ -58,12 +58,12 @@ typedef enum
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
  */
-typedef void (*rohc_trace_callback_t) (rohc_trace_level_t level,
-                                       rohc_trace_entity_t entity,
-                                       int profile,
-                                       const char *format,
+typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
+                                       const rohc_trace_entity_t entity,
+                                       const int profile,
+                                       const char *const format,
                                        ...)
-	__attribute__((format(printf, 4, 5)));
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 
 
 #endif

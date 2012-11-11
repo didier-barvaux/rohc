@@ -110,12 +110,12 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   unsigned int len,
                                   struct d_decode_data *ddata);
 
-static void rohc_decomp_print_trace_default(rohc_trace_level_t level,
-                                            rohc_trace_entity_t entity,
-                                            int profile,
-                                            const char *format,
+static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
+                                            const rohc_trace_entity_t entity,
+                                            const int profile,
+                                            const char *const format,
                                             ...)
-	__attribute__((format(printf, 4, 5)));
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 
 /* feedback-related functions */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
@@ -1944,10 +1944,10 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
  */
-static void rohc_decomp_print_trace_default(rohc_trace_level_t level,
-                                            rohc_trace_entity_t entity,
-                                            int profile,
-                                            const char *format,
+static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
+                                            const rohc_trace_entity_t entity,
+                                            const int profile,
+                                            const char *const format,
                                             ...)
 {
 	va_list args;
