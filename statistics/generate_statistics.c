@@ -39,6 +39,7 @@
 #endif
 #include <assert.h>
 #include <time.h> /* for time(2) */
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -80,6 +81,12 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const struct pcap_pkthdr header,
                                    const unsigned char *packet,
                                    const int link_len);
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+	__attribute__((format(printf, 4, 5)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -289,12 +296,24 @@ static int generate_comp_stats_all(const int use_large_cid,
 		fprintf(stderr, "cannot create the ROHC compressor\n");
 		goto close_input;
 	}
+
+	/* set the callback for traces on compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor\n");
+		goto destroy_comp;
+	}
+
+	/* enable profiles */
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+
+	/* configure compressor for small or large CIDs */
 	rohc_c_set_large_cid(comp, use_large_cid);
 
 	/* set the callback for random numbers */
@@ -449,6 +468,31 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 
 error:
 	return 1;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	vfprintf(stderr, format, args);
+	va_end(args);
 }
 
 

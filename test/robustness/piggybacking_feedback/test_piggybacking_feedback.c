@@ -63,6 +63,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -76,6 +77,12 @@
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(void);
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+	__attribute__((format(printf, 4, 5)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -185,7 +192,19 @@ static int test_comp_and_decomp()
 		fprintf(stderr, "failed to create the ROHC compressor A\n");
 		goto error;
 	}
+
+	/* set the callback for traces on compressor A */
+	if(!rohc_comp_set_traces_cb(compA, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor A\n");
+		goto destroy_compA;
+	}
+
+	/* configure compressor A for small CIDs */
 	rohc_c_set_large_cid(compA, 0);
+
+	/* enable profiles for compressor A */
 	rohc_activate_profile(compA, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(compA, ROHC_PROFILE_UDP);
 	rohc_activate_profile(compA, ROHC_PROFILE_IP);
@@ -208,7 +227,19 @@ static int test_comp_and_decomp()
 		fprintf(stderr, "failed to create the ROHC compressor B\n");
 		goto destroy_compA;
 	}
+
+	/* set the callback for traces on compressor B */
+	if(!rohc_comp_set_traces_cb(compB, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor B\n");
+		goto destroy_compB;
+	}
+
+	/* configure compressor B for small CIDs */
 	rohc_c_set_large_cid(compB, 0);
+
+	/* enable profiles for compressor B */
 	rohc_activate_profile(compB, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(compB, ROHC_PROFILE_UDP);
 	rohc_activate_profile(compB, ROHC_PROFILE_IP);
@@ -233,6 +264,13 @@ static int test_comp_and_decomp()
 		goto destroy_compB;
 	}
 
+	/* set the callback for traces on decompressor A */
+	if(!rohc_decomp_set_traces_cb(decompA, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor A\n");
+		goto destroy_decompA;
+	}
+
 	/* create the ROHC decompressor B with associated compressor A for its
 	 * feedback channel */
 	decompB = rohc_alloc_decompressor(compA);
@@ -240,6 +278,13 @@ static int test_comp_and_decomp()
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor B\n");
 		goto destroy_decompA;
+	}
+
+	/* set the callback for traces on decompressor B */
+	if(!rohc_decomp_set_traces_cb(decompB, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor B\n");
+		goto destroy_decompB;
 	}
 
 	/* create a fake IP packet for the purpose of the test*/
@@ -365,6 +410,31 @@ destroy_compA:
 	rohc_free_compressor(compA);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 
