@@ -34,6 +34,8 @@
 #include "crc.h"
 #include "d_generic.h"
 
+#include "config.h" /* for WORDS_BIGENDIAN */
+
 
 /*
  * Private function prototypes.
@@ -133,12 +135,12 @@ static uint16_t my_ip_fast_csum(const void *iph, unsigned int ihl)
 
 	while(i-- != 0)
 	{
-		  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 		wb.uint8[1] = *(mptr.uint8++);
 		wb.uint8[0] = *(mptr.uint8++);
-		  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 		wb.uint16 = READ16_FROM_MPTR(mptr);
-		  #endif
+#endif
 		checksum += wb.uint16;
 		rohc_debugf(3, "checksum %Xh value %4.4X\n",checksum,wb.uint16);
 	}
@@ -1052,12 +1054,12 @@ static unsigned int tcp_copy_static_ipv6_option(uint8_t protocol,
 			break;
 		case ROHC_IPPROTO_GRE:
 			base_header.ip_gre_opt->r_flag = 0;
-						 #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 			base_header.ip_gre_opt->reserved1 = 0;
 			base_header.ip_gre_opt->reserved2 = 0;
-						 #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 			base_header.ip_gre_opt->reserved0 = 0;
-						 #endif
+#endif
 			base_header.ip_gre_opt->version = 0;
 			if(ip_context.v6_gre_option->protocol == 0)
 			{
@@ -1430,12 +1432,12 @@ static int tcp_decode_dynamic_ip(struct d_tcp_context *tcp_context,
 		base_header.ipv4->ttl_hopl = c_base_header.ipv4_dynamic1->ttl_hopl;
 		rohc_debugf(3, "dscp %Xh ip_ecn_flags %d\n",base_header.ipv4->dscp,
 		            base_header.ipv4->ip_ecn_flags);
-		#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 		base_header.ipv4->frag_offset1 = 0;
 		base_header.ipv4->frag_offset2 = 0;
-		#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 		base_header.ipv4->frag_offset = 0;
-		#endif
+#endif
 
 		ip_context.v4->df = c_base_header.ipv4_dynamic1->df;
 		ip_context.v4->ip_id_behavior = c_base_header.ipv4_dynamic1->ip_id_behavior;
@@ -1472,12 +1474,12 @@ static int tcp_decode_dynamic_ip(struct d_tcp_context *tcp_context,
 	}
 	else
 	{
-		#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 		base_header.ipv6->dscp1 = c_base_header.ipv6_dynamic->dscp >> 2;
 		base_header.ipv6->dscp2 = c_base_header.ipv6_dynamic->dscp & 0x03;
-		#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 		base_header.ipv6->dscp = c_base_header.ipv6_dynamic->dscp;
-		#endif
+#endif
 		base_header.ipv6->ip_ecn_flags = c_base_header.ipv6_dynamic->ip_ecn_flags;
 		base_header.ipv6->ttl_hopl = c_base_header.ipv6_dynamic->ttl_hopl;
 
@@ -1581,12 +1583,12 @@ static uint8_t * tcp_decode_irregular_ip(struct d_tcp_context *tcp_context,
 			// ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE )
 			if(tcp_context->ecn_used != 0)
 			{
-				#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				base_header.ipv6->dscp1 = *mptr.uint8 >> 4;
 				base_header.ipv6->dscp2 = ( *mptr.uint8 >> 2 ) & 0x03;
-				#else
+#else
 				base_header.ipv6->dscp = *mptr.uint8 >> 2;
-				#endif
+#endif
 				base_header.ipv4->ip_ecn_flags = *(mptr.uint8++) & 0x03;
 			}
 			if(ttl_irregular_chain_flag == 1)
@@ -3265,11 +3267,11 @@ decode_rnd_8:
 	size_header = sizeof(rnd_8_t);
 	header_crc = c_base_header.rnd8->header_crc;
 	c_base_header.rnd8->header_crc = 0;
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	msn = ( c_base_header.rnd8->msn1 << 3 ) | c_base_header.rnd8->msn2;
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	msn = c_base_header.rnd8->msn;
-	#endif
+#endif
 	rohc_debugf(3, "rnd_8 size_header %d\n",size_header);
 	if(c_base_header.rnd8->list_present)
 	{
@@ -3475,12 +3477,12 @@ test_checksum:
 			   base_header.ipv4->ip_ecn_flags = ip_context.v4->ip_ecn_flags;
 			base_header.ipv4->mf = 0;
 			base_header.ipv4->rf = 0;
-			#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 			base_header.ipv4->frag_offset1 = 0;
 			base_header.ipv4->frag_offset2 = 0;
-			#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 			base_header.ipv4->frag_offset = 0;
-			#endif
+#endif
 			base_header.ipv4->ttl_hopl = ip_context.v4->ttl_hopl;
 			protocol = ip_context.v4->protocol;
 			++base_header.ipv4;
@@ -3489,12 +3491,12 @@ test_checksum:
 		else
 		{
 			ip_inner_ecn = base_header.ipv6->ip_ecn_flags;
-			#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 			base_header.ipv6->dscp1 = ip_context.v6->dscp >> 2;
 			base_header.ipv6->dscp2 = ip_context.v6->dscp & 0x03;
-			#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 			base_header.ipv6->dscp = ip_context.v6->dscp;
-			#endif
+#endif
 			base_header.ipv6->ttl_hopl = ip_context.v6->ttl_hopl;
 			protocol = ip_context.v6->next_header;
 			++base_header.ipv6;
@@ -3599,7 +3601,7 @@ test_checksum:
 		}
 		else
 		{
-			#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 			{
 				uint8_t dscp;
 				dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
@@ -3608,11 +3610,11 @@ test_checksum:
 				base_header_inner.ipv6->dscp2 = dscp & 0x03;
 				rohc_debugf(3, "dscp %Xh\n",dscp);
 			}
-			#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 			base_header_inner.ipv6->dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
 			                                           c_base_header.co_common->dscp_present);
 			rohc_debugf(3, "dscp %Xh\n",base_header_inner.ipv6->dscp);
-			#endif
+#endif
 			base_header_inner.ipv6->ttl_hopl = d_static_or_irreg8(
 			   &mptr,ip_inner_context.vx->ttl_hopl,c_base_header.co_common->ttl_hopl_present);
 			rohc_debugf(3, "ttl_hopl %Xh\n",base_header_inner.ipv6->ttl_hopl);
@@ -3669,17 +3671,17 @@ test_checksum:
 				break;
 			case PACKET_TCP_RND3:
 				// tcp->ack_number = htonl( d_lsb(15,8191,ntohl(tcp_context->old_tcphdr.ack_number),ntohs(c_base_header.rnd3->ack_number)) );
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				wb.uint8[1] =
 				   c_base_header.uint8[OFFSET_RND3_ACK_NUMBER >>
 				                       3] & lsb_masks[ 8 - (OFFSET_RND3_ACK_NUMBER & 0x07) ];
 				wb.uint8[0] = c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3) + 1];
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				wb.uint8[0] =
 				   c_base_header.uint8[OFFSET_RND3_ACK_NUMBER >>
 				                       3] & lsb_masks[ 8 - (OFFSET_RND3_ACK_NUMBER & 0x07) ];
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3) + 1];
-										  #endif
+#endif
 				tcp->ack_number =
 				   htonl( d_lsb(15,8191,ntohl(tcp_context->old_tcphdr.ack_number),wb.uint16) );
 				tcp->psh_flag = c_base_header.rnd3->psh_flag;
@@ -3698,29 +3700,29 @@ test_checksum:
 			case PACKET_TCP_RND5:
 				tcp->psh_flag = c_base_header.rnd5->psh_flag;
 				// tcp->seq_number = htonl( d_lsb(14,8191,ntohl(tcp_context->old_tcphdr.seq_number),ntohs(c_base_header.rnd5->seq_number)) );
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				wb.uint8[1] = ( c_base_header.uint8[OFFSET_RND5_ACK_NUMBER >> 3] & 0x1F ) << 1;
 				wb.uint8[1] |= c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 7;
 				wb.uint8[0] = c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 1;
 				wb.uint8[0] |= c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 2] >> 7;
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				wb.uint8[0] = ( c_base_header.uint8[OFFSET_RND5_ACK_NUMBER >> 3] & 0x1F ) << 1;
 				wb.uint8[0] |= c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 7;
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 1;
 				wb.uint8[1] |= c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 2] >> 7;
-										  #endif
+#endif
 				tcp->seq_number =
 				   htonl( d_lsb(14,8191,ntohl(tcp_context->old_tcphdr.seq_number),wb.uint16) );
 				rohc_debugf(3, "seq_number %Xh uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",
 				            ntohl(tcp->seq_number),wb.uint16,wb.uint8[0],wb.uint8[1]);
 				// tcp->ack_number = htonl( d_lsb(15,8191,ntohl(tcp_context->old_tcphdr.ack_number),ntohs(c_base_header.rnd5->ack_number)) );
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				wb.uint8[1] = c_base_header.uint8[OFFSET_RND5_SEQ_NUMBER >> 3] & 0x7F;
 				wb.uint8[0] = c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3) + 1] << 1;
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				wb.uint8[0] = c_base_header.uint8[OFFSET_RND5_SEQ_NUMBER >> 3] & 0x7F;
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3) + 1] << 1;
-										  #endif
+#endif
 				tcp->ack_number =
 				   htonl( d_lsb(15,8191,ntohl(tcp_context->old_tcphdr.ack_number),wb.uint16) );
 				rohc_debugf(3, "ack_number %Xh uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",
@@ -3796,7 +3798,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq1->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ2:
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				{
 					uint8_t ip_id_lsb;
 					ip_id_lsb = ( c_base_header.seq2->ip_id1 << 4 ) | c_base_header.seq2->ip_id2;
@@ -3806,12 +3808,12 @@ test_checksum:
 					               ip_id_lsb,
 					               msn);
 				}
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				ip_id.uint16 =
 				   d_ip_id_lsb(ip_inner_context.v4->ip_id_behavior,7,3,ip_inner_context.v4->last_ip_id,
 				               c_base_header.seq2->ip_id,
 				               msn);
-										  #endif
+#endif
 				seq_number_scaled = d_lsb(4,7,tcp_context->seq_number_scaled,
 				                          c_base_header.seq2->seq_number_scaled);
 				seq_number_scaled_used = 1;
@@ -3859,7 +3861,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq5->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ6:
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				{
 					uint8_t seq_number_scaled_lsb;
 					seq_number_scaled_lsb =
@@ -3867,10 +3869,10 @@ test_checksum:
 					     1 ) | c_base_header.seq6->seq_number_scaled2;
 					seq_number_scaled = d_lsb(4,7,tcp_context->seq_number_scaled,seq_number_scaled_lsb);
 				}
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				seq_number_scaled = d_lsb(4,7,tcp_context->seq_number_scaled,
 				                          c_base_header.seq6->seq_number_scaled);
-										  #endif
+#endif
 				seq_number_scaled_used = 1;
 				//  assert( payload_size != 0 );
 				// A COMPLETER/REVOIR
@@ -3924,17 +3926,17 @@ test_checksum:
 				rohc_debugf(3, "ecn_used %d\n",c_base_header.seq8->ecn_used);
 				tcp_context->ecn_used = c_base_header.seq8->ecn_used;
 				// tcp->ack_number = htonl( d_lsb(15,8191,ntohl(tcp_context->old_tcphdr.ack_number),ntohs(c_base_header.seq8->ack_number)) );
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				wb.uint8[1] =
 				   c_base_header.uint8[OFFSET_SEQ8_ACK_NUMBER >>
 				                       3] & lsb_masks[ 8 - (OFFSET_SEQ8_ACK_NUMBER & 0x07) ];
 				wb.uint8[0] = c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1];
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				wb.uint8[0] =
 				   c_base_header.uint8[OFFSET_SEQ8_ACK_NUMBER >>
 				                       3] & lsb_masks[ 8 - (OFFSET_SEQ8_ACK_NUMBER & 0x07) ];
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1];
-										  #endif
+#endif
 				tcp->ack_number =
 				   htonl( d_lsb(15,8191,ntohl(tcp_context->old_tcphdr.ack_number),wb.uint16) );
 				rohc_debugf(3, "For ack_number: b0 %2.2Xh b1 %2.2Xh => %4.4Xh ack_number %Xh\n",
@@ -3942,17 +3944,17 @@ test_checksum:
 				               tcp->ack_number));
 				tcp->rsf_flags = rsf_index_dec( c_base_header.seq8->rsf_flags );
 				// tcp->seq_number = htonl( d_lsb(14,8191,ntohl(tcp_context->old_tcphdr.seq_number),ntohs(c_base_header.seq8->seq_number)) );
-										  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				wb.uint8[1] =
 				   c_base_header.uint8[OFFSET_SEQ8_SEQ_NUMBER >>
 				                       3] & lsb_masks[ 8 - (OFFSET_SEQ8_SEQ_NUMBER & 0x07) ];
 				wb.uint8[0] = c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1];
-										  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 				wb.uint8[0] =
 				   c_base_header.uint8[OFFSET_SEQ8_SEQ_NUMBER >>
 				                       3] & lsb_masks[ 8 - (OFFSET_SEQ8_SEQ_NUMBER & 0x07) ];
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1];
-										  #endif
+#endif
 				tcp->seq_number =
 				   htonl( d_lsb(14,8191,ntohl(tcp_context->old_tcphdr.seq_number),wb.uint16) );
 				rohc_debugf(3, "For seq_number: b0 %2.2Xh b1 %2.2Xh => %4.4Xh seq_number %Xh\n",

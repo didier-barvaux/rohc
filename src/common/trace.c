@@ -32,6 +32,8 @@
 #include "rohc_traces.h"
 #include "trace.h"
 
+#include "config.h" /* for WORDS_BIGENDIAN */
+
 
 unsigned char hexatab[16] = { '0','1','2','3','4','5','6','7',
 	                           '8','9','A','B','C','D','E','F' };
@@ -137,7 +139,7 @@ void TraceIpV4( base_header_ip_v4_t *ip )
 	rohc_debugf(3, "dscp %Xh ip_ecn_flags %d\n",ip->dscp,ip->ip_ecn_flags);
 	rohc_debugf(3, "length %d (%4.4Xh) IP-ID %4.4Xh\n",ntohs(ip->length),ntohs(ip->length),
 	            ntohs(ip->ip_id));
-	  #if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	rohc_debugf(3, "rf %d mf %d df %d frag_offset %Xh\n",ip->rf,ip->mf,ip->df,
 	            (ip->frag_offset1 << 5) | ip->frag_offset2);
 	{
@@ -146,10 +148,9 @@ void TraceIpV4( base_header_ip_v4_t *ip )
 		            ptr[6],
 		            ptr[7]);
 	}
-
-	  #elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	rohc_debugf(3, "rf %d mf %d df %d frag_offset %Xh\n",ip->rf,ip->mf,ip->df,ip->frag_offset);
-	  #endif
+#endif
 	rohc_debugf(3, "ttl_hopl %Xh protocol %d checksum %4.4Xh\n",ip->ttl_hopl,ip->protocol,
 	            ntohs(ip->checksum));
 	rohc_debugf(3, "src addr %Xh dst addr %Xh\n",ntohl(ip->src_addr),ntohl(ip->dest_addr));

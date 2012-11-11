@@ -36,6 +36,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h" /* for WORDS_BIGENDIAN */
+
+
 //#define MAX_TCP_OPTION_INDEX  8
 #define MAX_TCP_OPTION_INDEX 16
 
@@ -1577,11 +1580,12 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 	{
 		assert( ip_context.v6->version == IPV6 );
 
-		#if __BYTE_ORDER == __LITTLE_ENDIAN
-		mptr.ipv6_dynamic->dscp = base_header.ipv6->dscp1 << 4 | base_header.ipv6->dscp2;
-		#elif __BYTE_ORDER == __BIG_ENDIAN
+#if WORDS_BIGENDIAN != 1
+		mptr.ipv6_dynamic->dscp = (base_header.ipv6->dscp1 << 4) |
+		                          base_header.ipv6->dscp2;
+#else
 		mptr.ipv6_dynamic->dscp = base_header.ipv6->dscp;
-		#endif
+#endif
 		mptr.ipv6_dynamic->ip_ecn_flags = base_header.ipv6->ip_ecn_flags;
 		mptr.ipv6_dynamic->ttl_hopl = base_header.ipv6->ttl_hopl;
 
@@ -1686,13 +1690,13 @@ static uint8_t * tcp_code_irregular_ip_part(ip_context_ptr_t ip_context,
 			// ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE )
 			if(ecn_used != 0)
 			{
-				#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 				*(mptr.uint8++) =
 				   ( ( ( base_header.ipv6->dscp1 <<
 				         2 ) | base_header.ipv6->dscp2 ) << 2 ) | base_header.ipv4->ip_ecn_flags;
-				#else
+#else
 				*(mptr.uint8++) = ( base_header.ipv6->dscp << 2 ) | base_header.ipv4->ip_ecn_flags;
-				#endif
+#endif
 				rohc_debugf(3, "Add dscp and ip_ecn_flags %2.2Xh\n",*(mptr.uint8 - 1));
 			}
 			if(ttl_irregular_chain_flag != 0)
@@ -4218,13 +4222,13 @@ code_rnd_3:
 //	c_base_header.rnd3->discriminator = 0x00; // '0'
 //	c_base_header.rnd3->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3)] = wb.uint8[1];
 	c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3) + 1] = wb.uint8[0];
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3)] = wb.uint8[0];
 	c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3) + 1] = wb.uint8[1];
-	#endif
+#endif
 	rohc_debugf(3, "For ack_number: uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",wb.uint16,wb.uint8[0],
 	            wb.uint8[1]);
 	c_base_header.rnd3->msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
@@ -4260,28 +4264,28 @@ code_rnd_5:
 	c_base_header.uint16[(OFFSET_RND5_SEQ_NUMBER >> 4) + 1] = 0;
 //	c_base_header.rnd5->seq_number = htons( c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number)) );
 	wb.uint16 = htons( c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number)) );
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3)] = wb.uint8[1] >> 1;
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >>
 	                     3) + 1] = ( wb.uint8[1] << 7 ) | ( wb.uint8[0] >> 1 );
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3) + 2] = wb.uint8[0] << 7;
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3)] = wb.uint8[0] >> 3;
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >>
 	                     3) + 1] = ( wb.uint8[0] << 5 ) | ( wb.uint8[1] >> 3 );
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3) + 2] = wb.uint8[1] << 7;
-	#endif
+#endif
 	rohc_debugf(3, "For seq_number: uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",wb.uint16,wb.uint8[0],
 	            wb.uint8[1]);
 //	c_base_header.rnd5->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3)] |= wb.uint8[1];
 	c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] = wb.uint8[0];
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3)] |= wb.uint8[0];
 	c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] = wb.uint8[1];
-	#endif
+#endif
 	rohc_debugf(3, "For ack_number: uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",wb.uint16,wb.uint8[0],
 	            wb.uint8[1]);
 	c_base_header.rnd5->header_crc =
@@ -4332,16 +4336,16 @@ code_rnd_8:
 	c_base_header.rnd8->rsf_flags = rsf_index_enc( tcp->rsf_flags );
 	c_base_header.rnd8->list_present = 0;
 	c_base_header.rnd8->header_crc = 0;
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	{
 		uint8_t msn;
 		msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
 		c_base_header.rnd8->msn1 = ( msn & 0x08 ) >> 3;
 		c_base_header.rnd8->msn2 = msn & 0x07;
 	}
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.rnd8->msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
-	#endif
+#endif
 	c_base_header.rnd8->psh_flag = tcp->psh_flag;
 	c_base_header.rnd8->ttl_hopl = c_lsb(3,3,ip_context.vx->ttl_hopl,ttl_hopl);
 	c_base_header.rnd8->ecn_used = ecn_used;
@@ -4392,7 +4396,7 @@ code_seq_2:
 	mptr.uint8 = (uint8_t*)(c_base_header.seq2 + 1);
 	c_base_header.seq2->discriminator = 0x1A;  // '11010'
 	rohc_debugf(3, "discriminator %Xh\n",c_base_header.seq2->discriminator);
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	{
 		uint8_t ip_id_lsb;
 		ip_id_lsb = c_ip_id_lsb(ip_context.v4->ip_id_behavior,7,3,ip_context.v4->last_ip_id,ip_id,
@@ -4400,11 +4404,11 @@ code_seq_2:
 		c_base_header.seq2->ip_id1 = ip_id_lsb >> 4;
 		c_base_header.seq2->ip_id2 = ip_id_lsb & 0x0F;
 	}
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.seq2->ip_id =
 	   c_ip_id_lsb(ip_context.v4->ip_id_behavior,7,3,ip_context.v4->last_ip_id,ip_id,
 	               tcp_context->msn);
-	#endif
+#endif
 	c_base_header.seq2->seq_number_scaled = c_lsb(4, 7,tcp_context->seq_number,
 	                                              tcp_context->seq_number_scaled);
 	c_base_header.seq2->msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
@@ -4472,17 +4476,17 @@ code_seq_6:
 	rohc_debugf(3, "code seq_6\n");
 	mptr.uint8 = (uint8_t*)(c_base_header.seq6 + 1);
 	c_base_header.seq6->discriminator = 0x1B;  // '11011'
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	{
 		uint8_t seq_number_scaled;
 		seq_number_scaled = c_lsb(4, 7,tcp_context->seq_number,tcp_context->seq_number_scaled);
 		c_base_header.seq6->seq_number_scaled1 = seq_number_scaled >> 1;
 		c_base_header.seq6->seq_number_scaled2 = seq_number_scaled & 0x01;
 	}
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.seq6->seq_number_scaled = c_lsb(4, 7,tcp_context->seq_number,
 	                                              tcp_context->seq_number_scaled);
-	#endif
+#endif
 	c_base_header.seq6->ip_id =
 	   c_ip_id_lsb(ip_context.v4->ip_id_behavior,7,3,ip_context.v4->last_ip_id,ip_id,
 	               tcp_context->msn);
@@ -4534,13 +4538,13 @@ code_seq_8:
 	c_base_header.seq8->ttl_hopl = c_lsb(3, 3, ip_context.vx->ttl_hopl, ttl_hopl);
 //	c_base_header.seq8->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3)] = wb.uint8[1];
 	c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1] = wb.uint8[0];
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3)] = wb.uint8[0];
 	c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1] = wb.uint8[1];
-	#endif
+#endif
 	c_base_header.seq8->ecn_used = ecn_used;
 //	c_base_header.seq8->seq_number = htons( c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number)) );
 	// Si seq_number = 0x07072CF1 -> lsb = 2CF1
@@ -4549,13 +4553,13 @@ code_seq_8:
 	wb.uint16 = c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number));
 	rohc_debugf(3, "For seq_number: uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",wb.uint16,wb.uint8[0],
 	            wb.uint8[1]);
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3)] = wb.uint8[1];
 	c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1] = wb.uint8[0];
-	#elif __BYTE_ORDER == __BIG_ENDIAN
+#else
 	c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3)] = wb.uint8[0];
 	c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1] = wb.uint8[1];
-	#endif
+#endif
 	c_base_header.seq8->rsf_flags = rsf_index_enc( tcp->rsf_flags );
 	// options
 	if(tcp->data_offset > 5)
