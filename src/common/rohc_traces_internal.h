@@ -68,11 +68,6 @@
 		rohc_print(entity_struct, ROHC_TRACE_DEBUG, entity, profile, \
 		           format, ##__VA_ARGS__)
 
-	/** "Raw" log trace */
-	#define rohc_dump(entity_struct, entity, profile, format, ...)\
-		rohc_print(entity_struct, ROHC_TRACE_DEBUG, entity, profile, \
-		           format, ##__VA_ARGS__)
-
 	/** Print information prefixed with the function name */
 	#define rohc_info(entity_struct, entity, profile, format, ...) \
 		rohc_print(entity_struct, ROHC_TRACE_INFO, entity, profile, \
@@ -80,9 +75,6 @@
 
 #else
 	#define rohc_debug(entity_struct, entity, profile, format, ...) \
-		do { } while(0)
-
-	#define rohc_dump(entity_struct, entity, profile, format, ...)\
 		do { } while(0)
 
 	#define rohc_info(entity_struct, entity, profile, format, ...) \
