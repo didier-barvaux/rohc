@@ -390,7 +390,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	int ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
 	int rohc_size;
-	rohc_comp_last_packet_info_t last_packet_info;
+	rohc_comp_last_packet_info2_t last_packet_info;
 	int ret;
 
 	/* check frame length */
@@ -441,7 +441,9 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	}
 
 	/* get some statistics about the last compressed packet */
-	ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
+	last_packet_info.version_major = 0;
+	last_packet_info.version_minor = 0;
+	ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "packet #%lu: cannot get stats about the last compressed "

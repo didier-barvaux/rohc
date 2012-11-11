@@ -375,7 +375,7 @@ static int test_comp_and_decomp(const char *filename,
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		rohc_comp_last_packet_info_t last_packet_info;
+		rohc_comp_last_packet_info2_t last_packet_info;
 		unsigned char *ip_packet;
 		int ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
@@ -441,7 +441,9 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* get packet statistics and remember the packet type */
-		ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
+		last_packet_info.version_major = 0;
+		last_packet_info.version_minor = 0;
+		ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet\n");

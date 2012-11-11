@@ -339,7 +339,7 @@ static int test_comp_and_decomp(const char *const filename,
 		int ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
 		int rohc_size;
-		rohc_comp_last_packet_info_t packet_info;
+		rohc_comp_last_packet_info2_t packet_info;
 		int ret;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
@@ -402,7 +402,9 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* get packet statistics to retrieve the packet type */
-		ret = rohc_comp_get_last_packet_info(comp, &packet_info);
+		packet_info.version_major = 0;
+		packet_info.version_minor = 0;
+		ret = rohc_comp_get_last_packet_info2(comp, &packet_info);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");

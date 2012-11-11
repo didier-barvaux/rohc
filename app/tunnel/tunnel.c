@@ -1036,7 +1036,7 @@ int tun2udp(struct rohc_comp *comp,
 	struct timeval now;
 
 	/* statistics output */
-	rohc_comp_last_packet_info_t last_packet_info;
+	rohc_comp_last_packet_info2_t last_packet_info;
 	const char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
 	const char *states[] = { "error", "IR", "FO", "SO" };
 
@@ -1148,7 +1148,9 @@ int tun2udp(struct rohc_comp *comp,
 	}
 
 	/* print packet statistics */
-	ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
+	last_packet_info.version_major = 0;
+	last_packet_info.version_minor = 0;
+	ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "cannot display stats about the last compressed packet\n");

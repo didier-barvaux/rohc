@@ -574,10 +574,12 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* output the size of the ROHC packet to the output file if asked */
 	if(size_ouput_file != NULL)
 	{
-		rohc_comp_last_packet_info_t last_packet_info;
+		rohc_comp_last_packet_info2_t last_packet_info;
 
 		/* get some statistics about the last compressed packet */
-		ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
+		last_packet_info.version_major = 0;
+		last_packet_info.version_minor = 0;
+		ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
 		if(ret != ROHC_OK)
 		{
 			printf("\n");

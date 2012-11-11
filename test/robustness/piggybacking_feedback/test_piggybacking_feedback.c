@@ -174,7 +174,7 @@ static int test_comp_and_decomp()
 	int decomp_size;
 
 	/* information about the last compressed packet */
-	rohc_comp_last_packet_info_t last_packet_info;
+	rohc_comp_last_packet_info2_t last_packet_info;
 
 	int ret;
 	int is_failure = 1;
@@ -362,7 +362,9 @@ static int test_comp_and_decomp()
 	fprintf(stderr, "decompression with decompressor B is successful\n");
 
 	/* get packet statistics and remember the context mode */
-	ret = rohc_comp_get_last_packet_info(compA, &last_packet_info);
+	last_packet_info.version_major = 0;
+	last_packet_info.version_minor = 0;
+	ret = rohc_comp_get_last_packet_info2(compA, &last_packet_info);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to get statistics on packet\n");

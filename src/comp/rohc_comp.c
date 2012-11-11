@@ -1447,6 +1447,9 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 /**
  * @brief Get some information about the last compressed packet
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_last_packet_info2() instead
+ *
  * @param comp  The ROHC compressor to get information from
  * @param info  IN/OUT: the structure where information will be stored
  * @return      ROHC_OK in case of success, ROHC_ERROR otherwise
@@ -1458,14 +1461,13 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 {
 	if(comp == NULL)
 	{
-		/* rohc_debugf(0, "compressor is not valid\n"); */
 		return ROHC_ERROR;
 	}
 
 	if(comp->last_context == NULL)
 	{
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		          "last context found in compressor is not valid\n");
+		           "last context found in compressor is not valid\n");
 		return ROHC_ERROR;
 	}
 
@@ -1485,6 +1487,83 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 	info->header_last_comp_size = comp->last_context->header_last_compressed_size;
 
 	return ROHC_OK;
+}
+
+
+/**
+ * @brief Get some information about the last compressed packet
+ *
+ * To use the function, call it with a pointer on a pre-allocated
+ * 'rohc_comp_last_packet_info2_t' structure with the 'version_major' and
+ * 'version_minor' fields set to one of the following supported versions:
+ *  - Major 0, minor 0
+ *
+ * See rohc_comp_last_packet_info2_t for details about fields that
+ * are supported in the above versions.
+ *
+ * @param comp  The ROHC compressor to get information from
+ * @param info  IN/OUT: the structure where information will be stored
+ * @return      true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
+                                     rohc_comp_last_packet_info2_t *const info)
+{
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	if(comp->last_context == NULL)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "last context found in compressor is not valid\n");
+		goto error;
+	}
+
+	if(info == NULL)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "structure for last packet information is not valid\n");
+		goto error;
+	}
+
+	/* check compatibility version */
+	if(info->version_major == 0)
+	{
+		/* base fields for major version 0 */
+		info->context_mode = comp->last_context->mode;
+		info->context_state = comp->last_context->state;
+		info->context_used = (comp->last_context->used ? true : false);
+		info->profile_id = comp->last_context->profile->id;
+		info->packet_type = comp->last_context->packet_type;
+		info->total_last_uncomp_size = comp->last_context->total_last_uncompressed_size;
+		info->header_last_uncomp_size = comp->last_context->header_last_uncompressed_size;
+		info->total_last_comp_size = comp->last_context->total_last_compressed_size;
+		info->header_last_comp_size = comp->last_context->header_last_compressed_size;
+
+		/* new fields added by minor versions */
+		if(info->version_minor > 0)
+		{
+			rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "last packet information", info->version_minor);
+			goto error;
+		}
+	}
+	else
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported major version (%u) of the structure for last "
+		           "packet information", info->version_major);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 

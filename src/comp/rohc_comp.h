@@ -73,7 +73,11 @@ typedef enum
 } rohc_c_state;
 
 
-/** Some information about the last compressed packet */
+/**
+ * @brief Some information about the last compressed packet
+ *
+ * Non-extensible version of rohc_comp_last_packet_info2_t
+ */
 typedef struct
 {
 	/** The mode of the last context used by the compressor */
@@ -91,6 +95,73 @@ typedef struct
 	/** The compressed size (in bytes) of the last compressed header */
 	unsigned long header_last_comp_size;
 } rohc_comp_last_packet_info_t;
+
+
+/**
+ * @brief Some information about the last compressed packet
+ *
+ * Extensible version of rohc_comp_last_packet_info_t. Versioning works
+ * as follow:
+ *  - The 'version_major' field defines the compatibility level. If the major
+ *    number given by user does not match the one expected by the library,
+ *    an error is returned.
+ *  - The 'version_minor' field defines the extension level. If the minor
+ *    number given by user does not match the one expected by the library,
+ *    only the fields supported in that minor version will be filled by
+ *    \ref rohc_comp_get_last_packet_info2.
+ *
+ * Notes for developers:
+ *  - Increase the major version if a field is removed.
+ *  - Increase the major version if a field is added at the beginning or in
+ *    the middle of the structure.
+ *  - Increase the minor version if a field is added at the very end of the
+ *    structure.
+ *  - The version_major and version_minor fields must be located at the very
+ *    beginning of the structure.
+ *  - The structure must be packed.
+ *
+ * Supported versions:
+ *  - Major = 0:
+ *     - Minor = 0:
+ *        version_major
+ *        version_minor
+ *        context_mode
+ *        context_state
+ *        context_used
+ *        profile_id
+ *        packet_type
+ *        total_last_uncomp_size
+ *        header_last_uncomp_size
+ *        total_last_comp_size
+ *        header_last_comp_size
+ */
+typedef struct
+{
+	/** The major version of this structure */
+	unsigned short version_major;
+	/** The minor version of this structure */
+	unsigned short version_minor;
+	/** The mode of the last context used by the compressor */
+	rohc_mode context_mode;
+	/** The state of the last context used by the compressor */
+	rohc_c_state context_state;
+	/** Whether the last context used by the compressor is still in use */
+	bool context_used;
+	/** The profile ID of the last context used by the compressor */
+	int profile_id;
+	/** The type of ROHC packet created for the last compressed packet */
+	rohc_packet_t packet_type;
+	/** The uncompressed size (in bytes) of the last compressed packet */
+	unsigned long total_last_uncomp_size;
+	/** The uncompressed size (in bytes) of the last compressed header */
+	unsigned long header_last_uncomp_size;
+	/** The compressed size (in bytes) of the last compressed packet */
+	unsigned long total_last_comp_size;
+	/** The compressed size (in bytes) of the last compressed header */
+	unsigned long header_last_comp_size;
+} __attribute__((packed)) rohc_comp_last_packet_info2_t;
+
+
 
 
 /** The prototype of the callback for random numbers */
@@ -177,7 +248,11 @@ int ROHC_EXPORT rohc_c_context(struct rohc_comp *comp,
                                unsigned int indent,
                                char *buffer);
 int ROHC_EXPORT rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
-                                               rohc_comp_last_packet_info_t *const info);
+                                               rohc_comp_last_packet_info_t *const info)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_get_last_packet_info2() instead");
+bool ROHC_EXPORT rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
+                                                 rohc_comp_last_packet_info2_t *const info);
 const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_c_state state);
 
 
