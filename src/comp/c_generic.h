@@ -19,6 +19,7 @@
  * @brief ROHC generic compression context for IP-only, UDP and UDP Lite
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -319,6 +320,9 @@ struct list_comp
 	/// The translation table
 	struct c_translation trans_table[MAX_ITEM];
 
+
+	/* Functions for handling the data to compress */
+
 	/// @brief the handler used to get the extension in the IP packet
 	unsigned char * (*get_extension)(const struct ip_packet *ip,
 	                                 const int index);
@@ -344,6 +348,14 @@ struct list_comp
 
 	/// @brief the handler used to free the based table element
 	void (*free_table)(struct list_comp *const comp);
+
+
+	/* Traces */
+
+	/** The callback function used to manage traces */
+	rohc_trace_callback_t trace_callback;
+	/** The profile ID the compression list was created for */
+	int profile_id;
 };
 
 

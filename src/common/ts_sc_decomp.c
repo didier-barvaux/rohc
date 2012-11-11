@@ -22,7 +22,15 @@
  */
 
 #include "ts_sc_decomp.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
+
+#include <assert.h>
+
+
+/** Print debug messages for the ts_sc_decomp module */
+#define ts_debug(entity_struct, format, ...) \
+	rohc_debug(entity_struct, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL, \
+	           format, ##__VA_ARGS__)
 
 
 /*
@@ -69,6 +77,8 @@ struct ts_sc_decomp
 	/// The last computed or received TS_OFFSET value (not validated by CRC)
 	uint32_t new_ts_offset;
 
+	/** The callback function used to get log messages */
+	rohc_trace_callback_t trace_callback;
 };
 
 
@@ -80,10 +90,11 @@ struct ts_sc_decomp
 /**
  * @brief Create the scaled RTP Timestamp decoding context
  *
- * @return  The scaled RTP Timestamp decoding context in case of success,
- *          NULL otherwise
+ * @param callback  The trace callback
+ * @return          The scaled RTP Timestamp decoding context in case of
+ *                  success, NULL otherwise
  */
-struct ts_sc_decomp * d_create_sc(void)
+struct ts_sc_decomp * d_create_sc(rohc_trace_callback_t callback)
 {
 	struct ts_sc_decomp *ts_sc;
 
@@ -111,6 +122,8 @@ struct ts_sc_decomp * d_create_sc(void)
 	{
 		goto free_context;
 	}
+
+	ts_sc->trace_callback = callback;
 
 	return ts_sc;
 
@@ -151,40 +164,40 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 	ts_sc->old_sn = ts_sc->sn;
 	ts_sc->ts = ts;
 	ts_sc->sn = sn;
-	rohc_debugf(3, "old SN %u replaced by new SN %u\n", ts_sc->old_sn, ts_sc->sn);
-	rohc_debugf(3, "old TS %u replaced by new TS %u\n", ts_sc->old_ts, ts_sc->ts);
+	ts_debug(ts_sc, "old SN %u replaced by new SN %u\n", ts_sc->old_sn, ts_sc->sn);
+	ts_debug(ts_sc, "old TS %u replaced by new TS %u\n", ts_sc->old_ts, ts_sc->ts);
 
 	/* replace the old TS_* values with the new ones computed during packet
 	   parsing */
 	if(ts_sc->new_ts_scaled != ts_sc->ts_scaled)
 	{
-		rohc_debugf(3, "old TS_SCALED %u replaced by new TS_SCALED %u\n",
-		            ts_sc->ts_scaled, ts_sc->new_ts_scaled);
+		ts_debug(ts_sc, "old TS_SCALED %u replaced by new TS_SCALED %u\n",
+		         ts_sc->ts_scaled, ts_sc->new_ts_scaled);
 		ts_sc->ts_scaled = ts_sc->new_ts_scaled;
 	}
 	else
 	{
-		rohc_debugf(3, "old TS_SCALED %u kept unchanged\n", ts_sc->ts_scaled);
+		ts_debug(ts_sc, "old TS_SCALED %u kept unchanged\n", ts_sc->ts_scaled);
 	}
 	if(ts_sc->new_ts_stride != ts_sc->ts_stride)
 	{
-		rohc_debugf(3, "old TS_STRIDE %u replaced by new TS_STRIDE %u\n",
-		            ts_sc->ts_stride, ts_sc->new_ts_stride);
+		ts_debug(ts_sc, "old TS_STRIDE %u replaced by new TS_STRIDE %u\n",
+		         ts_sc->ts_stride, ts_sc->new_ts_stride);
 		ts_sc->ts_stride = ts_sc->new_ts_stride;
 	}
 	else
 	{
-		rohc_debugf(3, "old TS_STRIDE %u kept unchanged\n", ts_sc->ts_stride);
+		ts_debug(ts_sc, "old TS_STRIDE %u kept unchanged\n", ts_sc->ts_stride);
 	}
 	if(ts_sc->new_ts_offset != ts_sc->ts_offset)
 	{
-		rohc_debugf(3, "old TS_OFFSET %u replaced by new TS_OFFSET %u\n",
+		ts_debug(ts_sc, "old TS_OFFSET %u replaced by new TS_OFFSET %u\n",
 		            ts_sc->ts_offset, ts_sc->new_ts_offset);
 		ts_sc->ts_offset = ts_sc->new_ts_offset;
 	}
 	else
 	{
-		rohc_debugf(3, "old TS_OFFSET %u kept unchanged\n", ts_sc->ts_offset);
+		ts_debug(ts_sc, "old TS_OFFSET %u kept unchanged\n", ts_sc->ts_offset);
 	}
 
 	/* reset all the new TS_* values */
@@ -206,7 +219,7 @@ void ts_update_context(struct ts_sc_decomp *const ts_sc,
 void d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
                         const uint32_t ts_stride)
 {
-	rohc_debugf(3, "new TS_STRIDE %u recorded\n", ts_stride);
+	ts_debug(ts_sc, "new TS_STRIDE %u recorded\n", ts_stride);
 	ts_sc->new_ts_stride = ts_stride;
 }
 
@@ -232,24 +245,23 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 	bool lsb_decode_ok;
 
 	/* update TS_SCALED in context */
-	rohc_debugf(3, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
-	            ts_scaled, rohc_lsb_get_ref(ts_sc->lsb_ts_scaled));
+	ts_debug(ts_sc, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
+	         ts_scaled, rohc_lsb_get_ref(ts_sc->lsb_ts_scaled));
 	lsb_decode_ok = rohc_lsb_decode32(ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
 	                                  &ts_scaled_decoded);
 	if(!lsb_decode_ok)
 	{
-		rohc_debugf(0, "failed to decode %zd-bit TS_SCALED %u\n", bits_nr,
-		            ts_scaled);
+		rohc_error(ts_sc, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "failed to decode %zd-bit TS_SCALED %u\n", bits_nr, ts_scaled);
 		goto error;
 	}
-
-	rohc_debugf(3, "ts_scaled decoded = %u / 0x%x with %zd bits\n",
-	            ts_scaled_decoded, ts_scaled_decoded, bits_nr);
+	ts_debug(ts_sc, "ts_scaled decoded = %u / 0x%x with %zd bits\n",
+	         ts_scaled_decoded, ts_scaled_decoded, bits_nr);
 
 	/* TS computation with the TS_SCALED we just decoded and the
 	   TS_STRIDE/TS_OFFSET values found in context */
 	*decoded_ts = ts_sc->ts_stride * ts_scaled_decoded + ts_sc->ts_offset;
-	rohc_debugf(3, "TS calculated = %u\n", *decoded_ts);
+	ts_debug(ts_sc, "TS calculated = %u\n", *decoded_ts);
 
 	/* store the updated TS_* values in context */
 	ts_sc->new_ts_scaled = ts_scaled_decoded;
@@ -285,15 +297,15 @@ uint32_t ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
 	if(ts_sc->new_ts_stride != 0)
 	{
 		/* TS_STRIDE was updated by the ROHC packet being currently parsed */
-		rohc_debugf(3, "decode unscaled TS bits %u with updated TS_STRIDE %u\n",
-		            ts_bits, ts_sc->new_ts_stride);
+		ts_debug(ts_sc, "decode unscaled TS bits %u with updated TS_STRIDE %u\n",
+		         ts_bits, ts_sc->new_ts_stride);
 		effective_ts_stride = ts_sc->new_ts_stride;
 	}
 	else
 	{
 		/* TS_STRIDE was not updated by the ROHC packet being currently parsed */
-		rohc_debugf(3, "decode unscaled TS bits %u with context TS_STRIDE %u\n",
-		            ts_bits, ts_sc->ts_stride);
+		ts_debug(ts_sc, "decode unscaled TS bits %u with context TS_STRIDE %u\n",
+		         ts_bits, ts_sc->ts_stride);
 		effective_ts_stride = ts_sc->ts_stride;
 	}
 
@@ -301,13 +313,13 @@ uint32_t ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
 	{
 		/* compute the new TS_OFFSET value */
 		new_ts_offset = ts_bits % effective_ts_stride;
-		rohc_debugf(3, "TS_OFFSET = %u modulo %u = %u\n",
-		            ts_bits, effective_ts_stride, new_ts_offset);
+		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u\n",
+		         ts_bits, effective_ts_stride, new_ts_offset);
 
 		/* compute the new TS_SCALED value */
 		new_ts_scaled = (ts_bits - new_ts_offset) / effective_ts_stride;
-		rohc_debugf(3, "TS_SCALED = (%u - %u) / %u = %u\n", ts_bits,
-		            new_ts_offset, effective_ts_stride, new_ts_scaled);
+		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u\n", ts_bits,
+		         new_ts_offset, effective_ts_stride, new_ts_scaled);
 
 		/* store the updated TS_* values in context */
 		ts_sc->new_ts_scaled = new_ts_scaled;
@@ -339,16 +351,16 @@ uint32_t ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
 	/* compute the new TS_SCALED according to the new SN value and
 	   the SN/TS_SCALED reference value */
 	new_ts_scaled = ts_sc->ts_scaled + (sn - ts_sc->sn);
-	rohc_debugf(3, "new TS_SCALED = %u (ref TS_SCALED = %u, new SN = %u, "
-	            "ref SN = %u)\n", new_ts_scaled, ts_sc->ts_scaled,
-	            sn, ts_sc->sn);
+	ts_debug(ts_sc, "new TS_SCALED = %u (ref TS_SCALED = %u, new SN = %u, "
+	         "ref SN = %u)\n", new_ts_scaled, ts_sc->ts_scaled,
+	         sn, ts_sc->sn);
 
 	/* compute the new TS value according to the TS_SCALED value we just
 	   computed and the TS_STRIDE/TS_OFFSET values found in context */
 	new_ts = new_ts_scaled * ts_sc->ts_stride + ts_sc->ts_offset;
-	rohc_debugf(3, "new TS = %u (TS_SCALED = %u, TS_STRIDE = %u, "
-	            "TS_OFFSET = %u)\n", new_ts, new_ts_scaled, ts_sc->ts_stride,
-	            ts_sc->ts_offset);
+	ts_debug(ts_sc, "new TS = %u (TS_SCALED = %u, TS_STRIDE = %u, "
+	         "TS_OFFSET = %u)\n", new_ts, new_ts_scaled, ts_sc->ts_stride,
+	         ts_sc->ts_offset);
 
 	/* store the updated TS_* values in context */
 	ts_sc->new_ts_scaled = new_ts_scaled;

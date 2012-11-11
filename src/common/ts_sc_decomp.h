@@ -25,10 +25,12 @@
 #define TS_SC_DECOMP_H
 
 #include "lsb_decode.h"
-#include "dllexport.h"
+#include "rohc_traces.h"
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "dllexport.h"
 
 
 /* The definition of the scaled RTP Timestamp decoding context is private */
@@ -39,7 +41,7 @@ struct ts_sc_decomp;
  * Function prototypes
  */
 
-struct ts_sc_decomp * ROHC_EXPORT d_create_sc(void);
+struct ts_sc_decomp * ROHC_EXPORT d_create_sc(rohc_trace_callback_t callback);
 void ROHC_EXPORT rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled)
 	__attribute__((nonnull(1)));
 

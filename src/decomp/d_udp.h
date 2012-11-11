@@ -50,7 +50,7 @@ struct d_udp_context
  * Public function prototypes.
  */
 
-int udp_parse_static_udp(struct d_generic_context *context,
+int udp_parse_static_udp(const struct d_context *const context,
                          const unsigned char *packet,
                          unsigned int length,
                          struct rohc_extr_bits *const bits);

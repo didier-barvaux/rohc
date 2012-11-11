@@ -24,9 +24,12 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_debug.h"
 #include "cid.h"
 #include "crc.h"
+
+#include <assert.h>
 
 
 /**
@@ -121,10 +124,14 @@ static int c_uncompressed_create(struct c_context *const context,
 	struct sc_uncompressed_context *uncomp_context;
 	int success = 0;
 
+	assert(context != NULL);
+	assert(context->profile != NULL);
+
 	uncomp_context = malloc(sizeof(struct sc_uncompressed_context));
 	if(uncomp_context == NULL)
 	{
-		rohc_debugf(0, "no memory for the uncompressed context\n");
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the uncompressed context\n");
 		goto quit;
 	}
 	context->specific = uncomp_context;
@@ -264,7 +271,9 @@ static void c_uncompressed_feedback(struct c_context *const context,
 //				case 7: /* Loss */
 //					break;
 				default:
-					rohc_debugf(0, "unknown feedback option %d\n", opt);
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+					             context->profile->id,
+					             "unknown feedback option %d\n", opt);
 					break;
 			}
 
@@ -285,7 +294,9 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			/* ignore feedback in case of bad CRC */
 			if(crc_in_packet != crc_computed)
 			{
-				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "CRC check failed (size = %d)\n", feedback->size);
 				return;
 			}
 		}
@@ -300,7 +311,9 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			}
 			else
 			{
-				rohc_debugf(0, "mode change requested but no CRC was given\n");
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "mode change requested but no CRC was given\n");
 			}
 		}
 
@@ -314,14 +327,16 @@ static void c_uncompressed_feedback(struct c_context *const context,
 				uncompressed_change_state(context, IR);
 				break;
 			case RESERVED:
-				rohc_debugf(0, "reserved field used\n");
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "reserved field used\n");
 				break;
 		}
 
 	}
 	else
 	{
-		rohc_debugf(0, "feedback type not implemented (%d)\n", feedback->type);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "feedback type not implemented (%d)\n", feedback->type);
 	}
 }
 
@@ -362,7 +377,8 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 	if(uncomp_context->go_back_ir_count >=
 	   context->compressor->periodic_refreshes_ir_timeout)
 	{
-		rohc_debugf(2, "periodic change to IR state\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "periodic change to IR state\n");
 		uncomp_context->go_back_ir_count = 0;
 		uncompressed_change_state(context, IR);
 	}
@@ -447,21 +463,24 @@ static int uncompressed_code_packet(const struct c_context *context,
 	switch(context->state)
 	{
 		case IR:
-			rohc_debugf(1, "build IR packet\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "build IR packet\n");
 			uncomp_context->ir_count++;
 			code_packet = uncompressed_code_IR_packet;
 			*packet_type = PACKET_IR;
 			break;
 
 		case FO:
-			rohc_debugf(1, "build normal packet\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "build normal packet\n");
 			uncomp_context->normal_count++;
 			code_packet = uncompressed_code_normal_packet;
 			*packet_type = PACKET_NORMAL;
 			break;
 
 		default:
-			rohc_debugf(0, "unknown state, cannot build packet\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "unknown state, cannot build packet\n");
 			code_packet = NULL;
 			*packet_type = PACKET_UNKNOWN;
 	}
@@ -522,7 +541,8 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	int counter;
 	int first_position;
 
-	rohc_debugf(2, "code IR packet (CID = %d)\n", context->cid);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "code IR packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -533,11 +553,13 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 
 	/* part 2 */
 	dest[first_position] = 0xfc;
-	rohc_debugf(3, "first byte = 0x%02x\n", dest[first_position]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "first byte = 0x%02x\n", dest[first_position]);
 
 	/* part 4 */
 	dest[counter] = ROHC_PROFILE_UNCOMPRESSED;
-	rohc_debugf(3, "Profile ID = 0x%02x\n", dest[counter]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "Profile ID = 0x%02x\n", dest[counter]);
 	counter++;
 
 	/* part 5 */
@@ -545,7 +567,8 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                              CRC_INIT_8,
 	                              context->compressor->crc_table_8);
-	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
 	counter++;
 
 	*payload_offset = 0;
@@ -597,7 +620,8 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	int counter;
 	int first_position;
 
-	rohc_debugf(2, "code normal packet (CID = %d)\n", context->cid);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "code normal packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -609,7 +633,8 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	/* part 2 */
 	dest[first_position] = (ip_get_raw_data(ip))[0];
 
-	rohc_debugf(3, "header length = %d, payload length = %d\n", counter - 1,
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "header length = %d, payload length = %d\n", counter - 1,
 	            ip_get_totlen(ip));
 
 	*payload_offset = 1;

@@ -54,6 +54,7 @@ struct d_rtp_context
  * Public function prototypes.
  */
 
+/* no public function for the RTP decompression profile */
 
 #endif
 

@@ -24,7 +24,7 @@
 #include "c_esp.h"
 #include "c_generic.h"
 #include "c_ip.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "crc.h"
 #include "protocols/esp.h"
 #include "rohc_utils.h"
@@ -112,12 +112,14 @@ static int c_esp_create(struct c_context *const context,
 	unsigned int ip_proto;
 
 	assert(context != NULL);
+	assert(context->profile != NULL);
 	assert(ip != NULL);
 
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_ESP_SN, ip))
 	{
-		rohc_debugf(0, "generic context creation failed\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "generic context creation failed\n");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -129,7 +131,8 @@ static int c_esp_create(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto clean;
 		}
 
@@ -147,8 +150,9 @@ static int c_esp_create(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
-		rohc_debugf(0, "next header is not ESP (%d), cannot use this profile\n",
-		            ip_proto);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "next header is not ESP (%d), cannot use this profile\n",
+		             ip_proto);
 		goto clean;
 	}
 
@@ -156,15 +160,17 @@ static int c_esp_create(struct c_context *const context,
 
 	/* initialize SN with the SN found in the ESP header */
 	g_context->sn = ntohl(esp->sn);
-	rohc_debugf(1, "initialize context(SN) = hdr(SN) of first packet = %u\n",
-	            g_context->sn);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "initialize context(SN) = hdr(SN) of first packet = %u\n",
+	           g_context->sn);
 
 	/* create the ESP part of the profile context */
 	esp_context = malloc(sizeof(struct sc_esp_context));
 	if(esp_context == NULL)
 	{
-	  rohc_debugf(0, "no memory for the ESP part of the profile context\n");
-	  goto clean;
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the ESP part of the profile context\n");
+		goto clean;
 	}
 	g_context->specific = esp_context;
 
@@ -294,7 +300,8 @@ int c_esp_check_context(const struct c_context *context,
 		/* get the second IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto error;
 		}
 
@@ -414,7 +421,8 @@ static int c_esp_encode(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			return -1;
 		}
 		last_ip_header = &ip2;
@@ -430,7 +438,8 @@ static int c_esp_encode(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
-		rohc_debugf(0, "packet is not an ESP packet\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "packet is not an ESP packet\n");
 		return -1;
 	}
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
@@ -517,7 +526,8 @@ static int esp_code_static_esp_part(const struct c_context *context,
 	const struct esphdr *esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_debugf(3, "ESP SPI = 0x%08x\n", ntohl(esp->spi));
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "ESP SPI = 0x%08x\n", ntohl(esp->spi));
 	memcpy(&dest[counter], &esp->spi, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
@@ -558,7 +568,8 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
 	esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_debugf(3, "ESP SN = 0x%08x\n", ntohl(esp->sn));
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "ESP SN = 0x%08x\n", ntohl(esp->sn));
 	memcpy(&dest[counter], &esp->sn, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 

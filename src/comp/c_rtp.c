@@ -24,7 +24,7 @@
 
 #include "c_rtp.h"
 #include "c_udp.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "sdvl.h"
@@ -99,10 +99,14 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	const struct rtphdr *rtp;
 	unsigned int ip_proto;
 
+	assert(context != NULL);
+	assert(context->profile != NULL);
+
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_RTP_SN, ip))
 	{
-		rohc_debugf(0, "generic context creation failed\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "generic context creation failed\n");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -114,7 +118,9 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP,
+			             context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto clean;
 		}
 		last_ip_header = &ip2;
@@ -130,8 +136,9 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
-		rohc_debugf(0, "next header is not UDP (%d), cannot use this profile\n",
-		            ip_proto);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "next header is not UDP (%d), cannot use this profile\n",
+		             ip_proto);
 		goto clean;
 	}
 
@@ -141,14 +148,16 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	/* initialize SN with the SN found in the RTP header */
 	g_context->sn = (uint32_t) ntohs(rtp->sn);
 	assert(g_context->sn <= 0xffff);
-	rohc_debugf(1, "initialize context(SN) = hdr(SN) of first packet = %u\n",
-	            g_context->sn);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "initialize context(SN) = hdr(SN) of first packet = %u\n",
+	           g_context->sn);
 
 	/* create the RTP part of the profile context */
 	rtp_context = malloc(sizeof(struct sc_rtp_context));
 	if(rtp_context == NULL)
 	{
-		rohc_debugf(0, "no memory for the RTP part of the profile context\n");
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the RTP part of the profile context\n");
 		goto clean;
 	}
 	g_context->specific = rtp_context;
@@ -159,9 +168,11 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->rtp_pt_change_count = 0;
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	if(!c_create_sc(&rtp_context->ts_sc,
-	                context->compressor->wlsb_window_width))
+	                context->compressor->wlsb_window_width,
+	                context->compressor->trace_callback))
 	{
-		rohc_debugf(0, "cannot create scaled RTP Timestamp encoding\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "cannot create scaled RTP Timestamp encoding\n");
 		goto clean;
 	}
 
@@ -283,7 +294,8 @@ int c_rtp_check_context(const struct c_context *context,
 		/* second IP header is last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto error;
 		}
 		last_ip_header = &ip2;
@@ -344,20 +356,23 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 	if(g_context->tmp.send_static)
 	{
 		packet = PACKET_UOR_2_RTP;
-		rohc_debugf(3, "choose packet UOR-2-RTP because at least one static "
-		            "field changed\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UOR-2-RTP because at least one static "
+		           "field changed\n");
 	}
 	else if(nr_of_ip_hdr == 1 && g_context->tmp.send_dynamic > 2)
 	{
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %d > 2 dynamic fields changed "
-		            "with a single IP header\n", g_context->tmp.send_dynamic);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %d > 2 dynamic fields changed "
+		           "with a single IP header\n", g_context->tmp.send_dynamic);
 	}
 	else if(nr_of_ip_hdr > 1 && g_context->tmp.send_dynamic > 4)
 	{
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %d > 4 dynamic fields changed "
-		            "with double IP header\n", g_context->tmp.send_dynamic);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %d > 4 dynamic fields changed "
+		           "with double IP header\n", g_context->tmp.send_dynamic);
 	}
 	else if(nr_sn_bits <= 14)
 	{
@@ -372,8 +387,9 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 		size_t nr_ipv4_non_rnd;
 		size_t nr_ipv4_non_rnd_with_bits;
 
-		rohc_debugf(3, "choose one UOR-2-* packet because %zd <= 14 SN "
-		            "bits must be transmitted\n", nr_sn_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose one UOR-2-* packet because %zd <= 14 SN "
+		           "bits must be transmitted\n", nr_sn_bits);
 
 		/* how many IP headers are IPv4 headers with non-random IP-IDs */
 		nr_ipv4_non_rnd = 0;
@@ -409,33 +425,37 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 		if(nr_ipv4_non_rnd == 0)
 		{
 			packet = PACKET_UOR_2_RTP;
-			rohc_debugf(3, "choose packet UOR-2-RTP because neither of the %zd "
-			            "IP header(s) are IPv4 with non-random IP-ID\n",
-			            nr_of_ip_hdr);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2-RTP because neither of the %zd "
+			           "IP header(s) are IPv4 with non-random IP-ID\n",
+			           nr_of_ip_hdr);
 		}
 		else if(nr_ipv4_non_rnd_with_bits >= 1 &&
 		        sdvl_can_length_be_encoded(nr_ts_bits))
 		{
 			packet = PACKET_UOR_2_ID;
-			rohc_debugf(3, "choose packet UOR-2-ID because at least one of the "
-			            "%zd IP header(s) is IPv4 with non-random IP-ID with at "
-			            "least 1 bit of IP-ID to transmit, and %zd TS bits can "
-			            "be SDVL-encoded\n", nr_of_ip_hdr, nr_ts_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2-ID because at least one of the "
+			           "%zd IP header(s) is IPv4 with non-random IP-ID with at "
+			           "least 1 bit of IP-ID to transmit, and %zd TS bits can "
+			           "be SDVL-encoded\n", nr_of_ip_hdr, nr_ts_bits);
 		}
 		else
 		{
 			packet = PACKET_UOR_2_TS;
-			rohc_debugf(3, "choose packet UOR-2-TS because at least one of the "
-			            "%zd IP header(s) is IPv4 with non-random IP-ID\n",
-			            nr_of_ip_hdr);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2-TS because at least one of the "
+			           "%zd IP header(s) is IPv4 with non-random IP-ID\n",
+			           nr_of_ip_hdr);
 		}
 	}
 	else
 	{
 		/* UOR-2* packets can not be used, use IR-DYN instead */
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-		            "be transmitted\n", nr_sn_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %zd > 14 SN bits must "
+		           "be transmitted\n", nr_sn_bits);
 	}
 
 	return packet;
@@ -486,10 +506,11 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	is_ip_v4 = (g_context->ip_flags.version == IPV4);
 	is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
 
-	rohc_debugf(3, "nr_ip_bits = %zd, nr_sn_bits = %zd, nr_ts_bits = %zd, "
-	            "m_set = %d, nr_of_ip_hdr = %zd, rnd = %d\n", nr_ip_id_bits,
-	            nr_sn_bits, nr_ts_bits, rtp_context->tmp.m_set, nr_of_ip_hdr,
-	            is_rnd);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "nr_ip_bits = %zd, nr_sn_bits = %zd, nr_ts_bits = %zd, "
+	           "m_set = %d, nr_of_ip_hdr = %zd, rnd = %d\n", nr_ip_id_bits,
+	           nr_sn_bits, nr_ts_bits, rtp_context->tmp.m_set, nr_of_ip_hdr,
+	           is_rnd);
 
 	/* sanity check */
 	assert(g_context->tmp.send_static == 0);
@@ -523,8 +544,9 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 			}
 		}
 	}
-	rohc_debugf(3, "nr_ipv4_non_rnd = %u, nr_ipv4_non_rnd_with_bits = %u\n",
-	            nr_ipv4_non_rnd, nr_ipv4_non_rnd_with_bits);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "nr_ipv4_non_rnd = %u, nr_ipv4_non_rnd_with_bits = %u\n",
+	           nr_ipv4_non_rnd, nr_ipv4_non_rnd_with_bits);
 
 	/* determine the number of IP-ID bits and the IP-ID offset of the
 	 * innermost IPv4 header with non-random IP-ID */
@@ -538,22 +560,24 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	   rtp_context->tmp.m_set == 0)
 	{
 		packet = PACKET_UO_0;
-		rohc_debugf(3, "choose packet UO-0 because %zd <= 4 SN bits must be "
-		            "transmitted, neither of the %zd IP header(s) are IPv4 "
-		            "with non-random IP-ID with some IP-ID bits to transmit, "
-		            "%s, and RTP M bit is not set\n", nr_sn_bits, nr_of_ip_hdr,
-		            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
-		             "TS bits are deductible"));
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UO-0 because %zd <= 4 SN bits must be "
+		           "transmitted, neither of the %zd IP header(s) are IPv4 "
+		           "with non-random IP-ID with some IP-ID bits to transmit, "
+		           "%s, and RTP M bit is not set\n", nr_sn_bits, nr_of_ip_hdr,
+		           (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
+		            "TS bits are deductible"));
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd == 0 &&
 	        nr_ts_bits <= 6)
 	{
 		packet = PACKET_UO_1_RTP;
-		rohc_debugf(3, "choose packet UO-1-RTP because neither of the %zd IP "
-		            "header(s) are 'IPv4 with non-random IP-ID', %zd <= 4 SN "
-		            "bits must be transmitted, %zd <= 6 TS bits must be "
-		            "transmitted\n", nr_sn_bits, nr_of_ip_hdr, nr_ts_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UO-1-RTP because neither of the %zd IP "
+		           "header(s) are 'IPv4 with non-random IP-ID', %zd <= 4 SN "
+		           "bits must be transmitted, %zd <= 6 TS bits must be "
+		           "transmitted\n", nr_sn_bits, nr_of_ip_hdr, nr_ts_bits);
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 1 && nr_innermost_ip_id_bits <= 5 &&
@@ -565,24 +589,26 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 		 * removed or not, and whether nr_ipv4_non_rnd_with_bits == 1 should
 		 * not be replaced by nr_ipv4_non_rnd_with_bits >= 1 */
 		packet = PACKET_UO_1_ID;
-		rohc_debugf(3, "choose packet UO-1-ID because only one of the %zd IP "
-		            "headers is IPv4 with non-random IP-ID with %zd <= 5 IP-ID "
-		            "bits to transmit, %zd <= 4 SN bits must be transmitted, "
-		            "%s, and RTP M bit is not set\n", nr_of_ip_hdr,
-		            nr_innermost_ip_id_bits, nr_sn_bits,
-		            (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
-		             "TS bits are deductible"));
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UO-1-ID because only one of the %zd IP "
+		           "headers is IPv4 with non-random IP-ID with %zd <= 5 IP-ID "
+		           "bits to transmit, %zd <= 4 SN bits must be transmitted, "
+		           "%s, and RTP M bit is not set\n", nr_of_ip_hdr,
+		           nr_innermost_ip_id_bits, nr_sn_bits,
+		           (nr_ts_bits == 0 ? "0 TS bit must be transmitted" :
+		            "TS bits are deductible"));
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
 	        nr_ts_bits <= 5)
 	{
 		packet = PACKET_UO_1_TS;
-		rohc_debugf(3, "choose packet UO-1-TS because neither of the %zd IP "
-		            "header(s) are IPv4 with non-random IP-ID with some IP-ID "
-		            "bits to to transmit for that IP header, %zd <= 4 SN bits "
-		            "must be transmitted, %zd <= 6 TS bits must be "
-		            "transmitted\n", nr_of_ip_hdr, nr_sn_bits, nr_ts_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UO-1-TS because neither of the %zd IP "
+		           "header(s) are IPv4 with non-random IP-ID with some IP-ID "
+		           "bits to to transmit for that IP header, %zd <= 4 SN bits "
+		           "must be transmitted, %zd <= 6 TS bits must be "
+		           "transmitted\n", nr_of_ip_hdr, nr_sn_bits, nr_ts_bits);
 	}
 	else if(nr_sn_bits <= 14)
 	{
@@ -596,33 +622,37 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 		if(nr_ipv4_non_rnd == 0)
 		{
 			packet = PACKET_UOR_2_RTP;
-			rohc_debugf(3, "choose packet UOR-2-RTP because neither of the %zd "
-			            "IP header(s) are IPv4 with non-random IP-ID\n",
-			            nr_of_ip_hdr);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2-RTP because neither of the %zd "
+			           "IP header(s) are IPv4 with non-random IP-ID\n",
+			           nr_of_ip_hdr);
 		}
 		else if(nr_ipv4_non_rnd_with_bits >= 1 &&
 		        sdvl_can_length_be_encoded(nr_ts_bits))
 		{
 			packet = PACKET_UOR_2_ID;
-			rohc_debugf(3, "choose packet UOR-2-ID because at least one of the "
-			            "%zd IP header(s) is IPv4 with non-random IP-ID with at "
-			            "least 1 bit of IP-ID to transmit, and %zd TS bits can "
-			            "be SDVL-encoded\n", nr_of_ip_hdr, nr_ts_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2-ID because at least one of the "
+			           "%zd IP header(s) is IPv4 with non-random IP-ID with at "
+			           "least 1 bit of IP-ID to transmit, and %zd TS bits can "
+			           "be SDVL-encoded\n", nr_of_ip_hdr, nr_ts_bits);
 		}
 		else
 		{
 			packet = PACKET_UOR_2_TS;
-			rohc_debugf(3, "choose packet UOR-2-TS because at least one of the "
-			            "%zd IP header(s) is IPv4 with non-random IP-ID\n",
-			            nr_of_ip_hdr);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2-TS because at least one of the "
+			           "%zd IP header(s) is IPv4 with non-random IP-ID\n",
+			           nr_of_ip_hdr);
 		}
 	}
 	else
 	{
 		/* UOR-2* packets can not be used, use IR-DYN instead */
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-		            "be transmitted\n", nr_sn_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %zd > 14 SN bits must "
+		           "be transmitted\n", nr_sn_bits);
 	}
 
 	return packet;
@@ -651,8 +681,8 @@ static rohc_ext_t c_rtp_decide_extension(const struct c_context *context)
 	/* force extension type 3 if at least one RTP dynamic field changed */
 	if(rtp_context->tmp.send_rtp_dynamic > 0)
 	{
-		rohc_debugf(3, "force EXT-3 because at least one RTP dynamic "
-		            "field changed\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "force EXT-3 because at least one RTP dynamic field changed\n");
 		ext = PACKET_EXT_3;
 	}
 	else
@@ -698,14 +728,16 @@ int c_rtp_encode(struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 	if(g_context == NULL)
 	{
-		rohc_debugf(0, "generic context not valid\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "generic context not valid\n");
 		return -1;
 	}
 
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 	if(rtp_context == NULL)
 	{
-		rohc_debugf(0, "RTP context not valid\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "RTP context not valid\n");
 		return -1;
 	}
 
@@ -715,7 +747,8 @@ int c_rtp_encode(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			return -1;
 		}
 		last_ip_header = &ip2;
@@ -731,7 +764,8 @@ int c_rtp_encode(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_UDP)
 	{
-		rohc_debugf(0, "packet is not an UDP packet\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "packet is not an UDP packet\n");
 		return -1;
 	}
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
@@ -788,21 +822,24 @@ void rtp_decide_state(struct c_context *const context)
 	{
 		/* TODO: could be optimized: IR state is not required, only IR or
 		 * IR-DYN packet is */
-		rohc_debugf(3, "go back to IR state because UDP checksum behaviour "
-		            "changed in the last few packets\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "go back to IR state because UDP checksum behaviour "
+		           "changed in the last few packets\n");
 		change_state(context, IR);
 	}
 	else if(rtp_context->tmp.send_rtp_dynamic)
 	{
 		if(context->state == IR)
 		{
-			rohc_debugf(3, "%d RTP dynamic fields changed, stay in IR state\n",
-			            rtp_context->tmp.send_rtp_dynamic);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "%d RTP dynamic fields changed, stay in IR state\n",
+			           rtp_context->tmp.send_rtp_dynamic);
 		}
 		else
 		{
-			rohc_debugf(3, "%d RTP dynamic fields changed, go in FO state\n",
-			            rtp_context->tmp.send_rtp_dynamic);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "%d RTP dynamic fields changed, go in FO state\n",
+			           rtp_context->tmp.send_rtp_dynamic);
 			change_state(context, FO);
 		}
 	}
@@ -896,14 +933,16 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 		 * so send TS only */
 		rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
 		rtp_context->tmp.nr_ts_bits = 32;
-		rohc_debugf(2, "cannot send TS scaled, send TS only\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "cannot send TS scaled, send TS only\n");
 	}
 	else if(rtp_context->ts_sc.state == INIT_STRIDE)
 	{
 		/* TS and TS_STRIDE will be send */
 		rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
 		rtp_context->tmp.nr_ts_bits = 32;
-		rohc_debugf(2, "cannot send TS scaled, send TS and TS_STRIDE\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "cannot send TS scaled, send TS and TS_STRIDE\n");
 	}
 	else /* SEND_SCALED */
 	{
@@ -922,24 +961,27 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 			    nr_bits++, mask |= (1 << (nr_bits - 1)))
 			{
 			}
-			rohc_assert((ts_send & mask) == ts_send, error,
-			            "size of TS scaled (0x%x) not found, this should "
-			            "never happen!", ts_send);
+			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			            (ts_send & mask) == ts_send, error, "size of TS scaled "
+			            "(0x%x) not found, this should never happen!", ts_send);
 
-			rohc_debugf(3, "first TS scaled to be sent: ts_send = %u, "
-			            "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "first TS scaled to be sent: ts_send = %u, mask = 0x%x, "
+			           "nr_bits = %zd\n", ts_send, mask, nr_bits);
 			rtp_context->tmp.nr_ts_bits = nr_bits;
 		}
 
 		/* save the new TS_SCALED value */
 		assert(g_context->sn <= 0xffff);
 		add_scaled(&rtp_context->ts_sc, g_context->sn);
-		rohc_debugf(3, "ts_scaled = %u on %zd bits\n",
-		            rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "ts_scaled = %u on %zd bits\n",
+		           rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
 	}
 
-	rohc_debugf(3, "%zd bits are required to encode new TS\n",
-	            rtp_context->tmp.nr_ts_bits);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "%zd bits are required to encode new TS\n",
+	           rtp_context->tmp.nr_ts_bits);
 
 	return ROHC_OK;
 
@@ -992,7 +1034,8 @@ int rtp_code_static_rtp_part(const struct c_context *context,
 	counter = udp_code_static_udp_part(context, next_header, dest, counter);
 
 	/* part 3 */
-	rohc_debugf(3, "RTP SSRC = 0x%x\n", rtp->ssrc);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "RTP SSRC = 0x%x\n", rtp->ssrc);
 	memcpy(&dest[counter], &rtp->ssrc, 4);
 	counter += 4;
 
@@ -1060,7 +1103,8 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* part 1 */
-	rohc_debugf(3, "UDP checksum = 0x%04x\n", udp->check);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "UDP checksum = 0x%04x\n", udp->check);
 	memcpy(&dest[counter], &udp->check, 2);
 	counter += 2;
 	rtp_context->udp_checksum_change_count++;
@@ -1077,7 +1121,8 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->padding & 0x01) << 5;
 	byte |= rtp->cc & 0x0f;
 	dest[counter] = byte;
-	rohc_debugf(3, "part 2 = 0x%02x\n", dest[counter]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "part 2 = 0x%02x\n", dest[counter]);
 	counter++;
 
 	/* part 3 */
@@ -1085,25 +1130,29 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->m & 0x01) << 7;
 	byte |= rtp->pt & 0x7f;
 	dest[counter] = byte;
-	rohc_debugf(3, "part 3 = 0x%02x\n", dest[counter]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "part 3 = 0x%02x\n", dest[counter]);
 	counter++;
 	rtp_context->rtp_pt_change_count++;
 
 	/* part 4 */
 	memcpy(&dest[counter], &rtp->sn, 2);
-	rohc_debugf(3, "part 4 = 0x%02x 0x%02x\n", dest[counter], dest[counter + 1]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "part 4 = 0x%02x 0x%02x\n", dest[counter], dest[counter + 1]);
 	counter += 2;
 
 	/* part 5 */
 	memcpy(&dest[counter], &rtp->timestamp, 4);
-	rohc_debugf(3, "part 5 = 0x%02x 0x%02x 0x%02x 0x%02x\n", dest[counter],
-	            dest[counter + 1], dest[counter + 2], dest[counter + 3]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "part 5 = 0x%02x 0x%02x 0x%02x 0x%02x\n", dest[counter],
+	           dest[counter + 1], dest[counter + 2], dest[counter + 3]);
 	counter += 4;
 
 	/* part 6 not supported yet  but the field is mandatory,
 	   so add a zero byte */
 	dest[counter] = 0x00;
-	rohc_debugf(3, "Generic CSRC list not supported yet, put a 0x00 byte\n");
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "Generic CSRC list not supported yet, put a 0x00 byte\n");
 	counter++;
 
 	/* parts 7, 8 & 9 */
@@ -1122,7 +1171,8 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		byte |= (tis & 0x01) << 1;
 		byte |= tss & 0x01;
 		dest[counter] = byte;
-		rohc_debugf(3, "part 7 = 0x%02x\n", dest[counter]);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "part 7 = 0x%02x\n", dest[counter]);
 		counter++;
 
 		/* part 8 */
@@ -1139,21 +1189,24 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, 0 /* length detection */);
 			if(ts_stride_sdvl_len <= 0 || ts_stride_sdvl_len > 4)
 			{
-				rohc_debugf(0, "failed to determine the number of bits required to "
-				            "SDVL-encode TS_STRIDE %u (%zd)\n", ts_stride,
-				            ts_stride_sdvl_len);
+				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+				             "failed to determine the number of bits required to "
+				             "SDVL-encode TS_STRIDE %u (%zd)\n", ts_stride,
+				             ts_stride_sdvl_len);
 				/* TODO: should handle error gracefully */
 				assert(0);
 			}
 
-			rohc_debugf(3, "send ts_stride = 0x%08x encoded with SDVL on %zd bytes\n",
-			            ts_stride, ts_stride_sdvl_len);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "send ts_stride = 0x%08x encoded with SDVL on %zd bytes\n",
+			           ts_stride, ts_stride_sdvl_len);
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
 			ret = c_encodeSdvl(&dest[counter], ts_stride, 0 /* length detection */);
 			if(ret != 1)
 			{
-				rohc_debugf(0, "failed to SDVL-encode TS_STRIDE %u\n", ts_stride);
+				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+				             "failed to SDVL-encode TS_STRIDE %u\n", ts_stride);
 				/* TODO: should handle error gracefully */
 				assert(0);
 			}
@@ -1165,18 +1218,20 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			rtp_context->ts_sc.nr_init_stride_packets++;
 			if(rtp_context->ts_sc.nr_init_stride_packets >= ROHC_INIT_TS_STRIDE_MIN)
 			{
-				rohc_debugf(3, "TS_STRIDE transmitted at least %u times, so change "
-				            "from state INIT_STRIDE to SEND_SCALED\n",
-				            ROHC_INIT_TS_STRIDE_MIN);
+				rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+				           "TS_STRIDE transmitted at least %u times, so change "
+				           "from state INIT_STRIDE to SEND_SCALED\n",
+				           ROHC_INIT_TS_STRIDE_MIN);
 				rtp_context->ts_sc.state = SEND_SCALED;
 			}
 			else
 			{
-				rohc_debugf(3, "TS_STRIDE transmitted only %zd times, so stay in "
-				            "state INIT_STRIDE (at least %u times are required "
-				            "to change to state SEND_SCALED)\n",
-				            rtp_context->ts_sc.nr_init_stride_packets,
-				            ROHC_INIT_TS_STRIDE_MIN);
+				rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+				           "TS_STRIDE transmitted only %zd times, so stay in "
+				           "state INIT_STRIDE (at least %u times are required "
+				           "to change to state SEND_SCALED)\n",
+				           rtp_context->ts_sc.nr_init_stride_packets,
+				           ROHC_INIT_TS_STRIDE_MIN);
 			}
 		}
 
@@ -1185,7 +1240,8 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 
 	if(rtp_context->ts_sc.state == INIT_TS)
 	{
-		rohc_debugf(3, "change from state INIT_TS to INIT_STRIDE\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "change from state INIT_TS to INIT_STRIDE\n");
 		rtp_context->ts_sc.state = INIT_STRIDE;
 		rtp_context->ts_sc.nr_init_stride_packets = 0;
 	}
@@ -1214,7 +1270,8 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 
 	rtp = (struct rtphdr *) (udp + 1);
 
-	rohc_debugf(2, "find changes in RTP dynamic fields\n");
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "find changes in RTP dynamic fields\n");
 
 	/* check UDP checksum field */
 	if((udp->check != 0 && rtp_context->old_udp.check == 0) ||
@@ -1224,13 +1281,15 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 		if((udp->check != 0 && rtp_context->old_udp.check == 0) ||
 		   (udp->check == 0 && rtp_context->old_udp.check != 0))
 		{
-			rohc_debugf(3, "UDP checksum field changed\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "UDP checksum field changed\n");
 			rtp_context->udp_checksum_change_count = 0;
 		}
 		else
 		{
-			rohc_debugf(3, "UDP checksum field did not change "
-			            "but changed in the last few packets\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "UDP checksum field did not change but changed in the "
+			           "last few packets\n");
 		}
 
 		/* do not count the UDP checksum change as other RTP dynamic fields
@@ -1241,16 +1300,18 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	/* check RTP CSRC Counter and CSRC field */
 	if(rtp->cc != rtp_context->old_rtp.cc)
 	{
-		rohc_debugf(3, "RTP CC field changed (0x%x -> 0x%x)\n",
-		            rtp_context->old_rtp.cc, rtp->cc);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "RTP CC field changed (0x%x -> 0x%x)\n",
+		           rtp_context->old_rtp.cc, rtp->cc);
 		fields += 2;
 	}
 
 	/* check SSRC field */
 	if(rtp->ssrc != rtp_context->old_rtp.ssrc)
 	{
-		rohc_debugf(3, "RTP SSRC field changed (0x%08x -> 0x%08x)\n",
-		            rtp_context->old_rtp.ssrc, rtp->ssrc);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "RTP SSRC field changed (0x%08x -> 0x%08x)\n",
+		           rtp_context->old_rtp.ssrc, rtp->ssrc);
 		fields++;
 	}
 
@@ -1258,7 +1319,8 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	 * as a changed field since it is not stored in the context */
 	if(rtp->m != 0)
 	{
-		rohc_debugf(3, "RTP Marker (M) bit is set\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "RTP Marker (M) bit is set\n");
 		rtp_context->tmp.m_set = 1;
 	}
 	else
@@ -1272,15 +1334,17 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	{
 		if(rtp->pt != rtp_context->old_rtp.pt)
 		{
-			rohc_debugf(3, "RTP Payload Type (PT) field changed (0x%x -> 0x%x)\n",
-			            rtp_context->old_rtp.pt, rtp->pt);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "RTP Payload Type (PT) field changed (0x%x -> 0x%x)\n",
+			           rtp_context->old_rtp.pt, rtp->pt);
 			rtp_context->tmp.rtp_pt_changed = 1;
 			rtp_context->rtp_pt_change_count = 0;
 		}
 		else
 		{
-			rohc_debugf(3, "RTP Payload Type (PT) field did not change "
-			            "but changed in the last few packets\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "RTP Payload Type (PT) field did not change "
+			           "but changed in the last few packets\n");
 		}
 
 		fields++;
@@ -1294,11 +1358,13 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 	rtp_context->tmp.timestamp = ntohl(rtp->timestamp);
 	if(rtp_context->ts_sc.state != SEND_SCALED)
 	{
-		rohc_debugf(3, "TS_STRIDE changed now or in the last few packets\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "TS_STRIDE changed now or in the last few packets\n");
 		fields++;
 	}
 
-	rohc_debugf(2, "%d RTP dynamic fields changed\n", fields);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "%d RTP dynamic fields changed\n", fields);
 
 	return fields;
 }

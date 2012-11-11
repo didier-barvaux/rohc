@@ -18,6 +18,7 @@
  * @file rohc_comp.c
  * @brief ROHC compression routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
  */
@@ -29,6 +30,7 @@
 #include "rohc_comp.h"
 #include "rohc_comp_internals.h"
 #include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
 #include "rohc_utils.h"
@@ -45,6 +47,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <stdarg.h>
 
 
 extern struct c_profile c_rtp_profile,
@@ -115,6 +118,14 @@ static bool rohc_feedback_unlock(struct rohc_comp *const comp);
 /*
  * Prototypes of miscellaneous private functions
  */
+
+static void rohc_comp_print_trace_default(rohc_trace_level_t level,
+                                          rohc_trace_entity_t entity,
+                                          int profile,
+                                          const char *format,
+                                          ...)
+	__attribute__((format(printf, 4, 5)));
+
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
 	__attribute__((nonnull(1)));
@@ -147,19 +158,15 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	bool is_fine;
 	int i;
 
-	rohc_debugf(1, "creating compressor\n");
-
 	if(jam_use != 0)
 	{
-		rohc_debugf(0, "the jamming algorithm was removed, please set "
-		            "jam_use to 0\n");
+		/* the jamming algorithm was removed, please set jam_use to 0 */
 		goto error;
 	}
 
 	comp = malloc(sizeof(struct rohc_comp));
 	if(comp == NULL)
 	{
-		rohc_debugf(0, "cannot allocate memory for the compressor\n");
 		goto error;
 	}
 	memset(comp, 0, sizeof(struct rohc_comp));
@@ -178,6 +185,9 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->total_compressed_size = 0;
 	comp->total_uncompressed_size = 0;
 	comp->last_context = NULL;
+
+	/* set default callback for traces */
+	comp->trace_callback = rohc_comp_print_trace_default;
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
@@ -262,17 +272,90 @@ void rohc_free_compressor(struct rohc_comp *comp)
 {
 	if(comp != NULL)
 	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "free compressor\n");
+
 		/* free memory used by contexts */
-		rohc_debugf(2, "free contexts\n");
 		c_destroy_contexts(comp);
 
 		/* destroy unsent piggybacked feedback */
-		rohc_debugf(2, "free feedback buffer\n");
 		rohc_feedback_destroy(comp);
 
 		/* free the compressor */
 		zfree(comp);
 	}
+}
+
+
+/**
+ * @brief Set the callback function used to manage traces in compressor
+ *
+ * @warning The callback can not be modified after library initialization
+ *
+ * @param comp     The ROHC compressor
+ * @param callback \li The callback function used to manage traces
+ *                 \li NULL to remove the previous callback
+ * @return         true on success, false otherwise
+ */
+bool rohc_comp_set_traces_cb(struct rohc_comp *const comp,
+                             rohc_trace_callback_t callback)
+{
+	/* check compressor validity */
+	if(comp == NULL)
+	{
+		/* cannot print a trace without a valid compressor */
+		goto error;
+	}
+
+	/* refuse to set a new trace callback if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		           "modify the trace callback after initialization\n");
+		goto error;
+	}
+
+	/* replace current trace callback by the new one */
+	comp->trace_callback = callback;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief The default callback for traces
+ *
+ * The default callback for traces always prints traces on stdout for
+ * compatibility with previous releases. That could be changed for the 2.0.0
+ * release.
+ *
+ * @param level    The level of the message
+ * @param entity   The entity concerned by the traces
+ * @param profile  The number of the profile concerned by the message
+ * @param format   The format string for the trace message
+ */
+static void rohc_comp_print_trace_default(rohc_trace_level_t level,
+                                          rohc_trace_entity_t entity,
+                                          int profile,
+                                          const char *format,
+                                          ...)
+{
+	va_list args;
+	static bool first_time = true;
+
+	/* display a warning with the first message */
+	if(first_time)
+	{
+		printf("please define a callback for compressor traces\n");
+		first_time = false;
+	}
+
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 
@@ -325,7 +408,8 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
 	assert(comp != NULL);
 	assert(user_context == NULL);
 
-	rohc_debugf(0, "please define a callback for random numbers\n");
+	rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	             "please define a callback for random numbers\n");
 
 	return 0;
 }
@@ -362,22 +446,25 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	/* check compressor validity */
 	if(comp == NULL)
 	{
-		rohc_debugf(0, "compressor not valid\n");
+		/* compressor not valid */
 		goto error;
 	}
 
 	/* print uncompressed bytes */
-	rohc_dump_packet("uncompressed data, max 100 bytes",
+	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
+	                 "uncompressed data, max 100 bytes",
 	                 ibuf, rohc_min(isize, 100));
 
 	/* create the IP packet from raw data */
 	if(!ip_create(&ip, ibuf, isize))
 	{
-		rohc_debugf(0, "cannot create the outer IP header\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "cannot create the outer IP header\n");
 		goto error;
 	}
 	outer_ip = &ip;
-	rohc_debugf(3, "size of uncompressed packet = %d bytes\n", isize);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "size of uncompressed packet = %d bytes\n", isize);
 
 	/* get the transport protocol in the IP packet (skip the second IP header
 	 * if present) */
@@ -387,7 +474,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		/* create the second IP header */
 		if(!ip_get_inner_packet(outer_ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "cannot create the outer IP header\n");
 			goto error;
 		}
 
@@ -404,25 +492,31 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	}
 
 	/* find the best profile for the packet */
-	rohc_debugf(2, "try to find the best profile for packet with "
-	            "transport protocol %d\n", proto);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "try to find the best profile for packet with transport "
+	           "protocol %u\n", proto);
 	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto);
 	if(p == NULL)
 	{
-		rohc_debugf(0, "no profile found to compress packet\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "no profile found for packet, giving up\n");
 		goto error;
 	}
-	rohc_debugf(1, "using profile '%s' (0x%04x)\n", p->description, p->id);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "using profile '%s' (0x%04x)\n", p->description, p->id);
 
 	/* get the context using help from the profiles */
 	c = c_find_context(comp, p, outer_ip);
 	if(c == NULL)
 	{
 		/* context not found, create a new one */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no existing context found for packet, create a new one\n");
 		c = c_create_context(comp, p, outer_ip);
 		if(c == NULL)
 		{
-			rohc_debugf(0, "failed to create a new context\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to create a new context\n");
 			goto error;
 		}
 	}
@@ -430,13 +524,15 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	{
 		/* the profile detected anomalities in IP packet (such as fragments)
 		 * that made it not compressible -> switch to uncompressed profile */
-
-		rohc_debugf(0, "error while finding context, using uncompressed profile\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "error while compressing with the profile, "
+		             "using uncompressed profile\n");
 
 		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
 		if(p == NULL)
 		{
-			rohc_debugf(0, "uncompressed profile not found, giving up\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "uncompressed profile not found, giving up\n");
 			goto error;
 		}
 
@@ -447,14 +543,16 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			c = c_create_context(comp, p, outer_ip);
 			if(c == NULL)
 			{
-				rohc_debugf(0, "failed to create an uncompressed context\n");
+				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				             "failed to create an uncompressed context\n");
 				goto error;
 			}
 		}
 		else if(c == (struct c_context*)-1)
 		{
-			rohc_debugf(0, "error while finding context in uncompressed profile, "
-			            "giving up\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "error while finding context in uncompressed profile, "
+			             "giving up\n");
 			goto error;
 		}
 	}
@@ -477,14 +575,16 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	while(feedback_size > 0);
 
 	/* 2. use profile to compress packet */
-	rohc_debugf(1, "compress the packet #%d\n", comp->num_packets + 1);
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "compress the packet #%d\n", comp->num_packets + 1);
 	esize = p->encode(c, outer_ip, isize, obuf, osize - size,
 	                  &packet_type, &payload_offset);
 	if(esize < 0)
 	{
 		/* error while compressing, use uncompressed */
-		rohc_debugf(0, "error while compressing with the profile, "
-		            "using uncompressed profile\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "error while compressing with the profile, "
+		             "using uncompressed profile\n");
 
 		/* free context if it was just created */
 		if(c->num_sent_packets <= 1)
@@ -498,7 +598,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
 		if(p == NULL)
 		{
-			rohc_debugf(0, "uncompressed profile not found, giving up\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "uncompressed profile not found, giving up\n");
 			goto error_unlock_feedbacks;
 		}
 
@@ -509,14 +610,15 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			c = c_create_context(comp, p, outer_ip);
 			if(c == NULL)
 			{
-				rohc_debugf(0, "failed to create an uncompressed context\n");
+				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				             "failed to create an uncompressed context\n");
 				goto error_unlock_feedbacks;
 			}
 		}
 		else if(c == (struct c_context*)-1)
 		{
-			rohc_debugf(0, "error while finding context in uncompressed profile, "
-			            "giving up\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "uncompressed profile not found, giving up\n");
 			goto error_unlock_feedbacks;
 		}
 
@@ -524,8 +626,9 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		                  &packet_type, &payload_offset);
 		if(esize < 0)
 		{
-			rohc_debugf(0, "error while compressing with uncompressed profile, "
-			            "giving up\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "error while compressing with uncompressed profile, "
+			             "giving up\n");
 			goto error_free_new_context;
 		}
 	}
@@ -539,9 +642,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	if(size + payload_size > osize)
 	{
 		/* TODO: should use uncompressed profile */
-		rohc_debugf(0, "ROHC packet too large (input size = %d, maximum output "
-		            "size = %d, required output size = %d + %d = %d)\n",
-		            isize, osize, size, payload_size, size + payload_size);
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "ROHC packet too large (input size = %d, maximum output "
+		             "size = %d, required output size = %d + %d = %d)\n",
+		             isize, osize, size, payload_size, size + payload_size);
 		goto error_free_new_context;
 	}
 
@@ -554,13 +658,15 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	/* remove locked feedbacks since compression is successful */
 	if(rohc_feedback_remove_locked(comp) != true)
 	{
-		rohc_debugf(0, "failed to remove locked feedbacks\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to remove locked feedbacks\n");
 		goto error_free_new_context;
 	}
 
-	rohc_debugf(2, "ROHC size = %d (feedback = %d, header = %d, payload = %d), "
-	            "output buffer size = %d\n", size, feedback_size, esize,
-	            payload_size, osize);
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "ROHC size = %d (feedback = %d, header = %d, payload = %d), "
+	          "output buffer size = %d\n", size, feedback_size, esize,
+	          payload_size, osize);
 
 	/* update some statistics:
 	 *  - compressor statistics
@@ -602,7 +708,8 @@ error_free_new_context:
 error_unlock_feedbacks:
 	if(rohc_feedback_unlock(comp) != true)
 	{
-		rohc_debugf(0, "failed to unlock feedbacks\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to unlock feedbacks\n");
 	}
 error:
 	return 0;
@@ -630,22 +737,23 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 	}
 	if(width <= 0)
 	{
-		rohc_debugf(0, "failed to set width of W-LSB sliding window to %zd\n",
-		            width);
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
+		             "set width of W-LSB sliding window to %zd\n", width);
 		return false;
 	}
 
 	/* refuse to set a value if compressor is in use */
 	if(comp->num_packets > 0)
 	{
-		rohc_debugf(0, "unable to modify the W-LSB window width after "
-		            "initialization\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		             "modify the W-LSB window width after initialization\n");
 		return false;
 	}
 
 	comp->wlsb_window_width = width;
 
-	rohc_debugf(2, "width of W-LSB sliding window set to %zd\n", width);
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "width of W-LSB sliding window set to %zd\n", width);
 
 	return true;
 }
@@ -681,27 +789,28 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 	}
 	if(ir_timeout <= 0 || fo_timeout <= 0 || ir_timeout <= fo_timeout)
 	{
-		rohc_debugf(0, "invalid timeouts for context periodic refreshes "
-		            "(IR timeout = %zd, FO timeout = %zd)\n",
-		            ir_timeout, fo_timeout);
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
+		             "timeouts for context periodic refreshes (IR timeout = %zd, "
+		             "FO timeout = %zd)\n", ir_timeout, fo_timeout);
 		return false;
 	}
 
 	/* refuse to set values if compressor is in use */
 	if(comp->num_packets > 0)
 	{
-		rohc_debugf(0, "unable to modify the timeouts for periodic refreshes "
-		            "after initialization\n");
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unable to modify the timeouts for periodic refreshes "
+		             "after initialization\n");
 		return false;
 	}
 
 	comp->periodic_refreshes_ir_timeout = ir_timeout;
 	comp->periodic_refreshes_fo_timeout = fo_timeout;
 
-	rohc_debugf(2, "IR timeout for context periodic refreshes set to %zd\n",
-	            ir_timeout);
-	rohc_debugf(2, "FO timeout for context periodic refreshes set to %zd\n",
-	            fo_timeout);
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "IR timeout for "
+	          "context periodic refreshes set to %zd\n", ir_timeout);
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "FO timeout for "
+	          "context periodic refreshes set to %zd\n", fo_timeout);
 
 	return true;
 }
@@ -729,7 +838,8 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 		}
 	}
 
-	rohc_debugf(0, "unknown ROHC profile (ID = %d)\n", profile);
+	rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	             "unknown ROHC profile (ID = %d)\n", profile);
 }
 
 
@@ -1139,14 +1249,12 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	/* ignore feedback if no valid compressor is provided */
 	if(comp == NULL)
 	{
-		rohc_debugf(0, "no compressor associated with the decompressor, "
-		            "cannot deliver feedback\n");
+		/* no compressor associated with decompressor, cannot deliver feedback */
 		return;
 	}
 
-	rohc_debugf(2, "try to add %d byte(s) of feedback to the next outgoing "
-	            "ROHC packet\n", size);
-
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "try to add %d "
+	           "byte(s) of feedback to the next outgoing ROHC packet\n", size);
 	assert(comp->feedbacks_next >= 0);
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
 	assert(comp->feedbacks_first >= 0);
@@ -1157,7 +1265,8 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	if(comp->feedbacks_next == comp->feedbacks_first &&
 	   comp->feedbacks[comp->feedbacks_first].length != 0)
 	{
-		rohc_debugf(0, "no place in buffer for feedback data\n");
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no place in buffer for feedback data\n");
 		return;
 	}
 
@@ -1165,7 +1274,8 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	comp->feedbacks[comp->feedbacks_next].data = malloc(size);
 	if(comp->feedbacks[comp->feedbacks_next].data == NULL)
 	{
-		rohc_debugf(0, "no memory for feedback data\n");
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no memory for feedback data\n");
 		return;
 	}
 
@@ -1176,8 +1286,9 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	/* use the next ring location next time */
 	comp->feedbacks_next = (comp->feedbacks_next + 1) % FEEDBACK_RING_SIZE;
 
-	rohc_debugf(2, "%d byte(s) of feedback added to the next outgoing "
-	            "ROHC packet\n", size);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "%d byte(s) of feedback added to the next outgoing "
+	           "ROHC packet\n", size);
 }
 
 
@@ -1200,13 +1311,12 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 
 	if(comp == NULL)
 	{
-		rohc_debugf(0, "no compressor associated with the decompressor, "
-		            "cannot deliver feedback\n");
+		/* no compressor associated with decompressor, cannot deliver feedback */
 		goto quit;
 	}
 
-	rohc_debugf(2, "deliver %d byte(s) of feedback to the right context\n",
-	            size);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "deliver %d byte(s) of feedback to the right context\n", size);
 
 	feedback.size = size;
 
@@ -1221,7 +1331,8 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 		large_cid_size = sdvl_decode(p, size, &large_cid, &large_cid_bits_nr);
 		if(large_cid_size != 1 && large_cid_size != 2)
 		{
-			rohc_debugf(0, "failed to decode SDVL-encoded large CID field\n");
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to decode SDVL-encoded large CID field\n");
 			goto quit;
 		}
 		feedback.cid = large_cid;
@@ -1241,8 +1352,12 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 		}
 	}
 
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "feedback CID = %d\n", feedback.cid);
+
 	feedback.specific_size = size - (p - packet);
-	rohc_debugf(2, "feedback size = %d\n", feedback.specific_size);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "feedback size = %d\n", feedback.specific_size);
 
 	if(feedback.specific_size == 1)
 	{
@@ -1258,7 +1373,8 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 	feedback.data = malloc(feedback.size);
 	if(feedback.data == NULL)
 	{
-		rohc_debugf(0, "no memory for feedback data\n");
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no memory for feedback data\n");
 		goto quit;
 	}
 
@@ -1269,7 +1385,8 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 	if(c == NULL)
 	{
 		/* context was not found */
-		rohc_debugf(0, "context not found (CID = %d)\n", feedback.cid);
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "context not found (CID = %d)\n", feedback.cid);
 		goto clean;
 	}
 
@@ -1306,7 +1423,7 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	/* check compressor validity */
 	if(comp == NULL)
 	{
-		rohc_debugf(0, "compressor not valid\n");
+		/* no compressor associated with decompressor */
 		return 0;
 	}
 
@@ -1341,19 +1458,21 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 {
 	if(comp == NULL)
 	{
-		rohc_debugf(0, "compressor is not valid\n");
+		/* rohc_debugf(0, "compressor is not valid\n"); */
 		return ROHC_ERROR;
 	}
 
 	if(comp->last_context == NULL)
 	{
-		rohc_debugf(0, "last context found in compressor is not valid\n");
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		          "last context found in compressor is not valid\n");
 		return ROHC_ERROR;
 	}
 
 	if(info == NULL)
 	{
-		rohc_debugf(0, "structure for last packet information is not valid\n");
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "structure for last packet information is not valid\n");
 		return ROHC_ERROR;
 	}
 
@@ -1478,8 +1597,9 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 		/* skip profile if the profile is not enabled */
 		if(!comp->profiles[i])
 		{
-			rohc_debugf(3, "skip disabled profile '%s' (0x%04x)\n",
-			            c_profiles[i]->description, c_profiles[i]->id);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "skip disabled profile '%s' (0x%04x)\n",
+			           c_profiles[i]->description, c_profiles[i]->id);
 			continue;
 		}
 
@@ -1493,17 +1613,19 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 			/* check outer IP header */
 			if(outer_ip->version != IPV4 && outer_ip->version != IPV6)
 			{
-				rohc_debugf(3, "skip profile '%s' (0x%04x) because it only support "
-				            "IPv4 or IPv6\n", c_profiles[i]->description,
-				            c_profiles[i]->id);
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "skip profile '%s' (0x%04x) because it only support "
+				           "IPv4 or IPv6\n", c_profiles[i]->description,
+				           c_profiles[i]->id);
 				continue;
 			}
 
 			if(ip_is_fragment(outer_ip))
 			{
-				rohc_debugf(3, "skip profile '%s' (0x%04x) because it does not "
-				            "support IPv4 fragments\n", c_profiles[i]->description,
-				            c_profiles[i]->id);
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "skip profile '%s' (0x%04x) because it does not "
+				           "support IPv4 fragments\n", c_profiles[i]->description,
+				           c_profiles[i]->id);
 				continue;
 			}
 
@@ -1512,17 +1634,19 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 			{
 				if(inner_ip->version != IPV4 && inner_ip->version != IPV6)
 				{
-					rohc_debugf(3, "skip profile '%s' (0x%04x) because it only support "
-					            "IPv4 or IPv6\n", c_profiles[i]->description,
-					            c_profiles[i]->id);
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "skip profile '%s' (0x%04x) because it only support "
+					           "IPv4 or IPv6\n", c_profiles[i]->description,
+					           c_profiles[i]->id);
 					continue;
 				}
 
 				if(ip_is_fragment(inner_ip))
 				{
-					rohc_debugf(3, "skip profile '%s' (0x%04x) because it does not "
-					            "support IPv4 fragments\n", c_profiles[i]->description,
-					            c_profiles[i]->id);
+					rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					           "skip profile '%s' (0x%04x) because it does not "
+					           "support IPv4 fragments\n", c_profiles[i]->description,
+					           c_profiles[i]->id);
 					continue;
 				}
 			}
@@ -1532,9 +1656,10 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 		   this protocol does not match the transport protocol of the packet */
 		if(c_profiles[i]->protocol != 0 && c_profiles[i]->protocol != protocol)
 		{
-			rohc_debugf(3, "skip profile '%s' (0x%04x) because transport protocol "
-			            "does not match\n", c_profiles[i]->description,
-			            c_profiles[i]->id);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "skip profile '%s' (0x%04x) because transport protocol "
+			           "does not match\n", c_profiles[i]->description,
+			           c_profiles[i]->id);
 			continue;
 		}
 
@@ -1559,14 +1684,16 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 
 			/* retrieve the destination port in the UDP header */
 			port = ntohs(udp->dest);
-			rohc_debugf(3, "UDP port = 0x%x (%u)\n", port, port);
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "UDP port = 0x%x (%u)\n", port, port);
 
 			/* check if UDP port is reserved by the ROHC profile */
 			if(!c_is_in_list(c_profiles[i], port))
 			{
-				rohc_debugf(3, "skip profile '%s' (0x%04x) because UDP destination port "
-				            "is not reserved for profile\n", c_profiles[i]->description,
-				            c_profiles[i]->id);
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "skip profile '%s' (0x%04x) because UDP destination port "
+				           "is not reserved for profile\n", c_profiles[i]->description,
+				           c_profiles[i]->id);
 				continue;
 			}
 		}
@@ -1601,14 +1728,16 @@ static int c_alloc_contexts(struct rohc_comp *const comp, int size)
 		struct c_context *new_contexts;
 		int i;
 
-		rohc_debugf(2, "enlarge the context array from %d to %d elements "
-		            "(MAX_CID = %d)\n", comp->num_contexts, size,
-		            comp->medium.max_cid);
+		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		          "enlarge the context array from %d to %d elements "
+		          "(MAX_CID = %d)\n", comp->num_contexts, size,
+		          comp->medium.max_cid);
 
 		new_contexts = calloc(size, sizeof(struct c_context));
 		if(new_contexts == NULL)
 		{
-			rohc_debugf(0, "cannot allocate memory for contexts\n");
+			rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "cannot allocate memory for contexts\n");
 			return 0;
 		}
 
@@ -1690,7 +1819,8 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 		}
 
 		/* destroy the oldest context before replacing it with a new one */
-		rohc_debugf(2, "recycle oldest context (CID = %d)\n", index);
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "recycle oldest context (CID = %d)\n", index);
 		comp->contexts[index].profile->destroy(&comp->contexts[index]);
 		comp->contexts[index].used = 0;
 		comp->num_contexts_used--;
@@ -1711,7 +1841,8 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 			}
 		}
 
-		rohc_debugf(2, "take the first unused context (CID = %d)\n", index);
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "take the first unused context (CID = %d)\n", index);
 	}
 
 	/* initialize the previously found context */
@@ -1752,9 +1883,9 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	c->latest_used = get_milliseconds();
 	comp->num_contexts_used++;
 
-	rohc_debugf(1, "context (CID = %d) created (num_used = %d)\n",
-	            c->cid, comp->num_contexts_used);
-
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "context (CID = %d) created (num_used = %d)\n",
+	           c->cid, comp->num_contexts_used);
 	return c;
 }
 
@@ -1791,7 +1922,8 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 			}
 			else if(ret)
 			{
-				rohc_debugf(1, "using context CID = %d\n", c->cid);
+				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				           "using context CID = %d\n", c->cid);
 				break;
 			}
 		}
@@ -1799,7 +1931,8 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 
 	if(c == NULL || i == comp->num_contexts)
 	{
-		rohc_debugf(2, "no context was found\n");
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no context was found\n");
 		c = NULL;
 	}
 
@@ -1905,7 +2038,6 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
                              unsigned char *const buffer,
                              const unsigned int max)
 {
-	int i;
 	size_t feedback_length;
 	int index = 0;
 
@@ -1923,7 +2055,8 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 		 * feedback data */
 		if(feedback_length + 1 + (feedback_length < 8 ? 0 : 1) > max)
 		{
-			rohc_debugf(1, "no more place in the buffer for feedback\n");
+			rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			          "no more place in the buffer for feedback\n");
 			goto full;
 		}
 
@@ -1932,14 +2065,16 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 		if(feedback_length < 8)
 		{
 			/* length is small, use only 3 bits to code it */
-			rohc_debugf(3, "use 1-byte form factor for feedback length\n");
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "use 1-byte form factor for feedback length\n");
 			buffer[index] = 0xf0 | feedback_length;
 			index++;
 		}
 		else
 		{
 			/* size is large, use 8 bits to code it */
-			rohc_debugf(3, "use 2-byte form factor for feedback length\n");
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "use 2-byte form factor for feedback length\n");
 			buffer[index] = 0xf0;
 			index++;
 			buffer[index] = feedback_length;
@@ -1959,16 +2094,14 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 		feedback_length = 0;
 	}
 
-	rohc_debugf(2, "add %zd byte(s) of feedback data", feedback_length);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "add %zd byte(s) of feedback data", feedback_length);
 	if(feedback_length > 0)
 	{
-		rohc_debugf_(3, ": ");
-		for(i = 0; i < feedback_length; i++)
-		{
-			rohc_debugf_(3, "0x%02x ", buffer[index + i]);
-		}
+		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
+		                 "add %zd bytes of feedback data", buffer + index,
+		                 feedback_length);
 	}
-	rohc_debugf_(2, "\n");
 
 	/* return the length of the feedback header/data,
 	 * or zero if no feedback */

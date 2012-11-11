@@ -18,14 +18,13 @@
  * @file wlsb.c
  * @brief Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  * @author The hackers from ROHC for Linux
  */
 
 #include "wlsb.h"
 #include "interval.h" /* for the rohc_f_*bits() functions */
-#include "rohc_traces.h"
-#include "rohc_debug.h"
 
 #include <string.h>
 #include <assert.h>
@@ -119,7 +118,6 @@ struct c_wlsb * c_create_wlsb(const size_t bits,
 	wlsb = malloc(sizeof(struct c_wlsb) + (window_width - 1) * sizeof(struct c_window));
 	if(wlsb == NULL)
 	{
-		rohc_debugf(0, "cannot allocate memory for the W-LSB object\n");
 		goto error;
 	}
 
@@ -447,8 +445,6 @@ static void c_ack_remove(struct c_wlsb *s, int index)
 	{
 		return;
 	}
-
-	rohc_debugf(2, "index is %d\n", index);
 
 	for(i = s->count, entry = s->oldest;
 	    i > 0;

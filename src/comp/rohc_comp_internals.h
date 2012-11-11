@@ -166,6 +166,9 @@ struct rohc_comp
 	int max_header_size;
 	/** The connection type (currently not used) */
 	int connection_type;
+
+	/** The callback function used to manage traces */
+	rohc_trace_callback_t trace_callback;
 };
 
 

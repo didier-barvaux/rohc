@@ -18,14 +18,16 @@
  * @file c_ip.c
  * @brief ROHC compression context for the IP-only profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #include "c_ip.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 
 #include <string.h>
+#include <assert.h>
 
 
 /**
@@ -45,17 +47,23 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	struct c_generic_context *g_context;
 	unsigned int ip_proto;
 
+	assert(context != NULL);
+	assert(context->profile != NULL);
+	assert(ip != NULL);
+
 	/* call the generic function for all IP-based profiles */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, ip))
 	{
-		rohc_debugf(0, "generic context creation failed\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "generic context creation failed\n");
 		goto error;
 	}
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
 	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "initialize context(SN) = random() = %u\n", g_context->sn);
 
 	/* initialize the next header protocol (used later to match the best
 	 * IP-only context) */
@@ -67,7 +75,8 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto destroy_generic_context;
 		}
 
@@ -177,7 +186,8 @@ int c_ip_check_context(const struct c_context *context,
 		/* get the second IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto error;
 		}
 
@@ -261,35 +271,40 @@ rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
 	if(g_context->tmp.send_static)
 	{
 		packet = PACKET_UOR_2;
-		rohc_debugf(3, "choose packet UOR-2 because at least one static "
-		            "field changed\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UOR-2 because at least one static field "
+		           "changed\n");
 	}
 	else if(g_context->tmp.nr_of_ip_hdr == 1 && g_context->tmp.send_dynamic > 2)
 	{
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %d > 2 dynamic fields changed "
-		            "with a single IP header\n", g_context->tmp.send_dynamic);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %d > 2 dynamic fields changed "
+		           "with a single IP header\n", g_context->tmp.send_dynamic);
 	}
 	else if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->tmp.send_dynamic > 4)
 	{
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %d > 4 dynamic fields changed "
-		            "with double IP header\n", g_context->tmp.send_dynamic);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %d > 4 dynamic fields changed "
+		           "with double IP header\n", g_context->tmp.send_dynamic);
 	}
 	else if(g_context->tmp.nr_sn_bits <= 14)
 	{
 		/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
 		   base header + 8 bits in extension 3) */
 		packet = PACKET_UOR_2;
-		rohc_debugf(3, "choose packet UOR-2 because %zd <= 14 SN bits must "
-		            "be transmitted\n", g_context->tmp.nr_sn_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet UOR-2 because %zd <= 14 SN bits must "
+		           "be transmitted\n", g_context->tmp.nr_sn_bits);
 	}
 	else
 	{
 		/* UOR-2 packet can not be used, use IR-DYN instead */
 		packet = PACKET_IR_DYN;
-		rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-		            "be transmitted\n", g_context->tmp.nr_sn_bits);
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "choose packet IR-DYN because %zd > 14 SN bits must "
+		           "be transmitted\n", g_context->tmp.nr_sn_bits);
 	}
 
 	return packet;
@@ -325,8 +340,9 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 	is_rnd = g_context->ip_flags.info.v4.rnd;
 	is_ip_v4 = g_context->ip_flags.version == IPV4;
 
-	rohc_debugf(3, "nr_ip_bits = %zd, nr_sn_bits = %zd, nr_of_ip_hdr = %d, "
-	            "rnd = %d\n", nr_ip_id_bits, nr_sn_bits, nr_of_ip_hdr, is_rnd);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "nr_ip_bits = %zd, nr_sn_bits = %zd, nr_of_ip_hdr = %d, "
+	           "rnd = %d\n", nr_ip_id_bits, nr_sn_bits, nr_of_ip_hdr, is_rnd);
 
 	if(nr_of_ip_hdr == 1) /* single IP header */
 	{
@@ -334,45 +350,50 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
 		{
 			packet = PACKET_UO_0;
-			rohc_debugf(3, "choose packet UO-0 because %zd <= 4 SN bits must "
-			            "be transmitted, and the single IP header is either "
-			            "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 "
-			            "with non-random IP-ID but 0 IP-ID bit to transmit'\n",
-			            nr_sn_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UO-0 because %zd <= 4 SN bits must be "
+			           "transmitted, and the single IP header is either "
+			           "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 with "
+			           "non-random IP-ID but 0 IP-ID bit to transmit'\n",
+			           nr_sn_bits);
 		}
 		else if(nr_sn_bits == 5 &&
 		        (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
 		{
 			packet = PACKET_UOR_2;
-			rohc_debugf(3, "choose packet UOR-2 because %zd = 5 SN bits must "
-			            "be transmitted, and the single IP header is either "
-			            "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 "
-			            "with non-random IP-ID but 0 IP-ID bit to transmit'\n",
-			            nr_sn_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2 because %zd = 5 SN bits must be "
+			           "transmitted, and the single IP header is either "
+			           "'non-IPv4' or 'IPv4 with random IP-ID' or 'IPv4 with "
+			           "non-random IP-ID but 0 IP-ID bit to transmit'\n",
+			           nr_sn_bits);
 		}
 		else if(nr_sn_bits <= 5 &&
 		        is_ip_v4 && is_rnd != 1 && nr_ip_id_bits <= 6)
 		{
 			packet = PACKET_UO_1; /* IPv4 only */
-			rohc_debugf(3, "choose packet UO-1 because %zd <= 5 SN bits must "
-			            "be transmitted, and the single IP header is 'IPv4 "
-			            "with non-random IP-ID but %zd <= 6 IP-ID bits to "
-			            "transmit'\n", nr_sn_bits, nr_ip_id_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UO-1 because %zd <= 5 SN bits must be "
+			           "transmitted, and the single IP header is 'IPv4 with "
+			           "non-random IP-ID but %zd <= 6 IP-ID bits to transmit'\n",
+			           nr_sn_bits, nr_ip_id_bits);
 		}
 		else if(nr_sn_bits <= 14)
 		{
 			/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
 			   base header + 8 bits in extension 3) */
 			packet = PACKET_UOR_2;
-			rohc_debugf(3, "choose packet UOR-2 because %zd <= 14 SN bits must "
-			            "be transmitted\n", nr_sn_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2 because %zd <= 14 SN bits must "
+			           "be transmitted\n", nr_sn_bits);
 		}
 		else
 		{
 			/* UOR-2 packet can not be used, use IR-DYN instead */
 			packet = PACKET_IR_DYN;
-			rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-			            "be transmitted\n", nr_sn_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet IR-DYN because %zd > 14 SN bits must be "
+			           "be transmitted\n", nr_sn_bits);
 		}
 	}
 	else /* double IP headers */
@@ -386,28 +407,32 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 		   (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
 		{
 			packet = PACKET_UO_0;
-			rohc_debugf(3, "choose packet UO-0\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UO-0\n");
 		}
 		else if(nr_sn_bits <= 5 && (is_ip_v4 && nr_ip_id_bits <= 6) &&
 		        (!is_ip2_v4 || (is_ip2_v4 && (is_rnd2 == 1 || nr_ip_id_bits2 == 0))))
 		{
 			packet = PACKET_UO_1; /* IPv4 only for outer header */
-			rohc_debugf(3, "choose packet UO-1\n");
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UO-1\n");
 		}
 		else if(nr_sn_bits <= 14)
 		{
 			/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
 			   base header + 8 bits in extension 3) */
 			packet = PACKET_UOR_2;
-			rohc_debugf(3, "choose packet UOR-2 because %zd <= 14 SN bits must "
-			            "be transmitted\n", nr_sn_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet UOR-2 because %zd <= 14 SN bits must "
+			           "be transmitted\n", nr_sn_bits);
 		}
 		else
 		{
 			/* UOR-2 packet can not be used, use IR-DYN instead */
 			packet = PACKET_IR_DYN;
-			rohc_debugf(3, "choose packet IR-DYN because %zd > 14 SN bits must "
-			            "be transmitted\n", nr_sn_bits);
+			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			           "choose packet IR-DYN because %zd > 14 SN bits must "
+			           "be transmitted\n", nr_sn_bits);
 		}
 	}
 
@@ -485,8 +510,9 @@ int c_ip_code_ir_remainder(const struct c_context *context,
 	sn = htons(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
 	counter += 2;
-	rohc_debugf(3, "SN = %u -> 0x%02x%02x\n", g_context->sn,
-	            dest[counter - 2], dest[counter - 1]);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "SN = %u -> 0x%02x%02x\n", g_context->sn,
+	           dest[counter - 2], dest[counter - 1]);
 
 	return counter;
 }

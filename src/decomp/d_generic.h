@@ -346,20 +346,20 @@ struct d_generic_context
 
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
-	int (*parse_static_next_hdr)(struct d_generic_context *context,
+	int (*parse_static_next_hdr)(const struct d_context *const context,
 	                             const unsigned char *packet,
 	                             unsigned int length,
 	                             struct rohc_extr_bits *const bits);
 
 	/// @brief The handler used to parse the dynamic part of the next header
 	///        in the ROHC packet
-	int (*parse_dyn_next_hdr)(struct d_generic_context *context,
+	int (*parse_dyn_next_hdr)(const struct d_context *const context,
 	                          const unsigned char *packet,
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
 
 	/// The handler used to parse the tail of the UO* ROHC packet
-	int (*parse_uo_remainder)(struct d_generic_context *context,
+	int (*parse_uo_remainder)(const struct d_context *const context,
 	                          const unsigned char *packet,
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
@@ -370,7 +370,7 @@ struct d_generic_context
 	                                struct rohc_decoded_values *const decoded);
 
 	/** The handler used to build the uncompressed next header */
-	int (*build_next_header)(const struct d_generic_context *const context,
+	int (*build_next_header)(const struct d_context *const context,
 	                         const struct rohc_decoded_values decoded,
 	                         unsigned char *dest,
 	                         const unsigned int payload_len);
@@ -425,6 +425,9 @@ struct list_decomp
 	/// boolean which indicates if the ref list must be decompressed
 	int ref_ok;
 
+
+	/* Functions for handling the data to decompress */
+
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
 	/// The handler used to add the extension to IP packet
@@ -442,6 +445,14 @@ struct list_decomp
 	                    struct list_decomp *decomp);
 	/// The handler used to get the size of an extension
 	int (*get_ext_size)(const unsigned char *data, const size_t data_len);
+
+
+	/* Traces */
+
+	/** The callback function used to manage traces */
+	rohc_trace_callback_t trace_callback;
+	/** The profile ID the decompression list was created for */
+	int profile_id;
 };
 
 
@@ -449,7 +460,10 @@ struct list_decomp
  * Public function prototypes.
  */
 
-void * d_generic_create(void);
+void * d_generic_create(const struct d_context *const context,
+                        rohc_trace_callback_t trace_callback,
+                        const int profile_id)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 void d_generic_destroy(void *context);
 

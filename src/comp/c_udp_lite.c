@@ -18,13 +18,14 @@
  * @file c_udp_lite.h
  * @brief ROHC compression context for the UDP-Lite profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #include "c_udp_lite.h"
 #include "c_udp.h"
 #include "c_ip.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "crc.h"
@@ -32,6 +33,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 
 /*
@@ -49,7 +51,7 @@ int udp_lite_build_cce_packet(const struct c_context *context,
                               int counter,
                               int *const first_position);
 
-int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
+int udp_lite_send_cce_packet(const struct c_context *const context,
                              const struct udphdr *udp_lite);
 
 int udp_lite_code_uo_remainder(const struct c_context *context,
@@ -83,17 +85,23 @@ int c_udp_lite_create(struct c_context *const context,
 	const struct udphdr *udp_lite;
 	unsigned int ip_proto;
 
+	assert(context != NULL);
+	assert(context->profile != NULL);
+	assert(ip != NULL);
+
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, ip))
 	{
-		rohc_debugf(0, "generic context creation failed\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "generic context creation failed\n");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
 	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_debugf(1, "initialize context(SN) = random() = %u\n", g_context->sn);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "initialize context(SN) = random() = %u\n", g_context->sn);
 
 	/* check if packet is IP/UDP-Lite or IP/IP/UDP-Lite */
 	ip_proto = ip_get_protocol(ip);
@@ -102,7 +110,8 @@ int c_udp_lite_create(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto quit;
 		}
 		last_ip_header = &ip2;
@@ -118,8 +127,9 @@ int c_udp_lite_create(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_UDPLITE)
 	{
-		rohc_debugf(0, "next header is not UDP-Lite (%d), cannot use this "
-		            "profile\n", ip_proto);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "next header is not UDP-Lite (%d), cannot use this "
+		             "profile\n", ip_proto);
 		goto clean;
 	}
 
@@ -129,7 +139,8 @@ int c_udp_lite_create(struct c_context *const context,
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
 	if(udp_lite_context == NULL)
 	{
-		rohc_debugf(0, "no memory for the UDP-Lite part of the profile context\n");
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the UDP-Lite part of the profile context\n");
 		goto clean;
 	}
 	g_context->specific = udp_lite_context;
@@ -264,7 +275,8 @@ int c_udp_lite_check_context(const struct c_context *context,
 		/* get the second IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto error;
 		}
 
@@ -370,20 +382,11 @@ int c_udp_lite_encode(struct c_context *const context,
 	unsigned int ip_proto;
 	int size;
 
+	assert(context != NULL);
+	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
-	if(g_context == NULL)
-	{
-		rohc_debugf(0, "generic context not valid\n");
-		return -1;
-	}
-
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
-	if(udp_lite_context == NULL)
-	{
-		rohc_debugf(0, "UDP-Lite context not valid\n");
-		return -1;
-	}
-
+	assert(g_context->specific != NULL);
 	udp_lite_context->tmp.udp_size = packet_size - ip_get_hdrlen(ip);
 
 	ip_proto = ip_get_protocol(ip);
@@ -392,7 +395,8 @@ int c_udp_lite_encode(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			return -1;
 		}
 		last_ip_header = &ip2;
@@ -411,7 +415,8 @@ int c_udp_lite_encode(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_UDPLITE)
 	{
-		rohc_debugf(0, "packet is not an UDP-Lite packet\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "packet is not an UDP-Lite packet\n");
 		return -1;
 	}
 	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
@@ -494,10 +499,11 @@ int udp_lite_build_cce_packet(const struct c_context *context,
 	udp_lite = (struct udphdr *) next_header;
 
 	/* do we need to add the CCE packet? */
-	send_cce_packet = udp_lite_send_cce_packet(udp_lite_context, udp_lite);
+	send_cce_packet = udp_lite_send_cce_packet(context, udp_lite);
 	if(send_cce_packet)
 	{
-		rohc_debugf(2, "Adding CCE\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "adding CCE\n");
 
 		/* part 2 */
 		dest[*first_position] = (0xf8 | udp_lite_context->FK);
@@ -509,7 +515,8 @@ int udp_lite_build_cce_packet(const struct c_context *context,
 	}
 	else
 	{
-		rohc_debugf(2, "CCE not needed\n");
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "CCE not needed\n");
 	}
 
 	return counter;
@@ -555,16 +562,18 @@ int udp_lite_code_uo_remainder(const struct c_context *context,
 
 	/* part 1 */
 	if(udp_lite_context->cfp == 1 ||
-	   udp_lite_send_cce_packet(udp_lite_context, udp_lite))
+	   udp_lite_send_cce_packet(context, udp_lite))
 	{
-		rohc_debugf(3, "UDP-Lite checksum coverage = 0x%04x\n",
-		            ntohs(udp_lite->len));
+		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "UDP-Lite checksum coverage = 0x%04x\n",
+		           ntohs(udp_lite->len));
 		memcpy(&dest[counter], &udp_lite->len, 2);
 		counter += 2;
 	}
 
 	/* part 2 */
-	rohc_debugf(3, "UDP-Lite checksum = 0x%04x\n", ntohs(udp_lite->check));
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "UDP-Lite checksum = 0x%04x\n", ntohs(udp_lite->check));
 	memcpy(&dest[counter], &udp_lite->check, 2);
 	counter += 2;
 
@@ -603,13 +612,15 @@ int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
 	udp_lite = (struct udphdr *) next_header;
 
 	/* part 1 */
-	rohc_debugf(3, "UDP-Lite checksum coverage = 0x%04x\n",
-	            ntohs(udp_lite->len));
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "UDP-Lite checksum coverage = 0x%04x\n",
+	           ntohs(udp_lite->len));
 	memcpy(&dest[counter], &udp_lite->len, 2);
 	counter += 2;
 
 	/* part 2 */
-	rohc_debugf(3, "UDP-Lite checksum = 0x%04x\n", ntohs(udp_lite->check));
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "UDP-Lite checksum = 0x%04x\n", ntohs(udp_lite->check));
 	memcpy(&dest[counter], &udp_lite->check, 2);
 	counter += 2;
 
@@ -644,16 +655,20 @@ void udp_lite_init_cc(const struct c_context *context,
 		udp_lite_context->cfi = 1;
 	}
 
-	rohc_debugf(2, "CFP = %d, CFI = %d (ir_count = %d)\n", udp_lite_context->cfp,
-	            udp_lite_context->cfi, g_context->ir_count);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CFP = %d, CFI = %d (ir_count = %d)\n", udp_lite_context->cfp,
+	           udp_lite_context->cfi, g_context->ir_count);
 
 	udp_lite_context->cfp = (ntohs(udp_lite->len) != packet_length) || udp_lite_context->cfp;
 	udp_lite_context->cfi = (ntohs(udp_lite->len) == packet_length) && udp_lite_context->cfi;
 
-	rohc_debugf(2, "packet_length = %d\n", packet_length);
-	rohc_debugf(2, "udp_lite length = %d\n", ntohs(udp_lite->len));
-	rohc_debugf(2, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
-	            udp_lite_context->cfi);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "packet_length = %d\n", packet_length);
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "udp_lite length = %d\n", ntohs(udp_lite->len));
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
+	           udp_lite_context->cfi);
 
 	udp_lite_context->tmp_coverage = udp_lite->len;
 	memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
@@ -666,18 +681,27 @@ void udp_lite_init_cc(const struct c_context *context,
  *
  * The function also updates the FK variable stored in the UDP-Lite context.
  *
- * @param udp_lite_context  The compression context
- * @param udp_lite          The UDP-Lite header
- * @return                  1 if a CCE packet must be sent, 0 if not
+ * @param context   The compression context
+ * @param udp_lite  The UDP-Lite header
+ * @return          1 if a CCE packet must be sent, 0 if not
  */
-int udp_lite_send_cce_packet(struct sc_udp_lite_context *const udp_lite_context,
+int udp_lite_send_cce_packet(const struct c_context *const context,
                              const struct udphdr *udp_lite)
 {
+	const struct c_generic_context *g_context;
+	struct sc_udp_lite_context *udp_lite_context;
 	int is_coverage_inferred;
 	int is_coverage_same;
 
-	rohc_debugf(2, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
-	            udp_lite_context->cfi);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+	assert(g_context->specific != NULL);
+	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
+
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
+	           udp_lite_context->cfi);
 
 	/* may the checksum coverage be inferred from UDP-Lite length ? */
 	is_coverage_inferred = (ntohs(udp_lite->len) == udp_lite_context->tmp.udp_size);

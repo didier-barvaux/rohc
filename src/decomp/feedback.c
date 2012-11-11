@@ -18,14 +18,19 @@
  * @file feedback.c
  * @brief ROHC feedback routines.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
-#include "rohc.h"
 #include "feedback.h"
-#include "rohc_traces.h"
 #include "rohc_debug.h"
+#include "sdvl.h"
+#include "crc.h"
 
+#ifdef ROHC_FEEDBACK_DEBUG
+#  include <stdio.h>
+#endif
+#include <string.h>
 #include <assert.h>
 
 
@@ -72,39 +77,51 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
 	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
-	rohc_debugf(3, "FEEDBACK-2: first 4 bits = 0x%02x (ACK type = %d, mode = %d)\n",
-	            feedback->data[0], acktype, mode);
+#ifdef ROHC_FEEDBACK_DEBUG
+	printf("FEEDBACK-2: first 4 bits = 0x%02x (ACK type = %d, mode = %d)\n",
+	       feedback->data[0], acktype, mode);
+#endif
 
 	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
 	{
-		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn);
 		feedback->data[0] |= (sn >> 8) & 0xf;
-		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		feedback->data[1] = sn & 0xff;
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: transmit SN = 0x%08x on 12 bits\n", sn);
+		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#endif
 	}
 	else if(sn < (1 << (12 + 8))) /* SN may be stored on 20 bits */
 	{
 		const uint8_t sn_opt = sn & 0xff;
 		int ret;
 
-		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits "
-		            "in base header, 8 bits in SN option)\n", sn);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits in base "
+		       "header, 8 bits in SN option)\n", sn);
+#endif
 
 		/* base header */
 		feedback->data[0] |= (sn >> 16) & 0xf;
-		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		feedback->data[1] = (sn >> 8) & 0xff;
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#endif
 
 		/* SN option */
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt, sizeof(sn_opt));
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt);
+#endif
 	}
 	else if(sn < (1 << (12 + 8 + 8))) /* SN may be stored on 28 bits */
 	{
@@ -112,33 +129,44 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 		const uint8_t sn_opt2 = sn & 0xff;
 		int ret;
 
-		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits "
-		            "in base header, 8 bits in SN option, then 8 bits in SN "
-		            "option)\n", sn);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits in base "
+		       "header, 8 bits in SN option, then 8 bits in SN option)\n", sn);
+#endif
 
 		/* base header */
 		feedback->data[0] |= (sn >> 24) & 0xf;
-		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		feedback->data[1] = (sn >> 16) & 0xff;
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#endif
 
 		/* first SN option */
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
+#endif
 
 		/* second SN option */
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
+#endif
 	}
 	else /* SN may be stored on 12 + 8 + 8 + 8 = 36 bits */
 	{
@@ -147,42 +175,58 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 		const uint8_t sn_opt3 = sn & 0xff;
 		int ret;
 
-		rohc_debugf(3, "FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits "
-		            "in base header, 8 bits in SN option, 8 bits in SN option, "
-		            "then 8 bits in SN option)\n", sn);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits in base "
+		       "header, 8 bits in SN option, 8 bits in SN option, then 8 bits "
+		       "in SN option)\n", sn);
+#endif
 
 		/* base header */
 		feedback->data[0] |= 0;
-		rohc_debugf(3, "FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
 		feedback->data[1] = (sn >> 24) & 0xff;
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 4 bits of SN = 0x%x\n", feedback->data[0] & 0xf);
+		printf("FEEDBACK-2: 8 bits of SN = 0x%02x\n", feedback->data[1] & 0xff);
+#endif
 
 		/* first SN option */
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt1);
+#endif
 
 		/* second SN option */
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt2);
+#endif
 
 		/* third SN option */
 		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt3, sizeof(sn_opt3));
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add option to the feedback packet\n");
+#endif
 			goto error;
 		}
-		rohc_debugf(3, "FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt3);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("FEEDBACK-2: 8 bits of SN option = 0x%02x\n", sn_opt3);
+#endif
 	}
 
 	return ROHC_OK;
@@ -276,19 +320,25 @@ int f_append_cid(struct d_feedback *feedback,
 		assert(largecidsize > 0 && largecidsize <= 5);
 		if(largecidsize <= 0 || largecidsize > 4)
 		{
-			rohc_debugf(0, "failed to determine the number of bits required to "
-			            "SDVL-encode the large CID %u\n", cid);
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to determine the number of bits required to "
+			       "SDVL-encode the large CID %u\n", cid);
+#endif
 			return 0;
 		}
 
 		/* check if the feedback packet can contain a SDVL-encoded large CID */
 		if(feedback->size + largecidsize > 30)
 		{
-			rohc_debugf(0, "feedback packet is too small for large CID\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("feedback packet is too small for large CID\n");
+#endif
 			return 0;
 		}
 
-		rohc_debugf(2, "add %zd bytes for large CID to feedback\n", largecidsize);
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("add %zd bytes for large CID to feedback\n", largecidsize);
+#endif
 
 		/* move feedback data to make space for the SDVL-encoded large CID */
 		assert(feedback->size >= 1);
@@ -308,8 +358,10 @@ int f_append_cid(struct d_feedback *feedback,
 		/* SDVL-encode the large CID */
 		if(!c_encodeSdvl(acid, cid, 0 /* length detection */))
 		{
-			rohc_debugf(0, "failed to SDVL-encoded large CID %u: this should "
-			            "never happen!\n", cid);
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to SDVL-encoded large CID %u, should never "
+			       "happen!\n", cid);
+#endif
 			zfree(acid);
 			return 0;
 		}
@@ -329,7 +381,9 @@ int f_append_cid(struct d_feedback *feedback,
 		/* add 1 byte only if CID is non-zero */
 		if(cid != 0)
 		{
-			rohc_debugf(2, "add 1 byte for small CID to feedback\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("add 1 byte for small CID to feedback\n");
+#endif
 
 			/* move feedback data to make space for the small CID */
 			assert(feedback->size >= 1);
@@ -384,11 +438,15 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	/* add the CRC option if specified */
 	if(with_crc)
 	{
-		rohc_debugf(2, "add CRC option to feedback\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+		printf("add CRC option to feedback\n");
+#endif
 		ret = f_add_option(feedback, OPT_TYPE_CRC, NULL, 0);
 		if(ret != ROHC_OK)
 		{
-			rohc_debugf(0, "failed to add CRC option to the feedback packet\n");
+#ifdef ROHC_FEEDBACK_DEBUG
+			printf("failed to add CRC option to the feedback packet\n");
+#endif
 			feedback->size = 0;
 			return NULL;
 		}

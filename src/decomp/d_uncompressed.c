@@ -18,12 +18,13 @@
  * @file d_uncompressed.c
  * @brief ROHC decompression context for the uncompressed profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #include "d_uncompressed.h"
 #include "rohc_bit_ops.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "crc.h"
 #include "decode.h" /* for d_is_ir() */
 
@@ -70,7 +71,7 @@ static int uncompressed_decode_normal(struct rohc_decomp *decomp,
  *
  * @return The newly-created generic decompression context
  */
-void * uncompressed_allocate_decode_data(void)
+void * uncompressed_allocate_decode_data(const struct d_context *const context)
 {
 	return (void *) 1;
 }
@@ -172,7 +173,8 @@ static int uncompressed_decode_ir(struct rohc_decomp *decomp,
 
 	/* parse CRC */
 	crc_packet = GET_BIT_0_7(rohc_remain_data);
-	rohc_debugf(3, "CRC-8 found in packet = 0x%02x\n", crc_packet);
+	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+	           "CRC-8 found in packet = 0x%02x\n", crc_packet);
 	rohc_remain_data++;
 	rohc_remain_len--;
 
@@ -187,13 +189,15 @@ static int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	                             rohc_packet - add_cid_len,
 	                             add_cid_len + large_cid_len + 2,
 	                             CRC_INIT_8, decomp->crc_table_8);
-	rohc_debugf(3, "CRC-8 on compressed ROHC header = 0x%x\n", crc_computed);
+	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+	           "CRC-8 on compressed ROHC header = 0x%x\n", crc_computed);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_computed != crc_packet)
 	{
-		rohc_debugf(0, "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
-		            crc_computed, crc_packet);
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		             "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
+		             crc_computed, crc_packet);
 		goto error_crc;
 	}
 
@@ -235,12 +239,14 @@ int uncompressed_decode_normal(struct rohc_decomp *decomp,
 	const unsigned char *rohc_remain_data = rohc_packet;
 	unsigned int rohc_remain_len = rohc_length;
 
-	rohc_debugf(1, "decode Normal packet\n");
+	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+	           "decode Normal packet\n");
 
 	/* state must not be No Context */
 	if(context->state == NO_CONTEXT)
 	{
-		rohc_debugf(0, "cannot receive Normal packets in No Context state\n");
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		             "cannot receive Normal packets in No Context state\n");
 		goto error;
 	}
 
@@ -248,7 +254,8 @@ int uncompressed_decode_normal(struct rohc_decomp *decomp,
 	 * optional large CID field, and at least one more byte of data */
 	if(rohc_remain_len < (1 + large_cid_len + 1))
 	{
-		rohc_debugf(0, "ROHC packet too small (len = %u)\n", rohc_length);
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %u)\n", rohc_length);
 		goto error;
 	}
 

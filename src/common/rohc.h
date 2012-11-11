@@ -250,6 +250,14 @@ struct medium
 
 
 /*
+ * constants related to profiles
+ */
+
+/// The number of ROHC profiles ready to be used
+#define NUM_PROFILES 5
+
+
+/*
  * The limits for the compressor states changes:
  */
 

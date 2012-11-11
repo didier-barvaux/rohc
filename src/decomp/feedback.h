@@ -18,16 +18,17 @@
  * @file feedback.h
  * @brief ROHC feedback routines.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #ifndef FEEDBACK_H
 #define FEEDBACK_H
 
-#include <string.h>
+#include "rohc.h"
 
-#include "sdvl.h"
-#include "crc.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 
 /// CRC option for the FEEDBACK-2 packet

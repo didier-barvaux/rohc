@@ -29,9 +29,11 @@
 #define TS_SC_COMP_H
 
 #include "wlsb.h"
-#include "dllexport.h"
+#include "rohc_traces.h"
 
 #include <stdbool.h>
+
+#include "dllexport.h"
 
 
 /**
@@ -90,6 +92,9 @@ struct ts_sc_comp
 
 	/// The difference between old and current TS
 	uint32_t ts_delta;
+
+	/// The callback function used to get log messages
+	rohc_trace_callback_t trace_callback;
 };
 
 
@@ -99,7 +104,8 @@ struct ts_sc_comp
  */
 
 int ROHC_EXPORT c_create_sc(struct ts_sc_comp *const ts_sc,
-                            const size_t wlsb_window_width);
+                            const size_t wlsb_window_width,
+                            rohc_trace_callback_t callback);
 void ROHC_EXPORT c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
 void ROHC_EXPORT c_add_ts(struct ts_sc_comp *const ts_sc,

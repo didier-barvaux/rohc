@@ -18,6 +18,7 @@
  * @file   test_non_regression.c
  * @brief  ROHC non-regression test program
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  *
  * Introduction
@@ -94,6 +95,7 @@
 #endif
 #include <errno.h>
 #include <assert.h>
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -141,13 +143,27 @@ static int compress_decompress(struct rohc_comp *comp,
                                int cmp_size,
                                int link_len_cmp,
                                FILE *size_ouput_file);
+
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+	__attribute__((format(printf, 4, 5)));
+
 static int gen_false_random_num(const struct rohc_comp *const comp,
                                 void *const user_context)
 	__attribute__((nonnull(1)));
+
 static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
                             struct rohc_comp *comp2, struct rohc_decomp *decomp2);
+
 static int compare_packets(unsigned char *pkt1, int pkt1_size,
                            unsigned char *pkt2, int pkt2_size);
+
+
+/** Whether the application runs in verbose mode or not */
+static int is_verbose;
 
 
 /**
@@ -172,6 +188,9 @@ int main(int argc, char *argv[])
 	int use_large_cid;
 	int args_used;
 
+	/* set to quiet mode by default */
+	is_verbose = 0;
+
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
 	{
@@ -194,6 +213,11 @@ int main(int argc, char *argv[])
 			/* print help */
 			usage();
 			goto error;
+		}
+		else if(!strcmp(*argv, "--verbose"))
+		{
+			/* enable verbose mode */
+			is_verbose = 1;
 		}
 		else if(!strcmp(*argv, "-o"))
 		{
@@ -315,7 +339,8 @@ static void usage(void)
 	        "                          ROHC packets stored in FILE (PCAP format)\n"
 	        "  --rohc-size-ouput FILE  Save the sizes of ROHC packets in FILE\n"
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
-	        "                          simultaneously use during the test\n");
+	        "                          simultaneously use during the test\n"
+	        "  --verbose               Run the test in verbose mode\n");
 }
 
 
@@ -876,6 +901,21 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t</startup>\n\n");
 		goto close_output_size;
 	}
+
+	/* set the callback for traces on compressor 1 */
+	if(!rohc_comp_set_traces_cb(comp1, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor 1\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_comp1;
+	}
+
+	/* enable profiles */
 	rohc_activate_profile(comp1, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp1, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp1, ROHC_PROFILE_IP);
@@ -889,6 +929,11 @@ static int test_comp_and_decomp(const int use_large_cid,
 	{
 		fprintf(stderr, "failed to set the callback for random numbers on "
 		        "compressor 1\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
 		goto destroy_comp1;
 	}
 
@@ -904,6 +949,21 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t\t<log>\n");
 		goto destroy_comp1;
 	}
+
+	/* set the callback for traces on compressor 2 */
+	if(!rohc_comp_set_traces_cb(comp2, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor 2\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_comp2;
+	}
+
+	/* enable profiles */
 	rohc_activate_profile(comp2, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp2, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp2, ROHC_PROFILE_IP);
@@ -917,6 +977,11 @@ static int test_comp_and_decomp(const int use_large_cid,
 	{
 		fprintf(stderr, "failed to set the callback for random numbers on "
 		        "compressor 2\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
 		goto destroy_comp2;
 	}
 
@@ -931,6 +996,18 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t<shutdown>\n");
 		printf("\t\t<log>\n");
 		goto destroy_comp2;
+	}
+
+	/* set the callback for traces on decompressor 1 */
+	if(!rohc_decomp_set_traces_cb(decomp1, print_rohc_traces))
+	{
+		printf("cannot set trace callback for decompressor 1\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_decomp1;
 	}
 
 	/* set CID type and MAX_CID for decompressor 1 */
@@ -970,6 +1047,18 @@ static int test_comp_and_decomp(const int use_large_cid,
 	if(decomp2 == NULL)
 	{
 		printf("cannot create the decompressor 2\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_decomp1;
+	}
+
+	/* set the callback for traces on decompressor 2 */
+	if(!rohc_decomp_set_traces_cb(decomp2, print_rohc_traces))
+	{
+		printf("cannot set trace callback for decompressor 2\n");
 		printf("\t\t</log>\n");
 		printf("\t\t<status>failed</status>\n");
 		printf("\t</startup>\n\n");
@@ -1166,6 +1255,33 @@ close_input:
 error:
 	printf("</test>\n");
 	return status;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+{
+	va_list args;
+	if(is_verbose)
+	{
+		va_start(args, format);
+		vfprintf(stdout, format, args);
+		va_end(args);
+	}
 }
 
 

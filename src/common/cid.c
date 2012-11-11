@@ -18,12 +18,12 @@
  * @file cid.c
  * @brief Context ID (CID) routines.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #include "cid.h"
 #include "sdvl.h"
-#include "rohc_traces.h"
 
 #include <stdint.h>
 #include <assert.h>
@@ -65,15 +65,14 @@ int code_cid_values(const rohc_cid_type_t cid_type,
 	{
 		if(cid > 0)
 		{
+			/* Add-CID */
 			dest[counter] = c_add_cid(cid);
-			rohc_debugf(3, "add-CID = 0x%02x\n", dest[counter]);
-
 			*first_position = 1;
 			counter = 2;
 		}
 		else
 		{
-			rohc_debugf(3, "CID = 0 => no add-CID\n");
+			/* no Add-CID */
 			*first_position = 0;
 			counter = 1;
 		}
@@ -82,7 +81,6 @@ int code_cid_values(const rohc_cid_type_t cid_type,
 	{
 		size_t len;
 		int ret;
-		size_t i;
 
 		*first_position = 0;
 		counter++;
@@ -92,26 +90,18 @@ int code_cid_values(const rohc_cid_type_t cid_type,
 		assert(len > 0 && len <= 5);
 		if(len <= 0 || len > 4)
 		{
-			rohc_debugf(0, "failed to determine the number of bits required to "
-			            "SDVL-encode the large CID %d\n", cid);
-			/* TODO: should handle the error */
+			/* failed to determine the number of bits required to SDVL-encode
+			 * the large CID */
+			assert(0); /* TODO: should handle the error */
 		}
 
 		/* SDVL-encode the large CID */
 		ret = c_encodeSdvl(&dest[counter], cid, 0 /* length detection */);
 		if(ret != 1)
 		{
-			rohc_debugf(0, "failed to SDVL-encode the large CID %d\n", cid);
-			/* TODO: should handle the error */
+			/* failed to SDVL-encode the large CID */
+			assert(0); /* TODO: should handle the error */
 		}
-
-		/* print the SDVL-encoded large CID */
-		rohc_debugf(3, "SDVL-encoded large CID = ");
-		for(i = 0; i < len; i++)
-		{
-			rohc_debugf_(3, "0x%02x ", dest[counter + i]);
-		}
-		rohc_debugf_(3, "\n");
 
 		counter += len;
 	}

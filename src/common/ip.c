@@ -18,10 +18,10 @@
  * @file ip.c
  * @brief IP-agnostic packet
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #include "ip.h"
-#include "rohc_traces.h"
 #include "rohc_utils.h"
 
 #include <string.h>
@@ -51,7 +51,6 @@ int ip_create(struct ip_packet *const ip,
 	 * (may be IP_UNKNOWN if packet is not IP) */
 	if(!get_ip_version(packet, size, &version))
 	{
-		rohc_debugf(1, "bad IP version\n");
 		goto error;
 	}
 
@@ -66,7 +65,6 @@ int ip_create(struct ip_packet *const ip,
 
 		if(size < sizeof(struct ipv4_hdr))
 		{
-			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
 			goto unknown;
 		}
 
@@ -75,15 +73,11 @@ int ip_create(struct ip_packet *const ip,
 
 		if(ip_get_hdrlen(ip) != sizeof(struct ipv4_hdr))
 		{
-			rohc_debugf(1, "bad IP header size (%d bytes)\n",
-			            ip_get_hdrlen(ip));
 			goto unknown;
 		}
 
 		if(ip_get_totlen(ip) != size)
 		{
-			rohc_debugf(1, "bad IP packet length (%d bytes != %d bytes)\n",
-			            ip_get_totlen(ip), size);
 			goto unknown;
 		}
 
@@ -98,7 +92,6 @@ int ip_create(struct ip_packet *const ip,
 
 		if(size < sizeof(struct ipv6_hdr))
 		{
-			rohc_debugf(1, "IP packet too short (%d bytes)\n", size);
 			goto unknown;
 		}
 
@@ -107,8 +100,6 @@ int ip_create(struct ip_packet *const ip,
 
 		if(ip_get_totlen(ip) != size)
 		{
-			rohc_debugf(1, "bad IP packet length (%d bytes != %d bytes)\n",
-			            ip_get_totlen(ip), size);
 			goto unknown;
 		}
 
@@ -170,7 +161,6 @@ int ip_get_inner_packet(const struct ip_packet *const outer,
 	next_header = ip_get_next_layer(outer);
 
 	/* create an IP packet with the next header data */
-	rohc_debugf(3, "size of outer = %d\n", ip_get_plen(outer));
 	return ip_create(inner, next_header, ip_get_plen(outer));
 }
 

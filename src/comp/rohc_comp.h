@@ -18,6 +18,7 @@
  * @file rohc_comp.h
  * @brief ROHC compression routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -26,6 +27,7 @@
 
 #include "rohc.h"
 #include "rohc_packets.h"
+#include "rohc_traces.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -102,10 +104,14 @@ typedef int (*rohc_comp_random_cb_t) (const struct rohc_comp *const comp,
  */
 
 struct rohc_comp * ROHC_EXPORT rohc_alloc_compressor(int max_cid,
-																	  int jam_use,
-																	  int adapt_size,
-																	  int encap_size);
+                                                     int jam_use,
+                                                     int adapt_size,
+                                                     int encap_size);
 void ROHC_EXPORT rohc_free_compressor(struct rohc_comp *comp);
+
+bool ROHC_EXPORT rohc_comp_set_traces_cb(struct rohc_comp *const comp,
+                                         rohc_trace_callback_t callback)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_random_cb(struct rohc_comp *const comp,
                                          rohc_comp_random_cb_t callback,

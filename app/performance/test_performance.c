@@ -18,6 +18,7 @@
  * @file    test_performance.c
  * @brief   ROHC perf program
  * @author  Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author  Didier Barvaux <didier@barvaux.org>
  *
  * Introduction
  * ------------
@@ -119,6 +120,8 @@ for ./configure ? If yes, check configure output and config.log"
 /** The minimum Ethernet length (in bytes) */
 #define ETHER_FRAME_MIN_LEN  60
 
+/** Whether the application runs in verbose mode or not */
+static int is_verbose;
 
 static void usage(void);
 
@@ -139,6 +142,13 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 size_t link_len,
                                 double coef_nanosec,
                                 unsigned long long *time_elapsed);
+
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+	__attribute__((format(printf, 4, 5)));
 
 static int gen_false_random_num(const struct rohc_comp *const comp,
                                 void *const user_context)
@@ -169,6 +179,9 @@ int main(int argc, char *argv[])
 #endif
 	int status = 1;
 
+	/* set to quiet mode by default */
+	is_verbose = 0;
+
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
 	{
@@ -189,6 +202,11 @@ int main(int argc, char *argv[])
 			/* print help */
 			usage();
 			goto error;
+		}
+		else if(!strcmp(*argv, "--verbose"))
+		{
+			/* enable verbose mode */
+			is_verbose = 1;
 		}
 		else if(filename == NULL)
 		{
@@ -267,6 +285,7 @@ static void usage(void)
 	        "usage: test_performance [-h|--help] [-v|--version] flow\n"
 	        "  --version        print version information and exit\n"
 	        "  -v\n"
+	        "  --verbose        tell the application to be more verbose\n"
 	        "  --help           print application usage and exit\n"
 	        "  -h\n"
 	        "  flow  flow of Ethernet frames to compress (PCAP format)\n");
@@ -426,6 +445,13 @@ static int test_compression_perfs(char *filename,
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
 		goto close_input;
+	}
+
+	/* set the callback for traces */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces\n");
+		goto free_compresssor;
 	}
 
 	/* set the callback for random numbers */
@@ -595,6 +621,33 @@ static int time_compress_packet(struct rohc_comp *comp,
 
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Print traces emitted by the ROHC library in verbose mode
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+{
+	va_list args;
+	if(is_verbose)
+	{
+		va_start(args, format);
+		vprintf(format, args);
+		va_end(args);
+	}
 }
 
 

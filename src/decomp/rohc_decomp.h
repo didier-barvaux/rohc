@@ -18,6 +18,7 @@
  * @file rohc_decomp.h
  * @brief ROHC decompression routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
  */
@@ -111,6 +112,9 @@ struct rohc_decomp
 
 	/// Some statistics about the decompression processes
 	struct d_statistics stats;
+
+	/// The callback function used to get log messages
+	rohc_trace_callback_t trace_callback;
 };
 
 
@@ -119,6 +123,9 @@ struct rohc_decomp
  */
 struct d_context
 {
+	/// The associated decompressor
+	struct rohc_decomp *decompressor;
+
 	/// The associated profile
 	struct d_profile *profile;
 	/// Profile-specific data, defined by the profiles
@@ -199,7 +206,7 @@ struct d_profile
 
 	/// @brief The handler used to create the profile-specific part of the
 	///        decompression context
-	void * (*allocate_decode_data)(void);
+	void * (*allocate_decode_data)(const struct d_context *const context);
 
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        decompression context
@@ -266,10 +273,13 @@ bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                               const rohc_cid_type_t cid_type)
 	__attribute__((nonnull(1), warn_unused_result));
 
-
 bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                              const size_t max_cid)
 	__attribute__((nonnull(1), warn_unused_result));
+
+bool rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
+                               rohc_trace_callback_t callback)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 #endif
 

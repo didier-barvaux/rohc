@@ -18,6 +18,7 @@
  * @file tunnel.c
  * @brief ROHC tunnel
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  *
  * Description
  * -----------
@@ -84,6 +85,7 @@
 #include <sys/select.h>
 #include <signal.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <math.h> /* for HUGE_VAL */
 #include <time.h> /* for time(2) */
 #include <sys/time.h> /* for gettimeofday(2) */
@@ -156,6 +158,13 @@ double get_probability(char *arg, int *error);
 int is_timeout(struct timeval first,
                struct timeval second,
                unsigned int max);
+
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+	__attribute__((format(printf, 4, 5)));
 
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
@@ -522,6 +531,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "cannot create the ROHC compressor\n");
 		goto close_udp;
 	}
+
+	/* set trace callback for compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for the compressor\n");
+		goto destroy_comp;
+	}
+
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
@@ -546,6 +563,13 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
 		goto destroy_comp;
+	}
+
+	/* set trace callback for decompressor */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for the decompressor\n");
+		goto destroy_decomp;
 	}
 
 
@@ -1501,6 +1525,30 @@ int is_timeout(struct timeval first,
 		is_timeout = 0;
 
 	return is_timeout;
+}
+
+
+/**
+ * @brief Print traces emitted by the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(rohc_trace_level_t level,
+                              rohc_trace_entity_t entity,
+                              int profile,
+                              const char *format,
+                              ...)
+{
+	va_list args;
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
 }
 
 
