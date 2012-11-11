@@ -34,14 +34,6 @@
 #include "dllexport.h"
 
 
-/** Print raw trace message (internal usage) */
-#define __rohc_print_raw(trace_cb, level, entity, profile, format, ...) \
-	do { \
-		if(trace_cb != NULL) { \
-			trace_cb(level, entity, profile, format, ##__VA_ARGS__); \
-		} \
-	} while(0)
-
 /** Print information depending on the debug level (internal usage) */
 #define __rohc_print(trace_cb, level, entity, profile, format, ...) \
 	do { \

@@ -42,6 +42,12 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
                       const unsigned char *const packet,
                       const size_t length)
 {
+	const size_t byte_width = 3; /* 'XX ' */
+	const size_t byte_nr = 16; /* 16 bytes per line */
+	const size_t column_width = 2; /* spaces between 8 1st/last bytes */
+	const size_t line_max = byte_width * byte_nr + column_width;
+	char line[line_max + 1];
+	size_t line_index;
 	size_t i;
 
 	assert(descr != NULL);
@@ -50,22 +56,35 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 
 	__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
 	             ROHC_PROFILE_GENERAL, "%s (%zd bytes):\n", descr, length);
+	line_index = 0;
 	for(i = 0; i < length; i++)
 	{
 		if(i > 0 && (i % 16) == 0)
 		{
-			__rohc_print_raw(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-			                 ROHC_PROFILE_GENERAL, "\n");
+			assert(line_index <= line_max);
+			line[line_index] = '\0';
+			__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
+			             ROHC_PROFILE_GENERAL, "%s\n", line);
+			line_index = 0;
 		}
 		else if(i > 0 && (i % 8) == 0)
 		{
-			__rohc_print_raw(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-			                 ROHC_PROFILE_GENERAL, " ");
+			assert(line_index <= (line_max - column_width));
+			snprintf(line + line_index, column_width + 1, "  ");
+			line_index += column_width;
 		}
-		__rohc_print_raw(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-		                 ROHC_PROFILE_GENERAL, "%02x ", packet[i]);
+		assert(line_index <= (line_max - byte_width));
+		snprintf(line + line_index, byte_width + 1, "%02x ", packet[i]);
+		line_index += byte_width;
 	}
-	__rohc_print_raw(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-	                 ROHC_PROFILE_GENERAL, "\n");
+
+	/* flush incomplete line */
+	if(line_index > 0)
+	{
+		assert(line_index <= line_max);
+		line[line_index] = '\0';
+		__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
+		             ROHC_PROFILE_GENERAL, "%s\n", line);
+	}
 }
 

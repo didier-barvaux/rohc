@@ -1335,9 +1335,18 @@ static void print_rohc_traces(const rohc_trace_level_t level,
                               const char *const format,
                               ...)
 {
-	va_list args;
-	if(is_verbose)
+	const char *level_descrs[] =
 	{
+		[ROHC_TRACE_DEBUG]   = "DEBUG",
+		[ROHC_TRACE_INFO]    = "INFO",
+		[ROHC_TRACE_WARNING] = "WARNING",
+		[ROHC_TRACE_ERROR]   = "ERROR"
+	};
+
+	if(level >= ROHC_TRACE_WARNING || is_verbose)
+	{
+		va_list args;
+		fprintf(stdout, "[%s] ", level_descrs[level]);
 		va_start(args, format);
 		vfprintf(stdout, format, args);
 		va_end(args);
