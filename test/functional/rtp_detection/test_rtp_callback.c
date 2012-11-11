@@ -469,11 +469,13 @@ static bool callback_detect(const unsigned char *const ip,
                             const unsigned int payload_size,
                             void *const rtp_private)
 {
+	uint16_t udp_dport;
 	uint32_t rtp_ssrc;
 	bool is_rtp = false;
 
 	/* check UDP destination port */
-	if(ntohs(*((uint16_t *) (udp + 2))) != 1234)
+	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
+	if(ntohs(udp_dport) != 1234)
 	{
 		fprintf(stderr, "RTP packet not detected (wrong UDP port)\n");
 		goto not_rtp;
@@ -487,8 +489,8 @@ static bool callback_detect(const unsigned char *const ip,
 	}
 
 	/* check RTP SSRC field */
-	rtp_ssrc = ntohl(*((uint32_t *) (payload + 8)));
-	if(rtp_ssrc != 0x0d1ba521)
+	memcpy(&rtp_ssrc, payload + 8, sizeof(uint32_t));
+	if(ntohl(rtp_ssrc) != 0x0d1ba521)
 	{
 		fprintf(stderr, "RTP packet not detected (wrong RTP SSRC)\n");
 		goto not_rtp;
