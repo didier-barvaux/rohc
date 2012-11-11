@@ -147,19 +147,23 @@ struct bitfield
               [AC_MSG_RESULT([yes])])
 
 
-# get debug level
+# get extra debug traces
 AC_ARG_ENABLE(rohc_debug,
               AS_HELP_STRING([--enable-rohc-debug],
-                             [set level for ROHC traces: \
-                              0 = error messages only, \
-                              1 = a few informative messages, \
-                              2 = more informative messages, \
-                              3 = even more informative messages \
-                              [[default=3]]]),
-              rohc_debug_level=$enableval,
-              rohc_debug_level=3)
-AC_DEFINE_UNQUOTED([ROHC_DEBUG_LEVEL], [$rohc_debug_level],
-                   [Debug level for ROHC library])
+                             [enable library extra debug traces with \
+                              performances impact [[default=no]]]),
+              [enable_rohc_debug=$enableval],
+              [enable_rohc_debug=no])
+if test "x$enable_rohc_debug" = "xyes" ; then
+	rohc_extra_debug=1
+elif test "x$enable_rohc_debug" = "xno" ; then
+	rohc_extra_debug=0
+else
+	AC_MSG_ERROR([option --enable-rohc-debug does not take an integer value \
+	              anymore, only 'yes' or 'no'])
+fi
+AC_DEFINE_UNQUOTED([ROHC_EXTRA_DEBUG], [$rohc_extra_debug],
+                   [Extra debug traces for ROHC library])
 
 
 # check if -Werror must be appended to CFLAGS

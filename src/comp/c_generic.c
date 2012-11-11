@@ -36,10 +36,10 @@
 #include "sdvl.h"
 #include "crc.h"
 
-#include "config.h" /* for RTP_BIT_TYPE and ROHC_DEBUG_LEVEL definitions */
-
 #include <string.h>
 #include <assert.h>
+
+#include "config.h" /* for RTP_BIT_TYPE and ROHC_EXTRA_DEBUG definitions */
 
 
 /*
@@ -6482,7 +6482,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 
 	ext = ip_get_raw_data(ip) + sizeof(struct ipv6_hdr);
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print current list before update */
 	rohc_debug(comp, ROHC_TRACE_COMP, comp->profile_id,
 	           "current list (gen_id = %d) before update:\n",
@@ -6623,7 +6623,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, comp->profile_id,
 	           "value of the counter for reference: %d\n", comp->counter);
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print current list after update */
 	rohc_debug(comp, ROHC_TRACE_COMP, comp->profile_id,
 	           "current list (gen_id = %d) after update:\n",

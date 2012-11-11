@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "config.h" /* for ROHC_DEBUG_LEVEL */
 #include "dllexport.h"
 
 
@@ -61,25 +60,15 @@
 		             format, ##__VA_ARGS__); \
 	} while(0)
 
-#if defined(ROHC_DEBUG_LEVEL) && ROHC_DEBUG_LEVEL
+/** Print debug messages prefixed with the function name */
+#define rohc_debug(entity_struct, entity, profile, format, ...) \
+	rohc_print(entity_struct, ROHC_TRACE_DEBUG, entity, profile, \
+	           format, ##__VA_ARGS__)
 
-	/** Print debug messages prefixed with the function name */
-	#define rohc_debug(entity_struct, entity, profile, format, ...) \
-		rohc_print(entity_struct, ROHC_TRACE_DEBUG, entity, profile, \
-		           format, ##__VA_ARGS__)
-
-	/** Print information prefixed with the function name */
-	#define rohc_info(entity_struct, entity, profile, format, ...) \
-		rohc_print(entity_struct, ROHC_TRACE_INFO, entity, profile, \
-		           format, ##__VA_ARGS__)
-
-#else
-	#define rohc_debug(entity_struct, entity, profile, format, ...) \
-		do { } while(0)
-
-	#define rohc_info(entity_struct, entity, profile, format, ...) \
-		do { } while(0)
-#endif
+/** Print information prefixed with the function name */
+#define rohc_info(entity_struct, entity, profile, format, ...) \
+	rohc_print(entity_struct, ROHC_TRACE_INFO, entity, profile, \
+	           format, ##__VA_ARGS__)
 
 /** Print warning messages prefixed with the function name */
 #define rohc_warning(entity_struct, entity, profile, format, ...) \

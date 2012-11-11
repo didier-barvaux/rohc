@@ -27,7 +27,7 @@
 
 #include "d_generic.h"
 #include "d_rtp.h"
-#include "config.h" /* for RTP_BIT_TYPE definition */
+#include "config.h" /* for RTP_BIT_TYPE and ROHC_EXTRA_DEBUG definition */
 #include "rohc_traces_internal.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
@@ -1193,7 +1193,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 	packet_read_length += xi_length + item_read_length;
 	packet_len -= xi_length + item_read_length;
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	{
 		struct list_elt *elt;
 		int i;
@@ -1326,7 +1326,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		}
 	}
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print current list before update */
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 	           "current list (gen_id = %d) before update:\n",
@@ -1792,7 +1792,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	packet_read_length += xi_length + item_read_length;
 	packet_len -= xi_length + item_read_length;
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print current list after update */
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 	           "current list (gen_id = %d) after update:\n",
@@ -1911,7 +1911,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		}
 	}
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print reference list before update */
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 	           "reference list (gen_id = %d) used as base:\n",
@@ -2066,7 +2066,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		}
 	}
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print current list after update */
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 	           "current list (gen_id = %d) decoded:\n",
@@ -2237,7 +2237,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		}
 	}
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print reference list before update */
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 	           "reference list (gen_id = %d) used as base:\n",
@@ -2405,7 +2405,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			}
 		}
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 		/* print current list after removal scheme */
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		           "current list (gen_id = %d) after removal scheme:\n",
@@ -2864,7 +2864,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	packet_read_length += xi_length + item_read_length;
 	packet_len -= xi_length + item_read_length;
 
-#if ROHC_DEBUG_LEVEL >= 3
+#if ROHC_EXTRA_DEBUG == 1
 	/* print current list after insertion scheme */
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 	           "current list (gen_id = %d) decoded:\n",

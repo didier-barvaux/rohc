@@ -41,6 +41,7 @@ run automake --add-missing
 # is for developpers not users, also enable tests, stats, doc and examples.
 chmod +x ./configure
 ./configure \
+	--enable-rohc-debug \
 	--enable-fail-on-warning \
 	--enable-fortify_sources \
 	--enable-rohc-apps \
