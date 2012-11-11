@@ -83,8 +83,8 @@ int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
 	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "initialize context(SN) = random() = %u\n", g_context->sn);
+	rohc_comp_debug(context, "initialize context(SN) = random() = %u\n",
+	                g_context->sn);
 
 	/* check if packet is IP/UDP or IP/IP/UDP */
 	ip_proto = ip_get_protocol(ip);
@@ -438,9 +438,8 @@ void udp_decide_state(struct c_context *const context)
 
 	if(udp_context->tmp.send_udp_dynamic)
 	{
-		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "go back to IR state because UDP checksum behaviour "
-		           "changed in the last few packets\n");
+		rohc_comp_debug(context, "go back to IR state because UDP checksum "
+		                "behaviour changed in the last few packets\n");
 		change_state(context, IR);
 	}
 	else
@@ -480,8 +479,7 @@ int udp_code_uo_remainder(const struct c_context *context,
 	/* part 13 */
 	if(udp->check != 0)
 	{
-		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "UDP checksum = 0x%x\n", udp->check);
+		rohc_comp_debug(context, "UDP checksum = 0x%x\n", udp->check);
 		memcpy(&dest[counter], &udp->check, 2);
 		counter += 2;
 	}
@@ -519,14 +517,12 @@ int udp_code_static_udp_part(const struct c_context *context,
 	const struct udphdr *udp = (struct udphdr *) next_header;
 
 	/* part 1 */
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "UDP source port = 0x%x\n", udp->source);
+	rohc_comp_debug(context, "UDP source port = 0x%x\n", udp->source);
 	memcpy(&dest[counter], &udp->source, 2);
 	counter += 2;
 
 	/* part 2 */
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "UDP dest port = 0x%x\n", udp->dest);
+	rohc_comp_debug(context, "UDP dest port = 0x%x\n", udp->dest);
 	memcpy(&dest[counter], &udp->dest, 2);
 	counter += 2;
 
@@ -568,8 +564,7 @@ int udp_code_dynamic_udp_part(const struct c_context *context,
 	udp = (struct udphdr *) next_header;
 
 	/* part 1 */
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "UDP checksum = 0x%x\n", udp->check);
+	rohc_comp_debug(context, "UDP checksum = 0x%x\n", udp->check);
 	memcpy(&dest[counter], &udp->check, 2);
 	counter += 2;
 	udp_context->udp_checksum_change_count++;

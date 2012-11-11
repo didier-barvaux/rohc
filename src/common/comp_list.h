@@ -31,6 +31,12 @@
 #include <stdlib.h>
 
 
+/** Print a debug trace for the given compression list */
+#define rohc_list_debug(comp_list, format, ...) \
+	rohc_debug(comp_list, ROHC_TRACE_COMP, (comp_list)->profile_id, \
+	           format, ##__VA_ARGS__)
+
+
 /// Header version
 typedef enum
 {

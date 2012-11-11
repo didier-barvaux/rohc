@@ -44,6 +44,12 @@
 /** The maximal number of outgoing feedbacks that can be queued */
 #define FEEDBACK_RING_SIZE 10
 
+/** Print a debug trace for the given compression context */
+#define rohc_comp_debug(context, format, ...) \
+	rohc_debug((context)->compressor, ROHC_TRACE_COMP, \
+	           (context)->profile->id, \
+	           format, ##__VA_ARGS__)
+
 
 /*
  * Declare ROHC compression structures that are defined at the end of this

@@ -160,9 +160,8 @@ static int c_esp_create(struct c_context *const context,
 
 	/* initialize SN with the SN found in the ESP header */
 	g_context->sn = ntohl(esp->sn);
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "initialize context(SN) = hdr(SN) of first packet = %u\n",
-	           g_context->sn);
+	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
+	                "packet = %u\n", g_context->sn);
 
 	/* create the ESP part of the profile context */
 	esp_context = malloc(sizeof(struct sc_esp_context));
@@ -526,8 +525,7 @@ static int esp_code_static_esp_part(const struct c_context *context,
 	const struct esphdr *esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "ESP SPI = 0x%08x\n", ntohl(esp->spi));
+	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", ntohl(esp->spi));
 	memcpy(&dest[counter], &esp->spi, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
@@ -568,8 +566,7 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
 	esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "ESP SN = 0x%08x\n", ntohl(esp->sn));
+	rohc_comp_debug(context, "ESP SN = 0x%08x\n", ntohl(esp->sn));
 	memcpy(&dest[counter], &esp->sn, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
