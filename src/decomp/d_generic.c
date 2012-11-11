@@ -3275,7 +3275,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC IR header (%u bytes) and payload (%u bytes) "
+		             "ROHC IR header (%zd bytes) and payload (%zd bytes) "
 		             "do not match the full ROHC IR packet (%u bytes)\n",
 		             rohc_header_len, payload_len, rohc_length);
 		goto error;
@@ -6235,7 +6235,7 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC IR-DYN header (%u bytes) and payload (%u bytes) "
+		             "ROHC IR-DYN header (%zd bytes) and payload (%zd bytes) "
 		             "do not match the full ROHC IR-DYN packet (%u bytes)\n",
 		             rohc_header_len, payload_len, rohc_length);
 		goto error;
