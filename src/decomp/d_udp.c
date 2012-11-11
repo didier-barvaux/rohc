@@ -29,6 +29,7 @@
 #include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/udp.h"
+#include "rohc_decomp_internals.h"
 
 #include <assert.h>
 
@@ -228,15 +229,15 @@ int udp_parse_static_udp(const struct d_context *const context,
 
 	bits->udp_src = GET_NEXT_16_BITS(packet);
 	bits->udp_src_nr = 16;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "UDP source port = 0x%04x\n", ntohs(bits->udp_src));
+	rohc_decomp_debug(context, "UDP source port = 0x%04x\n",
+	                  ntohs(bits->udp_src));
 	packet += 2;
 	read += 2;
 
 	bits->udp_dst = GET_NEXT_16_BITS(packet);
 	bits->udp_dst_nr = 16;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "UDP destination port = 0x%04x\n", ntohs(bits->udp_dst));
+	rohc_decomp_debug(context, "UDP destination port = 0x%04x\n",
+	                  ntohs(bits->udp_dst));
 	packet += 2;
 	read += 2;
 
@@ -284,8 +285,7 @@ static int udp_parse_dynamic_udp(const struct d_context *const context,
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
 	packet += 2;
 	read += 2;
 
@@ -350,8 +350,7 @@ static int udp_parse_uo_remainder(const struct d_context *const context,
 	else if(udp_context->udp_checksum_present == 0)
 	{
 		bits->udp_check_nr = 0;
-		rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "UDP checksum not present\n");
+		rohc_decomp_debug(context, "UDP checksum not present\n");
 	}
 	else
 	{
@@ -367,8 +366,7 @@ static int udp_parse_uo_remainder(const struct d_context *const context,
 		/* retrieve the UDP checksum from the ROHC packet */
 		bits->udp_check = GET_NEXT_16_BITS(packet);
 		bits->udp_check_nr = 16;
-		rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
+		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
 		packet += 2;
 		read += 2;
 	}
@@ -424,8 +422,8 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		/* keep context value */
 		decoded->udp_src = udp->source;
 	}
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decoded UDP source port = 0x%04x\n", ntohs(decoded->udp_src));
+	rohc_decomp_debug(context, "decoded UDP source port = 0x%04x\n",
+	                  ntohs(decoded->udp_src));
 
 	/* decode UDP destination port */
 	if(bits.udp_dst_nr > 0)
@@ -439,9 +437,8 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		/* keep context value */
 		decoded->udp_dst = udp->dest;
 	}
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decoded UDP destination port = 0x%04x\n",
-	           ntohs(decoded->udp_dst));
+	rohc_decomp_debug(context, "decoded UDP destination port = 0x%04x\n",
+	                  ntohs(decoded->udp_dst));
 
 	/* UDP checksum:
 	 *  - error if udp_checksum_present not initialized,
@@ -473,9 +470,9 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		assert(bits.udp_check_nr == 0);
 		decoded->udp_check = 0;
 	}
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decoded UDP checksum = 0x%04x (checksum present = %d)\n",
-	           ntohs(decoded->udp_check), udp_context->udp_checksum_present);
+	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
+	                  "present = %d)\n", ntohs(decoded->udp_check),
+	                  udp_context->udp_checksum_present);
 
 	return true;
 
@@ -512,13 +509,11 @@ static int udp_build_uncomp_udp(const struct d_context *const context,
 
 	/* changing fields */
 	udp->check = decoded.udp_check;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "UDP checksum = 0x%04x\n", ntohs(udp->check));
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(udp->check));
 
 	/* interfered fields */
 	udp->len = htons(payload_len + sizeof(struct udphdr));
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "UDP length = 0x%04x\n", ntohs(udp->len));
+	rohc_decomp_debug(context, "UDP length = 0x%04x\n", ntohs(udp->len));
 
 	return sizeof(struct udphdr);
 }

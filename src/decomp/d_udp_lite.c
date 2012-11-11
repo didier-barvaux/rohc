@@ -31,6 +31,7 @@
 #include "rohc_utils.h"
 #include "rohc_packets.h"
 #include "crc.h"
+#include "rohc_decomp_internals.h"
 #include "protocols/udp_lite.h"
 
 
@@ -295,8 +296,7 @@ static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
 	switch(rohc_remain_data[0])
 	{
 		case 0xf9: /* CCE() */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			           "CCE()\n");
+			rohc_decomp_debug(context, "CCE()\n");
 			udp_lite_context->cce_packet = PACKET_CCE;
 			/* skip CCE byte (and optional large CID field) */
 			rohc_remain_data += 1 + large_cid_len;
@@ -304,8 +304,7 @@ static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
 			new_large_cid_len = 0;
 			break;
 		case 0xfa: /* CEC(ON) */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			           "CCE(ON)\n");
+			rohc_decomp_debug(context, "CCE(ON)\n");
 			udp_lite_context->cfp = 1;
 			udp_lite_context->cce_packet = PACKET_CCE;
 			/* skip CCE byte (and optional large CID field) */
@@ -314,16 +313,14 @@ static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
 			new_large_cid_len = 0;
 			break;
 		case 0xfb: /* CCE(OFF) */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			           "CCE(OFF)\n");
+			rohc_decomp_debug(context, "CCE(OFF)\n");
 			udp_lite_context->cfp = 0;
 			udp_lite_context->cce_packet = PACKET_CCE_OFF;
 			/* no CCE byte to skip */
 			new_large_cid_len = large_cid_len;
 			break;
 		default:
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			           "CCE not present\n");
+			rohc_decomp_debug(context, "CCE not present\n");
 			udp_lite_context->cce_packet = 0;
 			/* no CCE byte to skip */
 			new_large_cid_len = large_cid_len;
@@ -450,30 +447,27 @@ static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
 	/* retrieve the checksum coverage field from the ROHC packet */
 	bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
 	bits->udp_lite_cc_nr = 16;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "checksum coverage = 0x%04x\n", ntohs(bits->udp_lite_cc));
+	rohc_decomp_debug(context, "checksum coverage = 0x%04x\n",
+	                  ntohs(bits->udp_lite_cc));
 	read += 2;
 	packet += 2;
 
 	/* init the Coverage Field Present (CFP) (see 5.2.2 in RFC 4019) */
 	udp_lite_context->cfp = (udp_lite_length != ntohs(bits->udp_lite_cc));
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "init CFP to %d (length = %zd, CC = %d)\n",
-	           udp_lite_context->cfp, udp_lite_length,
-	           ntohs(bits->udp_lite_cc));
+	rohc_decomp_debug(context, "init CFP to %d (length = %zd, CC = %d)\n",
+	                  udp_lite_context->cfp, udp_lite_length,
+	                  ntohs(bits->udp_lite_cc));
 
 	/* init Coverage Field Inferred (CFI) (see 5.2.2 in RFC 4019) */
 	udp_lite_context->cfi = (udp_lite_length == ntohs(bits->udp_lite_cc));
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "init CFI to %d (length = %zd, CC = %d)\n",
-	           udp_lite_context->cfi, udp_lite_length,
-	           ntohs(bits->udp_lite_cc));
+	rohc_decomp_debug(context, "init CFI to %d (length = %zd, CC = %d)\n",
+	                  udp_lite_context->cfi, udp_lite_length,
+	                  ntohs(bits->udp_lite_cc));
 
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "checksum = 0x%04x\n", ntohs(bits->udp_check));
 	packet += 2;
 	read += 2;
 
@@ -521,10 +515,9 @@ static int udp_lite_parse_uo_remainder(const struct d_context *const context,
 	assert(packet != NULL);
 	assert(bits != NULL);
 
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "CFP = %d, CFI = %d, cce_packet = %d\n",
-	           udp_lite_context->cfp, udp_lite_context->cfi,
-	           udp_lite_context->cce_packet);
+	rohc_decomp_debug(context, "CFP = %d, CFI = %d, cce_packet = %d\n",
+	                  udp_lite_context->cfp, udp_lite_context->cfi,
+	                  udp_lite_context->cce_packet);
 
 	remainder_length = (udp_lite_context->cfp != 0 ? 2 : 0) + 2;
 
@@ -542,8 +535,8 @@ static int udp_lite_parse_uo_remainder(const struct d_context *const context,
 		/* retrieve the checksum coverage field from the ROHC packet */
 		bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
 		bits->udp_lite_cc_nr = 16;
-		rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "checksum coverage = 0x%04x\n", ntohs(bits->udp_lite_cc));
+		rohc_decomp_debug(context, "checksum coverage = 0x%04x\n",
+		                  ntohs(bits->udp_lite_cc));
 		read += 2;
 		packet += 2;
 	}
@@ -565,8 +558,7 @@ static int udp_lite_parse_uo_remainder(const struct d_context *const context,
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "checksum = 0x%04x\n", ntohs(bits->udp_check));
 	packet += 2;
 	read += 2;
 
@@ -618,9 +610,8 @@ static bool udp_lite_decode_values_from_bits(const struct d_context *context,
 		/* keep context value */
 		decoded->udp_src = udp_lite->source;
 	}
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decoded UDP-Lite source port = 0x%04x\n",
-	           ntohs(decoded->udp_src));
+	rohc_decomp_debug(context, "decoded UDP-Lite source port = 0x%04x\n",
+	                  ntohs(decoded->udp_src));
 
 	/* decode UDP-Lite destination port */
 	if(bits.udp_dst_nr > 0)
@@ -634,15 +625,14 @@ static bool udp_lite_decode_values_from_bits(const struct d_context *context,
 		/* keep context value */
 		decoded->udp_dst = udp_lite->dest;
 	}
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decoded UDP-Lite destination port = 0x%04x\n",
-	           ntohs(decoded->udp_dst));
+	rohc_decomp_debug(context, "decoded UDP-Lite destination port = 0x%04x\n",
+	                  ntohs(decoded->udp_dst));
 
 	/* decode UDP-Lite checksum */
 	assert(bits.udp_check_nr == 16);
 	decoded->udp_check = bits.udp_check;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decoded UDP checksum = 0x%04x\n", ntohs(decoded->udp_check));
+	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x\n",
+	                  ntohs(decoded->udp_check));
 
 	/* decode UDP-Lite Checksum Coverage (CC) */
 	if(bits.udp_lite_cc_nr > 0)
@@ -696,21 +686,20 @@ static int udp_lite_build_uncomp_udp(const struct d_context *const context,
 
 	/* changing fields */
 	udp_lite->check = decoded.udp_check;
-	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "checksum = 0x%04x\n", ntohs(udp_lite->check));
+	rohc_decomp_debug(context, "checksum = 0x%04x\n", ntohs(udp_lite->check));
 
 	/* set checksum coverage if inferred, get from packet otherwise */
 	if(udp_lite_context->cfi > 0)
 	{
 		udp_lite->len = htons(payload_len + sizeof(struct udphdr));
-		rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "checksum coverage (0x%04x) is inferred\n", udp_lite->len);
+		rohc_decomp_debug(context, "checksum coverage (0x%04x) is inferred\n",
+		                  udp_lite->len);
 	}
 	else
 	{
 		udp_lite->len = decoded.udp_lite_cc;
-		rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "checksum coverage (0x%04x) is not inferred\n", udp_lite->len);
+		rohc_decomp_debug(context, "checksum coverage (0x%04x) is not inferred\n",
+		                  udp_lite->len);
 	}
 
 	return sizeof(struct udphdr);

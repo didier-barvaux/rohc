@@ -29,6 +29,7 @@
 #include "rohc_debug.h" /* for zfree() */
 #include "rohc_utils.h"
 #include "decode.h"
+#include "rohc_decomp_internals.h"
 
 #include <assert.h>
 
@@ -219,8 +220,7 @@ int ip_parse_dynamic_ip(const struct d_context *const context,
 		/* parse 16-bit SN */
 		bits->sn = ntohs(GET_NEXT_16_BITS(packet));
 		bits->sn_nr = 16;
-		rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "SN = %u (0x%04x)\n", bits->sn, bits->sn);
+		rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
 		packet += 2;
 		read += 2;
 	}

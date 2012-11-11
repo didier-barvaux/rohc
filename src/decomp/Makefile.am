@@ -38,6 +38,7 @@ librohc_decomp_la_CFLAGS = \
 include_HEADERS = rohc_decomp.h
 
 noinst_HEADERS = \
+	rohc_decomp_internals.h \
 	feedback.h \
 	d_uncompressed.h \
 	d_generic.h \
