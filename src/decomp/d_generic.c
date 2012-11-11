@@ -185,35 +185,29 @@ static int decode_uor2(struct rohc_decomp *decomp,
  * of the IR and IR-DYN headers
  */
 
-static int parse_static_part_ip(const struct rohc_decomp *const decomp,
-                                const struct d_context *const context,
+static int parse_static_part_ip(const struct d_context *const context,
                                 const unsigned char *packet,
                                 const unsigned int length,
                                 struct rohc_extr_ip_bits *const bits);
-static int parse_static_part_ipv4(const struct rohc_decomp *const decomp,
-                                  const struct d_context *const context,
+static int parse_static_part_ipv4(const struct d_context *const context,
                                   const unsigned char *packet,
                                   const unsigned int length,
                                   struct rohc_extr_ip_bits *const bits);
-static int parse_static_part_ipv6(const struct rohc_decomp *const decomp,
-                                  const struct d_context *const context,
+static int parse_static_part_ipv6(const struct d_context *const context,
                                   const unsigned char *packet,
                                   const unsigned int length,
                                   struct rohc_extr_ip_bits *const bits);
 
-static int parse_dynamic_part_ip(const struct rohc_decomp *const decomp,
-                                 const struct d_context *const context,
+static int parse_dynamic_part_ip(const struct d_context *const context,
                                  const unsigned char *packet,
                                  unsigned int length,
                                  struct rohc_extr_ip_bits *const bits,
                                  struct list_decomp *list_decomp);
-static int parse_dynamic_part_ipv4(const struct rohc_decomp *const decomp,
-                                   const struct d_context *const context,
+static int parse_dynamic_part_ipv4(const struct d_context *const context,
                                    const unsigned char *packet,
                                    unsigned int length,
                                    struct rohc_extr_ip_bits *const bits);
-static int parse_dynamic_part_ipv6(const struct rohc_decomp *const decomp,
-                                   const struct d_context *const context,
+static int parse_dynamic_part_ipv6(const struct d_context *const context,
                                    const unsigned char *packet,
                                    unsigned int length,
                                    struct rohc_extr_ip_bits *const bits,
@@ -351,21 +345,16 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
                              const unsigned int crc_packet,
                              unsigned char *uncomp_hdrs,
                              size_t *const uncomp_hdrs_len);
-static unsigned int build_uncomp_ip(const struct rohc_decomp *const decomp,
-                                    const struct d_context *const context,
+static unsigned int build_uncomp_ip(const struct d_context *const context,
                                     const struct rohc_decoded_ip_values decoded,
                                     unsigned char *dest,
                                     unsigned int payload_size,
                                     struct list_decomp *list_decomp);
-static unsigned int build_uncomp_ipv4(const struct rohc_decomp *const decomp,
-
-                                      const struct d_context *const context,
+static unsigned int build_uncomp_ipv4(const struct d_context *const context,
                                       const struct rohc_decoded_ip_values decoded,
                                       unsigned char *dest,
                                       unsigned int payload_size);
-static unsigned int build_uncomp_ipv6(const struct rohc_decomp *const decomp,
-
-                                      const struct d_context *const context,
+static unsigned int build_uncomp_ipv6(const struct d_context *const context,
                                       const struct rohc_decoded_ip_values decoded,
                                       unsigned char *dest,
                                       unsigned int payload_size,
@@ -3024,8 +3013,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 	rohc_header_len++;
 
 	/* decode the static part of the outer header */
-	size = parse_static_part_ip(decomp, context,
-	                            rohc_remain_data, rohc_remain_len,
+	size = parse_static_part_ip(context, rohc_remain_data, rohc_remain_len,
 	                            &bits.outer_ip);
 	if(size == -1)
 	{
@@ -3054,8 +3042,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 	 * if multiple IP headers */
 	if(g_context->multiple_ip)
 	{
-		size = parse_static_part_ip(decomp, context,
-		                            rohc_remain_data, rohc_remain_len,
+		size = parse_static_part_ip(context, rohc_remain_data, rohc_remain_len,
 		                            &bits.inner_ip);
 		if(size == -1)
 		{
@@ -3088,8 +3075,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 	if(dynamic_present)
 	{
 		/* decode the dynamic part of the outer IP header */
-		size = parse_dynamic_part_ip(decomp, context,
-		                             rohc_remain_data, rohc_remain_len,
+		size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
 		                             &bits.outer_ip,
 		                             g_context->list_decomp1);
 		if(size == -1)
@@ -3105,8 +3091,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 		/* decode the dynamic part of the inner IP header */
 		if(g_context->multiple_ip)
 		{
-			size = parse_dynamic_part_ip(decomp, context,
-			                             rohc_remain_data, rohc_remain_len,
+			size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
 			                             &bits.inner_ip,
 			                             g_context->list_decomp2);
 			if(size == -1)
@@ -3256,7 +3241,6 @@ error:
  *
  * See 5.7.7.3 and 5.7.7.4 in RFC 3095 for details.
  *
- * @param decomp      The ROHC decompressor
  * @param context     The decompression context
  * @param packet      The ROHC packet to parse
  * @param length      The length of the ROHC packet
@@ -3264,15 +3248,13 @@ error:
  * @return            The number of bytes read in the ROHC packet,
  *                    -1 in case of failure
  */
-static int parse_static_part_ip(const struct rohc_decomp *const decomp,
-                                const struct d_context *const context,
+static int parse_static_part_ip(const struct d_context *const context,
                                 const unsigned char *packet,
                                 const unsigned int length,
                                 struct rohc_extr_ip_bits *const bits)
 {
 	int read; /* number of bytes read from the packet */
 
-	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(packet != NULL);
 	assert(bits != NULL);
@@ -3280,7 +3262,7 @@ static int parse_static_part_ip(const struct rohc_decomp *const decomp,
 	/* check the minimal length to decode the IP version */
 	if(length < 1)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
@@ -3291,7 +3273,7 @@ static int parse_static_part_ip(const struct rohc_decomp *const decomp,
 	/* reject non IPv4/IPv6 packets */
 	if(bits->version != IPV4 && bits->version != IPV6)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "unsupported IP version (%d)\n", bits->version);
 		goto error;
 	}
@@ -3299,11 +3281,11 @@ static int parse_static_part_ip(const struct rohc_decomp *const decomp,
 	/* decode the static part of the IP header depending on the IP version */
 	if(bits->version == IPV4)
 	{
-		read = parse_static_part_ipv4(decomp, context, packet, length, bits);
+		read = parse_static_part_ipv4(context, packet, length, bits);
 	}
 	else /* IPV6 */
 	{
-		read = parse_static_part_ipv6(decomp, context, packet, length, bits);
+		read = parse_static_part_ipv6(context, packet, length, bits);
 	}
 
 	return read;
@@ -3318,7 +3300,6 @@ error:
  *
  * See 5.7.7.4 in RFC 3095 for details.
  *
- * @param decomp   The ROHC decompressor
  * @param context  The decompression context
  * @param packet   The ROHC packet to parse
  * @param length   The length of the ROHC packet
@@ -3326,15 +3307,13 @@ error:
  * @return         The number of bytes read in the ROHC packet,
  *                 -1 in case of failure
  */
-static int parse_static_part_ipv4(const struct rohc_decomp *const decomp,
-                                  const struct d_context *const context,
+static int parse_static_part_ipv4(const struct d_context *const context,
                                   const unsigned char *packet,
                                   const unsigned int length,
                                   struct rohc_extr_ip_bits *const bits)
 {
 	int read = 0; /* number of bytes read from the packet */
 
-	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(packet != NULL);
 	assert(bits != NULL);
@@ -3342,7 +3321,7 @@ static int parse_static_part_ipv4(const struct rohc_decomp *const decomp,
 	/* check the minimal length to decode the IPv4 static part */
 	if(length < 10)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
@@ -3387,7 +3366,6 @@ error:
  *
  * See 5.7.7.3 in RFC 3095 for details.
  *
- * @param decomp   The ROHC decompressor
  * @param context  The decompression context
  * @param packet   The ROHC packet to parse
  * @param length   The length of the ROHC packet
@@ -3395,15 +3373,13 @@ error:
  * @return         The number of bytes read in the ROHC packet,
  *                 -1 in case of failure
  */
-static int parse_static_part_ipv6(const struct rohc_decomp *const decomp,
-                                  const struct d_context *const context,
+static int parse_static_part_ipv6(const struct d_context *const context,
                                   const unsigned char *packet,
                                   const unsigned int length,
                                   struct rohc_extr_ip_bits *const bits)
 {
 	int read = 0; /* number of bytes read from the packet */
 
-	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(packet != NULL);
 	assert(bits != NULL);
@@ -3411,7 +3387,7 @@ static int parse_static_part_ipv6(const struct rohc_decomp *const decomp,
 	/* check the minimal length to decode the IPv6 static part */
 	if(length < 36)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
@@ -3463,7 +3439,6 @@ error:
  *
  * See 5.7.7.3 and 5.7.7.4 in RFC 3095 for details.
  *
- * @param decomp      The ROHC decompressor
  * @param context     The decompression context
  * @param packet      The ROHC packet to parse
  * @param length      The length of the ROHC packet
@@ -3472,8 +3447,7 @@ error:
  * @return            The number of bytes read in the ROHC packet,
  *                    -1 in case of failure
  */
-static int parse_dynamic_part_ip(const struct rohc_decomp *const decomp,
-                                 const struct d_context *const context,
+static int parse_dynamic_part_ip(const struct d_context *const context,
                                  const unsigned char *packet,
                                  unsigned int length,
                                  struct rohc_extr_ip_bits *const bits,
@@ -3484,12 +3458,11 @@ static int parse_dynamic_part_ip(const struct rohc_decomp *const decomp,
 	/* decode the dynamic part of the IP header depending on the IP version */
 	if(bits->version == IPV4)
 	{
-		read = parse_dynamic_part_ipv4(decomp, context, packet, length, bits);
+		read = parse_dynamic_part_ipv4(context, packet, length, bits);
 	}
 	else /* IPV6 */
 	{
-		read = parse_dynamic_part_ipv6(decomp, context, packet, length, bits,
-		                               list_decomp);
+		read = parse_dynamic_part_ipv6(context, packet, length, bits, list_decomp);
 	}
 
 	return read;
@@ -3502,7 +3475,6 @@ static int parse_dynamic_part_ip(const struct rohc_decomp *const decomp,
  * See 5.7.7.4 in RFC 3095 for details. Generic extension header list is not
  * managed yet.
  *
- * @param decomp   The ROHC decompressor
  * @param context  The decompression context
  * @param packet   The ROHC packet to decode
  * @param length   The length of the ROHC packet
@@ -3510,8 +3482,7 @@ static int parse_dynamic_part_ip(const struct rohc_decomp *const decomp,
  * @return         The number of bytes read in the ROHC packet,
  *                 -1 in case of failure
  */
-static int parse_dynamic_part_ipv4(const struct rohc_decomp *const decomp,
-                                   const struct d_context *const context,
+static int parse_dynamic_part_ipv4(const struct d_context *const context,
                                    const unsigned char *packet,
                                    unsigned int length,
                                    struct rohc_extr_ip_bits *const bits)
@@ -3521,7 +3492,7 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp *const decomp,
 	/* check the minimal length to decode the IPv4 dynamic part */
 	if(length < IPV4_DYN_PART_SIZE)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
@@ -3567,7 +3538,7 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp *const decomp,
 	   ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "generic extension header list not supported yet\n");
 		goto error;
 	}
@@ -3587,17 +3558,15 @@ error:
  * See 5.7.7.3 in RFC 3095 for details. Generic extension header list is not
  * managed yet.
  *
- * @param decomp   The ROHC decompressor
- * @param context  The decompression context
- * @param packet   The ROHC packet to decode
- * @param length   The length of the ROHC packet
- * @param bits     OUT: The bits extracted from the IP dynamic part
- * @param decomp   The list decompressor
- * @return         The number of bytes read in the ROHC packet,
- *                 -1 in case of failure
+ * @param context      The decompression context
+ * @param packet       The ROHC packet to decode
+ * @param length       The length of the ROHC packet
+ * @param bits         OUT: The bits extracted from the IP dynamic part
+ * @param list_decomp  The list decompressor
+ * @return             The number of bytes read in the ROHC packet,
+ *                     -1 in case of failure
  */
-static int parse_dynamic_part_ipv6(const struct rohc_decomp *const decomp,
-                                   const struct d_context *const context,
+static int parse_dynamic_part_ipv6(const struct d_context *const context,
                                    const unsigned char *packet,
                                    unsigned int length,
                                    struct rohc_extr_ip_bits *const bits,
@@ -3609,7 +3578,7 @@ static int parse_dynamic_part_ipv6(const struct rohc_decomp *const decomp,
 	/* check the minimal length to decode the IPv6 dynamic part */
 	if(length < 2)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
@@ -3632,7 +3601,7 @@ static int parse_dynamic_part_ipv6(const struct rohc_decomp *const decomp,
 	size_ext = rohc_list_decode(list_decomp, packet, length - read);
 	if(size_ext < 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to decode IPv6 extensions list\n");
 		goto error;
 	}
@@ -5994,8 +5963,7 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	rohc_header_len++;
 
 	/* decode the dynamic part of the outer IP header */
-	size = parse_dynamic_part_ip(decomp, context,
-	                             rohc_remain_data, rohc_remain_len,
+	size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
 	                             &bits.outer_ip,
 	                             g_context->list_decomp1);
 	if(size == -1)
@@ -6011,8 +5979,7 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	/* decode the dynamic part of the inner IP header */
 	if(g_context->multiple_ip)
 	{
-		size = parse_dynamic_part_ip(decomp, context,
-		                             rohc_remain_data, rohc_remain_len,
+		size = parse_dynamic_part_ip(context, rohc_remain_data, rohc_remain_len,
 		                             &bits.inner_ip,
 		                             g_context->list_decomp2);
 		if(size == -1)
@@ -7414,8 +7381,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		                  g_context->outer_ip_changes->next_header_len);
 
 		/* build the outer IP header */
-		size = build_uncomp_ip(decomp, context,
-		                       decoded.outer_ip, uncomp_hdrs,
+		size = build_uncomp_ip(context, decoded.outer_ip, uncomp_hdrs,
 		                       inner_ip_hdr_len + inner_ip_ext_hdrs_len +
 		                       g_context->outer_ip_changes->next_header_len +
 		                       payload_len,
@@ -7425,8 +7391,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		*uncomp_hdrs_len += size;
 
 		/* build the inner IP header */
-		size = build_uncomp_ip(decomp, context,
-		                       decoded.inner_ip, uncomp_hdrs,
+		size = build_uncomp_ip(context, decoded.inner_ip, uncomp_hdrs,
 		                       g_context->inner_ip_changes->next_header_len +
 		                       payload_len,
 		                       g_context->list_decomp2);
@@ -7440,8 +7405,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		                  g_context->outer_ip_changes->next_header_len);
 
 		/* build the single IP header */
-		size = build_uncomp_ip(decomp, context,
-		                       decoded.outer_ip, uncomp_hdrs,
+		size = build_uncomp_ip(context, decoded.outer_ip, uncomp_hdrs,
 		                       g_context->outer_ip_changes->next_header_len +
 		                       payload_len,
 		                       g_context->list_decomp1);
@@ -7494,18 +7458,16 @@ error:
 /**
  * @brief Build an uncompressed IP header.
  *
- * @param decomp       The ROHC decompressor
  * @param context      The decompression context
  * @param decoded      The decoded IPv4 fields
  * @param dest         The buffer to store the IP header (MUST be at least
  *                     of sizeof(struct ipv4_hdr) or sizeof(struct ipv6_hdr)
  *                     bytes depending on the IP version)
  * @param payload_size The length of the IP payload
- * @param decomp       The list decompressor (IPv6 only)
+ * @param list_decomp  The list decompressor (IPv6 only)
  * @return             The length of the IP header
  */
-static unsigned int build_uncomp_ip(const struct rohc_decomp *const decomp,
-                                    const struct d_context *const context,
+static unsigned int build_uncomp_ip(const struct d_context *const context,
                                     const struct rohc_decoded_ip_values decoded,
                                     unsigned char *dest,
                                     unsigned int payload_size,
@@ -7515,13 +7477,11 @@ static unsigned int build_uncomp_ip(const struct rohc_decomp *const decomp,
 
 	if(decoded.version == IPV4)
 	{
-		length = build_uncomp_ipv4(decomp, context,
-		                           decoded, dest, payload_size);
+		length = build_uncomp_ipv4(context, decoded, dest, payload_size);
 	}
 	else
 	{
-		length = build_uncomp_ipv6(decomp, context,
-		                           decoded, dest, payload_size, list_decomp);
+		length = build_uncomp_ipv6(context, decoded, dest, payload_size, list_decomp);
 	}
 
 	return length;
@@ -7531,7 +7491,6 @@ static unsigned int build_uncomp_ip(const struct rohc_decomp *const decomp,
 /**
  * @brief Build an uncompressed IPv4 header.
  *
- * @param decomp       The ROHC decompressor
  * @param context      The decompression context
  * @param decoded      The decoded IPv4 fields
  * @param dest         The buffer to store the IPv4 header (MUST be at least
@@ -7539,9 +7498,7 @@ static unsigned int build_uncomp_ip(const struct rohc_decomp *const decomp,
  * @param payload_size The length of the IPv4 payload
  * @return             The length of the IPv4 header
  */
-static unsigned int build_uncomp_ipv4(const struct rohc_decomp *const decomp,
-
-                                      const struct d_context *const context,
+static unsigned int build_uncomp_ipv4(const struct d_context *const context,
                                       const struct rohc_decoded_ip_values decoded,
                                       unsigned char *dest,
                                       unsigned int payload_size)
@@ -7579,18 +7536,15 @@ static unsigned int build_uncomp_ipv4(const struct rohc_decomp *const decomp,
 /**
  * @brief Build an uncompressed IPv6 header.
  *
- * @param decomp       The ROHC decompressor
  * @param context      The decompression context
  * @param decoded      The decoded IPv6 fields
  * @param dest         The buffer to store the IPv6 header (MUST be at least
  *                     of sizeof(struct ipv6_hdr) bytes)
  * @param payload_size The length of the IPv6 payload
- * @param decomp       The list decompressor
+ * @param list         The list decompressor
  * @return             The length of the IPv6 header
  */
-static unsigned int build_uncomp_ipv6(const struct rohc_decomp *const decomp,
-
-                                      const struct d_context *const context,
+static unsigned int build_uncomp_ipv6(const struct d_context *const context,
                                       const struct rohc_decoded_ip_values decoded,
                                       unsigned char *dest,
                                       unsigned int payload_size,
