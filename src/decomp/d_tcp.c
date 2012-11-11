@@ -302,8 +302,8 @@ int d_tcp_decode(struct rohc_decomp *decomp,
 	              const size_t large_cid_len,
                  unsigned char *dest)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_tcp_context *tcp_context = g_context->specific;
+	struct d_generic_context *g_context;
+	struct d_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;
 	multi_ptr_t c_base_header;
@@ -315,12 +315,23 @@ int d_tcp_decode(struct rohc_decomp *decomp,
 	int size;
 	int read;
 
+	assert(decomp != NULL);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	tcp_context = g_context->specific;
+	assert(rohc_packet != NULL);
+	assert(add_cid_len == 0 || add_cid_len == 1);
+	assert(large_cid_len >= 0 && large_cid_len <= 2);
+	assert(dest != NULL);
+
 	rohc_debugf(3, "decomp %p context %p rohc_packet %p rohc_length %d "
 	            "add_cid_len %zd large_cid_len %zd dest %p\n",
 	            decomp, context, rohc_packet, rohc_length, add_cid_len,
 	            large_cid_len, dest);
 
-	TraceData((unsigned char*)rohc_packet,rohc_length);
+	TraceData((unsigned char*)rohc_packet, rohc_min(rohc_length, 100));
 
 	packet_type = *rohc_packet;
 	rohc_debugf(3, "Packet id %2.2Xh\n",packet_type);
@@ -1473,6 +1484,7 @@ static int tcp_decode_dynamic_ip(struct d_tcp_context *tcp_context,
 		ip_context.v6->dscp = c_base_header.ipv6_dynamic->dscp;
 		ip_context.v6->ip_ecn_flags = c_base_header.ipv6_dynamic->ip_ecn_flags;
 		ip_context.v6->ttl_hopl = c_base_header.ipv6_dynamic->ttl_hopl;
+		ip_context.v6->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
 		size = sizeof(ipv6_dynamic_t);
 	}
 
@@ -2925,15 +2937,15 @@ static int tcp_size_decompress_tcp_options( struct d_tcp_context *tcp_context, u
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
  */
-int d_tcp_decode_CO(struct rohc_decomp *decomp,
-                    struct d_context *context,
-                    const unsigned char *const rohc_packet,
-                    const unsigned int rohc_length,
-                    const size_t add_cid_len,
-                    const size_t large_cid_len,
-                    unsigned char *dest)
+static int d_tcp_decode_CO(struct rohc_decomp *decomp,
+                           struct d_context *context,
+                           const unsigned char *const rohc_packet,
+                           const unsigned int rohc_length,
+                           const size_t add_cid_len,
+                           const size_t large_cid_len,
+                           unsigned char *dest)
 {
-	struct d_generic_context *g_context = context->specific;
+	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
 	ip_context_ptr_t ip_inner_context;
 	ip_context_ptr_t ip_context;
@@ -2951,6 +2963,17 @@ int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	int ttl_irregular_chain_flag = 0;
 	int ip_inner_ecn;
 
+	assert(decomp != NULL);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	tcp_context = g_context->specific;
+	assert(rohc_packet != NULL);
+	assert(add_cid_len == 0 || add_cid_len == 1);
+	assert(large_cid_len >= 0 && large_cid_len <= 2);
+	assert(dest != NULL);
+
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
 	unsigned int rohc_header_len;
 	unsigned int uncomp_header_len;
@@ -2966,11 +2989,7 @@ int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	multi_ptr_t c_base_header;
 	multi_ptr_t mptr;
 	tcphdr_t *tcp;
-	WB_t ip_id;
 	uint8_t PacketType = PACKET_TCP_UNKNOWN;
-
-
-	tcp_context = (struct d_tcp_context *) g_context->specific;
 
 	ip_context.uint8 = tcp_context->ip_context;
 
@@ -2995,7 +3014,8 @@ int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	TraceData((unsigned char*)rohc_remain_data,
 	          rohc_length - large_cid_len > 0x40 ? 0x40 : rohc_length - large_cid_len);
 
-	rohc_debugf(3, "rohc_packet %p compressed base header %p\n",rohc_packet,c_base_header.uint8);
+	rohc_debugf(3, "rohc_packet %p compressed base header %p\n",
+	            rohc_packet, c_base_header.uint8);
 
 	/* Try to determine the compressed format header used */
 	rohc_debugf(3, "Try to determine the header from %Xh ip_id_behavior %d\n", *rohc_packet,
@@ -3509,6 +3529,8 @@ test_checksum:
 
 	if(PacketType == PACKET_TCP_COMMON)
 	{
+		WB_t ip_id;
+
 		tcp->tcp_res_flags = tcp_context->old_tcphdr.tcp_res_flags;
 		tcp->urg_flag = tcp_context->old_tcphdr.urg_flag;
 		tcp->urg_ptr = tcp_context->old_tcphdr.urg_ptr;
@@ -3536,9 +3558,9 @@ test_checksum:
 		                     c_base_header.co_common->ip_id_indicator,ip_inner_context.v4->last_ip_id,
 		                     &ip_id.uint16,
 		                     msn);
-		rohc_debugf(3, "ip_id_behavior %d ip_id_indicator %d ip_id %Xh\n",
-		            c_base_header.co_common->ip_id_behavior,c_base_header.co_common->ip_id_indicator,
-		            ip_id.uint16);
+		rohc_debugf(3, "ip_id_behavior %d ip_id_indicator %d\n",
+		            c_base_header.co_common->ip_id_behavior,
+		            c_base_header.co_common->ip_id_indicator);
 		tcp->urg_ptr = d_static_or_irreg16(&mptr,tcp_context->old_tcphdr.urg_ptr,
 		                                   c_base_header.co_common->urg_ptr_present);
 		rohc_debugf(3, "ecn_used %d\n",c_base_header.co_common->ecn_used);
@@ -3547,6 +3569,7 @@ test_checksum:
 		{
 			if(ip_inner_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
 			{
+				rohc_debugf(3, "ip_id %Xh\n", ip_id.uint16);
 				base_header_inner.ipv4->ip_id = htons(ip_id.uint16);
 				ip_inner_context.v4->last_ip_id.uint16 = ip_id.uint16;
 				rohc_debugf(3, "new last IP-ID %4.4Xh\n",ip_inner_context.v4->last_ip_id.uint16);
@@ -3556,6 +3579,7 @@ test_checksum:
 				if(ip_inner_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
 				{
 					WB_t swapped_ip_id;
+					rohc_debugf(3, "ip_id %Xh\n", ip_id.uint16);
 					swapped_ip_id.uint8[0] = ip_id.uint8[1];
 					swapped_ip_id.uint8[1] = ip_id.uint8[0];
 					base_header_inner.ipv4->ip_id = htons(swapped_ip_id.uint16);

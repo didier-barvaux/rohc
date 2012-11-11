@@ -87,9 +87,8 @@ raw TODO list for improving TCP profile.
 
 Test with pcc.
 Test with FreeBSD.
-Test with Windows/MinGW.
 Test with -O0, -O1, -O2, and -O3.
-Test with Valgrind.
+Non-regression test: some packet types are wrong (negative values) in output files.
 
 Add more unit tests for TCP encoding/decoding schemes.
 Add more non-regression TCP tests.

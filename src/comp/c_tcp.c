@@ -3226,6 +3226,7 @@ int code_CO_packet(struct c_context *const context,
 	            packet_size, next_header,
 	            dest);
 
+	rohc_debugf(2, "parse the %u-byte IP packet\n", ip->size);
 	base_header.ipvx = (base_header_ip_vx_t*) ip->data;
 	remain_data_len = ip->size;
 
@@ -3255,6 +3256,20 @@ int code_CO_packet(struct c_context *const context,
 				protocol = base_header.ipv4->protocol;
 				ip_inner_ecn = base_header.ipv4->ip_ecn_flags;
 				payload_size = ntohs(base_header.ipv4->length) - ( base_header.ipv4->header_length << 2 );
+
+				/* irregular chain? */
+				if(ttl_hopl != ip_context.v4->ttl_hopl)
+				{
+					ttl_irregular_chain_flag |= 1;
+					rohc_debugf(3, "last ttl_hopl = 0x%02x, ttl_hopl = 0x%02x, "
+					            "ttl_irregular_chain_flag = %d\n",
+					            ip_context.v4->ttl_hopl, ttl_hopl,
+					            ttl_irregular_chain_flag);
+				}
+
+				/* skip IPv4 header */
+				rohc_debugf(3, "skip %zd-byte IPv4 header with Protocol 0x%02x\n",
+				            base_header.ipv4->header_length << 2, protocol);
 				remain_data_len -= base_header.ipv4->header_length << 2;
 				base_header.uint8 += base_header.ipv4->header_length << 2;
 				++ip_context.v4;
@@ -3269,11 +3284,30 @@ int code_CO_packet(struct c_context *const context,
 				protocol = base_header.ipv6->next_header;
 				ip_inner_ecn = base_header.ipv6->ip_ecn_flags;
 				payload_size = ntohs(base_header.ipv6->payload_length);
+
+				/* irregular chain? */
+				if(ttl_hopl != ip_context.v6->ttl_hopl)
+				{
+					ttl_irregular_chain_flag |= 1;
+					rohc_debugf(3, "last ttl_hopl = 0x%02x, ttl_hopl = 0x%02x, "
+					            "ttl_irregular_chain_flag = %d\n",
+					            ip_context.v6->ttl_hopl, ttl_hopl,
+					            ttl_irregular_chain_flag);
+				}
+
+				/* skip IPv6 header */
+				rohc_debugf(3, "skip %zd-byte IPv6 header with Next Header 0x%02x\n",
+				            sizeof(base_header_ip_v6_t), protocol);
 				remain_data_len -= sizeof(base_header_ip_v6_t);
 				++base_header.ipv6;
 				++ip_context.v6;
+
+				/* parse IPv6 extension headers */
 				while(  ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
 				{
+					rohc_debugf(3, "skip %zd-byte IPv6 extension header with Next "
+					            "Header 0x%02x\n", ip_context.v6_option->option_length,
+					            protocol);
 					protocol = base_header.ipv6_opt->next_header;
 					base_header.uint8 += ip_context.v6_option->option_length;
 					ip_context.uint8 += ip_context.v6_option->context_length;
@@ -3282,15 +3316,6 @@ int code_CO_packet(struct c_context *const context,
 			default:
 				return -1;
 		}
-
-		if(ttl_hopl != ip_context.vx->ttl_hopl)
-		{
-			ttl_irregular_chain_flag |= 1;
-			rohc_debugf(3, "last ttl_hopl %Xh ttl_hopl %Xh ttl_irregular_chain_flag %d\n",
-			            ip_context.vx->ttl_hopl,ttl_hopl,
-			            ttl_irregular_chain_flag);
-		}
-
 	}
 	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
 

@@ -205,11 +205,12 @@ typedef struct __attribute__((packed)) ipv6_context
 
 } ipv6_context_t;
 
+
 /**
  * @brief Define union of IP contexts pointers.
  *
+ * TODO: merge with same definition in d_tcp.h
  */
-
 typedef union
 {
 	uint8_t *uint8;
