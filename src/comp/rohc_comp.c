@@ -1813,6 +1813,8 @@ bool rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
 	if(info->version_major == 0)
 	{
 		/* base fields for major version 0 */
+		info->context_id = comp->last_context->cid;
+		info->is_context_init = (comp->last_context->num_sent_packets == 1);
 		info->context_mode = comp->last_context->mode;
 		info->context_state = comp->last_context->state;
 		info->context_used = (comp->last_context->used ? true : false);

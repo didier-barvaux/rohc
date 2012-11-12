@@ -125,6 +125,8 @@ typedef struct
  *     - Minor = 0:
  *        version_major
  *        version_minor
+ *        context_id
+ *        is_context_init
  *        context_mode
  *        context_state
  *        context_used
@@ -141,6 +143,10 @@ typedef struct
 	unsigned short version_major;
 	/** The minor version of this structure */
 	unsigned short version_minor;
+	/** The Context ID (CID) */
+	unsigned int context_id;
+	/** Whether the context was initialized (created/re-used) by the packet */
+	bool is_context_init;
 	/** The mode of the last context used by the compressor */
 	rohc_mode context_mode;
 	/** The state of the last context used by the compressor */
