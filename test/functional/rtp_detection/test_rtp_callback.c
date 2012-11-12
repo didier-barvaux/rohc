@@ -55,10 +55,9 @@ for ./configure ? If yes, check configure output and config.log"
 /* ROHC includes */
 #include <rohc.h>
 #include <rohc_comp.h>
-#include <rohc_decomp.h>
 
 
-/* 
+/*
  * Function prototypes
  */
 

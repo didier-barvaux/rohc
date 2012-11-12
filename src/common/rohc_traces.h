@@ -63,7 +63,7 @@ typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
                                        const int profile,
                                        const char *const format,
                                        ...)
-	__attribute__((format(printf, 4, 5), nonnull(4)));
+	__attribute__((format(gnu_printf, 4, 5), nonnull(4)));
 
 
 #endif
