@@ -2351,11 +2351,11 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "add %zd byte(s) of feedback data", feedback_length);
+	           "add %zd byte(s) of feedback data\n", feedback_length);
 	if(feedback_length > 0)
 	{
 		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
-		                 "add %zd bytes of feedback data", buffer + index,
+		                 "add %zd bytes of feedback data\n", buffer + index,
 		                 feedback_length);
 	}
 
