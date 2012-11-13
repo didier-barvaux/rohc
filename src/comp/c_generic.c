@@ -3004,7 +3004,7 @@ int code_UOR2_bytes(const struct c_context *context,
 
 			/* part 2 */
 			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
-			*f_byte |= (g_context->sn & 0xff) >> 3;
+			*f_byte |= (g_context->sn >> 3) & 0x1f;
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -3018,7 +3018,7 @@ int code_UOR2_bytes(const struct c_context *context,
 
 			/* part 2 */
 			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
-			*f_byte |= (g_context->sn & 0xff) >> 3;
+			*f_byte |= (g_context->sn >> 3) & 0x1f;
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -3032,7 +3032,7 @@ int code_UOR2_bytes(const struct c_context *context,
 
 			/* part 2 */
 			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
-			*f_byte |= (g_context->sn & 0xff) >> 3;
+			*f_byte |= (g_context->sn >> 3) & 0x1f;
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -3052,7 +3052,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			else
 			{
 				assert(g_context->tmp.nr_sn_bits <= (5 + 8));
-				*f_byte |= g_context->sn >> 8;
+				*f_byte |= (g_context->sn >> 8) & 0x1f;
 			}
 
 			/* part 5: set the X bit to 1 */
