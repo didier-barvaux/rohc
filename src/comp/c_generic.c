@@ -3150,13 +3150,15 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 6-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
-			ts_mask = 1 << (32 - 1);
-			ts_mask -= 1;
 			ts_mask = 0x1f & (((uint32_t) (1 << (32 - 1))) - 1);
 			*f_byte |= (ts_send >> 1) & ts_mask;
+			rohc_comp_debug(context, "5 bits of 6-bit TS = 0x%x\n",
+			                (*f_byte) & 0x1f);
 
 			/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
 			*s_byte |= (ts_send & 0x01) << 7;
+			rohc_comp_debug(context, "1 bit of 6-bit TS = 0x%x\n",
+			                (*s_byte) & 0x80);
 			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
@@ -3179,9 +3181,13 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & ((1 << (32 - 3 - 1)) - 1);
 			*f_byte |= (ts_send >> 4) & ts_mask;
+			rohc_comp_debug(context, "5 bits of 9-bit TS = 0x%x\n",
+			                (*f_byte) & 0x1f);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
+			rohc_comp_debug(context, "1 bit of 9-bit TS = 0x%x\n",
+			                (*s_byte) & 0x80);
 			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
@@ -3204,9 +3210,13 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & ((1 << (32 - 12 - 1)) - 1);
 			*f_byte |= (ts_send >> 12) & ts_mask;
+			rohc_comp_debug(context, "5 bits of 17-bit TS = 0x%x\n",
+			                (*f_byte) & 0x1f);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
+			rohc_comp_debug(context, "1 bit of 17-bit TS = 0x%x\n",
+			                (*s_byte) & 0x80);
 			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
@@ -3229,9 +3239,13 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & ((1 << (32 - 19 - 1)) - 1);
 			*f_byte |= (ts_send >> 20) & ts_mask;
+			rohc_comp_debug(context, "5 bits of 25-bit TS = 0x%x\n",
+			                (*f_byte) & 0x1f);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
+			rohc_comp_debug(context, "1 bit of 25-bit TS = 0x%x\n",
+			                (*s_byte) & 0x80);
 			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
