@@ -7907,9 +7907,11 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
                                     struct rohc_decoded_values *const decoded)
 {
 	struct d_generic_context *g_context;
+	uint32_t sn_context;
 	bool decode_ok;
 
 	assert(context != NULL);
+	assert(context->profile != NULL);
 	assert(context->specific != NULL);
 	g_context = context->specific;
 	assert(decoded != NULL);
@@ -7939,6 +7941,25 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 	rohc_decomp_debug(context, "decoded SN = %u / 0x%x (nr bits = %zd, "
 	                  "bits = %u / 0x%x)\n", decoded->sn, decoded->sn,
 	                  bits.sn_nr, bits.sn, bits.sn);
+
+	/* warn if value(SN) is not context(SN) + 1 */
+	if(context->num_recv_packets > 1)
+	{
+		sn_context = context->profile->get_sn((struct d_context *) context);
+		if(decoded->sn > (sn_context + 1))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "%u packets seem to have been lost, damaged, or failed "
+			             "to be decompressed (SN jumped from 0x%x to 0x%x)\n",
+			             decoded->sn - (sn_context + 1), sn_context, decoded->sn);
+		}
+		else if(decoded->sn < (sn_context + 1))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "packet seem to come late (SN jumped back from 0x%x to "
+			             "0x%x)\n", sn_context, decoded->sn);
+		}
+	}
 
 	/* decode fields related to the outer IP header */
 	decode_ok = decode_ip_values_from_bits(decomp, context,
