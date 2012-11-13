@@ -3025,16 +3025,42 @@ static int decode_ir(struct rohc_decomp *decomp,
 	rohc_remain_len -= size;
 	rohc_header_len += size;
 
+	/* check for IP version switch during context re-use */
+	if(bits.outer_ip.version != ip_get_version(&g_context->outer_ip_changes->ip))
+	{
+		rohc_decomp_debug(context, "outer IP version mismatch (packet = %d, "
+		                  "context = %d) -> context is being reused\n",
+		                  bits.outer_ip.version,
+		                  ip_get_version(&g_context->outer_ip_changes->ip));
+	}
+
 	/* check for the presence of a second IP header */
 	assert(bits.outer_ip.proto_nr == 8);
 	if(bits.outer_ip.proto == ROHC_IPPROTO_IPIP ||
 	   bits.outer_ip.proto == ROHC_IPPROTO_IPV6)
 	{
-		g_context->multiple_ip = 1;
 		rohc_decomp_debug(context, "second IP header detected\n");
+
+		/* check for 1 to 2 IP headers switch during context re-use */
+		if(!g_context->multiple_ip)
+		{
+			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
+			                  "= 2, context = 1) -> context is being reused\n");
+		}
+
+		/* update context */
+		g_context->multiple_ip = 1;
 	}
 	else
 	{
+		/* check for 2 to 1 IP headers switch during context re-use */
+		if(g_context->multiple_ip)
+		{
+			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
+			                  "= 1, context = 2) -> context is being reused\n");
+		}
+
+		/* update context */
 		g_context->multiple_ip = 0;
 	}
 
@@ -3053,6 +3079,15 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
 		rohc_header_len += size;
+
+		/* check for IP version switch during context re-use */
+		if(bits.inner_ip.version != ip_get_version(&g_context->inner_ip_changes->ip))
+		{
+			rohc_decomp_debug(context, "inner IP version mismatch (packet = %d, "
+			                  "context = %d) -> context is being reused\n",
+			                  bits.inner_ip.version,
+			                  ip_get_version(&g_context->inner_ip_changes->ip));
+		}
 	}
 
 	/* parse the static part of the next header header if necessary */
