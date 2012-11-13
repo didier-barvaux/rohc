@@ -897,16 +897,16 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		{
 			if(context->state == STATIC_CONTEXT)
 			{
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "change from state %d to state %d\n",
-				           context->state, NO_CONTEXT);
+				rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				          "U-mode: change from state %d to state %d because "
+				          "of error(s)\n", context->state, NO_CONTEXT);
 				context->state = NO_CONTEXT;
 			}
 			else if(context->state == FULL_CONTEXT)
 			{
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "change from state %d to state %d\n",
-				           context->state, STATIC_CONTEXT);
+				rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				          "U-mode: change from state %d to state %d because "
+				          "of error(s)\n", context->state, STATIC_CONTEXT);
 				context->state = STATIC_CONTEXT;
 			}
 		}
@@ -977,13 +977,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 		case ROHC_ERROR_NO_CONTEXT:
 			/* create a STATIC NACK feedback */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "send a STATIC NACK feedback\n");
+			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			          "send a STATIC-NACK feedback\n");
 			ret = f_feedback2(ACKTYPE_STATIC_NACK, O_MODE, 0, &sfeedback);
 			if(ret != ROHC_OK)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to build the STATIC NACK feedback\n");
+				             "failed to build the STATIC-NACK feedback\n");
 				return;
 			}
 			ret = f_add_option(&sfeedback, OPT_TYPE_SN_NOT_VALID, NULL, 0);
@@ -991,7 +991,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				             "failed to add the SN-NOT-VALID option to the "
-				             "STATIC NACK feedback\n");
+				             "STATIC-NACK feedback\n");
 				return;
 			}
 			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
@@ -1000,7 +1000,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			if(feedback == NULL)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to wrap the STATIC NACK feedback\n");
+				             "failed to wrap the STATIC-NACK feedback\n");
 				return;
 			}
 
@@ -1020,14 +1020,14 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			{
 				case NO_CONTEXT:
 					/* create a STATIC NACK feedback */
-					rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					           "send a STATIC NACK feedback\n");
+					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					          "send a STATIC-NACK feedback\n");
 					ret = f_feedback2(ACKTYPE_STATIC_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to build the STATIC NACK feedback\n");
+						             "failed to build the STATIC-NACK feedback\n");
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
@@ -1036,7 +1036,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 					if(feedback == NULL)
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to create a STATIC NACK feedback\n");
+						             "failed to create a STATIC-NACK feedback\n");
 						return;
 					}
 
@@ -1051,8 +1051,8 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				case STATIC_CONTEXT:
 				case FULL_CONTEXT:
 					/* create a NACK feedback */
-					rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					           "send a NACK feedback\n");
+					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					          "send a NACK feedback\n");
 					ret = f_feedback2(ACKTYPE_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
@@ -1078,16 +1078,18 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 					/* change state */
 					if(context->state == STATIC_CONTEXT)
 					{
-						rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-						           "change from state %d to state %d\n",
-						           context->state, NO_CONTEXT);
+						rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+						          "change from state %d to state %d because of "
+						          "decompression error(s)\n", context->state,
+						          NO_CONTEXT);
 						context->state = NO_CONTEXT;
 					}
 					if(context->state == FULL_CONTEXT)
 					{
-						rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-						           "change from state %d to state %d\n",
-						           context->state, STATIC_CONTEXT);
+						rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+						          "change from state %d to state %d because of "
+						          "decompression error(s)\n", context->state,
+						          STATIC_CONTEXT);
 						context->state = STATIC_CONTEXT;
 					}
 

@@ -1019,7 +1019,7 @@ void c_generic_feedback(struct c_context *const context,
 	switch(feedback->type)
 	{
 		case 1: /* FEEDBACK-1 */
-			rohc_comp_debug(context, "feedback 1\n");
+			rohc_comp_debug(context, "FEEDBACK-1 received\n");
 			sn = p[0] & 0xff;
 
 			/* ack IP-ID only if IPv4, but always ack SN */
@@ -1039,7 +1039,7 @@ void c_generic_feedback(struct c_context *const context,
 			int remaining = feedback->specific_size - 2;
 			int opt, optlen;
 
-			rohc_comp_debug(context, "feedback 2\n");
+			rohc_comp_debug(context, "FEEDBACK-2 received\n");
 
 			sn = ((p[0] & 0x0f) << 8) + (p[1] & 0xff);
 			assert((sn & 0x0fff) == sn);
@@ -1107,6 +1107,10 @@ void c_generic_feedback(struct c_context *const context,
 				/* mode can be changed only if feedback is protected by a CRC */
 				if(is_crc_used == true)
 				{
+					rohc_info(context->compressor, ROHC_TRACE_COMP,
+					          context->profile->id, "mode change (%d -> %d) "
+					          "requested by feedback for CID %d\n",
+					          context->mode, mode, context->profile->id);
 					change_mode(context, mode);
 				}
 				else
@@ -1120,8 +1124,8 @@ void c_generic_feedback(struct c_context *const context,
 			switch(feedback->acktype)
 			{
 				case ACK:
-					rohc_comp_debug(context, "ACK (SN = 0x%08x, SN-not-valid = %u)\n",
-					                sn, sn_not_valid);
+					rohc_comp_debug(context, "ACK received (SN = 0x%08x, "
+					                "SN-not-valid = %u)\n", sn, sn_not_valid);
 					if(sn_not_valid == 0)
 					{
 						/* ack outer/inner IP-ID only if IPv4, but always ack SN */
@@ -1139,7 +1143,8 @@ void c_generic_feedback(struct c_context *const context,
 					break;
 
 				case NACK:
-					rohc_comp_debug(context, "NACK\n");
+					rohc_info(context->compressor, ROHC_TRACE_COMP,
+					          context->profile->id, "NACK received\n");
 					if(context->state == SO)
 					{
 						change_state(context, FO);
@@ -1147,7 +1152,8 @@ void c_generic_feedback(struct c_context *const context,
 					break;
 
 				case STATIC_NACK:
-					rohc_comp_debug(context, "STATIC-NACK\n");
+					rohc_info(context->compressor, ROHC_TRACE_COMP,
+					          context->profile->id, "STATIC-NACK received\n");
 					change_state(context, IR);
 					break;
 
