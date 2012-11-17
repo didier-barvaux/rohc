@@ -622,7 +622,7 @@ static int test_comp_and_decomp(const char *filename,
 
 		free(comp->feedbacks[comp->feedbacks_first].data);
 		comp->feedbacks[comp->feedbacks_first].length = 0;
-		comp->feedbacks[comp->feedbacks_first].is_locked = 0;
+		comp->feedbacks[comp->feedbacks_first].is_locked = false;
 		comp->feedbacks_first = 0;
 		comp->feedbacks_first_unlocked = 0;
 		comp->feedbacks_next = 0;
