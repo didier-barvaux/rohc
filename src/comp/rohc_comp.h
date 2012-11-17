@@ -257,13 +257,23 @@ bool ROHC_EXPORT rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 
 void ROHC_EXPORT c_piggyback_feedback(struct rohc_comp *comp,
                                       unsigned char *packet,
-                                      int size);
+                                      int size)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_piggyback_feedback() instead");
+bool ROHC_EXPORT rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
+                                              const unsigned char *const feedback,
+                                              const size_t size)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 void ROHC_EXPORT c_deliver_feedback(struct rohc_comp *comp,
                                     unsigned char *feedback,
                                     int size);
 int ROHC_EXPORT rohc_feedback_flush(struct rohc_comp *comp,
                                     unsigned char *obuf,
                                     int osize);
+bool ROHC_EXPORT rohc_feedback_remove_locked(struct rohc_comp *const comp)
+	__attribute__((nonnull(1), warn_unused_result));
+bool ROHC_EXPORT rohc_feedback_unlock(struct rohc_comp *const comp)
+	__attribute__((nonnull(1), warn_unused_result));
 
 /* Configure robustness to packet loss/damage */
 bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,

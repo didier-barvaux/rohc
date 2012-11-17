@@ -110,8 +110,6 @@ static void rohc_feedback_destroy(struct rohc_comp *const comp);
 static int rohc_feedback_get(struct rohc_comp *const comp,
                              unsigned char *const buffer,
                              const unsigned int max);
-static bool rohc_feedback_remove_locked(struct rohc_comp *const comp);
-static bool rohc_feedback_unlock(struct rohc_comp *const comp);
 
 
 /*
@@ -1519,6 +1517,9 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 /**
  * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_piggyback_feedback() instead
+ *
  * @param comp     The ROHC compressor
  * @param feedback The feedback data
  * @param size     The length of the feedback packet
@@ -1527,14 +1528,31 @@ void c_piggyback_feedback(struct rohc_comp *comp,
                           unsigned char *feedback,
                           int size)
 {
-	/* ignore feedback if no valid compressor is provided */
-	if(comp == NULL)
+	bool __attribute__((unused)) ret; /* avoid warn_unused_result */
+	ret = rohc_comp_piggyback_feedback(comp, feedback, size);
+}
+
+
+/**
+ * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
+ *
+ * @param comp     The ROHC compressor
+ * @param feedback The feedback data
+ * @param size     The length of the feedback packet
+ * @return         true in case of success, false otherwise
+ */
+bool rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
+                                  const unsigned char *const feedback,
+                                  const size_t size)
+
+{
+	/* ignore feedback if no valid compressor nor feedback is provided */
+	if(comp == NULL || feedback == NULL || size <= 0)
 	{
-		/* no compressor associated with decompressor, cannot deliver feedback */
-		return;
+		goto error;
 	}
 
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "try to add %d "
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "try to add %zd "
 	           "byte(s) of feedback to the next outgoing ROHC packet\n", size);
 	assert(comp->feedbacks_next >= 0);
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
@@ -1548,7 +1566,7 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	{
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no place in buffer for feedback data\n");
-		return;
+		goto error;
 	}
 
 	/* allocate memory for new feedback data */
@@ -1557,19 +1575,25 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	{
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no memory for feedback data\n");
-		return;
+		goto error;
 	}
 
 	/* record new feedback data in the ring */
 	memcpy(comp->feedbacks[comp->feedbacks_next].data, feedback, size);
 	comp->feedbacks[comp->feedbacks_next].length = size;
+	comp->feedbacks[comp->feedbacks_next].is_locked = false;
 
 	/* use the next ring location next time */
 	comp->feedbacks_next = (comp->feedbacks_next + 1) % FEEDBACK_RING_SIZE;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "%d byte(s) of feedback added to the next outgoing "
+	           "%zd byte(s) of feedback added to the next outgoing "
 	           "ROHC packet\n", size);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -1720,6 +1744,9 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 		}
 	}
 	while(feedback_size > 0);
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "flush %u bytes of feedback\n", size);
 
 	return size;
 }
@@ -2304,16 +2331,49 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
 
 	/* are there some feedback data to send with the next outgoing packet? */
-	if(comp->feedbacks_first_unlocked != comp->feedbacks_next)
+	if(comp->feedbacks_first == comp->feedbacks_next &&
+	   comp->feedbacks[comp->feedbacks_first].length == 0)
 	{
+		/* ring buffer is empty */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no feedback is available\n");
+		feedback_length = 0;
+	}
+	else if(comp->feedbacks_first_unlocked == comp->feedbacks_next &&
+	        comp->feedbacks[comp->feedbacks_first_unlocked].length == 0)
+	{
+		/* ring buffer is not full, and all feedbacks are locked */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "all available feedbacks are locked\n");
+		feedback_length = 0;
+	}
+	else if(comp->feedbacks_first_unlocked == comp->feedbacks_next &&
+	        comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true)
+	{
+		/* ring buffer is full, and all feedbacks are locked */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "all available feedbacks are locked\n");
+		feedback_length = 0;
+	}
+	else
+	{
+		size_t required_length;
+
+		/* some feedbacks are not locked yet */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "some available feedbacks are not locked\n");
+
 		feedback_length = comp->feedbacks[comp->feedbacks_first_unlocked].length;
+		required_length = feedback_length + 1 + (feedback_length < 8 ? 0 : 1);
 
 		/* check that there is enough space in the output buffer for the
 		 * feedback data */
-		if(feedback_length + 1 + (feedback_length < 8 ? 0 : 1) > max)
+		if(required_length > max)
 		{
 			rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			          "no more place in the buffer for feedback\n");
+			          "no more room in the buffer for feedback: %zd bytes "
+			          "required, only %u bytes available\n", required_length,
+			          max);
 			goto full;
 		}
 
@@ -2349,10 +2409,6 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 		comp->feedbacks_first_unlocked =
 			(comp->feedbacks_first_unlocked + 1) % FEEDBACK_RING_SIZE;
 	}
-	else
-	{
-		feedback_length = 0;
-	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "add %zd byte(s) of feedback data\n", feedback_length);
@@ -2380,10 +2436,19 @@ full:
  *
  * @param comp  The ROHC compressor
  * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
  */
-static bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
+bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
 {
-	assert(comp != NULL);
+	unsigned int removed_nr = 0;
+
+	if(comp == NULL)
+	{
+		/* bad compressor */
+		goto error;
+	}
+
 	assert(comp->feedbacks_first >= 0);
 	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
 	assert(comp->feedbacks_first_unlocked >= 0);
@@ -2398,11 +2463,18 @@ static bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
 		comp->feedbacks[comp->feedbacks_first].length = 0;
 		comp->feedbacks[comp->feedbacks_first].is_locked = false;
 		comp->feedbacks_first = (comp->feedbacks_first + 1) % FEEDBACK_RING_SIZE;
+		removed_nr++;
 	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "%u locked feedbacks removed\n", removed_nr);
 
 	assert(comp->feedbacks_first == comp->feedbacks_first_unlocked);
 
 	return true;
+
+error:
+	return false;
 }
 
 
@@ -2414,10 +2486,17 @@ static bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
  *
  * @param comp  The ROHC compressor
  * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
  */
-static bool rohc_feedback_unlock(struct rohc_comp *const comp)
+bool rohc_feedback_unlock(struct rohc_comp *const comp)
 {
-	assert(comp != NULL);
+	if(comp == NULL)
+	{
+		/* bad compressor */
+		goto error;
+	}
+
 	assert(comp->feedbacks_first >= 0);
 	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
 	assert(comp->feedbacks_first_unlocked >= 0);
@@ -2425,22 +2504,23 @@ static bool rohc_feedback_unlock(struct rohc_comp *const comp)
 	assert(comp->feedbacks_next >= 0);
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
 
-	/* unlock all the ring locations between first unlocked one and first one */
+	/* unlock all the ring locations between first unlocked one (excluded)
+	 * and first one */
 	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
 	{
-		/* unlock the ring location if it is valid */
-		if(comp->feedbacks_first_unlocked != comp->feedbacks_next)
-		{
-			assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
-			comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
-		}
 		comp->feedbacks_first_unlocked =
 			(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
+
+		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
+		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
 	}
 
 	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
 
 	return true;
+
+error:
+	return false;
 }
 
 

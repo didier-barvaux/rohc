@@ -614,6 +614,7 @@ AC_CONFIG_FILES([ \
 	test/Makefile \
 	test/functional/Makefile \
 	test/functional/feedback2/Makefile \
+	test/functional/feedback_ring/Makefile \
 	test/functional/decompress_feedback_only/Makefile \
 	test/functional/context_reuse/Makefile \
 	test/functional/rtp_uor2_disambiguation/Makefile \

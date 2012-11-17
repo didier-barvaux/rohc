@@ -970,7 +970,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* send the feedback via the compressor associated
 			 * with the decompressor */
 			context->num_sent_feedbacks++;
-			c_piggyback_feedback(decomp->compressor, feedback, feedbacksize);
+			if(!rohc_comp_piggyback_feedback(decomp->compressor,
+			                                 feedback, feedbacksize))
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "failed to piggyback the ACK feedback\n");
+				return;
+			}
 
 			/* destroy the feedback */
 			zfree(feedback);
@@ -1008,7 +1014,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* send the feedback via the compressor associated
 			 * with the decompressor */
 			//context->num_sent_feedbacks++;
-			c_piggyback_feedback(decomp->compressor, feedback, feedbacksize);
+			if(!rohc_comp_piggyback_feedback(decomp->compressor,
+			                                 feedback, feedbacksize))
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "failed to piggyback the STATIC-NACK feedback\n");
+				return;
+			}
 
 			/* destroy the feedback */
 			zfree(feedback);
@@ -1043,7 +1055,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 					/* send the feedback via the compressor associated
 					 * with the decompressor */
-					c_piggyback_feedback(decomp->compressor, feedback, feedbacksize);
+					if(!rohc_comp_piggyback_feedback(decomp->compressor,
+					                                 feedback, feedbacksize))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+						             "failed to piggyback the STATIC-NACK feedback\n");
+						return;
+					}
 
 					/* destroy the feedback */
 					zfree(feedback);
@@ -1074,7 +1092,13 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 
 					/* send the feedback via the compressor associated
 					 * with the decompressor */
-					c_piggyback_feedback(decomp->compressor, feedback, feedbacksize);
+					if(!rohc_comp_piggyback_feedback(decomp->compressor,
+					                                 feedback, feedbacksize))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+						             "failed to piggyback the NACK feedback\n");
+						return;
+					}
 
 					/* change state */
 					if(context->state == STATIC_CONTEXT)
@@ -1455,7 +1479,12 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 
 	/* deliver the feedback via the compressor associated
 	 * with the decompressor */
-	c_piggyback_feedback(decomp->compressor, feedback, feedbacksize);
+	if(!rohc_comp_piggyback_feedback(decomp->compressor, feedback, feedbacksize))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "failed to piggyback the ACK feedback\n");
+		return;
+	}
 
 	/* destroy the feedback */
 	zfree(feedback);

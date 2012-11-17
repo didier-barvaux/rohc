@@ -6,6 +6,7 @@
 
 SUBDIRS = \
 	feedback2 \
+	feedback_ring \
 	decompress_feedback_only \
 	context_reuse \
 	rtp_uor2_disambiguation \

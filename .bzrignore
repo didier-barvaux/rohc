@@ -39,6 +39,8 @@ test_*.sh.log
 ./src/common/test/test_rtp_ts_wraparound.log
 ./test/functional/feedback2/test_feedback2
 ./test/functional/feedback2/test_feedback2.exe
+./test/functional/feedback_ring/test_feedback_ring
+./test/functional/feedback_ring/test_feedback_ring.exe
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only.exe
 ./test/functional/context_reuse/test_context_reuse
