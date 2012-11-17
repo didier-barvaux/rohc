@@ -353,16 +353,6 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 			                "or 'IPv4 with non-random IP-ID but 0 IP-ID bit to "
 			                "transmit'\n", nr_sn_bits);
 		}
-		else if(nr_sn_bits == 5 &&
-		        (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
-		{
-			packet = PACKET_UOR_2;
-			rohc_comp_debug(context, "choose packet UOR-2 because %zd = 5 SN "
-			                "bits must be transmitted, and the single IP header "
-			                "is either 'non-IPv4' or 'IPv4 with random IP-ID' "
-			                "or 'IPv4 with non-random IP-ID but 0 IP-ID bit to "
-			                "transmit'\n", nr_sn_bits);
-		}
 		else if(nr_sn_bits <= 5 &&
 		        is_ip_v4 && is_rnd != 1 && nr_ip_id_bits <= 6)
 		{
