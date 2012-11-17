@@ -6,5 +6,6 @@
 
 SUBDIRS = \
 	performance \
-	tunnel
+	tunnel \
+	sniffer
 

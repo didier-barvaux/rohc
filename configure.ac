@@ -628,6 +628,7 @@ AC_CONFIG_FILES([ \
 	app/Makefile \
 	app/performance/Makefile \
 	app/tunnel/Makefile \
+	app/sniffer/Makefile \
 	doc/doxygen.conf \
 	doc/Makefile \
 	contrib/Makefile \

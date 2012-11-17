@@ -65,5 +65,7 @@ test_*.sh.log
 ./app/performance/rohc_test_performance.exe
 ./app/tunnel/rohctunnel
 ./app/tunnel/rohctunnel.exe
+./app/sniffer/rohc_sniffer
+./app/sniffer/rohc_sniffer.exe
 ./examples/simple_rohc_program
 ./examples/simple_rohc_program.exe
