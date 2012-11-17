@@ -2342,6 +2342,9 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 		       comp->feedbacks[comp->feedbacks_first_unlocked].data,
 		       feedback_length);
 
+		/* lock the feedback */
+		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = true;
+
 		comp->feedbacks_first_unlocked =
 			(comp->feedbacks_first_unlocked + 1) % FEEDBACK_RING_SIZE;
 	}
