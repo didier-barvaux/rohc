@@ -116,7 +116,15 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 	ts_sc->sn = sn;
 
 	/* compute the absolute delta between new and old TS */
-	ts_sc->ts_delta = abs(ts_sc->ts - ts_sc->old_ts);
+	/* abs() on unsigned 32-bit values seems to be a problem sometimes */
+	if(ts_sc->ts >= ts_sc->old_ts)
+	{
+		ts_sc->ts_delta = ts_sc->ts - ts_sc->old_ts;
+	}
+	else
+	{
+		ts_sc->ts_delta = ts_sc->old_ts - ts_sc->ts;
+	}
 	ts_debug(ts_sc, "TS delta = %u\n", ts_sc->ts_delta);
 
 	switch(ts_sc->state)
