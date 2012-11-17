@@ -42,7 +42,7 @@
 #define C_NUM_PROFILES 6
 
 /** The maximal number of outgoing feedbacks that can be queued */
-#define FEEDBACK_RING_SIZE 10
+#define FEEDBACK_RING_SIZE 1000
 
 /** Print a debug trace for the given compression context */
 #define rohc_comp_debug(context, format, ...) \
