@@ -6201,9 +6201,9 @@ void rohc_get_ipid_bits(const struct c_context *context,
 	else if(g_context->ip_flags.version == IPV4 &&
 	        g_context->ip_flags.info.v4.rnd == 0)
 	{
-		/* outer IP header is IPv4 with a non-random IP-ID */
-		*nr_innermost_bits = 0;
-		*nr_outermost_bits = g_context->tmp.nr_ip_id_bits;
+		/* outer IP header is the innermost IPv4 with a non-random IP-ID */
+		*nr_innermost_bits = g_context->tmp.nr_ip_id_bits;
+		*nr_outermost_bits = 0;
 	}
 	else
 	{
