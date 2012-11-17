@@ -279,6 +279,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
 
 	if(feedback->type == 1) /* ACK */
 	{
+		rohc_comp_debug(context, "FEEDBACK-1 received\n");
 	}
 	else if(feedback->type == 2) /* FEEDBACK-2 */
 	{
@@ -287,6 +288,8 @@ static void c_uncompressed_feedback(struct c_context *const context,
 		unsigned char mode = (p[0] >> 4) & 3;
 		int remaining = feedback->specific_size - 2;
 		p += 2;
+
+		rohc_comp_debug(context, "FEEDBACK-2 received\n");
 
 		/* parse options */
 		while(remaining > 0)
@@ -348,6 +351,11 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			/* mode can be changed only if feedback is protected by a CRC */
 			if(is_crc_used == true)
 			{
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "mode change (%d -> %d) requested by feedback "
+				             "for CID %d\n", context->mode, mode,
+				             context->profile->id);
 				uncompressed_change_mode(context, mode);
 			}
 			else
@@ -361,16 +369,27 @@ static void c_uncompressed_feedback(struct c_context *const context,
 		switch(feedback->acktype)
 		{
 			case ACK:
+				rohc_info(context->compressor, ROHC_TRACE_COMP,
+				          context->profile->id, "ACK received\n");
 				break;
 			case NACK:
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "NACK received\n");
 				break;
 			case STATIC_NACK:
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "STATIC-NACK received\n");
 				uncompressed_change_state(context, IR);
 				break;
 			case RESERVED:
 				rohc_warning(context->compressor, ROHC_TRACE_COMP,
 				             context->profile->id, "reserved field used\n");
 				break;
+			default:
+				/* impossible value */
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "unknown ACK type (%d)\n",
+				             feedback->acktype);
 		}
 
 	}
@@ -418,8 +437,7 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 	if(uncomp_context->go_back_ir_count >=
 	   context->compressor->periodic_refreshes_ir_timeout)
 	{
-		rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "periodic change to IR state\n");
+		rohc_comp_debug(context, "periodic change to IR state\n");
 		uncomp_context->go_back_ir_count = 0;
 		uncompressed_change_state(context, IR);
 	}
@@ -504,16 +522,14 @@ static int uncompressed_code_packet(const struct c_context *context,
 	switch(context->state)
 	{
 		case IR:
-			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			           "build IR packet\n");
+			rohc_comp_debug(context, "build IR packet\n");
 			uncomp_context->ir_count++;
 			code_packet = uncompressed_code_IR_packet;
 			*packet_type = PACKET_IR;
 			break;
 
 		case FO:
-			rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			           "build normal packet\n");
+			rohc_comp_debug(context, "build normal packet\n");
 			uncomp_context->normal_count++;
 			code_packet = uncompressed_code_normal_packet;
 			*packet_type = PACKET_NORMAL;
@@ -582,8 +598,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	int counter;
 	int first_position;
 
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "code IR packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -594,13 +609,11 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 
 	/* part 2 */
 	dest[first_position] = 0xfc;
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "first byte = 0x%02x\n", dest[first_position]);
+	rohc_comp_debug(context, "first byte = 0x%02x\n", dest[first_position]);
 
 	/* part 4 */
 	dest[counter] = ROHC_PROFILE_UNCOMPRESSED;
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "Profile ID = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "Profile ID = 0x%02x\n", dest[counter]);
 	counter++;
 
 	/* part 5 */
@@ -608,8 +621,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                              CRC_INIT_8,
 	                              context->compressor->crc_table_8);
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
+	rohc_comp_debug(context, "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
 	counter++;
 
 	*payload_offset = 0;
@@ -661,8 +673,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	int counter;
 	int first_position;
 
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "code normal packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code normal packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -674,9 +685,8 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	/* part 2 */
 	dest[first_position] = (ip_get_raw_data(ip))[0];
 
-	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "header length = %d, payload length = %d\n", counter - 1,
-	            ip_get_totlen(ip));
+	rohc_comp_debug(context, "header length = %d, payload length = %d\n",
+	                counter - 1, ip_get_totlen(ip));
 
 	*payload_offset = 1;
 	return counter;

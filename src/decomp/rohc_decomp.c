@@ -985,7 +985,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		case ROHC_ERROR_NO_CONTEXT:
 			/* create a STATIC NACK feedback */
 			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			          "send a STATIC-NACK feedback\n");
+			          "send a STATIC-NACK feedback for CID %d\n", cid);
 			ret = f_feedback2(ACKTYPE_STATIC_NACK, O_MODE, 0, &sfeedback);
 			if(ret != ROHC_OK)
 			{
