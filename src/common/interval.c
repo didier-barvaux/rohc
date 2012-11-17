@@ -88,11 +88,21 @@ void rohc_f_32bits(const uint32_t v_ref,
                    uint32_t *const min,
                    uint32_t *const max)
 {
-	const uint32_t interval_width = (1 << k) - 1; /* (1 << k) = 2^k */
+	uint32_t interval_width;
 	int32_t computed_p;
 
-	/* sanity check: check for value that will cause an integer overflow */
-	assert(k < 32);
+	/* accept at most 32 bits */
+	assert(k <= 32);
+
+	/* compute the interval width = 2^k - 1 */
+	if(k == 32)
+	{
+		interval_width = 0xffffffff;
+	}
+	else
+	{
+		interval_width = (1 << k) - 1; /* (1 << k) = 2^k */
+	}
 
 	/* determine the real p value to use */
 	switch(p)
