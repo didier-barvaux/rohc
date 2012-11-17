@@ -261,7 +261,8 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 	/* TS computation with the TS_SCALED we just decoded and the
 	   TS_STRIDE/TS_OFFSET values found in context */
 	*decoded_ts = ts_sc->ts_stride * ts_scaled_decoded + ts_sc->ts_offset;
-	ts_debug(ts_sc, "TS calculated = %u\n", *decoded_ts);
+	ts_debug(ts_sc, "TS = %u (TS_STRIDE = %u, TS_OFFSET = %u)\n", *decoded_ts,
+	         ts_sc->ts_stride, ts_sc->ts_offset);
 
 	/* store the updated TS_* values in context */
 	ts_sc->new_ts_scaled = ts_scaled_decoded;
