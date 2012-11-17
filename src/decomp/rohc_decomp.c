@@ -39,6 +39,7 @@
 #include "crc.h"
 
 #include <string.h>
+#include <stdio.h> /* for printf(3) and sprintf(3) */
 #include <stdarg.h>
 #include <assert.h>
 

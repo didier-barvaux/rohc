@@ -24,6 +24,7 @@
 
 #include "rohc_traces_internal.h"
 
+#include <stdio.h> /* for snprintf(3) */
 #include <assert.h>
 
 

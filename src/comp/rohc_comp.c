@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <stdio.h> /* for printf(3) */
 #include <stdarg.h>
 
 

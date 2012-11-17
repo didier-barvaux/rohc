@@ -28,7 +28,7 @@
 
 #include "rohc_traces.h"
 
-#include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "dllexport.h"
