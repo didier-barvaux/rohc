@@ -53,6 +53,8 @@ test_*.sh.log
 ./test/robustness/empty_payload/test_empty_payload.exe
 ./test/robustness/damaged_packet/test_damaged_packet
 ./test/robustness/damaged_packet/test_damaged_packet.exe
+./test/robustness/lost_packet/test_lost_packet
+./test/robustness/lost_packet/test_lost_packet.exe
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback.exe
 ./test/non_regression/test_non_regression

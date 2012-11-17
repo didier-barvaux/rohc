@@ -470,7 +470,8 @@ static int test_comp_and_decomp(const char *filename,
 			goto destroy_decomp;
 		}
 		last_packet_type = last_packet_info.packet_type;
-		fprintf(stderr, "\tROHC packet of type %d generated\n", last_packet_type);
+		fprintf(stderr, "\tROHC packet of type '%s' (%d) generated\n",
+		        rohc_get_packet_descr(last_packet_type), last_packet_type);
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
 		decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size,
@@ -487,13 +488,15 @@ static int test_comp_and_decomp(const char *filename,
 	if(last_packet_type != expected_packet)
 	{
 		fprintf(stderr, "last generated ROHC packet is not as expected: "
-		        "packet type %d generated while %d expected\n", last_packet_type,
-		        expected_packet);
+		        "packet type '%s' (%d) generated while '%s' (%d) expected\n",
+		        rohc_get_packet_descr(last_packet_type), last_packet_type,
+		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
 	}
 
 	/* everything went fine */
-	fprintf(stderr, "last generated ROHC packet is of type %d as expected\n",
+	fprintf(stderr, "last generated ROHC packet is of type '%s' (%d) as "
+	        "expected\n", rohc_get_packet_descr(expected_packet),
 	        expected_packet);
 	is_failure = 0;
 

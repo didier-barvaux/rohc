@@ -15,14 +15,15 @@
  */
 
 /**
- * @file   test_damaged_packet.c
- * @brief  Check that damaged ROHC packets are handled correctly
+ * @file   test_lost_packet.c
+ * @brief  Check that lost ROHC packets are handled correctly
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  *
  * The application compresses IP packets from a source PCAP file, then
- * decompresses them after damaging one of them. All IP packets should be
+ * decompresses them after losing one of them. All IP packets should be
  * correctly compressed. All generated ROHC packets should be correctly
- * decompressed except the damaged one.
+ * decompressed except the lost one.
  */
 
 #include "test.h"
@@ -66,8 +67,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
-                                const unsigned int packet_to_damage,
-                                const rohc_packet_t expected_packet);
+                                const unsigned int packet_to_lose);
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
@@ -80,7 +80,7 @@ static int gen_random_num(const struct rohc_comp *const comp,
 
 
 /**
- * @brief Check that damaged ROHC packets are handled correctly
+ * @brief Check that lost ROHC packets are handled correctly
  *
  * @param argc The number of program arguments
  * @param argv The program arguments
@@ -91,10 +91,8 @@ static int gen_random_num(const struct rohc_comp *const comp,
 int main(int argc, char *argv[])
 {
 	char *filename = NULL;
-	char *packet_to_damage_param = NULL;
-	int packet_to_damage;
-	char *packet_type = NULL;
-	rohc_packet_t expected_packet;
+	char *packet_to_lose_param = NULL;
+	int packet_to_lose;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -118,15 +116,10 @@ int main(int argc, char *argv[])
 			 * compress/decompress */
 			filename = argv[0];
 		}
-		else if(packet_to_damage_param == NULL)
+		else if(packet_to_lose_param == NULL)
 		{
-			/* get the ROHC packet to damage */
-			packet_to_damage_param = argv[0];
-		}
-		else if(packet_type == NULL)
-		{
-			/* get the expected type of the packet to damage */
-			packet_type = argv[0];
+			/* get the ROHC packet to lose */
+			packet_to_lose_param = argv[0];
 		}
 		else
 		{
@@ -137,50 +130,18 @@ int main(int argc, char *argv[])
 	}
 
 	/* check mandatory parameters */
-	if(filename == NULL || packet_to_damage_param == NULL || packet_type == NULL)
+	if(filename == NULL || packet_to_lose_param == NULL)
 	{
 		usage();
 		goto error;
 	}
 
-	/* parse the packet to damage */
-	packet_to_damage = atoi(packet_to_damage_param);
-	if(packet_to_damage <= 0)
+	/* parse the packet to lose */
+	packet_to_lose = atoi(packet_to_lose_param);
+	if(packet_to_lose <= 0)
 	{
-		fprintf(stderr, "bad number for the package to damage '%s'\n\n",
-		        packet_to_damage_param);
-		usage();
-		goto error;
-	}
-
-	/* parse the packet type */
-	if(strlen(packet_type) == 2 && strcmp(packet_type, "ir") == 0)
-	{
-		expected_packet = PACKET_IR;
-	}
-	else if(strlen(packet_type) == 5 && strcmp(packet_type, "irdyn") == 0)
-	{
-		expected_packet = PACKET_IR_DYN;
-	}
-	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo0") == 0)
-	{
-		expected_packet = PACKET_UO_0;
-	}
-	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
-	{
-		expected_packet = PACKET_UO_1_ID;
-	}
-	else if(strlen(packet_type) == 4 && strcmp(packet_type, "uor2") == 0)
-	{
-		expected_packet = PACKET_UOR_2_RTP;
-	}
-	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
-	{
-		expected_packet = PACKET_UOR_2_TS;
-	}
-	else
-	{
-		fprintf(stderr, "unknown packet type '%s'\n\n", packet_type);
+		fprintf(stderr, "bad number for the package to lose '%s'\n\n",
+		        packet_to_lose_param);
 		usage();
 		goto error;
 	}
@@ -190,7 +151,7 @@ int main(int argc, char *argv[])
 	srand(5);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, packet_to_damage, expected_packet);
+	status = test_comp_and_decomp(filename, packet_to_lose);
 
 error:
 	return status;
@@ -203,16 +164,14 @@ error:
 static void usage(void)
 {
 	fprintf(stderr,
-	        "Check that damaged ROHC packets are correctly handled\n"
+	        "Check that lost ROHC packets are correctly handled\n"
 	        "\n"
-	        "usage: test_damaged_packet [OPTIONS] FLOW PACKET_NUM PACKET_TYPE\n"
+	        "usage: test_lost_packet [OPTIONS] FLOW PACKET_NUM\n"
 	        "\n"
 	        "with:\n"
 	        "  FLOW         The flow of Ethernet frames to compress/decompress\n"
 	        "               (in PCAP format)\n"
-	        "  PACKET_NUM   The packet # to damage\n"
-	        "  PACKET_TYPE  The packet type expected for the last packet\n"
-	        "               among: ir, irdyn, uo0, uo1id, uor2 and uor2ts\n"
+	        "  PACKET_NUM   The packet # to lose\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
@@ -225,15 +184,12 @@ static void usage(void)
  *
  * @param filename          The name of the PCAP file that contains the
  *                          IP packets
- * @param packet_to_damage  The packet # to damage
- * @param expected_packet   The type of ROHC packet expected at the end of the
- *                          source capture
+ * @param packet_to_lose    The packet # to lost
  * @return                  0 in case of success,
  *                          1 in case of failure
  */
 static int test_comp_and_decomp(const char *const filename,
-                                const unsigned int packet_to_damage,
-                                const rohc_packet_t expected_packet)
+                                const unsigned int packet_to_lose)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -250,7 +206,7 @@ static int test_comp_and_decomp(const char *const filename,
 #define NB_RTP_PORTS 5
 	unsigned int rtp_ports[NB_RTP_PORTS] =
 		{ 1234, 36780, 33238, 5020, 5002 };
-	unsigned int i;
+	int i;
 
 	int is_failure = 1;
 
@@ -276,17 +232,11 @@ static int test_comp_and_decomp(const char *const filename,
 
 	/* determine the length of the link layer header */
 	if(link_layer_type == DLT_EN10MB)
-	{
 		link_len = ETHER_HDR_LEN;
-	}
 	else if(link_layer_type == DLT_LINUX_SLL)
-	{
 		link_len = LINUX_COOKED_HDR_LEN;
-	}
 	else /* DLT_RAW */
-	{
 		link_len = 0;
-	}
 
 	/* create the ROHC compressor with small CID */
 	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
@@ -360,7 +310,6 @@ static int test_comp_and_decomp(const char *const filename,
 		int ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
 		int rohc_size;
-		rohc_comp_last_packet_info2_t packet_info;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
 
@@ -392,12 +341,12 @@ static int test_comp_and_decomp(const char *const filename,
 			/* get IP total length depending on IP version */
 			if(version == 4)
 			{
-				struct ipv4_hdr *ip = (struct ipv4_hdr *) ip_packet;
+				const struct ipv4_hdr *const ip = (struct ipv4_hdr *) ip_packet;
 				tot_len = ntohs(ip->tot_len);
 			}
 			else
 			{
-				struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
+				const struct ipv6_hdr *const ip = (struct ipv6_hdr *) ip_packet;
 				tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 			}
 
@@ -421,102 +370,30 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 		fprintf(stderr, "\tcompression is successful\n");
 
-		/* get packet statistics to retrieve the packet type */
-		packet_info.version_major = 0;
-		packet_info.version_minor = 0;
-		if(!rohc_comp_get_last_packet_info2(comp, &packet_info))
+		/* is it the packet to lose? */
+		if(counter == packet_to_lose)
 		{
-			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");
-			goto destroy_decomp;
-		}
-
-		/* is it the packet to damage? */
-		if(counter == packet_to_damage)
-		{
-			unsigned char old_byte;
-
-			/* check packet type of the packet to damage */
-			if(packet_info.packet_type != expected_packet)
-			{
-				fprintf(stderr, "\tROHC packet #%u is of type %d while type %d was "
-				        "expected\n", packet_to_damage, packet_info.packet_type,
-				        expected_packet);
-				goto destroy_decomp;
-			}
-			fprintf(stderr, "\tROHC packet #%u is of type %d as expected\n",
-			        packet_to_damage, expected_packet);
-
-			/* damage the packet (randomly modify its last byte) */
-			assert(rohc_size >= 1);
-			old_byte = rohc_packet[rohc_size - 1];
-			rohc_packet[rohc_size - 1] ^= rand() & 0xff;
-			fprintf(stderr, "\tvoluntary damage packet (change byte #%d from 0x%02x "
-			        "to 0x%02x)\n", rohc_size, old_byte, rohc_packet[rohc_size - 1]);
-		}
-		else
-		{
-			fprintf(stderr, "\tROHC packet is of type %d\n", packet_info.packet_type);
+			fprintf(stderr, "\tvoluntary lose packet #%d\n", counter);
+			continue;
 		}
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
 		decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size,
 		                              decomp_packet, MAX_ROHC_SIZE);
-		if(decomp_size == ROHC_ERROR_CRC)
+		if(decomp_size <= 0)
 		{
-			if(counter != packet_to_damage)
-			{
-				/* failure is NOT expected for the non-damaged packets */
-				fprintf(stderr, "\tunexpected CRC failure to decompress generated "
-				        "ROHC packet\n");
-				goto destroy_decomp;
-			}
-			else
-			{
-				/* failure is expected for the damaged packet */
-				fprintf(stderr, "\texpected CRC failure to decompress generated ROHC "
-				        "packet\n");
-			}
+			/* failure is NOT expected */
+			fprintf(stderr, "\tunexpected failure to decompress generated "
+			        "ROHC packet\n");
+			goto destroy_decomp;
 		}
-		else if(decomp_size <= 0)
-		{
-			/* non-CRC failure is NOT expected except for damaged IR/IR-DYN packet */
-			if(counter != packet_to_damage)
-			{
-				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
-				        "ROHC packet\n");
-				goto destroy_decomp;
-			}
-			else if(expected_packet != PACKET_IR && expected_packet != PACKET_IR_DYN)
-			{
-				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
-				        "ROHC non-IR/IR-DYN packet\n");
-				goto destroy_decomp;
-			}
-			else
-			{
-				fprintf(stderr, "\texpected failure to decompress generated ROHC "
-				        "IR or IR-DYN packet\n");
-			}
-		}
-		else
-		{
-			if(counter != packet_to_damage)
-			{
-				/* success is expected for the non-damaged packets */
-				fprintf(stderr, "\texpected successful decompression\n");
-			}
-			else
-			{
-				/* success is NOT expected for the damaged packet */
-				fprintf(stderr, "\tunexpected successful decompression\n");
-				goto destroy_decomp;
-			}
-		}
+
+		/* success is expected for the non-lost packets */
+		fprintf(stderr, "\texpected successful decompression\n");
 	}
 
 	/* everything went fine */
-	fprintf(stderr, "all non-damaged packets were successfully decompressed\n");
-	fprintf(stderr, "all damaged packets failed to be decompressed as expected\n");
+	fprintf(stderr, "all non-lost packets were successfully decompressed\n");
 	is_failure = 0;
 
 destroy_decomp:

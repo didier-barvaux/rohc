@@ -1,0 +1,12 @@
+>>> packets = []
+>>> for i in range(1, 9):
+...   packets.append(Ether()/IP(id=i)/UDP(dport=1234)/RTP(sequence=i, timestamp=(i+1)*160))
+... 
+>>> for i in range(0, 8):
+...   packets[i][RTP].timestamp = 160*(i+1)
+... 
+>>> len(packets)
+8
+>>> packets[6][RTP].timestamp = packets[5][RTP].timestamp + 160*2
+>>> packets[7][RTP].timestamp = packets[6][RTP].timestamp + 160
+>>> wrpcap("non_sequential_rtp_ts.pcap", packets)

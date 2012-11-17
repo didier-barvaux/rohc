@@ -6,6 +6,7 @@
 
 SUBDIRS = \
 	empty_payload \
+	lost_packet \
 	damaged_packet \
 	piggybacking_feedback
 

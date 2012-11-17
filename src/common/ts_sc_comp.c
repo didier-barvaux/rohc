@@ -211,14 +211,43 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			ts_debug(ts_sc, "TS_STRIDE calculated = %u\n", ts_sc->ts_delta);
 			ts_debug(ts_sc, "previous TS_STRIDE = %u\n", ts_sc->ts_stride);
 			assert(ts_sc->ts_stride != 0);
-			if((ts_sc->ts_delta % ts_sc->ts_stride) != 0)
+			if(ts_sc->ts_delta != ts_sc->ts_stride)
 			{
-				/* ts_stride has changed */
-				ts_debug(ts_sc, "/!\\ TS_STRIDE changed\n");
-				ts_sc->state = INIT_STRIDE;
-				ts_sc->nr_init_stride_packets = 0;
-				ts_debug(ts_sc, "state -> INIT_STRIDE\n");
-				ts_sc->ts_stride = ts_sc->ts_delta;
+				if((ts_sc->ts_delta % ts_sc->ts_stride) != 0)
+				{
+					/* TS delta changed and is not a multiple of previous TS_STRIDE:
+					 * record the new value as TS_STRIDE and transmit it several
+					 * times for robustness purposes */
+
+					ts_debug(ts_sc, "/!\\ TS_STRIDE changed and is not a multiple "
+					         "of previous TS_STRIDE, so change TS_STRIDE and "
+					         "transmit it several times along all TS bits "
+					         "(probably a clock resync at source)\n");
+					ts_sc->state = INIT_STRIDE;
+					ts_sc->nr_init_stride_packets = 0;
+					ts_debug(ts_sc, "state -> INIT_STRIDE\n");
+					ts_sc->ts_stride = ts_sc->ts_delta;
+				}
+				else if((ts_sc->ts_delta / ts_sc->ts_stride) != (ts_sc->sn - ts_sc->old_sn))
+				{
+					/* TS delta changed but is a multiple of previous TS_STRIDE:
+					 * do not change TS_STRIDE, but transmit all TS bits several
+					 * times for robustness purposes */
+					ts_debug(ts_sc, "/!\\ TS delta changed but is a multiple of "
+					         "previous TS_STRIDE, so do not change TS_STRIDE, but "
+					         "retransmit it several times along all TS bits "
+					         "(probably a RTP TS jump at source)\n");
+					ts_sc->state = INIT_STRIDE;
+					ts_sc->nr_init_stride_packets = 0;
+					ts_debug(ts_sc, "state -> INIT_STRIDE\n");
+				}
+				else
+				{
+					/* do not change TS_STRIDE, probably a packet loss */
+					ts_debug(ts_sc, "/!\\ TS delta changed, is a multiple of "
+					         "previous TS_STRIDE and follows SN changes, so do "
+					         "not change TS_STRIDE (probably a packet loss)\n");
+				}
 			}
 
 			ts_debug(ts_sc, "TS_STRIDE = %u\n", ts_sc->ts_stride);
@@ -231,7 +260,8 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 			ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u\n", ts_sc->ts,
 			         ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
 
-			if((ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
+			if(ts_sc->state == SEND_SCALED &&
+			   (ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
 			{
 				ts_debug(ts_sc, "TS can be deducted from SN (old TS_SCALED = %u, "
 				         "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
