@@ -5093,7 +5093,7 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 			rohc_remain_data += large_cid_len;
 			rohc_remain_len -= large_cid_len;
 			*rohc_hdr_len += large_cid_len;
-			/* part 4a: 1-bit TS (ignored) + 1-bit M flag + 6-bit SN */
+			/* part 4a: 1-bit TS + 1-bit M flag + 6-bit SN */
 			bits->ts |= GET_REAL(GET_BIT_7(rohc_remain_data));
 			bits->ts_nr += 1;
 			rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
