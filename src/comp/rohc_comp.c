@@ -1482,8 +1482,6 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 	{
 		int i;
 
-rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "test port %u\n", comp->rtp_ports[idx]);
-
 		/* if the current entry in table is empty or if the current entry
 		   in table is greater than the port to remove, stop search */
 		if(comp->rtp_ports[idx] == 0 || comp->rtp_ports[idx] > port)
