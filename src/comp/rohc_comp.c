@@ -668,7 +668,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 			feedbacks_size += feedback_size;
 		}
 	}
-	while(feedback_size > 0);
+	while(feedback_size > 0 && feedbacks_size <= 500);
 
 	/* the ROHC header starts after the feedbacks */
 	rohc_hdr = rohc_packet + feedbacks_size;
