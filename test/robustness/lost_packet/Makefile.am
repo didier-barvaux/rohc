@@ -30,11 +30,11 @@ AM_LDFLAGS = \
 
 test_lost_packet_SOURCES = test_lost_packet.c
 test_lost_packet_LDADD = \
-	-lpcap \
+	-l$(pcap_lib_name) \
 	-lrohc_comp \
 	-lrohc_decomp \
 	-lrohc_common \
-	-lm
+	$(additional_platform_libs)
 
 EXTRA_DIST = \
 	test_lost_packet.sh \
