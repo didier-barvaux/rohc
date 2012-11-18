@@ -241,8 +241,36 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
                       const size_t bits_nr,
                       uint32_t *const decoded_ts)
 {
+	uint32_t effective_ts_stride;
 	uint32_t ts_scaled_decoded;
 	bool lsb_decode_ok;
+
+	assert(ts_sc != NULL);
+	assert(decoded_ts != NULL);
+
+	/* which TS_STRIDE to use? */
+	if(ts_sc->new_ts_stride != 0)
+	{
+		/* TS_STRIDE was updated by the ROHC packet being currently parsed */
+		ts_debug(ts_sc, "decode scaled TS bits %u with updated TS_STRIDE %u\n",
+		         ts_scaled, ts_sc->new_ts_stride);
+		effective_ts_stride = ts_sc->new_ts_stride;
+	}
+	else
+	{
+		/* TS_STRIDE was not updated by the ROHC packet being currently parsed */
+		ts_debug(ts_sc, "decode scaled TS bits %u with context TS_STRIDE %u\n",
+		         ts_scaled, ts_sc->ts_stride);
+		effective_ts_stride = ts_sc->ts_stride;
+	}
+
+	/* TS_STRIDE shall not be 0 when using TS_SCALED */
+	if(effective_ts_stride == 0)
+	{
+		ts_debug(ts_sc, "cannot decode TS_SCALED because TS_STRIDE is not "
+		         "initialized or 0\n");
+		goto error;
+	}
 
 	/* update TS_SCALED in context */
 	ts_debug(ts_sc, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
@@ -260,13 +288,13 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 
 	/* TS computation with the TS_SCALED we just decoded and the
 	   TS_STRIDE/TS_OFFSET values found in context */
-	*decoded_ts = ts_sc->ts_stride * ts_scaled_decoded + ts_sc->ts_offset;
+	*decoded_ts = effective_ts_stride * ts_scaled_decoded + ts_sc->ts_offset;
 	ts_debug(ts_sc, "TS = %u (TS_STRIDE = %u, TS_OFFSET = %u)\n", *decoded_ts,
-	         ts_sc->ts_stride, ts_sc->ts_offset);
+	         effective_ts_stride, ts_sc->ts_offset);
 
 	/* store the updated TS_* values in context */
 	ts_sc->new_ts_scaled = ts_scaled_decoded;
-	ts_sc->new_ts_stride = ts_sc->ts_stride;
+	ts_sc->new_ts_stride = effective_ts_stride;
 	ts_sc->new_ts_offset = ts_sc->ts_offset;
 
 	return true;

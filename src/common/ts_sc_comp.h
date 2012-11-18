@@ -82,11 +82,13 @@ struct ts_sc_comp
 	/// The previous sequence number
 	uint16_t old_sn;
 
-	/// Whether timestamp is deductible from SN or not
-	int is_deductible;
+	/// Whether timestamp is deducible from SN or not
+	bool is_deducible;
 
 	/// The state of the scaled RTP Timestamp encoding object
 	ts_sc_state state;
+	/** Whether old SN/TS values are initialized or not */
+	bool are_old_val_init;
 	/// The number of packets sent in state INIT_STRIDE
 	size_t nr_init_stride_packets;
 
@@ -120,6 +122,8 @@ void ROHC_EXPORT add_scaled(const struct ts_sc_comp *const ts_sc,
 
 uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp ts_sc);
 uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp ts_sc);
+
+bool ROHC_EXPORT rohc_ts_sc_is_deducible(const struct ts_sc_comp ts_sc);
 
 #endif
 
