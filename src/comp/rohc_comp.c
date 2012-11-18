@@ -457,9 +457,13 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	const struct ip_packet *inner_ip;
 	const struct c_profile *p;
 	struct c_context *c;
-	int feedback_size, payload_size, payload_offset;
+	size_t feedbacks_size;
+	int feedback_size;
+	int payload_size;
+	int payload_offset;
 	rohc_packet_t packet_type;
-	int size, esize;
+	size_t rohc_tot_size;
+	int rohc_hdr_size;
 	const unsigned char *ip_raw_data;
 
 	/* check compressor validity */
@@ -579,16 +583,18 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	c->latest_used = get_milliseconds();
 
 	/* create the ROHC packet: */
-	size = 0;
+	rohc_tot_size = 0;
 
 	/* 1. add feedback */
+	feedbacks_size = 0;
 	do
 	{
-		feedback_size = rohc_feedback_get(comp, obuf, osize - size);
+		feedback_size = rohc_feedback_get(comp, obuf, osize - rohc_tot_size);
 		if(feedback_size > 0)
 		{
 			obuf += feedback_size;
-			size += feedback_size;
+			rohc_tot_size += feedback_size;
+			feedbacks_size += feedback_size;
 		}
 	}
 	while(feedback_size > 0);
@@ -596,9 +602,9 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	/* 2. use profile to compress packet */
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "compress the packet #%d\n", comp->num_packets + 1);
-	esize = p->encode(c, outer_ip, isize, obuf, osize - size,
-	                  &packet_type, &payload_offset);
-	if(esize < 0)
+	rohc_hdr_size = p->encode(c, outer_ip, isize, obuf, osize - rohc_tot_size,
+	                          &packet_type, &payload_offset);
+	if(rohc_hdr_size < 0)
 	{
 		/* error while compressing, use uncompressed */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -641,9 +647,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			goto error_unlock_feedbacks;
 		}
 
-		esize = p->encode(c, outer_ip, isize, obuf, osize - size,
-		                  &packet_type, &payload_offset);
-		if(esize < 0)
+		rohc_hdr_size = p->encode(c, outer_ip, isize, obuf,
+		                          osize - rohc_tot_size,
+		                          &packet_type, &payload_offset);
+		if(rohc_hdr_size < 0)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "error while compressing with uncompressed profile, "
@@ -652,21 +659,22 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		}
 	}
 
-	size += esize;
-	obuf += esize;
+	rohc_tot_size += rohc_hdr_size;
+	obuf += rohc_hdr_size;
 
 	payload_size = ip_get_totlen(outer_ip) - payload_offset;
 
 	/* is packet too large? */
-	if(size + payload_size > osize)
+	if((rohc_tot_size + payload_size) > osize)
 	{
 		/* TODO: should use uncompressed profile */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet of type '%s' is too large for the given output "
 		             "buffer (input size = %d, maximum output size = %d, "
-		             "required output size = %d + %d = %d)\n",
-		             rohc_get_packet_descr(packet_type),
-		             isize, osize, size, payload_size, size + payload_size);
+		             "required output size = %zd + %d + %d = %d)\n",
+		             rohc_get_packet_descr(packet_type), isize, osize,
+		             feedbacks_size, rohc_hdr_size, payload_size,
+		             feedbacks_size + rohc_hdr_size + payload_size);
 		goto error_free_new_context;
 	}
 
@@ -674,7 +682,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	ip_raw_data = ip_get_raw_data(outer_ip);
 	memcpy(obuf, ip_raw_data + payload_offset, payload_size);
 	obuf += payload_size;
-	size += payload_size;
+	rohc_tot_size += payload_size;
 
 	/* remove locked feedbacks since compression is successful */
 	if(rohc_feedback_remove_locked(comp) != true)
@@ -685,38 +693,38 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	}
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC size = %d (feedback = %d, header = %d, payload = %d), "
-	          "output buffer size = %d\n", size, feedback_size, esize,
-	          payload_size, osize);
+	          "ROHC size = %zd bytes (feedbacks = %zd, header = %d, "
+	          "payload = %d), output buffer size = %d\n", rohc_tot_size,
+	          feedbacks_size, rohc_hdr_size, payload_size, osize);
 
 	/* update some statistics:
 	 *  - compressor statistics
 	 *  - context statistics (global + last packet + last 16 packets) */
 	comp->num_packets++;
 	comp->total_uncompressed_size += isize;
-	comp->total_compressed_size += size;
+	comp->total_compressed_size += rohc_tot_size;
 	comp->last_context = c;
 
 	c->packet_type = packet_type;
 
 	c->total_uncompressed_size += isize;
-	c->total_compressed_size += size;
+	c->total_compressed_size += rohc_tot_size;
 	c->header_uncompressed_size += payload_offset;
-	c->header_compressed_size += esize;
+	c->header_compressed_size += rohc_hdr_size;
 	c->num_sent_packets++;
 
 	c->total_last_uncompressed_size = isize;
-	c->total_last_compressed_size = size;
+	c->total_last_compressed_size = rohc_tot_size;
 	c->header_last_uncompressed_size = payload_offset;
-	c->header_last_compressed_size = esize;
+	c->header_last_compressed_size = rohc_hdr_size;
 
 	c_add_wlsb(c->total_16_uncompressed, 0, isize);
-	c_add_wlsb(c->total_16_compressed, 0, size);
+	c_add_wlsb(c->total_16_compressed, 0, rohc_tot_size);
 	c_add_wlsb(c->header_16_uncompressed, 0, payload_offset);
-	c_add_wlsb(c->header_16_compressed, 0, esize);
+	c_add_wlsb(c->header_16_compressed, 0, rohc_hdr_size);
 
 	/* compression is successfully, return the size of the ROHC packet */
-	return size;
+	return rohc_tot_size;
 
 error_free_new_context:
 	/* free context if it was just created */
