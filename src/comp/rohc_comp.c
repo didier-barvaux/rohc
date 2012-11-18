@@ -662,8 +662,10 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	{
 		/* TODO: should use uncompressed profile */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "ROHC packet too large (input size = %d, maximum output "
-		             "size = %d, required output size = %d + %d = %d)\n",
+		             "ROHC packet of type '%s' is too large for the given output "
+		             "buffer (input size = %d, maximum output size = %d, "
+		             "required output size = %d + %d = %d)\n",
+		             rohc_get_packet_descr(packet_type),
 		             isize, osize, size, payload_size, size + payload_size);
 		goto error_free_new_context;
 	}
