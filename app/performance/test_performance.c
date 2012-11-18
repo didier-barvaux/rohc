@@ -23,35 +23,35 @@
  * Introduction
  * ------------
  *
- * The program takes a flow of IP packets as input (in the PCAP format) and
- * tests the performance of the ROHC compression library with them.
+ * The program takes a flow of packets as input (in the PCAP format) and
+ * tests the performance of the ROHC (de)compression library with them.
  *
  * Details
  * -------
  *
- * The program defines one compressor and sends the flow of IP packet through
- * it. The time elapsed during the compression of every packet is determined.
- * See the figure below.
+ * The program defines one (de)compressor and sends the flow of packets
+ * through it. The time elapsed during the (de)compression of every packet
+ * is determined. See the figure below.
  *
- *                     +--------------+
- *                     |              |
- *   IP packets  ----> |  Compressor  | ---->  ROHC packets
- *                 ^   |              |   ^
- *                 |   +--------------+   |
- *                 |                      |
- *                 |----------------------|
- *                       elapsed time
+ *                            +----------------+
+ *                            |                |
+ *   IP / ROHC packets  ----> | (de)compressor | ---->  ROHC / IP packets
+ *                        ^   |                |   ^
+ *                        |   +----------------+   |
+ *                        |                        |
+ *                        |------------------------|
+ *                               elapsed time
  *
  * Checks
  * ------
  *
- * The program checks for the status of the compression process.
+ * The program checks for the status of the (de)compression process.
  *
  * Output
  * ------
  *
- * The program outputs the time elapsed for compression all packets, the number
- * of compressed packets and the average elapsed time per packet.
+ * The program outputs the time elapsed for (de)compression all packets, the
+ * number of (de)compressed packets and the average elapsed time per packet.
  */
 
 #include <test.h>
@@ -95,6 +95,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* ROHC includes */
 #include <rohc.h>
 #include <rohc_comp.h>
+#include <rohc_decomp.h>
 
 
 /** The application version */
@@ -134,7 +135,6 @@ static int test_compression_perfs(char *filename,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
                                   unsigned long long *time_elapsed);
-
 static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long num_packet,
                                 struct pcap_pkthdr header,
@@ -142,6 +142,19 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 size_t link_len,
                                 double coef_nanosec,
                                 unsigned long long *time_elapsed);
+
+static int test_decompression_perfs(char *filename,
+                                    double coef_nanosec,
+                                    unsigned long *packet_count,
+                                    unsigned long *overflows,
+                                    unsigned long long *time_elapsed);
+static int time_decompress_packet(struct rohc_decomp *decomp,
+                                  unsigned long num_packet,
+                                  struct pcap_pkthdr header,
+                                  unsigned char *packet,
+                                  size_t link_len,
+                                  double coef_nanosec,
+                                  unsigned long long *time_elapsed);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -167,6 +180,7 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char *argv[])
 {
+	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
 #if __i386__
 	unsigned long packet_count = 0;
@@ -183,7 +197,7 @@ int main(int argc, char *argv[])
 	is_verbose = 0;
 
 	/* parse program arguments, print the help message in case of failure */
-	if(argc <= 1)
+	if(argc <= 2)
 	{
 		usage();
 		goto error;
@@ -208,6 +222,11 @@ int main(int argc, char *argv[])
 			/* enable verbose mode */
 			is_verbose = 1;
 		}
+		else if(test_type == 0)
+		{
+			/* get the name of the test */
+			test_type = argv[0];
+		}
 		else if(filename == NULL)
 		{
 			/* get the name of the file that contains the IP packets
@@ -222,8 +241,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* the source filename is mandatory */
-	if(filename == NULL)
+	/* the test type and source filename are mandatory */
+	if(test_type == NULL || filename == NULL)
 	{
 		usage();
 		goto error;
@@ -242,13 +261,29 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* test ROHC compression with the packets from the capture */
-	ret = test_compression_perfs(filename, coef_nanosec,
-	                             &packet_count, &overflows, &time_elapsed);
+	if(strcmp(test_type, "compression") == 0)
+	{
+		/* test ROHC compression with the packets from the capture */
+		ret = test_compression_perfs(filename, coef_nanosec,
+		                             &packet_count, &overflows, &time_elapsed);
+	}
+	else if(strcmp(test_type, "decompression") == 0)
+	{
+		/* test ROHC decompression with the packets from the capture */
+		ret = test_decompression_perfs(filename, coef_nanosec,
+		                               &packet_count, &overflows, &time_elapsed);
+	}
+	else
+	{
+		fprintf(stderr, "unexpected test type '%s'\n", test_type);
+		goto error;
+	}
+
+	/* check test status */
 	if(ret != 0)
 	{
 		fprintf(stderr, "performance test failed, see above error(s)\n");
-		goto release_rohc_lib;
+		goto error;
 	}
 
 	/* print performance statistics */
@@ -267,7 +302,6 @@ int main(int argc, char *argv[])
 	/* everything went fine */
 	status = 0;
 
-release_rohc_lib:
 #endif
 error:
 	return status;
@@ -282,13 +316,13 @@ static void usage(void)
 	fprintf(stderr,
 	        "ROHC performance test: test the performance of the ROHC library\n"
 	        "                       with a flow of IP packets\n\n"
-	        "usage: test_performance [-h|--help] [-v|--version] flow\n"
+	        "usage: test_performance [-h|--help] [-v|--version] [de]compression flow\n"
 	        "  --version        print version information and exit\n"
 	        "  -v\n"
 	        "  --verbose        tell the application to be more verbose\n"
 	        "  --help           print application usage and exit\n"
 	        "  -h\n"
-	        "  flow  flow of Ethernet frames to compress (PCAP format)\n");
+	        "  flow  flow of Ethernet frames to (de)compress (PCAP format)\n");
 }
 
 
@@ -541,7 +575,8 @@ exit:
  *        with the given compressor
  *
  * @param comp          The compressor to use to compress the IP packet
- * @param num_packet    A number affected to the IP packet to compress (traces only)
+ * @param num_packet    A number affected to the IP packet to compress
+ *                      (traces only)
  * @param header        The PCAP header for the packet
  * @param packet        The packet to compress (link layer included)
  * @param link_len      The length of the link layer header before IP data
@@ -637,6 +672,199 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* compute the time elapsed during the compression process */
+	*time_elapsed = TICS_2_NSEC(coef_nanosec, end_tics, start_tics);
+
+	/* everything went fine */
+	is_failure = 0;
+
+error:
+	return is_failure;
+}
+
+
+/**
+ * @brief Test the decompression performance of the ROHC library
+ *        with a flow of IP packets
+ *
+ * @param filename      The name of the PCAP file that contains the ROHC packets
+ * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
+ * @param packet_count  OUT: the number of decompressed packets, undefined if
+ *                      decompression failed
+ * @param time_elapsed  OUT: the time elapsed for decompression (in nanoseconds),
+ *                      unchanged if decompression failed
+ * @return              0 in case of success, 1 otherwise
+ */
+static int test_decompression_perfs(char *filename,
+                                    double coef_nanosec,
+                                    unsigned long *packet_count,
+                                    unsigned long *overflows,
+                                    unsigned long long *time_elapsed)
+{
+	pcap_t *handle;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	int link_layer_type;
+	size_t link_len;
+	struct pcap_pkthdr header;
+	unsigned char *packet;
+	struct rohc_decomp *decomp;
+	int is_failure = 1;
+	int ret;
+
+	/* open the PCAP file that contains the stream */
+	handle = pcap_open_offline(filename, errbuf);
+	if(handle == NULL)
+	{
+		fprintf(stderr, "failed to open the pcap file: %s\n", errbuf);
+		goto exit;
+	}
+
+	/* link layer in the capture must be Ethernet */
+	link_layer_type = pcap_datalink(handle);
+	if(link_layer_type != DLT_EN10MB &&
+	   link_layer_type != DLT_LINUX_SLL &&
+	   link_layer_type != DLT_RAW)
+	{
+		fprintf(stderr, "link layer type %d not supported in capture "
+		        "(supported = %d, %d, %d)\n", link_layer_type,
+		        DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW);
+		goto close_input;
+	}
+
+	if(link_layer_type == DLT_EN10MB)
+	{
+		link_len = ETHER_HDR_LEN;
+	}
+	else if(link_layer_type == DLT_LINUX_SLL)
+	{
+		link_len = LINUX_COOKED_HDR_LEN;
+	}
+	else /* DLT_RAW */
+	{
+		link_len = 0;
+	}
+
+	/* create ROHC decompressor */
+	decomp = rohc_alloc_decompressor(NULL);
+	if(decomp == NULL)
+	{
+		fprintf(stderr, "cannot create the ROHC decompressor\n");
+		goto close_input;
+	}
+
+	/* set trace callback for decompressor in verbose mode */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto free_decompresssor;
+	}
+
+	/* for each packet in the dump */
+	*packet_count = 0;
+	*time_elapsed = 0;
+	*overflows = 0;
+	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	{
+		unsigned long long packet_time_elapsed = 0;
+
+		(*packet_count)++;
+
+		/* decompress the ROHC packet */
+		ret = time_decompress_packet(decomp, *packet_count,
+		                             header, packet, link_len,
+		                             coef_nanosec, &packet_time_elapsed);
+		if(ret != 0)
+		{
+			fprintf(stderr, "packet %lu: performance test failed\n",
+			        *packet_count);
+			goto free_decompresssor;
+		}
+
+		if((*time_elapsed) > (0xffffffff - packet_time_elapsed))
+		{
+			(*overflows)++;
+			packet_time_elapsed -= 0xffffffff - (*time_elapsed);
+			*time_elapsed = packet_time_elapsed;
+		}
+		else
+		{
+			*time_elapsed += packet_time_elapsed;
+		}
+	}
+
+	/* everything went fine */
+	is_failure = 0;
+
+free_decompresssor:
+	rohc_free_decompressor(decomp);
+close_input:
+	pcap_close(handle);
+exit:
+	return is_failure;
+}
+
+
+/**
+ * @brief Determine the time required to decompress the given ROHC packet
+ *        with the given decompressor
+ *
+ * @param decomp        The decompressor to use to decompress the ROHC packet
+ * @param num_packet    A number affected to the ROHC packet to decompress
+ *                      (traces only)
+ * @param header        The PCAP header for the packet
+ * @param packet        The packet to decompress (link layer included)
+ * @param link_len      The length of the link layer header before ROHC data
+ * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
+ * @param time_elapsed  OUT: the time elapsed for decompression (in nanoseconds),
+ *                      unchanged if decompression failed
+ * @return              0 if decompression is successful, 1 otherwise
+ */
+static int time_decompress_packet(struct rohc_decomp *decomp,
+                                  unsigned long num_packet,
+                                  struct pcap_pkthdr header,
+                                  unsigned char *packet,
+                                  size_t link_len,
+                                  double coef_nanosec,
+                                  unsigned long long *time_elapsed)
+{
+	unsigned char *rohc_packet;
+	unsigned int rohc_size;
+	static unsigned char ip_packet[MAX_ROHC_SIZE];
+	int ip_size;
+	unsigned long long start_tics;
+	unsigned long long end_tics;
+	int is_failure = 1;
+
+	/* check Ethernet frame length */
+	if(header.len <= link_len || header.len != header.caplen)
+	{
+		fprintf(stderr, "packet %lu: bad PCAP packet "
+		        "(len = %d, caplen = %d)\n",
+		        num_packet, header.len, header.caplen);
+		goto error;
+	}
+
+	/* skip the link layer header */
+	rohc_packet = packet + link_len;
+	rohc_size = header.len - link_len;
+
+	/* get CPU tics before compression */
+	GET_CPU_TICS(start_tics);
+
+	/* decompress the packet */
+	ip_size = rohc_decompress(decomp, rohc_packet, rohc_size,
+	                          ip_packet, MAX_ROHC_SIZE);
+
+	/* get CPU tics after compression */
+	GET_CPU_TICS(end_tics);
+
+	/* stop performance test if decompression failed */
+	if(ip_size <= 0)
+	{
+		fprintf(stderr, "packet %lu: decompression failed\n", num_packet);
+		goto error;
+	}
+
+	/* compute the time elapsed during the decompression process */
 	*time_elapsed = TICS_2_NSEC(coef_nanosec, end_tics, start_tics);
 
 	/* everything went fine */
