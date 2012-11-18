@@ -671,7 +671,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet of type '%s' is too large for the given output "
 		             "buffer (input size = %d, maximum output size = %d, "
-		             "required output size = %zd + %d + %d = %d)\n",
+		             "required output size = %zd + %d + %d = %zd)\n",
 		             rohc_get_packet_descr(packet_type), isize, osize,
 		             feedbacks_size, rohc_hdr_size, payload_size,
 		             feedbacks_size + rohc_hdr_size + payload_size);
