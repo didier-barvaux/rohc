@@ -735,8 +735,9 @@ void change_mode(struct c_context *const context, const rohc_mode new_mode)
 	if(context->mode != new_mode)
 	{
 		/* change mode and go back to IR state */
-		rohc_comp_debug(context, "change from mode %d to mode %d\n",
-		                context->mode, new_mode);
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %d: change from mode %d to mode %d\n",
+		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
 		change_state(context, IR);
 	}
@@ -757,8 +758,9 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
 
 	if(context->state != new_state)
 	{
-		rohc_comp_debug(context, "change from state %d to state %d\n",
-		                context->state, new_state);
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %d: change from state %d to state %d\n",
+		          context->cid, context->state, new_state);
 
 		/* reset counters */
 		g_context->ir_count = 0;
@@ -1131,8 +1133,9 @@ void c_generic_feedback(struct c_context *const context,
 			switch(feedback->acktype)
 			{
 				case ACK:
-					rohc_comp_debug(context, "ACK received (SN = 0x%08x, "
-					                "SN-not-valid = %u)\n", sn, sn_not_valid);
+					rohc_comp_debug(context, "ACK received (CID = %d, SN = 0x%08x, "
+					                "SN-not-valid = %u)\n", feedback->cid, sn,
+					                sn_not_valid);
 					if(sn_not_valid == 0)
 					{
 						/* ack outer/inner IP-ID only if IPv4, but always ack SN */
@@ -1151,7 +1154,8 @@ void c_generic_feedback(struct c_context *const context,
 
 				case NACK:
 					rohc_info(context->compressor, ROHC_TRACE_COMP,
-					          context->profile->id, "NACK received\n");
+					          context->profile->id, "NACK received for CID %d\n",
+					          feedback->cid);
 					if(context->state == SO)
 					{
 						change_state(context, FO);
@@ -1160,7 +1164,8 @@ void c_generic_feedback(struct c_context *const context,
 
 				case STATIC_NACK:
 					rohc_info(context->compressor, ROHC_TRACE_COMP,
-					          context->profile->id, "STATIC-NACK received\n");
+					          context->profile->id, "STATIC-NACK received "
+					          "for CID %d\n", feedback->cid);
 					change_state(context, IR);
 					break;
 
@@ -1216,14 +1221,16 @@ void periodic_down_transition(struct c_context *context)
 	if(g_context->go_back_fo_count >=
 	   context->compressor->periodic_refreshes_fo_timeout)
 	{
-		rohc_comp_debug(context, "periodic change to FO state\n");
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %d: periodic change to FO state\n", context->cid);
 		g_context->go_back_fo_count = 0;
 		change_state(context, FO);
 	}
 	else if(g_context->go_back_ir_count >=
 	        context->compressor->periodic_refreshes_ir_timeout)
 	{
-		rohc_comp_debug(context, "periodic change to IR state\n");
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "CID %d: periodic change to IR state\n", context->cid);
 		g_context->go_back_ir_count = 0;
 		change_state(context, IR);
 	}
@@ -1269,15 +1276,15 @@ void decide_state(struct c_context *const context)
 		}
 		else if(g_context->tmp.send_dynamic)
 		{
-			rohc_comp_debug(context, "no STATIC field, but %d DYNAMIC fields "
-			                "changed now or in the last few packets, so go in "
-			                "FO state\n", g_context->tmp.send_dynamic);
+			rohc_comp_debug(context, "no STATIC field changed, but %d DYNAMIC "
+			                "fields changed now or in the last few packets, so "
+			                "go to FO state\n", g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so go in SO state\n");
+			                "the last few packets, so go to SO state\n");
 			next_state = SO;
 		}
 	}
@@ -1294,7 +1301,7 @@ void decide_state(struct c_context *const context)
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so go in SO state\n");
+			                "the last few packets, so go to SO state\n");
 			next_state = SO;
 		}
 	}
@@ -1303,7 +1310,7 @@ void decide_state(struct c_context *const context)
 		if(g_context->tmp.send_static || g_context->tmp.send_dynamic)
 		{
 			rohc_comp_debug(context, "%d STATIC and %d DYNAMIC fields changed "
-			                "now or in the last few packets, so go in FO "
+			                "now or in the last few packets, so go back to FO "
 			                "state\n", g_context->tmp.send_static,
 			                g_context->tmp.send_dynamic);
 			next_state = FO;

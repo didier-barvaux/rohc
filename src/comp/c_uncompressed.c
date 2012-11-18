@@ -346,16 +346,15 @@ static void c_uncompressed_feedback(struct c_context *const context,
 		}
 
 		/* change mode if present in feedback */
-		if(mode != 0)
+		if(mode != 0 && mode != context->mode)
 		{
+			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			          "mode change (%d -> %d) requested by feedback for CID %d\n",
+			          context->mode, mode, context->profile->id);
+
 			/* mode can be changed only if feedback is protected by a CRC */
 			if(is_crc_used == true)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id,
-				             "mode change (%d -> %d) requested by feedback "
-				             "for CID %d\n", context->mode, mode,
-				             context->profile->id);
 				uncompressed_change_mode(context, mode);
 			}
 			else
