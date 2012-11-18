@@ -1013,6 +1013,12 @@ void c_generic_feedback(struct c_context *const context,
 	                     in the feedback packet */
 	uint32_t sn;
 
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	assert(context->used == 1);
+	assert(feedback != NULL);
+	assert(feedback->data != NULL);
+
 	g_context = (struct c_generic_context *) context->specific;
 	p = feedback->data + feedback->specific_offset;
 
@@ -1102,15 +1108,16 @@ void c_generic_feedback(struct c_context *const context,
 			}
 
 			/* change mode if present in feedback */
-			if(mode != 0)
+			if(mode != 0 && mode != context->mode)
 			{
+				rohc_info(context->compressor, ROHC_TRACE_COMP,
+				          context->profile->id, "mode change (%d -> %d) "
+				          "requested by feedback for CID %d\n",
+				          context->mode, mode, context->profile->id);
+
 				/* mode can be changed only if feedback is protected by a CRC */
 				if(is_crc_used == true)
 				{
-					rohc_info(context->compressor, ROHC_TRACE_COMP,
-					          context->profile->id, "mode change (%d -> %d) "
-					          "requested by feedback for CID %d\n",
-					          context->mode, mode, context->profile->id);
 					change_mode(context, mode);
 				}
 				else

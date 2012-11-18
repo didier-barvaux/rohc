@@ -1002,7 +1002,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-			                           NO_CRC, NULL /* CRC table not required */,
+			                           WITH_CRC, decomp->crc_table_8,
 			                           &feedbacksize);
 			if(feedback == NULL)
 			{
@@ -1032,9 +1032,9 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 			switch(context->state)
 			{
 				case NO_CONTEXT:
-					/* create a STATIC NACK feedback */
+					/* create a STATIC-NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					          "send a STATIC-NACK feedback\n");
+					          "send a STATIC-NACK feedback for CID %d\n", cid);
 					ret = f_feedback2(ACKTYPE_STATIC_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
@@ -1071,7 +1071,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				case FULL_CONTEXT:
 					/* create a NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					          "send a NACK feedback\n");
+					          "send a NACK feedback for CID %d\n", cid);
 					ret = f_feedback2(ACKTYPE_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
