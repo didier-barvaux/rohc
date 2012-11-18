@@ -135,6 +135,19 @@ struct rohc_comp
 	size_t feedbacks_next;
 
 
+	/* segment-related variables */
+
+/** The maximal value for MRRU */
+#define ROHC_MAX_MRRU 65535
+	/** The remaining bytes of the Reconstructed Reception Unit (RRU) waiting
+	 *  to be split into segments */
+	unsigned char rru[ROHC_MAX_MRRU];
+	/** The offset of the remaining bytes in the RRU buffer */
+	size_t rru_off;
+	/** The number of the remaining bytes in the RRU buffer */
+	size_t rru_len;
+
+
 	/* variables related to RTP detection */
 
 /** The maximal number of RTP ports (shall be > 2) */
@@ -180,7 +193,7 @@ struct rohc_comp
 	 *  before changing back the state to FO (periodic refreshes) */
 	size_t periodic_refreshes_fo_timeout;
 	/** Maximum Reconstructed Reception Unit (currently not used) */
-	int mrru;
+	size_t mrru;
 	/** Maximum header size that will be compressed (currently not used) */
 	int max_header_size;
 	/** The connection type (currently not used) */

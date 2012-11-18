@@ -559,12 +559,13 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long long *time_elapsed)
 {
 	unsigned char *ip_packet;
-	unsigned int ip_size;
+	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	int rohc_size;
+	size_t rohc_size;
 	unsigned long long start_tics;
 	unsigned long long end_tics;
 	int is_failure = 1;
+	int ret;
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
@@ -611,7 +612,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 		/* update the length of the IP packet if padding is present */
 		if(tot_len < ip_size)
 		{
-			fprintf(stderr, "packet %lu: the Ethernet frame has %u "
+			fprintf(stderr, "packet %lu: the Ethernet frame has %zd "
 			        "bytes of padding after the %u-byte IP packet!\n",
 			        num_packet, ip_size - tot_len, tot_len);
 			ip_size = tot_len;
@@ -622,14 +623,14 @@ static int time_compress_packet(struct rohc_comp *comp,
 	GET_CPU_TICS(start_tics);
 
 	/* compress the packet */
-	rohc_size = rohc_compress(comp, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
+	ret = rohc_compress2(comp, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 
 	/* get CPU tics after compression */
 	GET_CPU_TICS(end_tics);
 
 	/* stop performance test if compression failed */
-	if(rohc_size <= 0)
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "packet %lu: compression failed\n", num_packet);
 		goto error;

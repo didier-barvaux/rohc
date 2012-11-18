@@ -292,11 +292,12 @@ static int test_comp_and_decomp(const char *filename)
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		unsigned char *ip_packet;
-		int ip_size;
+		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		int rohc_size;
+		size_t rohc_size;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
+		int ret;
 
 		counter++;
 
@@ -318,7 +319,7 @@ static int test_comp_and_decomp(const char *filename)
 		if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 		{
 			int version;
-			int tot_len;
+			size_t tot_len;
 
 			version = (ip_packet[0] >> 4) & 0x0f;
 
@@ -335,17 +336,17 @@ static int test_comp_and_decomp(const char *filename)
 
 			if(tot_len < ip_size)
 			{
-				fprintf(stderr, "the Ethernet frame has %d bytes of padding "
-				        "after the %d byte IP packet!\n", ip_size - tot_len,
+				fprintf(stderr, "the Ethernet frame has %zd bytes of padding "
+				        "after the %zd byte IP packet!\n", ip_size - tot_len,
 				        tot_len);
 				ip_size = tot_len;
 			}
 		}
 
 		/* compress the IP packet */
-		rohc_size = rohc_compress(comp, ip_packet, ip_size,
-		                          rohc_packet, MAX_ROHC_SIZE);
-		if(rohc_size <= 0)
+		ret = rohc_compress2(comp, ip_packet, ip_size,
+		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;

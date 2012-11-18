@@ -216,7 +216,23 @@ int ROHC_EXPORT rohc_compress(struct rohc_comp *comp,
                               unsigned char *ibuf,
                               int isize,
                               unsigned char *obuf,
-                              int osize);
+                              int osize)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_compress2() instead");
+
+int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
+                               const unsigned char *const uncomp_packet,
+                               const size_t uncomp_packet_len,
+                               unsigned char *const rohc_packet,
+                               const size_t rohc_packet_max_len,
+                               size_t *const rohc_packet_len)
+	__attribute__((nonnull(1, 2, 4, 6), warn_unused_result));
+
+int ROHC_EXPORT rohc_comp_get_segment(struct rohc_comp *const comp,
+                                      unsigned char *const segment,
+                                      const size_t max_len,
+                                      size_t *const len)
+	__attribute__((nonnull(1, 2, 4), warn_unused_result));
 
 
 /*
@@ -229,7 +245,14 @@ int ROHC_EXPORT rohc_c_using_small_cid(struct rohc_comp *comp);
 void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile);
 
 void ROHC_EXPORT rohc_c_set_header(struct rohc_comp *compressor, int value);
-void ROHC_EXPORT rohc_c_set_mrru(struct rohc_comp *compressor, int value);
+
+void ROHC_EXPORT rohc_c_set_mrru(struct rohc_comp *compressor, int value)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_set_mrru() instead");
+bool ROHC_EXPORT rohc_comp_set_mrru(struct rohc_comp *const comp,
+                                    const size_t mrru)
+	__attribute__((nonnull(1), warn_unused_result));
+
 void ROHC_EXPORT rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
 void ROHC_EXPORT rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
 void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value);

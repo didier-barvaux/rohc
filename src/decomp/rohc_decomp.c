@@ -31,6 +31,7 @@
 #include "rohc_traces_internal.h"
 #include "rohc_time.h"
 #include "rohc_utils.h"
+#include "rohc_bit_ops.h"
 #include "rohc_debug.h"
 #include "feedback.h"
 #include "wlsb.h"
@@ -348,6 +349,11 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	decomp->okval = 12;
 	decomp->curval = 0;
 
+	/* no Reconstructed Reception Unit (RRU) at the moment */
+	decomp->rru_len = 0;
+	/* no segmentation by default */
+	decomp->mrru = 0;
+
 	/* init the tables for fast CRC computation */
 	is_fine = rohc_crc_init_table(decomp->crc_table_2, ROHC_CRC_TYPE_2);
 	if(is_fine != true)
@@ -536,6 +542,13 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			           "packet contains only feedback data, no compressed data\n");
 			break;
 
+		case ROHC_NON_FINAL_SEGMENT:
+			/* no feedback to send at all */
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "packet contains a non-final segment, no data to "
+			           "decompress yet\n");
+			break;
+
 		case ROHC_ERROR_CRC:
 			decomp->stats.failed_crc++;
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -683,6 +696,87 @@ int d_decode_header(struct rohc_decomp *decomp,
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "feedback-only packet, stop decompression\n");
 		return ROHC_FEEDBACK_ONLY;
+	}
+
+	/* ROHC segment? */
+	if(d_is_segment(walk))
+	{
+		const bool is_final = !!GET_REAL(GET_BIT_0(walk));
+		uint32_t crc_computed;
+
+		/* skip the segment type byte */
+		walk++;
+		isize--;
+
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "ROHC packet is a %d-byte %s segment\n", isize,
+		           is_final ? "final" : "non-final");
+
+		/* store all the remaining ROHC data in RRU */
+		if((decomp->rru_len + isize) > decomp->mrru)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "invalid RRU: received segment is too large for MRRU "
+			             "(%zd bytes already received, %d bytes received, "
+			             "MRRU = %zd bytes\n", decomp->rru_len, isize,
+			             decomp->mrru);
+			/* dicard RRU */
+			decomp->rru_len = 0;
+			return ROHC_ERROR;
+		}
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "append new segment to the %zd bytes we already received\n",
+		           decomp->rru_len);
+		memcpy(decomp->rru + decomp->rru_len, walk, isize);
+		decomp->rru_len += isize;
+
+		/* stop decoding here is not final segment */
+		if(!is_final)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "%zd bytes of RRU already received, wait for more "
+			           "segments before decompressing RRU\n", decomp->rru_len);
+			return ROHC_NON_FINAL_SEGMENT;
+		}
+
+		/* final segment received, let's check CRC */
+		if(decomp->rru_len <= 4)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "invalid %zd-byte RRU: should be more than 4-byte "
+			             "long\n", decomp->rru_len);
+			/* discard RRU */
+			decomp->rru_len = 0;
+			return ROHC_ERROR;
+		}
+		decomp->rru_len -= 4;
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "final segment received, check the 4-byte CRC of the "
+		           "%zd-byte RRU\n", decomp->rru_len);
+		crc_computed = crc_calc_fcs32(decomp->rru, decomp->rru_len,
+		                              CRC_INIT_FCS32);
+		if(memcmp(&crc_computed, decomp->rru + decomp->rru_len, 4) != 0)
+		{
+			uint32_t crc_packet;
+			memcpy(&crc_packet, decomp->rru + decomp->rru_len, 4);
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "invalid %zd-byte RRU: bad CRC (packet = 0x%08x, "
+			             "computed = 0x%08x)\n", decomp->rru_len,
+			             ntohl(crc_packet), ntohl(crc_computed));
+			/* discard RRU */
+			decomp->rru_len = 0;
+			return ROHC_ERROR_CRC;
+		}
+
+		/* CRC of segment is OK, let's decode RRU */
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "final segment received, decode the %zd-byte RRU\n",
+		           decomp->rru_len);
+		walk = decomp->rru;
+		isize = decomp->rru_len;
+
+		/* reset context for next RRU */
+		decomp->rru_len = 0;
 	}
 
 	/* decode small or large CID */
@@ -1607,7 +1701,7 @@ bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 		max_possible_cid = ROHC_LARGE_CID_MAX;
 	}
 
-	/* new MAX_CID value must not be in range [0, max_possible_cid] */
+	/* new MAX_CID value must be in range [0, max_possible_cid] */
 	if(max_cid > max_possible_cid)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -1641,6 +1735,55 @@ bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "MAX_CID is now set to %d\n", decomp->medium.max_cid);
 	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * The MRRU value must be in range [0 ; ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
+ *
+ * If set to 0, segmentation is disabled as no segment headers are allowed
+ * on the channel. Every received segment will be dropped.
+ *
+ * @warning Changing the MRRU value while library is used may lead to
+ *          destruction of the current RRU.
+ *
+ * @param decomp  The ROHC decompressor
+ * @param mrru    The new MRRU value
+ * @return        true if the MRRU was successfully set, false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
+                          const size_t mrru)
+{
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* new MRRU value must be in range [0, ROHC_MAX_MRRU] */
+	if(mrru > ROHC_MAX_MRRU)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unexpected MRRU value: must be in range [0, %d]\n",
+		             ROHC_MAX_MRRU);
+		goto error;
+	}
+
+	/* set new MRRU */
+	decomp->mrru = mrru;
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "MRRU is now set to %zd\n", decomp->mrru);
 
 	return true;
 

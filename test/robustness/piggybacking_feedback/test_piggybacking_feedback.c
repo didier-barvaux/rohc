@@ -156,7 +156,7 @@ static void usage(void)
  * @return  0 in case of success,
  *          1 in case of failure
  */
-static int test_comp_and_decomp()
+static int test_comp_and_decomp(void)
 {
 	/* compressors and decompressors used during the test */
 	struct rohc_comp *compA;
@@ -167,9 +167,9 @@ static int test_comp_and_decomp()
 	/* original IP packet, ROHC packet and decompressed IP packet */
 	struct ipv4_hdr *ip_header;
 	unsigned char ip_packet[MAX_ROHC_SIZE];
-	int ip_size;
+	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	int rohc_size;
+	size_t rohc_size;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
 	int decomp_size;
 
@@ -182,6 +182,7 @@ static int test_comp_and_decomp()
 
 	unsigned int i;
 	int is_failure = 1;
+	int ret;
 
 /** The payload for the fake IP packet */
 #define FAKE_PAYLOAD "hello, ROHC world!"
@@ -346,9 +347,9 @@ static int test_comp_and_decomp()
 	fprintf(stderr, "IP packet successfully built\n");
 
 	/* compress the IP packet with the ROHC compressor A */
-	rohc_size = rohc_compress(compA, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
-	if(rohc_size <= 0)
+	ret = rohc_compress2(compA, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor A\n");
 		goto destroy_decompB;
@@ -370,9 +371,9 @@ static int test_comp_and_decomp()
 	 * shall try to put in the ROHC packet the feedback data delivered by
 	 * decompressor A but it shall not lose feedback data when the compression
 	 * fails */
-	rohc_size = rohc_compress(compB, ip_packet, ip_size,
-	                          rohc_packet, 5);
-	if(rohc_size > 0)
+	ret = rohc_compress2(compB, ip_packet, ip_size,
+	                     rohc_packet, 1, &rohc_size);
+	if(ret == ROHC_OK)
 	{
 		fprintf(stderr, "succeeded to compress IP packet with compressor B\n");
 		goto destroy_decompB;
@@ -381,9 +382,9 @@ static int test_comp_and_decomp()
 
 	/* compress the IP packet with the ROHC compressor B: feedback data
 	 * delivered by decompressor A shall be piggybacked */
-	rohc_size = rohc_compress(compB, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
-	if(rohc_size <= 0)
+	ret = rohc_compress2(compB, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor B\n");
 		goto destroy_decompB;
@@ -471,8 +472,16 @@ static void print_rohc_traces(const rohc_trace_level_t level,
                               const char *const format,
                               ...)
 {
+	const char *level_descrs[] =
+	{
+		[ROHC_TRACE_DEBUG]   = "DEBUG",
+		[ROHC_TRACE_INFO]    = "INFO",
+		[ROHC_TRACE_WARNING] = "WARNING",
+		[ROHC_TRACE_ERROR]   = "ERROR"
+	};
 	va_list args;
 
+	fprintf(stdout, "[%s] ", level_descrs[level]);
 	va_start(args, format);
 	vfprintf(stdout, format, args);
 	va_end(args);

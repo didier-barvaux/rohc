@@ -105,14 +105,16 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_decomp *decomp,
                                struct pcap_pkthdr header,
                                unsigned char *packet,
-                               int link_len_src,
-                               int use_large_cid,
+                               size_t link_len_src,
+                               bool use_large_cid,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
                                unsigned int *const cid);
 
-static int compare_packets(unsigned char *pkt1, int pkt1_size,
-                           unsigned char *pkt2, int pkt2_size);
+static int compare_packets(const unsigned char *const pkt1,
+                           const size_t pkt1_size,
+                           const unsigned char *const pkt2,
+                           const size_t pkt2_size);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -649,17 +651,17 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_decomp *decomp,
                                struct pcap_pkthdr header,
                                unsigned char *packet,
-                               int link_len_src,
-                               int use_large_cid,
+                               size_t link_len_src,
+                               bool use_large_cid,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
                                unsigned int *const cid)
 {
 	unsigned char *ip_packet;
-	int ip_size;
+	size_t ip_size;
 	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
 	unsigned char *rohc_packet;
-	int rohc_size;
+	size_t rohc_size;
 	rohc_comp_last_packet_info2_t last_packet_info;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
 	int decomp_size;
@@ -682,7 +684,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 	{
 		int version;
-		int tot_len;
+		size_t tot_len;
 
 		version = (ip_packet[0] >> 4) & 0x0f;
 
@@ -699,16 +701,16 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		if(tot_len < ip_size)
 		{
-			fprintf(stderr, "the Ethernet frame has %d bytes of padding after "
-			        "the %d byte IP packet!\n", ip_size - tot_len, tot_len);
+			fprintf(stderr, "the Ethernet frame has %zd bytes of padding after "
+			        "the %zd byte IP packet!\n", ip_size - tot_len, tot_len);
 			ip_size = tot_len;
 		}
 	}
 
 	/* compress the IP packet */
-	rohc_size = rohc_compress(comp, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
-	if(rohc_size <= 0)
+	ret = rohc_compress2(comp, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	if(ret != ROHC_OK)
 	{
 		pcap_dumper_t *dumper;
 
@@ -739,8 +741,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* get some statistics about the last compressed packet */
 	last_packet_info.version_major = 0;
 	last_packet_info.version_minor = 0;
-	ret = rohc_comp_get_last_packet_info2(comp, &last_packet_info);
-	if(ret != ROHC_OK)
+	if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
 	{
 		fprintf(stderr, "failed to get compression info\n");
 		ret = -4;
@@ -822,11 +823,13 @@ error:
  * @param pkt2_size The size of the second packet
  * @return          Whether the packets are equal or not
  */
-static int compare_packets(unsigned char *pkt1, int pkt1_size,
-                           unsigned char *pkt2, int pkt2_size)
+static int compare_packets(const unsigned char *const pkt1,
+                           const size_t pkt1_size,
+                           const unsigned char *const pkt2,
+                           const size_t pkt2_size)
 {
 	int valid = 1;
-	int min_size;
+	size_t min_size;
 	int i, j, k;
 	char str1[4][7], str2[4][7];
 	char sep1, sep2;
@@ -851,7 +854,7 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 
 	if(pkt1_size != pkt2_size)
 	{
-		printf("packets have different sizes (%d != %d), compare only the %d "
+		printf("packets have different sizes (%zd != %zd), compare only the %zd "
 		       "first bytes\n", pkt1_size, pkt2_size, min_size);
 	}
 

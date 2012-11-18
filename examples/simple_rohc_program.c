@@ -70,14 +70,15 @@ int main(int argc, char **argv)
 	struct rohc_comp *compressor;           /* the ROHC compressor */
 	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
 	                                           the IPv4 packet to compress */
-	unsigned int ip_packet_len;             /* the length (in bytes) of the
+	size_t ip_packet_len;                   /* the length (in bytes) of the
 	                                           IPv4 packet */
 	unsigned char rohc_packet[BUFFER_SIZE]; /* the buffer that will contain
 	                                           the resulting ROHC packet */
-	int rohc_packet_len;                    /* the length (in bytes) of the
+	size_t rohc_packet_len;                 /* the length (in bytes) of the
 	                                           resulting ROHC packet */
 	unsigned int seed;
-	unsigned int i;
+	size_t i;
+	int ret;
 
 	/* initialize the random generator */
 	seed = time(NULL);
@@ -167,10 +168,10 @@ int main(int argc, char **argv)
 	 * for details about rohc_compress in the API documentation.
 	 */
 	printf("\ncompress the fake IP packet\n");
-	rohc_packet_len = rohc_compress(compressor,
-	                                ip_packet, ip_packet_len,
-	                                rohc_packet, BUFFER_SIZE);
-	if(rohc_packet_len <= 0)
+	ret = rohc_compress2(compressor,
+	                     ip_packet, ip_packet_len,
+	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "compression of fake IP packet failed\n");
 		goto release_compressor;
@@ -179,7 +180,7 @@ int main(int argc, char **argv)
 
 	/* dump the ROHC packet on terminal */
 	printf("\nROHC packet resulting from the ROHC compression:\n");
-	for(i = 0; i < ((unsigned int) rohc_packet_len); i++)
+	for(i = 0; i < rohc_packet_len; i++)
 	{
 		printf("0x%02x ", rohc_packet[i]);
 		if(i != 0 && ((i + 1) % 8) == 0)

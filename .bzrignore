@@ -51,6 +51,8 @@ test_*.sh.log
 ./test/functional/rtp_detection/test_rtp_ports.exe
 ./test/functional/rtp_detection/test_rtp_callback
 ./test/functional/rtp_detection/test_rtp_callback.exe
+./test/functional/segment/test_segment
+./test/functional/segment/test_segment.exe
 ./test/robustness/empty_payload/test_empty_payload
 ./test/robustness/empty_payload/test_empty_payload.exe
 ./test/robustness/damaged_packet/test_damaged_packet

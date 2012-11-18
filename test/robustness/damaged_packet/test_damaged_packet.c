@@ -357,12 +357,13 @@ static int test_comp_and_decomp(const char *const filename,
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		unsigned char *ip_packet;
-		int ip_size;
+		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		int rohc_size;
+		size_t rohc_size;
 		rohc_comp_last_packet_info2_t packet_info;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
+		int ret;
 
 		counter++;
 
@@ -412,9 +413,9 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		rohc_size = rohc_compress(comp, ip_packet, ip_size,
-		                          rohc_packet, MAX_ROHC_SIZE);
-		if(rohc_size <= 0)
+		ret = rohc_compress2(comp, ip_packet, ip_size,
+		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -450,8 +451,9 @@ static int test_comp_and_decomp(const char *const filename,
 			assert(rohc_size >= 1);
 			old_byte = rohc_packet[rohc_size - 1];
 			rohc_packet[rohc_size - 1] ^= rand() & 0xff;
-			fprintf(stderr, "\tvoluntary damage packet (change byte #%d from 0x%02x "
-			        "to 0x%02x)\n", rohc_size, old_byte, rohc_packet[rohc_size - 1]);
+			fprintf(stderr, "\tvoluntary damage packet (change byte #%zd from "
+			        "0x%02x to 0x%02x)\n", rohc_size, old_byte,
+			        rohc_packet[rohc_size - 1]);
 		}
 		else
 		{

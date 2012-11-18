@@ -165,6 +165,10 @@
 #define ROHC_ERROR                 -5
 /// Return code: the packet needs to be parsed again
 #define ROHC_NEED_REPARSE          -6
+/// Return code: the packet needs to be segmented
+#define ROHC_NEED_SEGMENT          -7
+/// Return code: the action failed because the packet is a non-final segment
+#define ROHC_NON_FINAL_SEGMENT     -8
 
 
 /**

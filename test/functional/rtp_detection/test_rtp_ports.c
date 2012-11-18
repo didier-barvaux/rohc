@@ -406,9 +406,9 @@ static int compress_and_check(struct rohc_comp *comp,
                               int profile_expected)
 {
 	unsigned char *ip_packet;
-	int ip_size;
+	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	int rohc_size;
+	size_t rohc_size;
 	int is_failure = 1;
 	int ret;
 
@@ -456,26 +456,26 @@ static int compress_and_check(struct rohc_comp *comp,
 		/* update the length of the IP packet if padding is present */
 		if(tot_len < ip_size)
 		{
-			fprintf(stderr, "packet #%d: the Ethernet frame has %u bytes "
+			fprintf(stderr, "packet #%d: the Ethernet frame has %zd bytes "
 			        "of padding after the %u-byte IP packet!\n",
 			        packet_counter, ip_size - tot_len, tot_len);
 			ip_size = tot_len;
 		}
 	}
 
-	rohc_size = rohc_compress(comp, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
+	ret = rohc_compress2(comp, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 
-	/* check the compression result against expected one */ 
-	if(success_expected && rohc_size <= 0)
+	/* check the compression result against expected one */
+	if(success_expected && ret != ROHC_OK)
 	{
-		fprintf(stderr, "packet #%d: failed to compress one %d-byte IP packet\n",
+		fprintf(stderr, "packet #%d: failed to compress one %zd-byte IP packet\n",
 		        packet_counter, ip_size);
 		goto error;
 	}
-	else if(!success_expected && rohc_size > 0)
+	else if(!success_expected && ret != ROHC_ERROR)
 	{
-		fprintf(stderr, "packet #%d: compress successfully one %d-byte IP packet "
+		fprintf(stderr, "packet #%d: compress successfully one %zd-byte IP packet "
 		        "while it should have failed\n", packet_counter, ip_size);
 		goto error;
 	}

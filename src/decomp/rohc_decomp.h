@@ -96,6 +96,18 @@ struct rohc_decomp
 	int curval;
 
 
+	/* segment-related variables */
+
+/** The maximal value for MRRU */
+#define ROHC_MAX_MRRU 65535
+	/** The Reconstructed Reception Unit */
+	unsigned char rru[ROHC_MAX_MRRU];
+	/** The length (in bytes) of the Reconstructed Reception Unit */
+	size_t rru_len;
+	/** The Maximum Reconstructed Reception Unit (MRRU) */
+	size_t mrru;
+
+
 	/* CRC-related variables: */
 
 	/** The table to enable fast CRC-2 computation */
@@ -275,6 +287,10 @@ bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
 
 bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                              const size_t max_cid)
+	__attribute__((nonnull(1), warn_unused_result));
+
+bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
+                          const size_t mrru)
 	__attribute__((nonnull(1), warn_unused_result));
 
 bool rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,

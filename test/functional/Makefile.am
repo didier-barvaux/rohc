@@ -10,5 +10,6 @@ SUBDIRS = \
 	decompress_feedback_only \
 	context_reuse \
 	rtp_uor2_disambiguation \
-	rtp_detection
+	rtp_detection \
+	segment
 

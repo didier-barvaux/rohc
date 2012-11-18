@@ -171,7 +171,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->enabled = 1;
 	comp->medium.max_cid = max_cid;
 	comp->medium.cid_type = ROHC_SMALL_CID;
-	comp->mrru = 0;
+	comp->mrru = 0; /* no segmentation by default */
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
@@ -437,6 +437,9 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
 /**
  * @brief Compress a ROHC packet.
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_compress2() instead
+ *
  * @param comp   The ROHC compressor
  * @param ibuf   The uncompressed packet to compress
  * @param isize  The size of the uncompressed packet
@@ -447,8 +450,63 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
  *
  * @ingroup rohc_comp
  */
-int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
-                  unsigned char *obuf, int osize)
+int rohc_compress(struct rohc_comp *comp,
+                  unsigned char *ibuf,
+                  int isize,
+                  unsigned char *obuf,
+                  int osize)
+{
+	size_t rohc_len;
+	int code;
+
+	if(isize <= 0 || osize <= 0)
+	{
+		goto error;
+	}
+
+	/* use the new function to keep API compatibility */
+	code = rohc_compress2(comp, ibuf, isize, obuf, osize, &rohc_len);
+	if(code != ROHC_OK)
+	{
+		/* compression failed */
+		goto error;
+	}
+
+	/* compression succeeded */
+	return rohc_len;
+
+error:
+	return 0;
+}
+
+
+/**
+ * @brief Compress a ROHC packet
+ *
+ * May return a full ROHC packet, or a segment of a ROHC packet if the output
+ * buffer was too small for the ROHC packet or if MRRU was exceeded. Use the
+ * rohc_comp_get_segment function to retrieve next ROHC segments.
+ *
+ * @param comp                 The ROHC compressor
+ * @param uncomp_packet        The uncompressed packet to compress
+ * @param uncomp_packet_len    The size of the uncompressed packet
+ * @param rohc_packet          The buffer where to store the ROHC packet
+ * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
+ *                             for the ROHC packet
+ * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
+ * @return                     \li ROHC_OK if a ROHC packed is returned
+ *                             \li ROHC_NEED_SEGMENT if no compressed data is
+ *                                 returned and segmentation required
+ *                             \li ROHC_ERROR if an error occurred
+ *
+ * @ingroup rohc_comp
+ */
+int rohc_compress2(struct rohc_comp *const comp,
+                   const unsigned char *const uncomp_packet,
+                   const size_t uncomp_packet_len,
+                   unsigned char *const rohc_packet,
+                   const size_t rohc_packet_max_len,
+                   size_t *const rohc_packet_len)
 {
 	struct ip_packet ip;
 	struct ip_packet ip2;
@@ -457,29 +515,42 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	const struct ip_packet *inner_ip;
 	const struct c_profile *p;
 	struct c_context *c;
-	size_t feedbacks_size;
-	int feedback_size;
-	int payload_size;
-	int payload_offset;
 	rohc_packet_t packet_type;
-	size_t rohc_tot_size;
-	int rohc_hdr_size;
 	const unsigned char *ip_raw_data;
 
-	/* check compressor validity */
-	if(comp == NULL)
+	/* ROHC feedbacks */
+	size_t feedbacks_size;
+	int feedback_size;
+
+	/* ROHC header */
+	unsigned char *rohc_hdr;
+	int rohc_hdr_size;
+
+	/* ROHC payload */
+	unsigned char *rohc_payload;
+	size_t payload_size;
+	int payload_offset;
+
+	int status = ROHC_ERROR; /* error status by default */
+
+	/* check inputs validity */
+	if(comp == NULL ||
+	   uncomp_packet == NULL ||
+	   uncomp_packet_len <= 0 ||
+	   rohc_packet == NULL ||
+	   rohc_packet_max_len <= 0 ||
+	   rohc_packet_len == NULL)
 	{
-		/* compressor not valid */
 		goto error;
 	}
 
 	/* print uncompressed bytes */
 	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
 	                 "uncompressed data, max 100 bytes",
-	                 ibuf, rohc_min(isize, 100));
+	                 uncomp_packet, rohc_min(uncomp_packet_len, 100));
 
 	/* create the IP packet from raw data */
-	if(!ip_create(&ip, ibuf, isize))
+	if(!ip_create(&ip, uncomp_packet, uncomp_packet_len))
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "cannot create the outer IP header\n");
@@ -487,7 +558,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	}
 	outer_ip = &ip;
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "size of uncompressed packet = %d bytes\n", isize);
+	           "size of uncompressed packet = %zd bytes\n", uncomp_packet_len);
 
 	/* get the transport protocol in the IP packet (skip the second IP header
 	 * if present) */
@@ -513,6 +584,7 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		/* there is only one IP header, there is no inner IP header */
 		inner_ip = NULL;
 	}
+	ip_raw_data = ip_get_raw_data(outer_ip);
 
 	/* find the best profile for the packet */
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -583,26 +655,30 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 	c->latest_used = get_milliseconds();
 
 	/* create the ROHC packet: */
-	rohc_tot_size = 0;
+	*rohc_packet_len = 0;
 
 	/* 1. add feedback */
 	feedbacks_size = 0;
 	do
 	{
-		feedback_size = rohc_feedback_get(comp, obuf, osize - rohc_tot_size);
+		feedback_size = rohc_feedback_get(comp, rohc_packet + feedbacks_size,
+		                                  rohc_packet_max_len - (*rohc_packet_len));
 		if(feedback_size > 0)
 		{
-			obuf += feedback_size;
-			rohc_tot_size += feedback_size;
 			feedbacks_size += feedback_size;
 		}
 	}
 	while(feedback_size > 0);
 
+	/* the ROHC header starts after the feedbacks */
+	rohc_hdr = rohc_packet + feedbacks_size;
+	*rohc_packet_len += feedbacks_size;
+
 	/* 2. use profile to compress packet */
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "compress the packet #%d\n", comp->num_packets + 1);
-	rohc_hdr_size = p->encode(c, outer_ip, isize, obuf, osize - rohc_tot_size,
+	rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
+	                          rohc_packet_max_len - (*rohc_packet_len),
 	                          &packet_type, &payload_offset);
 	if(rohc_hdr_size < 0)
 	{
@@ -647,8 +723,8 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 			goto error_unlock_feedbacks;
 		}
 
-		rohc_hdr_size = p->encode(c, outer_ip, isize, obuf,
-		                          osize - rohc_tot_size,
+		rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
+		                          rohc_packet_max_len - (*rohc_packet_len),
 		                          &packet_type, &payload_offset);
 		if(rohc_hdr_size < 0)
 		{
@@ -659,72 +735,140 @@ int rohc_compress(struct rohc_comp *comp, unsigned char *ibuf, int isize,
 		}
 	}
 
-	rohc_tot_size += rohc_hdr_size;
-	obuf += rohc_hdr_size;
-
+	/* the payload starts after the header */
+	rohc_payload = rohc_hdr + rohc_hdr_size;
+	*rohc_packet_len += rohc_hdr_size;
 	payload_size = ip_get_totlen(outer_ip) - payload_offset;
 
-	/* is packet too large? */
-	if((rohc_tot_size + payload_size) > osize)
+	/* is packet too large for output buffer? */
+	if(((*rohc_packet_len) + payload_size) > rohc_packet_max_len)
 	{
-		/* TODO: should use uncompressed profile */
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "ROHC packet of type '%s' is too large for the given output "
-		             "buffer (input size = %d, maximum output size = %d, "
-		             "required output size = %zd + %d + %d = %zd)\n",
-		             rohc_get_packet_descr(packet_type), isize, osize,
-		             feedbacks_size, rohc_hdr_size, payload_size,
-		             feedbacks_size + rohc_hdr_size + payload_size);
-		goto error_free_new_context;
+		uint32_t rru_crc;
+
+		/* resulting ROHC packet too large, segmentation may be a solution */
+		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		          "%s ROHC packet is too large for the given output buffer, "
+		          "try to segment it (input size = %zd, maximum output "
+		          "size = %zd, required output size = %zd + %d + %zd = %zd, "
+		          "MRRU = %zd)\n", rohc_get_packet_descr(packet_type),
+		          uncomp_packet_len, rohc_packet_max_len, feedbacks_size,
+		          rohc_hdr_size, payload_size, feedbacks_size + rohc_hdr_size +
+		          payload_size, comp->mrru);
+
+		/* in order to be segmented, a ROHC packet shall be <= MRRU
+		 * (remember that MRRU includes the CRC length) */
+		if(((*rohc_packet_len) + payload_size + CRC_FCS32_LEN) > comp->mrru)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "%s ROHC packet cannot be segmented: too large "
+			             "(%zd + %zd + %u = %zd bytes) for MRRU (%zd bytes)\n",
+			             rohc_get_packet_descr(packet_type), *rohc_packet_len,
+			             payload_size, CRC_FCS32_LEN, (*rohc_packet_len) +
+			             payload_size + CRC_FCS32_LEN, comp->mrru);
+			goto error_free_new_context;
+		}
+		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		          "%s ROHC packet can be segmented (MRRU = %zd)\n",
+		          rohc_get_packet_descr(packet_type), comp->mrru);
+
+		/* store the whole ROHC packet in compressor (headers and payload only,
+		 * not feedbacks, feedbacks will be transmitted with the first segment
+		 * when rohc_comp_get_segment() is called) */
+		if(comp->rru_len != 0)
+		{
+			/* warn users about previous, not yet retrieved RRU */
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "erase the existing %zd-byte RRU that was not "
+			             "retrieved yet (call rohc_comp_get_segment() to add "
+			             "support for ROHC segments in your application)\n",
+			             comp->rru_len);
+		}
+		comp->rru_len = 0;
+		comp->rru_off = 0;
+		/* ROHC header */
+		memcpy(comp->rru + comp->rru_off, rohc_hdr, rohc_hdr_size);
+		comp->rru_len += rohc_hdr_size;
+		/* ROHC payload */
+		memcpy(comp->rru + comp->rru_off + comp->rru_len,
+		       ip_raw_data + payload_offset, payload_size);
+		comp->rru_len += payload_size;
+		/* compute FCS-32 CRC over header and payload (optional feedbacks and
+		   the CRC field itself are excluded) */
+		rru_crc = crc_calc_fcs32(comp->rru + comp->rru_off, comp->rru_len,
+		                         CRC_INIT_FCS32);
+		memcpy(comp->rru + comp->rru_off + comp->rru_len, &rru_crc,
+		       CRC_FCS32_LEN);
+		comp->rru_len += CRC_FCS32_LEN;
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "RRU 32-bit FCS CRC = 0x%08x\n", ntohl(rru_crc));
+		/* computed RRU must be <= MRRU */
+		assert(comp->rru_len <= comp->mrru);
+
+		/* release locked feedbacks since there are not used for the moment */
+		if(rohc_feedback_unlock(comp) != true)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to remove locked feedbacks\n");
+			goto error_free_new_context;
+		}
+
+		/* report to users that segmentation is possible */
+		status = ROHC_NEED_SEGMENT;
 	}
-
-	/* copy payload to rohc packet */
-	ip_raw_data = ip_get_raw_data(outer_ip);
-	memcpy(obuf, ip_raw_data + payload_offset, payload_size);
-	obuf += payload_size;
-	rohc_tot_size += payload_size;
-
-	/* remove locked feedbacks since compression is successful */
-	if(rohc_feedback_remove_locked(comp) != true)
+	else
 	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to remove locked feedbacks\n");
-		goto error_free_new_context;
+		/* copy full payload after ROHC header */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "copy full %zd-byte payload\n", payload_size);
+		memcpy(rohc_payload, ip_raw_data + payload_offset, payload_size);
+		rohc_payload += payload_size;
+		*rohc_packet_len += payload_size;
+
+		/* remove locked feedbacks since compression is successful */
+		if(rohc_feedback_remove_locked(comp) != true)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to remove locked feedbacks\n");
+			goto error_free_new_context;
+		}
+
+		/* report to user that compression was successful */
+		status = ROHC_OK;
 	}
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	          "ROHC size = %zd bytes (feedbacks = %zd, header = %d, "
-	          "payload = %d), output buffer size = %d\n", rohc_tot_size,
-	          feedbacks_size, rohc_hdr_size, payload_size, osize);
+	          "payload = %zd), output buffer size = %zd\n", *rohc_packet_len,
+	          feedbacks_size, rohc_hdr_size, payload_size, rohc_packet_max_len);
 
 	/* update some statistics:
 	 *  - compressor statistics
 	 *  - context statistics (global + last packet + last 16 packets) */
 	comp->num_packets++;
-	comp->total_uncompressed_size += isize;
-	comp->total_compressed_size += rohc_tot_size;
+	comp->total_uncompressed_size += uncomp_packet_len;
+	comp->total_compressed_size += *rohc_packet_len;
 	comp->last_context = c;
 
 	c->packet_type = packet_type;
 
-	c->total_uncompressed_size += isize;
-	c->total_compressed_size += rohc_tot_size;
+	c->total_uncompressed_size += uncomp_packet_len;
+	c->total_compressed_size += *rohc_packet_len;
 	c->header_uncompressed_size += payload_offset;
 	c->header_compressed_size += rohc_hdr_size;
 	c->num_sent_packets++;
 
-	c->total_last_uncompressed_size = isize;
-	c->total_last_compressed_size = rohc_tot_size;
+	c->total_last_uncompressed_size = uncomp_packet_len;
+	c->total_last_compressed_size = *rohc_packet_len;
 	c->header_last_uncompressed_size = payload_offset;
 	c->header_last_compressed_size = rohc_hdr_size;
 
-	c_add_wlsb(c->total_16_uncompressed, 0, isize);
-	c_add_wlsb(c->total_16_compressed, 0, rohc_tot_size);
+	c_add_wlsb(c->total_16_uncompressed, 0, uncomp_packet_len);
+	c_add_wlsb(c->total_16_compressed, 0, *rohc_packet_len);
 	c_add_wlsb(c->header_16_uncompressed, 0, payload_offset);
 	c_add_wlsb(c->header_16_compressed, 0, rohc_hdr_size);
 
-	/* compression is successfully, return the size of the ROHC packet */
-	return rohc_tot_size;
+	/* compression is successful */
+	return status;
 
 error_free_new_context:
 	/* free context if it was just created */
@@ -741,7 +885,115 @@ error_unlock_feedbacks:
 		             "failed to unlock feedbacks\n");
 	}
 error:
-	return 0;
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Get the next ROHC segment if any
+ *
+ * To get all the segments of one ROHC packet, call this function until
+ * ROHC_SEGMENT_LAST is returned.
+ *
+ * @param comp     The ROHC compressor
+ * @param segment  The buffer where to store the ROHC segment
+ * @param max_len  The maximum length (in bytes) of the buffer for the
+ *                 ROHC segment
+ * @param len      OUT: The length (in bytes) of the ROHC segment
+ * @return         \li ROHC_NEED_SEGMENT if a ROHC segment is returned
+ *                     and more segments are available,
+ *                 \li ROHC_OK if a ROHC segment is returned
+ *                     and no more ROHC segment is available
+ *                 \li ROHC_ERROR if an error occurred
+ *
+ * @ingroup rohc_comp
+ */
+int rohc_comp_get_segment(struct rohc_comp *const comp,
+                          unsigned char *const segment,
+                          const size_t max_len,
+                          size_t *const len)
+{
+	const size_t segment_type_len = 1; /* segment type byte */
+	int feedback_size;
+	size_t max_data_len;
+	int status;
+
+	/* no segment yet */
+	*len = 0;
+
+	/* check input parameters */
+	if(comp == NULL || segment == NULL || max_len <= 0 || len == NULL)
+	{
+		goto error;
+	}
+
+	/* abort if no RRU is available in the compressor */
+	if(comp->rru_len <= 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "no RRU available in given compressor\n");
+		goto error;
+	}
+
+	/* abort is the given output buffer is too small for RRU */
+	if(max_len <= segment_type_len)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "output buffer is too small for RRU, more than %zd bytes "
+		             "are required\n", segment_type_len);
+		goto error;
+	}
+
+	/* add feedbacks if some are available */
+	do
+	{
+		feedback_size = rohc_feedback_get(comp, segment + (*len),
+		                                  max_len - (*len));
+		if(feedback_size > 0)
+		{
+			*len += feedback_size;
+		}
+	}
+	while(feedback_size > 0);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "%zd bytes of feedback(s) added to ROHC packet\n", *len);
+
+	/* how many bytes of ROHC packet can we put in that new segment? */
+	max_data_len = rohc_min(max_len - (*len) - segment_type_len,
+	                        comp->rru_len);
+	assert(max_data_len > 0);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "copy %zd bytes of the remaining %zd bytes of ROHC packet and "
+	           "CRC in the segment\n", max_data_len, comp->rru_len);
+
+	/* set segment type with F bit set only for last segment */
+	segment[0] = 0xfe | (max_data_len == comp->rru_len);
+	(*len)++;
+
+	/* copy remaining ROHC data (CRC included) */
+	memcpy(segment + (*len), comp->rru + comp->rru_off, max_data_len);
+	*len += max_data_len;
+	comp->rru_off += max_data_len;
+	comp->rru_len -= max_data_len;
+
+	/* set status wrt to (non-)final segment */
+	if(comp->rru_len == 0)
+	{
+		/* final segment, no more segment available */
+		status = ROHC_OK;
+		/* reset context for next RRU */
+		comp->rru_off = 0;
+	}
+	else
+	{
+		/* non-final segment, more segments to available */
+		status = ROHC_NEED_SEGMENT;
+	}
+
+	return status;
+
+error:
+	return ROHC_ERROR;
 }
 
 
@@ -932,8 +1184,13 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
 
 
 /**
- * @brief Set the Maximum Reconstructed Reception Unit (MRRU). The MRRU is
- *        ignored for the moment.
+ * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * The MRRU value must be in range [0 ; ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
+ *
+ * If set to 0, segmentation is disabled as no segment headers are allowed
+ * on the channel. No segment will be generated.
  *
  * @param comp  The ROHC compressor
  * @param value The new MRRU value
@@ -942,7 +1199,57 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
  */
 void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 {
-	comp->mrru = value;
+	if(value >= 0)
+	{
+		bool __attribute__((unused)) ret; /* avoid warn_unused_result */
+		ret = rohc_comp_set_mrru(comp, value);
+	}
+}
+
+
+/**
+ * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * The MRRU value must be in range [0 ; ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
+ *
+ * If set to 0, segmentation is disabled as no segment headers are allowed
+ * on the channel. No segment will be generated.
+ *
+ * @param comp  The ROHC compressor
+ * @param mrru  The new MRRU value
+ * @return      true if the MRRU was successfully set, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_mrru(struct rohc_comp *const comp,
+                        const size_t mrru)
+{
+	/* compressor must be valid */
+	if(comp == NULL)
+	{
+		/* cannot print a trace without a valid compressor */
+		goto error;
+	}
+
+	/* new MRRU value must be in range [0, ROHC_MAX_MRRU] */
+	if(mrru > ROHC_MAX_MRRU)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unexpected MRRU value: must be in range [0, %d]\n",
+		             ROHC_MAX_MRRU);
+		goto error;
+	}
+
+	/* set new MRRU */
+	comp->mrru = mrru;
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "MRRU is now set to %zd\n", comp->mrru);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -1344,7 +1651,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	}
 	buffer += sprintf(buffer, "%s\t<compression_ratio>%d%%</compression_ratio>\n", prefix, v);
 	buffer += sprintf(buffer, "%s\t<max_cid>%d</max_cid>\n", prefix, comp->medium.max_cid);
-	buffer += sprintf(buffer, "%s\t<mrru>%d</mrru>\n", prefix, comp->mrru);
+	buffer += sprintf(buffer, "%s\t<mrru>%zd</mrru>\n", prefix, comp->mrru);
 	buffer += sprintf(buffer, "%s\t<large_cid>%s</large_cid>\n", prefix,
 	                  comp->medium.cid_type == ROHC_LARGE_CID ? "yes" : "no");
 	buffer += sprintf(buffer, "%s\t<connection_type>%d</connection_type>\n", prefix, 3);
@@ -2255,7 +2562,7 @@ static struct c_context * c_get_context(struct rohc_comp *comp, int cid)
 		goto not_found;
 	}
 
-	return &comp->contexts[cid];
+	return &(comp->contexts[cid]);
 
 not_found:
 	return NULL;
@@ -2425,7 +2732,7 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	if(feedback_length > 0)
 	{
 		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
-		                 "add %zd bytes of feedback data\n", buffer + index,
+		                 "add %zd bytes of feedback data", buffer + index,
 		                 feedback_length);
 	}
 

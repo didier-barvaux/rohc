@@ -439,10 +439,10 @@ static int compress_decompress(struct rohc_comp *comp,
                                FILE *size_ouput_file)
 {
 	unsigned char *ip_packet;
-	int ip_size;
+	size_t ip_size;
 	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
 	unsigned char *rohc_packet;
-	int rohc_size;
+	size_t rohc_size;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
 	int decomp_size;
 	struct ether_header *eth_header;
@@ -486,7 +486,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 	{
 		int version;
-		int tot_len;
+		size_t tot_len;
 
 		version = (ip_packet[0] >> 4) & 0x0f;
 
@@ -503,8 +503,8 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		if(tot_len < ip_size)
 		{
-			printf("The Ethernet frame has %d bytes of padding after the "
-			       "%d byte IP packet!\n", ip_size - tot_len, tot_len);
+			printf("The Ethernet frame has %zd bytes of padding after the "
+			       "%zd byte IP packet!\n", ip_size - tot_len, tot_len);
 			ip_size = tot_len;
 		}
 	}
@@ -512,11 +512,10 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* compress the IP packet */
 	printf("\t\t<compression>\n");
 	printf("\t\t\t<log>\n");
-	rohc_size = rohc_compress(comp, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
+	ret = rohc_compress2(comp, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 	printf("\t\t\t</log>\n");
-
-	if(rohc_size <= 0)
+	if(ret != ROHC_OK)
 	{
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</compression>\n");
@@ -608,7 +607,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		}
 
 		fprintf(size_ouput_file, "compressor_num = %d\tpacket_num = %d\t"
-		        "rohc_size = %d\tpacket_type = %d\n", num_comp, num_packet,
+		        "rohc_size = %zd\tpacket_type = %d\n", num_comp, num_packet,
 		        rohc_size, last_packet_info.packet_type);
 	}
 
@@ -658,7 +657,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	if(decomp_size <= 0)
 	{
-		int i;
+		size_t i;
 
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</decompression>\n");
@@ -666,7 +665,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		printf("\t\t<ip_comparison>\n");
 		printf("\t\t\t<log>\n");
 		printf("Decompression failed, cannot compare the packets!\n");
-		printf("Original %d-byte non-compressed packet:\n", ip_size);
+		printf("Original %zd-byte non-compressed packet:\n", ip_size);
 		for(i = 0; i < ip_size; i++)
 		{
 			if(i > 0 && (i % 16) == 0)

@@ -51,3 +51,5 @@ chmod +x ./configure
 	--enable-examples \
 	$@
 
+chmod a+x ./test/functional/segment/test_segment.sh
+
