@@ -648,6 +648,7 @@ struct c_profile c_esp_profile =
 	c_esp_check_profile,
 	c_esp_check_context,
 	c_esp_encode,
+	c_generic_reinit_context,
 	c_generic_feedback,
 	c_generic_use_udp_port,
 };

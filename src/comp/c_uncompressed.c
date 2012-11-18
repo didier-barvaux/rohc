@@ -95,7 +95,10 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
                                            int *const payload_offset,
                                            const int dest_size);
 
-/* build feedbacks */
+/* re-initialize a context */
+static bool c_uncompressed_reinit_context(struct c_context *const context);
+
+/* deliver feedbacks */
 static void c_uncompressed_feedback(struct c_context *const context,
                                     const struct c_feedback *feedback);
 
@@ -260,6 +263,27 @@ static int c_uncompressed_encode(struct c_context *const context,
 	                                packet_type, payload_offset, dest_size);
 
 	return size;
+}
+
+
+/**
+ * @brief Re-initialize a given context
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context  The compression context
+ * @return         true in case of success, false otherwise
+ */
+static bool c_uncompressed_reinit_context(struct c_context *const context)
+{
+	assert(context != NULL);
+
+	/* go back to U-mode and IR state */
+	uncompressed_change_mode(context, U_MODE);
+	uncompressed_change_state(context, IR);
+
+	return true;
 }
 
 
@@ -724,6 +748,7 @@ struct c_profile c_uncompressed_profile =
 	c_uncompressed_check_profile,
 	c_uncompressed_check_context,
 	c_uncompressed_encode,
+	c_uncompressed_reinit_context,
 	c_uncompressed_feedback,
 	c_uncompressed_use_udp_port,
 };

@@ -681,6 +681,7 @@ struct c_profile c_udp_profile =
 	c_udp_check_profile,
 	c_udp_check_context,
 	c_udp_encode,
+	c_generic_reinit_context,
 	c_generic_feedback,
 	c_generic_use_udp_port,
 };

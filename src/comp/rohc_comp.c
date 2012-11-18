@@ -998,6 +998,51 @@ error:
 
 
 /**
+ * @brief Force the compressor to re-initialize all its contexts
+ *
+ * Make all contexts restart their initialization with decompressor, ie. they
+ * go in the lowest compression state. This function can be used once the
+ * ROHC channel is established again after an interruption.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
+{
+	int i;
+
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "force re-initialization for all %d contexts\n",
+	          comp->num_contexts_used);
+
+	for(i = 0; i < comp->num_contexts; i++)
+	{
+		if(comp->contexts[i].used)
+		{
+			if(!comp->contexts[i].profile->reinit_context(&(comp->contexts[i])))
+			{
+				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+				             "failed to force re-initialization for CID %d\n", i);
+				goto error;
+			}
+		}
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Set the window width for the W-LSB algorithm
  *
  * W-LSB window width is set to \ref C_WINDOW_WIDTH by default.

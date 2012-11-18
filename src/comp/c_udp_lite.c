@@ -930,6 +930,7 @@ struct c_profile c_udp_lite_profile =
 	c_udp_lite_check_profile,
 	c_udp_lite_check_context,
 	c_udp_lite_encode,
+	c_generic_reinit_context,
 	c_generic_feedback,
 	c_generic_use_udp_port,
 };

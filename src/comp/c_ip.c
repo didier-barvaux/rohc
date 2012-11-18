@@ -509,6 +509,7 @@ struct c_profile c_ip_profile =
 	c_generic_check_profile,
 	c_ip_check_context,
 	c_generic_encode,
+	c_generic_reinit_context,
 	c_generic_feedback,
 	c_generic_use_udp_port,
 };

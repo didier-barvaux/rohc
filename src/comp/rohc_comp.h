@@ -234,6 +234,9 @@ int ROHC_EXPORT rohc_comp_get_segment(struct rohc_comp *const comp,
                                       size_t *const len)
 	__attribute__((nonnull(1, 2, 4), warn_unused_result));
 
+bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
+	__attribute__((nonnull(1), warn_unused_result));
+
 
 /*
  * Prototypes of public functions related to user interaction

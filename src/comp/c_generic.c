@@ -999,6 +999,27 @@ error:
 
 
 /**
+ * @brief Re-initialize the given context
+ *
+ * Make the context restart its initialization with decompressor, ie. it goes
+ * in the lowest compression state.
+ *
+ * @param context  The compression context to re-initialize
+ * @return         true in case of success, false otherwise
+ */
+bool c_generic_reinit_context(struct c_context *const context)
+{
+	assert(context != NULL);
+
+	/* go back to U-mode and IR state */
+	change_mode(context, U_MODE);
+	change_state(context, IR);
+
+	return true;
+}
+
+
+/**
  * @brief Update the profile when feedback arrives.
  *
  * This function is one of the functions that must exist in one profile for the

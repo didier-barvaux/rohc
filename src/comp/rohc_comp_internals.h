@@ -265,6 +265,12 @@ struct c_profile
 	              int *const payload_offset);
 
 	/**
+	 * @brief The handler used to re-initialize a context
+	 */
+	bool (*reinit_context)(struct c_context *const context)
+		__attribute__((nonnull(1), warn_unused_result));
+
+	/**
 	 * @brief The handler used to warn the profile-specific part of the
 	 *        context about the arrival of feedback data
 	 */

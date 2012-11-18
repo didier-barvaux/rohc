@@ -1538,6 +1538,7 @@ struct c_profile c_rtp_profile =
 	c_rtp_check_profile,
 	c_rtp_check_context,
 	c_rtp_encode,
+	c_generic_reinit_context,
 	c_generic_feedback,
 	c_rtp_use_udp_port,
 };
