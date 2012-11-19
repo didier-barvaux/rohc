@@ -1005,6 +1005,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
                           const unsigned int payload_size,
                           void *const rtp_private)
 {
+	const uint16_t max_well_known_port = 1024;
 	const uint16_t sip_port = 5060;
 	uint16_t udp_sport;
 	uint16_t udp_dport;
@@ -1021,6 +1022,13 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	memcpy(&udp_sport, udp, sizeof(uint16_t));
 	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
 	memcpy(&udp_len, udp + 4, sizeof(uint16_t));
+
+	/* RTP streams do not use well known ports */
+	if(ntohs(udp_sport) <= max_well_known_port ||
+	   ntohs(udp_dport) <= max_well_known_port)
+	{
+		goto not_rtp;
+	}
 
 	/* SIP (UDP/5060) is not RTP */
 	if(ntohs(udp_sport) == sip_port && ntohs(udp_dport) == sip_port)
