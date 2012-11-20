@@ -512,10 +512,17 @@ static bool sniff(const int use_large_cid,
 
 	/* for each sniffed packet */
 	counter = 0;
-	while(!stop_program &&
-	      (packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
+	while(!stop_program)
 	{
 		unsigned int cid = 0;
+
+		/* try to capture a packet */
+		packet = (unsigned char *) pcap_next(handle, &header);
+		if(packet == NULL)
+		{
+			/* no packet captured, re-try */
+			continue;
+		}
 
 		counter++;
 
