@@ -122,6 +122,18 @@ for ./configure ? If yes, check configure output and config.log"
 #define TEST_VERSION  "ROHC non-regression test application, version 0.1\n"
 
 
+struct test_stats
+{
+	unsigned long comp_pre;
+	unsigned long comp_post;
+	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE + 1];
+	unsigned long comp_nr_pkts_per_mode[R_MODE + 1];
+	unsigned long comp_nr_pkts_per_state[SO + 1];
+	unsigned long comp_nr_pkts_per_pkt_type[PACKET_UNKNOWN];
+	unsigned long comp_nr_reused_cid;
+};
+
+
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const int use_large_cid,
@@ -142,7 +154,8 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *cmp_packet,
                                int cmp_size,
                                int link_len_cmp,
-                               FILE *size_output_file);
+                               FILE *size_output_file,
+                               struct test_stats *stats);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -155,8 +168,17 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
                                 void *const user_context)
 	__attribute__((nonnull(1)));
 
+static bool rtp_detect_cb(const unsigned char *const ip,
+                          const unsigned char *const udp,
+                          const unsigned char *const payload,
+                          const unsigned int payload_size,
+                          void *const rtp_private)
+	__attribute__((nonnull(1, 2, 3), warn_unused_result));
+
+#if 0
 static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
                             struct rohc_comp *comp2, struct rohc_decomp *decomp2);
+#endif
 
 static int compare_packets(unsigned char *pkt1, int pkt1_size,
                            unsigned char *pkt2, int pkt2_size);
@@ -337,13 +359,14 @@ static void usage(void)
 	        "                          (PCAP format)\n"
 	        "  -c FILE                 Compare the generated ROHC packets with the\n"
 	        "                          ROHC packets stored in FILE (PCAP format)\n"
-	        "  --rohc-size-output FILE Save the sizes of ROHC packets in FILE\n"
+	        "  --rohc-size-output FILE  Save the sizes of ROHC packets in FILE\n"
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 	        "                          simultaneously use during the test\n"
 	        "  --verbose               Run the test in verbose mode\n");
 }
 
 
+#if 0
 /**
  * @brief Print statistics about the compressors and decompressors used during
  *        the test
@@ -396,6 +419,7 @@ static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1
 error:
 	return;
 }
+#endif
 
 
 /**
@@ -417,6 +441,7 @@ error:
  * @param link_len_cmp     The length of the link layer header before ROHC data
  * @param size_output_file The name of the text file to output the sizes of
  *                         the ROHC packets
+ * @param stats            The test stats
  * @return                 1 if the process is successful
  *                         0 if the decompressed packet doesn't match the
  *                         original one
@@ -436,7 +461,8 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *cmp_packet,
                                int cmp_size,
                                int link_len_cmp,
-                               FILE *size_output_file)
+                               FILE *size_output_file,
+                               struct test_stats *stats)
 {
 	unsigned char *ip_packet;
 	size_t ip_size;
@@ -447,6 +473,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	int decomp_size;
 	struct ether_header *eth_header;
 	int ret = 1;
+	rohc_comp_last_packet_info2_t last_packet_info;
 
 	printf("\t<packet id=\"%d\" comp=\"%d\">\n", num_packet, num_comp);
 
@@ -570,42 +597,50 @@ static int compress_decompress(struct rohc_comp *comp,
 		pcap_dump((u_char *) dumper, &header, output_packet);
 	}
 
+	/* get some statistics about the last compressed packet */
+	last_packet_info.version_major = 0;
+	last_packet_info.version_minor = 0;
+	if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
+	{
+		printf("\n");
+		printf("\t\t<rohc_comparison>\n");
+		printf("\t\t\t<log>\n");
+		printf("Getting statistics failed, cannot compare the packets!\n");
+		printf("\t\t\t</log>\n");
+		printf("\t\t\t<status>failed</status>\n");
+		printf("\t\t</rohc_comparison>\n");
+		printf("\n");
+		printf("\t\t<decompression>\n");
+		printf("\t\t\t<log>\n");
+		printf("Compression failed, cannot decompress the ROHC packet!\n");
+		printf("\t\t\t</log>\n");
+		printf("\t\t\t<status>failed</status>\n");
+		printf("\t\t</decompression>\n");
+		printf("\n");
+		printf("\t\t<ip_comparison>\n");
+		printf("\t\t\t<log>\n");
+		printf("Compression failed, cannot compare the packets!\n");
+		printf("\t\t\t</log>\n");
+		printf("\t\t\t<status>failed</status>\n");
+		printf("\t\t</ip_comparison>\n");
+
+		ret = -1;
+		goto exit;
+	}
+	stats->comp_pre += ip_size;
+	stats->comp_post += rohc_size;
+	stats->comp_nr_pkts_per_profile[last_packet_info.profile_id]++;
+	stats->comp_nr_pkts_per_mode[last_packet_info.context_mode]++;
+	stats->comp_nr_pkts_per_state[last_packet_info.context_state]++;
+	stats->comp_nr_pkts_per_pkt_type[last_packet_info.packet_type]++;
+	if(last_packet_info.is_context_init)
+	{
+		stats->comp_nr_reused_cid++;
+	}
+
 	/* output the size of the ROHC packet to the output file if asked */
 	if(size_output_file != NULL)
 	{
-		rohc_comp_last_packet_info2_t last_packet_info;
-
-		/* get some statistics about the last compressed packet */
-		last_packet_info.version_major = 0;
-		last_packet_info.version_minor = 0;
-		if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
-		{
-			printf("\n");
-			printf("\t\t<rohc_comparison>\n");
-			printf("\t\t\t<log>\n");
-			printf("Getting statistics failed, cannot compare the packets!\n");
-			printf("\t\t\t</log>\n");
-			printf("\t\t\t<status>failed</status>\n");
-			printf("\t\t</rohc_comparison>\n");
-			printf("\n");
-			printf("\t\t<decompression>\n");
-			printf("\t\t\t<log>\n");
-			printf("Compression failed, cannot decompress the ROHC packet!\n");
-			printf("\t\t\t</log>\n");
-			printf("\t\t\t<status>failed</status>\n");
-			printf("\t\t</decompression>\n");
-			printf("\n");
-			printf("\t\t<ip_comparison>\n");
-			printf("\t\t\t<log>\n");
-			printf("Compression failed, cannot compare the packets!\n");
-			printf("\t\t\t</log>\n");
-			printf("\t\t\t<status>failed</status>\n");
-			printf("\t\t</ip_comparison>\n");
-
-			ret = -1;
-			goto exit;
-		}
-
 		fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
 		        "rohc_size = %zd\tpacket_type = %d\n", num_comp, num_packet,
 		        rohc_size, last_packet_info.packet_type);
@@ -760,19 +795,28 @@ static int test_comp_and_decomp(const int use_large_cid,
 	struct rohc_decomp *decomp1;
 	struct rohc_decomp *decomp2;
 
+#if 0
 #define NB_RTP_PORTS 5
 	const unsigned int rtp_ports[NB_RTP_PORTS] =
 		{ 1234, 36780, 33238, 5020, 5002 };
+#endif
 	int i;
 
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
 	int status = 1;
 
+	struct test_stats stats1;
+	struct test_stats stats2;
+
 	printf("<?xml version=\"1.0\" encoding=\"ISO-8859-15\"?>\n");
 	printf("<test>\n");
 	printf("\t<startup>\n");
 	printf("\t\t<log>\n");
+
+	/* reset stats */
+	memset(&stats1, 0, sizeof(struct test_stats));
+	memset(&stats2, 0, sizeof(struct test_stats));
 
 	/* open the source dump file */
 	handle = pcap_open_offline(src_filename, errbuf);
@@ -942,6 +986,9 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp1;
 	}
 
+	assert(rohc_comp_set_wlsb_window_width(comp1, 8) == true);
+	assert(rohc_comp_set_periodic_refreshes(comp1, 400, 150) == true);
+
 	/* reset list of RTP ports for compressor 1 */
 	if(!rohc_comp_reset_rtp_ports(comp1))
 	{
@@ -954,6 +1001,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp1;
 	}
 
+#if 0
 	/* add some ports to the list of RTP ports */
 	for(i = 0; i < NB_RTP_PORTS; i++)
 	{
@@ -969,6 +1017,15 @@ static int test_comp_and_decomp(const int use_large_cid,
 			goto destroy_comp1;
 		}
 	}
+#else
+	/* set the callback for RTP stream detection */
+	if(!rohc_comp_set_rtp_detection_cb(comp1, rtp_detect_cb, NULL))
+	{
+		fprintf(stderr, "failed to set the RTP stream detection callback for "
+		        "compressor 1\n");
+		goto destroy_comp1;
+	}
+#endif
 
 	/* create the compressor 2 */
 	comp2 = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
@@ -1018,6 +1075,9 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp2;
 	}
 
+	assert(rohc_comp_set_wlsb_window_width(comp2, 8) == true);
+	assert(rohc_comp_set_periodic_refreshes(comp2, 400, 150) == true);
+
 	/* reset list of RTP ports for compressor 2 */
 	if(!rohc_comp_reset_rtp_ports(comp2))
 	{
@@ -1030,6 +1090,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp2;
 	}
 
+#if 0
 	/* add some ports to the list of RTP ports */
 	for(i = 0; i < NB_RTP_PORTS; i++)
 	{
@@ -1043,6 +1104,15 @@ static int test_comp_and_decomp(const int use_large_cid,
 			goto destroy_comp2;
 		}
 	}
+#else
+	/* set the callback for RTP stream detection */
+	if(!rohc_comp_set_rtp_detection_cb(comp2, rtp_detect_cb, NULL))
+	{
+		fprintf(stderr, "failed to set the RTP stream detection callback for "
+		        "compressor 2\n");
+		goto destroy_comp2;
+	}
+#endif
 
 	/* create the decompressor 1 */
 	decomp1 = rohc_alloc_decompressor(comp2);
@@ -1183,7 +1253,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		                          link_len_src, use_large_cid,
 		                          dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp,
-		                          rohc_size_output_file);
+		                          rohc_size_output_file, &stats1);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -1222,7 +1292,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		                          link_len_src, use_large_cid,
 		                          dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp,
-		                          rohc_size_output_file);
+		                          rohc_size_output_file, &stats2);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -1257,7 +1327,65 @@ static int test_comp_and_decomp(const int use_large_cid,
 
 	/* show some info/stats about the compressors and decompressors */
 	printf("\t<infos>\n");
-	show_rohc_stats(comp1, decomp1, comp2, decomp2);
+//	show_rohc_stats(comp1, decomp1, comp2, decomp2);
+
+	printf("compressor #1:\n");
+	printf("\tgeneral:\n");
+	printf("\t\tpre-compress bytes %lu\n", stats1.comp_pre);
+	printf("\t\tpost-compress bytes %lu\n", stats1.comp_post);
+	if(stats1.comp_pre != 0)
+	{
+		printf("\t\tcompress ratio %lu\n", stats1.comp_post * 100 /
+		       stats1.comp_pre);
+	}
+	else
+	{
+		printf("\t\tcompress ratio 0\n");
+	}
+
+	/* packets per profile */
+	printf("\tpackets per profile:\n");
+	printf("\t\tUncompressed profile packets %lu\n",
+	       stats1.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED]);
+	printf("\t\tIP/UDP/RTP profile packets %lu\n",
+	       stats1.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP]);
+	printf("\t\tIP/UDP profile packets %lu\n",
+	       stats1.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP]);
+	printf("\t\tIP-only profile packets %lu\n",
+	       stats1.comp_nr_pkts_per_profile[ROHC_PROFILE_IP]);
+	printf("\t\tIP/UDP-Lite profile packets %lu\n",
+	       stats1.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE]);
+
+	/* packets per mode */
+	printf("\tpackets per mode:\n");
+	printf("\t\tU-mode packets %lu\n",
+	       stats1.comp_nr_pkts_per_mode[U_MODE]);
+	printf("\t\tO-mode packets %lu\n",
+	       stats1.comp_nr_pkts_per_mode[O_MODE]);
+	printf("\t\tR-mode packets %lu\n",
+	       stats1.comp_nr_pkts_per_mode[R_MODE]);
+
+	/* packets per state */
+	printf("\tpackets per state:\n");
+	printf("\t\tIR state packets %lu\n",
+	       stats1.comp_nr_pkts_per_state[IR]);
+	printf("\t\tFO state packets %lu\n",
+	       stats1.comp_nr_pkts_per_state[FO]);
+	printf("\t\tSO state packets %lu\n",
+	       stats1.comp_nr_pkts_per_state[SO]);
+
+	/* packets per packet type */
+	printf("\tpackets per packet type:\n");
+	for(i = PACKET_IR; i < PACKET_UNKNOWN; i++)
+	{
+		printf("\t\tpacket type %s packets %lu\n", rohc_get_packet_descr(i),
+		       stats1.comp_nr_pkts_per_pkt_type[i]);
+	}
+
+	/* re-used contexts */
+	printf("\tre-used contexts count %lu\n", stats1.comp_nr_reused_cid);
+
+
 	printf("\t</infos>\n\n");
 
 	/* destroy the compressors and decompressors */
@@ -1464,5 +1592,94 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 
 skip:
 	return valid;
+}
+
+
+/**
+ * @brief The detection callback which do detect RTP stream
+ *
+ * @param ip           The inner ip packet
+ * @param udp          The udp header of the packet
+ * @param payload      The payload of the packet
+ * @param payload_size The size of the payload (in bytes)
+ * @return             1 if the packet is an RTP packet, 0 otherwise
+ */
+static bool rtp_detect_cb(const unsigned char *const ip,
+                          const unsigned char *const udp,
+                          const unsigned char *const payload,
+                          const unsigned int payload_size,
+                          void *const rtp_private)
+{
+	const uint16_t max_well_known_port = 1024;
+	const uint16_t sip_port = 5060;
+	uint16_t udp_sport;
+	uint16_t udp_dport;
+	uint16_t udp_len;
+	uint8_t rtp_pt;
+	bool is_rtp = false;
+
+	assert(ip != NULL);
+	assert(udp != NULL);
+	assert(payload != NULL);
+	assert(rtp_private == NULL);
+
+	/* retrieve UDP source and destination ports and UDP length */
+	memcpy(&udp_sport, udp, sizeof(uint16_t));
+	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
+	memcpy(&udp_len, udp + 4, sizeof(uint16_t));
+
+	/* RTP streams do not use well known ports */
+	if(ntohs(udp_sport) <= max_well_known_port ||
+	   ntohs(udp_dport) <= max_well_known_port)
+	{
+		goto not_rtp;
+	}
+
+	/* SIP (UDP/5060) is not RTP */
+	if(ntohs(udp_sport) == sip_port && ntohs(udp_dport) == sip_port)
+	{
+		goto not_rtp;
+	}
+
+	/* the UDP destination port of RTP packet is even (the RTCP destination
+	 * port are RTP destination port + 1, so it is odd) */
+	if((ntohs(udp_sport) % 2) != 0 || (ntohs(udp_dport) % 2) != 0)
+	{
+		goto not_rtp;
+	}
+
+	/* UDP Length shall not be too large */
+	if(ntohs(udp_len) > 200)
+	{
+		goto not_rtp;
+	}
+
+	/* UDP payload shall at least contain the smallest RTP header */
+	if(payload_size < 12)
+	{
+		goto not_rtp;
+	}
+
+	/* RTP version bits shall be 2 */
+	if(((payload[0] >> 6) & 0x3) != 0x2)
+	{
+		goto not_rtp;
+	}
+
+	/* RTP payload type shall be GSM (0x03), ITU-T G.723 (0x04),
+	 * ITU-T G.729 (0x12), dynamic RTP type 97 (0x61), or
+	 * telephony-event (0x65) */
+	rtp_pt = payload[1] & 0x7f;
+	if(rtp_pt != 0x03 && rtp_pt != 0x04 && rtp_pt != 0x12 &&
+	   rtp_pt != 0x61 && rtp_pt != 0x65)
+	{
+		goto not_rtp;
+	}
+
+	/* we think that the UDP packet is a RTP packet */
+	is_rtp = true;
+
+not_rtp:
+	return is_rtp;
 }
 

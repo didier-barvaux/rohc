@@ -1182,7 +1182,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	uint16_t udp_dport;
 	uint16_t udp_len;
 	uint8_t rtp_pt;
-	int is_rtp = 0;
+	bool is_rtp = false;
 
 	assert(ip != NULL);
 	assert(udp != NULL);
@@ -1209,7 +1209,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 
 	/* the UDP destination port of RTP packet is even (the RTCP destination
 	 * port are RTP destination port + 1, so it is odd) */
-	if((udp_dport % 2) != 0)
+	if((ntohs(udp_sport) % 2) != 0 || (ntohs(udp_dport) % 2) != 0)
 	{
 		goto not_rtp;
 	}
@@ -1243,7 +1243,7 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	}
 
 	/* we think that the UDP packet is a RTP packet */
-	is_rtp = 1;
+	is_rtp = true;
 
 not_rtp:
 	return is_rtp;
