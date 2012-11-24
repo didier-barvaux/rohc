@@ -7938,7 +7938,6 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
                                     struct rohc_decoded_values *const decoded)
 {
 	struct d_generic_context *g_context;
-	uint32_t sn_context;
 	bool decode_ok;
 
 	assert(context != NULL);
@@ -7976,18 +7975,59 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 	/* warn if value(SN) is not context(SN) + 1 */
 	if(context->num_recv_packets > 1)
 	{
+		uint32_t sn_context;
+		uint32_t expected_next_sn;
+
+		/* get context(SN) */
 		sn_context = context->profile->get_sn((struct d_context *) context);
-		if(decoded->sn > (sn_context + 1))
+
+		/* compute the next SN value we expect in packet */
+		if(context->profile->id == ROHC_PROFILE_ESP)
 		{
+			/* ESP profile handles 32-bit SN values */
+			if(sn_context == 0xffffffff)
+			{
+				expected_next_sn = 0;
+			}
+			else
+			{
+				expected_next_sn = sn_context + 1;
+			}
+		}
+		else
+		{
+			/* other profiles handle 16-bit SN values */
+			if(sn_context == 0xffff)
+			{
+				expected_next_sn = 0;
+			}
+			else
+			{
+				expected_next_sn = sn_context + 1;
+			}
+		}
+
+		/* do we decoded the expected SN? */
+		if(decoded->sn == sn_context)
+		{
+			/* same SN: duplicated packet detected! */
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "packet seems to be a duplicated packet (SN = 0x%x)\n",
+			             sn_context);
+		}
+		else if(decoded->sn > expected_next_sn)
+		{
+			/* bigger SN: some packets were lost or failed to be decompressed */
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			             "%u packets seem to have been lost, damaged, or failed "
 			             "to be decompressed (SN jumped from 0x%x to 0x%x)\n",
 			             decoded->sn - (sn_context + 1), sn_context, decoded->sn);
 		}
-		else if(decoded->sn < (sn_context + 1))
+		else if(decoded->sn < expected_next_sn)
 		{
+			/* smaller SN: order was changed on the network channel */
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "packet seem to come late (SN jumped back from 0x%x to "
+			             "packet seems to come late (SN jumped back from 0x%x to "
 			             "0x%x)\n", sn_context, decoded->sn);
 		}
 	}
