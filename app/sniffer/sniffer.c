@@ -564,39 +564,63 @@ static bool sniff(const int use_large_cid,
 		/* in case of problem, print recorded traces then die! */
 		if(ret != 1)
 		{
+			const char *logfilename = "./sniffer.log";
+			FILE *logfile;
+
 			fprintf(stderr, "packet #%u, CID %u: stats OK, ERR(COMP), "
 			        "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)\t="
 			        "\t%u\t%u\t%u\t%u\t%u\t%u\n",
 			        counter, cid, nb_ok, err_comp, err_decomp, nb_ref, nb_bad,
 			        nb_internal_err);
-			fflush(stderr);
 
-			if(last_traces_first == -1 || last_traces_last == -1)
+			logfile = fopen(logfilename, "w");
+			if(logfile == NULL)
 			{
-				fprintf(stderr, "no trace to display\n");
+				fprintf(stderr, "failed to create '%s' file: %s (%d)\n",
+				        logfilename, strerror(errno), errno);
 			}
 			else
 			{
-				if(last_traces_first <= last_traces_last)
+				fprintf(logfile, "packet #%u, CID %u: stats OK, ERR(COMP), "
+				        "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)\t="
+				        "\t%u\t%u\t%u\t%u\t%u\t%u\n",
+				        counter, cid, nb_ok, err_comp, err_decomp, nb_ref, nb_bad,
+				        nb_internal_err);
+
+				if(last_traces_first == -1 || last_traces_last == -1)
 				{
-					fprintf(stderr, "print the last %d traces...\n",
-					        last_traces_last - last_traces_first);
-					for(i = last_traces_first; i <= last_traces_last; i++)
-					{
-						fprintf(stderr, "%s", last_traces[i]);
-					}
+					fprintf(stderr, "no trace to record\n");
 				}
 				else
 				{
-					fprintf(stderr, "print the last %d traces...\n",
-					        MAX_LAST_TRACES - last_traces_first +
-					        last_traces_last);
-					for(i = last_traces_first;
-					    i <= MAX_LAST_TRACES + last_traces_last;
-					    i++)
+					if(last_traces_first <= last_traces_last)
 					{
-						fprintf(stderr, "%s", last_traces[i % MAX_LAST_TRACES]);
+						fprintf(stderr, "record the last %d traces...\n",
+						        last_traces_last - last_traces_first);
+						for(i = last_traces_first; i <= last_traces_last; i++)
+						{
+							fprintf(logfile, "%s", last_traces[i]);
+						}
 					}
+					else
+					{
+						fprintf(stderr, "print the last %d traces...\n",
+						        MAX_LAST_TRACES - last_traces_first +
+						        last_traces_last);
+						for(i = last_traces_first;
+						    i <= MAX_LAST_TRACES + last_traces_last;
+						    i++)
+						{
+							fprintf(logfile, "%s", last_traces[i % MAX_LAST_TRACES]);
+						}
+					}
+				}
+
+				ret = fclose(logfile);
+				if(ret != 0)
+				{
+					fprintf(stderr, "failed to close log file '%s': %s (%d)\n",
+					        logfilename, strerror(errno), errno);
 				}
 			}
 
