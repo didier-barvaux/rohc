@@ -56,7 +56,7 @@ fi
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
 if [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
-	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
 	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"

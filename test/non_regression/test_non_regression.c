@@ -142,7 +142,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *cmp_packet,
                                int cmp_size,
                                int link_len_cmp,
-                               FILE *size_ouput_file);
+                               FILE *size_output_file);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 			cmp_filename = argv[1];
 			args_used++;
 		}
-		else if(!strcmp(*argv, "--rohc-size-ouput"))
+		else if(!strcmp(*argv, "--rohc-size-output"))
 		{
 			/* get the name of the file to store the sizes of every ROHC packets */
 			rohc_size_ofilename = argv[1];
@@ -337,7 +337,7 @@ static void usage(void)
 	        "                          (PCAP format)\n"
 	        "  -c FILE                 Compare the generated ROHC packets with the\n"
 	        "                          ROHC packets stored in FILE (PCAP format)\n"
-	        "  --rohc-size-ouput FILE  Save the sizes of ROHC packets in FILE\n"
+	        "  --rohc-size-output FILE Save the sizes of ROHC packets in FILE\n"
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 	        "                          simultaneously use during the test\n"
 	        "  --verbose               Run the test in verbose mode\n");
@@ -415,7 +415,7 @@ error:
  * @param cmp_size         The size of the ROHC packet used for comparison
  *                         purpose
  * @param link_len_cmp     The length of the link layer header before ROHC data
- * @param size_ouput_file  The name of the text file to output the sizes of
+ * @param size_output_file The name of the text file to output the sizes of
  *                         the ROHC packets
  * @return                 1 if the process is successful
  *                         0 if the decompressed packet doesn't match the
@@ -436,7 +436,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *cmp_packet,
                                int cmp_size,
                                int link_len_cmp,
-                               FILE *size_ouput_file)
+                               FILE *size_output_file)
 {
 	unsigned char *ip_packet;
 	size_t ip_size;
@@ -571,7 +571,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */
-	if(size_ouput_file != NULL)
+	if(size_output_file != NULL)
 	{
 		rohc_comp_last_packet_info2_t last_packet_info;
 
@@ -606,7 +606,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			goto exit;
 		}
 
-		fprintf(size_ouput_file, "compressor_num = %d\tpacket_num = %d\t"
+		fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
 		        "rohc_size = %zd\tpacket_type = %d\n", num_comp, num_packet,
 		        rohc_size, last_packet_info.packet_type);
 	}
