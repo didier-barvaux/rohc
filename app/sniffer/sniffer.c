@@ -1069,9 +1069,11 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	}
 
 	/* RTP payload type shall be GSM (0x03), ITU-T G.723 (0x04),
-	 * ITU-T G.729 (0x12) or telephony-event (0x65) */
+	 * ITU-T G.729 (0x12), dynamic RTP type 97 (0x61), or
+	 * telephony-event (0x65) */
 	rtp_pt = payload[1] & 0x7f;
-	if(rtp_pt != 0x03 && rtp_pt != 0x04 && rtp_pt != 0x12 && rtp_pt != 0x65)
+	if(rtp_pt != 0x03 && rtp_pt != 0x04 && rtp_pt != 0x12 &&
+	   rtp_pt != 0x61 && rtp_pt != 0x65)
 	{
 		goto not_rtp;
 	}
