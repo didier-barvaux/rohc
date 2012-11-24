@@ -92,10 +92,31 @@ for ./configure ? If yes, check configure output and config.log"
 #define ETHER_FRAME_MIN_LEN  60
 
 
+/** Some statistics collected by the sniffer */
+struct sniffer_stats
+{
+	/** Cumulative number of bytes before ROHC compression */
+	unsigned long comp_pre;
+	/** Cumulative number of bytes after ROHC compression */
+	unsigned long comp_post;
+	/** Cumulative number of packets per ROHC profile */
+	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE + 1];
+	/** Cumulative number of packets per ROHC mode */
+	unsigned long comp_nr_pkts_per_mode[R_MODE + 1];
+	/** Cumulative number of packets per state */
+	unsigned long comp_nr_pkts_per_state[SO + 1];
+	/** Cumulative number of packets per packet type */
+	unsigned long comp_nr_pkts_per_pkt_type[PACKET_UNKNOWN];
+	/** Cumulative number of times a context is reused (first time included) */
+	unsigned long comp_nr_reused_cid;
+};
+
+
 /* prototypes of private functions */
 
 static void usage(void);
-static void handle_signals(int signal);
+static void sniffer_interrupt(int signal);
+static void sniffer_print_stats(int signal);
 
 static bool sniff(const int use_large_cid,
                   const unsigned int max_contexts,
@@ -109,7 +130,8 @@ static int compress_decompress(struct rohc_comp *comp,
                                bool use_large_cid,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
-                               unsigned int *const cid);
+                               unsigned int *const cid,
+                               struct sniffer_stats *stats);
 
 static int compare_packets(const unsigned char *const pkt1,
                            const size_t pkt1_size,
@@ -135,6 +157,9 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 
 /** Whether the application shall stop or not */
 static bool stop_program;
+
+/** Some statistics collected by the sniffer */
+static struct sniffer_stats stats;
 
 /** Whether the application runs in verbose mode or not */
 static bool is_verbose;
@@ -172,6 +197,9 @@ int main(int argc, char *argv[])
 
 	/* by default, we don't stop */
 	stop_program = false;
+
+	/* reset stats */
+	memset(&stats, 0, sizeof(struct sniffer_stats));
 
 	/* set to quiet mode by default */
 	is_verbose = false;
@@ -280,9 +308,10 @@ int main(int argc, char *argv[])
 	}
 
 	/* set signal handlers */
-	signal(SIGINT, handle_signals);
-	signal(SIGTERM, handle_signals);
-	signal(SIGSEGV, handle_signals);
+	signal(SIGINT, sniffer_interrupt);
+	signal(SIGTERM, sniffer_interrupt);
+	signal(SIGSEGV, sniffer_interrupt);
+	signal(SIGUSR1, sniffer_print_stats);
 
 	/* test ROHC compression/decompression with the packets from the file */
 	if(!sniff(use_large_cid, max_contexts, device_name))
@@ -321,15 +350,114 @@ static void usage(void)
 
 
 /**
- * @brief Handle UNIX signals
+ * @brief Handle UNIX signals that interrupt the program
  *
  * @param signal  The received signal
  */
-static void handle_signals(int signal)
+static void sniffer_interrupt(int signal)
 {
 	/* end the program with next captured packet */
 	fprintf(stderr, "signal %d catched\n", signal);
 	stop_program = true;
+}
+
+
+/**
+ * @brief Handle UNIX signals that print statistics
+ *
+ * @param signal  The received signal
+ */
+static void sniffer_print_stats(int signal)
+{
+	unsigned long total;
+	int i;
+
+	printf("compressor:\n");
+	printf("\tgeneral:\n");
+	printf("\t\tpre-compress bytes %lu\n", stats.comp_pre);
+	printf("\t\tpost-compress bytes %lu\n", stats.comp_post);
+	if(stats.comp_pre != 0)
+	{
+		printf("\t\tcompress ratio: %lu%% of total, ie. %lu%% of gain\n",
+		       stats.comp_post * 100 / stats.comp_pre,
+		       100 - (stats.comp_post * 100 / stats.comp_pre));
+	}
+	else
+	{
+		printf("\t\tcompress ratio 0\n");
+	}
+
+	/* packets per profile */
+	total = stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED] +
+	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP] +
+	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] +
+	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
+	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE];
+	printf("\tpackets per profile:\n");
+	printf("\t\tUncompressed profile: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED]
+	       * 100 / total);
+	printf("\t\tIP/UDP/RTP profile: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP],
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP] * 100 / total);
+	printf("\t\tIP/UDP profile: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP],
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] * 100 / total);
+	printf("\t\tIP-only profile: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP],
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] * 100 / total);
+	printf("\t\tIP/UDP-Lite profile: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE] * 100 / total);
+
+	/* packets per mode */
+	total = stats.comp_nr_pkts_per_mode[U_MODE] +
+	        stats.comp_nr_pkts_per_mode[O_MODE] +
+	        stats.comp_nr_pkts_per_mode[R_MODE];
+	printf("\tpackets per mode:\n");
+	printf("\t\tU-mode: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_mode[U_MODE],
+	       stats.comp_nr_pkts_per_mode[U_MODE] * 100 / total);
+	printf("\t\tO-mode: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_mode[O_MODE],
+	       stats.comp_nr_pkts_per_mode[O_MODE] * 100 / total);
+	printf("\t\tR-mode: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_mode[R_MODE],
+	       stats.comp_nr_pkts_per_mode[R_MODE] * 100 / total);
+
+	/* packets per state */
+	total = stats.comp_nr_pkts_per_state[IR] +
+	        stats.comp_nr_pkts_per_state[FO] +
+	        stats.comp_nr_pkts_per_state[SO];
+	printf("\tpackets per state:\n");
+	printf("\t\tIR state: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_state[IR],
+	       stats.comp_nr_pkts_per_state[IR] * 100 / total);
+	printf("\t\tFO state: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_state[FO],
+	       stats.comp_nr_pkts_per_state[FO] * 100 / total);
+	printf("\t\tSO state: %lu packets (%lu%%)\n",
+	       stats.comp_nr_pkts_per_state[SO],
+	       stats.comp_nr_pkts_per_state[SO] * 100 / total);
+
+	/* packets per packet type */
+	printf("\tpackets per packet type:\n");
+	total = 0;
+	for(i = PACKET_IR; i < PACKET_UNKNOWN; i++)
+	{
+		total += stats.comp_nr_pkts_per_pkt_type[i];
+	}
+	for(i = PACKET_IR; i < PACKET_UNKNOWN; i++)
+	{
+		printf("\t\tpacket type %s: %lu packets (%lu%%)\n",
+		       rohc_get_packet_descr(i),
+		       stats.comp_nr_pkts_per_pkt_type[i],
+		       stats.comp_nr_pkts_per_pkt_type[i] * 100 / total);
+	}
+
+	/* re-used contexts */
+	printf("\tre-used contexts count %lu\n", stats.comp_nr_reused_cid);
 }
 
 
@@ -535,7 +663,7 @@ static bool sniff(const int use_large_cid,
 		/* compress & decompress from compressor to decompressor */
 		ret = compress_decompress(comp, decomp, header, packet,
 		                          link_len_src, use_large_cid,
-		                          handle, dumpers, &cid);
+		                          handle, dumpers, &cid, &stats);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -670,6 +798,7 @@ error:
  * @param handle         The PCAP handler that sniffed the packet
  * @param dumpers        The PCAP dumpers, one per context
  * @param cid            OUT: the CID used for the last packet
+ * @param stats          IN/OUT: The sniffer stats
  * @return               1 if the process is successful
  *                       0 if the decompressed packet doesn't match the
  *                         original one
@@ -686,7 +815,8 @@ static int compress_decompress(struct rohc_comp *comp,
                                bool use_large_cid,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
-                               unsigned int *const cid)
+                               unsigned int *const cid,
+                               struct sniffer_stats *stats)
 {
 	unsigned char *ip_packet;
 	size_t ip_size;
@@ -777,6 +907,16 @@ static int compress_decompress(struct rohc_comp *comp,
 		fprintf(stderr, "failed to get compression info\n");
 		ret = -4;
 		goto error;
+	}
+	stats->comp_pre += ip_size;
+	stats->comp_post += rohc_size;
+	stats->comp_nr_pkts_per_profile[last_packet_info.profile_id]++;
+	stats->comp_nr_pkts_per_mode[last_packet_info.context_mode]++;
+	stats->comp_nr_pkts_per_state[last_packet_info.context_state]++;
+	stats->comp_nr_pkts_per_pkt_type[last_packet_info.packet_type]++;
+	if(last_packet_info.is_context_init)
+	{
+		stats->comp_nr_reused_cid++;
 	}
 
 	/* open a new dumper if none exists or the stream changed */
