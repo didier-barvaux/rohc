@@ -3508,6 +3508,25 @@ static int parse_dynamic_part_ip(const struct d_context *const context,
  *
  * See 5.7.7.4 in RFC 3095 for details. Generic extension header list is not
  * managed yet.
+ * See 3.3 in RFC 3843 for details on the Static IP Identifier (SID) flag.
+ *
+ * \verbatim
+
+Dynamic part:
+
+      +---+---+---+---+---+---+---+---+
+      |        Type of Service        |
+      +---+---+---+---+---+---+---+---+
+      |         Time to Live          |
+      +---+---+---+---+---+---+---+---+
+      /        Identification         /   2 octets
+      +---+---+---+---+---+---+---+---+
+      | DF|RND|NBO|SID|       0       |
+      +---+---+---+---+---+---+---+---+
+      / Generic extension header list /  variable length
+      +---+---+---+---+---+---+---+---+
+
+\endverbatim
  *
  * @param context  The decompression context
  * @param packet   The ROHC packet to decode
@@ -3563,8 +3582,13 @@ static int parse_dynamic_part_ipv4(const struct d_context *const context,
 	/* read the NBO flag */
 	bits->nbo = GET_REAL(GET_BIT_5(packet));
 	bits->nbo_nr = 1;
-	rohc_decomp_debug(context, "DF = %d, RND = %d, NBO = %d\n",
-	                  bits->df, bits->rnd, bits->nbo);
+
+	/* read the SID flag */
+	bits->sid = GET_REAL(GET_BIT_4(packet));
+	bits->sid_nr = 1;
+
+	rohc_decomp_debug(context, "DF = %d, RND = %d, NBO = %d, SID = %d\n",
+	                  bits->df, bits->rnd, bits->nbo, bits->sid);
 	packet++;
 	read++;
 
@@ -7550,7 +7574,14 @@ static unsigned int build_uncomp_ipv4(const struct d_context *const context,
 
 	/* dynamic fields */
 	ip->tos = decoded.tos;
-	ip->id = htons(decoded.id);
+	if(decoded.nbo)
+	{
+		ip->id = htons(decoded.id);
+	}
+	else
+	{
+		ip->id = decoded.id;
+	}
 	ip->frag_off = 0;
 	IPV4_SET_DF(ip, decoded.df);
 	ip->ttl = decoded.ttl;
@@ -8112,18 +8143,51 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp *const decomp,
 		}
 		rohc_decomp_debug(context, "decoded %s RND = %d\n", descr, decoded->rnd);
 
-		/* IP-ID */
-		if(packet_type == PACKET_IR ||
-		   packet_type == PACKET_IR_DYN ||
-		   decoded->rnd)
+		/* SID flag */
+		if(bits.sid_nr > 0)
 		{
-			/* take packet value unchanged for IR/IR-DYN packets and if random */
-			assert(bits.id_nr == 16);
-			decoded->id = bits.id;
+			/* take value from base header */
+			decoded->sid = bits.sid;
 		}
 		else
 		{
-			/* decode packet value with decoded SN */
+			/* keep context value */
+			decoded->sid = ctxt->sid;
+		}
+		rohc_decomp_debug(context, "decoded %s SID = %d\n", descr, decoded->sid);
+
+		/* IP-ID */
+		if(packet_type == PACKET_IR ||
+		   packet_type == PACKET_IR_DYN)
+		{
+			/* take packet value unchanged for IR/IR-DYN packets */
+			assert(bits.id_nr == 16);
+			decoded->id = bits.id;
+		}
+		else if(decoded->rnd)
+		{
+			/* take packet value unchanged if random */
+			assert(bits.id_nr == 16);
+			decoded->id = bits.id;
+
+			if(decoded->sid)
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "%s IP-ID got both RND and SID flags!\n", descr);
+				goto error;
+			}
+		}
+		else if(decoded->sid)
+		{
+			/* the IP-ID of the IPv4 header is constant: retrieve the value
+			 * that is stored in the context */
+			decoded->id = ipv4_get_id(&ctxt->ip);
+		}
+		else
+		{
+			/* the IP-ID of the IPv4 header changed in a predictable way:
+			 * decode its new value with the help of the decoded SN and the
+			 * least-significant IP-ID bits transmitted in the ROHC header */
 			int ret;
 			ret = ip_id_offset_decode(ip_id_decode, bits.id, bits.id_nr,
 			                          decoded_sn, &decoded->id);
@@ -8135,9 +8199,10 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp *const decomp,
 				goto error;
 			}
 		}
-		rohc_decomp_debug(context, "decoded %s IP-ID = 0x%04x (nr bits = %zd, "
-		                  "bits = 0x%x)\n", descr, decoded->id, bits.id_nr,
-		                  bits.id);
+		rohc_decomp_debug(context, "decoded %s IP-ID = 0x%04x (rnd = %d, "
+		                  "nbo = %d, sid = %d, nr bits = %zd, bits = 0x%x)\n",
+		                  descr, decoded->id, decoded->rnd, decoded->nbo,
+		                  decoded->sid, bits.id_nr, bits.id);
 
 		/* DF flag */
 		if(bits.df_nr > 0)
@@ -8274,11 +8339,13 @@ static void update_context(const struct d_context *context,
 	ip_set_daddr(&g_context->outer_ip_changes->ip, decoded.outer_ip.daddr);
 	if(decoded.outer_ip.version == IPV4)
 	{
+		ipv4_set_id(&g_context->outer_ip_changes->ip, decoded.outer_ip.id);
 		ip_id_offset_set_ref(g_context->outer_ip_id_offset_ctxt,
 		                     decoded.outer_ip.id, decoded.sn);
 		ipv4_set_df(&g_context->outer_ip_changes->ip, decoded.outer_ip.df);
 		g_context->outer_ip_changes->nbo = decoded.outer_ip.nbo;
 		g_context->outer_ip_changes->rnd = decoded.outer_ip.rnd;
+		g_context->outer_ip_changes->sid = decoded.outer_ip.sid;
 	}
 	else /* IPV6 */
 	{
@@ -8296,11 +8363,13 @@ static void update_context(const struct d_context *context,
 		ip_set_daddr(&g_context->inner_ip_changes->ip, decoded.inner_ip.daddr);
 		if(decoded.inner_ip.version == IPV4)
 		{
+			ipv4_set_id(&g_context->inner_ip_changes->ip, decoded.inner_ip.id);
 			ip_id_offset_set_ref(g_context->inner_ip_id_offset_ctxt,
 			                     decoded.inner_ip.id, decoded.sn);
 			ipv4_set_df(&g_context->inner_ip_changes->ip, decoded.inner_ip.df);
 			g_context->inner_ip_changes->nbo = decoded.inner_ip.nbo;
 			g_context->inner_ip_changes->rnd = decoded.inner_ip.rnd;
+			g_context->inner_ip_changes->sid = decoded.inner_ip.sid;
 		}
 		else /* IPV6 */
 		{

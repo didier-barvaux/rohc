@@ -84,6 +84,10 @@ struct rohc_extr_ip_bits
 	                      header or in extension header */
 	size_t rnd_nr;   /**< The number of RND bits found */
 
+	uint8_t sid:1;   /**< The SID bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t sid_nr;   /**< The number of SID bits found */
+
 	uint32_t flowid:20;  /**< The IPv6 flow ID bits found in static chain of
 	                          IR header */
 	size_t flowid_nr;    /**< The number of flow label bits */
@@ -220,6 +224,7 @@ struct rohc_decoded_ip_values
 	uint8_t proto;       /**< The decoded protocol/NH field */
 	uint8_t nbo:1;       /**< The decoded NBO field (IPv4 only) */
 	uint8_t rnd:1;       /**< The decoded RND field (IPv4 only) */
+	uint8_t sid:1;       /**< The decoded SID field (IPv4 only) */
 	uint32_t flowid:20;  /**< The decoded flow ID field (IPv6 only) */
 	uint8_t saddr[16];   /**< The decoded source address field */
 	uint8_t daddr[16];   /**< The decoded destination address field */
@@ -288,6 +293,8 @@ struct d_generic_changes
 	int rnd;
 	/// Whether the IP-ID is considered as coded in NBO or not (IPv4 only)
 	int nbo;
+	/// Whether the IP-ID is considered as static or not (IPv4 only)
+	int sid;
 
 	/// The next header located after the IP header(s)
 	unsigned char *next_header;

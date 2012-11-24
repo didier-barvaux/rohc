@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
 	int packet_to_damage;
 	char *packet_type = NULL;
 	rohc_packet_t expected_packet;
+	int srand_init;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -157,26 +158,32 @@ int main(int argc, char *argv[])
 	if(strlen(packet_type) == 2 && strcmp(packet_type, "ir") == 0)
 	{
 		expected_packet = PACKET_IR;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "irdyn") == 0)
 	{
 		expected_packet = PACKET_IR_DYN;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo0") == 0)
 	{
 		expected_packet = PACKET_UO_0;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
 	{
 		expected_packet = PACKET_UO_1_ID;
+		srand_init = 6;
 	}
 	else if(strlen(packet_type) == 4 && strcmp(packet_type, "uor2") == 0)
 	{
 		expected_packet = PACKET_UOR_2_RTP;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
 	{
 		expected_packet = PACKET_UOR_2_TS;
+		srand_init = 21;
 	}
 	else
 	{
@@ -187,7 +194,7 @@ int main(int argc, char *argv[])
 
 	/* init the random system with a constant value for the test to be fully
 	   reproductible */
-	srand(5);
+	srand(srand_init + packet_to_damage);
 
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(filename, packet_to_damage, expected_packet);
@@ -435,6 +442,7 @@ static int test_comp_and_decomp(const char *const filename,
 		if(counter == packet_to_damage)
 		{
 			unsigned char old_byte;
+			unsigned char new_byte;
 
 			/* check packet type of the packet to damage */
 			if(packet_info.packet_type != expected_packet)
@@ -448,12 +456,22 @@ static int test_comp_and_decomp(const char *const filename,
 			        packet_to_damage, expected_packet);
 
 			/* damage the packet (randomly modify its last byte) */
-			assert(rohc_size >= 1);
-			old_byte = rohc_packet[rohc_size - 1];
-			rohc_packet[rohc_size - 1] ^= rand() & 0xff;
+			if(expected_packet == PACKET_UOR_2_TS)
+			{
+				assert(rohc_size >= 2);
+				old_byte = rohc_packet[rohc_size - 2];
+				rohc_packet[rohc_size - 2] = 6;
+				new_byte = rohc_packet[rohc_size - 2];
+			}
+			else
+			{
+				assert(rohc_size >= 1);
+				old_byte = rohc_packet[rohc_size - 1];
+				rohc_packet[rohc_size - 1] ^= rand() & 0xff;
+				new_byte = rohc_packet[rohc_size - 1];
+			}
 			fprintf(stderr, "\tvoluntary damage packet (change byte #%zd from "
-			        "0x%02x to 0x%02x)\n", rohc_size, old_byte,
-			        rohc_packet[rohc_size - 1]);
+			        "0x%02x to 0x%02x)\n", rohc_size, old_byte, new_byte);
 		}
 		else
 		{

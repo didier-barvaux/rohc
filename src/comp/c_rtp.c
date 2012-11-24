@@ -361,6 +361,9 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
+	/* reset UDP checksum for UDP streams */
+	((struct udphdr *) udp_header)->check = 0;
+
 	return true;
 
 bad_profile:
@@ -519,7 +522,15 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
 	nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
-	if(g_context->tmp.send_static)
+	if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
+	   (g_context->tmp.nr_of_ip_hdr > 1 &&
+	   	g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+	{
+		packet = PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
+		                "SID flag changed\n");
+	}
+	else if(g_context->tmp.send_static)
 	{
 		packet = PACKET_UOR_2_RTP;
 		rohc_comp_debug(context, "choose packet UOR-2-RTP because at least one "
@@ -678,6 +689,11 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	                rtp_context->tmp.m_set, nr_of_ip_hdr, is_rnd);
 
 	/* sanity check */
+	assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+	if(g_context->tmp.nr_of_ip_hdr > 1)
+	{
+		assert(g_context->ip2_flags.info.v4.sid_count >= MAX_FO_COUNT);
+	}
 	assert(g_context->tmp.send_static == 0);
 	assert(g_context->tmp.send_dynamic == 0);
 	assert(rtp_context->tmp.send_rtp_dynamic == 0);

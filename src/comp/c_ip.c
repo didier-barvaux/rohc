@@ -268,7 +268,15 @@ rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	if(g_context->tmp.send_static)
+	if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
+	   (g_context->tmp.nr_of_ip_hdr > 1 &&
+	   	g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+	{
+		packet = PACKET_IR_DYN;
+		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
+		                "SID flag changed\n");
+	}
+	else if(g_context->tmp.send_static)
 	{
 		packet = PACKET_UOR_2;
 		rohc_comp_debug(context, "choose packet UOR-2 because at least one "
@@ -343,6 +351,8 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 
 	if(nr_of_ip_hdr == 1) /* single IP header */
 	{
+		assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+
 		if(nr_sn_bits <= 4 &&
 		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))))
 		{
@@ -383,6 +393,9 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 		const int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
 		const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
 		const size_t nr_ip_id_bits2 = g_context->tmp.nr_ip_id_bits2;
+
+		assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+		assert(g_context->ip2_flags.info.v4.sid_count >= MAX_FO_COUNT);
 
 		if(nr_sn_bits <= 4 &&
 		   (!is_ip_v4 || (is_ip_v4 && (is_rnd == 1 || nr_ip_id_bits == 0))) &&

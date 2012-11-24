@@ -67,17 +67,25 @@ struct ipv4_header_info
 	/// @brief The number of times the IP-ID is specified as coded in Network
 	///        Byte Order (NBO) in the compressed header
 	int nbo_count;
+	/// @brief The number of times the IP-ID is specified as static in the
+	///        compressed header
+	int sid_count;
 
 	/// Whether the IP-ID is considered as random or not
 	int rnd;
 	/// Whether the IP-ID is considered as coded in NBO or not
 	int nbo;
+	/// Whether the IP-ID is considered as static or not
+	int sid;
 	/// @brief Whether the IP-ID of the previous IP header was considered as
 	///        random or not
 	int old_rnd;
 	/// @brief Whether the IP-ID of the previous IP header was considered as
 	///        coded in NBO or not
 	int old_nbo;
+	/// @brief Whether the IP-ID of the previous IP header was considered as
+	///        static or not
+	int old_sid;
 
 	/// The delta between the IP-ID and the current Sequence Number (SN)
 	/// (overflow over 16 bits is expected when SN > IP-ID)

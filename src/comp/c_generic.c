@@ -242,7 +242,7 @@ static void detect_ip_id_behaviour(const struct c_context *const context,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 	__attribute__((nonnull(1, 2, 3)));
-static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id);
+static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id);
 
 static int encode_uncomp_fields(struct c_context *const context,
                                 const struct ip_packet *const ip,
@@ -381,6 +381,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 		header_info->protocol_count = MAX_FO_COUNT;
 		header_info->info.v4.rnd_count = MAX_FO_COUNT;
 		header_info->info.v4.nbo_count = MAX_FO_COUNT;
+		header_info->info.v4.sid_count = MAX_FO_COUNT;
 	}
 	else
 	{
@@ -952,6 +953,7 @@ int c_generic_encode(struct c_context *const context,
 		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(ip));
 		g_context->ip_flags.info.v4.old_rnd = g_context->ip_flags.info.v4.rnd;
 		g_context->ip_flags.info.v4.old_nbo = g_context->ip_flags.info.v4.nbo;
+		g_context->ip_flags.info.v4.old_sid = g_context->ip_flags.info.v4.sid;
 	}
 	else /* IPV6 */
 	{
@@ -968,6 +970,7 @@ int c_generic_encode(struct c_context *const context,
 			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(inner_ip));
 			g_context->ip2_flags.info.v4.old_rnd = g_context->ip2_flags.info.v4.rnd;
 			g_context->ip2_flags.info.v4.old_nbo = g_context->ip2_flags.info.v4.nbo;
+			g_context->ip2_flags.info.v4.old_sid = g_context->ip2_flags.info.v4.sid;
 		}
 		else /* IPV6 */
 		{
@@ -1302,6 +1305,14 @@ void decide_state(struct c_context *const context)
 			                "go to FO state\n", g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
+		else if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
+				(g_context->tmp.nr_of_ip_hdr > 1 &&
+				 g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		{
+			rohc_comp_debug(context, "at least one SID flag changed now or in the "
+			                "last few packets, so go to FO state\n");
+			next_state = FO;
+		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
@@ -1319,6 +1330,14 @@ void decide_state(struct c_context *const context)
 			                g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
+		else if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
+				(g_context->tmp.nr_of_ip_hdr > 1 &&
+				 g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		{
+			rohc_comp_debug(context, "at least one SID flag changed now or in the "
+			                "last few packets, so stay in FO state\n");
+			next_state = FO;
+		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
@@ -1334,6 +1353,14 @@ void decide_state(struct c_context *const context)
 			                "now or in the last few packets, so go back to FO "
 			                "state\n", g_context->tmp.send_static,
 			                g_context->tmp.send_dynamic);
+			next_state = FO;
+		}
+		else if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
+				(g_context->tmp.nr_of_ip_hdr > 1 &&
+				 g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		{
+			rohc_comp_debug(context, "at least one SID flag changed now or in the "
+			                "last few packets, so go back to FO state\n");
 			next_state = FO;
 		}
 		else
@@ -2106,7 +2133,7 @@ int code_generic_dynamic_part(const struct c_context *context,
     +---+---+---+---+---+---+---+---+
  3  /        Identification         /   2 octets
     +---+---+---+---+---+---+---+---+
- 4  | DF|RND|NBO|         0         |
+ 4  | DF|RND|NBO|SID|       0       |
     +---+---+---+---+---+---+---+---+
  5  / Generic extension header list /  variable length
     +---+---+---+---+---+---+---+---+
@@ -2129,7 +2156,7 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	unsigned int tos;
 	unsigned int ttl;
 	unsigned int df;
-	unsigned char df_rnd_nbo;
+	unsigned char df_rnd_nbo_sid;
 	uint16_t id;
 
 	/* part 1 */
@@ -2152,22 +2179,27 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 
 	/* part 4 */
 	df = ipv4_get_df(ip);
-	df_rnd_nbo = df << 7;
+	df_rnd_nbo_sid = df << 7;
 	if(header_info->info.v4.rnd)
 	{
-		df_rnd_nbo |= 0x40;
+		df_rnd_nbo_sid |= 0x40;
 	}
 	if(header_info->info.v4.nbo)
 	{
-		df_rnd_nbo |= 0x20;
+		df_rnd_nbo_sid |= 0x20;
+	}
+	if(header_info->info.v4.sid)
+	{
+		df_rnd_nbo_sid |= 0x10;
 	}
 
-	dest[counter] = df_rnd_nbo;
+	dest[counter] = df_rnd_nbo_sid;
 	counter++;
 
 	header_info->info.v4.df_count++;
 	header_info->info.v4.rnd_count++;
 	header_info->info.v4.nbo_count++;
+	header_info->info.v4.sid_count++;
 
 	/* part 5 is not supported for the moment, but the field is mandatory,
 	   so add a zero byte */
@@ -2175,9 +2207,10 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	counter++;
 
 	rohc_comp_debug(context, "TOS = 0x%02x, TTL = 0x%02x, IP-ID = 0x%04x, "
-	                "df_rnd_nbo = 0x%02x (DF = %d, RND = %d, NBO = %d)\n",
-	                tos, ttl, id, df_rnd_nbo, df, header_info->info.v4.rnd,
-	                header_info->info.v4.nbo);
+	                "df_rnd_nbo_sid = 0x%02x (DF = %d, RND = %d, NBO = %d, "
+	                "SID = %d)\n", tos, ttl, id, df_rnd_nbo_sid, df,
+	                header_info->info.v4.rnd, header_info->info.v4.nbo,
+	                header_info->info.v4.sid);
 
 	return counter;
 }
@@ -5396,8 +5429,9 @@ int changed_dynamic_both_hdr(const struct c_context *context,
  * checked for change.
  *
  * Other flags are checked for change for IPv4. There are IP-ID related flags:
- *  - RND: is the IP-ID random ?
- *  - NBO: is the IP-ID in Network Byte Order ?
+ *  - RND: is the IP-ID random?
+ *  - NBO: is the IP-ID in Network Byte Order?
+ *  - SID: is the IP-ID static?
  *
  * @param context        The compression context
  * @param changed_fields The fields that changed, created by the function
@@ -5515,6 +5549,24 @@ int changed_dynamic_one_hdr(const struct c_context *const context,
 		if(nb_flags > 0)
 		{
 			nb_fields += 1;
+		}
+
+		/*  check the SID flag for change (IPv4 only) */
+		if(header_info->info.v4.sid != header_info->info.v4.old_sid ||
+		   header_info->info.v4.sid_count < MAX_FO_COUNT)
+		{
+			if(header_info->info.v4.sid != header_info->info.v4.old_sid)
+			{
+				rohc_comp_debug(context, "SID changed (0x%x -> 0x%x) in the "
+				                "current packet\n", header_info->info.v4.old_sid,
+				                header_info->info.v4.sid);
+				header_info->info.v4.sid_count = 0;
+				g_context->fo_count = 0;
+			}
+			else
+			{
+				rohc_comp_debug(context, "SID changed in the last few packets\n");
+			}
 		}
 	}
 
@@ -5640,7 +5692,7 @@ static void detect_ip_id_behaviours(struct c_context *const context,
  * @brief Detect the behaviour of the IP-ID field of the given IPv4 header
  *
  * Detect how the IP-ID field behave:
- *  - constant (not handled yet),
+ *  - constant,
  *  - increase in Network Bit Order (NBO),
  *  - increase in Little Endian,
  *  - randomly.
@@ -5659,11 +5711,13 @@ static void detect_ip_id_behaviour(const struct c_context *const context,
 
 	if(header_info->is_first_header)
 	{
-		/* IP-ID behaviour cannot be detect for the first header (2 headers are
-		 * needed), so consider that IP-ID is not random and in NBO. */
-		rohc_comp_debug(context, "no previous IP-ID, consider non-random and NBO\n");
+		/* IP-ID behaviour cannot be detected for the first header (2 headers are
+		 * needed), so consider that IP-ID is not random/static and in NBO. */
+		rohc_comp_debug(context, "no previous IP-ID, consider non-random/static "
+		                "and NBO\n");
 		header_info->info.v4.rnd = 0;
 		header_info->info.v4.nbo = 1;
+		header_info->info.v4.sid = 0;
 	}
 	else
 	{
@@ -5679,36 +5733,52 @@ static void detect_ip_id_behaviour(const struct c_context *const context,
 		rohc_comp_debug(context, "1) old_id = 0x%04x new_id = 0x%04x\n",
 		                old_id, new_id);
 
-		if(is_ip_id_nbo(old_id, new_id))
+		if(new_id == old_id)
 		{
+			/* previous and current IP-ID values are equal: IP-ID is constant */
+			rohc_comp_debug(context, "IP-ID is constant (SID detected)\n");
 			header_info->info.v4.rnd = 0;
 			header_info->info.v4.nbo = 1;
+			header_info->info.v4.sid = 1;
+		}
+		else if(is_ip_id_increasing(old_id, new_id))
+		{
+			/* IP-ID is increasing in NBO */
+			rohc_comp_debug(context, "IP-ID is increasing in NBO\n");
+			header_info->info.v4.rnd = 0;
+			header_info->info.v4.nbo = 1;
+			header_info->info.v4.sid = 0;
 		}
 		else
 		{
-			/* change byte ordering and check NBO again */
+			/* change byte ordering and check behaviour again */
 			old_id = swab16(old_id);
 			new_id = swab16(new_id);
 
 			rohc_comp_debug(context, "2) old_id = 0x%04x new_id = 0x%04x\n",
 			                old_id, new_id);
 
-			if(is_ip_id_nbo(old_id, new_id))
+			if(is_ip_id_increasing(old_id, new_id))
 			{
+				/* IP-ID is increasing in Little Endian */
+				rohc_comp_debug(context, "IP-ID is increasing in Little Endian\n");
 				header_info->info.v4.rnd = 0;
-				header_info->info.v4.nbo = 1;
+				header_info->info.v4.nbo = 0;
+				header_info->info.v4.sid = 0;
 			}
 			else
 			{
-				rohc_comp_debug(context, "RND detected\n");
+				rohc_comp_debug(context, "IP-ID is random (RND detected)\n");
 				header_info->info.v4.rnd = 1;
 				header_info->info.v4.nbo = 1; /* do not change bit order if RND */
+				header_info->info.v4.sid = 0;
 			}
 		}
 	}
 
-	rohc_comp_debug(context, "NBO = %d, RND = %d\n", header_info->info.v4.nbo,
-	                header_info->info.v4.rnd);
+	rohc_comp_debug(context, "NBO = %d, RND = %d, SID = %d\n",
+	                header_info->info.v4.nbo, header_info->info.v4.rnd,
+	                header_info->info.v4.sid);
 
 error:
 	;
@@ -5716,42 +5786,42 @@ error:
 
 
 /**
- * @brief Whether the new IP-ID is transmitted in NBO or not
+ * @brief Whether the new IP-ID is increasing
  *
- * The new IP-ID is considered as transmitted in NBO if it increases by a
- * small delta from the previous IP-ID. Wraparound shall be taken into
+ * The new IP-ID is considered as increasing if the new value is greater by a
+ * small delta then the previous IP-ID. Wraparound shall be taken into
  * account.
  *
  * @param old_id  The IP-ID of the previous IPv4 header
  * @param new_id  The IP-ID of the current IPv4 header
- * @return        Whether the IP-ID is transmitted in NBO or not
+ * @return        Whether the IP-ID is increasing
  */
-static bool is_ip_id_nbo(const uint16_t old_id, const uint16_t new_id)
+static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
 {
 	/* The maximal delta accepted between two consecutive IPv4 ID so that it
-	 * can be considered as coded in Network Byte Order (NBO) */
+	 * can be considered as increasing */
 	const uint16_t max_id_delta = 20;
-	bool is_nbo;
+	bool is_increasing;
 
-	/* the new IP-ID is transmitted in NBO if it belongs to:
+	/* the new IP-ID is increasing if it belongs to:
 	 *  - interval ]old_id ; old_id + IPID_MAX_DELTA[ (no wraparound)
 	 *  - intervals ]old_id ; 0xffff] or
 	 *    [0 ; (old_id + IPID_MAX_DELTA) % 0xffff[ (wraparound) */
 	if(new_id > old_id && (new_id - old_id) < max_id_delta)
 	{
-		is_nbo = true;
+		is_increasing = true;
 	}
 	else if(old_id > (0xffff - max_id_delta) &&
 	        (new_id > old_id || new_id < (max_id_delta - (0xffff - old_id))))
 	{
-		is_nbo = true;
+		is_increasing = true;
 	}
 	else
 	{
-		is_nbo = false;
+		is_increasing = false;
 	}
 
-	return is_nbo;
+	return is_increasing;
 }
 
 
@@ -5834,10 +5904,12 @@ static int encode_uncomp_fields(struct c_context *const context,
 			g_context->ip_flags.info.v4.id_delta = ipv4_get_id(ip) - g_context->sn;
 		}
 		rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (NBO = %d, "
-		                "RND = %d)\n", g_context->ip_flags.info.v4.id_delta,
+		                "RND = %d, SID = %d)\n",
+		                g_context->ip_flags.info.v4.id_delta,
 		                g_context->ip_flags.info.v4.id_delta,
 		                g_context->ip_flags.info.v4.nbo,
-		                g_context->ip_flags.info.v4.rnd);
+		                g_context->ip_flags.info.v4.rnd,
+		                g_context->ip_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
 		if(context->state == IR)
@@ -5846,6 +5918,13 @@ static int encode_uncomp_fields(struct c_context *const context,
 			g_context->tmp.nr_ip_id_bits = 16;
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
 			                "new outer IP-ID delta\n", g_context->tmp.nr_ip_id_bits);
+		}
+		else if(g_context->ip_flags.info.v4.sid)
+		{
+			/* IP-ID is constant, no IP-ID bit to transmit */
+			g_context->tmp.nr_ip_id_bits = 0;
+			rohc_comp_debug(context, "outer IP-ID is constant, no IP-ID bit to "
+			                "transmit\n");
 		}
 		else
 		{
@@ -5888,10 +5967,12 @@ static int encode_uncomp_fields(struct c_context *const context,
 			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
 		}
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
-		                "RND = %d)\n", g_context->ip2_flags.info.v4.id_delta,
+		                "RND = %d, SID = %d)\n",
+		                g_context->ip2_flags.info.v4.id_delta,
 		                g_context->ip2_flags.info.v4.id_delta,
 		                g_context->ip2_flags.info.v4.nbo,
-		                g_context->ip2_flags.info.v4.rnd);
+		                g_context->ip2_flags.info.v4.rnd,
+		                g_context->ip2_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
 		if(context->state == IR)
@@ -5900,6 +5981,13 @@ static int encode_uncomp_fields(struct c_context *const context,
 			g_context->tmp.nr_ip_id_bits2 = 16;
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
 			                "new inner IP-ID delta\n", g_context->tmp.nr_ip_id_bits2);
+		}
+		else if(g_context->ip2_flags.info.v4.sid)
+		{
+			/* IP-ID is constant, no IP-ID bit to transmit */
+			g_context->tmp.nr_ip_id_bits2 = 0;
+			rohc_comp_debug(context, "inner IP-ID is constant, no IP-ID bit to "
+			                "transmit\n");
 		}
 		else
 		{
