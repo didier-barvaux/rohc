@@ -109,6 +109,9 @@ struct sniffer_stats
 	unsigned long comp_nr_pkts_per_pkt_type[PACKET_UNKNOWN];
 	/** Cumulative number of times a context is reused (first time included) */
 	unsigned long comp_nr_reused_cid;
+
+	/** Cumulative number of bad packets */
+	unsigned long bad_packets;
 };
 
 
@@ -372,6 +375,12 @@ static void sniffer_print_stats(int signal)
 	unsigned long total;
 	int i;
 
+	/* general */
+	printf("general:\n");
+	printf("\tbad packets: %lu packets\n", stats.bad_packets);
+	printf("\n");
+
+	/* compressor */
 	printf("compressor:\n");
 	printf("\tgeneral:\n");
 	printf("\t\tpre-compress bytes %lu\n", stats.comp_pre);
@@ -687,14 +696,16 @@ static bool sniff(const int use_large_cid,
 		else if(ret == -3)
 		{
 			nb_bad++;
+			stats.bad_packets++;
 		}
 		else
 		{
 			nb_internal_err++;
 		}
 
-		/* in case of problem, print recorded traces then die! */
-		if(ret != 1)
+		/* in case of problem (ignore bad packets), print recorded traces
+		 * then die! */
+		if(ret != 1 && ret != -3)
 		{
 			const char *logfilename = "./sniffer.log";
 			FILE *logfile;
@@ -866,8 +877,12 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		if(tot_len < ip_size)
 		{
-			fprintf(stderr, "the Ethernet frame has %zd bytes of padding after "
-			        "the %zd byte IP packet!\n", ip_size - tot_len, tot_len);
+			if(is_verbose)
+			{
+				fprintf(stderr, "the Ethernet frame has %zd bytes of padding "
+				        "after the %zd byte IP packet!\n", ip_size - tot_len,
+				        tot_len);
+			}
 			ip_size = tot_len;
 		}
 	}
