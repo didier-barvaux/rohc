@@ -654,11 +654,15 @@ static bool sniff(const int use_large_cid,
 
 		counter++;
 
-		if(counter > 1)
+		if(counter == 1 || (counter % 100) == 0)
 		{
-			printf("\r");
+			if(counter > 1)
+			{
+				printf("\r");
+			}
+			printf("packet #%u", counter);
+			fflush(stdout);
 		}
-		printf("packet #%u", counter);
 
 		/* compress & decompress from compressor to decompressor */
 		ret = compress_decompress(comp, decomp, header, packet,
