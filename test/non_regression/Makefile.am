@@ -144,7 +144,7 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1080055_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_largecid.sh \
 	test_non_regression_ipv4_udp_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_largecid.sh \
