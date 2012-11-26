@@ -1305,9 +1305,11 @@ void decide_state(struct c_context *const context)
 			                "go to FO state\n", g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
-		else if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
-				(g_context->tmp.nr_of_ip_hdr > 1 &&
-				 g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		else if((g_context->ip_flags.version == IPV4 &&
+		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		        (g_context->tmp.nr_of_ip_hdr > 1 &&
+		         g_context->ip2_flags.version == IPV4 &&
+		         g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go to FO state\n");
@@ -1330,9 +1332,11 @@ void decide_state(struct c_context *const context)
 			                g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
-		else if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
-				(g_context->tmp.nr_of_ip_hdr > 1 &&
-				 g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		else if((g_context->ip_flags.version == IPV4 &&
+		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		        (g_context->tmp.nr_of_ip_hdr > 1 &&
+		         g_context->ip2_flags.version == IPV4 &&
+		         g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so stay in FO state\n");
@@ -1355,9 +1359,11 @@ void decide_state(struct c_context *const context)
 			                g_context->tmp.send_dynamic);
 			next_state = FO;
 		}
-		else if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
-				(g_context->tmp.nr_of_ip_hdr > 1 &&
-				 g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		else if((g_context->ip_flags.version == IPV4 &&
+		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		        (g_context->tmp.nr_of_ip_hdr > 1 &&
+		         g_context->ip2_flags.version == IPV4 &&
+		         g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go back to FO state\n");

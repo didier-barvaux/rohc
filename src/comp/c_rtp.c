@@ -522,8 +522,10 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
 	nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
-	if(g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT ||
+	if((g_context->ip_flags.version == IPV4 &&
+	    g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
 	   (g_context->tmp.nr_of_ip_hdr > 1 &&
+	    g_context->ip2_flags.version == IPV4 &&
 	   	g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
 	{
 		packet = PACKET_IR_DYN;
@@ -689,8 +691,11 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	                rtp_context->tmp.m_set, nr_of_ip_hdr, is_rnd);
 
 	/* sanity check */
-	assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-	if(g_context->tmp.nr_of_ip_hdr > 1)
+	if(g_context->ip_flags.version == IPV4)
+	{
+		assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+	}
+	if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->ip2_flags.version == IPV4)
 	{
 		assert(g_context->ip2_flags.info.v4.sid_count >= MAX_FO_COUNT);
 	}
