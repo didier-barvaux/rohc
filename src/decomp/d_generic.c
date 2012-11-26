@@ -93,12 +93,14 @@
 			assert((_bits_nr) <= (_max)); \
 			/* remove extra MSB (warn if dropped MSB are non-zero) */ \
 			typeof(field) _mask = (1 << ((_max) - (_bits_nr))) - 1; \
-			rohc_assert(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
-			            (field & _mask) == field, error, \
-			            "too many bits for " #field_descr ": %zd bits " \
-			            "found in %s, and %zd bits already found before " \
-			            "for a %zd-bit field\n", (_bits_nr), \
-			            rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
+			if((field & _mask) != field) \
+			{ \
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
+				             "too many bits for " #field_descr ": %zd bits " \
+				             "found in %s, and %zd bits already found before " \
+				             "for a %zd-bit field\n", (_bits_nr), \
+				             rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
+			} \
 			field &= _mask; \
 			/* make room and clear that room for new LSB */ \
 			field <<= (_bits_nr); \
