@@ -7582,13 +7582,10 @@ static unsigned int build_uncomp_ipv4(const struct d_context *const context,
 
 	/* dynamic fields */
 	ip->tos = decoded.tos;
-	if(decoded.nbo)
+	ip->id = htons(decoded.id);
+	if(!decoded.nbo)
 	{
-		ip->id = htons(decoded.id);
-	}
-	else
-	{
-		ip->id = decoded.id;
+		ip->id = swab16(ip->id);
 	}
 	ip->frag_off = 0;
 	IPV4_SET_DF(ip, decoded.df);
