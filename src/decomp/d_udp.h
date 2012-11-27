@@ -28,6 +28,7 @@
 #include "d_generic.h"
 #include "d_ip.h"
 
+#include <stdint.h>
 #include <string.h>
 
 
@@ -41,6 +42,10 @@
  */
 struct d_udp_context
 {
+	/** UDP source port */
+	uint16_t sport;
+	/** UDP destination port */
+	uint16_t dport;
 	/// Whether the UDP checksum field is encoded in the ROHC packet or not
 	int udp_checksum_present;
 };

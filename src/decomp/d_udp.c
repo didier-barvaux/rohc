@@ -213,9 +213,15 @@ int udp_parse_static_udp(const struct d_context *const context,
                          unsigned int length,
                          struct rohc_extr_bits *const bits)
 {
+	struct d_generic_context *g_context;
+	struct d_udp_context *udp_context;
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	udp_context = g_context->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -227,6 +233,7 @@ int udp_parse_static_udp(const struct d_context *const context,
 		goto error;
 	}
 
+	/* UDP source port */
 	bits->udp_src = GET_NEXT_16_BITS(packet);
 	bits->udp_src_nr = 16;
 	rohc_decomp_debug(context, "UDP source port = 0x%04x\n",
@@ -234,12 +241,33 @@ int udp_parse_static_udp(const struct d_context *const context,
 	packet += 2;
 	read += 2;
 
+	/* UDP destination port */
 	bits->udp_dst = GET_NEXT_16_BITS(packet);
 	bits->udp_dst_nr = 16;
 	rohc_decomp_debug(context, "UDP destination port = 0x%04x\n",
 	                  ntohs(bits->udp_dst));
 	packet += 2;
 	read += 2;
+
+	/* is context re-used? */
+	if(context->num_recv_packets > 1 &&
+	   bits->udp_src != htons(udp_context->sport))
+	{
+		rohc_decomp_debug(context, "UDP source port mismatch (packet = %u, "
+		                  "context = %u) -> context is being reused\n",
+		                  ntohs(bits->udp_src), udp_context->sport);
+		bits->is_context_reused = true;
+	}
+	udp_context->sport = ntohs(bits->udp_src);
+	if(context->num_recv_packets > 1 &&
+	   bits->udp_dst != htons(udp_context->dport))
+	{
+		rohc_decomp_debug(context, "UDP destination port mismatch (packet = %u, "
+		                  "context = %u) -> context is being reused\n",
+		                  ntohs(bits->udp_dst), udp_context->dport);
+		bits->is_context_reused = true;
+	}
+	udp_context->dport = ntohs(bits->udp_dst);
 
 	return read;
 

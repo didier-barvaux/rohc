@@ -46,6 +46,61 @@ typedef enum
 
 
 /**
+ * @brief Some information about the last decompressed packet
+ *
+ * Versioning works as follow:
+ *  - The 'version_major' field defines the compatibility level. If the major
+ *    number given by user does not match the one expected by the library,
+ *    an error is returned.
+ *  - The 'version_minor' field defines the extension level. If the minor
+ *    number given by user does not match the one expected by the library,
+ *    only the fields supported in that minor version will be filled by
+ *    \ref rohc_decomp_get_last_packet_info.
+ *
+ * Notes for developers:
+ *  - Increase the major version if a field is removed.
+ *  - Increase the major version if a field is added at the beginning or in
+ *    the middle of the structure.
+ *  - Increase the minor version if a field is added at the very end of the
+ *    structure.
+ *  - The version_major and version_minor fields must be located at the very
+ *    beginning of the structure.
+ *  - The structure must be packed.
+ *
+ * Supported versions:
+ *  - Major = 0:
+ *     - Minor = 0:
+ *        version_major
+ *        version_minor
+ *        context_mode
+ *        context_state
+ *        profile_id
+ *        nr_lost_packets
+ *        nr_misordered_packets
+ *        is_duplicated
+ */
+typedef struct
+{
+	/** The major version of this structure */
+	unsigned short version_major;
+	/** The minor version of this structure */
+	unsigned short version_minor;
+	/** The mode of the last context used by the compressor */
+	rohc_mode context_mode;
+	/** The state of the last context used by the compressor */
+	rohc_c_state context_state;
+	/** The profile ID of the last context used by the compressor */
+	int profile_id;
+	/** The number of (possible) lost packet(s) before last packet */
+	unsigned long nr_lost_packets;
+	/** The number of packet(s) before the last packet if late */
+	unsigned long nr_misordered_packets;
+	/** Is last packet a (possible) duplicated packet? */
+	bool is_duplicated;
+} __attribute__((packed)) rohc_decomp_last_packet_info_t;
+
+
+/**
  * @brief Some compressor statistics.
  */
 struct d_statistics
@@ -190,6 +245,13 @@ struct d_context
 	struct c_wlsb *header_16_uncompressed;
 	/// The size of the last 16 compressed headers
 	struct c_wlsb *header_16_compressed;
+
+	/** The number of (possible) lost packet(s) before last packet */
+	unsigned long nr_lost_packets;
+	/** The number of packet(s) before the last packet if late */
+	unsigned long nr_misordered_packets;
+	/** Is last packet a (possible) duplicated packet? */
+	bool is_duplicated;
 };
 
 
@@ -273,6 +335,10 @@ int rohc_d_context(struct rohc_decomp *decomp, int index, unsigned int indent,
                    char *buffer);
 void clear_statistics(struct rohc_decomp *decomp);
 const char * rohc_decomp_get_state_descr(const rohc_d_state state);
+
+bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
+                                      rohc_decomp_last_packet_info_t *const info)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 
 /*

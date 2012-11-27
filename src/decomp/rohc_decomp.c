@@ -1518,6 +1518,80 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state)
 
 
 /**
+ * @brief Get some information about the last decompressed packet
+ *
+ * To use the function, call it with a pointer on a pre-allocated
+ * 'rohc_decomp_last_packet_info_t' structure with the 'version_major' and
+ * 'version_minor' fields set to one of the following supported versions:
+ *  - Major 0, minor 0
+ *
+ * See rohc_comp_last_packet_info2_t for details about fields that
+ * are supported in the above versions.
+ *
+ * @param decomp  The ROHC decompressor to get information from
+ * @param info    IN/OUT: the structure where information will be stored
+ * @return        true in case of success, false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
+                                      rohc_decomp_last_packet_info_t *const info)
+{
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	if(decomp->last_context == NULL)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "last context found in decompressor is not valid\n");
+		goto error;
+	}
+
+	if(info == NULL)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "structure for last packet information is not valid\n");
+		goto error;
+	}
+
+	/* check compatibility version */
+	if(info->version_major == 0)
+	{
+		/* base fields for major version 0 */
+		info->context_mode = decomp->last_context->mode;
+		info->context_state = decomp->last_context->state;
+		info->profile_id = decomp->last_context->profile->id;
+		info->nr_lost_packets = decomp->last_context->nr_lost_packets;
+		info->nr_misordered_packets = decomp->last_context->nr_misordered_packets;
+		info->is_duplicated = decomp->last_context->is_duplicated;
+
+		/* new fields added by minor versions */
+		if(info->version_minor > 0)
+		{
+			rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "last packet information", info->version_minor);
+			goto error;
+		}
+	}
+	else
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "unsupported major version (%u) of the structure for last "
+		           "packet information", info->version_major);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Create a feedback ACK packet telling the compressor to change state.
  *
  * @param decomp  The ROHC decompressor

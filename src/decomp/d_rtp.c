@@ -496,9 +496,15 @@ static int rtp_parse_static_rtp(const struct d_context *const context,
                                 unsigned int length,
                                 struct rohc_extr_bits *const bits)
 {
+	struct d_generic_context *g_context;
+	struct d_rtp_context *rtp_context;
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	rtp_context = g_context->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -525,6 +531,17 @@ static int rtp_parse_static_rtp(const struct d_context *const context,
 	rohc_decomp_debug(context, "SSRC = 0x%08x\n", bits->rtp_ssrc);
 	packet += sizeof(uint32_t);
 	read += sizeof(uint32_t);
+
+	/* is context re-used? */
+	if(context->num_recv_packets > 1 &&
+	   memcmp(&bits->rtp_ssrc, &rtp_context->ssrc, sizeof(uint32_t)) != 0)
+	{
+		rohc_decomp_debug(context, "RTP SSRC mismatch (packet = 0x%08x, "
+		                  "context = 0x%08x) -> context is being reused\n",
+		                  bits->rtp_ssrc, rtp_context->ssrc);
+		bits->is_context_reused = true;
+	}
+	memcpy(&rtp_context->ssrc, &bits->rtp_ssrc, sizeof(uint32_t));
 
 	return read;
 

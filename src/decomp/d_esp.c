@@ -37,6 +37,22 @@
 #include <assert.h>
 
 
+/**
+ * @brief Define the ESP part of the decompression profile context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context d_generic_context.
+ *
+ * @see d_generic_context
+ */
+struct d_esp_context
+{
+	/** ESP SPI */
+	uint32_t spi;
+};
+
+
+
 /*
  * Private function prototypes.
  */
@@ -83,6 +99,7 @@ static void esp_update_context(const struct d_context *context,
 static void * d_esp_create(const struct d_context *const context)
 {
 	struct d_generic_context *g_context;
+	struct d_esp_context *esp_context;
 
 	assert(context != NULL);
 	assert(context->decompressor != NULL);
@@ -100,13 +117,24 @@ static void * d_esp_create(const struct d_context *const context)
 	}
 	g_context->specific = NULL;
 
+	/* create the ESP-specific part of the context */
+	esp_context = malloc(sizeof(struct d_esp_context));
+	if(esp_context == NULL)
+	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "cannot allocate memory for the ESP-specific context\n");
+		goto destroy_context;
+	}
+	memset(esp_context, 0, sizeof(struct d_esp_context));
+	g_context->specific = esp_context;
+
 	/* create the LSB decoding context for SN (same shift value as RTP) */
 	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_ESP_SN);
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for SN\n");
-		goto destroy_context;
+		goto free_esp_context;
 	}
 
 	/* some ESP-specific values and functions */
@@ -153,6 +181,8 @@ free_outer_ip_changes_next_header:
 	zfree(g_context->outer_ip_changes->next_header);
 free_lsb_sn:
 	rohc_lsb_free(g_context->sn_lsb_ctxt);
+free_esp_context:
+	zfree(esp_context);
 destroy_context:
 	d_generic_destroy(g_context);
 quit:
@@ -174,7 +204,6 @@ static void d_esp_destroy(void *const context)
 
 	assert(context != NULL);
 	g_context = (struct d_generic_context *) context;
-	assert(g_context->specific == NULL);
 
 	/* clean ESP-specific memory */
 	assert(g_context->outer_ip_changes != NULL);
@@ -208,9 +237,15 @@ static int esp_parse_static_esp(const struct d_context *const context,
                                 struct rohc_extr_bits *const bits)
 {
 	const size_t spi_length = sizeof(uint32_t);
+	struct d_generic_context *g_context;
+	struct d_esp_context *esp_context;
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	esp_context = g_context->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
@@ -222,11 +257,23 @@ static int esp_parse_static_esp(const struct d_context *const context,
 		goto error;
 	}
 
+	/* SPI */
 	memcpy(&bits->esp_spi, packet, spi_length);
 	bits->esp_spi_nr = spi_length * 8;
 	rohc_decomp_debug(context, "ESP SPI = 0x%08x\n", ntohl(bits->esp_spi));
 	packet += spi_length;
 	read += spi_length;
+
+	/* is context re-used? */
+	if(context->num_recv_packets > 1 &&
+	   memcmp(&bits->esp_spi, &esp_context->spi, spi_length) != 0)
+	{
+		rohc_decomp_debug(context, "ESP SPI mismatch (packet = 0x%08x, "
+		                  "context = 0x%08x) -> context is being reused\n",
+		                  bits->esp_spi, esp_context->spi);
+		bits->is_context_reused = true;
+	}
+	memcpy(&esp_context->spi, &bits->esp_spi, spi_length);
 
 	return read;
 
@@ -303,7 +350,6 @@ static bool esp_decode_values_from_bits(const struct d_context *context,
 	assert(context != NULL);
 	assert(context->specific != NULL);
 	g_context = context->specific;
-	assert(g_context->specific == NULL);
 	assert(decoded != NULL);
 
 	esp = (struct esphdr *) g_context->outer_ip_changes->next_header;

@@ -367,7 +367,7 @@ static unsigned int build_uncomp_ipv6(const struct d_context *const context,
  */
 
 static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
-                                    const struct d_context *context,
+                                    struct d_context *const context,
                                     const struct rohc_extr_bits bits,
                                     struct rohc_decoded_values *const decoded);
 static bool decode_ip_values_from_bits(const struct rohc_decomp *const decomp,
@@ -3027,12 +3027,14 @@ static int decode_ir(struct rohc_decomp *decomp,
 	rohc_header_len += size;
 
 	/* check for IP version switch during context re-use */
-	if(bits.outer_ip.version != ip_get_version(&g_context->outer_ip_changes->ip))
+	if(context->num_recv_packets > 1 &&
+	   bits.outer_ip.version != ip_get_version(&g_context->outer_ip_changes->ip))
 	{
 		rohc_decomp_debug(context, "outer IP version mismatch (packet = %d, "
 		                  "context = %d) -> context is being reused\n",
 		                  bits.outer_ip.version,
 		                  ip_get_version(&g_context->outer_ip_changes->ip));
+		bits.is_context_reused = true;
 	}
 
 	/* check for the presence of a second IP header */
@@ -3043,10 +3045,11 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "second IP header detected\n");
 
 		/* check for 1 to 2 IP headers switch during context re-use */
-		if(!g_context->multiple_ip)
+		if(context->num_recv_packets > 1 && !g_context->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
 			                  "= 2, context = 1) -> context is being reused\n");
+			bits.is_context_reused = true;
 		}
 
 		/* update context */
@@ -3055,10 +3058,11 @@ static int decode_ir(struct rohc_decomp *decomp,
 	else
 	{
 		/* check for 2 to 1 IP headers switch during context re-use */
-		if(g_context->multiple_ip)
+		if(context->num_recv_packets > 1 && g_context->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
 			                  "= 1, context = 2) -> context is being reused\n");
+			bits.is_context_reused = true;
 		}
 
 		/* update context */
@@ -3082,12 +3086,14 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_header_len += size;
 
 		/* check for IP version switch during context re-use */
-		if(bits.inner_ip.version != ip_get_version(&g_context->inner_ip_changes->ip))
+		if(context->num_recv_packets > 1 &&
+		   bits.inner_ip.version != ip_get_version(&g_context->inner_ip_changes->ip))
 		{
 			rohc_decomp_debug(context, "inner IP version mismatch (packet = %d, "
 			                  "context = %d) -> context is being reused\n",
 			                  bits.inner_ip.version,
 			                  ip_get_version(&g_context->inner_ip_changes->ip));
+			bits.is_context_reused = true;
 		}
 	}
 
@@ -7935,7 +7941,7 @@ static int rohc_build_ip6_extension(struct list_decomp *const decomp,
  * @return         true if decoding is successful, false otherwise
  */
 static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
-                                    const struct d_context *context,
+                                    struct d_context *const context,
                                     const struct rohc_extr_bits bits,
                                     struct rohc_decoded_values *const decoded)
 {
@@ -7975,7 +7981,7 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 	                  bits.sn_nr, bits.sn, bits.sn);
 
 	/* warn if value(SN) is not context(SN) + 1 */
-	if(context->num_recv_packets > 1)
+	if(context->num_recv_packets > 1 && !bits.is_context_reused)
 	{
 		uint32_t sn_context;
 		uint32_t expected_next_sn;
@@ -8016,6 +8022,9 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			             "packet seems to be a duplicated packet (SN = 0x%x)\n",
 			             sn_context);
+			context->nr_lost_packets = 0;
+			context->nr_misordered_packets = 0;
+			context->is_duplicated = true;
 		}
 		else if(decoded->sn > expected_next_sn)
 		{
@@ -8023,15 +8032,35 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			             "%u packets seem to have been lost, damaged, or failed "
 			             "to be decompressed (SN jumped from 0x%x to 0x%x)\n",
-			             decoded->sn - (sn_context + 1), sn_context, decoded->sn);
+			             decoded->sn - expected_next_sn, sn_context, decoded->sn);
+			context->nr_lost_packets = decoded->sn - expected_next_sn;
+			context->nr_misordered_packets = 0;
+			context->is_duplicated = false;
 		}
 		else if(decoded->sn < expected_next_sn)
 		{
 			/* smaller SN: order was changed on the network channel */
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "packet seems to come late (SN jumped back from 0x%x to "
-			             "0x%x)\n", sn_context, decoded->sn);
+			             "packet seems to come late (SN jumped back from 0x%x "
+			             "to 0x%x)\n", sn_context, decoded->sn);
+			context->nr_lost_packets = 0;
+			context->nr_misordered_packets = expected_next_sn - decoded->sn;
+			context->is_duplicated = false;
 		}
+		else
+		{
+			/* SN is as expected */
+			context->nr_lost_packets = 0;
+			context->nr_misordered_packets = 0;
+			context->is_duplicated = false;
+		}
+	}
+	else
+	{
+		/* no SN reference to detect SN duplicates or SN jumps */
+		context->nr_lost_packets = 0;
+		context->nr_misordered_packets = 0;
+		context->is_duplicated = false;
 	}
 
 	/* decode fields related to the outer IP header */
@@ -8460,6 +8489,9 @@ static void reset_extr_bits(const struct d_generic_context *g_context,
 
 	/* set every bits and sizes to 0 */
 	memset(bits, 0, sizeof(struct rohc_extr_bits));
+
+	/* by default context is not re-used */
+	bits->is_context_reused = false;
 
 	/* set IP version and NBO/RND flags for outer IP header */
 	bits->outer_ip.version = ip_get_version(&g_context->outer_ip_changes->ip);

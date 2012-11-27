@@ -111,6 +111,8 @@ struct rohc_extr_ip_bits
  */
 struct rohc_extr_bits
 {
+	bool is_context_reused; /**< Whether the context is re-used or not */
+
 	/* SN */
 	uint32_t sn;            /**< The SN bits found in ROHC header */
 	size_t sn_nr;           /**< The number of SN bits found in ROHC header */
