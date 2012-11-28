@@ -88,7 +88,7 @@ typedef struct
 	/** The mode of the last context used by the compressor */
 	rohc_mode context_mode;
 	/** The state of the last context used by the compressor */
-	rohc_c_state context_state;
+	rohc_d_state context_state;
 	/** The profile ID of the last context used by the compressor */
 	int profile_id;
 	/** The number of (possible) lost packet(s) before last packet */
