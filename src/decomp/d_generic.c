@@ -8016,9 +8016,9 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 		if(decoded->sn == sn_context)
 		{
 			/* same SN: duplicated packet detected! */
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "packet seems to be a duplicated packet (SN = 0x%x)\n",
-			             sn_context);
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet seems to be a duplicated packet (SN = 0x%x)\n",
+			          sn_context);
 			context->nr_lost_packets = 0;
 			context->nr_misordered_packets = 0;
 			context->is_duplicated = true;
@@ -8026,10 +8026,10 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 		else if(decoded->sn > expected_next_sn)
 		{
 			/* bigger SN: some packets were lost or failed to be decompressed */
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "%u packets seem to have been lost, damaged, or failed "
-			             "to be decompressed (SN jumped from 0x%x to 0x%x)\n",
-			             decoded->sn - expected_next_sn, sn_context, decoded->sn);
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "%u packets seem to have been lost, damaged, or failed "
+			          "to be decompressed (SN jumped from 0x%x to 0x%x)\n",
+			          decoded->sn - expected_next_sn, sn_context, decoded->sn);
 			context->nr_lost_packets = decoded->sn - expected_next_sn;
 			context->nr_misordered_packets = 0;
 			context->is_duplicated = false;
@@ -8037,9 +8037,9 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 		else if(decoded->sn < expected_next_sn)
 		{
 			/* smaller SN: order was changed on the network channel */
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "packet seems to come late (SN jumped back from 0x%x "
-			             "to 0x%x)\n", sn_context, decoded->sn);
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet seems to come late (SN jumped back from 0x%x "
+			          "to 0x%x)\n", sn_context, decoded->sn);
 			context->nr_lost_packets = 0;
 			context->nr_misordered_packets = expected_next_sn - decoded->sn;
 			context->is_duplicated = false;
