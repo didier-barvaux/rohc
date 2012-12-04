@@ -95,10 +95,19 @@ for ./configure ? If yes, check configure output and config.log"
 /** Some statistics collected by the sniffer */
 struct sniffer_stats
 {
+	/** The size of one unit */
+	unsigned long comp_unit_size;
+
+	/** Cumulative number of units before ROHC compression */
+	unsigned long comp_pre_nr_units;
 	/** Cumulative number of bytes before ROHC compression */
-	unsigned long comp_pre;
+	unsigned long comp_pre_nr_bytes;
+
+	/** Cumulative number of units after ROHC compression */
+	unsigned long comp_post_nr_units;
 	/** Cumulative number of bytes after ROHC compression */
-	unsigned long comp_post;
+	unsigned long comp_post_nr_bytes;
+
 	/** Cumulative number of packets per ROHC profile */
 	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE + 1];
 	/** Cumulative number of packets per ROHC mode */
@@ -114,8 +123,16 @@ struct sniffer_stats
 	unsigned long total_packets;
 	/** Cumulative number of bad packets */
 	unsigned long bad_packets;
+
 	/** Cumulative number of (possible) lost packets */
 	unsigned long nr_lost_packets;
+	/** Cumulative number of (possible) loss bursts */
+	unsigned long nr_loss_bursts;
+	/** Maximum length of (possible) loss bursts */
+	unsigned long max_loss_burst_len;
+	/** Minimum length of (possible) loss bursts */
+	unsigned long min_loss_burst_len;
+
 	/** Cumulative number of (possible) mis-ordered packets */
 	unsigned long nr_misordered_packets;
 	/** Cumulative number of (possible) duplicated packets */
@@ -211,6 +228,7 @@ int main(int argc, char *argv[])
 
 	/* reset stats */
 	memset(&stats, 0, sizeof(struct sniffer_stats));
+	stats.comp_unit_size = 1;
 
 	/* set to quiet mode by default */
 	is_verbose = false;
@@ -374,6 +392,33 @@ static void sniffer_interrupt(int signal)
 
 
 /**
+ * @brief Compute a percentage
+ *
+ * @param value  The value to compute percentage from
+ * @param total  The total to compute percentage from
+ * @return       The percentage
+ */
+static unsigned long long percent(const unsigned long value,
+                                  const unsigned long total)
+{
+	unsigned long long percent;
+
+	if(total == 0)
+	{
+		percent = 0;
+	}
+	else
+	{
+		percent = value;
+		percent *= 100;
+		percent /= total;
+	}
+
+	return percent;
+}
+
+
+/**
  * @brief Handle UNIX signals that print statistics
  *
  * @param signal  The received signal
@@ -386,31 +431,58 @@ static void sniffer_print_stats(int signal)
 	/* general */
 	printf("general:\n");
 	printf("\ttotal packets: %lu packets\n", stats.total_packets);
-	printf("\tbad packets: %lu packets (%lu%%)\n", stats.bad_packets,
-	       stats.bad_packets * 100 / stats.total_packets);
-	printf("\tlost packets (estim.): %lu packets (%lu%%)\n",
-	       stats.nr_lost_packets,
-	       stats.nr_lost_packets * 100 / stats.total_packets);
-	printf("\tmis-ordered packets (estim.): %lu packets (%lu%%)\n",
+	printf("\tbad packets: %lu packets (%llu%%)\n", stats.bad_packets,
+	       percent(stats.bad_packets, stats.total_packets));
+	printf("\tloss (estim.):\n");
+	printf("\t\t%lu packets among %lu bursts (%llu%%)\n", stats.nr_lost_packets,
+	       stats.nr_loss_bursts,
+	       percent(stats.nr_lost_packets, stats.total_packets));
+	printf("\t\tpackets per burst: max %lu, avg %lu, min %lu\n",
+	       stats.max_loss_burst_len, (stats.nr_loss_bursts != 0 ?
+	       stats.nr_lost_packets / stats.nr_loss_bursts : 0),
+	       stats.min_loss_burst_len);
+	printf("\tmis-ordered packets (estim.): %lu packets (%llu%%)\n",
 	       stats.nr_misordered_packets,
-	       stats.nr_misordered_packets * 100 / stats.total_packets);
-	printf("\tduplicated packets (estim.): %lu packets (%lu%%)\n",
+	       percent(stats.nr_misordered_packets, stats.total_packets));
+	printf("\tduplicated packets (estim.): %lu packets (%llu%%)\n",
 	       stats.nr_duplicated_packets,
-	       stats.nr_duplicated_packets * 100 / stats.total_packets);
+	       percent(stats.nr_duplicated_packets, stats.total_packets));
 
 	/* compression gain */
 	printf("compression gain:\n");
-	printf("\tpre-compress bytes %lu\n", stats.comp_pre);
-	printf("\tpost-compress bytes %lu\n", stats.comp_post);
-	if(stats.comp_pre != 0)
+	if(stats.comp_unit_size == 1)
 	{
-		printf("\tcompress ratio: %lu%% of total, ie. %lu%% of gain\n",
-		       stats.comp_post * 100 / stats.comp_pre,
-		       100 - (stats.comp_post * 100 / stats.comp_pre));
+		printf("\tpre-compress: %lu bytes\n", stats.comp_pre_nr_bytes);
 	}
 	else
 	{
-		printf("\tcompress ratio: 0\n");
+		printf("\tpre-compress: %lu %s\n", stats.comp_pre_nr_units,
+		       stats.comp_unit_size == 1000 ? "KB" :
+		       (stats.comp_unit_size == 1000*1000 ? "MB" :
+		        (stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
+	}
+	if(stats.comp_unit_size == 1)
+	{
+		printf("\tpost-compress: %lu bytes\n", stats.comp_post_nr_bytes);
+	}
+	else
+	{
+		printf("\tpost-compress: %lu %s\n", stats.comp_post_nr_units,
+		       stats.comp_unit_size == 1000 ? "KB" :
+		       (stats.comp_unit_size == 1000*1000 ? "MB" :
+		        (stats.comp_unit_size == 1000*1000*1000 ? "GB" : "?")));
+	}
+	if(stats.comp_unit_size == 1)
+	{
+		printf("\tcompress ratio: %llu%% of total, ie. %llu%% of gain\n",
+		       percent(stats.comp_post_nr_bytes, stats.comp_pre_nr_bytes),
+		       100 - percent(stats.comp_post_nr_bytes, stats.comp_pre_nr_bytes));
+	}
+	else
+	{
+		printf("\tcompress ratio: %llu%% of total, ie. %llu%% of gain\n",
+		       percent(stats.comp_post_nr_units, stats.comp_pre_nr_units),
+		       100 - percent(stats.comp_post_nr_units, stats.comp_pre_nr_units));
 	}
 	printf("\tused and re-used contexts: %lu\n", stats.comp_nr_reused_cid);
 
@@ -421,52 +493,52 @@ static void sniffer_print_stats(int signal)
 	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
 	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE];
 	printf("packets per profile:\n");
-	printf("\tUncompressed profile: %lu packets (%lu%%)\n",
+	printf("\tUncompressed profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
-	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED]
-	       * 100 / total);
-	printf("\tIP/UDP/RTP profile: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UNCOMPRESSED],
+	               total));
+	printf("\tIP/UDP/RTP profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP],
-	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP] * 100 / total);
-	printf("\tIP/UDP profile: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP], total));
+	printf("\tIP/UDP profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP],
-	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] * 100 / total);
-	printf("\tIP-only profile: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP], total));
+	printf("\tIP-only profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP],
-	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] * 100 / total);
-	printf("\tIP/UDP-Lite profile: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP], total));
+	printf("\tIP/UDP-Lite profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
-	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE] * 100 / total);
+	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
 
 	/* packets per mode */
 	total = stats.comp_nr_pkts_per_mode[U_MODE] +
 	        stats.comp_nr_pkts_per_mode[O_MODE] +
 	        stats.comp_nr_pkts_per_mode[R_MODE];
 	printf("packets per mode:\n");
-	printf("\tU-mode: %lu packets (%lu%%)\n",
+	printf("\tU-mode: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_mode[U_MODE],
-	       stats.comp_nr_pkts_per_mode[U_MODE] * 100 / total);
-	printf("\tO-mode: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_mode[U_MODE], total));
+	printf("\tO-mode: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_mode[O_MODE],
-	       stats.comp_nr_pkts_per_mode[O_MODE] * 100 / total);
-	printf("\tR-mode: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_mode[O_MODE], total));
+	printf("\tR-mode: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_mode[R_MODE],
-	       stats.comp_nr_pkts_per_mode[R_MODE] * 100 / total);
+	       percent(stats.comp_nr_pkts_per_mode[R_MODE], total));
 
 	/* packets per state */
 	total = stats.comp_nr_pkts_per_state[IR] +
 	        stats.comp_nr_pkts_per_state[FO] +
 	        stats.comp_nr_pkts_per_state[SO];
 	printf("packets per state:\n");
-	printf("\tIR state: %lu packets (%lu%%)\n",
+	printf("\tIR state: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_state[IR],
-	       stats.comp_nr_pkts_per_state[IR] * 100 / total);
-	printf("\tFO state: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_state[IR], total));
+	printf("\tFO state: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_state[FO],
-	       stats.comp_nr_pkts_per_state[FO] * 100 / total);
-	printf("\tSO state: %lu packets (%lu%%)\n",
+	       percent(stats.comp_nr_pkts_per_state[FO], total));
+	printf("\tSO state: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_state[SO],
-	       stats.comp_nr_pkts_per_state[SO] * 100 / total);
+	       percent(stats.comp_nr_pkts_per_state[SO], total));
 
 	/* packets per packet type */
 	printf("packets per packet type:\n");
@@ -477,10 +549,10 @@ static void sniffer_print_stats(int signal)
 	}
 	for(i = PACKET_IR; i < PACKET_UNKNOWN; i++)
 	{
-		printf("\tpacket type %s: %lu packets (%lu%%)\n",
+		printf("\tpacket type %s: %lu packets (%llu%%)\n",
 		       rohc_get_packet_descr(i),
 		       stats.comp_nr_pkts_per_pkt_type[i],
-		       stats.comp_nr_pkts_per_pkt_type[i] * 100 / total);
+		       percent(stats.comp_nr_pkts_per_pkt_type[i], total));
 	}
 }
 
@@ -856,13 +928,17 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_decomp_last_packet_info_t decomp_last_packet_info;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
 	int decomp_size;
+	unsigned long possible_unit;
 	int ret;
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
-		       header.len, header.caplen);
+		if(is_verbose)
+		{
+			fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n",
+			        header.len, header.caplen);
+		}
 		ret = -3;
 		goto error;
 	}
@@ -942,8 +1018,60 @@ static int compress_decompress(struct rohc_comp *comp,
 		ret = -4;
 		goto error;
 	}
-	stats->comp_pre += ip_size;
-	stats->comp_post += rohc_size;
+	stats->comp_pre_nr_bytes += ip_size;
+	stats->comp_post_nr_bytes += rohc_size;
+	possible_unit = stats->comp_unit_size;
+	if(stats->comp_unit_size == 1)
+	{
+		if(stats->comp_pre_nr_bytes >= (100 * 1000) &&
+		   stats->comp_post_nr_bytes >= (100 * 1000))
+		{
+			possible_unit = 1000;
+		}
+	}
+	else
+	{
+		if(stats->comp_pre_nr_units >= (100 * 1000) &&
+		   stats->comp_post_nr_units >= (100 * 1000))
+		{
+			possible_unit = stats->comp_unit_size * 1000;
+		}
+	}
+	if(possible_unit != stats->comp_unit_size)
+	{
+		if(stats->comp_unit_size == 1)
+		{
+			stats->comp_pre_nr_units =
+				stats->comp_pre_nr_bytes / 1000;
+			stats->comp_pre_nr_bytes %= 1000;
+			stats->comp_post_nr_units =
+				stats->comp_post_nr_bytes / 1000;
+			stats->comp_post_nr_bytes %= 1000;
+		}
+		else
+		{
+			unsigned long rest;
+			rest = stats->comp_pre_nr_units % 1000;
+			stats->comp_pre_nr_units /= 1000;
+			stats->comp_pre_nr_bytes += rest * possible_unit;
+			rest = stats->comp_post_nr_units % 1000;
+			stats->comp_post_nr_units /= 1000;
+			stats->comp_post_nr_bytes += rest * possible_unit;
+		}
+		stats->comp_unit_size = possible_unit;
+	}
+	else
+	{
+		if(stats->comp_unit_size > 1)
+		{
+			stats->comp_pre_nr_units +=
+				stats->comp_pre_nr_bytes / stats->comp_unit_size;
+			stats->comp_pre_nr_bytes %= stats->comp_unit_size;
+			stats->comp_post_nr_units +=
+				stats->comp_post_nr_bytes / stats->comp_unit_size;
+			stats->comp_post_nr_bytes %= stats->comp_unit_size;
+		}
+	}
 	stats->comp_nr_pkts_per_profile[comp_last_packet_info.profile_id]++;
 	stats->comp_nr_pkts_per_mode[comp_last_packet_info.context_mode]++;
 	stats->comp_nr_pkts_per_state[comp_last_packet_info.context_state]++;
@@ -965,8 +1093,11 @@ static int compress_decompress(struct rohc_comp *comp,
 		/* close the previous dumper and remove its file if one was opened */
 		if(dumpers[comp_last_packet_info.context_id] != NULL)
 		{
-			printf("replace dump file '%s' for context with ID %u\n",
-			       dump_filename, comp_last_packet_info.context_id);
+			if(is_verbose)
+			{
+				printf("replace dump file '%s' for context with ID %u\n",
+				       dump_filename, comp_last_packet_info.context_id);
+			}
 			pcap_dump_close(dumpers[comp_last_packet_info.context_id]);
 			unlink(dump_filename);
 			/* TODO: check result */
@@ -1013,6 +1144,19 @@ static int compress_decompress(struct rohc_comp *comp,
 		goto error;
 	}
 	stats->nr_lost_packets += decomp_last_packet_info.nr_lost_packets;
+	if(decomp_last_packet_info.nr_lost_packets > 0)
+	{
+		stats->nr_loss_bursts++;
+		if(decomp_last_packet_info.nr_lost_packets > stats->max_loss_burst_len)
+		{
+			stats->max_loss_burst_len = decomp_last_packet_info.nr_lost_packets;
+		}
+		if(decomp_last_packet_info.nr_lost_packets < stats->min_loss_burst_len ||
+		   stats->min_loss_burst_len == 0)
+		{
+			stats->min_loss_burst_len = decomp_last_packet_info.nr_lost_packets;
+		}
+	}
 	stats->nr_misordered_packets += decomp_last_packet_info.nr_misordered_packets;
 	if(decomp_last_packet_info.is_duplicated)
 	{
