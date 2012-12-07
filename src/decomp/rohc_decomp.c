@@ -456,6 +456,14 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	int ret;
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
 
+	/* check inputs validity */
+	if(decomp == NULL ||
+	   ibuf == NULL || isize <= 0 ||
+	   obuf == NULL || osize <= 0)
+	{
+		goto error;
+	}
+
 	decomp->stats.received++;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	          "decompress the %d-byte packet #%u\n",
@@ -602,6 +610,9 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	}
 
 	return ret;
+
+error:
+	return ROHC_ERROR;
 }
 
 
