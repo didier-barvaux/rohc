@@ -750,7 +750,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		m = GET_BIT_0_3(packet);
 		xi_1 = m; /* m and XI 1 are the same field */
 		et = GET_BIT_6_7(packet);
-		ps = GET_BIT_4(packet);
+		ps = GET_REAL(GET_BIT_4(packet));
 		packet++;
 		read_length++;
 		packet_len--;
@@ -1214,8 +1214,8 @@ error:
  * @param gen_id      The id of the current list
  * @param ps          The ps field
  * @param xi_1        The XI 1 field if PS = 1 (4-bit XI)
- * @return            \li In case of success, the number of bytes read in the given
- *                        packet, ie. the length of the compressed list
+ * @return            \li In case of success, the number of bytes read in the
+ *                        given packet, ie. the length of the compressed list
  *                    \li -1 in case of failure
  *
  * @todo factorize some code with \ref rohc_list_decode_type_3
