@@ -38,9 +38,9 @@ fi
 
 # extract the packet to lose and source capture from the name of the script
 PACKET_TO_LOSE=$( echo "${SCRIPT}" | \
-                  ${SED} -e 's#^.*/test_lost_packet_\([0-9]\+\)_.\+\.sh#\1#' )
+                  ${SED} -e 's#^.*/test_lost_packet_\([0-9]*\)_.*\.sh#\1#' )
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_lost_packet_[0-9]\+_\(.\+\)\.sh#\1#' )
+                ${SED} -e 's#^.*/test_lost_packet_[0-9]*_\(.*\)\.sh#\1#' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
