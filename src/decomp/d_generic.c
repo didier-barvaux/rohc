@@ -6882,7 +6882,9 @@ static int parse_extension3(struct rohc_decomp *decomp,
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 				             "IP-ID field present (I = 1) but inner IP-ID "
 				             "already updated\n");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 				goto error;
+#endif
 			}
 			bits->inner_ip.id = I_bits;
 			bits->inner_ip.id_nr = 16;
@@ -6898,7 +6900,9 @@ static int parse_extension3(struct rohc_decomp *decomp,
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 				             "IP-ID field present (I = 1) but outer IP-ID "
 				             "already updated\n");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 				goto error;
+#endif
 			}
 			bits->outer_ip.id = I_bits;
 			bits->outer_ip.id_nr = 16;

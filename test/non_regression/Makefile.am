@@ -65,6 +65,7 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1080055_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_smallcid.sh \
 	test_non_regression_ipv4_udp_smallcid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_smallcid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_smallcid.sh \
@@ -146,6 +147,7 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1080055_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_largecid.sh \
 	test_non_regression_ipv4_udp_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_largecid.sh \

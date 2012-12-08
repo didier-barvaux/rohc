@@ -3861,14 +3861,35 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			/* number of TS bits to transmit overall and in extension 3 */
 			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 			size_t nr_ts_bits_ext3;
+			size_t innermost_ip_id_rnd_count;
 
 			rohc_comp_debug(context, "code UOR-2-ID packet with extension 3\n");
 
-			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
-			if(nr_innermost_ip_id_bits <= 5)
+			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
 			{
-				/* transmit <= 5 bits of IP-ID, so use the 5-bit field in the UOR-2-ID
-				   field and do not use the 16-bit field in the EXT3 header */
+				innermost_ip_id_rnd_count = g_context->ip_flags.info.v4.rnd_count;
+			}
+			else /* ROHC_IP_HDR_SECOND */
+			{
+				innermost_ip_id_rnd_count = g_context->ip2_flags.info.v4.rnd_count;
+			}
+
+			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
+			if(innermost_ip_id_rnd_count < MAX_FO_COUNT)
+			{
+				/* RND changed in the last few packets, so use the 16-bit field
+				 * in the EXT3 header and fill the 5-bit field of UOR-2-ID with
+				 * zeroes */
+				*f_byte &= ~0x1f;
+				rohc_comp_debug(context, "5 zero bits of innermost non-random "
+				                "IP-ID with changed RND = 0x%x\n",
+				                (*f_byte) & 0x1f);
+			}
+			else if(nr_innermost_ip_id_bits <= 5)
+			{
+				/* transmit <= 5 bits of IP-ID, so use the 5-bit field in the
+				 * UOR-2-ID field and do not use the 16-bit field in the EXT3
+				 * header */
 				*f_byte |= innermost_ip_id_delta & 0x1f;
 				rohc_comp_debug(context, "5 bits of less-than-5-bit innermost "
 				                "non-random IP-ID = 0x%x\n", (*f_byte) & 0x1f);
