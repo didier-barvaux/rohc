@@ -454,6 +454,18 @@ int c_udp_encode(struct c_context *const context,
 	}
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
 
+	/* check that UDP length is correct (we have to discard all packets with
+	 * wrong UDP length fields, otherwise the ROHC decompressor will compute
+	 * a different UDP length on its side) */
+	if(ntohs(udp->len) != (packet_size - ((unsigned char *) udp - ip->data)))
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "wrong UDP Length field in UDP header: %u found while "
+		             "%u expected\n", ntohs(udp->len),
+		             packet_size - ((unsigned char *) udp - ip->data));
+		return -1;
+	}
+
 	/* how many UDP fields changed? */
 	udp_context->tmp.send_udp_dynamic = udp_changed_udp_dynamic(context, udp);
 
