@@ -532,11 +532,12 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed\n");
 	}
-	else if(g_context->tmp.send_static)
+	else if(g_context->tmp.send_static && nr_sn_bits <= 14)
 	{
 		packet = PACKET_UOR_2_RTP;
 		rohc_comp_debug(context, "choose packet UOR-2-RTP because at least one "
-		                "static field changed\n");
+		                "static field changed and %zd <= 14 SN bits must be "
+		                "transmitted\n", nr_sn_bits);
 	}
 	else if(nr_of_ip_hdr == 1 && g_context->tmp.send_dynamic > 2)
 	{

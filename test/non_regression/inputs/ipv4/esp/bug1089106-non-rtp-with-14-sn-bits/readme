@@ -1,0 +1,8 @@
+$ scapy
+>>> packets = []
+>>> packets.append(Ether()/IP(id=1,proto=50)/"\x01\x02\x03\x04\x00\x00\x00\x01")
+>>> packets.append(Ether()/IP(id=2,proto=50)/"\x01\x02\x03\x04\x00\x00\x00\x02")
+>>> packets.append(Ether()/IP(id=3,proto=50)/"\x01\x02\x03\x04\x00\x00\x00\x03")
+>>> packets.append(Ether()/IP(id=4,proto=50)/"\x01\x02\x03\x04\x00\x00\x00\x04")
+>>> packets.append(Ether()/IP(id=10000,proto=50)/"\x01\x02\x03\x04\x00\x00\x27\x10")
+>>> wrpcap('non_rtp_with_14_sn_bits.pcap', packets)

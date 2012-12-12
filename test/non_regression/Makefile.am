@@ -23,6 +23,7 @@ TESTS_BUG804552_SMALLCID = \
 
 TESTS_ESP_SMALLCID = \
 	test_non_regression_ipv4_esp_smallcid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_smallcid.sh \
 	test_non_regression_ipv6_esp_smallcid.sh
 
 TESTS_SMALLCID = \
@@ -105,6 +106,7 @@ TESTS_BUG804552_LARGECID = \
 
 TESTS_ESP_LARGECID = \
 	test_non_regression_ipv4_esp_largecid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_largecid.sh \
 	test_non_regression_ipv6_esp_largecid.sh
 
 TESTS_LARGECID = \

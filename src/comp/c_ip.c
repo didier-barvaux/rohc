@@ -278,7 +278,7 @@ rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
 		                "SID flag changed\n");
 	}
-	else if(g_context->tmp.send_static)
+	else if(g_context->tmp.send_static && g_context->tmp.nr_sn_bits <= 13)
 	{
 		packet = PACKET_UOR_2;
 		rohc_comp_debug(context, "choose packet UOR-2 because at least one "
@@ -298,19 +298,19 @@ rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
 		                "fields changed with double IP header\n",
 		                g_context->tmp.send_dynamic);
 	}
-	else if(g_context->tmp.nr_sn_bits <= 14)
+	else if(g_context->tmp.nr_sn_bits <= 13)
 	{
-		/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
+		/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
 		   base header + 8 bits in extension 3) */
 		packet = PACKET_UOR_2;
-		rohc_comp_debug(context, "choose packet UOR-2 because %zd <= 14 SN "
+		rohc_comp_debug(context, "choose packet UOR-2 because %zd <= 13 SN "
 		                "bits must be transmitted\n", g_context->tmp.nr_sn_bits);
 	}
 	else
 	{
 		/* UOR-2 packet can not be used, use IR-DYN instead */
 		packet = PACKET_IR_DYN;
-		rohc_comp_debug(context, "choose packet IR-DYN because %zd > 14 SN "
+		rohc_comp_debug(context, "choose packet IR-DYN because %zd > 13 SN "
 		                "bits must be transmitted\n", g_context->tmp.nr_sn_bits);
 	}
 
@@ -377,19 +377,19 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 			                "is 'IPv4 with non-random IP-ID but %zd <= 6 IP-ID "
 			                "bits to transmit'\n", nr_sn_bits, nr_ip_id_bits);
 		}
-		else if(nr_sn_bits <= 14)
+		else if(nr_sn_bits <= 13)
 		{
-			/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
+			/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
 			   base header + 8 bits in extension 3) */
 			packet = PACKET_UOR_2;
-			rohc_comp_debug(context, "choose packet UOR-2 because %zd <= 14 SN "
+			rohc_comp_debug(context, "choose packet UOR-2 because %zd <= 13 SN "
 			                "bits must be transmitted\n", nr_sn_bits);
 		}
 		else
 		{
 			/* UOR-2 packet can not be used, use IR-DYN instead */
 			packet = PACKET_IR_DYN;
-			rohc_comp_debug(context, "choose packet IR-DYN because %zd > 14 SN "
+			rohc_comp_debug(context, "choose packet IR-DYN because %zd > 13 SN "
 			                "bits must be be transmitted\n", nr_sn_bits);
 		}
 	}
@@ -421,19 +421,19 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 			packet = PACKET_UO_1; /* IPv4 only for outer header */
 			rohc_comp_debug(context, "choose packet UO-1\n");
 		}
-		else if(nr_sn_bits <= 14)
+		else if(nr_sn_bits <= 13)
 		{
-			/* UOR-2 packet can be used only if SN stand on <= 14 bits (6 bits in
+			/* UOR-2 packet can be used only if SN stand on <= 13 bits (5 bits in
 			   base header + 8 bits in extension 3) */
 			packet = PACKET_UOR_2;
-			rohc_comp_debug(context, "choose packet UOR-2 because %zd <= 14 SN "
+			rohc_comp_debug(context, "choose packet UOR-2 because %zd <= 13 SN "
 			                "bits must be transmitted\n", nr_sn_bits);
 		}
 		else
 		{
 			/* UOR-2 packet can not be used, use IR-DYN instead */
 			packet = PACKET_IR_DYN;
-			rohc_comp_debug(context, "choose packet IR-DYN because %zd > 14 SN "
+			rohc_comp_debug(context, "choose packet IR-DYN because %zd > 13 SN "
 			                "bits must be transmitted\n", nr_sn_bits);
 		}
 	}
