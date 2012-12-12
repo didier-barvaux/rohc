@@ -462,7 +462,7 @@ int c_udp_encode(struct c_context *const context,
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "wrong UDP Length field in UDP header: %u found while "
 		             "%u expected\n", ntohs(udp->len),
-		             packet_size - ((unsigned char *) udp - ip->data));
+		             packet_size - (unsigned int) ((unsigned char *) udp - ip->data));
 		return -1;
 	}
 
