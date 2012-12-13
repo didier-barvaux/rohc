@@ -164,6 +164,15 @@ static int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	const unsigned char *payload_data;
 	unsigned int payload_len;
 
+	/* packet must large enough for:
+	 * IR type + (large CID + ) Profile ID + CRC */
+	if(rohc_remain_len < (1 + large_cid_len + 2))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
 	/* change state to Full Context */
 	context->state = FULL_CONTEXT;
 
@@ -211,6 +220,8 @@ static int uncompressed_decode_ir(struct rohc_decomp *decomp,
 
 error_crc:
 	return ROHC_ERROR_CRC;
+error:
+	return ROHC_ERROR;
 }
 
 

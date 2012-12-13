@@ -2996,6 +2996,15 @@ static int decode_ir(struct rohc_decomp *decomp,
 	/* reset all extracted bits */
 	reset_extr_bits(g_context, &bits);
 
+	/* packet must large enough for:
+	 * IR type + (large CID + ) Profile ID + CRC */
+	if(rohc_remain_len < (1 + large_cid_len + 2))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
 	/* is the dynamic flag set ? */
 	dynamic_present = GET_BIT_0(rohc_remain_data);
 
@@ -3178,7 +3187,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "receive IR packet without a dynamic part, but not "
 		             "in Full Context state\n");
-		return ROHC_ERROR;
+		goto error;
 	}
 
 	/* ROHC IR header is now fully decoded, remaining data is the payload */
@@ -3238,7 +3247,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to build uncompressed headers\n");
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
-		return ROHC_ERROR;
+		goto error;
 	}
 	dest += uncomp_header_len;
 
@@ -6014,6 +6023,15 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	/* reset all extracted bits */
 	reset_extr_bits(g_context, &bits);
 
+	/* packet must large enough for:
+	 * IR-DYN type + (large CID + ) Profile ID + CRC */
+	if(rohc_remain_len < (1 + large_cid_len + 2))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
 	/* skip the IR-DYN type, optional large CID bytes, and Profile ID */
 	rohc_remain_data += large_cid_len + 2;
 	rohc_remain_len -= large_cid_len + 2;
@@ -6135,7 +6153,7 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to build uncompressed headers\n");
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
-		return ROHC_ERROR;
+		goto error;
 	}
 	dest += uncomp_header_len;
 
