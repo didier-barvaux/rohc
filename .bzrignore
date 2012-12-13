@@ -61,6 +61,8 @@ test_*.sh.log
 ./test/robustness/lost_packet/test_lost_packet.exe
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback
 ./test/robustness/piggybacking_feedback/test_piggybacking_feedback.exe
+./test/robustness/malformed_rohc_packets/test_malformed_rohc_packets
+./test/robustness/malformed_rohc_packets/test_malformed_rohc_packets.exe
 ./test/non_regression/test_non_regression
 ./test/non_regression/test_non_regression.exe
 ./statistics/generate_statistics

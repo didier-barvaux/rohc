@@ -625,6 +625,7 @@ AC_CONFIG_FILES([ \
 	test/robustness/damaged_packet/Makefile \
 	test/robustness/lost_packet/Makefile \
 	test/robustness/piggybacking_feedback/Makefile \
+	test/robustness/malformed_rohc_packets/Makefile \
 	test/non_regression/Makefile \
 	statistics/Makefile \
 	examples/Makefile \

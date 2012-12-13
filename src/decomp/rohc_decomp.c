@@ -815,6 +815,15 @@ int d_decode_header(struct rohc_decomp *decomp,
 		isize--;
 	}
 
+	/* we need at least 1 byte for packet type */
+	if(isize < 1)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "ROHC packet too small to read the first byte that "
+		             "contains the packet type (len = %d)\n", isize);
+		goto error;
+	}
+
 	/* is the ROHC packet an IR packet? */
 	if(d_is_ir(walk, isize))
 	{
@@ -823,9 +832,16 @@ int d_decode_header(struct rohc_decomp *decomp,
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "ROHC packet is an IR packet\n");
 
-		/* find the profile specified in the ROHC packet (no length check here
-		 * since the length of the ROHC data was already checked in function
-		 * rohc_decomp_decode_cid) */
+		/* we need at least 1 byte after the large CID bytes for profile ID */
+		if(isize <= (ddata->large_cid_size + 1))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "ROHC packet too small to read the profile ID byte "
+			             "(len = %d)\n", isize);
+			goto error;
+		}
+
+		/* find the profile specified in the ROHC packet */
 		profile_id = walk[1 + ddata->large_cid_size];
 		profile = find_profile(profile_id);
 		if(profile == NULL)
@@ -937,9 +953,16 @@ int d_decode_header(struct rohc_decomp *decomp,
 				           "ROHC packet is an IR-DYN packet\n");
 				ddata->active->num_recv_ir_dyn++;
 
-				/* find the profile specified in the ROHC packet (no length check
-				 * here since the length of the ROHC data was already checked in
-				 * function rohc_decomp_decode_cid) */
+				/* we need at least 1 byte after the large CID bytes for profile ID */
+				if(isize <= (ddata->large_cid_size + 1))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+					             "ROHC packet too small to read the profile ID "
+					             "byte (len = %d)\n", isize);
+					goto error;
+				}
+
+				/* find the profile specified in the ROHC packet */
 				profile = find_profile(walk[ddata->large_cid_size + 1]);
 
 				/* if IR-DYN changes profile, make the decompressor
@@ -964,6 +987,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 
 	} /* end of 'the ROHC packet is not an IR packet' */
 
+error:
 	return ROHC_ERROR_NO_CONTEXT;
 }
 
