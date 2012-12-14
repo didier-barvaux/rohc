@@ -299,7 +299,7 @@ void context_free(struct d_context *context)
 	c_destroy_wlsb(context->header_16_compressed);
 
 	/* destroy the context itself */
-	zfree(context);
+	free(context);
 }
 
 
@@ -390,9 +390,9 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	return decomp;
 
 destroy_contexts:
-	zfree(decomp->contexts);
+	free(decomp->contexts);
 destroy_decomp:
-	zfree(decomp);
+	free(decomp);
 error:
 	return NULL;
 }
@@ -430,7 +430,7 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
 	zfree(decomp->contexts);
 
 	/* destroy the decompressor itself */
-	zfree(decomp);
+	free(decomp);
 
 error:
 	return;
@@ -911,6 +911,8 @@ int d_decode_header(struct rohc_decomp *decomp,
 		if(casenew)
 		{
 			context_free(ddata->active);
+			ddata->active = NULL;
+			decomp->last_context = NULL;
 		}
 		else
 		{
