@@ -41,11 +41,11 @@
 struct ipv4_hdr
 {
 #if WORDS_BIGENDIAN == 1
-	unsigned int version:4;
-	unsigned int ihl:4;
+	uint8_t version:4;
+	uint8_t ihl:4;
 #else
-	unsigned int ihl:4;
-	unsigned int version:4;
+	uint8_t ihl:4;
+	uint8_t version:4;
 #endif
 	uint8_t tos;
 	uint16_t tot_len;
@@ -61,6 +61,6 @@ struct ipv4_hdr
 	uint32_t saddr;
 	uint32_t daddr;
 	/* The options start here. */
-};
+} __attribute__((packed));
 
 #endif

@@ -1077,7 +1077,7 @@ int get_ip_version(const unsigned char *const packet,
 	}
 
 	/* check the version field */
-	switch((packet[0] & 0xf0) >> 4)
+	switch((packet[0] >> 4) & 0x0f)
 	{
 		case 4:
 			*version = IPV4;

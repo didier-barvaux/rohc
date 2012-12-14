@@ -64,7 +64,7 @@ typedef enum
 	/// IP version 6
 	IPV6 = 6,
 	/// not IP
-	IP_UNKNOWN,
+	IP_UNKNOWN = 0,
 } ip_version;
 
 

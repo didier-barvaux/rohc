@@ -897,8 +897,6 @@ int d_decode_header(struct rohc_decomp *decomp,
 		{
 			/* the IR decompression was successful,
 			 * replace the existing context with the new one */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "%d bytes of payload copied to uncompressed packet\n", size);
 			if(casenew && decomp->contexts[ddata->cid] != NULL)
 			{
 				context_free(decomp->contexts[ddata->cid]);

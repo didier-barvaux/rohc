@@ -125,7 +125,7 @@ if test "x$host_os" = "xmingw32" || \
 	# Avoid warnings about 'unknown conversion type character ‘z’ in format'
 	CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
 	if test "x$enable_shared" = "xyes" ; then
-		LDFLAGS="${LDFLAGS} -no-undefined"
+		LDFLAGS="${LDFLAGS} -Wl,--no-undefined"
 	fi
 fi
 
@@ -322,6 +322,7 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		fi
 
 		tests_environment="${tests_environment} \
+		                   DISPLAY= \
 		                   CROSS_COMPILATION=yes \
 		                   CROSS_COMPILATION_EXEEXT=$EXEEXT \
 		                   CROSS_COMPILATION_EMULATOR=\"$cross_compiling_emulator_cmd\""

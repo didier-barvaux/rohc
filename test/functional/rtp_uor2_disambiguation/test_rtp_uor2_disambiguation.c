@@ -216,7 +216,9 @@ static int test_comp_and_decomp(const char *const filename,
 	unsigned int counter;
 
 	rohc_packet_t pkt_type_comp = PACKET_UNKNOWN;
+#if !defined(__MINGW32__)
 	rohc_packet_t pkt_type_decomp = PACKET_UNKNOWN;
+#endif
 
 #define NB_RTP_PORTS 5
 	const unsigned int rtp_ports[NB_RTP_PORTS] =
@@ -417,8 +419,13 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tdecompression is successful\n");
 
 		/* retrieve the packet type */
+#if !defined(__MINGW32__)
 		struct d_context *last_context = decomp->last_context;
-		pkt_type_decomp = ((struct d_generic_context *) last_context->specific)->packet_type;
+		struct d_generic_context *last_g_context = last_context->specific;
+		pkt_type_decomp = last_g_context->packet_type;
+		fprintf(stderr, "\tROHC packet is of type '%s' (%d)\n",
+		        rohc_get_packet_descr(pkt_type_decomp), pkt_type_decomp);
+#endif
 	}
 
 	/* last compressed packet must be of the expected type */
@@ -432,6 +439,7 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* last decompressed packet must be of the expected type */
+#if !defined(__MINGW32__)
 	if(pkt_type_decomp != expected_packet)
 	{
 		fprintf(stderr, "last packet was decompressed as '%s' (%d) "
@@ -440,6 +448,7 @@ static int test_comp_and_decomp(const char *const filename,
 		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
 	}
+#endif
 
 	/* everything went fine */
 	fprintf(stderr, "all packets were successfully compressed/decompressed\n");
