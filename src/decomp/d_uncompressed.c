@@ -169,7 +169,7 @@ static int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		             "ROHC packet too small (len = %u)\n", rohc_remain_len);
 		goto error;
 	}
 
