@@ -83,24 +83,24 @@ unsigned char tcp_options_index[16] =
 /*
  * Private function prototypes.
  */
-static uint8_t * rohc_v2_code_static_ipv6_option_part(struct c_context *const context,
-                                                      ip_context_ptr_t ip_context,
-                                                      multi_ptr_t mptr,
-                                                      uint8_t protocol,
-                                                      base_header_ip_t base_header,
-                                                      const int packet_size);
-static uint8_t * rohc_v2_code_dynamic_ipv6_option_part(struct c_context *const context,
-                                                       ip_context_ptr_t ip_context,
-                                                       multi_ptr_t mptr,
-                                                       uint8_t protocol,
-                                                       base_header_ip_t base_header,
-                                                       const int packet_size);
-static uint8_t * rohc_v2_code_irregular_ipv6_option_part(struct c_context *const context,
-                                                         ip_context_ptr_t ip_context,
-                                                         multi_ptr_t mptr,
-                                                         uint8_t protocol,
-                                                         base_header_ip_t base_header,
-                                                         const int packet_size);
+static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const context,
+																  ip_context_ptr_t ip_context,
+																  multi_ptr_t mptr,
+																  uint8_t protocol,
+																  base_header_ip_t base_header,
+																  const int packet_size);
+static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const context,
+																	ip_context_ptr_t ip_context,
+																	multi_ptr_t mptr,
+																	uint8_t protocol,
+																	base_header_ip_t base_header,
+																	const int packet_size);
+static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const context,
+																	  ip_context_ptr_t ip_context,
+																	  multi_ptr_t mptr,
+																	  uint8_t protocol,
+																	  base_header_ip_t base_header,
+																	  const int packet_size);
 static uint8_t * tcp_code_static_ip_part(struct c_context *const context,
                                          ip_context_ptr_t ip_context,
                                          base_header_ip_t base_header,
@@ -1113,11 +1113,10 @@ int c_tcp_encode(struct c_context *const context,
 							rohc_comp_debug(context, "IPv6 option %d at %p\n",
 							                protocol, base_header.uint8);
 							mptr.uint8 =
-							   rohc_v2_code_static_ipv6_option_part(context,
-							                                        ip_context,
-							                                        mptr, protocol,
-							                                        base_header,
-							                                        packet_size);
+							   tcp_code_static_ipv6_option_part(context, ip_context,
+							                                    mptr, protocol,
+							                                    base_header,
+							                                    packet_size);
 							protocol = base_header.ipv6_opt->next_header;
 							base_header.uint8 += ip_context.v6_option->option_length;
 							ip_context.uint8 += ip_context.v6_option->context_length;
@@ -1170,11 +1169,10 @@ int c_tcp_encode(struct c_context *const context,
 						rohc_comp_debug(context, "IPv6 option %d at %p\n",
 						                protocol, base_header.uint8);
 						mptr.uint8 =
-						   rohc_v2_code_dynamic_ipv6_option_part(context,
-						                                         ip_context, mptr,
-						                                         protocol,
-						                                         base_header,
-						                                         packet_size);
+						   tcp_code_dynamic_ipv6_option_part(context, ip_context,
+						                                     mptr, protocol,
+						                                     base_header,
+						                                     packet_size);
 						protocol = base_header.ipv6_opt->next_header;
 						base_header.uint8 += ip_context.v6_option->option_length;
 						ip_context.uint8 += ip_context.v6_option->context_length;
@@ -1246,12 +1244,12 @@ int c_tcp_encode(struct c_context *const context,
  * @param packet_size    The size of packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * rohc_v2_code_static_ipv6_option_part(struct c_context *const context,
-                                                      ip_context_ptr_t ip_context,
-                                                      multi_ptr_t mptr,
-                                                      uint8_t protocol,
-                                                      base_header_ip_t base_header,
-                                                      const int packet_size)
+static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const context,
+																  ip_context_ptr_t ip_context,
+																  multi_ptr_t mptr,
+																  uint8_t protocol,
+																  base_header_ip_t base_header,
+																  const int packet_size)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -1351,12 +1349,12 @@ static uint8_t * rohc_v2_code_static_ipv6_option_part(struct c_context *const co
  * @param packet_size    The size of packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * rohc_v2_code_dynamic_ipv6_option_part(struct c_context *const context,
-                                                       ip_context_ptr_t ip_context,
-                                                       multi_ptr_t mptr,
-                                                       uint8_t protocol,
-                                                       base_header_ip_t base_header,
-                                                       const int packet_size)
+static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const context,
+																	ip_context_ptr_t ip_context,
+																	multi_ptr_t mptr,
+																	uint8_t protocol,
+																	base_header_ip_t base_header,
+																	const int packet_size)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -1438,12 +1436,12 @@ static uint8_t * rohc_v2_code_dynamic_ipv6_option_part(struct c_context *const c
  * @param packet_size    The size of packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * rohc_v2_code_irregular_ipv6_option_part(struct c_context *const context,
-                                                         ip_context_ptr_t ip_context,
-                                                         multi_ptr_t mptr,
-                                                         uint8_t protocol,
-                                                         base_header_ip_t base_header,
-                                                         const int packet_size)
+static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const context,
+																	  ip_context_ptr_t ip_context,
+																	  multi_ptr_t mptr,
+																	  uint8_t protocol,
+																	  base_header_ip_t base_header,
+																	  const int packet_size)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -3381,10 +3379,10 @@ int code_CO_packet(struct c_context *const context,
 				while(  ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
 				{
 					mptr.uint8 =
-					   rohc_v2_code_irregular_ipv6_option_part(context, ip_context,
-					                                           mptr, protocol,
-					                                           base_header,
-					                                           packet_size);
+					   tcp_code_irregular_ipv6_option_part(context, ip_context,
+					                                       mptr, protocol,
+					                                       base_header,
+					                                       packet_size);
 					protocol = base_header.ipv6_opt->next_header;
 					base_header.uint8 += ip_context.v6_option->option_length;
 					ip_context.uint8 += ip_context.v6_option->context_length;
