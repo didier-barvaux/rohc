@@ -2968,7 +2968,7 @@ static int decode_ir(struct rohc_decomp *decomp,
 
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
-	unsigned int rohc_remain_len = rohc_length;
+	size_t rohc_remain_len = rohc_length;
 
 	/* extracted bits for SN, outer IP-ID, inner IP-ID, TS... */
 	struct rohc_extr_bits bits;
@@ -5997,7 +5997,7 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 
 	/* remaining ROHC data not parsed yet */
 	const unsigned char *rohc_remain_data = rohc_packet;
-	unsigned int rohc_remain_len = rohc_length;
+	size_t rohc_remain_len = rohc_length;
 
 	/* extracted bits for SN, outer IP-ID, inner IP-ID, TS... */
 	struct rohc_extr_bits bits;
