@@ -42,7 +42,13 @@
 #define C_NUM_PROFILES 7 // FWX2
 
 /** The maximal number of outgoing feedbacks that can be queued */
-#define FEEDBACK_RING_SIZE 10
+#define FEEDBACK_RING_SIZE 1000
+
+/** Print a debug trace for the given compression context */
+#define rohc_comp_debug(context, format, ...) \
+	rohc_debug((context)->compressor, ROHC_TRACE_COMP, \
+	           (context)->profile->id, \
+	           format, ##__VA_ARGS__)
 
 
 /*
@@ -129,6 +135,32 @@ struct rohc_comp
 	size_t feedbacks_next;
 
 
+	/* segment-related variables */
+
+/** The maximal value for MRRU */
+#define ROHC_MAX_MRRU 65535
+	/** The remaining bytes of the Reconstructed Reception Unit (RRU) waiting
+	 *  to be split into segments */
+	unsigned char rru[ROHC_MAX_MRRU];
+	/** The offset of the remaining bytes in the RRU buffer */
+	size_t rru_off;
+	/** The number of the remaining bytes in the RRU buffer */
+	size_t rru_len;
+
+
+	/* variables related to RTP detection */
+
+/** The maximal number of RTP ports (shall be > 2) */
+#define MAX_RTP_PORTS 15
+	/** The RTP ports table */
+	unsigned int rtp_ports[MAX_RTP_PORTS];
+
+	/** The callback function used to detect RTP packet */
+	rohc_rtp_detection_callback_t rtp_callback;
+	/** Pointer to an external memory area provided/used by the callback user */
+	void *rtp_private;
+
+
 	/* some statistics about the compression process: */
 
 	/** The number of sent packets */
@@ -161,11 +193,14 @@ struct rohc_comp
 	 *  before changing back the state to FO (periodic refreshes) */
 	size_t periodic_refreshes_fo_timeout;
 	/** Maximum Reconstructed Reception Unit (currently not used) */
-	int mrru;
+	size_t mrru;
 	/** Maximum header size that will be compressed (currently not used) */
 	int max_header_size;
 	/** The connection type (currently not used) */
 	int connection_type;
+
+	/** The callback function used to manage traces */
+	rohc_trace_callback_t trace_callback;
 };
 
 
@@ -182,15 +217,6 @@ struct c_profile
 	 *        compress an IP packet
 	 */
 	const unsigned short protocol;
-
-	/**
-	 * @brief The UDP ports associated with this profile
-	 *
-	 * Only used with UDP as transport protocol. The pointer can be NULL if no
-	 * port is specified. If defined, the list must be terminated by 0.
-	 * example: { 5000, 5001, 0 }
-	 */
-	const int *ports;
 
 	/** The profile ID as reserved by IANA */
 	const unsigned short id;
@@ -213,6 +239,15 @@ struct c_profile
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
+	 *        fits the current profile or not
+	 */
+	bool (*check_profile)(const struct rohc_comp *const comp,
+	                      const struct ip_packet *const outer_ip,
+	                      const struct ip_packet *const inner_ip,
+	                      const uint8_t protocol);
+
+	/**
+	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
 	int (*check_context)(const struct c_context *context,
@@ -230,11 +265,23 @@ struct c_profile
 	              int *const payload_offset);
 
 	/**
+	 * @brief The handler used to re-initialize a context
+	 */
+	bool (*reinit_context)(struct c_context *const context)
+		__attribute__((nonnull(1), warn_unused_result));
+
+	/**
 	 * @brief The handler used to warn the profile-specific part of the
 	 *        context about the arrival of feedback data
 	 */
 	void (*feedback)(struct c_context *const context,
 	                 const struct c_feedback *feedback);
+
+	/**
+	 * @brief The handler used to detect if a UDP port is used by the profile
+	 */
+	bool (*use_udp_port)(const struct c_context *const context,
+	                     const unsigned int port);
 };
 
 

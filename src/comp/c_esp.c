@@ -24,7 +24,7 @@
 #include "c_esp.h"
 #include "c_generic.h"
 #include "c_ip.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "crc.h"
 #include "protocols/esp.h"
 #include "rohc_utils.h"
@@ -112,12 +112,14 @@ static int c_esp_create(struct c_context *const context,
 	unsigned int ip_proto;
 
 	assert(context != NULL);
+	assert(context->profile != NULL);
 	assert(ip != NULL);
 
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_ESP_SN, ip))
 	{
-		rohc_debugf(0, "generic context creation failed\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "generic context creation failed\n");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -129,7 +131,8 @@ static int c_esp_create(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto clean;
 		}
 
@@ -147,8 +150,9 @@ static int c_esp_create(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
-		rohc_debugf(0, "next header is not ESP (%d), cannot use this profile\n",
-		            ip_proto);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "next header is not ESP (%d), cannot use this profile\n",
+		             ip_proto);
 		goto clean;
 	}
 
@@ -156,15 +160,16 @@ static int c_esp_create(struct c_context *const context,
 
 	/* initialize SN with the SN found in the ESP header */
 	g_context->sn = ntohl(esp->sn);
-	rohc_debugf(1, "initialize context(SN) = hdr(SN) of first packet = %u\n",
-	            g_context->sn);
+	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
+	                "packet = %u\n", g_context->sn);
 
 	/* create the ESP part of the profile context */
 	esp_context = malloc(sizeof(struct sc_esp_context));
 	if(esp_context == NULL)
 	{
-	  rohc_debugf(0, "no memory for the ESP part of the profile context\n");
-	  goto clean;
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the ESP part of the profile context\n");
+		goto clean;
 	}
 	g_context->specific = esp_context;
 
@@ -195,6 +200,66 @@ clean:
 	c_generic_destroy(context);
 quit:
 	return 0;
+}
+
+
+/**
+ * @brief Check if the given packet corresponds to the ESP profile
+ *
+ * Conditions are:
+ *  \li the transport protocol is ESP
+ *  \li the version of the outer IP header is 4 or 6
+ *  \li the outer IP header is not an IP fragment
+ *  \li if there are at least 2 IP headers, the version of the inner IP header
+ *      is 4 or 6
+ *  \li if there are at least 2 IP headers, the inner IP header is not an IP
+ *      fragment
+ *
+ * @see c_generic_check_profile
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param comp      The ROHC compressor
+ * @param outer_ip  The outer IP header of the IP packet to check
+ * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
+ *                      packet contains at least 2 IP headers,
+ *                  \li NULL if the IP packet to check contains only one IP header
+ * @param protocol  The transport protocol carried by the IP packet:
+ *                    \li the protocol carried by the outer IP header if there
+ *                        is only one IP header,
+ *                    \li the protocol carried by the inner IP header if there
+ *                        are at least two IP headers.
+ * @return          Whether the IP packet corresponds to the profile:
+ *                    \li true if the IP packet corresponds to the profile,
+ *                    \li false if the IP packet does not correspond to
+ *                        the profile
+ */
+bool c_esp_check_profile(const struct rohc_comp *const comp,
+                         const struct ip_packet *const outer_ip,
+                         const struct ip_packet *const inner_ip,
+                         const uint8_t protocol)
+{
+	bool ip_check;
+
+	/* check that the transport protocol is ESP */
+	if(protocol != ROHC_IPPROTO_ESP)
+	{
+		goto bad_profile;
+	}
+
+	/* check that the the versions of outer and inner IP headers are 4 or 6
+	   and that outer and inner IP headers are not IP fragments */
+	ip_check = c_generic_check_profile(comp, outer_ip, inner_ip, protocol);
+	if(!ip_check)
+	{
+		goto bad_profile;
+	}
+
+	return true;
+
+bad_profile:
+	return false;
 }
 
 
@@ -294,7 +359,8 @@ int c_esp_check_context(const struct c_context *context,
 		/* get the second IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			goto error;
 		}
 
@@ -414,7 +480,8 @@ static int c_esp_encode(struct c_context *const context,
 		/* get the last IP header */
 		if(!ip_get_inner_packet(ip, &ip2))
 		{
-			rohc_debugf(0, "cannot create the inner IP header\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "cannot create the inner IP header\n");
 			return -1;
 		}
 		last_ip_header = &ip2;
@@ -430,7 +497,8 @@ static int c_esp_encode(struct c_context *const context,
 
 	if(ip_proto != ROHC_IPPROTO_ESP)
 	{
-		rohc_debugf(0, "packet is not an ESP packet\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "packet is not an ESP packet\n");
 		return -1;
 	}
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
@@ -517,7 +585,7 @@ static int esp_code_static_esp_part(const struct c_context *context,
 	const struct esphdr *esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_debugf(3, "ESP SPI = 0x%08x\n", ntohl(esp->spi));
+	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", ntohl(esp->spi));
 	memcpy(&dest[counter], &esp->spi, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
@@ -558,7 +626,7 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
 	esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_debugf(3, "ESP SN = 0x%08x\n", ntohl(esp->sn));
+	rohc_comp_debug(context, "ESP SN = 0x%08x\n", ntohl(esp->sn));
 	memcpy(&dest[counter], &esp->sn, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
@@ -573,13 +641,15 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
 struct c_profile c_esp_profile =
 {
 	ROHC_IPPROTO_ESP,    /* IP protocol */
-	NULL,                /* list of UDP ports, not relevant for UDP */
 	ROHC_PROFILE_ESP,    /* profile ID (see 8 in RFC 3095) */
 	"ESP / Compressor",  /* profile description */
 	c_esp_create,        /* profile handlers */
 	c_generic_destroy,
+	c_esp_check_profile,
 	c_esp_check_context,
 	c_esp_encode,
+	c_generic_reinit_context,
 	c_generic_feedback,
+	c_generic_use_udp_port,
 };
 

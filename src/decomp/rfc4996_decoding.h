@@ -23,20 +23,27 @@
 
 #include <stdint.h>
 
+struct d_context;
+
 extern unsigned int lsb_masks[];
 extern unsigned int lsb_xor_masks[];
 
 
 // RFC4997 page 27
-uint32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_value,
-                 unsigned int value );
+uint32_t d_lsb(const struct d_context *const context,
+               int num_lsbs_param,
+               int offset_param,
+               unsigned int context_value,
+               unsigned int value);
 
 // RFC4996 page 46
 uint8_t d_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
 uint16_t d_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, int indicator );
 // RFC4996 page 46
 extern unsigned int variable_length_32_size[];
-uint32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator );
+uint32_t variable_length_32_dec(const struct d_context *const context,
+                                multi_ptr_t *pmptr,
+                                int indicator);
 uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value );
 // RFC4996 page 47
 uint32_t d_lsb_7_31( multi_ptr_t *pmptr );
@@ -50,12 +57,20 @@ uint32_t d_field_scaling( uint32_t stride_value, uint32_t scaled_value, uint32_t
 // RFC4996 page 71
 unsigned int rsf_index_dec( unsigned int rsf_index );
 // RFC4996 page 75
-uint16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
-                       uint16_t value,
-                       uint16_t msn );
+uint16_t d_ip_id_lsb(const struct d_context *const context,
+                     int behavior,
+                     unsigned int k,
+                     unsigned int p,
+                     WB_t context_ip_id,
+                     uint16_t value,
+                     uint16_t msn);
 // RFC4996 page 76
-void d_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, int indicator, WB_t context_ip_id,
-                           uint16_t *ip_id,
-                           uint16_t msn );
+void d_optional_ip_id_lsb(const struct d_context *const context,
+                          multi_ptr_t *pmptr,
+                          int behavior,
+                          int indicator,
+                          WB_t context_ip_id,
+                          uint16_t *ip_id,
+                          uint16_t msn);
 uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
 

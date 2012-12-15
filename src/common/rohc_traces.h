@@ -16,57 +16,62 @@
 
 /**
  * @file   rohc_traces.h
- * @brief  ROHC macros and functions for traces
- * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @brief  ROHC definitions for traces
+ * @author Julien Bernard <julien.bernard@toulouse.viveris.com>
+ * @author Audric Schiltknecht <audric.schiltknecht@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
 #ifndef ROHC_TRACES_H
 #define ROHC_TRACES_H
 
-#include <stdio.h>
-#include <assert.h>
-#include "config.h" /* for ROHC_DEBUG_LEVEL */
-#include "dllexport.h"
 
-/// @brief Print information depending on the debug level and prefixed
-///        with the function name
-#define rohc_debugf(level, format, ...) \
-	rohc_debugf_(level, "%s[%s:%d %s()] " format, \
-	             (level == 0 ? "[ERROR] " : ""), \
-	             __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)
+/** A general profile number used for traces not related to a specific profile */
+#define ROHC_PROFILE_GENERAL       0xffff
 
-/// Print information depending on the debug level
-#define rohc_debugf_(level, format, ...) \
-	do { \
-		if((level) <= ROHC_DEBUG_LEVEL) { \
-			printf(format, ##__VA_ARGS__); \
-		} \
-	} while(0)
+
+/** The different levels of the traces */
+typedef enum
+{
+	ROHC_TRACE_DEBUG = 0,
+	ROHC_TRACE_INFO = 1,
+	ROHC_TRACE_WARNING = 2,
+	ROHC_TRACE_ERROR = 3,
+	ROHC_TRACE_LEVEL_MAX
+} rohc_trace_level_t;
+
+
+/** The different entities concerned by the traces */
+typedef enum
+{
+	ROHC_TRACE_COMP = 0,
+	ROHC_TRACE_DECOMP = 1,
+	ROHC_TRACE_ENTITY_MAX
+} rohc_trace_entity_t;
+
 
 /**
- * @brief Stop processing if the given condition is false
+ * @brief The function prototype for the trace callback
  *
- * In non-debug mode (ie. NDEBUG set): if the given condition fails, prints
- * the given message then jump to the given label.
- *
- * In debug mode (ie. NDEBUG not set): if the given condition fails, prints
- * the given message then asserts.
+ * @param level    The level of the message, @see rohc_trace_level_t
+ * @param entity   The entity concerned by the traces, @see rohc_trace_entity_t
+ * @param profile  The number of the profile concerned by the message
+ * @param format   The format string for the trace message
  */
-#define rohc_assert(condition, label, format, ...) \
-	do { \
-		if(!(condition)) { \
-			rohc_debugf(0, format "\n", ##__VA_ARGS__); \
-			assert(condition); \
-			goto label; \
-		} \
-	} while(0)
-
-
-void ROHC_EXPORT rohc_dump_packet(const char *const descr,
-                                  const unsigned char *const packet,
-                                  const size_t length)
-	__attribute__((nonnull(1, 2)));
+typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
+                                       const rohc_trace_entity_t entity,
+                                       const int profile,
+                                       const char *const format,
+                                       ...)
+#if __USE_MINGW_ANSI_STDIO == 1
+	/* MinGW interprets 'printf' format as 'ms_printf', so force
+	 * usage of 'gnu_printf' */
+	__attribute__((format(gnu_printf, 4, 5), nonnull(4)));
+#else
+	/* Use 'printf' format in other cases, because old GCC versions
+	 * and Clang do not recognize 'gnu_printf' format */
+	__attribute__((format(printf, 4, 5), nonnull(4)));
+#endif
 
 
 #endif

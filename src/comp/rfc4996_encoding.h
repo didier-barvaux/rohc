@@ -23,12 +23,15 @@
 
 #include "dllexport.h"
 
+struct c_context;
+
 extern unsigned int ROHC_EXPORT lsb_masks[];
 extern unsigned int ROHC_EXPORT lsb_xor_masks[];
 
 
 // RFC4997 page 27
-uint32_t ROHC_EXPORT c_lsb(int num_lsbs_param,
+uint32_t ROHC_EXPORT c_lsb(const struct c_context *const context,
+                           int num_lsbs_param,
                            unsigned int offset_param,
                            unsigned int context_value,
                            unsigned int original_value);
@@ -65,14 +68,23 @@ void c_field_scaling( uint32_t *scaled_value, uint32_t *residue_field, uint32_t 
 #endif
 
 // RFC4996 page 71
-unsigned int rsf_index_enc( unsigned int rsf_flags );
+unsigned int rsf_index_enc(const struct c_context *const context,
+                           unsigned int rsf_flags);
 // RFC4996 page 75
-unsigned int c_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
-                          WB_t ip_id,
-                          uint16_t msn );
+unsigned int c_ip_id_lsb(const struct c_context *const context,
+                         int behavior,
+                         unsigned int k,
+                         unsigned int p,
+                         WB_t context_ip_id,
+                         WB_t ip_id,
+                         uint16_t msn);
 // RFC4996 page 76
-unsigned int c_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, WB_t context_ip_id, WB_t ip_id,
-                                   uint16_t msn );
+unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
+                                  multi_ptr_t *pmptr,
+                                  int behavior,
+                                  WB_t context_ip_id,
+                                  WB_t ip_id,
+                                  uint16_t msn);
 // RFC4996 page 75
 unsigned int dscp_encode( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value );
 

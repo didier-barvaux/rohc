@@ -18,6 +18,7 @@
  * @file rohc_decomp.h
  * @brief ROHC decompression routines
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  * @author David Moreau from TAS
  */
@@ -51,6 +52,61 @@ typedef enum
 	/// The Full Context state
 	FULL_CONTEXT = 3,
 } rohc_d_state;
+
+
+/**
+ * @brief Some information about the last decompressed packet
+ *
+ * Versioning works as follow:
+ *  - The 'version_major' field defines the compatibility level. If the major
+ *    number given by user does not match the one expected by the library,
+ *    an error is returned.
+ *  - The 'version_minor' field defines the extension level. If the minor
+ *    number given by user does not match the one expected by the library,
+ *    only the fields supported in that minor version will be filled by
+ *    \ref rohc_decomp_get_last_packet_info.
+ *
+ * Notes for developers:
+ *  - Increase the major version if a field is removed.
+ *  - Increase the major version if a field is added at the beginning or in
+ *    the middle of the structure.
+ *  - Increase the minor version if a field is added at the very end of the
+ *    structure.
+ *  - The version_major and version_minor fields must be located at the very
+ *    beginning of the structure.
+ *  - The structure must be packed.
+ *
+ * Supported versions:
+ *  - Major = 0:
+ *     - Minor = 0:
+ *        version_major
+ *        version_minor
+ *        context_mode
+ *        context_state
+ *        profile_id
+ *        nr_lost_packets
+ *        nr_misordered_packets
+ *        is_duplicated
+ */
+typedef struct
+{
+	/** The major version of this structure */
+	unsigned short version_major;
+	/** The minor version of this structure */
+	unsigned short version_minor;
+	/** The mode of the last context used by the compressor */
+	rohc_mode context_mode;
+	/** The state of the last context used by the compressor */
+	rohc_d_state context_state;
+	/** The profile ID of the last context used by the compressor */
+	int profile_id;
+	/** The number of (possible) lost packet(s) before last packet */
+	unsigned long nr_lost_packets;
+	/** The number of packet(s) before the last packet if late */
+	unsigned long nr_misordered_packets;
+	/** Is last packet a (possible) duplicated packet? */
+	bool is_duplicated;
+} __attribute__((packed)) rohc_decomp_last_packet_info_t;
 
 
 /**
@@ -104,6 +160,18 @@ struct rohc_decomp
 	int curval;
 
 
+	/* segment-related variables */
+
+/** The maximal value for MRRU */
+#define ROHC_MAX_MRRU 65535
+	/** The Reconstructed Reception Unit */
+	unsigned char rru[ROHC_MAX_MRRU];
+	/** The length (in bytes) of the Reconstructed Reception Unit */
+	size_t rru_len;
+	/** The Maximum Reconstructed Reception Unit (MRRU) */
+	size_t mrru;
+
+
 	/* CRC-related variables: */
 
 	/** The table to enable fast CRC-2 computation */
@@ -120,6 +188,9 @@ struct rohc_decomp
 
 	/// Some statistics about the decompression processes
 	struct d_statistics stats;
+
+	/// The callback function used to get log messages
+	rohc_trace_callback_t trace_callback;
 };
 
 
@@ -128,6 +199,9 @@ struct rohc_decomp
  */
 struct d_context
 {
+	/// The associated decompressor
+	struct rohc_decomp *decompressor;
+
 	/// The associated profile
 	struct d_profile *profile;
 	/// Profile-specific data, defined by the profiles
@@ -180,6 +254,13 @@ struct d_context
 	struct c_wlsb *header_16_uncompressed;
 	/// The size of the last 16 compressed headers
 	struct c_wlsb *header_16_compressed;
+
+	/** The number of (possible) lost packet(s) before last packet */
+	unsigned long nr_lost_packets;
+	/** The number of packet(s) before the last packet if late */
+	unsigned long nr_misordered_packets;
+	/** Is last packet a (possible) duplicated packet? */
+	bool is_duplicated;
 };
 
 
@@ -208,7 +289,7 @@ struct d_profile
 
 	/// @brief The handler used to create the profile-specific part of the
 	///        decompression context
-	void * (*allocate_decode_data)(void);
+	void * (*allocate_decode_data)(const struct d_context *const context);
 
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        decompression context
@@ -276,6 +357,10 @@ int ROHC_EXPORT rohc_d_context(struct rohc_decomp *decomp,
 void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp);
 const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_d_state state);
 
+bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
+                                      rohc_decomp_last_packet_info_t *const info)
+	__attribute__((nonnull(1, 2), warn_unused_result));
+
 
 /*
  * Functions related to user interaction:
@@ -292,6 +377,14 @@ bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
 bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                          const size_t max_cid)
 	__attribute__((nonnull(1), warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
+                                      const size_t mrru)
+	__attribute__((nonnull(1), warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
+                                           rohc_trace_callback_t callback)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

@@ -84,6 +84,10 @@ struct rohc_extr_ip_bits
 	                      header or in extension header */
 	size_t rnd_nr;   /**< The number of RND bits found */
 
+	uint8_t sid:1;   /**< The SID bits found in dynamic chain of IR/IR-DYN
+	                      header or in extension header */
+	size_t sid_nr;   /**< The number of SID bits found */
+
 	uint32_t flowid:20;  /**< The IPv6 flow ID bits found in static chain of
 	                          IR header */
 	size_t flowid_nr;    /**< The number of flow label bits */
@@ -107,6 +111,8 @@ struct rohc_extr_ip_bits
  */
 struct rohc_extr_bits
 {
+	bool is_context_reused; /**< Whether the context is re-used or not */
+
 	/* SN */
 	uint32_t sn;            /**< The SN bits found in ROHC header */
 	size_t sn_nr;           /**< The number of SN bits found in ROHC header */
@@ -220,6 +226,7 @@ struct rohc_decoded_ip_values
 	uint8_t proto;       /**< The decoded protocol/NH field */
 	uint8_t nbo:1;       /**< The decoded NBO field (IPv4 only) */
 	uint8_t rnd:1;       /**< The decoded RND field (IPv4 only) */
+	uint8_t sid:1;       /**< The decoded SID field (IPv4 only) */
 	uint32_t flowid:20;  /**< The decoded flow ID field (IPv6 only) */
 	uint8_t saddr[16];   /**< The decoded source address field */
 	uint8_t daddr[16];   /**< The decoded destination address field */
@@ -288,6 +295,8 @@ struct d_generic_changes
 	int rnd;
 	/// Whether the IP-ID is considered as coded in NBO or not (IPv4 only)
 	int nbo;
+	/// Whether the IP-ID is considered as static or not (IPv4 only)
+	int sid;
 
 	/// The next header located after the IP header(s)
 	unsigned char *next_header;
@@ -346,20 +355,20 @@ struct d_generic_context
 
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
-	int (*parse_static_next_hdr)(struct d_generic_context *context,
+	int (*parse_static_next_hdr)(const struct d_context *const context,
 	                             const unsigned char *packet,
 	                             unsigned int length,
 	                             struct rohc_extr_bits *const bits);
 
 	/// @brief The handler used to parse the dynamic part of the next header
 	///        in the ROHC packet
-	int (*parse_dyn_next_hdr)(struct d_generic_context *context,
+	int (*parse_dyn_next_hdr)(const struct d_context *const context,
 	                          const unsigned char *packet,
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
 
 	/// The handler used to parse the tail of the UO* ROHC packet
-	int (*parse_uo_remainder)(struct d_generic_context *context,
+	int (*parse_uo_remainder)(const struct d_context *const context,
 	                          const unsigned char *packet,
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
@@ -370,7 +379,7 @@ struct d_generic_context
 	                                struct rohc_decoded_values *const decoded);
 
 	/** The handler used to build the uncompressed next header */
-	int (*build_next_header)(const struct d_generic_context *const context,
+	int (*build_next_header)(const struct d_context *const context,
 	                         const struct rohc_decoded_values decoded,
 	                         unsigned char *dest,
 	                         const unsigned int payload_len);
@@ -425,6 +434,9 @@ struct list_decomp
 	/// boolean which indicates if the ref list must be decompressed
 	int ref_ok;
 
+
+	/* Functions for handling the data to decompress */
+
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
 	/// The handler used to add the extension to IP packet
@@ -442,6 +454,14 @@ struct list_decomp
 	                    struct list_decomp *decomp);
 	/// The handler used to get the size of an extension
 	int (*get_ext_size)(const unsigned char *data, const size_t data_len);
+
+
+	/* Traces */
+
+	/** The callback function used to manage traces */
+	rohc_trace_callback_t trace_callback;
+	/** The profile ID the decompression list was created for */
+	int profile_id;
 };
 
 
@@ -449,7 +469,10 @@ struct list_decomp
  * Public function prototypes.
  */
 
-void * d_generic_create(void);
+void * d_generic_create(const struct d_context *const context,
+                        rohc_trace_callback_t trace_callback,
+                        const int profile_id)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 void d_generic_destroy(void *context);
 

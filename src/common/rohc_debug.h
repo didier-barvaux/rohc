@@ -29,14 +29,14 @@
  */
 
 #include <stdlib.h> /* for free(3) */
-#include "config.h" /* for ROHC_DEBUG_LEVEL definition */
+#include "config.h" /* for ROHC_EXTRA_DEBUG definition */
 
 
 /*
  * Debug macros
  */
 
-#if ROHC_DEBUG_LEVEL > 0
+#if ROHC_EXTRA_DEBUG == 1
 
 /** Free a pointer plus set it to NULL to avoid hidden bugs */
 #define zfree(pointer) \

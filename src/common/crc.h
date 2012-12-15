@@ -42,6 +42,10 @@
 /// The CRC-8 initial value
 #define CRC_INIT_8 0xff
 
+/** The FCS-32 initial value */
+#define CRC_INIT_FCS32 0xffffffff
+/** The length (in bytes) of the FCS-32 CRC */
+#define CRC_FCS32_LEN  4U
 
 /** The different types of CRC used to protect ROHC headers */
 typedef enum
@@ -69,6 +73,11 @@ unsigned int ROHC_EXPORT crc_calculate(const rohc_crc_type_t crc_type,
                                        const unsigned int init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(2, 5)));
+
+uint32_t ROHC_EXPORT crc_calc_fcs32(const unsigned char *const data,
+                                    const size_t length,
+                                    const uint32_t init_val)
+	__attribute__((nonnull(1)));
 
 unsigned int ROHC_EXPORT compute_crc_static(const unsigned char *const ip,
                                             const unsigned char *const ip2,

@@ -44,6 +44,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -71,6 +72,12 @@ static void usage(void);
 static int test_comp_and_decomp(const char *filename,
                                 const unsigned int profile_id,
                                 const rohc_packet_t expected_packet);
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -266,7 +273,11 @@ static int test_comp_and_decomp(const char *filename,
 	unsigned char *packet;
 	unsigned int counter;
 
-	int ret;
+#define NB_RTP_PORTS 5
+	unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+	unsigned int i;
+
 	int is_failure = 1;
 
 	/* open the source dump file */
@@ -313,6 +324,16 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "failed to create the ROHC compressor\n");
 		goto close_input;
 	}
+
+	/* set the callback for traces on compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor\n");
+		goto destroy_comp;
+	}
+
+	/* configure compressor for small CIDs */
 	rohc_c_set_large_cid(comp, 0);
 
 	/* set the callback for random numbers */
@@ -339,6 +360,23 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_activate_profile(comp, ROHC_PROFILE_ESP);
 	}
 
+	/* reset list of RTP ports */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_alloc_decompressor(NULL);
 	if(decomp == NULL)
@@ -347,17 +385,25 @@ static int test_comp_and_decomp(const char *filename,
 		goto destroy_comp;
 	}
 
+	/* set the callback for traces on decompressor */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto destroy_decomp;
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		rohc_comp_last_packet_info_t last_packet_info;
+		rohc_comp_last_packet_info2_t last_packet_info;
 		unsigned char *ip_packet;
-		int ip_size;
+		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		int rohc_size;
+		size_t rohc_size;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
+		int ret;
 
 		counter++;
 
@@ -407,9 +453,9 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		rohc_size = rohc_compress(comp, ip_packet, ip_size,
-		                          rohc_packet, MAX_ROHC_SIZE);
-		if(rohc_size <= 0)
+		ret = rohc_compress2(comp, ip_packet, ip_size,
+		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -417,14 +463,16 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* get packet statistics and remember the packet type */
-		ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
-		if(ret != ROHC_OK)
+		last_packet_info.version_major = 0;
+		last_packet_info.version_minor = 0;
+		if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet\n");
 			goto destroy_decomp;
 		}
 		last_packet_type = last_packet_info.packet_type;
-		fprintf(stderr, "\tROHC packet of type %d generated\n", last_packet_type);
+		fprintf(stderr, "\tROHC packet of type '%s' (%d) generated\n",
+		        rohc_get_packet_descr(last_packet_type), last_packet_type);
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
 		decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size,
@@ -441,13 +489,15 @@ static int test_comp_and_decomp(const char *filename,
 	if(last_packet_type != expected_packet)
 	{
 		fprintf(stderr, "last generated ROHC packet is not as expected: "
-		        "packet type %d generated while %d expected\n", last_packet_type,
-		        expected_packet);
+		        "packet type '%s' (%d) generated while '%s' (%d) expected\n",
+		        rohc_get_packet_descr(last_packet_type), last_packet_type,
+		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
 	}
 
 	/* everything went fine */
-	fprintf(stderr, "last generated ROHC packet is of type %d as expected\n",
+	fprintf(stderr, "last generated ROHC packet is of type '%s' (%d) as "
+	        "expected\n", rohc_get_packet_descr(expected_packet),
 	        expected_packet);
 	is_failure = 0;
 
@@ -459,6 +509,31 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 

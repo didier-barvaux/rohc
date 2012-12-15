@@ -40,14 +40,11 @@ struct ipv6_addr
 {
 	union
 	{
-		uint8_t __u6_addr8[16];
-		uint16_t __u6_addr16[8];
-		uint32_t __u6_addr32[4];
-	} __in6_u;
-#define s6_addr		__in6_u.__u6_addr8
-#define s6_addr16		__in6_u.__u6_addr16
-#define s6_addr32		__in6_u.__u6_addr32
-};
+		uint8_t u8[16];
+		uint16_t u16[8];
+		uint32_t u32[4];
+	} addr;
+} __attribute__((packed));
 
 
 /**
@@ -69,7 +66,7 @@ struct ipv6_hdr
 	} ip6_ctlun;
 	struct ipv6_addr ip6_src;     /* source address */
 	struct ipv6_addr ip6_dst;     /* destination address */
-};
+} __attribute__((packed));
 
 #define ip6_vfc   ip6_ctlun.ip6_un2_vfc
 #define ip6_flow  ip6_ctlun.ip6_un1.ip6_un1_flow

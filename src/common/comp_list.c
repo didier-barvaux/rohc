@@ -22,7 +22,6 @@
  */
 
 #include "comp_list.h"
-#include "rohc_traces.h"
 
 #include <stdlib.h>
 
@@ -34,13 +33,9 @@
  */
 int list_create(struct c_list *list)
 {
-	rohc_debugf(1, "creating compression list\n");
-
 	list = malloc(sizeof(struct c_list));
-
 	if(list == NULL)
 	{
-		rohc_debugf(0, "cannot allocate memory for the compression list\n");
 		goto error;
 	}
 
@@ -91,7 +86,6 @@ int list_add_at_beginning(struct c_list *list,
 	elt = malloc(sizeof(struct list_elt));
 	if(elt == NULL)
 	{
-		rohc_debugf(0, "cannot allocate memory for the list element\n");
 		goto error;
 	}
 
@@ -142,7 +136,6 @@ int list_add_at_end(struct c_list *list,
 		elt = malloc(sizeof(struct list_elt));
 		if(elt == NULL)
 		{
-			rohc_debugf(0, "cannot allocate memory for the list element\n");
 			goto error;
 		}
 
@@ -186,7 +179,6 @@ int list_add_at_index(struct c_list *list,
 
 	if(index > size_l)
 	{
-		rohc_debugf(0, "bad index for insertion\n");
 		goto error;
 	}
 
@@ -195,7 +187,6 @@ int list_add_at_index(struct c_list *list,
 		/* special case for first element */
 		if(!list_add_at_beginning(list, item, index_table))
 		{
-			rohc_debugf(0, "failed to add element in list\n");
 			goto error;
 		}
 	}
@@ -208,7 +199,6 @@ int list_add_at_index(struct c_list *list,
 		elt = malloc(sizeof(struct list_elt));
 		if(elt == NULL)
 		{
-			rohc_debugf(0, "cannot allocate memory for the list element\n");
 			goto error;
 		}
 		elt->item = item;
@@ -361,11 +351,7 @@ void list_remove(struct c_list *list, struct rohc_list_item *item)
 void list_empty(struct c_list *list)
 {
 	struct list_elt *curr_elt;
-	if(list->first_elt == NULL)
-	{
-		rohc_debugf(1, "no element in the list\n");
-	}
-	else
+	if(list->first_elt != NULL)
 	{
 		curr_elt = list->first_elt;
 		while(curr_elt->next_elt != NULL)
@@ -394,7 +380,6 @@ int list_type_is_present(struct c_list *list, struct rohc_list_item *item)
 
 	if(list->first_elt == NULL)
 	{
-		rohc_debugf(0, "no element in the list\n");
 		goto end;
 	}
 

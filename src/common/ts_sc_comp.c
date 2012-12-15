@@ -24,10 +24,16 @@
 
 #include "ts_sc_comp.h"
 #include "sdvl.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 
 #include <stdlib.h> /* for abs(3) */
 #include <assert.h>
+
+
+/** Print debug messages for the ts_sc_comp module */
+#define ts_debug(entity_struct, format, ...) \
+	rohc_debug(entity_struct, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, \
+	           format, ##__VA_ARGS__)
 
 
 /**
@@ -36,10 +42,12 @@
  * @param ts_sc              The ts_sc_comp object to create
  * @param wlsb_window_width  The width of the W-LSB sliding window to use
  *                           for TS_STRIDE (must be > 0)
+ * @param callback           The trace callback
  * @return                   1 if creation is successful, 0 otherwise
  */
 int c_create_sc(struct ts_sc_comp *const ts_sc,
-                const size_t wlsb_window_width)
+                const size_t wlsb_window_width,
+                rohc_trace_callback_t callback)
 {
 	assert(ts_sc != NULL);
 	assert(wlsb_window_width > 0);
@@ -52,15 +60,18 @@ int c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->ts_delta = 0;
 	ts_sc->old_sn = 0;
 	ts_sc->sn = 0;
-	ts_sc->is_deductible = 0;
+	ts_sc->is_deducible = 0;
 	ts_sc->state = INIT_TS;
+	ts_sc->are_old_val_init = false;
 	ts_sc->nr_init_stride_packets = 0;
+	ts_sc->trace_callback = callback;
 
 	ts_sc->scaled_window = c_create_wlsb(32, wlsb_window_width,
 	                                     ROHC_LSB_SHIFT_RTP_TS);
 	if(ts_sc->scaled_window == NULL)
 	{
-		rohc_debugf(0, "cannot create a W-LSB window for TS scaled\n");
+		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "cannot create a W-LSB window for TS scaled\n");
 		goto error;
 	}
 
@@ -95,7 +106,10 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 {
 	assert(ts_sc != NULL);
 
-	rohc_debugf(2, "Timestamp = %u\n", ts);
+	ts_debug(ts_sc, "Timestamp = %u\n", ts);
+
+	/* consider that TS bits are not deducible by default */
+	ts_sc->is_deducible = false;
 
 	/* we save the old value */
 	ts_sc->old_ts = ts_sc->ts;
@@ -105,152 +119,182 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 	ts_sc->ts = ts;
 	ts_sc->sn = sn;
 
-	/* compute the absolute delta between new and old TS */
-	ts_sc->ts_delta = abs(ts_sc->ts - ts_sc->old_ts);
-	rohc_debugf(2, "TS delta = %u\n", ts_sc->ts_delta);
-
-	switch(ts_sc->state)
+	/* if we had no old values, TS_STRIDE cannot be computed yet */
+	if(!ts_sc->are_old_val_init)
 	{
-		case INIT_TS:
+		assert(ts_sc->state == INIT_TS);
+		ts_debug(ts_sc, "TS_STRIDE cannot be computed, stay in INIT_TS state\n");
+		ts_sc->are_old_val_init = true;
+		return;
+	}
+
+	/* compute the absolute delta between new and old TS */
+	/* abs() on unsigned 32-bit values seems to be a problem sometimes */
+	if(ts_sc->ts >= ts_sc->old_ts)
+	{
+		ts_sc->ts_delta = ts_sc->ts - ts_sc->old_ts;
+	}
+	else
+	{
+		ts_sc->ts_delta = ts_sc->old_ts - ts_sc->ts;
+	}
+	ts_debug(ts_sc, "TS delta = %u\n", ts_sc->ts_delta);
+
+	/* go back to INIT_TS state if TS is constant */
+	if(ts_sc->ts_delta == 0)
+	{
+		ts_debug(ts_sc, "TS is constant, go in INIT_TS state\n");
+		ts_sc->state = INIT_TS;
+		return;
+	}
+
+	/* go back to INIT_TS state if TS_STRIDE cannot be SDVL-encoded */
+	if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
+	{
+		/* TS_STRIDE is too large for SDVL encoding */
+		ts_debug(ts_sc, "TS_STRIDE is too large for SDVL encoding, "
+		         "go in INIT_TS state\n");
+		ts_sc->state = INIT_TS;
+		return;
+	}
+
+	/* TS_STRIDE can be computed, so leave INIT_TS state */
+	if(ts_sc->state == INIT_TS)
+	{
+		ts_debug(ts_sc, "TS_STRIDE can be computed, go to INIT_STRIDE state\n");
+		ts_sc->state = INIT_STRIDE;
+		ts_sc->nr_init_stride_packets = 0;
+	}
+
+	if(ts_sc->state == INIT_STRIDE)
+	{
+		/* TS is changing and TS_STRIDE can be computed but TS_STRIDE was
+		 * not transmitted enough times to the decompressor to be used */
+		ts_debug(ts_sc, "state INIT_STRIDE\n");
+
+		/* reset INIT_STRIDE counter if TS_STRIDE/TS_OFFSET changed */
+		if(ts_sc->ts_delta != ts_sc->ts_stride ||
+		   (ts_sc->ts % ts_sc->ts_delta) != ts_sc->ts_offset)
 		{
-			rohc_debugf(2, "state INIT_TS\n");
-			break;
+			ts_debug(ts_sc, "TS_STRIDE and/or TS_OFFSET changed\n");
+			ts_sc->nr_init_stride_packets = 0;
 		}
 
-		case INIT_STRIDE:
+		/* compute TS_STRIDE, TS_OFFSET and TS_SCALED */
+		ts_sc->ts_stride = ts_sc->ts_delta;
+		ts_debug(ts_sc, "TS_STRIDE = %u\n", ts_sc->ts_stride);
+		assert(ts_sc->ts_stride != 0);
+		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
+		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u\n",
+		         ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
+		assert(ts_sc->ts_stride != 0);
+		ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
+		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u\n", ts_sc->ts,
+		         ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
+	}
+	else if(ts_sc->state == SEND_SCALED)
+	{
+		const uint32_t old_scaled = ts_sc->ts_scaled;
+		const uint32_t old_offset = ts_sc->ts_offset;
+
+		/* TS is changing, TS_STRIDE can be computed, and TS_STRIDE was
+		 * transmitted enough times to the decompressor to be used */
+		ts_debug(ts_sc, "state SEND_SCALED\n");
+
+		/* does TS_STRIDE changed? */
+		ts_debug(ts_sc, "TS_STRIDE calculated = %u\n", ts_sc->ts_delta);
+		ts_debug(ts_sc, "previous TS_STRIDE = %u\n", ts_sc->ts_stride);
+		if(ts_sc->ts_delta != ts_sc->ts_stride)
 		{
-			rohc_debugf(2, "state INIT_STRIDE\n");
-
-			if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
-			{
-				/* TS is changing and TS_STRIDE is very large: go back to INIT_TS
-				 * state if TS_STRIDE cannot be SDVL-encoded */
-				rohc_debugf(2, "TS_STRIDE is too large for SDVL encoding, "
-				            "go in INIT_TS state\n");
-				ts_sc->state = INIT_TS;
-			}
-			else if(ts_sc->ts_delta == 0)
-			{
-				/* TS is constant (TS_STRIDE = 0), TS_SCALED cannot be computed,
-				 * so stay in INIT_STRIDE state */
-				rohc_debugf(2, "TS is constant (TS_STRIDE = 0), stay in "
-				            "INIT_STRIDE state\n");
-				ts_sc->nr_init_stride_packets = 0;
-			}
-			else
-			{
-				/* TS is changing and TS_STRIDE is OK */
-
-				/* reset TS_STRIDE transmission counter if TS_STRIDE changes */
-				if(ts_sc->ts_delta != ts_sc->ts_stride)
-				{
-					rohc_debugf(2, "/!\\ TS_STRIDE changed\n");
-					ts_sc->nr_init_stride_packets = 0;
-				}
-
-				rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_delta);
-				ts_sc->ts_stride = ts_sc->ts_delta;
-				assert(ts_sc->ts_stride != 0);
-				ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
-				rohc_debugf(3, "ts_offset = %u modulo %d = %d\n",
-				            ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
-				ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
-				rohc_debugf(3, "ts_scaled = (%u - %d) / %d = %d\n", ts_sc->ts,
-				            ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
-			}
-			break;
-		}
-
-		case SEND_SCALED:
-		{
-			uint32_t old_scaled = ts_sc->ts_scaled;
-			uint32_t old_offset = ts_sc->ts_offset;
-
-			rohc_debugf(2, "state SEND_SCALED\n");
-
-			/* go back to lower states if TS_STRIDE = 0 or if TS_STRIDE is
-			 * too large to be SDVL-encoded */
-			if(ts_sc->ts_delta == 0)
-			{
-				/* TS is constant, go back in INIT_STRIDE state because TS_SCALED
-				 * cannot be used if TS_STRIDE = 0 (see RFC 4815 section 4.4.1) */
-				rohc_debugf(3, "TS_STRIDE = 0, go in INIT_STRIDE state\n");
-				ts_sc->state = INIT_STRIDE;
-				ts_sc->nr_init_stride_packets = 0;
-				return;
-			}
-			else if(!sdvl_can_value_be_encoded(ts_sc->ts_delta))
-			{
-				/* TS is changing and TS_STRIDE is very large: go back to INIT_TS
-				 * state if TS_STRIDE cannot be SDVL-encoded */
-				rohc_debugf(2, "TS_STRIDE is too large for SDVL encoding, "
-				            "go in INIT_TS state\n");
-				ts_sc->state = INIT_TS;
-				return;
-			}
-
-			/* TS_STRIDE is OK, let's use it */
-			rohc_debugf(3, "ts_stride calculated = %u\n", ts_sc->ts_delta);
-			rohc_debugf(3, "previous ts_stride = %u\n", ts_sc->ts_stride);
 			assert(ts_sc->ts_stride != 0);
 			if((ts_sc->ts_delta % ts_sc->ts_stride) != 0)
 			{
-				/* ts_stride has changed */
-				rohc_debugf(2, "/!\\ ts_stride changed\n");
+				/* TS delta changed and is not a multiple of previous TS_STRIDE:
+				 * record the new value as TS_STRIDE and transmit it several
+				 * times for robustness purposes */
+				ts_debug(ts_sc, "/!\\ TS_STRIDE changed and is not a multiple "
+				         "of previous TS_STRIDE, so change TS_STRIDE and "
+				         "transmit it several times along all TS bits "
+				         "(probably a clock resync at source)\n");
 				ts_sc->state = INIT_STRIDE;
 				ts_sc->nr_init_stride_packets = 0;
-				rohc_debugf(2, "state -> INIT_STRIDE\n");
+				ts_debug(ts_sc, "state -> INIT_STRIDE\n");
 				ts_sc->ts_stride = ts_sc->ts_delta;
 			}
-
-			rohc_debugf(3, "ts_stride = %u\n", ts_sc->ts_stride);
-			assert(ts_sc->ts_stride != 0);
-			ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
-			rohc_debugf(3, "ts_offset = %u modulo %u = %u\n",
-			            ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
-			assert(ts_sc->ts_stride != 0);
-			ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
-			rohc_debugf(3, "ts_scaled = (%u - %u) / %u = %u\n", ts_sc->ts,
-			            ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
-
-			if((ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
+			else if((ts_sc->ts_delta / ts_sc->ts_stride) != (ts_sc->sn - ts_sc->old_sn))
 			{
-				rohc_debugf(2, "TS can be deducted from SN (old TS_SCALED = %u, "
-				            "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
-				            old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
-				ts_sc->is_deductible = 1;
+				/* TS delta changed but is a multiple of previous TS_STRIDE:
+				 * do not change TS_STRIDE, but transmit all TS bits several
+				 * times for robustness purposes */
+				ts_debug(ts_sc, "/!\\ TS delta changed but is a multiple of "
+				         "previous TS_STRIDE, so do not change TS_STRIDE, but "
+				         "retransmit it several times along all TS bits "
+				         "(probably a RTP TS jump at source)\n");
+				ts_sc->state = INIT_STRIDE;
+				ts_sc->nr_init_stride_packets = 0;
+				ts_debug(ts_sc, "state -> INIT_STRIDE\n");
 			}
 			else
 			{
-				rohc_debugf(2, "TS can not be deducted from SN (old TS_SCALED = %u, "
-				            "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
-				            old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
-				ts_sc->is_deductible = 0;
+				/* do not change TS_STRIDE, probably a packet loss */
+				ts_debug(ts_sc, "/!\\ TS delta changed, is a multiple of "
+				         "previous TS_STRIDE and follows SN changes, so do "
+				         "not change TS_STRIDE (probably a packet loss)\n");
 			}
-
-			/* Wraparound (See RFC 4815 Section 4.4.3) */
-			if(ts_sc->ts < ts_sc->old_ts)
-			{
-				rohc_debugf(2, "TS wraparound detected\n");
-				if(old_offset != ts_sc->ts_offset)
-				{
-					rohc_debugf(3, "TS_OFFSET changed, re-initialize TS_STRIDE\n");
-					ts_sc->state = INIT_STRIDE;
-					ts_sc->nr_init_stride_packets = 0;
-				}
-				else
-				{
-					rohc_debugf(3, "TS_OFFSET is unchanged\n");
-				}
-			}
-			break;
 		}
+		ts_debug(ts_sc, "TS_STRIDE = %u\n", ts_sc->ts_stride);
 
-		default:
+		/* update TS_OFFSET is needed */
+		assert(ts_sc->ts_stride != 0);
+		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
+		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u\n",
+		         ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
+
+		/* compute TS_SCALED */
+		assert(ts_sc->ts_stride != 0);
+		ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
+		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u\n", ts_sc->ts,
+		         ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
+
+		/* could TS_SCALED be deduced from SN? */
+		if(ts_sc->state == SEND_SCALED &&
+		   (ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
 		{
-			/* invalid state, should not happen */
-			assert(0);
+			ts_debug(ts_sc, "TS can be deducted from SN (old TS_SCALED = %u, "
+			         "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
+			         old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
+			ts_sc->is_deducible = 1;
 		}
+		else
+		{
+			ts_debug(ts_sc, "TS can not be deducted from SN (old TS_SCALED = %u, "
+			         "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
+			         old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
+			ts_sc->is_deducible = 0;
+		}
+
+		/* Wraparound (See RFC 4815 Section 4.4.3) */
+		if(ts_sc->ts < ts_sc->old_ts)
+		{
+			ts_debug(ts_sc, "TS wraparound detected\n");
+			if(old_offset != ts_sc->ts_offset)
+			{
+				ts_debug(ts_sc, "TS_OFFSET changed, re-initialize TS_STRIDE\n");
+				ts_sc->state = INIT_STRIDE;
+				ts_sc->nr_init_stride_packets = 0;
+			}
+			else
+			{
+				ts_debug(ts_sc, "TS_OFFSET is unchanged\n");
+			}
+		}
+	}
+	else
+	{
+		/* invalid state, should not happen */
+		ts_debug(ts_sc, "invalid state (%d), should not happen\n", ts_sc->state);
+		assert(0);
+		return;
 	}
 }
 
@@ -265,20 +309,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
  */
 bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
 {
-	bool is_success;
-
-	if(ts_sc.is_deductible)
-	{
-		*bits_nr = 0;
-		is_success = true;
-	}
-	else
-	{
-		is_success = wlsb_get_k_32bits(ts_sc.scaled_window, ts_sc.ts_scaled,
-		                               bits_nr);
-	}
-
-	return is_success;
+	return wlsb_get_k_32bits(ts_sc.scaled_window, ts_sc.ts_scaled, bits_nr);
 }
 
 
@@ -316,5 +347,18 @@ uint32_t get_ts_stride(const struct ts_sc_comp ts_sc)
 uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc)
 {
 	return ts_sc.ts_scaled;
+}
+
+
+/**
+ * @brief Whether TimeStamp (TS) is deducible from the Sequence Number (SN)
+ *        or not
+ *
+ * @param ts_sc  The TS SCALED compression context
+ * @return       true if TS is deducible from SN, false otherwise
+ */
+bool rohc_ts_sc_is_deducible(const struct ts_sc_comp ts_sc)
+{
+	return ts_sc.is_deducible;
 }
 

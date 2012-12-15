@@ -18,6 +18,7 @@
  * @file tunnel.c
  * @brief ROHC tunnel
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  *
  * Description
  * -----------
@@ -84,6 +85,7 @@
 #include <sys/select.h>
 #include <signal.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <math.h> /* for HUGE_VAL */
 #include <time.h> /* for time(2) */
 #include <sys/time.h> /* for gettimeofday(2) */
@@ -151,11 +153,18 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to);
 int flush_feedback(struct rohc_comp *comp,
                    int to, struct in_addr raddr, int port);
 
-void dump_packet(char *descr, unsigned char *packet, unsigned int length);
+void dump_packet(char *descr, unsigned char *packet, const size_t length);
 double get_probability(char *arg, int *error);
 int is_timeout(struct timeval first,
                struct timeval second,
                unsigned int max);
+
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
@@ -522,6 +531,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "cannot create the ROHC compressor\n");
 		goto close_udp;
 	}
+
+	/* set trace callback for compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for the compressor\n");
+		goto destroy_comp;
+	}
+
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
@@ -547,6 +564,13 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
 		goto destroy_comp;
+	}
+
+	/* set trace callback for decompressor */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for the decompressor\n");
+		goto destroy_decomp;
 	}
 
 
@@ -994,8 +1018,9 @@ int tun2udp(struct rohc_comp *comp,
 	static unsigned char rohc_packet[2 + MAX_ROHC_SIZE];
 	unsigned int buffer_len = TUNTAP_BUFSIZE;
 	unsigned char *packet;
-	unsigned int packet_len;
-	int rohc_size;
+	size_t packet_len;
+	bool is_segment;
+	size_t rohc_size;
 	int ret;
 
 	/* error emulation */
@@ -1013,7 +1038,7 @@ int tun2udp(struct rohc_comp *comp,
 	struct timeval now;
 
 	/* statistics output */
-	rohc_comp_last_packet_info_t last_packet_info;
+	rohc_comp_last_packet_info2_t last_packet_info;
 	const char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
 	const char *states[] = { "error", "IR", "FO", "SO" };
 
@@ -1033,7 +1058,7 @@ int tun2udp(struct rohc_comp *comp,
 			/* init of the random generator */
 			gettimeofday(&last, NULL);
 			srand(last.tv_sec);
-			
+
 			/* init the probability to stay in non-error state */
 			p1 = (p2 - 1) / (1 - pe2) + 2 - p2;
 		}
@@ -1062,11 +1087,16 @@ int tun2udp(struct rohc_comp *comp,
 
 	/* compress the IP packet */
 #if DEBUG
-	fprintf(stderr, "compress packet #%u (%u bytes)\n", seq, packet_len);
+	fprintf(stderr, "compress packet #%u (%zd bytes)\n", seq, packet_len);
 #endif
-	rohc_size = rohc_compress(comp, packet, packet_len,
-	                          rohc_packet + 2, MAX_ROHC_SIZE);
-	if(rohc_size <= 0)
+	ret = rohc_compress2(comp, packet, packet_len,
+	                     rohc_packet + 2, MAX_ROHC_SIZE,
+	                     &rohc_size);
+	if(ret == ROHC_NEED_SEGMENT)
+	{
+		is_segment = true;
+	}
+	else if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "compression of packet #%u failed\n", seq);
 		dump_packet("IP packet", packet, packet_len);
@@ -1083,7 +1113,7 @@ int tun2udp(struct rohc_comp *comp,
 			fprintf(stderr, "error inserted, ROHC packet #%u dropped\n", seq);
 			nb_bytes = rohc_size - (bytes_without_error - nb_bytes);
 		}
-		
+
 		nb_bytes += rohc_size;
 	}
 	else if(error == 2) /* non-uniform/burst error model */
@@ -1116,17 +1146,37 @@ int tun2udp(struct rohc_comp *comp,
 	/* write the ROHC packet in the UDP tunnel if not dropped */
 	if(!to_drop)
 	{
-		ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
-		if(ret != 0)
+		if(is_segment)
 		{
-			fprintf(stderr, "write_to_udp failed\n");
-			goto error;
+			/* retrieve and transmit all remaining ROHC segments */
+			while((ret = rohc_comp_get_segment(comp, rohc_packet + 2, MAX_ROHC_SIZE,
+			                                   &rohc_size)) != ROHC_NEED_SEGMENT)
+			{
+				/* write the ROHC segment in the UDP tunnel */
+				ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
+				if(ret != 0)
+				{
+					fprintf(stderr, "write_to_udp(segment) failed\n");
+					goto error;
+				}
+			}
+		}
+		else
+		{
+			/* write the ROHC packet in the UDP tunnel */
+			ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
+			if(ret != 0)
+			{
+				fprintf(stderr, "write_to_udp(packet) failed\n");
+				goto error;
+			}
 		}
 	}
 
 	/* print packet statistics */
-	ret = rohc_comp_get_last_packet_info(comp, &last_packet_info);
-	if(ret != ROHC_OK)
+	last_packet_info.version_major = 0;
+	last_packet_info.version_minor = 0;
+	if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
 	{
 		fprintf(stderr, "cannot display stats about the last compressed packet\n");
 		goto error;
@@ -1241,7 +1291,7 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		/* should not happen */
 		fprintf(stderr, "ROHC packet #%u duplicated\n", new_seq);
 	}
-	
+
 	if(new_seq > max_seq)
 	{
 		/* update max sequence numbers */
@@ -1342,7 +1392,7 @@ int flush_feedback(struct rohc_comp *comp,
 	static unsigned char rohc_packet[2 + MAX_ROHC_SIZE];
 	int rohc_size;
 	int ret;
-	
+
 #if DEBUG
 	fprintf(stderr, "\n");
 #endif
@@ -1395,12 +1445,12 @@ error:
  * @param packet  The packet to display
  * @param length  The length of the packet to display
  */
-void dump_packet(char *descr, unsigned char *packet, unsigned int length)
+void dump_packet(char *descr, unsigned char *packet, const size_t length)
 {
-	unsigned int i;
+	size_t i;
 
 	fprintf(stderr, "-------------------------------\n");
-	fprintf(stderr, "%s (%u bytes):\n", descr, length);
+	fprintf(stderr, "%s (%zd bytes):\n", descr, length);
 	for(i = 0; i < length; i++)
 	{
 		if(i > 0 && (i % 16) == 0)
@@ -1502,6 +1552,30 @@ int is_timeout(struct timeval first,
 		is_timeout = 0;
 
 	return is_timeout;
+}
+
+
+/**
+ * @brief Print traces emitted by the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	va_list args;
+	va_start(args, format);
+	vprintf(format, args);
+	va_end(args);
 }
 
 

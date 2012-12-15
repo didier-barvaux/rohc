@@ -20,7 +20,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "rohc_traces.h"
+#include "rohc_comp_internals.h"
+#include "rohc_traces_internal.h"
 #include "rohc_debug.h"
 #include "rohc_bit_ops.h"
 #include "rohc_utils.h"
@@ -52,22 +53,29 @@ unsigned int lsb_masks[] =
  *
  * See RFC4997 page 27
  *
+ * @param context          The compressor context
  * @param num_lsbs_param   The number of bits
  * @param offset_param     The offset
  * @param context_value    The value of the context
  * @param original_value   The value to compress
  * @return                 The compressed value with num_lsbs_param bits
  */
-
-uint32_t c_lsb( int num_lsbs_param, unsigned int offset_param, unsigned int context_value,
-                 unsigned int original_value )
+uint32_t c_lsb(const struct c_context *const context,
+               int num_lsbs_param,
+               unsigned int offset_param,
+               unsigned int context_value,
+               unsigned int original_value)
 {
 	unsigned int lower_bound;
 	unsigned int upper_bound;
 	unsigned int value;
 
-	rohc_debugf(3, "c_lsb() num_lsb %d offset_param %d context_value %Xh original_value %Xh\n",
-	            num_lsbs_param,offset_param,context_value,original_value);
+	assert(context != NULL);
+
+	rohc_comp_debug(context, "num_lsb = %d, offset_param = %d, "
+	                "context_value = 0x%x, original_value = 0x%x\n",
+	                num_lsbs_param, offset_param, context_value,
+	                original_value);
 
 	assert( num_lsbs_param > 0 && num_lsbs_param <= 18 );
 
@@ -76,9 +84,8 @@ uint32_t c_lsb( int num_lsbs_param, unsigned int offset_param, unsigned int cont
 
 	value = original_value & lsb_masks[num_lsbs_param];
 
-	rohc_debugf(3, "c_lsb() %Xh < value %Xh < %Xh return %Xh\n",lower_bound,original_value,
-	            upper_bound,
-	            value);
+	rohc_comp_debug(context, "0x%x < value (0x%x) < 0x%x => return 0x%x\n",
+	                lower_bound, original_value, upper_bound, value);
 
 	return value;
 }
@@ -297,12 +304,15 @@ void c_field_scaling( uint32_t *scaled_value, uint32_t *residue_field, uint32_t 
  *
  * See RFC4996 page 71
  *
- * @param rsf_flags        The RSF flags
- * @return                 The rsf index
+ * @param context    The compressor context
+ * @param rsf_flags  The RSF flags
+ * @return           The rsf index
  */
-
-unsigned int rsf_index_enc( unsigned int rsf_flags )
+unsigned int rsf_index_enc(const struct c_context *const context,
+                           unsigned int rsf_flags)
 {
+	assert(context != NULL);
+
 	switch(rsf_flags)
 	{
 		case RSF_NONE:
@@ -314,7 +324,7 @@ unsigned int rsf_index_enc( unsigned int rsf_flags )
 		case RSF_FIN_ONLY:
 			return 3;
 		default:
-			rohc_debugf(3, "TCP RSF_UNKNOWN!\n");
+			rohc_comp_debug(context, "TCP RSF_UNKNOWN!\n");
 			return 0;
 	}
 }
@@ -325,6 +335,7 @@ unsigned int rsf_index_enc( unsigned int rsf_flags )
  *
  * See RFC4996 page 75
  *
+ * @param context          The compressor context
  * @param behavior         The IP-ID behavior
  * @param k                The num_lsbs_param parameter for c_lsb()
  * @param p                The offset parameter for c_lsb()
@@ -333,43 +344,49 @@ unsigned int rsf_index_enc( unsigned int rsf_flags )
  * @param msn              The Master Sequence Number
  * @return                 The lsb of offset between IP-ID and MSN
  */
-
-unsigned int c_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
-                          WB_t ip_id,
-                          uint16_t msn )
+unsigned int c_ip_id_lsb(const struct c_context *const context,
+                         int behavior,
+                         unsigned int k,
+                         unsigned int p,
+                         WB_t context_ip_id,
+                         WB_t ip_id,
+                         uint16_t msn)
 {
 	uint16_t ip_id_offset;
 	WB_t ip_id_nbo;
 	WB_t swapped_context_ip_id;
 
+	assert(context != NULL);
 	assert( behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
 	        behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED );
 
-	rohc_debugf(3, "behavior %d context_ip_id %4.4Xh ip_id=%4.4Xh msn=%4.4Xh\n",behavior,
-	            context_ip_id.uint16,ip_id.uint16,
-	            msn);
+	rohc_comp_debug(context, "behavior = %d, context_ip_id = 0x%04x, "
+	                "ip_id = 0x%04x, msn = 0x%04x\n", behavior,
+	                context_ip_id.uint16, ip_id.uint16, msn);
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
 			ip_id_offset = ip_id.uint16 - msn;
-			rohc_debugf(3, "ip_id_offset = %Xh - %Xh = %Xh\n",ip_id.uint16,msn,ip_id_offset);
-			//  rohc_debugf(3, "context_ip_id - msn = %Xh - %Xh = %Xh\n",context_ip_id,msn,context_ip_id-msn);
-			//   ip_id_offset = c_lsb( k , p , context_ip_id - msn , ip_id_offset );
-			ip_id_offset = c_lsb( k, p, context_ip_id.uint16 - msn, ip_id_offset );
-			rohc_debugf(3, "ip_id_offset = %Xh\n",ip_id_offset);
+			rohc_comp_debug(context, "ip_id_offset = 0x%x - 0x%x = 0x%x\n",
+			                ip_id.uint16, msn, ip_id_offset);
+			ip_id_offset = c_lsb(context, k, p, context_ip_id.uint16 - msn,
+			                     ip_id_offset);
+			rohc_comp_debug(context, "ip_id_offset = 0x%x\n", ip_id_offset);
 			break;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
 			// ip_id_nbo = ( ip_id / 256 ) + ( ( ip_id % 256 ) * 256 );
 			ip_id_nbo.uint8[0] = ip_id.uint8[1];
 			ip_id_nbo.uint8[1] = ip_id.uint8[0];
-			rohc_debugf(3, "ip_id_nbo = %Xh\n",ip_id_nbo.uint16);
+			rohc_comp_debug(context, "ip_id_nbo = 0x%x\n", ip_id_nbo.uint16);
 			ip_id_offset = ip_id_nbo.uint16 - msn;
-			rohc_debugf(3, "ip_id_offset = %Xh\n",ip_id_offset);
+			rohc_comp_debug(context, "ip_id_offset = 0x%x\n", ip_id_offset);
 			swapped_context_ip_id.uint8[0] = context_ip_id.uint8[1];
 			swapped_context_ip_id.uint8[1] = context_ip_id.uint8[0];
-			ip_id_offset = c_lsb( k, p, swapped_context_ip_id.uint16 - msn, ip_id_offset );
-			rohc_debugf(3, "ip_id_offset = %Xh\n",ip_id_offset);
+			ip_id_offset = c_lsb(context, k, p,
+			                     swapped_context_ip_id.uint16 - msn,
+			                     ip_id_offset);
+			rohc_comp_debug(context, "ip_id_offset = 0x%x\n", ip_id_offset);
 			break;
 		default:
 			/* should not happen */
@@ -384,6 +401,7 @@ unsigned int c_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t con
  *
  * See RFC4996 page 76
  *
+ * @param context          The compressor context
  * @param pmptr            The destination for the compressed value
  * @param behavior         The IP-ID behavior
  * @param context_ip_id    The context value of IP-ID
@@ -391,36 +409,44 @@ unsigned int c_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t con
  * @param msn              The Master Sequence Number
  * @return                 Indicator : 0 if short, 1 if long
  */
-
-unsigned int c_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, WB_t context_ip_id, WB_t ip_id,
-                                   uint16_t msn )
+unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
+                                  multi_ptr_t *pmptr,
+                                  int behavior,
+                                  WB_t context_ip_id,
+                                  WB_t ip_id,
+                                  uint16_t msn)
 {
+	assert(context != NULL);
 
-	rohc_debugf(3, "behavior %Xh context_ip_id %Xh ip_id %Xh msn %Xh\n",behavior,
-	            context_ip_id.uint16,ip_id.uint16,
-	            msn);
+	rohc_comp_debug(context, "behavior = 0x%x, context_ip_id = 0x%x, "
+	                "ip_id = 0x%x, msn = 0x%x\n", behavior,
+	                context_ip_id.uint16, ip_id.uint16, msn);
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
 			if( ( context_ip_id.uint16 & 0xFF00 ) == ( ip_id.uint16 & 0xFF00 ) )
 			{
-				*(pmptr->uint8)++ = c_ip_id_lsb(behavior,8,3,context_ip_id,ip_id,msn);
-				rohc_debugf(3, "write ip_id %Xh\n",*(pmptr->uint8 - 1));
+				*(pmptr->uint8)++ = c_ip_id_lsb(context, behavior, 8, 3,
+				                                context_ip_id, ip_id, msn);
+				rohc_comp_debug(context, "write ip_id = 0x%x\n",
+				                *(pmptr->uint8 - 1));
 				return 0;
 			}
 			else
 			{
 				WRITE16_TO_PMPTR(pmptr,htons(ip_id.uint16));
-				rohc_debugf(3, "write ip_id %Xh\n",ip_id.uint16);
+				rohc_comp_debug(context, "write ip_id = 0x%x\n", ip_id.uint16);
 				return 1;
 			}
 			break;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
 			if( ( context_ip_id.uint16 & 0x00FF ) == ( ip_id.uint16 & 0x00FF ) )
 			{
-				*(pmptr->uint8)++ = c_ip_id_lsb(behavior,8,3,context_ip_id,ip_id,msn);
-				rohc_debugf(3, "write ip_id %Xh\n",*(pmptr->uint8 - 1));
+				*(pmptr->uint8)++ = c_ip_id_lsb(context, behavior, 8, 3,
+				                                context_ip_id, ip_id, msn);
+				rohc_comp_debug(context, "write ip_id = 0x%x\n",
+				                *(pmptr->uint8 - 1));
 				return 0;
 			}
 			else
@@ -429,7 +455,8 @@ unsigned int c_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, WB_t contex
 				swapped_ip_id.uint8[0] = ip_id.uint8[1];
 				swapped_ip_id.uint8[1] = ip_id.uint8[0];
 				WRITE16_TO_PMPTR(pmptr,htons(swapped_ip_id.uint16));
-				rohc_debugf(3, "write ip_id %Xh\n",swapped_ip_id.uint16);
+				rohc_comp_debug(context, "write ip_id = 0x%x\n",
+				                swapped_ip_id.uint16);
 				return 1;
 			}
 			break;
@@ -464,5 +491,4 @@ unsigned int dscp_encode( multi_ptr_t *pmptr, uint8_t context_value, uint8_t val
 	*(pmptr->uint8)++ = value & 0x3F;
 	return 1;
 }
-
 

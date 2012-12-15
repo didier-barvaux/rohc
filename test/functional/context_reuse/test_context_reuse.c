@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -65,6 +66,12 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const char *filename);
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -172,6 +179,11 @@ static int test_comp_and_decomp(const char *filename)
 	unsigned char *packet;
 	unsigned int counter;
 
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+
+	unsigned int i;
 	int is_failure = 1;
 
 	/* open the source dump file */
@@ -218,6 +230,16 @@ static int test_comp_and_decomp(const char *filename)
 		fprintf(stderr, "failed to create the ROHC compressor\n");
 		goto close_input;
 	}
+
+	/* set the callback for traces on compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor\n");
+		goto destroy_comp;
+	}
+
+	/* enable profiles */
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
@@ -233,6 +255,23 @@ static int test_comp_and_decomp(const char *filename)
 		goto destroy_comp;
 	}
 
+	/* reset list of RTP ports for compressor */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
 	/* create the ROHC decompressor in bi-directional mode */
 	decomp = rohc_alloc_decompressor(comp);
 	if(decomp == NULL)
@@ -241,16 +280,24 @@ static int test_comp_and_decomp(const char *filename)
 		goto destroy_comp;
 	}
 
+	/* set the callback for traces on decompressor */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto destroy_decomp;
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		unsigned char *ip_packet;
-		int ip_size;
+		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		int rohc_size;
+		size_t rohc_size;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
+		int ret;
 
 		counter++;
 
@@ -272,7 +319,7 @@ static int test_comp_and_decomp(const char *filename)
 		if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 		{
 			int version;
-			int tot_len;
+			size_t tot_len;
 
 			version = (ip_packet[0] >> 4) & 0x0f;
 
@@ -289,17 +336,17 @@ static int test_comp_and_decomp(const char *filename)
 
 			if(tot_len < ip_size)
 			{
-				fprintf(stderr, "the Ethernet frame has %d bytes of padding "
-				        "after the %d byte IP packet!\n", ip_size - tot_len,
+				fprintf(stderr, "the Ethernet frame has %zd bytes of padding "
+				        "after the %zd byte IP packet!\n", ip_size - tot_len,
 				        tot_len);
 				ip_size = tot_len;
 			}
 		}
 
 		/* compress the IP packet */
-		rohc_size = rohc_compress(comp, ip_packet, ip_size,
-		                          rohc_packet, MAX_ROHC_SIZE);
-		if(rohc_size <= 0)
+		ret = rohc_compress2(comp, ip_packet, ip_size,
+		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -329,6 +376,31 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 

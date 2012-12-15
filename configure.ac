@@ -125,41 +125,28 @@ if test "x$host_os" = "xmingw32" || \
 	# Avoid warnings about 'unknown conversion type character ‘z’ in format'
 	CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
 	if test "x$enable_shared" = "xyes" ; then
-		LDFLAGS="${LDFLAGS} -no-undefined"
+		LDFLAGS="${LDFLAGS} -Wl,--no-undefined"
 	fi
 fi
 
-# Check whether the compiler computes the bit-field lengths as expected
-# (added because such a problem was detected with tinycc http://tinycc.org/)
-AC_MSG_CHECKING([whether the compiler computes bit-field lengths as expected])
-AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <stdint.h>
-struct bitfield
-{
-	unsigned int foo:4;
-	unsigned int bar:4;
-	uint8_t other;
-	uint16_t other2;
-};]],
-                               [[if(sizeof(struct bitfield) != 4) return 1;]])],
-              [AC_MSG_RESULT([yes])],
-              [AC_MSG_RESULT([no])
-               AC_MSG_FAILURE([The compiler does not behave as expect for bit-field lengths, it would break the library])],
-              [AC_MSG_RESULT([yes])])
 
-
-# get debug level
+# get extra debug traces
 AC_ARG_ENABLE(rohc_debug,
               AS_HELP_STRING([--enable-rohc-debug],
-                             [set level for ROHC traces: \
-                              0 = error messages only, \
-                              1 = a few informative messages, \
-                              2 = more informative messages, \
-                              3 = even more informative messages \
-                              [[default=3]]]),
-              rohc_debug_level=$enableval,
-              rohc_debug_level=3)
-AC_DEFINE_UNQUOTED([ROHC_DEBUG_LEVEL], [$rohc_debug_level],
-                   [Debug level for ROHC library])
+                             [enable library extra debug traces with \
+                              performances impact [[default=no]]]),
+              [enable_rohc_debug=$enableval],
+              [enable_rohc_debug=no])
+if test "x$enable_rohc_debug" = "xyes" ; then
+	rohc_extra_debug=1
+elif test "x$enable_rohc_debug" = "xno" ; then
+	rohc_extra_debug=0
+else
+	AC_MSG_ERROR([option --enable-rohc-debug does not take an integer value \
+	              anymore, only 'yes' or 'no'])
+fi
+AC_DEFINE_UNQUOTED([ROHC_EXTRA_DEBUG], [$rohc_extra_debug],
+                   [Extra debug traces for ROHC library])
 
 
 # check if -Werror must be appended to CFLAGS
@@ -318,6 +305,7 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 		fi
 
 		tests_environment="${tests_environment} \
+		                   DISPLAY= \
 		                   CROSS_COMPILATION=yes \
 		                   CROSS_COMPILATION_EXEEXT=$EXEEXT \
 		                   CROSS_COMPILATION_EMULATOR=\"$cross_compiling_emulator_cmd\""
@@ -610,19 +598,25 @@ AC_CONFIG_FILES([ \
 	test/Makefile \
 	test/functional/Makefile \
 	test/functional/feedback2/Makefile \
+	test/functional/feedback_ring/Makefile \
 	test/functional/decompress_feedback_only/Makefile \
 	test/functional/context_reuse/Makefile \
 	test/functional/rtp_uor2_disambiguation/Makefile \
+	test/functional/rtp_detection/Makefile \
+	test/functional/segment/Makefile \
 	test/robustness/Makefile \
 	test/robustness/empty_payload/Makefile \
 	test/robustness/damaged_packet/Makefile \
+	test/robustness/lost_packet/Makefile \
 	test/robustness/piggybacking_feedback/Makefile \
+	test/robustness/malformed_rohc_packets/Makefile \
 	test/non_regression/Makefile \
 	statistics/Makefile \
 	examples/Makefile \
 	app/Makefile \
 	app/performance/Makefile \
 	app/tunnel/Makefile \
+	app/sniffer/Makefile \
 	doc/doxygen.conf \
 	doc/Makefile \
 	contrib/Makefile \

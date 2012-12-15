@@ -18,16 +18,20 @@
  * @file d_ip.c
  * @brief ROHC decompression context for the IP-only profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #include "d_ip.h"
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_bit_ops.h"
 #include "rohc_packets.h"
 #include "rohc_debug.h" /* for zfree() */
 #include "rohc_utils.h"
 #include "decode.h"
+#include "rohc_decomp_internals.h"
+
+#include <assert.h>
 
 
 /*
@@ -44,35 +48,47 @@ static void d_ip_destroy(void *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @return A fake IP decompression context
+ * @param context  The decompression context
+ * @return         The newly-created IP decompression context
  */
-void * d_ip_create(void)
+void * d_ip_create(const struct d_context *const context)
 {
-	struct d_generic_context *context;
+	struct d_generic_context *g_context;
+
+	assert(context != NULL);
+	assert(context->decompressor != NULL);
+	assert(context->profile != NULL);
 
 	/* create the generic context */
-	context = d_generic_create();
-	if(context == NULL)
+	g_context = d_generic_create(context,
+	                             context->decompressor->trace_callback,
+	                             context->profile->id);
+	if(g_context == NULL)
 	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the generic decompression context\n");
+
 		goto quit;
 	}
+	g_context->specific = NULL;
 
 	/* create the LSB decoding context for SN */
-	context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
-	if(context->sn_lsb_ctxt == NULL)
+	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
+	if(g_context->sn_lsb_ctxt == NULL)
 	{
-		rohc_debugf(0, "failed to create the LSB decoding context for SN\n");
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the LSB decoding context for SN\n");
 		goto free_context;
 	}
 
 	/* some IP-specific values and functions */
-	context->detect_packet_type = ip_detect_packet_type;
-	context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
+	g_context->detect_packet_type = ip_detect_packet_type;
+	g_context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
 
-	return context;
+	return g_context;
 
 free_context:
-	zfree(context);
+	zfree(g_context);
 quit:
 	return NULL;
 }
@@ -118,8 +134,9 @@ rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
 
 	if(rohc_length < 1)
 	{
-		rohc_debugf(0, "ROHC packet too small to read the first byte that "
-		            "contains the packet type (len = %zd)\n", rohc_length);
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small to read the first byte that "
+		             "contains the packet type (len = %zd)\n", rohc_length);
 		goto error;
 	}
 
@@ -151,8 +168,9 @@ rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
 	else
 	{
 		/* unknown packet */
-		rohc_debugf(0, "failed to recognize the packet type in byte 0x%02x\n",
-		            *packet);
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "failed to recognize the packet type in byte 0x%02x\n",
+		             *packet);
 		type = PACKET_UNKNOWN;
 	}
 
@@ -166,38 +184,43 @@ error:
 /**
  * @brief Parse the IP dynamic part of the ROHC packet.
  *
- * @param context      The generic decompression context
+ * @param context      The decompression context
  * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
  * @param bits         OUT: The bits extracted from the ROHC header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int ip_parse_dynamic_ip(struct d_generic_context *context,
+int ip_parse_dynamic_ip(const struct d_context *const context,
                         const unsigned char *packet,
                         unsigned int length,
                         struct rohc_extr_bits *const bits)
 {
+	struct d_generic_context *g_context;
 	int read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
-	if(context->packet_type == PACKET_IR ||
-	   context->packet_type == PACKET_IR_DYN)
+	if(g_context->packet_type == PACKET_IR ||
+	   g_context->packet_type == PACKET_IR_DYN)
 	{
 		/* check the minimal length to decode the SN field */
 		if(length < 2)
 		{
-			rohc_debugf(0, "ROHC packet too small (len = %d)\n", length);
+			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+			             context->profile->id,
+			             "ROHC packet too small (len = %d)\n", length);
 			goto error;
 		}
 
 		/* parse 16-bit SN */
 		bits->sn = ntohs(GET_NEXT_16_BITS(packet));
 		bits->sn_nr = 16;
-		rohc_debugf(2, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
+		rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
 		packet += 2;
 		read += 2;
 	}

@@ -40,6 +40,7 @@
 #  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
 #include <errno.h>
+#include <stdarg.h>
 #include <assert.h>
 
 /* includes for network headers */
@@ -67,6 +68,12 @@ for ./configure ? If yes, check configure output and config.log"
 static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
                                 const rohc_packet_t expected_packet);
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -209,8 +216,15 @@ static int test_comp_and_decomp(const char *const filename,
 	unsigned int counter;
 
 	rohc_packet_t pkt_type_comp = PACKET_UNKNOWN;
+#if !defined(__MINGW32__)
 	rohc_packet_t pkt_type_decomp = PACKET_UNKNOWN;
+#endif
 
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+
+	unsigned int i;
 	int is_failure = 1;
 
 	/* open the source dump file */
@@ -254,6 +268,16 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "failed to create the ROHC compressor\n");
 		goto close_input;
 	}
+
+	/* set the callback for traces on compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor\n");
+		goto destroy_comp;
+	}
+
+	/* enable profiles */
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
@@ -262,11 +286,28 @@ static int test_comp_and_decomp(const char *const filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
 	rohc_c_set_large_cid(comp, 0);
 
-	/* set the callback for random numbers on compressor A */
+	/* set the callback for random numbers on compressor */
 	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
 	{
 		fprintf(stderr, "failed to set the callback for random numbers\n");
 		goto destroy_comp;
+	}
+
+	/* reset list of RTP ports for compressor */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
 	}
 
 	/* create the ROHC decompressor in unidirectional mode */
@@ -277,18 +318,25 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* set the callback for traces on decompressor */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto destroy_decomp;
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		unsigned char *ip_packet;
-		int ip_size;
+		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		int rohc_size;
-		rohc_comp_last_packet_info_t packet_info;
-		int ret;
+		size_t rohc_size;
+		rohc_comp_last_packet_info2_t packet_info;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
+		int ret;
 
 		counter++;
 
@@ -338,9 +386,9 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		rohc_size = rohc_compress(comp, ip_packet, ip_size,
-		                          rohc_packet, MAX_ROHC_SIZE);
-		if(rohc_size <= 0)
+		ret = rohc_compress2(comp, ip_packet, ip_size,
+		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -348,8 +396,9 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* get packet statistics to retrieve the packet type */
-		ret = rohc_comp_get_last_packet_info(comp, &packet_info);
-		if(ret != ROHC_OK)
+		packet_info.version_major = 0;
+		packet_info.version_minor = 0;
+		if(!rohc_comp_get_last_packet_info2(comp, &packet_info))
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");
 			goto destroy_decomp;
@@ -370,8 +419,13 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tdecompression is successful\n");
 
 		/* retrieve the packet type */
+#if !defined(__MINGW32__)
 		struct d_context *last_context = decomp->last_context;
-		pkt_type_decomp = ((struct d_generic_context *) last_context->specific)->packet_type;
+		struct d_generic_context *last_g_context = last_context->specific;
+		pkt_type_decomp = last_g_context->packet_type;
+		fprintf(stderr, "\tROHC packet is of type '%s' (%d)\n",
+		        rohc_get_packet_descr(pkt_type_decomp), pkt_type_decomp);
+#endif
 	}
 
 	/* last compressed packet must be of the expected type */
@@ -385,6 +439,7 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* last decompressed packet must be of the expected type */
+#if !defined(__MINGW32__)
 	if(pkt_type_decomp != expected_packet)
 	{
 		fprintf(stderr, "last packet was decompressed as '%s' (%d) "
@@ -393,6 +448,7 @@ static int test_comp_and_decomp(const char *const filename,
 		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
 	}
+#endif
 
 	/* everything went fine */
 	fprintf(stderr, "all packets were successfully compressed/decompressed\n");
@@ -408,6 +464,31 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 

@@ -18,6 +18,7 @@
  * @file d_ip.h
  * @brief ROHC decompression context for the IP-only profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -37,7 +38,7 @@ rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
                                     const size_t rohc_length,
                                     const size_t large_cid_len);
 
-int ip_parse_dynamic_ip(struct d_generic_context *context,
+int ip_parse_dynamic_ip(const struct d_context *const context,
                         const unsigned char *packet,
                         unsigned int length,
                         struct rohc_extr_bits *const bits);

@@ -64,7 +64,7 @@ typedef enum
 	/// IP version 6
 	IPV6 = 6,
 	/// not IP
-	IP_UNKNOWN,
+	IP_UNKNOWN = 0,
 } ip_version;
 
 
@@ -203,7 +203,7 @@ struct ip6_ahhdr
 
 /// The data to print an IPv6 address in (struct ipv6_addr *) format
 #define IPV6_ADDR_IN6(x) \
-	IPV6_ADDR_RAW((x)->s6_addr)
+	IPV6_ADDR_RAW((x)->addr.u8)
 
 /// The data to print an IPv6 address in raw format
 #define IPV6_ADDR_RAW(x) \
@@ -212,10 +212,10 @@ struct ip6_ahhdr
 
 /// Compare two IPv6 addresses in (struct ipv6_addr *) format
 #define IPV6_ADDR_CMP(x, y) \
-	((x)->s6_addr32[0] == (y)->s6_addr32[0] && \
-	 (x)->s6_addr32[1] == (y)->s6_addr32[1] && \
-	 (x)->s6_addr32[2] == (y)->s6_addr32[2] && \
-	 (x)->s6_addr32[3] == (y)->s6_addr32[3])
+	((x)->addr.u32[0] == (y)->addr.u32[0] && \
+	 (x)->addr.u32[1] == (y)->addr.u32[1] && \
+	 (x)->addr.u32[2] == (y)->addr.u32[2] && \
+	 (x)->addr.u32[3] == (y)->addr.u32[3])
 
 
 /*

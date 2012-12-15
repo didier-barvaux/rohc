@@ -63,6 +63,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <time.h> /* for time(2) */
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -76,6 +77,12 @@
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(void);
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -149,7 +156,7 @@ static void usage(void)
  * @return  0 in case of success,
  *          1 in case of failure
  */
-static int test_comp_and_decomp()
+static int test_comp_and_decomp(void)
 {
 	/* compressors and decompressors used during the test */
 	struct rohc_comp *compA;
@@ -160,17 +167,22 @@ static int test_comp_and_decomp()
 	/* original IP packet, ROHC packet and decompressed IP packet */
 	struct ipv4_hdr *ip_header;
 	unsigned char ip_packet[MAX_ROHC_SIZE];
-	int ip_size;
+	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	int rohc_size;
+	size_t rohc_size;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
 	int decomp_size;
 
 	/* information about the last compressed packet */
-	rohc_comp_last_packet_info_t last_packet_info;
+	rohc_comp_last_packet_info2_t last_packet_info;
 
-	int ret;
+#define NB_RTP_PORTS 5
+	const unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+
+	unsigned int i;
 	int is_failure = 1;
+	int ret;
 
 /** The payload for the fake IP packet */
 #define FAKE_PAYLOAD "hello, ROHC world!"
@@ -185,7 +197,19 @@ static int test_comp_and_decomp()
 		fprintf(stderr, "failed to create the ROHC compressor A\n");
 		goto error;
 	}
+
+	/* set the callback for traces on compressor A */
+	if(!rohc_comp_set_traces_cb(compA, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor A\n");
+		goto destroy_compA;
+	}
+
+	/* configure compressor A for small CIDs */
 	rohc_c_set_large_cid(compA, 0);
+
+	/* enable profiles for compressor A */
 	rohc_activate_profile(compA, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(compA, ROHC_PROFILE_UDP);
 	rohc_activate_profile(compA, ROHC_PROFILE_IP);
@@ -201,6 +225,24 @@ static int test_comp_and_decomp()
 		goto destroy_compA;
 	}
 
+	/* reset list of RTP ports on compressor A */
+	if(!rohc_comp_reset_rtp_ports(compA))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports on compressor A\n");
+		goto destroy_compA;
+	}
+
+	/* add some ports to the list of RTP ports on compressor A */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(compA, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u on compressor A\n",
+			        rtp_ports[i]);
+			goto destroy_compA;
+		}
+	}
+
 	/* create the ROHC compressor B with small CID */
 	compB = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(compB == NULL)
@@ -208,7 +250,19 @@ static int test_comp_and_decomp()
 		fprintf(stderr, "failed to create the ROHC compressor B\n");
 		goto destroy_compA;
 	}
+
+	/* set the callback for traces on compressor B */
+	if(!rohc_comp_set_traces_cb(compB, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor B\n");
+		goto destroy_compB;
+	}
+
+	/* configure compressor B for small CIDs */
 	rohc_c_set_large_cid(compB, 0);
+
+	/* enable profiles for compressor B */
 	rohc_activate_profile(compB, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(compB, ROHC_PROFILE_UDP);
 	rohc_activate_profile(compB, ROHC_PROFILE_IP);
@@ -224,6 +278,24 @@ static int test_comp_and_decomp()
 		goto destroy_compB;
 	}
 
+	/* reset list of RTP ports on compressor B */
+	if(!rohc_comp_reset_rtp_ports(compB))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports on compressor B\n");
+		goto destroy_compB;
+	}
+
+	/* add some ports to the list of RTP ports on compressor B */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(compB, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u on compressor B\n",
+			        rtp_ports[i]);
+			goto destroy_compB;
+		}
+	}
+
 	/* create the ROHC decompressor A with associated compressor B for its
 	 * feedback channel */
 	decompA = rohc_alloc_decompressor(compB);
@@ -233,6 +305,13 @@ static int test_comp_and_decomp()
 		goto destroy_compB;
 	}
 
+	/* set the callback for traces on decompressor A */
+	if(!rohc_decomp_set_traces_cb(decompA, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor A\n");
+		goto destroy_decompA;
+	}
+
 	/* create the ROHC decompressor B with associated compressor A for its
 	 * feedback channel */
 	decompB = rohc_alloc_decompressor(compA);
@@ -240,6 +319,13 @@ static int test_comp_and_decomp()
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor B\n");
 		goto destroy_decompA;
+	}
+
+	/* set the callback for traces on decompressor B */
+	if(!rohc_decomp_set_traces_cb(decompB, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor B\n");
+		goto destroy_decompB;
 	}
 
 	/* create a fake IP packet for the purpose of the test*/
@@ -261,9 +347,9 @@ static int test_comp_and_decomp()
 	fprintf(stderr, "IP packet successfully built\n");
 
 	/* compress the IP packet with the ROHC compressor A */
-	rohc_size = rohc_compress(compA, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
-	if(rohc_size <= 0)
+	ret = rohc_compress2(compA, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor A\n");
 		goto destroy_decompB;
@@ -285,9 +371,9 @@ static int test_comp_and_decomp()
 	 * shall try to put in the ROHC packet the feedback data delivered by
 	 * decompressor A but it shall not lose feedback data when the compression
 	 * fails */
-	rohc_size = rohc_compress(compB, ip_packet, ip_size,
-	                          rohc_packet, 5);
-	if(rohc_size > 0)
+	ret = rohc_compress2(compB, ip_packet, ip_size,
+	                     rohc_packet, 1, &rohc_size);
+	if(ret == ROHC_OK)
 	{
 		fprintf(stderr, "succeeded to compress IP packet with compressor B\n");
 		goto destroy_decompB;
@@ -296,9 +382,9 @@ static int test_comp_and_decomp()
 
 	/* compress the IP packet with the ROHC compressor B: feedback data
 	 * delivered by decompressor A shall be piggybacked */
-	rohc_size = rohc_compress(compB, ip_packet, ip_size,
-	                          rohc_packet, MAX_ROHC_SIZE);
-	if(rohc_size <= 0)
+	ret = rohc_compress2(compB, ip_packet, ip_size,
+	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor B\n");
 		goto destroy_decompB;
@@ -317,8 +403,9 @@ static int test_comp_and_decomp()
 	fprintf(stderr, "decompression with decompressor B is successful\n");
 
 	/* get packet statistics and remember the context mode */
-	ret = rohc_comp_get_last_packet_info(compA, &last_packet_info);
-	if(ret != ROHC_OK)
+	last_packet_info.version_major = 0;
+	last_packet_info.version_minor = 0;
+	if(!rohc_comp_get_last_packet_info2(compA, &last_packet_info))
 	{
 		fprintf(stderr, "failed to get statistics on packet\n");
 		goto destroy_decompB;
@@ -365,6 +452,39 @@ destroy_compA:
 	rohc_free_compressor(compA);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	const char *level_descrs[] =
+	{
+		[ROHC_TRACE_DEBUG]   = "DEBUG",
+		[ROHC_TRACE_INFO]    = "INFO",
+		[ROHC_TRACE_WARNING] = "WARNING",
+		[ROHC_TRACE_ERROR]   = "ERROR"
+	};
+	va_list args;
+
+	fprintf(stdout, "[%s] ", level_descrs[level]);
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 

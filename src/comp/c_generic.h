@@ -19,6 +19,7 @@
  * @brief ROHC generic compression context for IP-only, UDP and UDP Lite
  *        profiles.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
@@ -66,17 +67,25 @@ struct ipv4_header_info
 	/// @brief The number of times the IP-ID is specified as coded in Network
 	///        Byte Order (NBO) in the compressed header
 	int nbo_count;
+	/// @brief The number of times the IP-ID is specified as static in the
+	///        compressed header
+	int sid_count;
 
 	/// Whether the IP-ID is considered as random or not
 	int rnd;
 	/// Whether the IP-ID is considered as coded in NBO or not
 	int nbo;
+	/// Whether the IP-ID is considered as static or not
+	int sid;
 	/// @brief Whether the IP-ID of the previous IP header was considered as
 	///        random or not
 	int old_rnd;
 	/// @brief Whether the IP-ID of the previous IP header was considered as
 	///        coded in NBO or not
 	int old_nbo;
+	/// @brief Whether the IP-ID of the previous IP header was considered as
+	///        static or not
+	int old_sid;
 
 	/// The delta between the IP-ID and the current Sequence Number (SN)
 	/// (overflow over 16 bits is expected when SN > IP-ID)
@@ -319,6 +328,9 @@ struct list_comp
 	/// The translation table
 	struct c_translation trans_table[MAX_ITEM];
 
+
+	/* Functions for handling the data to compress */
+
 	/// @brief the handler used to get the extension in the IP packet
 	unsigned char * (*get_extension)(const struct ip_packet *ip,
 	                                 const int index);
@@ -344,6 +356,14 @@ struct list_comp
 
 	/// @brief the handler used to free the based table element
 	void (*free_table)(struct list_comp *const comp);
+
+
+	/* Traces */
+
+	/** The callback function used to manage traces */
+	rohc_trace_callback_t trace_callback;
+	/** The profile ID the compression list was created for */
+	int profile_id;
 };
 
 
@@ -355,6 +375,11 @@ int c_generic_create(struct c_context *const context,
                      const rohc_lsb_shift_t sn_shift,
                      const struct ip_packet *ip);
 void c_generic_destroy(struct c_context *const context);
+
+bool c_generic_check_profile(const struct rohc_comp *const comp,
+                             const struct ip_packet *const outer_ip,
+                             const struct ip_packet *const inner_ip,
+                             const uint8_t protocol);
 
 void change_mode(struct c_context *const context, const rohc_mode new_mode);
 void change_state(struct c_context *const context, const rohc_c_state new_state);
@@ -369,8 +394,13 @@ int c_generic_encode(struct c_context *const context,
                      rohc_packet_t *const packet_type,
                      int *const payload_offset);
 
+bool c_generic_reinit_context(struct c_context *const context);
+
 void c_generic_feedback(struct c_context *const context,
                         const struct c_feedback *feedback);
+
+bool c_generic_use_udp_port(const struct c_context *const context,
+                            const unsigned int port);
 
 void decide_state(struct c_context *const context);
 

@@ -29,6 +29,7 @@
 #include "d_udp.h"
 #include "ts_sc_decomp.h"
 
+#include <stdint.h>
 #include <string.h>
 
 
@@ -42,6 +43,9 @@
  */
 struct d_rtp_context
 {
+	/** The RTP SSRC */
+	uint32_t ssrc;
+
 	/// Whether the UDP checksum field is encoded in the ROHC packet or not
 	int udp_checksum_present;
 
@@ -54,6 +58,7 @@ struct d_rtp_context
  * Public function prototypes.
  */
 
+/* no public function for the RTP decompression profile */
 
 #endif
 

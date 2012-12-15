@@ -69,6 +69,6 @@ struct udphdr
   uint16_t dest;
   uint16_t len;
   uint16_t check;
-};
+} __attribute__((packed));
 
 #endif

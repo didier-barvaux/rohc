@@ -32,6 +32,17 @@
 #include "dllexport.h"
 
 
+/** Print a debug trace for the given compression list */
+#define rc_list_debug(comp_list, format, ...) \
+	rohc_debug(comp_list, ROHC_TRACE_COMP, (comp_list)->profile_id, \
+	           format, ##__VA_ARGS__)
+
+/** Print a debug trace for the given decompression list */
+#define rd_list_debug(decomp_list, format, ...) \
+	rohc_debug(decomp_list, ROHC_TRACE_DECOMP, (decomp_list)->profile_id, \
+	           format, ##__VA_ARGS__)
+
+
 /// Header version
 typedef enum
 {

@@ -18,12 +18,12 @@
  * @file sdvl.c
  * @brief Self-Describing Variable-Length (SDVL) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+ * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
 #include "sdvl.h"
 #include "rohc_bit_ops.h"
-#include "rohc_traces.h"
 
 #include <assert.h>
 
@@ -153,7 +153,7 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 		}
 		else
 		{
-			rohc_debugf(0, "value %d is too large for SDVL-encoding\n", value);
+			/* value is too large for SDVL-encoding */
 			size = 5;
 		}
 	}
@@ -178,8 +178,7 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
 		}
 		else
 		{
-			rohc_debugf(0, "value %d on %zd bits is too large for SDVL-encoding\n",
-			            value, length);
+			/* value is too large for SDVL-encoding */
 			size = 5;
 		}
 	}
@@ -246,7 +245,7 @@ int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length)
 			break;
 
 		default:
-			rohc_debugf(0, "invalid length (%zd) for SDVL encoding\n", size);
+			/* invalid length for SDVL encoding */
 			assert(0);
 			break;
 	}
@@ -288,8 +287,8 @@ int d_sdvalue_size(const unsigned char *data)
 	}
 	else
 	{
+		/* Bad SDVL data, this should not happen */
 		size = -1;
-		rohc_debugf(0, "Bad SDVL data, this should not happen\n");
 	}
 
 	return size;
@@ -320,8 +319,7 @@ size_t sdvl_decode(const unsigned char *data,
 
 	if(length < 1)
 	{
-		rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
-		            length);
+		/* packet too small to decode SDVL field */
 		goto error;
 	}
 
@@ -335,8 +333,7 @@ size_t sdvl_decode(const unsigned char *data,
 	{
 		if(length < 2)
 		{
-			rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
-			            length);
+			/* packet too small to decode SDVL field */
 			goto error;
 		}
 		*value = (GET_BIT_0_5(data) << 8 | GET_BIT_0_7(data + 1));
@@ -347,8 +344,7 @@ size_t sdvl_decode(const unsigned char *data,
 	{
 		if(length < 3)
 		{
-			rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
-			            length);
+			/* packet too small to decode SDVL field */
 			goto error;
 		}
 		*value = (GET_BIT_0_4(data) << 16 |
@@ -361,8 +357,7 @@ size_t sdvl_decode(const unsigned char *data,
 	{
 		if(length < 4)
 		{
-			rohc_debugf(0, "packet too small to decode SDVL field (len = %zd)\n",
-			            length);
+			/* packet too small to decode SDVL field */
 			goto error;
 		}
 		*value = (GET_BIT_0_4(data) << 24 |
@@ -374,7 +369,7 @@ size_t sdvl_decode(const unsigned char *data,
 	}
 	else
 	{
-		rohc_debugf(0, "bad SDVL-encoded field length (0x%02x)\n", data[0]);
+		/* bad SDVL-encoded field length */
 		goto error;
 	}
 

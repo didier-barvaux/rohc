@@ -165,6 +165,10 @@
 #define ROHC_ERROR                 -5
 /// Return code: the packet needs to be parsed again
 #define ROHC_NEED_REPARSE          -6
+/// Return code: the packet needs to be segmented
+#define ROHC_NEED_SEGMENT          -7
+/// Return code: the action failed because the packet is a non-final segment
+#define ROHC_NON_FINAL_SEGMENT     -8
 
 
 /**
@@ -249,6 +253,14 @@ struct medium
 #define ROHC_PROFILE_TCP           0x0006  // FWX2
 /// The number allocated for the ROHC UDP-Lite profile (see 7 in the RFC 4019)
 #define ROHC_PROFILE_UDPLITE       0x0008
+
+
+/*
+ * constants related to profiles
+ */
+
+/// The number of ROHC profiles ready to be used
+#define NUM_PROFILES 5
 
 
 /*

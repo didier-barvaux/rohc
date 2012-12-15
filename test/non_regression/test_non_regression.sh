@@ -3,7 +3,8 @@
 # file:        test_non_regression.sh
 # description: Check that the behaviour of the ROHC library did not changed
 #              without developpers noticing it.
-# author:      Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+# authors:     Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#              Didier Barvaux <didier@barvaux.org>
 #
 # This script may be used by creating a link "test_non_regression_STREAM.sh"
 # where:
@@ -55,7 +56,7 @@ fi
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
 if [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
-	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-ouput ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
 	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
@@ -66,7 +67,7 @@ fi
 
 # run without valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
-	run_test_without_valgrind ${CMD} || exit $?
+	run_test_without_valgrind ${CMD} --verbose || exit $?
 else
 	run_test_without_valgrind ${CMD} > /dev/null || exit $?
 fi
@@ -75,7 +76,7 @@ fi
 
 # run with valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
-	run_test_with_valgrind ${BASEDIR}/../valgrind.xsl ${CMD} || exit $?
+	run_test_with_valgrind ${BASEDIR}/../valgrind.xsl ${CMD} --verbose || exit $?
 else
 	run_test_with_valgrind ${BASEDIR}/../valgrind.xsl ${CMD} > /dev/null 2>&1 || exit $?
 fi

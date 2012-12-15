@@ -41,7 +41,7 @@
 #endif
 #include <errno.h>
 #include <assert.h>
-#include <time.h> /* for time(2) */
+#include <stdarg.h>
 
 /* includes for network headers */
 #include <protocols/ipv4.h>
@@ -68,6 +68,12 @@ static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int packet_to_damage,
                                 const rohc_packet_t expected_packet);
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+	__attribute__((format(printf, 4, 5), nonnull(4)));
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
@@ -89,6 +95,7 @@ int main(int argc, char *argv[])
 	int packet_to_damage;
 	char *packet_type = NULL;
 	rohc_packet_t expected_packet;
+	int srand_init;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -151,26 +158,32 @@ int main(int argc, char *argv[])
 	if(strlen(packet_type) == 2 && strcmp(packet_type, "ir") == 0)
 	{
 		expected_packet = PACKET_IR;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "irdyn") == 0)
 	{
 		expected_packet = PACKET_IR_DYN;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo0") == 0)
 	{
 		expected_packet = PACKET_UO_0;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
 	{
 		expected_packet = PACKET_UO_1_ID;
+		srand_init = 6;
 	}
 	else if(strlen(packet_type) == 4 && strcmp(packet_type, "uor2") == 0)
 	{
 		expected_packet = PACKET_UOR_2_RTP;
+		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
 	{
 		expected_packet = PACKET_UOR_2_TS;
+		srand_init = 21;
 	}
 	else
 	{
@@ -181,7 +194,7 @@ int main(int argc, char *argv[])
 
 	/* init the random system with a constant value for the test to be fully
 	   reproductible */
-	srand(5);
+	srand(srand_init + packet_to_damage);
 
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(filename, packet_to_damage, expected_packet);
@@ -241,6 +254,11 @@ static int test_comp_and_decomp(const char *const filename,
 	unsigned char *packet;
 	unsigned int counter;
 
+#define NB_RTP_PORTS 5
+	unsigned int rtp_ports[NB_RTP_PORTS] =
+		{ 1234, 36780, 33238, 5020, 5002 };
+	unsigned int i;
+
 	int is_failure = 1;
 
 	/* open the source dump file */
@@ -284,6 +302,16 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "failed to create the ROHC compressor\n");
 		goto close_input;
 	}
+
+	/* set the callback for traces on compressor */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		fprintf(stderr, "failed to set the callback for traces on "
+		        "compressor\n");
+		goto destroy_comp;
+	}
+
+	/* enable profiles */
 	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
@@ -299,6 +327,23 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* reset list of RTP ports */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < NB_RTP_PORTS; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_alloc_decompressor(NULL);
 	if(decomp == NULL)
@@ -307,18 +352,25 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* set the callback for traces on decompressor */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto destroy_decomp;
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		unsigned char *ip_packet;
-		int ip_size;
+		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		int rohc_size;
-		rohc_comp_last_packet_info_t packet_info;
-		int ret;
+		size_t rohc_size;
+		rohc_comp_last_packet_info2_t packet_info;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		int decomp_size;
+		int ret;
 
 		counter++;
 
@@ -368,9 +420,9 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		rohc_size = rohc_compress(comp, ip_packet, ip_size,
-		                          rohc_packet, MAX_ROHC_SIZE);
-		if(rohc_size <= 0)
+		ret = rohc_compress2(comp, ip_packet, ip_size,
+		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
 			goto destroy_decomp;
@@ -378,8 +430,9 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* get packet statistics to retrieve the packet type */
-		ret = rohc_comp_get_last_packet_info(comp, &packet_info);
-		if(ret != ROHC_OK)
+		packet_info.version_major = 0;
+		packet_info.version_minor = 0;
+		if(!rohc_comp_get_last_packet_info2(comp, &packet_info))
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");
 			goto destroy_decomp;
@@ -389,6 +442,7 @@ static int test_comp_and_decomp(const char *const filename,
 		if(counter == packet_to_damage)
 		{
 			unsigned char old_byte;
+			unsigned char new_byte;
 
 			/* check packet type of the packet to damage */
 			if(packet_info.packet_type != expected_packet)
@@ -402,11 +456,22 @@ static int test_comp_and_decomp(const char *const filename,
 			        packet_to_damage, expected_packet);
 
 			/* damage the packet (randomly modify its last byte) */
-			assert(rohc_size >= 1);
-			old_byte = rohc_packet[rohc_size - 1];
-			rohc_packet[rohc_size - 1] ^= rand() & 0xff;
-			fprintf(stderr, "\tvoluntary damage packet (change byte #%d from 0x%02x "
-			        "to 0x%02x)\n", rohc_size, old_byte, rohc_packet[rohc_size - 1]);
+			if(expected_packet == PACKET_UOR_2_TS)
+			{
+				assert(rohc_size >= 2);
+				old_byte = rohc_packet[rohc_size - 2];
+				rohc_packet[rohc_size - 2] = 6;
+				new_byte = rohc_packet[rohc_size - 2];
+			}
+			else
+			{
+				assert(rohc_size >= 1);
+				old_byte = rohc_packet[rohc_size - 1];
+				rohc_packet[rohc_size - 1] ^= rand() & 0xff;
+				new_byte = rohc_packet[rohc_size - 1];
+			}
+			fprintf(stderr, "\tvoluntary damage packet (change byte #%zd from "
+			        "0x%02x to 0x%02x)\n", rohc_size, old_byte, new_byte);
 		}
 		else
 		{
@@ -482,6 +547,31 @@ close_input:
 	pcap_close(handle);
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Callback to print traces of the ROHC library
+ *
+ * @param level    The priority level of the trace
+ * @param entity   The entity that emitted the trace among:
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
+ * @param profile  The ID of the ROHC compression/decompression profile
+ *                 the trace is related to
+ * @param format   The format string of the trace
+ */
+static void print_rohc_traces(const rohc_trace_level_t level,
+                              const rohc_trace_entity_t entity,
+                              const int profile,
+                              const char *const format,
+                              ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
 }
 
 

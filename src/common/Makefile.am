@@ -14,7 +14,7 @@ lib_LTLIBRARIES = librohc_common.la
 sources = \
 	rohc_common.c \
 	rohc_packets.c \
-	rohc_traces.c \
+	rohc_traces_internal.c \
 	rohc_utils.c \
 	crc.c \
 	decode.c \
@@ -32,12 +32,13 @@ sources = \
 
 public_headers = \
 	rohc.h \
-	rohc_packets.h
+	rohc_packets.h \
+	rohc_traces.h
 
 private_headers = \
 	rohc_bit_ops.h \
 	rohc_debug.h \
-	rohc_traces.h \
+	rohc_traces_internal.h \
 	rohc_time.h \
 	rohc_utils.h \
 	crc.h \

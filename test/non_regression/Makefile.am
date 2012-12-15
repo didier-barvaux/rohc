@@ -23,6 +23,7 @@ TESTS_BUG804552_SMALLCID = \
 
 TESTS_ESP_SMALLCID = \
 	test_non_regression_ipv4_esp_smallcid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_smallcid.sh \
 	test_non_regression_ipv6_esp_smallcid.sh
 
 TESTS_TCP_SMALLCID = \
@@ -67,6 +68,9 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_smallcid.sh \
 	test_non_regression_ipv4_udp_smallcid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_smallcid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_smallcid.sh \
@@ -107,6 +111,7 @@ TESTS_BUG804552_LARGECID = \
 
 TESTS_ESP_LARGECID = \
 	test_non_regression_ipv4_esp_largecid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_largecid.sh \
 	test_non_regression_ipv6_esp_largecid.sh
 
 TESTS_TCP_LARGECID = \
@@ -151,6 +156,9 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_largecid.sh \
 	test_non_regression_ipv4_udp_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_largecid.sh \

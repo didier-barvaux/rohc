@@ -71,6 +71,11 @@ struct sc_udp_context
 
 int c_udp_create(struct c_context *const context, const struct ip_packet *ip);
 
+bool c_udp_check_profile(const struct rohc_comp *const comp,
+                         const struct ip_packet *const outer_ip,
+                         const struct ip_packet *const inner_ip,
+                         const uint8_t protocol);
+
 int c_udp_check_context(const struct c_context *context,
                         const struct ip_packet *ip);
 

@@ -21,7 +21,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "rohc_traces.h"
+#include "rohc_traces_internal.h"
+#include "rohc_decomp_internals.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
 #include "rohc_bit_ops.h"
@@ -31,8 +32,8 @@
 #include "crc.h"
 #include "protocols/tcp.h" //FWX2
 #include "rfc4996_decoding.h"
-#include "../comp/rfc4996_encoding.h" /* for c_lsb() */ /* TODO: remove!!! */
 #include "rohc_packets.h"
+#include "rohc_decomp.h"
 
 #include <string.h>
 #include <assert.h>
@@ -57,20 +58,25 @@ unsigned int lsb_xor_masks[] =
  *
  * See RFC4997 page 27
  *
+ * @param context          The decompression context
  * @param num_lsbs_param   The number of bits
  * @param offset_param     The offset
  * @param context_value    The value of the context
  * @param value            The compressed value
  * @return                 The uncompressed value
  */
-
-uint32_t d_lsb( int num_lsbs_param, int offset_param, unsigned int context_value,
-                 unsigned int value )
+uint32_t d_lsb(const struct d_context *const context,
+               int num_lsbs_param,
+               int offset_param,
+               unsigned int context_value,
+               unsigned int value)
 {
+	assert(context != NULL);
 	assert( num_lsbs_param < 20 );
-	rohc_debugf(3, "d_lsb() num_lsbs_param %d context_value %Xh mask %Xh value %Xh -> %Xh\n",
-	            num_lsbs_param,context_value,lsb_xor_masks[num_lsbs_param],value,
-	            (context_value & lsb_xor_masks[num_lsbs_param]) | value);
+	rohc_decomp_debug(context, "num_lsbs_param = %d, context_value = 0x%x, "
+	                  "mask = 0x%x, value = 0x%x -> 0x%x\n", num_lsbs_param,
+	                  context_value, lsb_xor_masks[num_lsbs_param], value,
+	                  (context_value & lsb_xor_masks[num_lsbs_param]) | value);
 	return ( context_value & lsb_xor_masks[num_lsbs_param] ) | value;
 }
 
@@ -135,13 +141,18 @@ unsigned int variable_length_32_size[4] =
  *
  * See RFC4996 page 46
  *
- * @param pmptr            Pointer to the compressed value
- * @param indicator        Indicator of compression
- * @return                 The uncompressed value
+ * @param context    The decompression context
+ * @param pmptr      Pointer to the compressed value
+ * @param indicator  Indicator of compression
+ * @return           The uncompressed value
  */
-uint32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator )
+uint32_t variable_length_32_dec(const struct d_context *const context,
+                                multi_ptr_t *pmptr,
+                                int indicator)
 {
 	uint32_t value;
+
+	assert(context != NULL);
 
 	switch(indicator)
 	{
@@ -169,8 +180,8 @@ uint32_t variable_length_32_dec( multi_ptr_t *pmptr, int indicator )
 			break;
 	}
 
-	rohc_debugf(3, "indicator %d return value %u (0x%x)\n", indicator, value,
-	            value);
+	rohc_decomp_debug(context, "indicator = %d, return value = %u (0x%x)\n",
+	                  indicator, value, value);
 
 	return value;
 }
@@ -279,10 +290,56 @@ unsigned int rsf_index_dec( unsigned int rsf_index )
 
 
 /**
+ * @brief Compress the lower bits of the given value.
+ *
+ * See RFC4997 page 27
+ *
+ * @param context          The compressor context
+ * @param num_lsbs_param   The number of bits
+ * @param offset_param     The offset
+ * @param context_value    The value of the context
+ * @param original_value   The value to compress
+ * @return                 The compressed value with num_lsbs_param bits
+ *
+ * @todo TODO: duplicated code from rfc4996_encoding.c
+ */
+static uint32_t d_c_lsb(const struct d_context *const context,
+                        int num_lsbs_param,
+                        unsigned int offset_param,
+                        unsigned int context_value,
+                        unsigned int original_value)
+{
+	unsigned int lower_bound;
+	unsigned int upper_bound;
+	unsigned int value;
+
+	assert(context != NULL);
+
+	rohc_decomp_debug(context, "num_lsb = %d, offset_param = %d, "
+	                  "context_value = 0x%x, original_value = 0x%x\n",
+	                  num_lsbs_param, offset_param, context_value,
+	                  original_value);
+
+	assert( num_lsbs_param > 0 && num_lsbs_param <= 18 );
+
+	lower_bound = context_value - offset_param;
+	upper_bound = context_value + lsb_masks[num_lsbs_param] - offset_param;
+
+	value = original_value & lsb_masks[num_lsbs_param];
+
+	rohc_decomp_debug(context, "0x%x < value (0x%x) < 0x%x => return 0x%x\n",
+	                  lower_bound, original_value, upper_bound, value);
+
+	return value;
+}
+
+
+/**
  * @brief Decompress the lower bits of IP-ID
  *
  * See RFC4996 page 75
  *
+ * @param context        The decompression context
  * @param behavior       The IP-ID behavior
  * @param k              The num_lsbs_param parameter for d_lsb()
  * @param p              The offset parameter for d_lsb()
@@ -291,27 +348,32 @@ unsigned int rsf_index_dec( unsigned int rsf_index )
  * @param msn            The Master Sequence Number
  * @return               The IP-ID
  */
-
-uint16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context_ip_id,
-                       uint16_t value,
-                       uint16_t msn )
+uint16_t d_ip_id_lsb(const struct d_context *const context,
+                     int behavior,
+                     unsigned int k,
+                     unsigned int p,
+                     WB_t context_ip_id,
+                     uint16_t value,
+                     uint16_t msn)
 {
 	uint16_t ip_id_offset;
 	WB_t ip_id;
 
+	assert(context != NULL);
 
-	rohc_debugf(3, "behavior %d k=%d p=%d context_ip_id %4.4Xh value %4.4Xh msn %4.4Xh\n",behavior,k,
-	            p,context_ip_id.uint16,value,
-	            msn);
+	rohc_decomp_debug(context, "behavior = %d, k = %d, p = %d, "
+	                  "context_ip_id = 0x%04x, value = 0x%04x, msn = 0x%04x\n",
+	                  behavior, k, p, context_ip_id.uint16, value, msn);
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
 			ip_id.uint16 = context_ip_id.uint16 + 1;
 			ip_id_offset = ip_id.uint16 - msn;
-			ip_id_offset = c_lsb( k, p, context_ip_id.uint16 - msn, ip_id_offset );
-			rohc_debugf(3, "new ip_id %4.4Xh ip_id_offset %Xh value %Xh\n",ip_id.uint16,ip_id_offset,
-			            value);
+			ip_id_offset = d_c_lsb(context, k, p, context_ip_id.uint16 - msn,
+			                       ip_id_offset);
+			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = 0x%x, "
+			                  "value = 0x%x\n", ip_id.uint16, ip_id_offset, value);
 			assert( ip_id_offset == value );
 			return ip_id.uint16;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
@@ -319,9 +381,10 @@ uint16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context
 			ip_id.uint8[1] = context_ip_id.uint8[0];
 			++ip_id.uint16;
 			ip_id_offset = ip_id.uint16 - msn;
-			ip_id_offset = c_lsb( k, p, ip_id.uint16 - 1 - msn, ip_id_offset );
-			rohc_debugf(3, "new ip_id %4.4Xh ip_id_offset %Xh value %Xh\n",ip_id.uint16,ip_id_offset,
-			            value);
+			ip_id_offset = d_c_lsb(context, k, p, ip_id.uint16 - 1 - msn,
+			                       ip_id_offset);
+			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = 0x%x, "
+			                  "value = 0x%x\n", ip_id.uint16, ip_id_offset, value);
 			assert( ip_id_offset == value );
 			return ip_id.uint16;
 	}
@@ -335,38 +398,44 @@ uint16_t d_ip_id_lsb( int behavior, unsigned int k, unsigned int p, WB_t context
  *
  * See RFC4996 page 76
  *
+ * @param context        The decompression context
  * @param pmptr          Pointer to the compressed value
  * @param behavior       The IP-ID behavior
  * @param indicator      The compression indicator
  * @param context_ip_id  The context IP-ID value
  * @param ip_id          Pointer to the uncompressed IP-ID
  * @param msn            The Master Sequence Number
- * @return               Nothing
  */
-
-void d_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, int indicator, WB_t context_ip_id,
-                           uint16_t *ip_id,
-                           uint16_t msn )
+void d_optional_ip_id_lsb(const struct d_context *const context,
+                          multi_ptr_t *pmptr,
+                          int behavior,
+                          int indicator,
+                          WB_t context_ip_id,
+                          uint16_t *ip_id,
+                          uint16_t msn)
 {
-	rohc_debugf(3, "behavior %d indicator %d context_ip_id %Xh msn %Xh\n",behavior,indicator,
-	            context_ip_id.uint16,
-	            msn);
+	assert(context != NULL);
+
+	rohc_decomp_debug(context, "behavior = %d, indicator = %d, "
+	                  "context_ip_id = 0x%x, msn = 0x%x\n", behavior,
+	                  indicator, context_ip_id.uint16, msn);
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
 			if(indicator == 0)
 			{
-				*ip_id =
-				   ( context_ip_id.uint16 &
-			 0xFF00 ) | d_ip_id_lsb(behavior,8,3,context_ip_id,*(pmptr->uint8)++,
-				                     msn);
-				rohc_debugf(3, "read ip_id %Xh -> %Xh\n",*(pmptr->uint8 - 1),*ip_id);
+				*ip_id = (context_ip_id.uint16 & 0xFF00) |
+				         d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
+				                     *pmptr->uint8, msn);
+				rohc_decomp_debug(context, "read ip_id = 0x%x -> 0x%x\n",
+				                  *pmptr->uint8, *ip_id);
+				pmptr->uint8++;
 			}
 			else
 			{
 				*ip_id = ntohs( READ16_FROM_PMPTR(pmptr) );
-				rohc_debugf(3, "read ip_id %Xh\n",*ip_id);
+				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
 			}
 			break;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
@@ -376,16 +445,17 @@ void d_optional_ip_id_lsb( multi_ptr_t *pmptr, int behavior, int indicator, WB_t
 			swapped_context_ip_id.uint8[1] = context_ip_id.uint8[0];
 			if(indicator == 0)
 			{
-				*ip_id =
-				   ( swapped_context_ip_id.uint16 &
-				 0xFF00 ) | d_ip_id_lsb(behavior,8,3,context_ip_id,*(pmptr->uint8)++,
-				                        msn);
-				rohc_debugf(3, "read ip_id %Xh -> %Xh\n",*(pmptr->uint8 - 1),*ip_id);
+				*ip_id = (swapped_context_ip_id.uint16 & 0xFF00) |
+				          d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
+				                      *pmptr->uint8, msn);
+				rohc_decomp_debug(context, "read ip_id = 0x%x -> 0x%x\n",
+				                  *pmptr->uint8, *ip_id);
+				pmptr->uint8++;
 			}
 			else
 			{
 				*ip_id = ntohs( READ16_FROM_PMPTR(pmptr) );
-				rohc_debugf(3, "read ip_id %Xh\n",*ip_id);
+				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
 			}
 		}
 		break;
@@ -417,5 +487,4 @@ uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator )
 	}
 	return (*(pmptr->uint8)++) & 0x3F;
 }
-
 

@@ -24,9 +24,12 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_traces.h"
+#include "rohc_traces_internal.h"
 #include "rohc_debug.h"
 #include "cid.h"
 #include "crc.h"
+
+#include <assert.h>
 
 
 /**
@@ -56,6 +59,12 @@ struct sc_uncompressed_context
 static int c_uncompressed_create(struct c_context *const context,
                                  const struct ip_packet *ip);
 static void c_uncompressed_destroy(struct c_context *const context);
+static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
+                                         const struct ip_packet *const outer_ip,
+                                         const struct ip_packet *const inner_ip,
+                                         const uint8_t protocol);
+bool c_uncompressed_use_udp_port(const struct c_context *const context,
+                                 const unsigned int port);
 
 /* check whether a packet belongs to a context */
 static int c_uncompressed_check_context(const struct c_context *context,
@@ -86,7 +95,10 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
                                            int *const payload_offset,
                                            const int dest_size);
 
-/* build feedbacks */
+/* re-initialize a context */
+static bool c_uncompressed_reinit_context(struct c_context *const context);
+
+/* deliver feedbacks */
 static void c_uncompressed_feedback(struct c_context *const context,
                                     const struct c_feedback *feedback);
 
@@ -97,6 +109,7 @@ static void uncompressed_change_mode(struct c_context *const context,
                                      const rohc_mode new_mode);
 static void uncompressed_change_state(struct c_context *const const,
                                       const rohc_c_state new_state);
+
 
 
 /*
@@ -121,10 +134,14 @@ static int c_uncompressed_create(struct c_context *const context,
 	struct sc_uncompressed_context *uncomp_context;
 	int success = 0;
 
+	assert(context != NULL);
+	assert(context->profile != NULL);
+
 	uncomp_context = malloc(sizeof(struct sc_uncompressed_context));
 	if(uncomp_context == NULL)
 	{
-		rohc_debugf(0, "no memory for the uncompressed context\n");
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the uncompressed context\n");
 		goto quit;
 	}
 	context->specific = uncomp_context;
@@ -154,6 +171,40 @@ static void c_uncompressed_destroy(struct c_context *const context)
 	{
 		zfree(context->specific);
 	}
+}
+
+
+/**
+ * @brief Check if the given packet corresponds to the Uncompressed profile
+ *
+ * There are no condition. If this function is called, the packet always matches
+ * the Uncompressed profile.
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param comp      The ROHC compressor
+ * @param outer_ip  The outer IP header of the IP packet to check
+ * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
+ *                      packet contains at least 2 IP headers,
+ *                  \li NULL if the IP packet to check contains only one IP header
+ * @param protocol  The transport protocol carried by the IP packet:
+ *                    \li the protocol carried by the outer IP header if there
+ *                        is only one IP header,
+ *                    \li the protocol carried by the inner IP header if there
+ *                        are at least two IP headers.
+ * @return          Whether the IP packet corresponds to the profile:
+ *                    \li true if the IP packet corresponds to the profile,
+ *                    \li false if the IP packet does not correspond to
+ *                        the profile
+
+ */
+static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
+                                         const struct ip_packet *const outer_ip,
+                                         const struct ip_packet *const inner_ip,
+                                         const uint8_t protocol)
+{
+	return true;
 }
 
 
@@ -216,6 +267,27 @@ static int c_uncompressed_encode(struct c_context *const context,
 
 
 /**
+ * @brief Re-initialize a given context
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context  The compression context
+ * @return         true in case of success, false otherwise
+ */
+static bool c_uncompressed_reinit_context(struct c_context *const context)
+{
+	assert(context != NULL);
+
+	/* go back to U-mode and IR state */
+	uncompressed_change_mode(context, U_MODE);
+	uncompressed_change_state(context, IR);
+
+	return true;
+}
+
+
+/**
  * @brief Update the profile when feedback arrives.
  *
  * This function is one of the functions that must exist in one profile for the
@@ -231,6 +303,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
 
 	if(feedback->type == 1) /* ACK */
 	{
+		rohc_comp_debug(context, "FEEDBACK-1 received\n");
 	}
 	else if(feedback->type == 2) /* FEEDBACK-2 */
 	{
@@ -239,6 +312,8 @@ static void c_uncompressed_feedback(struct c_context *const context,
 		unsigned char mode = (p[0] >> 4) & 3;
 		int remaining = feedback->specific_size - 2;
 		p += 2;
+
+		rohc_comp_debug(context, "FEEDBACK-2 received\n");
 
 		/* parse options */
 		while(remaining > 0)
@@ -264,7 +339,9 @@ static void c_uncompressed_feedback(struct c_context *const context,
 //				case 7: /* Loss */
 //					break;
 				default:
-					rohc_debugf(0, "unknown feedback option %d\n", opt);
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+					             context->profile->id,
+					             "unknown feedback option %d\n", opt);
 					break;
 			}
 
@@ -285,14 +362,20 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			/* ignore feedback in case of bad CRC */
 			if(crc_in_packet != crc_computed)
 			{
-				rohc_debugf(0, "CRC check failed (size = %d)\n", feedback->size);
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "CRC check failed (size = %d)\n", feedback->size);
 				return;
 			}
 		}
 
 		/* change mode if present in feedback */
-		if(mode != 0)
+		if(mode != 0 && mode != context->mode)
 		{
+			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			          "mode change (%d -> %d) requested by feedback for CID %d\n",
+			          context->mode, mode, context->profile->id);
+
 			/* mode can be changed only if feedback is protected by a CRC */
 			if(is_crc_used == true)
 			{
@@ -300,28 +383,43 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			}
 			else
 			{
-				rohc_debugf(0, "mode change requested but no CRC was given\n");
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "mode change requested but no CRC was given\n");
 			}
 		}
 
 		switch(feedback->acktype)
 		{
 			case ACK:
+				rohc_info(context->compressor, ROHC_TRACE_COMP,
+				          context->profile->id, "ACK received\n");
 				break;
 			case NACK:
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "NACK received\n");
 				break;
 			case STATIC_NACK:
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "STATIC-NACK received\n");
 				uncompressed_change_state(context, IR);
 				break;
 			case RESERVED:
-				rohc_debugf(0, "reserved field used\n");
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "reserved field used\n");
 				break;
+			default:
+				/* impossible value */
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "unknown ACK type (%d)\n",
+				             feedback->acktype);
 		}
 
 	}
 	else
 	{
-		rohc_debugf(0, "feedback type not implemented (%d)\n", feedback->type);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "feedback type not implemented (%d)\n", feedback->type);
 	}
 }
 
@@ -362,7 +460,7 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 	if(uncomp_context->go_back_ir_count >=
 	   context->compressor->periodic_refreshes_ir_timeout)
 	{
-		rohc_debugf(2, "periodic change to IR state\n");
+		rohc_comp_debug(context, "periodic change to IR state\n");
 		uncomp_context->go_back_ir_count = 0;
 		uncompressed_change_state(context, IR);
 	}
@@ -447,21 +545,22 @@ static int uncompressed_code_packet(const struct c_context *context,
 	switch(context->state)
 	{
 		case IR:
-			rohc_debugf(1, "build IR packet\n");
+			rohc_comp_debug(context, "build IR packet\n");
 			uncomp_context->ir_count++;
 			code_packet = uncompressed_code_IR_packet;
 			*packet_type = PACKET_IR;
 			break;
 
 		case FO:
-			rohc_debugf(1, "build normal packet\n");
+			rohc_comp_debug(context, "build normal packet\n");
 			uncomp_context->normal_count++;
 			code_packet = uncompressed_code_normal_packet;
 			*packet_type = PACKET_NORMAL;
 			break;
 
 		default:
-			rohc_debugf(0, "unknown state, cannot build packet\n");
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "unknown state, cannot build packet\n");
 			code_packet = NULL;
 			*packet_type = PACKET_UNKNOWN;
 	}
@@ -522,7 +621,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	int counter;
 	int first_position;
 
-	rohc_debugf(2, "code IR packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -533,11 +632,11 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 
 	/* part 2 */
 	dest[first_position] = 0xfc;
-	rohc_debugf(3, "first byte = 0x%02x\n", dest[first_position]);
+	rohc_comp_debug(context, "first byte = 0x%02x\n", dest[first_position]);
 
 	/* part 4 */
 	dest[counter] = ROHC_PROFILE_UNCOMPRESSED;
-	rohc_debugf(3, "Profile ID = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "Profile ID = 0x%02x\n", dest[counter]);
 	counter++;
 
 	/* part 5 */
@@ -545,7 +644,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                              CRC_INIT_8,
 	                              context->compressor->crc_table_8);
-	rohc_debugf(3, "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
+	rohc_comp_debug(context, "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
 	counter++;
 
 	*payload_offset = 0;
@@ -597,7 +696,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	int counter;
 	int first_position;
 
-	rohc_debugf(2, "code normal packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code normal packet (CID = %d)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -609,11 +708,29 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	/* part 2 */
 	dest[first_position] = (ip_get_raw_data(ip))[0];
 
-	rohc_debugf(3, "header length = %d, payload length = %d\n", counter - 1,
-	            ip_get_totlen(ip));
+	rohc_comp_debug(context, "header length = %d, payload length = %d\n",
+	                counter - 1, ip_get_totlen(ip));
 
 	*payload_offset = 1;
 	return counter;
+}
+
+
+/**
+ * @brief Whether the profile uses the given UDP port
+ *
+ * This function is one of the functions that must exist in one profile for the
+ * framework to work.
+ *
+ * @param context The compression context
+ * @param port    The port number to check
+ * @return        Always return false because the Uncompressed profile does not
+ *                use UDP port
+ */
+bool c_uncompressed_use_udp_port(const struct c_context *const context,
+                                 const unsigned int port)
+{
+	return false;
 }
 
 
@@ -624,13 +741,15 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 struct c_profile c_uncompressed_profile =
 {
 	0,                            /* IP protocol */
-	NULL,                         /* list of UDP ports, not relevant for Uncompressed */
 	ROHC_PROFILE_UNCOMPRESSED,    /* profile ID (see 8 in RFC 3095) */
 	"Uncompressed / Compressor",  /* profile description */
 	c_uncompressed_create,        /* profile handlers */
 	c_uncompressed_destroy,
+	c_uncompressed_check_profile,
 	c_uncompressed_check_context,
 	c_uncompressed_encode,
+	c_uncompressed_reinit_context,
 	c_uncompressed_feedback,
+	c_uncompressed_use_udp_port,
 };
 

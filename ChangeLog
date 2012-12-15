@@ -1,3 +1,21 @@
+XX XXX 201X - release 1.6.0
+  Compatibility:
+    TODO
+  License/Authors:
+    TODO
+  Acknowledgments for bug reports and/or bug fixes:
+    FWX, Elisabeth, Viveris Technologies.
+  Main changes:
+    TODO
+  Build system:
+    TODO
+  Q&A:
+    TODO
+  Performances:
+    TODO
+  Bug fixes:
+    TODO
+
 21 Oct 2012 - release 1.5.0
   Compatibility:
     Version 1.5.0 is not compatible with versions < 1.5.0 because of several
