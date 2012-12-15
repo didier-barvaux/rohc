@@ -857,7 +857,8 @@ unsigned int tcp_compute_crc_static(const unsigned char *const ip,
  * @brief Compute the CRC-DYNAMIC part of an TCP header
  *
  * Concerned fields are:
- *   - bytes 5-8 in original ESP header
+ *   - bytes 5-20 in original TCP header
+ *   - TCP options
  *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
@@ -890,8 +891,9 @@ unsigned int tcp_compute_crc_dynamic(const unsigned char *const ip,
 	tcp = (struct tcphdr *) next_header;
 
 	/* bytes 5-20 + TCP options */
-	crc = crc_calculate(crc_type, (unsigned char *)(&tcp->seq_number), sizeof(struct tcphdr) - 4 + ( tcp->data_offset << 2 ) - sizeof(struct tcphdr),
-	                    crc, crc_table);
+	crc = crc_calculate(crc_type, (unsigned char *)(&tcp->seq_number),
+	                    sizeof(struct tcphdr) - 4 + (tcp->data_offset << 2) -
+	                    sizeof(struct tcphdr), crc, crc_table);
 
 	return crc;
 }
