@@ -31,9 +31,6 @@
 
 #define USE_ROHC_TCP_MACROS    // Undef to use procedures
 
-#define ROHC_TCP_DEBUG       1
-
-
 
 /* See RFC4996 page 37-40 */
 

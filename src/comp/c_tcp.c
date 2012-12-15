@@ -35,12 +35,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "config.h" /* for WORDS_BIGENDIAN */
+#include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
 
 
 #define MAX_TCP_OPTION_INDEX 16
 
-#ifdef ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 #define TRACE_GOTO_CHOICE \
 	rohc_comp_debug(context, "Compressed format choice LINE %d\n", __LINE__ )
 #else
@@ -1329,7 +1329,7 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const contex
 			break;
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "IPv6 option static part", mptr.uint8, size);
 #endif
@@ -1416,7 +1416,7 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const conte
 			break;
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "IPv6 option dynamic part", mptr.uint8, size);
 #endif
@@ -1445,9 +1445,9 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const con
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *ptr = mptr.uint8;
-	#endif
+#endif
 	uint32_t sequence_number;
 	int size;
 
@@ -1512,7 +1512,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const con
 			break;
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "IPv6 option irregular part", mptr.uint8,
 	                 mptr.uint8 - ptr);
@@ -1589,7 +1589,7 @@ static uint8_t * tcp_code_static_ip_part(struct c_context *const context,
 		                base_header.ipv6->next_header);
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "IP static part", mptr.uint8, size);
 #endif
@@ -1719,7 +1719,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 		size = sizeof(ipv6_dynamic_t);
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "IP dynamic part", mptr.uint8, size);
 #endif
@@ -1754,7 +1754,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
                                             int ttl_irregular_chain_flag,
                                             int ip_inner_ecn)
 {
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *ptr = mptr.uint8;
 #endif
 
@@ -1836,7 +1836,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 		/* else: ipv6_innermost_irregular */
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "IP irregular part", ptr, mptr.uint8 - ptr);
 #endif
@@ -1951,9 +1951,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	unsigned char *options;
 	int options_length;
 	unsigned char *urgent_datas;
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *debug_ptr;
-	#endif
+#endif
 
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
@@ -2082,9 +2082,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		options_length = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 "TCP options", options, options_length);
-		#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 		debug_ptr = mptr.uint8;
-		#endif
+#endif
 
 		/* Save the begin of the list */
 		pBeginList = mptr.uint8++;
@@ -2329,17 +2329,15 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		// 8-bit XI field
 		*pBeginList |= 0x10;
 		#endif
-		#if ROHC_TCP_DEBUG
 		rohc_comp_debug(context, "TCP %d item(s) in list at %p\n",
 		                (*pBeginList) & 0x0f, debug_ptr);
-		#endif
 		/* init pointer to the begining of TCP options */
 		pBeginList = ( (unsigned char *) tcp ) + sizeof(tcphdr_t);
 		/* copy all TCP options */
 		memcpy(mptr.uint8,pBeginList,options - pBeginList);
 		/* update pointer */
 		mptr.uint8 += options - pBeginList;
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 "debug_ptr", debug_ptr, mptr.uint8 - debug_ptr);
 #endif
@@ -2376,7 +2374,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *ptr = mptr.uint8;
 #endif
 
@@ -2402,7 +2400,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
 	rohc_comp_debug(context, "add TCP checksum = 0x%04x\n",
 	                ntohs(tcp->checksum));
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "TCP irregular part", ptr, mptr.uint8 - ptr);
 #endif
@@ -3175,9 +3173,9 @@ int code_CO_packet(struct c_context *const context,
 	uint8_t save_first_byte;
 	uint16_t payload_size;
 	int ip_inner_ecn;
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *puchar;
-	#endif
+#endif
 	uint8_t protocol;
 	int i;
 
@@ -3316,7 +3314,7 @@ int code_CO_packet(struct c_context *const context,
 
 	/* part 4: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	puchar = &dest[counter];
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 "puchar", puchar, counter + (puchar - dest));
@@ -3446,18 +3444,18 @@ int co_baseheader(struct c_context *const context,
 	multi_ptr_t mptr;
 	WB_t ip_id;
 	WB_t wb;
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *puchar;
-	#endif
+#endif
 	int version;
 	int ecn_used;
-
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
 	                "base_header_ip = %p, dest = %p, payload_size = %d, "
 	                "ttl_irregular_chain_flag = %d\n",
 	                tcp_context, ip_context.uint8, base_header.uint8, dest,
 	                payload_size, ttl_irregular_chain_flag);
+
 	// Init pointer on rohc compressed buffer
 	c_base_header.uint8 = dest;
 
@@ -4620,9 +4618,9 @@ code_common:
 	// =:= lsb(4, 4) [ 4 ];
 	c_base_header.co_common->msn = c_lsb(context, 4, 4, tcp_context->msn,
 	                                     tcp_context->msn);
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	puchar = mptr.uint8;
-	#endif
+#endif
 	// =:= irregular(2) [ 2 ];
 	c_base_header.co_common->seq_indicator = variable_length_32_enc(&mptr,&tcp->seq_number);
 	rohc_comp_debug(context, "size = %d, seq_indicator = %d, seq_number = 0x%x\n",

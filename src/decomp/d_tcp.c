@@ -34,7 +34,7 @@
 #include "crc.h"
 #include "d_generic.h"
 
-#include "config.h" /* for WORDS_BIGENDIAN */
+#include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
 
 
 /*
@@ -1048,7 +1048,7 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
 			break;
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 "IPv6 option static part", c_base_header.uint8, size);
 #endif
@@ -1211,9 +1211,9 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 				   c_base_header);
 				size += sizeof(uint32_t);
 			}
-								#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 			c_base_header.uint8 -= size;
-								#endif
+#endif
 			break;
 		case ROHC_IPPROTO_MINE:
 			size = 0;
@@ -1230,7 +1230,7 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 			break;
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 "IPv6 option dynamic part", c_base_header.uint8, size);
 #endif
@@ -1506,9 +1506,9 @@ static uint8_t * tcp_decode_irregular_ip(struct d_context *const context,
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *ptr = mptr.uint8;
-	#endif
+#endif
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -1599,7 +1599,7 @@ static uint8_t * tcp_decode_irregular_ip(struct d_context *const context,
 		/* else: ipv6_innermost_irregular */
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 "IP irregular part", ptr, mptr.uint8 - ptr);
 #endif
@@ -2102,9 +2102,9 @@ static uint8_t * d_ts_lsb(const struct d_context *const context,
 {
 	uint32_t last_timestamp;
 	uint32_t timestamp;
-	#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *pBegin = ptr;
-	#endif
+#endif
 
 	assert(context != NULL);
 
@@ -2147,7 +2147,7 @@ static uint8_t * d_ts_lsb(const struct d_context *const context,
 		timestamp |= last_timestamp & 0xFFFFFF80;
 	}
 
-#if ROHC_TCP_DEBUG
+#if ROHC_EXTRA_DEBUG == 1
 	rohc_decomp_debug(context, "pTimestamp = 0x%x, context = 0x%x "
 	                  "=> timestamp 0x%x\n", ntohl(*pBegin), last_timestamp,
 	                  timestamp);
