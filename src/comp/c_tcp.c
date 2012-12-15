@@ -2512,36 +2512,6 @@ static uint8_t * c_sack_block( uint8_t *ptr, uint32_t reference, sack_block_t *s
 static uint8_t * c_tcp_opt_sack( uint8_t *ptr, uint32_t ack_value, uint8_t length,
                                   sack_block_t *sack_block )
 {
-#ifdef VERSION_INITIALE
-	rohc_debugf(3, "TCP option SACK with ack_value 0x%08x\n", ack_value);
-	rohc_dump_packet("TCP option SACK", sack_block, length - 2);
-
-	switch(length)
-	{
-		case 10:  // sack1_irregular
-			*(ptr++) = 1;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			break;
-		case 18:  // sack2_irregular
-			*(ptr++) = 2;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			ptr = c_sack_block(ptr,ack_value,sack_block + 1);
-			break;
-		case 26:  // sack3_irregular
-			*(ptr++) = 3;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			ptr = c_sack_block(ptr,ack_value,sack_block + 1);
-			ptr = c_sack_block(ptr,ack_value,sack_block + 2);
-			break;
-		case 34:  // sack4_irregular
-			*(ptr++) = 4;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			ptr = c_sack_block(ptr,ack_value,sack_block + 1);
-			ptr = c_sack_block(ptr,ack_value,sack_block + 2);
-			ptr = c_sack_block(ptr,ack_value,sack_block + 3);
-			break;
-	}
-#endif
 	int i;
 
 	rohc_debugf(3, "TCP option SACK with ack_value 0x%08x\n", ack_value);
@@ -2650,36 +2620,6 @@ static uint8_t * c_sack_block( uint8_t *ptr, uint32_t prev_block_end, sack_block
 static uint8_t * c_tcp_opt_sack( uint8_t *ptr, uint32_t ack_value, uint8_t length,
                                   sack_block_t *sack_block )
 {
-#ifdef VERSION_INITIALE
-	rohc_debugf(3, "TCP option SACK with ack_value 0x%08x\n", ack_value);
-	rohc_dump_packet("TCP option SACK", sack_block, length - 2);
-
-	switch(length)
-	{
-		case 10:  // sack1_irregular
-			*(ptr++) = 1;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			break;
-		case 18:  // sack2_irregular
-			*(ptr++) = 2;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			ptr = c_sack_block(ptr,ntohs(sack_block->block_end),sack_block + 1);
-			break;
-		case 26:  // sack3_irregular
-			*(ptr++) = 3;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			ptr = c_sack_block(ptr,ntohs(sack_block->block_end),sack_block + 1);
-			ptr = c_sack_block(ptr,ntohs((sack_block + 1)->block_end),sack_block + 2);
-			break;
-		case 34:  // sack4_irregular
-			*(ptr++) = 4;
-			ptr = c_sack_block(ptr,ack_value,sack_block);
-			ptr = c_sack_block(ptr,ntohs(sack_block->block_end),sack_block + 1);
-			ptr = c_sack_block(ptr,ntohs((sack_block + 1)->block_end),sack_block + 2);
-			ptr = c_sack_block(ptr,ntohs((sack_block + 2)->block_end),sack_block + 3);
-			break;
-	}
-#endif
 	int i;
 
 	rohc_debugf(3, "TCP option SACK with ack_value 0x%08x\n", ack_value);
