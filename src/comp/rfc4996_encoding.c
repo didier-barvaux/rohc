@@ -26,7 +26,6 @@
 #include "rohc_utils.h"
 #include "protocols/tcp.h" // For IP_ID_BEHAVIOR
 #include "rfc4996_encoding.h"
-#include "trace.h" // FWX2
 #include "crc.h"
 
 #include <math.h> // TODO: required?

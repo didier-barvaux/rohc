@@ -40,21 +40,28 @@ void rohc_dump_packet(const char *const descr,
 
 	assert(descr != NULL);
 	assert(packet != NULL);
-	assert(length > 0);
+	assert(length >= 0);
 
-	rohc_debugf(3, "%s (%zd bytes):\n", descr, length);
-	for(i = 0; i < length; i++)
+	if(length == 0)
 	{
-		if(i > 0 && (i % 16) == 0)
-		{
-			rohc_debugf_(3, "\n");
-		}
-		else if(i > 0 && (i % 8) == 0)
-		{
-			rohc_debugf_(3, "  ");
-		}
-		rohc_debugf_(3, "%02x ", packet[i]);
+		rohc_debugf(3, "%s (0 byte)\n", descr);
 	}
-	rohc_debugf_(3, "\n");
+	else
+	{
+		rohc_debugf(3, "%s (%zd bytes):\n", descr, length);
+		for(i = 0; i < length; i++)
+		{
+			if(i > 0 && (i % 16) == 0)
+			{
+				rohc_debugf_(3, "\n");
+			}
+			else if(i > 0 && (i % 8) == 0)
+			{
+				rohc_debugf_(3, "  ");
+			}
+			rohc_debugf_(3, "%02x ", packet[i]);
+		}
+		rohc_debugf_(3, "\n");
+	}
 }
 

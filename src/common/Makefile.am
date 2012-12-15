@@ -15,7 +15,6 @@ sources = \
 	rohc_common.c \
 	rohc_packets.c \
 	rohc_traces.c \
-	trace.c \
 	rohc_utils.c \
 	crc.c \
 	decode.c \
@@ -39,7 +38,6 @@ private_headers = \
 	rohc_bit_ops.h \
 	rohc_debug.h \
 	rohc_traces.h \
-	trace.h \
 	rohc_time.h \
 	rohc_utils.h \
 	crc.h \

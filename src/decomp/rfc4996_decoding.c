@@ -29,7 +29,6 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
-#include "trace.h" //FWX2
 #include "protocols/tcp.h" //FWX2
 #include "rfc4996_decoding.h"
 #include "../comp/rfc4996_encoding.h" /* for c_lsb() */ /* TODO: remove!!! */
