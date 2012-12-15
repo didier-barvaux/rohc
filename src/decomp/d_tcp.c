@@ -1401,7 +1401,7 @@ static int tcp_decode_dynamic_ip(struct d_tcp_context *tcp_context,
  * @param is_innermost              True if the IP header is the innermost of the packet
  * @param ttl_irregular_chain_flag  True if one of the TTL value of header change
  * @param ip_inner_ecn              The ECN flags of inner IP header
- * @return                          The current point of the remain rohc_datas
+ * @return                          The current point of the remain rohc_data
  */
 static uint8_t * tcp_decode_irregular_ip(struct d_tcp_context *tcp_context,
                                           ip_context_ptr_t ip_context,
@@ -1873,25 +1873,24 @@ error:
  *
  * See RFC4996 page 75
  *
- * @param tcp_context               The specific TCP context
- * @param base_header_inner         The inner IP header under built
- * @param tcp                       The TCP header under built
- * @param rohc_datas                The remain datas of the rohc packet
- * @return                          The current remain datas of the rohc packet
+ * @param tcp_context        The specific TCP context
+ * @param base_header_inner  The inner IP header under built
+ * @param tcp                The TCP header under built
+ * @param rohc_data          The remain datas of the rohc packet
+ * @return                   The current remain datas of the rohc packet
  */
-
 static uint8_t * tcp_decode_irregular_tcp(struct d_tcp_context *tcp_context,
                                            base_header_ip_t base_header_inner,
                                            tcphdr_t *tcp,
-                                           uint8_t *rohc_datas)
+                                           uint8_t *rohc_data)
 {
 	multi_ptr_t mptr;
 
 	rohc_debugf(3, "tcp_context %p base_header_inner %p tcp %p rohc_data %p\n",tcp_context,
 	            base_header_inner.uint8,tcp,
-	            rohc_datas);
+	            rohc_data);
 
-	mptr.uint8 = rohc_datas;
+	mptr.uint8 = rohc_data;
 
 	// ip_ecn_flags = := tcp_irreg_ip_ecn(ip_inner_ecn)
 	// tcp_res_flags =:= static_or_irreg(ecn_used.CVALUE,4)
@@ -1933,7 +1932,7 @@ static uint8_t * tcp_decode_irregular_tcp(struct d_tcp_context *tcp_context,
 	tcp->checksum = READ16_FROM_MPTR(mptr);
 	rohc_debugf(3, "Read TCP checksum %4.4Xh\n",ntohs(tcp->checksum));
 
-	rohc_dump_packet("TCP irregular part", rohc_datas, mptr.uint8 - rohc_datas);
+	rohc_dump_packet("TCP irregular part", rohc_data, mptr.uint8 - rohc_data);
 
 	return mptr.uint8;
 }
