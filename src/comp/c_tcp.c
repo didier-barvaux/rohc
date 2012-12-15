@@ -65,18 +65,18 @@ unsigned char tcp_options_index[16] =
 	TCP_INDEX_NOP,             // TCP_OPT_NOP             1
 	TCP_INDEX_MAXSEG,          // TCP_OPT_MAXSEG          2
 	TCP_INDEX_WINDOW,          // TCP_OPT_WINDOW          3
-	TCP_INDEX_SACK_PERMITTED,  // TCP_OPT_SACK_PERMITTED  4               /* Experimental */
-	TCP_INDEX_SACK,            // TCP_OPT_SACK            5               /* Experimental */
-	7,                         // FWX ?                   6
-	8,                         // FWX ?                   7
+	TCP_INDEX_SACK_PERMITTED,  // TCP_OPT_SACK_PERMITTED  4  (experimental)
+	TCP_INDEX_SACK,            // TCP_OPT_SACK            5  (experimental)
+	7,                         // TODO ?                  6
+	8,                         // TODO ?                  7
 	TCP_INDEX_TIMESTAMP,       // TCP_OPT_TIMESTAMP       8
-	9,                         // FWX ?                   9
-	10,                        // FWX ?                  10
-	11,                        // FWX ?                  11
-	12,                        // FWX ?                  12
-	13,                        // FWX ?                  13
-	14,                        // FWX ?                  14
-	15                         // FWX ?                  15
+	9,                         // TODO ?                  9
+	10,                        // TODO ?                 10
+	11,                        // TODO ?                 11
+	12,                        // TODO ?                 12
+	13,                        // TODO ?                 13
+	14,                        // TODO ?                 14
+	15                         // TODO ?                 15
 };
 
 

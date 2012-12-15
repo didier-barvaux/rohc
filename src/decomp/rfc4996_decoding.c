@@ -30,7 +30,7 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
-#include "protocols/tcp.h" //FWX2
+#include "protocols/tcp.h"
 #include "rfc4996_decoding.h"
 #include "rohc_packets.h"
 #include "rohc_decomp.h"

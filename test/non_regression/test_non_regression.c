@@ -927,7 +927,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	rohc_activate_profile(comp1, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp1, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp1, ROHC_PROFILE_ESP);
-	rohc_activate_profile(comp1, ROHC_PROFILE_TCP); // FWX2
+	rohc_activate_profile(comp1, ROHC_PROFILE_TCP);
 	rohc_c_set_large_cid(comp1, use_large_cid);
 
 	/* set the callback for random numbers on compressor 1 */
@@ -1004,7 +1004,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	rohc_activate_profile(comp2, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp2, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp2, ROHC_PROFILE_ESP);
-	rohc_activate_profile(comp2, ROHC_PROFILE_TCP); // FWX2
+	rohc_activate_profile(comp2, ROHC_PROFILE_TCP);
 	rohc_c_set_large_cid(comp2, use_large_cid);
 
 	/* set the callback for random numbers on compressor 2 */

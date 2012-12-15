@@ -39,7 +39,7 @@
  */
 
 /** The number of ROHC profiles ready to be used */
-#define C_NUM_PROFILES 7 // FWX2
+#define C_NUM_PROFILES 7
 
 /** The maximal number of outgoing feedbacks that can be queued */
 #define FEEDBACK_RING_SIZE 1000

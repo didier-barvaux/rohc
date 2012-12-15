@@ -56,7 +56,7 @@ extern struct c_profile c_rtp_profile,
                         c_udp_lite_profile,
                         c_esp_profile,
                         c_ip_profile,
-                        c_tcp_profile, //FWX2
+                        c_tcp_profile,
                         c_uncompressed_profile;
 
 /**

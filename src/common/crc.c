@@ -28,7 +28,6 @@
 #include "protocols/rtp.h"
 #include "protocols/esp.h"
 #include "protocols/tcp.h"
-#include "rohc_traces.h" // FWX2
 
 #include <stdlib.h>
 #include <assert.h>
@@ -809,8 +808,6 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
 }
 
 
-// Begin FWX2
-
 /**
  * @brief Compute the CRC-STATIC part of an TCP header
  *
@@ -861,7 +858,7 @@ unsigned int tcp_compute_crc_static(const unsigned char *const ip,
  *
  * Concerned fields are:
  *   - bytes 5-8 in original ESP header
- * 
+ *
  * @param ip          The outer IP packet
  * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
  * @param next_header The next header located after the IP header(s)
@@ -899,7 +896,6 @@ unsigned int tcp_compute_crc_dynamic(const unsigned char *const ip,
 	return crc;
 }
 
-// End FWX2
 
 
 /**
