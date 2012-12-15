@@ -271,7 +271,9 @@ struct sc_tcp_context
 
 	/// @brief TCP-specific temporary variables that are used during one single
 	///        compression of packet
-// DBX	struct tcp_tmp_variables tmp_variables;
+#ifdef TODO
+	struct tcp_tmp_variables tmp_variables;
+#endif
 
 	uint8_t ip_context[1];
 };

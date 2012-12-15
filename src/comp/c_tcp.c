@@ -38,7 +38,6 @@
 #include "config.h" /* for WORDS_BIGENDIAN */
 
 
-//#define MAX_TCP_OPTION_INDEX  8
 #define MAX_TCP_OPTION_INDEX 16
 
 #ifdef ROHC_TCP_DEBUG
@@ -131,11 +130,6 @@ static uint8_t * tcp_code_irregular_tcp_part(struct sc_tcp_context *tcp_context,
                                               tcphdr_t *tcp,
                                               multi_ptr_t mptr,
                                               int ip_inner_ecn);
-
-#if 0
-static int tcp_changed_tcp_dynamic(const struct c_context *context,
-                                   const tcphdr_t *tcp);
-#endif
 
 static int code_CO_packet(struct c_context *const context,
                           const struct ip_packet *ip,
@@ -399,7 +393,9 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 	tcp_context->ack_number = ntohl(tcp->ack_number);
 
 	/* init the TCP-specific temporary variables DBX */
-//	tcp_context->tmp_variables.send_tcp_dynamic = -1;
+#ifdef TODO
+	tcp_context->tmp_variables.send_tcp_dynamic = -1;
+#endif
 
 	/* init the Master Sequence Number to a random value */
 	tcp_context->msn = 0xffff &
@@ -415,11 +411,15 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 	/* init the TCP-specific variables and functions */
 	g_context->next_header_proto = ROHC_IPPROTO_TCP;
 	g_context->next_header_len = sizeof(tcphdr_t); // + options ???
-//	g_context->decide_state = tcp_decide_state;
+#ifdef TODO
+	g_context->decide_state = tcp_decide_state;
+#endif
 	g_context->decide_state = NULL;
 	g_context->init_at_IR = NULL;
 	g_context->code_static_part = NULL;
-//	g_context->code_dynamic_part = tcp_code_dynamic_tcp_part;
+#ifdef TODO
+	g_context->code_dynamic_part = tcp_code_dynamic_tcp_part;
+#endif
 	g_context->code_dynamic_part = NULL;
 	g_context->code_UO_packet_head = NULL;
 	g_context->code_uo_remainder = NULL;
@@ -576,8 +576,6 @@ int c_tcp_check_context(const struct c_context *context,
 
 bad_context:
 	return 0;
-//error:
-//	return -1;
 }
 
 
@@ -618,7 +616,9 @@ int c_tcp_encode(struct c_context *const context,
 	uint8_t protocol;
 	int ecn_used;
 	int size;
-//	uint8_t new_context_state; // A REVOIR
+#ifdef TODO
+	uint8_t new_context_state;
+#endif
 
 	rohc_debugf(
 	   3, "context %p ip %p packet_size %d dest %p dest_size %d packet_type %p payload_offset %p\n",
@@ -688,7 +688,9 @@ int c_tcp_encode(struct c_context *const context,
 								ip_context.v6_option->length = base_header.ipv6_opt->length;
 								memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,
 								       ip_context.v6_option->option_length - 2);
-//								new_context_state = IR;
+#ifdef TODO
+								new_context_state = IR;
+#endif
 								break;
 							}
 							if(memcmp(base_header.ipv6_opt->value,ip_context.v6_option->value,
@@ -699,7 +701,9 @@ int c_tcp_encode(struct c_context *const context,
 								            base_header.ipv6_opt->length);
 								memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,
 								       ip_context.v6_option->option_length - 2);
-//								new_context_state = IR;
+#ifdef TODO
+								new_context_state = IR;
+#endif
 								break;
 							}
 							break;
@@ -709,7 +713,9 @@ int c_tcp_encode(struct c_context *const context,
 								rohc_debugf(3, "IPv6 option %d c_flag changed (%d -> %d)\n",protocol,
 								            ip_context.v6_gre_option->c_flag,
 								            base_header.ip_gre_opt->c_flag);
-//								new_context_state = IR;
+#ifdef TODO
+								new_context_state = IR;
+#endif
 								break;
 							}
 							break;
@@ -721,7 +727,9 @@ int c_tcp_encode(struct c_context *const context,
 								            base_header.ip_mime_opt->s_bit);
 								ip_context.v6_option->option_length =
 								   (2 + base_header.ip_mime_opt->s_bit) << 3;
-//								new_context_state = IR;
+#ifdef TODO
+								new_context_state = IR;
+#endif
 								break;
 							}
 							if(base_header.ip_mime_opt->checksum != ip_context.v6_mime_option->checksum)
@@ -729,7 +737,9 @@ int c_tcp_encode(struct c_context *const context,
 								rohc_debugf(3, "IPv6 option %d checksum changed (%Xh -> %Xh)\n",protocol,
 								            ip_context.v6_mime_option->checksum,
 								            base_header.ip_mime_opt->checksum);
-//								new_context_state = IR;
+#ifdef TODO
+								new_context_state = IR;
+#endif
 								break;
 							}
 							break;
@@ -756,7 +766,9 @@ int c_tcp_encode(struct c_context *const context,
 	base_header.uint8 = (uint8_t*) ip->data;
 
 	/* how many TCP fields changed? */
-// DBX	tcp_context->tmp_variables.send_tcp_dynamic = tcp_changed_tcp_dynamic(context, tcp);
+#ifdef TODO
+	tcp_context->tmp_variables.send_tcp_dynamic = tcp_changed_tcp_dynamic(context, tcp);
+#endif
 
 	rohc_debugf(3, "msn %4.4Xh\n", tcp_context->msn);
 
@@ -2237,70 +2249,6 @@ static uint8_t * tcp_code_irregular_tcp_part(struct sc_tcp_context *tcp_context,
 }
 
 
-#if 0
-/**
- * @brief Check if the dynamic part of the TCP header changed.
- *
- * @param context The compression context
- * @param tcp     The TCP header
- * @return        The number of TCP fields that changed
- */
-static int tcp_changed_tcp_dynamic(const struct c_context *context,
-                                   const tcphdr_t *tcp)
-{
-	const struct c_generic_context *g_context;
-	struct sc_tcp_context *tcp_context;
-	uint32_t seq_number;
-
-	g_context = (struct c_generic_context *) context->specific;
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
-
-	// A REVOIR  DBX
-
-//        rohc_debugf(3, "state %d\n",tcp_context->state);
-	rohc_debugf(3, "state %d\n",context->state);
-
-	switch(context->state)
-	{
-		case IR:  /* The Initialization and Refresh (IR) state */
-			break;
-		case FO:  /* The First Order (FO) state */
-			break;
-		case SO:  /* The Second Order (SO) state */
-			break;
-	}
-
-	seq_number = ntohl(tcp->seq_number);
-
-	rohc_debugf(3, "seq_number 0x%08x last 0x%08x old 0x%08x change_count %d\n",
-	            seq_number, tcp_context->tcp_last_seq_number,
-	            ntohl(tcp_context->old_tcphdr.seq_number),
-	            tcp_context->tcp_seq_number_change_count);
-/*
-   if( seq_number != (tcp_context->tcp_last_seq_number+1) )
-   {
-                tcp_context->tcp_last_seq_number = seq_number;
-      tcp_context->tcp_seq_number_change_count = 0;
-                rohc_debugf(3, "seq_number_change_count = 0 return 1\n");
-                return 1;
-   }
-*/
-	if(tcp_context->tcp_seq_number_change_count < MAX_IR_COUNT)
-	{
-		rohc_debugf(3, "seq_number_change_count = %d return 1\n",
-		            tcp_context->tcp_seq_number_change_count);
-		return 1;
-	}
-
-	tcp_context->tcp_last_seq_number = seq_number;
-	rohc_debugf(3, "seq_number_change_count = %d return 0\n",
-	            tcp_context->tcp_seq_number_change_count);
-
-	return 0;
-}
-#endif
-
-
 /**
  * @brief Compress the TimeStamp option value.
  *
@@ -2320,8 +2268,6 @@ uint8_t * c_ts_lsb( uint8_t *ptr, uint32_t *context_timestamp, uint32_t *pTimest
 	last_timestamp = ntohl(*context_timestamp);
 	timestamp = ntohl(*pTimestamp);
 	rohc_debugf(3, "context_timestamp %Xh timestamp %Xh\n",last_timestamp,timestamp);
-
-//	assert( ( last_timestamp & 0xE0000000 ) == ( timestamp & 0xE0000000 ) );
 
 	if( ( timestamp & 0xFFFFFF80 ) == ( last_timestamp & 0xFFFFFF80 ) )
 	{
@@ -4014,8 +3960,6 @@ code_rnd_2:
 code_rnd_3:
 	rohc_debugf(3, "code rnd_3\n");
 	mptr.uint8 = (uint8_t*)(c_base_header.rnd3 + 1);
-//	c_base_header.rnd3->discriminator = 0x00; // '0'
-//	c_base_header.rnd3->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
 #if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3)] = wb.uint8[1];
@@ -4054,10 +3998,8 @@ code_rnd_5:
 	c_base_header.rnd5->discriminator = 0x04; // '100'
 	c_base_header.rnd5->psh_flag = tcp->psh_flag;
 	c_base_header.rnd5->msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
-//	c_base_header.rnd5->header_crc = 0;
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3)] = 0;
 	c_base_header.uint16[(OFFSET_RND5_SEQ_NUMBER >> 4) + 1] = 0;
-//	c_base_header.rnd5->seq_number = htons( c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number)) );
 	wb.uint16 = htons( c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number)) );
 #if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3)] = wb.uint8[1] >> 1;
@@ -4072,7 +4014,6 @@ code_rnd_5:
 #endif
 	rohc_debugf(3, "For seq_number: uint16 %4.4Xh b0 %2.2Xh b1 %2.2Xh\n",wb.uint16,wb.uint8[0],
 	            wb.uint8[1]);
-//	c_base_header.rnd5->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
 #if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3)] |= wb.uint8[1];
@@ -4108,7 +4049,6 @@ code_rnd_7:
 	rohc_debugf(3, "code rnd_7\n");
 	mptr.uint8 = (uint8_t*)(c_base_header.rnd7 + 1);
 	c_base_header.rnd7->discriminator = 0x2F; // '101111'
-//	c_base_header.rnd7->ack_number = htonl( c_lsb(18, 65535,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	{
 		uint32_t ack_number;
 		ack_number = c_lsb(18, 65535,tcp_context->ack_number,ntohl(tcp->ack_number));
@@ -4299,7 +4239,6 @@ code_seq_7:
 	rohc_debugf(3, "code seq_7\n");
 	mptr.uint8 = (uint8_t*)(c_base_header.seq7 + 1);
 	c_base_header.seq7->discriminator = 0x0C;  // '1100'
-//	c_base_header.seq7->window = htons( c_lsb(15, 16383,ntohs(tcp_context->old_tcphdr.window),ntohs(tcp->window)) );
 	{
 		uint16_t window;
 		window = c_lsb(15, 16383,ntohs(tcp_context->old_tcphdr.window),ntohs(tcp->window));
@@ -4331,7 +4270,6 @@ code_seq_8:
 	c_base_header.seq8->msn = c_lsb(4,4,tcp_context->msn,tcp_context->msn);
 	c_base_header.seq8->psh_flag = tcp->psh_flag;
 	c_base_header.seq8->ttl_hopl = c_lsb(3, 3, ip_context.vx->ttl_hopl, ttl_hopl);
-//	c_base_header.seq8->ack_number = htons( c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number)) );
 	wb.uint16 = c_lsb(15, 8191,tcp_context->ack_number,ntohl(tcp->ack_number));
 #if WORDS_BIGENDIAN != 1
 	c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3)] = wb.uint8[1];
@@ -4341,7 +4279,6 @@ code_seq_8:
 	c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1] = wb.uint8[1];
 #endif
 	c_base_header.seq8->ecn_used = ecn_used;
-//	c_base_header.seq8->seq_number = htons( c_lsb(14, 8191,tcp_context->seq_number,ntohl(tcp->seq_number)) );
 	// Si seq_number = 0x07072CF1 -> lsb = 2CF1
 	// mais en stockant en LITTLE_ENDIAN, cela devient F12C, et les 2 bits de poids fort disparaissent : 312C
 	// ce qui donnera 2C31 a l'arrivee !!!
@@ -4535,7 +4472,6 @@ code_next:
 
 	rohc_dump_packet("co_header", dest, counter);
 
-//error:
 	return counter;
 }
 

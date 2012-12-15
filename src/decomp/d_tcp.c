@@ -57,13 +57,6 @@ static int tcp_decode_dynamic_ipv6_option(struct d_tcp_context *tcp_context,
                                           multi_ptr_t c_base_header,
                                           unsigned int length,
                                           base_header_ip_t base_header);
-#if 0 /* not used at the moment */
-static uint8_t * tcp_decode_irregular_ipv6_option(struct d_tcp_context *tcp_context,
-                                                   ip_context_ptr_t ip_context,
-                                                   uint8_t protocol,
-                                                   multi_ptr_t mptr,
-                                                   base_header_ip_t base_header);
-#endif
 
 static int tcp_decode_static_ip(struct d_tcp_context *tcp_context,
                                 ip_context_ptr_t ip_context,
@@ -195,9 +188,11 @@ void * d_tcp_create(void)
 	/* some TCP-specific values and functions */
 	context->next_header_len = sizeof(tcphdr_t);
 	context->build_next_header = NULL;
-//	context->decode_static_next_header = tcp_decode_static_tcp;
-//	context->decode_dynamic_next_header = tcp_decode_dynamic_tcp;  // A REVOIR
-//	context->decode_uo_tail = NULL;
+#ifdef TODO
+	context->decode_static_next_header = tcp_decode_static_tcp;
+	context->decode_dynamic_next_header = tcp_decode_dynamic_tcp;
+	context->decode_uo_tail = NULL;
+#endif
 	context->compute_crc_static = tcp_compute_crc_static;
 	context->compute_crc_dynamic = tcp_compute_crc_dynamic;
 
@@ -265,7 +260,7 @@ static void d_tcp_destroy(void *context)
 	assert(g_context->inner_ip_changes->next_header != NULL);
 	zfree(g_context->inner_ip_changes->next_header);
 
-#if 0 /* TODO: sn_lsb_ctxt is not initialized, either remove it or use it fully */
+#if TODO /* TODO: sn_lsb_ctxt is not initialized, either remove it or use it fully */
 	/* destroy the LSB decoding context for SN */
 	rohc_lsb_free(g_context->sn_lsb_ctxt);
 #endif
@@ -403,7 +398,7 @@ int d_tcp_decode(struct rohc_decomp *decomp,
 
 		tcp_copy_static_tcp(tcp_context,tcp);
 
-// A COMPLETER ??? boucle sur dynamic chain ???
+// TODO: to be completed? loop on dynamic chain?
 		read = tcp_decode_dynamic_tcp(g_context,c_base_header.tcp_dynamic,rohc_length - length,tcp);
 
 		rohc_dump_packet("current IP packet", dest, size);
@@ -446,9 +441,12 @@ int d_tcp_decode(struct rohc_decomp *decomp,
 			{
 				base_header.ipv4->length = htons(length);
 				base_header.ipv4->checksum = 0;
+#ifdef TODO
+				base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
+#else
 				base_header.ipv4->checksum = my_ip_fast_csum(base_header.uint8,
 				                                             base_header.ipv4->header_length);
-//				base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
+#endif
 				rohc_debugf(3, "IP checksum = 0x%04x for %d\n", ntohs(
 				               base_header.ipv4->checksum), base_header.ipv4->header_length);
 				protocol = ip_context.v4->protocol;
@@ -684,9 +682,12 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 			protocol = base_header.ipv4->protocol;
 			base_header.ipv4->length = htons(length);
 			base_header.ipv4->checksum = 0;
+#ifdef TODO
+			base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
+#else
 			base_header.ipv4->checksum = my_ip_fast_csum(base_header.uint8,
 			                                             base_header.ipv4->header_length);
-//			base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
+#endif
 			rohc_debugf(3, "IP checksum = 0x%04x for %d\n", ntohs(
 			               base_header.ipv4->checksum), base_header.ipv4->header_length);
 			++base_header.ipv4;
@@ -1172,92 +1173,6 @@ static int tcp_decode_dynamic_ipv6_option(struct d_tcp_context *tcp_context,
 
 	return size;
 }
-
-
-#if 0 /* not used at the moment */
-/**
- * @brief Decode the irregular IP v6 option header of the rohc packet.
- *
- * @param tcp_context    The specific TCP decompression context
- * @param ip_context     The specific IP decompression context
- * @param protocol       The IP v6 protocol option
- * @param mptr           The compressed IP header of the rohc packet
- * @param base_header    The decoded IP packet
- * @return               The length of dynamic IP header
- *                       0 if an error occurs
- */
-static uint8_t * tcp_decode_irregular_ipv6_option(struct d_tcp_context *tcp_context,
-                                                   ip_context_ptr_t ip_context,
-                                                   uint8_t protocol,
-                                                   multi_ptr_t mptr,
-                                                   base_header_ip_t base_header)
-{
-	#if ROHC_TCP_DEBUG
-	uint8_t *ptr = mptr.uint8;
-	#endif
-	uint32_t sequence_number;
-	int size;
-
-	rohc_debugf(3, "tcp_context %p ip_context %p protocol %d mptr %p base_header %p\n",tcp_context,
-	            ip_context.uint8,protocol,mptr.uint8,
-	            base_header.uint8);
-
-	switch(protocol)
-	{
-		case ROHC_IPPROTO_GRE:
-			if(ip_context.v6_gre_option->c_flag != 0)
-			{
-				base_header.ip_gre_opt->datas[0] = READ32_FROM_MPTR(mptr);
-			}
-			if(ip_context.v6_gre_option->s_flag != 0)
-			{
-				if( ( *mptr.uint8 & 0x80 ) == 0)
-				{
-					// discriminator =:= '0'
-					sequence_number =
-					   ( ip_context.v6_gre_option->sequence_number & 0xFFFFFF80 ) | *(mptr.uint8++);
-				}
-				else
-				{
-					// discriminator =:= '1'
-					sequence_number = ( ip_context.v6_gre_option->sequence_number & 0x80000000 ) | ntohl(
-					   READ32_FROM_MPTR(mptr));
-				}
-				base_header.ip_gre_opt->datas[ip_context.v6_gre_option->c_flag] = htonl(sequence_number);
-				ip_context.v6_gre_option->sequence_number = sequence_number;
-			}
-			break;
-		case ROHC_IPPROTO_AH:
-			// sequence_number =:= lsb_7_or_31
-			if( ( *mptr.uint8 & 0x80 ) == 0)
-			{
-				// discriminator =:= '0'
-				sequence_number =
-				   ( ip_context.v6_ah_option->sequence_number & 0xFFFFFF80 ) | *(mptr.uint8++);
-			}
-			else
-			{
-				// discriminator =:= '1'
-				sequence_number = ( ip_context.v6_ah_option->sequence_number & 0x80000000 ) | ntohl(
-				   READ32_FROM_MPTR(mptr));
-			}
-			ip_context.v6_ah_option->sequence_number = sequence_number;
-			base_header.ip_ah_opt->sequence_number = htonl(sequence_number);
-			size = (ip_context.v6_ah_option->length - 1) << 2;
-			memcpy(ip_context.v6_ah_option->auth_data,mptr.uint8,size);
-			mptr.uint8 += size;
-			break;
-		default:
-			break;
-	}
-
-#if ROHC_TCP_DEBUG
-	rohc_dump_packet("IPv6 option irregular part", ptr, mptr.uint8 - ptr);
-#endif
-
-	return mptr.uint8;
-}
-#endif
 
 
 /**
@@ -3910,9 +3825,12 @@ all_seq:
 			base_header.ipv4->df = ip_context.v4->df;
 			base_header.ipv4->length = htons(size);
 			base_header.ipv4->checksum = 0;
+#ifdef TODO
+			base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
+#else
 			base_header.ipv4->checksum = my_ip_fast_csum(base_header.uint8,
 			                                             base_header.ipv4->header_length);
-//			base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
+#endif
 			rohc_debugf(3, "IP checksum = 0x%04x for %d\n", ntohs(
 			               base_header.ipv4->checksum), base_header.ipv4->header_length);
 			protocol = ip_context.v4->protocol;

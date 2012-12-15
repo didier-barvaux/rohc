@@ -46,30 +46,6 @@ unsigned int lsb_masks[] =
 	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF
 };
 
-/* idem lsb_masks[]
-static unsigned int lsb_power[] =
-{
-   ( 1 << 0 ) - 1,
-   ( 1 << 1 ) - 1,
-   ( 1 << 2 ) - 1,
-   ( 1 << 3 ) - 1,
-   ( 1 << 4 ) - 1,
-   ( 1 << 5 ) - 1,
-   ( 1 << 6 ) - 1,
-   ( 1 << 7 ) - 1,
-   ( 1 << 8 ) - 1,
-   ( 1 << 9 ) - 1,
-   ( 1 << 10 ) - 1,
-   ( 1 << 11 ) - 1,
-   ( 1 << 12 ) - 1,
-   ( 1 << 13 ) - 1,
-   ( 1 << 14 ) - 1,
-   ( 1 << 15 ) - 1,
-   ( 1 << 16 ) - 1,
-   ( 1 << 17 ) - 1,
-   ( 1 << 18 ) - 1
-};
-*/
 
 /**
  * @brief Compress the lower bits of the given value.
@@ -96,23 +72,13 @@ uint32_t c_lsb( int num_lsbs_param, unsigned int offset_param, unsigned int cont
 	assert( num_lsbs_param > 0 && num_lsbs_param <= 18 );
 
 	lower_bound = context_value - offset_param;
-//	upper_bound = context_value + lsb_power[num_lsbs_param] - offset_param;
 	upper_bound = context_value + lsb_masks[num_lsbs_param] - offset_param;
 
 	value = original_value & lsb_masks[num_lsbs_param];
 
-//	rohc_debugf(3, "c_lsb() %u < value %u < %d return %u\n",lower_bound,original_value,upper_bound,value);
 	rohc_debugf(3, "c_lsb() %Xh < value %Xh < %Xh return %Xh\n",lower_bound,original_value,
 	            upper_bound,
 	            value);
-
-//	assert( ( ( context_value & ( ~lsb_masks[num_lsbs_param] ) ) | value ) >= lower_bound );
-//	assert( ( ( context_value & ( ~lsb_masks[num_lsbs_param] ) ) | value ) <= upper_bound );
-//	assert( ( context_value - value ) >= lower_bound );
-//	assert( ( context_value + value ) <= upper_bound );
-
-//	assert( original_value >= lower_bound );
-//	assert( original_value <= upper_bound );
 
 	return value;
 }
@@ -213,13 +179,12 @@ uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value )
 /**
  * @brief Compress a 32 bits value
  *
+ * See RFC4996 page 46.
+ *
  * @param pmptr            The destination for the compressed value
  * @param puint32          Pointer to the 32 bits value to compress
  * @return                 Size of the compressed value, in octets
  */
-
-// See RFC4996 page 46
-
 unsigned int variable_length_32_enc( multi_ptr_t *pmptr, uint32_t *puint32 )
 {
 	multi_ptr_t mptr;
