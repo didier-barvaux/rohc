@@ -1858,7 +1858,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
  *
  * @param context The compression context
  */
-#ifdef LMKQSJMQLJs
+#ifdef TODO
 static void tcp_decide_state(struct c_context *const context)
 {
 	struct c_generic_context *g_context;
@@ -1881,8 +1881,6 @@ static void tcp_decide_state(struct c_context *const context)
 
 	rohc_comp_debug(context, "next state = %d\n", context->state);
 }
-
-
 #endif
 
 
