@@ -2329,8 +2329,10 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		// 8-bit XI field
 		*pBeginList |= 0x10;
 		#endif
+#if ROHC_EXTRA_DEBUG == 1
 		rohc_comp_debug(context, "TCP %d item(s) in list at %p\n",
 		                (*pBeginList) & 0x0f, debug_ptr);
+#endif
 		/* init pointer to the begining of TCP options */
 		pBeginList = ( (unsigned char *) tcp ) + sizeof(tcphdr_t);
 		/* copy all TCP options */
@@ -3444,9 +3446,7 @@ int co_baseheader(struct c_context *const context,
 	multi_ptr_t mptr;
 	WB_t ip_id;
 	WB_t wb;
-#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *puchar;
-#endif
 	int version;
 	int ecn_used;
 
@@ -4618,9 +4618,7 @@ code_common:
 	// =:= lsb(4, 4) [ 4 ];
 	c_base_header.co_common->msn = c_lsb(context, 4, 4, tcp_context->msn,
 	                                     tcp_context->msn);
-#if ROHC_EXTRA_DEBUG == 1
 	puchar = mptr.uint8;
-#endif
 	// =:= irregular(2) [ 2 ];
 	c_base_header.co_common->seq_indicator = variable_length_32_enc(&mptr,&tcp->seq_number);
 	rohc_comp_debug(context, "size = %d, seq_indicator = %d, seq_number = 0x%x\n",
