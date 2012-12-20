@@ -5301,15 +5301,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 				{
 					case PACKET_UOR_2:
 					case PACKET_UOR_2_ID:
-						if((bits->outer_ip.version != IPV4 &&
-						    !g_context->multiple_ip) ||
-						   (bits->outer_ip.version != IPV4 &&
-						    g_context->multiple_ip &&
-						    bits->inner_ip.version != IPV4))
+						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 							             "cannot use extension 0 for the UOR-2 or "
-							             "UOR-2-ID packet with no IPv4 header\n");
+							             "UOR-2-ID packet with no IPv4 header that "
+							             "got a non-random IP-ID\n");
 							goto error;
 						}
 						break;
@@ -5340,16 +5337,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 					case PACKET_UOR_2:
 					case PACKET_UOR_2_ID:
 					case PACKET_UOR_2_TS:
-						if((bits->outer_ip.version != IPV4 &&
-						    !g_context->multiple_ip) ||
-						   (bits->outer_ip.version != IPV4 &&
-						    g_context->multiple_ip &&
-						    bits->inner_ip.version != IPV4))
+						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 							             "cannot use extension 1 for the UOR-2, "
 							             "UOR-2-ID or UOR-2-TS packet with no IPv4 "
-							             "header\n");
+							             "header that got a non-random IP-ID\n");
 							goto error;
 						}
 						break;
@@ -5391,16 +5384,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 						break;
 					case PACKET_UOR_2_ID:
 					case PACKET_UOR_2_TS:
-						if((bits->outer_ip.version != IPV4 &&
-						    !g_context->multiple_ip) ||
-						   (bits->outer_ip.version != IPV4 &&
-						    g_context->multiple_ip &&
-						    bits->inner_ip.version != IPV4))
+						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-							             "cannot use extension 2 for the UOR-2, "
-							             "UOR-2-ID, or UOR-2-TS packet with no IPv4 "
-							             "header\n");
+							             "cannot use extension 2 for the UOR-2-ID, "
+							             "or UOR-2-TS packet with no IPv4 header "
+							             "that got a non-random IP-ID\n");
 							goto error;
 						}
 						break;
@@ -5413,19 +5402,6 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 						goto error;
 				}
 
-				/* determine which IP header is the innermost IPv4 header with
-				   value(RND) = 0 */
-				if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE &&
-				   (g_context->packet_type == PACKET_UOR_2_TS ||
-				    g_context->packet_type == PACKET_UOR_2_ID))
-				{
-					/* UOR-2-TS or UOR-2-ID packet but no IPv4 header with non-random
-					   IP-ID => not possible */
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					             "extension 2 for UOR-2-TS/ID must contain at "
-					             "least one IPv4 header with a non-random IP-ID\n");
-					goto error;
-				}
 				if(innermost_ipv4_non_rnd != ROHC_IP_HDR_NONE)
 				{
 					rohc_decomp_debug(context, "IP header #%d is the innermost "
