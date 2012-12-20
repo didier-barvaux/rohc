@@ -57,7 +57,10 @@ struct rtp_tmp_vars
 	uint32_t ts_send;
 
 	/// Whether the M bit is set in the RTP header or not
-	int m_set;
+	bool is_marker_bit_set;
+
+	/// Whether the Padding (P) bit is set in the RTP header or not
+	bool is_padding_bit_set;
 
 	/// Whether the Payload Type (PT) field changed or not
 	int rtp_pt_changed;

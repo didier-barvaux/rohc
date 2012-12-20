@@ -6639,19 +6639,24 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		case PACKET_UOR_2_TS:
 		case PACKET_UOR_2_ID:
 		{
-			/* check the minimal length to decode the first byte of flags and ip2 flag */
-			if(rohc_remain_len < 2)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
-				goto error;
-			}
+			/* decode the first byte of flags */
 			rts = GET_REAL(GET_BIT_4(rohc_remain_data));
 			bits->is_ts_scaled = GET_BOOL(GET_BIT_3(rohc_remain_data));
 			mode = 0;
 			rtp = GET_REAL(GET_BIT_0(rohc_remain_data));
+
+			/* decode the optional ip2 flag */
 			if(ip)
 			{
+				/* check the minimal length to decode the ip2 flag */
+				if(rohc_remain_len < 1)
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					             "ROHC packet too small (len = %zd)\n",
+					             rohc_remain_len);
+					goto error;
+				}
+
 				ip2 = GET_REAL(GET_BIT_0(rohc_remain_data + 1));
 			}
 			else

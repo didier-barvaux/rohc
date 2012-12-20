@@ -2657,12 +2657,19 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-ID packet is for RTP profile only\n");
 			/* TODO: when extensions are supported within the UO-1-ID packet,
-			 * please check whether the "m_set != 0" condition could be removed
-			 * or not */
+			 * please check whether the !rtp_context->tmp.is_marker_bit_set
+			 * condition could be removed or not */
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            rtp_context->tmp.m_set == 0, error,
+			            !rtp_context->tmp.is_marker_bit_set, error,
 			            "UO-1-ID packet without extension support does not "
 			            "contain room for the RTP Marker (M) flag\n");
+			/* TODO: when extensions are supported within the UO-1-ID packet,
+			 * please check whether the !rtp_context->tmp.is_padding_bit_set
+			 * condition could be removed or not */
+			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			            !rtp_context->tmp.is_padding_bit_set, error,
+			            "UO-1-ID packet without extension support does not "
+			            "contain room for the RTP Padding (P) flag\n");
 			break;
 		case PACKET_UO_1_TS:
 			rohc_comp_debug(context, "code UO-1-TS packet (CID = %d)\n",
@@ -2737,11 +2744,11 @@ int code_UO1_packet(struct c_context *const context,
 		case PACKET_UO_1_RTP:
 		case PACKET_UO_1_TS:
 			/* M + SN + CRC (CRC was added before) */
-			s_byte |= (rtp_context->tmp.m_set & 0x01) << 7;
+			s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 			s_byte |= (g_context->sn & 0x0f) << 3;
 			rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-			                rtp_context->tmp.m_set, g_context->sn & 0x0f, crc,
-			                s_byte);
+			                !!rtp_context->tmp.is_marker_bit_set,
+			                g_context->sn & 0x0f, crc, s_byte);
 			break;
 		case PACKET_UO_1_ID:
 			/* X + SN + CRC (CRC was added before) */
@@ -3243,8 +3250,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= (ts_send & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 6-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
@@ -3273,8 +3281,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 9-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3303,8 +3312,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 17-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3333,8 +3343,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 25-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3378,8 +3389,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of %zd-bit TS in 2nd byte = 0x%x\n",
 			                6 + nr_ts_bits_ext3, (*s_byte >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
@@ -3518,8 +3530,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
@@ -3544,8 +3557,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3570,8 +3584,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3596,8 +3611,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3650,8 +3666,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			rohc_comp_debug(context, "SN to send = 0x%x\n", g_context->sn);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
@@ -3767,8 +3784,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 6-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
@@ -3793,8 +3811,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3819,8 +3838,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3845,8 +3865,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3913,8 +3934,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
@@ -4553,10 +4575,15 @@ int code_EXT3_packet(const struct c_context *context,
 		tsc = (rtp_context->ts_sc.state == SEND_SCALED);
 		f_byte |= (tsc & 0x01) << 3;
 
-		/* rtp bit: set to 1 if RTP PT changed in this packet or changed
-		 * in the last few packets or RTP TS and TS_STRIDE must be initialized */
+		/* rtp bit: set to 1 if one of the following conditions is fulfilled:
+		 *  - RTP PT changed in this packet,
+		 *  - RTP PT changed in the last few packets,
+		 *  - RTP Padding bit is set,
+		 *  - RTP TS and TS_STRIDE must be initialized
+		 */
 		rtp = (rtp_context->tmp.rtp_pt_changed ||
 		       rtp_context->rtp_pt_change_count < MAX_FO_COUNT ||
+		       rtp_context->tmp.is_padding_bit_set ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
@@ -5020,7 +5047,8 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 
 	/* part 1 */
 	rpt = (rtp_context->tmp.rtp_pt_changed ||
-	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT);
+	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
+	       rtp_context->tmp.is_padding_bit_set);
 	tss = rtp_context->ts_sc.state == INIT_STRIDE;
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
@@ -5036,7 +5064,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 	if(rpt)
 	{
 		byte = 0;
-		byte |= (rtp->padding & 0x01) << 7;
+		byte |= ((!!rtp_context->tmp.is_padding_bit_set) & 0x01) << 7;
 		byte |= rtp->pt & 0x7f;
 		rohc_comp_debug(context, "part 2 = 0x%x\n", byte);
 		dest[counter] = byte;
