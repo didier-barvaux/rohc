@@ -798,8 +798,8 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		if(ret > packet_len)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "too many bytes read: %zd bytes read in a %zd-byte "
-			             "packet\n", read_length, packet_len);
+			             "too many bytes read: %d bytes read in a %zd-byte "
+			             "packet\n", ret, packet_len);
 			goto error;
 		}
 		read_length += ret;
@@ -1049,6 +1049,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			{
 				int item_length; /* the length (in bytes) of the item related to XI */
 
+				/* is there enough room in packet to for at least one byte of
+				 * the item? */
+				if(packet_len <= (xi_length + item_read_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for at least 1 byte of item "
+					             "for XI #%u (only %zd bytes available while more "
+					             "than %zd bytes are required)\n", xi_index,
+					             packet_len, xi_length + item_read_length);
+					goto error;
+				}
+
 				/* X bit set in XI, so retrieve the related item in ROHC header */
 				item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 				                                   packet_len - xi_length - item_read_length);
@@ -1059,6 +1071,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 					             "referenced by XI #%d\n", xi_index);
 					goto error;
 				}
+
+				/* is there enough room in packet to for the full item? */
+				if(packet_len < (xi_length + item_read_length + item_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for the full item of XI #%u "
+					             "(only %zd bytes available while at least "
+					             "%zd bytes are required)\n", xi_index, packet_len,
+					             xi_length + item_read_length + item_length);
+					goto error;
+				}
+
 				if(new_list)
 				{
 					bool is_created =
@@ -1103,6 +1127,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			{
 				int item_length; /* the length (in bytes) of the item related to XI */
 
+				/* is there enough room in packet to for at least one byte of
+				 * the item? */
+				if(packet_len <= (xi_length + item_read_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for at least 1 byte of item "
+					             "for XI #%u (only %zd bytes available while more "
+					             "than %zd bytes are required)\n", xi_index,
+					             packet_len, xi_length + item_read_length);
+					goto error;
+				}
+
 				/* X bit set in XI, so retrieve the related item in ROHC header */
 				item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 				                                   packet_len - xi_length - item_read_length);
@@ -1113,6 +1149,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 					             "referenced by XI #%d\n", xi_index);
 					goto error;
 				}
+
+				/* is there enough room in packet to for the full item? */
+				if(packet_len < (xi_length + item_read_length + item_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for the full item of XI #%u "
+					             "(only %zd bytes available while at least "
+					             "%zd bytes are required)\n", xi_index, packet_len,
+					             xi_length + item_read_length + item_length);
+					goto error;
+				}
+
 				if(new_list)
 				{
 					bool is_created =
@@ -1516,6 +1564,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -1526,6 +1587,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created =
@@ -1571,6 +1645,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -1579,6 +1666,18 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 							             "failed to determine the length of list item "
 							             "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
 							goto error;
 						}
 
@@ -1628,6 +1727,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -1638,6 +1750,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created =
@@ -1685,6 +1810,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				/* parse the corresponding item if present */
 				if(xi_x_value)
 				{
+					/* is there enough room in packet to for at least one byte of
+					 * the item? */
+					if(packet_len <= (xi_length + item_read_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for at least 1 byte of item "
+						             "for XI #%u (only %zd bytes available while "
+						             "more than %zd bytes are required)\n",
+						             xi_index, packet_len,
+						             xi_length + item_read_length);
+						goto error;
+					}
+
 					/* X bit set in XI, so retrieve the related item in ROHC header */
 					item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 					                                   packet_len - xi_length - item_read_length);
@@ -1695,6 +1833,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 						             "referenced by XI #%d\n", xi_index);
 						goto error;
 					}
+
+					/* is there enough room in packet to for the full item? */
+					if(packet_len < (xi_length + item_read_length + item_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for the full item of XI #%u "
+						             "(only %zd bytes available while at least "
+						             "%zd bytes are required)\n", xi_index,
+						             packet_len, xi_length + item_read_length +
+						             item_length);
+						goto error;
+					}
+
 					if(new_list)
 					{
 						bool is_created =
@@ -2548,6 +2699,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -2558,6 +2722,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created;
@@ -2609,6 +2786,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -2619,6 +2809,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created;
@@ -2670,9 +2873,42 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "failed to determine the length of list item "
+							             "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created;
@@ -2725,6 +2961,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				/* parse the corresponding item if present */
 				if(xi_x_value)
 				{
+					/* is there enough room in packet to for at least one byte of
+					 * the item? */
+					if(packet_len <= (xi_length + item_read_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for at least 1 byte of item "
+						             "for XI #%u (only %zd bytes available while "
+						             "more than %zd bytes are required)\n",
+						             xi_index, packet_len,
+						             xi_length + item_read_length);
+						goto error;
+					}
+
 					/* X bit set in XI, so retrieve the related item in ROHC header */
 					item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 					                                   packet_len - xi_length - item_read_length);
@@ -2735,6 +2984,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 						             "referenced by XI #%d\n", xi_index);
 						goto error;
 					}
+
+					/* is there enough room in packet to for the full item? */
+					if(packet_len < (xi_length + item_read_length + item_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for the full item of XI #%u "
+						             "(only %zd bytes available while at least "
+						             "%zd bytes are required)\n", xi_index,
+						             packet_len, xi_length + item_read_length +
+						             item_length);
+						goto error;
+					}
+
 					if(new_list)
 					{
 						bool is_created;

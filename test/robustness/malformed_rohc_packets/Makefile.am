@@ -7,7 +7,8 @@
 
 
 TESTS = \
-	test_malformed_rohc_packets_ir.sh
+	test_malformed_rohc_packets_ir.sh \
+	test_malformed_rohc_packets_ir_with_list_encoding_type_1.sh
 
 
 check_PROGRAMS = \
