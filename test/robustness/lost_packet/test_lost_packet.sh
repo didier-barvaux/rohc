@@ -37,10 +37,14 @@ else
 fi
 
 # extract the packet to lose and source capture from the name of the script
-PACKET_TO_LOSE=$( echo "${SCRIPT}" | \
-                  ${SED} -e 's#^.*/test_lost_packet_\([0-9]*\)_.*\.sh#\1#' )
+PACKETS_TO_LOSE=$( echo "${SCRIPT}" | \
+                   ${SED} -e 's#^.*/test_lost_packet_\([0-9-]*\)_.*\.sh#\1#' )
+FIRST_PACKET_TO_LOSE=$( echo "${PACKETS_TO_LOSE}" | ${AWK} -F'-' '{ print $1 }' )
+LAST_PACKET_TO_LOSE=$( echo "${PACKETS_TO_LOSE}" | ${AWK} -F'-' '{ print $2 }' )
+PACKETS_ERROR=$( echo "${SCRIPT}" | \
+                 ${SED} -e 's#^.*/test_lost_packet_[0-9-]*_\([0-9]*\).*\.sh#\1#' )
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_lost_packet_[0-9]*_\(.*\)\.sh#\1#' )
+                ${SED} -e 's#^.*/test_lost_packet_[0-9-]*_[0-9]*_\(.*\)\.sh#\1#' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
@@ -50,12 +54,15 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 fi
 
 # check that the packet to lose is not empty
-if [ -z "${PACKET_TO_LOSE}" ] ; then
+if [ -z "${FIRST_PACKET_TO_LOSE}" ] || \
+   [ -z "${LAST_PACKET_TO_LOSE}" ] || \
+   [ -z "${PACKETS_ERROR}" ] ; then
 	echo "failed to parse packet infos, please do not run ${APP}.sh directly!"
 	exit 1
 fi
 
-CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${PACKET_TO_LOSE}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} \
+    ${FIRST_PACKET_TO_LOSE} ${LAST_PACKET_TO_LOSE} ${PACKETS_ERROR}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

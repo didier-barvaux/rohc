@@ -42,7 +42,25 @@ struct rohc_lsb_decode
 	bool is_init;        /**< Whether the reference value was initialized */
 	uint32_t v_ref_d;    /**< The reference value */
 	rohc_lsb_shift_t p;  /**< The p shift parameter */
+	size_t max_len;      /**< The max length (in bits) of the uncomp. field */
 };
+
+
+/*
+ * Private functions
+ */
+
+static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                              const uint32_t m,
+                              const size_t k,
+                              uint32_t *const decoded)
+	__attribute__((nonnull(1, 4)));
+
+static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                              const uint16_t m,
+                              const size_t k,
+                              uint16_t *const decoded)
+	__attribute__((nonnull(1, 4), warn_unused_result));
 
 
 /*
@@ -55,17 +73,22 @@ struct rohc_lsb_decode
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
  * @param p        The p value used to efficiently encode/decode the values
+ * @param max_len  The max length (in bits) of the non-compressed field
  * @return         The new LSB decoding context in case of success, NULL
  *                 otherwise
  */
-struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p)
+struct rohc_lsb_decode * rohc_lsb_new(const rohc_lsb_shift_t p,
+                                      const size_t max_len)
 {
 	struct rohc_lsb_decode *lsb;
+
+	assert(max_len == 16 || max_len == 32);
 
 	lsb = malloc(sizeof(struct rohc_lsb_decode));
 	if(lsb != NULL)
 	{
 		lsb->p = p;
+		lsb->max_len = max_len;
 		lsb->is_init = false;
 	}
 
@@ -84,6 +107,46 @@ void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 {
 	assert(lsb != NULL);
 	free(lsb);
+}
+
+
+/**
+ * @brief Decode a LSB-encoded value
+ *
+ * See 4.5.1 in the RFC 3095 for details about LSB encoding.
+ *
+ * @param lsb      The LSB object used to decode
+ * @param m        The LSB value to decode
+ * @param k        The length of the LSB value to decode
+ * @param decoded  OUT: The decoded value
+ * @return         true in case of success, false otherwise
+ */
+bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
+                     const uint32_t m,
+                     const size_t k,
+                     uint32_t *const decoded)
+{
+	bool is_success;
+
+	assert(lsb != NULL);
+	assert(lsb->is_init == true);
+	assert(lsb->max_len == 16 || lsb->max_len == 32);
+
+	if(lsb->max_len == 16)
+	{
+		uint16_t decoded16;
+		is_success = rohc_lsb_decode16(lsb, m, k, &decoded16);
+		if(is_success)
+		{
+			*decoded = ((uint32_t) decoded16) & 0xffff;
+		}
+	}
+	else /* 32-bit value */
+	{
+		is_success = rohc_lsb_decode32(lsb, m, k, decoded);
+	}
+
+	return is_success;
 }
 
 

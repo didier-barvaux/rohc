@@ -7965,9 +7965,9 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode32(g_context->sn_lsb_ctxt,
-		                              bits.sn, bits.sn_nr,
-		                              &decoded->sn);
+		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt,
+		                            bits.sn, bits.sn_nr,
+		                            &decoded->sn);
 		if(!decode_ok)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,

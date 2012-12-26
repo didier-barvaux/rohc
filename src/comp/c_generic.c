@@ -1246,6 +1246,13 @@ void periodic_down_transition(struct c_context *context)
 
 	g_context = (struct c_generic_context *) context->specific;
 
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CID %d: timeouts for periodic refreshes: FO = %d / %zd, "
+	           "IR = %d / %zd\n", context->cid, g_context->go_back_fo_count,
+	           context->compressor->periodic_refreshes_fo_timeout,
+	           g_context->go_back_ir_count,
+	           context->compressor->periodic_refreshes_ir_timeout);
+
 	if(g_context->go_back_fo_count >=
 	   context->compressor->periodic_refreshes_fo_timeout)
 	{

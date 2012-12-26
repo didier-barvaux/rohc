@@ -67,7 +67,7 @@ struct ip_id_offset_decode * ip_id_offset_new(void)
 		goto error;
 	}
 
-	ipid->lsb = rohc_lsb_new(ROHC_LSB_SHIFT_IP_ID);
+	ipid->lsb = rohc_lsb_new(ROHC_LSB_SHIFT_IP_ID, 16);
 	if(ipid->lsb == NULL)
 	{
 		goto destroy_ipid;
@@ -113,13 +113,13 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
                          const uint32_t sn,
                          uint16_t *const decoded)
 {
-	uint16_t offset_decoded;
+	uint32_t offset_decoded;
 	bool is_success;
 
 	assert(ipid != NULL);
 	assert(decoded != NULL);
 
-	is_success = rohc_lsb_decode16(ipid->lsb, m, k, &offset_decoded);
+	is_success = rohc_lsb_decode(ipid->lsb, m, k, &offset_decoded);
 	if(is_success)
 	{
 		/* add the decoded offset with SN, taking care of overflow */
