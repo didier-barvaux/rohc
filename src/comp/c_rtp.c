@@ -167,6 +167,7 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->udp_checksum_change_count = 0;
 	memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
 	rtp_context->rtp_pt_change_count = 0;
+	rtp_context->rtp_padding_change_count = 0;
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	if(!c_create_sc(&rtp_context->ts_sc,
 	                context->compressor->wlsb_window_width,
@@ -185,9 +186,8 @@ int c_rtp_create(struct c_context *const context, const struct ip_packet *ip)
 	rtp_context->tmp.nr_ts_bits = 0;
 	/* RTP Marker (M) bit is not set by default */
 	rtp_context->tmp.is_marker_bit_set = false;
-	/* RTP Padding (P) bit is not set by default */
-	rtp_context->tmp.is_padding_bit_set = false;
 	rtp_context->tmp.rtp_pt_changed = 0;
+	rtp_context->tmp.padding_bit_changed = false;
 
 	/* init the RTP-specific variables and functions */
 	g_context->next_header_proto = ROHC_IPPROTO_UDP;
@@ -689,10 +689,9 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 
 	rohc_comp_debug(context, "nr_ip_bits = %zd, nr_sn_bits = %zd, "
 	                "nr_ts_bits = %zd, is_ts_deducible = %d, Marker bit = %d, "
-	                "Padding bit = %d, nr_of_ip_hdr = %zd, rnd = %d\n",
+	                "nr_of_ip_hdr = %zd, rnd = %d\n",
 	                nr_ip_id_bits, nr_sn_bits, nr_ts_bits, !!is_ts_deducible,
 	                !!rtp_context->tmp.is_marker_bit_set,
-	                !!rtp_context->tmp.is_padding_bit_set,
 	                nr_of_ip_hdr, is_rnd);
 
 	/* sanity check */
@@ -707,6 +706,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	assert(g_context->tmp.send_static == 0);
 	assert(g_context->tmp.send_dynamic == 0);
 	assert(rtp_context->tmp.send_rtp_dynamic == 0);
+	/* RTP Padding bit is a STATIC field, not allowed to change in SO state */
+	assert(!rtp_context->tmp.padding_bit_changed);
 
 	/* find out how many IP headers are IPv4 headers with non-random IP-IDs */
 	nr_ipv4_non_rnd = 0;
@@ -747,8 +748,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	if(nr_sn_bits <= 4 &&
 	   nr_ipv4_non_rnd_with_bits == 0 &&
 	   (nr_ts_bits == 0 || is_ts_deducible) &&
-	   !rtp_context->tmp.is_marker_bit_set &&
-	   !rtp_context->tmp.is_padding_bit_set)
+	   !rtp_context->tmp.is_marker_bit_set)
 	{
 		packet = PACKET_UO_0;
 		rohc_comp_debug(context, "choose packet UO-0 because %zd <= 4 SN bits "
@@ -760,8 +760,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd == 0 &&
-	        nr_ts_bits <= 6 &&
-	        !rtp_context->tmp.is_padding_bit_set)
+	        nr_ts_bits <= 6)
 	{
 		packet = PACKET_UO_1_RTP;
 		rohc_comp_debug(context, "choose packet UO-1-RTP because neither of "
@@ -773,14 +772,12 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 1 && nr_innermost_ip_id_bits <= 5 &&
 	        (nr_ts_bits == 0 || is_ts_deducible) &&
-	        !rtp_context->tmp.is_marker_bit_set &&
-	        !rtp_context->tmp.is_padding_bit_set)
+	        !rtp_context->tmp.is_marker_bit_set)
 	{
 		/* TODO: when extensions are supported within the UO-1-ID packet,
-		 * please check whether the !is_marker_bit_set and !is_padding_bit_set
-		 * conditions could be removed or not, and whether
-		 * nr_ipv4_non_rnd_with_bits == 1 should not be replaced by
-		 * nr_ipv4_non_rnd_with_bits >= 1 */
+		 * please check whether the !is_marker_bit_set conditions could be
+		 * removed or not, and whether nr_ipv4_non_rnd_with_bits == 1 should
+		 * not be replaced by nr_ipv4_non_rnd_with_bits >= 1 */
 		packet = PACKET_UO_1_ID;
 		rohc_comp_debug(context, "choose packet UO-1-ID because only one of the "
 		                "%zd IP header(s) is IPv4 with non-random IP-ID with "
@@ -792,8 +789,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
-	        nr_ts_bits <= 5 &&
-	        !rtp_context->tmp.is_padding_bit_set)
+	        nr_ts_bits <= 5)
 	{
 		packet = PACKET_UO_1_TS;
 		rohc_comp_debug(context, "choose packet UO-1-TS because neither of the "
@@ -873,11 +869,6 @@ static rohc_ext_t c_rtp_decide_extension(const struct c_context *context)
 	{
 		rohc_comp_debug(context, "force EXT-3 because at least one RTP dynamic "
 		                "field changed\n");
-		ext = PACKET_EXT_3;
-	}
-	else if(rtp_context->tmp.is_padding_bit_set)
-	{
-		rohc_comp_debug(context, "force EXT-3 because RTP Padding bit is set\n");
 		ext = PACKET_EXT_3;
 	}
 	else
@@ -983,6 +974,10 @@ int c_rtp_encode(struct c_context *const context,
 	{
 		memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
 		memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
+	}
+	else if(rtp_context->tmp.padding_bit_changed)
+	{
+		rtp_context->old_rtp.padding = rtp->padding;
 	}
 
 quit:
@@ -1314,6 +1309,7 @@ int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	dest[counter] = byte;
 	rohc_comp_debug(context, "part 2 = 0x%02x\n", dest[counter]);
 	counter++;
+	rtp_context->rtp_padding_change_count++;
 
 	/* part 3 */
 	byte = 0;
@@ -1498,16 +1494,29 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 		rtp_context->tmp.is_marker_bit_set = false;
 	}
 
-	/* check RTP Padding field: remember its value but do not count it
-	 * as a changed field since it is not stored in the context */
-	if(rtp->padding != 0)
+	/* check RTP Padding field */
+	if(rtp->padding != rtp_context->old_rtp.padding ||
+	   rtp_context->rtp_padding_change_count < MAX_IR_COUNT)
 	{
-		rohc_comp_debug(context, "RTP Padding (P) bit is set\n");
-		rtp_context->tmp.is_padding_bit_set = true;
+		if(rtp->padding != rtp_context->old_rtp.padding)
+		{
+			rohc_comp_debug(context, "RTP Padding (P) bit changed (0x%x -> 0x%x)\n",
+			                rtp_context->old_rtp.padding, rtp->padding);
+			rtp_context->tmp.padding_bit_changed = true;
+			rtp_context->rtp_padding_change_count = 0;
+		}
+		else
+		{
+			rohc_comp_debug(context, "RTP Padding (P) bit did not change but "
+			                "changed in the last few packets\n");
+			rtp_context->tmp.padding_bit_changed = false;
+		}
+
+		fields++;
 	}
 	else
 	{
-		rtp_context->tmp.is_padding_bit_set = false;
+		rtp_context->tmp.padding_bit_changed = false;
 	}
 
 	/* check RTP Payload Type field */
@@ -1525,6 +1534,7 @@ int rtp_changed_rtp_dynamic(const struct c_context *context,
 		{
 			rohc_comp_debug(context, "RTP Payload Type (PT) field did not "
 			                "change but changed in the last few packets\n");
+			rtp_context->tmp.rtp_pt_changed = 0;
 		}
 
 		fields++;

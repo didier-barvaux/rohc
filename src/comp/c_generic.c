@@ -2670,13 +2670,6 @@ int code_UO1_packet(struct c_context *const context,
 			            !rtp_context->tmp.is_marker_bit_set, error,
 			            "UO-1-ID packet without extension support does not "
 			            "contain room for the RTP Marker (M) flag\n");
-			/* TODO: when extensions are supported within the UO-1-ID packet,
-			 * please check whether the !rtp_context->tmp.is_padding_bit_set
-			 * condition could be removed or not */
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            !rtp_context->tmp.is_padding_bit_set, error,
-			            "UO-1-ID packet without extension support does not "
-			            "contain room for the RTP Padding (P) flag\n");
 			break;
 		case PACKET_UO_1_TS:
 			rohc_comp_debug(context, "code UO-1-TS packet (CID = %d)\n",
@@ -4585,12 +4578,14 @@ int code_EXT3_packet(const struct c_context *context,
 		/* rtp bit: set to 1 if one of the following conditions is fulfilled:
 		 *  - RTP PT changed in this packet,
 		 *  - RTP PT changed in the last few packets,
-		 *  - RTP Padding bit is set,
+		 *  - RTP Padding bit changed in this packet,
+		 *  - RTP Padding bit changed in the last few packets,
 		 *  - RTP TS and TS_STRIDE must be initialized
 		 */
 		rtp = (rtp_context->tmp.rtp_pt_changed ||
-		       rtp_context->rtp_pt_change_count < MAX_FO_COUNT ||
-		       rtp_context->tmp.is_padding_bit_set ||
+		       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
+		       rtp_context->tmp.padding_bit_changed ||
+		       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
@@ -5055,7 +5050,8 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 	/* part 1 */
 	rpt = (rtp_context->tmp.rtp_pt_changed ||
 	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
-	       rtp_context->tmp.is_padding_bit_set);
+	       rtp_context->tmp.padding_bit_changed ||
+	       rtp_context->rtp_padding_change_count < MAX_IR_COUNT);
 	tss = rtp_context->ts_sc.state == INIT_STRIDE;
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
@@ -5071,11 +5067,12 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 	if(rpt)
 	{
 		byte = 0;
-		byte |= ((!!rtp_context->tmp.is_padding_bit_set) & 0x01) << 7;
+		byte |= (rtp->padding & 0x01) << 7;
 		byte |= rtp->pt & 0x7f;
 		rohc_comp_debug(context, "part 2 = 0x%x\n", byte);
 		dest[counter] = byte;
 		counter++;
+		rtp_context->rtp_padding_change_count++;
 		rtp_context->rtp_pt_change_count++;
 	}
 
