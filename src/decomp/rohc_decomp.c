@@ -1541,11 +1541,11 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state)
 	switch(state)
 	{
 		case NO_CONTEXT:
-			return "NC";
+			return "No Context";
 		case STATIC_CONTEXT:
-			return "SC";
+			return "Static Context";
 		case FULL_CONTEXT:
-			return "FC";
+			return "Full Context";
 		default:
 			return "no description";
 	}
