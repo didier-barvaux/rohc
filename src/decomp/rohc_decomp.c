@@ -292,7 +292,7 @@ void context_free(struct d_context *context)
 	/* destroy the profile-specific data */
 	context->profile->free_decode_data(context->specific);
 
-	/* destroy the W-LSb windows */
+	/* destroy the W-LSB windows for statistics */
 	c_destroy_wlsb(context->total_16_uncompressed);
 	c_destroy_wlsb(context->total_16_compressed);
 	c_destroy_wlsb(context->header_16_uncompressed);
