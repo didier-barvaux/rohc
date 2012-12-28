@@ -205,6 +205,9 @@ struct d_context * context_create(struct rohc_decomp *decomp,
 	context->num_sent_feedbacks = 0;
 	context->num_decomp_failures = 0;
 	context->num_decomp_repairs = 0;
+	context->nr_lost_packets = 0;
+	context->nr_misordered_packets = 0;
+	context->is_duplicated = 0;
 
 	context->first_used = get_milliseconds();
 	context->latest_used = get_milliseconds();
