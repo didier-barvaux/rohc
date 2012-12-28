@@ -1176,6 +1176,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		else
 		{
 			cmp_packet = NULL;
+			cmp_header.caplen = 0;
 		}
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
@@ -1215,6 +1216,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		else
 		{
 			cmp_packet = NULL;
+			cmp_header.caplen = 0;
 		}
 
 		/* compress & decompress from compressor 2 to decompressor 2 */
