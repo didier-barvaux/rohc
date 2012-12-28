@@ -7767,7 +7767,11 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		if(!crc_ok)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CRC detected a decompression failure\n");
+			             "CRC detected a decompression failure for packet "
+			             "of type %s in state %s and mode %s\n",
+			             rohc_get_packet_descr(g_context->packet_type),
+			             rohc_decomp_get_state_descr(context->state),
+			             rohc_get_mode_descr(context->mode));
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 "uncompressed headers",
 			                 outer_ip_hdr, *uncomp_hdrs_len);
