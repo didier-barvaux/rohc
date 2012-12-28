@@ -270,12 +270,12 @@ error:
 
 
 /**
- * @brief Destroy one decompression context and the profile specific data associated
- *        with it.
+ * @brief Destroy one decompression context and the profile specific data
+ *        associated with it.
  *
  * @param context  The context to destroy
  */
-void context_free(struct d_context *context)
+void context_free(struct d_context *const context)
 {
 	assert(context != NULL);
 	assert(context->decompressor != NULL);

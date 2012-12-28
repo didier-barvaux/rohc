@@ -589,7 +589,7 @@ quit:
  *
  * @param context The compression context
  */
-void d_generic_destroy(void *context)
+void d_generic_destroy(void *const context)
 {
 	struct d_generic_context *g_context;
 	int i;
@@ -638,7 +638,7 @@ void d_generic_destroy(void *context)
 	}
 
 	/* destroy generic context itself */
-	zfree(g_context);
+	free(g_context);
 }
 
 

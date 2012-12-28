@@ -284,10 +284,10 @@ struct d_profile
 
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        decompression context
-	void (*free_decode_data)(void *);
+	void (*free_decode_data)(void *const context);
 
 	/// The handler used to retrieve the Sequence Number (SN)
-	int (*get_sn)(struct d_context *context);
+	int (*get_sn)(struct d_context *const context);
 };
 
 
@@ -315,7 +315,8 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid);
 struct d_context * context_create(struct rohc_decomp *decomp,
                                   int with_cid,
                                   struct d_profile *profile);
-void context_free(struct d_context *context);
+void context_free(struct d_context *const context)
+	__attribute__((nonnull(1)));
 
 
 /*

@@ -474,7 +474,8 @@ void * d_generic_create(const struct d_context *const context,
                         const int profile_id)
 	__attribute__((nonnull(1, 2), warn_unused_result));
 
-void d_generic_destroy(void *context);
+void d_generic_destroy(void *const context)
+	__attribute__((nonnull(1)));
 
 int d_generic_decode(struct rohc_decomp *decomp,
                      struct d_context *context,

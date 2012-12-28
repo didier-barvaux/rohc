@@ -58,7 +58,8 @@ struct d_esp_context
  */
 
 static void * d_esp_create(const struct d_context *const context);
-static void d_esp_destroy(void *const context);
+static void d_esp_destroy(void *const context)
+	__attribute__((nonnull(1)));
 
 static int esp_parse_static_esp(const struct d_context *const context,
                                 const unsigned char *packet,
