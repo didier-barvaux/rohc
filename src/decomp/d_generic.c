@@ -3510,6 +3510,9 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CID %u: failed to build uncompressed headers\n",
 		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
 		goto error;
 	}
@@ -4460,6 +4463,9 @@ static int decode_uo0(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CID %u: failed to build uncompressed headers\n",
 		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -5087,6 +5093,9 @@ static int decode_uo1(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CID %u: failed to build uncompressed headers\n",
 		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -6094,6 +6103,9 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CID %u: failed to build uncompressed headers\n",
 		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -6403,6 +6415,9 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CID %u: failed to build uncompressed headers\n",
 		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
 		goto error;
 	}
