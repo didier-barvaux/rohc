@@ -2206,7 +2206,8 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 	if(decomp->contexts != NULL)
 	{
 		memcpy(new_contexts, decomp->contexts,
-		       rohc_min(decomp->medium.max_cid, max_cid) + 1);
+		       (rohc_min(decomp->medium.max_cid, max_cid) + 1) *
+		       sizeof(struct d_context *));
 		zfree(decomp->contexts);
 	}
 	decomp->contexts = new_contexts;
