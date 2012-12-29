@@ -545,7 +545,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	}
 
 	/* print uncompressed bytes */
-	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
+	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	                 "uncompressed data, max 100 bytes",
 	                 uncomp_packet, rohc_min(uncomp_packet_len, 100));
 
@@ -2787,8 +2787,8 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	if(feedback_length > 0)
 	{
 		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
-		                 "feedback data added", buffer + index,
-		                 feedback_length);
+		                 ROHC_TRACE_DEBUG, "feedback data added",
+		                 buffer + index, feedback_length);
 	}
 
 	/* return the length of the feedback header/data,

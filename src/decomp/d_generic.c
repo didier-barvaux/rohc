@@ -3474,7 +3474,8 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CRC detected a transmission failure for IR packet\n");
 		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-		                 "IR headers", rohc_packet - add_cid_len,
+		                 ROHC_TRACE_WARNING, "IR headers",
+		                 rohc_packet - add_cid_len,
 		                 rohc_header_len + add_cid_len);
 		goto error_crc;
 	}
@@ -6366,7 +6367,8 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CRC detected a transmission failure for IR-DYN packet\n");
 		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-		                 "IR-DYN headers", rohc_packet - add_cid_len,
+		                 ROHC_TRACE_WARNING, "IR-DYN headers",
+		                 rohc_packet - add_cid_len,
 		                 rohc_header_len + add_cid_len);
 		goto error_crc;
 	}
@@ -7784,7 +7786,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 			             rohc_decomp_get_state_descr(context->state),
 			             rohc_get_mode_descr(context->mode));
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			                 "uncompressed headers",
+			                 ROHC_TRACE_WARNING, "uncompressed headers",
 			                 outer_ip_hdr, *uncomp_hdrs_len);
 			goto error_crc;
 		}

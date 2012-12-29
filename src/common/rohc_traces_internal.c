@@ -33,12 +33,14 @@
  *
  * @param trace_cb      The function to log traces
  * @param trace_entity  The entity that emits the traces
+ * @param trace_level   The priority level for the trace
  * @param descr         The description of the packet to dump
  * @param packet        The packet to dump
  * @param length        The length (in bytes) of the packet to dump
  */
 void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
                       const rohc_trace_entity_t trace_entity,
+                      const rohc_trace_level_t trace_level,
                       const char *const descr,
                       const unsigned char *const packet,
                       const size_t length)
@@ -55,8 +57,8 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 	assert(packet != NULL);
 	assert(length > 0);
 
-	__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-	             ROHC_PROFILE_GENERAL, "%s (%zd bytes):\n", descr, length);
+	__rohc_print(trace_cb, trace_level, trace_entity, ROHC_PROFILE_GENERAL,
+	             "%s (%zd bytes):\n", descr, length);
 	line_index = 0;
 	for(i = 0; i < length; i++)
 	{
@@ -64,7 +66,7 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 		{
 			assert(line_index <= line_max);
 			line[line_index] = '\0';
-			__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
+			__rohc_print(trace_cb, trace_level, trace_entity,
 			             ROHC_PROFILE_GENERAL, "%s\n", line);
 			line_index = 0;
 		}
@@ -84,8 +86,8 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 	{
 		assert(line_index <= line_max);
 		line[line_index] = '\0';
-		__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-		             ROHC_PROFILE_GENERAL, "%s\n", line);
+		__rohc_print(trace_cb, trace_level, trace_entity, ROHC_PROFILE_GENERAL,
+		             "%s\n", line);
 	}
 }
 

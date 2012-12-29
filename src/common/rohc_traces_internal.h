@@ -95,10 +95,11 @@
 
 void ROHC_EXPORT rohc_dump_packet(const rohc_trace_callback_t trace_cb,
                                   const rohc_trace_entity_t trace_entity,
+                                  const rohc_trace_level_t trace_level,
                                   const char *const descr,
                                   const unsigned char *const packet,
                                   const size_t length)
-	__attribute__((nonnull(3, 4)));
+	__attribute__((nonnull(4, 5)));
 
 
 #endif

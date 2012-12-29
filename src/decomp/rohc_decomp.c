@@ -478,7 +478,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 
 	/* print compressed bytes */
 	rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-	                 "compressed data, max 100 bytes",
+	                 ROHC_TRACE_DEBUG, "compressed data, max 100 bytes",
 	                 ibuf, rohc_min(isize, 100));
 
 	/* decode ROHC header */
