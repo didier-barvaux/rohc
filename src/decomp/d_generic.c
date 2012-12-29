@@ -95,11 +95,11 @@
 			typeof(field) _mask = (1 << ((_max) - (_bits_nr))) - 1; \
 			if((field & _mask) != field) \
 			{ \
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
-				             "too many bits for " #field_descr ": %zd bits " \
-				             "found in %s, and %zd bits already found before " \
-				             "for a %zd-bit field\n", (_bits_nr), \
-				             rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
+				          "too many bits for " #field_descr ": %zd bits " \
+				          "found in %s, and %zd bits already found before " \
+				          "for a %zd-bit field\n", (_bits_nr), \
+				          rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
 			} \
 			field &= _mask; \
 			/* make room and clear that room for new LSB */ \
@@ -5702,8 +5702,9 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 		if(ext_size == -2)
 		{
 			assert(ext_type == PACKET_EXT_3);
-			rohc_decomp_debug(context, "packet needs to be reparsed because RND "
-			                  "changed in extension 3\n");
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet needs to be reparsed because RND changed "
+			          "in extension 3\n");
 			goto reparse;
 		}
 		else if(ext_size < 0)
@@ -5946,8 +5947,9 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		}
 
 		/* reparsing needed */
-		rohc_decomp_debug(context, "packet needs to be reparsed with different "
-		                  "assumptions for packet type\n");
+		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		          "packet needs to be reparsed with different assumptions "
+		          "for packet type\n");
 #if RTP_BIT_TYPE
 		assert(0);
 #else
@@ -5957,26 +5959,30 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		{
 			if(GET_BIT_7(rohc_packet + 1 + large_cid_len) == 0)
 			{
-				rohc_decomp_debug(context, "change for packet UOR-2-ID (T = 0)\n");
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				          "change for packet UOR-2-ID (T = 0)\n");
 				g_context->packet_type = PACKET_UOR_2_ID;
 			}
 			else
 			{
-				rohc_decomp_debug(context, "change for packet UOR-2-TS (T = 1)\n");
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				          "change for packet UOR-2-TS (T = 1)\n");
 				g_context->packet_type = PACKET_UOR_2_TS;
 			}
 		}
 		else if(g_context->packet_type == PACKET_UOR_2_ID ||
 		        g_context->packet_type == PACKET_UOR_2_TS)
 		{
-			rohc_decomp_debug(context, "change for packet UOR-2-RTP\n");
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "change for packet UOR-2-RTP\n");
 			g_context->packet_type = PACKET_UOR_2_RTP;
 		}
 		else
 		{
-			rohc_decomp_debug(context, "only UOR-2-RTP, UOR-2-ID, and UOR-2-TS "
-			                  "packets may require to be reparsed, packet type "
-			                  "%d should not\n", g_context->packet_type);
+			rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			           "only UOR-2-RTP, UOR-2-ID, and UOR-2-TS packets may "
+			           "require to be reparsed, packet type %d should not\n",
+			           g_context->packet_type);
 			assert(0);
 			goto error;
 		}
