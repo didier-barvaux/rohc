@@ -3507,7 +3507,8 @@ static int decode_ir(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
 		goto error;
 	}
@@ -4456,7 +4457,8 @@ static int decode_uo0(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -5082,7 +5084,8 @@ static int decode_uo1(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -6088,7 +6091,8 @@ static int decode_uor2(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -6395,7 +6399,8 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
 		goto error;
 	}

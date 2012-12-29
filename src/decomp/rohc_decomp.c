@@ -161,17 +161,18 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid)
  * @brief Create one new decompression context with profile specific data.
  *
  * @param decomp   The ROHC decompressor
- * @param with_cid The CID of the new context (not implemented)
+ * @param cid      The CID of the new context
  * @param profile  The profile to be assigned with the new context
  * @return         The new context if successful, NULL otherwise
  */
 struct d_context * context_create(struct rohc_decomp *decomp,
-                                  int with_cid,
+                                  const unsigned int cid,
                                   struct d_profile *profile)
 {
 	struct d_context *context;
 
 	assert(decomp != NULL);
+	assert(cid <= ROHC_LARGE_CID_MAX);
 	assert(profile != NULL);
 
 	/* allocate memory for the decompression context */
@@ -182,6 +183,9 @@ struct d_context * context_create(struct rohc_decomp *decomp,
 		             "cannot allocate memory for the contexts\n");
 		goto error;
 	}
+
+	/* record the CID */
+	context->cid = cid;
 
 	/* associate the decompressor with the context */
 	context->decompressor = decomp;

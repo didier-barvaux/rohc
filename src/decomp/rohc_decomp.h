@@ -190,6 +190,9 @@ struct rohc_decomp
  */
 struct d_context
 {
+	/** The Context IDentifier (CID) */
+	unsigned int cid;
+
 	/// The associated decompressor
 	struct rohc_decomp *decompressor;
 
@@ -313,7 +316,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
 
 struct d_context * find_context(struct rohc_decomp *decomp, int cid);
 struct d_context * context_create(struct rohc_decomp *decomp,
-                                  int with_cid,
+                                  const unsigned int cid,
                                   struct d_profile *profile);
 void context_free(struct d_context *const context)
 	__attribute__((nonnull(1)));
