@@ -362,13 +362,13 @@ if test "x$enable_rohc_tests" = "xyes" || \
 
 	# check for libpcap presence
 	LPCAP=""
-	AC_CHECK_LIB([$pcap_lib_name], pcap_open_offline, [ ], LPCAP="no")
-	AC_CHECK_LIB([$pcap_lib_name], pcap_datalink, [ ], LPCAP="no")
-	AC_CHECK_LIB([$pcap_lib_name], pcap_next, [ ], LPCAP="no")
-	AC_CHECK_LIB([$pcap_lib_name], pcap_close, [ ], LPCAP="no")
-	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_open, [ ], LPCAP="no")
-	AC_CHECK_LIB([$pcap_lib_name], pcap_dump, [ ], LPCAP="no")
-	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_close, [ ], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_open_offline, [unused=1], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_datalink, [unused=1], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_next, [unused=1], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_close, [unused=1], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_open, [unused=1], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_dump, [unused=1], LPCAP="no")
+	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_close, [unused=1], LPCAP="no")
 
 	# abort if libpcap is not found
 	if test "x$LPCAP" = "xno"; then
