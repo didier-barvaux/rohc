@@ -687,7 +687,7 @@ static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 	{
 		if(decomp->based_table[i].data != NULL)
 		{
-			free(decomp->based_table[i].data);
+			zfree(decomp->based_table[i].data);
 		}
 	}
 }
@@ -911,6 +911,9 @@ static bool create_ip6_item(const unsigned char *data,
 	return true;
 
 error:
+	decomp->based_table[index].data = NULL;
+	decomp->based_table[index].length = 0;
+	decomp->trans_table[index].known = 0;
 	return false;
 }
 
@@ -1349,7 +1352,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				{
 					list_empty(decomp->list_table[i]);
 				}
-				if(decomp->list_table[i]->gen_id == ref_id)
+				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
 					decomp->ref_list = decomp->list_table[i];
 				}
@@ -2026,7 +2029,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 				{
 					list_empty(decomp->list_table[i]);
 				}
-				if(decomp->list_table[i]->gen_id == ref_id)
+				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
 					decomp->ref_list = decomp->list_table[i];
 				}
@@ -2341,7 +2344,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				{
 					list_empty(decomp->list_table[i]);
 				}
-				if(decomp->list_table[i]->gen_id == ref_id)
+				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
 					decomp->ref_list = decomp->list_table[i];
 				}

@@ -69,8 +69,8 @@ bool ROHC_EXPORT rohc_crc_init_table(unsigned char *const table,
 
 unsigned int ROHC_EXPORT crc_calculate(const rohc_crc_type_t crc_type,
                                        const unsigned char *const data,
-                                       const int length,
-                                       const unsigned int init_val,
+                                       const size_t length,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(2, 5)));
 

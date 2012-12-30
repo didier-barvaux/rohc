@@ -24,6 +24,7 @@
 #include "comp_list.h"
 
 #include <stdlib.h>
+#include <assert.h>
 
 
 /**
@@ -409,6 +410,8 @@ size_t list_get_size(const struct c_list *const list)
 {
 	struct list_elt *curr_elt;
 	size_t size = 0;
+
+	assert(list != NULL);
 
 	for(curr_elt = list->first_elt; curr_elt != NULL; curr_elt = curr_elt->next_elt)
 	{

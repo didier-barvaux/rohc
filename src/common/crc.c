@@ -143,28 +143,28 @@ static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
 
 
 static inline unsigned char crc_calc_8(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 4)));
 static inline unsigned char crc_calc_7(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char const *crc_table)
 	__attribute__((nonnull(1, 4)));
 static inline unsigned char crc_calc_6(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 4)));
 static inline unsigned char crc_calc_3(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 4)));
 static inline unsigned char crc_calc_2(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 4)));
 
@@ -277,8 +277,8 @@ error:
  */
 unsigned int crc_calculate(const rohc_crc_type_t crc_type,
                            const unsigned char *const data,
-                           const int length,
-                           const unsigned int init_val,
+                           const size_t length,
+                           const unsigned char init_val,
                            const unsigned char *const crc_table)
 {
 	unsigned int crc;
@@ -981,8 +981,8 @@ end:
  * @return           The CRC byte
  */
 static inline unsigned char crc_calc_8(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 {
 	int i;
@@ -1010,8 +1010,8 @@ static inline unsigned char crc_calc_8(const unsigned char *const buf,
  * @return           The CRC byte
  */
 static inline unsigned char crc_calc_7(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 {
 	int i;
@@ -1039,8 +1039,8 @@ static inline unsigned char crc_calc_7(const unsigned char *const buf,
  * @return           The CRC byte
  */
 static inline unsigned char crc_calc_6(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 {
 	int i;
@@ -1068,8 +1068,8 @@ static inline unsigned char crc_calc_6(const unsigned char *const buf,
  * @return           The CRC byte
  */
 static inline unsigned char crc_calc_3(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 {
 	int i;
@@ -1097,8 +1097,8 @@ static inline unsigned char crc_calc_3(const unsigned char *const buf,
  * @return           The CRC byte
  */
 static inline unsigned char crc_calc_2(const unsigned char *const buf,
-                                       const int size,
-                                       const unsigned int init_val,
+                                       const size_t size,
+                                       const unsigned char init_val,
                                        const unsigned char *const crc_table)
 {
 	int i;

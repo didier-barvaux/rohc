@@ -127,6 +127,8 @@ static unsigned char c_add_cid(const int cid)
 {
 	const uint8_t add_cid_type = 0xe0;
 
+	assert(cid >= 0 && cid <= ROHC_SMALL_CID_MAX);
+
 	return (add_cid_type | (cid & 0x0f));
 }
 
