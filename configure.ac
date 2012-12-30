@@ -29,9 +29,9 @@ AC_SUBST([ROHC_API_AGE], 1)
 
 # Define a package homepage in a way compatible with autoconf < 2.64
 m4_ifndef([AC_PACKAGE_URL],
-          [AC_DEFINE([PACKAGE_URL], ["http://rohc-lib.org/";],
+          [AC_DEFINE([PACKAGE_URL], ["http://rohc-lib.org/"],
                      [Define to home page for this package])
-           AC_SUBST([PACKAGE_URL], ["http://rohc-lib.org/";])])
+           AC_SUBST([PACKAGE_URL], ["http://rohc-lib.org/"])])
 
 # Init automake with:
 #  - silent rules enabled to make 'make' less verbose, but do not call the
