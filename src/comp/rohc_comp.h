@@ -302,12 +302,12 @@ bool ROHC_EXPORT rohc_feedback_unlock(struct rohc_comp *const comp)
 	__attribute__((nonnull(1), warn_unused_result));
 
 /* Configure robustness to packet loss/damage */
-bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
-                                     const size_t width)
+bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
+                                                 const size_t width)
 	__attribute__((nonnull(1), warn_unused_result));
-bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
-                                      const size_t ir_timeout,
-                                      const size_t fo_timeout)
+bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
+																  const size_t ir_timeout,
+																  const size_t fo_timeout)
 	__attribute__((nonnull(1), warn_unused_result));
 
 
