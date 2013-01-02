@@ -150,7 +150,7 @@ static inline unsigned char crc_calc_8(const unsigned char *const buf,
 static inline unsigned char crc_calc_7(const unsigned char *const buf,
                                        const size_t size,
                                        const unsigned char init_val,
-                                       const unsigned char const *crc_table)
+                                       const unsigned char *const crc_table)
 	__attribute__((nonnull(1, 4)));
 static inline unsigned char crc_calc_6(const unsigned char *const buf,
                                        const size_t size,

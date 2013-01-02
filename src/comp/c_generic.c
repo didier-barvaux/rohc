@@ -2117,7 +2117,7 @@ int code_ipv6_static_part(const struct c_context *context,
  */
 int code_generic_dynamic_part(const struct c_context *context,
                               struct ip_header_info *const header_info,
-                              const const struct ip_packet *ip,
+                              const struct ip_packet *ip,
                               unsigned char *const dest,
                               int counter)
 {

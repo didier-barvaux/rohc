@@ -447,9 +447,9 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
  * Prototypes of private helper functions
  */
 
-static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits);
-static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits);
-static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits const bits);
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits);
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits);
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits);
 
 
 /*
@@ -8852,7 +8852,7 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
  * @param bits  The bits extracted from packet
  * @return      true if IPv4, false if IPv6
  */
-static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits)
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
 {
 	return (bits.version == IPV4);
 }
@@ -8864,7 +8864,7 @@ static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4 and random, false otherwise
  */
-static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits)
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
 {
 	return (is_ipv4_pkt(bits) && bits.rnd == 1);
 }
@@ -8876,7 +8876,7 @@ static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4 and non-random, false otherwise
  */
-static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits const bits)
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
 {
 	return (is_ipv4_pkt(bits) && bits.rnd == 0);
 }

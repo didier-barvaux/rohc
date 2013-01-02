@@ -107,7 +107,7 @@ static void uncompressed_decide_state(struct c_context *const context);
 static void uncompressed_periodic_down_transition(struct c_context *const context);
 static void uncompressed_change_mode(struct c_context *const context,
                                      const rohc_mode new_mode);
-static void uncompressed_change_state(struct c_context *const const,
+static void uncompressed_change_state(struct c_context *const context,
                                       const rohc_c_state new_state);
 
 
