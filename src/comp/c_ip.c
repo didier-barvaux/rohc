@@ -30,6 +30,21 @@
 #include <assert.h>
 
 
+/*
+ * Prototypes of private functions
+ */
+
+static int rohc_ip_ctxt_create(struct c_context *const context,
+                               const struct ip_packet *ip);
+
+static int c_ip_check_context(const struct c_context *context,
+                              const struct ip_packet *ip);
+
+
+/*
+ * Definitions of public functions
+ */
+
 /**
  * @brief Create a new context and initialize it thanks to the given IP packet.
  *
@@ -122,8 +137,8 @@ error:
  *                0 if it does not belong to the context and
  *                -1 if the profile cannot compress it or an error occurs
  */
-int c_ip_check_context(const struct c_context *context,
-                       const struct ip_packet *ip)
+static int c_ip_check_context(const struct c_context *context,
+                              const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct ip_header_info *ip_flags;

@@ -27,11 +27,8 @@
 #include "c_generic.h"
 
 /*
- * Function prototypes.
+ * Public function prototypes.
  */
-
-int c_ip_check_context(const struct c_context *context,
-                       const struct ip_packet *ip);
 
 rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context);
 rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context);
