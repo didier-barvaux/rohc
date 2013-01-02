@@ -2653,6 +2653,8 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 
 	if(comp->num_contexts > 0)
 	{
+		assert(comp->contexts != NULL);
+
 		for(i = 0; i < comp->num_contexts; i++)
 		{
 			if(comp->contexts[i].used && comp->contexts[i].profile != 0)
@@ -2669,6 +2671,7 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 			comp->num_contexts_used--;
 		}
 
+		comp->num_contexts = 0;
 		zfree(comp->contexts);
 	}
 }

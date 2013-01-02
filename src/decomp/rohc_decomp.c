@@ -294,7 +294,7 @@ void context_free(struct d_context *const context)
 	assert(context->header_16_compressed != NULL);
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "free contexts\n");
+	           "free context with CID %u\n", context->cid);
 
 	/* destroy the profile-specific data */
 	context->profile->free_decode_data(context->specific);
@@ -693,7 +693,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet too small (len = %d, at least 1 byte "
 		             "required)\n", isize);
-		return ROHC_ERROR_NO_CONTEXT;
+		goto error;
 	}
 
 	/* decode feedback if present */
@@ -812,7 +812,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "unexpected CID %d received: MAX_CID was set to %d\n",
 		             ddata->cid, decomp->medium.max_cid);
-		return ROHC_ERROR_NO_CONTEXT;
+		goto error;
 	}
 
 	/* skip add-CID if present */
@@ -856,7 +856,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to find profile identified by ID 0x%04x\n",
 			             profile_id);
-			return ROHC_ERROR_NO_CONTEXT;
+			goto error;
 		}
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "profile with ID 0x%04x found in IR packet\n", profile_id);
@@ -887,7 +887,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				             "failed to create a new context with CID %d and "
 				             "profile 0x%04x\n", ddata->cid, profile_id);
-				return ROHC_ERROR_NO_CONTEXT;
+				goto error;
 			}
 		}
 
@@ -943,58 +943,56 @@ int d_decode_header(struct rohc_decomp *decomp,
 			             "context with CID %d either does not exist "
 			             "or no profile is associated with the context\n",
 			             ddata->cid);
-			return ROHC_ERROR_NO_CONTEXT;
+			goto error;
 		}
-		else
+
+		/* context is valid */
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "context with CID %d found\n", ddata->cid);
+		ddata->active->latest_used = get_milliseconds();
+		decomp->last_context = ddata->active;
+
+		/* is the ROHC packet an IR-DYN packet? */
+		if(d_is_irdyn(walk, isize))
 		{
-			/* context is valid */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "context with CID %d found\n", ddata->cid);
-			ddata->active->latest_used = get_milliseconds();
-			decomp->last_context = ddata->active;
+			           "ROHC packet is an IR-DYN packet\n");
+			ddata->active->num_recv_ir_dyn++;
 
-			/* is the ROHC packet an IR-DYN packet? */
-			if(d_is_irdyn(walk, isize))
+			/* we need at least 1 byte after the large CID bytes for profile ID */
+			if(isize <= (ddata->large_cid_size + 1))
 			{
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "ROHC packet is an IR-DYN packet\n");
-				ddata->active->num_recv_ir_dyn++;
-
-				/* we need at least 1 byte after the large CID bytes for profile ID */
-				if(isize <= (ddata->large_cid_size + 1))
-				{
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-					             "ROHC packet too small to read the profile ID "
-					             "byte (len = %d)\n", isize);
-					goto error;
-				}
-
-				/* find the profile specified in the ROHC packet */
-				profile = find_profile(walk[ddata->large_cid_size + 1]);
-
-				/* if IR-DYN changes profile, make the decompressor
-				 * transit to the NO_CONTEXT state */
-				if(profile != ddata->active->profile)
-				{
-					decomp->curval = decomp->maxval;
-					rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-					           "IR-DYN changed profile, sending S-NACK\n");
-					return ROHC_ERROR_NO_CONTEXT;
-				}
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "ROHC packet too small to read the profile ID "
+				             "byte (len = %d)\n", isize);
+				goto error;
 			}
 
-			/* decode the IR-DYN or UO* packet thanks to the
-			 * profile-specific routines */
-			return ddata->active->profile->decode(decomp, ddata->active,
-			                                      walk, isize,
-		                                         ddata->addcidUsed,
-		                                         ddata->large_cid_size,
-		                                         obuf);
+			/* find the profile specified in the ROHC packet */
+			profile = find_profile(walk[ddata->large_cid_size + 1]);
+
+			/* if IR-DYN changes profile, make the decompressor
+			 * transit to the NO_CONTEXT state */
+			if(profile != ddata->active->profile)
+			{
+				decomp->curval = decomp->maxval;
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				           "IR-DYN changed profile, sending S-NACK\n");
+				goto error;
+			}
 		}
 
+		/* decode the IR-DYN or UO* packet thanks to the
+		 * profile-specific routines */
+		return ddata->active->profile->decode(decomp, ddata->active,
+		                                      walk, isize,
+	                                         ddata->addcidUsed,
+	                                         ddata->large_cid_size,
+	                                         obuf);
 	} /* end of 'the ROHC packet is not an IR packet' */
 
 error:
+	decomp->last_context = NULL;
 	return ROHC_ERROR_NO_CONTEXT;
 }
 
