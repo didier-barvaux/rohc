@@ -134,7 +134,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 
 	if(lsb->max_len == 16)
 	{
-		uint16_t decoded16;
+		uint16_t decoded16 = 0; /* initialized for GCC 4.0.x */
 		is_success = rohc_lsb_decode16(lsb, m, k, &decoded16);
 		if(is_success)
 		{
