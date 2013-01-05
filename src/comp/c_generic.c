@@ -6703,13 +6703,38 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	index_table = comp->get_index_table(ip, i);
 	if(index_table == -1)
 	{
-		/* there is no list of IPv6 extension headers */
+		/* there is no list of IPv6 extension headers in the current packet */
+		rc_list_debug(comp, "there is no IPv6 extension in packet\n");
+		if(comp->is_present)
+		{
+			/* there was a list of IPv6 extension headers in previous packet */
+			rc_list_debug(comp, "no more extension, behaviour changed\n");
+			comp->counter = 0;
+		}
 		comp->is_present = false;
+
+		/* send the list compressed until it was repeated at least L times */
+		if(comp->counter < L)
+		{
+			rc_list_debug(comp, "list with gen_id %d was not sent at least "
+			              "L = %d times (%d times), send it compressed\n",
+			              comp->curr_list->gen_id, L, comp->counter);
+			comp->changed = true;
+		}
+
+		/* list is sent another time */
+		comp->counter++;
 	}
 	else
 	{
 		/* there is one extension or more */
 		rc_list_debug(comp, "there is at least one IPv6 extension in packet\n");
+		if(!comp->is_present)
+		{
+			/* there was no list of IPv6 extension headers in previous packet */
+			rc_list_debug(comp, "at least one extension, behaviour changed\n");
+			comp->counter = 0;
+		}
 		comp->is_present = true;
 
 		/* add new extensions and update modified extensions in current list */
@@ -6749,7 +6774,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 		if(comp->counter == 0)
 		{
 			comp->curr_list->gen_id++;
-			rc_list_debug(comp, "list changed, use new gen_id %d\n",
+			rc_list_debug(comp, "current list changed, use new gen_id %d\n",
 			              comp->curr_list->gen_id);
 		}
 

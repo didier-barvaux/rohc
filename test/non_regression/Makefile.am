@@ -73,6 +73,7 @@ TESTS_SMALLCID = \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_smallcid.sh \
 	test_non_regression_ipv6ext_icmp_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_smallcid.sh \
 	test_non_regression_ipv6ext_ipv6ext_icmp_smallcid.sh \
 	test_non_regression_ipv6ext_udp_rtp_audio-vlc_smallcid.sh \
 	test_non_regression_ipv6ext_udp_smallcid.sh \
@@ -157,6 +158,7 @@ TESTS_LARGECID = \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_largecid.sh \
 	test_non_regression_ipv6ext_icmp_largecid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_largecid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_largecid.sh \
 	test_non_regression_ipv6ext_ipv6ext_icmp_largecid.sh \
 	test_non_regression_ipv6ext_udp_rtp_audio-vlc_largecid.sh \
 	test_non_regression_ipv6ext_udp_largecid.sh \
