@@ -685,9 +685,9 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	if(version != IPV4 && version != IPV6)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet contains a bad version (%d): "
-		           "only IPv%d and IPv%d are supported\n",
-		           (outer_ip->data[0] >> 4) & 0x0f, IPV4, IPV6);
+		           "the outer IP packet (type = %d) is not supported by the "
+		           "profile: only IPv%d and IPv%d are supported\n",
+		           version, IPV4, IPV6);
 		goto bad_profile;
 	}
 
