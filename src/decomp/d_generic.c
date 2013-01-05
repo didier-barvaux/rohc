@@ -982,6 +982,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -1945,6 +1946,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -2208,6 +2210,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -3101,6 +3104,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -4407,11 +4411,6 @@ static int decode_uo0(struct rohc_decomp *decomp,
 	int build_ret;
 
 
-	/* TODO: check why ref_ok is set to 1 here */
-	g_context->list_decomp1->ref_ok = 1;
-	g_context->list_decomp2->ref_ok = 1;
-
-
 	/* A. Parsing of ROHC header
 	 *
 	 * Let's parse fields 2 to 13.
@@ -5036,10 +5035,6 @@ static int decode_uo1(struct rohc_decomp *decomp,
 		assert(0);
 		goto error;
 	}
-
-	/* TODO: check why ref_ok is set to 1 here */
-	g_context->list_decomp1->ref_ok = 1;
-	g_context->list_decomp2->ref_ok = 1;
 
 
 	/* A. Parsing of ROHC base header
@@ -5933,10 +5928,6 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		assert(0);
 		goto error;
 	}
-
-	/* TODO: check why ref_ok is set to 1 here */
-	g_context->list_decomp1->ref_ok = 1;
-	g_context->list_decomp2->ref_ok = 1;
 
 
 	/* A. Parsing of ROHC base header, extension header and tail of header
@@ -7943,7 +7934,7 @@ static unsigned int build_uncomp_ipv6(const struct d_context *const context,
 		{
 			list = list_decomp->list_table[list_decomp->counter_list];
 		}
-		if(list != NULL && list_get_size(list) > 0)
+		if(list_get_size(list) > 0)
 		{
 			ip->ip6_nxt = (uint8_t) list->first_elt->item->type;
 			rohc_decomp_debug(context, "set Next Header in IPv6 base header to "
