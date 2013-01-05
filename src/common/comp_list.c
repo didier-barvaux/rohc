@@ -60,6 +60,8 @@ void list_destroy(struct c_list *list)
 	struct list_elt *curr_elt;
 	struct list_elt *next_elt;
 
+	assert(list != NULL);
+
 	for(curr_elt = list->first_elt; curr_elt != NULL; curr_elt = next_elt)
 	{
 		next_elt = curr_elt->next_elt;
@@ -83,6 +85,8 @@ int list_add_at_beginning(struct c_list *list,
                           int index)
 {
 	struct list_elt *elt;
+
+	assert(list != NULL);
 
 	elt = malloc(sizeof(struct list_elt));
 	if(elt == NULL)
@@ -127,6 +131,8 @@ int list_add_at_end(struct c_list *list,
 	struct list_elt *elt;
 	int result = 0;
 	struct list_elt *curr_elt;
+
+	assert(list != NULL);
 
 	if(list->first_elt == NULL)
 	{
@@ -176,8 +182,11 @@ int list_add_at_index(struct c_list *list,
                       int index_table)
 {
 	int i;
-	int size_l = list_get_size(list);
+	int size_l;
 
+	assert(list != NULL);
+
+	size_l = list_get_size(list);
 	if(index > size_l)
 	{
 		goto error;
@@ -253,18 +262,26 @@ error:
  */
 struct list_elt * list_get_elt_by_index(struct c_list *list, int index)
 {
-	struct list_elt *curr_elt = list->first_elt;
-	int i = 0;
+	struct list_elt *curr_elt;
+	int i;
+
+	assert(list != NULL);
+
 	if(index >= list_get_size(list))
 	{
 		goto error;
 	}
+
+	i = 0;
+	curr_elt = list->first_elt;
 	while(i < index)
 	{
 		curr_elt = curr_elt->next_elt;
 		i++;
 	}
+
 	return curr_elt;
+
 error:
 	return NULL;
 }
@@ -280,7 +297,9 @@ error:
 int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item)
 {
 	struct list_elt *curr_elt;
-	int i = 0;
+	int i;
+
+	assert(list != NULL);
 
 	if(list->first_elt == NULL)
 	{
@@ -288,6 +307,7 @@ int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item)
 	}
 
 	curr_elt = list->first_elt;
+	i = 0;
 	while(curr_elt != NULL && curr_elt->item != item)
 	{
 		curr_elt = curr_elt->next_elt;
@@ -300,6 +320,7 @@ int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item)
 	}
 
 	return i;
+
 end:
 	return -1;
 }
@@ -315,32 +336,43 @@ void list_remove(struct c_list *list, struct rohc_list_item *item)
 {
 	struct list_elt *curr_elt;
 
-	if(list->first_elt != NULL)
+	assert(list != NULL);
+
+	if(list->first_elt == NULL)
 	{
-		curr_elt = list->first_elt;
-		while(curr_elt != NULL && curr_elt->item != item)
-		{
-			curr_elt = curr_elt->next_elt;
-		}
-		if(curr_elt != NULL)
-		{
-			// current element is not first element
-			if(curr_elt->prev_elt != NULL)
-			{
-				curr_elt->prev_elt->next_elt = curr_elt->next_elt;
-			}
-			else
-			{
-				list->first_elt = curr_elt->next_elt;
-			}
-			// current element is not last element
-			if(curr_elt->next_elt != NULL)
-			{
-				curr_elt->next_elt->prev_elt = curr_elt->prev_elt;
-			}
-		}
-		free(curr_elt);
+		/* empty list, element to remove not found */
+		return;
 	}
+
+	curr_elt = list->first_elt;
+	while(curr_elt != NULL && curr_elt->item != item)
+	{
+		curr_elt = curr_elt->next_elt;
+	}
+	if(curr_elt == NULL)
+	{
+		/* element to remove not found */
+		return;
+	}
+
+	/* element to remove found, update previous element if any */
+	if(curr_elt->prev_elt != NULL)
+	{
+		curr_elt->prev_elt->next_elt = curr_elt->next_elt;
+	}
+	else
+	{
+		list->first_elt = curr_elt->next_elt;
+	}
+
+	/* update next element if any */
+	if(curr_elt->next_elt != NULL)
+	{
+		curr_elt->next_elt->prev_elt = curr_elt->prev_elt;
+	}
+
+	/* destroy element to remove*/
+	free(curr_elt);
 }
 
 
@@ -352,6 +384,9 @@ void list_remove(struct c_list *list, struct rohc_list_item *item)
 void list_empty(struct c_list *list)
 {
 	struct list_elt *curr_elt;
+
+	assert(list != NULL);
+
 	if(list->first_elt != NULL)
 	{
 		curr_elt = list->first_elt;
@@ -378,6 +413,8 @@ void list_empty(struct c_list *list)
 int list_type_is_present(struct c_list *list, struct rohc_list_item *item)
 {
 	struct list_elt *curr_elt;
+
+	assert(list != NULL);
 
 	if(list->first_elt == NULL)
 	{
