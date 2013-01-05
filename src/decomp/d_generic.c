@@ -672,7 +672,7 @@ static void ip6_d_init_table(struct list_decomp *decomp)
 	decomp->based_table[3].length = 0;
 	decomp->based_table[3].data = NULL;
 	decomp->trans_table[3].known = 0;
-	decomp->trans_table[3].item = &decomp->based_table[4];
+	decomp->trans_table[3].item = &decomp->based_table[3];
 }
 
 
