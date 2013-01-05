@@ -1943,10 +1943,10 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
-			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -2207,10 +2207,10 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
-			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -3101,10 +3101,10 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
-			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
