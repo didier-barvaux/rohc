@@ -125,8 +125,9 @@ error:
  *  - IP packets must not be fragmented
  *  - the source and destination addresses of the two IP headers must match the
  *    ones in the context
- *  - IPv6 only: the Flow Label of the two IP headers must match the ones the
- *    context
+ *  - IPv6 only: the Flow Label of the two IP headers must match the ones in
+ *    the context
+ *  - the transport protocol must match the one in the context
  *
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
