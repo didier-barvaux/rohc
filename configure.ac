@@ -399,20 +399,18 @@ if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 		exit 1
 	fi
 
-	# check for the valgrind binary and abort if it is not found
-	AC_CHECK_PROG(is_valgrind_found, valgrind, "yes", "no")
-	if test "x$is_valgrind_found" != "xyes" ; then
+	# check for grep and abort if it is not found
+	AC_PROG_GREP
+	if test "x$GREP" = "x" ; then
 		echo
-		echo "ERROR: valgrind binary not found"
+		echo "ERROR: no grep implementation found"
 		echo
-		echo "Valgrind is required in order to check for memory leaks during tests."
+		echo "grep is required in order to run tests within valgrind."
 		echo
-		echo "Either disable the feature with the --disable-rohc-tests-valgrind, "
-		echo "or install Valgrind to solve the problem. You may get Valgrind from "
-		echo "http://www.valgrind.org/ or use your package manager to install it on "
-		echo "your system."
+		echo "Please install one of the grep, or ggrep tool."
 		exit 1
 	fi
+	tests_environment="${tests_environment} GREP=$GREP"
 
 	# check for the xsltproc binary and abort if it is not found
 	AC_CHECK_PROG(is_xsltproc_found, xsltproc, "yes", "no")
@@ -431,18 +429,35 @@ if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 	fi
 	tests_environment="${tests_environment} USE_VALGRIND=yes"
 
-	# check for grep and abort if it is not found
-	AC_PROG_GREP
-	if test "x$GREP" = "x" ; then
+	# check for the valgrind binary and abort if it is not found
+	AC_CHECK_PROG(is_valgrind_found, valgrind, "yes", "no")
+	if test "x$is_valgrind_found" != "xyes" ; then
 		echo
-		echo "ERROR: no grep implementation found"
+		echo "ERROR: valgrind binary not found"
 		echo
-		echo "grep is required in order to run tests within valgrind."
+		echo "Valgrind is required in order to check for memory leaks during tests."
 		echo
-		echo "Please install one of the grep, or ggrep tool."
+		echo "Either disable the feature with the --disable-rohc-tests-valgrind, "
+		echo "or install Valgrind to solve the problem. You may get Valgrind from "
+		echo "http://www.valgrind.org/ or use your package manager to install it on "
+		echo "your system."
 		exit 1
 	fi
-	tests_environment="${tests_environment} GREP=$GREP"
+
+	# check whether --show-possibly-lost option is supported
+	AC_MSG_CHECKING([whether valgrind supports option --show-possibly-lost])
+	valgrind --help | $GREP -q -- '--show-possibly-lost'
+	if test $? -eq 0 ; then
+		valgrind_opt_show_possibly_lost=yes
+	else
+		valgrind_opt_show_possibly_lost=no
+	fi
+	AC_MSG_RESULT([$valgrind_opt_show_possibly_lost])
+	if test "x$valgrind_opt_show_possibly_lost" == "xyes" ; then
+		tests_environment="${tests_environment} VALGRIND_OPTS=\"--show-possibly-lost=yes\""
+	else
+		tests_environment="${tests_environment} VALGRIND_OPTS=\"\""
+	fi
 fi
 
 
