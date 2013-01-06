@@ -417,6 +417,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 
 		header_info->info.v6.ext_comp->counter = 0;
 		header_info->info.v6.ext_comp->changed = false;
+		header_info->info.v6.ext_comp->is_present = false;
 		ip6_c_init_table(header_info->info.v6.ext_comp);
 		header_info->info.v6.ext_comp->get_extension = get_ipv6_extension;
 		header_info->info.v6.ext_comp->create_item = create_ipv6_item;
@@ -6462,7 +6463,7 @@ static void ip6_c_init_table(struct list_comp *const comp)
 	comp->based_table[3].length = 0;
 	comp->based_table[3].data = NULL;
 	comp->trans_table[3].known = 0;
-	comp->trans_table[3].item = &comp->based_table[4];
+	comp->trans_table[3].item = &comp->based_table[3];
 	comp->trans_table[3].counter = 0;
 	/* reset other headers */
 	for(i = 4; i < MAX_ITEM; i++)
