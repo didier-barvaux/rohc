@@ -43,7 +43,7 @@ chmod +x ./configure
 ./configure \
 	--enable-rohc-debug \
 	--enable-fail-on-warning \
-	--enable-fortify_sources \
+	--enable-fortify-sources \
 	--enable-rohc-apps \
 	--enable-rohc-tests \
 	--enable-rohc-stats \

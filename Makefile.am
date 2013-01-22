@@ -49,6 +49,7 @@ pkgconfig_DATA = rohc.pc
 # configure options for distcheck
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \
+	--enable-fortify-sources \
 	--enable-rohc-tests \
 	--disable-doc \
 	--disable-examples
