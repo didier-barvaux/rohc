@@ -363,9 +363,6 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
-	/* reset UDP checksum for UDP streams */
-	((struct udphdr *) udp_header)->check = 0;
-
 	return true;
 
 bad_profile:
