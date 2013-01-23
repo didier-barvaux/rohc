@@ -1011,7 +1011,6 @@ error:
  */
 bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 {
-// TODO: check for power of 2
 	int i;
 
 	if(comp == NULL)
