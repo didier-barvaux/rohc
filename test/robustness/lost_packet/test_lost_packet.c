@@ -269,11 +269,12 @@ static int test_comp_and_decomp(const char *const filename,
 	link_layer_type = pcap_datalink(handle);
 	if(link_layer_type != DLT_EN10MB &&
 	   link_layer_type != DLT_LINUX_SLL &&
-	   link_layer_type != DLT_RAW)
+	   link_layer_type != DLT_RAW &&
+	   link_layer_type != DLT_NULL)
 	{
 		fprintf(stderr, "link layer type %d not supported in source dump "
-		        "(supported = %d, %d, %d)\n", link_layer_type,
-		        DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW);
+		        "(supported = %d, %d, %d, %d)\n", link_layer_type,
+		        DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
 		goto close_input;
 	}
 
@@ -282,6 +283,8 @@ static int test_comp_and_decomp(const char *const filename,
 		link_len = ETHER_HDR_LEN;
 	else if(link_layer_type == DLT_LINUX_SLL)
 		link_len = LINUX_COOKED_HDR_LEN;
+	else if(link_layer_type == DLT_NULL)
+		link_len = BSD_LOOPBACK_HDR_LEN;
 	else /* DLT_RAW */
 		link_len = 0;
 
@@ -455,7 +458,7 @@ static int test_comp_and_decomp(const char *const filename,
 		{
 			if(counter > last_packet_to_lose && counter <= last_packet_in_error)
 			{
-				fprintf(stderr, "\tunexpected successful to decompression\n");
+				fprintf(stderr, "\tunexpected successful decompression\n");
 				goto destroy_decomp;
 			}
 			else

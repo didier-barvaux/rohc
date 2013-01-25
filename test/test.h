@@ -32,6 +32,9 @@
 /// The length of the Linux Cooked Sockets header
 #define LINUX_COOKED_HDR_LEN  16
 
+/// The length of the BSD loopback encapsulation
+#define BSD_LOOPBACK_HDR_LEN  4
+
 /// The minimum Ethernet length (in bytes)
 #define ETHER_FRAME_MIN_LEN  60
 
