@@ -27,6 +27,7 @@ TESTS_ESP_SMALLCID = \
 	test_non_regression_ipv6_esp_smallcid.sh
 
 TESTS_SMALLCID = \
+	test_non_regression_malformed-too-short_smallcid.sh \
 	test_non_regression_unknown_smallcid.sh \
 	test_non_regression_ipvx_smallcid.sh \
 	test_non_regression_ipv4fragmented_smallcid.sh \
@@ -112,6 +113,7 @@ TESTS_ESP_LARGECID = \
 	test_non_regression_ipv6_esp_largecid.sh
 
 TESTS_LARGECID = \
+	test_non_regression_malformed-too-short_largecid.sh \
 	test_non_regression_unknown_largecid.sh \
 	test_non_regression_ipvx_largecid.sh \
 	test_non_regression_ipv4fragmented_largecid.sh \

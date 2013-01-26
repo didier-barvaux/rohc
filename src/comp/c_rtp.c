@@ -251,7 +251,11 @@ void c_rtp_destroy(struct c_context *const context)
  *      is 4 or 6
  *  \li if there are at least 2 IP headers, the inner IP header is not an IP
  *      fragment
- *  \li the UDP ports are in the list of RTP ports
+ *  \li the inner IP payload is at least 8-byte long for UDP header
+ *  \li the UDP Length field and the UDP payload match
+ *  \li the UDP payload is at least 12-byte long for RTP header
+ *  \li the UDP ports are in the list of RTP ports or the user-defined RTP
+ *      callback function detected one RTP packet
  *
  * @see c_udp_check_profile
  *
@@ -287,7 +291,9 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	/* check that:
 	 *  - the transport protocol is UDP,
 	 *  - that the versions of outer and inner IP headers are 4 or 6,
-	 *  - that outer and inner IP headers are not IP fragments.
+	 *  - that outer and inner IP headers are not IP fragments,
+	 *  - the IP payload is at least 8-byte long for UDP header,
+	 *  - the UDP Length field and the UDP payload match.
 	 */
 	udp_check = c_udp_check_profile(comp, outer_ip, inner_ip, protocol);
 	if(!udp_check)
@@ -311,6 +317,12 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
 	udp_payload = (unsigned char *) (udp_header + 1);
 	udp_payload_size = ip_get_plen(last_ip_header) - sizeof(struct udphdr);
+
+	/* UDP payload shall be large enough for RTP header  */
+	if(udp_payload_size < sizeof(struct rtphdr))
+	{
+		goto bad_profile;
+	}
 
 	/* check if the IP/UDP packet is a RTP packet */
 	if(comp->rtp_callback != NULL)
