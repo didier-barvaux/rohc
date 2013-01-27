@@ -550,7 +550,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	}
 
 	/* print uncompressed bytes */
-	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
+	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	                 "uncompressed data, max 100 bytes",
 	                 uncomp_packet, rohc_min(uncomp_packet_len, 100));
 
@@ -1016,7 +1016,6 @@ error:
  */
 bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 {
-// TODO: check for power of 2
 	int i;
 
 	if(comp == NULL)
@@ -1053,6 +1052,7 @@ error:
  *
  * W-LSB window width is set to \ref C_WINDOW_WIDTH by default.
  *
+ * @warning The value must be a power of 2
  * @warning The value can not be modified after library initialization
  *
  * @param comp   The ROHC compressor
@@ -1070,7 +1070,17 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 	if(width <= 0)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
-		             "set width of W-LSB sliding window to %zd\n", width);
+		             "set width of W-LSB sliding window to %zd: window width "
+		             "must be a non-null positive integer\n", width);
+		return false;
+	}
+
+	/* window width must be a power of 2 */
+	if((width & (width - 1)) != 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "failed to "
+		             "set width of W-LSB sliding window to %zd: window width "
+		             "must be a power of 2\n", width);
 		return false;
 	}
 
@@ -2647,6 +2657,8 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 
 	if(comp->num_contexts > 0)
 	{
+		assert(comp->contexts != NULL);
+
 		for(i = 0; i < comp->num_contexts; i++)
 		{
 			if(comp->contexts[i].used && comp->contexts[i].profile != 0)
@@ -2663,6 +2675,7 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 			comp->num_contexts_used--;
 		}
 
+		comp->num_contexts = 0;
 		zfree(comp->contexts);
 	}
 }
@@ -2781,8 +2794,8 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	if(feedback_length > 0)
 	{
 		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
-		                 "feedback data added", buffer + index,
-		                 feedback_length);
+		                 ROHC_TRACE_DEBUG, "feedback data added",
+		                 buffer + index, feedback_length);
 	}
 
 	/* return the length of the feedback header/data,

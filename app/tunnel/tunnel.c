@@ -1019,7 +1019,7 @@ int tun2udp(struct rohc_comp *comp,
 	unsigned int buffer_len = TUNTAP_BUFSIZE;
 	unsigned char *packet;
 	size_t packet_len;
-	bool is_segment;
+	bool is_segment = false;
 	size_t rohc_size;
 	int ret;
 

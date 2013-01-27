@@ -199,6 +199,9 @@ struct rohc_decomp
  */
 struct d_context
 {
+	/** The Context IDentifier (CID) */
+	unsigned int cid;
+
 	/// The associated decompressor
 	struct rohc_decomp *decompressor;
 
@@ -293,10 +296,10 @@ struct d_profile
 
 	/// @brief The handler used to destroy the profile-specific part of the
 	///        decompression context
-	void (*free_decode_data)(void *);
+	void (*free_decode_data)(void *const context);
 
 	/// The handler used to retrieve the Sequence Number (SN)
-	int (*get_sn)(struct d_context *context);
+	int (*get_sn)(struct d_context *const context);
 };
 
 
@@ -330,7 +333,7 @@ int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
 struct d_context * ROHC_EXPORT find_context(struct rohc_decomp *decomp,
                                             int cid);
 struct d_context * ROHC_EXPORT context_create(struct rohc_decomp *decomp,
-                                              int with_cid,
+                                              unsigned int with_cid,
                                               struct d_profile *profile);
 void ROHC_EXPORT context_free(struct d_context *context);
 

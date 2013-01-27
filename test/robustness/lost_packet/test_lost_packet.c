@@ -67,7 +67,9 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
-                                const unsigned int packet_to_lose);
+                                const unsigned int first_packet_to_lose,
+                                const unsigned int last_packet_to_lose,
+                                const unsigned int last_packet_in_error);
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
@@ -91,8 +93,12 @@ static int gen_random_num(const struct rohc_comp *const comp,
 int main(int argc, char *argv[])
 {
 	char *filename = NULL;
-	char *packet_to_lose_param = NULL;
-	int packet_to_lose;
+	char *first_packet_to_lose_param = NULL;
+	char *last_packet_to_lose_param = NULL;
+	char *last_packet_in_error_param = NULL;
+	int first_packet_to_lose;
+	int last_packet_to_lose;
+	int last_packet_in_error;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -116,10 +122,20 @@ int main(int argc, char *argv[])
 			 * compress/decompress */
 			filename = argv[0];
 		}
-		else if(packet_to_lose_param == NULL)
+		else if(first_packet_to_lose_param == NULL)
 		{
-			/* get the ROHC packet to lose */
-			packet_to_lose_param = argv[0];
+			/* get the first ROHC packet to lose */
+			first_packet_to_lose_param = argv[0];
+		}
+		else if(last_packet_to_lose_param == NULL)
+		{
+			/* get the last ROHC packet to lose */
+			last_packet_to_lose_param = argv[0];
+		}
+		else if(last_packet_in_error_param == NULL)
+		{
+			/* get the last ROHC packet that will fail to decompress */
+			last_packet_in_error_param = argv[0];
 		}
 		else
 		{
@@ -130,18 +146,41 @@ int main(int argc, char *argv[])
 	}
 
 	/* check mandatory parameters */
-	if(filename == NULL || packet_to_lose_param == NULL)
+	if(filename == NULL ||
+	   first_packet_to_lose_param == NULL ||
+	   last_packet_to_lose_param == NULL ||
+	   last_packet_in_error_param == NULL)
 	{
 		usage();
 		goto error;
 	}
 
-	/* parse the packet to lose */
-	packet_to_lose = atoi(packet_to_lose_param);
-	if(packet_to_lose <= 0)
+	/* parse the first packet to lose */
+	first_packet_to_lose = atoi(first_packet_to_lose_param);
+	if(first_packet_to_lose <= 0)
 	{
-		fprintf(stderr, "bad number for the package to lose '%s'\n\n",
-		        packet_to_lose_param);
+		fprintf(stderr, "bad number for the first packet to lose '%s'\n\n",
+		        first_packet_to_lose_param);
+		usage();
+		goto error;
+	}
+
+	/* parse the last packet to lose */
+	last_packet_to_lose = atoi(last_packet_to_lose_param);
+	if(last_packet_to_lose <= 0)
+	{
+		fprintf(stderr, "bad number for the last packet to lose '%s'\n\n",
+		        last_packet_to_lose_param);
+		usage();
+		goto error;
+	}
+
+	/* parse the last packet to will failed to decompress */
+	last_packet_in_error = atoi(last_packet_in_error_param);
+	if(last_packet_in_error <= 0)
+	{
+		fprintf(stderr, "bad number for the last packet that will fail to "
+		        "decompress '%s'\n\n", last_packet_in_error_param);
 		usage();
 		goto error;
 	}
@@ -151,7 +190,8 @@ int main(int argc, char *argv[])
 	srand(5);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, packet_to_lose);
+	status = test_comp_and_decomp(filename, first_packet_to_lose,
+	                              last_packet_to_lose, last_packet_in_error);
 
 error:
 	return status;
@@ -166,12 +206,15 @@ static void usage(void)
 	fprintf(stderr,
 	        "Check that lost ROHC packets are correctly handled\n"
 	        "\n"
-	        "usage: test_lost_packet [OPTIONS] FLOW PACKET_NUM\n"
+	        "usage: test_lost_packet [OPTIONS] FLOW FIRST_PACKET_NUM \\"
+	        "                        LAST_PACKET_NUM LAST_PACKET_ERROR\n"
 	        "\n"
 	        "with:\n"
-	        "  FLOW         The flow of Ethernet frames to compress/decompress\n"
-	        "               (in PCAP format)\n"
-	        "  PACKET_NUM   The packet # to lose\n"
+	        "  FLOW               The flow of Ethernet frames to (de)compress\n"
+	        "                     (in PCAP format)\n"
+	        "  FIRST_PACKET_NUM   The first packet # to lose\n"
+	        "  LAST_PACKET_NUM    The last packet # to lose\n"
+	        "  LAST_PACKET_ERROR  The last packet # that will fail to decompress\n"
 	        "\n"
 	        "options:\n"
 	        "  -h           Print this usage and exit\n");
@@ -182,14 +225,18 @@ static void usage(void)
  * @brief Test the ROHC library with a flow of IP packets going through one
  *        compressor then one decompressor
  *
- * @param filename          The name of the PCAP file that contains the
- *                          IP packets
- * @param packet_to_lose    The packet # to lost
- * @return                  0 in case of success,
- *                          1 in case of failure
+ * @param filename              The name of the PCAP file that contains the
+ *                              IP packets
+ * @param first_packet_to_lose  The first packet # to lost
+ * @param last_packet_to_lose   The last packet # to lost
+ * @param last_packet_in_error  The last packet # that will fail to decompress
+ * @return                      0 in case of success,
+ *                              1 in case of failure
  */
 static int test_comp_and_decomp(const char *const filename,
-                                const unsigned int packet_to_lose)
+                                const unsigned int first_packet_to_lose,
+                                const unsigned int last_packet_to_lose,
+                                const unsigned int last_packet_in_error)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -222,11 +269,12 @@ static int test_comp_and_decomp(const char *const filename,
 	link_layer_type = pcap_datalink(handle);
 	if(link_layer_type != DLT_EN10MB &&
 	   link_layer_type != DLT_LINUX_SLL &&
-	   link_layer_type != DLT_RAW)
+	   link_layer_type != DLT_RAW &&
+	   link_layer_type != DLT_NULL)
 	{
 		fprintf(stderr, "link layer type %d not supported in source dump "
-		        "(supported = %d, %d, %d)\n", link_layer_type,
-		        DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW);
+		        "(supported = %d, %d, %d, %d)\n", link_layer_type,
+		        DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
 		goto close_input;
 	}
 
@@ -235,6 +283,8 @@ static int test_comp_and_decomp(const char *const filename,
 		link_len = ETHER_HDR_LEN;
 	else if(link_layer_type == DLT_LINUX_SLL)
 		link_len = LINUX_COOKED_HDR_LEN;
+	else if(link_layer_type == DLT_NULL)
+		link_len = BSD_LOOPBACK_HDR_LEN;
 	else /* DLT_RAW */
 		link_len = 0;
 
@@ -267,6 +317,13 @@ static int test_comp_and_decomp(const char *const filename,
 	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
 	{
 		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto destroy_comp;
+	}
+
+	/* set the default timeouts for periodic refreshes of contexts */
+	if(!rohc_comp_set_periodic_refreshes(comp, 121, 120))
+	{
+		fprintf(stderr, "failed to set the timeouts for periodic refreshes\n");
 		goto destroy_comp;
 	}
 
@@ -372,7 +429,7 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* is it the packet to lose? */
-		if(counter == packet_to_lose)
+		if(counter >= first_packet_to_lose && counter <= last_packet_to_lose)
 		{
 			fprintf(stderr, "\tvoluntary lose packet #%d\n", counter);
 			continue;
@@ -383,14 +440,33 @@ static int test_comp_and_decomp(const char *const filename,
 		                              decomp_packet, MAX_ROHC_SIZE);
 		if(decomp_size <= 0)
 		{
-			/* failure is NOT expected */
-			fprintf(stderr, "\tunexpected failure to decompress generated "
-			        "ROHC packet\n");
-			goto destroy_decomp;
+			if(counter > last_packet_to_lose && counter <= last_packet_in_error)
+			{
+				/* failure is expected */
+				fprintf(stderr, "\texpected failure to decompress generated "
+				        "ROHC packet\n");
+			}
+			else
+			{
+				/* failure is NOT expected */
+				fprintf(stderr, "\tunexpected failure to decompress generated "
+				        "ROHC packet\n");
+				goto destroy_decomp;
+			}
 		}
-
-		/* success is expected for the non-lost packets */
-		fprintf(stderr, "\texpected successful decompression\n");
+		else
+		{
+			if(counter > last_packet_to_lose && counter <= last_packet_in_error)
+			{
+				fprintf(stderr, "\tunexpected successful decompression\n");
+				goto destroy_decomp;
+			}
+			else
+			{
+				/* success is expected for the non-lost packets */
+				fprintf(stderr, "\texpected successful decompression\n");
+			}
+		}
 	}
 
 	/* everything went fine */

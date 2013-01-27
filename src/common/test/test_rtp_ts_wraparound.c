@@ -274,6 +274,7 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				trace(be_verbose, "unknown RTP TS encoding state, "
 				      "should not happen\n");
 				assert(0);
+				goto destroy_ts_sc_decomp;
 		}
 		trace(be_verbose, "\t\tencoded on %zd bits: 0x%04x\n", required_bits,
 		      value_encoded);

@@ -117,7 +117,7 @@ struct ts_sc_decomp * d_create_sc(rohc_trace_callback_t callback)
 	ts_sc->new_ts_scaled = 0;
 	ts_sc->new_ts_offset = 0;
 
-	ts_sc->lsb_ts_scaled = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS);
+	ts_sc->lsb_ts_scaled = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS, 32);
 	if(ts_sc->lsb_ts_scaled == NULL)
 	{
 		goto free_context;
@@ -275,8 +275,8 @@ bool ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
 	/* update TS_SCALED in context */
 	ts_debug(ts_sc, "decode %zd-bit TS_SCALED %u (reference = %u)\n", bits_nr,
 	         ts_scaled, rohc_lsb_get_ref(ts_sc->lsb_ts_scaled));
-	lsb_decode_ok = rohc_lsb_decode32(ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
-	                                  &ts_scaled_decoded);
+	lsb_decode_ok = rohc_lsb_decode(ts_sc->lsb_ts_scaled, ts_scaled, bits_nr,
+	                                &ts_scaled_decoded);
 	if(!lsb_decode_ok)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,

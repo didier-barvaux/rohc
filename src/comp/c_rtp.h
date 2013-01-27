@@ -57,7 +57,10 @@ struct rtp_tmp_vars
 	uint32_t ts_send;
 
 	/// Whether the M bit is set in the RTP header or not
-	int m_set;
+	bool is_marker_bit_set;
+
+	/** Whether the Padding (P) bit changed or not */
+	bool padding_bit_changed;
 
 	/// Whether the Payload Type (PT) field changed or not
 	int rtp_pt_changed;
@@ -87,6 +90,10 @@ struct sc_rtp_context
 	/// @brief The number of times the RTP Payload Type (PT) field was added to
 	///        the compressed header
 	int rtp_pt_change_count;
+
+	/// @brief The number of times the RTP Padding (P) bit was added to
+	///        the compressed header
+	size_t rtp_padding_change_count;
 
 	/// The previous RTP header
 	struct rtphdr old_rtp;

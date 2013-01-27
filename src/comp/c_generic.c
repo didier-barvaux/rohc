@@ -417,6 +417,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 
 		header_info->info.v6.ext_comp->counter = 0;
 		header_info->info.v6.ext_comp->changed = false;
+		header_info->info.v6.ext_comp->is_present = false;
 		ip6_c_init_table(header_info->info.v6.ext_comp);
 		header_info->info.v6.ext_comp->get_extension = get_ipv6_extension;
 		header_info->info.v6.ext_comp->create_item = create_ipv6_item;
@@ -685,9 +686,9 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	if(version != IPV4 && version != IPV6)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet contains a bad version (%d): "
-		           "only IPv%d and IPv%d are supported\n",
-		           (outer_ip->data[0] >> 4) & 0x0f, IPV4, IPV6);
+		           "the outer IP packet (type = %d) is not supported by the "
+		           "profile: only IPv%d and IPv%d are supported\n",
+		           version, IPV4, IPV6);
 		goto bad_profile;
 	}
 
@@ -1245,6 +1246,13 @@ void periodic_down_transition(struct c_context *context)
 	struct c_generic_context *g_context;
 
 	g_context = (struct c_generic_context *) context->specific;
+
+	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+	           "CID %d: timeouts for periodic refreshes: FO = %d / %zd, "
+	           "IR = %d / %zd\n", context->cid, g_context->go_back_fo_count,
+	           context->compressor->periodic_refreshes_fo_timeout,
+	           g_context->go_back_ir_count,
+	           context->compressor->periodic_refreshes_ir_timeout);
 
 	if(g_context->go_back_fo_count >=
 	   context->compressor->periodic_refreshes_fo_timeout)
@@ -2110,7 +2118,7 @@ int code_ipv6_static_part(const struct c_context *context,
  */
 int code_generic_dynamic_part(const struct c_context *context,
                               struct ip_header_info *const header_info,
-                              const const struct ip_packet *ip,
+                              const struct ip_packet *ip,
                               unsigned char *const dest,
                               int counter)
 {
@@ -2657,10 +2665,10 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-ID packet is for RTP profile only\n");
 			/* TODO: when extensions are supported within the UO-1-ID packet,
-			 * please check whether the "m_set != 0" condition could be removed
-			 * or not */
+			 * please check whether the !rtp_context->tmp.is_marker_bit_set
+			 * condition could be removed or not */
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            rtp_context->tmp.m_set == 0, error,
+			            !rtp_context->tmp.is_marker_bit_set, error,
 			            "UO-1-ID packet without extension support does not "
 			            "contain room for the RTP Marker (M) flag\n");
 			break;
@@ -2737,11 +2745,11 @@ int code_UO1_packet(struct c_context *const context,
 		case PACKET_UO_1_RTP:
 		case PACKET_UO_1_TS:
 			/* M + SN + CRC (CRC was added before) */
-			s_byte |= (rtp_context->tmp.m_set & 0x01) << 7;
+			s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 			s_byte |= (g_context->sn & 0x0f) << 3;
 			rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
-			                rtp_context->tmp.m_set, g_context->sn & 0x0f, crc,
-			                s_byte);
+			                !!rtp_context->tmp.is_marker_bit_set,
+			                g_context->sn & 0x0f, crc, s_byte);
 			break;
 		case PACKET_UO_1_ID:
 			/* X + SN + CRC (CRC was added before) */
@@ -3243,8 +3251,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= (ts_send & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 6-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
@@ -3273,8 +3282,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 9-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3303,8 +3313,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 17-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3333,8 +3344,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of 25-bit TS in 2nd byte = 0x%x\n",
 			                ((*s_byte) >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3378,8 +3390,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
 			rohc_comp_debug(context, "1 bit of %zd-bit TS in 2nd byte = 0x%x\n",
 			                6 + nr_ts_bits_ext3, (*s_byte >> 7) & 0x01);
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
@@ -3518,8 +3531,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
@@ -3544,8 +3558,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3570,8 +3585,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3596,8 +3612,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3650,8 +3667,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			rohc_comp_debug(context, "SN to send = 0x%x\n", g_context->sn);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
@@ -3767,8 +3785,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 6-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
@@ -3793,8 +3812,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3819,8 +3839,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3845,8 +3866,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
@@ -3913,8 +3935,9 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 
 			/* part 4: T = 0 + M flag + 6 bits of SN */
 			*s_byte &= ~0x80;
-			*s_byte |= (rtp_context->tmp.m_set & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n", rtp_context->tmp.m_set);
+			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
+			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			                !!rtp_context->tmp.is_marker_bit_set);
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
@@ -4553,10 +4576,17 @@ int code_EXT3_packet(const struct c_context *context,
 		tsc = (rtp_context->ts_sc.state == SEND_SCALED);
 		f_byte |= (tsc & 0x01) << 3;
 
-		/* rtp bit: set to 1 if RTP PT changed in this packet or changed
-		 * in the last few packets or RTP TS and TS_STRIDE must be initialized */
+		/* rtp bit: set to 1 if one of the following conditions is fulfilled:
+		 *  - RTP PT changed in this packet,
+		 *  - RTP PT changed in the last few packets,
+		 *  - RTP Padding bit changed in this packet,
+		 *  - RTP Padding bit changed in the last few packets,
+		 *  - RTP TS and TS_STRIDE must be initialized
+		 */
 		rtp = (rtp_context->tmp.rtp_pt_changed ||
-		       rtp_context->rtp_pt_change_count < MAX_FO_COUNT ||
+		       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
+		       rtp_context->tmp.padding_bit_changed ||
+		       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
@@ -5020,7 +5050,9 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 
 	/* part 1 */
 	rpt = (rtp_context->tmp.rtp_pt_changed ||
-	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT);
+	       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
+	       rtp_context->tmp.padding_bit_changed ||
+	       rtp_context->rtp_padding_change_count < MAX_IR_COUNT);
 	tss = rtp_context->ts_sc.state == INIT_STRIDE;
 	byte = 0;
 	byte |= (context->mode & 0x03) << 6;
@@ -5041,6 +5073,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		rohc_comp_debug(context, "part 2 = 0x%x\n", byte);
 		dest[counter] = byte;
 		counter++;
+		rtp_context->rtp_padding_change_count++;
 		rtp_context->rtp_pt_change_count++;
 	}
 
@@ -6430,7 +6463,7 @@ static void ip6_c_init_table(struct list_comp *const comp)
 	comp->based_table[3].length = 0;
 	comp->based_table[3].data = NULL;
 	comp->trans_table[3].known = 0;
-	comp->trans_table[3].item = &comp->based_table[4];
+	comp->trans_table[3].item = &comp->based_table[3];
 	comp->trans_table[3].counter = 0;
 	/* reset other headers */
 	for(i = 4; i < MAX_ITEM; i++)
@@ -6671,13 +6704,38 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	index_table = comp->get_index_table(ip, i);
 	if(index_table == -1)
 	{
-		/* there is no list of IPv6 extension headers */
+		/* there is no list of IPv6 extension headers in the current packet */
+		rc_list_debug(comp, "there is no IPv6 extension in packet\n");
+		if(comp->is_present)
+		{
+			/* there was a list of IPv6 extension headers in previous packet */
+			rc_list_debug(comp, "no more extension, behaviour changed\n");
+			comp->counter = 0;
+		}
 		comp->is_present = false;
+
+		/* send the list compressed until it was repeated at least L times */
+		if(comp->counter < L)
+		{
+			rc_list_debug(comp, "list with gen_id %d was not sent at least "
+			              "L = %d times (%d times), send it compressed\n",
+			              comp->curr_list->gen_id, L, comp->counter);
+			comp->changed = true;
+		}
+
+		/* list is sent another time */
+		comp->counter++;
 	}
 	else
 	{
 		/* there is one extension or more */
 		rc_list_debug(comp, "there is at least one IPv6 extension in packet\n");
+		if(!comp->is_present)
+		{
+			/* there was no list of IPv6 extension headers in previous packet */
+			rc_list_debug(comp, "at least one extension, behaviour changed\n");
+			comp->counter = 0;
+		}
 		comp->is_present = true;
 
 		/* add new extensions and update modified extensions in current list */
@@ -6717,7 +6775,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 		if(comp->counter == 0)
 		{
 			comp->curr_list->gen_id++;
-			rc_list_debug(comp, "list changed, use new gen_id %d\n",
+			rc_list_debug(comp, "current list changed, use new gen_id %d\n",
 			              comp->curr_list->gen_id);
 		}
 

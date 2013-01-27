@@ -13,8 +13,9 @@
 run_test_with_valgrind()
 {
 	OPTIONS="--tool=memcheck --trace-children=yes --track-fds=yes 
-	         --leak-check=full --show-possibly-lost=yes --show-reachable=yes 
-	         --malloc-fill=0xaa --free-fill=0x55"
+	         --leak-check=full --show-reachable=yes 
+	         --malloc-fill=0xaa --free-fill=0x55 
+	         ${VALGRIND_OPTS}"
 	XSL="$1"
 	shift
 	CMD="$@"

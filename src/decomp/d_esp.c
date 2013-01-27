@@ -58,7 +58,8 @@ struct d_esp_context
  */
 
 static void * d_esp_create(const struct d_context *const context);
-static void d_esp_destroy(void *const context);
+static void d_esp_destroy(void *const context)
+	__attribute__((nonnull(1)));
 
 static int esp_parse_static_esp(const struct d_context *const context,
                                 const unsigned char *packet,
@@ -129,7 +130,7 @@ static void * d_esp_create(const struct d_context *const context)
 	g_context->specific = esp_context;
 
 	/* create the LSB decoding context for SN (same shift value as RTP) */
-	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_ESP_SN);
+	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_ESP_SN, 32);
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,

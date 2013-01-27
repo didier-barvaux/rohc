@@ -102,7 +102,7 @@ void * d_udp_create(const struct d_context *const context)
 	g_context->specific = udp_context;
 
 	/* create the LSB decoding context for SN */
-	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN);
+	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_SN, 16);
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -236,16 +236,16 @@ int udp_parse_static_udp(const struct d_context *const context,
 	/* UDP source port */
 	bits->udp_src = GET_NEXT_16_BITS(packet);
 	bits->udp_src_nr = 16;
-	rohc_decomp_debug(context, "UDP source port = 0x%04x\n",
-	                  ntohs(bits->udp_src));
+	rohc_decomp_debug(context, "UDP source port = 0x%04x (%u)\n",
+	                  ntohs(bits->udp_src), ntohs(bits->udp_src));
 	packet += 2;
 	read += 2;
 
 	/* UDP destination port */
 	bits->udp_dst = GET_NEXT_16_BITS(packet);
 	bits->udp_dst_nr = 16;
-	rohc_decomp_debug(context, "UDP destination port = 0x%04x\n",
-	                  ntohs(bits->udp_dst));
+	rohc_decomp_debug(context, "UDP destination port = 0x%04x (%u)\n",
+	                  ntohs(bits->udp_dst), ntohs(bits->udp_dst));
 	packet += 2;
 	read += 2;
 

@@ -163,17 +163,18 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid)
  * @brief Create one new decompression context with profile specific data.
  *
  * @param decomp   The ROHC decompressor
- * @param with_cid The CID of the new context (not implemented)
+ * @param cid      The CID of the new context
  * @param profile  The profile to be assigned with the new context
  * @return         The new context if successful, NULL otherwise
  */
 struct d_context * context_create(struct rohc_decomp *decomp,
-                                  int with_cid,
+                                  const unsigned int cid,
                                   struct d_profile *profile)
 {
 	struct d_context *context;
 
 	assert(decomp != NULL);
+	assert(cid <= ROHC_LARGE_CID_MAX);
 	assert(profile != NULL);
 
 	/* allocate memory for the decompression context */
@@ -184,6 +185,9 @@ struct d_context * context_create(struct rohc_decomp *decomp,
 		             "cannot allocate memory for the contexts\n");
 		goto error;
 	}
+
+	/* record the CID */
+	context->cid = cid;
 
 	/* associate the decompressor with the context */
 	context->decompressor = decomp;
@@ -207,6 +211,9 @@ struct d_context * context_create(struct rohc_decomp *decomp,
 	context->num_sent_feedbacks = 0;
 	context->num_decomp_failures = 0;
 	context->num_decomp_repairs = 0;
+	context->nr_lost_packets = 0;
+	context->nr_misordered_packets = 0;
+	context->is_duplicated = 0;
 
 	context->first_used = get_milliseconds();
 	context->latest_used = get_milliseconds();
@@ -272,12 +279,12 @@ error:
 
 
 /**
- * @brief Destroy one decompression context and the profile specific data associated
- *        with it.
+ * @brief Destroy one decompression context and the profile specific data
+ *        associated with it.
  *
  * @param context  The context to destroy
  */
-void context_free(struct d_context *context)
+void context_free(struct d_context *const context)
 {
 	assert(context != NULL);
 	assert(context->decompressor != NULL);
@@ -289,12 +296,12 @@ void context_free(struct d_context *context)
 	assert(context->header_16_compressed != NULL);
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "free contexts\n");
+	           "free context with CID %u\n", context->cid);
 
 	/* destroy the profile-specific data */
 	context->profile->free_decode_data(context->specific);
 
-	/* destroy the W-LSb windows */
+	/* destroy the W-LSB windows for statistics */
 	c_destroy_wlsb(context->total_16_uncompressed);
 	c_destroy_wlsb(context->total_16_compressed);
 	c_destroy_wlsb(context->header_16_uncompressed);
@@ -473,7 +480,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 
 	/* print compressed bytes */
 	rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-	                 "compressed data, max 100 bytes",
+	                 ROHC_TRACE_DEBUG, "compressed data, max 100 bytes",
 	                 ibuf, rohc_min(isize, 100));
 
 	/* decode ROHC header */
@@ -688,7 +695,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet too small (len = %d, at least 1 byte "
 		             "required)\n", isize);
-		return ROHC_ERROR_NO_CONTEXT;
+		goto error;
 	}
 
 	/* decode feedback if present */
@@ -807,7 +814,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "unexpected CID %d received: MAX_CID was set to %d\n",
 		             ddata->cid, decomp->medium.max_cid);
-		return ROHC_ERROR_NO_CONTEXT;
+		goto error;
 	}
 
 	/* skip add-CID if present */
@@ -851,7 +858,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "failed to find profile identified by ID 0x%04x\n",
 			             profile_id);
-			return ROHC_ERROR_NO_CONTEXT;
+			goto error;
 		}
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "profile with ID 0x%04x found in IR packet\n", profile_id);
@@ -882,7 +889,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				             "failed to create a new context with CID %d and "
 				             "profile 0x%04x\n", ddata->cid, profile_id);
-				return ROHC_ERROR_NO_CONTEXT;
+				goto error;
 			}
 		}
 
@@ -938,58 +945,56 @@ int d_decode_header(struct rohc_decomp *decomp,
 			             "context with CID %d either does not exist "
 			             "or no profile is associated with the context\n",
 			             ddata->cid);
-			return ROHC_ERROR_NO_CONTEXT;
+			goto error;
 		}
-		else
+
+		/* context is valid */
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "context with CID %d found\n", ddata->cid);
+		ddata->active->latest_used = get_milliseconds();
+		decomp->last_context = ddata->active;
+
+		/* is the ROHC packet an IR-DYN packet? */
+		if(d_is_irdyn(walk, isize))
 		{
-			/* context is valid */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "context with CID %d found\n", ddata->cid);
-			ddata->active->latest_used = get_milliseconds();
-			decomp->last_context = ddata->active;
+			           "ROHC packet is an IR-DYN packet\n");
+			ddata->active->num_recv_ir_dyn++;
 
-			/* is the ROHC packet an IR-DYN packet? */
-			if(d_is_irdyn(walk, isize))
+			/* we need at least 1 byte after the large CID bytes for profile ID */
+			if(isize <= (ddata->large_cid_size + 1))
 			{
-				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				           "ROHC packet is an IR-DYN packet\n");
-				ddata->active->num_recv_ir_dyn++;
-
-				/* we need at least 1 byte after the large CID bytes for profile ID */
-				if(isize <= (ddata->large_cid_size + 1))
-				{
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-					             "ROHC packet too small to read the profile ID "
-					             "byte (len = %d)\n", isize);
-					goto error;
-				}
-
-				/* find the profile specified in the ROHC packet */
-				profile = find_profile(walk[ddata->large_cid_size + 1]);
-
-				/* if IR-DYN changes profile, make the decompressor
-				 * transit to the NO_CONTEXT state */
-				if(profile != ddata->active->profile)
-				{
-					decomp->curval = decomp->maxval;
-					rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-					           "IR-DYN changed profile, sending S-NACK\n");
-					return ROHC_ERROR_NO_CONTEXT;
-				}
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "ROHC packet too small to read the profile ID "
+				             "byte (len = %d)\n", isize);
+				goto error;
 			}
 
-			/* decode the IR-DYN or UO* packet thanks to the
-			 * profile-specific routines */
-			return ddata->active->profile->decode(decomp, ddata->active,
-			                                      walk, isize,
-		                                         ddata->addcidUsed,
-		                                         ddata->large_cid_size,
-		                                         obuf);
+			/* find the profile specified in the ROHC packet */
+			profile = find_profile(walk[ddata->large_cid_size + 1]);
+
+			/* if IR-DYN changes profile, make the decompressor
+			 * transit to the NO_CONTEXT state */
+			if(profile != ddata->active->profile)
+			{
+				decomp->curval = decomp->maxval;
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				           "IR-DYN changed profile, sending S-NACK\n");
+				goto error;
+			}
 		}
 
+		/* decode the IR-DYN or UO* packet thanks to the
+		 * profile-specific routines */
+		return ddata->active->profile->decode(decomp, ddata->active,
+		                                      walk, isize,
+	                                         ddata->addcidUsed,
+	                                         ddata->large_cid_size,
+	                                         obuf);
 	} /* end of 'the ROHC packet is not an IR packet' */
 
 error:
+	decomp->last_context = NULL;
 	return ROHC_ERROR_NO_CONTEXT;
 }
 
@@ -1543,11 +1548,11 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state)
 	switch(state)
 	{
 		case NO_CONTEXT:
-			return "NC";
+			return "No Context";
 		case STATIC_CONTEXT:
-			return "SC";
+			return "Static Context";
 		case FULL_CONTEXT:
-			return "FC";
+			return "Full Context";
 		default:
 			return "no description";
 	}
@@ -2205,7 +2210,8 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 	if(decomp->contexts != NULL)
 	{
 		memcpy(new_contexts, decomp->contexts,
-		       rohc_min(decomp->medium.max_cid, max_cid) + 1);
+		       (rohc_min(decomp->medium.max_cid, max_cid) + 1) *
+		       sizeof(struct d_context *));
 		zfree(decomp->contexts);
 	}
 	decomp->contexts = new_contexts;

@@ -95,11 +95,11 @@
 			typeof(field) _mask = (1 << ((_max) - (_bits_nr))) - 1; \
 			if((field & _mask) != field) \
 			{ \
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
-				             "too many bits for " #field_descr ": %zd bits " \
-				             "found in %s, and %zd bits already found before " \
-				             "for a %zd-bit field\n", (_bits_nr), \
-				             rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
+				          "too many bits for " #field_descr ": %zd bits " \
+				          "found in %s, and %zd bits already found before " \
+				          "for a %zd-bit field\n", (_bits_nr), \
+				          rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
 			} \
 			field &= _mask; \
 			/* make room and clear that room for new LSB */ \
@@ -447,9 +447,9 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
  * Prototypes of private helper functions
  */
 
-static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits);
-static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits);
-static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits const bits);
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits);
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits);
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits);
 
 
 /*
@@ -589,7 +589,7 @@ quit:
  *
  * @param context The compression context
  */
-void d_generic_destroy(void *context)
+void d_generic_destroy(void *const context)
 {
 	struct d_generic_context *g_context;
 	int i;
@@ -638,7 +638,7 @@ void d_generic_destroy(void *context)
 	}
 
 	/* destroy generic context itself */
-	zfree(g_context);
+	free(g_context);
 }
 
 
@@ -672,7 +672,7 @@ static void ip6_d_init_table(struct list_decomp *decomp)
 	decomp->based_table[3].length = 0;
 	decomp->based_table[3].data = NULL;
 	decomp->trans_table[3].known = 0;
-	decomp->trans_table[3].item = &decomp->based_table[4];
+	decomp->trans_table[3].item = &decomp->based_table[3];
 }
 
 
@@ -687,7 +687,7 @@ static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 	{
 		if(decomp->based_table[i].data != NULL)
 		{
-			free(decomp->based_table[i].data);
+			zfree(decomp->based_table[i].data);
 		}
 	}
 }
@@ -798,8 +798,8 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		if(ret > packet_len)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "too many bytes read: %zd bytes read in a %zd-byte "
-			             "packet\n", read_length, packet_len);
+			             "too many bytes read: %d bytes read in a %zd-byte "
+			             "packet\n", ret, packet_len);
 			goto error;
 		}
 		read_length += ret;
@@ -911,6 +911,9 @@ static bool create_ip6_item(const unsigned char *data,
 	return true;
 
 error:
+	decomp->based_table[index].data = NULL;
+	decomp->based_table[index].length = 0;
+	decomp->trans_table[index].known = 0;
 	return false;
 }
 
@@ -979,6 +982,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			decomp->ref_list = decomp->list_table[decomp->counter_list];
 			decomp->ref_ok = 1;
 		}
@@ -1049,6 +1053,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			{
 				int item_length; /* the length (in bytes) of the item related to XI */
 
+				/* is there enough room in packet to for at least one byte of
+				 * the item? */
+				if(packet_len <= (xi_length + item_read_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for at least 1 byte of item "
+					             "for XI #%u (only %zd bytes available while more "
+					             "than %zd bytes are required)\n", xi_index,
+					             packet_len, xi_length + item_read_length);
+					goto error;
+				}
+
 				/* X bit set in XI, so retrieve the related item in ROHC header */
 				item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 				                                   packet_len - xi_length - item_read_length);
@@ -1059,6 +1075,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 					             "referenced by XI #%d\n", xi_index);
 					goto error;
 				}
+
+				/* is there enough room in packet to for the full item? */
+				if(packet_len < (xi_length + item_read_length + item_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for the full item of XI #%u "
+					             "(only %zd bytes available while at least "
+					             "%zd bytes are required)\n", xi_index, packet_len,
+					             xi_length + item_read_length + item_length);
+					goto error;
+				}
+
 				if(new_list)
 				{
 					bool is_created =
@@ -1103,6 +1131,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			{
 				int item_length; /* the length (in bytes) of the item related to XI */
 
+				/* is there enough room in packet to for at least one byte of
+				 * the item? */
+				if(packet_len <= (xi_length + item_read_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for at least 1 byte of item "
+					             "for XI #%u (only %zd bytes available while more "
+					             "than %zd bytes are required)\n", xi_index,
+					             packet_len, xi_length + item_read_length);
+					goto error;
+				}
+
 				/* X bit set in XI, so retrieve the related item in ROHC header */
 				item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 				                                   packet_len - xi_length - item_read_length);
@@ -1113,6 +1153,18 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 					             "referenced by XI #%d\n", xi_index);
 					goto error;
 				}
+
+				/* is there enough room in packet to for the full item? */
+				if(packet_len < (xi_length + item_read_length + item_length))
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+					             "packet too small for the full item of XI #%u "
+					             "(only %zd bytes available while at least "
+					             "%zd bytes are required)\n", xi_index, packet_len,
+					             xi_length + item_read_length + item_length);
+					goto error;
+				}
+
 				if(new_list)
 				{
 					bool is_created =
@@ -1301,7 +1353,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				{
 					list_empty(decomp->list_table[i]);
 				}
-				if(decomp->list_table[i]->gen_id == ref_id)
+				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
 					decomp->ref_list = decomp->list_table[i];
 				}
@@ -1516,6 +1568,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -1526,6 +1591,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created =
@@ -1571,6 +1649,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -1579,6 +1670,18 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 							             "failed to determine the length of list item "
 							             "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
 							goto error;
 						}
 
@@ -1628,6 +1731,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -1638,6 +1754,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created =
@@ -1685,6 +1814,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				/* parse the corresponding item if present */
 				if(xi_x_value)
 				{
+					/* is there enough room in packet to for at least one byte of
+					 * the item? */
+					if(packet_len <= (xi_length + item_read_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for at least 1 byte of item "
+						             "for XI #%u (only %zd bytes available while "
+						             "more than %zd bytes are required)\n",
+						             xi_index, packet_len,
+						             xi_length + item_read_length);
+						goto error;
+					}
+
 					/* X bit set in XI, so retrieve the related item in ROHC header */
 					item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 					                                   packet_len - xi_length - item_read_length);
@@ -1695,6 +1837,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 						             "referenced by XI #%d\n", xi_index);
 						goto error;
 					}
+
+					/* is there enough room in packet to for the full item? */
+					if(packet_len < (xi_length + item_read_length + item_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for the full item of XI #%u "
+						             "(only %zd bytes available while at least "
+						             "%zd bytes are required)\n", xi_index,
+						             packet_len, xi_length + item_read_length +
+						             item_length);
+						goto error;
+					}
+
 					if(new_list)
 					{
 						bool is_created =
@@ -1788,6 +1943,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
@@ -1875,7 +2031,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 				{
 					list_empty(decomp->list_table[i]);
 				}
-				if(decomp->list_table[i]->gen_id == ref_id)
+				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
 					decomp->ref_list = decomp->list_table[i];
 				}
@@ -2051,6 +2207,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
@@ -2190,7 +2347,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				{
 					list_empty(decomp->list_table[i]);
 				}
-				if(decomp->list_table[i]->gen_id == ref_id)
+				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
 					decomp->ref_list = decomp->list_table[i];
 				}
@@ -2548,6 +2705,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -2558,6 +2728,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created;
@@ -2609,6 +2792,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
@@ -2619,6 +2815,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							             "referenced by XI #%d\n", xi_index);
 							goto error;
 						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created;
@@ -2670,9 +2879,42 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
+						/* is there enough room in packet to for at least one byte
+						 * of the item? */
+						if(packet_len <= (xi_length + item_read_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for at least 1 byte of "
+							             "item for XI #%u (only %zd bytes available "
+							             "while more than %zd bytes are required)\n",
+							             xi_index, packet_len,
+							             xi_length + item_read_length);
+							goto error;
+						}
+
 						/* X bit set in XI, so retrieve the related item in ROHC header */
 						item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 						                                   packet_len - xi_length - item_read_length);
+						if(item_length < 0)
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "failed to determine the length of list item "
+							             "referenced by XI #%d\n", xi_index);
+							goto error;
+						}
+
+						/* is there enough room in packet to for the full item? */
+						if(packet_len < (xi_length + item_read_length + item_length))
+						{
+							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+							             "packet too small for the full item of "
+							             "XI #%u (only %zd bytes available while at "
+							             "least %zd bytes are required)\n", xi_index,
+							             packet_len, xi_length + item_read_length +
+							             item_length);
+							goto error;
+						}
+
 						if(new_list)
 						{
 							bool is_created;
@@ -2725,6 +2967,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				/* parse the corresponding item if present */
 				if(xi_x_value)
 				{
+					/* is there enough room in packet to for at least one byte of
+					 * the item? */
+					if(packet_len <= (xi_length + item_read_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for at least 1 byte of item "
+						             "for XI #%u (only %zd bytes available while "
+						             "more than %zd bytes are required)\n",
+						             xi_index, packet_len,
+						             xi_length + item_read_length);
+						goto error;
+					}
+
 					/* X bit set in XI, so retrieve the related item in ROHC header */
 					item_length = decomp->get_ext_size(packet + xi_length + item_read_length,
 					                                   packet_len - xi_length - item_read_length);
@@ -2735,6 +2990,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 						             "referenced by XI #%d\n", xi_index);
 						goto error;
 					}
+
+					/* is there enough room in packet to for the full item? */
+					if(packet_len < (xi_length + item_read_length + item_length))
+					{
+						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+						             "packet too small for the full item of XI #%u "
+						             "(only %zd bytes available while at least "
+						             "%zd bytes are required)\n", xi_index,
+						             packet_len, xi_length + item_read_length +
+						             item_length);
+						goto error;
+					}
+
 					if(new_list)
 					{
 						bool is_created;
@@ -2833,6 +3101,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		decomp->counter++;
 		if(decomp->counter == L)
 		{
+			assert(decomp->list_table[decomp->counter_list] != NULL);
 			rd_list_debug(decomp, "received list (gen_id = %d) now becomes the "
 			              "reference list\n",
 			              decomp->list_table[decomp->counter_list]->gen_id);
@@ -3212,7 +3481,8 @@ static int decode_ir(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CRC detected a transmission failure for IR packet\n");
 		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-		                 "IR headers", rohc_packet - add_cid_len,
+		                 ROHC_TRACE_WARNING, "IR headers",
+		                 rohc_packet - add_cid_len,
 		                 rohc_header_len + add_cid_len);
 		goto error_crc;
 	}
@@ -3245,7 +3515,11 @@ static int decode_ir(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
 		goto error;
 	}
@@ -4137,11 +4411,6 @@ static int decode_uo0(struct rohc_decomp *decomp,
 	int build_ret;
 
 
-	/* TODO: check why ref_ok is set to 1 here */
-	g_context->list_decomp1->ref_ok = 1;
-	g_context->list_decomp2->ref_ok = 1;
-
-
 	/* A. Parsing of ROHC header
 	 *
 	 * Let's parse fields 2 to 13.
@@ -4194,7 +4463,11 @@ static int decode_uo0(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -4763,10 +5036,6 @@ static int decode_uo1(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	/* TODO: check why ref_ok is set to 1 here */
-	g_context->list_decomp1->ref_ok = 1;
-	g_context->list_decomp2->ref_ok = 1;
-
 
 	/* A. Parsing of ROHC base header
 	 *
@@ -4820,7 +5089,11 @@ static int decode_uo1(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -5301,15 +5574,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 				{
 					case PACKET_UOR_2:
 					case PACKET_UOR_2_ID:
-						if((bits->outer_ip.version != IPV4 &&
-						    !g_context->multiple_ip) ||
-						   (bits->outer_ip.version != IPV4 &&
-						    g_context->multiple_ip &&
-						    bits->inner_ip.version != IPV4))
+						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 							             "cannot use extension 0 for the UOR-2 or "
-							             "UOR-2-ID packet with no IPv4 header\n");
+							             "UOR-2-ID packet with no IPv4 header that "
+							             "got a non-random IP-ID\n");
 							goto error;
 						}
 						break;
@@ -5340,16 +5610,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 					case PACKET_UOR_2:
 					case PACKET_UOR_2_ID:
 					case PACKET_UOR_2_TS:
-						if((bits->outer_ip.version != IPV4 &&
-						    !g_context->multiple_ip) ||
-						   (bits->outer_ip.version != IPV4 &&
-						    g_context->multiple_ip &&
-						    bits->inner_ip.version != IPV4))
+						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 							             "cannot use extension 1 for the UOR-2, "
 							             "UOR-2-ID or UOR-2-TS packet with no IPv4 "
-							             "header\n");
+							             "header that got a non-random IP-ID\n");
 							goto error;
 						}
 						break;
@@ -5391,16 +5657,12 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 						break;
 					case PACKET_UOR_2_ID:
 					case PACKET_UOR_2_TS:
-						if((bits->outer_ip.version != IPV4 &&
-						    !g_context->multiple_ip) ||
-						   (bits->outer_ip.version != IPV4 &&
-						    g_context->multiple_ip &&
-						    bits->inner_ip.version != IPV4))
+						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-							             "cannot use extension 2 for the UOR-2, "
-							             "UOR-2-ID, or UOR-2-TS packet with no IPv4 "
-							             "header\n");
+							             "cannot use extension 2 for the UOR-2-ID, "
+							             "or UOR-2-TS packet with no IPv4 header "
+							             "that got a non-random IP-ID\n");
 							goto error;
 						}
 						break;
@@ -5413,19 +5675,6 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 						goto error;
 				}
 
-				/* determine which IP header is the innermost IPv4 header with
-				   value(RND) = 0 */
-				if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE &&
-				   (g_context->packet_type == PACKET_UOR_2_TS ||
-				    g_context->packet_type == PACKET_UOR_2_ID))
-				{
-					/* UOR-2-TS or UOR-2-ID packet but no IPv4 header with non-random
-					   IP-ID => not possible */
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					             "extension 2 for UOR-2-TS/ID must contain at "
-					             "least one IPv4 header with a non-random IP-ID\n");
-					goto error;
-				}
 				if(innermost_ipv4_non_rnd != ROHC_IP_HDR_NONE)
 				{
 					rohc_decomp_debug(context, "IP header #%d is the innermost "
@@ -5464,8 +5713,9 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 		if(ext_size == -2)
 		{
 			assert(ext_type == PACKET_EXT_3);
-			rohc_decomp_debug(context, "packet needs to be reparsed because RND "
-			                  "changed in extension 3\n");
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet needs to be reparsed because RND changed "
+			          "in extension 3\n");
 			goto reparse;
 		}
 		else if(ext_size < 0)
@@ -5679,10 +5929,6 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		goto error;
 	}
 
-	/* TODO: check why ref_ok is set to 1 here */
-	g_context->list_decomp1->ref_ok = 1;
-	g_context->list_decomp2->ref_ok = 1;
-
 
 	/* A. Parsing of ROHC base header, extension header and tail of header
 	 *
@@ -5708,8 +5954,9 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		}
 
 		/* reparsing needed */
-		rohc_decomp_debug(context, "packet needs to be reparsed with different "
-		                  "assumptions for packet type\n");
+		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		          "packet needs to be reparsed with different assumptions "
+		          "for packet type\n");
 #if RTP_BIT_TYPE
 		assert(0);
 #else
@@ -5719,26 +5966,30 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		{
 			if(GET_BIT_7(rohc_packet + 1 + large_cid_len) == 0)
 			{
-				rohc_decomp_debug(context, "change for packet UOR-2-ID (T = 0)\n");
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				          "change for packet UOR-2-ID (T = 0)\n");
 				g_context->packet_type = PACKET_UOR_2_ID;
 			}
 			else
 			{
-				rohc_decomp_debug(context, "change for packet UOR-2-TS (T = 1)\n");
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				          "change for packet UOR-2-TS (T = 1)\n");
 				g_context->packet_type = PACKET_UOR_2_TS;
 			}
 		}
 		else if(g_context->packet_type == PACKET_UOR_2_ID ||
 		        g_context->packet_type == PACKET_UOR_2_TS)
 		{
-			rohc_decomp_debug(context, "change for packet UOR-2-RTP\n");
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "change for packet UOR-2-RTP\n");
 			g_context->packet_type = PACKET_UOR_2_RTP;
 		}
 		else
 		{
-			rohc_decomp_debug(context, "only UOR-2-RTP, UOR-2-ID, and UOR-2-TS "
-			                  "packets may require to be reparsed, packet type "
-			                  "%d should not\n", g_context->packet_type);
+			rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			           "only UOR-2-RTP, UOR-2-ID, and UOR-2-TS packets may "
+			           "require to be reparsed, packet type %d should not\n",
+			           g_context->packet_type);
 			assert(0);
 			goto error;
 		}
@@ -5844,7 +6095,11 @@ static int decode_uor2(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		if(build_ret == ROHC_ERROR_CRC)
 		{
 			/* try to guess the correct SN value in case of failure */
@@ -6118,7 +6373,8 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "CRC detected a transmission failure for IR-DYN packet\n");
 		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-		                 "IR-DYN headers", rohc_packet - add_cid_len,
+		                 ROHC_TRACE_WARNING, "IR-DYN headers",
+		                 rohc_packet - add_cid_len,
 		                 rohc_header_len + add_cid_len);
 		goto error_crc;
 	}
@@ -6151,7 +6407,11 @@ static int decode_irdyn(struct rohc_decomp *decomp,
 	if(build_ret != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to build uncompressed headers\n");
+		             "CID %u: failed to build uncompressed headers\n",
+		             context->cid);
+		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_WARNING, "compressed headers",
+		                 rohc_packet, rohc_header_len);
 		assert(build_ret != ROHC_ERROR_CRC); /* expected, no CRC check there */
 		goto error;
 	}
@@ -6639,19 +6899,24 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		case PACKET_UOR_2_TS:
 		case PACKET_UOR_2_ID:
 		{
-			/* check the minimal length to decode the first byte of flags and ip2 flag */
-			if(rohc_remain_len < 2)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
-				goto error;
-			}
+			/* decode the first byte of flags */
 			rts = GET_REAL(GET_BIT_4(rohc_remain_data));
 			bits->is_ts_scaled = GET_BOOL(GET_BIT_3(rohc_remain_data));
 			mode = 0;
 			rtp = GET_REAL(GET_BIT_0(rohc_remain_data));
+
+			/* decode the optional ip2 flag */
 			if(ip)
 			{
+				/* check the minimal length to decode the ip2 flag */
+				if(rohc_remain_len < 1)
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					             "ROHC packet too small (len = %zd)\n",
+					             rohc_remain_len);
+					goto error;
+				}
+
 				ip2 = GET_REAL(GET_BIT_0(rohc_remain_data + 1));
 			}
 			else
@@ -7524,9 +7789,13 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		if(!crc_ok)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CRC detected a decompression failure\n");
+			             "CRC detected a decompression failure for packet "
+			             "of type %s in state %s and mode %s\n",
+			             rohc_get_packet_descr(g_context->packet_type),
+			             rohc_decomp_get_state_descr(context->state),
+			             rohc_get_mode_descr(context->mode));
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			                 "uncompressed headers",
+			                 ROHC_TRACE_WARNING, "uncompressed headers",
 			                 outer_ip_hdr, *uncomp_hdrs_len);
 			goto error_crc;
 		}
@@ -7665,7 +7934,7 @@ static unsigned int build_uncomp_ipv6(const struct d_context *const context,
 		{
 			list = list_decomp->list_table[list_decomp->counter_list];
 		}
-		if(list != NULL && list_get_size(list) > 0)
+		if(list_get_size(list) > 0)
 		{
 			ip->ip6_nxt = (uint8_t) list->first_elt->item->type;
 			rohc_decomp_debug(context, "set Next Header in IPv6 base header to "
@@ -7984,9 +8253,9 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode32(g_context->sn_lsb_ctxt,
-		                              bits.sn, bits.sn_nr,
-		                              &decoded->sn);
+		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt,
+		                            bits.sn, bits.sn_nr,
+		                            &decoded->sn);
 		if(!decode_ok)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -8574,7 +8843,7 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
  * @param bits  The bits extracted from packet
  * @return      true if IPv4, false if IPv6
  */
-static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits)
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
 {
 	return (bits.version == IPV4);
 }
@@ -8586,7 +8855,7 @@ static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits const bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4 and random, false otherwise
  */
-static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits)
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
 {
 	return (is_ipv4_pkt(bits) && bits.rnd == 1);
 }
@@ -8598,7 +8867,7 @@ static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits const bits)
  * @param bits  The bits extracted from packet
  * @return      true if IPv4 and non-random, false otherwise
  */
-static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits const bits)
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
 {
 	return (is_ipv4_pkt(bits) && bits.rnd == 0);
 }

@@ -789,11 +789,12 @@ static int test_comp_and_decomp(const int use_large_cid,
 	link_layer_type_src = pcap_datalink(handle);
 	if(link_layer_type_src != DLT_EN10MB &&
 	   link_layer_type_src != DLT_LINUX_SLL &&
-	   link_layer_type_src != DLT_RAW)
+	   link_layer_type_src != DLT_RAW &&
+	   link_layer_type_src != DLT_NULL)
 	{
 		printf("link layer type %d not supported in source dump (supported = "
-		       "%d, %d, %d)\n", link_layer_type_src, DLT_EN10MB, DLT_LINUX_SLL,
-		       DLT_RAW);
+		       "%d, %d, %d, %d)\n", link_layer_type_src, DLT_EN10MB,
+		       DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
 		printf("\t\t</log>\n");
 		printf("\t\t<status>failed</status>\n");
 		printf("\t</startup>\n\n");
@@ -807,6 +808,10 @@ static int test_comp_and_decomp(const int use_large_cid,
 	else if(link_layer_type_src == DLT_LINUX_SLL)
 	{
 		link_len_src = LINUX_COOKED_HDR_LEN;
+	}
+	else if(link_layer_type_src == DLT_NULL)
+	{
+		link_len_src = BSD_LOOPBACK_HDR_LEN;
 	}
 	else /* DLT_RAW */
 	{
@@ -848,11 +853,12 @@ static int test_comp_and_decomp(const int use_large_cid,
 		link_layer_type_cmp = pcap_datalink(cmp_handle);
 		if(link_layer_type_cmp != DLT_EN10MB &&
 		   link_layer_type_cmp != DLT_LINUX_SLL &&
-		   link_layer_type_cmp != DLT_RAW)
+		   link_layer_type_cmp != DLT_RAW &&
+		   link_layer_type_cmp != DLT_NULL)
 		{
 			printf("link layer type %d not supported in comparision dump "
-			       "(supported = %d, %d, %d)\n", link_layer_type_cmp, DLT_EN10MB,
-			       DLT_LINUX_SLL, DLT_RAW);
+			       "(supported = %d, %d, %d, %d)\n", link_layer_type_cmp,
+			       DLT_EN10MB, DLT_LINUX_SLL, DLT_RAW, DLT_NULL);
 			printf("\t\t</log>\n");
 			printf("\t\t<status>failed</status>\n");
 			printf("\t</startup>\n\n");
@@ -866,6 +872,10 @@ static int test_comp_and_decomp(const int use_large_cid,
 		else if(link_layer_type_cmp == DLT_LINUX_SLL)
 		{
 			link_len_cmp = LINUX_COOKED_HDR_LEN;
+		}
+		else if(link_layer_type_cmp == DLT_NULL)
+		{
+			link_len_cmp = BSD_LOOPBACK_HDR_LEN;
 		}
 		else /* DLT_RAW */
 		{
@@ -1178,6 +1188,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		else
 		{
 			cmp_packet = NULL;
+			cmp_header.caplen = 0;
 		}
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
@@ -1217,6 +1228,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		else
 		{
 			cmp_packet = NULL;
+			cmp_header.caplen = 0;
 		}
 
 		/* compress & decompress from compressor 2 to decompressor 2 */

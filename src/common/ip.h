@@ -65,6 +65,10 @@ typedef enum
 	IPV6 = 6,
 	/// not IP
 	IP_UNKNOWN = 0,
+	/// IP version 4 (malformed)
+	IPV4_MALFORMED = 1,
+	/// IP version 6 (malformed)
+	IPV6_MALFORMED = 2,
 } ip_version;
 
 

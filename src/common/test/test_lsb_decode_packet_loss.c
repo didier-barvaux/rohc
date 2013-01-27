@@ -186,7 +186,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 	/* init the LSB decoding context with value 0 */
 	value16 = 0;
 	trace(be_verbose, "\tinitialize with 16 bits of value 0x%04x ...\n", value16);
-	lsb = rohc_lsb_new(p);
+	lsb = rohc_lsb_new(p, 16);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -263,16 +263,20 @@ static bool run_test16_with_shift_param(bool be_verbose,
 		}
 		else
 		{
+			uint32_t decoded32;
+
 			/* value is not lost, so decode it */
 			trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
 			      value16_encoded);
-			lsb_decode_ok = rohc_lsb_decode16(lsb, value16_encoded, required_bits,
-			                                  &value16_decoded);
+			lsb_decode_ok = rohc_lsb_decode(lsb, value16_encoded, required_bits,
+			                                &decoded32);
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
 				goto destroy_lsb;
 			}
+			assert(decoded32 <= 0xffff);
+			value16_decoded = decoded32;
 			trace(be_verbose, "\t\tdecoded: 0x%04x\n", value16_decoded);
 
 			/* update decoding context */
@@ -339,7 +343,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 	/* init the LSB decoding context with value 0 */
 	value32 = 0;
 	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(p);
+	lsb = rohc_lsb_new(p, 32);
 	if(lsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate LSB decoding context\n");
@@ -419,8 +423,8 @@ static bool run_test32_with_shift_param(bool be_verbose,
 			/* decode */
 			trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
 			      value32_encoded);
-			lsb_decode_ok = rohc_lsb_decode32(lsb, value32_encoded, required_bits,
-			                                  &value32_decoded);
+			lsb_decode_ok = rohc_lsb_decode(lsb, value32_encoded, required_bits,
+			                                &value32_decoded);
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);

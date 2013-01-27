@@ -107,7 +107,7 @@ static void uncompressed_decide_state(struct c_context *const context);
 static void uncompressed_periodic_down_transition(struct c_context *const context);
 static void uncompressed_change_mode(struct c_context *const context,
                                      const rohc_mode new_mode);
-static void uncompressed_change_state(struct c_context *const const,
+static void uncompressed_change_state(struct c_context *const context,
                                       const rohc_c_state new_state);
 
 
@@ -540,37 +540,58 @@ static int uncompressed_code_packet(const struct c_context *context,
 	                   const int dest_size);
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
-	int size = -1;
+	int size;
 
-	switch(context->state)
+	/* decide what packet to send depending on state and uncompressed packet */
+	if(context->state == IR)
 	{
-		case IR:
-			rohc_comp_debug(context, "build IR packet\n");
-			uncomp_context->ir_count++;
-			code_packet = uncompressed_code_IR_packet;
+		*packet_type = PACKET_IR;
+	}
+	else if(context->state == FO)
+	{
+		/* non-IPv4/6 packets cannot be compressed with Normal packets
+		 * because the first byte could be mis-interpreted as ROHC packet
+		 * types (see note at the end of §5.10.2 in RFC 3095) */
+		if(ip_get_version(ip) != IPV4 && ip_get_version(ip) != IPV6)
+		{
+			rohc_comp_debug(context, "force IR packet to avoid conflict between "
+			                "first payload byte and ROHC packet types");
 			*packet_type = PACKET_IR;
-			break;
-
-		case FO:
-			rohc_comp_debug(context, "build normal packet\n");
-			uncomp_context->normal_count++;
-			code_packet = uncompressed_code_normal_packet;
+		}
+		else
+		{
 			*packet_type = PACKET_NORMAL;
-			break;
-
-		default:
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unknown state, cannot build packet\n");
-			code_packet = NULL;
-			*packet_type = PACKET_UNKNOWN;
+		}
 	}
-
-	if(code_packet != NULL)
+	else
 	{
-		size = code_packet(context, ip, dest, payload_offset, dest_size);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "unknown state, cannot build packet\n");
+		*packet_type = PACKET_UNKNOWN;
+		assert(0); /* should not happen */
+		goto error;
 	}
+
+	if((*packet_type) == PACKET_IR)
+	{
+		rohc_comp_debug(context, "build IR packet\n");
+		uncomp_context->ir_count++;
+		code_packet = uncompressed_code_IR_packet;
+	}
+	else /* PACKET_NORMAL */
+	{
+		rohc_comp_debug(context, "build normal packet\n");
+		uncomp_context->normal_count++;
+		code_packet = uncompressed_code_normal_packet;
+	}
+
+	/* code packet according to the selected type */
+	size = code_packet(context, ip, dest, payload_offset, dest_size);
 
 	return size;
+
+error:
+	return -1;
 }
 
 

@@ -65,7 +65,7 @@ int ip_create(struct ip_packet *const ip,
 
 		if(size < sizeof(struct ipv4_hdr))
 		{
-			goto unknown;
+			goto malformed;
 		}
 
 		/* copy the IPv4 header */
@@ -73,12 +73,12 @@ int ip_create(struct ip_packet *const ip,
 
 		if(ip_get_hdrlen(ip) != sizeof(struct ipv4_hdr))
 		{
-			goto unknown;
+			goto malformed;
 		}
 
 		if(ip_get_totlen(ip) != size)
 		{
-			goto unknown;
+			goto malformed;
 		}
 
 		/* point to the whole IPv4 packet */
@@ -92,7 +92,7 @@ int ip_create(struct ip_packet *const ip,
 
 		if(size < sizeof(struct ipv6_hdr))
 		{
-			goto unknown;
+			goto malformed;
 		}
 
 		/* copy the IPv6 header */
@@ -100,7 +100,7 @@ int ip_create(struct ip_packet *const ip,
 
 		if(ip_get_totlen(ip) != size)
 		{
-			goto unknown;
+			goto malformed;
 		}
 
 		/* point to the whole IPv6 packet */
@@ -112,6 +112,24 @@ int ip_create(struct ip_packet *const ip,
 		goto unknown;
 	}
 
+	return 1;
+
+malformed:
+	/* manage the malformed IP packet */
+	if(ip->version == IPV4)
+	{
+		ip->version = IPV4_MALFORMED;
+	}
+	else if(ip->version == IPV6)
+	{
+		ip->version = IPV6_MALFORMED;
+	}
+	else
+	{
+		goto error;
+	}
+	ip->data = packet;
+	ip->size = size;
 	return 1;
 
 unknown:
@@ -1053,7 +1071,6 @@ const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
  * Private functions used by the IP module:
  * (please do not use directly)
  */
-
 
 /*
  * @brief Get the version of an IP packet

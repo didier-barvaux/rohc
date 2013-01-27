@@ -145,7 +145,7 @@ void * d_rtp_create(const struct d_context *const context)
 	g_context->specific = rtp_context;
 
 	/* create the LSB decoding context for SN */
-	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_SN);
+	g_context->sn_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_SN, 16);
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
