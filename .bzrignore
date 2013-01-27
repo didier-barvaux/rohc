@@ -75,5 +75,7 @@ test_*.sh.log
 ./app/tunnel/rohctunnel.exe
 ./app/sniffer/rohc_sniffer
 ./app/sniffer/rohc_sniffer.exe
+./app/fuzzer/rohc_fuzzer
+./app/fuzzer/rohc_fuzzer.exe
 ./examples/simple_rohc_program
 ./examples/simple_rohc_program.exe

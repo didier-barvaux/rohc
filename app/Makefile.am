@@ -7,5 +7,6 @@
 SUBDIRS = \
 	performance \
 	tunnel \
-	sniffer
+	sniffer \
+	fuzzer
 
