@@ -1053,7 +1053,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			{
 				int item_length; /* the length (in bytes) of the item related to XI */
 
-				/* is there enough room in packet to for at least one byte of
+				/* is there enough room in packet for at least one byte of
 				 * the item? */
 				if(packet_len <= (xi_length + item_read_length))
 				{
@@ -1076,7 +1076,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 					goto error;
 				}
 
-				/* is there enough room in packet to for the full item? */
+				/* is there enough room in packet for the full item? */
 				if(packet_len < (xi_length + item_read_length + item_length))
 				{
 					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -1131,7 +1131,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			{
 				int item_length; /* the length (in bytes) of the item related to XI */
 
-				/* is there enough room in packet to for at least one byte of
+				/* is there enough room in packet for at least one byte of
 				 * the item? */
 				if(packet_len <= (xi_length + item_read_length))
 				{
@@ -1154,7 +1154,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 					goto error;
 				}
 
-				/* is there enough room in packet to for the full item? */
+				/* is there enough room in packet for the full item? */
 				if(packet_len < (xi_length + item_read_length + item_length))
 				{
 					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -1568,7 +1568,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
-						/* is there enough room in packet to for at least one byte
+						/* is there enough room in packet for at least one byte
 						 * of the item? */
 						if(packet_len <= (xi_length + item_read_length))
 						{
@@ -1592,7 +1592,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							goto error;
 						}
 
-						/* is there enough room in packet to for the full item? */
+						/* is there enough room in packet for the full item? */
 						if(packet_len < (xi_length + item_read_length + item_length))
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -1649,7 +1649,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
-						/* is there enough room in packet to for at least one byte
+						/* is there enough room in packet for at least one byte
 						 * of the item? */
 						if(packet_len <= (xi_length + item_read_length))
 						{
@@ -1673,7 +1673,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							goto error;
 						}
 
-						/* is there enough room in packet to for the full item? */
+						/* is there enough room in packet for the full item? */
 						if(packet_len < (xi_length + item_read_length + item_length))
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -1731,7 +1731,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
-						/* is there enough room in packet to for at least one byte
+						/* is there enough room in packet for at least one byte
 						 * of the item? */
 						if(packet_len <= (xi_length + item_read_length))
 						{
@@ -1755,7 +1755,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 							goto error;
 						}
 
-						/* is there enough room in packet to for the full item? */
+						/* is there enough room in packet for the full item? */
 						if(packet_len < (xi_length + item_read_length + item_length))
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -1814,7 +1814,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				/* parse the corresponding item if present */
 				if(xi_x_value)
 				{
-					/* is there enough room in packet to for at least one byte of
+					/* is there enough room in packet for at least one byte of
 					 * the item? */
 					if(packet_len <= (xi_length + item_read_length))
 					{
@@ -1838,7 +1838,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 						goto error;
 					}
 
-					/* is there enough room in packet to for the full item? */
+					/* is there enough room in packet for the full item? */
 					if(packet_len < (xi_length + item_read_length + item_length))
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -2705,7 +2705,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
-						/* is there enough room in packet to for at least one byte
+						/* is there enough room in packet for at least one byte
 						 * of the item? */
 						if(packet_len <= (xi_length + item_read_length))
 						{
@@ -2729,7 +2729,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							goto error;
 						}
 
-						/* is there enough room in packet to for the full item? */
+						/* is there enough room in packet for the full item? */
 						if(packet_len < (xi_length + item_read_length + item_length))
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -2792,7 +2792,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
-						/* is there enough room in packet to for at least one byte
+						/* is there enough room in packet for at least one byte
 						 * of the item? */
 						if(packet_len <= (xi_length + item_read_length))
 						{
@@ -2816,7 +2816,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							goto error;
 						}
 
-						/* is there enough room in packet to for the full item? */
+						/* is there enough room in packet for the full item? */
 						if(packet_len < (xi_length + item_read_length + item_length))
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -2879,7 +2879,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse the corresponding item if present */
 					if(xi_x_value)
 					{
-						/* is there enough room in packet to for at least one byte
+						/* is there enough room in packet for at least one byte
 						 * of the item? */
 						if(packet_len <= (xi_length + item_read_length))
 						{
@@ -2903,7 +2903,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 							goto error;
 						}
 
-						/* is there enough room in packet to for the full item? */
+						/* is there enough room in packet for the full item? */
 						if(packet_len < (xi_length + item_read_length + item_length))
 						{
 							rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -2967,7 +2967,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				/* parse the corresponding item if present */
 				if(xi_x_value)
 				{
-					/* is there enough room in packet to for at least one byte of
+					/* is there enough room in packet for at least one byte of
 					 * the item? */
 					if(packet_len <= (xi_length + item_read_length))
 					{
@@ -2991,7 +2991,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 						goto error;
 					}
 
-					/* is there enough room in packet to for the full item? */
+					/* is there enough room in packet for the full item? */
 					if(packet_len < (xi_length + item_read_length + item_length))
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
