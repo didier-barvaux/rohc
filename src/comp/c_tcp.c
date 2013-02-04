@@ -4633,13 +4633,15 @@ code_common:
 	                                     tcp_context->msn);
 	puchar = mptr.uint8;
 	// =:= irregular(2) [ 2 ];
-	c_base_header.co_common->seq_indicator = variable_length_32_enc(&mptr,&tcp->seq_number);
+	c_base_header.co_common->seq_indicator =
+		variable_length_32_enc(&mptr, tcp->seq_number);
 	rohc_comp_debug(context, "size = %d, seq_indicator = %d, seq_number = 0x%x\n",
 	                (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->seq_indicator,
 	                ntohl(tcp->seq_number));
 	// =:= irregular(2) [ 2 ];
-	c_base_header.co_common->ack_indicator = variable_length_32_enc(&mptr,&tcp->ack_number);
+	c_base_header.co_common->ack_indicator =
+		variable_length_32_enc(&mptr, tcp->ack_number);
 	rohc_comp_debug(context, "size = %d, ack_indicator = %d, ack_number = 0x%x\n",
 	                (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->seq_indicator,

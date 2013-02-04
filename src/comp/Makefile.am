@@ -5,6 +5,9 @@
 # Description: create the ROHC compression library
 ################################################################################
 
+SUBDIRS = . test
+
+
 lib_LTLIBRARIES = librohc_comp.la
 
 librohc_comp_la_SOURCES = \

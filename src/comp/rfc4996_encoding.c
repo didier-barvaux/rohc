@@ -31,6 +31,7 @@
 
 #include <math.h> // TODO: required?
 #include <assert.h>
+#include <string.h>
 
 
 /**
@@ -184,42 +185,67 @@ uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value )
 
 
 /**
- * @brief Compress a 32 bits value
+ * @brief Compress the given 32-bit value
  *
- * See RFC4996 page 46.
+ * See variable_length_32_enc in RFC4996 page 46.
  *
- * @param pmptr            The destination for the compressed value
- * @param puint32          Pointer to the 32 bits value to compress
- * @return                 Size of the compressed value, in octets
+ * @todo TODO: value should be LSB-encoded if indicator = 1 or 2
+ *
+ * @param pmptr   The destination for the compressed value
+ * @param value   The 32-bit value to compress
+ * @return        The indicator for the compressed value
  */
-unsigned int variable_length_32_enc( multi_ptr_t *pmptr, uint32_t *puint32 )
+unsigned int variable_length_32_enc(multi_ptr_t *const pmptr,
+                                    const uint32_t value)
 {
-	multi_ptr_t mptr;
+	uint8_t *bytes;
+	size_t encoded_len;
+	unsigned int indicator;
 
-	if(*puint32 == 0)
+	assert(pmptr != NULL);
+	assert(pmptr->uint8 != NULL);
+
+	bytes = (uint8_t *) &value;
+
+	/* determine the number of bytes needed for the value */
+	if(bytes[0] != 0)
 	{
-		return 0;
+		/* 4-byte value */
+		encoded_len = 4;
+		indicator = 3;
 	}
-	mptr.uint32 = puint32;
-	if(READNI16_FROM_MPTR(mptr) == 0)
+	else if(bytes[1] != 0)
 	{
-		++mptr.uint16;
-		if(*mptr.uint8 == 0)
-		{
-			*(pmptr->uint8)++ = *(++mptr.uint8);
-			return 1;
-		}
-		else
-		{
-			WRITE16_TO_PMPTR(pmptr,READNI16_FROM_MPTR(mptr));
-			return 2;
-		}
+		/* 3-byte value */
+		encoded_len = 3;
+		indicator = 3;
+	}
+	else if(bytes[2] != 0)
+	{
+		/* 2-byte value */
+		encoded_len = 2;
+		indicator = 2;
+	}
+	else if(bytes[3] != 0)
+	{
+		/* 1-byte value */
+		encoded_len = 1;
+		indicator = 1;
 	}
 	else
 	{
-		WRITE32_TO_PMPTR(pmptr,READNI32_FROM_MPTR(mptr));
-		return 3;
+		/* 0-byte value */
+		encoded_len = 0;
+		indicator = 0;
 	}
+	assert(encoded_len <= sizeof(uint32_t));
+	assert(indicator <= 3);
+
+	/* copy the needed bytes */
+	memcpy(pmptr->uint8, bytes + sizeof(uint32_t) - encoded_len, encoded_len);
+	pmptr->uint8 += encoded_len;
+
+	return indicator;
 }
 
 
