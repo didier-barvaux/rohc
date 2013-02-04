@@ -1340,7 +1340,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	}
 
 	/* update the list table */
-	if(decomp->ref_list->gen_id != ref_id)
+	if(decomp->ref_list == NULL || decomp->ref_list->gen_id != ref_id)
 	{
 		rd_list_debug(decomp, "reference list changed (gen_id %d -> gen_id %d) "
 		              "since last packet, update list table in consequence\n",
@@ -1360,6 +1360,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 			}
 		}
 	}
+	assert(decomp->ref_list != NULL);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print current list before update */
@@ -2018,11 +2019,12 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	}
 
 	/* update the list table */
-	if(decomp->ref_list->gen_id != ref_id)
+	if(decomp->ref_list == NULL || decomp->ref_list->gen_id != ref_id)
 	{
 		rd_list_debug(decomp, "reference list changed (gen_id %d -> gen_id %d) "
 		              "since last packet, update list table in consequence\n",
-		              decomp->ref_list->gen_id, ref_id);
+		              decomp->ref_list == NULL ? -1 : decomp->ref_list->gen_id,
+		              ref_id);
 		for(i = 0; i < LIST_COMP_WINDOW; i++)
 		{
 			if(decomp->list_table[i] != NULL)
@@ -2038,6 +2040,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 			}
 		}
 	}
+	assert(decomp->ref_list != NULL);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print reference list before update */
@@ -2334,7 +2337,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	}
 
 	/* update the list table */
-	if(decomp->ref_list->gen_id != ref_id)
+	if(decomp->ref_list == NULL || decomp->ref_list->gen_id != ref_id)
 	{
 		rd_list_debug(decomp, "reference list changed (gen_id %d -> gen_id %d) "
 		              "since last packet, update list table in consequence\n",
@@ -2354,6 +2357,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			}
 		}
 	}
+	assert(decomp->ref_list != NULL);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print reference list before update */
