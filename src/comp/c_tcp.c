@@ -2493,53 +2493,6 @@ uint8_t * c_ts_lsb(const struct c_context *const context,
 		}
 	}
 
-#ifdef FIRST_VERSION
-	if(timestamp < 0x80)
-	{
-		// Discriminator '0'
-		*(ptr++) = timestamp & 0x7F;
-	}
-	else
-	{
-		if(timestamp < 0x4000)
-		{
-			// Discriminator '10'
-			*(ptr++) = 0x80 | ( timestamp >> 8 );
-			*(ptr++) = timestamp;
-		}
-		else
-		{
-			if(timestamp < 0x200000)
-			{
-				// Discriminator '110'
-				*(ptr++) = 0xC0 | ( timestamp >> 16 );
-				*(ptr++) = timestamp >> 8;
-				*(ptr++) = timestamp;
-			}
-			else
-			{
-				if(timestamp < 0x20000000)
-				{
-					// Discriminator '111'
-					*(ptr++) = 0xE0 | ( timestamp >> 24 );
-					*(ptr++) = timestamp >> 16;
-					*(ptr++) = timestamp >> 8;
-					*(ptr++) = timestamp;
-				}
-				else
-				{
-					// PROBLEM!!!
-					// High bits need for disciminator and value
-					*(ptr++) = timestamp >> 24;
-					*(ptr++) = timestamp >> 16;
-					*(ptr++) = timestamp >> 8;
-					*(ptr++) = timestamp;
-				}
-			}
-		}
-	}
-#endif
-
 	return ptr;
 }
 
