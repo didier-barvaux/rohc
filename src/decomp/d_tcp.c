@@ -204,7 +204,8 @@ static void * d_tcp_create(const struct d_context *const context)
 
 	/* create the TCP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = sizeof(tcphdr_t);
-	g_context->outer_ip_changes->next_header = malloc(sizeof(tcphdr_t));
+	g_context->outer_ip_changes->next_header =
+		(unsigned char *) malloc(sizeof(tcphdr_t));
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -215,7 +216,8 @@ static void * d_tcp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(tcphdr_t));
 
 	g_context->inner_ip_changes->next_header_len = sizeof(tcphdr_t);
-	g_context->inner_ip_changes->next_header = malloc(sizeof(tcphdr_t));
+	g_context->inner_ip_changes->next_header =
+		(unsigned char *) malloc(sizeof(tcphdr_t));
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -2919,7 +2921,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	uint16_t msn;
 	int size_header;
 	int size_options = 0;
-	int size = 0;
+	int size;
 	WB_t wb;
 	int ttl_irregular_chain_flag = 0;
 	int ip_inner_ecn;
@@ -3312,8 +3314,8 @@ decode_seq_8:
 decode_common:
 	assert( c_base_header.co_common->discriminator == 0x7D ); // '1111101'
 	size_header = sizeof(co_common_t);
-	rohc_decomp_debug(context, "size = %d, seq_indicator = %d\n",
-	                  size, c_base_header.co_common->seq_indicator);
+	rohc_decomp_debug(context, "seq_indicator = %d\n",
+	                  c_base_header.co_common->seq_indicator);
 	size_options += variable_length_32_size[c_base_header.co_common->seq_indicator];
 	rohc_decomp_debug(context, "size_options = %d, ack_indicator = %d\n",
 	                  size_options, c_base_header.co_common->ack_indicator);
@@ -3430,7 +3432,6 @@ test_checksum:
 	base_header.uint8 = (uint8_t*) dest;
 	ip_context.uint8 = tcp_context->ip_context;
 	uncomp_header_len = 0;
-	size = 0;
 
 	do
 	{
