@@ -1932,7 +1932,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 							break;
 						case TCP_OPT_TIMESTAMP:
 							rohc_decomp_debug(context, "TCP option TIMSESTAMP\n");
-							memcpy(tcp_context->tcp_option_timestamp,mptr.uint8 + 2,8);
+							memcpy(&tcp_context->tcp_option_timestamp, mptr.uint8 + 2,
+									 sizeof(struct tcp_option_timestamp));
 							mptr.uint8 += TCP_OLEN_TIMESTAMP;
 							size += TCP_OLEN_TIMESTAMP;
 							break;
@@ -2108,18 +2109,17 @@ static uint8_t * tcp_decode_irregular_tcp(struct d_context *const context,
  */
 static uint8_t * d_ts_lsb(const struct d_context *const context,
                           uint8_t *ptr,
-                          uint32_t *context_timestamp,
+                          const uint32_t context_timestamp,
                           uint32_t *pTimestamp)
 {
-	uint32_t last_timestamp;
+	const uint32_t last_timestamp = ntohl(context_timestamp);
 	uint32_t timestamp;
 #if ROHC_EXTRA_DEBUG == 1
 	uint8_t *pBegin = ptr;
 #endif
 
 	assert(context != NULL);
-
-	last_timestamp = ntohl(*context_timestamp);
+	assert(ptr != NULL);
 
 	if(*ptr & 0x80)
 	{
@@ -2605,14 +2605,15 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					// compressed_options = d_tcp_opt_ts(compressed_options);
 					compressed_options =
 					   d_ts_lsb(context, compressed_options,
-					            (uint32_t *) tcp_context->tcp_option_timestamp,
+					            tcp_context->tcp_option_timestamp.ts,
 					            (uint32_t *) options);
 					compressed_options =
 					   d_ts_lsb(context, compressed_options,
-					            (uint32_t *) (tcp_context->tcp_option_timestamp + 4),
+					            tcp_context->tcp_option_timestamp.ts_reply,
 					            (uint32_t *) (options + 4));
-					memcpy(tcp_context->tcp_option_timestamp,options,8);
-					options += 8;
+					memcpy(&tcp_context->tcp_option_timestamp, options,
+							 sizeof(struct tcp_option_timestamp));
+					options += sizeof(struct tcp_option_timestamp);
 					break;
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
 					*(options++) = TCP_OPT_SACK_PERMITTED;
@@ -2662,7 +2663,8 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					// Length
 					*(options++) = TCP_OLEN_TIMESTAMP;
 					// Timestamp value
-					memcpy(options,tcp_context->tcp_option_timestamp,8);
+					memcpy(options, &tcp_context->tcp_option_timestamp,
+							 sizeof(struct tcp_option_timestamp));
 					options += TCP_OLEN_TIMESTAMP - 2;
 					break;
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018

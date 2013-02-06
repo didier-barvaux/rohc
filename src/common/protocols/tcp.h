@@ -660,6 +660,15 @@ typedef struct __attribute__((packed)) tcphdr
 	uint16_t urg_ptr;
 } tcphdr_t;
 
+
+/** The Timestamp option of the TCP header */
+struct tcp_option_timestamp
+{
+	uint32_t ts;        /**< The timestamp value */
+	uint32_t ts_reply;  /**< The timestamp echo reply value */
+} __attribute__((packed));
+
+
 /**
  * @brief Define the RSF flags
  *
