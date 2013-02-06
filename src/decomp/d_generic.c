@@ -965,7 +965,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		{
 			rd_list_debug(decomp, "creating compression list %d\n",
 			              decomp->counter_list);
-			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			decomp->list_table[decomp->counter_list] = list_create();
 			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
 				rohc_error(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -973,7 +973,6 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 				goto error;
 			}
 			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-			decomp->list_table[decomp->counter_list]->first_elt = NULL;
 		}
 		decomp->counter++;
 	}
@@ -1401,7 +1400,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		{
 			rd_list_debug(decomp, "creating compression list %d\n",
 			              decomp->counter_list);
-			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			decomp->list_table[decomp->counter_list] = list_create();
 			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
 				rohc_error(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -1409,7 +1408,6 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				goto error;
 			}
 			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-			decomp->list_table[decomp->counter_list]->first_elt = NULL;
 		}
 	}
 
@@ -2120,7 +2118,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		{
 			rd_list_debug(decomp, "creating compression list at index %d in "
 			              "list table\n", decomp->counter_list);
-			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			decomp->list_table[decomp->counter_list] = list_create();
 			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
 				rohc_error(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -2128,7 +2126,6 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 				goto error;
 			}
 			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-			decomp->list_table[decomp->counter_list]->first_elt = NULL;
 		}
 
 		new_list_len = 0;
@@ -2397,7 +2394,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		{
 			rd_list_debug(decomp, "creating compression list %d\n",
 			              decomp->counter_list);
-			decomp->list_table[decomp->counter_list] = malloc(sizeof(struct c_list));
+			decomp->list_table[decomp->counter_list] = list_create();
 			if(decomp->list_table[decomp->counter_list] == NULL)
 			{
 				rohc_error(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
@@ -2406,7 +2403,6 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			}
 			rd_list_debug(decomp, "gen_id = %d \n", gen_id);
 			decomp->list_table[decomp->counter_list]->gen_id = gen_id;
-			decomp->list_table[decomp->counter_list]->first_elt = NULL;
 		}
 
 		/* create a list for intermediate result after removal scheme but
@@ -6007,7 +6003,6 @@ static int decode_uor2(struct rohc_decomp *decomp,
 		{
 			/* inner RND flag changed */
 			assert(bits.inner_ip.rnd_nr == 1);
-			outer_rnd = g_context->outer_ip_changes->rnd;
 			inner_rnd = bits.inner_ip.rnd;
 		}
 		else
@@ -6842,7 +6837,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
                             const size_t rohc_data_len,
                             struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context = context->specific;
+	struct d_generic_context *g_context;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
 	int S, rts, mode, I, ip, rtp, ip2;

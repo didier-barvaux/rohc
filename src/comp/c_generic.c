@@ -394,26 +394,22 @@ int c_init_header_info(struct ip_header_info *header_info,
 			             "compressor\n");
 			goto error;
 		}
-		header_info->info.v6.ext_comp->ref_list = malloc(sizeof(struct c_list));
+		header_info->info.v6.ext_comp->ref_list = list_create();
 		if(header_info->info.v6.ext_comp->ref_list == NULL)
 		{
 			__rohc_print(trace_callback, ROHC_TRACE_ERROR, ROHC_TRACE_COMP,
 			             profile_id, "cannot allocate memory for the reference "
 			             "compression list\n");
-			goto error;
+			goto free_list_comp;
 		}
-		header_info->info.v6.ext_comp->ref_list->gen_id = 0;
-		header_info->info.v6.ext_comp->ref_list->first_elt = NULL;
-		header_info->info.v6.ext_comp->curr_list = malloc(sizeof(struct c_list));
+		header_info->info.v6.ext_comp->curr_list = list_create();
 		if(header_info->info.v6.ext_comp->curr_list == NULL)
 		{
 			__rohc_print(trace_callback, ROHC_TRACE_ERROR, ROHC_TRACE_COMP,
 			             profile_id, "cannot allocate memory for the current "
 			             "compression list\n");
-			goto error;
+			goto free_ref_list;
 		}
-		header_info->info.v6.ext_comp->curr_list->gen_id = 0;
-		header_info->info.v6.ext_comp->curr_list->first_elt = NULL;
 
 		header_info->info.v6.ext_comp->counter = 0;
 		header_info->info.v6.ext_comp->changed = false;
@@ -431,6 +427,10 @@ int c_init_header_info(struct ip_header_info *header_info,
 
 	return 1;
 
+free_ref_list:
+	zfree(header_info->info.v6.ext_comp->ref_list);
+free_list_comp:
+	zfree(header_info->info.v6.ext_comp);
 error:
 	return 0;
 }
@@ -524,7 +524,7 @@ int c_generic_create(struct c_context *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory to allocate W-LSB encoding for SN\n");
-		goto clean;
+		goto free_generic_context;
 	}
 
 	/* step 2 */
@@ -542,7 +542,7 @@ int c_generic_create(struct c_context *const context,
 	                       context->compressor->trace_callback,
 	                       context->profile->id))
 	{
-		goto clean;
+		goto free_sn_window;
 	}
 	g_context->is_ip2_initialized = 0;
 
@@ -568,8 +568,10 @@ int c_generic_create(struct c_context *const context,
 
 	return 1;
 
-clean:
-	c_generic_destroy(context);
+free_sn_window:
+	c_destroy_wlsb(g_context->sn_window);
+free_generic_context:
+	free(g_context);
 quit:
 	return 0;
 }
@@ -588,60 +590,40 @@ void c_generic_destroy(struct c_context *const context)
 	struct c_generic_context *g_context =
 		(struct c_generic_context *) context->specific;
 
-	if(g_context != NULL)
+	assert(g_context != NULL);
+
+	if(g_context->ip_flags.version == IPV4)
 	{
-		if(g_context->ip_flags.version == IPV4 &&
-		   g_context->ip_flags.info.v4.ip_id_window != NULL)
-		{
-			c_destroy_wlsb(g_context->ip_flags.info.v4.ip_id_window);
-		}
-		if(g_context->is_ip2_initialized &&
-		   g_context->ip2_flags.version == IPV4 &&
-		   g_context->ip2_flags.info.v4.ip_id_window != NULL)
-		{
-			c_destroy_wlsb(g_context->ip2_flags.info.v4.ip_id_window);
-		}
-		if(g_context->ip_flags.version == IPV6 &&
-		   g_context->ip_flags.info.v6.ext_comp != NULL)
-		{
-			if(g_context->ip_flags.info.v6.ext_comp->curr_list != NULL)
-			{
-				list_destroy(g_context->ip_flags.info.v6.ext_comp->curr_list);
-			}
-			if(g_context->ip_flags.info.v6.ext_comp->ref_list != NULL)
-			{
-				list_destroy(g_context->ip_flags.info.v6.ext_comp->ref_list);
-			}
-			list_comp_ipv6_destroy_table(g_context->ip_flags.info.v6.ext_comp);
-			zfree(g_context->ip_flags.info.v6.ext_comp);
-		}
-		if(g_context->is_ip2_initialized &&
-		   g_context->ip2_flags.version == IPV6 &&
-		   g_context->ip2_flags.info.v6.ext_comp != NULL)
-		{
-			if(g_context->ip2_flags.info.v6.ext_comp->curr_list != NULL)
-			{
-				list_destroy(g_context->ip2_flags.info.v6.ext_comp->curr_list);
-			}
-			if(g_context->ip2_flags.info.v6.ext_comp->ref_list != NULL)
-			{
-				list_destroy(g_context->ip2_flags.info.v6.ext_comp->ref_list);
-			}
-			list_comp_ipv6_destroy_table(g_context->ip2_flags.info.v6.ext_comp);
-			zfree(g_context->ip2_flags.info.v6.ext_comp);
-		}
-		if(g_context->sn_window != NULL)
-		{
-			c_destroy_wlsb(g_context->sn_window);
-		}
-
-		if(g_context->specific != NULL)
-		{
-			zfree(g_context->specific);
-		}
-
-		zfree(g_context);
+		c_destroy_wlsb(g_context->ip_flags.info.v4.ip_id_window);
 	}
+	if(g_context->is_ip2_initialized &&
+		g_context->ip2_flags.version == IPV4)
+	{
+		c_destroy_wlsb(g_context->ip2_flags.info.v4.ip_id_window);
+	}
+	if(g_context->ip_flags.version == IPV6)
+	{
+		list_destroy(g_context->ip_flags.info.v6.ext_comp->curr_list);
+		list_destroy(g_context->ip_flags.info.v6.ext_comp->ref_list);
+		list_comp_ipv6_destroy_table(g_context->ip_flags.info.v6.ext_comp);
+		zfree(g_context->ip_flags.info.v6.ext_comp);
+	}
+	if(g_context->is_ip2_initialized &&
+	   g_context->ip2_flags.version == IPV6)
+	{
+		list_destroy(g_context->ip2_flags.info.v6.ext_comp->curr_list);
+		list_destroy(g_context->ip2_flags.info.v6.ext_comp->ref_list);
+		list_comp_ipv6_destroy_table(g_context->ip2_flags.info.v6.ext_comp);
+		zfree(g_context->ip2_flags.info.v6.ext_comp);
+	}
+	c_destroy_wlsb(g_context->sn_window);
+
+	if(g_context->specific != NULL)
+	{
+		zfree(g_context->specific);
+	}
+
+	free(g_context);
 }
 
 
@@ -4029,7 +4011,7 @@ int code_EXT0_packet(const struct c_context *context,
 
 	/* part 1: extension type + SN */
 	f_byte = 0;
-	f_byte = (g_context->sn & 0x07) << 3;
+	f_byte |= (g_context->sn & 0x07) << 3;
 
 	/* part 1: IP-ID or TS ? */
 	switch(packet_type)
@@ -6644,13 +6626,10 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	int size;
 	int j;
 	int index_table;
-	const unsigned char *ext;
 	struct list_elt *elt;
 
 	/* default the list does not change */
 	comp->changed = false;
-
-	ext = ip_get_raw_data(ip) + sizeof(struct ipv6_hdr);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print current list before update */
@@ -6728,6 +6707,8 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 	}
 	else
 	{
+		const unsigned char *ext;
+
 		/* there is one extension or more */
 		rc_list_debug(comp, "there is at least one IPv6 extension in packet\n");
 		if(!comp->is_present)
@@ -7296,6 +7277,10 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	int m; /* the number of elements in current list = number of XIs */
 	int k; /* the index of the current element in list */
 
+	assert(comp != NULL);
+	assert(comp->curr_list != NULL);
+	assert(dest != NULL);
+
 	m = list_get_size(comp->curr_list);
 	assert(m <= 15);
 
@@ -7504,6 +7489,11 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	int mask_size;
 	int m; /* the number of elements in current list = number of XIs */
 	int k; /* the index of the current element in list */
+
+	assert(comp != NULL);
+	assert(comp->ref_list != NULL);
+	assert(comp->curr_list != NULL);
+	assert(dest != NULL);
 
 	m = list_get_size(comp->curr_list);
 	assert(m <= 15);
@@ -7803,6 +7793,11 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 	int size_ref_list; /* size of reference list */
 	int k; /* the index of the current element in list */
 
+	assert(comp != NULL);
+	assert(comp->ref_list != NULL);
+	assert(comp->curr_list != NULL);
+	assert(dest != NULL);
+
 	size_ref_list = list_get_size(comp->ref_list);
 	assert(size_ref_list <= 15);
 
@@ -8005,6 +8000,11 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	int m; /* the number of elements in current list = number of XIs */
 	int k; /* the index of the current element in list */
 	int mask_size = 0; /* the cumulative size of insertion/removal masks */
+
+	assert(comp != NULL);
+	assert(comp->ref_list != NULL);
+	assert(comp->curr_list != NULL);
+	assert(dest != NULL);
 
 	/* part 1: ET, GP, PS, CC */
 	rc_list_debug(comp, "ET = %d, GP = %d, PS = %d\n", et, gp, ps);

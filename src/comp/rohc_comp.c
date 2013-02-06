@@ -95,7 +95,8 @@ static void c_destroy_contexts(struct rohc_comp *const comp);
 
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
-                                           const struct ip_packet *ip);
+                                           const struct ip_packet *ip)
+    __attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
                                          const struct ip_packet *ip);
@@ -2441,6 +2442,8 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	struct c_context *c;
 	int index, i;
 	unsigned int oldest;
+
+	assert(profile != NULL);
 
 	index = 0;
 
