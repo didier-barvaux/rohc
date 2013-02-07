@@ -964,7 +964,7 @@ int c_tcp_encode(struct c_context *const context,
 
 	tcp = base_header.tcphdr;
 
-	ecn_used |= tcp->tcp_ecn_flags;
+	ecn_used |= tcp->ecn_flags;
 	tcp_context->ecn_used = ecn_used;
 	rohc_comp_debug(context, "ecn_used %d\n", tcp_context->ecn_used);
 
@@ -2104,8 +2104,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
 	                "URG = %d, ACK = %d, PSH = %d\n",
 	                *(uint16_t*)(((unsigned char*)tcp) + 12),
-	                tcp->tcp_res_flags, tcp->data_offset, tcp->rsf_flags,
-	                tcp->tcp_ecn_flags, tcp->urg_flag, tcp->ack_flag,
+	                tcp->res_flags, tcp->data_offset, tcp->rsf_flags,
+	                tcp->ecn_flags, tcp->urg_flag, tcp->ack_flag,
 	                tcp->psh_flag);
 	rohc_comp_debug(context, "TCP window = 0x%04x, check = 0x%x, "
 	                "urg_ptr = %d\n", ntohs(tcp->window), ntohs(tcp->checksum),
@@ -2126,8 +2126,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	                sizeof(tcp_dynamic_t), tcp_dynamic, mptr.tcp_dynamic);
 
 	tcp_dynamic->ecn_used = tcp_context->ecn_used;
-	tcp_dynamic->tcp_res_flags = tcp->tcp_res_flags;
-	tcp_dynamic->tcp_ecn_flags = tcp->tcp_ecn_flags;
+	tcp_dynamic->tcp_res_flags = tcp->res_flags;
+	tcp_dynamic->tcp_ecn_flags = tcp->ecn_flags;
 	tcp_dynamic->urg_flag = tcp->urg_flag;
 	tcp_dynamic->ack_flag = tcp->ack_flag;
 	tcp_dynamic->psh_flag = tcp->psh_flag;
@@ -2540,7 +2540,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
 	if(tcp_context->ecn_used != 0)
 	{
 		*(mptr.uint8++) =
-		   ( ( ( ip_inner_ecn << 2 ) | tcp->tcp_ecn_flags ) << 4 ) | tcp->tcp_res_flags;
+		   ( ( ( ip_inner_ecn << 2 ) | tcp->ecn_flags ) << 4 ) | tcp->res_flags;
 		rohc_comp_debug(context, "add TCP ecn_flags res_flags = 0x%02x\n",
 		                *(mptr.uint8 - 1));
 	}
@@ -3607,8 +3607,8 @@ static int co_baseheader(struct c_context *const context,
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
 	                "URG = %d, ACK = %d, PSH = %d\n",
 	                *(uint16_t *)(((unsigned char *) tcp) + 12),
-	                tcp->tcp_res_flags, tcp->data_offset, tcp->rsf_flags,
-	                tcp->tcp_ecn_flags, tcp->urg_flag, tcp->ack_flag,
+	                tcp->res_flags, tcp->data_offset, tcp->rsf_flags,
+	                tcp->ecn_flags, tcp->urg_flag, tcp->ack_flag,
 	                tcp->psh_flag);
 	rohc_comp_debug(context, "TCP window = %d (0x%04x), check = 0x%x, "
 	                "urg_ptr = %d\n", ntohs(tcp->window), ntohs(tcp->window),
@@ -3687,11 +3687,11 @@ static int co_baseheader(struct c_context *const context,
 			goto code_common;
 		}
 	}
-	if(tcp->tcp_ecn_flags != tcp_context->old_tcphdr.tcp_ecn_flags)
+	if(tcp->ecn_flags != tcp_context->old_tcphdr.ecn_flags)
 	{
 		rohc_comp_debug(context, "tcp_ecn_flags = %d, old tcp_ecn_flags = %d\n",
-		                tcp->tcp_ecn_flags,
-		                tcp_context->old_tcphdr.tcp_ecn_flags);
+		                tcp->ecn_flags,
+		                tcp_context->old_tcphdr.ecn_flags);
 		TRACE_GOTO_CHOICE;
 		goto code_common;
 	}

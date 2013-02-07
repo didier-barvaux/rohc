@@ -640,17 +640,17 @@ typedef struct __attribute__((packed)) tcphdr
 	uint32_t seq_number;
 	uint32_t ack_number;
 #if WORDS_BIGENDIAN != 1
-	uint8_t tcp_res_flags : 4;
+	uint8_t res_flags : 4;
 	uint8_t data_offset : 4;
 	uint8_t rsf_flags : 3;
 	uint8_t psh_flag : 1;
 	uint8_t ack_flag : 1;
 	uint8_t urg_flag : 1;
-	uint8_t tcp_ecn_flags : 2;
+	uint8_t ecn_flags : 2;
 #else
 	uint8_t data_offset : 4;
-	uint8_t tcp_res_flags : 4;
-	uint8_t tcp_ecn_flags : 2;
+	uint8_t res_flags : 4;
+	uint8_t ecn_flags : 2;
 	uint8_t urg_flag : 1;
 	uint8_t ack_flag : 1;
 	uint8_t psh_flag : 1;

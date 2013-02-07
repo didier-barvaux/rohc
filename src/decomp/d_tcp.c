@@ -1761,8 +1761,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 
 	/* retrieve the TCP sequence number from the ROHC packet */
 	tcp_context->ecn_used = tcp_dynamic->ecn_used;
-	tcp->tcp_res_flags = tcp_dynamic->tcp_res_flags;
-	tcp->tcp_ecn_flags = tcp_dynamic->tcp_ecn_flags;
+	tcp->res_flags = tcp_dynamic->tcp_res_flags;
+	tcp->ecn_flags = tcp_dynamic->tcp_ecn_flags;
 	tcp->urg_flag = tcp_dynamic->urg_flag;
 	tcp->ack_flag = tcp_dynamic->ack_flag;
 	tcp->psh_flag = tcp_dynamic->psh_flag;
@@ -2063,10 +2063,10 @@ static uint8_t * tcp_decode_irregular_tcp(struct d_context *const context,
 			rohc_decomp_debug(context, "read ip_ecn_flags = %d\n",
 			                  base_header_inner.ipv6->ip_ecn_flags);
 		}
-		tcp->tcp_ecn_flags = ( *mptr.uint8 >> 4 ) & 0x03;
-		tcp->tcp_res_flags = *(mptr.uint8)++ & 0x0F;
+		tcp->ecn_flags = ( *mptr.uint8 >> 4 ) & 0x03;
+		tcp->res_flags = *(mptr.uint8)++ & 0x0F;
 		rohc_decomp_debug(context, "read TCP ecn_flags = %d, res_flags = %d\n",
-		                  tcp->tcp_ecn_flags, tcp->tcp_res_flags);
+		                  tcp->ecn_flags, tcp->res_flags);
 	}
 	else
 	{
@@ -2079,8 +2079,8 @@ static uint8_t * tcp_decode_irregular_tcp(struct d_context *const context,
 		{
 			base_header_inner.ipv6->ip_ecn_flags = 0;
 		}
-		tcp->tcp_ecn_flags = 0;
-		tcp->tcp_res_flags = 0;
+		tcp->ecn_flags = 0;
+		tcp->res_flags = 0;
 		rohc_decomp_debug(context, "ip_ecn_flag = 0, tcp_ecn_flag = 0, and "
 		                  "tcp_res_flag = 0\n");
 	}
@@ -3509,7 +3509,7 @@ test_checksum:
 	{
 		WB_t ip_id;
 
-		tcp->tcp_res_flags = tcp_context->old_tcphdr.tcp_res_flags;
+		tcp->res_flags = tcp_context->old_tcphdr.res_flags;
 		tcp->urg_flag = tcp_context->old_tcphdr.urg_flag;
 		tcp->urg_ptr = tcp_context->old_tcphdr.urg_ptr;
 
@@ -3627,8 +3627,8 @@ test_checksum:
 		tcp->seq_number = tcp_context->old_tcphdr.seq_number;
 		tcp->ack_number = tcp_context->old_tcphdr.ack_number;
 		tcp->data_offset = sizeof(tcphdr_t) >> 2;
-		tcp->tcp_res_flags = tcp_context->old_tcphdr.tcp_res_flags;
-		tcp->tcp_ecn_flags = tcp_context->old_tcphdr.tcp_ecn_flags;
+		tcp->res_flags = tcp_context->old_tcphdr.res_flags;
+		tcp->ecn_flags = tcp_context->old_tcphdr.ecn_flags;
 		tcp->urg_flag = tcp_context->old_tcphdr.urg_flag;
 		tcp->ack_flag = tcp_context->old_tcphdr.ack_flag;
 		tcp->rsf_flags = tcp_context->old_tcphdr.rsf_flags;
