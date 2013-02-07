@@ -19,6 +19,7 @@
  * @brief  TCP header description.
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
+ * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
 #ifndef TCP_H
@@ -905,13 +906,13 @@ typedef struct __attribute__((packed)) co_common
 
 } co_common_t;
 
+
 /**
  * @brief Define the rnd_1 compressed packet format
  *
  * Send LSBs of sequence number
  * See RFC4996 page 81
  */
-
 typedef struct __attribute__((packed)) rnd_1
 {
 #if WORDS_BIGENDIAN != 1
@@ -931,13 +932,13 @@ typedef struct __attribute__((packed)) rnd_1
 #endif
 } rnd_1_t;
 
+
 /**
  * @brief Define the rnd_2 compressed packet format
  *
  * Send scaled sequence number LSBs
  * See RFC4996 page 81
  */
-
 typedef struct __attribute__((packed)) rnd_2
 {
 #if WORDS_BIGENDIAN != 1
@@ -955,13 +956,13 @@ typedef struct __attribute__((packed)) rnd_2
 #endif
 } rnd_2_t;
 
+
 /**
  * @brief Define the rnd_3 compressed packet format
  *
  * Send acknowlegment number LSBs
  * See RFC4996 page 81
  */
-
 typedef struct __attribute__((packed)) rnd_3
 {
 #if WORDS_BIGENDIAN != 1
@@ -973,7 +974,8 @@ typedef struct __attribute__((packed)) rnd_3
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #else
 	uint16_t discriminator : 1;        // =:= '0'                                            [ 4 ];
-	uint16_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
@@ -982,13 +984,13 @@ typedef struct __attribute__((packed)) rnd_3
 
 #define OFFSET_RND3_ACK_NUMBER ((0 * 8) + 1)
 
+
 /**
  * @brief Define the rnd_4 compressed packet format
  *
  * Send acknowlegment number scaled
  * See RFC4996 page 81
  */
-
 typedef struct __attribute__((packed)) rnd_4
 {
 #if WORDS_BIGENDIAN != 1
@@ -1008,13 +1010,13 @@ typedef struct __attribute__((packed)) rnd_4
 #endif
 } rnd_4_t;
 
+
 /**
  * @brief Define the rnd_5 compressed packet format
  *
  * Send ACK and sequence number
  * See RFC4996 page 82
  */
-
 typedef struct __attribute__((packed)) rnd_5
 {
 #if WORDS_BIGENDIAN != 1
@@ -1037,13 +1039,17 @@ typedef struct __attribute__((packed)) rnd_5
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 
 	uint32_t header_crc : 3;           // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-	uint32_t seq_number : 14;          // =:= lsb(14, 8191)                                  [ 14 ];
-	uint32_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint32_t seq_number1 : 5;          // =:= lsb(14, 8191)                                  [ 14 ];
+	uint32_t seq_number2 : 8;          // =:= lsb(14, 8191)                                  [ 14 ];
+	uint32_t seq_number3 : 1;          // =:= lsb(14, 8191)                                  [ 14 ];
+	uint32_t ack_number1 : 7;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint32_t ack_number2 : 8;          // =:= lsb(15, 8191)                                  [ 15 ];
 #endif
 } rnd_5_t;
 
 #define OFFSET_RND5_ACK_NUMBER ((1 * 8) + 3)
 #define OFFSET_RND5_SEQ_NUMBER ((3 * 8) + 1)
+
 
 /**
  * @brief Define the rnd_6 compressed packet format
@@ -1051,7 +1057,6 @@ typedef struct __attribute__((packed)) rnd_5
  * Send both ACK and scaled sequence number LSBs
  * See RFC4996 page 82
  */
-
 typedef struct __attribute__((packed)) rnd_6
 {
 #if WORDS_BIGENDIAN != 1
@@ -1073,13 +1078,13 @@ typedef struct __attribute__((packed)) rnd_6
 #endif
 } rnd_6_t;
 
+
 /**
  * @brief Define the rnd_7 compressed packet format
  *
  * Send ACK and window
  * See RFC4996 page 82
  */
-
 typedef struct __attribute__((packed)) rnd_7
 {
 #if WORDS_BIGENDIAN != 1
@@ -1103,13 +1108,13 @@ typedef struct __attribute__((packed)) rnd_7
 #endif
 } rnd_7_t;
 
+
 /**
  * @brief Define the rnd_8 compressed packet format
  *
  * Can send LSBs of TTL, RSF flags, change ECN behavior and options list
  * See RFC4996 page 82
  */
-
 typedef struct __attribute__((packed)) rnd_8
 {
 #if WORDS_BIGENDIAN != 1
@@ -1127,15 +1132,17 @@ typedef struct __attribute__((packed)) rnd_8
 	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
 	uint8_t list_present : 1;          // =:= irregular(1)                                   [ 1 ];
 	uint16_t header_crc : 7;           // =:= crc7(THIS.UVALUE, THIS.ULENGTH)                [ 7 ];
-	uint16_t msn : 4;                  // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t msn1 : 1;                  // =:= lsb(4, 4)                                      [ 4 ];
+	uint16_t msn2 : 3;                  // =:= lsb(4, 4)                                      [ 4 ];
 	uint16_t psh_flag : 1;             // =:= irregular(1)                                   [ 1 ];
 	uint16_t ttl_hopl : 3;             // =:= lsb(3, 3)                                      [ 3 ];
 	uint16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
 #endif
 	uint16_t seq_number;               // =:= lsb(16, 65535)                                 [ 16 ];
 	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
-//	options                             // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
+	uint8_t options[0];                // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
 } rnd_8_t;
+
 
 /**
  * @brief Define the seq_1 compressed packet format
@@ -1143,7 +1150,6 @@ typedef struct __attribute__((packed)) rnd_8
  * Send LSBs of sequence number
  * See RFC4996 page 83
  */
-
 typedef struct __attribute__((packed)) seq_1
 {
 #if WORDS_BIGENDIAN != 1
@@ -1165,13 +1171,13 @@ typedef struct __attribute__((packed)) seq_1
 #endif
 } seq_1_t;
 
+
 /**
  * @brief Define the seq_2 compressed packet format
  *
  * Send scaled sequence number LSBs
  * See RFC4996 page 83
  */
-
 typedef struct __attribute__((packed)) seq_2
 {
 #if WORDS_BIGENDIAN != 1
@@ -1184,7 +1190,8 @@ typedef struct __attribute__((packed)) seq_2
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #else
 	uint16_t discriminator : 5;        // =:= '11010'                                        [ 5 ];
-	uint16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
+	uint16_t ip_id1 : 3;               // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
+	uint16_t ip_id2 : 4;               // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
 	uint16_t seq_number_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
@@ -1192,13 +1199,13 @@ typedef struct __attribute__((packed)) seq_2
 #endif
 } seq_2_t;
 
+
 /**
  * @brief Define the seq_3 compressed packet format
  *
  * Send acknowledgment number LSBs
  * See RFC4996 page 83
  */
-
 typedef struct __attribute__((packed)) seq_3
 {
 #if WORDS_BIGENDIAN != 1
@@ -1220,13 +1227,13 @@ typedef struct __attribute__((packed)) seq_3
 #endif
 } seq_3_t;
 
+
 /**
  * @brief Define the seq_4 compressed packet format
  *
  * Send scaled acknowledgment number scaled
  * See RFC4996 page 84
  */
-
 typedef struct __attribute__((packed)) seq_4
 {
 #if WORDS_BIGENDIAN != 1
@@ -1246,13 +1253,13 @@ typedef struct __attribute__((packed)) seq_4
 #endif
 } seq_4_t;
 
+
 /**
  * @brief Define the seq_5 compressed packet format
  *
  * Send ACK and sequence number
  * See RFC4996 page 84
  */
-
 typedef struct __attribute__((packed)) seq_5
 {
 #if WORDS_BIGENDIAN != 1
@@ -1275,13 +1282,13 @@ typedef struct __attribute__((packed)) seq_5
 #endif
 } seq_5_t;
 
+
 /**
  * @brief Define the seq_6 compressed packet format
  *
  * Send both ACK and scaled sequence number LSBs
  * See RFC4996 page 84
  */
-
 typedef struct __attribute__((packed)) seq_6
 {
 #if WORDS_BIGENDIAN != 1
@@ -1291,7 +1298,8 @@ typedef struct __attribute__((packed)) seq_6
 	uint8_t seq_number_scaled2 : 1;    // =:= lsb(4, 7)                                      [ 1 ];
 #else
 	uint16_t discriminator : 5;        // =:= '11011'                                        [ 5 ];
-	uint16_t seq_number_scaled : 4;    // =:= lsb(4, 7)                                      [ 4 ];
+	uint16_t seq_number_scaled1 : 3;   // =:= lsb(4, 7)                                      [ 4 ];
+	uint16_t seq_number_scaled2 : 1;   // =:= lsb(4, 7)                                      [ 4 ];
 	uint16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
 #endif
 	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
@@ -1306,13 +1314,13 @@ typedef struct __attribute__((packed)) seq_6
 #endif
 } seq_6_t;
 
+
 /**
  * @brief Define the seq_7 compressed packet format
  *
  * Send ACK and window
  * See RFC4996 page 85
  */
-
 typedef struct __attribute__((packed)) seq_7
 {
 #if WORDS_BIGENDIAN != 1
@@ -1346,13 +1354,13 @@ typedef struct __attribute__((packed)) seq_7
 #endif
 } seq_7_t;
 
+
 /**
  * @brief Define the seq_8 compressed packet format
  *
  * Can send LSBs of TTL, RSF flags, change ECN behavior, and options list
  * See RFC4996 page 85
  */
-
 typedef struct __attribute__((packed)) seq_8
 {
 #if WORDS_BIGENDIAN != 1
@@ -1377,21 +1385,23 @@ typedef struct __attribute__((packed)) seq_8
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
-	uint16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
-	uint16_t ack_number : 15;          // =:= lsb(15, 8191)                                  [ 15 ];
-	uint16_t rsf_flags : 2;            // =:= rsf_index_enc                                  [ 2 ];
-	uint16_t seq_number : 14;          // =:= lsb(14, 8191)                                  [ 14 ];
+	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
+	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
+	uint8_t seq_number1 : 6;           // =:= lsb(14, 8191)                                  [ 14 ];
+	uint8_t seq_number2;               // =:= lsb(14, 8191)                                  [ 14 ];
 #endif
-//	options                             // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
+	uint8_t options[0];                // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
 } seq_8_t;
 
 #define OFFSET_SEQ8_ACK_NUMBER ((3 * 8) + 1)
 #define OFFSET_SEQ8_SEQ_NUMBER ((5 * 8) + 2)
 
+
 /**
  * @brief Define union of different header pointers
  */
-
 typedef union
 {
 	unsigned int uint;
