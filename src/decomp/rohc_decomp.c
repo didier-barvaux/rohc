@@ -521,6 +521,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	{
 		case ROHC_ERROR_PACKET_FAILED:
 		case ROHC_ERROR:
+			assert(ddata.active != NULL);
 			decomp->stats.failed_decomp++;
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ddata.active->profile->id,
 			             "packet decompression failed with code "
@@ -567,6 +568,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			break;
 
 		case ROHC_ERROR_CRC:
+			assert(ddata.active != NULL);
 			decomp->stats.failed_crc++;
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "packet decompression failed because of malformed "
@@ -587,6 +589,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			break;
 
 		default: /* ROHC_OK */
+			assert(ddata.active != NULL);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "packet decompression succeeded\n");
 			decomp->curval -= decomp->okval; /* framework (S-NACK) */

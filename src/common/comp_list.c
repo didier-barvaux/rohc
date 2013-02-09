@@ -30,23 +30,20 @@
 /**
  * @brief Create one compression_list
  *
- * @return  1 if successful, 0 otherwise
+ * @return  The list created
  */
-int list_create(struct c_list *list)
+struct c_list * list_create(void)
 {
+	struct c_list *list;
+
 	list = malloc(sizeof(struct c_list));
-	if(list == NULL)
+	if(list != NULL)
 	{
-		goto error;
+		list->gen_id = 0;
+		list->first_elt = NULL;
 	}
 
-	list->gen_id = 0;
-	list->first_elt = NULL;
-
-	return 1;
-
-error:
-	return 0;
+	return list;
 }
 
 

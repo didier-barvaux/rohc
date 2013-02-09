@@ -291,10 +291,17 @@ int main(int argc, char *argv[])
 	        0xffffffffUL, overflows, (unsigned long) time_elapsed);
 	fprintf(stderr, "total number of packets          =  %lu packets\n",
 	        packet_count);
-	average = time_elapsed / packet_count;
-	for(i = 0; i < overflows; i++)
+	if(packet_count != 0)
 	{
-		average += 0xffffffffUL / packet_count;
+		average = time_elapsed / packet_count;
+		for(i = 0; i < overflows; i++)
+		{
+			average += 0xffffffffUL / packet_count;
+		}
+	}
+	else
+	{
+		average = 0;
 	}
 	fprintf(stderr, "average elapsed time per packet  =  %lu ns/packet\n",
 	        average);
