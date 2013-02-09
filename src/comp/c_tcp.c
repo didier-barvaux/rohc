@@ -290,7 +290,6 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 
 	do
 	{
-
 		rohc_comp_debug(context, "base_header %p IP version %d\n",
 		                base_header.uint8, base_header.ipvx->version);
 
@@ -342,10 +341,6 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 							break;
 						case ROHC_IPPROTO_GRE:
 							ip_context.v6_gre_option->context_length = sizeof(ipv6_gre_option_context_t);
-							size_option = base_header.ip_gre_opt->c_flag +
-							              base_header.ip_gre_opt->k_flag +
-							              base_header.ip_gre_opt->s_flag + 1;
-							size_option <<= 3;
 							ip_context.v6_gre_option->c_flag = base_header.ip_gre_opt->c_flag;
 							ip_context.v6_gre_option->k_flag = base_header.ip_gre_opt->k_flag;
 							ip_context.v6_gre_option->s_flag = base_header.ip_gre_opt->s_flag;
@@ -357,7 +352,6 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 							                                 base_header.ip_gre_opt->k_flag];
 							break;
 						case ROHC_IPPROTO_MINE:
-							size_option = ( 2 + base_header.ip_mime_opt->s_bit ) << 3;
 							ip_context.v6_mime_option->context_length = sizeof(ipv6_mime_option_context_t);
 							ip_context.v6_mime_option->next_header = base_header.ipv6_opt->next_header;
 							ip_context.v6_mime_option->s_bit = base_header.ip_mime_opt->s_bit;
@@ -367,8 +361,6 @@ int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
 							ip_context.v6_mime_option->orig_src = base_header.ip_mime_opt->orig_src;
 							break;
 						case ROHC_IPPROTO_AH:
-							size_option = sizeof(ip_ah_opt_t) - sizeof(uint32_t) +
-							              ( base_header.ip_ah_opt->length << 4 ) - sizeof(int32_t);
 							ip_context.v6_ah_option->context_length = sizeof(ipv6_ah_option_context_t);
 							ip_context.v6_ah_option->next_header = base_header.ipv6_opt->next_header;
 							ip_context.v6_ah_option->length = base_header.ip_ah_opt->length;
