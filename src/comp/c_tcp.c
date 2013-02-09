@@ -2146,11 +2146,18 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						       tcp_context->tcp_option_sack_length);
 						break;
 					case TCP_OPT_TIMESTAMP:
+					{
+						uint32_t ts;
+						uint32_t ts_reply;
+
+						memcpy(&ts, options + 2, sizeof(uint32_t));
+						memcpy(&ts_reply, options + 6, sizeof(uint32_t));
 						rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-						                ntohl(*(uint32_t*)(options + 2)),
-						                ntohl(*(uint32_t*)(options + 6)));
-						memcpy(tcp_context->tcp_option_timestamp, options + 2, 8);
+						                ntohl(ts), ntohl(ts_reply));
+						memcpy(&tcp_context->tcp_option_timestamp, options + 2,
+								 sizeof(struct tcp_option_timestamp));
 						break;
+					}
 					default:
 						// Save offset of option value
 						tcp_context->tcp_options_offset[index] = tcp_context->tcp_options_free_offset;
@@ -2206,7 +2213,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
 						                ntohl(*(uint32_t*)(options + 2)),
 						                ntohl(*(uint32_t*)(options + 6)));
-						compare_value = memcmp(tcp_context->tcp_option_timestamp,options + 2,8);
+						compare_value = memcmp(&tcp_context->tcp_option_timestamp,
+													  options + 2,
+													  sizeof(struct tcp_option_timestamp));
 						break;
 					default:
 						pValue = tcp_context->tcp_options_values + tcp_context->tcp_options_offset[index];
@@ -2429,21 +2438,19 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
  * @param context             The compression context
  * @param ptr                 Pointer to the compressed value
  * @param context_timestamp   The context value
- * @param pTimestamp          Pointer to the value to compress
+ * @param timestamp           The value to compress
  * @return                    Pointer after the compressed value
  */
 uint8_t * c_ts_lsb(const struct c_context *const context,
                    uint8_t *ptr,
-                   uint32_t *context_timestamp,
-                   uint32_t *pTimestamp)
+                   const uint32_t context_timestamp,
+                   const uint32_t timestamp)
 {
-	uint32_t timestamp;
-	uint32_t last_timestamp;
+	const uint32_t last_timestamp = ntohl(context_timestamp);
 
 	assert(context != NULL);
+	assert(ptr != NULL);
 
-	last_timestamp = ntohl(*context_timestamp);
-	timestamp = ntohl(*pTimestamp);
 	rohc_comp_debug(context, "context_timestamp = 0x%x, timestamp = 0x%x\n",
 	                last_timestamp, timestamp);
 
@@ -2750,26 +2757,34 @@ static uint8_t * tcp_compress_tcp_options(struct c_context *const context,
 					rohc_comp_debug(context, "TCP option WINDOW different value\n");
 					break;
 				case TCP_INDEX_TIMESTAMP:
-					if(memcmp(tcp_context->tcp_option_timestamp,options + 2,8) == 0)
+				{
+					uint32_t ts;
+					uint32_t ts_reply;
+
+					memcpy(&ts, options + 2, sizeof(uint32_t));
+					memcpy(&ts_reply, options + 6, sizeof(uint32_t));
+
+					if(memcmp(&tcp_context->tcp_option_timestamp, options + 2,
+								 sizeof(struct tcp_option_timestamp)) == 0)
 					{
 						rohc_comp_debug(context, "TCP option TIMESTAMP same value "
 						                "(0x%04x 0x%04x)\n",
-						                ntohl(*(uint32_t *)(options + 2)),
-						                ntohl(*(uint32_t *)(options + 6)));
+						                ntohl(ts), ntohl(ts_reply));
 						i -= TCP_OLEN_TIMESTAMP;
 						options += TCP_OLEN_TIMESTAMP;
 						goto same_index_without_value;
 					}
 					rohc_comp_debug(context, "TCP option TIMESTAMP not same value "
 					                "(0x%04x 0x%04x)\n",
-					                ntohl(*(uint32_t *)(options + 2)),
-					                ntohl(*(uint32_t *)(options + 6)));
+					                ntohl(ts), ntohl(ts_reply));
 					// Use same index because time always change!
-					// memcpy(tcp_context->tcp_option_timestamp,options+2,8);
+					// memcpy(&tcp_context->tcp_option_timestamp, options + 2,
+					//        sizeof(struct tcp_option_timestamp));
 					// i -= TCP_OLEN_TIMESTAMP;
 					// options += TCP_OLEN_TIMESTAMP;
 					goto new_index_with_compressed_value;
 					break;
+				}
 				case TCP_INDEX_SACK_PERMITTED: // see RFC2018
 					rohc_comp_debug(context, "TCP option SACK PERMITTED\n");
 					i -= TCP_OLEN_SACK_PERMITTED;
@@ -2975,24 +2990,30 @@ new_index_with_compressed_value:
 				options += *(options + 1);
 				break;
 			case TCP_OPT_TIMESTAMP:
+			{
+				uint32_t ts;
+				uint32_t ts_reply;
+
+				memcpy(&ts, options + 2, sizeof(uint32_t));
+				memcpy(&ts_reply, options + 6, sizeof(uint32_t));
+
 				rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-				                ntohl(*(uint32_t *)(options + 2)),
-				                ntohl(*(uint32_t *)(options + 6)));
+				                ntohl(ts), ntohl(ts_reply));
 				// see RFC4996 page65
 				// ptr_compressed_options = c_tcp_opt_ts(ptr_compressed_options,options+2);
 				ptr_compressed_options =
 				   c_ts_lsb(context, ptr_compressed_options,
-				            (uint32_t *) tcp_context->tcp_option_timestamp,
-				            (uint32_t *) (options + 2));
+				            tcp_context->tcp_option_timestamp.ts, ntohl(ts));
 				ptr_compressed_options =
 				   c_ts_lsb(context, ptr_compressed_options,
-				            (uint32_t *) (tcp_context->tcp_option_timestamp + 4),
-				            (uint32_t *) (options + 2 + 4));
+				            tcp_context->tcp_option_timestamp.ts_reply, ntohl(ts_reply));
 				// Save value after compression
-				memcpy(tcp_context->tcp_option_timestamp,options + 2,8);
+				memcpy(&tcp_context->tcp_option_timestamp, options + 2,
+						 sizeof(struct tcp_option_timestamp));
 				i -= TCP_OLEN_TIMESTAMP;
 				options += TCP_OLEN_TIMESTAMP;
 				break;
+			}
 			/*
 			case TCP_OPT_TSTAMP_HDR:
 				rohc_comp_debug(context, "TCP option TIMSESTAMP HDR\n");

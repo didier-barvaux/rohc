@@ -262,7 +262,7 @@ struct d_tcp_context
 	uint8_t tcp_options_offset[16];
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
-	uint8_t tcp_option_timestamp[8];
+	struct tcp_option_timestamp tcp_option_timestamp;
 	uint8_t tcp_option_sack_length;
 	uint8_t tcp_option_sackblocks[8 * 4];
 	uint8_t tcp_options_free_offset;

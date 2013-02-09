@@ -223,6 +223,7 @@ typedef union
 	ipv6_ah_option_context_t *v6_ah_option;
 } ip_context_ptr_t;
 
+
 /**
  * @brief Define the TCP part of the profile decompression context.
  *
@@ -259,7 +260,7 @@ struct sc_tcp_context
 	uint8_t tcp_options_offset[16];
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
-	uint8_t tcp_option_timestamp[8];
+	struct tcp_option_timestamp tcp_option_timestamp;
 	uint8_t tcp_option_sack_length;
 	sack_block_t tcp_option_sackblocks[4];
 	uint8_t tcp_options_free_offset;
