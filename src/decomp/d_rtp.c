@@ -171,7 +171,8 @@ void * d_rtp_create(const struct d_context *const context)
 
 	/* create the UDP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = nh_len;
-	g_context->outer_ip_changes->next_header = malloc(nh_len);
+	g_context->outer_ip_changes->next_header =
+		(unsigned char *) malloc(nh_len);
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -182,7 +183,8 @@ void * d_rtp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, nh_len);
 
 	g_context->inner_ip_changes->next_header_len = nh_len;
-	g_context->inner_ip_changes->next_header = malloc(nh_len);
+	g_context->inner_ip_changes->next_header =
+		(unsigned char *) malloc(nh_len);
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
