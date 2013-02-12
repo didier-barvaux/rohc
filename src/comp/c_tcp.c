@@ -3457,10 +3457,9 @@ int code_CO_packet(struct c_context *const context,
 	                  &dest[counter - 1],
 	                  payload_size,
 	                  ttl_irregular_chain_flag);
-	rohc_comp_debug(context, "co_baseheader() return %d\n",i);
-
 	if(i < 0)
 	{
+		rohc_comp_debug(context, "failed to build co_baseheader\n");
 		goto error;
 	}
 
@@ -3552,6 +3551,7 @@ error:
  * @param payload_size              The size of the payload
  * @param ttl_irregular_chain_flag  Set if the TTL/Hop Limit of an outer header has changed
  * @return                          The position in the rohc-packet-under-build buffer
+ *                                  -1 in case of problem
  */
 static int co_baseheader(struct c_context *const context,
 								 struct sc_tcp_context *const tcp_context,
@@ -3561,6 +3561,7 @@ static int co_baseheader(struct c_context *const context,
 								 int payload_size,
 								 int ttl_irregular_chain_flag)
 {
+	rohc_packet_t packet_type = PACKET_UNKNOWN;
 	tcphdr_t *tcp;
 	multi_ptr_t c_base_header; // compressed
 	uint8_t ttl_hopl;
@@ -3569,7 +3570,28 @@ static int co_baseheader(struct c_context *const context,
 	WB_t ip_id;
 	uint8_t *puchar;
 	int version;
-	int ecn_used;
+	bool ip_id_behavior_changed;
+	bool ip_id_hi9_changed; /* TODO: replace by the number of required bits */
+	bool ip_id_hi11_changed; /* TODO: replace by the number of required bits */
+	bool ip_id_hi12_changed; /* TODO: replace by the number of required bits */
+	bool ip_id_hi13_changed; /* TODO: replace by the number of required bits */
+	bool ip_ttl_changed;
+	bool ip_df_changed;
+	bool tcp_ack_flag_changed;
+	bool tcp_urg_flag_present;
+	bool tcp_urg_flag_changed;
+	bool tcp_ecn_flag_changed;
+	bool tcp_rsf_flag_changed;
+	bool tcp_ack_number_changed;
+	bool tcp_ack_number_hi16_changed; /* TODO: replace by number of required bits */
+	bool tcp_ack_number_hi17_changed; /* TODO: replace by number of required bits */
+	bool tcp_ack_number_hi28_changed; /* TODO: replace by number of required bits */
+	bool tcp_seq_number_changed;
+	bool tcp_seq_number_hi16_changed; /* TODO: replace by number of required bits */
+	bool tcp_seq_number_hi18_changed; /* TODO: replace by number of required bits */
+	bool tcp_seq_number_hi28_changed; /* TODO: replace by number of required bits */
+	bool tcp_window_changed;
+	bool ecn_used;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
 	                "base_header_ip = %p, dest = %p, payload_size = %d, "
@@ -3599,10 +3621,11 @@ static int co_baseheader(struct c_context *const context,
 		tcp = (tcphdr_t*) ( base_header.ipv6 + 1 );
 	}
 
-	rohc_comp_debug(context, "TCP seq = 0x%04x, ack_seq = 0x%04x\n",
+	rohc_comp_debug(context, "new TCP seq = 0x%04x, ack_seq = 0x%04x\n",
 	                ntohl(tcp->seq_number), ntohl(tcp->ack_number));
-	rohc_comp_debug(context, "old seq = 0x%04x, ack_seq = 0x%04x\n",
-	                tcp_context->seq_number, tcp_context->ack_number);
+	rohc_comp_debug(context, "old TCP seq = 0x%04x, ack_seq = 0x%04x\n",
+	                ntohl(tcp_context->old_tcphdr.seq_number),
+						 ntohl(tcp_context->old_tcphdr.ack_number));
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
 	                "URG = %d, ACK = %d, PSH = %d\n",
@@ -3656,722 +3679,560 @@ static int co_baseheader(struct c_context *const context,
 
 	ecn_used = ( tcp_context->ecn_used == 0 ) ? 0 : 1;
 
-	if(tcp->ack_flag != tcp_context->old_tcphdr.ack_flag ||
-	   tcp->urg_flag != tcp_context->old_tcphdr.urg_flag)
-	{
-		rohc_comp_debug(context, "ack_flag = %d, old ack_flag = %d\n",
-		                tcp->ack_flag, tcp_context->old_tcphdr.ack_flag);
-		rohc_comp_debug(context, "urg_flag = %d, old urg_flag = %d\n",
-		                tcp->urg_flag, tcp_context->old_tcphdr.urg_flag);
-		TRACE_GOTO_CHOICE;
-		goto code_common;
-	}
+	ip_ttl_changed = (ttl_irregular_chain_flag != 0);
 	if(base_header.ipvx->version == IPV4)
 	{
-		if(ip_context.v4->last_ip_id_behavior != ip_context.v4->ip_id_behavior)
+		ip_id_behavior_changed =
+			(ip_context.v4->last_ip_id_behavior != ip_context.v4->ip_id_behavior);
+		if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
 		{
-			rohc_comp_debug(context, "last_ip_id_behavior = %d, "
-			                "ip_id_behavior = %d\n",
-			                ip_context.v4->last_ip_id_behavior,
-			                ip_context.v4->ip_id_behavior);
-			ip_context.v4->last_ip_id_behavior = ip_context.v4->ip_id_behavior;
-			// Only way to inform of the IP-ID behavior change
-			TRACE_GOTO_CHOICE;
-			goto code_common;
+			ip_id_hi9_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFF80) !=
+			                     (ip_id.uint16 & 0xFF80));
+			ip_id_hi11_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFFE0) !=
+			                      (ip_id.uint16 & 0xFFE0));
+			ip_id_hi12_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFFF0) !=
+			                      (ip_id.uint16 & 0xFFF0));
+			ip_id_hi13_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFFF8) !=
+			                      (ip_id.uint16 & 0xFFF8));
 		}
-		if(base_header.ipv4->df != ip_context.v4->df)
+		else if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
 		{
-			rohc_comp_debug(context, "DF = %d, old DF = %d\n",
-			                base_header.ipv4->df, ip_context.v4->df);
-			TRACE_GOTO_CHOICE;
-			goto code_common;
-		}
-	}
-	if(tcp->ecn_flags != tcp_context->old_tcphdr.ecn_flags)
-	{
-		rohc_comp_debug(context, "tcp_ecn_flags = %d, old tcp_ecn_flags = %d\n",
-		                tcp->ecn_flags,
-		                tcp_context->old_tcphdr.ecn_flags);
-		TRACE_GOTO_CHOICE;
-		goto code_common;
-	}
-
-	if(tcp->ack_flag != 0)
-	{
-		// If not same high word
-		if( ( ntohl(tcp->ack_number) & 0xFFFF0000 ) !=
-		    ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFFF0000 ) )
-		{
-			TRACE_GOTO_CHOICE;
-			goto code_common;
-		}
-	}
-	// If not same high word of sequence number
-	if( ( ntohl(tcp->seq_number) & 0xFFFF0000 ) !=
-	    ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFF0000 ) )
-	{
-		TRACE_GOTO_CHOICE;
-		goto code_common;
-	}
-	// If ack_number present and not same high word of ack number
-	if(tcp->ack_flag != 0 &&
-	   ( ( ntohl(tcp->ack_number) & 0xFFFF0000 ) !=
-	     ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFFF0000 ) ) )
-	{
-		TRACE_GOTO_CHOICE;
-		goto code_common;
-	}
-	// If urg_ptr present
-	if(tcp->urg_flag != 0)
-	{
-		TRACE_GOTO_CHOICE;
-		goto code_common;
-	}
-	if(ttl_irregular_chain_flag != 0)
-	{
-		TRACE_GOTO_CHOICE;
-		goto code_common;
-	}
-
-	// If ecn used change
-	if(ecn_used != 0)
-	{
-		// use compressed header with a 7-bit CRC
-		// rnd_8, seq_8 or common
-		// If not same 18 higher bits of sequence number
-		if( ( ntohl(tcp->seq_number) & 0xFFFFC000 ) !=
-		    ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFFC000 ) )
-		{
-			TRACE_GOTO_CHOICE;
-			goto code_common;
-		}
-		if(tcp->window != tcp_context->old_tcphdr.window)
-		{
-			TRACE_GOTO_CHOICE;
-			goto code_common;
-		}
-		if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-		{
-			TRACE_GOTO_CHOICE;
-			goto code_seq_8;
-		}
-		TRACE_GOTO_CHOICE;
-		goto code_rnd_8;
-	}
-
-	rohc_comp_debug(context, "ip_context version = %d, ip_id_behavior = %d\n",
-	                ip_context.vx->version, ip_context.vx->ip_id_behavior);
-
-	// Try to determine the compressed header format
-	if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-	{
-		/* IP_ID_BEHAVIOR_SEQUENTIAL or IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED */
-
-		rohc_comp_debug(context, "last_ip_id = 0x%04x, current ip_id = 0x%04x\n",
-		                ip_context.v4->last_ip_id.uint16, ip_id.uint16);
-
-		// seq_X set of compressed header formats
-		// If TCP options
-		if(tcp->data_offset > 5)
-		{
-			if(tcp->window != tcp_context->old_tcphdr.window)
-			{
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
-			if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-			{
-				// 4 lsb
-				if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF0 ) != ( ip_id.uint16  & 0xFFF0 ) )
-				{
-					TRACE_GOTO_CHOICE;
-					goto code_common;
-				}
-			}
-			else
-			{
-				// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-				// 4 lsb
-				if( ( ip_context.v4->last_ip_id.uint16 & 0xF0FF ) != ( ip_id.uint16  & 0xF0FF ) )
-				{
-					TRACE_GOTO_CHOICE;
-					goto code_common;
-				}
-			}
-			// If not same 18 higher bits of sequence number
-			if( ( ntohl(tcp->seq_number) & 0xFFFFC000 ) !=
-			    ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFFC000 ) )
-			{
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
-			// If not same 17 higher bits of ack number
-			if( ( ntohl(tcp->ack_number) & 0xFFFF8000 ) !=
-			    ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFFF8000 ) )
-			{
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
-			TRACE_GOTO_CHOICE;
-			goto code_seq_8;
+			ip_id_hi9_changed = ((ip_context.v4->last_ip_id.uint16 & 0x80FF) !=
+			                     (ip_id.uint16 & 0x80FF));
+			ip_id_hi11_changed = ((ip_context.v4->last_ip_id.uint16 & 0xE0FF) !=
+			                      (ip_id.uint16 & 0xE0FF));
+			ip_id_hi12_changed = ((ip_context.v4->last_ip_id.uint16 & 0xF0FF) !=
+			                      (ip_id.uint16 & 0xF0FF));
+			ip_id_hi13_changed = ((ip_context.v4->last_ip_id.uint16 & 0xF8FF) !=
+			                      (ip_id.uint16 & 0xF8FF));
 		}
 		else
 		{
-			if(tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags)
-			{
-				rohc_comp_debug(context, "rsf_flags = 0x%x, old rsf_flags = 0x%x\n",
-				                tcp->rsf_flags, tcp_context->old_tcphdr.rsf_flags);
-				if(tcp->window == tcp_context->old_tcphdr.window)
-				{
-					if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-					{
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF0 ) != ( ip_id.uint16  & 0xFFF0 ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					else
-					{
-						// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xF0FF ) != ( ip_id.uint16  & 0xF0FF ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					// If not same 18 higher bits of sequence number
-					if( ( ntohl(tcp->seq_number) & 0xFFFFC000 ) !=
-					    ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFFC000 ) )
-					{
-						TRACE_GOTO_CHOICE;
-						goto code_common;
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_seq_8;
-				}
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
-
-			// If not same low word of sequence number
-			if( ( ntohl(tcp->seq_number) & 0xFFFF ) !=
-			    ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFF ) )
-			{
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
-
-			if(tcp->window != tcp_context->old_tcphdr.window)
-			{
-				rohc_comp_debug(context, "window = 0x%x, old window = 0x%x\n",
-				                ntohs(tcp->window), ntohs(tcp_context->old_tcphdr.window));
-				if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-				{
-					// 5 lsb
-					if( ( ip_context.v4->last_ip_id.uint16 & 0xFFE0 ) != ( ip_id.uint16  & 0xFFE0 ) )
-					{
-						TRACE_GOTO_CHOICE;
-						goto code_common;
-					}
-				}
-				else
-				{
-					// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-					// 5 lsb
-					if( ( ip_context.v4->last_ip_id.uint16 & 0xE0FF ) != ( ip_id.uint16  & 0xE0FF ) )
-					{
-						TRACE_GOTO_CHOICE;
-						goto code_common;
-					}
-				}
-				TRACE_GOTO_CHOICE;
-				goto code_seq_7;
-			}
-			// If ack_number present
-			if(tcp->ack_flag != 0)
-			{
-				rohc_comp_debug(context, "ack_flag = %d, ack_number = 0x%x, "
-				                "old ack_number = 0x%x\n", tcp->ack_flag,
-				                ntohl(tcp->ack_number),
-				                ntohl(tcp_context->old_tcphdr.ack_number));
-				if(tcp->ack_number == tcp_context->old_tcphdr.ack_number)
-				{
-					// If same less significant bits of ack_number
-					if( ( ( ntohl(tcp->ack_number) & 0xFFF0 ) ==
-					      ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFF0 ) ) )
-					{
-						if(payload_size != 0)
-						{
-							if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-							{
-								// 3 lsb
-								if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF8 ) !=
-								    ( ip_id.uint16  & 0xFFF8 ) )
-								{
-									TRACE_GOTO_CHOICE;
-									goto code_common;
-								}
-							}
-							else
-							{
-								// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-								// 3 lsb
-								if( ( ip_context.v4->last_ip_id.uint16 & 0xF8FF ) !=
-								    ( ip_id.uint16  & 0xF8FF ) )
-								{
-									TRACE_GOTO_CHOICE;
-									goto code_common;
-								}
-							}
-							TRACE_GOTO_CHOICE;
-							goto code_seq_4;
-						}
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_seq_1;
-				}
-				if(tcp->seq_number == tcp_context->old_tcphdr.seq_number)
-				{
-					// If same less significant bits of ack_number
-					if( ( ( ntohl(tcp->ack_number) & 0xFFF0 ) ==
-					      ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFF0 ) ) )
-					{
-						if(tcp_context->ack_stride != 0)
-						{
-							if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-							{
-								// 3 lsb
-								if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF8 ) !=
-								    ( ip_id.uint16  & 0xFFF8 ) )
-								{
-									TRACE_GOTO_CHOICE;
-									goto code_common;
-								}
-							}
-							else
-							{
-								// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-								// 3 lsb
-								if( ( ip_context.v4->last_ip_id.uint16 & 0xF8FF ) !=
-								    ( ip_id.uint16  & 0xF8FF ) )
-								{
-									TRACE_GOTO_CHOICE;
-									goto code_common;
-								}
-							}
-							TRACE_GOTO_CHOICE;
-							goto code_seq_4;
-						}
-					}
-					if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-					{
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF0 ) != ( ip_id.uint16  & 0xFFF0 ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					else
-					{
-						// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xF0FF ) != ( ip_id.uint16  & 0xF0FF ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_seq_3;
-				}
-				// If same less significant bits of seq_number
-				if( ( ( ntohl(tcp->seq_number) & 0xFFF0 ) ==
-				      ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFF0 ) ) )
-				{
-					if(payload_size != 0)
-					{
-						if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-						{
-							// 7 lsb
-							if( ( ip_context.v4->last_ip_id.uint16 & 0xFF80 ) != ( ip_id.uint16  & 0xFF80 ) )
-							{
-								TRACE_GOTO_CHOICE;
-								goto code_common;
-							}
-						}
-						else
-						{
-							// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-							// 7 lsb
-							if( ( ip_context.v4->last_ip_id.uint16 & 0x80FF ) != ( ip_id.uint16  & 0x80FF ) )
-							{
-								TRACE_GOTO_CHOICE;
-								goto code_common;
-							}
-						}
-						TRACE_GOTO_CHOICE;
-						goto code_seq_6;
-					}
-				}
-				TRACE_GOTO_CHOICE;
-				goto code_seq_5;
-			}
-			else
-			{
-				// ack_number absent
-				if(tcp->seq_number == tcp_context->old_tcphdr.seq_number)
-				{
-					if(payload_size != 0)
-					{
-						if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-						{
-							// 7 lsb
-							if( ( ip_context.v4->last_ip_id.uint16 & 0xFF80 ) != ( ip_id.uint16  & 0xFF80 ) )
-							{
-								TRACE_GOTO_CHOICE;
-								goto code_common;
-							}
-						}
-						else
-						{
-							// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-							// 7 lsb
-							if( ( ip_context.v4->last_ip_id.uint16 & 0x80FF ) != ( ip_id.uint16  & 0x80FF ) )
-							{
-								TRACE_GOTO_CHOICE;
-								goto code_common;
-							}
-						}
-						TRACE_GOTO_CHOICE;
-						goto code_seq_2;
-					}
-					if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-					{
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF0 ) != ( ip_id.uint16  & 0xFFF0 ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					else
-					{
-						// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xF0FF ) != ( ip_id.uint16  & 0xF0FF ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_seq_1;
-				}
-				// If same less significant bits of seq_number
-				if( ( ( ntohl(tcp->seq_number) & 0xFFF0 ) ==
-				      ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFF0 ) ) )
-				{
-					if(payload_size != 0)
-					{
-						if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-						{
-							// 7 lsb
-							if( ( ip_context.v4->last_ip_id.uint16 & 0xFF80 ) != ( ip_id.uint16  & 0xFF80 ) )
-							{
-								TRACE_GOTO_CHOICE;
-								goto code_common;
-							}
-						}
-						else
-						{
-							// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-							// 7 lsb
-							if( ( ip_context.v4->last_ip_id.uint16 & 0x80FF ) != ( ip_id.uint16  & 0x80FF ) )
-							{
-								TRACE_GOTO_CHOICE;
-								goto code_common;
-							}
-						}
-						TRACE_GOTO_CHOICE;
-						goto code_seq_2;
-					}
-					if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-					{
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xFFF0 ) != ( ip_id.uint16  & 0xFFF0 ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					else
-					{
-						// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-						// 4 lsb
-						if( ( ip_context.v4->last_ip_id.uint16 & 0xF0FF ) != ( ip_id.uint16  & 0xF0FF ) )
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_common;
-						}
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_seq_1;
-				}
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-
-			}
-			if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
-			{
-				// 5 lsb
-				if( ( ip_context.v4->last_ip_id.uint16 & 0xFFE0 ) != ( ip_id.uint16  & 0xFFE0 ) )
-				{
-					TRACE_GOTO_CHOICE;
-					goto code_common;
-				}
-			}
-			else
-			{
-				// IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED
-				// 5 lsb
-				if( ( ip_context.v4->last_ip_id.uint16 & 0xE0FF ) != ( ip_id.uint16  & 0xE0FF ) )
-				{
-					TRACE_GOTO_CHOICE;
-					goto code_common;
-				}
-			}
-			TRACE_GOTO_CHOICE;
-			goto code_seq_7;
+			ip_id_hi9_changed = false; /* TODO: true or false ? */
+			ip_id_hi11_changed = false; /* TODO: true or false ? */
+			ip_id_hi12_changed = false; /* TODO: true or false ? */
+			ip_id_hi13_changed = false; /* TODO: true or false ? */
 		}
+
+		ip_df_changed = (base_header.ipv4->df != ip_context.v4->df);
 	}
 	else
 	{
-		/* IP_ID_BEHAVIOR_RANDOM or IP_ID_BEHAVIOR_ZERO */
-		// rnd_X set of compressed header formats
+		ip_id_behavior_changed = false;
+		ip_id_hi9_changed = false;
+		ip_id_hi11_changed = false;
+		ip_id_hi12_changed = false;
+		ip_id_hi13_changed = false;
+		ip_df_changed = false;
+	}
+	tcp_ack_flag_changed = (tcp->ack_flag != tcp_context->old_tcphdr.ack_flag);
+	tcp_urg_flag_present = (tcp->urg_flag != 0);
+	tcp_urg_flag_changed = (tcp->urg_flag != tcp_context->old_tcphdr.urg_flag);
+	tcp_ecn_flag_changed = (tcp->ecn_flags != tcp_context->old_tcphdr.ecn_flags);
+	tcp_rsf_flag_changed = (tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags);
+	if(tcp->ack_flag != 0)
+	{
+		tcp_ack_number_changed =
+			(tcp->ack_number != tcp_context->old_tcphdr.ack_number);
+		tcp_ack_number_hi16_changed =
+			((ntohl(tcp->ack_number) & 0xffff0000) !=
+			 (ntohl(tcp_context->old_tcphdr.ack_number) & 0xffff0000));
+		tcp_ack_number_hi17_changed =
+			((ntohl(tcp->ack_number) & 0xffff8000) !=
+			 (ntohl(tcp_context->old_tcphdr.ack_number) & 0xffff8000));
+		tcp_ack_number_hi28_changed =
+			((ntohl(tcp->ack_number) & 0xfffffff0) !=
+			 (ntohl(tcp_context->old_tcphdr.ack_number) & 0xfffffff0));
+	}
+	else
+	{
+		tcp_ack_number_changed = false;
+		tcp_ack_number_hi16_changed = false;
+		tcp_ack_number_hi17_changed = false;
+		tcp_ack_number_hi28_changed = false;
+	}
+	rohc_comp_debug(context, "ACK number: hi16_changed = %d, "
+						 "hi17_changed = %d, hi28_changed = %d, changed = %d\n",
+						 tcp_ack_number_hi16_changed, tcp_ack_number_hi17_changed,
+						 tcp_ack_number_hi28_changed, tcp_ack_number_changed);
+	tcp_seq_number_changed =
+		(tcp->seq_number != tcp_context->old_tcphdr.seq_number);
+	tcp_seq_number_hi16_changed =
+		((ntohl(tcp->seq_number) & 0xffff0000) !=
+		 (ntohl(tcp_context->old_tcphdr.seq_number) & 0xffff0000));
+	tcp_seq_number_hi18_changed =
+		((ntohl(tcp->seq_number) & 0xffffc000) !=
+		 (ntohl(tcp_context->old_tcphdr.seq_number) & 0xffffc000));
+	tcp_seq_number_hi28_changed =
+		((ntohl(tcp->seq_number) & 0xfffffff0) !=
+		 (ntohl(tcp_context->old_tcphdr.seq_number) & 0xfffffff0));
+	rohc_comp_debug(context, "sequence number: hi16_changed = %d, "
+						 "hi18_changed = %d, hi28_changed = %d, changed = %d\n",
+						 tcp_seq_number_hi16_changed, tcp_seq_number_hi18_changed,
+						 tcp_seq_number_hi28_changed, tcp_seq_number_changed);
+	tcp_window_changed = (tcp->window != tcp_context->old_tcphdr.window);
+	rohc_comp_debug(context, "TCP window changed = %d\n", tcp_window_changed);
+	ecn_used = (tcp_context->ecn_used != 0);
 
-		// If TCP options
-		if(tcp->data_offset > 5)
+	if(ip_ttl_changed || ip_id_behavior_changed || ip_df_changed ||
+	   tcp_ack_flag_changed || tcp_urg_flag_present || tcp_urg_flag_changed ||
+	   tcp_ecn_flag_changed || tcp_ack_number_hi16_changed ||
+		tcp_seq_number_hi16_changed)
+	{
+		TRACE_GOTO_CHOICE;
+		packet_type = PACKET_TCP_CO_COMMON;
+	}
+	else if(ecn_used != 0) /* ecn used change */
+	{
+		/* use compressed header with a 7-bit CRC (rnd_8, seq_8 or common):
+		 *  - use common if more than 18 LSB of sequence number changed
+		 *  - use common if window changed */
+		if(tcp_seq_number_hi18_changed || tcp_window_changed)
 		{
-			if(tcp->window != tcp_context->old_tcphdr.window)
-			{
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
 			TRACE_GOTO_CHOICE;
-			goto code_rnd_8;
+			packet_type = PACKET_TCP_CO_COMMON;
+		}
+		else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+		{
+			/* IP_ID_BEHAVIOR_SEQUENTIAL or IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED */
+			TRACE_GOTO_CHOICE;
+			packet_type = PACKET_TCP_SEQ_8;
 		}
 		else
 		{
-			if(tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags)
-			{
-				rohc_comp_debug(context, "rsf_flags = 0x%x, old rsf_flags = 0x%x\n",
-				                tcp->rsf_flags, tcp_context->old_tcphdr.rsf_flags);
-				if(tcp->window == tcp_context->old_tcphdr.window)
-				{
-					TRACE_GOTO_CHOICE;
-					goto code_rnd_8;
-				}
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
-			// If not same low word of sequence number
-			if( ( ntohl(tcp->seq_number) & 0xFFFF ) !=
-			    ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFF ) )
-			{
-				TRACE_GOTO_CHOICE;
-				goto code_common;
-			}
+			TRACE_GOTO_CHOICE;
+			packet_type = PACKET_TCP_RND_8;
+		}
+	}
+	else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+	{
+		/* IP_ID_BEHAVIOR_SEQUENTIAL or IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+		 * co_common or seq_X packet types */
 
-			if(tcp->window != tcp_context->old_tcphdr.window)
+		if(tcp->data_offset > 5)
+		{
+			/* co_common is required if:
+			 *  - TCP window changed,
+			 *  - the 18 MSBs of the TCP sequence number changed,
+			 *  - the 17 MSBs of ACK number changed,
+			 *  - more than 4 LSBs of IP-ID must be transmitted
+			 * otherwise use seq_8 packet */
+			if(tcp_window_changed ||
+			   tcp_seq_number_hi18_changed ||
+			   tcp_ack_number_hi17_changed)
 			{
-				rohc_comp_debug(context, "window = 0x%x, old window = 0x%x\n",
-				                ntohs(tcp->window),
-				                ntohs(tcp_context->old_tcphdr.window));
 				TRACE_GOTO_CHOICE;
-				goto code_rnd_7;
+				packet_type = PACKET_TCP_CO_COMMON;
 			}
-			// If ack_number present
-			if(tcp->ack_flag != 0)
+			else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED &&
+			        ip_id_hi12_changed)
 			{
-				rohc_comp_debug(context, "ack_flag = %d, ack_number = 0x%x, "
-				                "old ack_number = 0x%x\n", tcp->ack_flag,
-				                ntohl(tcp->ack_number),
-				                ntohl(tcp_context->old_tcphdr.ack_number));
-				if(tcp->ack_number == tcp_context->old_tcphdr.ack_number)
-				{
-					// If same less significant bits of ack_number
-					if( ( ( ntohl(tcp->ack_number) & 0xFFF0 ) ==
-					      ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFF0 ) ) )
-					{
-						if(payload_size != 0)
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_rnd_4;
-						}
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_rnd_1;
-				}
-				if(tcp->seq_number == tcp_context->old_tcphdr.seq_number)
-				{
-					// If same less significant bits of ack_number
-					if( ( ( ntohl(tcp->ack_number) & 0xFFF0 ) ==
-					      ( ntohl(tcp_context->old_tcphdr.ack_number) & 0xFFF0 ) ) )
-					{
-						if(tcp_context->ack_stride != 0)
-						{
-							TRACE_GOTO_CHOICE;
-							goto code_rnd_4;
-						}
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_rnd_3;
-				}
-				// If same less significant bits of seq_number
-				if( ( ( ntohl(tcp->seq_number) & 0xFFF0 ) ==
-				      ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFF0 ) ) )
-				{
-					if(payload_size != 0)
-					{
-						TRACE_GOTO_CHOICE;
-						goto code_rnd_6;
-					}
-				}
+				/* more than 4 LSBs required for IP-ID => co_common */
 				TRACE_GOTO_CHOICE;
-				goto code_rnd_5;
+				packet_type = PACKET_TCP_CO_COMMON;
 			}
 			else
 			{
-				// ack_number absent
-				if(tcp->seq_number == tcp_context->old_tcphdr.seq_number)
-				{
-					if(payload_size != 0)
-					{
-						TRACE_GOTO_CHOICE;
-						goto code_rnd_2;
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_rnd_1;
-				}
-				// If same less significant bits of seq_number
-				if( ( ( ntohl(tcp->seq_number) & 0xFFF0 ) ==
-				      ( ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFF0 ) ) )
-				{
-					if(payload_size != 0)
-					{
-						TRACE_GOTO_CHOICE;
-						goto code_rnd_2;
-					}
-					TRACE_GOTO_CHOICE;
-					goto code_rnd_1;
-				}
+				/* seq_8 is possible */
 				TRACE_GOTO_CHOICE;
-				goto code_common;
-
+				packet_type = PACKET_TCP_SEQ_8;
 			}
-			TRACE_GOTO_CHOICE;
-			goto code_rnd_7;
 		}
+		else /* no TCP option */
+		{
+			if(tcp_rsf_flag_changed)
+			{
+				/* co_common is required if:
+				 *  - TCP window changed,
+				 *  - the 18 MSBs of the TCP sequence number changed,
+				 *  - more than 4 LSBs of IP-ID must be transmitted
+				 * otherwise use seq_8 packet */
+				if(tcp_window_changed || tcp_seq_number_hi18_changed)
+				{
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED &&
+				        ip_id_hi12_changed)
+				{
+					/* more than 4 LSBs required for IP-ID => co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					/* seq_8 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_8;
+				}
+			}
+			else if((ntohl(tcp->seq_number) & 0xFFFF) !=
+				     (ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFF))
+			{
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_CO_COMMON;
+			}
+			else if(tcp_window_changed)
+			{
+				if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
+					ip_id_hi11_changed)
+				{
+					/* more than 5 LSBs required for IP-ID => co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					/* seq_7 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_7;
+				}
+			}
+			else if(tcp->ack_flag != 0 && !tcp_ack_number_changed)
+			{
+				/* ACK number present */
+				if(payload_size == 0)
+				{
+					/* seq_1 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_1;
+				}
+				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
+						  ip_id_hi13_changed)
+				{
+					/* more than 3 LSBs required for IP-ID => co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					/* seq_4 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_4;
+				}
+			}
+			else if(tcp->ack_flag != 0 && !tcp_seq_number_changed)
+			{
+				/* ACK number present */
+				if(!tcp_ack_number_hi28_changed && tcp_context->ack_stride != 0)
+				{
+					if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
+						ip_id_hi13_changed)
+					{
+						/* more than 3 LSBs required for IP-ID => co_common */
+						TRACE_GOTO_CHOICE;
+						packet_type = PACKET_TCP_CO_COMMON;
+					}
+					else
+					{
+						/* seq_4 is possible */
+						TRACE_GOTO_CHOICE;
+						packet_type = PACKET_TCP_SEQ_4;
+					}
+				}
+				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
+						  ip_id_hi12_changed)
+				{
+					/* more than 4 LSBs required for IP-ID => co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					/* seq_3 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_3;
+				}
+			}
+			else if(tcp->ack_flag != 0 &&
+			        !tcp_seq_number_hi28_changed &&
+			        payload_size > 0)
+			{
+				/* ACK number present */
+				if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED &&
+					ip_id_hi9_changed)
+				{
+					/* more than 7 LSBs required for IP-ID => co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					/* seq_6 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_6;
+				}
+			}
+			else if(tcp->ack_flag != 0)
+			{
+				/* ACK number present */
+				/* seq_5 is possible */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_SEQ_5;
+			}
+			else if(tcp->ack_flag == 0 && !tcp_seq_number_hi28_changed)
+			{
+				/* ACK number absent */
+				if(payload_size > 0)
+				{
+					if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED &&
+						ip_id_hi9_changed)
+					{
+						/* more than 7 LSBs required for IP-ID => co_common */
+						TRACE_GOTO_CHOICE;
+						packet_type = PACKET_TCP_CO_COMMON;
+					}
+					else
+					{
+						/* seq_2 is possible */
+						TRACE_GOTO_CHOICE;
+						packet_type = PACKET_TCP_SEQ_2;
+					}
+				}
+				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
+				        ip_id_hi12_changed)
+				{
+					/* more than 4 LSBs required for IP-ID => co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					/* seq_1 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_SEQ_1;
+				}
+			}
+			else if(tcp->ack_flag == 0)
+			{
+				/* ACK number absent */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_CO_COMMON;
+			}
+			else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
+				     ip_id_hi11_changed)
+			{
+				/* more than 5 LSBs required for IP-ID => co_common */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_CO_COMMON;
+			}
+			else
+			{
+				/* seq_7 is possible */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_SEQ_7;
+			}
+		} /* no TCP option */
+
+		/* IP-ID is sequential, so only co_common and seq_X packets are allowed */
+		assert(packet_type == PACKET_TCP_CO_COMMON ||
+		       packet_type == PACKET_TCP_SEQ_1 || packet_type == PACKET_TCP_SEQ_2 ||
+		       packet_type == PACKET_TCP_SEQ_3 || packet_type == PACKET_TCP_SEQ_4 ||
+		       packet_type == PACKET_TCP_SEQ_5 || packet_type == PACKET_TCP_SEQ_6 ||
+		       packet_type == PACKET_TCP_SEQ_7 || packet_type == PACKET_TCP_SEQ_8);
+	}
+	else if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_RANDOM ||
+	        ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
+	{
+		/* IP_ID_BEHAVIOR_RANDOM or IP_ID_BEHAVIOR_ZERO:
+		 * co_common or rnd_X packet types */
+
+		if(tcp->data_offset > 5)
+		{
+			if(tcp_window_changed)
+			{
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_CO_COMMON;
+			}
+			else
+			{
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_RND_8;
+			}
+		}
+		else /* no TCP option */
+		{
+			if(tcp_rsf_flag_changed)
+			{
+				if(tcp_window_changed)
+				{
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_8;
+				}
+			}
+			else if((ntohl(tcp->seq_number) & 0xFFFF) !=
+				     (ntohl(tcp_context->old_tcphdr.seq_number) & 0xFFFF))
+			{
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_CO_COMMON;
+			}
+			else if(tcp_window_changed)
+			{
+				/* rnd_7 is possible */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_RND_7;
+			}
+			else if(tcp->ack_flag != 0 && !tcp_ack_number_changed)
+			{
+				/* ACK number present */
+				if(payload_size > 0)
+				{
+					/* rnd_4 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_4;
+				}
+				else
+				{
+					/* rnd_1 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_1;
+				}
+			}
+			else if(tcp->ack_flag != 0 && !tcp_seq_number_changed)
+			{
+				/* ACK number present */
+				if(!tcp_ack_number_hi28_changed && tcp_context->ack_stride != 0)
+				{
+					/* rnd_4 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_4;
+				}
+				else
+				{
+					/* rnd_3 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_3;
+				}
+			}
+			else if(tcp->ack_flag != 0 &&
+			        !tcp_seq_number_hi28_changed &&
+			        payload_size > 0)
+			{
+				/* ACK number present */
+				/* rnd_6 is possible */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_RND_6;
+			}
+			else if(tcp->ack_flag != 0)
+			{
+				/* ACK number present */
+				/* rnd_5 is possible */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_RND_5;
+			}
+			else if(tcp->ack_flag == 0 && !tcp_seq_number_hi28_changed)
+			{
+				/* ACK number absent */
+				if(payload_size > 0)
+				{
+					/* rnd_2 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_2;
+				}
+				else
+				{
+					/* rnd_1 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = PACKET_TCP_RND_1;
+				}
+			}
+			else
+			{
+				/* ACK number absent */
+				TRACE_GOTO_CHOICE;
+				packet_type = PACKET_TCP_CO_COMMON;
+			}
+		} /* no TCP option */
+
+		/* IP-ID is NOT sequential, so only co_common and rnd_X packets are allowed */
+		assert(packet_type == PACKET_TCP_CO_COMMON ||
+		       packet_type == PACKET_TCP_RND_1 || packet_type == PACKET_TCP_RND_2 ||
+		       packet_type == PACKET_TCP_RND_3 || packet_type == PACKET_TCP_RND_4 ||
+		       packet_type == PACKET_TCP_RND_5 || packet_type == PACKET_TCP_RND_6 ||
+		       packet_type == PACKET_TCP_RND_7 || packet_type == PACKET_TCP_RND_8);
+	}
+	else
+	{
+		rohc_comp_debug(context, "unexpected unknown IP-ID behavior\n");
+		assert(0);
+		goto error;
 	}
 
-	TRACE_GOTO_CHOICE;
-	goto code_common;
-
-code_rnd_1:
 	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_1(context, tcp_context, tcp, c_base_header.rnd1);
-	goto code_next;
 
-code_rnd_2:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_2(context, tcp_context, tcp, c_base_header.rnd2);
-	goto code_next;
-
-code_rnd_3:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_3(context, tcp_context, tcp, c_base_header.rnd3);
-	goto code_next;
-
-code_rnd_4:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_4(context, tcp_context, tcp, c_base_header.rnd4);
-	goto code_next;
-
-code_rnd_5:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_5(context, tcp_context, tcp, c_base_header.rnd5);
-	goto code_next;
-
-code_rnd_6:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_6(context, tcp_context, tcp, c_base_header.rnd6);
-	goto code_next;
-
-code_rnd_7:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_7(context, tcp_context, tcp, c_base_header.rnd7);
-	goto code_next;
-
-code_rnd_8:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_rnd_8(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.rnd8);
-	goto code_next;
-
-code_seq_1:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_1(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq1);
-	goto code_next;
-
-code_seq_2:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_2(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq2);
-	goto code_next;
-
-code_seq_3:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_3(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq3);
-	goto code_next;
-
-code_seq_4:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_4(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq4);
-	goto code_next;
-
-code_seq_5:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_5(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq5);
-	goto code_next;
-
-code_seq_6:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_6(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq6);
-	goto code_next;
-
-code_seq_7:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_7(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq7);
-	goto code_next;
-
-code_seq_8:
-	mptr.uint8 = c_base_header.uint8;
-	mptr.uint8 += c_tcp_build_seq_8(context, ip_context, tcp_context,
-	                                base_header, tcp, c_base_header.seq8);
-	goto code_next;
-
-code_common:
-
+	switch(packet_type)
+	{
+		case PACKET_TCP_RND_1:
+			mptr.uint8 += c_tcp_build_rnd_1(context, tcp_context, tcp,
+													  c_base_header.rnd1);
+			break;
+		case PACKET_TCP_RND_2:
+			mptr.uint8 += c_tcp_build_rnd_2(context, tcp_context, tcp,
+													  c_base_header.rnd2);
+			break;
+		case PACKET_TCP_RND_3:
+			mptr.uint8 += c_tcp_build_rnd_3(context, tcp_context, tcp,
+													  c_base_header.rnd3);
+			break;
+		case PACKET_TCP_RND_4:
+			mptr.uint8 += c_tcp_build_rnd_4(context, tcp_context, tcp,
+													  c_base_header.rnd4);
+			break;
+		case PACKET_TCP_RND_5:
+			mptr.uint8 += c_tcp_build_rnd_5(context, tcp_context, tcp,
+													  c_base_header.rnd5);
+			break;
+		case PACKET_TCP_RND_6:
+			mptr.uint8 += c_tcp_build_rnd_6(context, tcp_context, tcp,
+													  c_base_header.rnd6);
+			break;
+		case PACKET_TCP_RND_7:
+			mptr.uint8 += c_tcp_build_rnd_7(context, tcp_context, tcp,
+													  c_base_header.rnd7);
+			break;
+		case PACKET_TCP_RND_8:
+			mptr.uint8 += c_tcp_build_rnd_8(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.rnd8);
+			break;
+		case PACKET_TCP_SEQ_1:
+			mptr.uint8 += c_tcp_build_seq_1(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq1);
+			break;
+		case PACKET_TCP_SEQ_2:
+			mptr.uint8 += c_tcp_build_seq_2(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq2);
+			break;
+		case PACKET_TCP_SEQ_3:
+			mptr.uint8 += c_tcp_build_seq_3(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq3);
+			break;
+		case PACKET_TCP_SEQ_4:
+			mptr.uint8 += c_tcp_build_seq_4(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq4);
+			break;
+		case PACKET_TCP_SEQ_5:
+			mptr.uint8 += c_tcp_build_seq_5(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq5);
+			break;
+		case PACKET_TCP_SEQ_6:
+			mptr.uint8 += c_tcp_build_seq_6(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq6);
+			break;
+		case PACKET_TCP_SEQ_7:
+			mptr.uint8 += c_tcp_build_seq_7(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq7);
+			break;
+		case PACKET_TCP_SEQ_8:
+			mptr.uint8 += c_tcp_build_seq_8(context, ip_context, tcp_context,
+													  base_header, tcp, c_base_header.seq8);
+			break;
+		case PACKET_TCP_CO_COMMON:
+		{
 	rohc_comp_debug(context, "code common\n");
 	// See RFC4996 page 80:
 	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d\n",
@@ -4539,8 +4400,14 @@ code_common:
 	rohc_comp_debug(context, "CRC (header length = %d, CRC = 0x%x)\n",
 	                (int) (mptr.uint8 - c_base_header.uint8),
 	                c_base_header.co_common->header_crc);
-
-code_next:
+			break;
+		}
+		default:
+			rohc_comp_debug(context, "unexpected packet type %d\n",
+								 packet_type);
+			assert(0);
+			break;
+	}
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "compressed header",
@@ -4553,7 +4420,14 @@ code_next:
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "co_header", dest, counter);
 
+	/* update context with new values (done at the very end to avoid wrongly
+	 * updating the context in case of compression failure) */
+	ip_context.v4->last_ip_id_behavior = ip_context.v4->ip_id_behavior;
+
 	return counter;
+
+error:
+	return -1;
 }
 
 
