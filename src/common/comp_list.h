@@ -129,7 +129,8 @@ struct d_translation
  */
 
 /* create, destroy list */
-int ROHC_EXPORT list_create(struct c_list *list);
+struct c_list * ROHC_EXPORT list_create(void)
+	__attribute__((warn_unused_result));
 void ROHC_EXPORT list_destroy(struct c_list *list);
 
 /* add elements */

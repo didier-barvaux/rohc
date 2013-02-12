@@ -128,7 +128,8 @@ void * d_udp_create(const struct d_context *const context)
 
 	/* create the UDP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	g_context->outer_ip_changes->next_header =
+		(unsigned char *) malloc(sizeof(struct udphdr));
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -139,7 +140,8 @@ void * d_udp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	g_context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
+	g_context->inner_ip_changes->next_header =
+		(unsigned char *) malloc(sizeof(struct udphdr));
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
