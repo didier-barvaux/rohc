@@ -359,9 +359,15 @@ if test "x$enable_rohc_tests" = "xyes" || \
 
 	# check for libpcap header presence
 	AC_CHECK_HEADERS([pcap.h pcap/pcap.h])
+	if test "x$ac_cv_header_pcap_h" != "xyes" &&
+	   test "x$ac_cv_header_pcap_pcap_h" != "xyes" ; then
+		IPCAP="no"
+	else
+		IPCAP="yes"
+	fi
 
 	# check for libpcap presence
-	LPCAP=""
+	LPCAP="yes"
 	AC_CHECK_LIB([$pcap_lib_name], pcap_open_offline, [unused=1], LPCAP="no")
 	AC_CHECK_LIB([$pcap_lib_name], pcap_datalink, [unused=1], LPCAP="no")
 	AC_CHECK_LIB([$pcap_lib_name], pcap_next, [unused=1], LPCAP="no")
@@ -371,7 +377,8 @@ if test "x$enable_rohc_tests" = "xyes" || \
 	AC_CHECK_LIB([$pcap_lib_name], pcap_dump_close, [unused=1], LPCAP="no")
 
 	# abort if libpcap is not found
-	if test "x$LPCAP" = "xno"; then
+	if test "x$IPCAP" != "xyes" ||
+	   test "x$LPCAP" != "xyes"; then
 		echo
 		echo "ERROR: $pcap_lib_pretty_name library/headers not found"
 		echo
