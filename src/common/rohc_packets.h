@@ -69,6 +69,25 @@ typedef enum
 
 	PACKET_UNKNOWN   = 14, /**< Unknown packet type */
 
+	/* packets for TCP profile */
+	PACKET_TCP_CO_COMMON = 100, /**< TCP co_common packet */
+	PACKET_TCP_RND_1     = 111, /**< TCP rnd_1 packet */
+	PACKET_TCP_RND_2     = 112, /**< TCP rnd_2 packet */
+	PACKET_TCP_RND_3     = 113, /**< TCP rnd_3 packet */
+	PACKET_TCP_RND_4     = 114, /**< TCP rnd_4 packet */
+	PACKET_TCP_RND_5     = 115, /**< TCP rnd_5 packet */
+	PACKET_TCP_RND_6     = 116, /**< TCP rnd_6 packet */
+	PACKET_TCP_RND_7     = 117, /**< TCP rnd_7 packet */
+	PACKET_TCP_RND_8     = 118, /**< TCP rnd_8 packet */
+	PACKET_TCP_SEQ_1     = 121, /**< TCP seq_1 packet */
+	PACKET_TCP_SEQ_2     = 122, /**< TCP seq_2 packet */
+	PACKET_TCP_SEQ_3     = 123, /**< TCP seq_3 packet */
+	PACKET_TCP_SEQ_4     = 124, /**< TCP seq_4 packet */
+	PACKET_TCP_SEQ_5     = 125, /**< TCP seq_5 packet */
+	PACKET_TCP_SEQ_6     = 126, /**< TCP seq_6 packet */
+	PACKET_TCP_SEQ_7     = 127, /**< TCP seq_7 packet */
+	PACKET_TCP_SEQ_8     = 128, /**< TCP seq_8 packet */
+
 } rohc_packet_t;
 
 
