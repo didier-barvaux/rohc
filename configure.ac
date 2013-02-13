@@ -123,7 +123,7 @@ AC_CANONICAL_HOST
 if test "x$host_os" = "xmingw32" || \
    test "x$host_os" = "xmingw64" ; then
 	# Avoid warnings about 'unknown conversion type character ‘z’ in format'
-	CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
+	CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -mno-ms-bitfields"
 	if test "x$enable_shared" = "xyes" ; then
 		LDFLAGS="${LDFLAGS} -Wl,--no-undefined"
 	fi
