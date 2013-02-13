@@ -313,7 +313,7 @@ static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 	{
 		goto out;
 	}
-	odd = 1 & (unsigned long) buff;
+	odd = 1 & (unsigned long long) buff;
 	if(odd)
 	{
 #ifdef __LITTLE_ENDIAN
@@ -327,7 +327,7 @@ static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
 	count = len >> 1; /* nr of 16-bit words.. */
 	if(count)
 	{
-		if(2 & (unsigned long) buff)
+		if(2 & (unsigned long long) buff)
 		{
 			result += *(uint16_t *) buff;
 			count--;
