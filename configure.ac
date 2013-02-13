@@ -51,6 +51,10 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_PREREQ([2.2.0])
 LT_INIT([disable-static win32-dll])
 
+# CFLAGS/LDFLAGS default values, more will be added on purpose
+configure_cflags="-g -Wall -Wstrict-prototypes"
+configure_ldflags=""
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
@@ -123,9 +127,9 @@ AC_CANONICAL_HOST
 if test "x$host_os" = "xmingw32" || \
    test "x$host_os" = "xmingw64" ; then
 	# Avoid warnings about 'unknown conversion type character ‘z’ in format'
-	CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
+	configure_cflags="${configure_cflags} -D__USE_MINGW_ANSI_STDIO=1"
 	if test "x$enable_shared" = "xyes" ; then
-		LDFLAGS="${LDFLAGS} -Wl,--no-undefined"
+		configure_ldflags="${configure_ldflags} -Wl,--no-undefined"
 	fi
 fi
 
@@ -156,7 +160,7 @@ AC_ARG_ENABLE(fail_on_warning,
               fail_on_warning=$enableval,
               fail_on_warning=no)
 if test "x$fail_on_warning" != "xno"; then
-	CFLAGS="${CFLAGS} -Werror"
+	configure_cflags="${configure_cflags} -Werror"
 fi
 
 
@@ -167,7 +171,7 @@ AC_ARG_ENABLE(fortify_sources,
               fortify_sources=$enableval,
               fortify_sources=no)
 if test "x$fortify_sources" != "xno"; then
-	CFLAGS="${CFLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2"
+	configure_cflags="${configure_cflags} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2"
 fi
 
 
@@ -189,7 +193,7 @@ AC_ARG_WITH(libpcap_libraries,
             [with_libpcap_libraries="$withval"],
             [with_libpcap_libraries="no"])
 if test "x$with_libpcap_libraries" != "xno"; then
-	LDFLAGS="${LDFLAGS}  -L${with_libpcap_libraries}"
+	configure_ldflags="${configure_ldflags}  -L${with_libpcap_libraries}"
 fi
 
 
@@ -604,8 +608,10 @@ AC_ARG_ENABLE(examples,
 AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$build_examples" = "xyes"])
 
 
-# export TESTS_ENVIRONMENT
+# export TESTS_ENVIRONMENT, configure_cflags, and configure_ldflags
 AC_SUBST([TESTS_ENVIRONMENT], [$tests_environment])
+AC_SUBST([configure_cflags], [$configure_cflags])
+AC_SUBST([configure_ldflags], [$configure_ldflags])
 
 AM_DEP_TRACK
 

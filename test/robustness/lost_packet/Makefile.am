@@ -21,15 +21,18 @@ INCLUDES = \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
+test_lost_packet_CFLAGS = \
+	$(configure_cflags)
 
-AM_LDFLAGS = \
+test_lost_packet_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
 
+test_lost_packet_SOURCES = \
+	test_lost_packet.c
 
-test_lost_packet_SOURCES = test_lost_packet.c
 test_lost_packet_LDADD = \
 	-l$(pcap_lib_name) \
 	-lrohc_comp \
