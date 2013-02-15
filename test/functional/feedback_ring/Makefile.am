@@ -13,12 +13,13 @@ check_PROGRAMS = \
 test_feedback_ring_SOURCES = test_feedback_ring.c
 
 test_feedback_ring_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags) \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
 test_feedback_ring_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs
 

@@ -16,13 +16,14 @@ check_PROGRAMS = \
 
 
 test_malformed_rohc_packets_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags) \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
 test_malformed_rohc_packets_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
