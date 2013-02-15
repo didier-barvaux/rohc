@@ -514,6 +514,7 @@ static int test_compression_perfs(char *filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 
 	/* reset list of RTP ports */
 	if(!rohc_comp_reset_rtp_ports(comp))

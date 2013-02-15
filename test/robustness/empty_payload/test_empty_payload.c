@@ -358,6 +358,7 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 		rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 		rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+		rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 	}
 
 	/* reset list of RTP ports */

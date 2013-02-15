@@ -167,6 +167,7 @@ static int test_feedback_ring(void)
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 
 	/* set the callback for random numbers */
 	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))

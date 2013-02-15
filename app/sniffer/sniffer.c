@@ -654,6 +654,7 @@ static bool sniff(const int use_large_cid,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 
 	/* configure SMALL_CID / LARGE_CID and MAX_CID */
 	rohc_c_set_large_cid(comp, use_large_cid);

@@ -275,6 +275,7 @@ static int test_rtp_callback(const char *const do_detect,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 
 	/* reset list of RTP ports */
 	if(!rohc_comp_reset_rtp_ports(comp))
