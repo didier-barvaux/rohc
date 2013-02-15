@@ -1836,12 +1836,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 	{
 		assert( ip_context.v6->version == IPV6 );
 
-#if WORDS_BIGENDIAN != 1
-		mptr.ipv6_dynamic->dscp = (base_header.ipv6->dscp1 << 4) |
-		                          base_header.ipv6->dscp2;
-#else
-		mptr.ipv6_dynamic->dscp = base_header.ipv6->dscp;
-#endif
+		mptr.ipv6_dynamic->dscp = DSCP_V6(base_header.ipv6);
 		mptr.ipv6_dynamic->ip_ecn_flags = base_header.ipv6->ip_ecn_flags;
 		mptr.ipv6_dynamic->ttl_hopl = base_header.ipv6->ttl_hopl;
 

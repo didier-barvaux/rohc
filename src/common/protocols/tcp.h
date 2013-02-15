@@ -378,9 +378,9 @@ typedef struct __attribute__((packed)) base_header_ip_v6
 } base_header_ip_v6_t;
 
 #if WORDS_BIGENDIAN != 1
-#  define DSCP_V6(ptr)       (((ptr->dscp1) << 2) | ptr->dscp2)
+#  define DSCP_V6(ptr)       (((ptr)->dscp1 << 2) | (ptr)->dscp2)
 #else
-#  define DSCP_V6(ptr)       (ptr->dscp)
+#  define DSCP_V6(ptr)       ((ptr)->dscp)
 #endif
 #define FLOW_LABEL_V6(ptr) (((ptr->flow_label1) << 16) | ptr->flow_label2)
 
