@@ -28,6 +28,7 @@ TESTS_ESP_SMALLCID = \
 
 TESTS_TCP_SMALLCID = \
 	test_non_regression_ipv4_tcp_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_smallcid.sh \
 	test_non_regression_ipv6_tcp_smallcid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_smallcid.sh
 
@@ -120,6 +121,7 @@ TESTS_ESP_LARGECID = \
 
 TESTS_TCP_LARGECID = \
 	test_non_regression_ipv4_tcp_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_largecid.sh \
 	test_non_regression_ipv6_tcp_largecid.sh \
 	test_non_regression_ipv6_tcp_non-zero-dscp_largecid.sh
 

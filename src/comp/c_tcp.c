@@ -2645,7 +2645,7 @@ uint8_t * c_ts_lsb(const struct c_context *const context,
 /**
  * @brief Compress the SACK field value.
  *
- * See draft-sandlund-RFC4996bis-00 page 67
+ * See RFC6846 page 67
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context   The compression context
@@ -2660,39 +2660,52 @@ static uint8_t * c_sack_pure_lsb(const struct c_context *const context,
                                  uint32_t field)
 {
 	uint32_t sack_field;
+	size_t len;
 
 	assert(context != NULL);
 
+	/* if base can be >= field, overflow is expected */
 	sack_field = field - base;
-
-	rohc_comp_debug(context, "sack_field = 0x%x (0x%x - 0x%x)\n",
-	                sack_field, field, base);
 
 	if(sack_field < 0x8000)
 	{
-		// Discriminator '0'
+		/* discriminator '0' */
+		*ptr = 0;
 		*(ptr++) = ( sack_field >> 8 ) & 0x7F;
-		*(ptr++) = sack_field;
+		*(ptr++) = sack_field & 0xff;
+		len = 2;
+	}
+	else if(sack_field < 0x400000)
+	{
+		/* discriminator '10' */
+		*(ptr++) = 0x80 | ( ( sack_field >> 16 ) & 0x3F );
+		*(ptr++) = (sack_field >> 8) & 0xff;
+		*(ptr++) = sack_field & 0xff;
+		len = 3;
+	}
+	else if(sack_field < 0x40000000)
+	{
+		/* discriminator '110' */
+		*(ptr++) = 0xC0 | ( ( sack_field >> 24 ) & 0x3F );
+		*(ptr++) = (sack_field >> 16) & 0xff;
+		*(ptr++) = (sack_field >> 8) & 0xff;
+		*(ptr++) = sack_field & 0xff;
+		len = 4;
 	}
 	else
 	{
-		if(sack_field < 0x400000)
-		{
-			// Discriminator '10'
-			*(ptr++) = 0x80 | ( ( sack_field >> 16 ) & 0x3F );
-			*(ptr++) = sack_field >> 8;
-			*(ptr++) = sack_field;
-		}
-		else
-		{
-			assert( sack_field < 0x40000000 );
-			// Discriminator '11'
-			*(ptr++) = 0xC0 | ( ( sack_field >> 24 ) & 0x3F );
-			*(ptr++) = sack_field >> 16;
-			*(ptr++) = sack_field >> 8;
-			*(ptr++) = sack_field;
-		}
+		/* discriminator '11111111' */
+		*(ptr++) = 0xff;
+		*(ptr++) = (sack_field >> 24) & 0xff;
+		*(ptr++) = (sack_field >> 16) & 0xff;
+		*(ptr++) = (sack_field >> 8) & 0xff;
+		*(ptr++) = sack_field & 0xff;
+		len = 5;
 	}
+
+	rohc_comp_debug(context, "sack_field = 0x%x (0x%x - 0x%x) encoded on %zd "
+	                "bytes (discriminator included)\n", sack_field, field,
+	                base, len);
 
 	return ptr;
 }
@@ -2701,7 +2714,7 @@ static uint8_t * c_sack_pure_lsb(const struct c_context *const context,
 /**
  * @brief Compress a SACK block.
  *
- * See draft-sandlund-RFC4996bis-00 page 67
+ * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context     The compression context
@@ -2722,11 +2735,11 @@ static uint8_t * c_sack_block(const struct c_context *const context,
 	                ntohl(sack_block->block_start),
 	                ntohl(sack_block->block_end));
 
-	// block_start =:= sack_var_length_enc(prev_block_end)
+	// block_start =:= sack_var_length_enc(reference)
 	ptr = c_sack_pure_lsb(context, ptr, reference,
 	                      ntohl(sack_block->block_start));
 	// block_end =:= sack_var_length_enc(block_start)
-	ptr = c_sack_pure_lsb(context, ptr, reference,
+	ptr = c_sack_pure_lsb(context, ptr, ntohl(sack_block->block_start),
 	                      ntohl(sack_block->block_end));
 
 	return ptr;
@@ -2736,7 +2749,7 @@ static uint8_t * c_sack_block(const struct c_context *const context,
 /**
  * @brief Compress the SACK TCP option.
  *
- * See draft-sandlund-RFC4996bis-00 page 68
+ * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context     The compression context
@@ -2756,7 +2769,7 @@ static uint8_t * c_tcp_opt_sack(const struct c_context *const context,
 
 	assert(context != NULL);
 
-	rohc_comp_debug(context, "TCP option SACK with ack_value = 0x%08x\n",
+	rohc_comp_debug(context, "TCP option SACK (reference ACK = 0x%08x)\n",
 	                ack_value);
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "TCP option SACK",
@@ -2768,6 +2781,9 @@ static uint8_t * c_tcp_opt_sack(const struct c_context *const context,
 	// Compress each sack_block
 	while(i-- != 0)
 	{
+		rohc_comp_debug(context, "block of SACK option: start = 0x%08x, "
+		                "end = 0x%08x\n", ntohl(sack_block->block_start),
+		                ntohl(sack_block->block_end));
 		ptr = c_sack_block(context, ptr, ack_value, sack_block);
 		++sack_block;
 	}
@@ -4406,9 +4422,9 @@ static int co_baseheader(struct c_context *const context,
 	                c_base_header.co_common->df);
 	// =:= crc7(THIS.UVALUE,THIS.ULENGTH) [ 7 ];
 	c_base_header.co_common->header_crc = 0;
-
 	c_base_header.co_common->header_crc =
-	   crc_calculate(ROHC_CRC_TYPE_7,  c_base_header.uint8, mptr.uint8 - c_base_header.uint8, CRC_INIT_7,
+	   crc_calculate(ROHC_CRC_TYPE_7,  c_base_header.uint8,
+	                 mptr.uint8 - c_base_header.uint8, CRC_INIT_7,
 	                 context->compressor->crc_table_7);
 	rohc_comp_debug(context, "CRC (header length = %d, CRC = 0x%x)\n",
 	                (int) (mptr.uint8 - c_base_header.uint8),
