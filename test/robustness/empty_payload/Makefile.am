@@ -22,11 +22,14 @@ check_PROGRAMS = \
 
 
 test_empty_payload_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+test_empty_payload_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
 test_empty_payload_LDFLAGS = \
 	$(configure_ldflags) \

@@ -25,12 +25,14 @@ test_rtp_ports_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 test_rtp_ports_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+test_rtp_ports_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 test_rtp_ports_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
@@ -45,11 +47,13 @@ test_rtp_callback_LDADD = \
 	-lrohc_common
 	$(additional_platform_libs)
 test_rtp_callback_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+test_rtp_callback_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
-	-I$(top_srcdir)/src/comp
+	-I$(top_srcdir)/src/comp \
+	$(libpcap_includes)
 test_rtp_callback_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \

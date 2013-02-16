@@ -8,7 +8,9 @@
 sbin_PROGRAMS = rohctunnel
 
 rohctunnel_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+rohctunnel_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp

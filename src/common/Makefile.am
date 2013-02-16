@@ -61,7 +61,8 @@ librohc_common_la_LDFLAGS = \
 	-no-undefined \
 	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE)
 librohc_common_la_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+librohc_common_la_CPPFLAGS = \
 	-I$(top_srcdir)/src
 
 include_HEADERS = $(public_headers)

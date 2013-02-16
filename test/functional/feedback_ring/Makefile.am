@@ -13,7 +13,9 @@ check_PROGRAMS = \
 test_feedback_ring_SOURCES = test_feedback_ring.c
 
 test_feedback_ring_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+test_feedback_ring_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp

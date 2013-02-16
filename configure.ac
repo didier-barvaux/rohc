@@ -184,7 +184,7 @@ AC_ARG_WITH(libpcap_includes,
             [with_libpcap_includes="$withval"],
             [with_libpcap_includes="no"])
 if test "x$with_libpcap_includes" != "xno"; then
-	CPPFLAGS="${CPPFLAGS} -I${with_libpcap_includes}"
+	libpcap_includes="-I${with_libpcap_includes}"
 fi
 
 
@@ -612,6 +612,7 @@ AM_CONDITIONAL([BUILD_EXAMPLES], [test "x$build_examples" = "xyes"])
 
 # export TESTS_ENVIRONMENT, configure_cflags, and configure_ldflags
 AC_SUBST([TESTS_ENVIRONMENT], [$tests_environment])
+AC_SUBST([libpcap_includes], [$libpcap_includes])
 AC_SUBST([configure_cflags], [$configure_cflags])
 AC_SUBST([configure_ldflags], [$configure_ldflags])
 

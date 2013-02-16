@@ -17,12 +17,15 @@ check_PROGRAMS = \
 
 
 test_feedback2_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+test_feedback2_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
 test_feedback2_LDFLAGS = \
 	$(configure_ldflags) \
