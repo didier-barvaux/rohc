@@ -10,11 +10,14 @@ sbin_PROGRAMS = \
 
 
 rohc_test_performance_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+rohc_test_performance_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
 rohc_test_performance_LDFLAGS = \
 	$(configure_ldflags) \

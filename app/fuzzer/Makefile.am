@@ -9,7 +9,9 @@ sbin_PROGRAMS = \
 
 
 rohc_fuzzer_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+rohc_fuzzer_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp

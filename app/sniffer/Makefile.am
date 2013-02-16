@@ -9,10 +9,13 @@ sbin_PROGRAMS = \
 
 
 rohc_sniffer_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+rohc_sniffer_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
 rohc_sniffer_LDFLAGS = \
 	$(configure_ldflags) \

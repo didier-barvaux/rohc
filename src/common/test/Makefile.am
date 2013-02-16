@@ -24,7 +24,8 @@ test_lsb_decode_wraparound_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
 test_lsb_decode_wraparound_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+test_lsb_decode_wraparound_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
@@ -35,7 +36,8 @@ test_lsb_decode_packet_loss_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
 test_lsb_decode_packet_loss_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+test_lsb_decode_packet_loss_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
@@ -46,7 +48,8 @@ test_rtp_ts_wraparound_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
 test_rtp_ts_wraparound_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+test_rtp_ts_wraparound_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 

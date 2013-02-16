@@ -13,10 +13,13 @@ check_PROGRAMS = \
 
 
 generate_statistics_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+generate_statistics_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
-	-I$(top_srcdir)/src/comp
+	-I$(top_srcdir)/src/comp \
+	$(libpcap_includes)
 
 generate_statistics_LDFLAGS = \
 	$(configure_ldflags) \

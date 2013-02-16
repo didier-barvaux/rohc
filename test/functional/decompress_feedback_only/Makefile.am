@@ -15,7 +15,9 @@ check_PROGRAMS = \
 
 
 test_decompress_feedback_only_CFLAGS = \
-	$(configure_cflags) \
+	$(configure_cflags)
+
+test_decompress_feedback_only_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
