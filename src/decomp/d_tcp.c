@@ -3358,11 +3358,7 @@ decode_rnd_8:
 	size_header = sizeof(rnd_8_t);
 	header_crc = c_base_header.rnd8->header_crc;
 	c_base_header.rnd8->header_crc = 0;
-#if WORDS_BIGENDIAN != 1
-	msn = ( c_base_header.rnd8->msn1 << 3 ) | c_base_header.rnd8->msn2;
-#else
-	msn = c_base_header.rnd8->msn;
-#endif
+	msn = (c_base_header.rnd8->msn1 << 3) | c_base_header.rnd8->msn2;
 	rohc_decomp_debug(context, "rnd_8: size_header = %d\n", size_header);
 	if(c_base_header.rnd8->list_present)
 	{
@@ -3926,22 +3922,15 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq1->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ2:
-#if WORDS_BIGENDIAN != 1
 				{
 					uint8_t ip_id_lsb;
-					ip_id_lsb = ( c_base_header.seq2->ip_id1 << 4 ) | c_base_header.seq2->ip_id2;
+					ip_id_lsb = (c_base_header.seq2->ip_id1 << 4) |
+					            c_base_header.seq2->ip_id2;
 					ip_id.uint16 =
-					   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,7,3,
-					               ip_inner_context.v4->last_ip_id,
-					               ip_id_lsb,
-					               msn);
+						d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+						            7, 3, ip_inner_context.v4->last_ip_id,
+						            ip_id_lsb, msn);
 				}
-#else
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,7,3,ip_inner_context.v4->last_ip_id,
-				               c_base_header.seq2->ip_id,
-				               msn);
-#endif
 				seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,
 				                          c_base_header.seq2->seq_number_scaled);
 				seq_number_scaled_used = 1;
@@ -3992,18 +3981,14 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq5->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ6:
-#if WORDS_BIGENDIAN != 1
 				{
-					uint8_t seq_number_scaled_lsb;
-					seq_number_scaled_lsb =
-					   ( c_base_header.seq6->seq_number_scaled1 <<
-					     1 ) | c_base_header.seq6->seq_number_scaled2;
-					seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,seq_number_scaled_lsb);
+					uint8_t seq_scaled_lsb;
+					seq_scaled_lsb = (c_base_header.seq6->seq_number_scaled1 << 1) |
+					                 c_base_header.seq6->seq_number_scaled2;
+					seq_number_scaled = d_lsb(context, 4, 7,
+					                          tcp_context->seq_number_scaled,
+					                          seq_scaled_lsb);
 				}
-#else
-				seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,
-				                          c_base_header.seq6->seq_number_scaled);
-#endif
 				seq_number_scaled_used = 1;
 				//  assert( payload_size != 0 );
 				// TODO: to be completed/reworked
