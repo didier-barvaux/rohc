@@ -2212,67 +2212,81 @@ static int d_size_ts_lsb( uint8_t *ptr )
 /**
  * @brief Uncompress the SACK field value.
  *
- * See draft-sandlund-RFC4996bis-00 page 67
+ * See RFC6846 page 67
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param ptr       Pointer to the compressed value
  * @param base      The base value
  * @param field     Pointer to the uncompressed value
- * @return          Pointer to the next compressed value
+ * @return          Number of bytes read, -1 if error
  */
-
-static uint8_t * d_sack_pure_lsb( uint8_t *ptr, uint32_t base, uint32_t *field )
+static int d_sack_pure_lsb(uint8_t *ptr,
+                           uint32_t base,
+                           uint32_t *field)
 {
 	uint32_t sack_field;
+	size_t len;
 
-	if( ( (*ptr) & 0x80 ) == 0)
+	if(((*ptr) & 0x80) == 0)
 	{
+		/* discriminator '0' */
 		sack_field = *(ptr++) << 8;
 		sack_field |= *(ptr++);
+		len = 2;
+	}
+	else if(((*ptr) & 0x40) == 0)
+	{
+		/* discriminator '10' */
+		sack_field = *(ptr++) & 0x3f;
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		len = 3;
+	}
+	else if(((*ptr) & 0x20) == 0)
+	{
+		/* discriminator '110' */
+		sack_field = *(ptr++) & 0x1f;
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		len = 4;
+	}
+	else if((*ptr) == 0xff)
+	{
+		/* discriminator '11111111' */
+		ptr++; /* skip discriminator */
+		sack_field = *(ptr++);
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		sack_field <<= 8;
+		sack_field |= *(ptr++);
+		len = 5;
 	}
 	else
 	{
-		if( ( (*ptr) & 0x40 ) == 0)
-		{
-			/*
-			sack_field = *(ptr++) << 16;
-			sack_field |= *(ptr++) << 8;
-			sack_field |= *(ptr++);
-			*/
-			sack_field = *(ptr++);
-			sack_field <<= 8;
-			sack_field |= *(ptr++);
-			sack_field <<= 8;
-			sack_field |= *(ptr++);
-		}
-		else
-		{
-			/*
-			sack_field = *(ptr++) << 24;
-			sack_field |= *(ptr++) << 16;
-			sack_field |= *(ptr++) << 8;
-			sack_field |= *(ptr++);
-			*/
-			sack_field = *(ptr++);
-			sack_field <<= 8;
-			sack_field |= *(ptr++);
-			sack_field <<= 8;
-			sack_field |= *(ptr++);
-			sack_field <<= 8;
-			sack_field |= *(ptr++);
-		}
+		goto error;
 	}
 
-	*field = htonl( base + sack_field );
+	*field = htonl(base + sack_field);
 
-	return ptr;
+	return len;
+
+error:
+	return -1;
 }
 
 
 /**
  * @brief Uncompress a SACK block
  *
- * See draft-sandlund-RFC4996bis-00 page 67
+ * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param ptr        Pointer to the compressed value
@@ -2280,19 +2294,40 @@ static uint8_t * d_sack_pure_lsb( uint8_t *ptr, uint32_t base, uint32_t *field )
  * @param sack_block Pointer to the uncompressed sack_block
  * @return           Pointer to the next compressed value
  */
-
-static uint8_t * d_sack_block( uint8_t *ptr, uint32_t reference, sack_block_t *sack_block )
+static uint8_t * d_sack_block(uint8_t *ptr,
+                              uint32_t reference,
+                              sack_block_t *sack_block)
 {
-	ptr = d_sack_pure_lsb(ptr,reference,&sack_block->block_start);
-	ptr = d_sack_pure_lsb(ptr,reference,&sack_block->block_end);
+	int ret;
+
+	/* decode block start */
+	ret = d_sack_pure_lsb(ptr, reference, &sack_block->block_start);
+	if(ret < 0)
+	{
+		goto error;
+	}
+	ptr += ret;
+
+	/* decode block end */
+	ret = d_sack_pure_lsb(ptr, ntohl(sack_block->block_start),
+	                      &sack_block->block_end);
+	if(ret < 0)
+	{
+		goto error;
+	}
+	ptr += ret;
+
 	return ptr;
+
+error:
+	return NULL;
 }
 
 
 /**
  * @brief Uncompress the SACK TCP option
  *
- * See draft-sandlund-RFC4996bis-00 page 67
+ * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context    The decompression context
@@ -2313,129 +2348,192 @@ static uint8_t * d_tcp_opt_sack(const struct d_context *const context,
 
 	assert(context != NULL);
 
+	rohc_decomp_debug(context, "parse SACK option (reference ACK = 0x%08x)\n",
+	                  ack_value);
+
 	options = *pOptions;
 
-	if( ( discriminator = *(ptr++) ) < 5)
+	/* parse discriminator */
+	discriminator = *ptr;
+	ptr++;
+	if(discriminator > 4)
 	{
-		// option id
-		*(options++) = TCP_OPT_SACK;
-		// option length
-		*(options++) = ( discriminator << 3 ) + 2;
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		             "invalid discriminator value (%d)\n", discriminator);
+		goto error;
+	}
 
-		sack_block = (sack_block_t *) options;
+	/* option ID */
+	*(options++) = TCP_OPT_SACK;
+	/* option length */
+	*(options++) = ( discriminator << 3 ) + 2;
 
-		for(i = 0; i < discriminator; ++i)
+	sack_block = (sack_block_t *) options;
+
+	for(i = 0; i < discriminator; i++)
+	{
+		ptr = d_sack_block(ptr, ack_value, sack_block);
+		if(ptr == NULL)
 		{
-			ptr = d_sack_block(ptr,ack_value,sack_block);
-			++sack_block;
+			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+			             context->profile->id,
+			             "failed to decode block #%d of SACK option\n", i + 1);
+			goto error;
 		}
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "TCP option SACK", options - 2,
-		                 *(options - 1));
-		*pOptions = (uint8_t*) sack_block;
+		rohc_decomp_debug(context, "block #%d of SACK option: start = 0x%08x, "
+		                  "end = 0x%08x\n", i + 1,
+		                  ntohl(sack_block->block_start),
+		                  ntohl(sack_block->block_end));
+		sack_block++;
 	}
-	else
-	{
-		rohc_decomp_debug(context, "warning: invalid discriminator value (%d)\n",
-		                  discriminator);
-	}
+	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	                 ROHC_TRACE_DEBUG, "TCP option SACK", options - 2,
+	                 *(options - 1));
+	*pOptions = (uint8_t *) sack_block;
 
 	return ptr;
+
+error:
+	return NULL;
 }
 
 
 /**
  * @brief Calculate the size of the compressed SACK field value
  *
- * See RFC4996 page 66
+ * See RFC6846 page 67
+ * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param ptr    Pointer to the compressed sack field value
  * @return       The size (in octets) of the compressed value
  */
-
-static int d_sack_var_length_size_dec( uint8_t *ptr )
+static int d_sack_var_length_size_dec(uint8_t *ptr)
 {
-	if( ( (*ptr) & 0x80 ) == 0)
+	int len;
+
+	if(((*ptr) & 0x80) == 0)
 	{
-		return 2;
+		/* discriminator '0' */
+		len = 2;
+	}
+	else if(((*ptr) & 0x40) == 0)
+	{
+		/* discriminator '10' */
+		len = 3;
+	}
+	else if(((*ptr) & 0x20) == 0)
+	{
+		/* discriminator '110' */
+		len = 4;
+	}
+	else if((*ptr) == 0xff)
+	{
+		/* discriminator '11111111' */
+		len = 5;
 	}
 	else
 	{
-		if( ( (*ptr) & 0x40 ) == 0)
-		{
-			return 3;
-		}
-		else
-		{
-			return 4;
-		}
+		len = -1;
 	}
+
+	return len;
 }
 
 
 /**
  * @brief Calculate the size of the compressed SACK block
  *
- * See RFC4996 page 67
+ * See RFC6846 page 68
+ * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param ptr          Pointer to the compressed sack block
- * @return             The size (in octets) of the compressed SACK block
+ * @return             The size (in octets) of the compressed SACK block,
+ *                     -1 in case of problem
  */
-
-static int d_sack_block_size( uint8_t *ptr )
+static int d_sack_block_size(uint8_t *ptr)
 {
 	int size;
 
+	/* decode block start */
 	size = d_sack_var_length_size_dec(ptr);
+	if(size < 0)
+	{
+		goto error;
+	}
 	ptr += size;
+
+	/* decode block end */
 	size += d_sack_var_length_size_dec(ptr);
+	if(size < 0)
+	{
+		goto error;
+	}
 
 	return size;
+
+error:
+	return -1;
 }
 
 
 /**
  * @brief Calculate the size of the SACK TCP option
  *
- * See RFC4996 page 67
+ * See RFC6846 page 68
+ * (and RFC2018 for Selective Acknowledgement option)
  *
  * @param context            The decompression context
  * @param ptr                Pointer to the compressed SACK TCP option
  * @param uncompressed_size  Pointer to the uncompressed TCP option size
- * @return                   The size (in octets) of the compressed SACK TCP option
+ * @return                   The size (in octets) of the compressed SACK TCP
+ *                           option, -1 in case of problem
  */
 static int d_tcp_size_opt_sack(const struct d_context *const context,
                                uint8_t *ptr,
                                uint16_t *uncompressed_size)
 {
 	uint8_t discriminator;
-	int size = 1;
+	int size = 0;
 	int i;
-	int j;
 
 	assert(context != NULL);
 
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "ptr", ptr, 16);
+	                 ROHC_TRACE_DEBUG, "next 16 bytes starting from the "
+	                 "compressed TCP SACK option", ptr, 16);
 
-	if( ( discriminator = *(ptr++) ) < 5)
+	/* parse discriminator */
+	discriminator = *ptr;
+	ptr++;
+	size++;
+	if(discriminator > 4)
 	{
-		for(i = 0; i < discriminator; ++i)
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		             "invalid discriminator value (%d)\n", discriminator);
+		goto error;
+	}
+
+	for(i = 0; i < discriminator; i++)
+	{
+		const int block_len = d_sack_block_size(ptr);
+		if(block_len < 0)
 		{
-			j = d_sack_block_size(ptr);
-			size += j;
-			ptr += j;
+			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+			             context->profile->id, "failed to determine the length "
+			             " of SACK block #%d\n", i + 1);
+			goto error;
 		}
-	}
-	else
-	{
-		rohc_decomp_debug(context, "warning: invalid discriminator value (%d)\n",
-		                  discriminator);
+		size += block_len;
+		ptr += block_len;
 	}
 
-	rohc_decomp_debug(context, "return size %d\n", size);
+	rohc_decomp_debug(context, "TCP SACK option is compressed on %d bytes\n",
+	                  size);
 
 	return size;
+
+error:
+	return -1;
 }
 
 
@@ -2624,12 +2722,21 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					break;
 				case TCP_INDEX_SACK:  // SACK see RFC2018
 					                   // TODO: save into context
-					compressed_options =
-					   d_tcp_opt_sack(context, compressed_options,&options,ntohl(tcp->ack_number));
+					compressed_options = d_tcp_opt_sack(context, compressed_options,
+					                                    &options,
+					                                    ntohl(tcp->ack_number));
+					if(compressed_options == NULL)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to decompress "
+						             "TCP SACK option\n");
+						goto error;
+					}
 					break;
 				default:  // Generic options
-					rohc_decomp_debug(context, "TCP option with index %d not "
-					                  "handled\n", index);
+					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+					             context->profile->id, "TCP option with index %d "
+					             "not handled\n", index);
 					// TODO
 					compressed_options = d_tcp_opt_generic(tcp_context,compressed_options,&options);
 					break;
@@ -2717,11 +2824,16 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 	}
 
 	return compressed_options;
+
+error:
+	return NULL;
 }
 
 
 /**
  * @brief Calculate the compressed TCP options size
+ *
+ * See RFC6846 pages 26-27.
  *
  * @param context            The decompression context
  * @param ptr                Pointer to the compressed TCP options
@@ -2734,11 +2846,12 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
-	uint8_t *compressed_options;
+	uint8_t *items;
 	uint8_t present;
 	uint8_t PS;
 	int index;
-	int size;
+	size_t xi_len;
+	int comp_size;
 	int m;
 	int i;
 	int j;
@@ -2749,29 +2862,32 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 	assert(g_context->specific != NULL);
 	tcp_context = g_context->specific;
 
+	comp_size = 0;
 	*uncompressed_size = 0;
 
-	// see RFC4996 page 25-26
+	/* PS/m byte */
 	PS = *ptr & 0x10;
-	m = *(ptr++) & 0x0F;
+	m = *ptr & 0x0F;
+	ptr++;
+	comp_size++;
 
 	if(PS == 0)
 	{
 		/* 4-bit XI fields */
-		size = (m + 1) >> 1;
+		xi_len = (m + 1) >> 1;
 	}
 	else
 	{
 		/* 8-bit XI fields */
-		size = m;
+		xi_len = m;
 	}
-	compressed_options = ptr + size;
-	++size;
-
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "TCP compressed options", ptr - 1, size);
+	                 ROHC_TRACE_DEBUG, "XI bytes of compressed list of TCP "
+	                 "options", ptr, xi_len);
+	comp_size += xi_len;
+	items = ptr + xi_len;
 
-	for(i = 0; m != 0; --m)
+	for(i = 0; m != 0; i++, m--)
 	{
 
 		/* 4-bit XI fields */
@@ -2788,13 +2904,18 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 			}
 			present = index & 0x08;
 			index &= 0x07;
-			++i;
+			rohc_decomp_debug(context, "TCP options list: 4-bit XI field #%d: "
+			                  "item with index %d is %s\n", i, index,
+			                  present ? "present" : "not present");
 		}
 		else
 		{
 			/* 8-bit XI fields */
 			present = (*ptr) & 0x80;
 			index = *(ptr++) & 0x0F;
+			rohc_decomp_debug(context, "TCP options list: 8-bit XI field #%d: "
+			                  "item with index %d is %s\n", i, index,
+			                  present ? "present" : "not present");
 		}
 
 		// If item present
@@ -2810,40 +2931,46 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					break;
 				case TCP_INDEX_MAXSEG:  // MSS
 					*uncompressed_size += TCP_OLEN_MAXSEG;
-					size += 2;
+					comp_size += 2;
 					break;
 				case TCP_INDEX_WINDOW:  // WINDOW SCALE
 					*uncompressed_size += TCP_OLEN_WINDOW;
-					++size;
+					++comp_size;
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
 					*uncompressed_size += TCP_OLEN_TIMESTAMP;
-					j = d_size_ts_lsb(compressed_options);
-					compressed_options += j;
-					size += j;
-					j = d_size_ts_lsb(compressed_options);
-					compressed_options += j;
-					size += j;
+					j = d_size_ts_lsb(items);
+					items += j;
+					comp_size += j;
+					j = d_size_ts_lsb(items);
+					items += j;
+					comp_size += j;
 					break;
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
 					*uncompressed_size += TCP_OLEN_SACK_PERMITTED;
 					break;
 				case TCP_INDEX_SACK:  // SACK see RFC2018
-					j = d_tcp_size_opt_sack(context, compressed_options,
-					                        uncompressed_size);
-					compressed_options += j;
-					size += j;
+					j = d_tcp_size_opt_sack(context, items, uncompressed_size);
+					if(j < 0)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to determine "
+						             "the length of compressed TCP SACK option\n");
+					}
+					items += j;
+					comp_size += j;
 					break;
 				default:  // Generic options
 					rohc_decomp_debug(context, "TCP option with index %d not "
 					                  "handled\n", index);
-					j = d_tcp_size_opt_generic(tcp_context,compressed_options,uncompressed_size);
-					compressed_options += j;
-					size += j;
+					j = d_tcp_size_opt_generic(tcp_context, items,
+					                           uncompressed_size);
+					items += j;
+					comp_size += j;
 					break;
 			}
-			rohc_decomp_debug(context, "TCP option with index %d -> size %d\n",
-			                  index, size);
+			rohc_decomp_debug(context, "TCP option with index %d is %d-byte "
+			                  "long in compressed packet\n", index, comp_size);
 		}
 		else
 		{
@@ -2879,10 +3006,11 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 		}
 	}
 
-	rohc_decomp_debug(context, "return size = %d, uncompressed size = %d\n",
-	                  size, *uncompressed_size);
+	rohc_decomp_debug(context, "TCP options: compressed length = %d bytes, "
+	                  "uncompressed length = %d bytes\n", comp_size,
+	                  *uncompressed_size);
 
-	return size;
+	return comp_size;
 }
 
 
@@ -3230,11 +3358,7 @@ decode_rnd_8:
 	size_header = sizeof(rnd_8_t);
 	header_crc = c_base_header.rnd8->header_crc;
 	c_base_header.rnd8->header_crc = 0;
-#if WORDS_BIGENDIAN != 1
-	msn = ( c_base_header.rnd8->msn1 << 3 ) | c_base_header.rnd8->msn2;
-#else
-	msn = c_base_header.rnd8->msn;
-#endif
+	msn = (c_base_header.rnd8->msn1 << 3) | c_base_header.rnd8->msn2;
 	rohc_decomp_debug(context, "rnd_8: size_header = %d\n", size_header);
 	if(c_base_header.rnd8->list_present)
 	{
@@ -3364,7 +3488,8 @@ add_tcp_list_size:
 		rohc_decomp_debug(context, "list present at %p: PS_m = 0x%x\n",
 		                  mptr.uint8, *mptr.uint8);
 		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "list", mptr.uint8, 16);
+		                 ROHC_TRACE_DEBUG, "list", mptr.uint8,
+		                 16); /* TODO: why 16 ??? */
 		size_options += tcp_size_decompress_tcp_options(context, mptr.uint8,
 		                                                &tcp_options_size);
 		rohc_decomp_debug(context, "size = header (%d) + options (%d) = %d\n",
@@ -3390,7 +3515,8 @@ test_checksum:
 	if(header_crc != crc)
 	{
 		rohc_decomp_debug(context, "header_crc (0x%x) != crc (0x%x) on %d "
-		                  "bytes\n", header_crc, crc, size_header);
+		                  "bytes\n", header_crc, crc,
+		                  size_header + size_options);
 		goto error;
 	}
 	rohc_decomp_debug(context, "header_crc (0x%x) == crc (0x%x) on %d bytes\n",
@@ -3796,22 +3922,15 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq1->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ2:
-#if WORDS_BIGENDIAN != 1
 				{
 					uint8_t ip_id_lsb;
-					ip_id_lsb = ( c_base_header.seq2->ip_id1 << 4 ) | c_base_header.seq2->ip_id2;
+					ip_id_lsb = (c_base_header.seq2->ip_id1 << 4) |
+					            c_base_header.seq2->ip_id2;
 					ip_id.uint16 =
-					   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,7,3,
-					               ip_inner_context.v4->last_ip_id,
-					               ip_id_lsb,
-					               msn);
+						d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+						            7, 3, ip_inner_context.v4->last_ip_id,
+						            ip_id_lsb, msn);
 				}
-#else
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,7,3,ip_inner_context.v4->last_ip_id,
-				               c_base_header.seq2->ip_id,
-				               msn);
-#endif
 				seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,
 				                          c_base_header.seq2->seq_number_scaled);
 				seq_number_scaled_used = 1;
@@ -3862,18 +3981,14 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq5->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ6:
-#if WORDS_BIGENDIAN != 1
 				{
-					uint8_t seq_number_scaled_lsb;
-					seq_number_scaled_lsb =
-					   ( c_base_header.seq6->seq_number_scaled1 <<
-					     1 ) | c_base_header.seq6->seq_number_scaled2;
-					seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,seq_number_scaled_lsb);
+					uint8_t seq_scaled_lsb;
+					seq_scaled_lsb = (c_base_header.seq6->seq_number_scaled1 << 1) |
+					                 c_base_header.seq6->seq_number_scaled2;
+					seq_number_scaled = d_lsb(context, 4, 7,
+					                          tcp_context->seq_number_scaled,
+					                          seq_scaled_lsb);
 				}
-#else
-				seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,
-				                          c_base_header.seq6->seq_number_scaled);
-#endif
 				seq_number_scaled_used = 1;
 				//  assert( payload_size != 0 );
 				// TODO: to be completed/reworked

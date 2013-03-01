@@ -9,12 +9,16 @@ sbin_PROGRAMS = \
 
 
 rohc_sniffer_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+
+rohc_sniffer_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
 rohc_sniffer_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs

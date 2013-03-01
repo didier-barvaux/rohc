@@ -21,9 +21,11 @@ test_lsb_decode_wraparound_SOURCES = test_lsb_decode_wraparound.c
 test_lsb_decode_wraparound_LDADD = \
 	-lrohc_common
 test_lsb_decode_wraparound_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
 test_lsb_decode_wraparound_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+test_lsb_decode_wraparound_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
@@ -31,9 +33,11 @@ test_lsb_decode_packet_loss_SOURCES = test_lsb_decode_packet_loss.c
 test_lsb_decode_packet_loss_LDADD = \
 	-lrohc_common
 test_lsb_decode_packet_loss_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
 test_lsb_decode_packet_loss_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+test_lsb_decode_packet_loss_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
@@ -41,9 +45,11 @@ test_rtp_ts_wraparound_SOURCES = test_rtp_ts_wraparound.c
 test_rtp_ts_wraparound_LDADD = \
 	-lrohc_common
 test_rtp_ts_wraparound_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
 test_rtp_ts_wraparound_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+test_rtp_ts_wraparound_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 

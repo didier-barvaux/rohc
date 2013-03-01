@@ -340,6 +340,7 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sniffer_interrupt);
 	signal(SIGTERM, sniffer_interrupt);
 	signal(SIGSEGV, sniffer_interrupt);
+	signal(SIGABRT, sniffer_interrupt);
 	signal(SIGUSR1, sniffer_print_stats);
 
 	/* test ROHC compression/decompression with the packets from the file */
@@ -387,7 +388,75 @@ static void sniffer_interrupt(int signal)
 {
 	/* end the program with next captured packet */
 	fprintf(stderr, "signal %d catched\n", signal);
+	fflush(stderr);
 	stop_program = true;
+
+	/* for SIGSEGV/SIGABRT, print the last debug traces,
+	 * then kill the program */
+	if(signal == SIGSEGV || signal == SIGABRT)
+	{
+		const char *logfilename = "./sniffer.log";
+		FILE *logfile;
+		int ret;
+		int i;
+
+		logfile = fopen(logfilename, "w");
+		if(logfile == NULL)
+		{
+			fprintf(stderr, "failed to create '%s' file: %s (%d)\n",
+			        logfilename, strerror(errno), errno);
+			fflush(stderr);
+			raise(SIGKILL);
+		}
+
+		fprintf(logfile, "a problem occurred at packet #%lu\n\n",
+		        stats.total_packets);
+
+		if(last_traces_first == -1 || last_traces_last == -1)
+		{
+			fprintf(stderr, "no trace to record\n");
+			fflush(stderr);
+			raise(SIGKILL);
+		}
+
+		if(last_traces_first <= last_traces_last)
+		{
+			fprintf(stderr, "record the last %d traces...\n",
+			        last_traces_last - last_traces_first);
+			for(i = last_traces_first; i <= last_traces_last; i++)
+			{
+				fprintf(logfile, "%s", last_traces[i]);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "record the last %d traces...\n",
+			        MAX_LAST_TRACES - last_traces_first + last_traces_last);
+			for(i = last_traces_first;
+			    i <= MAX_LAST_TRACES + last_traces_last;
+			    i++)
+			{
+				fprintf(logfile, "%s", last_traces[i % MAX_LAST_TRACES]);
+			}
+		}
+
+		ret = fclose(logfile);
+		if(ret != 0)
+		{
+			fprintf(stderr, "failed to close log file '%s': %s (%d)\n",
+			        logfilename, strerror(errno), errno);
+		}
+
+		fflush(stderr);
+		if(signal == SIGSEGV)
+		{
+			struct sigaction action;
+			memset(&action, 0, sizeof(struct sigaction));
+			action.sa_handler = SIG_DFL;
+			sigaction(SIGSEGV, &action, NULL);
+			raise(signal);
+		}
+	}
 }
 
 
@@ -654,6 +723,7 @@ static bool sniff(const int use_large_cid,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 
 	/* configure SMALL_CID / LARGE_CID and MAX_CID */
 	rohc_c_set_large_cid(comp, use_large_cid);
@@ -789,71 +859,16 @@ static bool sniff(const int use_large_cid,
 			nb_internal_err++;
 		}
 
-		/* in case of problem (ignore bad packets), print recorded traces
-		 * then die! */
+		/* in case of problem (ignore bad packets), just die! */
 		if(ret != 1 && ret != -3)
 		{
-			const char *logfilename = "./sniffer.log";
-			FILE *logfile;
-
 			fprintf(stderr, "packet #%lu, CID %u: stats OK, ERR(COMP), "
 			        "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)\t="
 			        "\t%u\t%u\t%u\t%u\t%u\t%u\n",
 			        stats.total_packets, cid, nb_ok, err_comp, err_decomp,
 			        nb_ref, nb_bad, nb_internal_err);
 
-			logfile = fopen(logfilename, "w");
-			if(logfile == NULL)
-			{
-				fprintf(stderr, "failed to create '%s' file: %s (%d)\n",
-				        logfilename, strerror(errno), errno);
-			}
-			else
-			{
-				fprintf(logfile, "packet #%lu, CID %u: stats OK, ERR(COMP), "
-				        "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)\t="
-				        "\t%u\t%u\t%u\t%u\t%u\t%u\n",
-				        stats.total_packets, cid, nb_ok, err_comp, err_decomp,
-				        nb_ref, nb_bad, nb_internal_err);
-
-				if(last_traces_first == -1 || last_traces_last == -1)
-				{
-					fprintf(stderr, "no trace to record\n");
-				}
-				else
-				{
-					if(last_traces_first <= last_traces_last)
-					{
-						fprintf(stderr, "record the last %d traces...\n",
-						        last_traces_last - last_traces_first);
-						for(i = last_traces_first; i <= last_traces_last; i++)
-						{
-							fprintf(logfile, "%s", last_traces[i]);
-						}
-					}
-					else
-					{
-						fprintf(stderr, "print the last %d traces...\n",
-						        MAX_LAST_TRACES - last_traces_first +
-						        last_traces_last);
-						for(i = last_traces_first;
-						    i <= MAX_LAST_TRACES + last_traces_last;
-						    i++)
-						{
-							fprintf(logfile, "%s", last_traces[i % MAX_LAST_TRACES]);
-						}
-					}
-				}
-
-				ret = fclose(logfile);
-				if(ret != 0)
-				{
-					fprintf(stderr, "failed to close log file '%s': %s (%d)\n",
-					        logfilename, strerror(errno), errno);
-				}
-			}
-
-			/* we discovered a problem, make the program stop now! */
+			/* last debug traces are recorded in SIGABRT handler */
 			assert(0);
 		}
 	}

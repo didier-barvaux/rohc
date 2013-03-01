@@ -38,6 +38,8 @@ test_*.sh.log
 ./src/common/test/test_rtp_ts_wraparound.exe
 ./src/common/test/test_rtp_ts_wraparound.log
 ./src/comp/test/test_rfc4996_encoding
+./src/comp/test/test_rfc4996_encoding.exe
+./src/comp/test/test_rfc4996_encoding.log
 ./test/functional/feedback2/test_feedback2
 ./test/functional/feedback2/test_feedback2.exe
 ./test/functional/feedback_ring/test_feedback_ring

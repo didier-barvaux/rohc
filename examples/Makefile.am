@@ -14,11 +14,14 @@ noinst_PROGRAMS = \
 
 
 simple_rohc_program_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+
+simple_rohc_program_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
 simple_rohc_program_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs
 

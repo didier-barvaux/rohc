@@ -17,13 +17,16 @@ check_PROGRAMS = \
 test_segment_SOURCES = test_segment.c
 
 test_segment_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+
+test_segment_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
 test_segment_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs

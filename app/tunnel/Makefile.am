@@ -8,12 +8,15 @@
 sbin_PROGRAMS = rohctunnel
 
 rohctunnel_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+
+rohctunnel_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp
 
 rohctunnel_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs

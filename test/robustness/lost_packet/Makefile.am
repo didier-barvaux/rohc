@@ -10,26 +10,28 @@ TESTS = \
 	test_lost_packet_7-7_7_non_sequential_rtp_ts.sh \
 	test_lost_packet_102-105_125_rtp_with_sn_wrapround.sh
 
-
 check_PROGRAMS = \
 	test_lost_packet
 
+test_lost_packet_CFLAGS = \
+	$(configure_cflags)
 
-INCLUDES = \
+test_lost_packet_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
-AM_CFLAGS = -g -Wall -Wstrict-prototypes
-
-AM_LDFLAGS = \
+test_lost_packet_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs
 
+test_lost_packet_SOURCES = \
+	test_lost_packet.c
 
-test_lost_packet_SOURCES = test_lost_packet.c
 test_lost_packet_LDADD = \
 	-l$(pcap_lib_name) \
 	-lrohc_comp \

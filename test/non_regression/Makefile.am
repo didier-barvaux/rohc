@@ -28,7 +28,9 @@ TESTS_ESP_SMALLCID = \
 
 TESTS_TCP_SMALLCID = \
 	test_non_regression_ipv4_tcp_smallcid.sh \
-	test_non_regression_ipv6_tcp_smallcid.sh
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_smallcid.sh \
+	test_non_regression_ipv6_tcp_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_smallcid.sh
 
 TESTS_SMALLCID = \
 	test_non_regression_malformed-too-short_smallcid.sh \
@@ -119,7 +121,9 @@ TESTS_ESP_LARGECID = \
 
 TESTS_TCP_LARGECID = \
 	test_non_regression_ipv4_tcp_largecid.sh \
-	test_non_regression_ipv6_tcp_largecid.sh
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_largecid.sh \
+	test_non_regression_ipv6_tcp_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_largecid.sh
 
 TESTS_LARGECID = \
 	test_non_regression_malformed-too-short_largecid.sh \
@@ -198,13 +202,17 @@ check_PROGRAMS = \
 
 
 test_non_regression_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+
+test_non_regression_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
-	-I$(top_srcdir)/src/decomp
+	-I$(top_srcdir)/src/decomp \
+	$(libpcap_includes)
 
 test_non_regression_LDFLAGS = \
+	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs \
 	-L$(top_builddir)/src/decomp/.libs

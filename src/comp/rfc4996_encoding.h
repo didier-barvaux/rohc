@@ -45,8 +45,8 @@ uint8_t c_zero_or_irreg8( multi_ptr_t *pmptr, uint8_t value );
 uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value );
 
 // RFC4996 page 46
-unsigned int variable_length_32_enc(multi_ptr_t *const pmptr,
-                                    const uint32_t value)
+unsigned int ROHC_EXPORT variable_length_32_enc(multi_ptr_t *const pmptr,
+                                                const uint32_t value)
 	__attribute__((nonnull(1), warn_unused_result));
 
 // RFC4996 page 47

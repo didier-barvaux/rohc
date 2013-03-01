@@ -311,6 +311,7 @@ static int test_comp_and_decomp(const char *const filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
 	rohc_c_set_large_cid(comp, 0);
 
 	/* set the callback for random numbers on compressor A */
