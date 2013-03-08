@@ -31,6 +31,7 @@
 #define ROHC_PROTOCOLS_IPV4_H
 
 #include <stdint.h>
+#include <endian.h>
 
 #include "config.h" /* for WORDS_BIGENDIAN */
 

@@ -29,7 +29,9 @@
 #include "d_ip.h"
 
 #include <stdint.h>
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 
 
 /**

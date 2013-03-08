@@ -10,6 +10,12 @@ else
 TESTS_DIR = 
 endif
 
+if ROHC_LINUX_MODULE
+LINUX_MODULE_DIR = linux
+else
+LINUX_MODULE_DIR =
+endif
+
 if ROHC_STATS
 STATS_DIR = statistics
 else
@@ -34,7 +40,15 @@ else
 EXAMPLES_DIR =
 endif
 
-SUBDIRS = src $(TESTS_DIR) $(STATS_DIR) $(APPS_DIR) $(DOC_DIR) $(EXAMPLES_DIR) contrib
+SUBDIRS = \
+	src \
+	$(TESTS_DIR) \
+	$(LINUX_MODULE_DIR) \
+	$(STATS_DIR) \
+	$(APPS_DIR) \
+	$(DOC_DIR) \
+	$(EXAMPLES_DIR) \
+	contrib
 
 dist_doc_DATA = \
 	README \

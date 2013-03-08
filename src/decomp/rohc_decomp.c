@@ -39,7 +39,9 @@
 #include "decode.h"
 #include "crc.h"
 
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 #include <stdio.h> /* for printf(3) and sprintf(3) */
 #include <stdarg.h>
 #include <assert.h>
@@ -2243,7 +2245,9 @@ static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
                                             const char *const format,
                                             ...)
 {
+#ifndef __KERNEL__ /* TODO */
 	va_list args;
+#ifndef __KERNEL__
 	static bool first_time = true;
 
 	/* display a warning with the first message */
@@ -2252,9 +2256,11 @@ static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
 		printf("please define a callback for decompressor traces\n");
 		first_time = false;
 	}
+#endif
 
 	va_start(args, format);
 	vfprintf(stdout, format, args);
 	va_end(args);
+#endif
 }
 

@@ -31,7 +31,11 @@
 #include "wlsb.h"
 #include "rohc_traces.h"
 
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 
 #include "dllexport.h"
 

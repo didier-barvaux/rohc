@@ -153,7 +153,7 @@ int ROHC_EXPORT list_get_index_by_elt(struct c_list *list,
 /* remove an element or empty the list */
 void ROHC_EXPORT list_remove(struct c_list *list,
                              struct rohc_list_item *item);
-void ROHC_EXPORT list_empty(struct c_list *list);
+void ROHC_EXPORT rohc_list_empty(struct c_list *list);
 
 /* retrieve information about an element of the list */
 int ROHC_EXPORT list_type_is_present(struct c_list *list,

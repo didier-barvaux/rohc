@@ -30,7 +30,9 @@
 #include "ts_sc_decomp.h"
 
 #include <stdint.h>
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 
 
 /**

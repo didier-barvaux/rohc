@@ -959,7 +959,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		}
 		if(decomp->list_table[decomp->counter_list] != NULL)
 		{
-			list_empty(decomp->list_table[decomp->counter_list]);
+			rohc_list_empty(decomp->list_table[decomp->counter_list]);
 		}
 		else
 		{
@@ -1351,7 +1351,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 				{
-					list_empty(decomp->list_table[i]);
+					rohc_list_empty(decomp->list_table[i]);
 				}
 				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
@@ -1394,7 +1394,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		list = decomp->list_table[decomp->counter_list];
 		if(list != NULL && list->first_elt != NULL)
 		{
-			list_empty(list);
+			rohc_list_empty(list);
 		}
 		else
 		{
@@ -2030,7 +2030,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 				{
-					list_empty(decomp->list_table[i]);
+					rohc_list_empty(decomp->list_table[i]);
 				}
 				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
@@ -2112,7 +2112,7 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		list = decomp->list_table[decomp->counter_list];
 		if(list != NULL && list->first_elt != NULL)
 		{
-			list_empty(list);
+			rohc_list_empty(list);
 		}
 		else
 		{
@@ -2347,7 +2347,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			{
 				if(decomp->list_table[i]->gen_id < ref_id)
 				{
-					list_empty(decomp->list_table[i]);
+					rohc_list_empty(decomp->list_table[i]);
 				}
 				else if(decomp->list_table[i]->gen_id == ref_id)
 				{
@@ -2388,7 +2388,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		if(decomp->list_table[decomp->counter_list] != NULL &&
 		   decomp->list_table[decomp->counter_list]->first_elt != NULL)
 		{
-			list_empty(decomp->list_table[decomp->counter_list]);
+			rohc_list_empty(decomp->list_table[decomp->counter_list]);
 		}
 		else
 		{

@@ -184,7 +184,8 @@ TESTS = \
 
 
 check_PROGRAMS = \
-	test_non_regression
+	test_non_regression \
+	test_non_regression_kernel
 
 
 test_non_regression_CFLAGS = \
@@ -212,6 +213,25 @@ test_non_regression_LDADD = \
 	-lrohc_decomp \
 	-lrohc_common \
 	$(additional_platform_libs)
+
+
+test_non_regression_kernel_CFLAGS = \
+	$(configure_cflags)
+
+test_non_regression_kernel_CPPFLAGS = \
+	-I$(top_srcdir)/test \
+	$(libpcap_includes)
+
+test_non_regression_kernel_LDFLAGS = \
+	$(configure_ldflags)
+
+test_non_regression_kernel_SOURCES = \
+	test_non_regression_kernel.c
+
+test_non_regression_kernel_LDADD = \
+	-l$(pcap_lib_name) \
+	$(additional_platform_libs)
+
 
 EXTRA_DIST = \
 	test_non_regression.sh \

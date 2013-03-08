@@ -1,6 +1,26 @@
-#!/bin/bash
-
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#
 # Process this file with autoconf to produce a configure script.
+#
+# Authors: Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#          Didier Barvaux <didier@barvaux.org>
+#          Mikhail Gruzdev <michail.gruzdev@gmail.com>
+#
+
 AC_INIT([ROHC library], [trunk], [http://rohc-lib.org/],
         [rohc], [http://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
@@ -529,6 +549,62 @@ if test "x$enable_rohc_stats" = "xyes" ; then
 fi
 
 
+# check if Linux kernel module is enabled
+AC_ARG_ENABLE(linux_kernel_module,
+              AS_HELP_STRING([--enable-linux-kernel-module],
+                             [build Linux kernel module [[default=no]]]),
+              [enable_linux_kmod=$enableval],
+              [enable_linux_kmod=no])
+AM_CONDITIONAL([ROHC_LINUX_MODULE], [test "x$enable_linux_kmod" = "xyes"])
+
+# allow users to specify kernel soure directory
+AC_ARG_WITH(linux_kernel_src,
+            AS_HELP_STRING([--with-linux-kernel-src=DIR],
+                           [Linux kernel sources directory]),
+            [linux_kernel_src="$withval"],
+            [linux_kernel_src="no"])
+
+AC_MSG_CHECKING([whether the Linux kernel module shall be built])
+if test "x$enable_linux_kmod" != "xyes" ; then
+	AC_MSG_RESULT([no])
+else
+	AC_MSG_RESULT([yes])
+
+	# get path for running kernel if none was specified manually
+	if test "x$linux_kernel_src" = "xno" ; then
+		AC_MSG_CHECKING([current Linux kernel version])
+		runver=$( uname -r )
+		AC_MSG_RESULT([$runver])
+		linux_kernel_src=/lib/modules/${runver}/build
+	fi
+
+	AC_MSG_CHECKING([Linux kernel source directory])
+	if test -z "$linux_kernel_src" ; then
+		AC_MSG_RESULT([not found])
+		AC_MSG_ERROR([Linux kernel source not found. Specify the location of the \
+		              kernel source with the --with-linux-kernel-src=DIR option])
+	fi
+	AC_MSG_RESULT([$linux_kernel_src])
+
+	AC_MSG_CHECKING([Linux kernel source usability])
+	if test ! -e "$linux_kernel_src" ; then
+		kernel_src_ok="no"
+	elif test -L "$linux_kernel_src" && \
+	     test -z $( readlink "$linux_kernel_src" ) ; then
+		kernel_src_ok="no"
+	else
+		kernel_src_ok="yes"
+	fi
+	if test "x$kernel_src_ok" != "xyes" ; then
+		AC_MSG_RESULT([no])
+		AC_MSG_ERROR([Linux kernel source cannot be used. Specify the location of the \
+		              kernel source with the --with-linux-kernel-src=DIR option])
+	fi
+	AC_MSG_RESULT([yes])
+	AC_SUBST(linux_kernel_src)
+fi
+
+
 # check if RTP bit type is enabled
 AC_ARG_ENABLE(rtp_bit_type,
               AS_HELP_STRING([--enable-rtp-bit-type],
@@ -642,6 +718,7 @@ AC_CONFIG_FILES([ \
 	test/non_regression/Makefile \
 	statistics/Makefile \
 	examples/Makefile \
+	linux/Makefile \
 	app/Makefile \
 	app/performance/Makefile \
 	app/tunnel/Makefile \

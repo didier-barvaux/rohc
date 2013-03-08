@@ -15,16 +15,23 @@
  */
 
 /**
- * @file d_uncompressed.h
- * @brief ROHC decompression context for the uncompressed profile.
+ * @file   kernel/include/assert.h
+ * @brief  Define the assert() macro for the Linux kernel
+ * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
-#ifndef D_UNCOMPRESSED_H
-#define D_UNCOMPRESSED_H
+#ifndef ASSERT_H_
+#define ASSERT_H_
 
-/* nothing public needed */
-
+#ifndef __KERNEL__
+#	error "for Linux kernel only!"
 #endif
+
+#include <linux/bug.h>
+
+/** Warn on failed assertions in Linux kernel */
+#define assert(x)  WARN_ON(!(x))
+
+#endif /* ASSERT_H_ */
 

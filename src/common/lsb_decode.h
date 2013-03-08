@@ -30,7 +30,11 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 
 
 /* The definition of the Least Significant Bits decoding object is private */

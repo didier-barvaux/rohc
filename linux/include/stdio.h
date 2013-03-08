@@ -15,16 +15,21 @@
  */
 
 /**
- * @file d_uncompressed.h
- * @brief ROHC decompression context for the uncompressed profile.
+ * @file   linux/include/stdio.h
+ * @brief  Define some stdio functions for the Linux kernel
+ * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
+ * @author Thales Communications
  */
 
-#ifndef D_UNCOMPRESSED_H
-#define D_UNCOMPRESSED_H
+#ifndef STDIO_H_
+#define STDIO_H_
 
-/* nothing public needed */
-
+#ifndef __KERNEL__
+#	error "for Linux kernel only!"
 #endif
+
+#include <linux/kernel.h>
+
+#endif /* STDIO_H_ */
 

@@ -49,5 +49,6 @@ chmod +x ./configure
 	--enable-rohc-stats \
 	--enable-doc \
 	--enable-examples \
+	--enable-linux-kernel-module \
 	$@
 

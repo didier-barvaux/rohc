@@ -31,7 +31,11 @@
 #include "wlsb.h"
 #include "ip.h"
 
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 
 
 /*

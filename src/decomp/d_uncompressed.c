@@ -23,10 +23,15 @@
  */
 
 #include "d_uncompressed.h"
+#include "rohc_decomp.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "crc.h"
 #include "decode.h" /* for d_is_ir() */
+
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 
 
 /*
