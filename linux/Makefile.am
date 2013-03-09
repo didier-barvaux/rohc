@@ -16,7 +16,7 @@ rohc_test_mod = $(rohc_test_modname).ko
 
 rohc_moddir = /lib/modules/`uname -r`/extra
 
-DISTFILES = \
+EXTRA_DIST = \
 	kmod.c \
 	kmod_test.c \
 	include/ \
