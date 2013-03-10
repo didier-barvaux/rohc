@@ -570,6 +570,13 @@ if test "x$enable_linux_kmod" != "xyes" ; then
 else
 	AC_MSG_RESULT([yes])
 
+	# stop now if building for Windows
+	if test "x$host_os" = "xmingw32" || \
+	   test "x$host_os" = "xmingw64" ; then
+		AC_MSG_ERROR([The Linux kernel cannot be built when cross-compiling
+		              for the Windows platform])
+	fi
+
 	# get path for running kernel if none was specified manually
 	if test "x$linux_kernel_src" = "xno" ; then
 		AC_MSG_CHECKING([current Linux kernel version])

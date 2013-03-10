@@ -25,7 +25,7 @@
 #ifndef ROHC_BIT_OPS_H
 #define ROHC_BIT_OPS_H
 
-#include <endian.h>
+#include "config.h" /* for WORDS_BIGENDIAN */
 
 
 /*
