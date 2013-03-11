@@ -3800,6 +3800,13 @@ test_checksum:
 				tcp->psh_flag = c_base_header.rnd3->psh_flag;
 				break;
 			case PACKET_TCP_RND4:
+				if(tcp_context->ack_stride != 0)
+				{
+					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+									 context->profile->id, "cannot decode rnd_4 packet "
+									 "with ack_stride.UVALUE == 0");
+					goto error;
+				}
 				ack_number_scaled = d_lsb(context, 4,3,ntohl(
 				                             tcp_context->old_tcphdr.ack_number),
 				                          c_base_header.rnd4->ack_number_scaled);
@@ -3950,10 +3957,16 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq3->psh_flag;
 				goto all_seq;
 			case PACKET_TCP_SEQ4:
+				if(tcp_context->ack_stride != 0)
+				{
+					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+									 context->profile->id, "cannot decode seq_4 packet "
+									 "with ack_stride.UVALUE == 0");
+					goto error;
+				}
 				ack_number_scaled = d_lsb(context, 4,3,ntohl(
 				                             tcp_context->old_tcphdr.ack_number),
 				                          c_base_header.seq4->ack_number_scaled);
-				assert( tcp_context->ack_stride != 0 );
 				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,ack_number_scaled,
 				                                  tcp_context->ack_number_residue);
 				rohc_decomp_debug(context, "ack_number_scaled = 0x%x, "

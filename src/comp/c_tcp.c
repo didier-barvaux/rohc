@@ -3923,6 +3923,8 @@ static int co_baseheader(struct c_context *const context,
 			}
 			else if(tcp->ack_flag != 0 && !tcp_ack_number_changed)
 			{
+				TRACE_GOTO_CHOICE;
+
 				/* ACK number present */
 				if(payload_size == 0)
 				{
@@ -3937,15 +3939,23 @@ static int co_baseheader(struct c_context *const context,
 					TRACE_GOTO_CHOICE;
 					*packet_type = PACKET_TCP_CO_COMMON;
 				}
-				else
+				else if(tcp_context->ack_stride != 0)
 				{
 					/* seq_4 is possible */
 					TRACE_GOTO_CHOICE;
 					*packet_type = PACKET_TCP_SEQ_4;
 				}
+				else
+				{
+					/* seq_1 and seq_4 not possible => co_common */
+					TRACE_GOTO_CHOICE;
+					*packet_type = PACKET_TCP_CO_COMMON;
+				}
 			}
 			else if(tcp->ack_flag != 0 && !tcp_seq_number_changed)
 			{
+				TRACE_GOTO_CHOICE;
+
 				/* ACK number present */
 				if(!tcp_ack_number_hi28_changed && tcp_context->ack_stride != 0)
 				{
@@ -4111,7 +4121,7 @@ static int co_baseheader(struct c_context *const context,
 			else if(tcp->ack_flag != 0 && !tcp_ack_number_changed)
 			{
 				/* ACK number present */
-				if(payload_size > 0)
+				if(payload_size > 0 && tcp_context->ack_stride != 0)
 				{
 					/* rnd_4 is possible */
 					TRACE_GOTO_CHOICE;
@@ -4602,6 +4612,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
 {
 	assert(context != NULL);
 	assert(tcp_context != NULL);
+	assert(tcp_context->ack_stride != 0);
 	assert(tcp != NULL);
 	assert(rnd4 != NULL);
 
@@ -5033,6 +5044,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
 	assert(context != NULL);
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
+	assert(tcp_context->ack_stride != 0);
 	assert(ip.ipvx->version == IPV4);
 	assert(tcp != NULL);
 	assert(seq4 != NULL);
