@@ -4331,8 +4331,7 @@ static int co_baseheader(struct c_context *const context,
 		// =:= irregular(1) [ 1 ];
 		c_base_header.co_common->ip_id_indicator =
 		   c_optional_ip_id_lsb(context, &mptr, ip_context.v4->ip_id_behavior,
-		                        ip_context.v4->last_ip_id, ip_id,
-		                        tcp_context->msn);
+		                        ip_context.v4->last_ip_id, ip_id, tcp_context->msn);
 		ip_context.v4->last_ip_id.uint16 = ip_id.uint16;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = ip_context.v4->ip_id_behavior;

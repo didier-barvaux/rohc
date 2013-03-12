@@ -3685,19 +3685,16 @@ test_checksum:
 				rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
 				                  ip_inner_context.v4->last_ip_id.uint16);
 			}
-			else
+			else if(ip_inner_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
 			{
-				if(ip_inner_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					WB_t swapped_ip_id;
-					rohc_decomp_debug(context, "ip_id = 0x%x\n", ip_id.uint16);
-					swapped_ip_id.uint8[0] = ip_id.uint8[1];
-					swapped_ip_id.uint8[1] = ip_id.uint8[0];
-					base_header_inner.ipv4->ip_id = htons(swapped_ip_id.uint16);
-					ip_inner_context.v4->last_ip_id.uint16 = swapped_ip_id.uint16;
-					rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
-					                  ip_inner_context.v4->last_ip_id.uint16);
-				}
+				WB_t swapped_ip_id;
+				rohc_decomp_debug(context, "ip_id = 0x%x\n", ip_id.uint16);
+				swapped_ip_id.uint8[0] = ip_id.uint8[1];
+				swapped_ip_id.uint8[1] = ip_id.uint8[0];
+				base_header_inner.ipv4->ip_id = htons(swapped_ip_id.uint16);
+				ip_inner_context.v4->last_ip_id.uint16 = swapped_ip_id.uint16;
+				rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
+										ip_inner_context.v4->last_ip_id.uint16);
 			}
 			base_header_inner.ipv4->dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
 			                                           c_base_header.co_common->dscp_present);
