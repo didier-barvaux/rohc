@@ -3696,6 +3696,11 @@ test_checksum:
 				rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
 										ip_inner_context.v4->last_ip_id.uint16);
 			}
+			else
+			{
+				base_header_inner.ipv4->ip_id = htons(ip_id.uint16);
+				ip_inner_context.v4->last_ip_id.uint16 = ip_id.uint16;
+			}
 			base_header_inner.ipv4->dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
 			                                           c_base_header.co_common->dscp_present);
 			ip_inner_context.v4->df = c_base_header.co_common->df;
