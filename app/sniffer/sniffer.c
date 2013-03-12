@@ -1206,10 +1206,11 @@ static int compress_decompress(struct rohc_comp *comp,
 		ret = 1;
 	}
 
-ignore:
-	ret = 1;
 error:
 	return ret;
+
+ignore:
+	return 1;
 }
 
 
