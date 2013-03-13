@@ -32,7 +32,11 @@
 
 #include <stdint.h>
 
-#include "config.h" /* for WORDS_BIGENDIAN */
+#ifdef __KERNEL__
+#	include <endian.h>
+#else
+#	include "config.h" /* for WORDS_BIGENDIAN */
+#endif
 
 
 /**

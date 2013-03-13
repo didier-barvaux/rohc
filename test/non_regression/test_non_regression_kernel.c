@@ -81,6 +81,9 @@
  *
  */
 
+#include "test.h"
+#include "config.h" /* for HAVE_*_H */
+
 /* system includes */
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,25 +92,21 @@
 #include <stdint.h>
 #include <assert.h>
 #include <errno.h>
-#include <pcap.h>
-#include <net/ethernet.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
+#include <netinet/in.h>
 
+/* includes for network headers */
+#include <protocols/ipv4.h>
+#include <protocols/ipv6.h>
 
-/** The length of the Linux Cooked Sockets header */
-#define LINUX_COOKED_HDR_LEN  16
-
-/** The length of the minimal Ethernet frame (in bytes) */
-#define ETHER_FRAME_MIN_LEN 60
-
-/** The maximal size for the ROHC packets */
-#define MAX_ROHC_SIZE	10000
-
-/** A simple minimum macro */
-#define min(x, y) \
-	(((x) < (y)) ? (x) : (y))
-
+/* include for the PCAP library */
+#if HAVE_PCAP_PCAP_H == 1
+#  include <pcap/pcap.h>
+#elif HAVE_PCAP_H == 1
+#  include <pcap.h>
+#else
+#  error "pcap.h header not found, did you specified --enable-rohc-tests \
+for ./configure ? If yes, check configure output and config.log"
+#endif
 
 
 /** The different possible test results */
@@ -648,17 +647,13 @@ static test_result_t test_run_one_step(test_context_t context,
 		ip_version = (ip_packet[0] >> 4) & 0x0f;
 		if(ip_version == 4) /* IPv4 */
 		{
-			struct iphdr *ip;
-
-			ip = (struct iphdr *) ip_packet;
+			const struct ipv4_hdr *ip = (struct ipv4_hdr *) ip_packet;
 			tot_len = ntohs(ip->tot_len);
 		}
 		else if(ip_version == 6) /* IPv6 */
 		{
-			struct ip6_hdr *ip;
-
-			ip = (struct ip6_hdr *) ip_packet;
-			tot_len = sizeof(struct ip6_hdr) + ntohs(ip->ip6_plen);
+			const struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
+			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 		}
 		else /* unknown IP version */
 		{

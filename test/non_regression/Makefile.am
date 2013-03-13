@@ -184,8 +184,11 @@ TESTS = \
 
 
 check_PROGRAMS = \
-	test_non_regression \
-	test_non_regression_kernel
+	test_non_regression
+
+if ROHC_LINUX_MODULE
+check_PROGRAMS += test_non_regression_kernel
+endif
 
 
 test_non_regression_CFLAGS = \
@@ -220,6 +223,7 @@ test_non_regression_kernel_CFLAGS = \
 
 test_non_regression_kernel_CPPFLAGS = \
 	-I$(top_srcdir)/test \
+	-I$(top_srcdir)/src/common \
 	$(libpcap_includes)
 
 test_non_regression_kernel_LDFLAGS = \
