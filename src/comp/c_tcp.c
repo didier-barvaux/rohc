@@ -3607,6 +3607,7 @@ static int co_baseheader(struct c_context *const context,
 	bool ip_id_hi13_changed; /* TODO: replace by the number of required bits */
 	bool ip_ttl_changed;
 	bool ip_df_changed;
+	bool dscp_changed;
 	bool tcp_ack_flag_changed;
 	bool tcp_urg_flag_present;
 	bool tcp_urg_flag_changed;
@@ -3748,6 +3749,7 @@ static int co_baseheader(struct c_context *const context,
 		}
 
 		ip_df_changed = (base_header.ipv4->df != ip_context.v4->df);
+		dscp_changed = (base_header.ipv4->dscp != ip_context.v4->dscp);
 	}
 	else
 	{
@@ -3757,6 +3759,7 @@ static int co_baseheader(struct c_context *const context,
 		ip_id_hi12_changed = false;
 		ip_id_hi13_changed = false;
 		ip_df_changed = false;
+		dscp_changed = (DSCP_V6(base_header.ipv6) != ip_context.v6->dscp);
 	}
 	tcp_ack_flag_changed = (tcp->ack_flag != tcp_context->old_tcphdr.ack_flag);
 	tcp_urg_flag_present = (tcp->urg_flag != 0);
@@ -3807,7 +3810,7 @@ static int co_baseheader(struct c_context *const context,
 	rohc_comp_debug(context, "TCP window changed = %d\n", tcp_window_changed);
 	ecn_used = (tcp_context->ecn_used != 0);
 
-	if(ip_ttl_changed || ip_id_behavior_changed || ip_df_changed ||
+	if(ip_ttl_changed || ip_id_behavior_changed || ip_df_changed || dscp_changed ||
 	   tcp_ack_flag_changed || tcp_urg_flag_present || tcp_urg_flag_changed ||
 	   tcp_ecn_flag_changed || tcp_ack_number_hi16_changed ||
 		tcp_seq_number_hi16_changed)
