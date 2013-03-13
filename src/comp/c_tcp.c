@@ -2439,7 +2439,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					break;
 				/*
 				case TCP_OPT_TSTAMP_HDR:
-					rohc_comp_debug(context, "TCP option TIMSESTAMP HDR\n");
+					rohc_comp_debug(context, "TCP option TIMESTAMP HDR\n");
 					i = 0;
 					break;
 				*/
@@ -3172,7 +3172,7 @@ new_index_with_compressed_value:
 			}
 			/*
 			case TCP_OPT_TSTAMP_HDR:
-				rohc_comp_debug(context, "TCP option TIMSESTAMP HDR\n");
+				rohc_comp_debug(context, "TCP option TIMESTAMP HDR\n");
 				i = 0;
 				break;
 			*/

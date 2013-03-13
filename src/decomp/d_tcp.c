@@ -881,14 +881,14 @@ unsigned int tcp_detect_tcp_dynamic_size(const struct d_context *const context,
 						++size;
 						break;
 					case TCP_OPT_TIMESTAMP:
-						rohc_decomp_debug(context, "TCP option TIMSESTAMP\n");
+						rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
 						options += TCP_OLEN_TIMESTAMP;
 						size += TCP_OLEN_TIMESTAMP;
 						// TCP_OLEN_TSTAMP_APPA    (TCP_OLEN_TIMESTAMP+2) /* appendix A */
 						break;
 					/*
 					case TCP_OPT_TSTAMP_HDR:
-						rohc_decomp_debug(context, "TCP option TIMSESTAMP HDR\n");
+						rohc_decomp_debug(context, "TCP option TIMESTAMP HDR\n");
 						i = 0;
 						break;
 					*/
@@ -1933,7 +1933,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 							mptr.uint8 += *(mptr.uint8 + 1);
 							break;
 						case TCP_OPT_TIMESTAMP:
-							rohc_decomp_debug(context, "TCP option TIMSESTAMP\n");
+							rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
 							memcpy(&tcp_context->tcp_option_timestamp, mptr.uint8 + 2,
 									 sizeof(struct tcp_option_timestamp));
 							mptr.uint8 += TCP_OLEN_TIMESTAMP;
