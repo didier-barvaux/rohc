@@ -416,13 +416,13 @@ int d_tcp_decode(struct rohc_decomp *decomp,
 		length += read;
 		c_base_header.uint8 += read;
 
+		/* add TCP header and TCP options */
+		size += (tcp->data_offset << 2);
+
 		rohc_decomp_debug(context, "read = %d, length = %d, size = %d\n",
 		                  read, length, size);
 
 		memcpy(&tcp_context->old_tcphdr,tcp,sizeof(tcphdr_t));
-
-		// Add TCP header size
-		size += sizeof(tcphdr_t);
 
 		payload_size = rohc_length - length - large_cid_len;
 
@@ -434,10 +434,8 @@ int d_tcp_decode(struct rohc_decomp *decomp,
 		}
 
 		// copy payload datas
-		memcpy(((uint8_t*)tcp) + sizeof(tcphdr_t),c_base_header.uint8,payload_size);
+		memcpy(dest + size, c_base_header.uint8, payload_size);
 		rohc_decomp_debug(context, "copy %d bytes of payload\n", payload_size);
-
-		// Add payload size
 		size += payload_size;
 
 		base_header.uint8 = dest;
@@ -565,11 +563,15 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	base_header.uint8 = dest;
 	ip_context.uint8 = tcp_context->ip_context;
 
+	/* static chain (IP and TCP parts) */
 	size = 0;
 	do
 	{
+		/* IP static part */
 		read = tcp_decode_static_ip(context, ip_context, c_base_header,
 		                            rohc_length - length, base_header.uint8);
+		rohc_decomp_debug(context, "IPv%d static part is %d-byte length\n",
+								base_header.ipvx->version, read);
 		length += read;
 		c_base_header.uint8 += read;
 		protocol = ip_context.vx->next_header;
@@ -589,6 +591,8 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 				   tcp_decode_static_ipv6_option(context, ip_context, protocol,
 				                                 c_base_header, length,
 				                                 base_header);
+				rohc_decomp_debug(context, "IPv6 static option part is %d-byte "
+										"length\n", read);
 				length += read;
 				c_base_header.uint8 += read;
 				size += ip_context.v6_option->option_length;
@@ -597,8 +601,6 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 				ip_context.uint8 += ip_context.v6_option->context_length;
 			}
 		}
-		rohc_decomp_debug(context, "length = %d, read = %d, size = %d\n",
-		                  length, read, size);
 		assert( ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE] );
 		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 		                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
@@ -607,29 +609,29 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 
 	tcp = base_header.tcphdr;
 
+	/* TCP static part */
 	read = tcp_decode_static_tcp(context, c_base_header.tcp_static,
 	                             rohc_length - length, tcp);
+	rohc_decomp_debug(context, "TCP static part is %d-byte length\n", read);
 
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 
 	length += read;
 	c_base_header.uint8 += read;
-	rohc_decomp_debug(context, "length = %d, read = %d, size = %d\n", length,
-	                  read, size);
 
-	/* dynamic chain */
-
+	/* dynamic chain (IP and TCP parts) */
 	base_header.uint8 = dest;
 	ip_context.uint8 = tcp_context->ip_context;
-
 	do
 	{
+		/* IP dynamic part */
 		read = tcp_decode_dynamic_ip(context, ip_context, c_base_header,
 		                             rohc_length - length, base_header.uint8);
+		rohc_decomp_debug(context, "IPv%d dynamic part is %d-byte length\n",
+								base_header.ipvx->version, read);
 		length += read;
 		c_base_header.uint8 += read;
-		rohc_decomp_debug(context, "length = %d, read = %d\n", length, read);
 		protocol = ip_context.vx->next_header;
 		ip_context.uint8 += ip_context.vx->context_length;
 		if(base_header.ipvx->version == IPV4)
@@ -645,6 +647,8 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 				   tcp_decode_dynamic_ipv6_option(context, ip_context, protocol,
 				                                  c_base_header, length,
 				                                  base_header);
+				rohc_decomp_debug(context, "IPv6 dynamic option part is %d-byte "
+										"length\n", read);
 				length += read;
 				c_base_header.uint8 += read;
 				protocol = ip_context.v6_option->next_header;
@@ -658,28 +662,26 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	}
 	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
 
-	rohc_decomp_debug(context, "length = %d, read = %d, size = %d\n", length,
-	                  read, size);
-
+	/* TCP dynamic part */
 	read = tcp_decode_dynamic_tcp(context, c_base_header.tcp_dynamic,
 	                              rohc_length - length, tcp);
-
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest,
-	                 size + sizeof(tcphdr_t));
-
+	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length\n", read);
 	length += read;
 	c_base_header.uint8 += read;
-	rohc_decomp_debug(context, "length = %d, read = %d, size = %d\n", length,
-	                  read, size);
 
-	memcpy(&tcp_context->old_tcphdr,tcp,sizeof(tcphdr_t));
+	/* add TCP header and TCP options */
+	size += (tcp->data_offset << 2);
 
-	// Add TCP header size
-	size += sizeof(tcphdr_t);
-	rohc_decomp_debug(context, "size = %d\n", size);
+	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest, size);
 
+	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
+
+	rohc_decomp_debug(context, "ROHC header is %d-byte length\n", length);
+	rohc_decomp_debug(context, "uncompressed header is %d-byte length\n", size);
+	assert(rohc_length >= (length + large_cid_len));
 	payload_size = rohc_length - length - large_cid_len;
+	rohc_decomp_debug(context, "ROHC payload is %d-byte length\n", payload_size);
 
 	// Calculate scaled value and residue (see RFC4996 page 32/33)
 	if(payload_size != 0)
@@ -689,13 +691,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	}
 
 	// copy payload
-	memcpy(((uint8_t*)tcp) + sizeof(tcphdr_t),c_base_header.uint8,payload_size);
+	memcpy(dest + size, c_base_header.uint8, payload_size);
 	rohc_decomp_debug(context, "copy %d bytes of payload\n", payload_size);
-
-	// Add payload size
 	size += payload_size;
-	rohc_decomp_debug(context, "payload_size = %d, size = %d\n", payload_size,
-	                  size);
 
 	rohc_decomp_debug(context, "Total length = %d\n", size);
 
@@ -1830,6 +1828,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		uint8_t index;
 		uint8_t m;
 		uint8_t i;
+		uint8_t *tcp_options;
+		size_t opt_padding_len;
 		int size;
 
 		pBeginList = mptr.uint8;
@@ -1981,15 +1981,29 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 				}
 			}
 		}
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "TCP options", pBeginOptions,
-		                 mptr.uint8 - pBeginOptions);
 
-		/* update tcp header with options */
-		memcpy( ( (unsigned char *) tcp ) + sizeof(tcphdr_t), pBeginOptions,
-		        mptr.uint8 - pBeginOptions );
+		/* copy TCP options from the ROHC packet after the TCP base header */
+		tcp_options = ((uint8_t *) tcp) + sizeof(tcphdr_t);
+		memcpy(tcp_options, pBeginOptions, mptr.uint8 - pBeginOptions);
+		read += mptr.uint8 - pBeginOptions;
+
+		/* add padding after TCP options (they must be aligned on 32-bit words) */
+		opt_padding_len =
+			(sizeof(uint32_t) - (size % sizeof(uint32_t))) % sizeof(uint32_t);
+		for(i = 0; i < opt_padding_len; i++)
+		{
+			rohc_decomp_debug(context, "add TCP EOL option for padding\n");
+			tcp_options[size + i] = TCP_OPT_EOL;
+		}
+		size += opt_padding_len;
+		assert((size % sizeof(uint32_t)) == 0);
+
+		/* print TCP options */
+		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_DEBUG, "TCP options", tcp_options, size);
+
 		/* update data offset */
-		tcp->data_offset = ( sizeof(tcphdr_t) + ( size + 3 ) ) >> 2;
+		tcp->data_offset = (sizeof(tcphdr_t) + size) >> 2;
 		// read += 1 + ( mptr.uint8 - pBeginList );
 	}
 	else
@@ -2808,7 +2822,8 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 	// Pad with nul
 	for(i = options - ( (uint8_t*) tcp ); i & 0x03; ++i)
 	{
-		*(options++) = 0;
+		rohc_decomp_debug(context, "add TCP EOL option for padding\n");
+		*(options++) = TCP_OPT_EOL;
 	}
 
 	/* Calculate TCP header length with TCP options */
