@@ -216,8 +216,8 @@ unsigned int variable_length_32_enc(multi_ptr_t *const pmptr,
 	}
 	else if(bytes[1] != 0)
 	{
-		/* 3-byte value */
-		encoded_len = 3;
+		/* 3-byte value, but use 4 bytes */
+		encoded_len = 4;
 		indicator = 3;
 	}
 	else if(bytes[2] != 0)
