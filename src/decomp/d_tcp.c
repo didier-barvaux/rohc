@@ -2896,6 +2896,8 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 		/* 8-bit XI fields */
 		xi_len = m;
 	}
+	rohc_decomp_debug(context, "TCP options list: %d-bit XI fields are used "
+							"on %zd bytes\n", (PS == 0 ? 4 : 8), xi_len);
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 ROHC_TRACE_DEBUG, "XI bytes of compressed list of TCP "
 	                 "options", ptr, xi_len);
@@ -3454,38 +3456,39 @@ decode_seq_8:
 decode_common:
 	assert( c_base_header.co_common->discriminator == 0x7D ); // '1111101'
 	size_header = sizeof(co_common_t);
-	rohc_decomp_debug(context, "seq_indicator = %d\n",
-	                  c_base_header.co_common->seq_indicator);
 	size_options += variable_length_32_size[c_base_header.co_common->seq_indicator];
-	rohc_decomp_debug(context, "size_options = %d, ack_indicator = %d\n",
-	                  size_options, c_base_header.co_common->ack_indicator);
+	rohc_decomp_debug(context, "seq_indicator = %d => %d bytes of options\n",
+	                  c_base_header.co_common->seq_indicator, size_options);
 	size_options += variable_length_32_size[c_base_header.co_common->ack_indicator];
-	rohc_decomp_debug(context, "size_options = %d, ack_stride_indicator = %d\n",
-	                  size_options, c_base_header.co_common->ack_stride_indicator);
+	rohc_decomp_debug(context, "ack_indicator = %d => %d bytes of options\n",
+	                  c_base_header.co_common->ack_indicator, size_options);
 	size_options += c_base_header.co_common->ack_stride_indicator << 1;
-	rohc_decomp_debug(context, "size_options = %d, window_indicator = %d\n",
-	                  size_options, c_base_header.co_common->window_indicator);
+	rohc_decomp_debug(context, "ack_stride_indicator = %d => %d bytes of options\n",
+	                  c_base_header.co_common->ack_stride_indicator, size_options);
 	size_options += c_base_header.co_common->window_indicator << 1;
-	rohc_decomp_debug(context, "size_options = %d, ip_id_behavior = %d, "
-	                  "ip_id_indicator = %d\n", size_options,
-	                  c_base_header.co_common->ip_id_behavior,
-	                  c_base_header.co_common->ip_id_indicator);
+	rohc_decomp_debug(context, "window_indicator = %d => %d bytes of options\n",
+	                  c_base_header.co_common->window_indicator, size_options);
 	if(c_base_header.co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
 	   c_base_header.co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
 	{
 		size_options += c_base_header.co_common->ip_id_indicator + 1;
 	}
-	rohc_decomp_debug(context, "size_options = %d, urg_ptr_present = %d\n",
-	                  size_options, c_base_header.co_common->urg_ptr_present);
+	rohc_decomp_debug(context, "ip_id_behavior = %d, ip_id_indicator = %d "
+							"=> %d bytes of options\n",
+	                  c_base_header.co_common->ip_id_behavior,
+	                  c_base_header.co_common->ip_id_indicator,
+							size_options);
 	size_options += c_base_header.co_common->urg_ptr_present << 1;
-	rohc_decomp_debug(context, "size_options = %d, dscp_present = %d\n",
-	                  size_options, c_base_header.co_common->dscp_present);
+	rohc_decomp_debug(context, "urg_ptr_present = %d => %d bytes of options\n",
+	                  c_base_header.co_common->urg_ptr_present, size_options);
 	size_options += c_base_header.co_common->dscp_present;
-	rohc_decomp_debug(context, "size_options = %d, ttl_hopl_present = %d\n",
-	                  size_options, c_base_header.co_common->ttl_hopl_present);
+	rohc_decomp_debug(context, "dscp_present = %d => %d bytes of options\n",
+	                  c_base_header.co_common->dscp_present, size_options);
 	size_options += c_base_header.co_common->ttl_hopl_present;
-	rohc_decomp_debug(context, "size_options = %d, list_present = %d\n",
-	                  size_options, c_base_header.co_common->list_present);
+	rohc_decomp_debug(context, "ttl_hopl_present = %d => %d bytes of options\n",
+	                  c_base_header.co_common->ttl_hopl_present, size_options);
+	rohc_decomp_debug(context, "list_present = %d\n",
+	                  c_base_header.co_common->list_present);
 
 	rohc_decomp_debug(context, "common size = header (%d) + options (%d) "
 	                  "= %d\n", size_header, size_options,
