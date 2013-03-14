@@ -198,13 +198,14 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
                                 rnd_7_t *const rnd7)
 	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
 
-static size_t c_tcp_build_rnd_8(struct c_context *const context,
-                                const ip_context_ptr_t ip_context,
-                                struct sc_tcp_context *const tcp_context,
-                                const base_header_ip_t ip,
-                                const tcphdr_t *const tcp,
-                                rnd_8_t *const rnd8)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+static bool c_tcp_build_rnd_8(struct c_context *const context,
+										const ip_context_ptr_t ip_context,
+										struct sc_tcp_context *const tcp_context,
+										const base_header_ip_t ip,
+										const tcphdr_t *const tcp,
+										rnd_8_t *const rnd8,
+										size_t *const rnd8_len)
+	__attribute__((nonnull(1, 3, 5, 6, 7), warn_unused_result));
 
 
 /*
@@ -267,23 +268,25 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
                                 seq_7_t *const seq7)
 	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
 
-static size_t c_tcp_build_seq_8(struct c_context *const context,
-                                const ip_context_ptr_t ip_context,
-                                struct sc_tcp_context *const tcp_context,
-                                const base_header_ip_t ip,
-                                const tcphdr_t *const tcp,
-                                seq_8_t *const seq8)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+static bool c_tcp_build_seq_8(struct c_context *const context,
+										const ip_context_ptr_t ip_context,
+										struct sc_tcp_context *const tcp_context,
+										const base_header_ip_t ip,
+										const tcphdr_t *const tcp,
+										seq_8_t *const seq8,
+										size_t *const seq8_len)
+	__attribute__((nonnull(1, 3, 5, 6, 7), warn_unused_result));
 
 
 /*
  * Misc functions
  */
 
-static size_t tcp_compress_tcp_options(struct c_context *const context,
-                                       const tcphdr_t *const tcp,
-                                       uint8_t *const comp_opts)
-	__attribute__((nonnull(1, 2, 3), warn_unused_result));
+static bool tcp_compress_tcp_options(struct c_context *const context,
+												 const tcphdr_t *const tcp,
+												 uint8_t *const comp_opts,
+												 size_t *const comp_opts_len)
+	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
 
 
 
@@ -2574,17 +2577,18 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
  * See RFC4996 page 65
  *
  * @param context             The compression context
- * @param ptr                 Pointer to the compressed value
+ * @param dest                OUT: Pointer to the compressed value
  * @param context_timestamp   The context value
  * @param timestamp           The value to compress
- * @return                    Pointer after the compressed value
+ * @return                    true if compression was successful, false otherwise
  */
-uint8_t * c_ts_lsb(const struct c_context *const context,
-                   uint8_t *ptr,
-                   const uint32_t context_timestamp,
-                   const uint32_t timestamp)
+bool c_ts_lsb(const struct c_context *const context,
+				  uint8_t **dest,
+				  const uint32_t context_timestamp,
+				  const uint32_t timestamp)
 {
 	const uint32_t last_timestamp = ntohl(context_timestamp);
+	uint8_t *ptr = *dest;
 
 	assert(context != NULL);
 	assert(ptr != NULL);
@@ -2626,19 +2630,23 @@ uint8_t * c_ts_lsb(const struct c_context *const context,
 				}
 				else
 				{
-					// PROBLEM!!!
-					// High bits need for disciminator and value
-					rohc_comp_debug(context, "WARNING: cannot compress!\n");
-					*(ptr++) = timestamp >> 24;
-					*(ptr++) = timestamp >> 16;
-					*(ptr++) = timestamp >> 8;
-					*(ptr++) = timestamp;
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+									 context->profile->id,
+									 "failed to compress timestamp 0x%08x (previous "
+									 "value = 0x%08x): more than 29 bits required",
+									 timestamp, last_timestamp);
+					goto error;
 				}
 			}
 		}
 	}
 
-	return ptr;
+	*dest = ptr;
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -2820,14 +2828,17 @@ static uint8_t * c_tcp_opt_generic( struct sc_tcp_context *tcp_context, uint8_t 
 /**
  * @brief Compress the TCP options
  *
- * @param context    The compression context
- * @param tcp        The TCP header
- * @param comp_opts  IN/OUT: The compressed TCP options
- * @return           The length (in bytes) of the compressed TCP options
+ * @param context        The compression context
+ * @param tcp            The TCP header
+ * @param comp_opts      IN/OUT: The compressed TCP options
+ * @param comp_opts_len  OUT: The length (in bytes) of the compressed TCP options
+ * @return               true if the TCP options were successfully compressed,
+ *                       false otherwise
  */
-static size_t tcp_compress_tcp_options(struct c_context *const context,
-                                       const tcphdr_t *const tcp,
-                                       uint8_t *const comp_opts)
+static bool tcp_compress_tcp_options(struct c_context *const context,
+												 const tcphdr_t *const tcp,
+												 uint8_t *const comp_opts,
+												 size_t *const comp_opts_len)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -2835,10 +2846,10 @@ static size_t tcp_compress_tcp_options(struct c_context *const context,
 	uint8_t *ptr_compressed_options;
 	uint8_t *options;
 	int options_length;
-	size_t comp_opts_len;
 	uint8_t *pValue;
 	uint8_t index;
 	uint8_t m;
+	bool is_ok;
 	int i;
 
 	assert(context != NULL);
@@ -2848,6 +2859,7 @@ static size_t tcp_compress_tcp_options(struct c_context *const context,
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 	assert(tcp != NULL);
 	assert(comp_opts != NULL);
+	assert(comp_opts_len != NULL);
 
 	/* retrieve TCP options */
 	options = ((uint8_t *) tcp) + sizeof(tcphdr_t);
@@ -2856,9 +2868,9 @@ static size_t tcp_compress_tcp_options(struct c_context *const context,
 	                 ROHC_TRACE_DEBUG, "TCP options", options, options_length);
 
 	/* List is empty */
-	comp_opts_len = 0;
-	comp_opts[comp_opts_len] = 0;
-	comp_opts_len++;
+	*comp_opts_len = 0;
+	comp_opts[*comp_opts_len] = 0;
+	(*comp_opts_len)++;
 
 	ptr_compressed_options = compressed_options;
 
@@ -3157,12 +3169,28 @@ new_index_with_compressed_value:
 				                ntohl(ts), ntohl(ts_reply));
 				// see RFC4996 page65
 				// ptr_compressed_options = c_tcp_opt_ts(ptr_compressed_options,options+2);
-				ptr_compressed_options =
-				   c_ts_lsb(context, ptr_compressed_options,
-				            tcp_context->tcp_option_timestamp.ts, ntohl(ts));
-				ptr_compressed_options =
-				   c_ts_lsb(context, ptr_compressed_options,
-				            tcp_context->tcp_option_timestamp.ts_reply, ntohl(ts_reply));
+				is_ok = c_ts_lsb(context, &ptr_compressed_options,
+									  tcp_context->tcp_option_timestamp.ts, ntohl(ts));
+				if(!is_ok)
+				{
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+									 context->profile->id,
+									 "failed to compress the timestamp value of the TCP "
+									 "Timestamp option");
+					goto error;
+				}
+				is_ok = c_ts_lsb(context, &ptr_compressed_options,
+									  tcp_context->tcp_option_timestamp.ts_reply,
+									  ntohl(ts_reply));
+				if(!is_ok)
+				{
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+									 context->profile->id,
+									 "failed to compress the timestamp echo reply of "
+									 "the TCP Timestamp option");
+					goto error;
+				}
+
 				// Save value after compression
 				memcpy(&tcp_context->tcp_option_timestamp, options + 2,
 						 sizeof(struct tcp_option_timestamp));
@@ -3195,16 +3223,16 @@ new_index_with_compressed_value:
 #if MAX_TCP_OPTION_INDEX == 8
 		if(m & 1)
 		{
-			comp_opts[comp_opts_len] |= index | 0x08;
-			comp_opts_len++;
+			comp_opts[*comp_opts_len] |= index | 0x08;
+			(*comp_opts_len)++;
 		}
 		else
 		{
-			comp_opts[comp_opts_len] = ( index | 0x08 ) << 4;
+			comp_opts[(*comp_opts_len)] = ( index | 0x08 ) << 4;
 		}
 #else
-		comp_opts[comp_opts_len] = index | 0x80;
-		comp_opts_len++;
+		comp_opts[(*comp_opts_len)] = index | 0x80;
+		(*comp_opts_len)++;
 #endif
 		++m;
 		continue;
@@ -3214,16 +3242,16 @@ same_index_without_value:
 #if MAX_TCP_OPTION_INDEX == 8
 		if(m & 1)
 		{
-			comp_opts[comp_opts_len] |= index;
-			comp_opts_len++;
+			comp_opts[(*comp_opts_len)] |= index;
+			(*comp_opts_len)++;
 		}
 		else
 		{
-			comp_opts[comp_opts_len] = index << 4;
+			comp_opts[(*comp_opts_len)] = index << 4;
 		}
 #else
-		comp_opts[comp_opts_len] = index;
-		comp_opts_len++;
+		comp_opts[(*comp_opts_len)] = index;
+		(*comp_opts_len)++;
 #endif
 		++m;
 		continue;
@@ -3233,7 +3261,7 @@ same_index_without_value:
 	// 4-bit XI field
 	comp_opts[0] = m;
 	// If odd number of TCP options
-	comp_opts_len += m & 1;
+	(*comp_opts_len) += m & 1;
 #else
 	// 8-bit XI field
 	comp_opts[0] = m | 0x10;
@@ -3243,16 +3271,19 @@ same_index_without_value:
 	if(ptr_compressed_options > compressed_options)
 	{
 		// Add them
-		memcpy(comp_opts + comp_opts_len, compressed_options,
+		memcpy(comp_opts + (*comp_opts_len), compressed_options,
 				 ptr_compressed_options - compressed_options);
-		comp_opts_len += (ptr_compressed_options - compressed_options);
+		(*comp_opts_len) += (ptr_compressed_options - compressed_options);
 	}
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "TCP compressed options",
-						  comp_opts, comp_opts_len);
+						  comp_opts, *comp_opts_len);
 
-	return comp_opts_len;
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -3623,6 +3654,7 @@ static int co_baseheader(struct c_context *const context,
 	bool tcp_seq_number_hi28_changed; /* TODO: replace by number of required bits */
 	bool tcp_window_changed;
 	bool ecn_used;
+	bool is_ok;
 
 	assert(packet_type != NULL);
 	*packet_type = PACKET_UNKNOWN;
@@ -4238,9 +4270,22 @@ static int co_baseheader(struct c_context *const context,
 													  c_base_header.rnd7);
 			break;
 		case PACKET_TCP_RND_8:
-			mptr.uint8 += c_tcp_build_rnd_8(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.rnd8);
+		{
+			size_t rnd8_len;
+
+			is_ok = c_tcp_build_rnd_8(context, ip_context, tcp_context,
+											  base_header, tcp, c_base_header.rnd8,
+											  &rnd8_len);
+			if(!is_ok)
+			{
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+								 context->profile->id,
+								 "failed to build seq_8 packet\n");
+				goto error;
+			}
+			mptr.uint8 += rnd8_len;
 			break;
+		}
 		case PACKET_TCP_SEQ_1:
 			mptr.uint8 += c_tcp_build_seq_1(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq1);
@@ -4270,9 +4315,22 @@ static int co_baseheader(struct c_context *const context,
 													  base_header, tcp, c_base_header.seq7);
 			break;
 		case PACKET_TCP_SEQ_8:
-			mptr.uint8 += c_tcp_build_seq_8(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq8);
+		{
+			size_t seq8_len;
+
+			is_ok = c_tcp_build_seq_8(context, ip_context, tcp_context,
+											  base_header, tcp, c_base_header.seq8,
+											  &seq8_len);
+			if(!is_ok)
+			{
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+								 context->profile->id,
+								 "failed to build seq_8 packet\n");
+				goto error;
+			}
+			mptr.uint8 += seq8_len;
 			break;
+		}
 		case PACKET_TCP_CO_COMMON:
 		{
 	rohc_comp_debug(context, "code common\n");
@@ -4418,10 +4476,19 @@ static int co_baseheader(struct c_context *const context,
 	// If TCP options
 	if(tcp->data_offset > 5)
 	{
+		size_t comp_opts_len;
+
 		// =:= irregular(1) [ 1 ];
 		c_base_header.co_common->list_present = 1;
 		// compress the TCP options
-		mptr.uint8 += tcp_compress_tcp_options(context, tcp, mptr.uint8);
+		is_ok = tcp_compress_tcp_options(context, tcp, mptr.uint8, &comp_opts_len);
+		if(!is_ok)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+							 "failed to compress TCP options");
+			goto error;
+		}
+		mptr.uint8 += comp_opts_len;
 	}
 	else
 	{
@@ -4787,23 +4854,27 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
  * @param rnd8          IN/OUT: The rnd_8 packet to build
- * @return              The length (in bytes) of the rnd_8 packet
+ * @param rnd8_len      OUT: The length (in bytes) of the rnd_8 packet
+ * @return              true if the packet is successfully built, false otherwise
  */
-static size_t c_tcp_build_rnd_8(struct c_context *const context,
-                                const ip_context_ptr_t ip_context,
-                                struct sc_tcp_context *const tcp_context,
-                                const base_header_ip_t ip,
-                                const tcphdr_t *const tcp,
-                                rnd_8_t *const rnd8)
+static bool c_tcp_build_rnd_8(struct c_context *const context,
+										const ip_context_ptr_t ip_context,
+										struct sc_tcp_context *const tcp_context,
+										const base_header_ip_t ip,
+										const tcphdr_t *const tcp,
+										rnd_8_t *const rnd8,
+										size_t *const rnd8_len)
 {
 	size_t comp_opts_len;
 	uint8_t ttl_hl;
 	uint8_t msn;
+	bool is_ok;
 
 	assert(context != NULL);
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd8 != NULL);
+	assert(rnd8_len != NULL);
 
 	rohc_comp_debug(context, "code rnd_8\n");
 
@@ -4847,7 +4918,14 @@ static size_t c_tcp_build_rnd_8(struct c_context *const context,
 	{
 		/* TCP options are present, compress them */
 		rnd8->list_present = 1;
-		comp_opts_len = tcp_compress_tcp_options(context, tcp, rnd8->options);
+		is_ok = tcp_compress_tcp_options(context, tcp, rnd8->options,
+													&comp_opts_len);
+		if(!is_ok)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+							 "failed to compress TCP options");
+			goto error;
+		}
 	}
 	else
 	{
@@ -4863,7 +4941,12 @@ static size_t c_tcp_build_rnd_8(struct c_context *const context,
 	rohc_comp_debug(context, "CRC (header length = %zd, CRC = 0x%x)\n",
 	                sizeof(rnd_8_t) + comp_opts_len, rnd8->header_crc);
 
-	return (sizeof(rnd_8_t) + comp_opts_len);
+	*rnd8_len = sizeof(rnd_8_t) + comp_opts_len;
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -5254,19 +5337,22 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
  * @param seq8          IN/OUT: The seq_8 packet to build
- * @return              The length (in bytes) of the seq_8 packet
+ * @param seq8_len      OUT: The length (in bytes) of the seq_8 packet
+ * @return              true if the packet is successfully built, false otherwise
  */
-static size_t c_tcp_build_seq_8(struct c_context *const context,
+static bool c_tcp_build_seq_8(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
-                                seq_8_t *const seq8)
+                                seq_8_t *const seq8,
+										  size_t *const seq8_len)
 {
 	size_t comp_opts_len;
 	uint16_t ack_number;
 	uint16_t seq_number;
 	WB_t ip_id;
+	bool is_ok;
 
 	assert(context != NULL);
 	assert(ip_context.vx->version == IPV4);
@@ -5274,6 +5360,7 @@ static size_t c_tcp_build_seq_8(struct c_context *const context,
 	assert(ip.ipvx->version == IPV4);
 	assert(tcp != NULL);
 	assert(seq8 != NULL);
+	assert(seq8_len != NULL);
 
 	rohc_comp_debug(context, "code seq_8\n");
 
@@ -5319,7 +5406,14 @@ static size_t c_tcp_build_seq_8(struct c_context *const context,
 	{
 		/* TCP options are present, compress them */
 		seq8->list_present = 1;
-		comp_opts_len = tcp_compress_tcp_options(context, tcp, seq8->options);
+		is_ok = tcp_compress_tcp_options(context, tcp, seq8->options,
+													&comp_opts_len);
+		if(!is_ok)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+							 "failed to compress TCP options");
+			goto error;
+		}
 	}
 	else
 	{
@@ -5335,7 +5429,12 @@ static size_t c_tcp_build_seq_8(struct c_context *const context,
 	rohc_comp_debug(context, "CRC (header length = %zd, CRC = 0x%x)\n",
 	                sizeof(seq_8_t) + comp_opts_len, seq8->header_crc);
 
-	return (sizeof(seq_8_t) + comp_opts_len);
+	*seq8_len = sizeof(seq_8_t) + comp_opts_len;
+
+	return true;
+
+error:
+	return false;
 }
 
 
