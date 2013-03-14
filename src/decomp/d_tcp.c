@@ -2938,6 +2938,8 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 		// If item present
 		if(present)
 		{
+			size_t comp_opt_len = 0;
+
 			switch(index)
 			{
 				case TCP_INDEX_NOP:  // NOP
@@ -2948,20 +2950,20 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					break;
 				case TCP_INDEX_MAXSEG:  // MSS
 					*uncompressed_size += TCP_OLEN_MAXSEG;
-					comp_size += 2;
+					comp_opt_len += 2;
 					break;
 				case TCP_INDEX_WINDOW:  // WINDOW SCALE
 					*uncompressed_size += TCP_OLEN_WINDOW;
-					++comp_size;
+					comp_opt_len++;
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
 					*uncompressed_size += TCP_OLEN_TIMESTAMP;
 					j = d_size_ts_lsb(items);
 					items += j;
-					comp_size += j;
+					comp_opt_len += j;
 					j = d_size_ts_lsb(items);
 					items += j;
-					comp_size += j;
+					comp_opt_len += j;
 					break;
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
 					*uncompressed_size += TCP_OLEN_SACK_PERMITTED;
@@ -2975,7 +2977,7 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 						             "the length of compressed TCP SACK option\n");
 					}
 					items += j;
-					comp_size += j;
+					comp_opt_len += j;
 					break;
 				default:  // Generic options
 					rohc_decomp_debug(context, "TCP option with index %d not "
@@ -2983,11 +2985,12 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					j = d_tcp_size_opt_generic(tcp_context, items,
 					                           uncompressed_size);
 					items += j;
-					comp_size += j;
+					comp_opt_len += j;
 					break;
 			}
-			rohc_decomp_debug(context, "TCP option with index %d is %d-byte "
-			                  "long in compressed packet\n", index, comp_size);
+			rohc_decomp_debug(context, "TCP option with index %d is %zd-byte "
+			                  "long in compressed packet\n", index, comp_opt_len);
+			comp_size += comp_opt_len;
 		}
 		else
 		{
@@ -3507,7 +3510,7 @@ add_tcp_list_size:
 		rohc_decomp_debug(context, "list present at %p: PS_m = 0x%x\n",
 		                  mptr.uint8, *mptr.uint8);
 		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "list", mptr.uint8,
+		                 ROHC_TRACE_DEBUG, "list of options", mptr.uint8,
 		                 16); /* TODO: why 16 ??? */
 		size_options += tcp_size_decompress_tcp_options(context, mptr.uint8,
 		                                                &tcp_options_size);
@@ -3536,6 +3539,9 @@ test_checksum:
 		rohc_decomp_debug(context, "header_crc (0x%x) != crc (0x%x) on %d "
 		                  "bytes\n", header_crc, crc,
 		                  size_header + size_options);
+		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		                 ROHC_TRACE_DEBUG, "decompressed packet",
+							  c_base_header.uint8, size_header);
 		goto error;
 	}
 	rohc_decomp_debug(context, "header_crc (0x%x) == crc (0x%x) on %d bytes\n",
