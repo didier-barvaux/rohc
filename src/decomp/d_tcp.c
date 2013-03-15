@@ -31,10 +31,260 @@
 #include "rfc4996_decoding.h"
 #include "wlsb.h"
 #include "protocols/ipproto.h"
+#include "protocols/tcp.h"
 #include "crc.h"
 #include "d_generic.h"
 
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
+
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
+#include <stdint.h>
+
+
+#define PACKET_TCP_RND1     1
+#define PACKET_TCP_RND2     2
+#define PACKET_TCP_RND3     3
+#define PACKET_TCP_RND4     4
+#define PACKET_TCP_RND5     5
+#define PACKET_TCP_RND6     6
+#define PACKET_TCP_RND7     7
+#define PACKET_TCP_RND8     8
+
+#define PACKET_TCP_SEQ1     9
+#define PACKET_TCP_SEQ2    10
+#define PACKET_TCP_SEQ3    11
+#define PACKET_TCP_SEQ4    12
+#define PACKET_TCP_SEQ5    13
+#define PACKET_TCP_SEQ6    14
+#define PACKET_TCP_SEQ7    15
+#define PACKET_TCP_SEQ8    16
+
+#define PACKET_TCP_COMMON  17
+
+#define PACKET_TCP_UNKNOWN 0xFF
+
+
+/**
+ * @brief Define the IPv6 option context for Destination, Hop-by-Hop
+ *        and Routing option
+ */
+typedef struct __attribute__((packed)) ipv6_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+	uint8_t length;
+
+	uint8_t value[6];
+
+} ipv6_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 option context for GRE option
+ */
+typedef struct __attribute__((packed)) ipv6_gre_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+
+	uint8_t c_flag : 1;
+	uint8_t k_flag : 1;
+	uint8_t s_flag : 1;
+	uint8_t protocol : 1;
+	uint8_t padding : 4;
+
+	uint32_t key;               // if k_flag set
+	uint32_t sequence_number;   // if s_flag set
+
+} ipv6_gre_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 option context for MIME option
+ */
+typedef struct __attribute__((packed)) ipv6_mime_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+
+	uint8_t s_bit : 1;
+	uint8_t res_bits : 7;
+	uint32_t orig_dest;
+	uint32_t orig_src;         // if s_bit set
+
+} ipv6_mime_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 option context for AH option
+ */
+typedef struct __attribute__((packed)) ipv6_ah_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+	uint8_t length;
+	uint32_t spi;
+	uint32_t sequence_number;
+	uint32_t auth_data[1];
+} ipv6_ah_option_context_t;
+
+
+/**
+ * @brief Define the common IP header context to IPv4 and IPv6.
+ */
+typedef struct __attribute__((packed)) ipvx_context
+{
+	uint8_t version : 4;
+	uint8_t unused : 4;
+
+	uint8_t context_length;
+
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+
+	uint8_t next_header;
+
+	uint8_t ttl_hopl;
+
+	uint8_t ip_id_behavior;
+
+} ipvx_context_t;
+
+
+/**
+ * @brief Define the IPv4 header context.
+ */
+typedef struct __attribute__((packed)) ipv4_context
+{
+	uint8_t version : 4;
+	uint8_t df : 1;
+	uint8_t unused : 3;
+
+	uint8_t context_length;
+
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+
+	uint8_t protocol;
+
+	uint8_t ttl_hopl;
+
+	uint8_t ip_id_behavior;
+	WB_t last_ip_id;
+
+	uint32_t src_addr;
+	uint32_t dst_addr;
+
+} ipv4_context_t;
+
+
+/**
+ * @brief Define the IPv6 header context.
+ */
+typedef struct __attribute__((packed)) ipv6_context
+{
+	uint8_t version : 4;
+	uint8_t unused : 4;
+
+	uint8_t context_length;
+
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+
+	uint8_t next_header;
+
+	uint8_t ttl_hopl;
+
+	uint8_t ip_id_behavior;
+
+	uint8_t flow_label1 : 4;
+	uint16_t flow_label2;
+
+	uint32_t src_addr[4];
+	uint32_t dest_addr[4];
+
+} ipv6_context_t;
+
+
+/**
+ * @brief Define union of IP contexts pointers.
+ *
+ * TODO: merge with same definition in c_tcp.h
+ */
+typedef union
+{
+	uint8_t *uint8;
+	ipvx_context_t *vx;
+	ipv4_context_t *v4;
+	ipv6_context_t *v6;
+	ipv6_option_context_t *v6_option;
+	ipv6_gre_option_context_t *v6_gre_option;
+	ipv6_mime_option_context_t *v6_mime_option;
+	ipv6_ah_option_context_t *v6_ah_option;
+} ip_context_ptr_t;
+
+
+#define MAX_IP_CONTEXT_SIZE  \
+	((sizeof(ipv4_context_t) + \
+	  sizeof(ipv6_context_t) + \
+	  sizeof(ipv6_option_context_t)) * 2)
+
+
+/**
+ * @brief Define the TCP part of the decompression profile context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context d_generic_context.
+ *
+ * @see d_generic_context
+ */
+struct d_tcp_context
+{
+	// The Master Sequence Number
+	uint16_t msn;
+
+	// Explicit Congestion Notification used
+	uint8_t ecn_used;
+
+	// The static part:
+	// The TCP source port
+	uint16_t tcp_src_port;
+	// The TCP dest port
+	uint16_t tcp_dst_port;
+
+	uint32_t seq_number_scaled;
+	uint32_t seq_number_residue;
+
+	uint16_t ack_stride;
+	uint32_t ack_number_scaled;
+	uint32_t ack_number_residue;
+
+	// Table of TCP options
+	uint8_t tcp_options_list[16];      // see RFC4996 page 27
+	uint8_t tcp_options_offset[16];
+	uint16_t tcp_option_maxseg;
+	uint8_t tcp_option_window;
+	struct tcp_option_timestamp tcp_option_timestamp;
+	uint8_t tcp_option_sack_length;
+	uint8_t tcp_option_sackblocks[8 * 4];
+	uint8_t tcp_options_free_offset;
+#define MAX_TCP_OPT_SIZE 64
+	uint8_t tcp_options_values[MAX_TCP_OPT_SIZE];
+
+	tcphdr_t old_tcphdr;
+
+	uint8_t ip_context[MAX_IP_CONTEXT_SIZE];
+};
 
 
 /*
@@ -294,13 +544,13 @@ static void d_tcp_destroy(void *const context)
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
  */
-int d_tcp_decode(struct rohc_decomp *decomp,
-                 struct d_context *context,
-                 const unsigned char *const rohc_packet,
-                 const unsigned int rohc_length,
-	              const size_t add_cid_len,
-	              const size_t large_cid_len,
-                 unsigned char *dest)
+static int d_tcp_decode(struct rohc_decomp *decomp,
+                        struct d_context *context,
+                        const unsigned char *const rohc_packet,
+                        const unsigned int rohc_length,
+                        const size_t add_cid_len,
+                        const size_t large_cid_len,
+                        unsigned char *dest)
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
@@ -745,172 +995,6 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
 
 	rohc_decomp_debug(context, "return %d\n", size);
-	return size;
-}
-
-
-/**
- * @brief Find the length of the dynamic TCP part.
- *
- * @param context         The decompression context
- * @param tcp_dynamic     The dynamic part of the rohc packet
- * @param length          The remain length of the rohc packet
- * @return                The length of dynamic TCP part
- *                        0 if an error occurs
- */
-unsigned int tcp_detect_tcp_dynamic_size(const struct d_context *const context,
-                                         tcp_dynamic_t *tcp_dynamic,
-                                         unsigned int length)
-{
-	uint8_t *pBeginList;
-	uint8_t *options;
-	unsigned int size;
-	uint8_t present;
-	uint8_t PS;
-	uint8_t m;
-	uint8_t i;
-
-	assert(context != NULL);
-
-	/* TCP dynamic part (see RFC 4996 page 73/74) */
-	/* tcp_dynamic + window + checksum */
-	size = sizeof(tcp_dynamic_t) + 2 + 2;
-
-	rohc_decomp_debug(context, "tcp_dynamic = %p, size = %d\n",
-	                  tcp_dynamic, size);
-	rohc_decomp_debug(context, "ack_zero = %d, urp_zero = %d, "
-	                  "ack_stride_flag = %d\n", tcp_dynamic->ack_zero,
-	                  tcp_dynamic->urp_zero, tcp_dynamic->ack_stride_flag);
-
-	if(tcp_dynamic->ack_zero == 0)
-	{
-		/* Add ack_number field size */
-		size += 4;
-		rohc_decomp_debug(context, "add ack_number size -> size %d\n", size);
-	}
-	if(tcp_dynamic->urp_zero == 0)
-	{
-		/* Add urg_ptr field size */
-		size += 2;
-		rohc_decomp_debug(context, "add urg_ptr size -> size %d\n", size);
-	}
-	if(tcp_dynamic->ack_stride_flag == 0)
-	{
-		/* Add ack_stride field size */
-		size += 2;
-		rohc_decomp_debug(context, "add ack_stride -> size %d\n", size);
-	}
-	rohc_decomp_debug(context, "size = %u\n", size);
-
-	/* init pointer at the begin of the list */
-	pBeginList = ((uint8_t*)tcp_dynamic) + size;
-
-	// if compressed list of TCP options
-	if( ( (*pBeginList) & 0x0F ) != 0)
-	{
-
-		/* init number of index */
-		m = (*pBeginList) & 0x0F;
-		PS = *pBeginList & 0x10;
-		rohc_decomp_debug(context, "TCP Begin of compressed list at %p 0x%02x "
-		                  "0x%02x PS=%c\n", pBeginList, *pBeginList,
-		                  *(pBeginList + 1), PS == 0 ? '0' : '1');
-		++pBeginList;
-		/* if 8-bit XI fields */
-		if(PS != 0)
-		{
-			size += 1 + m;
-			options = pBeginList + m;
-		}
-		else
-		{
-			size += 1 + ( ( m + 1 ) >> 1 );
-			options = pBeginList + ( ( m + 1 ) >> 1 );
-		}
-		for(i = 0; i < m; ++i)
-		{
-			if(PS != 0)
-			{
-				present = *(pBeginList++) & 0x80;
-			}
-			else
-			{
-				if(i & 1)
-				{
-					present = *(pBeginList++) & 0x08;
-				}
-				else
-				{
-					present = *pBeginList & 0x80;
-				}
-			}
-			if(present != 0)
-			{
-				switch(*options)
-				{
-					case TCP_OPT_EOL:
-						rohc_decomp_debug(context, "TCP option EOL\n");
-						++options;
-						++size;
-						break;
-					case TCP_OPT_NOP:
-						rohc_decomp_debug(context, "TCP option NOP\n");
-						++options;
-						++size;
-						break;
-					case TCP_OPT_MAXSEG:
-						rohc_decomp_debug(context, "TCP option MAXSEG\n");
-						options += TCP_OLEN_MAXSEG;
-						size += TCP_OLEN_MAXSEG;
-						break;
-					case TCP_OPT_WINDOW:
-						rohc_decomp_debug(context, "TCP option WINDOW\n");
-						options += TCP_OLEN_WINDOW;
-						size += TCP_OLEN_WINDOW;
-						break;
-					case TCP_OPT_SACK_PERMITTED:
-						rohc_decomp_debug(context, "TCP option SACK PERMITTED\n");
-						options += TCP_OLEN_SACK_PERMITTED;
-						size += TCP_OLEN_SACK_PERMITTED;
-						break;
-					case TCP_OPT_SACK:
-						rohc_decomp_debug(context, "TCP option SACK\n");
-						++options;
-						++size;
-						break;
-					case TCP_OPT_TIMESTAMP:
-						rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
-						options += TCP_OLEN_TIMESTAMP;
-						size += TCP_OLEN_TIMESTAMP;
-						// TCP_OLEN_TSTAMP_APPA    (TCP_OLEN_TIMESTAMP+2) /* appendix A */
-						break;
-					/*
-					case TCP_OPT_TSTAMP_HDR:
-						rohc_decomp_debug(context, "TCP option TIMESTAMP HDR\n");
-						i = 0;
-						break;
-					*/
-					default:
-						rohc_decomp_debug(context, "TCP option unknown 0x%x\n",
-						                  *options);
-						size += *(options + 1);
-						options += *(options + 1);
-						break;
-				}
-			}
-		}
-	}
-	else
-	{
-		rohc_decomp_debug(context, "TCP no XI items in compressed list\n");
-		// size of begin list
-		++size;
-	}
-
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "TCP dynamic part",
-	                 (unsigned char *) tcp_dynamic, size);
-
 	return size;
 }
 
@@ -2191,8 +2275,7 @@ static uint8_t * d_ts_lsb(const struct d_context *const context,
  * @param ptr   Pointer to the compressed value
  * @return      Return the size of the compressed TCP option
  */
-
-static int d_size_ts_lsb( uint8_t *ptr )
+static int d_size_ts_lsb(uint8_t *ptr)
 {
 	if(*ptr & 0x80)
 	{
@@ -2561,9 +2644,9 @@ error:
  * @param pOptions     Pointer to the uncompressed TCP option
  * @return             Pointer to the next compressed value
  */
-
-static uint8_t * d_tcp_opt_generic( struct d_tcp_context *tcp_context, uint8_t *ptr,
-                                     uint8_t * *pOptions )
+static uint8_t * d_tcp_opt_generic(struct d_tcp_context *tcp_context,
+                                   uint8_t *ptr,
+                                   uint8_t * *pOptions)
 {
 	uint8_t *options;
 
@@ -2595,13 +2678,13 @@ static uint8_t * d_tcp_opt_generic( struct d_tcp_context *tcp_context, uint8_t *
  * @param uncompressed_size  Pointer to the uncompressed TCP option size
  * @return                   Pointer to the next compressed value
  */
-
-static int d_tcp_size_opt_generic( struct d_tcp_context *tcp_context, uint8_t *ptr,
-                                   uint16_t *uncompressed_size )
+static int d_tcp_size_opt_generic(struct d_tcp_context *tcp_context,
+                                  uint8_t *ptr,
+                                  uint16_t *uncompressed_size)
 {
 	int size = 0;
 
-	// A COMPLETER
+	/* to be completed */
 
 	return size;
 }
@@ -4411,7 +4494,7 @@ error:
  * @param context The decompression context
  * @return        The reference MSN value
  */
-int d_tcp_get_msn(struct d_context *context)
+static int d_tcp_get_msn(struct d_context *context)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_tcp_context *tcp_context = g_context->specific;

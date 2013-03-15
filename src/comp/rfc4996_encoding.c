@@ -29,10 +29,10 @@
 #include "rfc4996_encoding.h"
 #include "crc.h"
 
-#include <assert.h>
 #ifndef __KERNEL__
 #  include <string.h>
 #endif
+#include <assert.h>
 
 
 /**

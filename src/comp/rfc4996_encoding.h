@@ -21,9 +21,10 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
+#include <stdint.h>
+
 #include "dllexport.h"
 
-#include <stdint.h>
 
 struct c_context;
 

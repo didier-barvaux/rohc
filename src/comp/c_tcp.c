@@ -26,6 +26,7 @@
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 #include "rohc_packets.h"
+#include "protocols/tcp.h"
 #include "rfc4996_encoding.h"
 #include "cid.h"
 #include "crc.h"
@@ -51,6 +52,249 @@
 #else
 #define TRACE_GOTO_CHOICE
 #endif
+
+
+/**
+ * @brief Define the TCP-specific temporary variables in the profile
+ *        compression context.
+ *
+ * This object must be used by the TCP-specific decompression context
+ * sc_tcp_context.
+ *
+ * @see sc_tcp_context
+ */
+#ifdef TODO  // DBX
+struct tcp_tmp_variables
+{
+	/// The number of TCP fields that changed in the TCP header
+	int send_tcp_dynamic;
+};
+#endif
+
+#define MAX_IPV6_OPTION_LENGTH        6   // FOR Destination/Hop-by-Hop/Routing/ah
+#define MAX_IPV6_CONTEXT_OPTION_SIZE  (2 + ((MAX_IPV6_OPTION_LENGTH + 1) << 3))
+
+
+/**
+ * @brief Define the IPv6 generic option context.
+ */
+typedef struct __attribute__((packed)) ipv6_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+	uint8_t length;
+
+	uint8_t value[1];
+} ipv6_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 GRE option context.
+ */
+typedef struct __attribute__((packed)) ipv6_gre_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+
+	uint8_t c_flag : 1;
+	uint8_t k_flag : 1;
+	uint8_t s_flag : 1;
+	uint8_t padding : 5;
+
+	uint16_t protocol;
+
+	uint32_t key;               // if k_flag set
+	uint32_t sequence_number;   // if s_flag set
+
+} ipv6_gre_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 MIME option context.
+ */
+typedef struct __attribute__((packed)) ipv6_mime_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+
+	uint8_t s_bit : 1;
+	uint8_t res_bits : 7;
+	uint16_t checksum;
+	uint32_t orig_dest;
+	uint32_t orig_src;         // if s_bit set
+
+} ipv6_mime_option_context_t;
+
+
+/**
+ * @brief Define the IPv6 AH option context.
+ */
+typedef struct __attribute__((packed)) ipv6_ah_option_context
+{
+	uint8_t context_length;
+	uint8_t option_length;
+
+	uint8_t next_header;
+
+	uint8_t length;
+	uint32_t spi;
+	uint32_t sequence_number;
+	uint32_t auth_data[1];
+} ipv6_ah_option_context_t;
+
+
+/**
+ * @brief Define the common IP header context to IPv4 and IPv6.
+ */
+typedef struct __attribute__((packed)) ipvx_context
+{
+	uint8_t version : 4;
+	uint8_t unused : 4;
+
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+
+	uint8_t next_header;
+
+	uint8_t ttl_hopl;
+
+	uint8_t ip_id_behavior;
+	uint8_t last_ip_id_behavior;
+
+} ipvx_context_t;
+
+
+/**
+ * @brief Define the IPv4 header context.
+ */
+typedef struct __attribute__((packed)) ipv4_context
+{
+	uint8_t version : 4;
+	uint8_t df : 1;
+	uint8_t unused : 3;
+
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+
+	uint8_t protocol;
+
+	uint8_t ttl_hopl;
+
+	uint8_t ip_id_behavior;
+	uint8_t last_ip_id_behavior;
+	WB_t last_ip_id;
+
+	uint32_t src_addr;
+	uint32_t dst_addr;
+
+} ipv4_context_t;
+
+
+/**
+ * @brief Define the IPv6 header context.
+ */
+typedef struct __attribute__((packed)) ipv6_context
+{
+	uint8_t version : 4;
+	uint8_t unused : 4;
+
+	uint8_t dscp : 6;
+	uint8_t ip_ecn_flags : 2;
+
+	uint8_t next_header;
+
+	uint8_t ttl_hopl;
+
+	uint8_t ip_id_behavior;
+	uint8_t last_ip_id_behavior;
+
+	uint8_t flow_label1 : 4;
+	uint16_t flow_label2;
+
+	uint32_t src_addr[4];
+	uint32_t dest_addr[4];
+
+} ipv6_context_t;
+
+
+/**
+ * @brief Define union of IP contexts pointers.
+ *
+ * TODO: merge with same definition in d_tcp.h
+ */
+typedef union
+{
+	uint8_t *uint8;
+	ipvx_context_t *vx;
+	ipv4_context_t *v4;
+	ipv6_context_t *v6;
+	ipv6_option_context_t *v6_option;
+	ipv6_gre_option_context_t *v6_gre_option;
+	ipv6_mime_option_context_t *v6_mime_option;
+	ipv6_ah_option_context_t *v6_ah_option;
+} ip_context_ptr_t;
+
+
+/**
+ * @brief Define the TCP part of the profile decompression context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context c_generic_context.
+ *
+ * @see c_generic_context
+ */
+struct sc_tcp_context
+{
+	/// The number of times the sequence number field was added to the compressed header
+	int tcp_seq_number_change_count;
+
+	// The Master Sequence Number
+	uint16_t msn;
+
+	// Explicit Congestion Notification used
+	uint8_t ecn_used;
+
+	uint32_t tcp_last_seq_number;
+
+	uint16_t window;
+	uint32_t seq_number;
+	uint32_t ack_number;
+
+	uint32_t seq_number_scaled;
+	uint32_t seq_number_residue;
+
+	uint16_t ack_stride;
+	uint32_t ack_number_scaled;
+	uint32_t ack_number_residue;
+
+	uint8_t tcp_options_list[16];         // see RFC4996 page 27
+	uint8_t tcp_options_offset[16];
+	uint16_t tcp_option_maxseg;
+	uint8_t tcp_option_window;
+	struct tcp_option_timestamp tcp_option_timestamp;
+	uint8_t tcp_option_sack_length;
+	sack_block_t tcp_option_sackblocks[4];
+	uint8_t tcp_options_free_offset;
+#define MAX_TCP_OPT_SIZE 64
+	uint8_t tcp_options_values[MAX_TCP_OPT_SIZE];
+
+	/// The previous TCP header
+	tcphdr_t old_tcphdr;
+
+	/// @brief TCP-specific temporary variables that are used during one single
+	///        compression of packet
+#ifdef TODO
+	struct tcp_tmp_variables tmp_variables;
+#endif
+
+	uint8_t ip_context[1];
+};
 
 
 /*
@@ -88,6 +332,30 @@ unsigned char tcp_options_index[16] =
 /*
  * Private function prototypes.
  */
+
+static int c_tcp_create(struct c_context *const context,
+                        const struct ip_packet *ip);
+
+static bool c_tcp_check_profile(const struct rohc_comp *const comp,
+                                const struct ip_packet *const outer_ip,
+                                const struct ip_packet *const inner_ip,
+                                const uint8_t protocol);
+
+static int c_tcp_check_context(const struct c_context *context,
+                               const struct ip_packet *ip);
+
+static int c_tcp_encode(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const int packet_size,
+                        unsigned char *const dest,
+                        const int dest_size,
+                        rohc_packet_t *const packet_type,
+                        int *const payload_offset);
+
+#ifdef TODO
+static void tcp_decide_state(struct c_context *const context);
+#endif
+
 static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const context,
 																  ip_context_ptr_t ip_context,
 																  multi_ptr_t mptr,
@@ -305,7 +573,8 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
  * @param ip      The IP/TCP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_tcp_create(struct c_context *const context, const struct ip_packet *ip)
+static int c_tcp_create(struct c_context *const context,
+                        const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -664,8 +933,8 @@ bad_profile:
  *                0 if it does not belong to the context and
  *                -1 if the profile cannot compress it or an error occurs
  */
-int c_tcp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip)
+static int c_tcp_check_context(const struct c_context *context,
+                               const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -800,13 +1069,13 @@ bad_context:
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
  */
-int c_tcp_encode(struct c_context *const context,
-                 const struct ip_packet *ip,
-                 const int packet_size,
-                 unsigned char *const dest,
-                 const int dest_size,
-                 rohc_packet_t *const packet_type,
-                 int *const payload_offset)
+static int c_tcp_encode(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const int packet_size,
+                        unsigned char *const dest,
+                        const int dest_size,
+                        rohc_packet_t *const packet_type,
+                        int *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -2586,10 +2855,10 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
  * @param timestamp           The value to compress
  * @return                    true if compression was successful, false otherwise
  */
-bool c_ts_lsb(const struct c_context *const context,
-				  uint8_t **dest,
-				  const uint32_t context_timestamp,
-				  const uint32_t timestamp)
+static bool c_ts_lsb(const struct c_context *const context,
+                     uint8_t **dest,
+                     const uint32_t context_timestamp,
+                     const uint32_t timestamp)
 {
 	const uint32_t last_timestamp = ntohl(context_timestamp);
 	uint8_t *ptr = *dest;
@@ -2814,9 +3083,9 @@ static uint8_t * c_tcp_opt_sack(const struct c_context *const context,
  * @param options      Pointer to the TCP option to compress
  * @return             Pointer after the compressed value
  */
-
-static uint8_t * c_tcp_opt_generic( struct sc_tcp_context *tcp_context, uint8_t *ptr,
-                                     uint8_t *options )
+static uint8_t * c_tcp_opt_generic(struct sc_tcp_context *tcp_context,
+                                   uint8_t *ptr,
+                                   uint8_t *options)
 {
 	// generic_static_irregular
 
@@ -3333,7 +3602,6 @@ error:
  * @param payload_offset  The offset for the payload in the IP packet
  * @return                The position in the rohc-packet-under-build buffer
  */
-
 static int code_CO_packet(struct c_context *const context,
                           const struct ip_packet *ip,
                           const int packet_size,

@@ -21,6 +21,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
+#include "protocols/tcp.h"
+
 #include <stdint.h>
 
 struct d_context;
