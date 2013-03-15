@@ -29,9 +29,10 @@
 #include "rfc4996_encoding.h"
 #include "crc.h"
 
-#include <math.h> // TODO: required?
 #include <assert.h>
-#include <string.h>
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 
 
 /**
@@ -416,6 +417,7 @@ unsigned int c_ip_id_lsb(const struct c_context *const context,
 			break;
 		default:
 			/* should not happen */
+			ip_id_offset = 0;
 			assert(0);
 	}
 	return ip_id_offset;

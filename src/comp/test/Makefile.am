@@ -19,7 +19,8 @@ test_rfc4996_encoding_LDADD = \
 test_rfc4996_encoding_LDFLAGS = \
 	-L$(top_builddir)/src/comp/.libs
 test_rfc4996_encoding_CFLAGS = \
-	-g -Wall -Wstrict-prototypes \
+	$(configure_cflags)
+test_rfc4996_encoding_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/comp
 

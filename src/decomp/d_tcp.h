@@ -26,7 +26,9 @@
 
 #include "protocols/tcp.h"
 
-#include <string.h>
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 #include <stdint.h>
 
 #define PACKET_TCP_RND1     1

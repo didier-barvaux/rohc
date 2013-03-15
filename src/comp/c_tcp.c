@@ -34,7 +34,11 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
+#ifdef __KERNEL__
+#	include <endian.h>
+#else
+#	include <string.h>
+#endif
 
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
 

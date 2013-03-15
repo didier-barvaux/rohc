@@ -35,7 +35,9 @@
 #include "rohc_packets.h"
 #include "rohc_decomp.h"
 
-#include <string.h>
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 #include <assert.h>
 
 
@@ -176,6 +178,7 @@ uint32_t variable_length_32_dec(const struct d_context *const context,
 			break;
 		default:
 			/* should not happen */
+			value = 0;
 			assert(0);
 			break;
 	}
