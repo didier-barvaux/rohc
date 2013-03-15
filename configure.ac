@@ -256,7 +256,7 @@ if test "x$enable_rohc_apps" = "xyes" && \
 	echo
 	echo "ERROR: --enable-rohc-apps cannot be enabled on non Linux platforms yet"
 	echo
-	echo "Please disable both the option and try again."
+	echo "Please use --disable-rohc-apps and try again."
 	exit 1
 fi
 AM_CONDITIONAL([ROHC_APPS], [test x$enable_rohc_apps = xyes])
