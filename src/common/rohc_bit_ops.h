@@ -25,6 +25,12 @@
 #ifndef ROHC_BIT_OPS_H
 #define ROHC_BIT_OPS_H
 
+#ifdef __KERNEL__
+#	include <endian.h>
+#else
+#	include "config.h" /* for WORDS_BIGENDIAN */
+#endif
+
 
 /*
  * GET_BIT_n(x) macros: extract the (n+1) th bit from byte x starting from

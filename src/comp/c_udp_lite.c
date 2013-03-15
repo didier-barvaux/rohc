@@ -32,7 +32,9 @@
 #include "protocols/udp_lite.h"
 
 #include <stdlib.h>
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 #include <assert.h>
 
 

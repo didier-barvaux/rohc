@@ -28,7 +28,11 @@
 #include "dllexport.h"
 
 #include <stddef.h>
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 
 
 /// The magic bits to find out whether a field is a segment field or not

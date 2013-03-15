@@ -44,9 +44,15 @@
 
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 #include <stdlib.h>
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 #include <assert.h>
 #include <stdio.h> /* for printf(3) */
 #include <stdarg.h>
@@ -369,7 +375,9 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
                                           const char *const format,
                                           ...)
 {
+#ifndef __KERNEL__ /* TODO */
 	va_list args;
+#ifndef __KERNEL__
 	static bool first_time = true;
 
 	/* display a warning with the first message */
@@ -378,10 +386,12 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 		printf("please define a callback for compressor traces\n");
 		first_time = false;
 	}
+#endif
 
 	va_start(args, format);
 	vfprintf(stdout, format, args);
 	va_end(args);
+#endif
 }
 
 

@@ -15,16 +15,28 @@
  */
 
 /**
- * @file d_uncompressed.h
- * @brief ROHC decompression context for the uncompressed profile.
+ * @file   kernel/include/endian.h
+ * @brief  Define the endianess defines for the Linux kernel
+ * @author Mikhail Gruzdev <michail.gruzdev@gmail.com>
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
-#ifndef D_UNCOMPRESSED_H
-#define D_UNCOMPRESSED_H
+#ifndef ENDIAN_H_
+#define ENDIAN_H_
 
-/* nothing public needed */
-
+#ifndef __KERNEL__
+#	error "for Linux kernel only!"
 #endif
+
+#include <linux/kernel.h>
+
+#if defined(__LITTLE_ENDIAN)
+#	define	WORDS_BIGENDIAN  0
+#elif defined(__BIG_ENDIAN)
+#	define	WORDS_BIGENDIAN  1
+#else
+#	error "platform is not little nor big endian"
+#endif
+
+#endif /* ENDIAN_H_ */
 

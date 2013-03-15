@@ -29,7 +29,11 @@
 #include "ip.h"
 #include "dllexport.h"
 
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 
 /// The CRC-2 initial value
 #define CRC_INIT_2 0x3

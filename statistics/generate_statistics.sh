@@ -265,7 +265,7 @@ echo -e "\t\t\t<th><acronym title=\"UOR-2 with IP-ID bits\">ID</acronym></th>" >
 echo -e "\t\t\t<th><acronym title=\"UOR-2 with TS bits\">TS</acronym></th>" >> ${HTML_OUTPUT}
 echo -e "\t\t</tr>" >> ${HTML_OUTPUT}
 
-for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | sort ) ; do
+for CAPTURE in $(find "${SRC_ROOTDIR}/statistics/inputs/" -name source.pcap | ${GREP} -v bug804552 | sort ) ; do
 
 	STREAM="./$(dirname ${CAPTURE} | ${SED} -e "s|${SRC_ROOTDIR}/statistics/inputs/||")"
 	PACKET_TYPE=$(echo $STREAM | ${SED} -e 's|^./||' | ${SED} -e 's/_/\//g' | tr '[a-z]' '[A-Z]')

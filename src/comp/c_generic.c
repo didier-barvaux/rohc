@@ -36,7 +36,9 @@
 #include "sdvl.h"
 #include "crc.h"
 
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 #include <assert.h>
 
 #include "config.h" /* for RTP_BIT_TYPE and ROHC_EXTRA_DEBUG definitions */
@@ -6666,7 +6668,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 		              "more than L = %d times\n", comp->ref_list->gen_id,
 		              comp->curr_list->gen_id, L);
 
-		list_empty(comp->ref_list);
+		rohc_list_empty(comp->ref_list);
 		for(j = 0; j < size; j++)
 		{
 			elt = list_get_elt_by_index(comp->curr_list, j);

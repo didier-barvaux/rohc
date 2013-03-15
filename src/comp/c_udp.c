@@ -30,7 +30,9 @@
 #include "crc.h"
 
 #include <stdlib.h>
-#include <string.h>
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 #include <assert.h>
 
 

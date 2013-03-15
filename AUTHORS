@@ -2,7 +2,7 @@ The ROHC compression/decompression library is currently developped and
 maintained by Didier Barvaux <didier@barvaux.org>.
 
 
-The ROHC library is released under the GPL2+ license. See COPYING file. 
+The ROHC library is released under the GPL2+ license. See COPYING file.
 
 
 The following companies are/were involved in the project:
@@ -10,6 +10,7 @@ The following companies are/were involved in the project:
                                    opensource@toulouse.viveris.com
  - Thales Alenia Space             http://www.thalesaleniaspace.com/
                                    cedric.baudoin@thalesaleniaspace.com
+ - Thales Communications           http://www.thalescomminc.com/
  - CNES (French space agency)      http://www.cnes.fr/
  - Lulea University of Technology  http://www.ltu.se/?l=en
 
@@ -33,6 +34,8 @@ The following people are/were involved in the project:
                          <julien.peyrade@toulouse.viveris.com>
   FWX                    ESP profile. Debugging on ARM/PPC.
                          <rohc_team@dialine.fr>
+  Mikhail Gruzdev        Support for Linux kernel.
+                         <michail.gruzdev@gmail.com>
 
 
 The library was mainly based on the work of the ROHC Project 2003 at the Lulea

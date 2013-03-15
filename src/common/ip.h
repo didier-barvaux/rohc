@@ -29,7 +29,11 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
 
 
 /*
@@ -226,6 +230,8 @@ struct ip6_ahhdr
  * Inline functions
  */
 
+#ifndef __KERNEL__ /* already provided by Linux kernel */
+
 /**
  * @brief In-place change the byte order in a two-byte value.
  *
@@ -375,7 +381,11 @@ out:
 }
 
 
-#endif
+#endif /* !__i386__ */
+
+#else /* !__KERNEL__ */
+#	include <asm/checksum.h>
+#endif /* __KERNEL__ */
 
 
 /*

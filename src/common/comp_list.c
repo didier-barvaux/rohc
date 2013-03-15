@@ -378,7 +378,7 @@ void list_remove(struct c_list *list, struct rohc_list_item *item)
  *
  * @param list the list to empty
  */
-void list_empty(struct c_list *list)
+void rohc_list_empty(struct c_list *list)
 {
 	struct list_elt *curr_elt;
 

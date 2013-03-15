@@ -15,16 +15,19 @@
  */
 
 /**
- * @file d_uncompressed.h
- * @brief ROHC decompression context for the uncompressed profile.
+ * @file   linux/include/stdint.h
+ * @brief  Define the uintX_t types for the Linux kernel
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
-#ifndef D_UNCOMPRESSED_H
-#define D_UNCOMPRESSED_H
+#ifndef STDINT_H_
+#define STDINT_H_
 
-/* nothing public needed */
-
+#ifndef __KERNEL__
+#	error "for Linux kernel only!"
 #endif
+
+#include <linux/types.h>
+
+#endif /* STDINT_H_ */
 

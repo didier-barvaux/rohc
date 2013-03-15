@@ -35,10 +35,12 @@
 #define rohc_min(value1, value2) \
 	( ((value1) <= (value2)) ? (value1) : (value2) )
 
+#ifndef __KERNEL__
 uint32_t ROHC_EXPORT ntohl(const uint32_t netlong) __attribute__((const));
 uint16_t ROHC_EXPORT ntohs(const uint16_t netshort) __attribute__((const));
 uint32_t ROHC_EXPORT htonl(const uint32_t hostlong) __attribute__((const));
 uint16_t ROHC_EXPORT htons(const uint16_t hostshort) __attribute__((const));
+#endif
 
 #endif
 

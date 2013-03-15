@@ -4,6 +4,7 @@ Makefile.in
 .libs
 *.lo
 *.la
+.*.o.cmd
 test-suite.log
 test_*.sh.log
 ./rohc-trunk.tar.gz
@@ -68,6 +69,15 @@ test_*.sh.log
 ./test/robustness/malformed_rohc_packets/test_malformed_rohc_packets.exe
 ./test/non_regression/test_non_regression
 ./test/non_regression/test_non_regression.exe
+./test/non_regression/test_non_regression_kernel
+!./linux/kmod/Makefile
+./linux/.tmp_versions/
+./linux/kmod/*.ko.cmd
+./linux/kmod/.tmp_versions/
+./linux/kmod/Module.symvers
+./linux/kmod/modules.order
+./linux/kmod/*.ko
+./linux/kmod/*.mod.c
 ./statistics/generate_statistics
 ./statistics/generate_statistics.exe
 ./statistics/generate_statistics.sh.log

@@ -28,10 +28,10 @@ SCRIPT="$0"
 VERBOSE="$1"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
-	APP="./test_non_regression${CROSS_COMPILATION_EXEEXT}"
+	APP="./test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 else
 	BASEDIR=$( dirname "${SCRIPT}" )
-	APP="${BASEDIR}/test_non_regression${CROSS_COMPILATION_EXEEXT}"
+	APP="${BASEDIR}/test_non_regression${KERNEL_SUFFIX}${CROSS_COMPILATION_EXEEXT}"
 fi
 
 # extract the CID type and capture name from the name of the script
@@ -54,7 +54,10 @@ if [ -z "${CAPTURE_COMPARE}" ] ; then
 fi
 
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
-if [ "${VERBOSE}" = "generate" ] ; then
+if [ -n "${KERNEL_SUFFIX}" ] ; then
+	# normal mode for kernel: compare with existing ROHC output captures
+	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
+elif [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
 	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
@@ -65,14 +68,29 @@ fi
 # source valgrind-related functions
 . ${BASEDIR}/../valgrind.sh
 
+# do not run tests with large CIDs in the Linux kernel to save some time
+[ -n "${KERNEL_SUFFIX}" ] && [ "${CID_TYPE}" = "largecid" ] && exit 77
+
 # run without valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
-	run_test_without_valgrind ${CMD} --verbose || exit $?
+	if [ -n "${KERNEL_SUFFIX}" ] ; then
+		run_test_without_valgrind ${CMD} || exit $?
+	else
+		run_test_without_valgrind ${CMD} --verbose || exit $?
+	fi
 else
-	run_test_without_valgrind ${CMD} > /dev/null || exit $?
+	if [ -n "${KERNEL_SUFFIX}" ] ; then
+		run_test_without_valgrind ${CMD} &> /dev/null || exit $?
+	else
+		run_test_without_valgrind ${CMD} > /dev/null || exit $?
+	fi
 fi
 
+# skip Valgrind tests if they are not enabled
 [ "${USE_VALGRIND}" != "yes" ] && exit 0
+
+# tests with Valgrind are not possible in the Linux kernel
+[ -n "${KERNEL_SUFFIX}" ] && exit 0
 
 # run with valgrind in verbose mode or quiet mode
 if [ "${VERBOSE}" = "verbose" ] ; then
