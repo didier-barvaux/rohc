@@ -150,9 +150,9 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		{ htonl(0xff),       1, 1 },
 		{ htonl(0xff + 1),   2, 2 },
 		{ htonl(0xffff),     2, 2 },
-		{ htonl(0xffff + 1), 3, 3 },
-		{ htonl(0xfffff),    3, 3 },
-		{ htonl(0xffffff),   3, 3 },
+		{ htonl(0xffff + 1), 4, 3 },
+		{ htonl(0xfffff),    4, 3 },
+		{ htonl(0xffffff),   4, 3 },
 		{ htonl(0xfffffff),  4, 3 },
 		{ htonl(0xffffffff), 4, 3 },
 		{ 0,                 0, 4 }  /* stopper */
