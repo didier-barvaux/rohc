@@ -2906,7 +2906,7 @@ static bool c_ts_lsb(const struct c_context *const context,
 					rohc_warning(context->compressor, ROHC_TRACE_COMP,
 									 context->profile->id,
 									 "failed to compress timestamp 0x%08x (previous "
-									 "value = 0x%08x): more than 29 bits required",
+									 "value = 0x%08x): more than 29 bits required\n",
 									 timestamp, last_timestamp);
 					goto error;
 				}
@@ -3449,7 +3449,7 @@ new_index_with_compressed_value:
 					rohc_warning(context->compressor, ROHC_TRACE_COMP,
 									 context->profile->id,
 									 "failed to compress the timestamp value of the TCP "
-									 "Timestamp option");
+									 "Timestamp option\n");
 					goto error;
 				}
 				is_ok = c_ts_lsb(context, &ptr_compressed_options,
@@ -3460,7 +3460,7 @@ new_index_with_compressed_value:
 					rohc_warning(context->compressor, ROHC_TRACE_COMP,
 									 context->profile->id,
 									 "failed to compress the timestamp echo reply of "
-									 "the TCP Timestamp option");
+									 "the TCP Timestamp option\n");
 					goto error;
 				}
 
@@ -4757,7 +4757,7 @@ static int co_baseheader(struct c_context *const context,
 		if(!is_ok)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-							 "failed to compress TCP options");
+							 "failed to compress TCP options\n");
 			goto error;
 		}
 		mptr.uint8 += comp_opts_len;
@@ -5195,7 +5195,7 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 		if(!is_ok)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-							 "failed to compress TCP options");
+							 "failed to compress TCP options\n");
 			goto error;
 		}
 	}
@@ -5683,7 +5683,7 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 		if(!is_ok)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-							 "failed to compress TCP options");
+							 "failed to compress TCP options\n");
 			goto error;
 		}
 	}
