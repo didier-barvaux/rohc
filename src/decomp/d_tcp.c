@@ -3786,12 +3786,15 @@ test_checksum:
 		{
 			base_header_inner.ipv4->dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
 			                                           c_base_header.co_common->dscp_present);
+			rohc_decomp_debug(context, "DSCP = 0x%x\n",
+			                  base_header_inner.ipv4->dscp);
 			ip_inner_context.v4->df = c_base_header.co_common->df;
-			base_header_inner.ipv4->ttl_hopl = d_static_or_irreg8(
-			   &mptr,ip_inner_context.vx->ttl_hopl,c_base_header.co_common->ttl_hopl_present);
-			rohc_decomp_debug(context, "DSCP = 0x%x, ttl_hopl = 0x%x\n",
-			                  base_header_inner.ipv4->dscp,
+			base_header_inner.ipv4->ttl_hopl =
+				d_static_or_irreg8(&mptr, ip_inner_context.vx->ttl_hopl,
+				                   c_base_header.co_common->ttl_hopl_present);
+			rohc_decomp_debug(context, "TTL = 0x%x\n",
 			                  base_header_inner.ipv4->ttl_hopl);
+			ip_inner_context.v4->ttl_hopl = base_header_inner.ipv4->ttl_hopl;
 		}
 		else
 		{
@@ -3810,10 +3813,12 @@ test_checksum:
 			rohc_decomp_debug(context, "DSCP = 0x%x\n",
 			                  base_header_inner.ipv6->dscp);
 #endif
-			base_header_inner.ipv6->ttl_hopl = d_static_or_irreg8(
-			   &mptr,ip_inner_context.vx->ttl_hopl,c_base_header.co_common->ttl_hopl_present);
-			rohc_decomp_debug(context, "ttl_hopl = 0x%x\n",
+			base_header_inner.ipv6->ttl_hopl =
+				d_static_or_irreg8(&mptr, ip_inner_context.vx->ttl_hopl,
+				                   c_base_header.co_common->ttl_hopl_present);
+			rohc_decomp_debug(context, "HL = 0x%x\n",
 			                  base_header_inner.ipv6->ttl_hopl);
+			ip_inner_context.v6->ttl_hopl = base_header_inner.ipv6->ttl_hopl;
 		}
 		tcp->urg_flag = c_base_header.co_common->urg_flag;
 		/* if TCP options list present */
@@ -3981,14 +3986,21 @@ test_checksum:
 				rohc_decomp_debug(context, "decode rnd_8 packet\n");
 				tcp->rsf_flags = rsf_index_dec( c_base_header.rnd8->rsf_flags );
 				tcp->psh_flag = c_base_header.rnd8->psh_flag;
-				ttl_hopl = d_lsb(context, 3,3,ip_inner_context.vx->ttl_hopl,c_base_header.rnd8->ttl_hopl);
+				ttl_hopl = d_lsb(context, 3, 3, ip_inner_context.vx->ttl_hopl,
+				                 c_base_header.rnd8->ttl_hopl);
 				if(ip_inner_context.vx->version == IPV4)
 				{
 					base_header.ipv4->ttl_hopl = ttl_hopl;
+					ip_inner_context.v4->ttl_hopl = base_header.ipv4->ttl_hopl;
+					rohc_decomp_debug(context, "IPv4 TTL = 0x%02x (%u)\n",
+					                  ttl_hopl, ttl_hopl);
 				}
 				else
 				{
 					base_header.ipv6->ttl_hopl = ttl_hopl;
+					ip_inner_context.v6->ttl_hopl = base_header.ipv6->ttl_hopl;
+					rohc_decomp_debug(context, "IPv6 HL = 0x%02x (%u)\n",
+					                  ttl_hopl, ttl_hopl);
 				}
 				rohc_decomp_debug(context, "ecn_used = %d\n",
 				                  c_base_header.rnd8->ecn_used);
@@ -4158,14 +4170,21 @@ test_checksum:
 				               c_base_header.seq8->ip_id,
 				               msn);
 				tcp->psh_flag = c_base_header.seq8->psh_flag;
-				ttl_hopl = d_lsb(context, 3,3,ip_inner_context.vx->ttl_hopl,c_base_header.seq8->ttl_hopl);
+				ttl_hopl = d_lsb(context, 3, 3, ip_inner_context.vx->ttl_hopl,
+				                 c_base_header.seq8->ttl_hopl);
 				if(ip_inner_context.vx->version == IPV4)
 				{
 					base_header.ipv4->ttl_hopl = ttl_hopl;
+					ip_inner_context.v4->ttl_hopl = base_header.ipv4->ttl_hopl;
+					rohc_decomp_debug(context, "IPv4 TTL = 0x%02x (%u)\n",
+					                  ttl_hopl, ttl_hopl);
 				}
 				else
 				{
 					base_header.ipv6->ttl_hopl = ttl_hopl;
+					ip_inner_context.v6->ttl_hopl = base_header.ipv6->ttl_hopl;
+					rohc_decomp_debug(context, "IPv6 HL = 0x%02x (%u)\n",
+					                  ttl_hopl, ttl_hopl);
 				}
 				rohc_decomp_debug(context, "ecn_used = %d\n",
 				                  c_base_header.seq8->ecn_used);
