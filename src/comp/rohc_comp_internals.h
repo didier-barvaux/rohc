@@ -100,8 +100,6 @@ struct rohc_comp
 
 	/** The array of compression contexts that use the compressor */
 	struct c_context *contexts;
-	/** The number of compression contexts stored in the array */
-	int num_contexts;
 	/** The number of compression contexts in use in the array */
 	int num_contexts_used;
 
