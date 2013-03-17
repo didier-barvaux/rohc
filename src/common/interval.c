@@ -140,92 +140,13 @@ void rohc_f_32bits(const uint32_t v_ref,
 		}
 	}
 
-	/* compute the minimal value of the interval:
-	 *   min = v_ref - p  */
-	if(computed_p >= 0)
-	{
-		/* shift is positive, be careful if straddling the lower wraparound
-		 * boundary */
-		if(v_ref >= computed_p)
-		{
-			/* no need to straddle the lower wraparound boundary */
-			*min = v_ref - computed_p;
-		}
-		else
-		{
-			/* straddle the lower wraparound boundary
-			 * (+ 1 at the end is for handling correctly the 0) */
-			*min = 0xffffffff - (computed_p - v_ref) + 1;
-		}
-	}
-	else /* computed_p < 0 */
-	{
-		/* shift is negative, be careful if straddling the upper wraparound
-		 * boundary */
-		if(v_ref <= (0xffffffff + computed_p))
-		{
-			/* no need to straddle the upper wraparound boundary */
-			*min = v_ref - computed_p;
-		}
-		else
-		{
-			/* straddle the upper wraparound boundary
-			 * (- 1 at the end is for handling correctly the 0) */
-			*min = 0 - computed_p - (0xffffffff - v_ref) - 1;
-		}
-	}
-
-	/* compute the maximal value of the interval:
-	 *   max = v_ref + interval_with - p  */
-	if(computed_p >= 0)
-	{
-		/* shift is positive, be careful if straddling a wraparound boundary */
-		if(interval_width >= computed_p)
-		{
-			/* be careful if straddling the upper wraparound boundary */
-			if(v_ref <= (0xffffffff - (interval_width - computed_p)))
-			{
-				/* no need to straddle the upper wraparound boundary */
-				*max = v_ref + interval_width - computed_p;
-			}
-			else
-			{
-				/* straddle the upper wraparound boundary
-				 * (- 1 at the end is for handling correctly the 0) */
-				*max = 0 + interval_width - computed_p - (0xffffffff - v_ref) - 1;
-			}
-		}
-		else
-		{
-			/* be careful if straddling the lower wraparound boundary */
-			if((v_ref + interval_width) >= computed_p)
-			{
-				/* no need to straddle the lower wraparound boundary */
-				*max = v_ref + interval_width - computed_p;
-			}
-			else
-			{
-				/* straddle the lower wraparound boundary
-				 * (+ 1 at the end is for handling correctly the 0) */
-				*max = 0xffffffff - (computed_p - (v_ref + interval_width)) + 1;
-			}
-		}
-	}
-	else /* computed_p < 0 */
-	{
-		/* shift is negative, be careful if straddling the upper wraparound
-		 * boundary */
-		if(v_ref <= (0xffffffff - (interval_width - computed_p)))
-		{
-			/* no need to straddle the upper wraparound boundary */
-			*max = v_ref + interval_width - computed_p;
-		}
-		else
-		{
-			/* straddle the upper wraparound boundary
-			 * (- 1 at the end is for handling correctly the 0) */
-			*max = 0 + interval_width - computed_p - (0xffffffff - v_ref) - 1;
-		}
-	}
+	/* compute the minimal and maximal values of the interval:
+	 *   min = v_ref - p
+	 *   max = v_ref + interval_with - p
+	 *
+	 * Straddling the lower and upper wraparound boundaries
+	 * is handled without additional operation */
+	*min = v_ref - computed_p;
+	*max = v_ref + interval_width - computed_p;
 }
 
