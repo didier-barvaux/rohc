@@ -131,6 +131,8 @@ static void usage(void);
 static int tune_env_for_perfs(double *coef_nanosec);
 
 static int test_compression_perfs(char *filename,
+                                  const int use_large_cid,
+                                  const unsigned int max_contexts,
                                   double coef_nanosec,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
@@ -144,6 +146,8 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long long *time_elapsed);
 
 static int test_decompression_perfs(char *filename,
+                                    const int use_large_cid,
+                                    const unsigned int max_contexts,
                                     double coef_nanosec,
                                     unsigned long *packet_count,
                                     unsigned long *overflows,
@@ -180,8 +184,11 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char *argv[])
 {
+	int max_contexts = ROHC_SMALL_CID_MAX + 1;
+	char *cid_type = NULL;
 	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
+	bool use_large_cid;
 #if __i386__
 	unsigned long packet_count = 0;
 	unsigned long overflows = 0;
@@ -222,10 +229,22 @@ int main(int argc, char *argv[])
 			/* enable verbose mode */
 			is_verbose = 1;
 		}
+		else if(!strcmp(*argv, "--max-contexts"))
+		{
+			/* get the maximum number of contexts the test should use */
+			max_contexts = atoi(argv[1]);
+			argv++;
+			argc--;
+		}
 		else if(test_type == 0)
 		{
 			/* get the name of the test */
 			test_type = argv[0];
+		}
+		else if(cid_type == NULL)
+		{
+			/* get the type of CID to use within the ROHC library */
+			cid_type = argv[0];
 		}
 		else if(filename == NULL)
 		{
@@ -248,6 +267,41 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	/* check CID type */
+	if(!strcmp(cid_type, "smallcid"))
+	{
+		use_large_cid = false;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
+		{
+			fprintf(stderr, "the maximum number of ROHC contexts should be "
+			        "between 1 and %u\n\n", ROHC_SMALL_CID_MAX + 1);
+			usage();
+			goto error;
+		}
+	}
+	else if(!strcmp(cid_type, "largecid"))
+	{
+		use_large_cid = true;
+
+		/* the maximum number of ROHC contexts should be valid */
+		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
+		{
+			fprintf(stderr, "the maximum number of ROHC contexts should be "
+			        "between 1 and %u\n\n", ROHC_LARGE_CID_MAX + 1);
+			usage();
+			goto error;
+		}
+	}
+	else
+	{
+		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
+		        "expected\n", cid_type);
+		usage();
+		goto error;
+	}
+
 #if !__i386__
 	/* skip test because the test uses x86 ASM */
 	status = 77;
@@ -264,13 +318,15 @@ int main(int argc, char *argv[])
 	if(strcmp(test_type, "compression") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
-		ret = test_compression_perfs(filename, coef_nanosec,
+		ret = test_compression_perfs(filename, use_large_cid, max_contexts,
+		                             coef_nanosec,
 		                             &packet_count, &overflows, &time_elapsed);
 	}
 	else if(strcmp(test_type, "decompression") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
-		ret = test_decompression_perfs(filename, coef_nanosec,
+		ret = test_decompression_perfs(filename, use_large_cid, max_contexts,
+		                               coef_nanosec,
 		                               &packet_count, &overflows, &time_elapsed);
 	}
 	else
@@ -321,15 +377,20 @@ error:
 static void usage(void)
 {
 	fprintf(stderr,
-	        "ROHC performance test: test the performance of the ROHC library\n"
-	        "                       with a flow of IP packets\n\n"
-	        "usage: test_performance [-h|--help] [-v|--version] [de]compression flow\n"
-	        "  --version        print version information and exit\n"
-	        "  -v\n"
-	        "  --verbose        tell the application to be more verbose\n"
-	        "  --help           print application usage and exit\n"
-	        "  -h\n"
-	        "  flow  flow of Ethernet frames to (de)compress (PCAP format)\n");
+		"ROHC performance test: test the performance of the ROHC library\n"
+		"                       with a flow of IP packets\n"
+		"\n"
+		"usage: test_performance [-h|--help] [-v|--version] [de]compression (small|large)cid flow\n"
+		"\n"
+		"  --version               Print version information and exit\n"
+		"  -v\n"
+		"  --verbose               Tell the application to be more verbose\n"
+		"  --help                  Print application usage and exit\n"
+		"  -h\n"
+		"  --max-contexts NUM      The maximum number of ROHC contexts to\n"
+		"                          simultaneously use during the test\n"
+		"\n"
+		"  flow  flow of Ethernet frames to (de)compress (PCAP format)\n");
 }
 
 
@@ -350,6 +411,8 @@ static int tune_env_for_perfs(double *coef_nanosec)
 #if HAVE_SCHED_H == 1 && SCHED_SETSCHEDULER_PARAMS == 3
 	struct sched_param param;
 #endif
+	const unsigned int nr_tests = 3;
+	const unsigned long test_duration = 5;
 	unsigned long long tics1;
 	unsigned long long tics2;
 	unsigned int i;
@@ -398,16 +461,21 @@ static int tune_env_for_perfs(double *coef_nanosec)
 #endif
 
 	/* determine CPU tics to nanoseconds coefficient */
+	fprintf(stderr, "estimate CPU frequency (%u tests of %lu seconds)... ",
+	        nr_tests, test_duration);
+	fflush(stderr);
 	*coef_nanosec = 0;
-	for(i = 0; i < 10; i++)
+	for(i = 0; i < nr_tests; i++)
 	{
 		GET_CPU_TICS(tics1);
-		usleep(10e6);
+		usleep(test_duration * 1e6);
 		GET_CPU_TICS(tics2);
-		*coef_nanosec += 1.e9 / (tics2 - tics1);
+		*coef_nanosec += (test_duration * 1.e9) / (tics2 - tics1);
+		fprintf(stderr, "%.6fGHz ", 1. / ((*coef_nanosec) / (i + 1)));
+		fflush(stderr);
 	}
-	*coef_nanosec /= 10;
-	fprintf(stderr, "CPU frequency estimated to %.6f GHz\n",
+	*coef_nanosec /= nr_tests;
+	fprintf(stderr, "\nCPU frequency estimated to %.6f GHz\n",
 	        1. / (*coef_nanosec));
 
 	return 0;
@@ -424,6 +492,8 @@ error:
  *        with a flow of IP packets
  *
  * @param filename      The name of the PCAP file that contains the IP packets
+ * @param use_large_cid Whether the compressor shall use large CIDs
+ * @param max_contexts  The maximum number of ROHC contexts to use
  * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
  * @param packet_count  OUT: the number of compressed packets, undefined if
  *                      compression failed
@@ -432,6 +502,8 @@ error:
  * @return              0 in case of success, 1 otherwise
  */
 static int test_compression_perfs(char *filename,
+                                  const int use_large_cid,
+                                  const unsigned int max_contexts,
                                   double coef_nanosec,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
@@ -451,6 +523,8 @@ static int test_compression_perfs(char *filename,
 #define NB_RTP_PORTS 5
 	const unsigned int rtp_ports[NB_RTP_PORTS] =
 		{ 1234, 36780, 33238, 5020, 5002 };
+
+	assert(max_contexts > 0);
 
 	/* open the PCAP file that contains the stream */
 	handle = pcap_open_offline(filename, errbuf);
@@ -486,7 +560,7 @@ static int test_compression_perfs(char *filename,
 	}
 
 	/* create ROHC compressor */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -514,6 +588,7 @@ static int test_compression_perfs(char *filename,
 	rohc_activate_profile(comp, ROHC_PROFILE_IP);
 	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
 	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	rohc_c_set_large_cid(comp, use_large_cid);
 
 	/* reset list of RTP ports */
 	if(!rohc_comp_reset_rtp_ports(comp))
@@ -532,6 +607,8 @@ static int test_compression_perfs(char *filename,
 		}
 	}
 
+	fflush(stderr);
+
 	/* for each packet in the dump */
 	*packet_count = 0;
 	*time_elapsed = 0;
@@ -541,6 +618,11 @@ static int test_compression_perfs(char *filename,
 		unsigned long long packet_time_elapsed = 0;
 
 		(*packet_count)++;
+		if((*packet_count) != 0 && ((*packet_count) % 50000) == 0)
+		{
+			fprintf(stderr, "packet #%lu\n", *packet_count);
+			fflush(stderr);
+		}
 
 		/* compress the IP packet */
 		ret = time_compress_packet(comp, *packet_count,
@@ -694,6 +776,8 @@ error:
  *        with a flow of IP packets
  *
  * @param filename      The name of the PCAP file that contains the ROHC packets
+ * @param use_large_cid Whether the decompressor shall use large CIDs
+ * @param max_contexts  The maximum number of ROHC contexts to use
  * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
  * @param packet_count  OUT: the number of decompressed packets, undefined if
  *                      decompression failed
@@ -702,6 +786,8 @@ error:
  * @return              0 in case of success, 1 otherwise
  */
 static int test_decompression_perfs(char *filename,
+                                    const int use_large_cid,
+                                    const unsigned int max_contexts,
                                     double coef_nanosec,
                                     unsigned long *packet_count,
                                     unsigned long *overflows,
@@ -716,6 +802,8 @@ static int test_decompression_perfs(char *filename,
 	struct rohc_decomp *decomp;
 	int is_failure = 1;
 	int ret;
+
+	assert(max_contexts > 0);
 
 	/* open the PCAP file that contains the stream */
 	handle = pcap_open_offline(filename, errbuf);
@@ -762,8 +850,42 @@ static int test_decompression_perfs(char *filename,
 	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
 	{
 		fprintf(stderr, "cannot set trace callback for decompressor\n");
-		goto free_decompresssor;
+		goto free_decompressor;
 	}
+
+	/* set CID type and MAX_CID for decompressor 1 */
+	if(use_large_cid)
+	{
+		if(!rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID))
+		{
+			fprintf(stderr, "failed to set CID type to large CIDs for "
+			        "decompressor\n");
+			goto free_decompressor;
+		}
+		if(!rohc_decomp_set_max_cid(decomp, max_contexts - 1))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for decompressor\n",
+			        ROHC_LARGE_CID_MAX);
+			goto free_decompressor;
+		}
+	}
+	else
+	{
+		if(!rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID))
+		{
+			fprintf(stderr, "failed to set CID type to small CIDs for "
+			        "decompressor\n");
+			goto free_decompressor;
+		}
+		if(!rohc_decomp_set_max_cid(decomp, max_contexts - 1))
+		{
+			fprintf(stderr, "failed to set MAX_CID to %d for decompressor\n",
+			        ROHC_SMALL_CID_MAX);
+			goto free_decompressor;
+		}
+	}
+
+	fflush(stderr);
 
 	/* for each packet in the dump */
 	*packet_count = 0;
@@ -774,6 +896,11 @@ static int test_decompression_perfs(char *filename,
 		unsigned long long packet_time_elapsed = 0;
 
 		(*packet_count)++;
+		if((*packet_count) != 0 && ((*packet_count) % 50000) == 0)
+		{
+			fprintf(stderr, "packet #%lu\n", *packet_count);
+			fflush(stderr);
+		}
 
 		/* decompress the ROHC packet */
 		ret = time_decompress_packet(decomp, *packet_count,
@@ -783,7 +910,7 @@ static int test_decompression_perfs(char *filename,
 		{
 			fprintf(stderr, "packet %lu: performance test failed\n",
 			        *packet_count);
-			goto free_decompresssor;
+			goto free_decompressor;
 		}
 
 		if((*time_elapsed) > (0xffffffff - packet_time_elapsed))
@@ -801,7 +928,7 @@ static int test_decompression_perfs(char *filename,
 	/* everything went fine */
 	is_failure = 0;
 
-free_decompresssor:
+free_decompressor:
 	rohc_free_decompressor(decomp);
 close_input:
 	pcap_close(handle);
