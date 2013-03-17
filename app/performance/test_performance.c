@@ -412,7 +412,7 @@ static int tune_env_for_perfs(double *coef_nanosec)
 	struct sched_param param;
 #endif
 	const unsigned int nr_tests = 3;
-	const unsigned long test_duration = 5;
+	const unsigned long test_duration = 10;
 	unsigned long long tics1;
 	unsigned long long tics2;
 	unsigned int i;
