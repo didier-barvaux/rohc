@@ -31,16 +31,21 @@ run()
 rm -f config.cache
 rm -f config.log
 
+OLD_PWD="$PWD"
+cd $( dirname $0 ) &>/dev/null
+
 run aclocal
 run libtoolize --force
 run autoconf
 run autoheader
 run automake --add-missing
 
+cd ${OLD_PWD} &>/dev/null
+
 # run configure with failure on compiler warnings enabled since autogen.sh
 # is for developpers not users, also enable tests, stats, doc and examples.
-chmod +x ./configure
-./configure \
+chmod +x $( dirname $0 )/configure
+$( dirname $0 )/configure \
 	--enable-rohc-debug \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
