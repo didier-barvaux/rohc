@@ -2527,6 +2527,7 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct ip_packet *ip)
 {
 	struct c_context *c = NULL;
+	size_t num_used_ctxt_seen = 0;
 	int i;
 	int ret;
 
@@ -2534,20 +2535,38 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 	{
 		c = &comp->contexts[i];
 
-		if(c && c->used && c->profile->id == profile->id)
+		/* don't even look at unused contexts */
+		if(!c->used)
 		{
-			ret = c->profile->check_context(c, ip);
-			if(ret == -1)
-			{
-				c = (struct c_context*) -1;
-				break;
-			}
-			else if(ret)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "using context CID = %d\n", c->cid);
-				break;
-			}
+			continue;
+		}
+		num_used_ctxt_seen++;
+
+		/* don't look at contexts with the wrong profile */
+		if(c->profile->id != profile->id)
+		{
+			continue;
+		}
+
+		/* ask the profile whether the packet matches the context */
+		ret = c->profile->check_context(c, ip);
+		if(ret == -1)
+		{
+			c = (struct c_context*) -1;
+			break;
+		}
+		else if(ret)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "using context CID = %d\n", c->cid);
+			break;
+		}
+
+		/* if all used contexts were checked, no need go search further */
+		if(num_used_ctxt_seen >= comp->num_contexts_used)
+		{
+			c = NULL;
+			break;
 		}
 	}
 
