@@ -357,46 +357,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const size_t large_cid_len,
                            unsigned char *dest);
 
-/**
- * @brief This is a version of ip_compute_csum() optimized for IP headers,
- *        which always checksum on 4 octet boundaries.
- *
- * @param iph The IPv4 header
- * @param ihl The length of the IPv4 header
- * @return    The IPv4 checksum
- */
-
-static uint16_t my_ip_fast_csum(const void *iph, unsigned int ihl)
-{
-	uint32_t checksum = 0;
-	multi_ptr_t mptr;
-	WB_t wb;
-	int i;
-
-	mptr.uint8 = (uint8_t*) iph;
-
-	i = ihl << 1;
-
-	while(i-- != 0)
-	{
-#if WORDS_BIGENDIAN != 1
-		wb.uint8[1] = *(mptr.uint8++);
-		wb.uint8[0] = *(mptr.uint8++);
-#else
-		wb.uint16 = READ16_FROM_MPTR(mptr);
-#endif
-		checksum += wb.uint16;
-	}
-
-	while( ( checksum & 0xFFFF0000 ) != 0)
-	{
-		checksum = ( checksum & 0xFFFF ) + ( checksum >> 16 );
-	}
-
-	wb.uint16 = ~checksum;
-	return htons( wb.uint16 );
-}
-
 
 /**
  * @brief Create the TCP decompression context.
@@ -700,12 +660,9 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 			{
 				base_header.ipv4->length = htons(length);
 				base_header.ipv4->checksum = 0;
-#ifdef TODO
-				base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
-#else
-				base_header.ipv4->checksum = my_ip_fast_csum(base_header.uint8,
-				                                             base_header.ipv4->header_length);
-#endif
+				base_header.ipv4->checksum =
+					ip_fast_csum(base_header.uint8,
+					             base_header.ipv4->header_length);
 				rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
 				                  ntohs(base_header.ipv4->checksum),
 				                  base_header.ipv4->header_length);
@@ -959,12 +916,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 			protocol = base_header.ipv4->protocol;
 			base_header.ipv4->length = htons(length);
 			base_header.ipv4->checksum = 0;
-#ifdef TODO
-			base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
-#else
-			base_header.ipv4->checksum = my_ip_fast_csum(base_header.uint8,
-			                                             base_header.ipv4->header_length);
-#endif
+			base_header.ipv4->checksum =
+				ip_fast_csum(base_header.uint8,
+				             base_header.ipv4->header_length);
 			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
 			                  ntohs(base_header.ipv4->checksum),
 			                  base_header.ipv4->header_length);
@@ -4401,12 +4355,9 @@ test_checksum:
 			base_header.ipv4->df = ip_context.v4->df;
 			base_header.ipv4->length = htons(size);
 			base_header.ipv4->checksum = 0;
-#ifdef TODO
-			base_header.ipv4->checksum = ip_fast_csum(base_header.uint8,base_header.ipv4->header_length);
-#else
-			base_header.ipv4->checksum = my_ip_fast_csum(base_header.uint8,
-			                                             base_header.ipv4->header_length);
-#endif
+			base_header.ipv4->checksum =
+				ip_fast_csum(base_header.uint8,
+				             base_header.ipv4->header_length);
 			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d bytes\n",
 			                  ntohs(base_header.ipv4->checksum),
 			                  base_header.ipv4->header_length);
