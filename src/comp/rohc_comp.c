@@ -556,10 +556,12 @@ int rohc_compress2(struct rohc_comp *const comp,
 		goto error;
 	}
 
+#if ROHC_EXTRA_DEBUG == 1
 	/* print uncompressed bytes */
 	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	                 "uncompressed data, max 100 bytes",
 	                 uncomp_packet, rohc_min(uncomp_packet_len, 100));
+#endif
 
 	/* create the IP packet from raw data */
 	if(!ip_create(&ip, uncomp_packet, uncomp_packet_len))
