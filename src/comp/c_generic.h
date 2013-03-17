@@ -379,7 +379,8 @@ void c_generic_destroy(struct c_context *const context);
 bool c_generic_check_profile(const struct rohc_comp *const comp,
                              const struct ip_packet *const outer_ip,
                              const struct ip_packet *const inner_ip,
-                             const uint8_t protocol);
+                             const uint8_t protocol,
+                             rohc_ctxt_key_t *const ctxt_key);
 
 void change_mode(struct c_context *const context, const rohc_mode new_mode);
 void change_state(struct c_context *const context, const rohc_c_state new_state);

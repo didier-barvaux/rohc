@@ -236,6 +236,7 @@ quit:
  *                        is only one IP header,
  *                    \li the protocol carried by the inner IP header if there
  *                        are at least two IP headers.
+ * @param ctxt_key  The key to help finding the context associated with packet
  * @return          Whether the IP packet corresponds to the profile:
  *                    \li true if the IP packet corresponds to the profile,
  *                    \li false if the IP packet does not correspond to
@@ -244,9 +245,17 @@ quit:
 bool c_esp_check_profile(const struct rohc_comp *const comp,
                          const struct ip_packet *const outer_ip,
                          const struct ip_packet *const inner_ip,
-                         const uint8_t protocol)
+                         const uint8_t protocol,
+                         rohc_ctxt_key_t *const ctxt_key)
 {
+	const struct ip_packet *last_ip_header;
+	const struct esphdr *esp_header;
+	unsigned int ip_payload_size;
 	bool ip_check;
+
+	assert(comp != NULL);
+	assert(outer_ip != NULL);
+	assert(ctxt_key != NULL);
 
 	/* check that the transport protocol is ESP */
 	if(protocol != ROHC_IPPROTO_ESP)
@@ -256,11 +265,35 @@ bool c_esp_check_profile(const struct rohc_comp *const comp,
 
 	/* check that the the versions of outer and inner IP headers are 4 or 6
 	   and that outer and inner IP headers are not IP fragments */
-	ip_check = c_generic_check_profile(comp, outer_ip, inner_ip, protocol);
+	ip_check = c_generic_check_profile(comp, outer_ip, inner_ip, protocol,
+	                                   ctxt_key);
 	if(!ip_check)
 	{
 		goto bad_profile;
 	}
+
+	/* determine the last IP header */
+	if(inner_ip != NULL)
+	{
+		/* two IP headers, the last IP header is the inner IP header */
+		last_ip_header = inner_ip;
+	}
+	else
+	{
+		/* only one IP header, last IP header is the outer IP header */
+		last_ip_header = outer_ip;
+	}
+
+	/* IP payload shall be large enough for ESP header */
+	ip_payload_size = ip_get_plen(last_ip_header);
+	if(ip_payload_size < sizeof(struct esphdr))
+	{
+		goto bad_profile;
+	}
+
+	/* retrieve the ESP header */
+	esp_header = (const struct esphdr *) ip_get_next_layer(last_ip_header);
+	*ctxt_key ^= esp_header->spi;
 
 	return true;
 

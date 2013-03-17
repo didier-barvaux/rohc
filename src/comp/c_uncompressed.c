@@ -62,7 +62,8 @@ static void c_uncompressed_destroy(struct c_context *const context);
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
                                          const struct ip_packet *const outer_ip,
                                          const struct ip_packet *const inner_ip,
-                                         const uint8_t protocol);
+                                         const uint8_t protocol,
+                                         rohc_ctxt_key_t *const ctxt_key);
 bool c_uncompressed_use_udp_port(const struct c_context *const context,
                                  const unsigned int port);
 
@@ -193,6 +194,7 @@ static void c_uncompressed_destroy(struct c_context *const context)
  *                        is only one IP header,
  *                    \li the protocol carried by the inner IP header if there
  *                        are at least two IP headers.
+ * @param ctxt_key  The key to help finding the context associated with packet
  * @return          Whether the IP packet corresponds to the profile:
  *                    \li true if the IP packet corresponds to the profile,
  *                    \li false if the IP packet does not correspond to
@@ -202,7 +204,8 @@ static void c_uncompressed_destroy(struct c_context *const context)
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
                                          const struct ip_packet *const outer_ip,
                                          const struct ip_packet *const inner_ip,
-                                         const uint8_t protocol)
+                                         const uint8_t protocol,
+                                         rohc_ctxt_key_t *const ctxt_key)
 {
 	return true;
 }

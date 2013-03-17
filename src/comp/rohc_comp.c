@@ -94,24 +94,26 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
                                                           const struct ip_packet *outer_ip,
                                                           const struct ip_packet *inner_ip,
-                                                          const int protocol);
+                                                          const int protocol,
+                                                          rohc_ctxt_key_t *const pkt_key);
 
 
 /*
  * Prototypes of private functions related to ROHC compression contexts
  */
 
-static int c_create_contexts(struct rohc_comp *const comp);
-static int c_alloc_contexts(struct rohc_comp *const comp, int num);
+static bool c_create_contexts(struct rohc_comp *const comp);
 static void c_destroy_contexts(struct rohc_comp *const comp);
 
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
-                                           const struct ip_packet *ip)
+                                           const struct ip_packet *ip,
+                                           const rohc_ctxt_key_t key)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
-                                         const struct ip_packet *ip);
+                                         const struct ip_packet *ip,
+                                         const rohc_ctxt_key_t pkt_key);
 static struct c_context * c_get_context(struct rohc_comp *comp, int cid);
 
 
@@ -279,6 +281,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->feedbacks_first_unlocked = 0;
 	comp->feedbacks_next = 0;
 
+	/* create the MAX_CID contexts */
 	if(!c_create_contexts(comp))
 	{
 		goto destroy_comp;
@@ -525,6 +528,7 @@ int rohc_compress2(struct rohc_comp *const comp,
                    const size_t rohc_packet_max_len,
                    size_t *const rohc_packet_len)
 {
+	rohc_ctxt_key_t pkt_key;
 	struct ip_packet ip;
 	struct ip_packet ip2;
 	int proto;
@@ -561,10 +565,12 @@ int rohc_compress2(struct rohc_comp *const comp,
 		goto error;
 	}
 
+#if ROHC_EXTRA_DEBUG == 1
 	/* print uncompressed bytes */
 	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	                 "uncompressed data, max 100 bytes",
 	                 uncomp_packet, rohc_min(uncomp_packet_len, 100));
+#endif
 
 	/* create the IP packet from raw data */
 	if(!ip_create(&ip, uncomp_packet, uncomp_packet_len))
@@ -607,7 +613,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "try to find the best profile for packet with transport "
 	           "protocol %u\n", proto);
-	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto);
+	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto, &pkt_key);
 	if(p == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -618,13 +624,13 @@ int rohc_compress2(struct rohc_comp *const comp,
 	           "using profile '%s' (0x%04x)\n", p->description, p->id);
 
 	/* get the context using help from the profiles */
-	c = c_find_context(comp, p, outer_ip);
+	c = c_find_context(comp, p, outer_ip, pkt_key);
 	if(c == NULL)
 	{
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one\n");
-		c = c_create_context(comp, p, outer_ip);
+		c = c_create_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -649,10 +655,10 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip);
+		c = c_find_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, outer_ip);
+			c = c_create_context(comp, p, outer_ip, pkt_key);
 			if(c == NULL)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -722,10 +728,10 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip);
+		c = c_find_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, outer_ip);
+			c = c_create_context(comp, p, outer_ip, pkt_key);
 			if(c == NULL)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1039,7 +1045,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 	          "force re-initialization for all %d contexts\n",
 	          comp->num_contexts_used);
 
-	for(i = 0; i < comp->num_contexts; i++)
+	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
 		if(comp->contexts[i].used)
 		{
@@ -1336,21 +1342,45 @@ error:
  */
 void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 {
-	/* large CID */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* check validity of the new MAX_CID */
 	if(comp->medium.cid_type == ROHC_LARGE_CID)
 	{
-		if(value > 0 && value <= ROHC_LARGE_CID_MAX)
+		/* large CID */
+		if(value < 0 || value > ROHC_LARGE_CID_MAX)
 		{
-			comp->medium.max_cid = value;
+			goto error;
 		}
 	}
 	else /* small CID */
 	{
-		if(value > 0 && value <= ROHC_SMALL_CID_MAX)
+		if(value < 0 || value > ROHC_SMALL_CID_MAX)
 		{
-			comp->medium.max_cid = value;
+			goto error;
 		}
 	}
+
+	if(value != comp->medium.max_cid)
+	{
+		/* free memory used by contexts */
+		c_destroy_contexts(comp);
+
+		/* change MAX_CID */
+		comp->medium.max_cid = value;
+
+		/* create the MAX_CID contexts */
+		if(!c_create_contexts(comp))
+		{
+			goto error;
+		}
+	}
+
+error:
+	return;
 }
 
 
@@ -1375,7 +1405,7 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 		/* reduce the MAX_CID parameter if needed */
 		if(comp->medium.max_cid > ROHC_SMALL_CID_MAX)
 		{
-			comp->medium.max_cid = ROHC_SMALL_CID_MAX;
+			rohc_c_set_max_cid(comp, ROHC_SMALL_CID_MAX);
 		}
 	}
 }
@@ -1536,7 +1566,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 		comp->rtp_ports[MAX_RTP_PORTS - 1] = 0;
 
 		/* deactivate all contexts which used this port */
-		for(i = 0; i < comp->num_contexts; i++)
+		for(i = 0; i <= comp->medium.max_cid; i++)
 		{
 			if(comp->contexts[i].used &&
 			   comp->contexts[i].profile->use_udp_port(&comp->contexts[i],
@@ -1780,7 +1810,7 @@ int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *b
 	char *save;
 	int v;
 
-	if(cid >= comp->num_contexts)
+	if(cid > comp->medium.max_cid)
 	{
 		return -2;
 	}
@@ -2335,12 +2365,15 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
  *                      help choosing the best profile if any
  *                  \li NULL if there is no inner IP header in the packet
  * @param protocol  The transport protocol of the network packet
+ * @param pkt_key   OUT: The key to help finding the context associated with
+ *                       the given packet
  * @return          The ROHC profile if found, NULL otherwise
  */
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
                                                           const struct ip_packet *outer_ip,
                                                           const struct ip_packet *inner_ip,
-                                                          const int protocol)
+                                                          const int protocol,
+																			 rohc_ctxt_key_t *const pkt_key)
 {
 	int i;
 
@@ -2358,9 +2391,12 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 			continue;
 		}
 
+		/* reset the context key */
+		*pkt_key = 0;
+
 		/* does the profile accept the packet? */
 		check_profile = c_profiles[i]->check_profile(comp, outer_ip, inner_ip,
-		                                             protocol);
+		                                             protocol, pkt_key);
 		if(!check_profile)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2379,111 +2415,43 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 
 
 /**
- * @brief Allocate memory for the array of compression contexts
- *
- * @param comp The ROHC compressor
- * @param size The size of the context array (maximum: comp->medium.max_cid + 1)
- * @return     1 if the creation is successful, 0 otherwise
- */
-static int c_alloc_contexts(struct rohc_comp *const comp, int size)
-{
-	/* the array size must not be greater than comp->medium.max_cid,
-	 * it would be a waste of memory */
-	if(size > comp->medium.max_cid + 1)
-	{
-		size = comp->medium.max_cid + 1;
-	}
-
-	/* The current context array is too small, replace it with a larger one */
-	if(comp->num_contexts < size)
-	{
-		struct c_context *new_contexts;
-		int i;
-
-		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		          "enlarge the context array from %d to %d elements "
-		          "(MAX_CID = %d)\n", comp->num_contexts, size,
-		          comp->medium.max_cid);
-
-		new_contexts = calloc(size, sizeof(struct c_context));
-		if(new_contexts == NULL)
-		{
-			rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "cannot allocate memory for contexts\n");
-			return 0;
-		}
-
-		/* move already-created contexts from the current array to the new one if any
-		 * and then destroy the current context array */
-		if(comp->num_contexts > 0 && comp->contexts != NULL)
-		{
-			memcpy(new_contexts, comp->contexts, comp->num_contexts * sizeof(struct c_context));
-			zfree(comp->contexts);
-		}
-
-		/* initialize the other contexts in the context array */
-		for(i = comp->num_contexts; i < size; i++)
-		{
-			/* create windows with 16 entries */
-			new_contexts[i].total_16_uncompressed =
-				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-			new_contexts[i].total_16_compressed =
-				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-			new_contexts[i].header_16_uncompressed =
-				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-			new_contexts[i].header_16_compressed =
-				c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-		}
-
-		comp->contexts = new_contexts;
-		comp->num_contexts = size;
-	}
-
-	return 1;
-}
-
-
-/**
  * @brief Create a compression context
  *
  * @param comp    The ROHC compressor
  * @param profile The profile to associate the context with
  * @param ip      The IP packet to initialize the context
+ * @param key     The key to help finding the context associated with a packet
  * @return        The compression context if successful, NULL otherwise
  */
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
-                                           const struct ip_packet *ip)
+                                           const struct ip_packet *ip,
+                                           const rohc_ctxt_key_t key)
 {
 	struct c_context *c;
 	int index, i;
 	unsigned int oldest;
 
+	assert(comp != NULL);
 	assert(profile != NULL);
+	assert(ip != NULL);
 
 	index = 0;
 
-	/* first case:
-	 *      all the contexts in the array are used
-	 *  AND the array fails to be enlarged (size was not increased)
-	 *  => recycle the oldest context to make room
-	 *
-	 * second case:
-	 *     at least one context in the array is not used
-	 *  OR the array is successfully enlarged (size was increased)
-	 *  => pick the first unused context
+	/* if all the contexts in the array are used:
+	 *   => recycle the oldest context to make room
+	 * if at least one context in the array is not used:
+	 *   => pick the first unused context
 	 */
-	if(comp->num_contexts_used >= comp->num_contexts &&
-	   (!c_alloc_contexts(comp, comp->num_contexts * 2) ||
-	    comp->num_contexts_used >= comp->num_contexts))
+	if(comp->num_contexts_used > comp->medium.max_cid)
 	{
-		/* all the contexts in the array were used and the enlargement failed,
-		 * recycle the oldest context to make room */
+		/* all the contexts in the array were used, recycle the oldest context
+		 * to make some room */
 
 		/* find the oldest context */
 		index = 0;
 		oldest = 0xffffffff;
-		for(i = 0; i < comp->num_contexts; i++)
+		for(i = 0; i <= comp->medium.max_cid; i++)
 		{
 			if(comp->contexts[i].latest_used < oldest)
 			{
@@ -2496,17 +2464,17 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "recycle oldest context (CID = %d)\n", index);
 		comp->contexts[index].profile->destroy(&comp->contexts[index]);
+		comp->contexts[index].key = 0; /* reset context key */
 		comp->contexts[index].used = 0;
 		comp->num_contexts_used--;
 	}
 	else
 	{
-		/* there was at least one unused context in the array
-		 * OR the array of contexts was successfully enlarged,
-		 * pick the first unused context in the context array */
+		/* there was at least one unused context in the array, pick the first
+		 * unused context in the context array */
 
 		/* find the first unused context */
-		for(i = 0; i < comp->num_contexts; i++)
+		for(i = 0; i <= comp->medium.max_cid; i++)
 		{
 			if(comp->contexts[i].used == 0)
 			{
@@ -2539,6 +2507,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 
 	c->cid = index;
 	c->profile = profile;
+	c->key = key;
 
 	c->mode = U_MODE;
 	c->state = IR;
@@ -2567,43 +2536,70 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 /**
  * @brief Find a compression context given a profile and an IP packet
  *
- * @param comp    The ROHC compressor
- * @param profile The profile the context must be associated with
- * @param ip      The IP packet that must be accepted by the context
- * @return        The compression context if found,
- *                NULL if not found,
- *                -1 if an error occurs
+ * @param comp     The ROHC compressor
+ * @param profile  The profile the context must be associated with
+ * @param ip       The IP packet that must be accepted by the context
+ * @param pkt_key  The key to help finding the context associated with packet
+ * @return         The compression context if found,
+ *                 NULL if not found,
+ *                  -1 if an error occurs
  */
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
-                                         const struct ip_packet *ip)
+                                         const struct ip_packet *ip,
+                                         const rohc_ctxt_key_t pkt_key)
 {
 	struct c_context *c = NULL;
+	size_t num_used_ctxt_seen = 0;
 	int i;
 	int ret;
 
-	for(i = 0; i < comp->num_contexts; i++)
+	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
 		c = &comp->contexts[i];
 
-		if(c && c->used && c->profile->id == profile->id)
+		/* don't even look at unused contexts */
+		if(!c->used)
 		{
-			ret = c->profile->check_context(c, ip);
-			if(ret == -1)
-			{
-				c = (struct c_context*) -1;
-				break;
-			}
-			else if(ret)
-			{
-				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "using context CID = %d\n", c->cid);
-				break;
-			}
+			continue;
+		}
+		num_used_ctxt_seen++;
+
+		/* don't look at contexts with the wrong profile */
+		if(c->profile->id != profile->id)
+		{
+			continue;
+		}
+
+		/* don't look at contexts with the wrong key */
+		if(pkt_key != c->key)
+		{
+			continue;
+		}
+
+		/* ask the profile whether the packet matches the context */
+		ret = c->profile->check_context(c, ip);
+		if(ret == -1)
+		{
+			c = (struct c_context*) -1;
+			break;
+		}
+		else if(ret)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "using context CID = %d\n", c->cid);
+			break;
+		}
+
+		/* if all used contexts were checked, no need go search further */
+		if(num_used_ctxt_seen >= comp->num_contexts_used)
+		{
+			c = NULL;
+			break;
 		}
 	}
 
-	if(c == NULL || i == comp->num_contexts)
+	if(c == NULL || i > comp->medium.max_cid)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no context was found\n");
@@ -2624,7 +2620,7 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 static struct c_context * c_get_context(struct rohc_comp *comp, int cid)
 {
 	/* the CID must not be larger than the context array */
-	if(cid >= comp->num_contexts)
+	if(cid > comp->medium.max_cid)
 	{
 		goto not_found;
 	}
@@ -2646,15 +2642,48 @@ not_found:
  * @brief Create the array of compression contexts
  *
  * @param comp The ROHC compressor
- * @return     1 if the creation is successful, 0 otherwise
+ * @return     true if the creation is successful, false otherwise
  */
-static int c_create_contexts(struct rohc_comp *const comp)
+static bool c_create_contexts(struct rohc_comp *const comp)
 {
-	comp->contexts = NULL;
-	comp->num_contexts = 0;
+	size_t i;
+
+	assert(comp != NULL);
+	assert(comp->contexts == NULL);
+
 	comp->num_contexts_used = 0;
 
-	return c_alloc_contexts(comp, 4); /* start with 4 contexts at the beginning */
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "create enough room for %d contexts (MAX_CID = %d)\n",
+	          comp->medium.max_cid + 1, comp->medium.max_cid);
+
+	comp->contexts = calloc(comp->medium.max_cid + 1,
+	                        sizeof(struct c_context));
+	if(comp->contexts == NULL)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "cannot allocate memory for contexts\n");
+		goto error;
+	}
+
+	/* initialize all the contexts */
+	for(i = 0; i <= comp->medium.max_cid; i++)
+	{
+		/* create windows with 16 entries for statistics */
+		comp->contexts[i].total_16_uncompressed =
+			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+		comp->contexts[i].total_16_compressed =
+			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+		comp->contexts[i].header_16_uncompressed =
+			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+		comp->contexts[i].header_16_compressed =
+			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -2669,29 +2698,31 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 {
 	int i;
 
-	if(comp->num_contexts > 0)
+	assert(comp != NULL);
+	assert(comp->contexts != NULL);
+
+	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
-		assert(comp->contexts != NULL);
-
-		for(i = 0; i < comp->num_contexts; i++)
+		if(comp->contexts[i].used && comp->contexts[i].profile != NULL)
 		{
-			if(comp->contexts[i].used && comp->contexts[i].profile != 0)
-			{
-				comp->contexts[i].profile->destroy(&comp->contexts[i]);
-			}
+			comp->contexts[i].profile->destroy(&comp->contexts[i]);
+		}
 
-			c_destroy_wlsb(comp->contexts[i].total_16_uncompressed);
-			c_destroy_wlsb(comp->contexts[i].total_16_compressed);
-			c_destroy_wlsb(comp->contexts[i].header_16_uncompressed);
-			c_destroy_wlsb(comp->contexts[i].header_16_compressed);
+		c_destroy_wlsb(comp->contexts[i].total_16_uncompressed);
+		c_destroy_wlsb(comp->contexts[i].total_16_compressed);
+		c_destroy_wlsb(comp->contexts[i].header_16_uncompressed);
+		c_destroy_wlsb(comp->contexts[i].header_16_compressed);
 
+		if(comp->contexts[i].used)
+		{
 			comp->contexts[i].used = 0;
 			comp->num_contexts_used--;
 		}
-
-		comp->num_contexts = 0;
-		zfree(comp->contexts);
 	}
+	assert(comp->num_contexts_used == 0);
+
+	free(comp->contexts);
+	comp->contexts = NULL;
 }
 
 
