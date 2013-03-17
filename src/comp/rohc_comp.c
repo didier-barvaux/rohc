@@ -89,7 +89,8 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
                                                           const struct ip_packet *outer_ip,
                                                           const struct ip_packet *inner_ip,
-                                                          const int protocol);
+                                                          const int protocol,
+                                                          rohc_ctxt_key_t *const pkt_key);
 
 
 /*
@@ -101,11 +102,13 @@ static void c_destroy_contexts(struct rohc_comp *const comp);
 
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
-                                           const struct ip_packet *ip)
+                                           const struct ip_packet *ip,
+                                           const rohc_ctxt_key_t key)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
-                                         const struct ip_packet *ip);
+                                         const struct ip_packet *ip,
+                                         const rohc_ctxt_key_t pkt_key);
 static struct c_context * c_get_context(struct rohc_comp *comp, int cid);
 
 
@@ -520,6 +523,7 @@ int rohc_compress2(struct rohc_comp *const comp,
                    const size_t rohc_packet_max_len,
                    size_t *const rohc_packet_len)
 {
+	rohc_ctxt_key_t pkt_key;
 	struct ip_packet ip;
 	struct ip_packet ip2;
 	int proto;
@@ -604,7 +608,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "try to find the best profile for packet with transport "
 	           "protocol %u\n", proto);
-	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto);
+	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto, &pkt_key);
 	if(p == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -615,13 +619,13 @@ int rohc_compress2(struct rohc_comp *const comp,
 	           "using profile '%s' (0x%04x)\n", p->description, p->id);
 
 	/* get the context using help from the profiles */
-	c = c_find_context(comp, p, outer_ip);
+	c = c_find_context(comp, p, outer_ip, pkt_key);
 	if(c == NULL)
 	{
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one\n");
-		c = c_create_context(comp, p, outer_ip);
+		c = c_create_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -646,10 +650,10 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip);
+		c = c_find_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, outer_ip);
+			c = c_create_context(comp, p, outer_ip, pkt_key);
 			if(c == NULL)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -719,10 +723,10 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip);
+		c = c_find_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, outer_ip);
+			c = c_create_context(comp, p, outer_ip, pkt_key);
 			if(c == NULL)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2356,12 +2360,15 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
  *                      help choosing the best profile if any
  *                  \li NULL if there is no inner IP header in the packet
  * @param protocol  The transport protocol of the network packet
+ * @param pkt_key   OUT: The key to help finding the context associated with
+ *                       the given packet
  * @return          The ROHC profile if found, NULL otherwise
  */
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
                                                           const struct ip_packet *outer_ip,
                                                           const struct ip_packet *inner_ip,
-                                                          const int protocol)
+                                                          const int protocol,
+																			 rohc_ctxt_key_t *const pkt_key)
 {
 	int i;
 
@@ -2379,9 +2386,12 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 			continue;
 		}
 
+		/* reset the context key */
+		*pkt_key = 0;
+
 		/* does the profile accept the packet? */
 		check_profile = c_profiles[i]->check_profile(comp, outer_ip, inner_ip,
-		                                             protocol);
+		                                             protocol, pkt_key);
 		if(!check_profile)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2405,17 +2415,21 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
  * @param comp    The ROHC compressor
  * @param profile The profile to associate the context with
  * @param ip      The IP packet to initialize the context
+ * @param key     The key to help finding the context associated with a packet
  * @return        The compression context if successful, NULL otherwise
  */
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
-                                           const struct ip_packet *ip)
+                                           const struct ip_packet *ip,
+                                           const rohc_ctxt_key_t key)
 {
 	struct c_context *c;
 	int index, i;
 	unsigned int oldest;
 
+	assert(comp != NULL);
 	assert(profile != NULL);
+	assert(ip != NULL);
 
 	index = 0;
 
@@ -2445,6 +2459,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "recycle oldest context (CID = %d)\n", index);
 		comp->contexts[index].profile->destroy(&comp->contexts[index]);
+		comp->contexts[index].key = 0; /* reset context key */
 		comp->contexts[index].used = 0;
 		comp->num_contexts_used--;
 	}
@@ -2487,6 +2502,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 
 	c->cid = index;
 	c->profile = profile;
+	c->key = key;
 
 	c->mode = U_MODE;
 	c->state = IR;
@@ -2515,16 +2531,18 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 /**
  * @brief Find a compression context given a profile and an IP packet
  *
- * @param comp    The ROHC compressor
- * @param profile The profile the context must be associated with
- * @param ip      The IP packet that must be accepted by the context
- * @return        The compression context if found,
- *                NULL if not found,
- *                -1 if an error occurs
+ * @param comp     The ROHC compressor
+ * @param profile  The profile the context must be associated with
+ * @param ip       The IP packet that must be accepted by the context
+ * @param pkt_key  The key to help finding the context associated with packet
+ * @return         The compression context if found,
+ *                 NULL if not found,
+ *                  -1 if an error occurs
  */
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
-                                         const struct ip_packet *ip)
+                                         const struct ip_packet *ip,
+                                         const rohc_ctxt_key_t pkt_key)
 {
 	struct c_context *c = NULL;
 	size_t num_used_ctxt_seen = 0;
@@ -2544,6 +2562,12 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 
 		/* don't look at contexts with the wrong profile */
 		if(c->profile->id != profile->id)
+		{
+			continue;
+		}
+
+		/* don't look at contexts with the wrong key */
+		if(pkt_key != c->key)
 		{
 			continue;
 		}

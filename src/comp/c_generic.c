@@ -653,6 +653,7 @@ void c_generic_destroy(struct c_context *const context)
  *                        is only one IP header,
  *                    \li the protocol carried by the inner IP header if there
  *                        are at least two IP headers.
+ * @param ctxt_key  The key to help finding the context associated with packet
  * @return          Whether the IP packet corresponds to the profile:
  *                    \li true if the IP packet corresponds to the profile,
  *                    \li false if the IP packet does not correspond to
@@ -661,9 +662,14 @@ void c_generic_destroy(struct c_context *const context)
 bool c_generic_check_profile(const struct rohc_comp *const comp,
                              const struct ip_packet *const outer_ip,
                              const struct ip_packet *const inner_ip,
-                             const uint8_t protocol)
+                             const uint8_t protocol,
+                             rohc_ctxt_key_t *const ctxt_key)
 {
 	ip_version version;
+
+	assert(comp != NULL);
+	assert(outer_ip != NULL);
+	assert(ctxt_key != NULL);
 
 	/* check the IP version of the outer header */
 	version = ip_get_version(outer_ip);
@@ -674,6 +680,26 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		           "profile: only IPv%d and IPv%d are supported\n",
 		           version, IPV4, IPV6);
 		goto bad_profile;
+	}
+
+	/* complete context key */
+	if(version == IPV4)
+	{
+		*ctxt_key ^= ipv4_get_saddr(outer_ip);
+		*ctxt_key ^= ipv4_get_daddr(outer_ip);
+	}
+	else /* IPV6 */
+	{
+		const struct ipv6_addr *const saddr = ipv6_get_saddr(outer_ip);
+		const struct ipv6_addr *const daddr = ipv6_get_daddr(outer_ip);
+		*ctxt_key ^= saddr->addr.u32[0];
+		*ctxt_key ^= saddr->addr.u32[1];
+		*ctxt_key ^= saddr->addr.u32[2];
+		*ctxt_key ^= saddr->addr.u32[3];
+		*ctxt_key ^= daddr->addr.u32[0];
+		*ctxt_key ^= daddr->addr.u32[1];
+		*ctxt_key ^= daddr->addr.u32[2];
+		*ctxt_key ^= daddr->addr.u32[3];
 	}
 
 	/* check if the outer header is a fragment */

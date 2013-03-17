@@ -69,6 +69,11 @@ struct c_context;
  */
 
 
+
+/** The key to help identify (not quaranted unique) a compression context */
+typedef uint32_t rohc_ctxt_key_t;
+
+
 /**
  * @brief Information on ROHC feedback data
  */
@@ -246,7 +251,8 @@ struct c_profile
 	bool (*check_profile)(const struct rohc_comp *const comp,
 	                      const struct ip_packet *const outer_ip,
 	                      const struct ip_packet *const inner_ip,
-	                      const uint8_t protocol);
+	                      const uint8_t protocol,
+	                      rohc_ctxt_key_t *const ctxt_key);
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
@@ -301,6 +307,9 @@ struct c_context
 
 	/** The context unique ID (CID) */
 	int cid;
+
+	/** The key to help finding the context associated with a packet */
+	rohc_ctxt_key_t key; /* may not be unique */
 
 	/** The associated compressor */
 	struct rohc_comp *compressor;

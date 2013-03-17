@@ -49,7 +49,8 @@
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct ip_packet *const outer_ip,
                                 const struct ip_packet *const inner_ip,
-                                const uint8_t protocol);
+                                const uint8_t protocol,
+                                rohc_ctxt_key_t *const ctxt_key);
 static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
                                     const uint16_t port);
 static bool c_rtp_use_udp_port(const struct c_context *const context,
@@ -274,6 +275,7 @@ void c_rtp_destroy(struct c_context *const context)
  *                        is only one IP header,
  *                    \li the protocol carried by the inner IP header if there
  *                        are at least two IP headers.
+ * @param ctxt_key  The key to help finding the context associated with packet
  * @return          Whether the IP packet corresponds to the profile:
  *                    \li true if the IP packet corresponds to the profile,
  *                    \li false if the IP packet does not correspond to
@@ -282,7 +284,8 @@ void c_rtp_destroy(struct c_context *const context)
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct ip_packet *const outer_ip,
                                 const struct ip_packet *const inner_ip,
-                                const uint8_t protocol)
+                                const uint8_t protocol,
+                                rohc_ctxt_key_t *const ctxt_key)
 {
 	const struct ip_packet *last_ip_header;
 	const unsigned char *udp_payload;
@@ -297,7 +300,8 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	 *  - the IP payload is at least 8-byte long for UDP header,
 	 *  - the UDP Length field and the UDP payload match.
 	 */
-	udp_check = c_udp_check_profile(comp, outer_ip, inner_ip, protocol);
+	udp_check = c_udp_check_profile(comp, outer_ip, inner_ip, protocol,
+	                                ctxt_key);
 	if(!udp_check)
 	{
 		goto bad_profile;
@@ -376,6 +380,9 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		   be compressed with another profile (the IP/UDP one probably) */
 		goto bad_profile;
 	}
+
+	/* add SSRC to the context key */
+	*ctxt_key ^= ((struct rtphdr *) udp_payload)->ssrc;
 
 	return true;
 
