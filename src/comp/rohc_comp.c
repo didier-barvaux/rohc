@@ -2927,8 +2927,15 @@ bool rohc_feedback_unlock(struct rohc_comp *const comp)
 	 * and first one */
 	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
 	{
-		comp->feedbacks_first_unlocked =
-			(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
+		if(comp->feedbacks_first_unlocked == 0)
+		{
+			comp->feedbacks_first_unlocked = FEEDBACK_RING_SIZE - 1;
+		}
+		else
+		{
+			comp->feedbacks_first_unlocked =
+				(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
+		}
 
 		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
 		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
