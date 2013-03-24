@@ -509,7 +509,7 @@ error:
  * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
  *                             for the ROHC packet
  * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
- * @return                     \li ROHC_OK if a ROHC packed is returned
+ * @return                     \li ROHC_OK if a ROHC packet is returned
  *                             \li ROHC_NEED_SEGMENT if no compressed data is
  *                                 returned and segmentation required
  *                             \li ROHC_ERROR if an error occurred
