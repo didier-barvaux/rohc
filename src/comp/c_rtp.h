@@ -117,26 +117,7 @@ struct sc_rtp_context
  * Function prototypes.
  */
 
-int c_rtp_create(struct c_context *const context, const struct ip_packet *ip);
-void c_rtp_destroy(struct c_context *const context);
-
-bool c_rtp_check_context(const struct c_context *context,
-                         const struct ip_packet *ip);
-
-int c_rtp_encode(struct c_context *const context,
-                 const struct ip_packet *ip,
-                 const int packet_size,
-                 unsigned char *const dest,
-                 const int dest_size,
-                 rohc_packet_t *const packet_type,
-                 int *const payload_offset);
-
-void rtp_decide_state(struct c_context *const context);
-
-int rtp_code_uo_remainder(struct c_context *context,
-                          const unsigned char *next_header,
-                          unsigned char *dest,
-                          int counter);
+/* no public function */
 
 #endif
 
