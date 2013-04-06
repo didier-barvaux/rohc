@@ -287,6 +287,8 @@ struct medium
 #define ROHC_INIT_TS_STRIDE_MIN  3U
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /*
  * The different CRC types and tables for ROHC compression/decompression
  *
@@ -332,6 +334,8 @@ extern unsigned char ROHC_EXPORT crc_table_7[256]
 extern unsigned char ROHC_EXPORT crc_table_8[256]
 	ROHC_DEPRECATED("please do not use this variable anymore, simply drop it");
 
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
 
 /*
  * Prototypes of public up-to-date functions
@@ -341,6 +345,8 @@ char * ROHC_EXPORT rohc_version(void);
 
 const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode mode);
 
+
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /*
  * Prototypes of public deprecated functions
@@ -353,6 +359,8 @@ int ROHC_EXPORT crc_get_polynom(int type)
 
 void ROHC_EXPORT crc_init_table(unsigned char *table, unsigned char polynum)
 	ROHC_DEPRECATED("please do not use this function anymore, simply drop it");
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

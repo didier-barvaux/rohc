@@ -630,6 +630,8 @@ error:
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Decompress both large and small CID packets.
  *
@@ -665,6 +667,8 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	/* decompress the packet with the new CID type */
 	return rohc_decompress(decomp, ibuf, isize, obuf, osize);
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**

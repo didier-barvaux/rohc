@@ -303,11 +303,13 @@ void rohc_free_decompressor(struct rohc_decomp *decomp);
 
 int rohc_decompress(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
                     unsigned char *obuf, int osize);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
                          int isize, unsigned char *obuf, int osize, int large)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
 	                "rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid() "
 	                "instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /*

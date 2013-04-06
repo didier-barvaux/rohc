@@ -137,10 +137,12 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
 	__attribute__((nonnull(1)));
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 static int __rohc_c_context(struct rohc_comp *comp,
                             int cid,
                             unsigned int indent,
                             char *buffer);
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /*
@@ -453,6 +455,8 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Compress a ROHC packet.
  *
@@ -497,6 +501,8 @@ int rohc_compress(struct rohc_comp *comp,
 error:
 	return 0;
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -1705,6 +1711,8 @@ int rohc_c_is_enabled(struct rohc_comp *comp)
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Get information about available compression profiles
  *
@@ -2022,6 +2030,8 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	ret = rohc_comp_piggyback_feedback(comp, feedback, size);
 }
 
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
 
 /**
  * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
@@ -2242,6 +2252,8 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Get some information about the last compressed packet
  *
@@ -2286,6 +2298,8 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 
 	return ROHC_OK;
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**

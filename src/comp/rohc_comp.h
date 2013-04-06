@@ -77,6 +77,8 @@ typedef enum
 } rohc_c_state;
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Some information about the last compressed packet
  *
@@ -99,6 +101,8 @@ typedef struct
 	/** The compressed size (in bytes) of the last compressed header */
 	unsigned long header_last_comp_size;
 } rohc_comp_last_packet_info_t;
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -261,6 +265,7 @@ bool ROHC_EXPORT rohc_comp_set_random_cb(struct rohc_comp *const comp,
                                          void *const user_context)
 	__attribute__((nonnull(1, 2)));
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_compress(struct rohc_comp *comp,
                               unsigned char *ibuf,
                               int isize,
@@ -268,6 +273,7 @@ int ROHC_EXPORT rohc_compress(struct rohc_comp *comp,
                               int osize)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_compress2() instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
                                const unsigned char *const uncomp_packet,
@@ -298,9 +304,11 @@ void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile);
 
 void ROHC_EXPORT rohc_c_set_header(struct rohc_comp *compressor, int value);
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT rohc_c_set_mrru(struct rohc_comp *compressor, int value)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_comp_set_mrru() instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 bool ROHC_EXPORT rohc_comp_set_mrru(struct rohc_comp *const comp,
                                     const size_t mrru)
 	__attribute__((nonnull(1), warn_unused_result));
@@ -341,11 +349,13 @@ bool ROHC_EXPORT rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
  * Prototypes of public functions related to ROHC feedback
  */
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT c_piggyback_feedback(struct rohc_comp *comp,
                                       unsigned char *packet,
                                       int size)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_comp_piggyback_feedback() instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 bool ROHC_EXPORT rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
                                               const unsigned char *const feedback,
                                               const size_t size)
@@ -375,6 +385,7 @@ bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
  * Prototypes of public functions related to ROHC compression statistics
  */
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_c_info(char *buffer)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_comp_get_general_info() instead");
@@ -393,7 +404,7 @@ int ROHC_EXPORT rohc_comp_get_last_packet_info(const struct rohc_comp *const com
                                                rohc_comp_last_packet_info_t *const info)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_comp_get_last_packet_info2() instead");
-
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 bool ROHC_EXPORT rohc_comp_get_general_info(const struct rohc_comp *const comp,
                                             rohc_comp_general_info_t *const info)
