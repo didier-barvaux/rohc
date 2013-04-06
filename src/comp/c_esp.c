@@ -66,8 +66,8 @@ struct sc_esp_context
 static int c_esp_create(struct c_context *const context,
                         const struct ip_packet *ip);
 
-static int c_esp_check_context(const struct c_context *context,
-                               const struct ip_packet *ip);
+static bool c_esp_check_context(const struct c_context *context,
+                                const struct ip_packet *ip);
 
 static int c_esp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
@@ -322,12 +322,11 @@ bad_profile:
  *
  * @param context The compression context
  * @param ip      The IP/ESP packet to check
- * @return        1 if the IP/ESP packet belongs to the context,
- *                0 if it does not belong to the context and
- *                -1 if the profile cannot compress it or an error occurs
+ * @return        true if the IP/ESP packet belongs to the context,
+ *                false if it does not belong to the context
  */
-int c_esp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip)
+bool c_esp_check_context(const struct c_context *context,
+                         const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_esp_context *esp_context;
@@ -400,7 +399,7 @@ int c_esp_check_context(const struct c_context *context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "cannot create the inner IP header\n");
-			goto error;
+			goto bad_context;
 		}
 
 		/* check the IP version of the second header */
@@ -467,9 +466,7 @@ int c_esp_check_context(const struct c_context *context,
 	return is_esp_same;
 
 bad_context:
-	return 0;
-error:
-	return -1;
+	return false;
 }
 
 

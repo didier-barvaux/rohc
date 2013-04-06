@@ -77,8 +77,8 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
                          const uint8_t protocol,
                          rohc_ctxt_key_t *const ctxt_key);
 
-int c_udp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip);
+bool c_udp_check_context(const struct c_context *context,
+                         const struct ip_packet *ip);
 
 int c_udp_encode(struct c_context *const context,
                  const struct ip_packet *ip,

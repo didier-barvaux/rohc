@@ -258,8 +258,8 @@ struct c_profile
 	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
-	int (*check_context)(const struct c_context *context,
-	                     const struct ip_packet *packet);
+	bool (*check_context)(const struct c_context *context,
+	                      const struct ip_packet *packet);
 
 	/**
 	 * @brief The handler used to encode uncompressed IP packets

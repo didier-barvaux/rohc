@@ -39,8 +39,8 @@
 static int rohc_ip_ctxt_create(struct c_context *const context,
                                const struct ip_packet *ip);
 
-static int c_ip_check_context(const struct c_context *context,
-                              const struct ip_packet *ip);
+static bool c_ip_check_context(const struct c_context *context,
+                               const struct ip_packet *ip);
 
 
 /*
@@ -136,12 +136,11 @@ error:
  *
  * @param context The compression context
  * @param ip      The IP packet to check
- * @return        1 if the IP packet belongs to the context,
- *                0 if it does not belong to the context and
- *                -1 if the profile cannot compress it or an error occurs
+ * @return        true if the IP packet belongs to the context
+ *                false if it does not belong to the context
  */
-static int c_ip_check_context(const struct c_context *context,
-                              const struct ip_packet *ip)
+static bool c_ip_check_context(const struct c_context *context,
+                               const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct ip_header_info *ip_flags;
@@ -149,10 +148,10 @@ static int c_ip_check_context(const struct c_context *context,
 	struct ip_packet ip2;
 	ip_version version;
 	unsigned int ip_proto;
-	int same_src;
-	int same_dest;
-	int same_src2;
-	int same_dest2;
+	bool same_src;
+	bool same_dest;
+	bool same_src2;
+	bool same_dest2;
 
 	g_context = (struct c_generic_context *) context->specific;
 	ip_flags = &g_context->ip_flags;
@@ -206,7 +205,7 @@ static int c_ip_check_context(const struct c_context *context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "cannot create the inner IP header\n");
-			goto error;
+			goto bad_context;
 		}
 
 		/* check the IP version of the second header */
@@ -260,12 +259,10 @@ static int c_ip_check_context(const struct c_context *context,
 		goto bad_context;
 	}
 
-	return 1;
+	return true;
 
 bad_context:
-	return 0;
-error:
-	return -1;
+	return false;
 }
 
 

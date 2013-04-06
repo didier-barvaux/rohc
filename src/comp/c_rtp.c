@@ -450,14 +450,13 @@ static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
  *
  * @param context The compression context
  * @param ip      The IP/UDP/RTP packet to check
- * @return        1 if the IP/UDP/RTP packet belongs to the context,
- *                0 if it does not belong to the context and
- *                -1 if an error occurs
+ * @return        true if the IP/UDP/RTP packet belongs to the context
+ *                false if it does not belong to the context
  *
  * @see c_udp_check_context
  */
-int c_rtp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip)
+bool c_rtp_check_context(const struct c_context *context,
+                         const struct ip_packet *ip)
 {
 	const struct c_generic_context *g_context;
 	const struct sc_rtp_context *rtp_context;
@@ -466,14 +465,14 @@ int c_rtp_check_context(const struct c_context *context,
 	const struct udphdr *udp;
 	const struct rtphdr *rtp;
 	unsigned int ip_proto;
-	int udp_check;
-	int is_rtp_same;
+	bool udp_check;
+	bool is_rtp_same;
 
 	/* check IP and UDP headers */
 	udp_check = c_udp_check_context(context, ip);
-	if(udp_check != 1)
+	if(!udp_check)
 	{
-		goto quit;
+		goto bad_context;
 	}
 
 	/* get the last IP header */
@@ -485,7 +484,7 @@ int c_rtp_check_context(const struct c_context *context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "cannot create the inner IP header\n");
-			goto error;
+			goto bad_context;
 		}
 		last_ip_header = &ip2;
 	}
@@ -506,10 +505,8 @@ int c_rtp_check_context(const struct c_context *context,
 
 	return is_rtp_same;
 
-quit:
-	return udp_check;
-error:
-	return -1;
+bad_context:
+	return false;
 }
 
 

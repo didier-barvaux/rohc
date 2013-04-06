@@ -120,8 +120,8 @@ struct sc_rtp_context
 int c_rtp_create(struct c_context *const context, const struct ip_packet *ip);
 void c_rtp_destroy(struct c_context *const context);
 
-int c_rtp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip);
+bool c_rtp_check_context(const struct c_context *context,
+                         const struct ip_packet *ip);
 
 int c_rtp_encode(struct c_context *const context,
                  const struct ip_packet *ip,

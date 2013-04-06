@@ -633,42 +633,6 @@ int rohc_compress2(struct rohc_comp *const comp,
 			goto error;
 		}
 	}
-	else if(c == (struct c_context*) -1)
-	{
-		/* the profile detected anomalities in IP packet (such as fragments)
-		 * that made it not compressible -> switch to uncompressed profile */
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "error while compressing with the profile, "
-		             "using uncompressed profile\n");
-
-		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
-		if(p == NULL)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "uncompressed profile not found, giving up\n");
-			goto error;
-		}
-
-		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip, pkt_key);
-		if(c == NULL)
-		{
-			c = c_create_context(comp, p, outer_ip, pkt_key);
-			if(c == NULL)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to create an uncompressed context\n");
-				goto error;
-			}
-		}
-		else if(c == (struct c_context*)-1)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "error while finding context in uncompressed profile, "
-			             "giving up\n");
-			goto error;
-		}
-	}
 
 	c->latest_used = get_milliseconds();
 
@@ -733,12 +697,6 @@ int rohc_compress2(struct rohc_comp *const comp,
 				             "failed to create an uncompressed context\n");
 				goto error_unlock_feedbacks;
 			}
-		}
-		else if(c == (struct c_context*)-1)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "uncompressed profile not found, giving up\n");
-			goto error_unlock_feedbacks;
 		}
 
 		rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
@@ -2536,8 +2494,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
  * @param ip       The IP packet that must be accepted by the context
  * @param pkt_key  The key to help finding the context associated with packet
  * @return         The compression context if found,
- *                 NULL if not found,
- *                  -1 if an error occurs
+ *                 NULL if not found
  */
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
@@ -2547,10 +2504,11 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 	struct c_context *c = NULL;
 	size_t num_used_ctxt_seen = 0;
 	int i;
-	int ret;
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
+		bool context_match;
+
 		c = &comp->contexts[i];
 
 		/* don't even look at unused contexts */
@@ -2573,13 +2531,8 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 		}
 
 		/* ask the profile whether the packet matches the context */
-		ret = c->profile->check_context(c, ip);
-		if(ret == -1)
-		{
-			c = (struct c_context*) -1;
-			break;
-		}
-		else if(ret)
+		context_match = c->profile->check_context(c, ip);
+		if(context_match)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "using context CID = %d\n", c->cid);

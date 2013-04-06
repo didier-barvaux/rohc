@@ -68,8 +68,8 @@ bool c_uncompressed_use_udp_port(const struct c_context *const context,
                                  const unsigned int port);
 
 /* check whether a packet belongs to a context */
-static int c_uncompressed_check_context(const struct c_context *context,
-                                        const struct ip_packet *ip);
+static bool c_uncompressed_check_context(const struct c_context *context,
+                                         const struct ip_packet *ip);
 
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct c_context *const context,
@@ -219,13 +219,13 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
  *
  * @param context The compression context
  * @param ip      The IP packet to check
- * @return        Always return 1 to tell that the IP packet belongs
+ * @return        Always return true to tell that the IP packet belongs
  *                to the context
  */
-static int c_uncompressed_check_context(const struct c_context *context,
-                                        const struct ip_packet *ip)
+static bool c_uncompressed_check_context(const struct c_context *context,
+                                         const struct ip_packet *ip)
 {
-	return 1;
+	return true;
 }
 
 

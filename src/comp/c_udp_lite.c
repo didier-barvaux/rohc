@@ -307,12 +307,11 @@ bad_profile:
  *
  * @param context The compression context
  * @param ip      The IP/UDP-Lite packet to check
- * @return        1 if the IP/UDP-Lite packet belongs to the context,
- *                0 if it does not belong to the context and
- *                -1 if the profile cannot compress it or an error occurs
+ * @return        true if the IP/UDP-Lite packet belongs to the context,
+ *                false if it does not belong to the context
  */
-int c_udp_lite_check_context(const struct c_context *context,
-                             const struct ip_packet *ip)
+bool c_udp_lite_check_context(const struct c_context *context,
+                              const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -323,9 +322,9 @@ int c_udp_lite_check_context(const struct c_context *context,
 	const struct udphdr *udp_lite;
 	ip_version version;
 	unsigned int ip_proto;
-	int is_ip_same;
-	int is_ip2_same;
-	int is_udp_lite_same;
+	bool is_ip_same;
+	bool is_ip2_same;
+	bool is_udp_lite_same;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
@@ -379,7 +378,7 @@ int c_udp_lite_check_context(const struct c_context *context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "cannot create the inner IP header\n");
-			goto error;
+			goto bad_context;
 		}
 
 		/* check the IP version of the second header */
@@ -448,9 +447,7 @@ int c_udp_lite_check_context(const struct c_context *context,
 	return is_udp_lite_same;
 
 bad_context:
-	return 0;
-error:
-	return -1;
+	return false;
 }
 
 
