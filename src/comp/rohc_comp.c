@@ -137,6 +137,10 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
 	__attribute__((nonnull(1)));
 
+static int __rohc_c_context(struct rohc_comp *comp,
+                            int cid,
+                            unsigned int indent,
+                            char *buffer);
 
 
 /*
@@ -1286,6 +1290,36 @@ error:
 
 
 /**
+ * @brief Get the Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * The MRRU value is in range [0 ; ROHC_MAX_MRRU]. Remember that the MRRU
+ * includes the 32-bit CRC that protects it.
+ *
+ * If MRRU value is 0, segmentation is disabled.
+ *
+ * @param comp  The ROHC compressor
+ * @param mrru  OUT: The current MRRU value
+ * @return      true if MRRU was successfully retrieved, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_mrru(const struct rohc_comp *const comp,
+                        size_t *const mrru)
+{
+	if(comp == NULL || mrru == NULL)
+	{
+		goto error;
+	}
+
+	*mrru = comp->mrru;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Set the maximal CID value the compressor should use
  *
  * @param comp  The ROHC compressor
@@ -1338,6 +1372,31 @@ error:
 
 
 /**
+ * @brief Get the maximal CID value the compressor uses
+ *
+ * @param comp     The ROHC compressor
+ * @param max_cid  OUT: The current maximal CID value
+ * @return         true if MAX_CID was successfully retrieved, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_max_cid(const struct rohc_comp *const comp,
+                           size_t *const max_cid)
+{
+	if(comp == NULL || max_cid == NULL)
+	{
+		goto error;
+	}
+
+	*max_cid = comp->medium.max_cid;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Tell the compressor to use large CIDs
  *
  * @param comp      The ROHC compressor
@@ -1363,6 +1422,32 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 	}
 }
 
+
+/**
+ * @brief Get the CID type the compressor uses
+ *
+ * @param comp      The ROHC compressor
+ * @param cid_type  OUT: The current CID type among ROHC_SMALL_CID and
+ *                       ROHC_LARGE_CID
+ * @return          true if the CID type was successfully retrieved,
+ *                  false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_cid_type(const struct rohc_comp *const comp,
+                            rohc_cid_type_t *const cid_type)
+{
+	if(comp == NULL || cid_type == NULL)
+	{
+		goto error;
+	}
+
+	*cid_type = comp->medium.cid_type;
+	return true;
+
+error:
+	return false;
+}
 
 /**
  * @brief Add a port to the list of UDP ports dedicated for RTP traffic
@@ -1625,6 +1710,9 @@ int rohc_c_is_enabled(struct rohc_comp *comp)
  *
  * This function outputs XML.
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_general_info() instead
+ *
  * @param buffer The buffer where to store profile information
  * @return       The length of the data stored in the buffer
  *
@@ -1657,6 +1745,9 @@ int rohc_c_info(char *buffer)
  * @brief Get information about a ROHC compressor
  *
  * This function outputs XML.
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_general_info() instead
  *
  * @param comp   The ROHC compressor
  * @param indent The indent level to beautify the XML output
@@ -1728,7 +1819,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 
 	/* contexts part */
 	i = 0;
-	while(rohc_c_context(comp, i, indent + 1, buffer) != -2)
+	while(__rohc_c_context(comp, i, indent + 1, buffer) != -2)
 	{
 		i++;
 	}
@@ -1748,6 +1839,9 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
  *
  * This function outputs XML.
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_general_info() instead
+ *
  * @param comp   The ROHC compressor
  * @param cid    The CID of the compressor context to output information about
  * @param indent The indent level to beautify the XML output
@@ -1757,6 +1851,31 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
  *               -1 if the given CID is unused or an error occurs
  */
 int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *buffer)
+{
+	/* for compatibility reasons */
+	return __rohc_c_context(comp, cid, indent, buffer);
+}
+
+
+/**
+ * @brief Get information about a compression context
+ *
+ * This function outputs XML.
+ *
+ * Internal implementation of rohc_c_context() for compatibility reasons.
+ *
+ * @param comp   The ROHC compressor
+ * @param cid    The CID of the compressor context to output information about
+ * @param indent The indent level to beautify the XML output
+ * @param buffer The buffer where to store the information
+ * @return       The length of the data stored in the buffer if successful,
+ *               -2 if the given CID is too large,
+ *               -1 if the given CID is unused or an error occurs
+ */
+static int __rohc_c_context(struct rohc_comp *comp,
+                            int cid,
+                            unsigned int indent,
+                            char *buffer)
 {
 	struct c_context *c;
 	char *prefix;
@@ -2238,6 +2357,71 @@ bool rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "unsupported major version (%u) of the structure for last "
 		           "packet information", info->version_major);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Get some generak information about the compressor
+ *
+ * To use the function, call it with a pointer on a pre-allocated
+ * 'rohc_comp_general_info_t' structure with the 'version_major' and
+ * 'version_minor' fields set to one of the following supported versions:
+ *  - Major 0, minor 0
+ *
+ * See rohc_comp_general_info_t for details about fields that are supported
+ * in the above versions.
+ *
+ * @param comp  The ROHC compressor to get information from
+ * @param info  IN/OUT: the structure where information will be stored
+ * @return      true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_general_info(const struct rohc_comp *const comp,
+                                rohc_comp_general_info_t *const info)
+{
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	if(info == NULL)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "structure for general information is not valid\n");
+		goto error;
+	}
+
+	/* check compatibility version */
+	if(info->version_major == 0)
+	{
+		/* base fields for major version 0 */
+		info->contexts_nr = comp->num_contexts_used;
+		info->packets_nr = comp->num_packets;
+		info->uncomp_bytes_nr = comp->total_uncompressed_size;
+		info->comp_bytes_nr = comp->total_compressed_size;
+
+		/* new fields added by minor versions */
+		if(info->version_minor > 0)
+		{
+			rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "general information", info->version_minor);
+			goto error;
+		}
+	}
+	else
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported major version (%u) of the structure for "
+		           "general information", info->version_major);
 		goto error;
 	}
 

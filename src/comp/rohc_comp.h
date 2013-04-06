@@ -173,6 +173,51 @@ typedef struct
 
 
 /**
+ * @brief Some general information about the compressor
+ *
+ * Versioning works as follow:
+ *  - The 'version_major' field defines the compatibility level. If the major
+ *    number given by user does not match the one expected by the library,
+ *    an error is returned.
+ *  - The 'version_minor' field defines the extension level. If the minor
+ *    number given by user does not match the one expected by the library,
+ *    only the fields supported in that minor version will be filled by
+ *    \ref rohc_comp_get_general_info.
+ *
+ * Notes for developers:
+ *  - Increase the major version if a field is removed.
+ *  - Increase the major version if a field is added at the beginning or in
+ *    the middle of the structure.
+ *  - Increase the minor version if a field is added at the very end of the
+ *    structure.
+ *  - The version_major and version_minor fields must be located at the very
+ *    beginning of the structure.
+ *  - The structure must be packed.
+ *
+ * Supported versions:
+ *  - Major = 0:
+ *     - Minor = 0:
+ *        version_major
+ *        version_minor
+ */
+typedef struct
+{
+	/** The major version of this structure */
+	unsigned short version_major;
+	/** The minor version of this structure */
+	unsigned short version_minor;
+	/** The number of contexts used by the compressor */
+	size_t contexts_nr;
+	/** The number of packets processed by the compressor */
+	unsigned long packets_nr;
+	/** The number of uncompressed bytes received by the compressor */
+	unsigned long uncomp_bytes_nr;
+	/** The number of compressed bytes produced by the compressor */
+	unsigned long comp_bytes_nr;
+} __attribute__((packed)) rohc_comp_general_info_t;
+
+
+/**
  * @brief The prototype of the RTP detection callback
  *
  * @param ip           The innermost IP packet
@@ -259,9 +304,20 @@ void ROHC_EXPORT rohc_c_set_mrru(struct rohc_comp *compressor, int value)
 bool ROHC_EXPORT rohc_comp_set_mrru(struct rohc_comp *const comp,
                                     const size_t mrru)
 	__attribute__((nonnull(1), warn_unused_result));
+bool ROHC_EXPORT rohc_comp_get_mrru(const struct rohc_comp *const comp,
+                                    size_t *const mrru)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 
 void ROHC_EXPORT rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
+bool ROHC_EXPORT rohc_comp_get_max_cid(const struct rohc_comp *const comp,
+                                       size_t *const max_cid)
+	__attribute__((nonnull(1, 2), warn_unused_result));
+
 void ROHC_EXPORT rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
+bool ROHC_EXPORT rohc_comp_get_cid_type(const struct rohc_comp *const comp,
+                                        rohc_cid_type_t *const cid_type)
+	__attribute__((nonnull(1, 2), warn_unused_result));
+
 void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value);
 
 /* RTP stream detection through UDP ports */
@@ -319,20 +375,33 @@ bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
  * Prototypes of public functions related to ROHC compression statistics
  */
 
-int ROHC_EXPORT rohc_c_info(char *buffer);
+int ROHC_EXPORT rohc_c_info(char *buffer)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_get_general_info() instead");
 int ROHC_EXPORT rohc_c_statistics(struct rohc_comp *comp,
                                   unsigned int indent,
-                                  char *buffer);
+                                  char *buffer)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_get_general_info() instead");
 int ROHC_EXPORT rohc_c_context(struct rohc_comp *comp,
                                int cid,
                                unsigned int indent,
-                               char *buffer);
+                               char *buffer)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_get_general_info() instead");
 int ROHC_EXPORT rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
                                                rohc_comp_last_packet_info_t *const info)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_comp_get_last_packet_info2() instead");
+
+
+bool ROHC_EXPORT rohc_comp_get_general_info(const struct rohc_comp *const comp,
+                                            rohc_comp_general_info_t *const info)
+	__attribute__((nonnull(1, 2), warn_unused_result));
+
 bool ROHC_EXPORT rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
                                                  rohc_comp_last_packet_info2_t *const info);
+
 const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_c_state state);
 
 
