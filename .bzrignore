@@ -5,6 +5,8 @@ Makefile.in
 *.lo
 *.la
 .*.o.cmd
+*.gcda
+*.gcno
 test-suite.log
 test_*.sh.log
 ./rohc-trunk.tar.gz
@@ -27,6 +29,9 @@ test_*.sh.log
 ./mkinstalldirs
 ./stamp-h1
 ./rohc.pc
+./output.zcov
+./coverage-report
+./test/report_code_coverage.sh.log
 ./doc/doxygen.conf
 ./doc/html
 ./src/common/test/test_lsb_decode_wraparound

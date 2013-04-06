@@ -70,7 +70,8 @@ DISTCHECK_CONFIGURE_FLAGS = \
 
 # extra files for releases
 EXTRA_DIST = \
-	autogen.sh
+	autogen.sh \
+	test/report_code_coverage.sh
 
 # other extra files for releases
 dist-hook:
@@ -84,4 +85,10 @@ dist-hook:
 		-not -name rohc_sizes_largecid -and \
 		-not -name README \
 		-exec $(RM) \{\} \;
+
+
+if CODE_COVERAGE
+TESTS_CODE_COVERAGE = test/report_code_coverage.sh
+endif
+TESTS = $(TESTS_CODE_COVERAGE)
 

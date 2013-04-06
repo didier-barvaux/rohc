@@ -195,6 +195,41 @@ if test "x$fortify_sources" != "xno"; then
 fi
 
 
+# check if code coverage must be enabled
+AC_ARG_ENABLE(code_coverage,
+              AS_HELP_STRING([--enable-code-coverage],
+                             [enable code coverage if enabled [[default=no]]]),
+              code_coverage=$enableval,
+              code_coverage=no)
+if test "x$code_coverage" != "xno"; then
+	configure_cflags="${configure_cflags} -fprofile-arcs -ftest-coverage"
+
+	# check for the zcov-scan and zcov-genhtml binaries
+	# and abort if they are not found
+	AC_CHECK_PROG(is_zcov_scan_found, zcov-scan, "yes", "no")
+	AC_CHECK_PROG(is_zcov_genhtml_found, zcov-genthml, "yes", "no")
+	if test "x$is_zcov_scan_found" != "xyes" || \
+	   test "x$is_zcov_scan_found" != "xyes" ; then
+		echo
+		if test "x$is_zcov_scan_found" != "xyes" ; then
+			echo "ERROR: zcov-scan binary not found"
+		fi
+		if test "x$is_zcov_genhtml_found" != "xyes" ; then
+			echo "ERROR: zcov-genhtml binary not found"
+		fi
+		echo
+		echo "zcov is required in order to report code coverage."
+		echo
+		echo "Either disable the feature with the --disable-code-coverage option, "
+		echo "or install zcov to solve the problem. You may get Zcov from "
+		echo "http://minormatter.com/zcov/ or use your package manager to install "
+		echo "it on your system."
+		exit 1
+	fi
+fi
+AM_CONDITIONAL([CODE_COVERAGE], [test x$code_coverage = xyes])
+
+
 # allow users to specify a special location for libpcap includes
 AC_ARG_WITH(libpcap_includes,
             AS_HELP_STRING([--with-libpcap-includes=DIR],
