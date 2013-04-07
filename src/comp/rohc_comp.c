@@ -171,9 +171,14 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	bool is_fine;
 	int i;
 
-	if(jam_use != 0)
+	if(jam_use != 0 || adapt_size != 0 || encap_size != 0)
 	{
-		/* the jamming algorithm was removed, please set jam_use to 0 */
+		/* the jamming algorithm was removed, please set jam_use, adapt_size,
+		 * and encap_size to 0 */
+		goto error;
+	}
+	if(max_cid < 0 || max_cid > ROHC_SMALL_CID_MAX)
+	{
 		goto error;
 	}
 
@@ -904,14 +909,14 @@ int rohc_comp_get_segment(struct rohc_comp *const comp,
 	size_t max_data_len;
 	int status;
 
-	/* no segment yet */
-	*len = 0;
-
 	/* check input parameters */
 	if(comp == NULL || segment == NULL || max_len <= 0 || len == NULL)
 	{
 		goto error;
 	}
+
+	/* no segment yet */
+	*len = 0;
 
 	/* abort if no RRU is available in the compressor */
 	if(comp->rru_len <= 0)
@@ -1181,6 +1186,11 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 {
 	int i;
 
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		if(c_profiles[i]->id == profile)
@@ -1193,6 +1203,9 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 
 	rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	             "unknown ROHC profile (ID = %d)\n", profile);
+
+error:
+	return;
 }
 
 
@@ -1206,7 +1219,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
  */
 int rohc_c_using_small_cid(struct rohc_comp *comp)
 {
-	return (comp->medium.cid_type == ROHC_SMALL_CID);
+	return (comp != NULL && comp->medium.cid_type == ROHC_SMALL_CID);
 }
 
 
@@ -1225,6 +1238,8 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
@@ -1233,6 +1248,9 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
  *
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. No segment will be generated.
+ *
+ * @deprecated do not use this function anymore, use rohc_comp_set_mrru()
+ *             instead
  *
  * @param comp  The ROHC compressor
  * @param value The new MRRU value
@@ -1247,6 +1265,8 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 		ret = rohc_comp_set_mrru(comp, value);
 	}
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -1412,6 +1432,15 @@ error:
  */
 void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 {
+	if(comp == NULL)
+	{
+		return;
+	}
+	if(large_cid != 0 && large_cid != 1)
+	{
+		return;
+	}
+
 	if(large_cid)
 	{
 		comp->medium.cid_type = ROHC_LARGE_CID;
@@ -1631,7 +1660,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 	}
 
 	/* all the list was explored, the port is not in the list */
-	if(idx == MAX_RTP_PORTS)
+	if(idx == MAX_RTP_PORTS && !is_found)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "port %u is not in the list\n", port);
@@ -1693,6 +1722,14 @@ error:
  */
 void rohc_c_set_enable(struct rohc_comp *comp, int enable)
 {
+	if(comp == NULL)
+	{
+		return;
+	}
+	if(enable != 0 && enable != 1)
+	{
+		return;
+	}
 	comp->enabled = enable;
 }
 
@@ -1707,7 +1744,7 @@ void rohc_c_set_enable(struct rohc_comp *comp, int enable)
  */
 int rohc_c_is_enabled(struct rohc_comp *comp)
 {
-	return comp->enabled;
+	return (comp != NULL && comp->enabled);
 }
 
 
@@ -2225,10 +2262,9 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	unsigned int size;
 	int feedback_size;
 
-	/* check compressor validity */
-	if(comp == NULL)
+	/* check input validity */
+	if(comp == NULL || obuf == NULL || osize <= 0)
 	{
-		/* no compressor associated with decompressor */
 		return 0;
 	}
 
@@ -2472,6 +2508,109 @@ const char * rohc_comp_get_state_descr(const rohc_c_state state)
 		default:
 			return "no description";
 	}
+}
+
+
+/**
+ * @brief Remove all feedbacks locked during the packet build
+ *
+ * This function does remove the locked feedbacks. See function
+ * \ref rohc_feedback_unlock instead if you want not to remove them.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
+{
+	unsigned int removed_nr = 0;
+
+	if(comp == NULL)
+	{
+		/* bad compressor */
+		goto error;
+	}
+
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+
+	while(comp->feedbacks_first != comp->feedbacks_first_unlocked)
+	{
+		/* destroy the feedback and unlock the ring location */
+		assert(comp->feedbacks[comp->feedbacks_first].data != NULL);
+		assert(comp->feedbacks[comp->feedbacks_first].length > 0);
+		zfree(comp->feedbacks[comp->feedbacks_first].data);
+		comp->feedbacks[comp->feedbacks_first].length = 0;
+		comp->feedbacks[comp->feedbacks_first].is_locked = false;
+		comp->feedbacks_first = (comp->feedbacks_first + 1) % FEEDBACK_RING_SIZE;
+		removed_nr++;
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "%u locked feedbacks removed\n", removed_nr);
+
+	assert(comp->feedbacks_first == comp->feedbacks_first_unlocked);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Unlock all feedbacks locked during the packet build
+ *
+ * This function does not remove the locked feedbacks. See function
+ * \ref rohc_feedback_remove_locked instead if you want to remove them.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_feedback_unlock(struct rohc_comp *const comp)
+{
+	if(comp == NULL)
+	{
+		/* bad compressor */
+		goto error;
+	}
+
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_next >= 0);
+	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
+
+	/* unlock all the ring locations between first unlocked one (excluded)
+	 * and first one */
+	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
+	{
+		if(comp->feedbacks_first_unlocked == 0)
+		{
+			comp->feedbacks_first_unlocked = FEEDBACK_RING_SIZE - 1;
+		}
+		else
+		{
+			comp->feedbacks_first_unlocked =
+				(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
+		}
+
+		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
+		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
+	}
+
+	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -2995,109 +3134,6 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 
 full:
 	return -1;
-}
-
-
-/**
- * @brief Remove all feedbacks locked during the packet build
- *
- * This function does remove the locked feedbacks. See function
- * \ref rohc_feedback_unlock instead if you want not to remove them.
- *
- * @param comp  The ROHC compressor
- * @return      true if action succeeded, false in case of error
- *
- * @ingroup rohc_comp
- */
-bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
-{
-	unsigned int removed_nr = 0;
-
-	if(comp == NULL)
-	{
-		/* bad compressor */
-		goto error;
-	}
-
-	assert(comp->feedbacks_first >= 0);
-	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first_unlocked >= 0);
-	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
-
-	while(comp->feedbacks_first != comp->feedbacks_first_unlocked)
-	{
-		/* destroy the feedback and unlock the ring location */
-		assert(comp->feedbacks[comp->feedbacks_first].data != NULL);
-		assert(comp->feedbacks[comp->feedbacks_first].length > 0);
-		zfree(comp->feedbacks[comp->feedbacks_first].data);
-		comp->feedbacks[comp->feedbacks_first].length = 0;
-		comp->feedbacks[comp->feedbacks_first].is_locked = false;
-		comp->feedbacks_first = (comp->feedbacks_first + 1) % FEEDBACK_RING_SIZE;
-		removed_nr++;
-	}
-
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "%u locked feedbacks removed\n", removed_nr);
-
-	assert(comp->feedbacks_first == comp->feedbacks_first_unlocked);
-
-	return true;
-
-error:
-	return false;
-}
-
-
-/**
- * @brief Unlock all feedbacks locked during the packet build
- *
- * This function does not remove the locked feedbacks. See function
- * \ref rohc_feedback_remove_locked instead if you want to remove them.
- *
- * @param comp  The ROHC compressor
- * @return      true if action succeeded, false in case of error
- *
- * @ingroup rohc_comp
- */
-bool rohc_feedback_unlock(struct rohc_comp *const comp)
-{
-	if(comp == NULL)
-	{
-		/* bad compressor */
-		goto error;
-	}
-
-	assert(comp->feedbacks_first >= 0);
-	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first_unlocked >= 0);
-	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_next >= 0);
-	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
-
-	/* unlock all the ring locations between first unlocked one (excluded)
-	 * and first one */
-	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
-	{
-		if(comp->feedbacks_first_unlocked == 0)
-		{
-			comp->feedbacks_first_unlocked = FEEDBACK_RING_SIZE - 1;
-		}
-		else
-		{
-			comp->feedbacks_first_unlocked =
-				(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
-		}
-
-		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
-		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
-	}
-
-	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
-
-	return true;
-
-error:
-	return false;
 }
 
 

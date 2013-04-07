@@ -762,6 +762,7 @@ AC_CONFIG_FILES([ \
 	src/common/protocols/Makefile \
 	src/common/test/Makefile \
 	src/comp/Makefile \
+	src/comp/test/Makefile \
 	src/decomp/Makefile \
 	test/Makefile \
 	test/functional/Makefile \

@@ -344,7 +344,7 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state);
 
 bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
                                       rohc_decomp_last_packet_info_t *const info)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 
 /*
@@ -355,19 +355,19 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval);
 
 bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                               const rohc_cid_type_t cid_type)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                              const size_t max_cid)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
                                rohc_trace_callback_t callback)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 #endif
 

@@ -258,12 +258,12 @@ void ROHC_EXPORT rohc_free_compressor(struct rohc_comp *comp);
 
 bool ROHC_EXPORT rohc_comp_set_traces_cb(struct rohc_comp *const comp,
                                          rohc_trace_callback_t callback)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_set_random_cb(struct rohc_comp *const comp,
                                          rohc_comp_random_cb_t callback,
                                          void *const user_context)
-	__attribute__((nonnull(1, 2)));
+	__attribute__((warn_unused_result));
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_compress(struct rohc_comp *comp,
@@ -281,16 +281,16 @@ int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
                                unsigned char *const rohc_packet,
                                const size_t rohc_packet_max_len,
                                size_t *const rohc_packet_len)
-	__attribute__((nonnull(1, 2, 4, 6), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 int ROHC_EXPORT rohc_comp_get_segment(struct rohc_comp *const comp,
                                       unsigned char *const segment,
                                       const size_t max_len,
                                       size_t *const len)
-	__attribute__((nonnull(1, 2, 4), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 
 /*
@@ -311,38 +311,38 @@ void ROHC_EXPORT rohc_c_set_mrru(struct rohc_comp *compressor, int value)
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 bool ROHC_EXPORT rohc_comp_set_mrru(struct rohc_comp *const comp,
                                     const size_t mrru)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_get_mrru(const struct rohc_comp *const comp,
                                     size_t *const mrru)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 void ROHC_EXPORT rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
 bool ROHC_EXPORT rohc_comp_get_max_cid(const struct rohc_comp *const comp,
                                        size_t *const max_cid)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 void ROHC_EXPORT rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
 bool ROHC_EXPORT rohc_comp_get_cid_type(const struct rohc_comp *const comp,
                                         rohc_cid_type_t *const cid_type)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value);
 
 /* RTP stream detection through UDP ports */
 bool ROHC_EXPORT rohc_comp_add_rtp_port(struct rohc_comp *const comp,
                                         const unsigned int port)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
                                            const unsigned int port)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_reset_rtp_ports(struct rohc_comp *const comp)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 /* RTP stream detection through callback */
 bool ROHC_EXPORT rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
                                                 rohc_rtp_detection_callback_t callback,
                                                 void *const rtp_private)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 
 /*
@@ -359,7 +359,7 @@ void ROHC_EXPORT c_piggyback_feedback(struct rohc_comp *comp,
 bool ROHC_EXPORT rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
                                               const unsigned char *const feedback,
                                               const size_t size)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 void ROHC_EXPORT c_deliver_feedback(struct rohc_comp *comp,
                                     unsigned char *feedback,
                                     int size);
@@ -367,18 +367,18 @@ int ROHC_EXPORT rohc_feedback_flush(struct rohc_comp *comp,
                                     unsigned char *obuf,
                                     int osize);
 bool ROHC_EXPORT rohc_feedback_remove_locked(struct rohc_comp *const comp)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_feedback_unlock(struct rohc_comp *const comp)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 /* Configure robustness to packet loss/damage */
 bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                                  const size_t width)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 																  const size_t ir_timeout,
 																  const size_t fo_timeout)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 
 /*
@@ -408,7 +408,7 @@ int ROHC_EXPORT rohc_comp_get_last_packet_info(const struct rohc_comp *const com
 
 bool ROHC_EXPORT rohc_comp_get_general_info(const struct rohc_comp *const comp,
                                             rohc_comp_general_info_t *const info)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
                                                  rohc_comp_last_packet_info2_t *const info);
