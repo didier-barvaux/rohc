@@ -321,6 +321,9 @@ int main(int argc, char *argv[])
 	CHECK(strcmp(rohc_comp_get_state_descr(SO), "SO") == 0);
 	CHECK(strcmp(rohc_comp_get_state_descr(0xffff), "no description") == 0);
 
+	/* rohc_comp_force_contexts_reinit() with some contexts init'ed */
+	CHECK(rohc_comp_force_contexts_reinit(comp) == true);
+
 	/* rohc_feedback_remove_locked() */
 	CHECK(rohc_feedback_remove_locked(NULL) == false);
 
