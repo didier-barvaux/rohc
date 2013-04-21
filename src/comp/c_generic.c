@@ -6025,15 +6025,9 @@ static int encode_uncomp_fields(struct c_context *const context,
 	if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
 	{
 		/* compute the new IP-ID / SN delta */
-		if(g_context->ip2_flags.info.v4.nbo)
-		{
-			g_context->ip2_flags.info.v4.id_delta =
-				ntohs(ipv4_get_id(ip2)) - g_context->sn;
-		}
-		else
-		{
-			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
-		}
+		g_context->ip2_flags.info.v4.id_delta =
+			ntohs(ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo)) -
+			g_context->sn;
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",
 		                g_context->ip2_flags.info.v4.id_delta,
