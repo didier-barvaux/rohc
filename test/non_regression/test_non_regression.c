@@ -125,6 +125,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const int use_large_cid,
+                                const size_t wlsb_width,
                                 const unsigned int max_contexts,
                                 char *src_filename,
                                 char *ofilename,
@@ -186,6 +187,7 @@ int main(int argc, char *argv[])
 	char *ofilename = NULL;
 	char *cmp_filename = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
+	int wlsb_width = 4;
 	int status = 1;
 	int use_large_cid;
 	int args_used;
@@ -246,6 +248,12 @@ int main(int argc, char *argv[])
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
+		else if(!strcmp(*argv, "--wlsb-width"))
+		{
+			/* get the width of the WLSB window the test should use */
+			wlsb_width = atoi(argv[1]);
+			args_used++;
+		}
 		else if(cid_type == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
@@ -299,6 +307,14 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	/* check WLSB width */
+	if(wlsb_width <= 0 || (wlsb_width & (wlsb_width - 1)) != 0)
+	{
+		fprintf(stderr, "invalid WLSB width %d: should be a positive power of "
+		        "two\n", wlsb_width);
+		goto error;
+	}
+
 	/* the source filename is mandatory */
 	if(src_filename == NULL)
 	{
@@ -307,8 +323,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(use_large_cid, max_contexts, src_filename,
-	                              ofilename, cmp_filename, rohc_size_ofilename);
+	status = test_comp_and_decomp(use_large_cid, wlsb_width, max_contexts,
+	                              src_filename, ofilename, cmp_filename,
+	                              rohc_size_ofilename);
 
 error:
 	return status;
@@ -342,6 +359,7 @@ static void usage(void)
 	        "  --rohc-size-output FILE Save the sizes of ROHC packets in FILE\n"
 	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 	        "                          simultaneously use during the test\n"
+	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
 	        "  --verbose               Run the test in verbose mode\n");
 }
 
@@ -796,6 +814,7 @@ exit:
  *
  * @param use_large_cid        Whether the compressor shall use large CIDs
  * @param max_contexts         The maximum number of ROHC contexts to use
+ * @param wlsb_width           The width of the WLSB window to use
  * @param src_filename         The name of the PCAP file that contains the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
@@ -809,6 +828,7 @@ exit:
  *                             77 if test is skipped
  */
 static int test_comp_and_decomp(const int use_large_cid,
+                                const size_t wlsb_width,
                                 const unsigned int max_contexts,
                                 char *src_filename,
                                 char *ofilename,
@@ -1029,6 +1049,18 @@ static int test_comp_and_decomp(const int use_large_cid,
 		goto destroy_comp1;
 	}
 
+	/* set the WLSB window width on compressor 1 */
+	if(!rohc_comp_set_wlsb_window_width(comp1, wlsb_width))
+	{
+		fprintf(stderr, "failed to set the WLSB window width on compressor 1\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_comp1;
+	}
+
 	/* reset list of RTP ports for compressor 1 */
 	if(!rohc_comp_reset_rtp_ports(comp1))
 	{
@@ -1097,6 +1129,18 @@ static int test_comp_and_decomp(const int use_large_cid,
 	{
 		fprintf(stderr, "failed to set the callback for random numbers on "
 		        "compressor 2\n");
+		printf("\t\t</log>\n");
+		printf("\t\t<status>failed</status>\n");
+		printf("\t</startup>\n\n");
+		printf("\t<shutdown>\n");
+		printf("\t\t<log>\n");
+		goto destroy_comp2;
+	}
+
+	/* set the WLSB window width on compressor 2 */
+	if(!rohc_comp_set_wlsb_window_width(comp2, wlsb_width))
+	{
+		fprintf(stderr, "failed to set the WLSB window width on compressor 2\n");
 		printf("\t\t</log>\n");
 		printf("\t\t<status>failed</status>\n");
 		printf("\t</startup>\n\n");

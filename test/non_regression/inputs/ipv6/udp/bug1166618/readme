@@ -1,0 +1,6 @@
+$ scapy
+>>> packets = []
+>>> for i in range(1, 35):
+...   packets.append(Ether()/IPv6()/UDP(dport=5000)/"hello, world!")
+... 
+>>> wrpcap("source.pcap", packets)
