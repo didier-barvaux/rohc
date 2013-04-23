@@ -6137,27 +6137,27 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	{
 		case PACKET_UOR_2:
 		{
-			if(nr_sn_bits < 5 &&
+			if(nr_sn_bits <= 5 &&
 			   nr_innermost_ip_id_bits == 0 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_NOEXT;
 			}
 			else if(nr_sn_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 3 &&
+			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 3 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_0;
 			}
 			else if(nr_sn_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 11 &&
+			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 11 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_1;
 			}
 			else if(g_context->tmp.nr_of_ip_hdr > 1 &&
 			        nr_sn_bits <= 3 &&
-			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits <= 11)
 			{
 				ext = PACKET_EXT_2;

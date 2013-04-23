@@ -458,32 +458,6 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
-XFAIL_TESTS = \
-	test_non_regression_ipv4_esp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_esp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_esp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_esp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_icmp-variable-ipv6ext_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_icmp-variable-ipv6ext_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_ipv6ext_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_ipv6ext_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udplite_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_udplite_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_udp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_bug1166618_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_bug1166618_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udplite_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udplite_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_wlsb64_smallcid.sh
-
 
 
 check_PROGRAMS = \
