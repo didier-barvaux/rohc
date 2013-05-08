@@ -26,9 +26,9 @@ all:
 	$(MAKE) -C $(linux_kernel_src) M=$(abs_srcdir)/kmod
 
 install:
-	$(INSTALL) -d $(DESTDIR)/$(rohc_moddir) -f Makefile.linux
-	$(INSTALL) -m 644 $(rohc_mod) $(DESTDIR)/$(rohc_moddir)/$(rohc_mod)
-	$(INSTALL) -m 644 $(rohc_test_mod) $(DESTDIR)/$(rohc_moddir)/$(rohc_test_mod)
+	$(INSTALL) -d $(DESTDIR)/$(rohc_moddir)
+	$(INSTALL) -m 644 $(builddir)/kmod/$(rohc_mod) $(DESTDIR)/$(rohc_moddir)/$(rohc_mod)
+	$(INSTALL) -m 644 $(builddir)/kmod/$(rohc_test_mod) $(DESTDIR)/$(rohc_moddir)/$(rohc_test_mod)
 	-/sbin/depmod -a
 
 uninstall:
