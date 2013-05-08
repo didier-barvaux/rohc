@@ -4591,12 +4591,16 @@ int code_EXT3_packet(const struct c_context *context,
 		 *  - RTP PT changed in the last few packets,
 		 *  - RTP Padding bit changed in this packet,
 		 *  - RTP Padding bit changed in the last few packets,
-		 *  - RTP TS and TS_STRIDE must be initialized
+		 *  - RTP eXtension bit changed in this packet,
+		 *  - RTP eXtension bit changed in the last few packets,
+		 *  - RTP TS and TS_STRIDE must be initialized.
 		 */
 		rtp = (rtp_context->tmp.rtp_pt_changed ||
 		       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
 		       rtp_context->tmp.padding_bit_changed ||
 		       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
+		       rtp_context->tmp.extension_bit_changed ||
+		       rtp_context->rtp_extension_change_count < MAX_IR_COUNT ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
@@ -5073,6 +5077,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 	rohc_comp_debug(context, "RTP flags = 0x%x\n", byte);
 	dest[counter] = byte;
 	counter++;
+	rtp_context->rtp_extension_change_count++;
 
 	/* part 2 */
 	if(rpt)

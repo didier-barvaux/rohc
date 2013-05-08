@@ -1,5 +1,5 @@
-compressor_num = 1	packet_num = 1	rohc_size = 194	packet_type = 0
-compressor_num = 2	packet_num = 1	rohc_size = 202	packet_type = 0
+compressor_num = 1	packet_num = 1	rohc_size = 195	packet_type = 0
+compressor_num = 2	packet_num = 1	rohc_size = 203	packet_type = 0
 compressor_num = 1	packet_num = 2	rohc_size = 210	packet_type = 0
 compressor_num = 2	packet_num = 2	rohc_size = 202	packet_type = 0
 compressor_num = 1	packet_num = 3	rohc_size = 202	packet_type = 0
@@ -50,8 +50,8 @@ compressor_num = 1	packet_num = 25	rohc_size = 166	packet_type = 10
 compressor_num = 2	packet_num = 25	rohc_size = 166	packet_type = 10
 compressor_num = 1	packet_num = 26	rohc_size = 654	packet_type = 10
 compressor_num = 2	packet_num = 26	rohc_size = 654	packet_type = 10
-compressor_num = 1	packet_num = 27	rohc_size = 199	packet_type = 0
-compressor_num = 2	packet_num = 27	rohc_size = 207	packet_type = 0
+compressor_num = 1	packet_num = 27	rohc_size = 200	packet_type = 0
+compressor_num = 2	packet_num = 27	rohc_size = 208	packet_type = 0
 compressor_num = 1	packet_num = 28	rohc_size = 181	packet_type = 10
 compressor_num = 2	packet_num = 28	rohc_size = 173	packet_type = 10
 compressor_num = 1	packet_num = 29	rohc_size = 202	packet_type = 0

@@ -665,7 +665,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	/* part 7 */
 	if(rx)
 	{
-		int x, mode, tis, tss;
+		int mode, tis, tss;
 
 		/* check the minimal length to decode the flags that are only present
 		   if RX flag is set */
@@ -677,12 +677,13 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 			goto error;
 		}
 
-		x = GET_REAL(GET_BIT_4(packet));
+		bits->rtp_x = GET_REAL(GET_BIT_4(packet));
+		bits->rtp_x_nr = 1;
 		mode = ((*packet) >> 2) & 0x03;
 		tis = GET_REAL(GET_BIT_1(packet));
 		tss = GET_REAL(GET_BIT_0(packet));
-		rohc_decomp_debug(context, "x = %d, rohc_mode = %d, tis = %d, "
-		                  "tss = %d\n", x, mode, tis, tss);
+		rohc_decomp_debug(context, "X = %u, rohc_mode = %d, tis = %d, "
+		                  "tss = %d\n", bits->rtp_x, mode, tis, tss);
 		read++;
 		packet++;
 		length--;

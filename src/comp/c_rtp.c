@@ -209,6 +209,7 @@ static int c_rtp_create(struct c_context *const context,
 	rtp_context->tmp.is_marker_bit_set = false;
 	rtp_context->tmp.rtp_pt_changed = 0;
 	rtp_context->tmp.padding_bit_changed = false;
+	rtp_context->tmp.extension_bit_changed = false;
 
 	/* init the RTP-specific variables and functions */
 	g_context->next_header_proto = ROHC_IPPROTO_UDP;
@@ -741,6 +742,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	assert(rtp_context->tmp.send_rtp_dynamic == 0);
 	/* RTP Padding bit is a STATIC field, not allowed to change in SO state */
 	assert(!rtp_context->tmp.padding_bit_changed);
+	/* RTP eXtension bit is STATIC field, not allowed to change in SO state */
+	assert(!rtp_context->tmp.extension_bit_changed);
 
 	/* find out how many IP headers are IPv4 headers with non-random IP-IDs */
 	nr_ipv4_non_rnd = 0;
@@ -808,7 +811,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	        !rtp_context->tmp.is_marker_bit_set)
 	{
 		/* TODO: when extensions are supported within the UO-1-ID packet,
-		 * please check whether the !is_marker_bit_set conditions could be
+		 * please check whether the !is_marker_bit_set condition could be
 		 * removed or not, and whether nr_ipv4_non_rnd_with_bits == 1 should
 		 * not be replaced by nr_ipv4_non_rnd_with_bits >= 1 */
 		packet = PACKET_UO_1_ID;
@@ -1008,9 +1011,16 @@ static int c_rtp_encode(struct c_context *const context,
 		memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
 		memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	}
-	else if(rtp_context->tmp.padding_bit_changed)
+	else
 	{
-		rtp_context->old_rtp.padding = rtp->padding;
+		if(rtp_context->tmp.padding_bit_changed)
+		{
+			rtp_context->old_rtp.padding = rtp->padding;
+		}
+		if(rtp_context->tmp.extension_bit_changed)
+		{
+			rtp_context->old_rtp.extension = rtp->extension;
+		}
 	}
 
 quit:
@@ -1330,9 +1340,11 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 
 	/* part 2 */
 	byte = 0;
-	if(rtp_context->ts_sc.state == INIT_STRIDE)
+	if(rtp_context->ts_sc.state == INIT_STRIDE ||
+	   rtp_context->tmp.extension_bit_changed ||
+	   rtp_context->rtp_extension_change_count < MAX_IR_COUNT)
 	{
-		/* send ts_stride */
+		/* send TS_STRIDE and/or the eXtension (X) bit */
 		rx_byte = 1;
 		byte |= 1 << 4;
 	}
@@ -1390,6 +1402,7 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		dest[counter] = byte;
 		rohc_comp_debug(context, "part 7 = 0x%02x\n", dest[counter]);
 		counter++;
+		rtp_context->rtp_extension_change_count++;
 
 		/* part 8 */
 		if(tss)
@@ -1550,6 +1563,32 @@ static int rtp_changed_rtp_dynamic(const struct c_context *context,
 	else
 	{
 		rtp_context->tmp.padding_bit_changed = false;
+	}
+
+	/* check RTP eXtension (X) field */
+	if(rtp->extension != rtp_context->old_rtp.extension ||
+	   rtp_context->rtp_extension_change_count < MAX_IR_COUNT)
+	{
+		if(rtp->extension != rtp_context->old_rtp.extension)
+		{
+			rohc_comp_debug(context, "RTP eXtension (X) bit changed "
+			                "(0x%x -> 0x%x)\n",
+			                rtp_context->old_rtp.extension, rtp->extension);
+			rtp_context->tmp.extension_bit_changed = true;
+			rtp_context->rtp_extension_change_count = 0;
+		}
+		else
+		{
+			rohc_comp_debug(context, "RTP eXtension (X) bit did not change but "
+			                "changed in the last few packets\n");
+			rtp_context->tmp.extension_bit_changed = false;
+		}
+
+		fields++;
+	}
+	else
+	{
+		rtp_context->tmp.extension_bit_changed = false;
 	}
 
 	/* check RTP Payload Type field */

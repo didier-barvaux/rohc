@@ -462,11 +462,6 @@ TESTS = \
 	$(TESTS_SMALLCID) \
 	$(TESTS_LARGECID)
 
-XFAIL_TESTS = \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb64_largecid.sh
 
 
 check_PROGRAMS = \
