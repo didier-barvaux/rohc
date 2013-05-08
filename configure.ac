@@ -425,9 +425,10 @@ if test "x$enable_rohc_tests" = "xyes" || \
    test "x$enable_rohc_stats" = "xyes" || \
    test "x$enable_rohc_apps" = "xyes" ; then
 
-	# use winpcap for mingw, libpcap for other platforms
+	# use winpcap for mingw and cygwin, libpcap for other platforms
 	if test "x$host_os" = "xmingw32" || \
-	   test "x$host_os" = "xmingw64" ; then
+	   test "x$host_os" = "xmingw64" || \
+	   test "x$host_os" = "xcygwin" ; then
 		pcap_lib_name="wpcap"
 		pcap_lib_pretty_name="WinPcap"
 		pcap_lib_url="http://www.winpcap.org/"
@@ -628,8 +629,9 @@ else
 
 	# stop now if building for Windows
 	if test "x$host_os" = "xmingw32" || \
-	   test "x$host_os" = "xmingw64" ; then
-		AC_MSG_ERROR([The Linux kernel cannot be built when cross-compiling
+	   test "x$host_os" = "xmingw64" || \
+	   test "x$host_os" = "xcygwin" ; then
+		AC_MSG_ERROR([The Linux kernel cannot be built when compiling
 		              for the Windows platform])
 	fi
 

@@ -9,6 +9,8 @@ Makefile.in
 *.gcno
 test-suite.log
 test_*.sh.log
+test_*.sh.trs
+./test-driver
 ./rohc-trunk.tar.gz
 ./rohc-trunk.tar.bz2
 ./cscope.out
@@ -97,3 +99,4 @@ test_*.sh.log
 ./app/fuzzer/rohc_fuzzer.exe
 ./examples/simple_rohc_program
 ./examples/simple_rohc_program.exe
+contrib/rohc.spec
