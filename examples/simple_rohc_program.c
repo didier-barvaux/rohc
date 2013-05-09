@@ -125,8 +125,8 @@ int main(int argc, char **argv)
 	ip_packet[0] |= 5; /* IHL: minimal IPv4 header length (in 32-bit words) */
 	ip_packet[1] = 0; /* TOS */
 	ip_packet_len = 5 * 4 + strlen(FAKE_PAYLOAD);
-	ip_packet[2] = (htons(ip_packet_len) >> 8) & 0xff; /* Total Length */
-	ip_packet[3] = htons(ip_packet_len) & 0xff;
+	ip_packet[2] = (ip_packet_len >> 8) & 0xff; /* Total Length */
+	ip_packet[3] = ip_packet_len & 0xff;
 	ip_packet[4] = 0; /* IP-ID */
 	ip_packet[5] = 0;
 	ip_packet[6] = 0; /* Fragment Offset and IP flags */
