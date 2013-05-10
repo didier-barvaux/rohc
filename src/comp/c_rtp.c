@@ -189,6 +189,7 @@ static int c_rtp_create(struct c_context *const context,
 	memcpy(&rtp_context->old_udp, udp, sizeof(struct udphdr));
 	rtp_context->rtp_pt_change_count = 0;
 	rtp_context->rtp_padding_change_count = 0;
+	rtp_context->rtp_extension_change_count = 0;
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	if(!c_create_sc(&rtp_context->ts_sc,
 	                context->compressor->wlsb_window_width,
