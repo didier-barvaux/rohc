@@ -371,7 +371,8 @@ static bool esp_decode_values_from_bits(const struct d_context *context,
 		/* keep context value */
 		memcpy(&decoded->esp_spi, &esp->spi, spi_length);
 	}
-	rohc_decomp_debug(context, "decoded SPI = 0x%08x\n", ntohl(decoded->esp_spi));
+	rohc_decomp_debug(context, "decoded SPI = 0x%08x\n",
+	                  ntohl(decoded->esp_spi));
 
 	return true;
 }
