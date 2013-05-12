@@ -126,12 +126,14 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
  * Prototypes of miscellaneous private functions
  */
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
                                           const rohc_trace_entity_t entity,
                                           const int profile,
                                           const char *const format,
                                           ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
@@ -211,7 +213,13 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->last_context = NULL;
 
 	/* set default callback for traces */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	comp->trace_callback = rohc_comp_print_trace_default;
+#else
+	/* no behaviour compatibility with previous 1.x.y versions: no trace */
+	comp->trace_callback = NULL;
+#endif
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
@@ -366,6 +374,8 @@ error:
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief The default callback for traces
  *
@@ -402,6 +412,8 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 	va_end(args);
 #endif
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**

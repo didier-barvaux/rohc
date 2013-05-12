@@ -114,12 +114,14 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   unsigned int len,
                                   struct d_decode_data *ddata);
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
                                             const rohc_trace_entity_t entity,
                                             const int profile,
                                             const char *const format,
                                             ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 /* feedback-related functions */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
@@ -394,7 +396,12 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	clear_statistics(decomp);
 
 	/* set the default trace callback */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
+	/* no behaviour compatibility with previous 1.x.y versions: no trace */
+	decomp->trace_callback = NULL;
+#endif
 
 	return decomp;
 
@@ -2233,6 +2240,8 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief The default callback for traces
  *
@@ -2269,4 +2278,6 @@ static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
 	va_end(args);
 #endif
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
