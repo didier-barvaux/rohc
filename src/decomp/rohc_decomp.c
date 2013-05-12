@@ -399,6 +399,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
+#else
 	/* no behaviour compatibility with previous 1.x.y versions: no trace */
 	decomp->trace_callback = NULL;
 #endif
