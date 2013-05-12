@@ -54,8 +54,10 @@
 #	include <stdbool.h>
 #endif
 #include <assert.h>
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 #include <stdio.h> /* for printf(3) */
 #include <stdarg.h>
+#endif
 
 
 extern struct c_profile c_rtp_profile,

@@ -43,7 +43,9 @@
 #	include <string.h>
 #endif
 #include <stdio.h> /* for printf(3) and sprintf(3) */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 #include <stdarg.h>
+#endif
 #include <assert.h>
 
 
