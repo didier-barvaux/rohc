@@ -672,8 +672,8 @@ int rohc_compress2(struct rohc_comp *const comp,
 	*rohc_packet_len += feedbacks_size;
 
 	/* 2. use profile to compress packet */
-	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "compress the packet #%d\n", comp->num_packets + 1);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "compress the packet #%d\n", comp->num_packets + 1);
 	rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
 	                          rohc_packet_max_len - (*rohc_packet_len),
 	                          &packet_type, &payload_offset);
@@ -827,10 +827,11 @@ int rohc_compress2(struct rohc_comp *const comp,
 		status = ROHC_OK;
 	}
 
-	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC size = %zd bytes (feedbacks = %zd, header = %d, "
-	          "payload = %zd), output buffer size = %zd\n", *rohc_packet_len,
-	          feedbacks_size, rohc_hdr_size, payload_size, rohc_packet_max_len);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "ROHC size = %zd bytes (feedbacks = %zd, header = %d, "
+	           "payload = %zd), output buffer size = %zd\n", *rohc_packet_len,
+	           feedbacks_size, rohc_hdr_size, payload_size,
+	           rohc_packet_max_len);
 
 	/* update some statistics:
 	 *  - compressor statistics

@@ -474,9 +474,9 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	}
 
 	decomp->stats.received++;
-	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "decompress the %d-byte packet #%u\n",
-	          isize, decomp->stats.received);
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "decompress the %d-byte packet #%u\n",
+	           isize, decomp->stats.received);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
