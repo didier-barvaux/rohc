@@ -19,7 +19,7 @@ rohc_moddir = /lib/modules/`uname -r`/extra
 EXTRA_DIST = \
 	kmod.c \
 	kmod_test.c \
-	include/ \
+	include \
 	kmod/Makefile
 
 all:
