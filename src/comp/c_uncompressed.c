@@ -558,7 +558,7 @@ static int uncompressed_code_packet(const struct c_context *context,
 		if(ip_get_version(ip) != IPV4 && ip_get_version(ip) != IPV6)
 		{
 			rohc_comp_debug(context, "force IR packet to avoid conflict between "
-			                "first payload byte and ROHC packet types");
+			                "first payload byte and ROHC packet types\n");
 			*packet_type = PACKET_IR;
 		}
 		else
