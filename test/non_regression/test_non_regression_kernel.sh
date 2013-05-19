@@ -12,8 +12,7 @@ for testfile in ./test/non_regression/test_non_regression_*_smallcid.sh ; do
 
 	echo -n "running ${testname}... "
 
-	SED=sed AWK=gawk KERNEL_SUFFIX=_kernel \
-		./${testfile}
+	KERNEL_SUFFIX=_kernel ./${testfile}
 	ret=$?
 
 	if [ ${ret} -eq 0 ] ; then

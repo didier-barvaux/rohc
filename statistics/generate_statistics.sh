@@ -31,6 +31,10 @@ if [ ! -d "${SRC_ROOTDIR}/statistics/inputs" ] ; then
 	exit 1
 fi
 
+test -z "${SED}" && SED="`which sed`"
+test -z "${GREP}" && GREP="`which grep`"
+test -z "${AWK}" && AWK="`which gawk`"
+
 # Check that a awk-like tool is available
 if [ -z "${AWK}" ] ; then
 	echo "no awk-like tool available, please install one of the gawk, mawk, "\
