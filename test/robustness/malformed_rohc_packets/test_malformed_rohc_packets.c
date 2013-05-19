@@ -46,7 +46,8 @@ for ./configure ? If yes, check configure output and config.log"
 
 /* prototypes of private functions */
 static void usage(void);
-static int test_decomp(const char *const filename);
+static int test_decomp(const char *const filename,
+                       const size_t failure_start);
 
 
 /**
@@ -64,6 +65,7 @@ int main(int argc, char *argv[])
 	char *filename = NULL;
 	int status = 1;
 	int args_used;
+	int failure_start = -1;
 
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
@@ -88,6 +90,15 @@ int main(int argc, char *argv[])
 			 * decompress */
 			filename = argv[0];
 		}
+		else if(failure_start == -1)
+		{
+			failure_start = atoi(argv[0]);
+			if(failure_start <= 0)
+			{
+				fprintf(stderr, "invalid start for failed packets\n");
+				goto error;
+			}
+		}
 		else
 		{
 			/* do not accept more than one filename without option name */
@@ -102,9 +113,15 @@ int main(int argc, char *argv[])
 		usage();
 		goto error;
 	}
+	/* the failure start is mandatory */
+	if(failure_start <= 0)
+	{
+		usage();
+		goto error;
+	}
 
 	/* test ROHC decompression with the packets from the file */
-	status = test_decomp(filename);
+	status = test_decomp(filename, failure_start);
 
 error:
 	return status;
@@ -120,18 +137,20 @@ static void usage(void)
 	        "ROHC decompression tool: test the ROHC library with a flow\n"
 	        "                         of malformed ROHC packets\n"
 	        "\n"
-	        "usage: test_malformed_rohc_packets FLOW\n");
+	        "usage: test_malformed_rohc_packets FLOW FAILURE_START\n");
 }
 
 
 /**
  * @brief Test the ROHC library with a flow of ROHC packets
  *
- * @param filename  The name of the PCAP file that contains the ROHC packets
- * @return          0 in case of success,
- *                  1 in case of failure
+ * @param filename       The name of the PCAP file that contains the ROHC packets
+ * @param failure_start  The first packet that shall fail to be decompressed
+ * @return               0 in case of success,
+ *                       1 in case of failure
  */
-static int test_decomp(const char *const filename)
+static int test_decomp(const char *const filename,
+                       const size_t failure_start)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -228,10 +247,28 @@ static int test_decomp(const char *const filename)
 		                          ip_packet, MAX_ROHC_SIZE);
 		if(ip_size > 0)
 		{
-			fprintf(stderr, "unexpected successful decompression\n");
-			goto destroy_decomp;
+			if(counter >= failure_start)
+			{
+				fprintf(stderr, "\tunexpected successful decompression\n");
+				goto destroy_decomp;
+			}
+			else
+			{
+				fprintf(stderr, "\texpected successful decompression\n");
+			}
 		}
-		fprintf(stderr, "\texpected decompression failure\n");
+		else
+		{
+			if(counter >= failure_start)
+			{
+				fprintf(stderr, "\texpected decompression failure\n");
+			}
+			else
+			{
+				fprintf(stderr, "\tunexpected decompression failure\n");
+				goto destroy_decomp;
+			}
+		}
 	}
 
 	status = 0;

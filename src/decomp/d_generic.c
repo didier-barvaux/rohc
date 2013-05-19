@@ -5367,12 +5367,24 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 	 * parse ROHC base header
 	 */
 
-	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
-	if(rohc_remain_len <= (1 + large_cid_len))
+	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4
+	 * (check also 4a for the UOR2 packets of the RTP profile) */
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
-		goto error;
+		size_t min_len = 1 + large_cid_len + 1;
+
+		if(g_context->packet_type == PACKET_UOR_2_RTP ||
+		   g_context->packet_type == PACKET_UOR_2_ID ||
+		   g_context->packet_type == PACKET_UOR_2_TS)
+		{
+			min_len++;
+		}
+
+		if(rohc_remain_len < min_len)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
 	}
 
 	/* parts 2 and 4 depending on the packet type:

@@ -40,7 +40,9 @@ fi
 
 # extract the source capture from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_malformed_rohc_packets_##' -e 's#\.sh$##' )
+                ${SED} -e 's#^.*/test_malformed_rohc_packets_##' -e 's#_[0-9]\+\.sh$##' )
+FAILURE_START=$( echo "${SCRIPT}" | \
+                 ${SED} -e 's#^.*_\([0-9]\+\)\.sh$#\1#' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
@@ -49,7 +51,7 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 	exit 1
 fi
 
-CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${FAILURE_START}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh
