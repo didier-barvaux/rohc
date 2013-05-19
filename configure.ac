@@ -34,6 +34,8 @@ if test -d "$srcdir/.bzr" ; then
 	else
 		PACKAGE_REVNO="~`${bzr} revno`"
 	fi
+elif test -f "$srcdir/bzr_revno" ; then
+	PACKAGE_REVNO="`cat \"$srcdir/bzr_revno\"`"
 else
 	PACKAGE_REVNO=""
 fi
@@ -774,6 +776,7 @@ AM_DEP_TRACK
 
 AC_CONFIG_FILES([ \
 	Makefile \
+	bzr_revno \
 	src/Makefile \
 	src/common/Makefile \
 	src/common/protocols/Makefile \

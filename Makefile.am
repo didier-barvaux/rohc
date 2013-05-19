@@ -74,6 +74,7 @@ DISTCHECK_CONFIGURE_FLAGS = \
 # extra files for releases
 EXTRA_DIST = \
 	autogen.sh \
+	bzr_revno \
 	test/report_code_coverage.sh
 
 # other extra files for releases
