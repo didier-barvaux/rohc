@@ -21,10 +21,25 @@
 #          Mikhail Gruzdev <michail.gruzdev@gmail.com>
 #
 
-AC_INIT([ROHC library], [trunk], [http://rohc-lib.org/],
+AC_INIT([ROHC library], 1.6.0, [http://rohc-lib.org/],
         [rohc], [http://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
+
+# Retrieve the Bazaar revision number
+if test -d "$srcdir/.bzr" ; then
+	bzr="`which bzr`"
+	if test $? -ne 0 ; then
+		PACKAGE_REVNO="~unknown"
+	else
+		PACKAGE_REVNO="~`${bzr} revno`"
+	fi
+else
+	PACKAGE_REVNO=""
+fi
+AC_SUBST(PACKAGE_REVNO)
+AC_DEFINE_UNQUOTED([PACKAGE_REVNO], ["$PACKAGE_REVNO"],
+                   [Bazaar revision number])
 
 # Define library versioning:
 #

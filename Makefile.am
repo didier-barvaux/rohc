@@ -60,6 +60,9 @@ dist_doc_DATA = \
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = rohc.pc
 
+# directory for dist and distcheck
+distdir = $(PACKAGE)-$(VERSION)$(PACKAGE_REVNO)
+
 # configure options for distcheck
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \

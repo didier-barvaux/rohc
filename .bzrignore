@@ -11,8 +11,8 @@ test-suite.log
 test_*.sh.log
 test_*.sh.trs
 ./test-driver
-./rohc-trunk.tar.gz
-./rohc-trunk.tar.bz2
+./rohc-*.tar.gz
+./rohc-*.tar.bz2
 ./cscope.out
 ./aclocal.m4
 ./autom4te.cache
