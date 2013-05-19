@@ -808,6 +808,7 @@ AC_CONFIG_FILES([ \
 	doc/doxygen.conf \
 	doc/Makefile \
 	contrib/Makefile \
+	contrib/rohc.spec \
 	rohc.pc \
 ])
 
