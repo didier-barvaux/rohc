@@ -634,9 +634,12 @@ void c_generic_destroy(struct c_context *const context)
  *
  * Conditions are:
  *  \li the version of the outer IP header is 4 or 6
+ *  \li if the outer IP header is IPv4, it does not contain options
  *  \li the outer IP header is not an IP fragment
  *  \li if there are at least 2 IP headers, the version of the inner IP header
  *      is 4 or 6
+ *  \li if there are at least 2 IP headers and if the inner IP header is IPv4,
+ *      it does not contain options
  *  \li if there are at least 2 IP headers, the inner IP header is not an IP
  *      fragment
  *
@@ -682,6 +685,24 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
+	/* if outer header is IPv4, check the presence of options */
+	if(outer_ip->version == IPV4 &&
+	   ip_get_hdrlen(outer_ip) != sizeof(struct ipv4_hdr))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IPv4 packet is not supported by the profile: "
+		           "IP options are not accepted\n");
+		goto bad_profile;
+	}
+
+	/* check if the outer header is a fragment */
+	if(ip_is_fragment(outer_ip))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IP packet is fragmented\n");
+		goto bad_profile;
+	}
+
 	/* complete context key */
 	if(version == IPV4)
 	{
@@ -702,14 +723,6 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		*ctxt_key ^= daddr->addr.u32[3];
 	}
 
-	/* check if the outer header is a fragment */
-	if(ip_is_fragment(outer_ip))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet is fragmented\n");
-		goto bad_profile;
-	}
-
 	/* check the inner IP header if there is one */
 	if(inner_ip != NULL)
 	{
@@ -724,7 +737,17 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 			goto bad_profile;
 		}
 
-		/* check if the second header is a fragment */
+		/* if inner header is IPv4, check the presence of options */
+		if(inner_ip->version == IPV4 &&
+		   ip_get_hdrlen(inner_ip) != sizeof(struct ipv4_hdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "the inner IPv4 packet is not supported by the profile: "
+			           "IP options are not accepted\n");
+			goto bad_profile;
+		}
+
+		/* check if the inner header is a fragment */
 		if(ip_is_fragment(inner_ip))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

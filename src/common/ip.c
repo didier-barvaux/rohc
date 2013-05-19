@@ -61,8 +61,8 @@ int ip_create(struct ip_packet *const ip,
 	/* check packet's validity according to IP version */
 	if(version == IPV4)
 	{
-		/* IPv4: packet must be at least 20-byte long (= header length)
-		 *       header must not contain options (= 20 bytes)
+		/* IPv4: packet must be at least 20-byte long (= min header length)
+		 *       packet must be large enough for options if any (= 20 bytes)
 		 *       packet length must be accurate with the Total Length field */
 
 		if(size < sizeof(struct ipv4_hdr))
@@ -73,7 +73,8 @@ int ip_create(struct ip_packet *const ip,
 		/* copy the IPv4 header */
 		memcpy(&ip->header.v4, packet, sizeof(struct ipv4_hdr));
 
-		if(ip_get_hdrlen(ip) != sizeof(struct ipv4_hdr))
+		if(ip_get_hdrlen(ip) < sizeof(struct ipv4_hdr) ||
+		   ip_get_hdrlen(ip) > size)
 		{
 			goto malformed;
 		}
