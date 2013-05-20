@@ -65,6 +65,8 @@ struct rohc_comp;
  *
  * If you add a new compressor state, please also add the corresponding
  * textual description in \ref rohc_comp_get_state_descr.
+ *
+ * @ingroup rohc_comp
  */
 typedef enum
 {
@@ -83,6 +85,8 @@ typedef enum
  * @brief Some information about the last compressed packet
  *
  * Non-extensible version of rohc_comp_last_packet_info2_t
+ *
+ * @ingroup rohc_comp
  */
 typedef struct
 {
@@ -144,6 +148,8 @@ typedef struct
  *        header_last_uncomp_size
  *        total_last_comp_size
  *        header_last_comp_size
+ *
+ * @ingroup rohc_comp
  */
 typedef struct
 {
@@ -203,6 +209,8 @@ typedef struct
  *     - Minor = 0:
  *        version_major
  *        version_minor
+ *
+ * @ingroup rohc_comp
  */
 typedef struct
 {
@@ -231,6 +239,9 @@ typedef struct
  * @param rtp_private  A pointer to a memory area to be used by the callback
  *                     function.
  * @return             true if the packet is an RTP packet, false otherwise
+ *
+ * @see rohc_comp_set_rtp_detection_cb
+ * @ingroup rohc_comp
  */
 typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
                                               const unsigned char *const udp,
@@ -240,7 +251,16 @@ typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 
 
-/** The prototype of the callback for random numbers */
+/**
+ * @brief The prototype of the callback for random numbers
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  The context given by the user when he/she called the
+ *                      rohc_comp_set_random_cb function
+ *
+ * @see rohc_comp_set_random_cb
+ * @ingroup rohc_comp
+ */
 typedef int (*rohc_comp_random_cb_t) (const struct rohc_comp *const comp,
                                       void *const user_context)
 	__attribute__((nonnull(1)));

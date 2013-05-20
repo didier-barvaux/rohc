@@ -33,7 +33,13 @@
 #define D_NUM_PROFILES 6
 
 
-/// ROHC decompressor states (see 4.3.2 in the RFC 3095)
+/**
+ * @brief The ROHC decompressor states
+ *
+ * See 4.3.2 in the RFC 3095.
+ *
+ * @ingroup rohc_decomp
+ */
 typedef enum
 {
 	/// The No Context state
@@ -78,6 +84,8 @@ typedef enum
  *        nr_lost_packets
  *        nr_misordered_packets
  *        is_duplicated
+ *
+ * @ingroup rohc_decomp
  */
 typedef struct
 {

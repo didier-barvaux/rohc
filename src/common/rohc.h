@@ -143,6 +143,8 @@
  * @brief The Ethertype assigned to the ROHC protocol by the IEEE
  *
  * @see http://standards.ieee.org/regauth/ethertype/eth.txt
+ *
+ * @ingroup rohc_common
  */
 #define ROHC_ETHERTYPE  0x22f1
 
@@ -176,6 +178,8 @@
  *
  * If you add a new operation mode, please also add the corresponding textual
  * description in \ref rohc_get_mode_descr.
+ *
+ * @ingroup rohc_common
  */
 typedef enum
 {
@@ -204,6 +208,8 @@ typedef enum
  * Large CID means CID in the \f$[0-ROHC\_LARGE\_CID\_MAX]\f$ interval.
  *
  * @see ROHC_SMALL_CID_MAX ROHC_LARGE_CID_MAX
+ *
+ * @ingroup rohc_common
  */
 typedef enum
 {
@@ -224,6 +230,8 @@ typedef enum
 
 /**
  * @brief ROHC medium (CID characteristics).
+ *
+ * @ingroup rohc_common
  */
 struct medium
 {
