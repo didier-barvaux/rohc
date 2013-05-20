@@ -662,14 +662,14 @@ int udp_lite_code_uo_remainder(const struct c_context *context,
 	   udp_lite_send_cce_packet(context, udp_lite))
 	{
 		rohc_comp_debug(context, "UDP-Lite checksum coverage = 0x%04x\n",
-		                ntohs(udp_lite->len));
+		                rohc_ntoh16(udp_lite->len));
 		memcpy(&dest[counter], &udp_lite->len, 2);
 		counter += 2;
 	}
 
 	/* part 2 */
 	rohc_comp_debug(context, "UDP-Lite checksum = 0x%04x\n",
-	                ntohs(udp_lite->check));
+	                rohc_ntoh16(udp_lite->check));
 	memcpy(&dest[counter], &udp_lite->check, 2);
 	counter += 2;
 
@@ -709,13 +709,13 @@ int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
 
 	/* part 1 */
 	rohc_comp_debug(context, "UDP-Lite checksum coverage = 0x%04x\n",
-	                ntohs(udp_lite->len));
+	                rohc_ntoh16(udp_lite->len));
 	memcpy(&dest[counter], &udp_lite->len, 2);
 	counter += 2;
 
 	/* part 2 */
 	rohc_comp_debug(context, "UDP-Lite checksum = 0x%04x\n",
-	                ntohs(udp_lite->check));
+	                rohc_ntoh16(udp_lite->check));
 	memcpy(&dest[counter], &udp_lite->check, 2);
 	counter += 2;
 
@@ -754,11 +754,14 @@ void udp_lite_init_cc(const struct c_context *context,
 	                udp_lite_context->cfp, udp_lite_context->cfi,
 	                g_context->ir_count);
 
-	udp_lite_context->cfp = (ntohs(udp_lite->len) != packet_length) || udp_lite_context->cfp;
-	udp_lite_context->cfi = (ntohs(udp_lite->len) == packet_length) && udp_lite_context->cfi;
+	udp_lite_context->cfp =
+		(rohc_ntoh16(udp_lite->len) != packet_length) || udp_lite_context->cfp;
+	udp_lite_context->cfi =
+		(rohc_ntoh16(udp_lite->len) == packet_length) && udp_lite_context->cfi;
 
 	rohc_comp_debug(context, "packet_length = %d\n", packet_length);
-	rohc_comp_debug(context, "udp_lite length = %d\n", ntohs(udp_lite->len));
+	rohc_comp_debug(context, "udp_lite length = %d\n",
+	                rohc_ntoh16(udp_lite->len));
 	rohc_comp_debug(context, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
 	                udp_lite_context->cfi);
 
@@ -795,7 +798,8 @@ int udp_lite_send_cce_packet(const struct c_context *const context,
 	                udp_lite_context->cfi);
 
 	/* may the checksum coverage be inferred from UDP-Lite length ? */
-	is_coverage_inferred = (ntohs(udp_lite->len) == udp_lite_context->tmp.udp_size);
+	is_coverage_inferred =
+		(rohc_ntoh16(udp_lite->len) == udp_lite_context->tmp.udp_size);
 
 	/* is the checksum coverage unchanged since last packet ? */
 	if(udp_lite_context->sent_cce_only_count > 0)

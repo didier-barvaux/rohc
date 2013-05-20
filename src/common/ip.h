@@ -124,19 +124,21 @@ struct ip6_ahhdr
 
 /// Get a subpart of a 16-bit IP field
 #define IP_GET_16_SUBFIELD(field, bitmask, offset) \
-	((ntohs(field) & (bitmask)) >> (offset))
+	((rohc_ntoh16(field) & (bitmask)) >> (offset))
 
 /// Get a subpart of a 32-bit IP field
 #define IP_GET_32_SUBFIELD(field, bitmask, offset) \
-	((ntohl(field) & (bitmask)) >> (offset))
+	((rohc_ntoh32(field) & (bitmask)) >> (offset))
 
 /// Set a subpart of a 16-bit IP field
 #define IP_SET_16_SUBFIELD(field, bitmask, offset, value) \
-	(field) = (((field) & htons(~(bitmask))) | htons(((value) << (offset)) & (bitmask)))
+	(field) = (((field) & rohc_hton16(~(bitmask))) | \
+	           rohc_hton16(((value) << (offset)) & (bitmask)))
 
 /// Set a subpart of a 32-bit IP field
 #define IP_SET_32_SUBFIELD(field, bitmask, offset, value) \
-	(field) = (((field) & htonl(~(bitmask))) | htonl(((value) << (offset)) & (bitmask)))
+	(field) = (((field) & rohc_hton32(~(bitmask))) | \
+	           rohc_hton32(((value) << (offset)) & (bitmask)))
 
 
 /*

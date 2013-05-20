@@ -3858,7 +3858,7 @@ static int parse_dynamic_part_ipv4(const struct d_context *const context,
 	read++;
 
 	/* read the IP-ID field */
-	bits->id = ntohs(GET_NEXT_16_BITS(packet));
+	bits->id = rohc_ntoh16(GET_NEXT_16_BITS(packet));
 	bits->id_nr = 16;
 	rohc_decomp_debug(context, "IP-ID = 0x%04x\n", bits->id);
 	packet += 2;
@@ -4295,7 +4295,7 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 		}
 
 		/* retrieve the full outer IP-ID value */
-		bits->outer_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->outer_ip.id_nr = 16;
 		rohc_decomp_debug(context, "%zd outer IP-ID bits = 0x%x\n",
 		                  bits->outer_ip.id_nr, bits->outer_ip.id);
@@ -4322,7 +4322,7 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 		}
 
 		/* retrieve the full inner IP-ID value */
-		bits->inner_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->inner_ip.id_nr = 16;
 		rohc_decomp_debug(context, "%zd inner IP-ID bits = 0x%x\n",
 		                  bits->inner_ip.id_nr, bits->inner_ip.id);
@@ -4881,7 +4881,7 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 		}
 
 		/* retrieve the full outer IP-ID value */
-		bits->outer_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->outer_ip.id_nr = 16;
 
 		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
@@ -4921,7 +4921,7 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 		}
 
 		/* retrieve the full inner IP-ID value */
-		bits->inner_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->inner_ip.id_nr = 16;
 
 		rohc_decomp_debug(context, "replace any existing inner IP-ID bits "
@@ -5776,7 +5776,7 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 		}
 
 		/* retrieve the full outer IP-ID value */
-		bits->outer_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->outer_ip.id_nr = 16;
 
 		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
@@ -5816,7 +5816,7 @@ static int parse_uor2(struct rohc_decomp *const decomp,
 		}
 
 		/* retrieve the full inner IP-ID value */
-		bits->inner_ip.id = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->inner_ip.id_nr = 16;
 
 		rohc_decomp_debug(context, "replace any existing inner IP-ID bits with "
@@ -7112,7 +7112,7 @@ static int parse_extension3(struct rohc_decomp *decomp,
 		}
 
 		/* both inner and outer IP-ID fields are 2-byte long */
-		I_bits = ntohs(GET_NEXT_16_BITS(rohc_remain_data));
+		I_bits = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
 	}
@@ -7639,7 +7639,7 @@ static int parse_outer_header_flags(const struct rohc_decomp *const decomp,
 			goto error;
 		}
 
-		bits->id = ntohs(GET_NEXT_16_BITS(fields));
+		bits->id = rohc_ntoh16(GET_NEXT_16_BITS(fields));
 		bits->id_nr = 16;
 
 		rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
@@ -7886,7 +7886,7 @@ static unsigned int build_uncomp_ipv4(const struct d_context *const context,
 
 	/* dynamic fields */
 	ip->tos = decoded.tos;
-	ip->id = htons(decoded.id);
+	ip->id = rohc_hton16(decoded.id);
 	if(!decoded.nbo)
 	{
 		ip->id = swab16(ip->id);
@@ -7896,12 +7896,13 @@ static unsigned int build_uncomp_ipv4(const struct d_context *const context,
 	ip->ttl = decoded.ttl;
 
 	/* inferred fields */
-	ip->tot_len = htons(payload_size + ip->ihl * 4);
+	ip->tot_len = rohc_hton16(payload_size + ip->ihl * 4);
 	rohc_decomp_debug(context, "Total Length = 0x%04x (IHL * 4 + %d)\n",
-	                  ntohs(ip->tot_len), payload_size);
+	                  rohc_ntoh16(ip->tot_len), payload_size);
 	ip->check = 0;
 	ip->check = ip_fast_csum(dest, ip->ihl);
-	rohc_decomp_debug(context, "IP checksum = 0x%04x\n", ntohs(ip->check));
+	rohc_decomp_debug(context, "IP checksum = 0x%04x\n",
+	                  rohc_ntoh16(ip->check));
 
 	return sizeof(struct ipv4_hdr);
 }
@@ -7974,10 +7975,10 @@ static unsigned int build_uncomp_ipv6(const struct d_context *const context,
 	}
 
 	/* inferred fields */
-	ip->ip6_plen = htons(payload_size + ext_size);
+	ip->ip6_plen = rohc_hton16(payload_size + ext_size);
 	rohc_decomp_debug(context, "Payload Length = 0x%04x (extensions = %zd "
-	                  "bytes, payload = %u bytes)\n", ntohs(ip->ip6_plen),
-	                  ext_size, payload_size);
+	                  "bytes, payload = %u bytes)\n",
+	                  rohc_ntoh16(ip->ip6_plen), ext_size, payload_size);
 
 	return sizeof(struct ipv6_hdr) + ext_size;
 }

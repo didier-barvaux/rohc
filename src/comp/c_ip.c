@@ -524,7 +524,7 @@ int c_ip_code_ir_remainder(const struct c_context *context,
 
 	/* part 1 */
 	sn = g_context->sn & 0xffff;
-	sn = htons(sn);
+	sn = rohc_hton16(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
 	counter += 2;
 	rohc_comp_debug(context, "SN = %u -> 0x%02x%02x\n", g_context->sn,

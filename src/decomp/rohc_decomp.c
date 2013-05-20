@@ -801,7 +801,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "invalid %zd-byte RRU: bad CRC (packet = 0x%08x, "
 			             "computed = 0x%08x)\n", decomp->rru_len,
-			             ntohl(crc_packet), ntohl(crc_computed));
+			             rohc_ntoh32(crc_packet), rohc_ntoh32(crc_computed));
 			/* discard RRU */
 			decomp->rru_len = 0;
 			return ROHC_ERROR_CRC;

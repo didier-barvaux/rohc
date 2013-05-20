@@ -251,7 +251,7 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the UDP header */
 	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
-	if(ip_payload_size != ntohs(udp_header->len))
+	if(ip_payload_size != rohc_ntoh16(udp_header->len))
 	{
 		goto bad_profile;
 	}
@@ -456,6 +456,7 @@ int c_udp_encode(struct c_context *const context,
 	const struct ip_packet *last_ip_header;
 	const struct udphdr *udp;
 	unsigned int ip_proto;
+	size_t ip_hdrs_len;
 	int size;
 
 	assert(context != NULL);
@@ -496,12 +497,13 @@ int c_udp_encode(struct c_context *const context,
 	/* check that UDP length is correct (we have to discard all packets with
 	 * wrong UDP length fields, otherwise the ROHC decompressor will compute
 	 * a different UDP length on its side) */
-	if(ntohs(udp->len) != (packet_size - ((unsigned char *) udp - ip->data)))
+	ip_hdrs_len = ((unsigned char *) udp) - ip->data;
+	if(rohc_ntoh16(udp->len) != (packet_size - ip_hdrs_len))
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "wrong UDP Length field in UDP header: %u found while "
-		             "%u expected\n", ntohs(udp->len),
-		             packet_size - (unsigned int) ((unsigned char *) udp - ip->data));
+		             "%zd expected\n", rohc_ntoh16(udp->len),
+		             packet_size - ip_hdrs_len);
 		return -1;
 	}
 

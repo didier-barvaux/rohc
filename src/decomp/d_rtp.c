@@ -589,7 +589,8 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
+	                  rohc_ntoh16(bits->udp_check));
 	packet += sizeof(uint16_t);
 	read += sizeof(uint16_t);
 	length -= sizeof(uint16_t);
@@ -634,7 +635,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	length--;
 
 	/* part 4: 16-bit RTP SN */
-	bits->sn = ntohs(GET_NEXT_16_BITS(packet));
+	bits->sn = rohc_ntoh16(GET_NEXT_16_BITS(packet));
 	bits->sn_nr = 16;
 	packet += sizeof(uint16_t);
 	read += sizeof(uint16_t);
@@ -643,7 +644,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 
 	/* part 5: 4-byte TimeStamp (TS) */
 	memcpy(&bits->ts, packet, sizeof(uint32_t));
-	bits->ts = ntohl(bits->ts);
+	bits->ts = rohc_ntoh32(bits->ts);
 	bits->ts_nr = 32;
 	read += sizeof(uint32_t);
 	packet += sizeof(uint32_t);
@@ -801,7 +802,7 @@ static int rtp_parse_uo_remainder(const struct d_context *const context,
 		bits->udp_check = GET_NEXT_16_BITS(packet);
 		bits->udp_check_nr = 16;
 		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
-		                  ntohs(bits->udp_check));
+		                  rohc_ntoh16(bits->udp_check));
 		packet += 2;
 		read += 2;
 	}
@@ -863,7 +864,7 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_src = udp->source;
 	}
 	rohc_decomp_debug(context, "decoded UDP source port = 0x%04x\n",
-	                  ntohs(decoded->udp_src));
+	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP destination port */
 	if(bits.udp_dst_nr > 0)
@@ -878,7 +879,7 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_dst = udp->dest;
 	}
 	rohc_decomp_debug(context, "decoded UDP destination port = 0x%04x\n",
-	                  ntohs(decoded->udp_dst));
+	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* UDP checksum:
 	 *  - error if udp_checksum_present not initialized,
@@ -911,7 +912,7 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
-	                  "present = %d)\n", ntohs(decoded->udp_check),
+	                  "present = %d)\n", rohc_ntoh16(decoded->udp_check),
 	                  rtp_context->udp_checksum_present);
 
 	/* decode version field */
@@ -1103,8 +1104,10 @@ static int rtp_build_uncomp_rtp(const struct d_context *const context,
 	udp->check = decoded.udp_check;
 
 	/* UDP interfered fields */
-	udp->len = htons(payload_len + sizeof(struct udphdr) + sizeof(struct rtphdr));
-	rohc_decomp_debug(context, "UDP + RTP length = 0x%04x\n", ntohs(udp->len));
+	udp->len = rohc_hton16(payload_len + sizeof(struct udphdr) +
+	                       sizeof(struct rtphdr));
+	rohc_decomp_debug(context, "UDP + RTP length = 0x%04x\n",
+	                  rohc_ntoh16(udp->len));
 
 	/* RTP fields: version, R-P flag, R-X flag, M flag, R-PT, TS and SN */
 	rtp->version = decoded.rtp_version;
@@ -1114,8 +1117,8 @@ static int rtp_build_uncomp_rtp(const struct d_context *const context,
 	rtp->m = decoded.rtp_m;
 	rtp->pt = decoded.rtp_pt & 0x7f;
 	assert(decoded.sn <= 0xffff);
-	rtp->sn = htons((uint16_t) decoded.sn);
-	rtp->timestamp = htonl(decoded.ts);
+	rtp->sn = rohc_hton16((uint16_t) decoded.sn);
+	rtp->timestamp = rohc_hton32(decoded.ts);
 	rtp->ssrc = decoded.rtp_ssrc;
 
 	return sizeof(struct udphdr) + sizeof(struct rtphdr);

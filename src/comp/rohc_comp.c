@@ -805,7 +805,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		       CRC_FCS32_LEN);
 		comp->rru_len += CRC_FCS32_LEN;
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "RRU 32-bit FCS CRC = 0x%08x\n", ntohl(rru_crc));
+		           "RRU 32-bit FCS CRC = 0x%08x\n", rohc_ntoh32(rru_crc));
 		/* computed RRU must be <= MRRU */
 		assert(comp->rru_len <= comp->mrru);
 
@@ -1658,7 +1658,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 		{
 			if(comp->contexts[i].used &&
 			   comp->contexts[i].profile->use_udp_port(&comp->contexts[i],
-			                                           htons(port)))
+			                                           rohc_hton16(port)))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "destroy context with CID %d because it uses "

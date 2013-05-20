@@ -165,7 +165,7 @@ static int c_esp_create(struct c_context *const context,
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
 
 	/* initialize SN with the SN found in the ESP header */
-	g_context->sn = ntohl(esp->sn);
+	g_context->sn = rohc_ntoh32(esp->sn);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
 	                "packet = %u\n", g_context->sn);
 
@@ -588,7 +588,7 @@ static uint32_t c_esp_get_next_sn(const struct c_context *context,
 		esp = (struct esphdr *) ip_get_next_layer(outer_ip);
 	}
 
-	return ntohl(esp->sn);
+	return rohc_ntoh32(esp->sn);
 }
 
 
@@ -621,7 +621,7 @@ static int esp_code_static_esp_part(const struct c_context *context,
 	const struct esphdr *esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", ntohl(esp->spi));
+	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", rohc_ntoh32(esp->spi));
 	memcpy(&dest[counter], &esp->spi, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
@@ -662,7 +662,7 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
 	esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_comp_debug(context, "ESP SN = 0x%08x\n", ntohl(esp->sn));
+	rohc_comp_debug(context, "ESP SN = 0x%08x\n", rohc_ntoh32(esp->sn));
 	memcpy(&dest[counter], &esp->sn, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 

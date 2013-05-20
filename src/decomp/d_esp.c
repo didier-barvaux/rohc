@@ -265,7 +265,8 @@ static int esp_parse_static_esp(const struct d_context *const context,
 	/* SPI */
 	memcpy(&bits->esp_spi, packet, spi_length);
 	bits->esp_spi_nr = spi_length * 8;
-	rohc_decomp_debug(context, "ESP SPI = 0x%08x\n", ntohl(bits->esp_spi));
+	rohc_decomp_debug(context, "ESP SPI = 0x%08x\n",
+	                  rohc_ntoh32(bits->esp_spi));
 	packet += spi_length;
 	read += spi_length;
 
@@ -322,7 +323,7 @@ static int esp_parse_dynamic_esp(const struct d_context *const context,
 	memcpy(&sn, packet, sn_length);
 	packet += sn_length;
 	read += sn_length;
-	bits->sn = ntohl(sn);
+	bits->sn = rohc_ntoh32(sn);
 	bits->sn_nr = sn_length * 8;
 	rohc_decomp_debug(context, "ESP SN = 0x%08x\n", bits->sn);
 
@@ -372,7 +373,7 @@ static bool esp_decode_values_from_bits(const struct d_context *context,
 		memcpy(&decoded->esp_spi, &esp->spi, spi_length);
 	}
 	rohc_decomp_debug(context, "decoded SPI = 0x%08x\n",
-	                  ntohl(decoded->esp_spi));
+	                  rohc_ntoh32(decoded->esp_spi));
 
 	return true;
 }
@@ -399,11 +400,11 @@ static int esp_build_uncomp_esp(const struct d_context *const context,
 
 	/* static SPI field */
 	memcpy(&esp->spi, &decoded.esp_spi, spi_length);
-	rohc_decomp_debug(context, "SPI = 0x%08x\n", ntohl(esp->spi));
+	rohc_decomp_debug(context, "SPI = 0x%08x\n", rohc_ntoh32(esp->spi));
 
 	/* dynamic SN field */
-	esp->sn = htonl(decoded.sn);
-	rohc_decomp_debug(context, "SN = 0x%08x\n", ntohl(esp->sn));
+	esp->sn = rohc_hton32(decoded.sn);
+	rohc_decomp_debug(context, "SN = 0x%08x\n", rohc_ntoh32(esp->sn));
 
 	return sizeof(struct esphdr);
 }

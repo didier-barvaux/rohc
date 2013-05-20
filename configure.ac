@@ -102,6 +102,7 @@ AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])
 AC_CHECK_HEADERS([arpa/inet.h]) # ntohl, htonl, ntohs, htons on Linux
 AC_CHECK_HEADERS([winsock2.h])  # ntohl, htonl, ntohs, htons on Windows
+AC_CHECK_HEADERS([sys/types.h]) # ntohl, htonl, ntohs, htons on OpenBSD
 AC_CHECK_HEADERS([linux/if_tun.h]) # TUN/TAP support on Linux
 AC_CHECK_HEADERS([sched.h]) # scheduling priority on Linux
 AC_CHECK_HEADERS([sys/mman.h]) # memory management on Linux

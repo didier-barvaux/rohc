@@ -958,7 +958,7 @@ int c_generic_encode(struct c_context *const context,
 	if(ip_get_version(ip) == IPV4)
 	{
 		rohc_comp_debug(context, "ip_id = 0x%04x, context_sn = %u\n",
-		                ntohs(ipv4_get_id(ip)), g_context->sn);
+		                rohc_ntoh16(ipv4_get_id(ip)), g_context->sn);
 	}
 	else /* IPV6 */
 	{
@@ -4876,7 +4876,7 @@ int code_EXT3_packet(const struct c_context *context,
 			assert(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST);
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
-			id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
+			id_encoded = rohc_hton16(g_context->ip_flags.info.v4.id_delta);
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
 			                innermost_ipv4_non_rnd, dest[counter],
@@ -4978,11 +4978,11 @@ int code_EXT3_packet(const struct c_context *context,
 			/* always transmit the IP-ID encoded, in Network Byte Order */
 			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
 			{
-				id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
+				id_encoded = rohc_hton16(g_context->ip_flags.info.v4.id_delta);
 			}
 			else
 			{
-				id_encoded = htons(g_context->ip2_flags.info.v4.id_delta);
+				id_encoded = rohc_hton16(g_context->ip2_flags.info.v4.id_delta);
 			}
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
@@ -5383,7 +5383,7 @@ int header_fields(const struct c_context *context,
 		uint16_t id_encoded;
 
 		/* always transmit the IP-ID encoded, in Network Byte Order */
-		id_encoded = htons(header_info->info.v4.id_delta);
+		id_encoded = rohc_hton16(header_info->info.v4.id_delta);
 		memcpy(&dest[counter], &id_encoded, 2);
 		rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
 		                ip_hdr_pos, dest[counter], dest[counter + 1]);
@@ -5829,8 +5829,8 @@ static void detect_ip_id_behaviour(const struct c_context *const context,
 		uint16_t old_id; /* the IP-ID of the previous IPv4 header */
 		uint16_t new_id; /* the IP-ID of the IPv4 header being compressed */
 
-		old_id = ntohs(header_info->info.v4.old_ip.id);
-		new_id = ntohs(ipv4_get_id(ip));
+		old_id = rohc_ntoh16(header_info->info.v4.old_ip.id);
+		new_id = rohc_ntoh16(ipv4_get_id(ip));
 
 		rohc_comp_debug(context, "1) old_id = 0x%04x new_id = 0x%04x\n",
 		                old_id, new_id);
@@ -5997,7 +5997,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 	{
 		/* compute the new IP-ID / SN delta */
 		g_context->ip_flags.info.v4.id_delta =
-			ntohs(ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo)) -
+			rohc_ntoh16(ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",
@@ -6054,7 +6054,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 	{
 		/* compute the new IP-ID / SN delta */
 		g_context->ip2_flags.info.v4.id_delta =
-			ntohs(ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo)) -
+			rohc_ntoh16(ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",

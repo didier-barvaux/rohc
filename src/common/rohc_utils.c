@@ -22,15 +22,21 @@
 
 #include "rohc_utils.h"
 
-#include "config.h" /* for WORDS_BIGENDIAN */
+#ifdef __KERNEL__
+#	include <endian.h>
+#else
+#	include "config.h" /* for WORDS_BIGENDIAN */
+#endif
 
 
 /*
  * Prototypes of private functions
  */
 
-static inline uint32_t bswap32(const uint32_t value) __attribute__((const));
-static inline uint16_t bswap16(const uint16_t value) __attribute__((const));
+static inline uint32_t rohc_bswap32(const uint32_t value)
+	__attribute__((const));
+static inline uint16_t rohc_bswap16(const uint16_t value)
+	__attribute__((const));
 
 
 /*
@@ -41,15 +47,15 @@ static inline uint16_t bswap16(const uint16_t value) __attribute__((const));
 /**
  * @brief Convert a 32-bit long integer from network to host byte orders
  *
- * @param netlong  The 32-bit long integer in network byte order
- * @return         The 32-bit long integer converted in host byte order
+ * @param net32  The 32-bit long integer in network byte order
+ * @return       The 32-bit long integer converted in host byte order
  */
-uint32_t ntohl(const uint32_t netlong)
+uint32_t rohc_ntoh32(const uint32_t net32)
 {
 #if WORDS_BIGENDIAN == 1
-	return netlong;
+	return net32;
 #else
-	return bswap32(netlong);
+	return rohc_bswap32(net32);
 #endif
 }
 
@@ -57,15 +63,15 @@ uint32_t ntohl(const uint32_t netlong)
 /**
  * @brief Convert a 16-bit short integer from network to host byte orders
  *
- * @param netshort  The 16-bit short integer in network byte order
- * @return          The 16-bit short integer converted in host byte order
+ * @param net16  The 16-bit short integer in network byte order
+ * @return       The 16-bit short integer converted in host byte order
  */
-uint16_t ntohs(const uint16_t netshort)
+uint16_t rohc_ntoh16(const uint16_t net16)
 {
 #if WORDS_BIGENDIAN == 1
-	return netshort;
+	return net16;
 #else
-	return bswap16(netshort);
+	return rohc_bswap16(net16);
 #endif
 
 }
@@ -74,15 +80,15 @@ uint16_t ntohs(const uint16_t netshort)
 /**
  * @brief Convert a 32-bit long integer from host to network byte orders
  *
- * @param hostlong  The 32-bit long integer in host byte order
- * @return          The 32-bit long integer converted in network byte order
+ * @param host32  The 32-bit long integer in host byte order
+ * @return        The 32-bit long integer converted in network byte order
  */
-uint32_t htonl(const uint32_t hostlong)
+uint32_t rohc_hton32(const uint32_t host32)
 {
 #if WORDS_BIGENDIAN == 1
-	return hostlong;
+	return host32;
 #else
-	return bswap32(hostlong);
+	return rohc_bswap32(host32);
 #endif
 }
 
@@ -90,15 +96,15 @@ uint32_t htonl(const uint32_t hostlong)
 /**
  * @brief Convert a 16-bit short integer from host to network byte orders
  *
- * @param hostshort  The 16-bit short integer in host byte order
- * @return           The 16-bit short integer converted in network byte order
+ * @param host16  The 16-bit short integer in host byte order
+ * @return        The 16-bit short integer converted in network byte order
  */
-uint16_t htons(const uint16_t hostshort)
+uint16_t rohc_hton16(const uint16_t host16)
 {
 #if WORDS_BIGENDIAN == 1
-	return hostshort;
+	return host16;
 #else
-	return bswap16(hostshort);
+	return rohc_bswap16(host16);
 #endif
 }
 
@@ -114,7 +120,7 @@ uint16_t htons(const uint16_t hostshort)
  * @param value  The 32-bit value to swap byte for
  * @return       The 32-bit value with swapped bytes
  */
-static uint32_t bswap32(const uint32_t value)
+static uint32_t rohc_bswap32(const uint32_t value)
 {
 	return (((value & 0xff000000) >> 24) |
 	        ((value & 0x00ff0000) >>  8) |
@@ -129,7 +135,7 @@ static uint32_t bswap32(const uint32_t value)
  * @param value  The 16-bit value to swap byte for
  * @return       The 16-bit value with swapped bytes
  */
-static uint16_t bswap16(const uint16_t value)
+static uint16_t rohc_bswap16(const uint16_t value)
 {
 	return (((value >> 8) & 0xff) | ((value & 0xff) << 8));
 }

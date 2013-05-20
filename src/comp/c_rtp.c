@@ -169,7 +169,7 @@ static int c_rtp_create(struct c_context *const context,
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* initialize SN with the SN found in the RTP header */
-	g_context->sn = (uint32_t) ntohs(rtp->sn);
+	g_context->sn = (uint32_t) rohc_ntoh16(rtp->sn);
 	assert(g_context->sn <= 0xffff);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
 	                "packet = %u\n", g_context->sn);
@@ -376,7 +376,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		/* check if the UDP destination port belongs to the list of RTP
 		   destination ports reserved for RTP traffic */
 
-		const uint16_t dest_port = ntohs(udp_header->dest);
+		const uint16_t dest_port = rohc_ntoh16(udp_header->dest);
 		bool is_rtp_packet;
 
 
@@ -1118,7 +1118,7 @@ static uint32_t c_rtp_get_next_sn(const struct c_context *context,
 	}
 	rtp = (struct rtphdr *) (udp + 1);
 
-	next_sn = (uint32_t) ntohs(rtp->sn);
+	next_sn = (uint32_t) rohc_ntoh16(rtp->sn);
 
 	assert(next_sn <= 0xffff);
 	return next_sn;
@@ -1166,14 +1166,14 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 	{
 		/* TS_STRIDE cannot be computed yet (first packet or TS is constant),
 		 * so send TS only */
-		rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
+		rtp_context->tmp.ts_send = rohc_ntoh32(rtp->timestamp);
 		rtp_context->tmp.nr_ts_bits = 32;
 		rohc_comp_debug(context, "cannot send TS scaled, send TS only\n");
 	}
 	else if(rtp_context->ts_sc.state == INIT_STRIDE)
 	{
 		/* TS and TS_STRIDE will be send */
-		rtp_context->tmp.ts_send = ntohl(rtp->timestamp);
+		rtp_context->tmp.ts_send = rohc_ntoh32(rtp->timestamp);
 		rtp_context->tmp.nr_ts_bits = 32;
 		rohc_comp_debug(context, "cannot send TS scaled, send TS and TS_STRIDE\n");
 	}
@@ -1618,7 +1618,7 @@ static int rtp_changed_rtp_dynamic(const struct c_context *context,
 	}
 
 	/* we verify if ts_stride changed */
-	rtp_context->tmp.timestamp = ntohl(rtp->timestamp);
+	rtp_context->tmp.timestamp = rohc_ntoh32(rtp->timestamp);
 	if(rtp_context->ts_sc.state != SEND_SCALED)
 	{
 		rohc_comp_debug(context, "TS_STRIDE changed now or in the last few "

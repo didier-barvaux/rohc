@@ -407,7 +407,7 @@ int ip_is_fragment(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		is_fragment = ((ntohs(ip->header.v4.frag_off) & (~IP_DF)) != 0);
+		is_fragment = ((rohc_ntoh16(ip->header.v4.frag_off) & (~IP_DF)) != 0);
 	}
 	else if(ip->version == IPV6)
 	{
@@ -439,11 +439,11 @@ unsigned int ip_get_totlen(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		len = ntohs(ip->header.v4.tot_len);
+		len = rohc_ntoh16(ip->header.v4.tot_len);
 	}
 	else if(ip->version == IPV6)
 	{
-		len = sizeof(struct ipv6_hdr) + ntohs(ip->header.v6.ip6_plen);
+		len = sizeof(struct ipv6_hdr) + rohc_ntoh16(ip->header.v6.ip6_plen);
 	}
 	else /* IP_UNKNOWN */
 	{
@@ -501,11 +501,12 @@ unsigned int ip_get_plen(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		len = ntohs(ip->header.v4.tot_len) - ip->header.v4.ihl * 4;
+		len = rohc_ntoh16(ip->header.v4.tot_len) - ip->header.v4.ihl * 4;
 	}
 	else if(ip->version == IPV6)
 	{
-		len = ntohs(ip->header.v6.ip6_plen) - ip_get_total_extension_size(ip);
+		len = rohc_ntoh16(ip->header.v6.ip6_plen) -
+		      ip_get_total_extension_size(ip);
 	}
 	else
 	{
