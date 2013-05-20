@@ -35,7 +35,7 @@ if test -d "$srcdir/.bzr" ; then
 		PACKAGE_REVNO="~`${bzr} revno`"
 	fi
 elif test -f "$srcdir/bzr_revno" ; then
-	PACKAGE_REVNO="`cat \"$srcdir/bzr_revno\"`"
+	PACKAGE_REVNO="`cat $srcdir/bzr_revno`"
 else
 	PACKAGE_REVNO=""
 fi
