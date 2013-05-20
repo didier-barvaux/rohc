@@ -28,6 +28,8 @@
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "crc.h"
+#include "c_generic.h"
+#include "protocols/udp.h"
 
 #include <stdlib.h>
 #ifndef __KERNEL__
@@ -36,17 +38,69 @@
 #include <assert.h>
 
 
+/**
+ * @brief Define the UDP-specific temporary variables in the profile
+ *        compression context.
+ *
+ * This object must be used by the UDP-specific decompression context
+ * sc_udp_context.
+ *
+ * @see sc_udp_context
+ */
+struct udp_tmp_vars
+{
+	/** The number of UDP fields that changed in the UDP header */
+	int send_udp_dynamic;
+};
+
+
+/**
+ * @brief Define the UDP part of the profile decompression context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context c_generic_context.
+ *
+ * @see c_generic_context
+ */
+struct sc_udp_context
+{
+	/** @brief The number of times the checksum field was added to the
+	 *         compressed header */
+	int udp_checksum_change_count;
+
+	/** The previous UDP header */
+	struct udphdr old_udp;
+
+	/** @brief UDP-specific temporary variables that are used during one single
+	 *         compression of packet */
+	struct udp_tmp_vars tmp;
+};
+
+
 /*
  * Private function prototypes.
  */
 
-int udp_code_dynamic_udp_part(const struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *const dest,
-                              int counter);
+static int c_udp_create(struct c_context *const context,
+                        const struct ip_packet *ip);
 
-int udp_changed_udp_dynamic(const struct c_context *context,
-                            const struct udphdr *udp);
+static void udp_decide_state(struct c_context *const context);
+
+static int c_udp_encode(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const size_t packet_size,
+                        unsigned char *const dest,
+                        const size_t dest_size,
+                        rohc_packet_t *const packet_type,
+                        int *const payload_offset);
+
+static int udp_code_dynamic_udp_part(const struct c_context *context,
+                                     const unsigned char *next_header,
+                                     unsigned char *const dest,
+                                     int counter);
+
+static int udp_changed_udp_dynamic(const struct c_context *context,
+                                   const struct udphdr *udp);
 
 
 /**
@@ -60,7 +114,8 @@ int udp_changed_udp_dynamic(const struct c_context *context,
  * @param ip      The IP/UDP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
+static int c_udp_create(struct c_context *const context,
+                        const struct ip_packet *ip)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
@@ -442,13 +497,13 @@ bad_context:
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
  */
-int c_udp_encode(struct c_context *const context,
-                 const struct ip_packet *ip,
-                 const size_t packet_size,
-                 unsigned char *const dest,
-                 const size_t dest_size,
-                 rohc_packet_t *const packet_type,
-                 int *const payload_offset)
+static int c_udp_encode(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const size_t packet_size,
+                        unsigned char *const dest,
+                        const size_t dest_size,
+                        rohc_packet_t *const packet_type,
+                        int *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -541,7 +596,7 @@ quit:
  *
  * @param context The compression context
  */
-void udp_decide_state(struct c_context *const context)
+static void udp_decide_state(struct c_context *const context)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -662,10 +717,10 @@ int udp_code_static_udp_part(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_code_dynamic_udp_part(const struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *const dest,
-                              int counter)
+static int udp_code_dynamic_udp_part(const struct c_context *context,
+                                     const unsigned char *next_header,
+                                     unsigned char *const dest,
+                                     int counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -693,8 +748,8 @@ int udp_code_dynamic_udp_part(const struct c_context *context,
  * @param udp     The UDP header
  * @return        The number of UDP fields that changed
  */
-int udp_changed_udp_dynamic(const struct c_context *context,
-                            const struct udphdr *udp)
+static int udp_changed_udp_dynamic(const struct c_context *context,
+                                   const struct udphdr *udp)
 {
 	const struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;

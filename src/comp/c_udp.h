@@ -24,52 +24,15 @@
 #ifndef C_UDP_H
 #define C_UDP_H
 
-#include "c_generic.h"
-#include "protocols/udp.h"
+#include "rohc_comp_internals.h"
 
-
-/**
- * @brief Define the UDP-specific temporary variables in the profile compression
- *        context.
- *
- * This object must be used by the UDP-specific decompression context sc_udp_context.
- *
- * @see sc_udp_context
- */
-struct udp_tmp_vars
-{
-	/// The number of UDP fields that changed in the UDP header
-	int send_udp_dynamic;
-};
-
-
-/**
- * @brief Define the UDP part of the profile decompression context.
- *
- * This object must be used with the generic part of the decompression
- * context c_generic_context.
- *
- * @see c_generic_context
- */
-struct sc_udp_context
-{
-	/// The number of times the checksum field was added to the compressed header
-	int udp_checksum_change_count;
-
-	/// The previous UDP header
-	struct udphdr old_udp;
-
-	/// @brief UDP-specific temporary variables that are used during one single
-	///        compression of packet
-	struct udp_tmp_vars tmp;
-};
+#include <stdint.h>
+#include <stdbool.h>
 
 
 /*
  * Function prototypes.
  */
-
-int c_udp_create(struct c_context *const context, const struct ip_packet *ip);
 
 bool c_udp_check_profile(const struct rohc_comp *const comp,
                          const struct ip_packet *const outer_ip,
@@ -80,15 +43,6 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
 bool c_udp_check_context(const struct c_context *context,
                          const struct ip_packet *ip);
 
-int c_udp_encode(struct c_context *const context,
-                 const struct ip_packet *ip,
-                 const size_t packet_size,
-                 unsigned char *const dest,
-                 const size_t dest_size,
-                 rohc_packet_t *const packet_type,
-                 int *const payload_offset);
-
-void udp_decide_state(struct c_context *const context);
 
 int udp_code_uo_remainder(const struct c_context *context,
                           const unsigned char *next_header,
@@ -99,7 +53,6 @@ int udp_code_static_udp_part(const struct c_context *context,
                              const unsigned char *next_header,
                              unsigned char *const dest,
                              int counter);
-
 
 #endif
 
