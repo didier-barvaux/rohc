@@ -6,5 +6,6 @@
 
 EXTRA_DIST = \
 	README \
-	uncrustify.cfg
+	uncrustify.cfg \
+	rohc.spec
 
