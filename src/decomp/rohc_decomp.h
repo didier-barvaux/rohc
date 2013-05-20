@@ -328,8 +328,7 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid);
 struct d_context * context_create(struct rohc_decomp *decomp,
                                   const unsigned int cid,
                                   struct d_profile *profile);
-void context_free(struct d_context *const context)
-	__attribute__((nonnull(1)));
+void context_free(struct d_context *const context);
 
 
 /*

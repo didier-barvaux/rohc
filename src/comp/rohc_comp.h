@@ -237,7 +237,7 @@ typedef struct
  * @param payload      The UDP payload of the packet
  * @param payload_size The size of the UDP payload (in bytes)
  * @param rtp_private  A pointer to a memory area to be used by the callback
- *                     function.
+ *                     function, may be NULL.
  * @return             true if the packet is an RTP packet, false otherwise
  *
  * @see rohc_comp_set_rtp_detection_cb
@@ -248,7 +248,7 @@ typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
                                               const unsigned char *const payload,
                                               const unsigned int payload_size,
                                               void *const rtp_private)
-	__attribute__((nonnull(1, 2, 3), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 
 /**
@@ -256,14 +256,14 @@ typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
  *
  * @param comp          The ROHC compressor
  * @param user_context  The context given by the user when he/she called the
- *                      rohc_comp_set_random_cb function
+ *                      rohc_comp_set_random_cb function, may be NULL.
  *
  * @see rohc_comp_set_random_cb
  * @ingroup rohc_comp
  */
 typedef int (*rohc_comp_random_cb_t) (const struct rohc_comp *const comp,
                                       void *const user_context)
-	__attribute__((nonnull(1)));
+	__attribute__((warn_unused_result));
 
 
 /*
