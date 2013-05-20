@@ -29,6 +29,7 @@
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "crc.h"
+#include "c_generic.h"
 #include "protocols/udp_lite.h"
 
 #include <stdlib.h>
@@ -38,9 +39,75 @@
 #include <assert.h>
 
 
+/// @brief The maximal number of times the checksum coverage dit not change
+///        or may be inferred
+#define MAX_LITE_COUNT 2
+
+
+/**
+ * @brief Define the UDP-Lite-specific temporary variables in the profile
+ *        compression context.
+ *
+ * This object must be used by the UDP-specific compression context
+ * sc_udp_lite_context.
+ *
+ * @see sc_udp_lite_context
+ */
+struct udp_lite_tmp_vars
+{
+	/// The size of the UDP-Lite packet (header + payload)
+	int udp_size;
+};
+
+
+/**
+ * @brief Define the UDP-Lite part of the profile compression context.
+ *
+ * This object must be used with the generic part of the compression
+ * context c_generic_context.
+ *
+ * @see c_generic_context
+ */
+struct sc_udp_lite_context
+{
+	/// Whether the Coverage Field is Present or not
+	int cfp;
+	/// Whether the Coverage Field is Inferred or not
+	int cfi;
+
+	/// The F and K bits in the CCE packet (see appendix B in the RFC 4019)
+	unsigned char FK;
+
+	/// The number of times the checksum coverage field did not change
+	int coverage_equal_count;
+	/// The number of times the checksum coverage field may be inferred
+	int coverage_inferred_count;
+	/// Temporary variables related to the checksum coverage field
+	int tmp_coverage;
+
+	/// The number of CCE() packets sent by the compressor
+	int sent_cce_only_count;
+	/// The number of CCE(ON) packets sent by the compressor
+	int sent_cce_on_count;
+	/// The number of CCE(OFF) packets sent by the compressor
+	int sent_cce_off_count;
+
+	/// The previous UDP-Lite header
+	struct udphdr old_udp_lite;
+
+	/// @brief UDP-Lite-specific temporary variables that are used during one
+	///        single compression of packet
+	struct udp_lite_tmp_vars tmp;
+};
+
+
+
 /*
  * Private function prototypes.
  */
+
+static int c_udp_lite_create(struct c_context *const context,
+                             const struct ip_packet *ip);
 
 static bool c_udp_lite_check_profile(const struct rohc_comp *const comp,
                                      const struct ip_packet *const outer_ip,
@@ -48,27 +115,39 @@ static bool c_udp_lite_check_profile(const struct rohc_comp *const comp,
                                      const uint8_t protocol,
                                      rohc_ctxt_key_t *const ctxt_key);
 
-int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
-                                        const unsigned char *next_header,
-                                        unsigned char *const dest,
-                                        int counter);
+static bool c_udp_lite_check_context(const struct c_context *context,
+                                     const struct ip_packet *ip);
 
-int udp_lite_build_cce_packet(const struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *const dest,
-                              int counter,
-                              int *const first_position);
+static int c_udp_lite_encode(struct c_context *const context,
+                             const struct ip_packet *ip,
+                             const size_t packet_size,
+                             unsigned char *const dest,
+                             const size_t dest_size,
+                             rohc_packet_t *const packet_type,
+                             int *const payload_offset);
 
-int udp_lite_send_cce_packet(const struct c_context *const context,
-                             const struct udphdr *udp_lite);
+static int udp_lite_code_dynamic_udplite_part(const struct c_context *context,
+                                              const unsigned char *next_header,
+                                              unsigned char *const dest,
+                                              int counter);
 
-int udp_lite_code_uo_remainder(const struct c_context *context,
-                               const unsigned char *next_header,
-                               unsigned char *const dest,
-                               int counter);
+static int udp_lite_build_cce_packet(const struct c_context *context,
+                                     const unsigned char *next_header,
+                                     unsigned char *const dest,
+                                     int counter,
+                                     int *const first_position);
 
-void udp_lite_init_cc(const struct c_context *context,
-                      const unsigned char *next_header);
+static int udp_lite_send_cce_packet(const struct c_context *const context,
+                                    const struct udphdr *udp_lite);
+
+static int udp_lite_code_uo_remainder(const struct c_context *context,
+                                      const unsigned char *next_header,
+                                      unsigned char *const dest,
+                                      int counter);
+
+static void udp_lite_init_cc(const struct c_context *context,
+                             const unsigned char *next_header);
+
 
 
 /**
@@ -82,8 +161,8 @@ void udp_lite_init_cc(const struct c_context *context,
  * @param ip      The IP/UDP-Lite packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_udp_lite_create(struct c_context *const context,
-                      const struct ip_packet *ip)
+static int c_udp_lite_create(struct c_context *const context,
+                             const struct ip_packet *ip)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
@@ -177,7 +256,7 @@ int c_udp_lite_create(struct c_context *const context,
 	g_context->init_at_IR = udp_lite_init_cc;
 	g_context->get_next_sn = c_ip_get_next_sn;
 	g_context->code_static_part = udp_code_static_udp_part; /* same as UDP */
-	g_context->code_dynamic_part = udp_lite_code_dynamic_udp_lite_part;
+	g_context->code_dynamic_part = udp_lite_code_dynamic_udplite_part;
 	g_context->code_ir_remainder = c_ip_code_ir_remainder;
 	g_context->code_UO_packet_head = udp_lite_build_cce_packet;
 	g_context->code_uo_remainder = udp_lite_code_uo_remainder;
@@ -310,8 +389,8 @@ bad_profile:
  * @return        true if the IP/UDP-Lite packet belongs to the context,
  *                false if it does not belong to the context
  */
-bool c_udp_lite_check_context(const struct c_context *context,
-                              const struct ip_packet *ip)
+static bool c_udp_lite_check_context(const struct c_context *context,
+                                     const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -465,13 +544,13 @@ bad_context:
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
  */
-int c_udp_lite_encode(struct c_context *const context,
-                      const struct ip_packet *ip,
-                      const size_t packet_size,
-                      unsigned char *const dest,
-                      const size_t dest_size,
-                      rohc_packet_t *const packet_type,
-                      int *const payload_offset)
+static int c_udp_lite_encode(struct c_context *const context,
+                             const struct ip_packet *ip,
+                             const size_t packet_size,
+                             unsigned char *const dest,
+                             const size_t dest_size,
+                             rohc_packet_t *const packet_type,
+                             int *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -581,11 +660,11 @@ quit:
  * @param first_position The position to place the first byte of packet
  * @return               The new position in the rohc-packet-under-build buffer
  */
-int udp_lite_build_cce_packet(const struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *const dest,
-                              int counter,
-                              int *const first_position)
+static int udp_lite_build_cce_packet(const struct c_context *context,
+                                     const unsigned char *next_header,
+                                     unsigned char *const dest,
+                                     int counter,
+                                     int *const first_position)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -643,10 +722,10 @@ int udp_lite_build_cce_packet(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_lite_code_uo_remainder(const struct c_context *context,
-                               const unsigned char *next_header,
-                               unsigned char *const dest,
-                               int counter)
+static int udp_lite_code_uo_remainder(const struct c_context *context,
+                                      const unsigned char *next_header,
+                                      unsigned char *const dest,
+                                      int counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -698,10 +777,10 @@ int udp_lite_code_uo_remainder(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
-                                        const unsigned char *next_header,
-                                        unsigned char *const dest,
-                                        int counter)
+static int udp_lite_code_dynamic_udplite_part(const struct c_context *context,
+                                              const unsigned char *next_header,
+                                              unsigned char *const dest,
+                                              int counter)
 {
 	const struct udphdr *udp_lite;
 
@@ -730,8 +809,8 @@ int udp_lite_code_dynamic_udp_lite_part(const struct c_context *context,
  * @param context     The compression context
  * @param next_header The UDP-Lite header
  */
-void udp_lite_init_cc(const struct c_context *context,
-                      const unsigned char *next_header)
+static void udp_lite_init_cc(const struct c_context *context,
+                             const unsigned char *next_header)
 {
 	const struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
@@ -780,8 +859,8 @@ void udp_lite_init_cc(const struct c_context *context,
  * @param udp_lite  The UDP-Lite header
  * @return          1 if a CCE packet must be sent, 0 if not
  */
-int udp_lite_send_cce_packet(const struct c_context *const context,
-                             const struct udphdr *udp_lite)
+static int udp_lite_send_cce_packet(const struct c_context *const context,
+                                    const struct udphdr *udp_lite)
 {
 	const struct c_generic_context *g_context;
 	struct sc_udp_lite_context *udp_lite_context;
