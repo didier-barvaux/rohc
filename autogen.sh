@@ -49,7 +49,10 @@ $( dirname $0 )/configure \
 	--enable-rohc-debug \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
-	--enable-rohc-apps \
+	--enable-app-fuzzer \
+	--enable-app-performance \
+	--enable-app-sniffer \
+	--enable-app-tunnel \
 	--enable-rohc-tests \
 	--enable-rohc-stats \
 	--enable-doc \

@@ -110,7 +110,10 @@ algorithms as defined by the IETF in RFC3095.
 %configure \
 	--enable-fortify-sources \
 	--enable-fail-on-warning \
-	--enable-rohc-apps \
+	--enable-app-fuzzer \
+	--enable-app-performance \
+	--enable-app-sniffer \
+	--enable-app-tunnel \
 	--enable-rohc-tests \
 %if %{rohc_doc}
 	--enable-doc \
@@ -183,6 +186,9 @@ rm -rf %{buildroot}
 %endif
 
 %changelog
+* Mon May 20 2013 Didier Barvaux <didier@barvaux.org>
+- Replace --enable-rohc-apps by --enable-app-fuzzer --enable-app-tunnel
+  --enable-app-performance --enable-app-sniffer.
 * Thu May  9 2013 Didier Barvaux <didier@barvaux.org>
 - depend on libpcap1 on RHEL >= 6
 - define devel and doc subpackages as noarch

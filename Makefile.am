@@ -22,12 +22,6 @@ else
 STATS_DIR = 
 endif
 
-if ROHC_APPS
-APPS_DIR = app
-else
-APPS_DIR =
-endif
-
 if BUILD_DOC
 DOC_DIR = doc
 else
@@ -45,7 +39,7 @@ SUBDIRS = \
 	$(TESTS_DIR) \
 	$(LINUX_MODULE_DIR) \
 	$(STATS_DIR) \
-	$(APPS_DIR) \
+	app \
 	$(DOC_DIR) \
 	$(EXAMPLES_DIR) \
 	contrib
@@ -67,6 +61,10 @@ distdir = $(PACKAGE)-$(VERSION)$(PACKAGE_REVNO)
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fail-on-warning \
 	--enable-fortify-sources \
+	--enable-app-fuzzer \
+	--enable-app-performance \
+	--enable-app-sniffer \
+	--enable-app-tunnel \
 	--enable-rohc-tests \
 	--disable-doc \
 	--disable-examples

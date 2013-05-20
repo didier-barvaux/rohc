@@ -4,9 +4,33 @@
 #	Description: create the ROHC applications
 ################################################################################
 
+if APP_PERF
+APP_PERF_DIR = performance
+else
+APP_PERF_DIR =
+endif
+
+if APP_TUNNEL
+APP_TUNNEL_DIR = tunnel
+else
+APP_TUNNEL_DIR =
+endif
+
+if APP_SNIFFER
+APP_SNIFFER_DIR = sniffer
+else
+APP_SNIFFER_DIR =
+endif
+
+if APP_FUZZER
+APP_FUZZER_DIR = fuzzer
+else
+APP_FUZZER_DIR =
+endif
+
 SUBDIRS = \
-	performance \
-	tunnel \
-	sniffer \
-	fuzzer
+	$(APP_PERF_DIR) \
+	$(APP_TUNNEL_DIR) \
+	$(APP_SNIFFER_DIR) \
+	$(APP_FUZZER_DIR)
 

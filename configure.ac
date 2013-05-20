@@ -324,21 +324,77 @@ AC_ARG_ENABLE(rohc_stats,
 AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 
-# check if ROHC applications (located in the app/ subdir) are enabled
+# abort is --enable-rohc-apps is used as it is deprecated
 AC_ARG_ENABLE(rohc_apps,
               AS_HELP_STRING([--enable-rohc-apps],
                              [enable ROHC applications found in the app/ subdir [[default=no]]]),
-              enable_rohc_apps=$enableval,
-              enable_rohc_apps=no)
-if test "x$enable_rohc_apps" = "xyes" && \
-   test "x$ac_cv_header_linux_if_tun_h" != "xyes" ; then
+                             enable_rohc_apps=$enableval,
+                             enable_rohc_apps="undefined")
+if test "x$enable_rohc_apps" != "xundefined" ; then
 	echo
-	echo "ERROR: --enable-rohc-apps cannot be enabled on non Linux platforms yet"
+	echo "ERROR: --enable-rohc-apps and --disable-rohc-apps are "
+	echo "       deprecated, do not use them any more."
 	echo
-	echo "Please use --disable-rohc-apps and try again."
+	echo "Please use a combination of the following options instead:"
+	echo "  --enable-app-fuzzer"
+	echo "  --enable-app-performance"
+	echo "  --enable-app-sniffer"
+	echo "  --enable-app-tunnel"
+	echo
 	exit 1
 fi
-AM_CONDITIONAL([ROHC_APPS], [test x$enable_rohc_apps = xyes])
+
+
+# check if ROHC fuzzer (located in the app/fuzzer/ subdir) is enabled
+AC_ARG_ENABLE(app_fuzzer,
+              AS_HELP_STRING([--enable-app-fuzzer],
+                             [enable ROHC fuzzer tool [default=no]]),
+              enable_app_fuzzer=$enableval,
+              enable_app_fuzzer=no)
+AM_CONDITIONAL([APP_FUZZER], [test x$enable_app_fuzzer = xyes])
+
+
+# check if ROHC performance tool (located in the app/performance/ subdir)
+# is enabled
+AC_ARG_ENABLE(app_performance,
+              AS_HELP_STRING([--enable-app-performance],
+                             [enable ROHC performance tool [default=no]]),
+              enable_app_perf=$enableval,
+              enable_app_perf=no)
+AM_CONDITIONAL([APP_PERF], [test x$enable_app_perf = xyes])
+
+
+# check if ROHC sniffer tool (located in the app/sniffer/ subdir)
+# is enabled
+AC_ARG_ENABLE(app_sniffer,
+              AS_HELP_STRING([--enable-app-sniffer],
+                             [enable ROHC sniffer tool [default=no]]),
+              enable_app_sniffer=$enableval,
+              enable_app_sniffer=no)
+AM_CONDITIONAL([APP_SNIFFER], [test x$enable_app_sniffer = xyes])
+
+
+# check if ROHC over UDP tunnel (located in the app/tunnel/ subdir) is enabled
+AC_ARG_ENABLE(app_tunnel,
+              AS_HELP_STRING([--enable-app-tunnel],
+                             [enable ROHC over UDP tunnel [default=no]]),
+              enable_app_tunnel=$enableval,
+              enable_app_tunnel=no)
+AM_CONDITIONAL([APP_TUNNEL], [test x$enable_app_tunnel = xyes])
+
+
+# TUN interfaces are not supported on non-Linux platforms yet, so the ROHC
+# over UDP tunnel application cannot be enabled there
+if test "x$enable_app_tunnel" = "xyes" && \
+   test "x$ac_cv_header_linux_if_tun_h" != "xyes" ; then
+	echo
+	echo "ERROR: --enable-app-tunnel cannot be enabled on non Linux "
+	echo "       platforms yet"
+	echo
+	echo "Please use --disable-app-tunnel and try again."
+	echo
+	exit 1
+fi
 
 
 # if ROHC tests or statistics are enabled:
@@ -446,7 +502,8 @@ fi
 #  - libpcap is mandatory
 if test "x$enable_rohc_tests" = "xyes" || \
    test "x$enable_rohc_stats" = "xyes" || \
-   test "x$enable_rohc_apps" = "xyes" ; then
+   test "x$enable_app_perf" = "xyes" || \
+   test "x$enable_app_sniffer" = "xyes" ; then
 
 	# use winpcap for mingw and cygwin, libpcap for other platforms
 	if test "x$host_os" = "xmingw32" || \
