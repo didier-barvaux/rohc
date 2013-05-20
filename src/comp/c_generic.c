@@ -457,7 +457,7 @@ void c_init_tmp_variables(struct generic_tmp_vars *tmp_vars)
 	tmp_vars->nr_ip_id_bits2 = 0;
 
 	tmp_vars->packet_type = PACKET_UNKNOWN;
-	tmp_vars->max_size = -1;
+	tmp_vars->max_size = 0;
 }
 
 
@@ -839,9 +839,9 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
  */
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,
-                     const int packet_size,
+                     const size_t packet_size,
                      unsigned char *const dest,
-                     const int dest_size,
+                     const size_t dest_size,
                      rohc_packet_t *const packet_type,
                      int *const payload_offset)
 {

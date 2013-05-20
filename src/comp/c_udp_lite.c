@@ -467,9 +467,9 @@ bad_context:
  */
 int c_udp_lite_encode(struct c_context *const context,
                       const struct ip_packet *ip,
-                      const int packet_size,
+                      const size_t packet_size,
                       unsigned char *const dest,
-                      const int dest_size,
+                      const size_t dest_size,
                       rohc_packet_t *const packet_type,
                       int *const payload_offset)
 {
@@ -484,8 +484,8 @@ int c_udp_lite_encode(struct c_context *const context,
 	assert(context != NULL);
 	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
-	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 	assert(g_context->specific != NULL);
+	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 	udp_lite_context->tmp.udp_size = packet_size - ip_get_hdrlen(ip);
 
 	ip_proto = ip_get_protocol(ip);

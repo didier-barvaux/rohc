@@ -65,9 +65,9 @@ static bool c_rtp_check_context(const struct c_context *context,
 
 static int c_rtp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
-                        const int packet_size,
+                        const size_t packet_size,
                         unsigned char *const dest,
-                        const int dest_size,
+                        const size_t dest_size,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset);
 
@@ -933,9 +933,9 @@ static rohc_ext_t c_rtp_decide_extension(const struct c_context *context)
  */
 static int c_rtp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
-                        const int packet_size,
+                        const size_t packet_size,
                         unsigned char *const dest,
-                        const int dest_size,
+                        const size_t dest_size,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset)
 {

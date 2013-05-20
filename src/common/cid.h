@@ -27,6 +27,8 @@
 #include "rohc.h"
 #include "dllexport.h"
 
+#include <stdlib.h>
+
 
 /*
  * Prototypes of functions that may used by other ROHC modules
@@ -35,7 +37,7 @@
 int ROHC_EXPORT code_cid_values(const rohc_cid_type_t cid_type,
                                 const int cid,
                                 unsigned char *const dest,
-                                const int dest_size,
+                                const size_t dest_size,
                                 int *const first_position);
 
 
