@@ -488,6 +488,25 @@ if test "x$enable_rohc_tests" = "xyes" || \
 	fi
 
 	AC_SUBST([pcap_lib_name], [$pcap_lib_name])
+
+	# check for DLT_LINUX_SLL symbol
+	AC_MSG_CHECKING([whether DLT_LINUX_SLL is defined by libpcap headers])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#if HAVE_PCAP_PCAP_H == 1
+	                                     #  include <pcap/pcap.h>
+	                                     #elif HAVE_PCAP_H == 1
+	                                     #  include <pcap.h>
+	                                     #else
+	                                     #  error "pcap.h header not found"
+	                                     #endif
+	                                     int dlt;]],
+	                                   [[dlt = DLT_LINUX_SLL;]])],
+	                  [dlt_linux_sll_defined="yes"],
+	                  [dlt_linux_sll_defined="no"])
+	AC_MSG_RESULT([$dlt_linux_sll_defined])
+	if test "x$dlt_linux_sll_defined" != "xyes" ; then
+		AC_DEFINE([DLT_LINUX_SLL], [113],
+		          [Define DLT_LINUX_SLL if not defined by the system])
+	fi
 fi
 
 
