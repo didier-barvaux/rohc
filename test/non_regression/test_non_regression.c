@@ -895,6 +895,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t\t</log>\n");
 		printf("\t\t<status>failed</status>\n");
 		printf("\t</startup>\n\n");
+		status = 77; /* skip test */
 		goto close_input;
 	}
 
@@ -959,6 +960,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 			printf("\t\t</log>\n");
 			printf("\t\t<status>failed</status>\n");
 			printf("\t</startup>\n\n");
+			status = 77; /* skip test */
 			goto close_comparison;
 		}
 
