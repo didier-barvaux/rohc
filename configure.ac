@@ -255,7 +255,7 @@ AM_CONDITIONAL([CODE_COVERAGE], [test x$code_coverage = xyes])
 
 # check if deprecated code shall be enabled
 AC_ARG_ENABLE(deprecated_api,
-              AS_HELP_STRING([--enable-deprecated-api],
+              AS_HELP_STRING([--disable-deprecated-api],
                              [build deprecated API if enabled [[default=yes]]]),
               enable_deprecated_api=$enableval,
               enable_deprecated_api=yes)
