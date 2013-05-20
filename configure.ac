@@ -137,21 +137,26 @@ if test "x$ac_cv_header_sched_h" = "xyes" ; then
 	# Check if sched_setscheduler() is available without external library then with libpthread
 	sched_lib=""
 	AC_CHECK_FUNC([sched_setscheduler], ,
-	              [AC_CHECK_LIB([pthread], sched_setscheduler, sched_lib="-lpthread",
-	                            [AC_MSG_ERROR([sched.h header found, but sched_setscheduler not found])])])
+	              [AC_CHECK_LIB([pthread], sched_setscheduler,
+	                            sched_lib="-lpthread", sched_lib="")])
 	AC_SUBST([sched_lib], [$sched_lib])
-	# Check whether sched_setscheduler() takes 2 or 3 arguments
-	AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
-	                                     #include <string.h>
-	                                     struct sched_param param;]],
-	                                   [[memset(&param, 0, sizeof(struct sched_param));
-	                                     sched_setscheduler(0, SCHED_FIFO, &param);]])],
-	                  [sched_setscheduler_params=3],
-	                  [sched_setscheduler_params=2])
-	AC_DEFINE_UNQUOTED([SCHED_SETSCHEDULER_PARAMS], [$sched_setscheduler_params],
+	if test "x$sched_lib" != "x" ; then
+		# Check whether sched_setscheduler() takes 2 or 3 arguments
+		AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
+		                                     #include <string.h>
+		                                     struct sched_param param;]],
+		                                   [[memset(&param, 0, sizeof(struct sched_param));
+		                                     sched_setscheduler(0, SCHED_FIFO, &param);]])],
+		                  [sched_setscheduler_params=3],
+		                  [sched_setscheduler_params=2])
+		AC_MSG_RESULT([$sched_setscheduler_params])
+	else
+		sched_setscheduler_params=0
+	fi
+	AC_DEFINE_UNQUOTED([SCHED_SETSCHEDULER_PARAMS],
+	                   [$sched_setscheduler_params],
 	                   [Define the number of arguments that sched_setscheduler takes])
-	AC_MSG_RESULT([$sched_setscheduler_params])
 fi
 
 # Define uint*_t and u_int*_t if not defined on target platform
