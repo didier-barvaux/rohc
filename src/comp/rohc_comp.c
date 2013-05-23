@@ -1059,6 +1059,8 @@ error:
  * @param comp   The ROHC compressor
  * @param width  The width of the W-LSB sliding window
  * @return       true in case of success, false in case of failure
+ *
+ * @ingroup rohc_comp
  */
 bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                      const size_t width)
@@ -1119,6 +1121,8 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
  * @param fo_timeout  The number of packets to compress before going back
  *                    to FO state to force a context refresh
  * @return            true in case of success, false in case of failure
+ *
+ * @ingroup rohc_comp
  */
 bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
                                       const size_t ir_timeout,
