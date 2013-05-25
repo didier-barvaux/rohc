@@ -25,6 +25,7 @@ fi
 test -z "${SED}" && SED="`which sed`"
 test -z "${GREP}" && GREP="`which grep`"
 test -z "${AWK}" && AWK="`which gawk`"
+test -z "${AWK}" && AWK="`which awk`"
 
 # parse arguments
 SCRIPT="$0"
@@ -40,9 +41,10 @@ fi
 
 # extract the source capture from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_malformed_rohc_packets_##' -e 's#_[0-9]\+\.sh$##' )
+                ${SED} -e 's#.*test_malformed_rohc_packets_##' -e 's#_[^_]*\.sh$##' )
 FAILURE_START=$( echo "${SCRIPT}" | \
-                 ${SED} -e 's#^.*_\([0-9]\+\)\.sh$#\1#' )
+                ${AWK} -F'_' '{ print $NF }' | \
+                ${SED} -e 's#\.sh$##' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists

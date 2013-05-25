@@ -21,6 +21,7 @@ fi
 test -z "${SED}" && SED="`which sed`"
 test -z "${GREP}" && GREP="`which grep`"
 test -z "${AWK}" && AWK="`which gawk`"
+test -z "${AWK}" && AWK="`which awk`"
 
 # parse arguments
 SCRIPT="$0"
