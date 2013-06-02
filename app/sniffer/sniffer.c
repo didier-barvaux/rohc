@@ -50,8 +50,7 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
+#include <netinet/in.h>
 #include <math.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -952,19 +951,20 @@ static int compress_decompress(struct rohc_comp *comp,
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 	{
 		int version;
-		size_t tot_len;
+		uint16_t tot_len;
 
 		version = (ip_packet[0] >> 4) & 0x0f;
 
 		if(version == 4)
 		{
-			struct iphdr *ip = (struct iphdr *) ip_packet;
-			tot_len = ntohs(ip->tot_len);
+			memcpy(&tot_len, ip_packet + 2, sizeof(uint16_t));
+			tot_len = ntohs(tot_len);
 		}
 		else
 		{
-			struct ip6_hdr *ip = (struct ip6_hdr *) ip_packet;
-			tot_len = sizeof(struct ip6_hdr) + ntohs(ip->ip6_plen);
+			const size_t ipv6_header_len = 40;
+			memcpy(&tot_len, ip_packet + 4, sizeof(uint16_t));
+			tot_len = ipv6_header_len + ntohs(tot_len);
 		}
 
 		if(tot_len < ip_size)
