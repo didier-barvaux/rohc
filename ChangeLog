@@ -2,9 +2,10 @@ XX XXX 201X - release 1.6.0
   Compatibility:
     TODO
   License/Authors:
-    TODO
+    Add Raman Gupta for ROHC-over-Ethernet tunnel support.
   Acknowledgments for bug reports and/or bug fixes:
-    FWX, Elisabeth, Raman Gupta, Viveris Technologies, Yura.
+    Audric Schiltknecht, FWX, Elisabeth, Raman Gupta, Viveris Technologies,
+    Yura.
   Main changes:
     TODO
   Build system:
