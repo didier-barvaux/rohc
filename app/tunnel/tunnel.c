@@ -19,50 +19,55 @@
  * @brief ROHC tunnel
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
+ * @author Raman Gupta <ramangupta16@gmail.com>
+ *
  *
  * Description
  * -----------
  *
- * The program creates a ROHC tunnel over UDP. A ROHC tunnel compresses the IP
- * packets it receives from a virtual network interface and decompresses the
- * ROHC packets it receives from one UDP flow.
+ * The program creates a ROHC tunnel over UDP (resp. Ethernet). A ROHC tunnel
+ * compresses the IP packets it receives from a virtual network interface and
+ * decompresses the ROHC packets it receives from one UDP (resp. Ethernet)
+ * flow.
  *
- *               +-----------+                          +----------+
- * IP packets    |  Virtual  |     +--------------+     |          |
- * sent by   --> | interface | --> |  Compressor  | --> |   ROHC   |
- * the host      |   (TUN)   |     +--------------+     |  packets |
- *               |           |                          |   over   |
- * IP packets    |           |     +--------------+     | UDP flow |
- * received  <-- |           | <-- | Decompressor | <-- |          |
- * from the      |           |     +--------------+     |          |
- * tunnel        +-----------+                          +----------+
+ *               +-----------+                          +------------------+
+ * IP packets    |  Virtual  |     +--------------+     |                  |
+ * sent by   --> | interface | --> |  Compressor  | --> |                  |
+ * the host      |   (TUN)   |     +--------------+     |   ROHC packets   |
+ *               |           |                          |     over UDP     |
+ * IP packets    |           |     +--------------+     | (resp. Ethernet) |
+ * received  <-- |           | <-- | Decompressor | <-- |       flow       |
+ * from the      |           |     +--------------+     |                  |
+ * tunnel        +-----------+                          +------------------+
  *
  * The program outputs messages from the tunnel application on stderr and
  * messages from the ROHC library on stdout. It outputs compression statistics
  * on file descriptor 3 and decompression statistics on file descriptor 4.
  *
- * The tunnel can emulate a lossy medium with a given error rate. Unidirectional
- * mode can be forced (no feedback channel).
+ * The tunnel can emulate a lossy medium with a given error rate.
+ * Unidirectional mode can be forced (no feedback channel).
+ *
  *
  * Usage
  * -----
  *
- * Run the rohctunnel without any argument to see what arguments the application
- * accepts.
+ * Run the rohctunnel without any argument to see what arguments the
+ * application accepts.
  *
- * Basic example
- * -------------
+ *
+ * Basic example with UDP
+ * ----------------------
  *
  * Type as root on machine A:
  *
- *  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000
+ *  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000
  *  # ip link set rohc0 up
  *  # ip -4 addr add 10.0.0.1/24 dev rohc0
  *  # ip -6 addr add 2001:eeee::1/64 dev rohc0
  *
  * Type as root on machine B:
  *
- *  # rohctunnel rohc0 remote 192.168.0.21 local 192.168.0.20 port 5000
+ *  # rohctunnel rohc0 udp remote 192.168.0.21 local 192.168.0.20 port 5000
  *  # ip link set rohc0 up
  *  # ip -4 addr add 10.0.0.2/24 dev rohc0
  *  # ip -6 addr add 2001:eeee::2/64 dev rohc0
@@ -72,6 +77,28 @@
  *  $ ping 10.0.0.1
  *  $ ping6 2001:eeee::1
  *
+ *
+ * Basic example with Ethernet
+ * ---------------------------
+ *
+ * Type as root on machine A:
+ *
+ *  # rohctunnel rohc0 ethernet remote 08:00:27:E1:1E:E6 local eth0
+ *  # ip link set rohc0 up
+ *  # ip -4 addr add 10.0.0.1/24 dev rohc0
+ *  # ip -6 addr add 2001:eeee::1/64 dev rohc0
+ *
+ * Type as root on machine B:
+ *
+ *  # rohctunnel rohc0 ethernet remote 08:00:27:0F:D9:8D local eth0
+ *  # ip link set rohc0 up
+ *  # ip -4 addr add 10.0.0.2/24 dev rohc0
+ *  # ip -6 addr add 2001:eeee::2/64 dev rohc0
+ *
+ * Then, on machine B:
+ *
+ *  $ ping 10.0.0.1
+ *  $ ping6 2001:eeee::1
  */
 
 
@@ -105,6 +132,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+/* Ethernet includes */
+#include <netpacket/packet.h>
+
 /* ROHC includes */
 #include "rohc.h"
 #include "rohc_comp.h"
@@ -131,6 +161,47 @@
 /// Stop on compression/decompression failure
 #define STOP_ON_FAILURE 0
 
+/** The print format for one Ethernet MAC address */
+#define MAC_ADDR_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+
+/** The arguments for the print format for one Ethernet MAC address */
+#define MAC_ADDR(mac) \
+	(mac)[0], (mac)[1], (mac)[2], \
+	(mac)[3], (mac)[4], (mac)[5]
+
+/** The different types of tunnels */
+typedef enum
+{
+	ROHC_TUNNEL_UDP = 0,
+	ROHC_TUNNEL_ETHERNET = 1,
+} rohc_tunnel_t;
+
+/** The parameters of the tunnel wrt to its type */
+struct rohc_tunnel
+{
+	rohc_tunnel_t type;
+
+	union
+	{
+		/* UDP */
+		struct
+		{
+			struct in_addr raddr;
+			struct in_addr laddr;
+			int port;
+		} udp;
+
+		/* Ethernet */
+		struct
+		{
+			uint8_t raddr[ETH_ALEN];
+			char *itf_name;
+			unsigned int itf_index;
+		} ethernet;
+
+	} params;
+};
+
 
 /*
  * Function prototypes:
@@ -145,13 +216,27 @@ int read_from_udp(int sock, unsigned char *buffer, unsigned int *length);
 int write_to_udp(int sock, struct in_addr raddr, int port,
                  unsigned char *packet, unsigned int length);
 
-int tun2udp(struct rohc_comp *comp,
+static int raw_create(const unsigned int itf_index);
+static int read_from_raw(const int sock,
+                         unsigned char *const buffer,
+                         unsigned int *const length);
+static int write_to_raw(const int sock,
+                        const uint8_t raddr[ETH_ALEN],
+                        const unsigned int itf_index,
+                        unsigned char *const packet,
+                        const unsigned int length);
+
+int tun2wan(struct rohc_comp *comp,
             int from, int to,
-            struct in_addr raddr, int port,
+            const struct rohc_tunnel *const tunnel,
             int error, double ber, double pe2, double p2);
-int udp2tun(struct rohc_decomp *decomp, int from, int to);
+int wan2tun(struct rohc_decomp *const decomp,
+            const int from,
+            const int to,
+            const rohc_tunnel_t tunnel_type);
 int flush_feedback(struct rohc_comp *comp,
-                   int to, struct in_addr raddr, int port);
+                   const int to,
+                   const struct rohc_tunnel *const tunnel);
 
 void dump_packet(char *descr, unsigned char *packet, const size_t length);
 double get_probability(char *arg, int *error);
@@ -204,11 +289,20 @@ usage:\n\
   rohctunnel TUNNEL [ ERROR ] [ DIR ]\n\
 \n\
 Tunnel parameters:\n\
-  TUNNEL := NAME remote RADDR local LADDR port PORT\n\
-  NAME   := STRING            The name of the tunnel\n\
+  TUNNEL := NAME TYPE PARAMS\n\
+  NAME   := STRING              The name of the tunnel\n\
+  TYPE   := { udp | ethernet }\n\
+\n\
+Tunnel parameters if TYPE = udp:\n\
+  PARAMS := remote RADDR local LADDR port PORT\n\
   RADDR  := IPV4_ADDRESS      The IP address of the remote host\n\
   LADDR  := IPV4_ADDRESS      The IP address of the local host\n\
   PORT   := PORT              The UDP port to use (local and remote)\n\
+\n\
+Tunnel parameters if TYPE = ethernet:\n\
+  PARAMS := remote RADDR local ITF\n\
+  RADDR  := MAC_ADDRESS       The Ethernet MAC address of the remote host\n\
+  ITF    := STRING            The local interface to use, eg. eth0\n\
 \n\
 Error model (none if not specified):\n\
   ERROR  := error { none | uniform RATE | burst PE2 P2 }\n\
@@ -220,12 +314,15 @@ Direction (bidirectional if not specified):\n\
   DIR    := dir { bidirectional | unidirectional }\n\
 \n\
 Examples:\n\
-  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000\n\
-  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
     dir unidirectional\n\
-  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
     error uniform 1e-5 dir bidirectional\n\
-  # rohctunnel rohc0 remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
+    error burst 1e-5 2e-5\n\
+  # rohctunnel rohc0 ethernet remote 01:02:03:04:05:06 local eth1\n\
+  # rohctunnel rohc0 ethernet remote 01:02:03:04:05:06 local eth1 \\\n\
     error burst 1e-5 2e-5\n\
 ");
 }
@@ -259,22 +356,27 @@ int main(int argc, char *argv[])
 {
 	int failure = 0;
 
+	/* general */
 	char *tun_name;
-	struct in_addr raddr;
-	struct in_addr laddr;
-	int port;
+	struct rohc_tunnel tunnel;
+
+	/* error model */
 	int error_model;
 	int conv_error;
 	double ber = 0;
 	double pe2 = 0;
 	double p2 = 0;
-	int arg_count;
+
+	/* ROHC mode */
 	int is_umode;
+
+	size_t arg_count;
 
 	unsigned long seed;
 	int ret;
 
-	int tun, udp;
+	int tun;
+	int wan;
 
 	fd_set readfds;
 	struct timespec timeout;
@@ -286,20 +388,27 @@ int main(int argc, char *argv[])
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
 
-	
+
 	/*
 	 * Parse arguments:
 	 */
 
 	/* check the number of arguments:
-	 *   rohctunnel version          -> 2 arguments
-	 *   rohctunnel help             -> 2 arguments
-	 *   rohctunnel TUNNEL           -> 8 arguments
-	 *   rohctunnel TUNNEL ERROR     -> 10-12 arguments
-	 *   rohctunnel TUNNEL DIR       -> 10 arguments
-	 *   rohctunnel TUNNEL ERROR DIR -> 12-14 arguments
+	 *   rohctunnel version            -> 2 arguments
+	 *   rohctunnel help               -> 2 arguments
+	 *   UDP:
+	 *     rohctunnel TUNNEL           -> 9 arguments
+	 *     rohctunnel TUNNEL ERROR     -> 11-13 arguments
+	 *     rohctunnel TUNNEL DIR       -> 11 arguments
+	 *     rohctunnel TUNNEL ERROR DIR -> 13-15 arguments
+	 *   Ethernet:
+	 *     rohctunnel TUNNEL           -> 7 arguments
+	 *     rohctunnel TUNNEL ERROR     -> 9-11 arguments
+	 *     rohctunnel TUNNEL DIR       -> 9 arguments
+	 *     rohctunnel TUNNEL ERROR DIR -> 11-13 arguments
+
 	 */
-	if(argc != 2 && argc != 8 && (argc < 10 || argc > 14))
+	if(argc != 2 && argc != 7 && argc != 9 && (argc < 9 || argc > 15))
 	{
 		usage();
 		goto quit;
@@ -318,58 +427,134 @@ int main(int argc, char *argv[])
 	}
 
 	/* first argument is not 'version' or 'help', so we have a tunnel request */
-	if(argc < 8)
+	if(argc < 7)
 	{
 		usage();
 		goto quit;
 	}
 
 	/* get the tunnel name */
+	if(strlen(argv[1]) <= 0 || strlen(argv[1]) >= IFNAMSIZ)
+	{
+		fprintf(stderr, "bad tunnel interface name '%s': too long\n",
+		        argv[1]);
+		goto quit;
+	}
 	tun_name = argv[1];
+	if(if_nametoindex(tun_name) > 0)
+	{
+		fprintf(stderr, "tunnel interface '%s' already exists\n", tun_name);
+		goto quit;
+	}
+
+	/* get the type of tunnel: UDP or Ethernet */
+	if(strcmp(argv[2], "udp") == 0)
+	{
+		tunnel.type = ROHC_TUNNEL_UDP;
+		arg_count = 9;
+	}
+	else if(strcmp(argv[2], "ethernet") == 0)
+	{
+		tunnel.type = ROHC_TUNNEL_ETHERNET;
+		arg_count = 7;
+	}
+	else
+	{
+		fprintf(stderr, "unknown tunnel type '%s'\n", argv[2]);
+		usage();
+		goto quit;
+	}
 
 	/* get the remote IP address */
-	if(strcmp(argv[2], "remote") != 0)
+	if(strcmp(argv[3], "remote") != 0)
 	{
+		fprintf(stderr, "keyword '%s' found instead of 'remote'\n", argv[3]);
 		usage();
 		goto quit;
 	}
-	if(!inet_aton(argv[3], &raddr))
+	if(tunnel.type == ROHC_TUNNEL_UDP)
 	{
-		fprintf(stderr, "bad remote IP address: %s\n", argv[3]);
-		goto quit;
+		if(!inet_aton(argv[4], &tunnel.params.udp.raddr))
+		{
+			fprintf(stderr, "bad remote IP address: %s\n", argv[4]);
+			goto quit;
+		}
+	}
+	else /* ROHC_TUNNEL_ETHERNET */
+	{
+		unsigned int mac_addr[ETH_ALEN];
+		int i;
+
+		ret = sscanf(argv[4], MAC_ADDR_FMT,
+		             mac_addr, mac_addr + 1, mac_addr + 2,
+		             mac_addr + 3, mac_addr + 4, mac_addr + 5);
+		if(ret != ETH_ALEN)
+		{
+			fprintf(stderr, "bad remote Ethernet MAC address: %s\n", argv[4]);
+			goto quit;
+		}
+		for(i = 0; i < ETH_ALEN; i++)
+		{
+			tunnel.params.ethernet.raddr[i] = mac_addr[i] & 0xff;
+		}
 	}
 
-	/* get the local IP address */
-	if(strcmp(argv[4], "local") != 0)
+	/* get the local informations (IP address or interface) */
+	if(strcmp(argv[5], "local") != 0)
 	{
+		fprintf(stderr, "keyword '%s' found instead of 'local'\n", argv[5]);
 		usage();
 		goto quit;
 	}
-	if(!inet_aton(argv[5], &laddr))
+	if(tunnel.type == ROHC_TUNNEL_UDP)
 	{
-		fprintf(stderr, "bad local IP address: %s\n", argv[5]);
-		goto quit;
+		if(!inet_aton(argv[6], &tunnel.params.udp.laddr))
+		{
+			fprintf(stderr, "bad local IP address: %s\n", argv[6]);
+			goto quit;
+		}
+	}
+	else /* ROHC_TUNNEL_ETHERNET */
+	{
+		if(strlen(argv[6]) <= 0 || strlen(argv[6]) >= IFNAMSIZ)
+		{
+			fprintf(stderr, "bad local interface name '%s': too long\n",
+			        argv[6]);
+			goto quit;
+		}
+		tunnel.params.ethernet.itf_name = argv[6];
+		tunnel.params.ethernet.itf_index =
+			if_nametoindex(tunnel.params.ethernet.itf_name);
+		if(tunnel.params.ethernet.itf_index == 0)
+		{
+			fprintf(stderr, "bad local interface '%s': %s (%d)\n",
+			        tunnel.params.ethernet.itf_name, strerror(errno), errno);
+			goto quit;
+		}
 	}
 
-	/* get the device name */
-	if(strcmp(argv[6], "port") != 0)
+	/* get the UDP port */
+	if(tunnel.type == ROHC_TUNNEL_UDP)
 	{
-		usage();
-		goto quit;
-	}
-	port = atoi(argv[7]);
-	if(port <= 0 || port >= 0xffff)
-	{
-		fprintf(stderr, "bad port: %s\n", argv[7]);
-		goto quit;
+		if(strcmp(argv[7], "port") != 0)
+		{
+			fprintf(stderr, "keyword '%s' found instead of 'port'\n", argv[7]);
+			usage();
+			goto quit;
+		}
+		tunnel.params.udp.port = atoi(argv[8]);
+		if(tunnel.params.udp.port <= 0 || tunnel.params.udp.port >= 0xffff)
+		{
+			fprintf(stderr, "bad UDP port: %s\n", argv[8]);
+			goto quit;
+		}
 	}
 
 	/* get the error model and its parameters if present */
-	if(argc >= 9 && strcmp(argv[8], "error") == 0)
+	if(argc > arg_count && strcmp(argv[arg_count], "error") == 0)
 	{
-		arg_count = 9;
-
-		if(argc < arg_count + 1)
+		arg_count++;
+		if(argc <= arg_count)
 		{
 			fprintf(stderr, "the error keyword requires an argument: "
 			        "none, uniform or burst\n");
@@ -390,7 +575,7 @@ int main(int argc, char *argv[])
 			arg_count++;
 
 			/* check if parameters are present */
-			if(argc < arg_count + 1)
+			if(argc <= arg_count)
 			{
 				usage();
 				goto quit;
@@ -404,7 +589,7 @@ int main(int argc, char *argv[])
 				goto quit;
 			}
 			arg_count++;
-	
+
 			fprintf(stderr, "emulate lossy medium with %e errors/bit "
 			                "= 1 error every %lu bytes\n",
 			        ber, (unsigned long) (1 / (ber * 8)));
@@ -454,15 +639,13 @@ int main(int argc, char *argv[])
 		/* no error model */
 		fprintf(stderr, "do not emulate lossy medium (default)\n");
 		error_model = 0;
-		arg_count = 8;
 	}
 
 	/* get the direction mode if present */
-	if(argc >= arg_count + 1 && strcmp(argv[arg_count], "dir") == 0)
+	if(argc > arg_count && strcmp(argv[arg_count], "dir") == 0)
 	{
 		arg_count++;
-
-		if(argc < arg_count + 1)
+		if(argc <= arg_count)
 		{
 			fprintf(stderr, "the dir keyword requires an argument: "
 			        "unidirectional or bidirectional\n");
@@ -507,17 +690,31 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stderr, "%s created, fd %d\n", tun_name, tun);
 
-	/* create an UDP socket */
-	udp = udp_create(laddr, port);
-	if(udp < 0)
+	/* create an UDP/ethernet socket */
+	if(tunnel.type == ROHC_TUNNEL_UDP)
 	{
-		fprintf(stderr, "UDP socket creation on port %d failed\n",
-		        port);
-		failure = 1;
-		goto close_tun;
+		wan = udp_create(tunnel.params.udp.laddr, tunnel.params.udp.port);
+		if(wan < 0)
+		{
+			fprintf(stderr, "UDP socket creation on port %d failed\n",
+			        tunnel.params.udp.port);
+			failure = 1;
+			goto close_tun;
+		}
+		fprintf(stderr, "UDP socket created on port %d, fd %d\n",
+		        tunnel.params.udp.port, wan);
 	}
-	fprintf(stderr, "UDP socket created on port %d, fd %d\n",
-	        port, udp);
+	else /* ROHC_TUNNEL_ETHERNET */
+	{
+		wan = raw_create(tunnel.params.ethernet.itf_index);
+		if(wan < 0)
+		{
+			fprintf(stderr, "Ethernet socket creation failed\n");
+			failure = 1;
+			goto close_tun;
+		}
+		fprintf(stderr, "Ethernet socket created, fd %d\n", wan);
+	}
 
 
 	/*
@@ -529,7 +726,7 @@ int main(int argc, char *argv[])
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
-		goto close_udp;
+		goto close_wan;
 	}
 
 	/* set trace callback for compressor */
@@ -624,9 +821,10 @@ int main(int argc, char *argv[])
 		/* poll the read sockets/file descriptors */
 		FD_ZERO(&readfds);
 		FD_SET(tun, &readfds);
-		FD_SET(udp, &readfds);
+		FD_SET(wan, &readfds);
 
-		ret = pselect(max(tun, udp) + 1, &readfds, NULL, NULL, &timeout, &sigmask);
+		ret = pselect(max(tun, wan) + 1, &readfds, NULL, NULL,
+		              &timeout, &sigmask);
 		if(ret < 0)
 		{
 			fprintf(stderr, "pselect failed: %s (%d)\n", strerror(errno), errno);
@@ -635,10 +833,10 @@ int main(int argc, char *argv[])
 		}
 		else if(ret > 0)
 		{
-			/* bridge from TUN to UDP */
+			/* bridge from TUN to WAN (UDP or Ethernet) */
 			if(FD_ISSET(tun, &readfds))
 			{
-				failure = tun2udp(comp, tun, udp, raddr, port,
+				failure = tun2wan(comp, tun, wan, &tunnel,
 				                  error_model, ber, pe2, p2);
 				gettimeofday(&last, NULL);
 #if STOP_ON_FAILURE
@@ -647,14 +845,14 @@ int main(int argc, char *argv[])
 #endif
 			}
 
-			/* bridge from UDP to TUN */
+			/* bridge from WAN (UDP or Ethernet) to TUN */
 			if(
 #if STOP_ON_FAILURE
 			   !failure &&
 #endif
-			   FD_ISSET(udp, &readfds))
+			   FD_ISSET(wan, &readfds))
 			{
-				failure = udp2tun(decomp, udp, tun);
+				failure = wan2tun(decomp, wan, tun, tunnel.type);
 #if STOP_ON_FAILURE
 				if(failure)
 					alive = 0;
@@ -666,7 +864,7 @@ int main(int argc, char *argv[])
 		gettimeofday(&now, NULL);
 		if(now.tv_sec > last.tv_sec + 1)
 		{
-			failure = flush_feedback(comp, udp, raddr, port);
+			failure = flush_feedback(comp, wan, &tunnel);
 			last = now;
 #if STOP_ON_FAILURE
 			if(failure)
@@ -688,8 +886,8 @@ destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
 	rohc_free_compressor(comp);
-close_udp:
-	close(udp);
+close_wan:
+	close(wan);
 close_tun:
 	close(tun);
 quit:
@@ -823,7 +1021,7 @@ error:
 
 
 /*
- * Raw socket:
+ * UDP socket:
  */
 
 
@@ -832,7 +1030,7 @@ error:
  *
  * @param laddr  The local address to bind the socket to
  * @param port   The UDP port to bind the socket to
- * @return       An opened socket descriptor on the TUN interface in case of
+ * @return       An opened socket descriptor on the UDP socket in case of
  *               success, a negative value otherwise
  */
 int udp_create(struct in_addr laddr, int port)
@@ -844,10 +1042,10 @@ int udp_create(struct in_addr laddr, int port)
 
 	/* create an UDP socket */
    sock = socket(AF_INET, SOCK_DGRAM, PF_UNSPEC);
-
 	if(sock < 0)
 	{
-		fprintf(stderr, "cannot create the UDP socket\n");
+		fprintf(stderr, "cannot create the UDP socket: %s (%d)\n",
+		        strerror(errno), errno);
 		goto quit;
 	}
 
@@ -916,7 +1114,7 @@ int read_from_udp(int sock, unsigned char *buffer, unsigned int *length)
 	*length = ret;
 
 #if DEBUG
-	fprintf(stderr, "read one %u-byte ROHC packet on UDP sock %d\n",
+	fprintf(stderr, "read one %u-byte ROHC packet on UDP socket %d\n",
 	        *length - 2, sock);
 #endif
 
@@ -935,13 +1133,13 @@ error:
  * All UDP packets contain a sequence number that identify the UDP packet. It
  * helps discovering lost packets (for statistical purposes). The buffer that
  * contains the ROHC packet must have 2 bytes of free space at the beginning.
- * This allows the write_to_udp function to add the 2-bytes sequence number in
+ * This allows the write_to_udp function to add the 2-byte sequence number in
  * the UDP packet without allocating new memory.
  *
  * @param sock    The UDP socket descriptor to write data to
  * @param raddr   The remote address of the tunnel (ie. the address where to
  *                send the UDP datagrams)
- * @param port    The remote UDP port  where to send the UDP data
+ * @param port    The remote UDP port where to send the UDP data
  * @param buffer  The packet to write to the UDP socket
  * @param length  The length of the packet
  * @return        0 in case of success, a non-null value otherwise
@@ -983,21 +1181,191 @@ error:
 
 
 /*
- * Forwarding between the TUN interface and the UDP socket
+ * RAW socket:
  */
 
 
 /**
- * @brief Forward IP packets received on the TUN interface to the UDP socket
+ * @brief Create a RAW socket
+ *
+ * @param itf_index  The index of the local interface to bind the socket to
+ * @return           An opened socket descriptor on the RAW socket in case of
+ *                   success, a negative value otherwise
+ */
+static int raw_create(const unsigned int itf_index)
+{
+	struct sockaddr_ll addr;
+	int sock;
+	int ret;
+
+	/* create a RAW socket */
+	sock = socket(AF_PACKET, SOCK_DGRAM, htons(ROHC_ETHERTYPE));
+	if(sock < 0)
+	{
+		fprintf(stderr, "cannot create the RAW socket: %s (%d)\n",
+		        strerror(errno), errno);
+		goto quit;
+	}
+
+	/* bind the socket on given interface for ROHC */
+	memset(&addr, 0, sizeof(addr));
+	addr.sll_family = AF_PACKET;
+	addr.sll_protocol = htons(ROHC_ETHERTYPE);
+	addr.sll_ifindex = itf_index;
+
+	ret = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
+	if(ret < 0)
+	{
+		fprintf(stderr, "cannot bind to RAW socket to interface %u: %s (%d)\n",
+		        itf_index, strerror(errno), errno);
+		goto close;
+	}
+
+	return sock;
+
+close:
+	close(sock);
+quit:
+	return -1;
+}
+
+
+/**
+ * @brief Read data from the RAW socket
+ *
+ * @param sock    The RAW socket descriptor to read data from
+ * @param buffer  The buffer where to store the data
+ * @param length  OUT: the length of the data
+ * @return        0 in case of success, a non-null value otherwise
+ */
+static int read_from_raw(const int sock,
+                         unsigned char *const buffer,
+                         unsigned int *const length)
+{
+	struct sockaddr_ll addr;
+	socklen_t addr_len;
+	int ret;
+
+	addr_len = sizeof(struct sockaddr_ll);
+	memset(&addr, 0, addr_len);
+
+	/* read data from the UDP socket */
+	ret = recvfrom(sock, buffer, *length, 0, (struct sockaddr *) &addr,
+	               &addr_len);
+	if(ret < 0 || ret > *length)
+	{
+		fprintf(stderr, "recvfrom failed: %s (%d)\n", strerror(errno), errno);
+		goto error;
+	}
+
+	if(ret == 0)
+		goto quit;
+
+	*length = ret;
+
+#if DEBUG
+	fprintf(stderr, "read one %u-byte ROHC packet on RAW socket %d\n",
+	        *length - 2, sock);
+#endif
+
+quit:
+	return 0;
+
+error:
+	*length = 0;
+	return 1;
+}
+
+
+/**
+ * @brief Write data to the RAW socket
+ *
+ * All Ethernet frames contain a sequence number that identify the Ethernet
+ * frame. It helps discovering lost packets (for statistical purposes).
+ *
+ * All Ethernet frames contain also the length of the ROHC packet on 1 byte.
+ *
+ * The buffer that contains the ROHC packet must have 3 bytes of free space at
+ * the beginning. This allows the write_to_raw function to add the 2-byte
+ * sequence number and the 1-byte ROHC length in the Ethernet frame without
+ * allocating new memory.
+ *
+ * @param sock       The RAW socket descriptor to write data to
+ * @param raddr      The remote address of the tunnel (ie. the address where
+ *                   to send the Ethernet datagrams)
+ * @param itf_index  The index of the local interface on which to write
+ * @param buffer     The packet to write to the RAW socket
+ * @param length     The length of the packet
+ * @return           0 in case of success, a non-null value otherwise
+ */
+static int write_to_raw(const int sock,
+                        const uint8_t raddr[ETH_ALEN],
+                        const unsigned int itf_index,
+                        unsigned char *const packet,
+                        const unsigned int length)
+{
+	struct sockaddr_ll addr;
+	int ret;
+
+	if(length <= 3 || length > 255)
+	{
+		fprintf(stderr, "write_to_raw: bad length %u\n", length);
+		goto error;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sll_family = AF_PACKET;
+	addr.sll_protocol = htons(ROHC_ETHERTYPE);
+	addr.sll_ifindex = itf_index;
+	addr.sll_halen = ETH_ALEN;
+	memcpy(addr.sll_addr, raddr, ETH_ALEN);
+
+	/* write the tunnel sequence number at the beginning of packet */
+	packet[0] = (htons(seq) >> 8) & 0xff;
+	packet[1] = htons(seq) & 0xff;
+
+	/* Current ROHC packet length. Since for Ethernet min payload is 46 and
+	 * any excess bytes after payload are  padded. It is very much possible
+	 * that current ROHC packet length is less than 46 bytes, so the length is
+	 * conveyed in the third byte */
+	packet[2] = length - 3;
+
+	/* send the data on the UDP socket */
+	ret = sendto(sock, packet, length, 0, (struct sockaddr *) &addr,
+	             sizeof(struct sockaddr_ll));
+	if(ret < 0)
+	{
+		fprintf(stderr, "sendto failed: %s (%d)\n", strerror(errno), errno);
+		goto error;
+	}
+
+#if DEBUG
+	fprintf(stderr, "%u bytes written on socket %d\n", length, sock);
+#endif
+
+	return 0;
+
+error:
+	return 1;
+}
+
+
+
+/*
+ * Forwarding between the TUN interface and the WAN socket
+ */
+
+
+/**
+ * @brief Forward IP packets received on the TUN interface to the WAN socket
  *
  * The function compresses the IP packets thanks to the ROHC library before
- * sending them on the UDP socket.
+ * sending them on the WAN socket.
  *
  * @param comp   The ROHC compressor
  * @param from   The TUN file descriptor to read from
- * @param to     The UDP socket descriptor to write to
- * @param raddr  The remote address of the tunnel
- * @param port   The remote port of the tunnel
+ * @param to     The WAN socket descriptor to write to
+ * @param tunnel The type and parameters of the tunnel
  * @param error  Type of error emulation (0 = none, 1 = uniform,
  *               2 = non-uniform/burst)
  * @param ber    The BER (Binary Error Rate) to emulate (value used on first
@@ -1008,13 +1376,13 @@ error:
  *               call only if error model is non-uniform)
  * @return       0 in case of success, a non-null value otherwise
  */
-int tun2udp(struct rohc_comp *comp,
+int tun2wan(struct rohc_comp *comp,
             int from, int to,
-            struct in_addr raddr, int port,
+            const struct rohc_tunnel *const tunnel,
             int error, double ber, double pe2, double p2)
 {
 	static unsigned char buffer[TUNTAP_BUFSIZE];
-	static unsigned char rohc_packet[2 + MAX_ROHC_SIZE];
+	static unsigned char rohc_packet[3 + MAX_ROHC_SIZE];
 	unsigned int buffer_len = TUNTAP_BUFSIZE;
 	unsigned char *packet;
 	size_t packet_len;
@@ -1089,7 +1457,7 @@ int tun2udp(struct rohc_comp *comp,
 	fprintf(stderr, "compress packet #%u (%zd bytes)\n", seq, packet_len);
 #endif
 	ret = rohc_compress2(comp, packet, packet_len,
-	                     rohc_packet + 2, MAX_ROHC_SIZE,
+	                     rohc_packet + 3, MAX_ROHC_SIZE,
 	                     &rohc_size);
 	if(ret == ROHC_NEED_SEGMENT)
 	{
@@ -1142,17 +1510,28 @@ int tun2udp(struct rohc_comp *comp,
 		}
 	}
 
-	/* write the ROHC packet in the UDP tunnel if not dropped */
+	/* write the ROHC packet in the UDP/Ethernet tunnel if not dropped */
 	if(!to_drop)
 	{
 		if(is_segment)
 		{
 			/* retrieve and transmit all remaining ROHC segments */
-			while((ret = rohc_comp_get_segment(comp, rohc_packet + 2, MAX_ROHC_SIZE,
+			while((ret = rohc_comp_get_segment(comp, rohc_packet + 3, MAX_ROHC_SIZE,
 			                                   &rohc_size)) != ROHC_NEED_SEGMENT)
 			{
-				/* write the ROHC segment in the UDP tunnel */
-				ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
+				/* write the ROHC segment in the tunnel */
+				if(tunnel->type == ROHC_TUNNEL_UDP)
+				{
+					ret = write_to_udp(to, tunnel->params.udp.raddr,
+					                   tunnel->params.udp.port,
+					                   rohc_packet + 1, 2 + rohc_size);
+				}
+				else /* ROHC_TUNNEL_ETHERNET */
+				{
+					ret = write_to_raw(to, tunnel->params.ethernet.raddr,
+					                   tunnel->params.ethernet.itf_index,
+					                   rohc_packet, 3 + rohc_size);
+				}
 				if(ret != 0)
 				{
 					fprintf(stderr, "write_to_udp(segment) failed\n");
@@ -1162,11 +1541,22 @@ int tun2udp(struct rohc_comp *comp,
 		}
 		else
 		{
-			/* write the ROHC packet in the UDP tunnel */
-			ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
+			/* write the ROHC packet in the tunnel */
+			if(tunnel->type == ROHC_TUNNEL_UDP)
+			{
+				ret = write_to_udp(to, tunnel->params.udp.raddr,
+				                   tunnel->params.udp.port,
+				                   rohc_packet + 1, 2 + rohc_size);
+			}
+			else /* ROHC_TUNNEL_ETHERNET */
+			{
+				ret = write_to_raw(to, tunnel->params.ethernet.raddr,
+				                   tunnel->params.ethernet.itf_index,
+				                   rohc_packet, 3 + rohc_size);
+			}
 			if(ret != 0)
 			{
-				fprintf(stderr, "write_to_udp(packet) failed\n");
+				fprintf(stderr, "failed to write data on tunnel\n");
 				goto error;
 			}
 		}
@@ -1230,21 +1620,27 @@ error:
 
 
 /**
- * @brief Forward ROHC packets received on the UDP socket to the TUN interface
+ * @brief Forward ROHC packets received on the WAN socket to the TUN interface
  *
  * The function decompresses the ROHC packets thanks to the ROHC library before
  * sending them on the TUN interface.
  *
- * @param decomp  The ROHC decompressor
- * @param from    The UDP socket descriptor to read from
- * @param to      The TUN file descriptor to write to
- * @return        0 in case of success, a non-null value otherwise
+ * @param decomp       The ROHC decompressor
+ * @param from         The WAN socket descriptor to read from
+ * @param to           The TUN file descriptor to write to
+ * @param tunnel_type  The tunnel of the tunnel
+ * @return             0 in case of success, a non-null value otherwise
  */
-int udp2tun(struct rohc_decomp *decomp, int from, int to)
+int wan2tun(struct rohc_decomp *const decomp,
+            const int from,
+            const int to,
+            const rohc_tunnel_t tunnel_type)
 {
-	static unsigned char packet[2 + MAX_ROHC_SIZE];
+	static unsigned char packet[3 + MAX_ROHC_SIZE];
 	static unsigned char decomp_packet[MAX_ROHC_SIZE + 4];
 	unsigned int packet_len = TUNTAP_BUFSIZE;
+	unsigned char *rohc_packet;
+	unsigned int rohc_pkt_len;
 	int decomp_size;
 	int ret;
 	static unsigned int max_seq = 0;
@@ -1255,21 +1651,31 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 	fprintf(stderr, "\n");
 #endif
 
-	/* read the sequence number + ROHC packet from the UDP tunnel */
-	ret = read_from_udp(from, packet, &packet_len);
+	/* read the sequence number + ROHC packet from the tunnel */
+	if(tunnel_type == ROHC_TUNNEL_UDP)
+	{
+		ret = read_from_udp(from, packet, &packet_len);
+	}
+	else /* ROHC_TUNNEL_ETHERNET */
+	{
+		ret = read_from_raw(from, packet, &packet_len);
+	}
 	if(ret != 0)
 	{
-		fprintf(stderr, "read_from_udp failed\n");
+		fprintf(stderr, "failed to read data from tunnel\n");
 		goto error;
 	}
 
-	if(packet_len <= 2)
+	if((tunnel_type == ROHC_TUNNEL_UDP && packet_len <= 2) ||
+	   (tunnel_type == ROHC_TUNNEL_ETHERNET && packet_len <= 3))
+	{
+		fprintf(stderr, "packet received from WAN is too short\n");
 		goto quit;
+	}
 
 	/* find out if some ROHC packets were lost between compressor and
 	 * decompressor (use the tunnel sequence number) */
 	new_seq = ntohs((packet[0] << 8) + packet[1]);
-
 	if(new_seq < max_seq)
 	{
 		/* some packets were reordered, the packet was wrongly
@@ -1297,12 +1703,32 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		max_seq = new_seq;
 	}
 
+	/* current ROHC packet length. Since for Ethernet min payload is 46 bytes
+	 * and it is possible that current ROHC packet length is not that much, so
+	 * the current length is extracted from the third byte */
+	if(tunnel_type == ROHC_TUNNEL_UDP)
+	{
+		rohc_pkt_len = packet_len - 2;
+		rohc_packet = packet + 2;
+	}
+	else /* ROHC_TUNNEL_ETHERNET */
+	{
+		rohc_pkt_len = packet[2];
+		if(rohc_pkt_len > (packet_len - 3))
+		{
+			fprintf(stderr, "malformed Ethernet frame: length at byte #3 is "
+			        "greater thant the full Ethernet frame\n");
+			goto error;
+		}
+		rohc_packet = packet + 3;
+	}
+
 	/* decompress the ROHC packet */
 #if DEBUG
 	fprintf(stderr, "decompress ROHC packet #%u (%u bytes)\n",
-	        new_seq, packet_len - 2);
+	        new_seq, rohc_pkt_len);
 #endif
-	decomp_size = rohc_decompress(decomp, packet + 2, packet_len - 2,
+	decomp_size = rohc_decompress(decomp, rohc_packet, rohc_pkt_len,
 	                              &decomp_packet[4], MAX_ROHC_SIZE);
 	if(decomp_size <= 0)
 	{
@@ -1314,7 +1740,7 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 		else
 		{
 			fprintf(stderr, "decompression of packet #%u failed\n", new_seq);
-			dump_packet("ROHC packet", packet + 2, packet_len - 2);
+			dump_packet("ROHC packet", rohc_packet, rohc_pkt_len);
 			goto drop;
 		}
 	}
@@ -1339,7 +1765,7 @@ int udp2tun(struct rohc_decomp *decomp, int from, int to)
 			dump_packet("Decompressed packet", &decomp_packet[4], decomp_size);
 			goto drop;
 	}
-	
+
 	/* write the IP packet on the virtual interface */
 	ret = write_to_tun(to, decomp_packet, decomp_size + 4);
 	if(ret != 0)
@@ -1372,23 +1798,23 @@ error:
 
 
 /*
- * Feedback flushing to the UDP socket
+ * Feedback flushing to the WAN socket
  */
 
 
 /**
- * @brief Flush feedback packets stored at the compressor to the UDP socket
+ * @brief Flush feedback packets stored at the compressor to the WAN socket
  *
  * @param comp   The ROHC compressor
- * @param to     The UDP socket descriptor to write to
- * @param raddr  The remote address of the tunnel
- * @param port   The remote port of the tunnel
+ * @param to     The WAN socket descriptor to write to
+ * @param tunnel The type and parameters of the tunnel
  * @return       0 in case of success, a non-null value otherwise
  */
 int flush_feedback(struct rohc_comp *comp,
-                   int to, struct in_addr raddr, int port)
+                   const int to,
+                   const struct rohc_tunnel *const tunnel)
 {
-	static unsigned char rohc_packet[2 + MAX_ROHC_SIZE];
+	static unsigned char rohc_packet[3 + MAX_ROHC_SIZE];
 	int rohc_size;
 	int ret;
 
@@ -1400,7 +1826,7 @@ int flush_feedback(struct rohc_comp *comp,
 	do
 	{
 		/* flush feedback data */
-		rohc_size = rohc_feedback_flush(comp, rohc_packet + 2, MAX_ROHC_SIZE);
+		rohc_size = rohc_feedback_flush(comp, rohc_packet + 3, MAX_ROHC_SIZE);
 
 #if DEBUG
 		fprintf(stderr, "flush %d bytes of feedback data\n", rohc_size);
@@ -1411,11 +1837,22 @@ int flush_feedback(struct rohc_comp *comp,
 			/* increment the tunnel sequence number */
 			seq++;
 
-			/* write the ROHC packet in the UDP tunnel */
-			ret = write_to_udp(to, raddr, port, rohc_packet, 2 + rohc_size);
+			/* write the ROHC packet in the tunnel */
+			if(tunnel->type == ROHC_TUNNEL_UDP)
+			{
+				ret = write_to_udp(to, tunnel->params.udp.raddr,
+				                   tunnel->params.udp.port,
+				                   rohc_packet + 1, 2 + rohc_size);
+			}
+			else
+			{
+				ret = write_to_raw(to, tunnel->params.ethernet.raddr,
+				                   tunnel->params.ethernet.itf_index,
+				                   rohc_packet, 3 + rohc_size);
+			}
 			if(ret != 0)
 			{
-				fprintf(stderr, "write_to_udp failed\n");
+				fprintf(stderr, "failed to write data on tunnel\n");
 				goto error;
 			}
 		}
