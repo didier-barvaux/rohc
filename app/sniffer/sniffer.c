@@ -41,6 +41,8 @@
  *   thus available to reproduce and fix the discovered problems.
  */
 
+#include "test.h"
+
 #include "config.h" /* for HAVE_*_H */
 
 /* system includes */
@@ -48,7 +50,6 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string.h>
-#include <net/ethernet.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <math.h>

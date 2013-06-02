@@ -54,7 +54,7 @@
  * number of (de)compressed packets and the average elapsed time per packet.
  */
 
-#include <test.h>
+#include "test.h"
 
 #include "config.h" /* for HAVE_*_H and SCHED_SETSCHEDULER_PARAMS */
 
