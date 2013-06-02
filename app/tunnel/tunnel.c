@@ -282,7 +282,7 @@ void sighandler(int sig)
  */
 void usage(void)
 {
-	printf("ROHC tunnel: make a ROHC over UDP tunnel\n\
+	printf("ROHC tunnel: make a ROHC-over-UDP or ROHC-over-Ethernet tunnel\n\
 \n\
 usage:\n\
   rohctunnel [ version | help ]\n\
