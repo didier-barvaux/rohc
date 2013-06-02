@@ -36,6 +36,8 @@ The following people are/were involved in the project:
                          <rohc_team@dialine.fr>
   Mikhail Gruzdev        Support for Linux kernel.
                          <michail.gruzdev@gmail.com>
+  Raman Gupta            Support for ROHC-over-Ethernet tunnel.
+                         <ramangupta16@gmail.com>
 
 
 The library was mainly based on the work of the ROHC Project 2003 at the Lulea
