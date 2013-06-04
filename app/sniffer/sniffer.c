@@ -972,7 +972,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			if(is_verbose)
 			{
 				fprintf(stderr, "the Ethernet frame has %zd bytes of padding "
-				        "after the %zd byte IP packet!\n", ip_size - tot_len,
+				        "after the %u byte IP packet!\n", ip_size - tot_len,
 				        tot_len);
 			}
 			ip_size = tot_len;
