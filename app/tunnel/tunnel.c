@@ -1592,30 +1592,17 @@ error:
 /*
  * @brief Print packet statistics for decompressor
  *
- * @param decomp        The ROHC decompressor
  * @param seq           The tunnel sequence number
  * @param lost_packets  The number of lost packets
- * @return              0 in case of success, 1 otherwise
+ * @param failed_decomp The number of decompression failures
  */
-int print_decomp_stats(struct rohc_decomp *decomp,
-                       unsigned int seq,
-                       unsigned int lost_packets)
+void print_decomp_stats(unsigned int seq,
+                        unsigned long lost_packets,
+                        unsigned long failed_decomp)
 {
-	if(decomp->last_context == NULL)
-	{
-		fprintf(stderr, "cannot display stats (last context == NULL)\n");
-		goto error;
-	}
-
-	fprintf(stats_decomp, "%u\t%d\t%u\t%d\n", seq,
-	        lost_packets + decomp->last_context->num_decomp_failures,
-	        lost_packets, decomp->last_context->num_decomp_failures);
+	fprintf(stats_decomp, "%u\t%lu\t%lu\t%lu\n", seq,
+	        lost_packets + failed_decomp, lost_packets, failed_decomp);
 	fflush(stats_decomp);
-
-	return 0;
-
-error:
-	return 1;
 }
 
 
@@ -1646,6 +1633,7 @@ int wan2tun(struct rohc_decomp *const decomp,
 	static unsigned int max_seq = 0;
 	unsigned int new_seq;
 	static unsigned long lost_packets = 0;
+	static unsigned long failed_decomp = 0;
 
 #if DEBUG
 	fprintf(stderr, "\n");
@@ -1741,6 +1729,7 @@ int wan2tun(struct rohc_decomp *const decomp,
 		{
 			fprintf(stderr, "decompression of packet #%u failed\n", new_seq);
 			dump_packet("ROHC packet", rohc_packet, rohc_pkt_len);
+			failed_decomp++;
 			goto drop;
 		}
 	}
@@ -1775,22 +1764,14 @@ int wan2tun(struct rohc_decomp *const decomp,
 	}
 
 	/* print packet statistics */
-	ret = print_decomp_stats(decomp, new_seq, lost_packets);
-	if(ret != 0)
-	{
-		fprintf(stderr, "cannot display stats (print_decomp_stats failed)\n");
-		goto drop;
-	}
+	print_decomp_stats(new_seq, lost_packets, failed_decomp);
 
 quit:
 	return 0;
 
 drop:
 	/* print packet statistics */
-	ret = print_decomp_stats(decomp, new_seq, lost_packets);
-	if(ret != 0)
-		fprintf(stderr, "cannot display stats (print_decomp_stats failed)\n");
-
+	print_decomp_stats(new_seq, lost_packets, failed_decomp);
 error:
 	return 1;
 }
