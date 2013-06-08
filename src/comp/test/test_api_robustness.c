@@ -151,9 +151,9 @@ int main(int argc, char *argv[])
 
 	/* rohc_comp_set_mrru() */
 	CHECK(rohc_comp_set_mrru(NULL, 10) == false);
-	CHECK(rohc_comp_set_mrru(comp, ROHC_MAX_MRRU + 1) == false);
+	CHECK(rohc_comp_set_mrru(comp, 65535 + 1) == false);
 	CHECK(rohc_comp_set_mrru(comp, 0) == true);
-	CHECK(rohc_comp_set_mrru(comp, ROHC_MAX_MRRU) == true);
+	CHECK(rohc_comp_set_mrru(comp, 65535) == true);
 
 	/* rohc_comp_get_mrru() */
 	{

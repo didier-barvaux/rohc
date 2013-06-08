@@ -69,7 +69,6 @@ struct c_context;
  */
 
 
-
 /** The key to help identify (not quaranted unique) a compression context */
 typedef uint32_t rohc_ctxt_key_t;
 

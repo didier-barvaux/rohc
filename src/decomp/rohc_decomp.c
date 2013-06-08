@@ -28,6 +28,7 @@
  */
 
 #include "rohc_decomp.h"
+#include "rohc_decomp_internals.h"
 #include "rohc_traces_internal.h"
 #include "rohc_time.h"
 #include "rohc_utils.h"
@@ -102,14 +103,21 @@ struct d_decode_data
 static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const size_t max_cid);
 
-int d_decode_header(struct rohc_decomp *decomp,
-                    unsigned char *ibuf,
-                    int isize,
-                    unsigned char *obuf,
-                    int osize,
-                    struct d_decode_data *ddata);
+static int d_decode_header(struct rohc_decomp *decomp,
+                           unsigned char *ibuf,
+                           int isize,
+                           unsigned char *obuf,
+                           int osize,
+                           struct d_decode_data *ddata);
 
 static struct d_profile * find_profile(int id);
+
+static struct d_context * context_create(struct rohc_decomp *decomp,
+                                         const unsigned int cid,
+                                         struct d_profile *profile);
+static struct d_context * find_context(struct rohc_decomp *decomp,
+                                       int cid);
+static void context_free(struct d_context *const context);
 
 static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   unsigned char *packet,
@@ -134,13 +142,20 @@ static int d_decode_feedback(struct rohc_decomp *decomp,
                              unsigned char *packet,
                              unsigned int len,
                              unsigned int *feedback_size);
-void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                               int rohc_status,
-                               const uint16_t cid,
-                               int addcidUsed,
-                               const rohc_cid_type_t cid_type,
-                               int mode,
-                               struct d_context *context);
+static void d_operation_mode_feedback(struct rohc_decomp *decomp,
+                                      int rohc_status,
+                                      const uint16_t cid,
+                                      int addcidUsed,
+                                      const rohc_cid_type_t cid_type,
+                                      int mode,
+                                      struct d_context *context);
+
+/* statistics-related functions */
+static int rohc_d_context(struct rohc_decomp *decomp,
+                          int index,
+                          unsigned int indent,
+                          char *buffer);
+
 
 
 /*
@@ -155,7 +170,8 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
  * @param cid    The CID of the context to find out
  * @return       The context if found, NULL otherwise
  */
-struct d_context * find_context(struct rohc_decomp *decomp, int cid)
+static struct d_context * find_context(struct rohc_decomp *decomp,
+                                       int cid)
 {
 	/* CID must be valid wrt MAX_CID */
 	assert(cid >= 0 && cid <= decomp->medium.max_cid);
@@ -171,9 +187,9 @@ struct d_context * find_context(struct rohc_decomp *decomp, int cid)
  * @param profile  The profile to be assigned with the new context
  * @return         The new context if successful, NULL otherwise
  */
-struct d_context * context_create(struct rohc_decomp *decomp,
-                                  const unsigned int cid,
-                                  struct d_profile *profile)
+static struct d_context * context_create(struct rohc_decomp *decomp,
+                                         const unsigned int cid,
+                                         struct d_profile *profile)
 {
 	struct d_context *context;
 
@@ -288,7 +304,7 @@ error:
  *
  * @param context  The context to destroy
  */
-void context_free(struct d_context *const context)
+static void context_free(struct d_context *const context)
 {
 	assert(context != NULL);
 	assert(context->decompressor != NULL);
@@ -715,10 +731,12 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
  * @param ddata  Decompression-related data (e.g. the context)
  * @return       The size of the decompressed packet
  */
-int d_decode_header(struct rohc_decomp *decomp,
-                    unsigned char *ibuf, int isize,
-                    unsigned char *obuf, int osize,
-                    struct d_decode_data *ddata)
+static int d_decode_header(struct rohc_decomp *decomp,
+                           unsigned char *ibuf,
+                           int isize,
+                           unsigned char *obuf,
+                           int osize,
+                           struct d_decode_data *ddata)
 {
 	int size, casenew = 0;
 	struct d_profile *profile;
@@ -1449,10 +1467,10 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
  * @param buffer The buffer where to outputs the statistics
  * @return       The length of data written to the buffer
  */
-int rohc_d_context(struct rohc_decomp *decomp,
-                   int index,
-                   unsigned int indent,
-                   char *buffer)
+static int rohc_d_context(struct rohc_decomp *decomp,
+                          int index,
+                          unsigned int indent,
+                          char *buffer)
 {
 	struct d_context *c;
 	char *prefix;
@@ -1719,7 +1737,6 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	feedback = f_wrap_feedback(&sfeedback, cid, decomp->medium.cid_type,
 	                           WITH_CRC, decomp->crc_table_8,
 	                           &feedbacksize);
-
 	if(feedback == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -1727,8 +1744,7 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 		return;
 	}
 
-	/* deliver the feedback via the compressor associated
-	 * with the decompressor */
+	/* deliver feedback via the compressor associated with the decompressor */
 	if(!rohc_comp_piggyback_feedback(decomp->compressor, feedback, feedbacksize))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
