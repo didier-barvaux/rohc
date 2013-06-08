@@ -128,12 +128,9 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_set_wlsb_window_width(comp, 16) == true);
 
 	/* rohc_comp_set_periodic_refreshes() */
-	CHECK(rohc_comp_set_periodic_refreshes(NULL, CHANGE_TO_IR_COUNT,
-	                                         CHANGE_TO_FO_COUNT) == false);
-	CHECK(rohc_comp_set_periodic_refreshes(comp, 0,
-	                                         CHANGE_TO_FO_COUNT) == false);
-	CHECK(rohc_comp_set_periodic_refreshes(comp, CHANGE_TO_IR_COUNT,
-	                                         0) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(NULL, 1700, 700) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(comp, 0, 700) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(comp, 1700, 0) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 

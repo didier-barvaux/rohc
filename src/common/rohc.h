@@ -261,40 +261,6 @@ struct medium
 #define ROHC_PROFILE_UDPLITE       0x0008
 
 
-/*
- * constants related to profiles
- */
-
-/// The number of ROHC profiles ready to be used
-#define NUM_PROFILES 5
-
-
-/*
- * The limits for the compressor states changes:
- */
-
-/// @brief The maximal number of packets sent in > IR states (= FO and SO
-///        states) before changing back the state to IR (periodic refreshes)
-#define CHANGE_TO_IR_COUNT  1700
-
-/// @brief The maximal number of packets sent in > FO states (= SO state)
-///        before changing back the state to FO (periodic refreshes)
-#define CHANGE_TO_FO_COUNT  700
-
-/// @brief Defines the minimal number of packets that must be sent while
-///        in IR state before being able to switch to the FO state
-#define MAX_IR_COUNT  3
-
-/// @brief Defines the minimal number of packets that must be sent while
-///        in FO state before being able to switch to the SO state
-#define MAX_FO_COUNT  3
-
-/// @brief Defines the minimal number of packets that must be sent while in
-///        INIT_STRIDE state before being able to switch to the SEND_SCALED
-///        state
-#define ROHC_INIT_TS_STRIDE_MIN  3U
-
-
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /*
