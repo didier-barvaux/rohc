@@ -462,9 +462,32 @@ error:
  * @param decomp The ROHC decompressor
  * @param ibuf   The ROHC packet to decompress
  * @param isize  The size of the ROHC packet
- * @param obuf   The buffer where to store the decompressed packet
+ * @param obuf   OUT: The buffer where to store the decompressed packet
+ *                    Only valid if functions returns a positive or zero value
  * @param osize  The size of the buffer for the decompressed packet
- * @return       The size of the decompressed packet
+ * @return       <ul>
+ *                 <li>A positive or zero value representing the length (in
+ *                     bytes) of the decompressed packet in case packet was
+ *                     successfully decompressed</li>
+ *                 <li>A strictly negative value if no decompressed packet
+ *                     is returned:
+ *                   <ul>
+ *                     <li>\e ROHC_FEEDBACK_ONLY if the ROHC packet contains
+ *                         only feedback data</li>
+ *                     <li>\e ROHC_NON_FINAL_SEGMENT if the given ROHC packet
+ *                         is a partial segment of a larger ROHC packet</li>
+ *                     <li>\e ROHC_ERROR_NO_CONTEXT if no decompression
+ *                         context matches the CID stored in the given ROHC
+ *                         packet and the ROHC packet is not an IR packet</li>
+ *                     <li> \e ROHC_ERROR_PACKET_FAILED if the decompression
+ *                         failed because the ROHC packet is unexpected and/or
+ *                         malformed</li>
+ *                     <li>\e ROHC_ERROR_CRC if the CRC detected a
+ *                         transmission or decompression problem</li>
+ *                     <li>\e ROHC_ERROR if another problem occurred</li>
+ *                   </ul>
+ *                 </li>
+ *               </ul>
  *
  * @ingroup rohc_decomp
  */
