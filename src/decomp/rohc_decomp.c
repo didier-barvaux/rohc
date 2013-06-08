@@ -1680,8 +1680,6 @@ error:
  *
  * @param decomp  The ROHC decompressor
  * @param context The decompression context
- *
- * @ingroup rohc_decomp
  */
 void d_change_mode_feedback(struct rohc_decomp *decomp,
                             struct d_context *context)
