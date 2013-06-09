@@ -1,21 +1,180 @@
-XX XXX 201X - release 1.6.0
+09 Jun 2013 - release 1.6.0
   Compatibility:
-    TODO
+    - Version 1.6.0 is not compatible with versions < 1.6.0 because of several
+      fixes related to IETF RFCs that change the format of ROHC packets.
+    - The library API is mainly compatible with earlier versions: some private
+      entities that were made public by mistake are not public anymore. It
+      might break some programs that were using them by mistake.
+
   License/Authors:
-    Add Raman Gupta for ROHC-over-Ethernet tunnel support.
+    - Mikhail Gruzdev, Thales Communications, and Viveris Technologies for
+      Linux kernel support.
+    - Audric Schiltknecht and Julien Bernard from Viveris Technologies for
+      constant IP-ID support, the new RTP profile detection mechanism, and
+      the new trace framework.
+    - Yura for the ROHC fuzzer.
+    - Raman Gupta for ROHC-over-Ethernet tunnel support.
+
   Acknowledgments for bug reports and/or bug fixes:
-    Audric Schiltknecht, FWX, Elisabeth, Raman Gupta, Viveris Technologies,
-    Yura.
+    Audric Schiltknecht, FWX, Elisabeth, Julien Bernard, Raman Gupta,
+    Viveris Technologies, Yura.
+
   Main changes:
-    TODO
+    - ROHC protocol:
+       - Support for constant IP-ID as specified by §3.3 of RFC 3843.
+       - Support for ROHC segment as specified by §5.2.5 of RFC 3095.
+       - Improve handling of TS, TS_STRIDE, TS_OFFSET and TS_SCALED values.
+       - Protect STATIC-NACK feedback with CRC. CRC is required if changing
+         operation mode.
+       - Several compression/decompression bugs (see below).
+    - Library API/usage:
+       - Improve RTP profile detection with a new user callback or with new
+         API functions to add/remove/reset UDP ports dedicated to RTP traffic.
+       - Add new trace framework with user-defined callbacks.
+    - Portability:
+       - Support for Linux kernel.
+       - Support for OpenBSD (tested on 5.3 thanks to Audric Schiltknecht).
+       - Support for mingw64.
+       - RPM spec file for CentOS 5/6, Fedora 17/18 and RHEL 5.
+
+  API changes:
+    - Add rohc_compress2(), rohc_comp_get_segment() and return code
+      ROHC_NEED_SEGMENT to handle ROHC segments.
+    - Update rohc_decompress() to return ROHC_NON_FINAL_SEGMENT to handle ROHC
+      segments.
+    - rohc_compress() is deprecated by rohc_compress2().
+    - Add rohc_comp_set_rtp_detection_cb() to define the user-defined RTP
+      detection callback.
+    - Add rohc_comp_add_rtp_port(), rohc_comp_remove_rtp_port(), and
+      rohc_comp_reset_rtp_ports() to manage the UDP ports dedicated to RTP
+      streams.
+    - Add rohc_comp_set_traces_cb() and rohc_decomp_set_traces_cb() to manage
+      library traces with user-defined callbacks.
+    - Add rohc_feedback_remove_locked() (remove feedbacks once transmitted),
+      rohc_feedback_unlock() (restore feedbacks if transmission failed).
+    - Add rohc_comp_get_last_packet_info2() to get compression statistics.
+    - rohc_comp_get_last_packet_info() is deprecated by
+      rohc_comp_get_last_packet_info2().
+    - Add rohc_decomp_get_last_packet_info() to get decompression statistics.
+    - Add functions rohc_comp_get_general_info(), rohc_comp_get_mrru(),
+      rohc_comp_get_max_cid() and rohc_comp_get_cid_type() to replace
+      functions rohc_c_info(), rohc_c_statistics() and rohc_c_context() that
+      are now deprecated.
+    - Add rohc_comp_force_contexts_reinit() to re-initialize compression
+      contexts.
+    - Remove nonnull as function attribute for public API.
+    - public header cleanup: move some private definitions from rohc.h to
+      private headers.
+    - public header cleanup: move all private decompressor definitions from
+      rohc_decomp.h to rohc_decomp_internals.h
+
   Build system:
-    TODO
+    - Append bzr revision number to library version if built from bzr.
+    - Split --enable-rohc-apps into several different options (see below).
+    - Add --disable-deprecated-api to disable deprecated code (testing only).
+    - Change the behavior of the --enable-rohc-debug configure option:
+      Old behavior: --enable-rohc-debug={1,2,3} configured as build time the
+                    level of debug of the library.
+      New behavior: --enable-rohc-debug={yes,no} configures only extra debug
+                    for the library.
+      Debug traces are managed by the new trace framework. Extra debug traces
+      that may reduce the library performances are only enabled if
+      --enable-rohc-debug or --enable-rohc-debug=yes are specified. The extra
+      debug traces are off by default.
+    - Use CPPFLAGS for -I options instead of CFLAGS.
+    - Do not override CFLAGS, CPPFLAGS, and LDFLAGS in configure.
+    - Support out-of-sources builds.
+    - Support Clang 3.2.
+    - Support GCC 4.8.
+
   Q&A:
-    TODO
+    - Add const keywords in several function prototypes.
+    - Fix warnings emitted by the static code analyzer of the Clang compiler.
+    - Improve the robustness of the compressor API.
+    - Improve test coverage.
+    - Improve API documentation.
+    - Move all private definitions out from public headers.
+    - Define many private functions as static in UDP and UDP-Lite profiles.
+
   Performances:
-    TODO
+    - Simplify the rohc_f_32bits() function.
+    - Introduce a context key to quickly match packets and contexts.
+    - Stop search for the compression context if all used contexts were
+      already checked.
+    - Create all compression contexts at init instead of at runtime.
+    - Dump compressed and uncompressed packets only in extra debug mode.
+    - Avoid using zfree() when free() is enough.
+
+  Applications:
+    General:
+      - Split --enable-rohc-apps into several different options:
+        --enable-app-fuzzer   --enable-app-performance
+        --enable-app-sniffer  --enable-app-tunnel
+    ROHC-over-UDP tunnel:
+      - Handle decompression.
+      - Handle small/large CIDs and MAX_CID.
+      - Add ROHC-over-Ethernet support (Raman Gupta).
+      - Avoid using internal information from the library.
+      - Fix the usage description.
+    ROHC sniffer:
+      - New tool that permits to easily test the library on a real network
+        without affecting it. The program sniffs IP packets from a given
+        network interface, and tests the ROHC library with them. The packets
+        are compressed, then decompressed, and finally compared with the
+        original IP packets.
+    ROHC fuzzer:
+      - New tool that checks the robustness of the ROHC decompressor with
+        random ROHC packets. Contributed by Yura.
+    Performances test:
+      - Increase test duration for CPU frequency.
+
   Bug fixes:
-    TODO
+    Bug  #799206: Build ROHC library with tcc
+    Bug  #804565: Measure test coverage
+    Bug  #813128: Build fails with CYGWIN on Windows
+    Bug #1038637: RTP profile: RTP header with extension flag set not
+                  correctly handled
+    Bug #1050980: Add fuzz testing
+    Bug #1051619: Check library build and tests on OpenBSD
+    Bug #1069411: Support Linux kernel
+    Bug #1071413: Tests build failure related to pcap.h
+    Bug #1080035: Decompression failure with simultaneous TS_STRIDE changes
+                  and packet loss
+    Bug #1080055: Decompression failure caused by RTP stream with lost packet
+                  but irregular IP-ID
+    Bug #1083294: Crash while decompressing RTP stream with large TS jump and
+                  UOR-2 disambiguation
+    Bug #1087682: decompressor: zero-length packet causes a crash
+    Bug #1087683: decompressor: compressed list with 8-bit XI fields (PS=1)
+                  cause a crash
+    Bug #1087979: Test failure on FreeBSD 7
+    Bug #1088004: Decompression failure of specific IPv4 stream with changing
+                  RND
+    Bug #1089106: Compressor asserts because of non-RTP traffic with 14 SN
+                  bits to transmit
+    Bug #1090069: Decompressor: crash caused by malformed (too short) IR and
+                  IR-DYN packets
+    Bug #1092660: Problem with RTP streams with Padding bit set
+    Bug #1093836: Decompressor crash because of lossy RTP stream with SN
+                  wraparound
+    Bug #1093846: Possible decompressor crash with malformed extension header
+                  list
+    Bug #1094452: Decompressor contexts incorrectly preserved if MAX_CID is
+                  changed
+    Bug #1094710: Build failure on CentOS 6
+    Bug #1094712: Tests fail to build on FreeBSD 7.4
+    Bug #1096358: Decompression fails if IPv6 extensions list is not present
+                  anymore
+    Bug #1096586: Tests use an unsupported option for Valgrind <= 3.6.0
+    Bug #1105935: Malformed uncompressed packets may crash the ROHC compressor
+    Bug #1105963: Uncompressed profile: Normal packet cannot be used for
+                  non-IPv4/v6 packets
+    Bug #1115091: Crash when decompressing list types 1/2/3 if no reference
+                  list was already set
+    Bug #1166618: UOR-2 extension options for IPv6
+    Bug #1178441: Malformed IP packet used in code example
+    Bug #1181829: decompressor crash with truncated UOR-2 packets of the RTP
+                  profile
 
 21 Oct 2012 - release 1.5.0
   Compatibility:
