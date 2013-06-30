@@ -172,14 +172,19 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	        THIS_MODULE->name);
 
 	/* activate all the compression profiles */
-	rohc_activate_profile(couple->comp, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(couple->comp, ROHC_PROFILE_RTP);
-	rohc_activate_profile(couple->comp, ROHC_PROFILE_UDP);
-	rohc_activate_profile(couple->comp, ROHC_PROFILE_ESP);
-	rohc_activate_profile(couple->comp, ROHC_PROFILE_IP);
-	rohc_activate_profile(couple->comp, ROHC_PROFILE_UDPLITE);
-	pr_info("[%s] \t Uncompressed, RTP, UDP, ESP, IP and UDP-Lite profiles enabled "
-	        "for ROHC compressor successfully set\n", THIS_MODULE->name);
+	is_ok = rohc_comp_enable_profiles(couple->comp, ROHC_PROFILE_UNCOMPRESSED,
+	                                  ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
+	                                  ROHC_PROFILE_ESP, ROHC_PROFILE_IP,
+	                                  ROHC_PROFILE_UDPLITE, -1);
+	if(!is_ok)
+	{
+		pr_err("[%s] \t failed to enabled all compression profiles\n",
+		       THIS_MODULE->name);
+		goto free_compressor;
+	}
+	pr_info("[%s] \t Uncompressed, RTP, UDP, ESP, IP and UDP-Lite profiles "
+	        "enabled for ROHC compressor successfully set\n",
+	        THIS_MODULE->name);
 
 	/* reset list of RTP ports */
 	is_ok = rohc_comp_reset_rtp_ports(couple->comp);

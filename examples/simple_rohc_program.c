@@ -111,13 +111,45 @@ int main(int argc, char **argv)
 	 * for details about rohc_activate_profile in the API documentation.
 	 */
 	printf("\nenable several ROHC compression profiles\n");
-	rohc_activate_profile(compressor, ROHC_PROFILE_UNCOMPRESSED);
-	//rohc_activate_profile(compressor, ROHC_PROFILE_UDP);
-	rohc_activate_profile(compressor, ROHC_PROFILE_IP);
-	//rohc_activate_profile(compressor, ROHC_PROFILE_UDPLITE);
-	//rohc_activate_profile(compressor, ROHC_PROFILE_RTP);
-	//rohc_activate_profile(comp, ROHC_PROFILE_ESP);
-	//rohc_activate_profile(comp, ROHC_PROFILE_TCP);
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UNCOMPRESSED))
+	{
+		fprintf(stderr, "failed to enable the Uncompressed profile\n");
+		goto release_compressor;
+	}
+#if 0
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_RTP))
+	{
+		fprintf(stderr, "failed to enable the IP/UDP/RTP profile\n");
+		goto release_compressor;
+	}
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UDP))
+	{
+		fprintf(stderr, "failed to enable the IP/UDP profile\n");
+		goto release_compressor;
+	}
+#endif
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_IP))
+	{
+		fprintf(stderr, "failed to enable the IP-only profile\n");
+		goto release_compressor;
+	}
+#if 0
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UDPLITE))
+	{
+		fprintf(stderr, "failed to enable the IP/UDP-Lite profile\n");
+		goto release_compressor;
+	}
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_ESP))
+	{
+		fprintf(stderr, "failed to enable the IP/ESP profile\n");
+		goto release_compressor;
+	}
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_TCP))
+	{
+		fprintf(stderr, "failed to enable the IP/ESP profile\n");
+		goto release_compressor;
+	}
+#endif
 
 
 	/* create a fake IP packet for the purpose of this simple program */

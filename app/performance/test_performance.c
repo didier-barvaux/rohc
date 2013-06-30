@@ -582,13 +582,14 @@ static int test_compression_perfs(char *filename,
 	}
 
 	/* activate all the compression profiles */
-	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
-	rohc_activate_profile(comp, ROHC_PROFILE_IP);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
-	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
+	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
+	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the compression profiles\n");
+		goto free_compresssor;
+	}
 	rohc_c_set_large_cid(comp, use_large_cid);
 
 	/* reset list of RTP ports */

@@ -170,7 +170,7 @@ bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *cons
 
 
 /*
- * Functions related to user interaction:
+ * Functions related to user parameters
  */
 
 void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
@@ -187,6 +187,32 @@ bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                                       const size_t mrru)
 	__attribute__((warn_unused_result));
+
+
+/*
+ * Functions related to decompression profiles
+ */
+
+bool ROHC_EXPORT rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
+                                            const unsigned int profile)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
+                                             const unsigned int profile)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_enable_profiles(struct rohc_decomp *const decomp,
+                                             ...)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_disable_profiles(struct rohc_decomp *const decomp,
+                                              ...)
+	__attribute__((warn_unused_result));
+
+
+/*
+ * Functions related to traces
+ */
 
 bool ROHC_EXPORT rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
                                            rohc_trace_callback_t callback)

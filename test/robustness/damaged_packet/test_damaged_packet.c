@@ -312,13 +312,14 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* enable profiles */
-	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
-	rohc_activate_profile(comp, ROHC_PROFILE_IP);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
-	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
-	rohc_activate_profile(comp, ROHC_PROFILE_TCP);
+	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the compression profiles\n");
+		goto destroy_comp;
+	}
 	rohc_c_set_large_cid(comp, 0);
 
 	/* set the callback for random numbers on compressor A */
@@ -357,6 +358,16 @@ static int test_comp_and_decomp(const char *const filename,
 	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
 	{
 		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto destroy_decomp;
+	}
+
+	/* enable decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
 	}
 

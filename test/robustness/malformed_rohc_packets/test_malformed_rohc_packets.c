@@ -217,6 +217,16 @@ static int test_decomp(const char *const filename,
 		goto destroy_decomp;
 	}
 
+	/* enable decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
+		goto destroy_decomp;
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)

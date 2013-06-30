@@ -1030,13 +1030,14 @@ static int test_comp_and_decomp(const int use_large_cid,
 	}
 
 	/* enable profiles */
-	rohc_activate_profile(comp1, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(comp1, ROHC_PROFILE_UDP);
-	rohc_activate_profile(comp1, ROHC_PROFILE_IP);
-	rohc_activate_profile(comp1, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(comp1, ROHC_PROFILE_RTP);
-	rohc_activate_profile(comp1, ROHC_PROFILE_ESP);
-	rohc_activate_profile(comp1, ROHC_PROFILE_TCP);
+	if(!rohc_comp_enable_profiles(comp1, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the compression profiles\n");
+		goto destroy_comp1;
+	}
 	rohc_c_set_large_cid(comp1, use_large_cid);
 
 	/* set the callback for random numbers on compressor 1 */
@@ -1119,13 +1120,14 @@ static int test_comp_and_decomp(const int use_large_cid,
 	}
 
 	/* enable profiles */
-	rohc_activate_profile(comp2, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(comp2, ROHC_PROFILE_UDP);
-	rohc_activate_profile(comp2, ROHC_PROFILE_IP);
-	rohc_activate_profile(comp2, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(comp2, ROHC_PROFILE_RTP);
-	rohc_activate_profile(comp2, ROHC_PROFILE_ESP);
-	rohc_activate_profile(comp2, ROHC_PROFILE_TCP);
+	if(!rohc_comp_enable_profiles(comp2, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the compression profiles\n");
+		goto destroy_comp2;
+	}
 	rohc_c_set_large_cid(comp2, use_large_cid);
 
 	/* set the callback for random numbers on compressor 2 */
@@ -1236,6 +1238,16 @@ static int test_comp_and_decomp(const int use_large_cid,
 		}
 	}
 
+	/* enable decompression profiles on decompressor 1 */
+	if(!rohc_decomp_enable_profiles(decomp1, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the profiles on decompressor 1\n");
+		goto destroy_decomp1;
+	}
+
 	/* create the decompressor 2 */
 	decomp2 = rohc_alloc_decompressor(comp1);
 	if(decomp2 == NULL)
@@ -1291,6 +1303,16 @@ static int test_comp_and_decomp(const int use_large_cid,
 			        "decompressor 2\n", ROHC_SMALL_CID_MAX);
 			goto destroy_decomp2;
 		}
+	}
+
+	/* enable decompression profiles on decompressor 2 */
+	if(!rohc_decomp_enable_profiles(decomp2, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the profiles on decompressor 2\n");
+		goto destroy_decomp2;
 	}
 
 	printf("\t\t</log>\n");
