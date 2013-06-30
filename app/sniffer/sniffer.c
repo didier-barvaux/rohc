@@ -805,6 +805,16 @@ static bool sniff(const int use_large_cid,
 		}
 	}
 
+	/* activate all the decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
+	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
+		goto destroy_decomp;
+	}
+
 	/* reset the PCAP dumpers (used to save sniffed packets in several PCAP
 	 * files, one per Context ID) */
 	bzero(dumpers, sizeof(pcap_dumper_t *) * max_contexts);
