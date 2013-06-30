@@ -134,11 +134,18 @@ typedef struct
 struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor);
 void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp);
 
-int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp, unsigned char *ibuf, int isize,
-                    unsigned char *obuf, int osize);
+int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
+                                unsigned char *ibuf,
+                                int isize,
+                                unsigned char *obuf,
+                                int osize);
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
-int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp, unsigned char *ibuf,
-                         int isize, unsigned char *obuf, int osize, int large)
+int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
+                                     unsigned char *ibuf,
+                                     int isize,
+                                     unsigned char *obuf,
+                                     int osize,
+                                     int large)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
 	                "rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid() "
 	                "instead");
