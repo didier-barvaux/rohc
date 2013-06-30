@@ -35,6 +35,8 @@
        - Support for Linux kernel.
        - Support for OpenBSD (tested on 5.3 thanks to Audric Schiltknecht).
        - Support for mingw64.
+       - Support for CYGWIN.
+       - Support for GCC 4.8, Clang 3.2, and TCC.
        - RPM spec file for CentOS 5/6, Fedora 17/18 and RHEL 5.
 
   API changes:
