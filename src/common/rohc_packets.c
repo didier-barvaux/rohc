@@ -44,8 +44,10 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 			return "IR";
 		case PACKET_IR_DYN:
 			return "IR-DYN";
+
 		case PACKET_UO_0:
 			return "UO-0";
+
 		case PACKET_UO_1:
 			return "UO-1 (non-RTP)";
 		case PACKET_UO_1_ID:
@@ -54,6 +56,7 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 			return "UO-1-TS";
 		case PACKET_UO_1_RTP:
 			return "UO-1 (RTP)";
+
 		case PACKET_UOR_2:
 			return "UOR-2 (non-RTP)";
 		case PACKET_UOR_2_RTP:
@@ -62,14 +65,54 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 			return "UOR-2-ID";
 		case PACKET_UOR_2_TS:
 			return "UOR-2-TS";
+
 		case PACKET_CCE:
 			return "CCE";
 		case PACKET_CCE_OFF:
 			return "CCE(OFF)";
 		case PACKET_NORMAL:
 			return "Normal";
+
+		case PACKET_TCP_CO_COMMON:
+			return "TCP/co_common";
+
+		case PACKET_TCP_RND_1:
+			return "TCP/rnd_1";
+		case PACKET_TCP_RND_2:
+			return "TCP/rnd_2";
+		case PACKET_TCP_RND_3:
+			return "TCP/rnd_3";
+		case PACKET_TCP_RND_4:
+			return "TCP/rnd_4";
+		case PACKET_TCP_RND_5:
+			return "TCP/rnd_5";
+		case PACKET_TCP_RND_6:
+			return "TCP/rnd_6";
+		case PACKET_TCP_RND_7:
+			return "TCP/rnd_7";
+		case PACKET_TCP_RND_8:
+			return "TCP/rnd_8";
+
+		case PACKET_TCP_SEQ_1:
+			return "TCP/seq_1";
+		case PACKET_TCP_SEQ_2:
+			return "TCP/seq_2";
+		case PACKET_TCP_SEQ_3:
+			return "TCP/seq_3";
+		case PACKET_TCP_SEQ_4:
+			return "TCP/seq_4";
+		case PACKET_TCP_SEQ_5:
+			return "TCP/seq_5";
+		case PACKET_TCP_SEQ_6:
+			return "TCP/seq_6";
+		case PACKET_TCP_SEQ_7:
+			return "TCP/seq_7";
+		case PACKET_TCP_SEQ_8:
+			return "TCP/seq_8";
+
 		case PACKET_UNKNOWN:
 			return "unknown";
+
 		default:
 			return "no description";
 	}
