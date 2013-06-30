@@ -21,7 +21,6 @@
  */
 
 #include "rohc_comp.h"
-#include "rohc_decomp.h"
 
 #include <stdio.h>
 #include <stdbool.h>
