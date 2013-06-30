@@ -210,12 +210,14 @@ static int test_comp_and_decomp(void)
 	rohc_c_set_large_cid(compA, 0);
 
 	/* enable profiles for compressor A */
-	rohc_activate_profile(compA, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(compA, ROHC_PROFILE_UDP);
-	rohc_activate_profile(compA, ROHC_PROFILE_IP);
-	rohc_activate_profile(compA, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(compA, ROHC_PROFILE_RTP);
-	rohc_activate_profile(compA, ROHC_PROFILE_ESP);
+	if(!rohc_comp_enable_profiles(compA, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the profiles on compressor A");
+		goto destroy_compA;
+	}
 
 	/* set the callback for random numbers on compressor A */
 	if(!rohc_comp_set_random_cb(compA, gen_random_num, NULL))
@@ -263,12 +265,14 @@ static int test_comp_and_decomp(void)
 	rohc_c_set_large_cid(compB, 0);
 
 	/* enable profiles for compressor B */
-	rohc_activate_profile(compB, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(compB, ROHC_PROFILE_UDP);
-	rohc_activate_profile(compB, ROHC_PROFILE_IP);
-	rohc_activate_profile(compB, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(compB, ROHC_PROFILE_RTP);
-	rohc_activate_profile(compB, ROHC_PROFILE_ESP);
+	if(!rohc_comp_enable_profiles(compB, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the profiles on compressor B");
+		goto destroy_compB;
+	}
 
 	/* set the callback for random numbers on compressor B */
 	if(!rohc_comp_set_random_cb(compB, gen_random_num, NULL))

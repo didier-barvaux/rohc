@@ -127,12 +127,8 @@ struct rohc_comp
 	/** The number of compression contexts in use in the array */
 	int num_contexts_used;
 
-	/**
-	 * @brief Which profiles are enabled and with one are not?
-	 *
-	 * A value of 1 means that profile is enabled, 0 means disabled.
-	 */
-	int profiles[C_NUM_PROFILES];
+	/** Which profiles are enabled and with one are not? */
+	bool enabled_profiles[C_NUM_PROFILES];
 
 
 	/* CRC-related variables: */

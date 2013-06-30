@@ -320,7 +320,24 @@ bool ROHC_EXPORT rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 int ROHC_EXPORT rohc_c_is_enabled(struct rohc_comp *comp);
 int ROHC_EXPORT rohc_c_using_small_cid(struct rohc_comp *comp);
 
-void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_enable_profile() instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+bool ROHC_EXPORT rohc_comp_enable_profile(struct rohc_comp *const comp,
+                                          const unsigned int profile)
+	__attribute__((warn_unused_result));
+bool ROHC_EXPORT rohc_comp_disable_profile(struct rohc_comp *const comp,
+                                           const unsigned int profile)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_comp_enable_profiles(struct rohc_comp *const comp,
+                                           ...)
+	__attribute__((warn_unused_result));
+bool ROHC_EXPORT rohc_comp_disable_profiles(struct rohc_comp *const comp,
+                                           ...)
+	__attribute__((warn_unused_result));
 
 void ROHC_EXPORT rohc_c_set_header(struct rohc_comp *compressor, int value);
 

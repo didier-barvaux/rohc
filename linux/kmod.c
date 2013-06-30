@@ -70,7 +70,8 @@ EXPORT_SYMBOL_GPL(rohc_comp_get_general_info);
 EXPORT_SYMBOL_GPL(rohc_comp_get_last_packet_info2);
 
 /* configuration */
-EXPORT_SYMBOL_GPL(rohc_activate_profile);
+EXPORT_SYMBOL_GPL(rohc_comp_enable_profile);
+EXPORT_SYMBOL_GPL(rohc_comp_disable_profile);
 EXPORT_SYMBOL_GPL(rohc_comp_set_mrru);
 EXPORT_SYMBOL_GPL(rohc_comp_get_mrru);
 EXPORT_SYMBOL_GPL(rohc_c_set_max_cid);

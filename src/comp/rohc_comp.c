@@ -200,7 +200,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		comp->profiles[i] = 0;
+		comp->enabled_profiles[i] = false;
 	}
 
 	/* reset the list of UDP ports for RTP */
@@ -1193,8 +1193,13 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Activate a profile for a compressor
+ *
+ * @deprecated do not use this function anymore, use
+ *             rohc_comp_enable_profile() instead
  *
  * @param comp    The ROHC compressor
  * @param profile The ID of the profile to activate
@@ -1215,7 +1220,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 		if(c_profiles[i]->id == profile)
 		{
 			/* mark the profile as activated */
-			comp->profiles[i] = 1;
+			comp->enabled_profiles[i] = true;
 			return;
 		}
 	}
@@ -1225,6 +1230,203 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 
 error:
 	return;
+}
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+
+/**
+ * @brief Enable a compression profile for a compressor
+ *
+ * If the profile is already enabled, it is ignored.
+ *
+ * @param comp     The ROHC compressor
+ * @param profile  The ID of the profile to enable
+ * @return         true if the profile exists,
+ *                 false if the profile does not exist
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_enable_profile(struct rohc_comp *const comp,
+                              const unsigned int profile)
+{
+	int i;
+
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* search the profile location */
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		if(c_profiles[i]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(i == C_NUM_PROFILES)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unknown ROHC profile (ID = %d)\n", profile);
+		goto error;
+	}
+
+	/* mark the profile as enabled */
+	comp->enabled_profiles[i] = true;
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "ROHC profile (ID = %u) enabled", profile);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Disable a compression profile for a compressor
+ *
+ * If the profile is already disabled, it is ignored.
+ *
+ * @param comp     The ROHC compressor
+ * @param profile  The ID of the profile to disable
+ * @return         true if the profile exists,
+ *                 false if the profile does not exist
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_disable_profile(struct rohc_comp *const comp,
+                               const unsigned int profile)
+{
+	int i;
+
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* search the profile location */
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		if(c_profiles[i]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(i == C_NUM_PROFILES)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unknown ROHC profile (ID = %d)\n", profile);
+		goto error;
+	}
+
+	/* mark the profile as disabled */
+	comp->enabled_profiles[i] = false;
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	          "ROHC profile (ID = %u) disabled", profile);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Enable several compression profiles for a compressor
+ *
+ * The list of profile IDs to enable shall stop with -1.
+ *
+ * If one or more of the profiles are already enabled, they are ignored.
+ *
+ * @param comp     The ROHC compressor
+ * @return         true if the profile exists,
+ *                 false if the profile does not exist
+ *
+ * @ingroup rohc_comp
+ */
+
+bool rohc_comp_enable_profiles(struct rohc_comp *const comp,
+                               ...)
+{
+	va_list profiles;
+	int profile_id;
+	size_t err_nr = 0;
+	bool is_ok;
+
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	va_start(profiles, comp);
+
+	while((profile_id = va_arg(profiles, int)) >= 0)
+	{
+		is_ok = rohc_comp_enable_profile(comp, profile_id);
+		if(!is_ok)
+		{
+			err_nr++;
+		}
+	}
+
+	va_end(profiles);
+
+	return (err_nr == 0);
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Disable several compression profiles for a compressor
+ *
+ * The list of profile IDs to disable shall stop with -1.
+ *
+ * If one or more of the profiles are already disabled, they are ignored.
+ *
+ * @param comp     The ROHC compressor
+ * @return         true if the profile exists,
+ *                 false if the profile does not exist
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_disable_profiles(struct rohc_comp *const comp,
+                                ...)
+{
+	va_list profiles;
+	int profile_id;
+	size_t err_nr = 0;
+	bool is_ok;
+
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	va_start(profiles, comp);
+
+	while((profile_id = va_arg(profiles, int)) >= 0)
+	{
+		is_ok = rohc_comp_disable_profile(comp, profile_id);
+		if(!is_ok)
+		{
+			err_nr++;
+		}
+	}
+
+	va_end(profiles);
+
+	return (err_nr == 0);
+
+error:
+	return false;
 }
 
 
@@ -1875,7 +2077,8 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 
 		buffer += sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
 		buffer += sprintf(buffer, "name=\"%s\" ", p->description);
-		buffer += sprintf(buffer, "active=\"%s\" ", comp->profiles[i] ? "yes" : "no");
+		buffer += sprintf(buffer, "active=\"%s\" ",
+		                  comp->enabled_profiles[i] ? "yes" : "no");
 		buffer += sprintf(buffer, "/>\n");
 	}
 
@@ -2654,7 +2857,7 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		/* if the profile IDs match and the profile is enabled */
-		if(c_profiles[i]->id == profile_id && comp->profiles[i] == 1)
+		if(c_profiles[i]->id == profile_id && comp->enabled_profiles[i])
 		{
 			return c_profiles[i];
 		}
@@ -2692,7 +2895,7 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 		bool check_profile;
 
 		/* skip profile if the profile is not enabled */
-		if(!comp->profiles[i])
+		if(!comp->enabled_profiles[i])
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "skip disabled profile '%s' (0x%04x)\n",

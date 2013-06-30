@@ -297,12 +297,14 @@ static int test_comp_and_decomp(const char *filename,
 	}
 
 	/* enable profiles */
-	rohc_activate_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDP);
-	rohc_activate_profile(comp, ROHC_PROFILE_IP);
-	rohc_activate_profile(comp, ROHC_PROFILE_UDPLITE);
-	rohc_activate_profile(comp, ROHC_PROFILE_RTP);
-	rohc_activate_profile(comp, ROHC_PROFILE_ESP);
+	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the compression profiles");
+		goto destroy_comp;
+	}
 
 	/* configure compressor for small or large CIDs */
 	if(is_large_cid)
