@@ -302,7 +302,7 @@ static int test_comp_and_decomp(const char *filename,
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
 	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the compression profiles");
+		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
 	}
 
@@ -387,6 +387,16 @@ static int test_comp_and_decomp(const char *filename,
 			        "decompressor\n", ROHC_SMALL_CID_MAX);
 			goto destroy_decomp;
 		}
+	}
+
+	/* enable decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
+		goto destroy_decomp;
 	}
 
 	/* for each packet in the dump */

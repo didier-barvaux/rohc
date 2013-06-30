@@ -113,35 +113,35 @@ int main(int argc, char **argv)
 	printf("\nenable several ROHC compression profiles\n");
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UNCOMPRESSED))
 	{
-		fprintf(stderr, "failed to enable the Uncompressed profile");
+		fprintf(stderr, "failed to enable the Uncompressed profile\n");
 		goto release_compressor;
 	}
 #if 0
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_RTP))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP/RTP profile");
+		fprintf(stderr, "failed to enable the IP/UDP/RTP profile\n");
 		goto release_compressor;
 	}
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UDP))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP profile");
+		fprintf(stderr, "failed to enable the IP/UDP profile\n");
 		goto release_compressor;
 	}
 #endif
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_IP))
 	{
-		fprintf(stderr, "failed to enable the IP-only profile");
+		fprintf(stderr, "failed to enable the IP-only profile\n");
 		goto release_compressor;
 	}
 #if 0
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UDPLITE))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP-Lite profile");
+		fprintf(stderr, "failed to enable the IP/UDP-Lite profile\n");
 		goto release_compressor;
 	}
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_ESP))
 	{
-		fprintf(stderr, "failed to enable the IP/ESP profile");
+		fprintf(stderr, "failed to enable the IP/ESP profile\n");
 		goto release_compressor;
 	}
 #endif

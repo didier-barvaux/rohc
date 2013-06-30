@@ -349,7 +349,7 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "enable only the compression profile %u\n", profile_id);
 		if(!rohc_comp_enable_profile(comp, profile_id))
 		{
-			fprintf(stderr, "failed to enable the compression profile");
+			fprintf(stderr, "failed to enable the compression profile\n");
 			goto destroy_comp;
 		}
 	}
@@ -361,7 +361,7 @@ static int test_comp_and_decomp(const char *filename,
 		                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
 		                              ROHC_PROFILE_ESP, -1))
 		{
-			fprintf(stderr, "failed to enable the compression profiles");
+			fprintf(stderr, "failed to enable the compression profiles\n");
 			goto destroy_comp;
 		}
 	}
@@ -395,6 +395,16 @@ static int test_comp_and_decomp(const char *filename,
 	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
 	{
 		fprintf(stderr, "cannot set trace callback for decompressor\n");
+		goto destroy_decomp;
+	}
+
+	/* enable decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
 	}
 

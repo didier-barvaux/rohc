@@ -80,6 +80,9 @@ struct rohc_decomp
 	/** The medium associated with the decompressor */
 	struct medium medium;
 
+	/** Which profiles are enabled and with one are not? */
+	bool enabled_profiles[D_NUM_PROFILES];
+
 	/** The array of decompression contexts that use the decompressor */
 	struct d_context **contexts;
 	/** The last decompression context used by the decompressor */
@@ -148,7 +151,7 @@ struct d_context
 	struct rohc_decomp *decompressor;
 
 	/** The associated profile */
-	struct d_profile *profile;
+	const struct d_profile *profile;
 	/** Profile-specific data, defined by the profiles */
 	void *specific;
 

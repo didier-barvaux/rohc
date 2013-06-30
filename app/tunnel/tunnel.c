@@ -742,7 +742,7 @@ int main(int argc, char *argv[])
 	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
 	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the compression profiles");
+		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
 	}
 

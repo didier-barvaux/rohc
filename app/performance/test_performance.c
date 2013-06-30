@@ -587,7 +587,7 @@ static int test_compression_perfs(char *filename,
 	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
 	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the compression profiles");
+		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto free_compresssor;
 	}
 	rohc_c_set_large_cid(comp, use_large_cid);

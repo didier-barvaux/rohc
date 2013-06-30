@@ -215,7 +215,7 @@ static int test_comp_and_decomp(void)
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
 	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the profiles on compressor A");
+		fprintf(stderr, "failed to enable the profiles on compressor A\n");
 		goto destroy_compA;
 	}
 
@@ -270,7 +270,7 @@ static int test_comp_and_decomp(void)
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
 	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the profiles on compressor B");
+		fprintf(stderr, "failed to enable the profiles on compressor B\n");
 		goto destroy_compB;
 	}
 
@@ -316,6 +316,16 @@ static int test_comp_and_decomp(void)
 		goto destroy_decompA;
 	}
 
+	/* enable decompression profiles on decompressor A */
+	if(!rohc_decomp_enable_profiles(decompA, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the profiles on decompressor A\n");
+		goto destroy_decompA;
+	}
+
 	/* create the ROHC decompressor B with associated compressor A for its
 	 * feedback channel */
 	decompB = rohc_alloc_decompressor(compA);
@@ -329,6 +339,16 @@ static int test_comp_and_decomp(void)
 	if(!rohc_decomp_set_traces_cb(decompB, print_rohc_traces))
 	{
 		fprintf(stderr, "cannot set trace callback for decompressor B\n");
+		goto destroy_decompB;
+	}
+
+	/* enable decompression profiles on decompressor B */
+	if(!rohc_decomp_enable_profiles(decompB, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the profiles on decompressor B\n");
 		goto destroy_decompB;
 	}
 

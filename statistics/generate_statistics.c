@@ -316,7 +316,7 @@ static int generate_comp_stats_all(const int use_large_cid,
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
 	                              ROHC_PROFILE_ESP, -1))
 	{
-		fprintf(stderr, "failed to enable the compression profiles");
+		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
 	}
 

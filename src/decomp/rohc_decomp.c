@@ -44,9 +44,7 @@
 #	include <string.h>
 #endif
 #include <stdio.h> /* for printf(3) and sprintf(3) */
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 #include <stdarg.h>
-#endif
 #include <assert.h>
 
 
@@ -110,11 +108,14 @@ static int d_decode_header(struct rohc_decomp *decomp,
                            int osize,
                            struct d_decode_data *ddata);
 
-static struct d_profile * find_profile(int id);
+static const struct d_profile *
+	find_profile(const struct rohc_decomp *const decomp,
+	             const unsigned int profile_id)
+	__attribute__((warn_unused_result));
 
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const unsigned int cid,
-                                         struct d_profile *profile);
+                                         const struct d_profile *const profile);
 static struct d_context * find_context(struct rohc_decomp *decomp,
                                        int cid);
 static void context_free(struct d_context *const context);
@@ -189,7 +190,7 @@ static struct d_context * find_context(struct rohc_decomp *decomp,
  */
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const unsigned int cid,
-                                         struct d_profile *profile)
+                                         const struct d_profile *const profile)
 {
 	struct d_context *context;
 
@@ -346,6 +347,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 {
 	struct rohc_decomp *decomp;
 	bool is_fine;
+	size_t i;
 
 	/* allocate memory for the decompressor */
 	decomp = (struct rohc_decomp *) malloc(sizeof(struct rohc_decomp));
@@ -360,6 +362,21 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	/* init decompressor medium */
 	decomp->medium.cid_type = ROHC_SMALL_CID;
 	decomp->medium.max_cid = ROHC_SMALL_CID_MAX;
+
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* all decompression profiles are enabled by default for compatibility
+	 * with earlier releases */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		decomp->enabled_profiles[i] = true;
+	}
+#else
+	/* all decompression profiles are disabled by default */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		decomp->enabled_profiles[i] = false;
+	}
+#endif
 
 	/* associate the compressor and the decompressor */
 	decomp->compressor = compressor;
@@ -739,7 +756,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
                            struct d_decode_data *ddata)
 {
 	int size, casenew = 0;
-	struct d_profile *profile;
+	const struct d_profile *profile;
 	unsigned char *walk = ibuf;
 	unsigned int feedback_size;
 	int status;
@@ -912,7 +929,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 		/* find the profile specified in the ROHC packet */
 		profile_id = walk[1 + ddata->large_cid_size];
-		profile = find_profile(profile_id);
+		profile = find_profile(decomp, profile_id);
 		if(profile == NULL)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -924,7 +941,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		           "profile with ID 0x%04x found in IR packet\n", profile_id);
 
 		if(decomp->contexts[ddata->cid] != NULL &&
-		   decomp->contexts[ddata->cid]->profile == profile)
+		   decomp->contexts[ddata->cid]->profile->id == profile->id)
 		{
 			/* the decompression context associated with the CID already exists
 			 * and the context profile and the packet profile match. */
@@ -1017,6 +1034,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		/* is the ROHC packet an IR-DYN packet? */
 		if(d_is_irdyn(walk, isize))
 		{
+			uint8_t profile_id;
+
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "ROHC packet is an IR-DYN packet\n");
 			ddata->active->num_recv_ir_dyn++;
@@ -1031,7 +1050,15 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			}
 
 			/* find the profile specified in the ROHC packet */
-			profile = find_profile(walk[ddata->large_cid_size + 1]);
+			profile_id = walk[ddata->large_cid_size + 1];
+			profile = find_profile(decomp, profile_id);
+			if(profile == NULL)
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "failed to find profile identified by ID 0x%04x\n",
+				             profile_id);
+				goto error;
+			}
 
 			/* if IR-DYN changes profile, make the decompressor
 			 * transit to the NO_CONTEXT state */
@@ -1965,6 +1992,200 @@ error:
 
 
 /**
+ * @brief Enable a decompression profile for a decompressor
+ *
+ * If the profile is already enabled, it is ignored.
+ *
+ * @param decomp   The ROHC decompressor
+ * @param profile  The ID of the profile to enable
+ * @return         true if the profile exists,
+ *                 false if the profile does not exist
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
+                                const unsigned int profile)
+{
+	int i;
+
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	/* search the profile location */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		if(d_profiles[i]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(i == D_NUM_PROFILES)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unknown ROHC decompression profile (ID = %d)\n", profile);
+		goto error;
+	}
+
+	/* mark the profile as enabled */
+	decomp->enabled_profiles[i] = true;
+	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	          "ROHC decompression profile (ID = %u) enabled\n", profile);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Disable a decompression profile for a decompressor
+ *
+ * If the profile is already disabled, it is ignored.
+ *
+ * @param decomp   The ROHC decompressor
+ * @param profile  The ID of the profile to disable
+ * @return         true if the profile exists,
+ *                 false if the profile does not exist
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
+                                 const unsigned int profile)
+{
+	int i;
+
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	/* search the profile location */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		if(d_profiles[i]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(i == D_NUM_PROFILES)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unknown ROHC decompression profile (ID = %d)\n", profile);
+		goto error;
+	}
+
+	/* mark the profile as disabled */
+	decomp->enabled_profiles[i] = false;
+	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	          "ROHC decompression profile (ID = %u) disabled\n", profile);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Enable several decompression profiles for a decompressor
+ *
+ * The list of profile IDs to enable shall stop with -1.
+ *
+ * If one or more of the profiles are already enabled, they are ignored.
+ *
+ * @param decomp  The ROHC decompressor
+ * @return        true if all of the profiles exist,
+ *                false if at least one of the profiles does not exist
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_enable_profiles(struct rohc_decomp *const decomp,
+                                 ...)
+{
+	va_list profiles;
+	int profile_id;
+	size_t err_nr = 0;
+	bool is_ok;
+
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	va_start(profiles, decomp);
+
+	while((profile_id = va_arg(profiles, int)) >= 0)
+	{
+		is_ok = rohc_decomp_enable_profile(decomp, profile_id);
+		if(!is_ok)
+		{
+			err_nr++;
+		}
+	}
+
+	va_end(profiles);
+
+	return (err_nr == 0);
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Disable several decompression profiles for a decompressor
+ *
+ * The list of profile IDs to disable shall stop with -1.
+ *
+ * If one or more of the profiles are already disabled, they are ignored.
+ *
+ * @param decomp  The ROHC decompressor
+ * @return        true if all of the profiles exist,
+ *                false if at least one of the profiles does not exist
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_disable_profiles(struct rohc_decomp *const decomp,
+                                  ...)
+{
+	va_list profiles;
+	int profile_id;
+	size_t err_nr = 0;
+	bool is_ok;
+
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	va_start(profiles, decomp);
+
+	while((profile_id = va_arg(profiles, int)) >= 0)
+	{
+		is_ok = rohc_decomp_disable_profile(decomp, profile_id);
+		if(!is_ok)
+		{
+			err_nr++;
+		}
+	}
+
+	va_end(profiles);
+
+	return (err_nr == 0);
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Set the callback function used to manage traces in decompressor
  *
  * @param decomp   The ROHC decompressor
@@ -2008,20 +2229,37 @@ error:
 /**
  * @brief Find the ROHC profile with the given profile ID.
  *
- * @param id  The profile ID to search for
- * @return    The matching ROHC profile
+ * @param decomp      The ROHC decompressor
+ * @param profile_id  The profile ID to search for
+ * @return            The matching ROHC profile if found and enabled,
+ *                    NULL if not found or disabled
  */
-static struct d_profile * find_profile(int id)
+static const struct d_profile *
+	find_profile(const struct rohc_decomp *const decomp,
+	             const unsigned int profile_id)
 {
-	int i = 0;
+	unsigned int i;
 
-	while(i < D_NUM_PROFILES && d_profiles[i]->id != id)
+	assert(decomp != NULL);
+
+	/* search for the profile within the enabled profiles */
+	for(i = 0; i < D_NUM_PROFILES && d_profiles[i]->id != profile_id; i++)
 	{
-		i++;
 	}
 
 	if(i >= D_NUM_PROFILES)
 	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "decompression profile with ID 0x%04x not found\n",
+		             profile_id);
+		return NULL;
+	}
+
+	if(!decomp->enabled_profiles[i])
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "decompression profile with ID 0x%04x disabled\n",
+		             profile_id);
 		return NULL;
 	}
 
