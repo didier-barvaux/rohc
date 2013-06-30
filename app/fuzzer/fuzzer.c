@@ -139,6 +139,12 @@ int main(int argc, char *argv[])
 	/* set the callback for traces on ROHC decompressor */
 	assert(rohc_decomp_set_traces_cb(decomp, print_rohc_traces));
 
+	/* activate all the decompression profiles */
+	assert(rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                   ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
+	                                   ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
+	                                   ROHC_PROFILE_ESP, -1));
+
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
 	{

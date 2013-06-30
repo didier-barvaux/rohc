@@ -887,6 +887,16 @@ static int test_decompression_perfs(char *filename,
 		}
 	}
 
+	/* activate all the decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
+	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
+	                                ROHC_PROFILE_ESP, -1))
+	{
+		fprintf(stderr, "failed to enable the decompression profiles\n");
+		goto free_decompressor;
+	}
+
 	fflush(stderr);
 
 	/* for each packet in the dump */
