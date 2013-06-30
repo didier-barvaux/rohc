@@ -55,7 +55,7 @@ static unsigned char c_add_cid(const int cid);
 int code_cid_values(const rohc_cid_type_t cid_type,
                     const int cid,
                     unsigned char *const dest,
-                    const int dest_size,
+                    const size_t dest_size,
                     int *const first_position)
 {
 	int counter = 0;

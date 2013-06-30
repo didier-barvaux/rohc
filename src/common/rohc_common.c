@@ -39,7 +39,7 @@
  */
 char * rohc_version(void)
 {
-	return VERSION;
+	return VERSION PACKAGE_REVNO;
 }
 
 

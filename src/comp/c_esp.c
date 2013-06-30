@@ -66,14 +66,14 @@ struct sc_esp_context
 static int c_esp_create(struct c_context *const context,
                         const struct ip_packet *ip);
 
-static int c_esp_check_context(const struct c_context *context,
-                               const struct ip_packet *ip);
+static bool c_esp_check_context(const struct c_context *context,
+                                const struct ip_packet *ip);
 
 static int c_esp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
-                        const int packet_size,
+                        const size_t packet_size,
                         unsigned char *const dest,
-                        const int dest_size,
+                        const size_t dest_size,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset);
 
@@ -165,7 +165,7 @@ static int c_esp_create(struct c_context *const context,
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
 
 	/* initialize SN with the SN found in the ESP header */
-	g_context->sn = ntohl(esp->sn);
+	g_context->sn = rohc_ntoh32(esp->sn);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
 	                "packet = %u\n", g_context->sn);
 
@@ -322,12 +322,11 @@ bad_profile:
  *
  * @param context The compression context
  * @param ip      The IP/ESP packet to check
- * @return        1 if the IP/ESP packet belongs to the context,
- *                0 if it does not belong to the context and
- *                -1 if the profile cannot compress it or an error occurs
+ * @return        true if the IP/ESP packet belongs to the context,
+ *                false if it does not belong to the context
  */
-int c_esp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip)
+bool c_esp_check_context(const struct c_context *context,
+                         const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_esp_context *esp_context;
@@ -400,7 +399,7 @@ int c_esp_check_context(const struct c_context *context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "cannot create the inner IP header\n");
-			goto error;
+			goto bad_context;
 		}
 
 		/* check the IP version of the second header */
@@ -467,9 +466,7 @@ int c_esp_check_context(const struct c_context *context,
 	return is_esp_same;
 
 bad_context:
-	return 0;
-error:
-	return -1;
+	return false;
 }
 
 
@@ -489,9 +486,9 @@ error:
  */
 static int c_esp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
-                        const int packet_size,
+                        const size_t packet_size,
                         unsigned char *const dest,
-                        const int dest_size,
+                        const size_t dest_size,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset)
 {
@@ -591,7 +588,7 @@ static uint32_t c_esp_get_next_sn(const struct c_context *context,
 		esp = (struct esphdr *) ip_get_next_layer(outer_ip);
 	}
 
-	return ntohl(esp->sn);
+	return rohc_ntoh32(esp->sn);
 }
 
 
@@ -624,7 +621,7 @@ static int esp_code_static_esp_part(const struct c_context *context,
 	const struct esphdr *esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", ntohl(esp->spi));
+	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", rohc_ntoh32(esp->spi));
 	memcpy(&dest[counter], &esp->spi, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 
@@ -665,7 +662,7 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
 	esp = (struct esphdr *) next_header;
 
 	/* part 1 */
-	rohc_comp_debug(context, "ESP SN = 0x%08x\n", ntohl(esp->sn));
+	rohc_comp_debug(context, "ESP SN = 0x%08x\n", rohc_ntoh32(esp->sn));
 	memcpy(&dest[counter], &esp->sn, sizeof(uint32_t));
 	counter += sizeof(uint32_t);
 

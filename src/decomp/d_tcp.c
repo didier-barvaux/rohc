@@ -639,8 +639,8 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 		// Calculate scaled value and residue (see RFC4996 page 32/33)
 		if(payload_size != 0)
 		{
-			tcp_context->seq_number_scaled = ntohl(tcp->seq_number) / payload_size;
-			tcp_context->seq_number_residue = ntohl(tcp->seq_number) % payload_size;
+			tcp_context->seq_number_scaled = rohc_ntoh32(tcp->seq_number) / payload_size;
+			tcp_context->seq_number_residue = rohc_ntoh32(tcp->seq_number) % payload_size;
 		}
 
 		// copy payload datas
@@ -658,13 +658,13 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 
 			if(ip_context.vx->version == IPV4)
 			{
-				base_header.ipv4->length = htons(length);
+				base_header.ipv4->length = rohc_hton16(length);
 				base_header.ipv4->checksum = 0;
 				base_header.ipv4->checksum =
 					ip_fast_csum(base_header.uint8,
 					             base_header.ipv4->header_length);
 				rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
-				                  ntohs(base_header.ipv4->checksum),
+				                  rohc_ntoh16(base_header.ipv4->checksum),
 				                  base_header.ipv4->header_length);
 				protocol = ip_context.v4->protocol;
 				length -= sizeof(base_header_ip_v4_t);
@@ -674,9 +674,9 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 			else
 			{
 				length -= sizeof(base_header_ip_v6_t);
-				base_header.ipv6->payload_length = htons(length);
+				base_header.ipv6->payload_length = rohc_hton16(length);
 				rohc_decomp_debug(context, "payload_length = %d\n",
-				                  ntohs(base_header.ipv6->payload_length));
+				                  rohc_ntoh16(base_header.ipv6->payload_length));
 				protocol = ip_context.v6->next_header;
 				++base_header.ipv6;
 				++ip_context.v6;
@@ -893,8 +893,8 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	// Calculate scaled value and residue (see RFC4996 page 32/33)
 	if(payload_size != 0)
 	{
-		tcp_context->seq_number_scaled = ntohl(tcp->seq_number) / payload_size;
-		tcp_context->seq_number_residue = ntohl(tcp->seq_number) % payload_size;
+		tcp_context->seq_number_scaled = rohc_ntoh32(tcp->seq_number) / payload_size;
+		tcp_context->seq_number_residue = rohc_ntoh32(tcp->seq_number) % payload_size;
 	}
 
 	// copy payload
@@ -914,13 +914,13 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		if(base_header.ipvx->version == IPV4)
 		{
 			protocol = base_header.ipv4->protocol;
-			base_header.ipv4->length = htons(length);
+			base_header.ipv4->length = rohc_hton16(length);
 			base_header.ipv4->checksum = 0;
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8,
 				             base_header.ipv4->header_length);
 			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
-			                  ntohs(base_header.ipv4->checksum),
+			                  rohc_ntoh16(base_header.ipv4->checksum),
 			                  base_header.ipv4->header_length);
 			++base_header.ipv4;
 			++ip_context.v4;
@@ -930,9 +930,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		{
 			protocol = base_header.ipv6->next_header;
 			length -= sizeof(base_header_ip_v6_t);
-			base_header.ipv6->payload_length = htons(length);
+			base_header.ipv6->payload_length = rohc_hton16(length);
 			rohc_decomp_debug(context, "payload_length = %d\n",
-			                  ntohs(base_header.ipv6->payload_length));
+			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			++base_header.ipv6;
 			++ip_context.v6;
 			while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
@@ -1020,11 +1020,11 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
 			if( ( ip_context.v6_gre_option->protocol ==
 			      c_base_header.ip_gre_opt_static->protocol ) == 0)
 			{
-				base_header.ip_gre_opt->protocol = htons(0x0800);
+				base_header.ip_gre_opt->protocol = rohc_hton16(0x0800);
 			}
 			else
 			{
-				base_header.ip_gre_opt->protocol = htons(0x86DD);
+				base_header.ip_gre_opt->protocol = rohc_hton16(0x86DD);
 			}
 			ip_context.v6_gre_option->c_flag = c_base_header.ip_gre_opt_static->c_flag;
 			base_header.ip_gre_opt->c_flag = ip_context.v6_gre_option->c_flag;
@@ -1144,11 +1144,11 @@ static unsigned int tcp_copy_static_ipv6_option(const struct d_context *const co
 			base_header.ip_gre_opt->version = 0;
 			if(ip_context.v6_gre_option->protocol == 0)
 			{
-				base_header.ip_gre_opt->protocol = htons(0x0800);
+				base_header.ip_gre_opt->protocol = rohc_hton16(0x0800);
 			}
 			else
 			{
-				base_header.ip_gre_opt->protocol = htons(0x86DD);
+				base_header.ip_gre_opt->protocol = rohc_hton16(0x86DD);
 			}
 			base_header.ip_gre_opt->c_flag = ip_context.v6_gre_option->c_flag;
 			base_header.ip_gre_opt->s_flag = ip_context.v6_gre_option->s_flag;
@@ -1494,13 +1494,13 @@ static int tcp_decode_dynamic_ip(struct d_context *const context,
 			{
 				base_header.ipv4->ip_id = c_base_header.ipv4_dynamic2->ip_id;
 			}
-			ip_context.v4->last_ip_id.uint16 = ntohs(base_header.ipv4->ip_id);
+			ip_context.v4->last_ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
 			rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
 			                  ip_context.v4->last_ip_id.uint16);
 			size = sizeof(ipv4_dynamic2_t);
 		}
 		rohc_decomp_debug(context, "IP-ID = 0x%04x\n",
-		                  ntohs(base_header.ipv4->ip_id));
+		                  rohc_ntoh16(base_header.ipv4->ip_id));
 	}
 	else
 	{
@@ -1575,7 +1575,7 @@ static uint8_t * tcp_decode_irregular_ip(struct d_context *const context,
 			base_header.ipv4->ip_id = READ16_FROM_MPTR(mptr);
 			rohc_decomp_debug(context, "read ip_id = 0x%04x (ip_id_behavior = %d)\n",
 			                  base_header.ipv4->ip_id, ip_context.v4->ip_id_behavior);
-			ip_context.v4->last_ip_id.uint16 = ntohs(base_header.ipv4->ip_id);
+			ip_context.v4->last_ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
 			rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
 			                  ip_context.v4->last_ip_id.uint16);
 		}
@@ -1695,11 +1695,11 @@ static int tcp_decode_static_tcp(struct d_context *const context,
 
 	tcp_context->tcp_src_port =
 	   tcp->src_port = tcp_static->src_port;
-	rohc_decomp_debug(context, "TCP source port = %d\n", ntohs(tcp->src_port));
+	rohc_decomp_debug(context, "TCP source port = %d\n", rohc_ntoh16(tcp->src_port));
 
 	tcp_context->tcp_dst_port =
 	   tcp->dst_port = tcp_static->dst_port;
-	rohc_decomp_debug(context, "TCP dest port = %d\n", ntohs(tcp->dst_port));
+	rohc_decomp_debug(context, "TCP dest port = %d\n", rohc_ntoh16(tcp->dst_port));
 
 	/* number of bytes read from the packet */
 	rohc_decomp_debug(context, "TCP return read %zd\n", sizeof(tcp_static_t));
@@ -1733,11 +1733,11 @@ static unsigned int tcp_copy_static_tcp(struct d_context *const context,
 
 	tcp->src_port = tcp_context->tcp_src_port;
 	rohc_decomp_debug(context, "source port = %d (0x%04x)\n",
-	                  ntohs(tcp->src_port), ntohs(tcp->src_port));
+	                  rohc_ntoh16(tcp->src_port), rohc_ntoh16(tcp->src_port));
 
 	tcp->dst_port = tcp_context->tcp_dst_port;
 	rohc_decomp_debug(context, "destination port = %d (0x%04x)\n",
-	                  ntohs(tcp->dst_port), ntohs(tcp->dst_port));
+	                  rohc_ntoh16(tcp->dst_port), rohc_ntoh16(tcp->dst_port));
 
 	return sizeof(tcphdr_t);
 }
@@ -1803,7 +1803,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 	tcp->ack_flag = tcp_dynamic->ack_flag;
 	tcp->psh_flag = tcp_dynamic->psh_flag;
 	tcp->rsf_flags = tcp_dynamic->rsf_flags;
-	tcp_context->msn = ntohs(tcp_dynamic->msn);
+	tcp_context->msn = rohc_ntoh16(tcp_dynamic->msn);
 	rohc_decomp_debug(context, "MSN = 0x%04x\n", tcp_context->msn);
 	tcp->seq_number = tcp_dynamic->seq_number;
 
@@ -1817,14 +1817,14 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 	}
 
 	rohc_decomp_debug(context, "tcp = %p, seq_number = 0x%x, "
-	                  "ack_number = 0x%x\n", tcp, ntohl(tcp->seq_number),
-	                  ntohl(tcp->ack_number));
+	                  "ack_number = 0x%x\n", tcp, rohc_ntoh32(tcp->seq_number),
+	                  rohc_ntoh32(tcp->ack_number));
 
 	tcp->window = READ16_FROM_MPTR(mptr);
 	tcp->checksum = READ16_FROM_MPTR(mptr);
 
 	rohc_decomp_debug(context, "TCP window = 0x%04x, checksum = 0x%04x\n",
-	                  ntohs(tcp->window), ntohs(tcp->checksum));
+	                  rohc_ntoh16(tcp->window), rohc_ntoh16(tcp->checksum));
 
 	if(tcp_dynamic->urp_zero == 1)
 	{
@@ -1840,15 +1840,15 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 	}
 	else
 	{
-		tcp_context->ack_stride = ntohs( READ16_FROM_MPTR(mptr) );
+		tcp_context->ack_stride = rohc_ntoh16( READ16_FROM_MPTR(mptr) );
 	}
 	if(tcp_context->ack_stride != 0)
 	{
 		// Calculate the Ack Number residue
-		tcp_context->ack_number_residue = ntohl(tcp->ack_number) % tcp_context->ack_stride;
+		tcp_context->ack_number_residue = rohc_ntoh32(tcp->ack_number) % tcp_context->ack_stride;
 	}
 	rohc_decomp_debug(context, "TCP urg_ptr = 0x%04x, ack_stride = 0x%04x, "
-	                  "ack_number_residue = 0x%04x\n", ntohs(tcp->urg_ptr),
+	                  "ack_number_residue = 0x%04x\n", rohc_ntoh16(tcp->urg_ptr),
 	                  tcp_context->ack_stride, tcp_context->ack_number_residue);
 
 	read = mptr.uint8 - ( (unsigned char *) tcp_dynamic );
@@ -1943,8 +1943,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 						case TCP_OPT_MAXSEG:
 							memcpy(&tcp_context->tcp_option_maxseg,mptr.uint8 + 2,2);
 							rohc_decomp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
-							                  ntohs(tcp_context->tcp_option_maxseg),
-							                  ntohs(tcp_context->tcp_option_maxseg));
+							                  rohc_ntoh16(tcp_context->tcp_option_maxseg),
+							                  rohc_ntoh16(tcp_context->tcp_option_maxseg));
 							mptr.uint8 += TCP_OLEN_MAXSEG;
 							size += TCP_OLEN_MAXSEG;
 							break;
@@ -2140,7 +2140,7 @@ static uint8_t * tcp_decode_irregular_tcp(struct d_context *const context,
 	// checksum =:= irregular(16)
 	tcp->checksum = READ16_FROM_MPTR(mptr);
 	rohc_decomp_debug(context, "read TCP checksum = 0x%04x\n",
-	                  ntohs(tcp->checksum));
+	                  rohc_ntoh16(tcp->checksum));
 
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 ROHC_TRACE_DEBUG, "TCP irregular part", rohc_data,
@@ -2166,7 +2166,7 @@ static uint8_t * d_ts_lsb(const struct d_context *const context,
                           const uint32_t context_timestamp,
                           uint32_t *pTimestamp)
 {
-	const uint32_t last_timestamp = ntohl(context_timestamp);
+	const uint32_t last_timestamp = rohc_ntoh32(context_timestamp);
 	uint32_t timestamp;
 #if ROHC_EXTRA_DEBUG == 1
 	uint8_t *pBegin = ptr;
@@ -2214,10 +2214,10 @@ static uint8_t * d_ts_lsb(const struct d_context *const context,
 
 #if ROHC_EXTRA_DEBUG == 1
 	rohc_decomp_debug(context, "pTimestamp = 0x%x, context = 0x%x "
-	                  "=> timestamp 0x%x\n", ntohl(*pBegin), last_timestamp,
+	                  "=> timestamp 0x%x\n", rohc_ntoh32(*pBegin), last_timestamp,
 	                  timestamp);
 #endif
-	*pTimestamp = htonl(timestamp);
+	*pTimestamp = rohc_hton32(timestamp);
 
 	return ptr;
 }
@@ -2325,7 +2325,7 @@ static int d_sack_pure_lsb(uint8_t *ptr,
 		goto error;
 	}
 
-	*field = htonl(base + sack_field);
+	*field = rohc_hton32(base + sack_field);
 
 	return len;
 
@@ -2360,7 +2360,7 @@ static uint8_t * d_sack_block(uint8_t *ptr,
 	ptr += ret;
 
 	/* decode block end */
-	ret = d_sack_pure_lsb(ptr, ntohl(sack_block->block_start),
+	ret = d_sack_pure_lsb(ptr, rohc_ntoh32(sack_block->block_start),
 	                      &sack_block->block_end);
 	if(ret < 0)
 	{
@@ -2433,8 +2433,8 @@ static uint8_t * d_tcp_opt_sack(const struct d_context *const context,
 		}
 		rohc_decomp_debug(context, "block #%d of SACK option: start = 0x%08x, "
 		                  "end = 0x%08x\n", i + 1,
-		                  ntohl(sack_block->block_start),
-		                  ntohl(sack_block->block_end));
+		                  rohc_ntoh32(sack_block->block_start),
+		                  rohc_ntoh32(sack_block->block_end));
 		sack_block++;
 	}
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
@@ -2775,7 +2775,7 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					                   // TODO: save into context
 					compressed_options = d_tcp_opt_sack(context, compressed_options,
 					                                    &options,
-					                                    ntohl(tcp->ack_number));
+					                                    rohc_ntoh32(tcp->ack_number));
 					if(compressed_options == NULL)
 					{
 						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
@@ -3709,19 +3709,19 @@ test_checksum:
 		                  tcp->rsf_flags);
 		tcp->seq_number = variable_length_32_dec(context, &mptr,
 		                                         c_base_header.co_common->seq_indicator);
-		rohc_decomp_debug(context, "seq_number = 0x%x\n", ntohl(tcp->seq_number));
+		rohc_decomp_debug(context, "seq_number = 0x%x\n", rohc_ntoh32(tcp->seq_number));
 		tcp->ack_number = variable_length_32_dec(context, &mptr,
 		                                         c_base_header.co_common->ack_indicator);
-		rohc_decomp_debug(context, "ack_number = 0x%x\n", ntohl(tcp->ack_number));
+		rohc_decomp_debug(context, "ack_number = 0x%x\n", rohc_ntoh32(tcp->ack_number));
 		tcp_context->ack_stride =
-		   htons( d_static_or_irreg16(&mptr,tcp_context->ack_stride,
+		   rohc_hton16( d_static_or_irreg16(&mptr,tcp_context->ack_stride,
 		                              c_base_header.co_common->ack_stride_indicator) );
 		rohc_decomp_debug(context, "ack_stride = 0x%x\n", tcp_context->ack_stride);
 		tcp->window = d_static_or_irreg16(&mptr,tcp_context->old_tcphdr.window,
 		                                  c_base_header.co_common->window_indicator);
 		rohc_decomp_debug(context, "window = 0x%x (old_window = 0x%x)\n",
-		                  ntohs(tcp->window),
-		                  ntohs(tcp_context->old_tcphdr.window));
+		                  rohc_ntoh16(tcp->window),
+		                  rohc_ntoh16(tcp_context->old_tcphdr.window));
 		ip_inner_context.v4->ip_id_behavior = c_base_header.co_common->ip_id_behavior;
 		d_optional_ip_id_lsb(context, &mptr,
 		                     c_base_header.co_common->ip_id_behavior,
@@ -3808,10 +3808,10 @@ test_checksum:
 			{
 				uint32_t seq_number;
 				rohc_decomp_debug(context, "decode rnd_1 packet\n");
-				seq_number = ( c_base_header.rnd1->seq_number1 << 16 ) | ntohs(
+				seq_number = ( c_base_header.rnd1->seq_number1 << 16 ) | rohc_ntoh16(
 				   c_base_header.rnd1->seq_number2);
 				tcp->seq_number =
-				   htonl( d_lsb(context, 18,65535,ntohl(tcp_context->old_tcphdr.seq_number),seq_number) );
+				   rohc_hton32( d_lsb(context, 18,65535,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),seq_number) );
 				tcp->psh_flag = c_base_header.rnd1->psh_flag;
 				break;
 			}
@@ -3830,7 +3830,7 @@ test_checksum:
 			case PACKET_TCP_RND3:
 			{
 				rohc_decomp_debug(context, "decode rnd_3 packet\n");
-				// tcp->ack_number = htonl( d_lsb(context, 15,8191,ntohl(tcp_context->old_tcphdr.ack_number),ntohs(c_base_header.rnd3->ack_number)) );
+				// tcp->ack_number = rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),rohc_ntoh16(c_base_header.rnd3->ack_number)) );
 #if WORDS_BIGENDIAN != 1
 				wb.uint8[1] =
 				   c_base_header.uint8[OFFSET_RND3_ACK_NUMBER >>
@@ -3843,7 +3843,7 @@ test_checksum:
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_RND3_ACK_NUMBER >> 3) + 1];
 #endif
 				tcp->ack_number =
-				   htonl( d_lsb(context, 15,8191,ntohl(tcp_context->old_tcphdr.ack_number),wb.uint16) );
+				   rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),wb.uint16) );
 				tcp->psh_flag = c_base_header.rnd3->psh_flag;
 				break;
 			}
@@ -3857,7 +3857,7 @@ test_checksum:
 									 "with ack_stride.UVALUE == 0");
 					goto error;
 				}
-				ack_number_scaled = d_lsb(context, 4,3,ntohl(
+				ack_number_scaled = d_lsb(context, 4,3,rohc_ntoh32(
 				                             tcp_context->old_tcphdr.ack_number),
 				                          c_base_header.rnd4->ack_number_scaled);
 				assert( tcp_context->ack_stride != 0 );
@@ -3867,7 +3867,7 @@ test_checksum:
 				                  "ack_number_residue = 0x%x -> ack_number = "
 				                  "0x%x\n", ack_number_scaled,
 				                  tcp_context->ack_number_residue,
-				                  ntohl(tcp->ack_number));
+				                  rohc_ntoh32(tcp->ack_number));
 				tcp->psh_flag = c_base_header.rnd4->psh_flag;
 				break;
 			}
@@ -3875,7 +3875,7 @@ test_checksum:
 			{
 				rohc_decomp_debug(context, "decode rnd_5 packet\n");
 				tcp->psh_flag = c_base_header.rnd5->psh_flag;
-				// tcp->seq_number = htonl( d_lsb(context, 14,8191,ntohl(tcp_context->old_tcphdr.seq_number),ntohs(c_base_header.rnd5->seq_number)) );
+				// tcp->seq_number = rohc_hton32( d_lsb(context, 14,8191,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),rohc_ntoh16(c_base_header.rnd5->seq_number)) );
 #if WORDS_BIGENDIAN != 1
 				wb.uint8[1] = ( c_base_header.uint8[OFFSET_RND5_ACK_NUMBER >> 3] & 0x1F ) << 1;
 				wb.uint8[1] |= c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 7;
@@ -3888,11 +3888,11 @@ test_checksum:
 				wb.uint8[1] |= c_base_header.uint8[(OFFSET_RND5_ACK_NUMBER >> 3) + 2] >> 7;
 #endif
 				tcp->seq_number =
-				   htonl( d_lsb(context, 14,8191,ntohl(tcp_context->old_tcphdr.seq_number),wb.uint16) );
+				   rohc_hton32( d_lsb(context, 14,8191,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),wb.uint16) );
 				rohc_decomp_debug(context, "seq_number = 0x%x, uint16 = 0x%04x "
-				                  "(0x%02x 0x%02x)\n", ntohl(tcp->seq_number),
+				                  "(0x%02x 0x%02x)\n", rohc_ntoh32(tcp->seq_number),
 				                  wb.uint16, wb.uint8[0], wb.uint8[1]);
-				// tcp->ack_number = htonl( d_lsb(context, 15,8191,ntohl(tcp_context->old_tcphdr.ack_number),ntohs(c_base_header.rnd5->ack_number)) );
+				// tcp->ack_number = rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),rohc_ntoh16(c_base_header.rnd5->ack_number)) );
 #if WORDS_BIGENDIAN != 1
 				wb.uint8[1] = c_base_header.uint8[OFFSET_RND5_SEQ_NUMBER >> 3] & 0x7F;
 				wb.uint8[0] = c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3) + 1] << 1;
@@ -3901,9 +3901,9 @@ test_checksum:
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_RND5_SEQ_NUMBER >> 3) + 1] << 1;
 #endif
 				tcp->ack_number =
-				   htonl( d_lsb(context, 15,8191,ntohl(tcp_context->old_tcphdr.ack_number),wb.uint16) );
+				   rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),wb.uint16) );
 				rohc_decomp_debug(context, "ack_number = 0x%x, uint16 = 0x%04x "
-				                  "(0x%02x 0x%02x)\n", ntohl(tcp->ack_number),
+				                  "(0x%02x 0x%02x)\n", rohc_ntoh32(tcp->ack_number),
 				                  wb.uint16, wb.uint8[0], wb.uint8[1]);
 				break;
 			}
@@ -3912,8 +3912,8 @@ test_checksum:
 				rohc_decomp_debug(context, "decode rnd_6 packet\n");
 				tcp->psh_flag = c_base_header.rnd6->psh_flag;
 				tcp->ack_number =
-				   htonl( d_lsb(context, 16,16383,ntohl(tcp_context->old_tcphdr.ack_number),
-				                ntohs(c_base_header.rnd6->ack_number)) );
+				   rohc_hton32( d_lsb(context, 16,16383,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                rohc_ntoh16(c_base_header.rnd6->ack_number)) );
 				seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,
 				                          c_base_header.rnd6->seq_number_scaled);
 				seq_number_scaled_used = 1;
@@ -3926,11 +3926,11 @@ test_checksum:
 			{
 				uint32_t ack_number;
 				rohc_decomp_debug(context, "decode rnd_7 packet\n");
-				// tcp->ack_number = htonl( d_lsb(context, 18,65535,ntohl(tcp_context->old_tcphdr.ack_number),ntohl(c_base_header.rnd7->ack_number)) );
-				ack_number = ( c_base_header.rnd7->ack_number1 << 16 ) | ntohs(
+				// tcp->ack_number = rohc_hton32( d_lsb(context, 18,65535,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),rohc_ntoh32(c_base_header.rnd7->ack_number)) );
+				ack_number = ( c_base_header.rnd7->ack_number1 << 16 ) | rohc_ntoh16(
 				   c_base_header.rnd7->ack_number2);
 				tcp->ack_number =
-				   htonl( d_lsb(context, 18,65535,ntohl(tcp_context->old_tcphdr.ack_number),ack_number) );
+				   rohc_hton32( d_lsb(context, 18,65535,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),ack_number) );
 				tcp->window = c_base_header.rnd7->window;
 				tcp->psh_flag = c_base_header.rnd7->psh_flag;
 				break;
@@ -3960,11 +3960,11 @@ test_checksum:
 				                  c_base_header.rnd8->ecn_used);
 				tcp_context->ecn_used = c_base_header.rnd8->ecn_used;
 				tcp->seq_number =
-				   htonl( d_lsb(context, 16,65535,ntohl(tcp_context->old_tcphdr.seq_number),
-				                ntohs(c_base_header.rnd8->seq_number)) );
+				   rohc_hton32( d_lsb(context, 16,65535,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
+				                rohc_ntoh16(c_base_header.rnd8->seq_number)) );
 				tcp->ack_number =
-				   htonl( d_lsb(context, 16,16383,ntohl(tcp_context->old_tcphdr.ack_number),
-				                ntohs(c_base_header.rnd8->ack_number)) );
+				   rohc_hton32( d_lsb(context, 16,16383,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                rohc_ntoh16(c_base_header.rnd8->ack_number)) );
 				if(c_base_header.rnd8->list_present)
 				{
 					rohc_dump_packet(context->decompressor->trace_callback,
@@ -3991,11 +3991,11 @@ test_checksum:
 				               c_base_header.seq1->ip_id,
 				               msn);
 				rohc_decomp_debug(context, "old seq_number = 0x%x\n",
-				                  ntohl(tcp_context->old_tcphdr.seq_number));
+				                  rohc_ntoh32(tcp_context->old_tcphdr.seq_number));
 				tcp->seq_number =
-				   htonl(d_lsb(context, 16, 32767,
-				               ntohl(tcp_context->old_tcphdr.seq_number),
-				               ntohs(c_base_header.seq1->seq_number)));
+				   rohc_hton32(d_lsb(context, 16, 32767,
+				               rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
+				               rohc_ntoh16(c_base_header.seq1->seq_number)));
 				tcp->psh_flag = c_base_header.seq1->psh_flag;
 				break;
 			}
@@ -4026,8 +4026,8 @@ test_checksum:
 				               c_base_header.seq3->ip_id,
 				               msn);
 				tcp->ack_number =
-				   htonl( d_lsb(context, 16,16383,ntohl(tcp_context->old_tcphdr.ack_number),
-				                ntohs(c_base_header.seq3->ack_number)) );
+				   rohc_hton32( d_lsb(context, 16,16383,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                rohc_ntoh16(c_base_header.seq3->ack_number)) );
 				tcp->psh_flag = c_base_header.seq3->psh_flag;
 				break;
 			}
@@ -4041,7 +4041,7 @@ test_checksum:
 									 "with ack_stride.UVALUE == 0");
 					goto error;
 				}
-				ack_number_scaled = d_lsb(context, 4,3,ntohl(
+				ack_number_scaled = d_lsb(context, 4,3,rohc_ntoh32(
 				                             tcp_context->old_tcphdr.ack_number),
 				                          c_base_header.seq4->ack_number_scaled);
 				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,ack_number_scaled,
@@ -4050,7 +4050,7 @@ test_checksum:
 				                  "ack_number_residue = 0x%x -> ack_number = "
 				                  "0x%x\n", ack_number_scaled,
 				                  tcp_context->ack_number_residue,
-				                  ntohl(tcp->ack_number));
+				                  rohc_ntoh32(tcp->ack_number));
 				ip_id.uint16 =
 				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,3,1,ip_inner_context.v4->last_ip_id,
 				               c_base_header.seq4->ip_id,
@@ -4066,11 +4066,11 @@ test_checksum:
 				               c_base_header.seq5->ip_id,
 				               msn);
 				tcp->ack_number =
-				   htonl( d_lsb(context, 16,16383,ntohl(tcp_context->old_tcphdr.ack_number),
-				                ntohs(c_base_header.seq5->ack_number)) );
+				   rohc_hton32( d_lsb(context, 16,16383,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                rohc_ntoh16(c_base_header.seq5->ack_number)) );
 				tcp->seq_number =
-				   htonl( d_lsb(context, 16,32767,ntohl(tcp_context->old_tcphdr.seq_number),
-				                ntohs(c_base_header.seq5->seq_number)) );
+				   rohc_hton32( d_lsb(context, 16,32767,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
+				                rohc_ntoh16(c_base_header.seq5->seq_number)) );
 				tcp->psh_flag = c_base_header.seq5->psh_flag;
 				break;
 			}
@@ -4092,8 +4092,8 @@ test_checksum:
 				               c_base_header.seq6->ip_id,
 				               msn);
 				tcp->ack_number =
-				   htonl( d_lsb(context, 16,16383,ntohl(tcp_context->old_tcphdr.ack_number),
-				                ntohs(c_base_header.seq6->ack_number)) );
+				   rohc_hton32( d_lsb(context, 16,16383,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                rohc_ntoh16(c_base_header.seq6->ack_number)) );
 				tcp->psh_flag = c_base_header.seq6->psh_flag;
 				break;
 			}
@@ -4101,18 +4101,18 @@ test_checksum:
 			{
 				uint16_t window;
 				rohc_decomp_debug(context, "decode seq_7 packet\n");
-				// tcp->window = htons( d_lsb(context, 15,16383,ntohs(tcp_context->old_tcphdr.window),ntohs(c_base_header.seq7->window)) );
+				// tcp->window = rohc_hton16( d_lsb(context, 15,16383,rohc_ntoh16(tcp_context->old_tcphdr.window),rohc_ntoh16(c_base_header.seq7->window)) );
 				window =
 				   ( c_base_header.seq7->window1 <<
 				     11 ) | ( c_base_header.seq7->window2 << 3 ) | c_base_header.seq7->window3;
-				tcp->window = htons( d_lsb(context, 15,16383,ntohs(tcp_context->old_tcphdr.window),window) );
+				tcp->window = rohc_hton16( d_lsb(context, 15,16383,rohc_ntoh16(tcp_context->old_tcphdr.window),window) );
 				ip_id.uint16 =
 				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,5,3,ip_inner_context.v4->last_ip_id,
 				               c_base_header.seq7->ip_id,
 				               msn);
 				tcp->ack_number =
-				   htonl( d_lsb(context, 16,32767,ntohl(tcp_context->old_tcphdr.ack_number),
-				                ntohs(c_base_header.seq7->ack_number)) );
+				   rohc_hton32( d_lsb(context, 16,32767,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                rohc_ntoh16(c_base_header.seq7->ack_number)) );
 				tcp->psh_flag = c_base_header.seq7->psh_flag;
 				break;
 			}
@@ -4143,7 +4143,7 @@ test_checksum:
 				rohc_decomp_debug(context, "ecn_used = %d\n",
 				                  c_base_header.seq8->ecn_used);
 				tcp_context->ecn_used = c_base_header.seq8->ecn_used;
-				// tcp->ack_number = htonl( d_lsb(context, 15,8191,ntohl(tcp_context->old_tcphdr.ack_number),ntohs(c_base_header.seq8->ack_number)) );
+				// tcp->ack_number = rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),rohc_ntoh16(c_base_header.seq8->ack_number)) );
 #if WORDS_BIGENDIAN != 1
 				wb.uint8[1] =
 				   c_base_header.uint8[OFFSET_SEQ8_ACK_NUMBER >>
@@ -4156,12 +4156,12 @@ test_checksum:
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1];
 #endif
 				tcp->ack_number =
-				   htonl( d_lsb(context, 15,8191,ntohl(tcp_context->old_tcphdr.ack_number),wb.uint16) );
+				   rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),wb.uint16) );
 				rohc_decomp_debug(context, "ack_number = 0x%02x 0x%02x => "
 				                  "0x%04x, ack_number = 0x%x\n", wb.uint8[0],
-				                  wb.uint8[1], wb.uint16, ntohl(tcp->ack_number));
+				                  wb.uint8[1], wb.uint16, rohc_ntoh32(tcp->ack_number));
 				tcp->rsf_flags = rsf_index_dec( c_base_header.seq8->rsf_flags );
-				// tcp->seq_number = htonl( d_lsb(context, 14,8191,ntohl(tcp_context->old_tcphdr.seq_number),ntohs(c_base_header.seq8->seq_number)) );
+				// tcp->seq_number = rohc_hton32( d_lsb(context, 14,8191,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),rohc_ntoh16(c_base_header.seq8->seq_number)) );
 #if WORDS_BIGENDIAN != 1
 				wb.uint8[1] =
 				   c_base_header.uint8[OFFSET_SEQ8_SEQ_NUMBER >>
@@ -4174,10 +4174,10 @@ test_checksum:
 				wb.uint8[1] = c_base_header.uint8[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1];
 #endif
 				tcp->seq_number =
-				   htonl( d_lsb(context, 14,8191,ntohl(tcp_context->old_tcphdr.seq_number),wb.uint16) );
+				   rohc_hton32( d_lsb(context, 14,8191,rohc_ntoh32(tcp_context->old_tcphdr.seq_number),wb.uint16) );
 				rohc_decomp_debug(context, "seq_number = 0x%02x 0x%02x => "
 				                  "0x%04x, seq_number = 0x%x\n", wb.uint8[0],
-				                  wb.uint8[1], wb.uint16, ntohl(tcp->seq_number));
+				                  wb.uint8[1], wb.uint16, rohc_ntoh32(tcp->seq_number));
 				if(c_base_header.seq8->list_present)
 				{
 					// options
@@ -4261,7 +4261,7 @@ test_checksum:
 					             "RND_%d\n", PacketType - PACKET_TCP_RND1 + 1);
 					goto error;
 				}
-				base_header_inner.ipv4->ip_id = htons(ip_id.uint16);
+				base_header_inner.ipv4->ip_id = rohc_hton16(ip_id.uint16);
 				ip_inner_context.v4->last_ip_id.uint16 = ip_id.uint16;
 				break;
 			}
@@ -4283,7 +4283,7 @@ test_checksum:
 
 				swapped_ip_id.uint8[0] = ip_id.uint8[1];
 				swapped_ip_id.uint8[1] = ip_id.uint8[0];
-				base_header_inner.ipv4->ip_id = htons(swapped_ip_id.uint16);
+				base_header_inner.ipv4->ip_id = rohc_hton16(swapped_ip_id.uint16);
 				ip_inner_context.v4->last_ip_id.uint16 = swapped_ip_id.uint16;
 				break;
 			}
@@ -4335,12 +4335,12 @@ test_checksum:
 	if(seq_number_scaled_used != 0)
 	{
 		assert( payload_len != 0 );
-		tcp->seq_number = htonl(
+		tcp->seq_number = rohc_hton32(
 		   ( seq_number_scaled * payload_len ) + tcp_context->seq_number_residue );
 		rohc_decomp_debug(context, "seq_number_scaled = 0x%x, "
 		                  "seq_number_residue = 0x%x -> seq_number = 0x%x\n",
 		                  seq_number_scaled, tcp_context->seq_number_residue,
-		                  ntohl(tcp->seq_number));
+		                  rohc_ntoh32(tcp->seq_number));
 	}
 
 	base_header.uint8 = (uint8_t*) dest;
@@ -4353,13 +4353,13 @@ test_checksum:
 		if(ip_context.vx->version == IPV4)
 		{
 			base_header.ipv4->df = ip_context.v4->df;
-			base_header.ipv4->length = htons(size);
+			base_header.ipv4->length = rohc_hton16(size);
 			base_header.ipv4->checksum = 0;
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8,
 				             base_header.ipv4->header_length);
 			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d bytes\n",
-			                  ntohs(base_header.ipv4->checksum),
+			                  rohc_ntoh16(base_header.ipv4->checksum),
 			                  base_header.ipv4->header_length);
 			protocol = ip_context.v4->protocol;
 			size -= sizeof(base_header_ip_v4_t);
@@ -4369,13 +4369,13 @@ test_checksum:
 		else
 		{
 			// A REVOIR ->payload_length
-			base_header.ipv6->payload_length = htons( ( tcp->data_offset << 2 ) + payload_len );
+			base_header.ipv6->payload_length = rohc_hton16( ( tcp->data_offset << 2 ) + payload_len );
 			rohc_decomp_debug(context, "payload_length = %d\n",
-			                  ntohs(base_header.ipv6->payload_length));
+			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			/*
-			base_header.ipv6->payload_length = htons( length - sizeof(base_header_ip_v6_t) );
+			base_header.ipv6->payload_length = rohc_hton16( length - sizeof(base_header_ip_v6_t) );
 			rohc_decomp_debug(context, "payload_length = %d\n",
-			                  ntohs(base_header.ipv6->payload_length));
+			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			*/
 			protocol = ip_context.v6->next_header;
 			size -= sizeof(base_header_ip_v6_t);
@@ -4439,8 +4439,8 @@ test_checksum:
 	memcpy(&tcp_context->old_tcphdr,tcp,sizeof(tcphdr_t));
 	rohc_decomp_debug(context, "tcp = %p, save seq_number = 0x%x, "
 	                  "save ack_number = 0x%x\n", tcp,
-	                  ntohl(tcp_context->old_tcphdr.seq_number),
-	                  ntohl(tcp_context->old_tcphdr.ack_number));
+	                  rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
+	                  rohc_ntoh32(tcp_context->old_tcphdr.ack_number));
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;

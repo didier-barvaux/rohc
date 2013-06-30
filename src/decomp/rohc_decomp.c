@@ -43,7 +43,9 @@
 #	include <string.h>
 #endif
 #include <stdio.h> /* for printf(3) and sprintf(3) */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 #include <stdarg.h>
+#endif
 #include <assert.h>
 
 
@@ -116,12 +118,14 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   unsigned int len,
                                   struct d_decode_data *ddata);
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
                                             const rohc_trace_entity_t entity,
                                             const int profile,
                                             const char *const format,
                                             ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 /* feedback-related functions */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
@@ -396,7 +400,13 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	clear_statistics(decomp);
 
 	/* set the default trace callback */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
+#else
+	/* no behaviour compatibility with previous 1.x.y versions: no trace */
+	decomp->trace_callback = NULL;
+#endif
 
 	return decomp;
 
@@ -476,9 +486,9 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	}
 
 	decomp->stats.received++;
-	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "decompress the %d-byte packet #%u\n",
-	          isize, decomp->stats.received);
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "decompress the %d-byte packet #%u\n",
+	           isize, decomp->stats.received);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
@@ -632,6 +642,8 @@ error:
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Decompress both large and small CID packets.
  *
@@ -667,6 +679,8 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	/* decompress the packet with the new CID type */
 	return rohc_decompress(decomp, ibuf, isize, obuf, osize);
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -789,7 +803,7 @@ int d_decode_header(struct rohc_decomp *decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "invalid %zd-byte RRU: bad CRC (packet = 0x%08x, "
 			             "computed = 0x%08x)\n", decomp->rru_len,
-			             ntohl(crc_packet), ntohl(crc_computed));
+			             rohc_ntoh32(crc_packet), rohc_ntoh32(crc_computed));
 			/* discard RRU */
 			decomp->rru_len = 0;
 			return ROHC_ERROR_CRC;
@@ -2231,6 +2245,8 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief The default callback for traces
  *
@@ -2267,4 +2283,6 @@ static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
 	va_end(args);
 #endif
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 

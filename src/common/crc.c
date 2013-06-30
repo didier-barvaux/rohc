@@ -175,6 +175,8 @@ static inline unsigned char crc_calc_2(const unsigned char *const buf,
  */
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Get the polynom for the given CRC type.
  *
@@ -210,6 +212,8 @@ void crc_init_table(unsigned char *table, unsigned char poly)
 	/* nothing to do here: CRC tables are initialized in compressors and
 	 * decompressors */
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**

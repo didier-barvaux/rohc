@@ -21,10 +21,27 @@
 #          Mikhail Gruzdev <michail.gruzdev@gmail.com>
 #
 
-AC_INIT([ROHC library], [trunk], [http://rohc-lib.org/],
+AC_INIT([ROHC library], 1.6.0, [http://rohc-lib.org/],
         [rohc], [http://rohc-lib.org/])
 AC_CONFIG_SRCDIR([src])
 AM_CONFIG_HEADER([config.h])
+
+# Retrieve the Bazaar revision number
+if test -d "$srcdir/.bzr" ; then
+	bzr="`which bzr`"
+	if test $? -ne 0 ; then
+		PACKAGE_REVNO="~unknown"
+	else
+		PACKAGE_REVNO="~`${bzr} revno`"
+	fi
+elif test -f "$srcdir/bzr_revno" ; then
+	PACKAGE_REVNO="`cat $srcdir/bzr_revno`"
+else
+	PACKAGE_REVNO=""
+fi
+AC_SUBST(PACKAGE_REVNO)
+AC_DEFINE_UNQUOTED([PACKAGE_REVNO], ["$PACKAGE_REVNO"],
+                   [Bazaar revision number])
 
 # Define library versioning:
 #
@@ -85,6 +102,7 @@ AC_CHECK_HEADERS([stdio.h stdlib.h string.h strings.h])
 AC_CHECK_HEADERS([time.h sys/time.h])
 AC_CHECK_HEADERS([arpa/inet.h]) # ntohl, htonl, ntohs, htons on Linux
 AC_CHECK_HEADERS([winsock2.h])  # ntohl, htonl, ntohs, htons on Windows
+AC_CHECK_HEADERS([sys/types.h]) # ntohl, htonl, ntohs, htons on OpenBSD
 AC_CHECK_HEADERS([linux/if_tun.h]) # TUN/TAP support on Linux
 AC_CHECK_HEADERS([sched.h]) # scheduling priority on Linux
 AC_CHECK_HEADERS([sys/mman.h]) # memory management on Linux
@@ -120,21 +138,26 @@ if test "x$ac_cv_header_sched_h" = "xyes" ; then
 	# Check if sched_setscheduler() is available without external library then with libpthread
 	sched_lib=""
 	AC_CHECK_FUNC([sched_setscheduler], ,
-	              [AC_CHECK_LIB([pthread], sched_setscheduler, sched_lib="-lpthread",
-	                            [AC_MSG_ERROR([sched.h header found, but sched_setscheduler not found])])])
+	              [AC_CHECK_LIB([pthread], sched_setscheduler,
+	                            sched_lib="-lpthread", sched_lib="")])
 	AC_SUBST([sched_lib], [$sched_lib])
-	# Check whether sched_setscheduler() takes 2 or 3 arguments
-	AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
-	                                     #include <string.h>
-	                                     struct sched_param param;]],
-	                                   [[memset(&param, 0, sizeof(struct sched_param));
-	                                     sched_setscheduler(0, SCHED_FIFO, &param);]])],
-	                  [sched_setscheduler_params=3],
-	                  [sched_setscheduler_params=2])
-	AC_DEFINE_UNQUOTED([SCHED_SETSCHEDULER_PARAMS], [$sched_setscheduler_params],
+	if test "x$sched_lib" != "x" ; then
+		# Check whether sched_setscheduler() takes 2 or 3 arguments
+		AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
+		                                     #include <string.h>
+		                                     struct sched_param param;]],
+		                                   [[memset(&param, 0, sizeof(struct sched_param));
+		                                     sched_setscheduler(0, SCHED_FIFO, &param);]])],
+		                  [sched_setscheduler_params=3],
+		                  [sched_setscheduler_params=2])
+		AC_MSG_RESULT([$sched_setscheduler_params])
+	else
+		sched_setscheduler_params=0
+	fi
+	AC_DEFINE_UNQUOTED([SCHED_SETSCHEDULER_PARAMS],
+	                   [$sched_setscheduler_params],
 	                   [Define the number of arguments that sched_setscheduler takes])
-	AC_MSG_RESULT([$sched_setscheduler_params])
 fi
 
 # Define uint*_t and u_int*_t if not defined on target platform
@@ -197,6 +220,62 @@ if test "x$fortify_sources" != "xno"; then
 fi
 
 
+# check if code coverage must be enabled
+AC_ARG_ENABLE(code_coverage,
+              AS_HELP_STRING([--enable-code-coverage],
+                             [enable code coverage if enabled [[default=no]]]),
+              code_coverage=$enableval,
+              code_coverage=no)
+if test "x$code_coverage" != "xno"; then
+	configure_cflags="${configure_cflags} -fprofile-arcs -ftest-coverage"
+
+	# check for the zcov-scan and zcov-genhtml binaries
+	# and abort if they are not found
+	AC_CHECK_PROG(is_zcov_scan_found, zcov-scan, "yes", "no")
+	AC_CHECK_PROG(is_zcov_genhtml_found, zcov-genthml, "yes", "no")
+	if test "x$is_zcov_scan_found" != "xyes" || \
+	   test "x$is_zcov_scan_found" != "xyes" ; then
+		echo
+		if test "x$is_zcov_scan_found" != "xyes" ; then
+			echo "ERROR: zcov-scan binary not found"
+		fi
+		if test "x$is_zcov_genhtml_found" != "xyes" ; then
+			echo "ERROR: zcov-genhtml binary not found"
+		fi
+		echo
+		echo "zcov is required in order to report code coverage."
+		echo
+		echo "Either disable the feature with the --disable-code-coverage option, "
+		echo "or install zcov to solve the problem. You may get Zcov from "
+		echo "http://minormatter.com/zcov/ or use your package manager to install "
+		echo "it on your system."
+		exit 1
+	fi
+fi
+AM_CONDITIONAL([CODE_COVERAGE], [test x$code_coverage = xyes])
+
+
+# check if deprecated code shall be enabled
+AC_ARG_ENABLE(deprecated_api,
+              AS_HELP_STRING([--disable-deprecated-api],
+                             [build deprecated API if enabled [[default=yes]]]),
+              enable_deprecated_api=$enableval,
+              enable_deprecated_api=yes)
+if test "x$enable_deprecated_api" != "xyes"; then
+	echo
+	echo "WARNING: you disabled the deprecated API, it means that the API/ABI"
+	echo "         compatibility of the ROHC library is broken; are you sure "
+	echo "         to do so?"
+	echo
+	sleep 5
+	deprecated_api=0
+else
+	deprecated_api=1
+fi
+AC_DEFINE_UNQUOTED([ENABLE_DEPRECATED_API], [$deprecated_api],
+                   [Whether deprecated API is enabled or not.])
+
+
 # allow users to specify a special location for libpcap includes
 AC_ARG_WITH(libpcap_includes,
             AS_HELP_STRING([--with-libpcap-includes=DIR],
@@ -247,21 +326,77 @@ AC_ARG_ENABLE(rohc_stats,
 AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
 
 
-# check if ROHC applications (located in the app/ subdir) are enabled
+# abort is --enable-rohc-apps is used as it is deprecated
 AC_ARG_ENABLE(rohc_apps,
               AS_HELP_STRING([--enable-rohc-apps],
                              [enable ROHC applications found in the app/ subdir [[default=no]]]),
-              enable_rohc_apps=$enableval,
-              enable_rohc_apps=no)
-if test "x$enable_rohc_apps" = "xyes" && \
-   test "x$ac_cv_header_linux_if_tun_h" != "xyes" ; then
+                             enable_rohc_apps=$enableval,
+                             enable_rohc_apps="undefined")
+if test "x$enable_rohc_apps" != "xundefined" ; then
 	echo
-	echo "ERROR: --enable-rohc-apps cannot be enabled on non Linux platforms yet"
+	echo "ERROR: --enable-rohc-apps and --disable-rohc-apps are "
+	echo "       deprecated, do not use them any more."
 	echo
-	echo "Please use --disable-rohc-apps and try again."
+	echo "Please use a combination of the following options instead:"
+	echo "  --enable-app-fuzzer"
+	echo "  --enable-app-performance"
+	echo "  --enable-app-sniffer"
+	echo "  --enable-app-tunnel"
+	echo
 	exit 1
 fi
-AM_CONDITIONAL([ROHC_APPS], [test x$enable_rohc_apps = xyes])
+
+
+# check if ROHC fuzzer (located in the app/fuzzer/ subdir) is enabled
+AC_ARG_ENABLE(app_fuzzer,
+              AS_HELP_STRING([--enable-app-fuzzer],
+                             [enable ROHC fuzzer tool [default=no]]),
+              enable_app_fuzzer=$enableval,
+              enable_app_fuzzer=no)
+AM_CONDITIONAL([APP_FUZZER], [test x$enable_app_fuzzer = xyes])
+
+
+# check if ROHC performance tool (located in the app/performance/ subdir)
+# is enabled
+AC_ARG_ENABLE(app_performance,
+              AS_HELP_STRING([--enable-app-performance],
+                             [enable ROHC performance tool [default=no]]),
+              enable_app_perf=$enableval,
+              enable_app_perf=no)
+AM_CONDITIONAL([APP_PERF], [test x$enable_app_perf = xyes])
+
+
+# check if ROHC sniffer tool (located in the app/sniffer/ subdir)
+# is enabled
+AC_ARG_ENABLE(app_sniffer,
+              AS_HELP_STRING([--enable-app-sniffer],
+                             [enable ROHC sniffer tool [default=no]]),
+              enable_app_sniffer=$enableval,
+              enable_app_sniffer=no)
+AM_CONDITIONAL([APP_SNIFFER], [test x$enable_app_sniffer = xyes])
+
+
+# check if ROHC over UDP tunnel (located in the app/tunnel/ subdir) is enabled
+AC_ARG_ENABLE(app_tunnel,
+              AS_HELP_STRING([--enable-app-tunnel],
+                             [enable ROHC over UDP tunnel [default=no]]),
+              enable_app_tunnel=$enableval,
+              enable_app_tunnel=no)
+AM_CONDITIONAL([APP_TUNNEL], [test x$enable_app_tunnel = xyes])
+
+
+# TUN interfaces are not supported on non-Linux platforms yet, so the ROHC
+# over UDP tunnel application cannot be enabled there
+if test "x$enable_app_tunnel" = "xyes" && \
+   test "x$ac_cv_header_linux_if_tun_h" != "xyes" ; then
+	echo
+	echo "ERROR: --enable-app-tunnel cannot be enabled on non Linux "
+	echo "       platforms yet"
+	echo
+	echo "Please use --disable-app-tunnel and try again."
+	echo
+	exit 1
+fi
 
 
 # if ROHC tests or statistics are enabled:
@@ -369,11 +504,13 @@ fi
 #  - libpcap is mandatory
 if test "x$enable_rohc_tests" = "xyes" || \
    test "x$enable_rohc_stats" = "xyes" || \
-   test "x$enable_rohc_apps" = "xyes" ; then
+   test "x$enable_app_perf" = "xyes" || \
+   test "x$enable_app_sniffer" = "xyes" ; then
 
-	# use winpcap for mingw, libpcap for other platforms
+	# use winpcap for mingw and cygwin, libpcap for other platforms
 	if test "x$host_os" = "xmingw32" || \
-	   test "x$host_os" = "xmingw64" ; then
+	   test "x$host_os" = "xmingw64" || \
+	   test "x$host_os" = "xcygwin" ; then
 		pcap_lib_name="wpcap"
 		pcap_lib_pretty_name="WinPcap"
 		pcap_lib_url="http://www.winpcap.org/"
@@ -416,6 +553,25 @@ if test "x$enable_rohc_tests" = "xyes" || \
 	fi
 
 	AC_SUBST([pcap_lib_name], [$pcap_lib_name])
+
+	# check for DLT_LINUX_SLL symbol
+	AC_MSG_CHECKING([whether DLT_LINUX_SLL is defined by libpcap headers])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#if HAVE_PCAP_PCAP_H == 1
+	                                     #  include <pcap/pcap.h>
+	                                     #elif HAVE_PCAP_H == 1
+	                                     #  include <pcap.h>
+	                                     #else
+	                                     #  error "pcap.h header not found"
+	                                     #endif
+	                                     int dlt;]],
+	                                   [[dlt = DLT_LINUX_SLL;]])],
+	                  [dlt_linux_sll_defined="yes"],
+	                  [dlt_linux_sll_defined="no"])
+	AC_MSG_RESULT([$dlt_linux_sll_defined])
+	if test "x$dlt_linux_sll_defined" != "xyes" ; then
+		AC_DEFINE([DLT_LINUX_SLL], [113],
+		          [Define DLT_LINUX_SLL if not defined by the system])
+	fi
 fi
 
 
@@ -574,8 +730,9 @@ else
 
 	# stop now if building for Windows
 	if test "x$host_os" = "xmingw32" || \
-	   test "x$host_os" = "xmingw64" ; then
-		AC_MSG_ERROR([The Linux kernel cannot be built when cross-compiling
+	   test "x$host_os" = "xmingw64" || \
+	   test "x$host_os" = "xcygwin" ; then
+		AC_MSG_ERROR([The Linux kernel cannot be built when compiling
 		              for the Windows platform])
 	fi
 
@@ -703,6 +860,7 @@ AM_DEP_TRACK
 
 AC_CONFIG_FILES([ \
 	Makefile \
+	bzr_revno \
 	src/Makefile \
 	src/common/Makefile \
 	src/common/protocols/Makefile \
@@ -737,6 +895,7 @@ AC_CONFIG_FILES([ \
 	doc/doxygen.conf \
 	doc/Makefile \
 	contrib/Makefile \
+	contrib/rohc.spec \
 	rohc.pc \
 ])
 

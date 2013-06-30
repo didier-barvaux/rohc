@@ -6,3 +6,7 @@ but are not really part of it:
   Uncrustify (http://uncrustify.sourceforge.net/) is source Code Beautifier for
   C, C++, C#, ObjectiveC, D, Java, Pawn and VALA.
 
+* rohc.spec (and its template rohc.spec.in)
+
+  RPM spec file for CentOS 6.
+

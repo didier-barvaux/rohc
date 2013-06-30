@@ -279,14 +279,13 @@ unsigned int c_optional32( multi_ptr_t *pmptr, uint32_t context_value, uint32_t 
  *
  * @param pmptr            The destination for the compressed value
  * @param value            The value to compress
- * @return                 Nothing
  */
-
 void c_lsb_7_31( multi_ptr_t *pmptr, uint32_t value )
 {
 	if(value > 0x7F)
 	{
-		WRITE32_TO_PMPTR(pmptr, ( htonl(value) & htonl(0x7FFFFFFF) ) | htonl(0x80000000) );
+		WRITE32_TO_PMPTR(pmptr, (rohc_hton32(value) & rohc_hton32(0x7FFFFFFF)) |
+		                        rohc_hton32(0x80000000) );
 	}
 	else
 	{
@@ -463,7 +462,7 @@ unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
 			}
 			else
 			{
-				WRITE16_TO_PMPTR(pmptr,htons(ip_id.uint16));
+				WRITE16_TO_PMPTR(pmptr, rohc_hton16(ip_id.uint16));
 				rohc_comp_debug(context, "write ip_id = 0x%x\n", ip_id.uint16);
 				return 1;
 			}
@@ -482,7 +481,7 @@ unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
 				WB_t swapped_ip_id;
 				swapped_ip_id.uint8[0] = ip_id.uint8[1];
 				swapped_ip_id.uint8[1] = ip_id.uint8[0];
-				WRITE16_TO_PMPTR(pmptr,htons(swapped_ip_id.uint16));
+				WRITE16_TO_PMPTR(pmptr, rohc_hton16(swapped_ip_id.uint16));
 				rohc_comp_debug(context, "write ip_id = 0x%x\n",
 				                swapped_ip_id.uint16);
 				return 1;

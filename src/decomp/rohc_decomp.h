@@ -42,7 +42,13 @@
 #define D_NUM_PROFILES 7
 
 
-/// ROHC decompressor states (see 4.3.2 in the RFC 3095)
+/**
+ * @brief The ROHC decompressor states
+ *
+ * See 4.3.2 in the RFC 3095.
+ *
+ * @ingroup rohc_decomp
+ */
 typedef enum
 {
 	/// The No Context state
@@ -87,6 +93,8 @@ typedef enum
  *        nr_lost_packets
  *        nr_misordered_packets
  *        is_duplicated
+ *
+ * @ingroup rohc_decomp
  */
 typedef struct
 {
@@ -315,6 +323,7 @@ int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
                                 int isize,
                                 unsigned char *obuf,
                                 int osize);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      unsigned char *ibuf,
                                      int isize,
@@ -324,6 +333,7 @@ int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
 	ROHC_DEPRECATED("please do not use this function anymore, use "
 	                "rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid() "
 	                "instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /*
@@ -357,12 +367,14 @@ int ROHC_EXPORT rohc_d_context(struct rohc_decomp *decomp,
                                int index,
                                unsigned int indent,
                                char *buffer);
+
 void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp);
+
 const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_d_state state);
 
-bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
-                                      rohc_decomp_last_packet_info_t *const info)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
+																  rohc_decomp_last_packet_info_t *const info)
+	__attribute__((warn_unused_result));
 
 
 /*
@@ -374,20 +386,19 @@ void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
 
 bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                                           const rohc_cid_type_t cid_type)
-	__attribute__((nonnull(1), warn_unused_result));
-
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                          const size_t max_cid)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                                       const size_t mrru)
-	__attribute__((nonnull(1), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
                                            rohc_trace_callback_t callback)
-	__attribute__((nonnull(1, 2), warn_unused_result));
+	__attribute__((warn_unused_result));
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

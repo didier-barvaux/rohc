@@ -66,11 +66,11 @@ typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
 #if defined(__USE_MINGW_ANSI_STDIO) && __USE_MINGW_ANSI_STDIO == 1
 	/* MinGW interprets 'printf' format as 'ms_printf', so force
 	 * usage of 'gnu_printf' */
-	__attribute__((format(gnu_printf, 4, 5), nonnull(4)));
+	__attribute__((format(gnu_printf, 4, 5)));
 #else
 	/* Use 'printf' format in other cases, because old GCC versions
 	 * and Clang do not recognize 'gnu_printf' format */
-	__attribute__((format(printf, 4, 5), nonnull(4)));
+	__attribute__((format(printf, 4, 5)));
 #endif
 
 

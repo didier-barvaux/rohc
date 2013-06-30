@@ -222,9 +222,9 @@ uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value )
 
 uint32_t d_lsb_7_31( multi_ptr_t *pmptr )
 {
-	if( (*pmptr->uint8) & 0x80)
+	if((*pmptr->uint8) & 0x80)
 	{
-		return ntohl( READ32_FROM_PMPTR(pmptr) ) & 0x7FFFFFFF;
+		return rohc_ntoh32(READ32_FROM_PMPTR(pmptr)) & 0x7FFFFFFF;
 	}
 	else
 	{
@@ -437,7 +437,7 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
 			}
 			else
 			{
-				*ip_id = ntohs( READ16_FROM_PMPTR(pmptr) );
+				*ip_id = rohc_ntoh16(READ16_FROM_PMPTR(pmptr));
 				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
 			}
 			break;
@@ -457,7 +457,7 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
 			}
 			else
 			{
-				*ip_id = ntohs( READ16_FROM_PMPTR(pmptr) );
+				*ip_id = rohc_ntoh16(READ16_FROM_PMPTR(pmptr));
 				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
 			}
 		}

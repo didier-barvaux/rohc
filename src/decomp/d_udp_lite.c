@@ -450,26 +450,29 @@ static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
 	bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
 	bits->udp_lite_cc_nr = 16;
 	rohc_decomp_debug(context, "checksum coverage = 0x%04x\n",
-	                  ntohs(bits->udp_lite_cc));
+	                  rohc_ntoh16(bits->udp_lite_cc));
 	read += 2;
 	packet += 2;
 
 	/* init the Coverage Field Present (CFP) (see 5.2.2 in RFC 4019) */
-	udp_lite_context->cfp = (udp_lite_length != ntohs(bits->udp_lite_cc));
+	udp_lite_context->cfp =
+		(udp_lite_length != rohc_ntoh16(bits->udp_lite_cc));
 	rohc_decomp_debug(context, "init CFP to %d (length = %zd, CC = %d)\n",
 	                  udp_lite_context->cfp, udp_lite_length,
-	                  ntohs(bits->udp_lite_cc));
+	                  rohc_ntoh16(bits->udp_lite_cc));
 
 	/* init Coverage Field Inferred (CFI) (see 5.2.2 in RFC 4019) */
-	udp_lite_context->cfi = (udp_lite_length == ntohs(bits->udp_lite_cc));
+	udp_lite_context->cfi =
+		(udp_lite_length == rohc_ntoh16(bits->udp_lite_cc));
 	rohc_decomp_debug(context, "init CFI to %d (length = %zd, CC = %d)\n",
 	                  udp_lite_context->cfi, udp_lite_length,
-	                  ntohs(bits->udp_lite_cc));
+	                  rohc_ntoh16(bits->udp_lite_cc));
 
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "checksum = 0x%04x\n",
+	                  rohc_ntoh16(bits->udp_check));
 	packet += 2;
 	read += 2;
 
@@ -538,7 +541,7 @@ static int udp_lite_parse_uo_remainder(const struct d_context *const context,
 		bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
 		bits->udp_lite_cc_nr = 16;
 		rohc_decomp_debug(context, "checksum coverage = 0x%04x\n",
-		                  ntohs(bits->udp_lite_cc));
+		                  rohc_ntoh16(bits->udp_lite_cc));
 		read += 2;
 		packet += 2;
 	}
@@ -560,7 +563,8 @@ static int udp_lite_parse_uo_remainder(const struct d_context *const context,
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "checksum = 0x%04x\n",
+	                  rohc_ntoh16(bits->udp_check));
 	packet += 2;
 	read += 2;
 
@@ -613,7 +617,7 @@ static bool udp_lite_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_src = udp_lite->source;
 	}
 	rohc_decomp_debug(context, "decoded UDP-Lite source port = 0x%04x\n",
-	                  ntohs(decoded->udp_src));
+	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP-Lite destination port */
 	if(bits.udp_dst_nr > 0)
@@ -628,13 +632,13 @@ static bool udp_lite_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_dst = udp_lite->dest;
 	}
 	rohc_decomp_debug(context, "decoded UDP-Lite destination port = 0x%04x\n",
-	                  ntohs(decoded->udp_dst));
+	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* decode UDP-Lite checksum */
 	assert(bits.udp_check_nr == 16);
 	decoded->udp_check = bits.udp_check;
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x\n",
-	                  ntohs(decoded->udp_check));
+	                  rohc_ntoh16(decoded->udp_check));
 
 	/* decode UDP-Lite Checksum Coverage (CC) */
 	if(bits.udp_lite_cc_nr > 0)
@@ -688,12 +692,13 @@ static int udp_lite_build_uncomp_udp(const struct d_context *const context,
 
 	/* changing fields */
 	udp_lite->check = decoded.udp_check;
-	rohc_decomp_debug(context, "checksum = 0x%04x\n", ntohs(udp_lite->check));
+	rohc_decomp_debug(context, "checksum = 0x%04x\n",
+	                  rohc_ntoh16(udp_lite->check));
 
 	/* set checksum coverage if inferred, get from packet otherwise */
 	if(udp_lite_context->cfi > 0)
 	{
-		udp_lite->len = htons(payload_len + sizeof(struct udphdr));
+		udp_lite->len = rohc_hton16(payload_len + sizeof(struct udphdr));
 		rohc_decomp_debug(context, "checksum coverage (0x%04x) is inferred\n",
 		                  udp_lite->len);
 	}

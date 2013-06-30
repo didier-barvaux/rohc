@@ -457,7 +457,7 @@ void c_init_tmp_variables(struct generic_tmp_vars *tmp_vars)
 	tmp_vars->nr_ip_id_bits2 = 0;
 
 	tmp_vars->packet_type = PACKET_UNKNOWN;
-	tmp_vars->max_size = -1;
+	tmp_vars->max_size = 0;
 }
 
 
@@ -634,9 +634,12 @@ void c_generic_destroy(struct c_context *const context)
  *
  * Conditions are:
  *  \li the version of the outer IP header is 4 or 6
+ *  \li if the outer IP header is IPv4, it does not contain options
  *  \li the outer IP header is not an IP fragment
  *  \li if there are at least 2 IP headers, the version of the inner IP header
  *      is 4 or 6
+ *  \li if there are at least 2 IP headers and if the inner IP header is IPv4,
+ *      it does not contain options
  *  \li if there are at least 2 IP headers, the inner IP header is not an IP
  *      fragment
  *
@@ -682,6 +685,24 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
+	/* if outer header is IPv4, check the presence of options */
+	if(outer_ip->version == IPV4 &&
+	   ip_get_hdrlen(outer_ip) != sizeof(struct ipv4_hdr))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IPv4 packet is not supported by the profile: "
+		           "IP options are not accepted\n");
+		goto bad_profile;
+	}
+
+	/* check if the outer header is a fragment */
+	if(ip_is_fragment(outer_ip))
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IP packet is fragmented\n");
+		goto bad_profile;
+	}
+
 	/* complete context key */
 	if(version == IPV4)
 	{
@@ -702,14 +723,6 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		*ctxt_key ^= daddr->addr.u32[3];
 	}
 
-	/* check if the outer header is a fragment */
-	if(ip_is_fragment(outer_ip))
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet is fragmented\n");
-		goto bad_profile;
-	}
-
 	/* check the inner IP header if there is one */
 	if(inner_ip != NULL)
 	{
@@ -724,7 +737,17 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 			goto bad_profile;
 		}
 
-		/* check if the second header is a fragment */
+		/* if inner header is IPv4, check the presence of options */
+		if(inner_ip->version == IPV4 &&
+		   ip_get_hdrlen(inner_ip) != sizeof(struct ipv4_hdr))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "the inner IPv4 packet is not supported by the profile: "
+			           "IP options are not accepted\n");
+			goto bad_profile;
+		}
+
+		/* check if the inner header is a fragment */
 		if(ip_is_fragment(inner_ip))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -816,9 +839,9 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
  */
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,
-                     const int packet_size,
+                     const size_t packet_size,
                      unsigned char *const dest,
-                     const int dest_size,
+                     const size_t dest_size,
                      rohc_packet_t *const packet_type,
                      int *const payload_offset)
 {
@@ -935,7 +958,7 @@ int c_generic_encode(struct c_context *const context,
 	if(ip_get_version(ip) == IPV4)
 	{
 		rohc_comp_debug(context, "ip_id = 0x%04x, context_sn = %u\n",
-		                ntohs(ipv4_get_id(ip)), g_context->sn);
+		                rohc_ntoh16(ipv4_get_id(ip)), g_context->sn);
 	}
 	else /* IPV6 */
 	{
@@ -4591,12 +4614,16 @@ int code_EXT3_packet(const struct c_context *context,
 		 *  - RTP PT changed in the last few packets,
 		 *  - RTP Padding bit changed in this packet,
 		 *  - RTP Padding bit changed in the last few packets,
-		 *  - RTP TS and TS_STRIDE must be initialized
+		 *  - RTP eXtension bit changed in this packet,
+		 *  - RTP eXtension bit changed in the last few packets,
+		 *  - RTP TS and TS_STRIDE must be initialized.
 		 */
 		rtp = (rtp_context->tmp.rtp_pt_changed ||
 		       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
 		       rtp_context->tmp.padding_bit_changed ||
 		       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
+		       rtp_context->tmp.extension_bit_changed ||
+		       rtp_context->rtp_extension_change_count < MAX_IR_COUNT ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
@@ -4849,7 +4876,7 @@ int code_EXT3_packet(const struct c_context *context,
 			assert(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST);
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
-			id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
+			id_encoded = rohc_hton16(g_context->ip_flags.info.v4.id_delta);
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
 			                innermost_ipv4_non_rnd, dest[counter],
@@ -4951,11 +4978,11 @@ int code_EXT3_packet(const struct c_context *context,
 			/* always transmit the IP-ID encoded, in Network Byte Order */
 			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
 			{
-				id_encoded = htons(g_context->ip_flags.info.v4.id_delta);
+				id_encoded = rohc_hton16(g_context->ip_flags.info.v4.id_delta);
 			}
 			else
 			{
-				id_encoded = htons(g_context->ip2_flags.info.v4.id_delta);
+				id_encoded = rohc_hton16(g_context->ip2_flags.info.v4.id_delta);
 			}
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
@@ -5073,6 +5100,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 	rohc_comp_debug(context, "RTP flags = 0x%x\n", byte);
 	dest[counter] = byte;
 	counter++;
+	rtp_context->rtp_extension_change_count++;
 
 	/* part 2 */
 	if(rpt)
@@ -5355,7 +5383,7 @@ int header_fields(const struct c_context *context,
 		uint16_t id_encoded;
 
 		/* always transmit the IP-ID encoded, in Network Byte Order */
-		id_encoded = htons(header_info->info.v4.id_delta);
+		id_encoded = rohc_hton16(header_info->info.v4.id_delta);
 		memcpy(&dest[counter], &id_encoded, 2);
 		rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
 		                ip_hdr_pos, dest[counter], dest[counter + 1]);
@@ -5801,8 +5829,8 @@ static void detect_ip_id_behaviour(const struct c_context *const context,
 		uint16_t old_id; /* the IP-ID of the previous IPv4 header */
 		uint16_t new_id; /* the IP-ID of the IPv4 header being compressed */
 
-		old_id = ntohs(header_info->info.v4.old_ip.id);
-		new_id = ntohs(ipv4_get_id(ip));
+		old_id = rohc_ntoh16(header_info->info.v4.old_ip.id);
+		new_id = rohc_ntoh16(ipv4_get_id(ip));
 
 		rohc_comp_debug(context, "1) old_id = 0x%04x new_id = 0x%04x\n",
 		                old_id, new_id);
@@ -5969,7 +5997,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 	{
 		/* compute the new IP-ID / SN delta */
 		g_context->ip_flags.info.v4.id_delta =
-			ntohs(ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo)) -
+			rohc_ntoh16(ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",
@@ -6025,15 +6053,9 @@ static int encode_uncomp_fields(struct c_context *const context,
 	if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
 	{
 		/* compute the new IP-ID / SN delta */
-		if(g_context->ip2_flags.info.v4.nbo)
-		{
-			g_context->ip2_flags.info.v4.id_delta =
-				ntohs(ipv4_get_id(ip2)) - g_context->sn;
-		}
-		else
-		{
-			g_context->ip2_flags.info.v4.id_delta = ipv4_get_id(ip2) - g_context->sn;
-		}
+		g_context->ip2_flags.info.v4.id_delta =
+			rohc_ntoh16(ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo)) -
+			g_context->sn;
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",
 		                g_context->ip2_flags.info.v4.id_delta,
@@ -6143,27 +6165,27 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	{
 		case PACKET_UOR_2:
 		{
-			if(nr_sn_bits < 5 &&
+			if(nr_sn_bits <= 5 &&
 			   nr_innermost_ip_id_bits == 0 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_NOEXT;
 			}
 			else if(nr_sn_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 3 &&
+			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 3 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_0;
 			}
 			else if(nr_sn_bits <= 8 &&
-			        nr_innermost_ip_id_bits <= 11 &&
+			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 11 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
 				ext = PACKET_EXT_1;
 			}
 			else if(g_context->tmp.nr_of_ip_hdr > 1 &&
 			        nr_sn_bits <= 3 &&
-			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits <= 11)
 			{
 				ext = PACKET_EXT_2;

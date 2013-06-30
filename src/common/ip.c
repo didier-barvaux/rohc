@@ -61,8 +61,8 @@ int ip_create(struct ip_packet *const ip,
 	/* check packet's validity according to IP version */
 	if(version == IPV4)
 	{
-		/* IPv4: packet must be at least 20-byte long (= header length)
-		 *       header must not contain options (= 20 bytes)
+		/* IPv4: packet must be at least 20-byte long (= min header length)
+		 *       packet must be large enough for options if any (= 20 bytes)
 		 *       packet length must be accurate with the Total Length field */
 
 		if(size < sizeof(struct ipv4_hdr))
@@ -73,7 +73,8 @@ int ip_create(struct ip_packet *const ip,
 		/* copy the IPv4 header */
 		memcpy(&ip->header.v4, packet, sizeof(struct ipv4_hdr));
 
-		if(ip_get_hdrlen(ip) != sizeof(struct ipv4_hdr))
+		if(ip_get_hdrlen(ip) < sizeof(struct ipv4_hdr) ||
+		   ip_get_hdrlen(ip) > size)
 		{
 			goto malformed;
 		}
@@ -406,7 +407,7 @@ int ip_is_fragment(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		is_fragment = ((ntohs(ip->header.v4.frag_off) & (~IP_DF)) != 0);
+		is_fragment = ((rohc_ntoh16(ip->header.v4.frag_off) & (~IP_DF)) != 0);
 	}
 	else if(ip->version == IPV6)
 	{
@@ -438,11 +439,11 @@ unsigned int ip_get_totlen(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		len = ntohs(ip->header.v4.tot_len);
+		len = rohc_ntoh16(ip->header.v4.tot_len);
 	}
 	else if(ip->version == IPV6)
 	{
-		len = sizeof(struct ipv6_hdr) + ntohs(ip->header.v6.ip6_plen);
+		len = sizeof(struct ipv6_hdr) + rohc_ntoh16(ip->header.v6.ip6_plen);
 	}
 	else /* IP_UNKNOWN */
 	{
@@ -500,11 +501,12 @@ unsigned int ip_get_plen(const struct ip_packet *const ip)
 
 	if(ip->version == IPV4)
 	{
-		len = ntohs(ip->header.v4.tot_len) - ip->header.v4.ihl * 4;
+		len = rohc_ntoh16(ip->header.v4.tot_len) - ip->header.v4.ihl * 4;
 	}
 	else if(ip->version == IPV6)
 	{
-		len = ntohs(ip->header.v6.ip6_plen) - ip_get_total_extension_size(ip);
+		len = rohc_ntoh16(ip->header.v6.ip6_plen) -
+		      ip_get_total_extension_size(ip);
 	}
 	else
 	{

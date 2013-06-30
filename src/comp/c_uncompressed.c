@@ -68,15 +68,15 @@ bool c_uncompressed_use_udp_port(const struct c_context *const context,
                                  const unsigned int port);
 
 /* check whether a packet belongs to a context */
-static int c_uncompressed_check_context(const struct c_context *context,
-                                        const struct ip_packet *ip);
+static bool c_uncompressed_check_context(const struct c_context *context,
+                                         const struct ip_packet *ip);
 
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct c_context *const context,
                                  const struct ip_packet *ip,
-                                 const int packet_size,
+                                 const size_t packet_size,
                                  unsigned char *const dest,
-                                 const int dest_size,
+                                 const size_t dest_size,
                                  rohc_packet_t *const packet_type,
                                  int *const payload_offset);
 static int uncompressed_code_packet(const struct c_context *context,
@@ -84,17 +84,17 @@ static int uncompressed_code_packet(const struct c_context *context,
                                     unsigned char *const dest,
                                     rohc_packet_t *const packet_type,
                                     int *const payload_offset,
-                                    const int dest_size);
+                                    const size_t dest_size);
 static int uncompressed_code_IR_packet(const struct c_context *context,
                                        const struct ip_packet *ip,
                                        unsigned char *const dest,
                                        int *const payload_offset,
-                                       const int dest_size);
+                                       const size_t dest_size);
 static int uncompressed_code_normal_packet(const struct c_context *context,
                                            const struct ip_packet *ip,
                                            unsigned char *const dest,
                                            int *const payload_offset,
-                                           const int dest_size);
+                                           const size_t dest_size);
 
 /* re-initialize a context */
 static bool c_uncompressed_reinit_context(struct c_context *const context);
@@ -219,13 +219,13 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
  *
  * @param context The compression context
  * @param ip      The IP packet to check
- * @return        Always return 1 to tell that the IP packet belongs
+ * @return        Always return true to tell that the IP packet belongs
  *                to the context
  */
-static int c_uncompressed_check_context(const struct c_context *context,
-                                        const struct ip_packet *ip)
+static bool c_uncompressed_check_context(const struct c_context *context,
+                                         const struct ip_packet *ip)
 {
-	return 1;
+	return true;
 }
 
 
@@ -250,9 +250,9 @@ static int c_uncompressed_check_context(const struct c_context *context,
  */
 static int c_uncompressed_encode(struct c_context *const context,
                                  const struct ip_packet *ip,
-                                 const int packet_size,
+                                 const size_t packet_size,
                                  unsigned char *const dest,
-                                 const int dest_size,
+                                 const size_t dest_size,
                                  rohc_packet_t *const packet_type,
                                  int *const payload_offset)
 {
@@ -534,13 +534,13 @@ static int uncompressed_code_packet(const struct c_context *context,
                                     unsigned char *const dest,
                                     rohc_packet_t *const packet_type,
                                     int *const payload_offset,
-                                    const int dest_size)
+                                    const size_t dest_size)
 {
 	int (*code_packet)(const struct c_context *context,
 	                   const struct ip_packet *ip,
 	                   unsigned char *const dest,
 	                   int *const payload_offset,
-	                   const int dest_size);
+	                   const size_t dest_size);
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
 	int size;
@@ -558,7 +558,7 @@ static int uncompressed_code_packet(const struct c_context *context,
 		if(ip_get_version(ip) != IPV4 && ip_get_version(ip) != IPV6)
 		{
 			rohc_comp_debug(context, "force IR packet to avoid conflict between "
-			                "first payload byte and ROHC packet types");
+			                "first payload byte and ROHC packet types\n");
 			*packet_type = PACKET_IR;
 		}
 		else
@@ -640,7 +640,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
                                        const struct ip_packet *ip,
                                        unsigned char *const dest,
                                        int *const payload_offset,
-                                       const int dest_size)
+                                       const size_t dest_size)
 {
 	int counter;
 	int first_position;
@@ -715,7 +715,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
                                            const struct ip_packet *ip,
                                            unsigned char *const dest,
                                            int *const payload_offset,
-                                           const int dest_size)
+                                           const size_t dest_size)
 {
 	int counter;
 	int first_position;

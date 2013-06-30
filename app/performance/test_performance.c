@@ -420,7 +420,7 @@ static int tune_env_for_perfs(double *coef_nanosec)
 	int ret;
 #endif
 
-#if HAVE_SCHED_H == 1
+#if HAVE_SCHED_H == 1 && SCHED_SETSCHEDULER_PARAMS > 0
 	/* set the process to realtime priority */
 #if SCHED_SETSCHEDULER_PARAMS == 3
 	memset(&param, 0, sizeof(struct sched_param));

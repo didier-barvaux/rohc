@@ -1,0 +1,208 @@
+Name:     @PACKAGE_TARNAME@
+Summary:  The RObust Header Compression (ROHC) library
+Group:    System Environment/Libraries
+License:  GPL
+URL:      @PACKAGE_URL@
+
+Epoch:    0
+Version:  @PACKAGE_VERSION@@PACKAGE_REVNO@
+Release:  1.%{packager}
+
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
+Source:   %{name}-%{version}.tar.bz2
+Source1:  %{name}-tests-%{version}.tar.bz2
+
+%global _hardened_build 1
+
+# do we generate documentation?
+#  - RHEL >= 6
+#  - CentOS >= 6
+#  - all others
+%if 0%{?rhel_version} || 0%{?centos_version}
+# RHEL or CentOS
+%if 0%{?rhel_version} >= 600
+%define rohc_doc 1
+%else
+%if 0%{?centos_version} >= 600
+%define rohc_doc 1
+%else
+%define rohc_doc 0
+%endif
+%endif
+# end RHEL or CentOS
+%else
+# !RHEL && !CentOS
+%define rohc_doc 1
+# end !RHEL && !CentOS
+%endif
+
+%description
+The ROHC library implements the RObust Header Compression (ROHC)
+algorithms as defined by the IETF in RFC3095.
+
+
+%package tools
+Summary:       Miscellaneous tools that come along the ROHC library
+Group:         Development/Libraries
+Requires:      %{name} = %{epoch}:%{version}-%{release}
+%if 0%{?rhel_version} >= 600
+Requires:      libpcap1
+BuildRequires: libpcap1-devel
+%else
+Requires:      libpcap
+BuildRequires: libpcap-devel
+%endif
+
+%description tools
+Miscellaneous tools that come along the ROHC library.
+
+The ROHC library implements the RObust Header Compression (ROHC)
+algorithms as defined by the IETF in RFC3095.
+
+
+%package devel
+Summary:       Files for development of applications which will use the ROHC library
+Group:         Development/Libraries
+BuildArch:     noarch
+Requires:      %{name} = %{epoch}:%{version}-%{release}
+
+%description devel
+Files for development of applications which will use the ROHC library.
+
+The ROHC library implements the RObust Header Compression (ROHC)
+algorithms as defined by the IETF in RFC3095.
+
+
+%if %{rohc_doc}
+%package doc
+Summary:       API documentation of the ROHC library
+Group:         Development/Libraries
+BuildArch:     noarch
+Requires:      %{name} = %{epoch}:%{version}-%{release}
+BuildRequires: doxygen
+BuildRequires: texlive-latex
+BuildRequires: graphviz
+%if 0%{?suse_version}
+BuildRequires: texlive-bin
+BuildRequires: graphviz-gd
+%endif
+%if 0%{?fedora} >= 18
+BuildRequires: texlive-latex-bin-bin
+%endif
+
+%description doc
+API documentation of the ROHC library.
+
+The ROHC library implements the RObust Header Compression (ROHC)
+algorithms as defined by the IETF in RFC3095.
+%endif
+
+
+%prep
+# unpack sources
+%setup -q
+# unpack the PCAP captures needed for tests at the top level,
+# and do not remove previous sources
+%setup -q -T -D -b 1
+
+%build
+%configure \
+	--enable-fortify-sources \
+	--enable-fail-on-warning \
+	--enable-app-fuzzer \
+	--enable-app-performance \
+	--enable-app-sniffer \
+	--enable-app-tunnel \
+	--enable-rohc-tests \
+%if %{rohc_doc}
+	--enable-doc \
+%endif
+	--enable-examples
+make clean
+make %{?_smp_mflags} all
+
+%check
+make %{?_smp_mflags} check
+
+%install
+rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
+rm -f %{buildroot}/%{_libdir}/librohc_{common,comp,decomp}.la
+
+%clean
+rm -rf %{buildroot}
+
+%post -p /sbin/ldconfig
+%postun -p /sbin/ldconfig
+
+%files
+%defattr(0644, root, root, 0755)
+# libraries
+%{_libdir}/librohc_common.so
+%{_libdir}/librohc_common.so.0
+%{_libdir}/librohc_common.so.0.1.0
+%{_libdir}/librohc_comp.so
+%{_libdir}/librohc_comp.so.0
+%{_libdir}/librohc_comp.so.0.1.0
+%{_libdir}/librohc_decomp.so
+%{_libdir}/librohc_decomp.so.0
+%{_libdir}/librohc_decomp.so.0.1.0
+# basic documentation
+%dir %{_defaultdocdir}/%{name}/
+%{_docdir}/%{name}/AUTHORS
+%{_docdir}/%{name}/COPYING
+%{_docdir}/%{name}/ChangeLog
+%{_docdir}/%{name}/INSTALL
+%{_docdir}/%{name}/README
+
+%files tools
+%defattr(0644, root, root, 0755)
+# library tools
+%{_sbindir}/rohc_test_performance
+%{_sbindir}/rohctunnel
+
+%files devel
+%defattr(0644, root, root, 0755)
+# pkgconfig definition
+%{_libdir}/pkgconfig/rohc.pc
+# library headers
+%{_includedir}/rohc.h
+%{_includedir}/rohc_comp.h
+%{_includedir}/rohc_decomp.h
+%{_includedir}/rohc_packets.h
+# code examples
+%dir %{_docdir}/%{name}/
+%dir %{_docdir}/%{name}/examples/
+%{_docdir}/%{name}/examples/simple_rohc_program.c
+
+%if %{rohc_doc}
+%files doc
+%defattr(0644, root, root, 0755)
+# doxygen documentation in HTML format
+%dir %{_docdir}/%{name}/
+%dir %{_docdir}/%{name}/html/
+%{_docdir}/%{name}/html/*
+%endif
+
+%changelog
+* Mon May 20 2013 Didier Barvaux <didier@barvaux.org>
+- Replace --enable-rohc-apps by --enable-app-fuzzer --enable-app-tunnel
+  --enable-app-performance --enable-app-sniffer.
+* Thu May  9 2013 Didier Barvaux <didier@barvaux.org>
+- depend on libpcap1 on RHEL >= 6
+- define devel and doc subpackages as noarch
+- add texlive-bin as build dependency for OpenSuse
+- add texlive-latex-bin-bin dependency for Fedora >= 18
+- _replace _defaultdocdir by _docdir
+- rework the way we decide whether doc shall be generated or not
+- use libpcap1-devel instead of libpcap-devel on RHEL6
+- do not generate documentation on CentOS5 and RHEL5
+- add graphviz-gd as build dependency on OpenSuse
+* Wed May  8 2013 Didier Barvaux <didier@barvaux.org>
+- add the test archive as additional source
+- add graphviz as build dependency for doc subpackage
+- add texlive-latex as build dependency for doc subpackage
+- split tools in a subpackage
+- add build and runtime dependencies for tools
+- first version.

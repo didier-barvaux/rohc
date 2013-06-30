@@ -54,8 +54,10 @@
 #	include <stdbool.h>
 #endif
 #include <assert.h>
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 #include <stdio.h> /* for printf(3) */
 #include <stdarg.h>
+#endif
 
 
 extern struct c_profile c_rtp_profile,
@@ -131,17 +133,25 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
  * Prototypes of miscellaneous private functions
  */
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
                                           const rohc_trace_entity_t entity,
                                           const int profile,
                                           const char *const format,
                                           ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
 	__attribute__((nonnull(1)));
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+static int __rohc_c_context(struct rohc_comp *comp,
+                            int cid,
+                            unsigned int indent,
+                            char *buffer);
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /*
@@ -170,9 +180,14 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	bool is_fine;
 	int i;
 
-	if(jam_use != 0)
+	if(jam_use != 0 || adapt_size != 0 || encap_size != 0)
 	{
-		/* the jamming algorithm was removed, please set jam_use to 0 */
+		/* the jamming algorithm was removed, please set jam_use, adapt_size,
+		 * and encap_size to 0 */
+		goto error;
+	}
+	if(max_cid < 0 || max_cid > ROHC_SMALL_CID_MAX)
+	{
 		goto error;
 	}
 
@@ -205,7 +220,13 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->last_context = NULL;
 
 	/* set default callback for traces */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	comp->trace_callback = rohc_comp_print_trace_default;
+#else
+	/* no behaviour compatibility with previous 1.x.y versions: no trace */
+	comp->trace_callback = NULL;
+#endif
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
@@ -360,6 +381,8 @@ error:
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief The default callback for traces
  *
@@ -396,6 +419,8 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 	va_end(args);
 #endif
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -454,6 +479,8 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Compress a ROHC packet.
  *
@@ -499,6 +526,8 @@ error:
 	return 0;
 }
 
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
 
 /**
  * @brief Compress a ROHC packet
@@ -514,7 +543,7 @@ error:
  * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
  *                             for the ROHC packet
  * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
- * @return                     \li ROHC_OK if a ROHC packed is returned
+ * @return                     \li ROHC_OK if a ROHC packet is returned
  *                             \li ROHC_NEED_SEGMENT if no compressed data is
  *                                 returned and segmentation required
  *                             \li ROHC_ERROR if an error occurred
@@ -638,42 +667,6 @@ int rohc_compress2(struct rohc_comp *const comp,
 			goto error;
 		}
 	}
-	else if(c == (struct c_context*) -1)
-	{
-		/* the profile detected anomalities in IP packet (such as fragments)
-		 * that made it not compressible -> switch to uncompressed profile */
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "error while compressing with the profile, "
-		             "using uncompressed profile\n");
-
-		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
-		if(p == NULL)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "uncompressed profile not found, giving up\n");
-			goto error;
-		}
-
-		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip, pkt_key);
-		if(c == NULL)
-		{
-			c = c_create_context(comp, p, outer_ip, pkt_key);
-			if(c == NULL)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to create an uncompressed context\n");
-				goto error;
-			}
-		}
-		else if(c == (struct c_context*)-1)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "error while finding context in uncompressed profile, "
-			             "giving up\n");
-			goto error;
-		}
-	}
 
 	c->latest_used = get_milliseconds();
 
@@ -698,8 +691,8 @@ int rohc_compress2(struct rohc_comp *const comp,
 	*rohc_packet_len += feedbacks_size;
 
 	/* 2. use profile to compress packet */
-	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "compress the packet #%d\n", comp->num_packets + 1);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "compress the packet #%d\n", comp->num_packets + 1);
 	rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
 	                          rohc_packet_max_len - (*rohc_packet_len),
 	                          &packet_type, &payload_offset);
@@ -738,12 +731,6 @@ int rohc_compress2(struct rohc_comp *const comp,
 				             "failed to create an uncompressed context\n");
 				goto error_unlock_feedbacks;
 			}
-		}
-		else if(c == (struct c_context*)-1)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "uncompressed profile not found, giving up\n");
-			goto error_unlock_feedbacks;
 		}
 
 		rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
@@ -823,7 +810,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		       CRC_FCS32_LEN);
 		comp->rru_len += CRC_FCS32_LEN;
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "RRU 32-bit FCS CRC = 0x%08x\n", ntohl(rru_crc));
+		           "RRU 32-bit FCS CRC = 0x%08x\n", rohc_ntoh32(rru_crc));
 		/* computed RRU must be <= MRRU */
 		assert(comp->rru_len <= comp->mrru);
 
@@ -859,10 +846,11 @@ int rohc_compress2(struct rohc_comp *const comp,
 		status = ROHC_OK;
 	}
 
-	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC size = %zd bytes (feedbacks = %zd, header = %d, "
-	          "payload = %zd), output buffer size = %zd\n", *rohc_packet_len,
-	          feedbacks_size, rohc_hdr_size, payload_size, rohc_packet_max_len);
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "ROHC size = %zd bytes (feedbacks = %zd, header = %d, "
+	           "payload = %zd), output buffer size = %zd\n", *rohc_packet_len,
+	           feedbacks_size, rohc_hdr_size, payload_size,
+	           rohc_packet_max_len);
 
 	/* update some statistics:
 	 *  - compressor statistics
@@ -941,14 +929,14 @@ int rohc_comp_get_segment(struct rohc_comp *const comp,
 	size_t max_data_len;
 	int status;
 
-	/* no segment yet */
-	*len = 0;
-
 	/* check input parameters */
 	if(comp == NULL || segment == NULL || max_len <= 0 || len == NULL)
 	{
 		goto error;
 	}
+
+	/* no segment yet */
+	*len = 0;
 
 	/* abort if no RRU is available in the compressor */
 	if(comp->rru_len <= 0)
@@ -1076,6 +1064,8 @@ error:
  * @param comp   The ROHC compressor
  * @param width  The width of the W-LSB sliding window
  * @return       true in case of success, false in case of failure
+ *
+ * @ingroup rohc_comp
  */
 bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                      const size_t width)
@@ -1136,6 +1126,8 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
  * @param fo_timeout  The number of packets to compress before going back
  *                    to FO state to force a context refresh
  * @return            true in case of success, false in case of failure
+ *
+ * @ingroup rohc_comp
  */
 bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
                                       const size_t ir_timeout,
@@ -1218,6 +1210,11 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 {
 	int i;
 
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		if(c_profiles[i]->id == profile)
@@ -1230,6 +1227,9 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 
 	rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	             "unknown ROHC profile (ID = %d)\n", profile);
+
+error:
+	return;
 }
 
 
@@ -1243,7 +1243,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
  */
 int rohc_c_using_small_cid(struct rohc_comp *comp)
 {
-	return (comp->medium.cid_type == ROHC_SMALL_CID);
+	return (comp != NULL && comp->medium.cid_type == ROHC_SMALL_CID);
 }
 
 
@@ -1262,6 +1262,8 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
@@ -1270,6 +1272,9 @@ void rohc_c_set_header(struct rohc_comp *comp, int header)
  *
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. No segment will be generated.
+ *
+ * @deprecated do not use this function anymore, use rohc_comp_set_mrru()
+ *             instead
  *
  * @param comp  The ROHC compressor
  * @param value The new MRRU value
@@ -1284,6 +1289,8 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 		ret = rohc_comp_set_mrru(comp, value);
 	}
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -1325,6 +1332,36 @@ bool rohc_comp_set_mrru(struct rohc_comp *const comp,
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "MRRU is now set to %zd\n", comp->mrru);
 
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Get the Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * The MRRU value is in range [0 ; ROHC_MAX_MRRU]. Remember that the MRRU
+ * includes the 32-bit CRC that protects it.
+ *
+ * If MRRU value is 0, segmentation is disabled.
+ *
+ * @param comp  The ROHC compressor
+ * @param mrru  OUT: The current MRRU value
+ * @return      true if MRRU was successfully retrieved, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_mrru(const struct rohc_comp *const comp,
+                        size_t *const mrru)
+{
+	if(comp == NULL || mrru == NULL)
+	{
+		goto error;
+	}
+
+	*mrru = comp->mrru;
 	return true;
 
 error:
@@ -1385,6 +1422,31 @@ error:
 
 
 /**
+ * @brief Get the maximal CID value the compressor uses
+ *
+ * @param comp     The ROHC compressor
+ * @param max_cid  OUT: The current maximal CID value
+ * @return         true if MAX_CID was successfully retrieved, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_max_cid(const struct rohc_comp *const comp,
+                           size_t *const max_cid)
+{
+	if(comp == NULL || max_cid == NULL)
+	{
+		goto error;
+	}
+
+	*max_cid = comp->medium.max_cid;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Tell the compressor to use large CIDs
  *
  * @param comp      The ROHC compressor
@@ -1394,6 +1456,15 @@ error:
  */
 void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 {
+	if(comp == NULL)
+	{
+		return;
+	}
+	if(large_cid != 0 && large_cid != 1)
+	{
+		return;
+	}
+
 	if(large_cid)
 	{
 		comp->medium.cid_type = ROHC_LARGE_CID;
@@ -1410,6 +1481,32 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 	}
 }
 
+
+/**
+ * @brief Get the CID type the compressor uses
+ *
+ * @param comp      The ROHC compressor
+ * @param cid_type  OUT: The current CID type among ROHC_SMALL_CID and
+ *                       ROHC_LARGE_CID
+ * @return          true if the CID type was successfully retrieved,
+ *                  false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_cid_type(const struct rohc_comp *const comp,
+                            rohc_cid_type_t *const cid_type)
+{
+	if(comp == NULL || cid_type == NULL)
+	{
+		goto error;
+	}
+
+	*cid_type = comp->medium.cid_type;
+	return true;
+
+error:
+	return false;
+}
 
 /**
  * @brief Add a port to the list of UDP ports dedicated for RTP traffic
@@ -1570,7 +1667,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 		{
 			if(comp->contexts[i].used &&
 			   comp->contexts[i].profile->use_udp_port(&comp->contexts[i],
-			                                           htons(port)))
+			                                           rohc_hton16(port)))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 				           "destroy context with CID %d because it uses "
@@ -1587,7 +1684,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 	}
 
 	/* all the list was explored, the port is not in the list */
-	if(idx == MAX_RTP_PORTS)
+	if(idx == MAX_RTP_PORTS && !is_found)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "port %u is not in the list\n", port);
@@ -1649,6 +1746,14 @@ error:
  */
 void rohc_c_set_enable(struct rohc_comp *comp, int enable)
 {
+	if(comp == NULL)
+	{
+		return;
+	}
+	if(enable != 0 && enable != 1)
+	{
+		return;
+	}
 	comp->enabled = enable;
 }
 
@@ -1663,14 +1768,19 @@ void rohc_c_set_enable(struct rohc_comp *comp, int enable)
  */
 int rohc_c_is_enabled(struct rohc_comp *comp)
 {
-	return comp->enabled;
+	return (comp != NULL && comp->enabled);
 }
 
+
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get information about available compression profiles
  *
  * This function outputs XML.
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_general_info() instead
  *
  * @param buffer The buffer where to store profile information
  * @return       The length of the data stored in the buffer
@@ -1704,6 +1814,9 @@ int rohc_c_info(char *buffer)
  * @brief Get information about a ROHC compressor
  *
  * This function outputs XML.
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_general_info() instead
  *
  * @param comp   The ROHC compressor
  * @param indent The indent level to beautify the XML output
@@ -1775,7 +1888,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 
 	/* contexts part */
 	i = 0;
-	while(rohc_c_context(comp, i, indent + 1, buffer) != -2)
+	while(__rohc_c_context(comp, i, indent + 1, buffer) != -2)
 	{
 		i++;
 	}
@@ -1795,6 +1908,9 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
  *
  * This function outputs XML.
  *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_get_general_info() instead
+ *
  * @param comp   The ROHC compressor
  * @param cid    The CID of the compressor context to output information about
  * @param indent The indent level to beautify the XML output
@@ -1804,6 +1920,31 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
  *               -1 if the given CID is unused or an error occurs
  */
 int rohc_c_context(struct rohc_comp *comp, int cid, unsigned int indent, char *buffer)
+{
+	/* for compatibility reasons */
+	return __rohc_c_context(comp, cid, indent, buffer);
+}
+
+
+/**
+ * @brief Get information about a compression context
+ *
+ * This function outputs XML.
+ *
+ * Internal implementation of rohc_c_context() for compatibility reasons.
+ *
+ * @param comp   The ROHC compressor
+ * @param cid    The CID of the compressor context to output information about
+ * @param indent The indent level to beautify the XML output
+ * @param buffer The buffer where to store the information
+ * @return       The length of the data stored in the buffer if successful,
+ *               -2 if the given CID is too large,
+ *               -1 if the given CID is unused or an error occurs
+ */
+static int __rohc_c_context(struct rohc_comp *comp,
+                            int cid,
+                            unsigned int indent,
+                            char *buffer)
 {
 	struct c_context *c;
 	char *prefix;
@@ -1949,6 +2090,8 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	bool __attribute__((unused)) ret; /* avoid warn_unused_result */
 	ret = rohc_comp_piggyback_feedback(comp, feedback, size);
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -2143,10 +2286,9 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	unsigned int size;
 	int feedback_size;
 
-	/* check compressor validity */
-	if(comp == NULL)
+	/* check input validity */
+	if(comp == NULL || obuf == NULL || osize <= 0)
 	{
-		/* no compressor associated with decompressor */
 		return 0;
 	}
 
@@ -2169,6 +2311,8 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 	return size;
 }
 
+
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get some information about the last compressed packet
@@ -2214,6 +2358,8 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 
 	return ROHC_OK;
 }
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
 /**
@@ -2296,6 +2442,71 @@ error:
 
 
 /**
+ * @brief Get some generak information about the compressor
+ *
+ * To use the function, call it with a pointer on a pre-allocated
+ * 'rohc_comp_general_info_t' structure with the 'version_major' and
+ * 'version_minor' fields set to one of the following supported versions:
+ *  - Major 0, minor 0
+ *
+ * See rohc_comp_general_info_t for details about fields that are supported
+ * in the above versions.
+ *
+ * @param comp  The ROHC compressor to get information from
+ * @param info  IN/OUT: the structure where information will be stored
+ * @return      true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_get_general_info(const struct rohc_comp *const comp,
+                                rohc_comp_general_info_t *const info)
+{
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	if(info == NULL)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "structure for general information is not valid\n");
+		goto error;
+	}
+
+	/* check compatibility version */
+	if(info->version_major == 0)
+	{
+		/* base fields for major version 0 */
+		info->contexts_nr = comp->num_contexts_used;
+		info->packets_nr = comp->num_packets;
+		info->uncomp_bytes_nr = comp->total_uncompressed_size;
+		info->comp_bytes_nr = comp->total_compressed_size;
+
+		/* new fields added by minor versions */
+		if(info->version_minor > 0)
+		{
+			rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "general information", info->version_minor);
+			goto error;
+		}
+	}
+	else
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "unsupported major version (%u) of the structure for "
+		           "general information", info->version_major);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Give a description for the given ROHC compression context state
  *
  * The descriptions are not part of the API. They may change between
@@ -2321,6 +2532,109 @@ const char * rohc_comp_get_state_descr(const rohc_c_state state)
 		default:
 			return "no description";
 	}
+}
+
+
+/**
+ * @brief Remove all feedbacks locked during the packet build
+ *
+ * This function does remove the locked feedbacks. See function
+ * \ref rohc_feedback_unlock instead if you want not to remove them.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
+{
+	unsigned int removed_nr = 0;
+
+	if(comp == NULL)
+	{
+		/* bad compressor */
+		goto error;
+	}
+
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+
+	while(comp->feedbacks_first != comp->feedbacks_first_unlocked)
+	{
+		/* destroy the feedback and unlock the ring location */
+		assert(comp->feedbacks[comp->feedbacks_first].data != NULL);
+		assert(comp->feedbacks[comp->feedbacks_first].length > 0);
+		zfree(comp->feedbacks[comp->feedbacks_first].data);
+		comp->feedbacks[comp->feedbacks_first].length = 0;
+		comp->feedbacks[comp->feedbacks_first].is_locked = false;
+		comp->feedbacks_first = (comp->feedbacks_first + 1) % FEEDBACK_RING_SIZE;
+		removed_nr++;
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "%u locked feedbacks removed\n", removed_nr);
+
+	assert(comp->feedbacks_first == comp->feedbacks_first_unlocked);
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Unlock all feedbacks locked during the packet build
+ *
+ * This function does not remove the locked feedbacks. See function
+ * \ref rohc_feedback_remove_locked instead if you want to remove them.
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_feedback_unlock(struct rohc_comp *const comp)
+{
+	if(comp == NULL)
+	{
+		/* bad compressor */
+		goto error;
+	}
+
+	assert(comp->feedbacks_first >= 0);
+	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_first_unlocked >= 0);
+	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
+	assert(comp->feedbacks_next >= 0);
+	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
+
+	/* unlock all the ring locations between first unlocked one (excluded)
+	 * and first one */
+	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
+	{
+		if(comp->feedbacks_first_unlocked == 0)
+		{
+			comp->feedbacks_first_unlocked = FEEDBACK_RING_SIZE - 1;
+		}
+		else
+		{
+			comp->feedbacks_first_unlocked =
+				(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
+		}
+
+		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
+		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
+	}
+
+	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -2541,8 +2855,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
  * @param ip       The IP packet that must be accepted by the context
  * @param pkt_key  The key to help finding the context associated with packet
  * @return         The compression context if found,
- *                 NULL if not found,
- *                  -1 if an error occurs
+ *                 NULL if not found
  */
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
@@ -2552,10 +2865,11 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 	struct c_context *c = NULL;
 	size_t num_used_ctxt_seen = 0;
 	int i;
-	int ret;
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
+		bool context_match;
+
 		c = &comp->contexts[i];
 
 		/* don't even look at unused contexts */
@@ -2578,13 +2892,8 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 		}
 
 		/* ask the profile whether the packet matches the context */
-		ret = c->profile->check_context(c, ip);
-		if(ret == -1)
-		{
-			c = (struct c_context*) -1;
-			break;
-		}
-		else if(ret)
+		context_match = c->profile->check_context(c, ip);
+		if(context_match)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "using context CID = %d\n", c->cid);
@@ -2849,102 +3158,6 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 
 full:
 	return -1;
-}
-
-
-/**
- * @brief Remove all feedbacks locked during the packet build
- *
- * This function does remove the locked feedbacks. See function
- * \ref rohc_feedback_unlock instead if you want not to remove them.
- *
- * @param comp  The ROHC compressor
- * @return      true if action succeeded, false in case of error
- *
- * @ingroup rohc_comp
- */
-bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
-{
-	unsigned int removed_nr = 0;
-
-	if(comp == NULL)
-	{
-		/* bad compressor */
-		goto error;
-	}
-
-	assert(comp->feedbacks_first >= 0);
-	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first_unlocked >= 0);
-	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
-
-	while(comp->feedbacks_first != comp->feedbacks_first_unlocked)
-	{
-		/* destroy the feedback and unlock the ring location */
-		assert(comp->feedbacks[comp->feedbacks_first].data != NULL);
-		assert(comp->feedbacks[comp->feedbacks_first].length > 0);
-		zfree(comp->feedbacks[comp->feedbacks_first].data);
-		comp->feedbacks[comp->feedbacks_first].length = 0;
-		comp->feedbacks[comp->feedbacks_first].is_locked = false;
-		comp->feedbacks_first = (comp->feedbacks_first + 1) % FEEDBACK_RING_SIZE;
-		removed_nr++;
-	}
-
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "%u locked feedbacks removed\n", removed_nr);
-
-	assert(comp->feedbacks_first == comp->feedbacks_first_unlocked);
-
-	return true;
-
-error:
-	return false;
-}
-
-
-/**
- * @brief Unlock all feedbacks locked during the packet build
- *
- * This function does not remove the locked feedbacks. See function
- * \ref rohc_feedback_remove_locked instead if you want to remove them.
- *
- * @param comp  The ROHC compressor
- * @return      true if action succeeded, false in case of error
- *
- * @ingroup rohc_comp
- */
-bool rohc_feedback_unlock(struct rohc_comp *const comp)
-{
-	if(comp == NULL)
-	{
-		/* bad compressor */
-		goto error;
-	}
-
-	assert(comp->feedbacks_first >= 0);
-	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first_unlocked >= 0);
-	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_next >= 0);
-	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
-
-	/* unlock all the ring locations between first unlocked one (excluded)
-	 * and first one */
-	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
-	{
-		comp->feedbacks_first_unlocked =
-			(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
-
-		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
-		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
-	}
-
-	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
-
-	return true;
-
-error:
-	return false;
 }
 
 

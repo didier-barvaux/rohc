@@ -218,7 +218,7 @@ int ip_parse_dynamic_ip(const struct d_context *const context,
 		}
 
 		/* parse 16-bit SN */
-		bits->sn = ntohs(GET_NEXT_16_BITS(packet));
+		bits->sn = rohc_ntoh16(GET_NEXT_16_BITS(packet));
 		bits->sn_nr = 16;
 		rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
 		packet += 2;

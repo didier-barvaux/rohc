@@ -1,14 +1,19 @@
 Makefile
 Makefile.in
+bzr_revno
 .deps
 .libs
 *.lo
 *.la
 .*.o.cmd
+*.gcda
+*.gcno
 test-suite.log
 test_*.sh.log
-./rohc-trunk.tar.gz
-./rohc-trunk.tar.bz2
+test_*.sh.trs
+./test-driver
+./rohc-*.tar.gz
+./rohc-*.tar.bz2
 ./cscope.out
 ./aclocal.m4
 ./autom4te.cache
@@ -27,6 +32,9 @@ test_*.sh.log
 ./mkinstalldirs
 ./stamp-h1
 ./rohc.pc
+./output.zcov
+./coverage-report
+./test/report_code_coverage.sh.log
 ./doc/doxygen.conf
 ./doc/html
 ./src/common/test/test_lsb_decode_wraparound
@@ -41,6 +49,9 @@ test_*.sh.log
 ./src/comp/test/test_rfc4996_encoding
 ./src/comp/test/test_rfc4996_encoding.exe
 ./src/comp/test/test_rfc4996_encoding.log
+./src/comp/test/test_api_robustness
+./src/comp/test/test_api_robustness.exe
+./src/comp/test/test_api_robustness.log
 ./test/functional/feedback2/test_feedback2
 ./test/functional/feedback2/test_feedback2.exe
 ./test/functional/feedback_ring/test_feedback_ring
@@ -92,3 +103,4 @@ test_*.sh.log
 ./app/fuzzer/rohc_fuzzer.exe
 ./examples/simple_rohc_program
 ./examples/simple_rohc_program.exe
+contrib/rohc.spec

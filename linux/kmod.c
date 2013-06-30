@@ -66,13 +66,17 @@ EXPORT_SYMBOL_GPL(rohc_feedback_unlock);
 
 /* statistics */
 EXPORT_SYMBOL_GPL(rohc_comp_get_state_descr);
+EXPORT_SYMBOL_GPL(rohc_comp_get_general_info);
 EXPORT_SYMBOL_GPL(rohc_comp_get_last_packet_info2);
 
 /* configuration */
 EXPORT_SYMBOL_GPL(rohc_activate_profile);
 EXPORT_SYMBOL_GPL(rohc_comp_set_mrru);
+EXPORT_SYMBOL_GPL(rohc_comp_get_mrru);
 EXPORT_SYMBOL_GPL(rohc_c_set_max_cid);
+EXPORT_SYMBOL_GPL(rohc_comp_get_max_cid);
 EXPORT_SYMBOL_GPL(rohc_c_set_large_cid);
+EXPORT_SYMBOL_GPL(rohc_comp_get_cid_type);
 EXPORT_SYMBOL_GPL(rohc_comp_set_wlsb_window_width);
 EXPORT_SYMBOL_GPL(rohc_comp_set_periodic_refreshes);
 EXPORT_SYMBOL_GPL(rohc_comp_set_traces_cb);

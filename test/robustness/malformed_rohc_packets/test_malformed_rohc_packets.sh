@@ -22,6 +22,11 @@ if [ "${CROSS_COMPILATION}" = "yes" ] && \
 	exit 77
 fi
 
+test -z "${SED}" && SED="`which sed`"
+test -z "${GREP}" && GREP="`which grep`"
+test -z "${AWK}" && AWK="`which gawk`"
+test -z "${AWK}" && AWK="`which awk`"
+
 # parse arguments
 SCRIPT="$0"
 VERBOSE="$1"
@@ -36,7 +41,10 @@ fi
 
 # extract the source capture from the name of the script
 CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_malformed_rohc_packets_##' -e 's#\.sh$##' )
+                ${SED} -e 's#.*test_malformed_rohc_packets_##' -e 's#_[^_]*\.sh$##' )
+FAILURE_START=$( echo "${SCRIPT}" | \
+                ${AWK} -F'_' '{ print $NF }' | \
+                ${SED} -e 's#\.sh$##' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
@@ -45,7 +53,7 @@ if [ ! -r "${CAPTURE_SOURCE}" ] ; then
 	exit 1
 fi
 
-CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE}"
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${FAILURE_START}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

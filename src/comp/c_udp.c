@@ -28,6 +28,8 @@
 #include "rohc_packets.h"
 #include "rohc_utils.h"
 #include "crc.h"
+#include "c_generic.h"
+#include "protocols/udp.h"
 
 #include <stdlib.h>
 #ifndef __KERNEL__
@@ -36,17 +38,69 @@
 #include <assert.h>
 
 
+/**
+ * @brief Define the UDP-specific temporary variables in the profile
+ *        compression context.
+ *
+ * This object must be used by the UDP-specific decompression context
+ * sc_udp_context.
+ *
+ * @see sc_udp_context
+ */
+struct udp_tmp_vars
+{
+	/** The number of UDP fields that changed in the UDP header */
+	int send_udp_dynamic;
+};
+
+
+/**
+ * @brief Define the UDP part of the profile decompression context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context c_generic_context.
+ *
+ * @see c_generic_context
+ */
+struct sc_udp_context
+{
+	/** @brief The number of times the checksum field was added to the
+	 *         compressed header */
+	int udp_checksum_change_count;
+
+	/** The previous UDP header */
+	struct udphdr old_udp;
+
+	/** @brief UDP-specific temporary variables that are used during one single
+	 *         compression of packet */
+	struct udp_tmp_vars tmp;
+};
+
+
 /*
  * Private function prototypes.
  */
 
-int udp_code_dynamic_udp_part(const struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *const dest,
-                              int counter);
+static int c_udp_create(struct c_context *const context,
+                        const struct ip_packet *ip);
 
-int udp_changed_udp_dynamic(const struct c_context *context,
-                            const struct udphdr *udp);
+static void udp_decide_state(struct c_context *const context);
+
+static int c_udp_encode(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const size_t packet_size,
+                        unsigned char *const dest,
+                        const size_t dest_size,
+                        rohc_packet_t *const packet_type,
+                        int *const payload_offset);
+
+static int udp_code_dynamic_udp_part(const struct c_context *context,
+                                     const unsigned char *next_header,
+                                     unsigned char *const dest,
+                                     int counter);
+
+static int udp_changed_udp_dynamic(const struct c_context *context,
+                                   const struct udphdr *udp);
 
 
 /**
@@ -60,7 +114,8 @@ int udp_changed_udp_dynamic(const struct c_context *context,
  * @param ip      The IP/UDP packet given to initialize the new context
  * @return        1 if successful, 0 otherwise
  */
-int c_udp_create(struct c_context *const context, const struct ip_packet *ip)
+static int c_udp_create(struct c_context *const context,
+                        const struct ip_packet *ip)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
@@ -251,7 +306,7 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the UDP header */
 	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
-	if(ip_payload_size != ntohs(udp_header->len))
+	if(ip_payload_size != rohc_ntoh16(udp_header->len))
 	{
 		goto bad_profile;
 	}
@@ -285,12 +340,11 @@ bad_profile:
  *
  * @param context The compression context
  * @param ip      The IP/UDP packet to check
- * @return        1 if the IP/UDP packet belongs to the context,
- *                0 if it does not belong to the context and
- *                -1 if the profile cannot compress it or an error occurs
+ * @return        true if the IP/UDP packet belongs to the context
+ *                false if it does not belong to the context
  */
-int c_udp_check_context(const struct c_context *context,
-                        const struct ip_packet *ip)
+bool c_udp_check_context(const struct c_context *context,
+                         const struct ip_packet *ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -301,9 +355,9 @@ int c_udp_check_context(const struct c_context *context,
 	const struct udphdr *udp;
 	ip_version version;
 	unsigned int ip_proto;
-	int is_ip_same;
-	int is_ip2_same;
-	int is_udp_same;
+	bool is_ip_same;
+	bool is_ip2_same;
+	bool is_udp_same;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_context = (struct sc_udp_context *) g_context->specific;
@@ -357,7 +411,7 @@ int c_udp_check_context(const struct c_context *context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "cannot create the inner IP header\n");
-			goto error;
+			goto bad_context;
 		}
 
 		/* check the IP version of the second header */
@@ -425,9 +479,7 @@ int c_udp_check_context(const struct c_context *context,
 	return is_udp_same;
 
 bad_context:
-	return 0;
-error:
-	return -1;
+	return false;
 }
 
 
@@ -445,13 +497,13 @@ error:
  * @return               The length of the created ROHC packet
  *                       or -1 in case of failure
  */
-int c_udp_encode(struct c_context *const context,
-                 const struct ip_packet *ip,
-                 const int packet_size,
-                 unsigned char *const dest,
-                 const int dest_size,
-                 rohc_packet_t *const packet_type,
-                 int *const payload_offset)
+static int c_udp_encode(struct c_context *const context,
+                        const struct ip_packet *ip,
+                        const size_t packet_size,
+                        unsigned char *const dest,
+                        const size_t dest_size,
+                        rohc_packet_t *const packet_type,
+                        int *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -459,6 +511,7 @@ int c_udp_encode(struct c_context *const context,
 	const struct ip_packet *last_ip_header;
 	const struct udphdr *udp;
 	unsigned int ip_proto;
+	size_t ip_hdrs_len;
 	int size;
 
 	assert(context != NULL);
@@ -499,12 +552,13 @@ int c_udp_encode(struct c_context *const context,
 	/* check that UDP length is correct (we have to discard all packets with
 	 * wrong UDP length fields, otherwise the ROHC decompressor will compute
 	 * a different UDP length on its side) */
-	if(ntohs(udp->len) != (packet_size - ((unsigned char *) udp - ip->data)))
+	ip_hdrs_len = ((unsigned char *) udp) - ip->data;
+	if(rohc_ntoh16(udp->len) != (packet_size - ip_hdrs_len))
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "wrong UDP Length field in UDP header: %u found while "
-		             "%u expected\n", ntohs(udp->len),
-		             packet_size - (unsigned int) ((unsigned char *) udp - ip->data));
+		             "%zd expected\n", rohc_ntoh16(udp->len),
+		             packet_size - ip_hdrs_len);
 		return -1;
 	}
 
@@ -542,7 +596,7 @@ quit:
  *
  * @param context The compression context
  */
-void udp_decide_state(struct c_context *const context)
+static void udp_decide_state(struct c_context *const context)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -663,10 +717,10 @@ int udp_code_static_udp_part(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_code_dynamic_udp_part(const struct c_context *context,
-                              const unsigned char *next_header,
-                              unsigned char *const dest,
-                              int counter)
+static int udp_code_dynamic_udp_part(const struct c_context *context,
+                                     const unsigned char *next_header,
+                                     unsigned char *const dest,
+                                     int counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -694,8 +748,8 @@ int udp_code_dynamic_udp_part(const struct c_context *context,
  * @param udp     The UDP header
  * @return        The number of UDP fields that changed
  */
-int udp_changed_udp_dynamic(const struct c_context *context,
-                            const struct udphdr *udp)
+static int udp_changed_udp_dynamic(const struct c_context *context,
+                                   const struct udphdr *udp)
 {
 	const struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;

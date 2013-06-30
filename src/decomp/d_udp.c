@@ -239,7 +239,7 @@ int udp_parse_static_udp(const struct d_context *const context,
 	bits->udp_src = GET_NEXT_16_BITS(packet);
 	bits->udp_src_nr = 16;
 	rohc_decomp_debug(context, "UDP source port = 0x%04x (%u)\n",
-	                  ntohs(bits->udp_src), ntohs(bits->udp_src));
+	                  rohc_ntoh16(bits->udp_src), rohc_ntoh16(bits->udp_src));
 	packet += 2;
 	read += 2;
 
@@ -247,29 +247,29 @@ int udp_parse_static_udp(const struct d_context *const context,
 	bits->udp_dst = GET_NEXT_16_BITS(packet);
 	bits->udp_dst_nr = 16;
 	rohc_decomp_debug(context, "UDP destination port = 0x%04x (%u)\n",
-	                  ntohs(bits->udp_dst), ntohs(bits->udp_dst));
+	                  rohc_ntoh16(bits->udp_dst), rohc_ntoh16(bits->udp_dst));
 	packet += 2;
 	read += 2;
 
 	/* is context re-used? */
 	if(context->num_recv_packets > 1 &&
-	   bits->udp_src != htons(udp_context->sport))
+	   bits->udp_src != rohc_hton16(udp_context->sport))
 	{
 		rohc_decomp_debug(context, "UDP source port mismatch (packet = %u, "
 		                  "context = %u) -> context is being reused\n",
-		                  ntohs(bits->udp_src), udp_context->sport);
+		                  rohc_ntoh16(bits->udp_src), udp_context->sport);
 		bits->is_context_reused = true;
 	}
-	udp_context->sport = ntohs(bits->udp_src);
+	udp_context->sport = rohc_ntoh16(bits->udp_src);
 	if(context->num_recv_packets > 1 &&
-	   bits->udp_dst != htons(udp_context->dport))
+	   bits->udp_dst != rohc_hton16(udp_context->dport))
 	{
 		rohc_decomp_debug(context, "UDP destination port mismatch (packet = %u, "
 		                  "context = %u) -> context is being reused\n",
-		                  ntohs(bits->udp_dst), udp_context->dport);
+		                  rohc_ntoh16(bits->udp_dst), udp_context->dport);
 		bits->is_context_reused = true;
 	}
-	udp_context->dport = ntohs(bits->udp_dst);
+	udp_context->dport = rohc_ntoh16(bits->udp_dst);
 
 	return read;
 
@@ -315,7 +315,8 @@ static int udp_parse_dynamic_udp(const struct d_context *const context,
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
+	                  rohc_ntoh16(bits->udp_check));
 	packet += 2;
 	read += 2;
 
@@ -396,7 +397,8 @@ static int udp_parse_uo_remainder(const struct d_context *const context,
 		/* retrieve the UDP checksum from the ROHC packet */
 		bits->udp_check = GET_NEXT_16_BITS(packet);
 		bits->udp_check_nr = 16;
-		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(bits->udp_check));
+		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
+		                  rohc_ntoh16(bits->udp_check));
 		packet += 2;
 		read += 2;
 	}
@@ -453,7 +455,7 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_src = udp->source;
 	}
 	rohc_decomp_debug(context, "decoded UDP source port = 0x%04x\n",
-	                  ntohs(decoded->udp_src));
+	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP destination port */
 	if(bits.udp_dst_nr > 0)
@@ -468,7 +470,7 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_dst = udp->dest;
 	}
 	rohc_decomp_debug(context, "decoded UDP destination port = 0x%04x\n",
-	                  ntohs(decoded->udp_dst));
+	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* UDP checksum:
 	 *  - error if udp_checksum_present not initialized,
@@ -501,7 +503,7 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
-	                  "present = %d)\n", ntohs(decoded->udp_check),
+	                  "present = %d)\n", rohc_ntoh16(decoded->udp_check),
 	                  udp_context->udp_checksum_present);
 
 	return true;
@@ -539,11 +541,13 @@ static int udp_build_uncomp_udp(const struct d_context *const context,
 
 	/* changing fields */
 	udp->check = decoded.udp_check;
-	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n", ntohs(udp->check));
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
+	                  rohc_ntoh16(udp->check));
 
 	/* interfered fields */
-	udp->len = htons(payload_len + sizeof(struct udphdr));
-	rohc_decomp_debug(context, "UDP length = 0x%04x\n", ntohs(udp->len));
+	udp->len = rohc_hton16(payload_len + sizeof(struct udphdr));
+	rohc_decomp_debug(context, "UDP length = 0x%04x\n",
+	                  rohc_ntoh16(udp->len));
 
 	return sizeof(struct udphdr);
 }
