@@ -198,6 +198,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->medium.cid_type = ROHC_SMALL_CID;
 	comp->mrru = 0; /* no segmentation by default */
 
+	/* all compression profiles are disabled by default */
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		comp->enabled_profiles[i] = false;
@@ -1226,7 +1227,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 	}
 
 	rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	             "unknown ROHC profile (ID = %d)\n", profile);
+	             "unknown ROHC compression profile (ID = %d)\n", profile);
 
 error:
 	return;
@@ -1270,14 +1271,14 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	if(i == C_NUM_PROFILES)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC profile (ID = %d)\n", profile);
+		             "unknown ROHC compression profile (ID = %d)\n", profile);
 		goto error;
 	}
 
 	/* mark the profile as enabled */
 	comp->enabled_profiles[i] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC profile (ID = %u) enabled", profile);
+	          "ROHC compression profile (ID = %u) enabled\n", profile);
 
 	return true;
 
@@ -1321,14 +1322,14 @@ bool rohc_comp_disable_profile(struct rohc_comp *const comp,
 	if(i == C_NUM_PROFILES)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "unknown ROHC profile (ID = %d)\n", profile);
+		             "unknown ROHC compression profile (ID = %d)\n", profile);
 		goto error;
 	}
 
 	/* mark the profile as disabled */
 	comp->enabled_profiles[i] = false;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC profile (ID = %u) disabled", profile);
+	          "ROHC compression profile (ID = %u) disabled\n", profile);
 
 	return true;
 
@@ -1344,13 +1345,12 @@ error:
  *
  * If one or more of the profiles are already enabled, they are ignored.
  *
- * @param comp     The ROHC compressor
- * @return         true if the profile exists,
- *                 false if the profile does not exist
+ * @param comp  The ROHC compressor
+ * @return      true if all of the profiles exist,
+ *              false if at least one of the profiles does not exist
  *
  * @ingroup rohc_comp
  */
-
 bool rohc_comp_enable_profiles(struct rohc_comp *const comp,
                                ...)
 {
@@ -1391,9 +1391,9 @@ error:
  *
  * If one or more of the profiles are already disabled, they are ignored.
  *
- * @param comp     The ROHC compressor
- * @return         true if the profile exists,
- *                 false if the profile does not exist
+ * @param comp  The ROHC compressor
+ * @return      true if all of the profiles exist,
+ *              false if at least one of the profiles does not exist
  *
  * @ingroup rohc_comp
  */
