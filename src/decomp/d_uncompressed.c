@@ -24,6 +24,7 @@
 
 #include "d_uncompressed.h"
 #include "rohc_decomp.h"
+#include "rohc_decomp_internals.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "crc.h"

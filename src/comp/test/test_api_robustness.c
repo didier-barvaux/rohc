@@ -21,7 +21,6 @@
  */
 
 #include "rohc_comp.h"
-#include "rohc_decomp.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -128,12 +127,9 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_set_wlsb_window_width(comp, 16) == true);
 
 	/* rohc_comp_set_periodic_refreshes() */
-	CHECK(rohc_comp_set_periodic_refreshes(NULL, CHANGE_TO_IR_COUNT,
-	                                         CHANGE_TO_FO_COUNT) == false);
-	CHECK(rohc_comp_set_periodic_refreshes(comp, 0,
-	                                         CHANGE_TO_FO_COUNT) == false);
-	CHECK(rohc_comp_set_periodic_refreshes(comp, CHANGE_TO_IR_COUNT,
-	                                         0) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(NULL, 1700, 700) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(comp, 0, 700) == false);
+	CHECK(rohc_comp_set_periodic_refreshes(comp, 1700, 0) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 
@@ -151,9 +147,9 @@ int main(int argc, char *argv[])
 
 	/* rohc_comp_set_mrru() */
 	CHECK(rohc_comp_set_mrru(NULL, 10) == false);
-	CHECK(rohc_comp_set_mrru(comp, ROHC_MAX_MRRU + 1) == false);
+	CHECK(rohc_comp_set_mrru(comp, 65535 + 1) == false);
 	CHECK(rohc_comp_set_mrru(comp, 0) == true);
-	CHECK(rohc_comp_set_mrru(comp, ROHC_MAX_MRRU) == true);
+	CHECK(rohc_comp_set_mrru(comp, 65535) == true);
 
 	/* rohc_comp_get_mrru() */
 	{

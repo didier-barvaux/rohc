@@ -28,6 +28,7 @@
 #define D_GENERIC_H
 
 #include "rohc_decomp.h"
+#include "rohc_decomp_internals.h"
 #include "rohc_packets.h"
 #include "comp_list.h"
 #include "lsb_decode.h"

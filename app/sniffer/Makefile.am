@@ -12,6 +12,7 @@ rohc_sniffer_CFLAGS = \
 	$(configure_cflags)
 
 rohc_sniffer_CPPFLAGS = \
+	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	-I$(top_srcdir)/src/decomp \
