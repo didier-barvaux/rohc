@@ -36,20 +36,6 @@
 #endif
 
 
-/*
- * Next header codes for IPv6 extensions:
- */
-
-/** Next header code for Hop-by-Hop options */
-#define IPV6_EXT_HOP_BY_HOP 0
-/** Next header code for Destination options */
-#define IPV6_EXT_DESTINATION 60
-/** Next header code for Routing extension */
-#define IPV6_EXT_ROUTING 43
-/** Next header code for Authentification Header */
-#define IPV6_EXT_AUTH 51
-
-
 /** The selected IP header */
 typedef enum
 {
