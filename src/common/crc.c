@@ -24,6 +24,7 @@
  */
 
 #include "crc.h"
+#include "protocols/ip_numbers.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
 #include "protocols/esp.h"
@@ -935,7 +936,7 @@ static unsigned int ipv6_ext_calc_crc_static(const unsigned char *const ip,
 	ext = ipv6_get_first_extension(ip, &ext_type);
 	while(ext != NULL)
 	{
-		if(ext_type != IPV6_EXT_AUTH)
+		if(ext_type != ROHC_IPPROTO_AH)
 		{
 			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext),
 			                    crc, crc_table);
@@ -974,7 +975,7 @@ static unsigned int ipv6_ext_calc_crc_dyn(const unsigned char *const ip,
 	ext = ipv6_get_first_extension(ip, &ext_type);
 	while(ext != NULL)
 	{
-		if(ext_type == IPV6_EXT_AUTH)
+		if(ext_type == ROHC_IPPROTO_AH)
 		{
 			crc = crc_calculate(crc_type, ext, ip_get_extension_size(ext),
 			                    crc, crc_table);
@@ -1050,10 +1051,10 @@ static unsigned char * ipv6_get_first_extension(const unsigned char *const ip,
 	*type = ip_hdr->ip6_nxt;
 	switch(*type)
 	{
-		case IPV6_EXT_HOP_BY_HOP:
-		case IPV6_EXT_DESTINATION:
-		case IPV6_EXT_ROUTING:
-		case IPV6_EXT_AUTH:
+		case ROHC_IPPROTO_HOPOPTS:
+		case ROHC_IPPROTO_DSTOPTS:
+		case ROHC_IPPROTO_ROUTING:
+		case ROHC_IPPROTO_AH:
 			/* known extension header */
 			break;
 		default:

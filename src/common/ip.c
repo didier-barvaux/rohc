@@ -23,6 +23,7 @@
 
 #include "ip.h"
 #include "rohc_utils.h"
+#include "protocols/ip_numbers.h"
 
 #ifndef __KERNEL__
 #	include <string.h>
@@ -245,10 +246,10 @@ unsigned char * ip_get_next_layer(const struct ip_packet *const ip)
 	if(ip->version == IPV6)
 	{
 		/* TODO: stop when IP total length is reached */
-		while(next_header_type == IPV6_EXT_HOP_BY_HOP ||
-		      next_header_type == IPV6_EXT_DESTINATION ||
-		      next_header_type == IPV6_EXT_ROUTING ||
-		      next_header_type == IPV6_EXT_AUTH)
+		while(next_header_type == ROHC_IPPROTO_HOPOPTS ||
+		      next_header_type == ROHC_IPPROTO_DSTOPTS ||
+		      next_header_type == ROHC_IPPROTO_ROUTING ||
+		      next_header_type == ROHC_IPPROTO_AH)
 		{
 			/* next header is an IPv4 extension header, skip it and
 			   get the next header */
@@ -292,10 +293,10 @@ unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
 	next_header = ip_get_next_header(ip, type);
 	switch(*type)
 	{
-		case IPV6_EXT_HOP_BY_HOP:
-		case IPV6_EXT_DESTINATION:
-		case IPV6_EXT_ROUTING:
-		case IPV6_EXT_AUTH:
+		case ROHC_IPPROTO_HOPOPTS:
+		case ROHC_IPPROTO_DSTOPTS:
+		case ROHC_IPPROTO_ROUTING:
+		case ROHC_IPPROTO_AH:
 			/* known extension headers */
 			break;
 		default:
@@ -329,10 +330,10 @@ unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
 
 	switch(*type)
 	{
-		case IPV6_EXT_HOP_BY_HOP:
-		case IPV6_EXT_DESTINATION:
-		case IPV6_EXT_ROUTING:
-		case IPV6_EXT_AUTH:
+		case ROHC_IPPROTO_HOPOPTS:
+		case ROHC_IPPROTO_DSTOPTS:
+		case ROHC_IPPROTO_ROUTING:
+		case ROHC_IPPROTO_AH:
 			/* known extension headers */
 			length = ext[1];
 			next_header = (unsigned char *)(ext + (length + 1) * 8);
@@ -574,10 +575,10 @@ unsigned int ip_get_protocol(const struct ip_packet *const ip)
 		next_header_type = ip->header.v6.ip6_nxt;
 		switch(next_header_type)
 		{
-			case IPV6_EXT_HOP_BY_HOP:
-			case IPV6_EXT_DESTINATION:
-			case IPV6_EXT_ROUTING:
-			case IPV6_EXT_AUTH:
+			case ROHC_IPPROTO_HOPOPTS:
+			case ROHC_IPPROTO_DSTOPTS:
+			case ROHC_IPPROTO_ROUTING:
+			case ROHC_IPPROTO_AH:
 				/* known extension headers */
 				next_header = ((unsigned char *) ip->data) + sizeof(struct ipv6_hdr);
 				protocol = ext_get_protocol(next_header);
@@ -614,10 +615,10 @@ unsigned int ext_get_protocol(const unsigned char *const ext)
 	length = ext[1];
 	switch(type)
 	{
-		case IPV6_EXT_HOP_BY_HOP:
-		case IPV6_EXT_DESTINATION:
-		case IPV6_EXT_ROUTING:
-		case IPV6_EXT_AUTH:
+		case ROHC_IPPROTO_HOPOPTS:
+		case ROHC_IPPROTO_DSTOPTS:
+		case ROHC_IPPROTO_ROUTING:
+		case ROHC_IPPROTO_AH:
 			/* known extension headers */
 			next_header = ((unsigned char *) ext) + (length + 1) * 8;
 			protocol = ext_get_protocol(next_header);

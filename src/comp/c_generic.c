@@ -6638,16 +6638,16 @@ static int get_index_ipv6_table(const struct ip_packet *ip, const int index)
 
 	switch(next_header_type)
 	{
-		case IPV6_EXT_HOP_BY_HOP:
+		case ROHC_IPPROTO_HOPOPTS:
 			index_table = 0;
 			break;
-		case IPV6_EXT_DESTINATION:
+		case ROHC_IPPROTO_DSTOPTS:
 			index_table = 1;
 			break;
-		case IPV6_EXT_ROUTING:
+		case ROHC_IPPROTO_ROUTING:
 			index_table = 2;
 			break;
-		case IPV6_EXT_AUTH:
+		case ROHC_IPPROTO_AH:
 			index_table = 3;
 			break;
 		default:
