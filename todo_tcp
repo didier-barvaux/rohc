@@ -3,19 +3,11 @@ raw TODO list for improving TCP profile.
 
 ==== common ==== 
 
-=> src/common/ipproto.h:
-
- - why a (partial) list of IP protocol numbers?
-
 => tcp_profile/common/tcp.h:
 
  - why are the *_(TO|FROM)_MPTR macro for?
  - why defining the base_header_ip_t, multi_ptr_t, WB_t and LWB_t
    unions?
-
-=> src/common/trace.[ch]:
-
- - enhance src/common/rohc_traces.[ch] with that files
 
 
 ==== compression ====
@@ -32,7 +24,7 @@ raw TODO list for improving TCP profile.
 => src/comp/c_tcp.c
 
  - private functions should be made static
- - c_tcp_create(): the code that parse IP headers in IP/UDP/RTP
+ - c_tcp_create(): the code that parses IP headers in IP/UDP/RTP
    profiles could probably be re-used (and maybe enhanced if needed)
  - the call to random() must be replaced by a call to the dedicated
    callback function in the library
@@ -67,7 +59,6 @@ raw TODO list for improving TCP profile.
 => src/decomp/d_tcp.c
 
  - private functions should be made static
- - my_ip_fast_csum(): duplicate ip_fast_csum() from src/common/ip.h
  - d_size_ts_lsb(): looks like duplicated code with sdvl_decode().
  - d_sack_pure_lsb(): move in d_rohc_lib.[ch] ?
  - d_sack_block(): move in d_rohc_lib.[ch] ?
@@ -76,7 +67,6 @@ raw TODO list for improving TCP profile.
 => src/decomp/d_tcp.h
 
  - almost all the structs and functions should not be public
- - PACKET_TCP_* should be added to enum rohc_packet_t in rohc_packets.h
  - d_tcp_decode_CO(): the rnd_X/seq_X detection could be put in a
    tcp_detect_packet_type() function.
  - d_tcp_decode_CO(): goto is OK only for error handling, the function
@@ -88,12 +78,11 @@ raw TODO list for improving TCP profile.
 Test with pcc.
 Test with FreeBSD.
 Test with -O0, -O1, -O2, and -O3.
-Non-regression test: some packet types are wrong (negative values) in output files.
 
 Add more unit tests for TCP encoding/decoding schemes.
 Add more non-regression TCP tests.
 
-Test with (future) sniffer.
+Test with sniffer: fix detected crashes.
 
 
 ==== Misc ====
