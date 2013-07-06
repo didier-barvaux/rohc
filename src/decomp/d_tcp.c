@@ -42,29 +42,6 @@
 #include <stdint.h>
 
 
-#define PACKET_TCP_RND1     1
-#define PACKET_TCP_RND2     2
-#define PACKET_TCP_RND3     3
-#define PACKET_TCP_RND4     4
-#define PACKET_TCP_RND5     5
-#define PACKET_TCP_RND6     6
-#define PACKET_TCP_RND7     7
-#define PACKET_TCP_RND8     8
-
-#define PACKET_TCP_SEQ1     9
-#define PACKET_TCP_SEQ2    10
-#define PACKET_TCP_SEQ3    11
-#define PACKET_TCP_SEQ4    12
-#define PACKET_TCP_SEQ5    13
-#define PACKET_TCP_SEQ6    14
-#define PACKET_TCP_SEQ7    15
-#define PACKET_TCP_SEQ8    16
-
-#define PACKET_TCP_COMMON  17
-
-#define PACKET_TCP_UNKNOWN 0xFF
-
-
 /**
  * @brief Define the IPv6 option context for Destination, Hop-by-Hop
  *        and Routing option
@@ -3137,7 +3114,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	multi_ptr_t c_base_header;
 	multi_ptr_t mptr;
 	tcphdr_t *tcp;
-	uint8_t PacketType = PACKET_TCP_UNKNOWN;
+	rohc_packet_t packet_type = PACKET_UNKNOWN;
 
 	ip_context.uint8 = tcp_context->ip_context;
 
@@ -3194,14 +3171,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// seq_5
 					rohc_decomp_debug(context, "header seq_5\n");
-					PacketType = PACKET_TCP_SEQ5;
+					packet_type = PACKET_TCP_SEQ_5;
 					goto decode_seq_5;
 				}
 				else
 				{
 					// rnd_5
 					rohc_decomp_debug(context, "header rnd_5\n");
-					PacketType = PACKET_TCP_RND5;
+					packet_type = PACKET_TCP_RND_5;
 					goto decode_rnd_5;
 				}
 				break;
@@ -3210,14 +3187,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// seq_3
 					rohc_decomp_debug(context, "header seq_3\n");
-					PacketType = PACKET_TCP_SEQ3;
+					packet_type = PACKET_TCP_SEQ_3;
 					goto decode_seq_3;
 				}
 				else
 				{
 					// rnd_5
 					rohc_decomp_debug(context, "header rnd_5\n");
-					PacketType = PACKET_TCP_RND5;
+					packet_type = PACKET_TCP_RND_5;
 					goto decode_rnd_5;
 				}
 				break;
@@ -3226,14 +3203,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// seq_1
 					rohc_decomp_debug(context, "header seq_1\n");
-					PacketType = PACKET_TCP_SEQ1;
+					packet_type = PACKET_TCP_SEQ_1;
 					goto decode_seq_1;
 				}
 				else
 				{
 					// rnd_6
 					rohc_decomp_debug(context, "header rnd_6\n");
-					PacketType = PACKET_TCP_RND6;
+					packet_type = PACKET_TCP_RND_6;
 					goto decode_rnd_6;
 				}
 				break;
@@ -3242,7 +3219,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// seq_8
 					rohc_decomp_debug(context, "header seq_8\n");
-					PacketType = PACKET_TCP_SEQ8;
+					packet_type = PACKET_TCP_SEQ_8;
 					goto decode_seq_8;
 				}
 				else
@@ -3254,14 +3231,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 						{
 							// rnd_7
 							rohc_decomp_debug(context, "header rnd_7\n");
-							PacketType = PACKET_TCP_RND7;
+							packet_type = PACKET_TCP_RND_7;
 							goto decode_rnd_7;
 						}
 						else
 						{
 							// rnd_1
 							rohc_decomp_debug(context, "header rnd_1\n");
-							PacketType = PACKET_TCP_RND1;
+							packet_type = PACKET_TCP_RND_1;
 							goto decode_rnd_1;
 						}
 					}
@@ -3269,7 +3246,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					{
 						// rnd_8
 						rohc_decomp_debug(context, "header rnd_8\n");
-						PacketType = PACKET_TCP_RND8;
+						packet_type = PACKET_TCP_RND_8;
 						goto decode_rnd_8;
 					}
 				}
@@ -3279,14 +3256,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// seq_7
 					rohc_decomp_debug(context, "header seq_7\n");
-					PacketType = PACKET_TCP_SEQ7;
+					packet_type = PACKET_TCP_SEQ_7;
 					goto decode_seq_7;
 				}
 				else
 				{
 					// rnd_2
 					rohc_decomp_debug(context, "header rnd_2\n");
-					PacketType = PACKET_TCP_RND2;
+					packet_type = PACKET_TCP_RND_2;
 					goto decode_rnd_2;
 				}
 				break;
@@ -3297,14 +3274,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					{
 						// seq_6
 						rohc_decomp_debug(context, "header seq_6\n");
-						PacketType = PACKET_TCP_SEQ6;
+						packet_type = PACKET_TCP_SEQ_6;
 						goto decode_seq_6;
 					}
 					else
 					{
 						// seq_2
 						rohc_decomp_debug(context, "header seq_2\n");
-						PacketType = PACKET_TCP_SEQ2;
+						packet_type = PACKET_TCP_SEQ_2;
 						goto decode_seq_2;
 					}
 				}
@@ -3312,7 +3289,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// rnd_4
 					rohc_decomp_debug(context, "header rnd_4\n");
-					PacketType = PACKET_TCP_RND4;
+					packet_type = PACKET_TCP_RND_4;
 					goto decode_rnd_4;
 				}
 				break;
@@ -3324,7 +3301,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				{
 					// common
 					rohc_decomp_debug(context, "header common\n");
-					PacketType = PACKET_TCP_COMMON;
+					packet_type = PACKET_TCP_CO_COMMON;
 					goto decode_common;
 				}
 				rohc_decomp_debug(context, "header unknown\n");
@@ -3339,14 +3316,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		{
 			// seq_4
 			rohc_decomp_debug(context, "header seq_4\n");
-			PacketType = PACKET_TCP_SEQ4;
+			packet_type = PACKET_TCP_SEQ_4;
 			goto decode_seq_4;
 		}
 		else
 		{
 			// rnd_3
 			rohc_decomp_debug(context, "header rnd_3\n");
-			PacketType = PACKET_TCP_RND3;
+			packet_type = PACKET_TCP_RND_3;
 			goto decode_rnd_3;
 		}
 	}
@@ -3683,15 +3660,15 @@ test_checksum:
 
 	/* dynamic part */
 
-	assert( PacketType != PACKET_TCP_UNKNOWN );
+	assert( packet_type != PACKET_UNKNOWN );
 
 	// Reinit pointer
 	mptr.uint8 = c_base_header.uint8 + size_header;
 
 	rohc_decomp_debug(context, "packet type = %d, begin compressed options "
-	                  "= %p\n", PacketType, mptr.uint8);
+	                  "= %p\n", packet_type, mptr.uint8);
 
-	if(PacketType == PACKET_TCP_COMMON)
+	if(packet_type == PACKET_TCP_CO_COMMON)
 	{
 		rohc_decomp_debug(context, "decode co_common packet\n");
 
@@ -3801,9 +3778,9 @@ test_checksum:
 		tcp->window = tcp_context->old_tcphdr.window;
 		tcp->urg_ptr = tcp_context->old_tcphdr.urg_ptr;
 
-		switch(PacketType)
+		switch(packet_type)
 		{
-			case PACKET_TCP_RND1:
+			case PACKET_TCP_RND_1:
 			{
 				uint32_t seq_number;
 				rohc_decomp_debug(context, "decode rnd_1 packet\n");
@@ -3814,7 +3791,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.rnd1->psh_flag;
 				break;
 			}
-			case PACKET_TCP_RND2:
+			case PACKET_TCP_RND_2:
 			{
 				rohc_decomp_debug(context, "decode rnd_2 packet\n");
 				seq_number_scaled = d_lsb(context, 4,7,tcp_context->seq_number_scaled,
@@ -3826,7 +3803,7 @@ test_checksum:
 				// tcp->seq_number = d_field_scaling(payload_size,seq_number_scaled,seq_number_residue);
 				break;
 			}
-			case PACKET_TCP_RND3:
+			case PACKET_TCP_RND_3:
 			{
 				rohc_decomp_debug(context, "decode rnd_3 packet\n");
 				// tcp->ack_number = rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),rohc_ntoh16(c_base_header.rnd3->ack_number)) );
@@ -3846,7 +3823,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.rnd3->psh_flag;
 				break;
 			}
-			case PACKET_TCP_RND4:
+			case PACKET_TCP_RND_4:
 			{
 				rohc_decomp_debug(context, "decode rnd_4 packet\n");
 				if(tcp_context->ack_stride != 0)
@@ -3870,7 +3847,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.rnd4->psh_flag;
 				break;
 			}
-			case PACKET_TCP_RND5:
+			case PACKET_TCP_RND_5:
 			{
 				rohc_decomp_debug(context, "decode rnd_5 packet\n");
 				tcp->psh_flag = c_base_header.rnd5->psh_flag;
@@ -3906,7 +3883,7 @@ test_checksum:
 				                  wb.uint16, wb.uint8[0], wb.uint8[1]);
 				break;
 			}
-			case PACKET_TCP_RND6:
+			case PACKET_TCP_RND_6:
 			{
 				rohc_decomp_debug(context, "decode rnd_6 packet\n");
 				tcp->psh_flag = c_base_header.rnd6->psh_flag;
@@ -3921,7 +3898,7 @@ test_checksum:
 				// tcp->seq_number = d_field_scaling(payload_size,seq_number_scaled,seq_number_residue);
 				break;
 			}
-			case PACKET_TCP_RND7:
+			case PACKET_TCP_RND_7:
 			{
 				uint32_t ack_number;
 				rohc_decomp_debug(context, "decode rnd_7 packet\n");
@@ -3934,7 +3911,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.rnd7->psh_flag;
 				break;
 			}
-			case PACKET_TCP_RND8:
+			case PACKET_TCP_RND_8:
 			{
 				rohc_decomp_debug(context, "decode rnd_8 packet\n");
 				tcp->rsf_flags = rsf_index_dec( c_base_header.rnd8->rsf_flags );
@@ -3982,7 +3959,7 @@ test_checksum:
 				}
 				break;
 			}
-			case PACKET_TCP_SEQ1:
+			case PACKET_TCP_SEQ_1:
 			{
 				rohc_decomp_debug(context, "decode seq_1 packet\n");
 				ip_id.uint16 =
@@ -3998,7 +3975,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq1->psh_flag;
 				break;
 			}
-			case PACKET_TCP_SEQ2:
+			case PACKET_TCP_SEQ_2:
 			{
 					uint8_t ip_id_lsb;
 				rohc_decomp_debug(context, "decode seq_2 packet\n");
@@ -4017,7 +3994,7 @@ test_checksum:
 				// tcp->seq_number = d_field_scaling(payload_size,seq_number_scaled,seq_number_residue);
 				break;
 			}
-			case PACKET_TCP_SEQ3:
+			case PACKET_TCP_SEQ_3:
 			{
 				rohc_decomp_debug(context, "decode seq_3 packet\n");
 				ip_id.uint16 =
@@ -4030,7 +4007,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq3->psh_flag;
 				break;
 			}
-			case PACKET_TCP_SEQ4:
+			case PACKET_TCP_SEQ_4:
 			{
 				rohc_decomp_debug(context, "decode seq_4 packet\n");
 				if(tcp_context->ack_stride != 0)
@@ -4057,7 +4034,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq4->psh_flag;
 				break;
 			}
-			case PACKET_TCP_SEQ5:
+			case PACKET_TCP_SEQ_5:
 			{
 				rohc_decomp_debug(context, "decode seq_5 packet\n");
 				ip_id.uint16 =
@@ -4073,7 +4050,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq5->psh_flag;
 				break;
 			}
-			case PACKET_TCP_SEQ6:
+			case PACKET_TCP_SEQ_6:
 			{
 				rohc_decomp_debug(context, "decode seq_6 packet\n");
 					uint8_t seq_scaled_lsb;
@@ -4096,7 +4073,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq6->psh_flag;
 				break;
 			}
-			case PACKET_TCP_SEQ7:
+			case PACKET_TCP_SEQ_7:
 			{
 				uint16_t window;
 				rohc_decomp_debug(context, "decode seq_7 packet\n");
@@ -4115,7 +4092,7 @@ test_checksum:
 				tcp->psh_flag = c_base_header.seq7->psh_flag;
 				break;
 			}
-			case PACKET_TCP_SEQ8:
+			case PACKET_TCP_SEQ_8:
 			{
 				rohc_decomp_debug(context, "decode seq_8 packet\n");
 				ip_id.uint16 =
@@ -4193,7 +4170,7 @@ test_checksum:
 			{
 				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 								 context->profile->id, "unsupported packet type (%d)\n",
-								 PacketType);
+								 packet_type);
 				goto error;
 			}
 		}
@@ -4252,12 +4229,12 @@ test_checksum:
 			case IP_ID_BEHAVIOR_SEQUENTIAL:
 			{
 				rohc_decomp_debug(context, "IP-ID follows a sequential behavior\n");
-				if(PacketType >= PACKET_TCP_RND1 && PacketType <= PACKET_TCP_RND8)
+				if(packet_type >= PACKET_TCP_RND_1 && packet_type <= PACKET_TCP_RND_8)
 				{
 					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 					             context->profile->id,
 					             "IP-ID got a sequential behavior but packet is "
-					             "RND_%d\n", PacketType - PACKET_TCP_RND1 + 1);
+					             "RND_%d\n", packet_type - PACKET_TCP_RND_1 + 1);
 					goto error;
 				}
 				base_header_inner.ipv4->ip_id = rohc_hton16(ip_id.uint16);
@@ -4271,12 +4248,12 @@ test_checksum:
 				rohc_decomp_debug(context, "IP-ID follows a swapped sequential "
 										"behavior\n");
 
-				if(PacketType >= PACKET_TCP_RND1 && PacketType <= PACKET_TCP_RND8)
+				if(packet_type >= PACKET_TCP_RND_1 && packet_type <= PACKET_TCP_RND_8)
 				{
 					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 					             context->profile->id,
 					             "IP-ID got a swapped sequential behavior but packet "
-					             "is RND_%d\n", PacketType - PACKET_TCP_RND1 + 1);
+					             "is RND_%d\n", packet_type - PACKET_TCP_RND_1 + 1);
 					goto error;
 				}
 
