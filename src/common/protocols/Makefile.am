@@ -6,7 +6,6 @@
 
 noinst_HEADERS = \
 	ip_numbers.h \
-	ipproto.h \
 	ipv4.h \
 	ipv6.h \
 	udp.h \
@@ -14,4 +13,13 @@ noinst_HEADERS = \
 	rtp.h \
 	tcp.h \
 	esp.h
+
+noinst_LTLIBRARIES = librohc_proto.la
+
+librohc_proto_la_SOURCES = \
+	ip_numbers.c
+librohc_proto_la_LIBADD =
+librohc_proto_la_LDFLAGS = $(configure_ldflags)
+librohc_proto_la_CFLAGS = $(configure_cflags)
+librohc_proto_la_CPPFLAGS =
 

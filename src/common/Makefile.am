@@ -27,8 +27,7 @@ sources = \
 	ts_sc_comp.c \
 	ts_sc_decomp.c \
 	comp_list.c \
-	cid.c \
-	ipproto.c
+	cid.c
 
 public_headers = \
 	rohc.h \
@@ -55,7 +54,9 @@ private_headers = \
 	cid.h
 
 librohc_common_la_SOURCES = $(sources)
-librohc_common_la_LIBADD = $(additional_platform_libs)
+librohc_common_la_LIBADD = \
+	protocols/librohc_proto.la \
+	$(additional_platform_libs)
 librohc_common_la_LDFLAGS = \
 	$(configure_ldflags) \
 	-no-undefined \

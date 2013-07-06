@@ -30,7 +30,6 @@
 #include "rfc4996_encoding.h"
 #include "cid.h"
 #include "crc.h"
-#include "protocols/ipproto.h"
 #include "c_generic.h"
 
 #include <assert.h>
@@ -632,7 +631,7 @@ static int c_tcp_create(struct c_context *const context,
 				size += sizeof(base_header_ip_v6_t);
 				size_context += sizeof(ipv6_context_t);
 				++base_header.ipv6;
-				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					switch(protocol)
 					{
@@ -678,7 +677,7 @@ static int c_tcp_create(struct c_context *const context,
 		}
 
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0 && size < ip->size);
+	while(rohc_is_tunneling(protocol) && size < ip->size);
 
 	if(size >= ip->size)
 	{
@@ -744,7 +743,7 @@ static int c_tcp_create(struct c_context *const context,
 				memcpy(ip_context.v6->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 				++base_header.ipv6;
 				++ip_context.v6;
-				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					switch(protocol)
 					{
@@ -796,7 +795,7 @@ static int c_tcp_create(struct c_context *const context,
 		}
 
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+	while(rohc_is_tunneling(protocol));
 
 	// Last in chain
 	ip_context.vx->version = 0;
@@ -1060,7 +1059,7 @@ static bool c_tcp_check_context(const struct c_context *context,
 				++base_header.ipv6;
 				++ip_context.v6;
 				size -= sizeof(base_header_ip_v6_t);
-				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0 && size < ip->size)
+				while(rohc_is_ipv6_opt(protocol) && size < ip->size)
 				{
 					protocol = base_header.ipv6_opt->next_header;
 					if(protocol != ip_context.v6_option->next_header)
@@ -1081,7 +1080,7 @@ static bool c_tcp_check_context(const struct c_context *context,
 		}
 
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0 && size >= sizeof(tcphdr_t) );
+	while(rohc_is_tunneling(protocol) && size >= sizeof(tcphdr_t));
 
 	tcp = base_header.tcphdr;
 	is_tcp_same = tcp_context->old_tcphdr.src_port == tcp->src_port &&
@@ -1189,7 +1188,7 @@ static int c_tcp_encode(struct c_context *const context,
 				size += sizeof(base_header_ip_v6_t);
 				++base_header.ipv6;
 				++ip_context.v6;
-				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					switch(protocol)
 					{
@@ -1567,7 +1566,7 @@ static int c_tcp_encode(struct c_context *const context,
 						protocol = base_header.ipv6->next_header;
 						++base_header.ipv6;
 						++ip_context.v6;
-						while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+						while(rohc_is_ipv6_opt(protocol))
 						{
 							rohc_comp_debug(context, "IPv6 option %d at %p\n",
 							                protocol, base_header.uint8);
@@ -1588,7 +1587,7 @@ static int c_tcp_encode(struct c_context *const context,
 				                (int)(mptr.uint8 - &dest[counter]), protocol);
 
 			}
-			while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+			while(rohc_is_tunneling(protocol));
 
 			// add TCP static part
 			mptr.uint8 = tcp_code_static_tcp_part(context,base_header.tcphdr,mptr);
@@ -1624,7 +1623,7 @@ static int c_tcp_encode(struct c_context *const context,
 					protocol = base_header.ipv6->next_header;
 					++base_header.ipv6;
 					++ip_context.v6;
-					while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+					while(rohc_is_ipv6_opt(protocol))
 					{
 						rohc_comp_debug(context, "IPv6 option %d at %p\n",
 						                protocol, base_header.uint8);
@@ -1643,7 +1642,7 @@ static int c_tcp_encode(struct c_context *const context,
 			}
 
 		}
-		while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+		while(rohc_is_tunneling(protocol));
 
 
 		// add TCP dynamic part
@@ -3769,7 +3768,7 @@ static int code_CO_packet(struct c_context *const context,
 				++ip_context.v6;
 
 				/* parse IPv6 extension headers */
-				while(  ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					rohc_comp_debug(context, "skip %d-byte IPv6 extension header "
 					                "with Next Header 0x%02x\n",
@@ -3784,7 +3783,7 @@ static int code_CO_packet(struct c_context *const context,
 				return -1;
 		}
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+	while(rohc_is_tunneling(protocol));
 
 	rohc_comp_debug(context, "payload_size = %d\n", payload_size);
 
@@ -3871,7 +3870,7 @@ static int code_CO_packet(struct c_context *const context,
 				protocol = base_header.ipv6->next_header;
 				++base_header.ipv6;
 				++ip_context.v6;
-				while(  ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					mptr.uint8 =
 					   tcp_code_irregular_ipv6_option_part(context, ip_context,
@@ -3888,7 +3887,7 @@ static int code_CO_packet(struct c_context *const context,
 		}
 
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+	while(rohc_is_tunneling(protocol));
 
 	mptr.uint8 = tcp_code_irregular_tcp_part(context, tcp, mptr, ip_inner_ecn);
 

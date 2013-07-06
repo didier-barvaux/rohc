@@ -13,6 +13,10 @@
 #ifndef ROHC_PROTOCOLS_NUMBERS_H
 #define ROHC_PROTOCOLS_NUMBERS_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
+
 /**
  * @brief The IP numbers defined by IANA
  *
@@ -46,5 +50,12 @@ enum
 	/** The IP protocol number for UDP-Lite */
 	ROHC_IPPROTO_UDPLITE = 136,
 };
+
+
+bool rohc_is_tunneling(const uint8_t protocol)
+	__attribute((warn_unused_result, pure));
+
+bool rohc_is_ipv6_opt(const uint8_t protocol)
+	__attribute((warn_unused_result, pure));
 
 #endif

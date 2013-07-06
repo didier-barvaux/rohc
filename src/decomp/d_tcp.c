@@ -30,7 +30,6 @@
 #include "rohc_time.h"
 #include "rfc4996_decoding.h"
 #include "wlsb.h"
-#include "protocols/ipproto.h"
 #include "protocols/tcp.h"
 #include "crc.h"
 #include "d_generic.h"
@@ -597,7 +596,7 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 				protocol = ip_context.v6->next_header;
 				++base_header.ipv6;
 				++ip_context.v6;
-				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					size += tcp_copy_static_ipv6_option(context, protocol,
 					                                    ip_context, base_header);
@@ -610,7 +609,7 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 			assert( ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE] );
 
 		}
-		while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+		while(rohc_is_tunneling(protocol));
 
 		tcp = base_header.tcphdr;
 
@@ -680,7 +679,7 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 				protocol = ip_context.v6->next_header;
 				++base_header.ipv6;
 				++ip_context.v6;
-				while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+				while(rohc_is_ipv6_opt(protocol))
 				{
 					protocol = ip_context.v6_option->next_header;
 					length -= ip_context.v6_option->option_length;
@@ -692,7 +691,7 @@ static int d_tcp_decode(struct rohc_decomp *decomp,
 			assert( ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE] );
 
 		}
-		while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+		while(rohc_is_tunneling(protocol));
 
 		rohc_decomp_debug(context, "new MSN = 0x%x\n", tcp_context->msn);
 
@@ -792,7 +791,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		{
 			++base_header.ipv6;
 			size += sizeof(base_header_ip_v6_t);
-			while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+			while(rohc_is_ipv6_opt(protocol))
 			{
 				read =
 				   tcp_decode_static_ipv6_option(context, ip_context, protocol,
@@ -812,7 +811,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 		                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+	while(rohc_is_tunneling(protocol));
 
 	tcp = base_header.tcphdr;
 
@@ -848,7 +847,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		else
 		{
 			++base_header.ipv6;
-			while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+			while(rohc_is_ipv6_opt(protocol))
 			{
 				read =
 				   tcp_decode_dynamic_ipv6_option(context, ip_context, protocol,
@@ -867,7 +866,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 		                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+	while(rohc_is_tunneling(protocol));
 
 	/* TCP dynamic part */
 	read = tcp_decode_dynamic_tcp(context, c_base_header.tcp_dynamic,
@@ -935,7 +934,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			++base_header.ipv6;
 			++ip_context.v6;
-			while( ( ipproto_specifications[protocol] & IPV6_OPTION ) != 0)
+			while(rohc_is_ipv6_opt(protocol))
 			{
 				length -= ip_context.v6_option->option_length;
 				protocol = base_header.ipv6_opt->next_header;
@@ -946,7 +945,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		assert( ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE] );
 
 	}
-	while( ( ipproto_specifications[protocol] & IP_TUNNELING ) != 0);
+	while(rohc_is_tunneling(protocol));
 
 	rohc_decomp_debug(context, "return %d\n", size);
 	return size;
