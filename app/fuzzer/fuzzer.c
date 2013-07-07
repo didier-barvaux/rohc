@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	assert(rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                   ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
 	                                   ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                                   ROHC_PROFILE_ESP, -1));
+	                                   ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1));
 
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)

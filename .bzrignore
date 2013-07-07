@@ -46,6 +46,9 @@ test_*.sh.trs
 ./src/common/test/test_rtp_ts_wraparound
 ./src/common/test/test_rtp_ts_wraparound.exe
 ./src/common/test/test_rtp_ts_wraparound.log
+./src/comp/test/test_rfc4996_encoding
+./src/comp/test/test_rfc4996_encoding.exe
+./src/comp/test/test_rfc4996_encoding.log
 ./src/comp/test/test_api_robustness
 ./src/comp/test/test_api_robustness.exe
 ./src/comp/test/test_api_robustness.log

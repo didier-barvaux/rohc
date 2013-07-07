@@ -53,7 +53,8 @@ extern struct d_profile d_uncomp_profile,
                         d_ip_profile,
                         d_udplite_profile,
                         d_esp_profile,
-                        d_rtp_profile;
+                        d_rtp_profile,
+                        d_tcp_profile;
 
 
 /**
@@ -62,11 +63,12 @@ extern struct d_profile d_uncomp_profile,
 static struct d_profile *d_profiles[D_NUM_PROFILES] =
 {
 	&d_uncomp_profile,
-	&d_udp_profile,
-	&d_ip_profile,
-	&d_udplite_profile,
-	&d_esp_profile,
 	&d_rtp_profile,
+	&d_udp_profile,
+	&d_esp_profile,
+	&d_ip_profile,
+	&d_tcp_profile,
+	&d_udplite_profile,
 };
 
 
@@ -365,10 +367,16 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 	/* all decompression profiles are enabled by default for compatibility
-	 * with earlier releases */
+	 * with earlier releases (except TCP since it came after and it is not
+	 * stable enough) */
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
 		decomp->enabled_profiles[i] = true;
+	}
+	is_fine = rohc_decomp_disable_profile(decomp, ROHC_PROFILE_TCP);
+	if(!is_fine)
+	{
+		goto destroy_decomp;
 	}
 #else
 	/* all decompression profiles are disabled by default */

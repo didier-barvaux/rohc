@@ -144,6 +144,11 @@ int main(int argc, char **argv)
 		fprintf(stderr, "failed to enable the IP/ESP profile\n");
 		goto release_compressor;
 	}
+	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_TCP))
+	{
+		fprintf(stderr, "failed to enable the IP/TCP profile\n");
+		goto release_compressor;
+	}
 #endif
 
 

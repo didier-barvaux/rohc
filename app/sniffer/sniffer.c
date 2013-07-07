@@ -74,6 +74,7 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc_decomp.h>
 
 
+
 /** Return the smaller value from the two */
 #define min(x, y)  (((x) < (y)) ? (x) : (y))
 /** Return the greater value from the two */
@@ -181,6 +182,10 @@ static bool rtp_detect_cb(const unsigned char *const ip,
                           const unsigned int payload_size,
                           void *const rtp_private)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
+
+
+static inline uint16_t from32to16(uint32_t x);
+static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl);
 
 
 /** Whether the application shall stop or not */
@@ -340,6 +345,7 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sniffer_interrupt);
 	signal(SIGTERM, sniffer_interrupt);
 	signal(SIGSEGV, sniffer_interrupt);
+	signal(SIGABRT, sniffer_interrupt);
 	signal(SIGUSR1, sniffer_print_stats);
 
 	/* test ROHC compression/decompression with the packets from the file */
@@ -387,7 +393,75 @@ static void sniffer_interrupt(int signal)
 {
 	/* end the program with next captured packet */
 	fprintf(stderr, "signal %d catched\n", signal);
+	fflush(stderr);
 	stop_program = true;
+
+	/* for SIGSEGV/SIGABRT, print the last debug traces,
+	 * then kill the program */
+	if(signal == SIGSEGV || signal == SIGABRT)
+	{
+		const char *logfilename = "./sniffer.log";
+		FILE *logfile;
+		int ret;
+		int i;
+
+		logfile = fopen(logfilename, "w");
+		if(logfile == NULL)
+		{
+			fprintf(stderr, "failed to create '%s' file: %s (%d)\n",
+			        logfilename, strerror(errno), errno);
+			fflush(stderr);
+			raise(SIGKILL);
+		}
+
+		fprintf(logfile, "a problem occurred at packet #%lu\n\n",
+		        stats.total_packets);
+
+		if(last_traces_first == -1 || last_traces_last == -1)
+		{
+			fprintf(stderr, "no trace to record\n");
+			fflush(stderr);
+			raise(SIGKILL);
+		}
+
+		if(last_traces_first <= last_traces_last)
+		{
+			fprintf(stderr, "record the last %d traces...\n",
+			        last_traces_last - last_traces_first);
+			for(i = last_traces_first; i <= last_traces_last; i++)
+			{
+				fprintf(logfile, "%s", last_traces[i]);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "record the last %d traces...\n",
+			        MAX_LAST_TRACES - last_traces_first + last_traces_last);
+			for(i = last_traces_first;
+			    i <= MAX_LAST_TRACES + last_traces_last;
+			    i++)
+			{
+				fprintf(logfile, "%s", last_traces[i % MAX_LAST_TRACES]);
+			}
+		}
+
+		ret = fclose(logfile);
+		if(ret != 0)
+		{
+			fprintf(stderr, "failed to close log file '%s': %s (%d)\n",
+			        logfilename, strerror(errno), errno);
+		}
+
+		fflush(stderr);
+		if(signal == SIGSEGV)
+		{
+			struct sigaction action;
+			memset(&action, 0, sizeof(struct sigaction));
+			action.sa_handler = SIG_DFL;
+			sigaction(SIGSEGV, &action, NULL);
+			raise(signal);
+		}
+	}
 }
 
 
@@ -651,7 +725,7 @@ static bool sniff(const int use_large_cid,
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
 	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                              ROHC_PROFILE_ESP, -1))
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
@@ -735,7 +809,7 @@ static bool sniff(const int use_large_cid,
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
 	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                                ROHC_PROFILE_ESP, -1))
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto destroy_decomp;
@@ -801,71 +875,16 @@ static bool sniff(const int use_large_cid,
 			nb_internal_err++;
 		}
 
-		/* in case of problem (ignore bad packets), print recorded traces
-		 * then die! */
+		/* in case of problem (ignore bad packets), just die! */
 		if(ret != 1 && ret != -3)
 		{
-			const char *logfilename = "./sniffer.log";
-			FILE *logfile;
-
 			fprintf(stderr, "packet #%lu, CID %u: stats OK, ERR(COMP), "
 			        "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)\t="
 			        "\t%u\t%u\t%u\t%u\t%u\t%u\n",
 			        stats.total_packets, cid, nb_ok, err_comp, err_decomp,
 			        nb_ref, nb_bad, nb_internal_err);
 
-			logfile = fopen(logfilename, "w");
-			if(logfile == NULL)
-			{
-				fprintf(stderr, "failed to create '%s' file: %s (%d)\n",
-				        logfilename, strerror(errno), errno);
-			}
-			else
-			{
-				fprintf(logfile, "packet #%lu, CID %u: stats OK, ERR(COMP), "
-				        "ERR(DECOMP), ERR(REF), ERR(BAD), ERR(INTERNAL)\t="
-				        "\t%u\t%u\t%u\t%u\t%u\t%u\n",
-				        stats.total_packets, cid, nb_ok, err_comp, err_decomp,
-				        nb_ref, nb_bad, nb_internal_err);
-
-				if(last_traces_first == -1 || last_traces_last == -1)
-				{
-					fprintf(stderr, "no trace to record\n");
-				}
-				else
-				{
-					if(last_traces_first <= last_traces_last)
-					{
-						fprintf(stderr, "record the last %d traces...\n",
-						        last_traces_last - last_traces_first);
-						for(i = last_traces_first; i <= last_traces_last; i++)
-						{
-							fprintf(logfile, "%s", last_traces[i]);
-						}
-					}
-					else
-					{
-						fprintf(stderr, "print the last %d traces...\n",
-						        MAX_LAST_TRACES - last_traces_first +
-						        last_traces_last);
-						for(i = last_traces_first;
-						    i <= MAX_LAST_TRACES + last_traces_last;
-						    i++)
-						{
-							fprintf(logfile, "%s", last_traces[i % MAX_LAST_TRACES]);
-						}
-					}
-				}
-
-				ret = fclose(logfile);
-				if(ret != 0)
-				{
-					fprintf(stderr, "failed to close log file '%s': %s (%d)\n",
-					        logfilename, strerror(errno), errno);
-				}
-			}
-
-			/* we discovered a problem, make the program stop now! */
+			/* last debug traces are recorded in SIGABRT handler */
 			assert(0);
 		}
 	}
@@ -988,6 +1007,17 @@ static int compress_decompress(struct rohc_comp *comp,
 				        tot_len);
 			}
 			ip_size = tot_len;
+		}
+	}
+
+	/* discard IPv4 packets with wrong checksums
+	 * (to avoid false comparison failures after decompression) */
+	if(((ip_packet[0] >> 4) & 0x0f) == 4)
+	{
+		if(ip_fast_csum(ip_packet, (ip_packet[0] & 0x0f)) != 0)
+		{
+			fprintf(stderr, "discard IPv4 packet with bad IP checksum\n");
+			goto ignore;
 		}
 	}
 
@@ -1190,6 +1220,9 @@ static int compress_decompress(struct rohc_comp *comp,
 
 error:
 	return ret;
+
+ignore:
+	return 1;
 }
 
 
@@ -1458,4 +1491,92 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 not_rtp:
 	return is_rtp;
 }
+
+
+static inline uint16_t from32to16(uint32_t x)
+{
+	/* add up 16-bit and 16-bit for 16+c bit */
+	x = (x & 0xffff) + (x >> 16);
+	/* add up carry.. */
+	x = (x & 0xffff) + (x >> 16);
+	return x;
+}
+
+/**
+ *  This is a version of ip_compute_csum() optimized for IP headers,
+ *  which always checksum on 4 octet boundaries.
+ */
+static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
+{
+	const unsigned char *buff = iph;
+	size_t len = ihl * 4;
+	bool odd;
+	size_t count;
+	uint32_t result = 0;
+
+	if(len <= 0)
+	{
+		goto out;
+	}
+	odd = 1 & (uintptr_t) buff;
+	if(odd)
+	{
+#ifdef __LITTLE_ENDIAN
+		result = *buff;
+#else
+		result += (*buff << 8);
+#endif
+		len--;
+		buff++;
+	}
+	count = len >> 1; /* nr of 16-bit words.. */
+	if(count)
+	{
+		if(2 & (uintptr_t) buff)
+		{
+			result += *(uint16_t *) buff;
+			count--;
+			len -= 2;
+			buff += 2;
+		}
+		count >>= 1; /* nr of 32-bit words.. */
+		if(count)
+		{
+			uint32_t carry = 0;
+			do
+			{
+				uint32_t word = *(uint32_t *) buff;
+				count--;
+				buff += sizeof(uint32_t);
+				result += carry;
+				result += word;
+				carry = (word > result);
+			}
+			while(count);
+			result += carry;
+			result = (result & 0xffff) + (result >> 16);
+		}
+		if(len & 2)
+		{
+			result += *(uint16_t *) buff;
+			buff += 2;
+		}
+	}
+	if(len & 1)
+	{
+#ifdef __LITTLE_ENDIAN
+		result += *buff;
+#else
+		result += (*buff << 8);
+#endif
+	}
+	result = from32to16(result);
+	if(odd)
+	{
+		result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
+	}
+out:
+	return ~result;
+}
+
 

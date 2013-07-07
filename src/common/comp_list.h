@@ -24,11 +24,12 @@
 #ifndef COMP_LIST_H
 #define COMP_LIST_H
 
-#include "dllexport.h"
 #include "protocols/ipv6.h"
 #include "protocols/ip_numbers.h"
 
 #include <stdlib.h>
+
+#include "dllexport.h"
 
 
 /** Print a debug trace for the given compression list */

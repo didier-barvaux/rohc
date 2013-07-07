@@ -1033,7 +1033,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	if(!rohc_comp_enable_profiles(comp1, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, -1))
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp1;
@@ -1123,7 +1123,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	if(!rohc_comp_enable_profiles(comp2, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, -1))
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp2;
@@ -1242,7 +1242,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	if(!rohc_decomp_enable_profiles(decomp1, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, -1))
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on decompressor 1\n");
 		goto destroy_decomp1;
@@ -1309,7 +1309,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	if(!rohc_decomp_enable_profiles(decomp2, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, -1))
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on decompressor 2\n");
 		goto destroy_decomp2;

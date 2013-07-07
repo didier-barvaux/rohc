@@ -171,6 +171,8 @@ if test "x$host_os" = "xmingw32" || \
    test "x$host_os" = "xmingw64" ; then
 	# Avoid warnings about 'unknown conversion type character ‘z’ in format'
 	configure_cflags="${configure_cflags} -D__USE_MINGW_ANSI_STDIO=1"
+	# Tell mingw to pack structs and bitfields the way gcc does
+	configure_cflags="${configure_cflags} -mno-ms-bitfields"
 	if test "x$enable_shared" = "xyes" ; then
 		configure_ldflags="${configure_ldflags} -Wl,--no-undefined"
 	fi

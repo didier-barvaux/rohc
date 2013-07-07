@@ -736,7 +736,8 @@ int main(int argc, char *argv[])
 		goto destroy_comp;
 	}
 
-	/* enable the compression profiles */
+	/* enable the compression profiles
+	 * (the IP/TCP profile is not ready enough to be enabled) */
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
 	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,

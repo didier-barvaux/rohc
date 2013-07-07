@@ -6,11 +6,13 @@
 
 
 TESTS = \
-	test_api_robustness.sh
+	test_api_robustness.sh \
+	test_rfc4996_encoding.sh
 
 
 check_PROGRAMS = \
-	test_api_robustness
+	test_api_robustness \
+	test_rfc4996_encoding
 
 
 test_api_robustness_SOURCES = test_api_robustness.c
@@ -29,6 +31,19 @@ test_api_robustness_CPPFLAGS = \
 	-I$(top_srcdir)/src/comp
 
 
+test_rfc4996_encoding_SOURCES = test_rfc4996_encoding.c
+test_rfc4996_encoding_LDADD = \
+	-lrohc_comp
+test_rfc4996_encoding_LDFLAGS = \
+	-L$(top_builddir)/src/comp/.libs
+test_rfc4996_encoding_CFLAGS = \
+	$(configure_cflags)
+test_rfc4996_encoding_CPPFLAGS = \
+	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/src/comp
+
+
 EXTRA_DIST = \
-	test_api_robustness.sh
+	test_api_robustness.sh \
+	test_rfc4996_encoding.sh
 

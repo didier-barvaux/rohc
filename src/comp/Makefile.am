@@ -18,7 +18,9 @@ librohc_comp_la_SOURCES = \
 	c_udp.c \
 	c_udp_lite.c \
 	c_esp.c \
-	c_rtp.c
+	c_rtp.c \
+	c_tcp.c \
+	rfc4996_encoding.c
 
 librohc_comp_la_LIBADD = \
 	-lrohc_common \
@@ -47,5 +49,7 @@ noinst_HEADERS = \
 	c_udp.h \
 	c_udp_lite.h \
 	c_esp.h \
-	c_rtp.h
+	c_rtp.h \
+	c_tcp.h \
+	rfc4996_encoding.h
 

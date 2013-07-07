@@ -106,6 +106,12 @@ TESTS_WLSB4_SMALLCID_BUG804552 = \
 	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh
 
+TESTS_WLSB4_SMALLCID_TCP = \
+	test_non_regression_ipv4_tcp_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_tcp_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb4_smallcid.sh
+
 TESTS_WLSB4_SMALLCID = \
 	$(TESTS_WLSB4_SMALLCID_MISC) \
 	$(TESTS_WLSB4_SMALLCID_IPONLY) \
@@ -113,7 +119,8 @@ TESTS_WLSB4_SMALLCID = \
 	$(TESTS_WLSB4_SMALLCID_IP_UDPLITE) \
 	$(TESTS_WLSB4_SMALLCID_IP_UDP_RTP) \
 	$(TESTS_WLSB4_SMALLCID_ESP) \
-	$(TESTS_WLSB4_SMALLCID_BUG804552)
+	$(TESTS_WLSB4_SMALLCID_BUG804552) \
+	$(TESTS_WLSB4_SMALLCID_TCP)
 
 
 #
@@ -216,6 +223,12 @@ TESTS_WLSB64_SMALLCID_BUG804552 = \
 	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh
 
+TESTS_WLSB64_SMALLCID_TCP = \
+	test_non_regression_ipv4_tcp_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_tcp_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb64_smallcid.sh
+
 TESTS_WLSB64_SMALLCID = \
 	$(TESTS_WLSB64_SMALLCID_MISC) \
 	$(TESTS_WLSB64_SMALLCID_IPONLY) \
@@ -223,7 +236,8 @@ TESTS_WLSB64_SMALLCID = \
 	$(TESTS_WLSB64_SMALLCID_IP_UDPLITE) \
 	$(TESTS_WLSB64_SMALLCID_IP_UDP_RTP) \
 	$(TESTS_WLSB64_SMALLCID_ESP) \
-	$(TESTS_WLSB64_SMALLCID_BUG804552)
+	$(TESTS_WLSB64_SMALLCID_BUG804552) \
+	$(TESTS_WLSB64_SMALLCID_TCP)
 
 
 TESTS_SMALLCID = \
@@ -332,6 +346,12 @@ TESTS_WLSB4_LARGECID_BUG804552 = \
 	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh \
 	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh
 
+TESTS_WLSB4_LARGECID_TCP = \
+	test_non_regression_ipv4_tcp_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb4_largecid.sh \
+	test_non_regression_ipv6_tcp_wlsb4_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb4_largecid.sh
+
 TESTS_WLSB4_LARGECID = \
 	$(TESTS_WLSB4_LARGECID_MISC) \
 	$(TESTS_WLSB4_LARGECID_IPONLY) \
@@ -339,7 +359,8 @@ TESTS_WLSB4_LARGECID = \
 	$(TESTS_WLSB4_LARGECID_IP_UDPLITE) \
 	$(TESTS_WLSB4_LARGECID_IP_UDP_RTP) \
 	$(TESTS_WLSB4_LARGECID_ESP) \
-	$(TESTS_WLSB4_LARGECID_BUG804552)
+	$(TESTS_WLSB4_LARGECID_BUG804552) \
+	$(TESTS_WLSB4_LARGECID_TCP)
 
 
 #
@@ -442,6 +463,12 @@ TESTS_WLSB64_LARGECID_BUG804552 = \
 	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh \
 	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh
 
+TESTS_WLSB64_LARGECID_TCP = \
+	test_non_regression_ipv4_tcp_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb64_largecid.sh \
+	test_non_regression_ipv6_tcp_wlsb64_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb64_largecid.sh
+
 TESTS_WLSB64_LARGECID = \
 	$(TESTS_WLSB64_LARGECID_MISC) \
 	$(TESTS_WLSB64_LARGECID_IPONLY) \
@@ -449,7 +476,8 @@ TESTS_WLSB64_LARGECID = \
 	$(TESTS_WLSB64_LARGECID_IP_UDPLITE) \
 	$(TESTS_WLSB64_LARGECID_IP_UDP_RTP) \
 	$(TESTS_WLSB64_LARGECID_ESP) \
-	$(TESTS_WLSB64_LARGECID_BUG804552)
+	$(TESTS_WLSB64_LARGECID_BUG804552) \
+	$(TESTS_WLSB64_LARGECID_TCP)
 
 
 TESTS_LARGECID = \

@@ -585,7 +585,7 @@ static int test_compression_perfs(char *filename,
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
 	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                              ROHC_PROFILE_ESP, -1))
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto free_compresssor;
@@ -891,7 +891,7 @@ static int test_decompression_perfs(char *filename,
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
 	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                                ROHC_PROFILE_ESP, -1))
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the decompression profiles\n");
 		goto free_decompressor;

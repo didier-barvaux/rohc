@@ -27,7 +27,7 @@
 #define ROHC_DECOMP_INTERNALS_H
 
 #include "rohc.h" /* for struct medium */
-#include "rohc_comp.h"
+#include "rohc_decomp.h"
 
 
 
@@ -37,7 +37,7 @@
 
 
 /** The number of ROHC profiles ready to be used */
-#define D_NUM_PROFILES 6
+#define D_NUM_PROFILES 7
 
 /** Print a debug trace for the given decompression context */
 #define rohc_decomp_debug(context, format, ...) \

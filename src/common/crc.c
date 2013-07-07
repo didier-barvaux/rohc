@@ -24,11 +24,11 @@
  */
 
 #include "crc.h"
-#include "rohc.h"
 #include "protocols/ip_numbers.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
 #include "protocols/esp.h"
+#include "protocols/tcp.h"
 
 #include <stdlib.h>
 #include <assert.h>
@@ -811,6 +811,98 @@ unsigned int rtp_compute_crc_dynamic(const unsigned char *const ip,
 
 	return crc;
 }
+
+
+/**
+ * @brief Compute the CRC-STATIC part of an TCP header
+ *
+ * Concerned fields are:
+ *  all fields expect those for CRC-DYNAMIC
+ *    - bytes 1-4 in original TCP header
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+unsigned int tcp_compute_crc_static(const unsigned char *const ip,
+                                    const unsigned char *const ip2,
+                                    const unsigned char *const next_header,
+                                    const rohc_crc_type_t crc_type,
+                                    const unsigned int init_val,
+                                    const unsigned char *const crc_table)
+{
+	unsigned int crc;
+	struct tcphdr *tcp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+	assert(crc_table != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-STATIC value for IP and IP2 headers */
+	crc = compute_crc_static(ip, ip2, next_header, crc_type, crc, crc_table);
+
+	/* get the start of TCP header */
+	tcp = (struct tcphdr *) next_header;
+
+	/* bytes 1-4 (Source and destination ports) */
+	crc = crc_calculate(crc_type, (unsigned char *)(&tcp->src_port), 4,
+	                    crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Compute the CRC-DYNAMIC part of an TCP header
+ *
+ * Concerned fields are:
+ *   - bytes 5-20 in original TCP header
+ *   - TCP options
+ *
+ * @param ip          The outer IP packet
+ * @param ip2         The inner IP packet if there is 2 IP headers, NULL otherwise
+ * @param next_header The next header located after the IP header(s)
+ * @param crc_type    The type of CRC
+ * @param init_val    The initial CRC value
+ * @param crc_table   The pre-computed table for fast CRC computation
+ * @return            The checksum
+ */
+unsigned int tcp_compute_crc_dynamic(const unsigned char *const ip,
+                                     const unsigned char *const ip2,
+                                     const unsigned char *const next_header,
+                                     const rohc_crc_type_t crc_type,
+                                     const unsigned int init_val,
+                                     const unsigned char *const crc_table)
+{
+	unsigned int crc;
+	struct tcphdr *tcp;
+
+	assert(ip != NULL);
+	assert(next_header != NULL);
+	assert(crc_table != NULL);
+
+	crc = init_val;
+
+	/* compute the CRC-DYNAMIC value for IP and IP2 headers */
+	crc = compute_crc_dynamic(ip, ip2, next_header, crc_type, crc, crc_table);
+
+	/* get the start of TCP header */
+	tcp = (struct tcphdr *) next_header;
+
+	/* bytes 5-20 + TCP options */
+	crc = crc_calculate(crc_type, (unsigned char *)(&tcp->seq_number),
+	                    sizeof(struct tcphdr) - 4 + (tcp->data_offset << 2) -
+	                    sizeof(struct tcphdr), crc, crc_table);
+
+	return crc;
+}
+
 
 
 /**

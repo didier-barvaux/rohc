@@ -37,7 +37,9 @@ rohc_comp_sources = \
 	../../src/comp/c_udp.c \
 	../../src/comp/c_udp_lite.c \
 	../../src/comp/c_rtp.c \
-	../../src/comp/c_esp.c
+	../../src/comp/c_esp.c \
+	../../src/comp/rfc4996_encoding.c \
+	../../src/comp/c_tcp.c
 
 rohc_decomp_sources = \
 	../../src/decomp/rohc_decomp.c \
@@ -48,7 +50,9 @@ rohc_decomp_sources = \
 	../../src/decomp/d_udp.c \
 	../../src/decomp/d_udp_lite.c \
 	../../src/decomp/d_rtp.c \
-	../../src/decomp/d_esp.c
+	../../src/decomp/d_esp.c \
+	../../src/decomp/rfc4996_decoding.c \
+	../../src/decomp/d_tcp.c
 
 rohc_sources = \
 	../kmod.c \
