@@ -92,6 +92,7 @@ test_*.sh.trs
 ./statistics/generate_statistics
 ./statistics/generate_statistics.exe
 ./statistics/generate_statistics.sh.log
+./statistics/generate_statistics.sh.trs
 ./statistics/html
 ./app/performance/rohc_test_performance
 ./app/performance/rohc_test_performance.exe
