@@ -21,6 +21,9 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
+#ifndef ROHC_DECOMP_RFC4996_DECODING_H
+#define ROHC_DECOMP_RFC4996_DECODING_H
+
 #include "protocols/tcp.h"
 
 #include <stdint.h>
@@ -75,4 +78,6 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
                           uint16_t *ip_id,
                           uint16_t msn);
 uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
+
+#endif /* ROHC_DECOMP_RFC4996_DECODING_H */
 

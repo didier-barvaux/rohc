@@ -21,6 +21,9 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
+#ifndef ROHC_COMP_RFC4996_ENCODING_H
+#define ROHC_COMP_RFC4996_ENCODING_H
+
 #include <stdint.h>
 
 #include "dllexport.h"
@@ -94,4 +97,6 @@ unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
                                   uint16_t msn);
 // RFC4996 page 75
 unsigned int dscp_encode( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value );
+
+#endif /* ROHC_COMP_RFC4996_ENCODING_H */
 
