@@ -21,5 +21,5 @@ librohc_proto_la_SOURCES = \
 librohc_proto_la_LIBADD =
 librohc_proto_la_LDFLAGS = $(configure_ldflags)
 librohc_proto_la_CFLAGS = $(configure_cflags)
-librohc_proto_la_CPPFLAGS =
+librohc_proto_la_CPPFLAGS = -I$(top_srcdir)/src/
 
