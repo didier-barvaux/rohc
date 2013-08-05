@@ -2213,12 +2213,14 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	/* part 1 */
 	tos = ip_get_tos(ip);
 	dest[counter] = tos;
+	rohc_comp_debug(context, "TOS = 0x%02x\n", dest[counter]);
 	counter++;
 	header_info->tos_count++;
 
 	/* part 2 */
 	ttl = ip_get_ttl(ip);
 	dest[counter] = ttl;
+	rohc_comp_debug(context, "TTL = 0x%02x\n", dest[counter]);
 	counter++;
 	header_info->ttl_count++;
 
@@ -2226,6 +2228,8 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	/* always transmit IP-ID in Network Byte Order */
 	id = ipv4_get_id_nbo(ip, header_info->info.v4.nbo);
 	memcpy(&dest[counter], &id, 2);
+	rohc_comp_debug(context, "IP-ID = 0x%02x 0x%02x\n",
+	                dest[counter], dest[counter + 1]);
 	counter += 2;
 
 	/* part 4 */
@@ -2243,8 +2247,10 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	{
 		df_rnd_nbo_sid |= 0x10;
 	}
-
 	dest[counter] = df_rnd_nbo_sid;
+	rohc_comp_debug(context, "(DF = %u, RND = %u, NBO = %u, SID = %u) = 0x%02x\n",
+	                df & 0x01, header_info->info.v4.rnd, header_info->info.v4.nbo,
+	                header_info->info.v4.sid, dest[counter]);
 	counter++;
 
 	header_info->info.v4.df_count++;
@@ -2255,13 +2261,9 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	/* part 5 is not supported for the moment, but the field is mandatory,
 	   so add a zero byte */
 	dest[counter] = 0x00;
+	rohc_comp_debug(context, "Generic extension header list = 0x%02x\n",
+	                dest[counter]);
 	counter++;
-
-	rohc_comp_debug(context, "TOS = 0x%02x, TTL = 0x%02x, IP-ID = 0x%04x, "
-	                "df_rnd_nbo_sid = 0x%02x (DF = %d, RND = %d, NBO = %d, "
-	                "SID = %d)\n", tos, ttl, id, df_rnd_nbo_sid, df,
-	                header_info->info.v4.rnd, header_info->info.v4.nbo,
-	                header_info->info.v4.sid);
 
 	return counter;
 }

@@ -1353,7 +1353,9 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->padding & 0x01) << 5;
 	byte |= rtp->cc & 0x0f;
 	dest[counter] = byte;
-	rohc_comp_debug(context, "part 2 = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "(V = %u, P = %u, RX = %u, CC = 0x%x) = 0x%02x\n",
+	                rtp->version & 0x03, rtp->padding & 0x01, rx_byte,
+	                rtp->cc & 0x0f, dest[counter]);
 	counter++;
 	rtp_context->rtp_padding_change_count++;
 
@@ -1362,19 +1364,20 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->m & 0x01) << 7;
 	byte |= rtp->pt & 0x7f;
 	dest[counter] = byte;
-	rohc_comp_debug(context, "part 3 = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "(M = %u, PT = 0x%02x) = 0x%02x\n",
+	                rtp->m & 0x01, rtp->pt & 0x7f, dest[counter]);
 	counter++;
 	rtp_context->rtp_pt_change_count++;
 
 	/* part 4 */
 	memcpy(&dest[counter], &rtp->sn, 2);
-	rohc_comp_debug(context, "part 4 = 0x%02x 0x%02x\n", dest[counter],
+	rohc_comp_debug(context, "SN = 0x%02x 0x%02x\n", dest[counter],
 	                dest[counter + 1]);
 	counter += 2;
 
 	/* part 5 */
 	memcpy(&dest[counter], &rtp->timestamp, 4);
-	rohc_comp_debug(context, "part 5 = 0x%02x 0x%02x 0x%02x 0x%02x\n",
+	rohc_comp_debug(context, "TS = 0x%02x 0x%02x 0x%02x 0x%02x\n",
 	                dest[counter], dest[counter + 1], dest[counter + 2],
 	                dest[counter + 3]);
 	counter += 4;
@@ -1401,7 +1404,9 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		byte |= (tis & 0x01) << 1;
 		byte |= tss & 0x01;
 		dest[counter] = byte;
-		rohc_comp_debug(context, "part 7 = 0x%02x\n", dest[counter]);
+		rohc_comp_debug(context, "(X = %u, Mode = %u, TIS = %u, TSS = %u) = 0x%02x\n",
+		                rtp->extension & 0x01, context->mode & 0x03, tis & 0x01,
+		                tss & 0x01, dest[counter]);
 		counter++;
 		rtp_context->rtp_extension_change_count++;
 
