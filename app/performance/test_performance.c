@@ -188,8 +188,8 @@ int main(int argc, char *argv[])
 	char *cid_type = NULL;
 	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
-	bool use_large_cid;
 #if __i386__
+	bool use_large_cid;
 	unsigned long packet_count = 0;
 	unsigned long overflows = 0;
 	unsigned long long time_elapsed = 0;
@@ -270,7 +270,9 @@ int main(int argc, char *argv[])
 	/* check CID type */
 	if(!strcmp(cid_type, "smallcid"))
 	{
+#if __i386__
 		use_large_cid = false;
+#endif
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
@@ -283,7 +285,9 @@ int main(int argc, char *argv[])
 	}
 	else if(!strcmp(cid_type, "largecid"))
 	{
+#if __i386__
 		use_large_cid = true;
+#endif
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
