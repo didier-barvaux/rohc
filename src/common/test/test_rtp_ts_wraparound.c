@@ -131,6 +131,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 	uint32_t value_encoded; /* the encoded value to decode */
 	uint32_t value_decoded; /* the decoded value */
 
+	unsigned int real_incr;
+
 	int is_success = false; /* test fails by default */
 	int ret;
 
@@ -152,14 +154,28 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		goto destroy_ts_sc_comp;
 	}
 
-	/* encode then decode values from ranges [0xffffffff - 50, 0xffffffff]
-	 * and [0, 49] */
+	/* compute the initial value to encode */
+	if(incr == 0)
+	{
+		real_incr = (20 + 10) / 2;
+	}
+	else
+	{
+		real_incr = incr;
+	}
+	value = (0xffffffff - 50 * real_incr);
+	if(value > 0xffffffff)
+	{
+		value = 0;
+	}
+
+	/* encode then decode values from ranges [0xffffffff - 50 * incr, 0xffffffff]
+	 * and [0, 49 * incr] */
 	for(i = 1; i < 100; i++)
 	{
 		size_t required_bits;
 		uint32_t required_bits_mask;
 		uint32_t ts_stride;
-		unsigned int real_incr;
 
 		/* value to encode/decode */
 		if(incr == 0)
@@ -173,13 +189,12 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		{
 			real_incr = incr;
 		}
-		value = (0xffffffff - 50 * real_incr) + i * real_incr;
+		value += real_incr;
 		if(value > 0xffffffff)
 		{
 			value = 0;
 		}
-
-		trace(be_verbose, "\tencode value 0x%08x ...\n", value);
+		trace(be_verbose, "\t#%lu: encode value 0x%08x (+%u) ...\n", i, value, real_incr);
 
 		/* update encoding context */
 		c_add_ts(&ts_sc_comp, value, i);
