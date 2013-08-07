@@ -11,8 +11,6 @@ TESTS = \
 	test_lsb_decode_packet_loss.sh \
 	test_rtp_ts_wraparound.sh
 
-XFAIL_TESTS = test_lsb_decode.sh
-
 check_PROGRAMS = \
 	test_lsb_decode \
 	test_lsb_decode_wraparound \

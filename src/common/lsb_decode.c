@@ -210,7 +210,7 @@ bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 	{
 		/* the interpretation interval does straddle the field boundaries:
 		 * search in the first part of the interval */
-		for(try = min; try <= 0xffffffff; try++)
+		for(try = min; try != 0; try++)
 		{
 			if((try & mask) == (m & mask))
 			{
