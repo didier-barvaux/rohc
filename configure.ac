@@ -136,12 +136,11 @@ AC_CHECK_FUNCS([ntohl htonl ntohs htons])
 # If sched.h is present, check sched_setscheduler() availability & usage
 if test "x$ac_cv_header_sched_h" = "xyes" ; then
 	# Check if sched_setscheduler() is available without external library then with libpthread
-	sched_lib=""
-	AC_CHECK_FUNC([sched_setscheduler], ,
+	AC_CHECK_FUNC([sched_setscheduler], sched_lib="",
 	              [AC_CHECK_LIB([pthread], sched_setscheduler,
-	                            sched_lib="-lpthread", sched_lib="")])
+	                            sched_lib="-lpthread", sched_lib="not found")])
 	AC_SUBST([sched_lib], [$sched_lib])
-	if test "x$sched_lib" != "x" ; then
+	if test "x$sched_lib" != "xnot found" ; then
 		# Check whether sched_setscheduler() takes 2 or 3 arguments
 		AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
 		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
