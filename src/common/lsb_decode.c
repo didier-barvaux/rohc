@@ -186,55 +186,52 @@ bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 	{
 		mask = ((1 << k) - 1);
 	}
+	assert((m & mask) == m);
 
 	/* determine the interval in which the decoded value should be present */
 	rohc_f_32bits(lsb->v_ref_d, k, lsb->p, &min, &max);
 
-	/* search the value that matches the k lower bits of the value m to decode:
-	   try all values from the interval starting from the smallest one */
+	/* search the value that matches the k lower bits of the value m to decode */
 	if(min <= max)
 	{
 		/* the interpretation interval does not straddle the field boundaries */
-		for(try = min; try <= max; try++)
+
+		/* find the minimum value in the interval [min ; max] with the same k LSB
+		 * bits as m */
+		try = (min & (~mask)) | m;
+		if((min & mask) > m)
 		{
-			if((try & mask) == (m & mask))
-			{
-				/* corresponding value found */
-				is_found = true;
-				*decoded = try;
-				break;
-			}
+			/* value is not in the interval (lower than min), try next value */
+			try += mask + 1;
+		}
+		if(try >= min && try <= max)
+		{
+			/* value is in the interval: corresponding value found */
+			is_found = true;
+			*decoded = try;
 		}
 	}
 	else
 	{
-		/* the interpretation interval does straddle the field boundaries:
-		 * search in the first part of the interval */
-		for(try = min; try != 0; try++)
+		/* the interpretation interval does straddle the field boundaries */
+
+		/* find the first value in the interval [min ; max] with the same
+		 * k LSB bits as m */
+		try = (min & (~mask)) | m;
+		if((min & mask) > m)
 		{
-			if((try & mask) == (m & mask))
-			{
-				/* corresponding value found */
-				is_found = true;
-				*decoded = try;
-				break;
-			}
+			/* value is not in the interval (lower than min), try next value */
+			try += mask + 1;
 		}
-		/* then, if not successful, search in the last part of the interval */
-		if(!is_found)
+		if(try >= min || try <= max)
 		{
-			for(try = 0; try <= max; try++)
-			{
-				if((try & mask) == (m & mask))
-				{
-					/* corresponding value found */
-					is_found = true;
-					*decoded = try;
-					break;
-				}
-			}
+			/* value is in the interval: corresponding value found */
+			is_found = true;
+			*decoded = try;
 		}
 	}
+
+	assert(!is_found || ((*decoded) & mask) == m);
 
 	return is_found;
 }

@@ -30,6 +30,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stddef.h>
 #ifdef __KERNEL__
 #	include <linux/types.h>
 #else
