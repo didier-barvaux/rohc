@@ -35,8 +35,12 @@ test_*.sh.trs
 ./output.zcov
 ./coverage-report
 ./test/report_code_coverage.sh.log
+./test/report_code_coverage.sh.trs
 ./doc/doxygen.conf
 ./doc/html
+./src/common/test/test_lsb_decode
+./src/common/test/test_lsb_decode.exe
+./src/common/test/test_lsb_decode.log
 ./src/common/test/test_lsb_decode_wraparound
 ./src/common/test/test_lsb_decode_wraparound.exe
 ./src/common/test/test_lsb_decode_wraparound.log
