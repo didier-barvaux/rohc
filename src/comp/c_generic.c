@@ -648,9 +648,10 @@ void c_generic_destroy(struct c_context *const context)
  *
  * @param comp      The ROHC compressor
  * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
- *                      packet contains at least 2 IP headers,
- *                  \li NULL if the IP packet to check contains only one IP header
+ * @param inner_ip  Two possible cases:
+ *                    \li The inner IP header of the IP packet to check if the IP
+ *                        packet contains at least 2 IP headers,
+ *                    \li NULL if the IP packet to check contains only one IP header
  * @param protocol  The transport protocol carried by the IP packet:
  *                    \li the protocol carried by the outer IP header if there
  *                        is only one IP header,

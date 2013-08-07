@@ -338,8 +338,12 @@ static void context_free(struct d_context *const context)
 /**
  * @brief Create one ROHC decompressor.
  *
- * @param compressor  \li The ROHC compressor to associate the decompressor with
- *                    \li NULL to disable feedback and force undirectional mode
+ * @param compressor  Two possible cases:
+ *                      \li You want to run the ROHC decompressor in bidirectional
+ *                          mode. Decompressor will transmit feedback to the
+ *                          compressor at the other end of the channel through the
+ *                          given compressor.
+ *                      \li NULL to disable feedback and force undirectional mode
  * @return            The newly-created decompressor if successful,
  *                    NULL otherwise
  *
@@ -2197,8 +2201,9 @@ error:
  * @brief Set the callback function used to manage traces in decompressor
  *
  * @param decomp   The ROHC decompressor
- * @param callback \li The callback function used to manage traces
- *                 \li NULL to remove the previous callback
+ * @param callback Two possible cases:
+ *                   \li The callback function used to manage traces
+ *                   \li NULL to remove the previous callback
  * @return         true on success, false otherwise
  */
 bool rohc_decomp_set_traces_cb(struct rohc_decomp *decomp,
