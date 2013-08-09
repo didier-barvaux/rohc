@@ -2183,7 +2183,7 @@ int code_generic_dynamic_part(const struct c_context *context,
    +---+---+---+---+---+---+---+---+
  2  |         Time to Live          |
     +---+---+---+---+---+---+---+---+
- 3  /        Identification         /   2 octets
+ 3  /        Identification         /   2 octets, sent verbatim
     +---+---+---+---+---+---+---+---+
  4  | DF|RND|NBO|SID|       0       |
     +---+---+---+---+---+---+---+---+
@@ -2226,8 +2226,9 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	header_info->ttl_count++;
 
 	/* part 3 */
-	/* always transmit IP-ID in Network Byte Order */
-	id = ipv4_get_id_nbo(ip, header_info->info.v4.nbo);
+	/* always transmit IP-ID verbatim in IR and IR-DYN as stated by
+	 * http://www.ietf.org/mail-archive/web/rohc/current/msg01675.html */
+	id = ipv4_get_id(ip);
 	memcpy(&dest[counter], &id, 2);
 	rohc_comp_debug(context, "IP-ID = 0x%02x 0x%02x\n",
 	                dest[counter], dest[counter + 1]);
