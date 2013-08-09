@@ -70,14 +70,16 @@ struct ts_sc_comp
 
 	/// The TS_SCALED value
 	uint32_t ts_scaled;
-	/// A window used to encode the TS_SCALED value
-	struct c_wlsb *scaled_window;
+	/** The W-LSB object used to encode the TS_SCALED value */
+	struct c_wlsb *ts_scaled_wlsb;
 
 	/// The TS_OFFSET value
 	uint32_t ts_offset;
 
 	/// The timestamp (TS)
 	uint32_t ts;
+	/** The W-LSB object used to encode the TS value */
+	struct c_wlsb *ts_unscaled_wlsb;
 	/// The previous timestamp
 	uint32_t old_ts;
 
@@ -118,14 +120,20 @@ void ROHC_EXPORT c_add_ts(struct ts_sc_comp *const ts_sc,
                           const uint32_t ts,
                           const uint16_t sn);
 
+bool ROHC_EXPORT nb_bits_unscaled(const struct ts_sc_comp ts_sc,
+                                  size_t *const bits_nr)
+	__attribute__((warn_unused_result));
+void ROHC_EXPORT add_unscaled(const struct ts_sc_comp *const ts_sc,
+                              const uint16_t sn);
+
 bool ROHC_EXPORT nb_bits_scaled(const struct ts_sc_comp ts_sc,
                                 size_t *const bits_nr);
-
 void ROHC_EXPORT add_scaled(const struct ts_sc_comp *const ts_sc,
                             uint16_t sn);
 
 uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp ts_sc);
 uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp ts_sc);
+uint32_t ROHC_EXPORT get_ts_unscaled(const struct ts_sc_comp ts_sc);
 
 bool ROHC_EXPORT rohc_ts_sc_is_deducible(const struct ts_sc_comp ts_sc);
 

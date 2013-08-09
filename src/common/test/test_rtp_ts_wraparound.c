@@ -211,7 +211,12 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				ts_sc_comp.state = INIT_STRIDE;
 				/* simulate transmission */
 				/* decode received unscaled TS */
-				value_decoded = ts_decode_unscaled(ts_sc_decomp, value_encoded);
+				if(!ts_decode_unscaled_absolute(ts_sc_decomp, value_encoded,
+				                                &value_decoded))
+				{
+					trace(be_verbose, "failed to decode received absolute unscaled TS\n");
+					goto destroy_ts_sc_decomp;
+				}
 				break;
 
 			case INIT_STRIDE:
@@ -229,7 +234,12 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				}
 				/* simulate transmission */
 				/* decode received unscaled TS */
-				value_decoded = ts_decode_unscaled(ts_sc_decomp, value_encoded);
+				if(!ts_decode_unscaled_bits(ts_sc_decomp, value_encoded,
+				                            required_bits, &value_decoded))
+				{
+					trace(be_verbose, "failed to decode received unscaled TS\n");
+					goto destroy_ts_sc_decomp;
+				}
 				d_record_ts_stride(ts_sc_decomp, ts_stride);
 				break;
 
@@ -272,8 +282,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				if(required_bits > 0)
 				{
 					/* decode the received TS_SCALED value */
-					if(!ts_decode_scaled(ts_sc_decomp, value_encoded,
-					                     required_bits, &value_decoded))
+					if(!ts_decode_scaled_bits(ts_sc_decomp, value_encoded,
+					                          required_bits, &value_decoded))
 					{
 						trace(be_verbose, "failed to decode received TS_SCALED\n");
 						goto destroy_ts_sc_decomp;

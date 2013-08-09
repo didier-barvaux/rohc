@@ -50,9 +50,6 @@ struct rtp_tmp_vars
 	/// The number of bits of TS to place in the extension 3 header
 	size_t nr_ts_bits_ext3;
 
-	/// The real timestamp of the last RTP message
-	uint32_t timestamp;
-
 	/// The TS field to send (ts_scaled or ts)
 	uint32_t ts_send;
 

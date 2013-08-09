@@ -3643,7 +3643,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 16-bit TS */
 			*f_byte |= (ts_send >> 11) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 11-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 16-bit TS in 1st byte = 0x%x\n",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */

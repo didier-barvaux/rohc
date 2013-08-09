@@ -56,13 +56,22 @@ void ROHC_EXPORT ts_update_context(struct ts_sc_decomp *const ts_sc,
 void ROHC_EXPORT d_record_ts_stride(struct ts_sc_decomp *const ts_sc,
                                     const uint32_t ts_stride);
 
-bool ROHC_EXPORT ts_decode_scaled(struct ts_sc_decomp *const ts_sc,
-                                  const uint32_t ts_scaled,
-                                  const size_t bits_nr,
-                                  uint32_t *const decoded_ts);
+bool ROHC_EXPORT ts_decode_unscaled_absolute(struct ts_sc_decomp *const ts_sc,
+                                             const uint32_t ts_unscaled,
+                                             uint32_t *const decoded_ts)
+	__attribute__((warn_unused_result));
 
-uint32_t ROHC_EXPORT ts_decode_unscaled(struct ts_sc_decomp *const ts_sc,
-                                        const uint32_t ts_bits);
+bool ROHC_EXPORT ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
+                                         const uint32_t ts_unscaled_bits,
+                                         const size_t ts_unscaled_bits_nr,
+                                         uint32_t *const decoded_ts)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
+                                       const uint32_t ts_scaled_bits,
+                                       const size_t ts_scaled_bits_nr,
+                                       uint32_t *const decoded_ts)
+	__attribute__((warn_unused_result));
 
 uint32_t ROHC_EXPORT ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
                                        const uint16_t sn);

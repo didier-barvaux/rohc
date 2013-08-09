@@ -1004,9 +1004,31 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 	/* decode RTP TimeStamp (TS) */
 	rohc_decomp_debug(context, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
 	if(g_context->packet_type == PACKET_IR ||
-	   g_context->packet_type == PACKET_IR_DYN ||
-	   !bits.is_ts_scaled)
+	   g_context->packet_type == PACKET_IR_DYN)
 	{
+		/* the full unscaled TS value was transmitted */
+
+		bool ts_decode_ok;
+
+		rohc_decomp_debug(context, "TS absolute value is transmitted\n");
+
+		assert(bits.ts_nr == 32);
+
+		ts_decode_ok = ts_decode_unscaled_absolute(rtp_context->ts_scaled_ctxt,
+		                                           bits.ts, &decoded->ts);
+		if(!ts_decode_ok)
+		{
+			rohc_decomp_debug(context, "failed to decode %zd-bit absolute TS "
+			                  "0x%x\n", bits.ts_nr, bits.ts);
+			goto error;
+		}
+	}
+	else if(!bits.is_ts_scaled)
+	{
+		/* some LSB bits of the unscaled TS were transmitted */
+
+		bool ts_decode_ok;
+
 		rohc_decomp_debug(context, "TS is not scaled\n");
 
 		/* RFC 4815, §4.2 says:
@@ -1020,31 +1042,38 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 			goto error;
 		}
 
-		decoded->ts = ts_decode_unscaled(rtp_context->ts_scaled_ctxt, bits.ts);
-	}
-	else /* TS is scaled */
-	{
-		if(bits.ts_nr == 0)
+		ts_decode_ok = ts_decode_unscaled_bits(rtp_context->ts_scaled_ctxt,
+		                                       bits.ts, bits.ts_nr,
+		                                       &decoded->ts);
+		if(!ts_decode_ok)
 		{
-			rohc_decomp_debug(context, "TS is deducted from SN\n");
-			assert(decoded->sn <= 0xffff);
-			decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt,
-			                                decoded->sn);
+			rohc_decomp_debug(context, "failed to decode %zd-bit unscaled TS "
+			                  "0x%x\n", bits.ts_nr, bits.ts);
+			goto error;
 		}
-		else
-		{
-			bool ts_decode_ok;
+	}
+	else if(bits.ts_nr == 0)
+	{
+		/* TS is scaled but no TS_SCALED bits were transmitted */
+		rohc_decomp_debug(context, "TS is deducted from SN\n");
+		assert(decoded->sn <= 0xffff);
+		decoded->ts = ts_deduce_from_sn(rtp_context->ts_scaled_ctxt, decoded->sn);
+	}
+	else
+	{
+		/* TS is scaled and some TS_SCALED bits were transmitted */
 
-			rohc_decomp_debug(context, "TS is scaled\n");
-			ts_decode_ok = ts_decode_scaled(rtp_context->ts_scaled_ctxt,
-			                                bits.ts, bits.ts_nr,
-			                                &decoded->ts);
-			if(!ts_decode_ok)
-			{
-				rohc_decomp_debug(context, "failed to decode %zd-bit TS_SCALED "
-				                  "0x%x\n", bits.ts_nr, bits.ts);
-				goto error;
-			}
+		bool ts_decode_ok;
+
+		rohc_decomp_debug(context, "TS is scaled\n");
+		ts_decode_ok = ts_decode_scaled_bits(rtp_context->ts_scaled_ctxt,
+		                                     bits.ts, bits.ts_nr,
+		                                     &decoded->ts);
+		if(!ts_decode_ok)
+		{
+			rohc_decomp_debug(context, "failed to decode %zd-bit TS_SCALED "
+			                  "0x%x\n", bits.ts_nr, bits.ts);
+			goto error;
 		}
 	}
 	rohc_decomp_debug(context, "decoded timestamp = %u / 0x%x (nr bits = %zd, "

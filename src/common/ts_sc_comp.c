@@ -66,17 +66,30 @@ int c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->nr_init_stride_packets = 0;
 	ts_sc->trace_callback = callback;
 
-	ts_sc->scaled_window = c_create_wlsb(32, wlsb_window_width,
-	                                     ROHC_LSB_SHIFT_RTP_TS);
-	if(ts_sc->scaled_window == NULL)
+	/* W-LSB context for TS_SCALED */
+	ts_sc->ts_scaled_wlsb = c_create_wlsb(32, wlsb_window_width,
+	                                      ROHC_LSB_SHIFT_RTP_TS);
+	if(ts_sc->ts_scaled_wlsb == NULL)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "cannot create a W-LSB window for TS scaled\n");
+		           "cannot create a W-LSB window for TS_SCALED\n");
 		goto error;
+	}
+
+	/* W-LSB context for unscaled TS */
+	ts_sc->ts_unscaled_wlsb = c_create_wlsb(32, wlsb_window_width,
+	                                        ROHC_LSB_SHIFT_RTP_TS);
+	if(ts_sc->ts_unscaled_wlsb == NULL)
+	{
+		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "cannot create a W-LSB window for unscaled TS\n");
+		goto free_ts_scaled_wlsb;
 	}
 
 	return 1;
 
+free_ts_scaled_wlsb:
+	c_destroy_wlsb(ts_sc->ts_scaled_wlsb);
 error:
 	return 0;
 }
@@ -90,8 +103,10 @@ error:
 void c_destroy_sc(struct ts_sc_comp *const ts_sc)
 {
 	assert(ts_sc != NULL);
-	assert(ts_sc->scaled_window != NULL);
-	c_destroy_wlsb(ts_sc->scaled_window);
+	assert(ts_sc->ts_unscaled_wlsb != NULL);
+	assert(ts_sc->ts_scaled_wlsb != NULL);
+	c_destroy_wlsb(ts_sc->ts_unscaled_wlsb);
+	c_destroy_wlsb(ts_sc->ts_scaled_wlsb);
 }
 
 
@@ -300,6 +315,33 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
 
 
 /**
+ * @brief Return the number of bits needed to encode unscaled TS
+ *
+ * @param ts_sc    The ts_sc_comp object
+ * @param bits_nr  OUT: The number of bits needed
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
+ */
+bool nb_bits_unscaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
+{
+	return wlsb_get_k_32bits(ts_sc.ts_unscaled_wlsb, ts_sc.ts, bits_nr);
+}
+
+
+/**
+ * @brief Add a new unscaled TS value to the ts_sc_comp object
+ *
+ * @param ts_sc  The ts_sc_comp object
+ * @param sn     The Sequence Number
+ */
+void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
+{
+	assert(ts_sc != NULL);
+	c_add_wlsb(ts_sc->ts_unscaled_wlsb, sn, ts_sc->ts);
+}
+
+
+/**
  * @brief Return the number of bits needed to encode TS_SCALED
  *
  * @param ts_sc    The ts_sc_comp object
@@ -309,7 +351,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
  */
 bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
 {
-	return wlsb_get_k_32bits(ts_sc.scaled_window, ts_sc.ts_scaled, bits_nr);
+	return wlsb_get_k_32bits(ts_sc.ts_scaled_wlsb, ts_sc.ts_scaled, bits_nr);
 }
 
 
@@ -322,7 +364,7 @@ bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
 void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn)
 {
 	assert(ts_sc != NULL);
-	c_add_wlsb(ts_sc->scaled_window, sn, ts_sc->ts_scaled);
+	c_add_wlsb(ts_sc->ts_scaled_wlsb, sn, ts_sc->ts_scaled);
 }
 
 
@@ -347,6 +389,18 @@ uint32_t get_ts_stride(const struct ts_sc_comp ts_sc)
 uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc)
 {
 	return ts_sc.ts_scaled;
+}
+
+
+/**
+ * @brief Return the unscaled TS value
+ *
+ * @param ts_sc  The ts_sc_comp object
+ * @return       The unscaled TS value
+ */
+uint32_t get_ts_unscaled(const struct ts_sc_comp ts_sc)
+{
+	return ts_sc.ts;
 }
 
 
