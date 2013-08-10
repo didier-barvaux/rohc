@@ -72,6 +72,7 @@
 #if HAVE_ARPA_INET_H == 1
 #  include <arpa/inet.h> /* for ntohs() on Linux */
 #endif
+#include <time.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -101,17 +102,6 @@ for ./configure ? If yes, check configure output and config.log"
 /** The application version */
 #define APP_VERSION "ROHC performance test application, version 0.1"
 
-/** Get the current number of CPU tics */
-#define GET_CPU_TICS(cpu_tics_64bits) \
-	__asm__ __volatile__ ("rdtsc" : "=A" (cpu_tics_64bits))
-
-/**
- * @brief Give the number of nanoseconds elapsed between 2 given
- *        measures of CPU tics
- */
-#define TICS_2_NSEC(coef_ns, end, start) \
-	((unsigned long long)(((end) - (start)) * (coef_ns)))
-
 /** The maximal size for the ROHC packets */
 #define MAX_ROHC_SIZE  (5 * 1024)
 
@@ -126,14 +116,11 @@ static int is_verbose;
 
 static void usage(void);
 
-#if __i386__
-
-static int tune_env_for_perfs(double *coef_nanosec);
+static int tune_env_for_perfs(void);
 
 static int test_compression_perfs(char *filename,
                                   const int use_large_cid,
                                   const unsigned int max_contexts,
-                                  double coef_nanosec,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
                                   unsigned long long *time_elapsed);
@@ -142,13 +129,11 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 struct pcap_pkthdr header,
                                 unsigned char *packet,
                                 size_t link_len,
-                                double coef_nanosec,
                                 unsigned long long *time_elapsed);
 
 static int test_decompression_perfs(char *filename,
                                     const int use_large_cid,
                                     const unsigned int max_contexts,
-                                    double coef_nanosec,
                                     unsigned long *packet_count,
                                     unsigned long *overflows,
                                     unsigned long long *time_elapsed);
@@ -157,7 +142,6 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   struct pcap_pkthdr header,
                                   unsigned char *packet,
                                   size_t link_len,
-                                  double coef_nanosec,
                                   unsigned long long *time_elapsed);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
@@ -171,7 +155,6 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
                                 void *const user_context)
 	__attribute__((nonnull(1)));
 
-#endif /* __i386__ */
 
 
 /**
@@ -189,15 +172,12 @@ int main(int argc, char *argv[])
 	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
 	bool use_large_cid;
-#if __i386__
 	unsigned long packet_count = 0;
 	unsigned long overflows = 0;
 	unsigned long long time_elapsed = 0;
-	double coef_nanosec; /* coefficient to convert from CPU tics to ns */
 	int ret;
 	unsigned long average;
 	int i;
-#endif
 	int status = 1;
 
 	/* set to quiet mode by default */
@@ -302,13 +282,9 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-#if !__i386__
-	/* skip test because the test uses x86 ASM */
-	status = 77;
-#else
 	/* tune environment for performance
 	   (realtime priority, disable swapping...) */
-	ret = tune_env_for_perfs(&coef_nanosec);
+	ret = tune_env_for_perfs();
 	if(ret != 0)
 	{
 		fprintf(stderr, "failed to tune environment for performance\n");
@@ -319,14 +295,12 @@ int main(int argc, char *argv[])
 	{
 		/* test ROHC compression with the packets from the capture */
 		ret = test_compression_perfs(filename, use_large_cid, max_contexts,
-		                             coef_nanosec,
 		                             &packet_count, &overflows, &time_elapsed);
 	}
 	else if(strcmp(test_type, "decompression") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
 		ret = test_decompression_perfs(filename, use_large_cid, max_contexts,
-		                               coef_nanosec,
 		                               &packet_count, &overflows, &time_elapsed);
 	}
 	else
@@ -365,7 +339,6 @@ int main(int argc, char *argv[])
 	/* everything went fine */
 	status = 0;
 
-#endif
 error:
 	return status;
 }
@@ -394,8 +367,6 @@ static void usage(void)
 }
 
 
-#if __i386__
-
 /**
  * @brief Tune environment for performance
  *
@@ -403,19 +374,13 @@ static void usage(void)
  * Disable swapping.
  * Initialize CPU tics to nanoseconds coefficient.
  *
- * @param coef_nanosec  OUT: the CPU tics to nanoseconds coefficient
  * @return              0 in case of success, 1 otherwise
  */
-static int tune_env_for_perfs(double *coef_nanosec)
+static int tune_env_for_perfs(void)
 {
 #if HAVE_SCHED_H == 1 && SCHED_SETSCHEDULER_PARAMS == 3
 	struct sched_param param;
 #endif
-	const unsigned int nr_tests = 3;
-	const unsigned long test_duration = 10;
-	unsigned long long tics1;
-	unsigned long long tics2;
-	unsigned int i;
 #if HAVE_SCHED_H == 1 || HAVE_SYS_MMAN_H == 1
 	int ret;
 #endif
@@ -460,24 +425,6 @@ static int tune_env_for_perfs(double *coef_nanosec)
 	        "for the platform yet\n");
 #endif
 
-	/* determine CPU tics to nanoseconds coefficient */
-	fprintf(stderr, "estimate CPU frequency (%u tests of %lu seconds)... ",
-	        nr_tests, test_duration);
-	fflush(stderr);
-	*coef_nanosec = 0;
-	for(i = 0; i < nr_tests; i++)
-	{
-		GET_CPU_TICS(tics1);
-		usleep(test_duration * 1e6);
-		GET_CPU_TICS(tics2);
-		*coef_nanosec += (test_duration * 1.e9) / (tics2 - tics1);
-		fprintf(stderr, "%.6fGHz ", 1. / ((*coef_nanosec) / (i + 1)));
-		fflush(stderr);
-	}
-	*coef_nanosec /= nr_tests;
-	fprintf(stderr, "\nCPU frequency estimated to %.6f GHz\n",
-	        1. / (*coef_nanosec));
-
 	return 0;
 
 #if HAVE_SCHED_H == 1 || HAVE_SYS_MMAN_H == 1
@@ -494,7 +441,6 @@ error:
  * @param filename      The name of the PCAP file that contains the IP packets
  * @param use_large_cid Whether the compressor shall use large CIDs
  * @param max_contexts  The maximum number of ROHC contexts to use
- * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
  * @param packet_count  OUT: the number of compressed packets, undefined if
  *                      compression failed
  * @param time_elapsed  OUT: the time elapsed for compression (in nanoseconds),
@@ -504,7 +450,6 @@ error:
 static int test_compression_perfs(char *filename,
                                   const int use_large_cid,
                                   const unsigned int max_contexts,
-                                  double coef_nanosec,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
                                   unsigned long long *time_elapsed)
@@ -629,7 +574,7 @@ static int test_compression_perfs(char *filename,
 		/* compress the IP packet */
 		ret = time_compress_packet(comp, *packet_count,
 		                           header, packet, link_len,
-		                           coef_nanosec, &packet_time_elapsed);
+		                           &packet_time_elapsed);
 		if(ret != 0)
 		{
 			fprintf(stderr, "packet %lu: performance test failed\n",
@@ -671,7 +616,6 @@ exit:
  * @param header        The PCAP header for the packet
  * @param packet        The packet to compress (link layer included)
  * @param link_len      The length of the link layer header before IP data
- * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
  * @param time_elapsed  OUT: the time elapsed for compression (in nanoseconds),
  *                      unchanged if compression failed
  * @return              0 if compression is successful, 1 otherwise
@@ -681,15 +625,14 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 struct pcap_pkthdr header,
                                 unsigned char *packet,
                                 size_t link_len,
-                                double coef_nanosec,
                                 unsigned long long *time_elapsed)
 {
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
 	size_t rohc_size;
-	unsigned long long start_tics;
-	unsigned long long end_tics;
+	struct timespec start_tics;
+	struct timespec end_tics;
 	int is_failure = 1;
 	int ret;
 
@@ -746,14 +689,14 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* get CPU tics before compression */
-	GET_CPU_TICS(start_tics);
+	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
 
 	/* compress the packet */
 	ret = rohc_compress2(comp, ip_packet, ip_size,
 	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 
 	/* get CPU tics after compression */
-	GET_CPU_TICS(end_tics);
+	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);
 
 	/* stop performance test if compression failed */
 	if(ret != ROHC_OK)
@@ -763,7 +706,8 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* compute the time elapsed during the compression process */
-	*time_elapsed = TICS_2_NSEC(coef_nanosec, end_tics, start_tics);
+	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 10e9 +
+	                end_tics.tv_nsec - start_tics.tv_nsec;
 
 	/* everything went fine */
 	is_failure = 0;
@@ -780,7 +724,6 @@ error:
  * @param filename      The name of the PCAP file that contains the ROHC packets
  * @param use_large_cid Whether the decompressor shall use large CIDs
  * @param max_contexts  The maximum number of ROHC contexts to use
- * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
  * @param packet_count  OUT: the number of decompressed packets, undefined if
  *                      decompression failed
  * @param time_elapsed  OUT: the time elapsed for decompression (in nanoseconds),
@@ -790,7 +733,6 @@ error:
 static int test_decompression_perfs(char *filename,
                                     const int use_large_cid,
                                     const unsigned int max_contexts,
-                                    double coef_nanosec,
                                     unsigned long *packet_count,
                                     unsigned long *overflows,
                                     unsigned long long *time_elapsed)
@@ -917,7 +859,7 @@ static int test_decompression_perfs(char *filename,
 		/* decompress the ROHC packet */
 		ret = time_decompress_packet(decomp, *packet_count,
 		                             header, packet, link_len,
-		                             coef_nanosec, &packet_time_elapsed);
+		                             &packet_time_elapsed);
 		if(ret != 0)
 		{
 			fprintf(stderr, "packet %lu: performance test failed\n",
@@ -959,7 +901,6 @@ exit:
  * @param header        The PCAP header for the packet
  * @param packet        The packet to decompress (link layer included)
  * @param link_len      The length of the link layer header before ROHC data
- * @param coef_nanosec  The coefficient to convert from CPU tics to nanoseconds
  * @param time_elapsed  OUT: the time elapsed for decompression (in nanoseconds),
  *                      unchanged if decompression failed
  * @return              0 if decompression is successful, 1 otherwise
@@ -969,15 +910,14 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   struct pcap_pkthdr header,
                                   unsigned char *packet,
                                   size_t link_len,
-                                  double coef_nanosec,
                                   unsigned long long *time_elapsed)
 {
 	unsigned char *rohc_packet;
 	unsigned int rohc_size;
 	static unsigned char ip_packet[MAX_ROHC_SIZE];
 	int ip_size;
-	unsigned long long start_tics;
-	unsigned long long end_tics;
+	struct timespec start_tics;
+	struct timespec end_tics;
 	int is_failure = 1;
 
 	/* check Ethernet frame length */
@@ -994,14 +934,14 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	rohc_size = header.len - link_len;
 
 	/* get CPU tics before compression */
-	GET_CPU_TICS(start_tics);
+	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
 
 	/* decompress the packet */
 	ip_size = rohc_decompress(decomp, rohc_packet, rohc_size,
 	                          ip_packet, MAX_ROHC_SIZE);
 
 	/* get CPU tics after compression */
-	GET_CPU_TICS(end_tics);
+	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);
 
 	/* stop performance test if decompression failed */
 	if(ip_size <= 0)
@@ -1011,7 +951,8 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	}
 
 	/* compute the time elapsed during the decompression process */
-	*time_elapsed = TICS_2_NSEC(coef_nanosec, end_tics, start_tics);
+	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 10e9 +
+	                end_tics.tv_nsec - start_tics.tv_nsec;
 
 	/* everything went fine */
 	is_failure = 0;
@@ -1066,4 +1007,3 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
 	return 0;
 }
 
-#endif /* __i386__ */

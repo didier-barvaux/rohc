@@ -3812,7 +3812,7 @@ Dynamic part:
       +---+---+---+---+---+---+---+---+
       |         Time to Live          |
       +---+---+---+---+---+---+---+---+
-      /        Identification         /   2 octets
+      /        Identification         /   2 octets, sent verbatim
       +---+---+---+---+---+---+---+---+
       | DF|RND|NBO|SID|       0       |
       +---+---+---+---+---+---+---+---+
@@ -3858,7 +3858,7 @@ static int parse_dynamic_part_ipv4(const struct d_context *const context,
 	read++;
 
 	/* read the IP-ID field */
-	bits->id = rohc_ntoh16(GET_NEXT_16_BITS(packet));
+	bits->id = GET_NEXT_16_BITS(packet);
 	bits->id_nr = 16;
 	rohc_decomp_debug(context, "IP-ID = 0x%04x\n", bits->id);
 	packet += 2;
@@ -8533,9 +8533,18 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp *const decomp,
 		if(packet_type == PACKET_IR ||
 		   packet_type == PACKET_IR_DYN)
 		{
-			/* take packet value unchanged for IR/IR-DYN packets */
+			/* IR/IR-DYN packets transmit the IP-ID verbatim, so convert to
+			 * host byte order only if nbo=1 */
 			assert(bits.id_nr == 16);
 			decoded->id = bits.id;
+			if(bits.nbo)
+			{
+				decoded->id = rohc_ntoh16(bits.id);
+			}
+			else
+			{
+				decoded->id = bits.id;
+			}
 		}
 		else if(decoded->rnd)
 		{

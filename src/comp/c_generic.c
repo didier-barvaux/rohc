@@ -648,9 +648,10 @@ void c_generic_destroy(struct c_context *const context)
  *
  * @param comp      The ROHC compressor
  * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
- *                      packet contains at least 2 IP headers,
- *                  \li NULL if the IP packet to check contains only one IP header
+ * @param inner_ip  Two possible cases:
+ *                    \li The inner IP header of the IP packet to check if the IP
+ *                        packet contains at least 2 IP headers,
+ *                    \li NULL if the IP packet to check contains only one IP header
  * @param protocol  The transport protocol carried by the IP packet:
  *                    \li the protocol carried by the outer IP header if there
  *                        is only one IP header,
@@ -2182,7 +2183,7 @@ int code_generic_dynamic_part(const struct c_context *context,
    +---+---+---+---+---+---+---+---+
  2  |         Time to Live          |
     +---+---+---+---+---+---+---+---+
- 3  /        Identification         /   2 octets
+ 3  /        Identification         /   2 octets, sent verbatim
     +---+---+---+---+---+---+---+---+
  4  | DF|RND|NBO|SID|       0       |
     +---+---+---+---+---+---+---+---+
@@ -2213,19 +2214,24 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	/* part 1 */
 	tos = ip_get_tos(ip);
 	dest[counter] = tos;
+	rohc_comp_debug(context, "TOS = 0x%02x\n", dest[counter]);
 	counter++;
 	header_info->tos_count++;
 
 	/* part 2 */
 	ttl = ip_get_ttl(ip);
 	dest[counter] = ttl;
+	rohc_comp_debug(context, "TTL = 0x%02x\n", dest[counter]);
 	counter++;
 	header_info->ttl_count++;
 
 	/* part 3 */
-	/* always transmit IP-ID in Network Byte Order */
-	id = ipv4_get_id_nbo(ip, header_info->info.v4.nbo);
+	/* always transmit IP-ID verbatim in IR and IR-DYN as stated by
+	 * http://www.ietf.org/mail-archive/web/rohc/current/msg01675.html */
+	id = ipv4_get_id(ip);
 	memcpy(&dest[counter], &id, 2);
+	rohc_comp_debug(context, "IP-ID = 0x%02x 0x%02x\n",
+	                dest[counter], dest[counter + 1]);
 	counter += 2;
 
 	/* part 4 */
@@ -2243,8 +2249,10 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	{
 		df_rnd_nbo_sid |= 0x10;
 	}
-
 	dest[counter] = df_rnd_nbo_sid;
+	rohc_comp_debug(context, "(DF = %u, RND = %u, NBO = %u, SID = %u) = 0x%02x\n",
+	                df & 0x01, header_info->info.v4.rnd, header_info->info.v4.nbo,
+	                header_info->info.v4.sid, dest[counter]);
 	counter++;
 
 	header_info->info.v4.df_count++;
@@ -2255,13 +2263,9 @@ int code_ipv4_dynamic_part(const struct c_context *const context,
 	/* part 5 is not supported for the moment, but the field is mandatory,
 	   so add a zero byte */
 	dest[counter] = 0x00;
+	rohc_comp_debug(context, "Generic extension header list = 0x%02x\n",
+	                dest[counter]);
 	counter++;
-
-	rohc_comp_debug(context, "TOS = 0x%02x, TTL = 0x%02x, IP-ID = 0x%04x, "
-	                "df_rnd_nbo_sid = 0x%02x (DF = %d, RND = %d, NBO = %d, "
-	                "SID = %d)\n", tos, ttl, id, df_rnd_nbo_sid, df,
-	                header_info->info.v4.rnd, header_info->info.v4.nbo,
-	                header_info->info.v4.sid);
 
 	return counter;
 }
@@ -3640,7 +3644,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 
 			/* part 2: 5 bits of 16-bit TS */
 			*f_byte |= (ts_send >> 11) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 11-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 16-bit TS in 1st byte = 0x%x\n",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
@@ -4487,7 +4491,7 @@ error:
  4  |                      SN                       |  if S = 1
     +-----+-----+-----+-----+-----+-----+-----+-----+
     |                                               |
-4.1 /                      TS                       / 1-4octets, if R-TS = 1
+4.1 /                      TS                       / 1-4 octets, if R-TS = 1
     |                                               |
     +-----+-----+-----+-----+-----+-----+-----+-----+
     |                                               |

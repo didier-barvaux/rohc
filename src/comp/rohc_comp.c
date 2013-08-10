@@ -350,8 +350,9 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * @warning The callback can not be modified after library initialization
  *
  * @param comp     The ROHC compressor
- * @param callback \li The callback function used to manage traces
- *                 \li NULL to remove the previous callback
+ * @param callback Two possible cases:
+ *                   \li The callback function used to manage traces
+ *                   \li NULL to remove the previous callback
  * @return         true on success, false otherwise
  */
 bool rohc_comp_set_traces_cb(struct rohc_comp *const comp,

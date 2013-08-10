@@ -136,12 +136,11 @@ AC_CHECK_FUNCS([ntohl htonl ntohs htons])
 # If sched.h is present, check sched_setscheduler() availability & usage
 if test "x$ac_cv_header_sched_h" = "xyes" ; then
 	# Check if sched_setscheduler() is available without external library then with libpthread
-	sched_lib=""
-	AC_CHECK_FUNC([sched_setscheduler], ,
+	AC_CHECK_FUNC([sched_setscheduler], sched_lib="",
 	              [AC_CHECK_LIB([pthread], sched_setscheduler,
-	                            sched_lib="-lpthread", sched_lib="")])
+	                            sched_lib="-lpthread", sched_lib="not found")])
 	AC_SUBST([sched_lib], [$sched_lib])
-	if test "x$sched_lib" != "x" ; then
+	if test "x$sched_lib" != "xnot found" ; then
 		# Check whether sched_setscheduler() takes 2 or 3 arguments
 		AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
 		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
@@ -502,6 +501,7 @@ fi
 
 # if ROHC tests, statistics, or apps are enabled:
 #  - libpcap is mandatory
+#  - libcmocka is mandatory
 if test "x$enable_rohc_tests" = "xyes" || \
    test "x$enable_rohc_stats" = "xyes" || \
    test "x$enable_app_perf" = "xyes" || \
@@ -571,6 +571,19 @@ if test "x$enable_rohc_tests" = "xyes" || \
 	if test "x$dlt_linux_sll_defined" != "xyes" ; then
 		AC_DEFINE([DLT_LINUX_SLL], [113],
 		          [Define DLT_LINUX_SLL if not defined by the system])
+	fi
+
+	PKG_CHECK_MODULES([CMOCKA], [cmocka >= 0.3.1],
+	                  [cmocka_found="yes"], [cmocka_found="no"])
+	if test "x$cmocka_found" != "xyes" ; then
+		echo
+		echo "ERROR: cmocka library/headers not found"
+		echo
+		echo "Go get it from http://www.cmocka.org/ or use the CMOCKA_* "
+		echo "variables, if you have it installed in unusual place. Also check if "
+		echo "it depends on another shared library that may be installed in an "
+		echo "unusual place."
+		exit 1
 	fi
 fi
 

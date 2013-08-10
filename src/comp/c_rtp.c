@@ -202,7 +202,6 @@ static int c_rtp_create(struct c_context *const context,
 
 	/* init the RTP-specific temporary variables */
 	rtp_context->tmp.send_rtp_dynamic = -1;
-	rtp_context->tmp.timestamp = 0;
 	rtp_context->tmp.ts_send = 0;
 	/* do not transmit any RTP TimeStamp (TS) bit by default */
 	rtp_context->tmp.nr_ts_bits = 0;
@@ -709,6 +708,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	size_t nr_ts_bits;
 	size_t nr_ip_id_bits;
 	bool is_ts_deducible;
+	bool is_ts_scaled;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
@@ -721,12 +721,13 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
 
 	is_ts_deducible = rohc_ts_sc_is_deducible(rtp_context->ts_sc);
+	is_ts_scaled = (rtp_context->ts_sc.state == SEND_SCALED);
 
 	rohc_comp_debug(context, "nr_ip_bits = %zd, nr_sn_bits = %zd, "
-	                "nr_ts_bits = %zd, is_ts_deducible = %d, Marker bit = %d, "
-	                "nr_of_ip_hdr = %zd, rnd = %d\n",
+	                "nr_ts_bits = %zd, is_ts_deducible = %d, is_ts_scaled = %d, "
+	                "Marker bit = %d, nr_of_ip_hdr = %zd, rnd = %d\n",
 	                nr_ip_id_bits, nr_sn_bits, nr_ts_bits, !!is_ts_deducible,
-	                !!rtp_context->tmp.is_marker_bit_set,
+	                !!is_ts_scaled, !!rtp_context->tmp.is_marker_bit_set,
 	                nr_of_ip_hdr, is_rnd);
 
 	/* sanity check */
@@ -784,7 +785,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	/* what packet type do we choose? */
 	if(nr_sn_bits <= 4 &&
 	   nr_ipv4_non_rnd_with_bits == 0 &&
-	   (nr_ts_bits == 0 || is_ts_deducible) &&
+	   is_ts_scaled && (nr_ts_bits == 0 || is_ts_deducible) &&
 	   !rtp_context->tmp.is_marker_bit_set)
 	{
 		packet = PACKET_UO_0;
@@ -797,7 +798,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd == 0 &&
-	        nr_ts_bits <= 6)
+	        is_ts_scaled && nr_ts_bits <= 6)
 	{
 		packet = PACKET_UO_1_RTP;
 		rohc_comp_debug(context, "choose packet UO-1-RTP because neither of "
@@ -808,7 +809,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 1 && nr_innermost_ip_id_bits <= 5 &&
-	        (nr_ts_bits == 0 || is_ts_deducible) &&
+	        is_ts_scaled && (nr_ts_bits == 0 || is_ts_deducible) &&
 	        !rtp_context->tmp.is_marker_bit_set)
 	{
 		/* TODO: when extensions are supported within the UO-1-ID packet,
@@ -826,7 +827,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 	else if(nr_sn_bits <= 4 &&
 	        nr_ipv4_non_rnd_with_bits == 0 &&
-	        nr_ts_bits <= 5)
+	        is_ts_scaled && nr_ts_bits <= 5)
 	{
 		packet = PACKET_UO_1_TS;
 		rohc_comp_debug(context, "choose packet UO-1-TS because neither of the "
@@ -901,11 +902,18 @@ static rohc_ext_t c_rtp_decide_extension(const struct c_context *context)
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
-	/* force extension type 3 if at least one RTP dynamic field changed */
+	/* force extension type 3 if at least one RTP dynamic field changed
+	 *                     OR if TS cannot be transmitted scaled */
 	if(rtp_context->tmp.send_rtp_dynamic > 0)
 	{
 		rohc_comp_debug(context, "force EXT-3 because at least one RTP dynamic "
 		                "field changed\n");
+		ext = PACKET_EXT_3;
+	}
+	else if(rtp_context->ts_sc.state != SEND_SCALED)
+	{
+		rohc_comp_debug(context, "force EXT-3 because TS cannot be transmitted "
+		                "scaled\n");
 		ext = PACKET_EXT_3;
 	}
 	else
@@ -1159,23 +1167,44 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 
 	/* add new TS value to context */
 	assert(g_context->sn <= 0xffff);
-	c_add_ts(&rtp_context->ts_sc, rtp_context->tmp.timestamp, g_context->sn);
+	c_add_ts(&rtp_context->ts_sc, rohc_ntoh32(rtp->timestamp), g_context->sn);
 
 	/* determine the number of TS bits to send wrt compression state */
-	if(rtp_context->ts_sc.state == INIT_TS)
+	if(rtp_context->ts_sc.state == INIT_TS ||
+	   rtp_context->ts_sc.state == INIT_STRIDE)
 	{
-		/* TS_STRIDE cannot be computed yet (first packet or TS is constant),
-		 * so send TS only */
-		rtp_context->tmp.ts_send = rohc_ntoh32(rtp->timestamp);
-		rtp_context->tmp.nr_ts_bits = 32;
-		rohc_comp_debug(context, "cannot send TS scaled, send TS only\n");
-	}
-	else if(rtp_context->ts_sc.state == INIT_STRIDE)
-	{
-		/* TS and TS_STRIDE will be send */
-		rtp_context->tmp.ts_send = rohc_ntoh32(rtp->timestamp);
-		rtp_context->tmp.nr_ts_bits = 32;
-		rohc_comp_debug(context, "cannot send TS scaled, send TS and TS_STRIDE\n");
+		/* state INIT_TS: TS_STRIDE cannot be computed yet (first packet or TS
+		 *                is constant), so send TS only
+		 * state INIT_STRIDE: TS and TS_STRIDE will be send
+		 */
+		rtp_context->tmp.ts_send = get_ts_unscaled(rtp_context->ts_sc);
+		if(!nb_bits_unscaled(rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
+		{
+			const uint32_t ts_send = rtp_context->tmp.ts_send;
+			size_t nr_bits;
+			uint32_t mask;
+
+			/* this is the first LSB bits of unscaled TS to be sent, we cannot
+			 * compute them with W-LSB and we must find its size (in bits) */
+			for(nr_bits = 1, mask = 1;
+			    nr_bits <= 32 && (ts_send & mask) != ts_send;
+			    nr_bits++, mask |= (1 << (nr_bits - 1)))
+			{
+			}
+			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			            (ts_send & mask) == ts_send, error, "size of unscaled TS "
+			            "(0x%x) not found, this should never happen!", ts_send);
+
+			rohc_comp_debug(context, "first unscaled TS to be sent: ts_send = %u, "
+			                "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
+			rtp_context->tmp.nr_ts_bits = nr_bits;
+		}
+
+		/* save the new unscaled value */
+		assert(g_context->sn <= 0xffff);
+		add_unscaled(&rtp_context->ts_sc, g_context->sn);
+		rohc_comp_debug(context, "unscaled TS = %u on %zd bits\n",
+		                rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
 	}
 	else /* SEND_SCALED */
 	{
@@ -1203,8 +1232,9 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 			rtp_context->tmp.nr_ts_bits = nr_bits;
 		}
 
-		/* save the new TS_SCALED value */
+		/* save the new unscaled and TS_SCALED values */
 		assert(g_context->sn <= 0xffff);
+		add_unscaled(&rtp_context->ts_sc, g_context->sn);
 		add_scaled(&rtp_context->ts_sc, g_context->sn);
 		rohc_comp_debug(context, "TS_SCALED = %u on %zd bits\n",
 		                rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
@@ -1353,7 +1383,9 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->padding & 0x01) << 5;
 	byte |= rtp->cc & 0x0f;
 	dest[counter] = byte;
-	rohc_comp_debug(context, "part 2 = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "(V = %u, P = %u, RX = %u, CC = 0x%x) = 0x%02x\n",
+	                rtp->version & 0x03, rtp->padding & 0x01, rx_byte,
+	                rtp->cc & 0x0f, dest[counter]);
 	counter++;
 	rtp_context->rtp_padding_change_count++;
 
@@ -1362,19 +1394,20 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->m & 0x01) << 7;
 	byte |= rtp->pt & 0x7f;
 	dest[counter] = byte;
-	rohc_comp_debug(context, "part 3 = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "(M = %u, PT = 0x%02x) = 0x%02x\n",
+	                rtp->m & 0x01, rtp->pt & 0x7f, dest[counter]);
 	counter++;
 	rtp_context->rtp_pt_change_count++;
 
 	/* part 4 */
 	memcpy(&dest[counter], &rtp->sn, 2);
-	rohc_comp_debug(context, "part 4 = 0x%02x 0x%02x\n", dest[counter],
+	rohc_comp_debug(context, "SN = 0x%02x 0x%02x\n", dest[counter],
 	                dest[counter + 1]);
 	counter += 2;
 
 	/* part 5 */
 	memcpy(&dest[counter], &rtp->timestamp, 4);
-	rohc_comp_debug(context, "part 5 = 0x%02x 0x%02x 0x%02x 0x%02x\n",
+	rohc_comp_debug(context, "TS = 0x%02x 0x%02x 0x%02x 0x%02x\n",
 	                dest[counter], dest[counter + 1], dest[counter + 2],
 	                dest[counter + 3]);
 	counter += 4;
@@ -1401,7 +1434,9 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		byte |= (tis & 0x01) << 1;
 		byte |= tss & 0x01;
 		dest[counter] = byte;
-		rohc_comp_debug(context, "part 7 = 0x%02x\n", dest[counter]);
+		rohc_comp_debug(context, "(X = %u, Mode = %u, TIS = %u, TSS = %u) = 0x%02x\n",
+		                rtp->extension & 0x01, context->mode & 0x03, tis & 0x01,
+		                tss & 0x01, dest[counter]);
 		counter++;
 		rtp_context->rtp_extension_change_count++;
 
@@ -1618,7 +1653,6 @@ static int rtp_changed_rtp_dynamic(const struct c_context *context,
 	}
 
 	/* we verify if ts_stride changed */
-	rtp_context->tmp.timestamp = rohc_ntoh32(rtp->timestamp);
 	if(rtp_context->ts_sc.state != SEND_SCALED)
 	{
 		rohc_comp_debug(context, "TS_STRIDE changed now or in the last few "

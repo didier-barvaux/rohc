@@ -67,6 +67,7 @@ TESTS_WLSB4_SMALLCID_IP_UDP_RTP = \
 	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb4_largecid.sh \
 	test_non_regression_ipv6_udp_rtp_audio-vlc_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_video2_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_video1_wlsb4_smallcid.sh \
@@ -184,6 +185,7 @@ TESTS_WLSB64_SMALLCID_IP_UDP_RTP = \
 	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_audio-vlc_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_video2_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_udp_rtp_video1_wlsb64_smallcid.sh \
@@ -307,6 +309,7 @@ TESTS_WLSB4_LARGECID_IP_UDP_RTP = \
 	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb4_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_wlsb4_largecid.sh \
@@ -424,6 +427,7 @@ TESTS_WLSB64_LARGECID_IP_UDP_RTP = \
 	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb64_largecid.sh \
 	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_wlsb64_largecid.sh \

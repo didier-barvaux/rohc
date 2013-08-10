@@ -7,7 +7,7 @@ flags require external resources:
  --enable-doc                  requires doxygen and latex.
  --enable-rohc-stats           requires libpcap, gnuplot, grep, sed, awk, sort,
                                and tr.
- --enable-rohc-tests           requires libpcap, and sed.
+ --enable-rohc-tests           requires libpcap, cmocka, and sed.
  --enable-rohc-tests-valgrind  requires --enable-rohc-tests to be selected,
                                valgrind, xsltproc, and grep.
 

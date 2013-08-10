@@ -6,15 +6,29 @@
 
 
 TESTS = \
+	test_lsb_decode.sh \
 	test_lsb_decode_wraparound.sh \
 	test_lsb_decode_packet_loss.sh \
 	test_rtp_ts_wraparound.sh
 
-
 check_PROGRAMS = \
+	test_lsb_decode \
 	test_lsb_decode_wraparound \
 	test_lsb_decode_packet_loss \
 	test_rtp_ts_wraparound
+
+test_lsb_decode_SOURCES = ../lsb_decode.c test_lsb_decode.c
+test_lsb_decode_LDADD = \
+	$(CMOCKA_LIBS)
+test_lsb_decode_LDFLAGS = \
+	$(configure_ldflags) \
+	-Wl,--wrap=rohc_f_32bits
+test_lsb_decode_CFLAGS = \
+	$(configure_cflags) \
+	$(CMOCKA_CFLAGS)
+test_lsb_decode_CPPFLAGS = \
+	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/src/common
 
 
 test_lsb_decode_wraparound_SOURCES = test_lsb_decode_wraparound.c
@@ -55,6 +69,7 @@ test_rtp_ts_wraparound_CPPFLAGS = \
 
 
 EXTRA_DIST = \
+	test_lsb_decode.sh \
 	test_lsb_decode_wraparound.sh \
 	test_lsb_decode_packet_loss.sh \
 	test_rtp_ts_wraparound.sh
