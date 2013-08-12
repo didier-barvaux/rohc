@@ -36,11 +36,13 @@
  * Prototypes of private functions
  */
 
-static int rohc_ip_ctxt_create(struct c_context *const context,
-                               const struct ip_packet *ip);
+static bool rohc_ip_ctxt_create(struct c_context *const context,
+                                const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool c_ip_check_context(const struct c_context *context,
-                               const struct ip_packet *ip);
+static bool c_ip_check_context(const struct c_context *const context,
+                               const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
 /*
@@ -55,10 +57,10 @@ static bool c_ip_check_context(const struct c_context *context,
  *
  * @param context The compression context
  * @param ip      The IP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @return        true if successful, false otherwise
  */
-static int rohc_ip_ctxt_create(struct c_context *const context,
-                               const struct ip_packet *ip)
+static bool rohc_ip_ctxt_create(struct c_context *const context,
+                                const struct ip_packet *const ip)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
@@ -109,12 +111,12 @@ static int rohc_ip_ctxt_create(struct c_context *const context,
 	g_context->get_next_sn = c_ip_get_next_sn;
 	g_context->code_ir_remainder = c_ip_code_ir_remainder;
 
-	return 1;
+	return true;
 
 destroy_generic_context:
 	c_generic_destroy(context);
 error:
-	return 0;
+	return false;
 }
 
 
@@ -139,8 +141,8 @@ error:
  * @return        true if the IP packet belongs to the context
  *                false if it does not belong to the context
  */
-static bool c_ip_check_context(const struct c_context *context,
-                               const struct ip_packet *ip)
+static bool c_ip_check_context(const struct c_context *const context,
+                               const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct ip_header_info *ip_flags;
@@ -467,9 +469,9 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
  * @param inner_ip  The inner IP header if it exists, NULL otherwise
  * @return          The SN
  */
-uint32_t c_ip_get_next_sn(const struct c_context *context,
-                          const struct ip_packet *outer_ip,
-                          const struct ip_packet *inner_ip)
+uint32_t c_ip_get_next_sn(const struct c_context *const context,
+                          const struct ip_packet *const outer_ip,
+                          const struct ip_packet *const inner_ip)
 {
 	struct c_generic_context *g_context;
 	uint32_t next_sn;
@@ -509,9 +511,9 @@ uint32_t c_ip_get_next_sn(const struct c_context *context,
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer
  */
-int c_ip_code_ir_remainder(const struct c_context *context,
-	                        unsigned char *const dest,
-	                        int counter)
+size_t c_ip_code_ir_remainder(const struct c_context *const context,
+	                           unsigned char *const dest,
+	                           const size_t counter)
 {
 	struct c_generic_context *g_context;
 	uint16_t sn;
@@ -526,11 +528,10 @@ int c_ip_code_ir_remainder(const struct c_context *context,
 	sn = g_context->sn & 0xffff;
 	sn = rohc_hton16(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
-	counter += 2;
 	rohc_comp_debug(context, "SN = %u -> 0x%02x%02x\n", g_context->sn,
-	                dest[counter - 2], dest[counter - 1]);
+	                dest[counter], dest[counter + 1]);
 
-	return counter;
+	return counter + 2;
 }
 
 

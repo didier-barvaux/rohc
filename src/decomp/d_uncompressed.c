@@ -39,13 +39,13 @@
  * Prototypes of private functions
  */
 
-static int uncompressed_decode(struct rohc_decomp *decomp,
-                               struct d_context *context,
+static int uncompressed_decode(struct rohc_decomp *const decomp,
+                               struct d_context *const context,
                                const unsigned char *const rohc_packet,
-                               const unsigned int rohc_length,
+                               const size_t rohc_length,
                                const size_t add_cid_len,
                                const size_t large_cid_len,
-                               unsigned char *dest);
+                               unsigned char *const dest);
 
 static int uncompressed_decode_ir(struct rohc_decomp *decomp,
                                   struct d_context *context,
@@ -62,6 +62,9 @@ static int uncompressed_decode_normal(struct rohc_decomp *decomp,
                                       const size_t add_cid_len,
                                       const size_t large_cid_len,
                                       unsigned char *dest);
+
+static uint32_t uncompressed_get_sn(const struct d_context *const context)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
 
 /*
@@ -307,7 +310,7 @@ error:
  * @param context The decompression context
  * @return        The reference SN value
  */
-int uncompressed_get_sn(struct d_context *context)
+static uint32_t uncompressed_get_sn(const struct d_context *const context)
 {
 	return 0;
 }

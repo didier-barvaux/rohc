@@ -250,14 +250,16 @@ struct c_profile
 	 * @brief The handler used to create the profile-specific part of the
 	 *        compression context
 	 */
-	int (*create)(struct c_context *const context,
-	              const struct ip_packet *packet);
+	bool (*create)(struct c_context *const context,
+	               const struct ip_packet *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
 	 * @brief The handler used to destroy the profile-specific part of the
 	 *        compression context
 	 */
-	void (*destroy)(struct c_context *const context);
+	void (*destroy)(struct c_context *const context)
+		__attribute__((nonnull(1)));
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
@@ -267,14 +269,16 @@ struct c_profile
 	                      const struct ip_packet *const outer_ip,
 	                      const struct ip_packet *const inner_ip,
 	                      const uint8_t protocol,
-	                      rohc_ctxt_key_t *const ctxt_key);
+	                      rohc_ctxt_key_t *const ctxt_key)
+		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
-	bool (*check_context)(const struct c_context *context,
-	                      const struct ip_packet *packet);
+	bool (*check_context)(const struct c_context *const context,
+	                      const struct ip_packet *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
 	 * @brief The handler used to encode uncompressed IP packets
@@ -400,7 +404,7 @@ struct c_feedback
 	/** The feedback data (ie. the packet excluding the first type octet) */
 	unsigned char *data;
 	/** The size of the feedback data */
-	unsigned char size;
+	size_t size;
 
 	/**
 	 * @brief The offset that indicates the beginning of the profile-specific

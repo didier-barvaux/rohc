@@ -74,8 +74,8 @@ struct rohc_list_item
 struct list_elt
 {
 	/// element
-	struct rohc_list_item *item;
-	/// index
+	const struct rohc_list_item *item;
+	/// index (may be -1)
 	int index_table;
 	/// next element of the list
 	struct list_elt *next_elt;
@@ -134,34 +134,41 @@ struct c_list * ROHC_EXPORT list_create(void)
 void ROHC_EXPORT list_destroy(struct c_list *list);
 
 /* add elements */
-int ROHC_EXPORT list_add_at_beginning(struct c_list *list,
-                          struct rohc_list_item *item,
-                          int index);
-int ROHC_EXPORT list_add_at_end(struct c_list *list,
-                    struct rohc_list_item *item,
-                    int index);
-int ROHC_EXPORT list_add_at_index(struct c_list *list,
-                      struct rohc_list_item *item,
-                      int index,
-                      int index_table);
+bool ROHC_EXPORT list_add_at_beginning(struct c_list *const list,
+                                       const struct rohc_list_item *const item,
+                                       const int index)
+	__attribute__((warn_unused_result));
+bool ROHC_EXPORT list_add_at_end(struct c_list *const list,
+                                 const struct rohc_list_item *const item,
+                                 const int index)
+	__attribute__((warn_unused_result));
+bool ROHC_EXPORT list_add_at_index(struct c_list *const list,
+                                   const struct rohc_list_item *const item,
+                                   const int index,
+                                   const int index_table)
+	__attribute__((warn_unused_result));
 
 /* get an element from its position or the position from the element */
-struct list_elt * ROHC_EXPORT list_get_elt_by_index(struct c_list *list,
-																	 int index);
-int ROHC_EXPORT list_get_index_by_elt(struct c_list *list,
-                                      struct rohc_list_item *item);
+struct list_elt * ROHC_EXPORT list_get_elt_by_index(const struct c_list *const list,
+																	 const size_t index)
+	__attribute__((warn_unused_result));
+int ROHC_EXPORT list_get_index_by_elt(const struct c_list *const list,
+                                      const struct rohc_list_item *const item)
+	__attribute__((warn_unused_result));
 
 /* remove an element or empty the list */
-void ROHC_EXPORT list_remove(struct c_list *list,
-                             struct rohc_list_item *item);
-void ROHC_EXPORT rohc_list_empty(struct c_list *list);
+void ROHC_EXPORT list_remove(struct c_list *const list,
+                             const struct rohc_list_item *const item);
+void ROHC_EXPORT rohc_list_empty(struct c_list *const list);
 
 /* retrieve information about an element of the list */
-int ROHC_EXPORT list_type_is_present(struct c_list *list,
-                                     struct rohc_list_item *item);
+bool ROHC_EXPORT list_type_is_present(const struct c_list *const list,
+                                      const struct rohc_list_item *const item)
+	__attribute__((warn_unused_result));
 
 /* get the size of the list */
-size_t ROHC_EXPORT list_get_size(const struct c_list *const list);
+size_t ROHC_EXPORT list_get_size(const struct c_list *const list)
+	__attribute__((warn_unused_result));
 
 #endif
 

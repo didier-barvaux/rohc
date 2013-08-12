@@ -399,12 +399,11 @@ unsigned short ip_get_total_extension_size(const struct ip_packet *const ip)
  * is \ref IP_UNKNOWN.
  *
  * @param ip The IP packet to analyze
- * @return   Whether the IP packet is an IP fragment or not if successful,
- *           0 otherwise
+ * @return   Whether the IP packet is an IP fragment or not
  */
-int ip_is_fragment(const struct ip_packet *const ip)
+bool ip_is_fragment(const struct ip_packet *const ip)
 {
-	int is_fragment;
+	bool is_fragment;
 
 	if(ip->version == IPV4)
 	{
@@ -412,12 +411,12 @@ int ip_is_fragment(const struct ip_packet *const ip)
 	}
 	else if(ip->version == IPV6)
 	{
-		is_fragment = 0;
+		is_fragment = false;
 	}
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
-		is_fragment = 0;
+		is_fragment = false;
 		assert(0);
 	}
 
@@ -1088,9 +1087,9 @@ const struct ipv6_addr * ipv6_get_daddr(const struct ip_packet *const ip)
  * @param version OUT: the version of the IP packet: IPV4, IPV6 or IP_UNKNOWN
  * @return        Whether the given packet was successfully parsed or not
  */
-int get_ip_version(const unsigned char *const packet,
-                   const unsigned int size,
-                   ip_version *const version)
+bool get_ip_version(const unsigned char *const packet,
+                    const size_t size,
+                    ip_version *const version)
 {
 	/* check the length of the packet */
 	if(size <= 0)
@@ -1112,9 +1111,9 @@ int get_ip_version(const unsigned char *const packet,
 			break;
 	}
 
-	return 1;
+	return true;
 
 error:
-	return 0;
+	return false;
 }
 

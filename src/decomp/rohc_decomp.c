@@ -141,10 +141,11 @@ static int d_decode_feedback_first(struct rohc_decomp *decomp,
                                    unsigned char *packet,
                                    unsigned int size,
                                    unsigned int *parsed_size);
-static int d_decode_feedback(struct rohc_decomp *decomp,
-                             unsigned char *packet,
-                             unsigned int len,
-                             unsigned int *feedback_size);
+static int d_decode_feedback(struct rohc_decomp *const decomp,
+                             const unsigned char *const packet,
+                             const size_t len,
+                             size_t *const feedback_size)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                       int rohc_status,
                                       const uint16_t cid,
@@ -1117,8 +1118,8 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
                            struct d_context *context)
 {
 	struct d_feedback sfeedback;
-	unsigned char *feedback;
-	int feedbacksize;
+	uint8_t *feedback;
+	size_t feedbacksize;
 	int ret;
 
 	/* check associated compressor availability */
@@ -1738,12 +1739,14 @@ error:
  * @param decomp  The ROHC decompressor
  * @param context The decompression context
  */
-void d_change_mode_feedback(struct rohc_decomp *decomp,
-                            struct d_context *context)
+void d_change_mode_feedback(const struct rohc_decomp *const decomp,
+                            const struct d_context *const context)
 {
 	struct d_feedback sfeedback;
-	int cid, feedbacksize;
+	int cid;
+	size_t feedbacksize;
 	unsigned char *feedback;
+	bool is_ok;
 
 	/* check associated compressor availability */
 	if(decomp->compressor == NULL)
@@ -1771,15 +1774,21 @@ void d_change_mode_feedback(struct rohc_decomp *decomp,
 	}
 
 	/* create an ACK feedback */
-	f_feedback2(ACKTYPE_ACK, context->mode, context->profile->get_sn(context),
-	            &sfeedback);
+	is_ok = f_feedback2(ACKTYPE_ACK, context->mode,
+	                    context->profile->get_sn(context), &sfeedback);
+	if(!is_ok)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "failed to create an ACK feedback\n");
+		return;
+	}
 	feedback = f_wrap_feedback(&sfeedback, cid, decomp->medium.cid_type,
 	                           WITH_CRC, decomp->crc_table_8,
 	                           &feedbacksize);
 	if(feedback == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to create an ACK feedback\n");
+		             "failed to wrap the ACK feedback\n");
 		return;
 	}
 
@@ -2400,7 +2409,7 @@ static int d_decode_feedback_first(struct rohc_decomp *decomp,
 	/* parse as much feedback data as possible */
 	while(size > 0 && d_is_feedback(packet))
 	{
-		unsigned int feedback_size;
+		size_t feedback_size;
 		int ret;
 
 		/* decode one feedback packet */
@@ -2433,13 +2442,14 @@ error:
  *                            in case of success, undefined otherwise
  * @return               ROHC_OK in case of success, ROHC_ERROR in case of failure
  */
-static int d_decode_feedback(struct rohc_decomp *decomp,
-                             unsigned char *packet,
-                             unsigned int len,
-                             unsigned int *feedback_size)
+static int d_decode_feedback(struct rohc_decomp *const decomp,
+                             const unsigned char *const packet,
+                             const size_t len,
+                             size_t *const feedback_size)
 {
-	unsigned int header_size;
-	unsigned int data_size;
+	size_t header_size;
+	size_t data_size;
+	bool is_ok;
 
 	/* feedback info is at least 2 byte with the header */
 	if(len < 2)
@@ -2454,7 +2464,7 @@ static int d_decode_feedback(struct rohc_decomp *decomp,
 	if(data_size > len)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "packet too short to contain one %u-byte feedback "
+		             "packet too short to contain one %zu-byte feedback "
 		             "(feedback header not included)\n", data_size);
 		goto error;
 	}
@@ -2464,17 +2474,24 @@ static int d_decode_feedback(struct rohc_decomp *decomp,
 	if((header_size + data_size) > len)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "packet too short to contain one %u-byte feedback "
+		             "packet too short to contain one %zu-byte feedback "
 		             "(feedback header included)\n", header_size + data_size);
 		goto error;
 	}
 
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "feedback present (header = %u bytes, data = %u bytes)\n",
+	           "feedback present (header = %zu bytes, data = %zu bytes)\n",
 	           header_size, data_size);
 
 	/* deliver the feedback data to the associated compressor */
-	c_deliver_feedback(decomp->compressor, packet + header_size, data_size);
+	is_ok = rohc_comp_deliver_feedback(decomp->compressor,
+	                                   packet + header_size, data_size);
+	if(!is_ok)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "failed to deliver feedback to associated compressor\n");
+		/* not a fatal error */
+	}
 
 	/* return the total size to caller */
 	*feedback_size = header_size + data_size;

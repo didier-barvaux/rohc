@@ -59,11 +59,13 @@ struct d_udp_context
 
 int udp_parse_static_udp(const struct d_context *const context,
                          const unsigned char *packet,
-                         unsigned int length,
-                         struct rohc_extr_bits *const bits);
+                         size_t length,
+                         struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 void udp_update_context(const struct d_context *context,
-                        const struct rohc_decoded_values decoded);
+                        const struct rohc_decoded_values decoded)
+	__attribute__((nonnull(1)));
 
 #endif
 

@@ -241,7 +241,6 @@ static int test_comp_and_decomp(const char *filename,
 
 	int is_failure = 1;
 	unsigned int i;
-	int ret;
 
 	/* open the source dump file */
 	handle = pcap_open_offline(filename, errbuf);
@@ -466,16 +465,21 @@ static int test_comp_and_decomp(const char *filename,
 		/* is there a Add-CID octet? */
 		if(is_large_cid)
 		{
+			size_t sdvl_size;
+			uint32_t cid;
+			size_t cid_bits_nr;
+
 			/* determine the size of the SDVL-encoded large CID */
-			ret = d_sdvalue_size(feedback_data);
-			if(ret <= 0 || ret > 4)
+			sdvl_size = sdvl_decode(feedback_data, feedback_size,
+			                        &cid, &cid_bits_nr);
+			if(sdvl_size <= 0 || sdvl_size > 4)
 			{
 				fprintf(stderr, "\tinvalid SDVL-encoded value for large CID\n");
 				goto destroy_decomp;
 			}
 
 			fprintf(stderr, "\tlarge CID found\n");
-			feedback_data_pos += ret;
+			feedback_data_pos += sdvl_size;
 		}
 		else
 		{

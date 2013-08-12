@@ -38,21 +38,24 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
                          const struct ip_packet *const outer_ip,
                          const struct ip_packet *const inner_ip,
                          const uint8_t protocol,
-                         rohc_ctxt_key_t *const ctxt_key);
+                         rohc_ctxt_key_t *const ctxt_key)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 bool c_udp_check_context(const struct c_context *context,
-                         const struct ip_packet *ip);
+                         const struct ip_packet *ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-
-int udp_code_uo_remainder(const struct c_context *context,
-                          const unsigned char *next_header,
-                          unsigned char *const dest,
-                          int counter);
-
-int udp_code_static_udp_part(const struct c_context *context,
+size_t udp_code_uo_remainder(const struct c_context *context,
                              const unsigned char *next_header,
                              unsigned char *const dest,
-                             int counter);
+                             const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+size_t udp_code_static_udp_part(const struct c_context *const context,
+                                const unsigned char *const next_header,
+                                unsigned char *const dest,
+                                const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 #endif
 

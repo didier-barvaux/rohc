@@ -352,9 +352,9 @@ struct d_generic_context
 	unsigned int next_header_len;
 
 	/** The handler used to detect the packet type */
-	rohc_packet_t (*detect_packet_type)(struct rohc_decomp *decomp,
-	                                    struct d_context *context,
-	                                    const unsigned char *packet,
+	rohc_packet_t (*detect_packet_type)(const struct rohc_decomp *const decomp,
+	                                    const struct d_context *const context,
+	                                    const uint8_t *const packet,
 	                                    const size_t rohc_length,
 	                                    const size_t large_cid_len);
 
@@ -362,7 +362,7 @@ struct d_generic_context
 	///        in the ROHC packet
 	int (*parse_static_next_hdr)(const struct d_context *const context,
 	                             const unsigned char *packet,
-	                             unsigned int length,
+	                             size_t length,
 	                             struct rohc_extr_bits *const bits);
 
 	/// @brief The handler used to parse the dynamic part of the next header
@@ -390,20 +390,20 @@ struct d_generic_context
 	                         const unsigned int payload_len);
 
 	/// @brief The handler used to compute the CRC-STATIC value
-	unsigned int (*compute_crc_static)(const unsigned char *const ip,
-	                                   const unsigned char *const ip2,
-	                                   const unsigned char *const next_header,
-	                                   const rohc_crc_type_t crc_type,
-	                                   const unsigned int init_val,
-	                                   const unsigned char *const crc_table);
+	const uint8_t (*compute_crc_static)(const uint8_t *const ip,
+	                                    const uint8_t *const ip2,
+	                                    const uint8_t *const next_header,
+	                                    const rohc_crc_type_t crc_type,
+	                                    const uint8_t init_val,
+	                                    const uint8_t *const crc_table);
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
-	unsigned int (*compute_crc_dynamic)(const unsigned char *const ip,
-	                                    const unsigned char *const ip2,
-	                                    const unsigned char *const next_header,
-	                                    const rohc_crc_type_t crc_type,
-	                                    const unsigned int init_val,
-	                                    const unsigned char *const crc_table);
+	const uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
+	                                     const uint8_t *const ip2,
+	                                     const uint8_t *const next_header,
+	                                     const rohc_crc_type_t crc_type,
+	                                     const uint8_t init_val,
+	                                     const uint8_t *const crc_table);
 
 	/** The handler used to update context with decoded next header fields */
 	void (*update_context)(const struct d_context *context,
@@ -445,18 +445,19 @@ struct list_decomp
 	/// The handler used to free the based table
 	void (*free_table)(struct list_decomp *decomp);
 	/// The handler used to add the extension to IP packet
-	int (*encode_extension)(struct list_decomp *const decomp,
-	                        const uint8_t ip_nh_type,
-	                        unsigned char *dest);
+	size_t (*encode_extension)(const struct list_decomp *const decomp,
+	                           const uint8_t ip_nh_type,
+	                           unsigned char *const dest);
 	/// The handler used to check if the index
 	/// corresponds to an existing item
-	int (*check_index)(struct list_decomp *decomp, int index);
+	bool(*check_index)(const struct list_decomp *const decomp,
+	                   const int index);
 	/// The handler used to create the item at
 	/// the corresponding index of the based table
-	bool (*create_item)(const unsigned char *data,
-	                    int length,
-	                    int index,
-	                    struct list_decomp *decomp);
+	bool (*create_item)(const unsigned char *const data,
+	                    const size_t length,
+	                    const int index,
+	                    struct list_decomp *const decomp);
 	/// The handler used to get the size of an extension
 	int (*get_ext_size)(const unsigned char *data, const size_t data_len);
 
@@ -482,15 +483,15 @@ void * d_generic_create(const struct d_context *const context,
 void d_generic_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-int d_generic_decode(struct rohc_decomp *decomp,
-                     struct d_context *context,
+int d_generic_decode(struct rohc_decomp *const decomp,
+                     struct d_context *const context,
                      const unsigned char *const rohc_packet,
-                     const unsigned int rohc_length,
+                     const size_t rohc_length,
                      const size_t add_cid_len,
                      const size_t large_cid_len,
-                     unsigned char *dest);
+                     unsigned char *const dest);
 
-int d_generic_get_sn(struct d_context *context);
+uint32_t d_generic_get_sn(const struct d_context *const context);
 
 #endif
 

@@ -63,11 +63,20 @@ struct sc_esp_context
  * Private function prototypes
  */
 
-static int c_esp_create(struct c_context *const context,
-                        const struct ip_packet *ip);
+static bool c_esp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool c_esp_check_context(const struct c_context *context,
-                                const struct ip_packet *ip);
+static bool c_esp_check_profile(const struct rohc_comp *const comp,
+                                const struct ip_packet *const outer_ip,
+                                const struct ip_packet *const inner_ip,
+                                const uint8_t protocol,
+                                rohc_ctxt_key_t *const ctxt_key)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+
+static bool c_esp_check_context(const struct c_context *const context,
+                                const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_esp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
@@ -77,19 +86,22 @@ static int c_esp_encode(struct c_context *const context,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset);
 
-static uint32_t c_esp_get_next_sn(const struct c_context *context,
-                                  const struct ip_packet *outer_ip,
-                                  const struct ip_packet *inner_ip);
+static uint32_t c_esp_get_next_sn(const struct c_context *const context,
+                                  const struct ip_packet *const outer_ip,
+                                  const struct ip_packet *const inner_ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int esp_code_static_esp_part(const struct c_context *context,
-                                    const unsigned char *next_header,
-                                    unsigned char *const dest,
-                                    int counter);
+static size_t esp_code_static_esp_part(const struct c_context *const context,
+                                       const unsigned char *const next_header,
+                                       unsigned char *const dest,
+                                       const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int esp_code_dynamic_esp_part(const struct c_context *context,
-                                     const unsigned char *next_header,
-                                     unsigned char *const dest,
-                                     int counter);
+static size_t esp_code_dynamic_esp_part(const struct c_context *const context,
+                                        const unsigned char *const next_header,
+                                        unsigned char *const dest,
+                                        const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 
 /*
@@ -105,10 +117,10 @@ static int esp_code_dynamic_esp_part(const struct c_context *context,
  *
  * @param context The compression context
  * @param ip      The IP/ESP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @return        true if successful, false otherwise
  */
-static int c_esp_create(struct c_context *const context,
-                        const struct ip_packet *ip)
+static bool c_esp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_esp_context *esp_context;
@@ -200,12 +212,12 @@ static int c_esp_create(struct c_context *const context,
 	g_context->compute_crc_static = esp_compute_crc_static;
 	g_context->compute_crc_dynamic = esp_compute_crc_dynamic;
 
-	return 1;
+	return true;
 
 clean:
 	c_generic_destroy(context);
 quit:
-	return 0;
+	return false;
 }
 
 
@@ -243,11 +255,11 @@ quit:
  *                    \li false if the IP packet does not correspond to
  *                        the profile
  */
-bool c_esp_check_profile(const struct rohc_comp *const comp,
-                         const struct ip_packet *const outer_ip,
-                         const struct ip_packet *const inner_ip,
-                         const uint8_t protocol,
-                         rohc_ctxt_key_t *const ctxt_key)
+static bool c_esp_check_profile(const struct rohc_comp *const comp,
+                                const struct ip_packet *const outer_ip,
+                                const struct ip_packet *const inner_ip,
+                                const uint8_t protocol,
+                                rohc_ctxt_key_t *const ctxt_key)
 {
 	const struct ip_packet *last_ip_header;
 	const struct esphdr *esp_header;
@@ -326,8 +338,8 @@ bad_profile:
  * @return        true if the IP/ESP packet belongs to the context,
  *                false if it does not belong to the context
  */
-bool c_esp_check_context(const struct c_context *context,
-                         const struct ip_packet *ip)
+bool c_esp_check_context(const struct c_context *const context,
+                         const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_esp_context *esp_context;
@@ -570,12 +582,12 @@ quit:
  * @param inner_ip  The inner IP header if it exists, NULL otherwise
  * @return          The SN
  */
-static uint32_t c_esp_get_next_sn(const struct c_context *context,
-                                  const struct ip_packet *outer_ip,
-                                  const struct ip_packet *inner_ip)
+static uint32_t c_esp_get_next_sn(const struct c_context *const context,
+                                  const struct ip_packet *const outer_ip,
+                                  const struct ip_packet *const inner_ip)
 {
 	struct c_generic_context *g_context;
-	struct esphdr *esp;
+	const struct esphdr *esp;
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -614,19 +626,20 @@ static uint32_t c_esp_get_next_sn(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int esp_code_static_esp_part(const struct c_context *context,
-                                    const unsigned char *next_header,
-                                    unsigned char *const dest,
-                                    int counter)
+static size_t esp_code_static_esp_part(const struct c_context *const context,
+                                       const unsigned char *const next_header,
+                                       unsigned char *const dest,
+                                       const size_t counter)
 {
-	const struct esphdr *esp = (struct esphdr *) next_header;
+	const struct esphdr *const esp = (struct esphdr *) next_header;
+	size_t nr_written = 0;
 
 	/* part 1 */
 	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", rohc_ntoh32(esp->spi));
-	memcpy(&dest[counter], &esp->spi, sizeof(uint32_t));
-	counter += sizeof(uint32_t);
+	memcpy(&dest[counter + nr_written], &esp->spi, sizeof(uint32_t));
+	nr_written += sizeof(uint32_t);
 
-	return counter;
+	return counter + nr_written;
 }
 
 
@@ -649,25 +662,20 @@ static int esp_code_static_esp_part(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int esp_code_dynamic_esp_part(const struct c_context *context,
-                                     const unsigned char *next_header,
-                                     unsigned char *const dest,
-                                     int counter)
+static size_t esp_code_dynamic_esp_part(const struct c_context *const context,
+                                        const unsigned char *const next_header,
+                                        unsigned char *const dest,
+                                        const size_t counter)
 {
-	const struct esphdr *esp;
-
-	assert(context != NULL);
-	assert(next_header != NULL);
-	assert(dest != NULL);
-
-	esp = (struct esphdr *) next_header;
+	const struct esphdr *const esp = (struct esphdr *) next_header;
+	size_t nr_written = 0;
 
 	/* part 1 */
 	rohc_comp_debug(context, "ESP SN = 0x%08x\n", rohc_ntoh32(esp->sn));
-	memcpy(&dest[counter], &esp->sn, sizeof(uint32_t));
-	counter += sizeof(uint32_t);
+	memcpy(&dest[counter + nr_written], &esp->sn, sizeof(uint32_t));
+	nr_written += sizeof(uint32_t);
 
-	return counter;
+	return counter + nr_written;
 }
 
 

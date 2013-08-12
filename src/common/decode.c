@@ -34,7 +34,7 @@
  * @param data The field to analyze
  * @return     Whether the field is a segment field or not
  */
-int d_is_segment(const unsigned char *data)
+bool d_is_segment(const uint8_t *const data)
 {
 	return (GET_BIT_1_7(data) == D_SEGMENT);
 }
@@ -46,7 +46,7 @@ int d_is_segment(const unsigned char *data)
  * @param data The field to analyze
  * @return     Whether the field is a padding field or not
  */
-int d_is_padding(const unsigned char *data)
+bool d_is_padding(const uint8_t *const data)
 {
 	return (GET_BIT_0_7(data) == D_PADDING);
 }
@@ -58,7 +58,7 @@ int d_is_padding(const unsigned char *data)
  * @param data The ROHC packet to analyze
  * @return     Whether the ROHC packet is a Feedback packet or not
  */
-int d_is_feedback(const unsigned char *data)
+bool d_is_feedback(const uint8_t *const data)
 {
 	return (GET_BIT_3_7(data) == D_FEEDBACK);
 }
@@ -72,9 +72,10 @@ int d_is_feedback(const unsigned char *data)
  * @param data The feedback header
  * @return     The size of the feedback
  */
-int d_feedback_size(const unsigned char *data)
+size_t d_feedback_size(const uint8_t *const data)
 {
-	int size, code;
+	uint8_t code;
+	size_t size;
 
 	/* extract the code field */
 	code = GET_BIT_0_2(data);
@@ -89,8 +90,7 @@ int d_feedback_size(const unsigned char *data)
 	else
 	{
 		/* extract the size octet */
-		data++;
-		size = GET_BIT_0_7(data);
+		size = GET_BIT_0_7(data + 1);
 	}
 
 	return size;
@@ -105,9 +105,10 @@ int d_feedback_size(const unsigned char *data)
  * @param data The feedback header
  * @return     The size of the feedback header (1 or 2 bytes)
  */
-int d_feedback_headersize(const unsigned char *data)
+size_t d_feedback_headersize(const uint8_t *const data)
 {
-	int size, code;
+	uint8_t code;
+	size_t size;
 
 	/* extract the code field */
 	code = GET_BIT_0_2(data);
@@ -132,7 +133,7 @@ int d_feedback_headersize(const unsigned char *data)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an IR packet or not
  */
-bool d_is_ir(const unsigned char *data, const size_t len)
+bool d_is_ir(const uint8_t *const data, const size_t len)
 {
 	return (len > 0 && GET_BIT_1_7(data) == D_IR_PACKET);
 }
@@ -145,7 +146,7 @@ bool d_is_ir(const unsigned char *data, const size_t len)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an IR-DYN packet or not
  */
-bool d_is_irdyn(const unsigned char *data, const size_t len)
+bool d_is_irdyn(const uint8_t *const data, const size_t len)
 {
 	return (len > 0 && GET_BIT_0_7(data) == D_IR_DYN_PACKET);
 }
@@ -158,7 +159,7 @@ bool d_is_irdyn(const unsigned char *data, const size_t len)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an UO-0 packet or not
  */
-bool d_is_uo0(const unsigned char *data, const size_t len)
+bool d_is_uo0(const uint8_t *const data, const size_t len)
 {
 	return (len > 0 && GET_BIT_7(data) == 0);
 }
@@ -171,7 +172,7 @@ bool d_is_uo0(const unsigned char *data, const size_t len)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an UO-1* packet or not
  */
-bool d_is_uo1(const unsigned char *data, const size_t len)
+bool d_is_uo1(const uint8_t *const data, const size_t len)
 {
 	return (len > 0 && GET_BIT_6_7(data) == 0x02);
 }
@@ -184,7 +185,7 @@ bool d_is_uo1(const unsigned char *data, const size_t len)
  * @param len   The length of the ROHC packet
  * @return      Whether the ROHC packet is an UOR-2* packet or not
  */
-bool d_is_uor2(const unsigned char *data, const size_t len)
+bool d_is_uor2(const uint8_t *const data, const size_t len)
 {
 	return (len > 0 && GET_BIT_5_7(data) == 0x06);
 }
@@ -200,7 +201,7 @@ bool d_is_uor2(const unsigned char *data, const size_t len)
  * @param large_cid_len  The length of the optional large CID field
  * @return               Whether the ROHC packet is an UOR-2-TS packet or not
  */
-bool d_is_uor2_ts(const unsigned char *const data,
+bool d_is_uor2_ts(const uint8_t *const data,
                   const size_t data_len,
                   const size_t large_cid_len)
 {
@@ -224,7 +225,7 @@ bool d_is_uor2_ts(const unsigned char *const data,
  * @param large_cid_len  The length of the optional large CID field
  * @return               Whether the ROHC packet is an UOR-2-RTP packet or not
  */
-bool d_is_uor2_rtp(const unsigned char *const data,
+bool d_is_uor2_rtp(const uint8_t *const data,
                    const size_t data_len,
                    const size_t large_cid_len)
 {
@@ -243,7 +244,7 @@ bool d_is_uor2_rtp(const unsigned char *const data,
  * @param data The ROHC packet with a possible add-CID byte
  * @return     Whether the ROHC packet starts with an add-CID byte or not
  */
-int d_is_add_cid(const unsigned char *data)
+bool d_is_add_cid(const uint8_t *const data)
 {
 	return (GET_BIT_4_7(data) == D_ADD_CID);
 }
@@ -256,9 +257,9 @@ int d_is_add_cid(const unsigned char *data)
  * @param data The ROHC packet with a possible add-CID byte
  * @return     0 if no add-CID byte is present, the CID value otherwise
  */
-int d_decode_add_cid(const unsigned char *data)
+uint8_t d_decode_add_cid(const uint8_t *const data)
 {
-	int cid;
+	uint8_t cid;
 
 	if(d_is_add_cid(data))
 	{

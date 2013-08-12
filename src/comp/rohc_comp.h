@@ -30,6 +30,7 @@
 #include "rohc_traces.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #ifdef __KERNEL__
 #	include <linux/types.h>
 #else
@@ -397,9 +398,17 @@ bool ROHC_EXPORT rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
                                               const unsigned char *const feedback,
                                               const size_t size)
 	__attribute__((warn_unused_result));
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT c_deliver_feedback(struct rohc_comp *comp,
                                     unsigned char *feedback,
-                                    int size);
+                                    int size)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_deliver_feedback() instead");
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+bool ROHC_EXPORT rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                            const uint8_t *const feedback,
+                                            const size_t size)
+	__attribute__((warn_unused_result));
 int ROHC_EXPORT rohc_feedback_flush(struct rohc_comp *comp,
                                     unsigned char *obuf,
                                     int osize);

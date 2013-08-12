@@ -28,6 +28,7 @@
 #include "dllexport.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #ifdef __KERNEL__
 #	include <linux/types.h>
 #else
@@ -56,27 +57,41 @@
  * Function prototypes.
  */
 
-int ROHC_EXPORT d_is_segment(const unsigned char *);
-int ROHC_EXPORT d_is_padding(const unsigned char *);
+bool ROHC_EXPORT d_is_segment(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_padding(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
-int ROHC_EXPORT d_is_feedback(const unsigned char *);
-int ROHC_EXPORT d_feedback_size(const unsigned char *);
-int ROHC_EXPORT d_feedback_headersize(const unsigned char *);
+bool ROHC_EXPORT d_is_feedback(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+size_t ROHC_EXPORT d_feedback_size(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+size_t ROHC_EXPORT d_feedback_headersize(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
-bool ROHC_EXPORT d_is_ir(const unsigned char *data, const size_t len);
-bool ROHC_EXPORT d_is_irdyn(const unsigned char *data, const size_t len);
-bool ROHC_EXPORT d_is_uo0(const unsigned char *data, const size_t len);
-bool ROHC_EXPORT d_is_uo1(const unsigned char *data, const size_t len);
-bool ROHC_EXPORT d_is_uor2(const unsigned char *data, const size_t len);
-bool ROHC_EXPORT d_is_uor2_ts(const unsigned char *const data,
+bool ROHC_EXPORT d_is_ir(const uint8_t *const data, const size_t len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_irdyn(const uint8_t *const data, const size_t len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_uo0(const uint8_t *const data, const size_t len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_uo1(const uint8_t *const data, const size_t len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_uor2(const uint8_t *const data, const size_t len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_uor2_ts(const uint8_t *const data,
                               const size_t data_len,
-                              const size_t large_cid_len);
-bool ROHC_EXPORT d_is_uor2_rtp(const unsigned char *const data,
+                              const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_uor2_rtp(const uint8_t *const data,
                                const size_t data_len,
-                               const size_t large_cid_len);
+                               const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
-int ROHC_EXPORT d_is_add_cid(const unsigned char *);
-int ROHC_EXPORT d_decode_add_cid(const unsigned char *);
+bool ROHC_EXPORT d_is_add_cid(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+uint8_t ROHC_EXPORT d_decode_add_cid(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
 
 #endif

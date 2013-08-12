@@ -345,6 +345,16 @@ int main(int argc, char *argv[])
 	/* rohc_feedback_unlock() */
 	CHECK(rohc_feedback_unlock(NULL) == false);
 
+	/* rohc_comp_deliver_feedback() */
+	{
+		const unsigned char buf[] = { 0x00, 0x01, 0x02, 0x03 };
+
+		CHECK(rohc_comp_deliver_feedback(NULL, buf, 4) == true);
+		CHECK(rohc_comp_deliver_feedback(comp, NULL, 4) == false);
+		CHECK(rohc_comp_deliver_feedback(comp, buf, -1) == false);
+		CHECK(rohc_comp_deliver_feedback(comp, buf, 4) == true);
+	}
+
 	/* rohc_free_compressor() */
 	rohc_free_compressor(NULL);
 	rohc_free_compressor(comp);

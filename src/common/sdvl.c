@@ -50,7 +50,7 @@ typedef enum
  * @param value  The value to encode
  * @return       Whether the value can be encoded with SDVL or not
  */
-bool sdvl_can_value_be_encoded(uint32_t value)
+bool sdvl_can_value_be_encoded(const uint32_t value)
 {
 	return (value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES);
 }
@@ -64,7 +64,7 @@ bool sdvl_can_value_be_encoded(uint32_t value)
  * @param bits_nr  The length (in bits) of the value to encode
  * @return         Whether the value can be encoded with SDVL or not
  */
-bool sdvl_can_length_be_encoded(size_t bits_nr)
+bool sdvl_can_length_be_encoded(const size_t bits_nr)
 {
 	return (bits_nr <= ROHC_SDVL_MAX_BITS_IN_4_BYTES);
 }
@@ -127,7 +127,7 @@ size_t sdvl_get_min_len(const size_t nr_min_required,
  *               (0 to let the SDVL encoding find the length itself)
  * @return       The size needed to represent the SDVL-encoded value
  */
-size_t c_bytesSdvl(uint32_t value, size_t length)
+size_t c_bytesSdvl(const uint32_t value, const size_t length)
 {
 	size_t size;
 
@@ -196,15 +196,14 @@ size_t c_bytesSdvl(uint32_t value, size_t length)
  * @param value  The value to encode
  * @param length The length of the value to encode
  *               (0 to let the SDVL encoding find the length itself)
- * @return       1 if SDVL encoding is successful, 0 in case of failure
+ * @return       true if SDVL encoding is successful, false in case of failure
  *               (failure may be due to a value greater than 2^29)
  */
-int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length)
+bool c_encodeSdvl(uint8_t *const dest,
+                  const uint32_t value,
+                  const size_t length)
 {
 	size_t size;
-
-	/* check destination buffer validity */
-	assert(dest != NULL);
 
 	/* find out the number of bytes needed to represent the SDVL-encoded value */
 	size = c_bytesSdvl(value, length);
@@ -220,28 +219,28 @@ int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length)
 	{
 		case 4:
 			/* 7 = bit pattern 111 */
-			*dest++ = ((7 << 5) | ((value >> 24) & 0x1f)) & 0xff;
-			*dest++ = (value >> 16) & 0xff;
-			*dest++ = (value >> 8) & 0xff;
-			*dest = value & 0xff;
+			dest[0] = ((7 << 5) | ((value >> 24) & 0x1f)) & 0xff;
+			dest[1] = (value >> 16) & 0xff;
+			dest[2] = (value >> 8) & 0xff;
+			dest[3] = value & 0xff;
 			break;
 
 		case 3:
 			/* 6 = bit pattern 110 */
-			*dest++ = ((6 << 5) | ((value >> 16) & 0x1f)) & 0xff;
-			*dest++ = (value >> 8) & 0xff;
-			*dest = value & 0xff;
+			dest[0] = ((6 << 5) | ((value >> 16) & 0x1f)) & 0xff;
+			dest[1] = (value >> 8) & 0xff;
+			dest[2] = value & 0xff;
 			break;
 
 		case 2:
 			/* 2 = bit pattern 10 */
-			*dest++ = ((2 << 6) | ((value >> 8) & 0x3f)) & 0xff;
-			*dest = value & 0xff;
+			dest[0] = ((2 << 6) | ((value >> 8) & 0x3f)) & 0xff;
+			dest[1] = value & 0xff;
 			break;
 
 		case 1:
 			/* bit pattern 0 */
-			*dest = value & 0x7f;
+			dest[0] = value & 0x7f;
 			break;
 
 		default:
@@ -250,48 +249,10 @@ int c_encodeSdvl(unsigned char *dest, uint32_t value, size_t length)
 			break;
 	}
 
-	return 1;
+	return true;
 
 error:
-	return 0;
-}
-
-
-/**
- * @brief Find out a size of the Self-Describing Variable-Length (SDVL) value
- *
- * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
- *
- * @param data The SDVL data to analyze
- * @return     The size of the SDVL value (possible values are 1-4)
- */
-int d_sdvalue_size(const unsigned char *data)
-{
-	int size;
-
-	if(!GET_BIT_7(data)) /* bit == 0 */
-	{
-		size = 1;
-	}
-	else if(GET_BIT_6_7(data) == (0x8 >> 2)) /* bits == 0b10 */
-	{
-		size = 2;
-	}
-	else if(GET_BIT_5_7(data) == (0xc >> 1)) /* bits == 0b110 */
-	{
-		size = 3;
-	}
-	else if(GET_BIT_5_7(data) == (0xe >> 1)) /* bits == 0b111 */
-	{
-		size = 4;
-	}
-	else
-	{
-		/* Bad SDVL data, this should not happen */
-		size = -1;
-	}
-
-	return size;
+	return false;
 }
 
 
@@ -304,18 +265,15 @@ int d_sdvalue_size(const unsigned char *data)
  * @param length   The maximum data length available (in bytes)
  * @param value    OUT: The decoded value
  * @param bits_nr  OUT: The number of useful bits
- * @return         The number of bytes used by the SDVL field
+ * @return         The number of bytes used by the SDVL field (value between
+ *                 1 and 4), 0 in case of problem
  */
-size_t sdvl_decode(const unsigned char *data,
+size_t sdvl_decode(const uint8_t *const data,
                    const size_t length,
                    uint32_t *const value,
                    size_t *const bits_nr)
 {
 	size_t sdvl_len;
-
-	assert(data != NULL);
-	assert(value != NULL);
-	assert(bits_nr != NULL);
 
 	if(length < 1)
 	{

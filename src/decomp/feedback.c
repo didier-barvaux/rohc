@@ -40,9 +40,10 @@
  * Prototypes of private functions.
  */
 
-int f_append_cid(struct d_feedback *feedback,
-                 const uint16_t cid,
-                 const rohc_cid_type_t cid_type);
+static bool f_append_cid(struct d_feedback *const feedback,
+                         const uint16_t cid,
+                         const rohc_cid_type_t cid_type)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 
 /**
@@ -51,15 +52,12 @@ int f_append_cid(struct d_feedback *feedback,
  * @param sn       The Sequence Number (SN) the feedback packet is
  *                 associated with
  * @param feedback The feedback packet to build
- * @return         Whether the build is successful or not
  */
-int f_feedback1(int sn, struct d_feedback *feedback)
+void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
 {
 	feedback->type = 1; /* set type for add_option */
 	feedback->size = 1;
 	feedback->data[0] = (sn & 0xff);
-
-	return 1;
 }
 
 
@@ -71,11 +69,16 @@ int f_feedback1(int sn, struct d_feedback *feedback)
  * @param sn       The Sequence Number (SN) the feedback packet is
  *                 associated with
  * @param feedback The feedback packet to build
- * @return         ROHC_OK if the packet is successfully built,
- *                 ROHC_ERROR otherwise
+ * @return         true if the packet is successfully built
+ *                 false otherwise
  */
-int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
+bool f_feedback2(const int acktype,
+                 const rohc_mode mode,
+                 const uint32_t sn,
+                 struct d_feedback *const feedback)
 {
+	bool is_ok;
+
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
 	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
@@ -97,7 +100,6 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 	else if(sn < (1 << (12 + 8))) /* SN may be stored on 20 bits */
 	{
 		const uint8_t sn_opt = sn & 0xff;
-		int ret;
 
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: transmit SN = 0x%08x on 20 bits (12 bits in base "
@@ -113,8 +115,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 
 		/* SN option */
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt, sizeof(sn_opt));
-		if(ret != ROHC_OK)
+		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt, sizeof(sn_opt));
+		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add option to the feedback packet\n");
@@ -129,7 +131,6 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 	{
 		const uint8_t sn_opt1 = (sn >> 8) & 0xff;
 		const uint8_t sn_opt2 = sn & 0xff;
-		int ret;
 
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: transmit SN = 0x%08x on 28 bits (12 bits in base "
@@ -145,8 +146,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 
 		/* first SN option */
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
-		if(ret != ROHC_OK)
+		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
+		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add option to the feedback packet\n");
@@ -158,8 +159,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 
 		/* second SN option */
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
-		if(ret != ROHC_OK)
+		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
+		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add option to the feedback packet\n");
@@ -175,7 +176,6 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 		const uint8_t sn_opt1 = (sn >> 16) & 0xff;
 		const uint8_t sn_opt2 = (sn >> 8) & 0xff;
 		const uint8_t sn_opt3 = sn & 0xff;
-		int ret;
 
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("FEEDBACK-2: transmit SN = 0x%08x on 36 bits (12 bits in base "
@@ -192,8 +192,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 
 		/* first SN option */
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
-		if(ret != ROHC_OK)
+		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
+		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add option to the feedback packet\n");
@@ -205,8 +205,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 
 		/* second SN option */
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
-		if(ret != ROHC_OK)
+		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
+		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add option to the feedback packet\n");
@@ -218,8 +218,8 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 
 		/* third SN option */
-		ret = f_add_option(feedback, OPT_TYPE_SN, &sn_opt3, sizeof(sn_opt3));
-		if(ret != ROHC_OK)
+		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt3, sizeof(sn_opt3));
+		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to add option to the feedback packet\n");
@@ -231,10 +231,10 @@ int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback)
 #endif
 	}
 
-	return ROHC_OK;
+	return true;
 
 error:
-	return ROHC_ERROR;
+	return false;
 }
 
 
@@ -248,10 +248,10 @@ error:
  * @return         ROHC_OK if the option is successfully added,
  *                 ROHC_ERROR otherwise
  */
-int f_add_option(struct d_feedback *feedback,
-                 const uint8_t opt_type,
-                 const unsigned char *data,
-                 const size_t data_len)
+bool f_add_option(struct d_feedback *const feedback,
+                  const uint8_t opt_type,
+                  const unsigned char *const data,
+                  const size_t data_len)
 {
 	/* options are reserved for FEEDBACK-2 */
 	assert(feedback->type == 2);
@@ -280,7 +280,7 @@ int f_add_option(struct d_feedback *feedback,
 		assert(data_len == 1);
 		if((feedback->size + data_len) > FEEDBACK_DATA_MAX_LEN)
 		{
-			return ROHC_ERROR;
+			goto error;
 		}
 		feedback->data[feedback->size] = data[0];
 		feedback->size++;
@@ -291,7 +291,10 @@ int f_add_option(struct d_feedback *feedback,
 		assert(data_len == 0);
 	}
 
-	return ROHC_OK;
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -303,9 +306,9 @@ int f_add_option(struct d_feedback *feedback,
  * @param cid_type     The type of CID used for the feedback
  * @return             Whether the CID is successfully appended or not
  */
-int f_append_cid(struct d_feedback *feedback,
-                 const uint16_t cid,
-                 const rohc_cid_type_t cid_type)
+static bool f_append_cid(struct d_feedback *const feedback,
+                         const uint16_t cid,
+                         const rohc_cid_type_t cid_type)
 {
 	size_t i;
 
@@ -326,7 +329,7 @@ int f_append_cid(struct d_feedback *feedback,
 			printf("failed to determine the number of bits required to "
 			       "SDVL-encode the large CID %u\n", cid);
 #endif
-			return 0;
+			return false;
 		}
 
 		/* check if the feedback packet can contain a SDVL-encoded large CID */
@@ -335,7 +338,7 @@ int f_append_cid(struct d_feedback *feedback,
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("feedback packet is too small for large CID\n");
 #endif
-			return 0;
+			return false;
 		}
 
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -354,7 +357,7 @@ int f_append_cid(struct d_feedback *feedback,
 		if(acid == NULL)
 		{
 			feedback->size = 0;
-			return 0;
+			return false;
 		}
 
 		/* SDVL-encode the large CID */
@@ -365,7 +368,7 @@ int f_append_cid(struct d_feedback *feedback,
 			       "happen!\n", cid);
 #endif
 			zfree(acid);
-			return 0;
+			return false;
 		}
 
 		/* copy the large CID to the feedback packet */
@@ -401,7 +404,7 @@ int f_append_cid(struct d_feedback *feedback,
 		}
 	}
 
-	return 1;
+	return true;
 }
 
 
@@ -419,15 +422,15 @@ int f_append_cid(struct d_feedback *feedback,
  * @param final_size   OUT: The final size of the feedback packet
  * @return             The feedback packet if successful, NULL otherwise
  */
-unsigned char * f_wrap_feedback(struct d_feedback *feedback,
-                                const uint16_t cid,
-                                const rohc_cid_type_t cid_type,
-                                int with_crc,
-                                unsigned char *crc_table,
-                                int *final_size)
+uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
+                          const uint16_t cid,
+                          const rohc_cid_type_t cid_type,
+                          const bool with_crc,
+                          const uint8_t *const crc_table,
+                          size_t *const final_size)
 {
-	unsigned char *feedback_packet;
-	unsigned int crc;
+	uint8_t *feedback_packet;
+	uint8_t crc;
 	int ret;
 
 	/* append the CID to the feedback packet */
@@ -455,7 +458,7 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	}
 
 	/* allocate memory for the feedback packet */
-	feedback_packet = (unsigned char *) malloc(feedback->size);
+	feedback_packet = (uint8_t *) malloc(feedback->size);
 	if(feedback_packet == NULL)
 	{
 		feedback->size = 0;
@@ -470,7 +473,7 @@ unsigned char * f_wrap_feedback(struct d_feedback *feedback,
 	{
 		crc = crc_calculate(ROHC_CRC_TYPE_8, feedback_packet, feedback->size,
 		                    CRC_INIT_8, crc_table);
-		feedback_packet[feedback->size - 1] = (unsigned char) (crc & 0xff);
+		feedback_packet[feedback->size - 1] = crc & 0xff;
 	}
 
 	*final_size = feedback->size;

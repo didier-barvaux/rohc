@@ -47,23 +47,23 @@ struct rohc_lsb_decode;
  */
 
 struct rohc_lsb_decode * ROHC_EXPORT rohc_lsb_new(const rohc_lsb_shift_t p,
-																  const size_t max_len);
+																  const size_t max_len)
+	__attribute__((warn_unused_result));
 
-void ROHC_EXPORT rohc_lsb_free(struct rohc_lsb_decode *const lsb)
-	__attribute__((nonnull(1)));
+void ROHC_EXPORT rohc_lsb_free(struct rohc_lsb_decode *const lsb);
 
 bool ROHC_EXPORT rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
                                  const uint32_t m,
                                  const size_t k,
                                  uint32_t *const decoded)
-	__attribute__((nonnull(1, 4)));
+	__attribute__((warn_unused_result));
 
 void ROHC_EXPORT rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
                                   const uint32_t v_ref_d)
 	__attribute__((nonnull(1)));
 
-uint32_t ROHC_EXPORT rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
-	__attribute__((nonnull(1)));
+const uint32_t ROHC_EXPORT rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
+	__attribute__((nonnull(1), warn_unused_result));
 
 #endif
 

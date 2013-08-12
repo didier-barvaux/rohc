@@ -332,17 +332,20 @@ unsigned char tcp_options_index[16] =
  * Private function prototypes.
  */
 
-static int c_tcp_create(struct c_context *const context,
-                        const struct ip_packet *ip);
+static bool c_tcp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_tcp_check_profile(const struct rohc_comp *const comp,
                                 const struct ip_packet *const outer_ip,
                                 const struct ip_packet *const inner_ip,
                                 const uint8_t protocol,
-                                rohc_ctxt_key_t *const ctxt_key);
+                                rohc_ctxt_key_t *const ctxt_key)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
-static bool c_tcp_check_context(const struct c_context *context,
-                                const struct ip_packet *ip);
+static bool c_tcp_check_context(const struct c_context *const context,
+                                const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_tcp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
@@ -571,10 +574,10 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
  *
  * @param context The compression context
  * @param ip      The IP/TCP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @return        true if successful, false otherwise
  */
-static int c_tcp_create(struct c_context *const context,
-                        const struct ip_packet *ip)
+static bool c_tcp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -585,7 +588,6 @@ static int c_tcp_create(struct c_context *const context,
 	int size_context;
 	int size_option;
 	int size;
-
 
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, 0, ip))
@@ -841,12 +843,12 @@ static int c_tcp_create(struct c_context *const context,
 	g_context->compute_crc_static = tcp_compute_crc_static;
 	g_context->compute_crc_dynamic = tcp_compute_crc_dynamic;
 
-	return 1;
+	return true;
 
 clean:
 	c_generic_destroy(context);
 quit:
-	return 0;
+	return false;
 }
 
 
@@ -971,8 +973,8 @@ bad_profile:
  * @return        true if the IP/TCP packet belongs to the context
  *                false if it does not belong to the context
  */
-static bool c_tcp_check_context(const struct c_context *context,
-                                const struct ip_packet *ip)
+static bool c_tcp_check_context(const struct c_context *const context,
+                                const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -1124,7 +1126,7 @@ static int c_tcp_encode(struct c_context *const context,
 	base_header_ip_t base_header;   // Source
 	multi_ptr_t mptr;
 	tcphdr_t *tcp;
-	int first_position;
+	size_t first_position;
 	int crc_position;
 	int counter;
 	uint8_t protocol;
@@ -1133,6 +1135,9 @@ static int c_tcp_encode(struct c_context *const context,
 #ifdef TODO
 	uint8_t new_context_state;
 #endif
+
+	assert(context != NULL);
+	assert(dest != NULL);
 
 	rohc_comp_debug(context, "context = %p, ip = %p, packet_size = %zu, "
 	                "dest = %p, dest_size = %zu, packet_type = %p, "
@@ -3661,7 +3666,7 @@ static int code_CO_packet(struct c_context *const context,
 	int ttl_irregular_chain_flag;
 	int remain_data_len;
 	int counter;
-	int first_position;
+	size_t first_position;
 	multi_ptr_t mptr;
 	uint8_t save_first_byte;
 	uint16_t payload_size;

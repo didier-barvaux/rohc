@@ -58,16 +58,18 @@
 static void d_rtp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t rtp_detect_packet_type(struct rohc_decomp *decomp,
-                                            struct d_context *context,
-                                            const unsigned char *packet,
+static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
+                                            const struct d_context *const context,
+                                            const uint8_t *const packet,
                                             const size_t rohc_length,
-                                            const size_t large_cid_len);
+                                            const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_parse_static_rtp(const struct d_context *const context,
                                 const unsigned char *packet,
-                                unsigned int length,
-                                struct rohc_extr_bits *const bits);
+                                size_t length,
+                                struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int rtp_parse_dynamic_rtp(const struct d_context *const context,
                                  const unsigned char *packet,
                                  unsigned int length,
@@ -87,7 +89,8 @@ static int rtp_build_uncomp_rtp(const struct d_context *const context,
                                 const unsigned int payload_len);
 
 static void rtp_update_context(const struct d_context *context,
-                               const struct rohc_decoded_values decoded);
+                               const struct rohc_decoded_values decoded)
+	__attribute__((nonnull(1)));
 
 
 /*
@@ -271,9 +274,9 @@ static void d_rtp_destroy(void *const context)
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t rtp_detect_packet_type(struct rohc_decomp *decomp,
-                                            struct d_context *context,
-                                            const unsigned char *packet,
+static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
+                                            const struct d_context *const context,
+                                            const uint8_t *const packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
 {
@@ -495,12 +498,12 @@ error:
  */
 static int rtp_parse_static_rtp(const struct d_context *const context,
                                 const unsigned char *packet,
-                                unsigned int length,
+                                size_t length,
                                 struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
 	struct d_rtp_context *rtp_context;
-	int read = 0; /* number of bytes read from the packet */
+	int read; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);

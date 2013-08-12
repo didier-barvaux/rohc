@@ -46,22 +46,26 @@
  * Private function prototypes.
  */
 
-static int c_rtp_create(struct c_context *const context,
-                        const struct ip_packet *ip);
-static void c_rtp_destroy(struct c_context *const context);
+static bool c_rtp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static void c_rtp_destroy(struct c_context *const context)
+	__attribute__((nonnull(1)));
 
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct ip_packet *const outer_ip,
                                 const struct ip_packet *const inner_ip,
                                 const uint8_t protocol,
-                                rohc_ctxt_key_t *const ctxt_key);
+                                rohc_ctxt_key_t *const ctxt_key)
+		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
                                     const uint16_t port);
 static bool c_rtp_use_udp_port(const struct c_context *const context,
                                const unsigned int port);
 
-static bool c_rtp_check_context(const struct c_context *context,
-                                const struct ip_packet *ip);
+static bool c_rtp_check_context(const struct c_context *const context,
+                                const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_rtp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
@@ -77,24 +81,27 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context);
 static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context);
 static rohc_ext_t c_rtp_decide_extension(const struct c_context *context);
 
-static uint32_t c_rtp_get_next_sn(const struct c_context *context,
-                                  const struct ip_packet *outer_ip,
-                                  const struct ip_packet *inner_ip);
+static uint32_t c_rtp_get_next_sn(const struct c_context *const context,
+                                  const struct ip_packet *const outer_ip,
+                                  const struct ip_packet *const inner_ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rtp_encode_uncomp_fields(struct c_context *const context,
                                     const struct ip_packet *const ip,
                                     const struct ip_packet *const ip2,
                                     const unsigned char *const next_header);
 
-static int rtp_code_static_rtp_part(const struct c_context *context,
-                                    const unsigned char *next_header,
-                                    unsigned char *const dest,
-                                    int counter);
+static size_t rtp_code_static_rtp_part(const struct c_context *const context,
+                                       const unsigned char *const next_header,
+                                       unsigned char *const dest,
+                                       const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rtp_code_dynamic_rtp_part(const struct c_context *context,
-                                     const unsigned char *next_header,
-                                     unsigned char *const dest,
-                                     int counter);
+static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
+                                        const unsigned char *const next_header,
+                                        unsigned char *const dest,
+                                        const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_changed_rtp_dynamic(const struct c_context *context,
                                    const struct udphdr *udp);
@@ -109,10 +116,10 @@ static int rtp_changed_rtp_dynamic(const struct c_context *context,
  *
  * @param context The compression context
  * @param ip      The IP/UDP/RTP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @return        true if successful, false otherwise
  */
-static int c_rtp_create(struct c_context *const context,
-                        const struct ip_packet *ip)
+static bool c_rtp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
@@ -229,12 +236,12 @@ static int c_rtp_create(struct c_context *const context,
 	g_context->compute_crc_static = rtp_compute_crc_static;
 	g_context->compute_crc_dynamic = rtp_compute_crc_dynamic;
 
-	return 1;
+	return true;
 
 clean:
 	c_generic_destroy(context);
 quit:
-	return 0;
+	return false;
 }
 
 
@@ -422,7 +429,7 @@ static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
                                     const uint16_t port)
 {
 	bool match = false;
-	int i;
+	size_t i;
 
 	/* explore the list of UDP ports reserved for RTP and stop:
 	 *  - if a port is equal to 0 (current entry and next ones are unused)
@@ -432,10 +439,10 @@ static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
 	 *  - if the end of the list is reached
 	 */
 	i = 0;
-	while(comp->rtp_ports[i] != 0 &&
+	while(i < MAX_RTP_PORTS &&
+	      comp->rtp_ports[i] != 0 &&
 	      !match &&
-	      port >= comp->rtp_ports[i] &&
-	      i < MAX_RTP_PORTS)
+	      port >= comp->rtp_ports[i])
 	{
 		match = (port == comp->rtp_ports[i]);
 		i++;
@@ -474,8 +481,8 @@ static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
  *
  * @see c_udp_check_context
  */
-static bool c_rtp_check_context(const struct c_context *context,
-                                const struct ip_packet *ip)
+static bool c_rtp_check_context(const struct c_context *const context,
+                                const struct ip_packet *const ip)
 {
 	const struct c_generic_context *g_context;
 	const struct sc_rtp_context *rtp_context;
@@ -720,7 +727,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	is_ip_v4 = (g_context->ip_flags.version == IPV4);
 	is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
 
-	is_ts_deducible = rohc_ts_sc_is_deducible(rtp_context->ts_sc);
+	is_ts_deducible = rohc_ts_sc_is_deducible(&rtp_context->ts_sc);
 	is_ts_scaled = (rtp_context->ts_sc.state == SEND_SCALED);
 
 	rohc_comp_debug(context, "nr_ip_bits = %zd, nr_sn_bits = %zd, "
@@ -1104,13 +1111,13 @@ static void rtp_decide_state(struct c_context *const context)
  * @param inner_ip  The inner IP header if it exists, NULL otherwise
  * @return          The SN
  */
-static uint32_t c_rtp_get_next_sn(const struct c_context *context,
-                                  const struct ip_packet *outer_ip,
-                                  const struct ip_packet *inner_ip)
+static uint32_t c_rtp_get_next_sn(const struct c_context *const context,
+                                  const struct ip_packet *const outer_ip,
+                                  const struct ip_packet *const inner_ip)
 {
-	struct c_generic_context *g_context;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
+	const struct c_generic_context *g_context;
+	const struct udphdr *udp;
+	const struct rtphdr *rtp;
 	uint32_t next_sn;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -1177,8 +1184,8 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 		 *                is constant), so send TS only
 		 * state INIT_STRIDE: TS and TS_STRIDE will be send
 		 */
-		rtp_context->tmp.ts_send = get_ts_unscaled(rtp_context->ts_sc);
-		if(!nb_bits_unscaled(rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
+		rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
+		if(!nb_bits_unscaled(&rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
 		{
 			const uint32_t ts_send = rtp_context->tmp.ts_send;
 			size_t nr_bits;
@@ -1209,8 +1216,8 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 	else /* SEND_SCALED */
 	{
 		/* TS_SCALED value will be send */
-		rtp_context->tmp.ts_send = get_ts_scaled(rtp_context->ts_sc);
-		if(!nb_bits_scaled(rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
+		rtp_context->tmp.ts_send = get_ts_scaled(&rtp_context->ts_sc);
+		if(!nb_bits_scaled(&rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
 		{
 			const uint32_t ts_send = rtp_context->tmp.ts_send;
 			size_t nr_bits;
@@ -1241,7 +1248,7 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 	}
 
 	rohc_comp_debug(context, "%s%zd bits are required to encode new TS\n",
-	                (rohc_ts_sc_is_deducible(rtp_context->ts_sc) ?
+	                (rohc_ts_sc_is_deducible(&rtp_context->ts_sc) ?
 	                 "0 (TS is deducible from SN bits) or " : ""),
 	                rtp_context->tmp.nr_ts_bits);
 
@@ -1284,23 +1291,25 @@ error:
  *
  * @see udp_code_static_udp_part
  */
-static int rtp_code_static_rtp_part(const struct c_context *context,
-                                    const unsigned char *next_header,
-                                    unsigned char *const dest,
-                                    int counter)
+static size_t rtp_code_static_rtp_part(const struct c_context *const context,
+                                       const unsigned char *const next_header,
+                                       unsigned char *const dest,
+                                       const size_t counter)
 {
-	struct udphdr *udp = (struct udphdr *) next_header;
-	struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
+	const struct udphdr *const udp = (struct udphdr *) next_header;
+	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
+	size_t counter2;
+	size_t nr_written = 0;
 
 	/* parts 1 & 2 */
-	counter = udp_code_static_udp_part(context, next_header, dest, counter);
+	counter2 = udp_code_static_udp_part(context, next_header, dest, counter);
 
 	/* part 3 */
 	rohc_comp_debug(context, "RTP SSRC = 0x%x\n", rtp->ssrc);
-	memcpy(&dest[counter], &rtp->ssrc, 4);
-	counter += 4;
+	memcpy(&dest[counter2 + nr_written], &rtp->ssrc, 4);
+	nr_written += 4;
 
-	return counter;
+	return counter2 + nr_written;
 }
 
 
@@ -1345,28 +1354,26 @@ static int rtp_code_static_rtp_part(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int rtp_code_dynamic_rtp_part(const struct c_context *context,
-                                     const unsigned char *next_header,
-                                     unsigned char *const dest,
-                                     int counter)
+static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
+                                        const unsigned char *const next_header,
+                                        unsigned char *const dest,
+                                        const size_t counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-	struct udphdr *udp;
-	struct rtphdr *rtp;
+	const struct udphdr *udp = (struct udphdr *) next_header;
+	const struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
 	unsigned char byte;
 	unsigned int rx_byte = 0;
+	size_t nr_written = 0;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
-	udp = (struct udphdr *) next_header;
-	rtp = (struct rtphdr *) (udp + 1);
-
 	/* part 1 */
 	rohc_comp_debug(context, "UDP checksum = 0x%04x\n", udp->check);
-	memcpy(&dest[counter], &udp->check, 2);
-	counter += 2;
+	memcpy(&dest[counter + nr_written], &udp->check, 2);
+	nr_written += 2;
 	rtp_context->udp_checksum_change_count++;
 
 	/* part 2 */
@@ -1382,41 +1389,43 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 	byte |= (rtp->version & 0x03) << 6;
 	byte |= (rtp->padding & 0x01) << 5;
 	byte |= rtp->cc & 0x0f;
-	dest[counter] = byte;
+	dest[counter + nr_written] = byte;
 	rohc_comp_debug(context, "(V = %u, P = %u, RX = %u, CC = 0x%x) = 0x%02x\n",
 	                rtp->version & 0x03, rtp->padding & 0x01, rx_byte,
-	                rtp->cc & 0x0f, dest[counter]);
-	counter++;
+	                rtp->cc & 0x0f, dest[counter + nr_written]);
+	nr_written++;
 	rtp_context->rtp_padding_change_count++;
 
 	/* part 3 */
 	byte = 0;
 	byte |= (rtp->m & 0x01) << 7;
 	byte |= rtp->pt & 0x7f;
-	dest[counter] = byte;
+	dest[counter + nr_written] = byte;
 	rohc_comp_debug(context, "(M = %u, PT = 0x%02x) = 0x%02x\n",
-	                rtp->m & 0x01, rtp->pt & 0x7f, dest[counter]);
-	counter++;
+	                rtp->m & 0x01, rtp->pt & 0x7f, dest[counter + nr_written]);
+	nr_written++;
 	rtp_context->rtp_pt_change_count++;
 
 	/* part 4 */
-	memcpy(&dest[counter], &rtp->sn, 2);
-	rohc_comp_debug(context, "SN = 0x%02x 0x%02x\n", dest[counter],
-	                dest[counter + 1]);
-	counter += 2;
+	memcpy(&dest[counter + nr_written], &rtp->sn, 2);
+	rohc_comp_debug(context, "SN = 0x%02x 0x%02x\n",
+	                dest[counter + nr_written],
+	                dest[counter + nr_written + 1]);
+	nr_written += 2;
 
 	/* part 5 */
-	memcpy(&dest[counter], &rtp->timestamp, 4);
+	memcpy(&dest[counter + nr_written], &rtp->timestamp, 4);
 	rohc_comp_debug(context, "TS = 0x%02x 0x%02x 0x%02x 0x%02x\n",
-	                dest[counter], dest[counter + 1], dest[counter + 2],
-	                dest[counter + 3]);
-	counter += 4;
+	                dest[counter + nr_written], dest[counter + nr_written + 1],
+	                dest[counter + nr_written + 2],
+	                dest[counter + nr_written + 3]);
+	nr_written += 4;
 
 	/* part 6 not supported yet  but the field is mandatory,
 	   so add a zero byte */
-	dest[counter] = 0x00;
+	dest[counter + nr_written] = 0x00;
 	rohc_comp_debug(context, "Generic CSRC list not supported yet, put a 0x00 byte\n");
-	counter++;
+	nr_written++;
 
 	/* parts 7, 8 & 9 */
 	if(rx_byte)
@@ -1433,11 +1442,11 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		byte |= (context->mode & 0x03) << 2;
 		byte |= (tis & 0x01) << 1;
 		byte |= tss & 0x01;
-		dest[counter] = byte;
+		dest[counter + nr_written] = byte;
 		rohc_comp_debug(context, "(X = %u, Mode = %u, TIS = %u, TSS = %u) = 0x%02x\n",
 		                rtp->extension & 0x01, context->mode & 0x03, tis & 0x01,
-		                tss & 0x01, dest[counter]);
-		counter++;
+		                tss & 0x01, dest[counter + nr_written]);
+		nr_written++;
 		rtp_context->rtp_extension_change_count++;
 
 		/* part 8 */
@@ -1448,7 +1457,7 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			int ret;
 
 			/* get the TS_STRIDE to send in packet */
-			ts_stride = get_ts_stride(rtp_context->ts_sc);
+			ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
 			/* how many bytes are required by SDVL to encode TS_STRIDE ? */
 			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, 0 /* length detection */);
@@ -1466,7 +1475,8 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			                "on %zd bytes\n", ts_stride, ts_stride_sdvl_len);
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
-			ret = c_encodeSdvl(&dest[counter], ts_stride, 0 /* length detection */);
+			ret = c_encodeSdvl(&dest[counter + nr_written], ts_stride,
+			                   0 /* length detection */);
 			if(ret != 1)
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -1476,7 +1486,7 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 			}
 
 			/* skip the bytes used to encode TS_STRIDE in SDVL */
-			counter += ts_stride_sdvl_len;
+			nr_written += ts_stride_sdvl_len;
 
 			/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
 			rtp_context->ts_sc.nr_init_stride_packets++;
@@ -1500,7 +1510,7 @@ static int rtp_code_dynamic_rtp_part(const struct c_context *context,
 		/* part 9 not supported yet */
 	}
 
-	return counter;
+	return counter + nr_written;
 }
 
 

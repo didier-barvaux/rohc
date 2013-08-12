@@ -46,8 +46,7 @@ struct ts_sc_decomp;
  */
 
 struct ts_sc_decomp * ROHC_EXPORT d_create_sc(rohc_trace_callback_t callback);
-void ROHC_EXPORT rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled)
-	__attribute__((nonnull(1)));
+void ROHC_EXPORT rohc_ts_scaled_free(struct ts_sc_decomp *const ts_scaled);
 
 void ROHC_EXPORT ts_update_context(struct ts_sc_decomp *const ts_sc,
                                    const uint32_t ts,
@@ -74,7 +73,8 @@ bool ROHC_EXPORT ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
 	__attribute__((warn_unused_result));
 
 uint32_t ROHC_EXPORT ts_deduce_from_sn(struct ts_sc_decomp *const ts_sc,
-                                       const uint16_t sn);
+                                       const uint16_t sn)
+	__attribute__((warn_unused_result));
 
 #endif
 

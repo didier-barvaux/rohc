@@ -41,7 +41,7 @@ static inline unsigned int get_milliseconds(void)
 	gettimeofday(&tv, NULL);
 	return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
- 
+
 #else /* __KERNEL__ */
 
 /**

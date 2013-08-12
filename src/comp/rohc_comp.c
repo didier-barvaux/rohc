@@ -2362,6 +2362,8 @@ error:
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Callback called by a decompressor to deliver a feedback packet to the
  *        compressor
@@ -2373,20 +2375,51 @@ error:
  * @param packet The feedback data
  * @param size   The length of the feedback packet
  */
-void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
+void c_deliver_feedback(struct rohc_comp *comp,
+                        unsigned char *packet,
+                        int size)
+{
+	const bool is_ok __attribute__((unused)) =
+		rohc_comp_deliver_feedback(comp, packet, size);
+}
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+
+/**
+ * @brief Deliver a feedback packet to the compressor
+ *
+ * When feedback is received by the decompressor, this function is called and
+ * delivers the feedback to the right profile/context of the compressor.
+ *
+ * @param comp   The ROHC compressor
+ * @param packet The feedback data
+ * @param size   The length of the feedback packet
+ */
+bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                const uint8_t *const packet,
+                                const size_t size)
+
 {
 	struct c_context *c;
 	struct c_feedback feedback;
-	unsigned char *p = packet;
+	const uint8_t *p = packet;
 
+	/* sanity check */
+	if(packet == NULL || size <= 0)
+	{
+		goto error;
+	}
+
+	/* if decompressor is not associated with a compressor, we cannot deliver
+	 * feedback */
 	if(comp == NULL)
 	{
-		/* no compressor associated with decompressor, cannot deliver feedback */
 		goto quit;
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "deliver %d byte(s) of feedback to the right context\n", size);
+	           "deliver %zu byte(s) of feedback to the right context\n", size);
 
 	feedback.size = size;
 
@@ -2403,7 +2436,7 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to decode SDVL-encoded large CID field\n");
-			goto quit;
+			goto error;
 		}
 		feedback.cid = large_cid;
 		p += large_cid_size;
@@ -2445,7 +2478,7 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 	{
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no memory for feedback data\n");
-		goto quit;
+		goto error;
 	}
 
 	memcpy(feedback.data, packet, feedback.size);
@@ -2465,10 +2498,13 @@ void c_deliver_feedback(struct rohc_comp *comp, unsigned char *packet, int size)
 	/* deliver feedback to profile with the context */
 	c->profile->feedback(c, &feedback);
 
+quit:
+	return true;
+
 clean:
 	zfree(feedback.data);
-quit:
-	;
+error:
+	return false;
 }
 
 

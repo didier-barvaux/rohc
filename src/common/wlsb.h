@@ -46,7 +46,8 @@ struct c_wlsb;
 
 struct c_wlsb * ROHC_EXPORT c_create_wlsb(const size_t bits,
                                           const size_t window_width,
-                                          const rohc_lsb_shift_t p);
+                                          const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result));
 void ROHC_EXPORT c_destroy_wlsb(struct c_wlsb *s);
 
 void ROHC_EXPORT c_add_wlsb(struct c_wlsb *const wlsb,
@@ -55,15 +56,20 @@ void ROHC_EXPORT c_add_wlsb(struct c_wlsb *const wlsb,
 
 bool ROHC_EXPORT wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
                                    const uint16_t value,
-                                   size_t *const bits_nr);
+                                   size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
 bool ROHC_EXPORT wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                                    const uint32_t value,
-                                   size_t *const bits_nr);
+                                   size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
 
-void ROHC_EXPORT c_ack_sn_wlsb(struct c_wlsb *s, const uint32_t sn);
+void ROHC_EXPORT c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
+	__attribute__((nonnull(1)));
 
-int ROHC_EXPORT c_sum_wlsb(struct c_wlsb *s);
-int ROHC_EXPORT c_mean_wlsb(struct c_wlsb *s);
+int ROHC_EXPORT c_sum_wlsb(const struct c_wlsb *const s)
+	__attribute__((nonnull(1), pure));
+int ROHC_EXPORT c_mean_wlsb(const struct c_wlsb *const s)
+	__attribute__((nonnull(1), pure));
 
 #endif
 

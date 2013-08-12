@@ -111,31 +111,37 @@ struct ts_sc_comp
  * Function prototypes
  */
 
-int ROHC_EXPORT c_create_sc(struct ts_sc_comp *const ts_sc,
-                            const size_t wlsb_window_width,
-                            rohc_trace_callback_t callback);
+bool ROHC_EXPORT c_create_sc(struct ts_sc_comp *const ts_sc,
+                             const size_t wlsb_window_width,
+                             rohc_trace_callback_t callback)
+	__attribute__((warn_unused_result));
 void ROHC_EXPORT c_destroy_sc(struct ts_sc_comp *const ts_sc);
 
 void ROHC_EXPORT c_add_ts(struct ts_sc_comp *const ts_sc,
                           const uint32_t ts,
                           const uint16_t sn);
 
-bool ROHC_EXPORT nb_bits_unscaled(const struct ts_sc_comp ts_sc,
+bool ROHC_EXPORT nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
                                   size_t *const bits_nr)
-	__attribute__((warn_unused_result));
+	__attribute__((nonnull(1), warn_unused_result));
 void ROHC_EXPORT add_unscaled(const struct ts_sc_comp *const ts_sc,
                               const uint16_t sn);
 
-bool ROHC_EXPORT nb_bits_scaled(const struct ts_sc_comp ts_sc,
-                                size_t *const bits_nr);
+bool ROHC_EXPORT nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
+                                size_t *const bits_nr)
+	__attribute__((nonnull(1), warn_unused_result));
 void ROHC_EXPORT add_scaled(const struct ts_sc_comp *const ts_sc,
-                            uint16_t sn);
+                            const uint16_t sn);
 
-uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp ts_sc);
-uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp ts_sc);
-uint32_t ROHC_EXPORT get_ts_unscaled(const struct ts_sc_comp ts_sc);
+const uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp *const ts_sc)
+	__attribute__((nonnull(1), warn_unused_result, pure));
+const uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp *const ts_sc)
+	__attribute__((nonnull(1), warn_unused_result, pure));
+const uint32_t ROHC_EXPORT get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
+	__attribute__((nonnull(1), warn_unused_result, pure));
 
-bool ROHC_EXPORT rohc_ts_sc_is_deducible(const struct ts_sc_comp ts_sc);
+bool ROHC_EXPORT rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)
+	__attribute__((nonnull(1), warn_unused_result, pure));
 
 #endif
 

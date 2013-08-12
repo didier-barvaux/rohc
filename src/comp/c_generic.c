@@ -467,11 +467,11 @@ void c_init_tmp_variables(struct generic_tmp_vars *tmp_vars)
  * @param context   The compression context
  * @param sn_shift  The shift parameter (p) to use for encoding SN with W-LSB
  * @param ip        The IP packet given to initialize the new context
- * @return          1 if successful, 0 otherwise
+ * @return          bool if successful, false otherwise
  */
-int c_generic_create(struct c_context *const context,
-                     const rohc_lsb_shift_t sn_shift,
-                     const struct ip_packet *ip)
+bool c_generic_create(struct c_context *const context,
+                      const rohc_lsb_shift_t sn_shift,
+                      const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	unsigned int ip_proto;
@@ -568,14 +568,14 @@ int c_generic_create(struct c_context *const context,
 	g_context->compute_crc_static = compute_crc_static;
 	g_context->compute_crc_dynamic = compute_crc_dynamic;
 
-	return 1;
+	return true;
 
 free_sn_window:
 	c_destroy_wlsb(g_context->sn_window);
 free_generic_context:
 	free(g_context);
 quit:
-	return 0;
+	return false;
 }
 
 
@@ -1683,12 +1683,14 @@ int code_IR_packet(struct c_context *const context,
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
 	unsigned char type;
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 	int crc_position;
+	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
+	assert(dest != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
@@ -1740,21 +1742,23 @@ int code_IR_packet(struct c_context *const context,
 	counter++;
 
 	/* part 6: static part */
-	counter = code_generic_static_part(context, &g_context->ip_flags,
+	ret = code_generic_static_part(context, &g_context->ip_flags,
 	                                   ip, dest, counter);
-	if(counter < 0)
+	if(ret < 0)
 	{
 		goto error;
 	}
+	counter = ret;
 
 	if(nr_of_ip_hdr > 1)
 	{
-		counter = code_generic_static_part(context, &g_context->ip2_flags,
-		                                   ip2, dest, counter);
-		if(counter < 0)
+		ret = code_generic_static_part(context, &g_context->ip2_flags,
+		                               ip2, dest, counter);
+		if(ret < 0)
 		{
 			goto error;
 		}
+		counter = ret;
 	}
 
 	if(g_context->code_static_part != NULL && next_header != NULL)
@@ -1762,29 +1766,27 @@ int code_IR_packet(struct c_context *const context,
 		/* static part of next header */
 		counter = g_context->code_static_part(context, next_header,
 		                                      dest, counter);
-		if(counter < 0)
-		{
-			goto error;
-		}
 	}
 
 	/* part 7: if we do not want dynamic part in IR packet, we should not
 	 * send the following */
-	counter = code_generic_dynamic_part(context, &g_context->ip_flags,
+	ret = code_generic_dynamic_part(context, &g_context->ip_flags,
 	                                    ip, dest, counter);
-	if(counter < 0)
+	if(ret < 0)
 	{
 		goto error;
 	}
+	counter = ret;
 
 	if(nr_of_ip_hdr > 1)
 	{
-		counter = code_generic_dynamic_part(context, &g_context->ip2_flags,
-		                                    ip2, dest, counter);
-		if(counter < 0)
+		ret = code_generic_dynamic_part(context, &g_context->ip2_flags,
+		                                ip2, dest, counter);
+		if(ret < 0)
 		{
 			goto error;
 		}
+		counter = ret;
 	}
 
 	if(g_context->code_dynamic_part != NULL && next_header != NULL)
@@ -1792,22 +1794,12 @@ int code_IR_packet(struct c_context *const context,
 		/* dynamic part of next header */
 		counter = g_context->code_dynamic_part(context, next_header,
 		                                       dest, counter);
-		if(counter < 0)
-		{
-			goto error;
-		}
 	}
 
 	/* part 8: IR remainder header */
 	if(g_context->code_ir_remainder != NULL)
 	{
 		counter = g_context->code_ir_remainder(context, dest, counter);
-		if(counter < 0)
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to code IR remainder header\n");
-			goto error;
-		}
 	}
 
 	/* part 5 */
@@ -1872,12 +1864,14 @@ int code_IR_DYN_packet(struct c_context *const context,
                        unsigned char *const dest)
 {
 	struct c_generic_context *g_context;
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 	int crc_position;
+	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
+	assert(dest != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -1912,43 +1906,35 @@ int code_IR_DYN_packet(struct c_context *const context,
 
 	/* part 6: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
-	counter = code_generic_dynamic_part(context, &g_context->ip_flags,
-	                                    ip, dest, counter);
-	if(counter < 0)
+	ret = code_generic_dynamic_part(context, &g_context->ip_flags,
+	                                ip, dest, counter);
+	if(ret < 0)
 	{
 		goto error;
 	}
+	counter = ret;
 
 	if(g_context->tmp.nr_of_ip_hdr > 1)
 	{
-		counter = code_generic_dynamic_part(context, &g_context->ip2_flags,
-		                                    ip2, dest, counter);
-		if(counter < 0)
+		ret = code_generic_dynamic_part(context, &g_context->ip2_flags,
+		                                ip2, dest, counter);
+		if(ret < 0)
 		{
 			goto error;
 		}
+		counter = ret;
 	}
 
 	if(g_context->code_dynamic_part != NULL && next_header != NULL)
 	{
 		/* dynamic part of next header */
 		counter = g_context->code_dynamic_part(context, next_header, dest, counter);
-		if(counter < 0)
-		{
-			goto error;
-		}
 	}
 
 	/* part 7: IR-DYN remainder header */
 	if(g_context->code_ir_remainder != NULL)
 	{
 		counter = g_context->code_ir_remainder(context, dest, counter);
-		if(counter < 0)
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to code IR-DYN remainder header\n");
-			goto error;
-		}
 	}
 
 	/* part 5 */
@@ -2534,8 +2520,8 @@ int code_UO0_packet(struct c_context *const context,
                     const unsigned char *next_header,
                     unsigned char *const dest)
 {
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 	unsigned char f_byte;
 	struct c_generic_context *g_context;
 	unsigned int crc;
@@ -2661,8 +2647,8 @@ int code_UO1_packet(struct c_context *const context,
                     const unsigned char *next_header,
                     unsigned char *const dest)
 {
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 	unsigned char f_byte;
 	unsigned char s_byte;
 	struct c_generic_context *g_context;
@@ -2902,8 +2888,8 @@ int code_UO2_packet(struct c_context *const context,
 	unsigned char f_byte;     /* part 2 */
 	unsigned char s_byte = 0; /* part 4 */
 	unsigned char t_byte = 0; /* part 5 */
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 	int s_byte_position = 0;
 	int t_byte_position;
 	rohc_ext_t extension;
@@ -2919,6 +2905,7 @@ int code_UO2_packet(struct c_context *const context,
 	                  unsigned char *const f_byte,
 	                  unsigned char *const s_byte,
 	                  unsigned char *const t_byte);
+	int ret;
 
 	g_context = (struct c_generic_context *) context->specific;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
@@ -3037,18 +3024,19 @@ int code_UO2_packet(struct c_context *const context,
 	switch(extension)
 	{
 		case PACKET_NOEXT:
+			ret = counter;
 			break;
 		case PACKET_EXT_0:
-			counter = code_EXT0_packet(context, dest, counter);
+			ret = code_EXT0_packet(context, dest, counter);
 			break;
 		case PACKET_EXT_1:
-			counter = code_EXT1_packet(context, dest, counter);
+			ret = code_EXT1_packet(context, dest, counter);
 			break;
 		case PACKET_EXT_2:
-			counter = code_EXT2_packet(context, dest, counter);
+			ret = code_EXT2_packet(context, dest, counter);
 			break;
 		case PACKET_EXT_3:
-			counter = code_EXT3_packet(context, ip, ip2, dest, counter);
+			ret = code_EXT3_packet(context, ip, ip2, dest, counter);
 			break;
 		default:
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3056,12 +3044,13 @@ int code_UO2_packet(struct c_context *const context,
 			goto error;
 	}
 
-	if(counter < 0)
+	if(ret < 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "cannot build extension\n");
 		goto error;
 	}
+	counter = ret;
 
 	/* build the UO tail */
 	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
@@ -5129,7 +5118,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		int success;
 
 		/* determine the TS_STRIDE to transmit */
-		ts_stride = get_ts_stride(rtp_context->ts_sc);
+		ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
 		/* determine the size of the SDVL-encoded TS_STRIDE value */
 		sdvl_size = c_bytesSdvl(ts_stride, 0 /* length detection */);

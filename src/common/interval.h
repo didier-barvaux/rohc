@@ -47,21 +47,61 @@ typedef enum
 } rohc_lsb_shift_t;
 
 
+/**
+ * @brief An interval of 16-bit values
+ *
+ * Lower and upper bound values are always included in the interval.
+ *
+ * The upper bound may be greater that the lower bound of the interval if the
+ * interval straddles the interval boundaries.
+ *
+ * Example of interval that does not straddle field boundaries:
+ *   [1, 3]
+ *
+ * Example of interval that straddles field boundaries (16-bit field):
+ *   [65530, 4]
+ */
+struct rohc_interval16
+{
+	uint16_t min;  /**< The lower bound of the interval */
+	uint16_t max;  /**< The upper bound of the interval */
+};
+
+
+/**
+ * @brief An interval of 32-bit values
+ *
+ * Lower and upper bound values are always included in the interval.
+ *
+ * The upper bound may be greater that the lower bound of the interval if the
+ * interval straddles the interval boundaries.
+ *
+ * Example of interval that does not straddle field boundaries:
+ *   [1, 3]
+ *
+ * Example of interval that straddles field boundaries (32-bit field):
+ *   [65530, 4]
+ */
+struct rohc_interval32
+{
+	uint32_t min;  /**< The lower bound of the interval */
+	uint32_t max;  /**< The upper bound of the interval */
+};
+
+
 /*
  * Public function prototypes:
  */
 
-void rohc_f_16bits(const uint16_t v_ref,
-                   const size_t k,
-                   const rohc_lsb_shift_t p,
-                   uint16_t *const min,
-                   uint16_t *const max);
+const struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
+                                           const size_t k,
+                                           const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, const));
 
-void rohc_f_32bits(const uint32_t v_ref,
-                   const size_t k,
-                   const rohc_lsb_shift_t p,
-                   uint32_t *const min,
-                   uint32_t *const max);
+const struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
+                                           const size_t k,
+                                           const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, const));
 
 #endif
 

@@ -58,24 +58,28 @@ typedef enum
  * Function prototypes.
  */
 
-bool ROHC_EXPORT sdvl_can_value_be_encoded(uint32_t value);
-bool ROHC_EXPORT sdvl_can_length_be_encoded(size_t bits_nr);
+bool ROHC_EXPORT sdvl_can_value_be_encoded(const uint32_t value)
+	__attribute__((warn_unused_result, const));
+bool ROHC_EXPORT sdvl_can_length_be_encoded(const size_t bits_nr)
+	__attribute__((warn_unused_result, const));
 
 size_t ROHC_EXPORT sdvl_get_min_len(const size_t nr_min_required,
-                                    const size_t nr_encoded);
+                                    const size_t nr_encoded)
+	__attribute__((warn_unused_result, const));
 
-size_t ROHC_EXPORT c_bytesSdvl(uint32_t value, size_t length);
+size_t ROHC_EXPORT c_bytesSdvl(const uint32_t value, const size_t length)
+	__attribute__((warn_unused_result, const));
 
-int ROHC_EXPORT c_encodeSdvl(unsigned char *dest,
-                             uint32_t value,
-                             size_t length);
+bool ROHC_EXPORT c_encodeSdvl(uint8_t *const dest,
+                              const uint32_t value,
+                              const size_t length)
+	__attribute__((warn_unused_result, nonnull(1)));
 
-int ROHC_EXPORT d_sdvalue_size(const unsigned char *data);
-
-size_t ROHC_EXPORT sdvl_decode(const unsigned char *data,
+size_t ROHC_EXPORT sdvl_decode(const uint8_t *const data,
                                const size_t length,
                                uint32_t *const value,
-                               size_t *const bits_nr);
+                               size_t *const bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
 #endif
 

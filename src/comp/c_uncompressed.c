@@ -56,20 +56,24 @@ struct sc_uncompressed_context
  */
 
 /* create/destroy context */
-static int c_uncompressed_create(struct c_context *const context,
-                                 const struct ip_packet *ip);
-static void c_uncompressed_destroy(struct c_context *const context);
+static bool c_uncompressed_create(struct c_context *const context,
+                                  const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static void c_uncompressed_destroy(struct c_context *const context)
+	__attribute__((nonnull(1)));
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
                                          const struct ip_packet *const outer_ip,
                                          const struct ip_packet *const inner_ip,
                                          const uint8_t protocol,
-                                         rohc_ctxt_key_t *const ctxt_key);
+                                         rohc_ctxt_key_t *const ctxt_key)
+		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 bool c_uncompressed_use_udp_port(const struct c_context *const context,
                                  const unsigned int port);
 
 /* check whether a packet belongs to a context */
-static bool c_uncompressed_check_context(const struct c_context *context,
-                                         const struct ip_packet *ip);
+static bool c_uncompressed_check_context(const struct c_context *const context,
+                                         const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct c_context *const context,
@@ -127,13 +131,13 @@ static void uncompressed_change_state(struct c_context *const context,
  *
  * @param context The compression context
  * @param ip      The IP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @return        true if successful, false otherwise
  */
-static int c_uncompressed_create(struct c_context *const context,
-                                 const struct ip_packet *ip)
+static bool c_uncompressed_create(struct c_context *const context,
+                                  const struct ip_packet *const ip)
 {
 	struct sc_uncompressed_context *uncomp_context;
-	int success = 0;
+	bool success = false;
 
 	assert(context != NULL);
 	assert(context->profile != NULL);
@@ -151,7 +155,7 @@ static int c_uncompressed_create(struct c_context *const context,
 	uncomp_context->normal_count = 0;
 	uncomp_context->go_back_ir_count = 0;
 
-	success = 1;
+	success = true;
 
 quit:
 	return success;
@@ -222,8 +226,8 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
  * @return        Always return true to tell that the IP packet belongs
  *                to the context
  */
-static bool c_uncompressed_check_context(const struct c_context *context,
-                                         const struct ip_packet *ip)
+static bool c_uncompressed_check_context(const struct c_context *const context,
+                                         const struct ip_packet *const ip)
 {
 	return true;
 }
@@ -642,8 +646,8 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
                                        int *const payload_offset,
                                        const size_t dest_size)
 {
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 
 	rohc_comp_debug(context, "code IR packet (CID = %d)\n", context->cid);
 
@@ -717,8 +721,8 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
                                            int *const payload_offset,
                                            const size_t dest_size)
 {
-	int counter;
-	int first_position;
+	size_t counter;
+	size_t first_position;
 
 	rohc_comp_debug(context, "code normal packet (CID = %d)\n", context->cid);
 

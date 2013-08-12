@@ -65,8 +65,9 @@ static void d_esp_destroy(void *const context)
 
 static int esp_parse_static_esp(const struct d_context *const context,
                                 const unsigned char *packet,
-                                unsigned int length,
-                                struct rohc_extr_bits *const bits);
+                                size_t length,
+                                struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int esp_parse_dynamic_esp(const struct d_context *const context,
                                  const unsigned char *packet,
@@ -83,7 +84,8 @@ static int esp_build_uncomp_esp(const struct d_context *const context,
                                 const unsigned int payload_len);
 
 static void esp_update_context(const struct d_context *context,
-                               const struct rohc_decoded_values decoded);
+                               const struct rohc_decoded_values decoded)
+	__attribute__((nonnull(1)));
 
 
 /*
@@ -238,13 +240,13 @@ static void d_esp_destroy(void *const context)
  */
 static int esp_parse_static_esp(const struct d_context *const context,
                                 const unsigned char *packet,
-                                unsigned int length,
+                                size_t length,
                                 struct rohc_extr_bits *const bits)
 {
 	const size_t spi_length = sizeof(uint32_t);
 	struct d_generic_context *g_context;
 	struct d_esp_context *esp_context;
-	int read = 0; /* number of bytes read from the packet */
+	size_t read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);

@@ -333,6 +333,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const size_t large_cid_len,
                            unsigned char *dest);
 
+static uint32_t d_tcp_get_msn(const struct d_context *const context)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+
 
 /**
  * @brief Create the TCP decompression context.
@@ -480,13 +483,13 @@ static void d_tcp_destroy(void *const context)
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
  */
-static int d_tcp_decode(struct rohc_decomp *decomp,
-                        struct d_context *context,
+static int d_tcp_decode(struct rohc_decomp *const decomp,
+                        struct d_context *const context,
                         const unsigned char *const rohc_packet,
-                        const unsigned int rohc_length,
+                        const size_t rohc_length,
                         const size_t add_cid_len,
                         const size_t large_cid_len,
-                        unsigned char *dest)
+                        unsigned char *const dest)
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
@@ -4440,10 +4443,10 @@ error:
  * @param context The decompression context
  * @return        The reference MSN value
  */
-static int d_tcp_get_msn(struct d_context *context)
+static uint32_t d_tcp_get_msn(const struct d_context *const context)
 {
-	struct d_generic_context *g_context = context->specific;
-	struct d_tcp_context *tcp_context = g_context->specific;
+	const struct d_generic_context *const g_context = context->specific;
+	const struct d_tcp_context *const tcp_context = g_context->specific;
 
 	rohc_decomp_debug(context, "MSN = %u (0x%x)\n", tcp_context->msn,
 	                  tcp_context->msn);

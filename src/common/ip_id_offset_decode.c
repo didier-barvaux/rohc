@@ -116,9 +116,6 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
 	uint32_t offset_decoded;
 	bool is_success;
 
-	assert(ipid != NULL);
-	assert(decoded != NULL);
-
 	is_success = rohc_lsb_decode(ipid->lsb, m, k, &offset_decoded);
 	if(is_success)
 	{
@@ -142,8 +139,6 @@ void ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
                           const uint32_t sn_ref)
 {
 	uint16_t offset_ref;
-
-	assert(ipid != NULL);
 
 	/* compute the offset between reference IP-ID and reference SN
 	 * (overflow over 16 bits is expected if SN > IP-ID) */

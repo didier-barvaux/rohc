@@ -42,26 +42,25 @@
  * @param k     The number of least significant bits of the value that are
  *              transmitted
  * @param p     The shift parameter (may be negative)
- * @param min   OUT: The lower limit of the interval
- * @param max   OUT: The upper limit of the interval
+ * @return      The computed interval
  */
-void rohc_f_16bits(const uint16_t v_ref,
-                   const size_t k,
-                   const rohc_lsb_shift_t p,
-                   uint16_t *const min,
-                   uint16_t *const max)
+const struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
+                                           const size_t k,
+                                           const rohc_lsb_shift_t p)
 {
-	uint32_t min32;
-	uint32_t max32;
+	struct rohc_interval32 interval32;
+	struct rohc_interval16 interval16;
 
 	/* do not accept more bits than the field may contain */
 	assert(k <= 16);
 
 	/* use the function for 32-bit fields, then ensure that nothing is greater
 	 * than 0xffff */
-	rohc_f_32bits(v_ref, k, p, &min32, &max32);
-	*min = min32 & 0xfffff;
-	*max = max32 & 0xfffff;
+	interval32 = rohc_f_32bits(v_ref, k, p);
+	interval16.min = interval32.min & 0xfffff;
+	interval16.max = interval32.max & 0xfffff;
+
+	return interval16;
 }
 
 
@@ -79,15 +78,13 @@ void rohc_f_16bits(const uint16_t v_ref,
  * @param k     The number of least significant bits of the value that are
  *              transmitted
  * @param p     The shift parameter (may be negative)
- * @param min   OUT: The lower limit of the interval
- * @param max   OUT: The upper limit of the interval
+ * @return      The computed interval
  */
-void rohc_f_32bits(const uint32_t v_ref,
-                   const size_t k,
-                   const rohc_lsb_shift_t p,
-                   uint32_t *const min,
-                   uint32_t *const max)
+const struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
+                                           const size_t k,
+                                           const rohc_lsb_shift_t p)
 {
+	struct rohc_interval32 interval32;
 	uint32_t interval_width;
 	int32_t computed_p;
 
@@ -146,7 +143,9 @@ void rohc_f_32bits(const uint32_t v_ref,
 	 *
 	 * Straddling the lower and upper wraparound boundaries
 	 * is handled without additional operation */
-	*min = v_ref - computed_p;
-	*max = v_ref + interval_width - computed_p;
+	interval32.min = v_ref - computed_p;
+	interval32.max = v_ref + interval_width - computed_p;
+
+	return interval32;
 }
 

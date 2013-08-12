@@ -247,60 +247,68 @@ struct c_generic_context
 	                   const unsigned char *next_header);
 
 	/** Determine the next SN value */
-	uint32_t (*get_next_sn)(const struct c_context *context,
-	                        const struct ip_packet *outer_ip,
-	                        const struct ip_packet *inner_ip);
+	uint32_t (*get_next_sn)(const struct c_context *const context,
+	                        const struct ip_packet *const outer_ip,
+	                        const struct ip_packet *const inner_ip)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add the static part of the next header to the
 	///        ROHC packet
-	int (*code_static_part)(const struct c_context *context,
-	                        const unsigned char *next_header,
-	                        unsigned char *const dest,
-	                        int counter);
+	size_t (*code_static_part)(const struct c_context *const context,
+	                           const unsigned char *const next_header,
+	                           unsigned char *const dest,
+	                           const size_t counter)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to add the dynamic part of the next header to the
 	///        ROHC pachet
-	int (*code_dynamic_part)(const struct c_context *context,
-	                         const unsigned char *next_header,
-	                         unsigned char *const dest,
-	                         int counter);
+	size_t (*code_dynamic_part)(const struct c_context *const context,
+	                            const unsigned char *const next_header,
+	                            unsigned char *const dest,
+	                            const size_t counter)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to add the IR/IR-DYN remainder header to the
 	///        ROHC pachet
-	int (*code_ir_remainder)(const struct c_context *context,
-	                         unsigned char *const dest,
-	                         int counter);
+	size_t (*code_ir_remainder)(const struct c_context *const context,
+	                            unsigned char *const dest,
+	                            const size_t counter)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add an additional header in the head of the
 	///        UO-0, UO-1 and UO-2 packets
-	int (*code_UO_packet_head)(const struct c_context *context,
-	                           const unsigned char *next_header,
-	                           unsigned char *const dest,
-	                           int counter,
-	                           int *const first_position);
+	size_t (*code_UO_packet_head)(const struct c_context *const context,
+	                              const unsigned char *const next_header,
+	                              unsigned char *const dest,
+	                              const size_t counter,
+	                              size_t *const first_position)
+		__attribute__((warn_unused_result, nonnull(1,2, 3, 5)));
 
 	/// @brief The handler used to add an additional header in the tail of the
 	///        UO-0, UO-1 and UO-2 packets
-	int (*code_uo_remainder)(const struct c_context *context,
-	                         const unsigned char *next_header,
-	                         unsigned char *const dest,
-	                         int counter);
+	size_t (*code_uo_remainder)(const struct c_context *const context,
+	                            const unsigned char *const next_header,
+	                            unsigned char *const dest,
+	                            const size_t counter)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/// @brief The handler used to compute the CRC-STATIC value
-	unsigned int (*compute_crc_static)(const unsigned char *const ip,
-	                                   const unsigned char *const ip2,
-	                                   const unsigned char *const next_header,
-	                                   const rohc_crc_type_t crc_type,
-	                                   const unsigned int init_val,
-	                                   const unsigned char *const crc_table);
+	const uint8_t (*compute_crc_static)(const uint8_t *const ip,
+	                                    const uint8_t *const ip2,
+	                                    const uint8_t *const next_header,
+	                                    const rohc_crc_type_t crc_type,
+	                                    const uint8_t init_val,
+	                                    const uint8_t *const crc_table)
+		__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
-	unsigned int (*compute_crc_dynamic)(const unsigned char *const ip,
-	                                    const unsigned char *const ip2,
-	                                    const unsigned char *const next_header,
-	                                    const rohc_crc_type_t crc_type,
-	                                    const unsigned int init_val,
-	                                    const unsigned char *const crc_table);
+	const uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
+	                                     const uint8_t *const ip2,
+	                                     const uint8_t *const next_header,
+	                                     const rohc_crc_type_t crc_type,
+	                                     const uint8_t init_val,
+	                                     const uint8_t *const crc_table)
+		__attribute__((nonnull(1, 3, 6), warn_unused_result));
 
 	/// Profile-specific data
 	void *specific;
@@ -351,7 +359,7 @@ struct list_comp
 	///        type of the extension
 	void (*create_item)(struct list_comp *const comp,
 	                    const unsigned int index_table,
-	                    const unsigned char *ext_data,
+	                    const unsigned char *const ext_data,
 	                    const size_t ext_size);
 
 	/// @brief the handler used to free the based table element
@@ -371,16 +379,19 @@ struct list_comp
  * Function prototypes.
  */
 
-int c_generic_create(struct c_context *const context,
-                     const rohc_lsb_shift_t sn_shift,
-                     const struct ip_packet *ip);
-void c_generic_destroy(struct c_context *const context);
+bool c_generic_create(struct c_context *const context,
+                      const rohc_lsb_shift_t sn_shift,
+                      const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
+void c_generic_destroy(struct c_context *const context)
+	__attribute__((nonnull(1)));
 
 bool c_generic_check_profile(const struct rohc_comp *const comp,
                              const struct ip_packet *const outer_ip,
                              const struct ip_packet *const inner_ip,
                              const uint8_t protocol,
-                             rohc_ctxt_key_t *const ctxt_key);
+                             rohc_ctxt_key_t *const ctxt_key)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 void change_mode(struct c_context *const context, const rohc_mode new_mode);
 void change_state(struct c_context *const context, const rohc_c_state new_state);

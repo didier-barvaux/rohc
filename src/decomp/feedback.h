@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 
 /// CRC option for the FEEDBACK-2 packet
@@ -56,9 +57,9 @@
 
 
 /// Do not add a CRC option in Feedback packet
-#define NO_CRC    0
+#define NO_CRC    false
 /// Do add a CRC option in Feedback packet
-#define WITH_CRC  1
+#define WITH_CRC  true
 
 
 /// The maximum length (in bytes) of the feedback data
@@ -83,21 +84,28 @@ struct d_feedback
  * Prototypes of public functions.
  */
 
-int f_feedback1(int sn, struct d_feedback *feedback);
+void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
+	__attribute__((nonnull(2)));
 
-int f_feedback2(int acktype, int mode, uint32_t sn, struct d_feedback *feedback);
+bool f_feedback2(const int acktype,
+                 const rohc_mode mode,
+                 const uint32_t sn,
+                 struct d_feedback *const feedback)
+	__attribute__((warn_unused_result, nonnull(4)));
 
-int f_add_option(struct d_feedback *feedback,
-                 const uint8_t opt_type,
-                 const unsigned char *data,
-                 const size_t data_len);
+bool f_add_option(struct d_feedback *const feedback,
+                  const uint8_t opt_type,
+                  const unsigned char *const data,
+                  const size_t data_len)
+	__attribute__((warn_unused_result, nonnull(1)));
 
-unsigned char * f_wrap_feedback(struct d_feedback *feedback,
-                                const uint16_t cid,
-                                const rohc_cid_type_t cid_type,
-                                int with_crc,
-                                unsigned char *crc_table,
-                                int *final_size);
+uint8_t * f_wrap_feedback(struct d_feedback *feedback,
+                          const uint16_t cid,
+                          const rohc_cid_type_t cid_type,
+                          const bool with_crc,
+                          const uint8_t *const crc_table,
+                          size_t *const final_size)
+	__attribute__((warn_unused_result, nonnull(1, 5, 6)));
 
 
 #endif

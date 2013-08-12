@@ -75,15 +75,16 @@ void list_destroy(struct c_list *list)
  * @param list   the list where the element is added
  * @param item   the item of the new element
  * @param index  the index in based table
- * @return       1 if successful, 0 otherwise
+ * @return       true if successful, false otherwise
  */
-int list_add_at_beginning(struct c_list *list,
-                          struct rohc_list_item *item,
-                          int index)
+bool list_add_at_beginning(struct c_list *const list,
+                           const struct rohc_list_item *const item,
+                           const int index)
 {
 	struct list_elt *elt;
 
 	assert(list != NULL);
+	assert(item != NULL);
 
 	elt = malloc(sizeof(struct list_elt));
 	if(elt == NULL)
@@ -106,10 +107,11 @@ int list_add_at_beginning(struct c_list *list,
 		list->first_elt->prev_elt = elt;
 		list->first_elt = elt;
 	}
-	return 1;
+
+	return true;
 
 error:
-	return 0;
+	return false;
 }
 
 
@@ -119,21 +121,22 @@ error:
  * @param list   the list where the element is added
  * @param item   the item of the new element
  * @param index  the index in based table
- * @return       1 if successful, 0 otherwise
+ * @return       true if successful, false otherwise
  */
-int list_add_at_end(struct c_list *list,
-                    struct rohc_list_item *item,
-                    int index)
+bool list_add_at_end(struct c_list *const list,
+                     const struct rohc_list_item *const item,
+                     const int index)
 {
+	bool is_success = false;
 	struct list_elt *elt;
-	int result = 0;
 	struct list_elt *curr_elt;
 
 	assert(list != NULL);
+	assert(item != NULL);
 
 	if(list->first_elt == NULL)
 	{
-		result = list_add_at_beginning(list, item, index);
+		is_success = list_add_at_beginning(list, item, index);
 	}
 	else
 	{
@@ -155,12 +158,11 @@ int list_add_at_end(struct c_list *list,
 		}
 		curr_elt->next_elt = elt;
 		elt->prev_elt = curr_elt;
-		result = 1;
+		is_success = true;
 	}
-	return result;
 
 error:
-	return 0;
+	return is_success;
 }
 
 
@@ -171,17 +173,18 @@ error:
  * @param item         The element to insert
  * @param index        The position
  * @param index_table  The index in based_table
- * @return             1 if successful, 0 otherwise
+ * @return             true if successful, false otherwise
  */
-int list_add_at_index(struct c_list *list,
-                      struct rohc_list_item *item,
-                      int index,
-                      int index_table)
+bool list_add_at_index(struct c_list *const list,
+                       const struct rohc_list_item *const item,
+                       const int index,
+                       const int index_table)
 {
+	size_t size_l;
 	int i;
-	int size_l;
 
 	assert(list != NULL);
+	assert(item != NULL);
 
 	size_l = list_get_size(list);
 	if(index > size_l)
@@ -243,10 +246,10 @@ int list_add_at_index(struct c_list *list,
 		}
 	}
 
-	return 1;
+	return true;
 
 error:
-	return 0;
+	return false;
 }
 
 
@@ -257,10 +260,11 @@ error:
  * @param index  the specified index
  * @return       item, NULL if there is no element at this index
  */
-struct list_elt * list_get_elt_by_index(struct c_list *list, int index)
+struct list_elt * list_get_elt_by_index(const struct c_list *const list,
+                                        const size_t index)
 {
 	struct list_elt *curr_elt;
-	int i;
+	size_t i;
 
 	assert(list != NULL);
 
@@ -291,12 +295,14 @@ error:
  * @param item  the specified element
  * @return      the index, -1 if the element is not in the list
  */
-int list_get_index_by_elt(struct c_list *list, struct rohc_list_item *item)
+int list_get_index_by_elt(const struct c_list *const list,
+                          const struct rohc_list_item *const item)
 {
 	struct list_elt *curr_elt;
-	int i;
+	size_t i;
 
 	assert(list != NULL);
+	assert(item != NULL);
 
 	if(list->first_elt == NULL)
 	{
@@ -329,11 +335,13 @@ end:
  * @param list  the list where the element is destroyed
  * @param item  the element to delete
  */
-void list_remove(struct c_list *list, struct rohc_list_item *item)
+void list_remove(struct c_list *const list,
+                 const struct rohc_list_item *const item)
 {
 	struct list_elt *curr_elt;
 
 	assert(list != NULL);
+	assert(item != NULL);
 
 	if(list->first_elt == NULL)
 	{
@@ -378,7 +386,7 @@ void list_remove(struct c_list *list, struct rohc_list_item *item)
  *
  * @param list the list to empty
  */
-void rohc_list_empty(struct c_list *list)
+void rohc_list_empty(struct c_list *const list)
 {
 	struct list_elt *curr_elt;
 
@@ -405,13 +413,15 @@ void rohc_list_empty(struct c_list *list)
  *
  * @param list  the list where is the element
  * @param item  the specified element
- * @return      1 if present, 0 else
+ * @return      true if present, false if not
  */
-int list_type_is_present(struct c_list *list, struct rohc_list_item *item)
+bool list_type_is_present(const struct c_list *const list,
+                          const struct rohc_list_item *const item)
 {
 	struct list_elt *curr_elt;
 
 	assert(list != NULL);
+	assert(item != NULL);
 
 	if(list->first_elt == NULL)
 	{
@@ -428,9 +438,10 @@ int list_type_is_present(struct c_list *list, struct rohc_list_item *item)
 		goto end;
 	}
 
-	return 1;
+	return true;
+
 end:
-	return 0;
+	return false;
 }
 
 

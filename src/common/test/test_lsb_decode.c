@@ -32,17 +32,20 @@
 
 
 /** Stub for \ref rohc_f_32bits */
-void __wrap_rohc_f_32bits(const uint32_t v_ref,
-                          const size_t k,
-                          const rohc_lsb_shift_t p,
-                          uint32_t *const min,
-                          uint32_t *const max)
+const struct rohc_interval32 __wrap_rohc_f_32bits(const uint32_t v_ref,
+																  const size_t k,
+																  const rohc_lsb_shift_t p)
 {
+	struct rohc_interval32 interval;
+
 	check_expected(v_ref);
 	check_expected(k);
 	check_expected(p);
-	*min = mock_type(uint32_t);
-	*max = mock_type(uint32_t);
+
+	interval.min = mock_type(uint32_t);
+	interval.max = mock_type(uint32_t);
+
+	return interval;
 }
 
 

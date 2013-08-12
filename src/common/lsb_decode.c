@@ -54,7 +54,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
                               const uint32_t m,
                               const size_t k,
                               uint32_t *const decoded)
-	__attribute__((nonnull(1, 4)));
+	__attribute__((nonnull(1, 4), warn_unused_result));
 
 static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
                               const uint16_t m,
@@ -131,10 +131,15 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 	assert(lsb != NULL);
 	assert(lsb->is_init == true);
 	assert(lsb->max_len == 16 || lsb->max_len == 32);
+	assert(decoded != NULL);
 
 	if(lsb->max_len == 16)
 	{
 		uint16_t decoded16 = 0; /* initialized for GCC 4.0.x */
+
+		assert(lsb->max_len == 16);
+		assert(k <= 16);
+
 		is_success = rohc_lsb_decode16(lsb, m, k, &decoded16);
 		if(is_success)
 		{
@@ -143,6 +148,9 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 	}
 	else /* 32-bit value */
 	{
+		assert(lsb->max_len == 32);
+		assert(k <= 32);
+
 		is_success = rohc_lsb_decode32(lsb, m, k, decoded);
 	}
 
@@ -161,21 +169,15 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
  * @param decoded  OUT: The decoded value
  * @return         true in case of success, false otherwise
  */
-bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
-                       const uint32_t m,
-                       const size_t k,
-                       uint32_t *const decoded)
+static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                              const uint32_t m,
+                              const size_t k,
+                              uint32_t *const decoded)
 {
-	uint32_t min;
-	uint32_t max;
+	struct rohc_interval32 interval;
 	uint32_t try;
 	uint32_t mask;
 	bool is_found = false;
-
-	assert(lsb != NULL);
-	assert(lsb->is_init == true);
-	assert(k <= 32);
-	assert(decoded != NULL);
 
 	/* compute the mask for k bits (and avoid integer overflow) */
 	if(k == 32)
@@ -189,22 +191,22 @@ bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 	assert((m & mask) == m);
 
 	/* determine the interval in which the decoded value should be present */
-	rohc_f_32bits(lsb->v_ref_d, k, lsb->p, &min, &max);
+	interval = rohc_f_32bits(lsb->v_ref_d, k, lsb->p);
 
 	/* search the value that matches the k lower bits of the value m to decode */
-	if(min <= max)
+	if(interval.min <= interval.max)
 	{
 		/* the interpretation interval does not straddle the field boundaries */
 
 		/* find the minimum value in the interval [min ; max] with the same k LSB
 		 * bits as m */
-		try = (min & (~mask)) | m;
-		if((min & mask) > m)
+		try = (interval.min & (~mask)) | m;
+		if((interval.min & mask) > m)
 		{
 			/* value is not in the interval (lower than min), try next value */
 			try += mask + 1;
 		}
-		if(try >= min && try <= max)
+		if(try >= interval.min && try <= interval.max)
 		{
 			/* value is in the interval: corresponding value found */
 			is_found = true;
@@ -217,13 +219,13 @@ bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 
 		/* find the first value in the interval [min ; max] with the same
 		 * k LSB bits as m */
-		try = (min & (~mask)) | m;
-		if((min & mask) > m)
+		try = (interval.min & (~mask)) | m;
+		if((interval.min & mask) > m)
 		{
 			/* value is not in the interval (lower than min), try next value */
 			try += mask + 1;
 		}
-		if(try >= min || try <= max)
+		if(try >= interval.min || try <= interval.max)
 		{
 			/* value is in the interval: corresponding value found */
 			is_found = true;
@@ -248,19 +250,14 @@ bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
  * @param decoded  OUT: The decoded value
  * @return         true in case of success, false otherwise
  */
-bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
-                       const uint16_t m,
-                       const size_t k,
-                       uint16_t *const decoded)
+static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                              const uint16_t m,
+                              const size_t k,
+                              uint16_t *const decoded)
 {
 	uint32_t m32;
 	uint32_t decoded32;
 	bool is_success;
-
-	assert(lsb != NULL);
-	assert(lsb->is_init == true);
-	assert(k <= 16);
-	assert(decoded != NULL);
 
 	m32 = ((uint32_t) m) & 0xffff;
 
@@ -287,7 +284,6 @@ bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
 void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
                       const uint32_t v_ref_d)
 {
-	assert(lsb != NULL);
 	lsb->v_ref_d = v_ref_d;
 	lsb->is_init = true;
 }
@@ -299,7 +295,7 @@ void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
  * @param lsb  The LSB object
  * @return     The current reference value
  */
-uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
+const uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
 {
 	assert(lsb->is_init == true);
 	return lsb->v_ref_d;

@@ -80,17 +80,20 @@ struct c_wlsb
  * Private function prototypes:
  */
 
-static void c_ack_remove(struct c_wlsb *s, int index);
+static void c_ack_remove(struct c_wlsb *const s, const size_t index)
+	__attribute__((nonnull(1)));
 
 static size_t rohc_g_16bits(const uint16_t v_ref,
                             const uint16_t v,
                             const rohc_lsb_shift_t p,
-                            const size_t bits_nr);
+                            const size_t bits_nr)
+	__attribute__((warn_unused_result, const ));
 
 static size_t rohc_g_32bits(const uint32_t v_ref,
                             const uint32_t v,
                             const rohc_lsb_shift_t p,
-                            const size_t bits_nr);
+                            const size_t bits_nr)
+	__attribute__((warn_unused_result, const));
 
 
 /*
@@ -202,11 +205,6 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 	uint16_t min;
 	uint16_t max;
 	size_t i;
-
-	assert(wlsb != NULL);
-	assert(wlsb->window != NULL);
-	/* (value <= 0xffff) always ensured because value is of type uint16_t */
-	assert(bits_nr != NULL);
 
 	/* cannot do anything if the window contains no value */
 	if(wlsb->count == 0)
@@ -345,16 +343,10 @@ error:
  * @param s  The W-LSB object
  * @param sn The SN to acknowledge
  */
-void c_ack_sn_wlsb(struct c_wlsb *s, const uint32_t sn)
+void c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
 {
 	size_t entry;
 	size_t i;
-
-	/* check the W-LSB object validity */
-	if(s == NULL)
-	{
-		return;
-	}
 
 	/* search for the window entry that matches the given SN
 	 * starting from the oldest one */
@@ -380,7 +372,7 @@ void c_ack_sn_wlsb(struct c_wlsb *s, const uint32_t sn)
  * @param s The W-LSB object
  * @return  The sum over the W-LSB window
  */
-int c_sum_wlsb(struct c_wlsb *s)
+int c_sum_wlsb(const struct c_wlsb *const s)
 {
 	size_t entry;
 	int sum = 0;
@@ -405,7 +397,7 @@ int c_sum_wlsb(struct c_wlsb *s)
  * @param s The W-LSB object
  * @return  The mean over the W-LSB window
  */
-int c_mean_wlsb(struct c_wlsb *s)
+int c_mean_wlsb(const struct c_wlsb *const s)
 {
 	size_t entry;
 	int sum = 0;
@@ -437,16 +429,10 @@ int c_mean_wlsb(struct c_wlsb *s)
  * @param s       The W-LSB object
  * @param index   The position to set as the oldest
  */
-static void c_ack_remove(struct c_wlsb *s, int index)
+static void c_ack_remove(struct c_wlsb *const s, const size_t index)
 {
 	size_t entry;
 	size_t i;
-
-	/* check the W-LSB object validity */
-	if(s == NULL)
-	{
-		return;
-	}
 
 	for(i = s->count, entry = s->oldest;
 	    i > 0;
@@ -481,20 +467,19 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
 {
-	uint16_t min;
-	uint16_t max;
+	struct rohc_interval16 interval;
 	size_t k;
 
 	assert(bits_nr <= 16);
 
 	for(k = 0; k < bits_nr; k++)
 	{
-		rohc_f_16bits(v_ref, k, p, &min, &max);
-		if(min <= max)
+		interval = rohc_f_16bits(v_ref, k, p);
+		if(interval.min <= interval.max)
 		{
 			/* interpretation interval does not straddle field boundaries,
 			 * check if value is in [min, max] */
-			if(v >= min && v <= max)
+			if(v >= interval.min && v <= interval.max)
 			{
 				break;
 			}
@@ -503,7 +488,7 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
 		{
 			/* the interpretation interval does straddle the field boundaries,
 			 * check if value is in [min, 0xffff] or [0, max] */
-			if(v >= min || v <= max)
+			if(v >= interval.min || v <= interval.max)
 			{
 				break;
 			}
@@ -532,20 +517,19 @@ static size_t rohc_g_32bits(const uint32_t v_ref,
                             const rohc_lsb_shift_t p,
                             const size_t bits_nr)
 {
-	uint32_t min;
-	uint32_t max;
+	struct rohc_interval32 interval;
 	size_t k;
 
 	assert(bits_nr <= 32);
 
 	for(k = 0; k < bits_nr; k++)
 	{
-		rohc_f_32bits(v_ref, k, p, &min, &max);
-		if(min <= max)
+		interval = rohc_f_32bits(v_ref, k, p);
+		if(interval.min <= interval.max)
 		{
 			/* interpretation interval does not straddle field boundaries,
 			 * check if value is in [min, max] */
-			if(v >= min && v <= max)
+			if(v >= interval.min && v <= interval.max)
 			{
 				break;
 			}
@@ -554,7 +538,7 @@ static size_t rohc_g_32bits(const uint32_t v_ref,
 		{
 			/* the interpretation interval does straddle the field boundaries,
 			 * check if value is in [min, 0xffff] or [0, max] */
-			if(v >= min || v <= max)
+			if(v >= interval.min || v <= interval.max)
 			{
 				break;
 			}

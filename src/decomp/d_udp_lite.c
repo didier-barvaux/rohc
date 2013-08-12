@@ -89,11 +89,12 @@ struct d_udp_lite_context
 static void d_udp_lite_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
-                                                 struct d_context *context,
-                                                 const unsigned char *packet,
+static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
+                                                 const struct d_context *const context,
+                                                 const uint8_t *const packet,
                                                  const size_t rohc_length,
-                                                 const size_t large_cid_len);
+                                                 const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
                                       const unsigned char *packet,
@@ -271,9 +272,9 @@ static void d_udp_lite_destroy(void *const context)
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t udp_lite_detect_packet_type(struct rohc_decomp *decomp,
-                                                 struct d_context *context,
-                                                 const unsigned char *packet,
+static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
+                                                 const struct d_context *const context,
+                                                 const uint8_t *const packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
 {
@@ -356,13 +357,13 @@ error:
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  */
-int d_udp_lite_decode(struct rohc_decomp *decomp,
-                      struct d_context *context,
+int d_udp_lite_decode(struct rohc_decomp *const decomp,
+                      struct d_context *const context,
                       const unsigned char *const rohc_packet,
-                      const unsigned int rohc_length,
+                      const size_t rohc_length,
                       const size_t add_cid_len,
                       const size_t large_cid_len,
-                      unsigned char *dest)
+                      unsigned char *const dest)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;

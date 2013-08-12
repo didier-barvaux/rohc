@@ -81,8 +81,9 @@ struct sc_udp_context
  * Private function prototypes.
  */
 
-static int c_udp_create(struct c_context *const context,
-                        const struct ip_packet *ip);
+static bool c_udp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void udp_decide_state(struct c_context *const context);
 
@@ -94,10 +95,11 @@ static int c_udp_encode(struct c_context *const context,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset);
 
-static int udp_code_dynamic_udp_part(const struct c_context *context,
-                                     const unsigned char *next_header,
-                                     unsigned char *const dest,
-                                     int counter);
+static size_t udp_code_dynamic_udp_part(const struct c_context *const context,
+                                        const unsigned char *const next_header,
+                                        unsigned char *const dest,
+                                        const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int udp_changed_udp_dynamic(const struct c_context *context,
                                    const struct udphdr *udp);
@@ -112,10 +114,10 @@ static int udp_changed_udp_dynamic(const struct c_context *context,
  *
  * @param context The compression context
  * @param ip      The IP/UDP packet given to initialize the new context
- * @return        1 if successful, 0 otherwise
+ * @return        true if successful, false otherwise
  */
-static int c_udp_create(struct c_context *const context,
-                        const struct ip_packet *ip)
+static bool c_udp_create(struct c_context *const context,
+                         const struct ip_packet *const ip)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
@@ -211,12 +213,12 @@ static int c_udp_create(struct c_context *const context,
 	g_context->compute_crc_static = udp_compute_crc_static;
 	g_context->compute_crc_dynamic = udp_compute_crc_dynamic;
 
-	return 1;
+	return true;
 
 clean:
 	c_generic_destroy(context);
 quit:
-	return 0;
+	return false;
 }
 
 
@@ -344,8 +346,8 @@ bad_profile:
  * @return        true if the IP/UDP packet belongs to the context
  *                false if it does not belong to the context
  */
-bool c_udp_check_context(const struct c_context *context,
-                         const struct ip_packet *ip)
+bool c_udp_check_context(const struct c_context *const context,
+                         const struct ip_packet *const ip)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
@@ -638,22 +640,23 @@ static void udp_decide_state(struct c_context *const context)
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_code_uo_remainder(const struct c_context *context,
-                          const unsigned char *next_header,
-                          unsigned char *const dest,
-                          int counter)
+size_t udp_code_uo_remainder(const struct c_context *const context,
+                             const unsigned char *const next_header,
+                             unsigned char *const dest,
+                             const size_t counter)
 {
-	const struct udphdr *udp = (struct udphdr *) next_header;
+	const struct udphdr *const udp = (struct udphdr *) next_header;
+	size_t nr_written = 0;
 
 	/* part 13 */
 	if(udp->check != 0)
 	{
 		rohc_comp_debug(context, "UDP checksum = 0x%x\n", udp->check);
 		memcpy(&dest[counter], &udp->check, 2);
-		counter += 2;
+		nr_written += 2;
 	}
 
-	return counter;
+	return counter + nr_written;
 }
 
 
@@ -678,24 +681,25 @@ int udp_code_uo_remainder(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-int udp_code_static_udp_part(const struct c_context *context,
-                             const unsigned char *next_header,
-                             unsigned char *const dest,
-                             int counter)
+size_t udp_code_static_udp_part(const struct c_context *const context,
+                                const unsigned char *const next_header,
+                                unsigned char *const dest,
+                                const size_t counter)
 {
-	const struct udphdr *udp = (struct udphdr *) next_header;
+	const struct udphdr *const udp = (struct udphdr *) next_header;
+	size_t nr_written = 0;
 
 	/* part 1 */
 	rohc_comp_debug(context, "UDP source port = 0x%x\n", udp->source);
-	memcpy(&dest[counter], &udp->source, 2);
-	counter += 2;
+	memcpy(&dest[counter + nr_written], &udp->source, 2);
+	nr_written += 2;
 
 	/* part 2 */
 	rohc_comp_debug(context, "UDP dest port = 0x%x\n", udp->dest);
-	memcpy(&dest[counter], &udp->dest, 2);
-	counter += 2;
+	memcpy(&dest[counter + nr_written], &udp->dest, 2);
+	nr_written += 2;
 
-	return counter;
+	return counter + nr_written;
 }
 
 
@@ -718,14 +722,15 @@ int udp_code_static_udp_part(const struct c_context *context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int udp_code_dynamic_udp_part(const struct c_context *context,
-                                     const unsigned char *next_header,
-                                     unsigned char *const dest,
-                                     int counter)
+static size_t udp_code_dynamic_udp_part(const struct c_context *const context,
+                                        const unsigned char *const next_header,
+                                        unsigned char *const dest,
+                                        const size_t counter)
 {
 	struct c_generic_context *g_context;
 	struct sc_udp_context *udp_context;
 	const struct udphdr *udp;
+	size_t nr_written = 0;
 
 	g_context = (struct c_generic_context *) context->specific;
 	udp_context = (struct sc_udp_context *) g_context->specific;
@@ -734,11 +739,11 @@ static int udp_code_dynamic_udp_part(const struct c_context *context,
 
 	/* part 1 */
 	rohc_comp_debug(context, "UDP checksum = 0x%x\n", udp->check);
-	memcpy(&dest[counter], &udp->check, 2);
-	counter += 2;
+	memcpy(&dest[counter + nr_written], &udp->check, 2);
+	nr_written += 2;
 	udp_context->udp_checksum_change_count++;
 
-	return counter;
+	return counter + nr_written;
 }
 
 

@@ -33,13 +33,15 @@
 rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context);
 rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context);
 
-uint32_t c_ip_get_next_sn(const struct c_context *context,
-                          const struct ip_packet *outer_ip,
-                          const struct ip_packet *inner_ip);
+uint32_t c_ip_get_next_sn(const struct c_context *const context,
+                          const struct ip_packet *const outer_ip,
+                          const struct ip_packet *const inner_ip)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-int c_ip_code_ir_remainder(const struct c_context *context,
-	                        unsigned char *const dest,
-	                        int counter);
+size_t c_ip_code_ir_remainder(const struct c_context *const context,
+	                           unsigned char *const dest,
+	                           const size_t counter)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 #endif
 

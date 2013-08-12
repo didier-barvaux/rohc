@@ -32,16 +32,18 @@
  * Public function prototypes.
  */
 
-rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
-                                    struct d_context *context,
-                                    const unsigned char *packet,
+rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
+                                    const struct d_context *const context,
+                                    const uint8_t *const packet,
                                     const size_t rohc_length,
-                                    const size_t large_cid_len);
+                                    const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 int ip_parse_dynamic_ip(const struct d_context *const context,
-                        const unsigned char *packet,
-                        unsigned int length,
-                        struct rohc_extr_bits *const bits);
+                        const uint8_t *packet,
+                        const size_t length,
+                        struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 #endif
 

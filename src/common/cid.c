@@ -33,7 +33,8 @@
  * Prototypes of private functions
  */
 
-static unsigned char c_add_cid(const int cid);
+static uint8_t c_add_cid(const int cid)
+	__attribute__((warn_unused_result, const));
 
 
 /*
@@ -52,13 +53,13 @@ static unsigned char c_add_cid(const int cid);
  *                       by other functions
  * @return               The position in the rohc-packet-under-build buffer
  */
-int code_cid_values(const rohc_cid_type_t cid_type,
-                    const int cid,
-                    unsigned char *const dest,
-                    const size_t dest_size,
-                    int *const first_position)
+size_t code_cid_values(const rohc_cid_type_t cid_type,
+                       const int cid,
+                       unsigned char *const dest,
+                       const size_t dest_size,
+                       size_t *const first_position)
 {
-	int counter = 0;
+	size_t counter = 0;
 
 	/* small CID */
 	if(cid_type == ROHC_SMALL_CID)
@@ -123,7 +124,7 @@ int code_cid_values(const rohc_cid_type_t cid_type,
  * @param cid The small CID to set
  * @return    The add-CID byte
  */
-static unsigned char c_add_cid(const int cid)
+static uint8_t c_add_cid(const int cid)
 {
 	const uint8_t add_cid_type = 0xe0;
 

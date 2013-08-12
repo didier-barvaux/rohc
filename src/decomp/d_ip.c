@@ -124,9 +124,9 @@ void d_ip_destroy(void *const context)
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-rohc_packet_t ip_detect_packet_type(struct rohc_decomp *decomp,
-                                    struct d_context *context,
-                                    const unsigned char *packet,
+rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
+                                    const struct d_context *const context,
+                                    const uint8_t *const packet,
                                     const size_t rohc_length,
                                     const size_t large_cid_len)
 {
@@ -192,12 +192,12 @@ error:
  *                     -1 in case of failure
  */
 int ip_parse_dynamic_ip(const struct d_context *const context,
-                        const unsigned char *packet,
-                        unsigned int length,
+                        const uint8_t *packet,
+                        const size_t length,
                         struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
-	int read = 0; /* number of bytes read from the packet */
+	size_t read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);

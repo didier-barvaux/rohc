@@ -43,11 +43,11 @@
  * @param wlsb_window_width  The width of the W-LSB sliding window to use
  *                           for TS_STRIDE (must be > 0)
  * @param callback           The trace callback
- * @return                   1 if creation is successful, 0 otherwise
+ * @return                   true if creation is successful, false otherwise
  */
-int c_create_sc(struct ts_sc_comp *const ts_sc,
-                const size_t wlsb_window_width,
-                rohc_trace_callback_t callback)
+bool c_create_sc(struct ts_sc_comp *const ts_sc,
+                 const size_t wlsb_window_width,
+                 rohc_trace_callback_t callback)
 {
 	assert(ts_sc != NULL);
 	assert(wlsb_window_width > 0);
@@ -86,12 +86,12 @@ int c_create_sc(struct ts_sc_comp *const ts_sc,
 		goto free_ts_scaled_wlsb;
 	}
 
-	return 1;
+	return true;
 
 free_ts_scaled_wlsb:
 	c_destroy_wlsb(ts_sc->ts_scaled_wlsb);
 error:
-	return 0;
+	return false;
 }
 
 
@@ -117,7 +117,9 @@ void c_destroy_sc(struct ts_sc_comp *const ts_sc)
  * @param ts           The timestamp to add
  * @param sn           The sequence number of the RTP packet
  */
-void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t sn)
+void c_add_ts(struct ts_sc_comp *const ts_sc,
+              const uint32_t ts,
+              const uint16_t sn)
 {
 	assert(ts_sc != NULL);
 
@@ -322,9 +324,10 @@ void c_add_ts(struct ts_sc_comp *const ts_sc, const uint32_t ts, const uint16_t 
  * @return         true in case of success,
  *                 false if the minimal number of bits can not be found
  */
-bool nb_bits_unscaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
+bool nb_bits_unscaled(const struct ts_sc_comp *const ts_sc,
+                      size_t *const bits_nr)
 {
-	return wlsb_get_k_32bits(ts_sc.ts_unscaled_wlsb, ts_sc.ts, bits_nr);
+	return wlsb_get_k_32bits(ts_sc->ts_unscaled_wlsb, ts_sc->ts, bits_nr);
 }
 
 
@@ -349,9 +352,10 @@ void add_unscaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
  * @return         true in case of success,
  *                 false if the minimal number of bits can not be found
  */
-bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
+bool nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
+                    size_t *const bits_nr)
 {
-	return wlsb_get_k_32bits(ts_sc.ts_scaled_wlsb, ts_sc.ts_scaled, bits_nr);
+	return wlsb_get_k_32bits(ts_sc->ts_scaled_wlsb, ts_sc->ts_scaled, bits_nr);
 }
 
 
@@ -361,7 +365,7 @@ bool nb_bits_scaled(const struct ts_sc_comp ts_sc, size_t *const bits_nr)
  * @param ts_sc        The ts_sc_comp object
  * @param sn           The Sequence Number
  */
-void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn)
+void add_scaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
 {
 	assert(ts_sc != NULL);
 	c_add_wlsb(ts_sc->ts_scaled_wlsb, sn, ts_sc->ts_scaled);
@@ -374,9 +378,9 @@ void add_scaled(const struct ts_sc_comp *const ts_sc, uint16_t sn)
  * @param ts_sc        The ts_sc_comp object
  * @return             TS_STRIDE value
  */
-uint32_t get_ts_stride(const struct ts_sc_comp ts_sc)
+const uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
 {
-	return ts_sc.ts_stride;
+	return ts_sc->ts_stride;
 }
 
 
@@ -386,9 +390,9 @@ uint32_t get_ts_stride(const struct ts_sc_comp ts_sc)
  * @param ts_sc        The ts_sc_comp object
  * @return             The TS_SCALED value
  */
-uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc)
+const uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
 {
-	return ts_sc.ts_scaled;
+	return ts_sc->ts_scaled;
 }
 
 
@@ -398,9 +402,9 @@ uint32_t get_ts_scaled(const struct ts_sc_comp ts_sc)
  * @param ts_sc  The ts_sc_comp object
  * @return       The unscaled TS value
  */
-uint32_t get_ts_unscaled(const struct ts_sc_comp ts_sc)
+const uint32_t get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
 {
-	return ts_sc.ts;
+	return ts_sc->ts;
 }
 
 
@@ -411,8 +415,8 @@ uint32_t get_ts_unscaled(const struct ts_sc_comp ts_sc)
  * @param ts_sc  The TS SCALED compression context
  * @return       true if TS is deducible from SN, false otherwise
  */
-bool rohc_ts_sc_is_deducible(const struct ts_sc_comp ts_sc)
+bool rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)
 {
-	return ts_sc.is_deducible;
+	return ts_sc->is_deducible;
 }
 

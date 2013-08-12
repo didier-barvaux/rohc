@@ -212,12 +212,12 @@ static void d_udp_destroy(void *const context)
  */
 int udp_parse_static_udp(const struct d_context *const context,
                          const unsigned char *packet,
-                         unsigned int length,
+                         size_t length,
                          struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
 	struct d_udp_context *udp_context;
-	int read = 0; /* number of bytes read from the packet */
+	size_t read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
 	assert(context->specific != NULL);

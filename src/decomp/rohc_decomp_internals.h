@@ -226,13 +226,13 @@ struct d_profile
 	char *description;
 
 	/* The handler used to decode a ROHC packet */
-	int (*decode)(struct rohc_decomp *decomp,
-	              struct d_context *context,
+	int (*decode)(struct rohc_decomp *const decomp,
+	              struct d_context *const context,
 	              const unsigned char *const rohc_packet,
-	              const unsigned int rohc_length,
+	              const size_t rohc_length,
 	              const size_t add_cid_len,
 	              const size_t large_cid_len,
-	              unsigned char *dest);
+	              unsigned char *const dest);
 
 	/* @brief The handler used to create the profile-specific part of the
 	 *        decompression context */
@@ -243,7 +243,7 @@ struct d_profile
 	void (*free_decode_data)(void *const context);
 
 	/* The handler used to retrieve the Sequence Number (SN) */
-	int (*get_sn)(struct d_context *const context);
+	uint32_t (*get_sn)(const struct d_context *const context);
 };
 
 
@@ -252,8 +252,8 @@ struct d_profile
  * Prototypes of library-private functions
  */
 
-void d_change_mode_feedback(struct rohc_decomp *decomp,
-                            struct d_context *context);
+void d_change_mode_feedback(const struct rohc_decomp *const decomp,
+                            const struct d_context *const context);
 
 
 #endif
