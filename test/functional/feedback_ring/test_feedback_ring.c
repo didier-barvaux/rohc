@@ -134,7 +134,7 @@ static int test_feedback_ring(void)
 	struct rohc_comp *comp;
 
 #define FEEDBACK_SIZE  8
-#define BUFFER_SIZE    ((FEEDBACK_SIZE + 2 /* for header */) * 2)
+#define BUFFER_SIZE    (FEEDBACK_SIZE + 2 /* for header */)
 	unsigned char feedback_data[BUFFER_SIZE] = { 0 };
 
 	int feedback_nr;
@@ -183,7 +183,7 @@ static int test_feedback_ring(void)
 	 *          ring buffer, the last step shall succeed
 	 */
 
-	printf("test #1: piggyback feedbacks\n");
+	printf("test #1: piggyback 1000 feedbacks\n");
 	for(feedback_nr = 0; feedback_nr < 1000; feedback_nr++)
 	{
 		if(!rohc_comp_piggyback_feedback(comp, feedback_data, FEEDBACK_SIZE))
@@ -193,7 +193,7 @@ static int test_feedback_ring(void)
 		}
 	}
 
-	printf("test #1: flush feedbacks\n");
+	printf("test #1: flush 1000 feedbacks (and remove them)\n");
 	do
 	{
 		/* get as many as feedbacks as possible */
@@ -225,7 +225,7 @@ static int test_feedback_ring(void)
 	 *          ring buffer, the last step shall fail
 	 */
 
-	printf("test #2: piggyback feedbacks\n");
+	printf("test #2: piggyback 999 feedbacks\n");
 	for(feedback_nr = 1; feedback_nr < 1000; feedback_nr++)
 	{
 		if(!rohc_comp_piggyback_feedback(comp, feedback_data, FEEDBACK_SIZE))
@@ -235,10 +235,15 @@ static int test_feedback_ring(void)
 		}
 	}
 
-	printf("test #2: flush feedbacks\n");
-	/* get as many as feedbacks as possible */
+	printf("test #2: flush 1 feedback (and unlock it)\n");
+	/* get some feedback */
 	feedback_output_size = rohc_feedback_flush(comp, feedback_data,
 	                                           BUFFER_SIZE);
+	if(feedback_output_size <= 0)
+	{
+		fprintf(stderr, "unexpected failure to flush feedbacks\n");
+		goto error;
+	}
 
 	/* feedbacks should be transmitted here (and fail) */
 
@@ -249,10 +254,74 @@ static int test_feedback_ring(void)
 		goto error;
 	}
 
-	printf("test #2: piggyback one feedback more\n");
+	printf("test #2: piggyback one feedback more (and fail because full)\n");
 	if(rohc_comp_piggyback_feedback(comp, feedback_data, FEEDBACK_SIZE))
 	{
 		fprintf(stderr, "unexpected success to piggyback the feedback\n");
+		goto destroy_comp;
+	}
+
+
+	/*
+	 * Test #3: the ring buffer is already full, flush it (but emulate sending
+	 *          failure), last add more data in ring ring buffer, the last step
+	 *          shall fail
+	 */
+
+	printf("test #3: flush 1000 feedbacks (and unlock them)\n");
+	do
+	{
+		/* get as many as feedbacks as possible */
+		feedback_output_size = rohc_feedback_flush(comp, feedback_data,
+		                                           BUFFER_SIZE);
+
+		/* feedbacks should be transmitted here (and fail) */
+
+	} while(feedback_output_size > 0);
+
+	/* unlock the locked feedbacks since transmission failed */
+	if(!rohc_feedback_unlock(comp))
+	{
+		fprintf(stderr, "failed to unlock feedbacks\n");
+		goto destroy_comp;
+	}
+
+	printf("test #3: piggyback one feedback more (and fail because full)\n");
+	if(rohc_comp_piggyback_feedback(comp, feedback_data, FEEDBACK_SIZE))
+	{
+		fprintf(stderr, "unexpected success to piggyback the feedback\n");
+		goto destroy_comp;
+	}
+
+
+	/*
+	 * Test #4: the ring buffer is already full, flush it (emulate sending
+	 *          success), last add more data in ring ring buffer, the last step
+	 *          shall succeed
+	 */
+
+	printf("test #4: flush 1000 feedbacks (and remove them)\n");
+	do
+	{
+		/* get as many as feedbacks as possible */
+		feedback_output_size = rohc_feedback_flush(comp, feedback_data,
+		                                           BUFFER_SIZE);
+
+		/* feedbacks should be transmitted here (and succeed) */
+
+	} while(feedback_output_size > 0);
+
+	/* remove the locked feedbacks once there were transmitted */
+	if(!rohc_feedback_remove_locked(comp))
+	{
+		fprintf(stderr, "failed to remove locked feedbacks\n");
+		goto destroy_comp;
+	}
+
+	printf("test #4: piggyback one feedback more (and succeed)\n");
+	if(!rohc_comp_piggyback_feedback(comp, feedback_data, FEEDBACK_SIZE))
+	{
+		fprintf(stderr, "failed to piggyback the feedback\n");
 		goto destroy_comp;
 	}
 

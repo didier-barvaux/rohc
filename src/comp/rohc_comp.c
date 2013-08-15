@@ -2801,7 +2801,7 @@ bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
 	assert(comp->feedbacks_first_unlocked >= 0);
 	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
 
-	while(comp->feedbacks_first != comp->feedbacks_first_unlocked)
+	while(comp->feedbacks[comp->feedbacks_first].is_locked)
 	{
 		/* destroy the feedback and unlock the ring location */
 		assert(comp->feedbacks[comp->feedbacks_first].data != NULL);
@@ -2838,6 +2838,8 @@ error:
  */
 bool rohc_feedback_unlock(struct rohc_comp *const comp)
 {
+	size_t i;
+
 	if(comp == NULL)
 	{
 		/* bad compressor */
@@ -2853,23 +2855,13 @@ bool rohc_feedback_unlock(struct rohc_comp *const comp)
 
 	/* unlock all the ring locations between first unlocked one (excluded)
 	 * and first one */
-	while(comp->feedbacks_first_unlocked != comp->feedbacks_first)
+	i = comp->feedbacks_first;
+	while(comp->feedbacks[i].is_locked)
 	{
-		if(comp->feedbacks_first_unlocked == 0)
-		{
-			comp->feedbacks_first_unlocked = FEEDBACK_RING_SIZE - 1;
-		}
-		else
-		{
-			comp->feedbacks_first_unlocked =
-				(comp->feedbacks_first_unlocked - 1) % FEEDBACK_RING_SIZE;
-		}
-
-		assert(comp->feedbacks[comp->feedbacks_first_unlocked].is_locked == true);
-		comp->feedbacks[comp->feedbacks_first_unlocked].is_locked = false;
+		comp->feedbacks[i].is_locked = false;
+		i = (i + 1) % FEEDBACK_RING_SIZE;
 	}
-
-	assert(comp->feedbacks_first_unlocked == comp->feedbacks_first);
+	comp->feedbacks_first_unlocked = comp->feedbacks_first;
 
 	return true;
 
