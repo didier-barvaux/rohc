@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include <inttypes.h>
 
 
 /** The width of the W-LSB sliding window */
@@ -194,7 +195,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 		{
 			value = 0;
 		}
-		trace(be_verbose, "\t#%llu: encode value 0x%08x (+%u) ...\n", i, value, real_incr);
+		trace(be_verbose, "\t#%" PRIu64 ": encode value 0x%08x (+%u) ...\n",
+		      i, value, real_incr);
 
 		/* update encoding context */
 		c_add_ts(&ts_sc_comp, value, i);
