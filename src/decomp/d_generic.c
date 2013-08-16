@@ -70,9 +70,9 @@
 	do \
 	{ \
 		/* ensure not to eval variables several times */ \
-		typeof(bits) _bits = (bits); \
-		size_t _bits_nr = (bits_nr); \
-		size_t _max = (max); \
+		const typeof(bits) _bits = (bits); \
+		const size_t _bits_nr = (bits_nr); \
+		const size_t _max = (max); \
 		/* print a description of what we do */ \
 		rohc_decomp_debug(context, \
 		                  "%zd bits of " #field_descr " found in %s = 0x%x\n", \
@@ -89,10 +89,11 @@
 		else \
 		{ \
 			/* not enough room: drop some MSB */ \
+			typeof(field) _mask; \
 			assert((_bits_nr) > 0); \
 			assert((_bits_nr) <= (_max)); \
 			/* remove extra MSB (warn if dropped MSB are non-zero) */ \
-			typeof(field) _mask = (1 << ((_max) - (_bits_nr))) - 1; \
+			_mask = (1 << ((_max) - (_bits_nr))) - 1; \
 			if((field & _mask) != field) \
 			{ \
 				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id, \

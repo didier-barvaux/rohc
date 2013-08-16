@@ -13,8 +13,12 @@
 #ifndef ROHC_PROTOCOLS_NUMBERS_H
 #define ROHC_PROTOCOLS_NUMBERS_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#	include <stdint.h>
+#endif
 
 #include "dllexport.h"
 

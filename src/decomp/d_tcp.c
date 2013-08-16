@@ -455,7 +455,7 @@ static void d_tcp_destroy(void *const context)
 	assert(g_context->inner_ip_changes->next_header != NULL);
 	zfree(g_context->inner_ip_changes->next_header);
 
-#if TODO /* TODO: sn_lsb_ctxt is not initialized, either remove it or use it fully */
+#if 0 /* TODO: sn_lsb_ctxt is not initialized, either remove it or use it fully */
 	/* destroy the LSB decoding context for SN */
 	rohc_lsb_free(g_context->sn_lsb_ctxt);
 #endif
@@ -3091,23 +3091,12 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	int ip_inner_ecn;
 	WB_t ip_id;
 
-	assert(decomp != NULL);
-	assert(context != NULL);
-	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
-	assert(rohc_packet != NULL);
-	assert(add_cid_len == 0 || add_cid_len == 1);
-	assert(large_cid_len >= 0 && large_cid_len <= 2);
-	assert(dest != NULL);
-
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
 	unsigned int rohc_header_len;
 	unsigned int uncomp_header_len;
 
 	/* remaining ROHC data not parsed yet */
-	unsigned char *rohc_remain_data = (unsigned char *) rohc_packet;
+	unsigned char *rohc_remain_data;
 
 	/* ROHC and uncompressed payloads (they are the same) */
 	unsigned int payload_len;
@@ -3118,6 +3107,18 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	multi_ptr_t mptr;
 	tcphdr_t *tcp;
 	rohc_packet_t packet_type = PACKET_UNKNOWN;
+
+	assert(decomp != NULL);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	tcp_context = g_context->specific;
+	assert(rohc_packet != NULL);
+	rohc_remain_data = (unsigned char *) rohc_packet;
+	assert(add_cid_len == 0 || add_cid_len == 1);
+	assert(large_cid_len >= 0 && large_cid_len <= 2);
+	assert(dest != NULL);
 
 	ip_context.uint8 = tcp_context->ip_context;
 
@@ -4055,13 +4056,13 @@ test_checksum:
 			}
 			case PACKET_TCP_SEQ_6:
 			{
+				uint8_t seq_scaled_lsb;
 				rohc_decomp_debug(context, "decode seq_6 packet\n");
-					uint8_t seq_scaled_lsb;
-					seq_scaled_lsb = (c_base_header.seq6->seq_number_scaled1 << 1) |
-					                 c_base_header.seq6->seq_number_scaled2;
-					seq_number_scaled = d_lsb(context, 4, 7,
-					                          tcp_context->seq_number_scaled,
-					                          seq_scaled_lsb);
+				seq_scaled_lsb = (c_base_header.seq6->seq_number_scaled1 << 1) |
+				                 c_base_header.seq6->seq_number_scaled2;
+				seq_number_scaled =
+					d_lsb(context, 4, 7, tcp_context->seq_number_scaled,
+					      seq_scaled_lsb);
 				seq_number_scaled_used = 1;
 				//  assert( payload_size != 0 );
 				// TODO: to be completed/reworked
