@@ -962,7 +962,7 @@ static const uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
 /**
  * @brief Get the polynom for the given CRC type
  *
- * @param type     The CRC type
+ * @param crc_type The CRC type
  * @param polynom  IN/OUT: the polynom for the requested CRC type
  * @return         true in case of success, false otherwise
  */

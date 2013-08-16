@@ -871,7 +871,8 @@ quit:
  *
  * @param comp      The ROHC compressor
  * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  \li The inner IP header of the IP packet to check if the IP
+ * @param inner_ip  One of the following 2 values:
+ *                  \li The inner IP header of the IP packet to check if the IP
  *                      packet contains at least 2 IP headers,
  *                  \li NULL if the IP packet to check contains only one IP header
  * @param protocol  The transport protocol carried by the IP packet:
@@ -3639,6 +3640,7 @@ error:
  *
  * @param context         The compression context
  * @param ip              The outer IP header
+ * @param packet_size     The length of the uncompressed packet (in bytes)
  * @param next_header     The next header data used to code the static and
  *                        dynamic parts of the next header for some profiles such
  *                        as UDP, UDP-Lite, and so on.

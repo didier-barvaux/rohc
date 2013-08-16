@@ -345,7 +345,6 @@ error:
  * @param context      The decompression context
  * @param packet       The ROHC packet to parse
  * @param length       The length of the ROHC packet
- * @param dest         The decoded UDP header
  * @param bits         OUT: The bits extracted from the ROHC header
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure

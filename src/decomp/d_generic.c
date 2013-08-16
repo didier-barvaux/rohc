@@ -748,10 +748,11 @@ static void list_decomp_ipv6_destroy_table(struct list_decomp *decomp)
 /**
  * @brief Decompress the compressed list in given packet
  *
- * @param decomp  The list decompressor
- * @param packet  The ROHC packet to decompress
- * @return        The size of the compressed list in packet in case of success,
- *                -1 in case of failure
+ * @param decomp      The list decompressor
+ * @param packet      The ROHC packet to decompress
+ * @param packet_len  The remaining length of the packet to decode (in bytes)
+ * @return            The size of the compressed list in packet in case of
+ *                    success, -1 in case of failure
  */
 static int rohc_list_decode(struct list_decomp *decomp,
                             const unsigned char *packet,
@@ -2284,9 +2285,10 @@ error:
 /**
  * @brief Get the size (in bytes) of the extension
  *
- * @param ext  The extension data
- * @param len  The length (in bytes) of the extension data
- * @return     The size of the extension in case of success, -1 otherwise
+ * @param data      The extension data
+ * @param data_len  The length (in bytes) of the extension data
+ * @return          The size of the extension in case of success,
+ *                  -1 otherwise
  */
 static int get_ip6_ext_size(const unsigned char *data, const size_t data_len)
 {
@@ -7412,12 +7414,12 @@ reparse:
 /**
  * @brief Find out which extension is carried by the UOR-2 packet.
  *
- * @param rohc_extension  The ROHC UOR-2 packet
- * @return                The UOR-2 extension type among:
- *                        \li PACKET_EXT_0
- *                        \li PACKET_EXT_1
- *                        \li PACKET_EXT_2
- *                        \li PACKET_EXT_3
+ * @param rohc_ext  The ROHC UOR-2 packet
+ * @return          The UOR-2 extension type among:
+ *                    \li PACKET_EXT_0
+ *                    \li PACKET_EXT_1
+ *                    \li PACKET_EXT_2
+ *                    \li PACKET_EXT_3
  */
 static uint8_t parse_extension_type(const unsigned char *const rohc_ext)
 {
@@ -7721,7 +7723,6 @@ error:
  * @param context         The decompression context
  * @param decoded         The values decoded from ROHC header
  * @param payload_len     The length of the packet payload
- * @param do_compute_crc  Whether to compute CRC on the uncompressed headers
  * @param crc_type        The type of CRC
  * @param crc_packet      The CRC extracted from the ROHC header
  * @param uncomp_hdrs     OUT: The buffer to store the uncompressed headers
@@ -7972,7 +7973,7 @@ static size_t build_uncomp_ipv4(const struct d_context *const context,
  * @param dest         The buffer to store the IPv6 header (MUST be at least
  *                     of sizeof(struct ipv6_hdr) bytes)
  * @param payload_size The length of the IPv6 payload
- * @param list         The list decompressor
+ * @param list_decomp  The list decompressor
  * @return             The length of the IPv6 header
  */
 static size_t build_uncomp_ipv6(const struct d_context *const context,
@@ -8115,7 +8116,7 @@ error:
  *       if the CRC-STATIC fields did not change.
  *
  * @param decomp        The ROHC decompressor
- * @param g_context     The generic decompression context
+ * @param context       The decompression context
  * @param outer_ip_hdr  The outer IP header
  * @param inner_ip_hdr  The inner IP header if it exists, NULL otherwise
  * @param next_header   The transport header, eg. UDP

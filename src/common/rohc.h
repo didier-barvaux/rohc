@@ -42,8 +42,8 @@
  * <ul>
  *   <li>Official website: <a href="http://rohc-lib.org/">
  *                          http://rohc-lib.org/</a></li>
- *   <li>Project page on Launchpad: <a href="http://rohc-lib.org/">
- *                          http://rohc-lib.org/</a></li>
+ *   <li>Project page on Launchpad: <a href="https://launchpad.net/rohc">
+ *                          https://launchpad.net/rohc</a></li>
  *   <li>Mailing list: <a href="mailto:rohc@lists.launchpad.net">
  *                      rohc@lists.launchpad.net</a></li>
  *   <li>Mailing list archives: <a href="http://lists.launchpad.net/rohc/">

@@ -5754,9 +5754,13 @@ unsigned short changed_fields(const struct c_context *const context,
  *  - increase in Little Endian,
  *  - randomly.
  *
- * @param context      The compression context
- * @param header_info  The header info stored in the profile
- * @param ip           One IPv4 header
+ * @param context   The compression context
+ * @param outer_ip  One of the following IP headers:
+ *                   \li the outermost IP header if >= 2 IP headers are present
+ *                   \li the innermost IP header if only 1 IP header is present
+ * @param inner_ip  One of the following IP headers:
+ *                   \li the innermost IP header if >= 2 IP headers are present
+ *                   \li NULL if only 1 IP header is present
  */
 static void detect_ip_id_behaviours(struct c_context *const context,
                                     const struct ip_packet *const outer_ip,
@@ -6546,8 +6550,8 @@ static int ipv6_compare(const struct list_comp *const comp,
  *
  * @param comp         The list compressor
  * @param index_table  The index of this item in the based table
- * @param ext          The IPv6 extension
- * @param size         The size of the data (in bytes)
+ * @param ext_data     The IPv6 extension
+ * @param ext_size     The size of the data (in bytes)
  */
 static void create_ipv6_item(struct list_comp *const comp,
                              const unsigned int index_table,

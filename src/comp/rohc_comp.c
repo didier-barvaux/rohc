@@ -2907,7 +2907,8 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
  * @param comp      The ROHC compressor
  * @param outer_ip  The outer IP header of the network packet that will help
  *                  choosing the best profile
- * @param inner_ip  \li The inner IP header of the network packet that will
+ * @param inner_ip  One the following 2 values:
+ *                  \li The inner IP header of the network packet that will
  *                      help choosing the best profile if any
  *                  \li NULL if there is no inner IP header in the packet
  * @param protocol  The transport protocol of the network packet

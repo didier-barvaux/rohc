@@ -455,12 +455,12 @@ static void c_ack_remove(struct c_wlsb *const s, const size_t index)
  * Find the minimal k value so that v falls into the interval given by
  * \f$f(v\_ref, k)\f$. See 4.5.1 in the RFC 3095.
  *
- * @param v_ref The reference value
- * @param v     The value to encode
- * @param p     The shift parameter
- * @param bits  The number of bits that may be used to represent the
- *              LSB-encoded value
- * @return      The minimal k value as defined by the LSB calculation algorithm
+ * @param v_ref    The reference value
+ * @param v        The value to encode
+ * @param p        The shift parameter
+ * @param bits_nr  The number of bits that may be used to represent the
+ *                 LSB-encoded value
+ * @return         The minimal k value as defined by the LSB algorithm
  */
 static size_t rohc_g_16bits(const uint16_t v_ref,
                             const uint16_t v,
@@ -505,12 +505,12 @@ static size_t rohc_g_16bits(const uint16_t v_ref,
  * Find the minimal k value so that v falls into the interval given by
  * \f$f(v\_ref, k)\f$. See 4.5.1 in the RFC 3095.
  *
- * @param v_ref The reference value
- * @param v     The value to encode
- * @param p     The shift parameter
- * @param bits  The number of bits that may be used to represent the
- *              LSB-encoded value
- * @return      The minimal k value as defined by the LSB calculation algorithm
+ * @param v_ref    The reference value
+ * @param v        The value to encode
+ * @param p        The shift parameter
+ * @param bits_nr  The number of bits that may be used to represent the
+ *                 LSB-encoded value
+ * @return         The minimal k value as defined by the LSB algorithm
  */
 static size_t rohc_g_32bits(const uint32_t v_ref,
                             const uint32_t v,
