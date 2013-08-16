@@ -129,11 +129,16 @@ struct rohc_extr_bits
 	struct rohc_extr_ip_bits inner_ip;
 
 	/* CRC */
-	uint8_t crc;            /**< The CRC bits found in ROHC header */
-	size_t crc_nr;          /**< The number of CRC bits found in ROHC header */
+	rohc_crc_type_t crc_type; /**< The type of CRC that protect the ROHC header */
+	uint8_t crc;              /**< The CRC bits found in ROHC header */
+	size_t crc_nr;            /**< The number of CRC bits found in ROHC header */
 
 	/* X (extension) flag */
 	uint8_t ext_flag:1;     /**< X (extension) flag */
+
+	/* Mode bits */
+	uint8_t mode:2;         /**< The Mode bits found in ROHC header */
+	size_t mode_nr;         /**< The number of Mode bits found in ROHC header */
 
 
 	/* bits below are for UDP-based profiles only
@@ -489,7 +494,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
                      const size_t rohc_length,
                      const size_t add_cid_len,
                      const size_t large_cid_len,
-                     unsigned char *const dest);
+                     unsigned char *uncomp_packet);
 
 uint32_t d_generic_get_sn(const struct d_context *const context);
 
