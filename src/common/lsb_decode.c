@@ -39,10 +39,12 @@
  */
 struct rohc_lsb_decode
 {
-	bool is_init;        /**< Whether the reference value was initialized */
-	uint32_t v_ref_d;    /**< The reference value */
-	rohc_lsb_shift_t p;  /**< The p shift parameter */
-	size_t max_len;      /**< The max length (in bits) of the uncomp. field */
+	bool is_init;         /**< Whether the reference value was initialized */
+	rohc_lsb_shift_t p;   /**< The p shift parameter */
+	size_t max_len;       /**< The max length (in bits) of the uncomp. field */
+
+	/** The reference values (ref -1 and ref 0) */
+	uint32_t v_ref_d[ROHC_LSB_REF_MAX];
 };
 
 
@@ -51,16 +53,20 @@ struct rohc_lsb_decode
  */
 
 static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                              const rohc_lsb_ref_t ref_type,
+                              const uint32_t v_ref_d_offset,
                               const uint32_t m,
                               const size_t k,
                               uint32_t *const decoded)
-	__attribute__((nonnull(1, 4), warn_unused_result));
+	__attribute__((nonnull(1, 6), warn_unused_result));
 
 static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                              const rohc_lsb_ref_t ref_type,
+                              const uint16_t v_ref_d_offset,
                               const uint16_t m,
                               const size_t k,
                               uint16_t *const decoded)
-	__attribute__((nonnull(1, 4), warn_unused_result));
+	__attribute__((nonnull(1, 6), warn_unused_result));
 
 
 /*
@@ -111,17 +117,36 @@ void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
 
 
 /**
+ * @brief Get the shift parameter p of the LSB decoding context
+ *
+ * @param lsb  The LSB object used to decode
+ * @return     The shift parameter p
+ */
+const rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
+{
+	assert(lsb != NULL);
+	return lsb->p;
+}
+
+
+/**
  * @brief Decode a LSB-encoded value
  *
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
- * @param lsb      The LSB object used to decode
- * @param m        The LSB value to decode
- * @param k        The length of the LSB value to decode
- * @param decoded  OUT: The decoded value
- * @return         true in case of success, false otherwise
+ * @param lsb             The LSB object used to decode
+ * @param ref_type        The reference value to use to decode
+ *                        (used for context repair upon CRC failure)
+ * @param v_ref_d_offset  The offset to apply on v_ref_d
+ *                        (used for context repair upon CRC failure)
+ * @param m               The LSB value to decode
+ * @param k               The length of the LSB value to decode
+ * @param decoded         OUT: The decoded value
+ * @return                true in case of success, false otherwise
  */
 bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
+                     const rohc_lsb_ref_t ref_type,
+                     const uint32_t v_ref_d_offset,
                      const uint32_t m,
                      const size_t k,
                      uint32_t *const decoded)
@@ -130,8 +155,8 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 
 	assert(lsb != NULL);
 	assert(lsb->is_init == true);
-	assert(lsb->max_len == 16 || lsb->max_len == 32);
 	assert(decoded != NULL);
+	assert(ref_type == ROHC_LSB_REF_MINUS_1 || ref_type == ROHC_LSB_REF_0);
 
 	if(lsb->max_len == 16)
 	{
@@ -140,7 +165,8 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 		assert(lsb->max_len == 16);
 		assert(k <= 16);
 
-		is_success = rohc_lsb_decode16(lsb, m, k, &decoded16);
+		is_success = rohc_lsb_decode16(lsb, ref_type, v_ref_d_offset, m, k,
+		                               &decoded16);
 		if(is_success)
 		{
 			*decoded = ((uint32_t) decoded16) & 0xffff;
@@ -151,7 +177,8 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 		assert(lsb->max_len == 32);
 		assert(k <= 32);
 
-		is_success = rohc_lsb_decode32(lsb, m, k, decoded);
+		is_success = rohc_lsb_decode32(lsb, ref_type, v_ref_d_offset, m, k,
+		                               decoded);
 	}
 
 	return is_success;
@@ -163,13 +190,19 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
  *
  * See 4.5.1 in the RFC 3095 for details about LSB encoding.
  *
- * @param lsb      The LSB object used to decode
- * @param m        The LSB value to decode
- * @param k        The length of the LSB value to decode
- * @param decoded  OUT: The decoded value
- * @return         true in case of success, false otherwise
+ * @param lsb             The LSB object used to decode
+ * @param ref_type        The reference value to use to decode
+ *                        (used for context repair upon CRC failure)
+ * @param v_ref_d_offset  The offset to apply on v_ref_d
+ *                        (used for context repair upon CRC failure)
+ * @param m               The LSB value to decode
+ * @param k               The length of the LSB value to decode
+ * @param decoded         OUT: The decoded value
+ * @return                true in case of success, false otherwise
  */
 static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
+                              const rohc_lsb_ref_t ref_type,
+                              const uint32_t v_ref_d_offset,
                               const uint32_t m,
                               const size_t k,
                               uint32_t *const decoded)
@@ -191,7 +224,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 	assert((m & mask) == m);
 
 	/* determine the interval in which the decoded value should be present */
-	interval = rohc_f_32bits(lsb->v_ref_d, k, lsb->p);
+	interval = rohc_f_32bits(lsb->v_ref_d[ref_type] + v_ref_d_offset, k, lsb->p);
 
 	/* search the value that matches the k lower bits of the value m to decode */
 	if(interval.min <= interval.max)
@@ -244,13 +277,19 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
  *
  * See \ref rohc_lsb_decode32 for details.
  *
- * @param lsb      The LSB object used to decode
- * @param m        The LSB value to decode
- * @param k        The length of the LSB value to decode
- * @param decoded  OUT: The decoded value
- * @return         true in case of success, false otherwise
+ * @param lsb             The LSB object used to decode
+ * @param ref_type        The reference value to use to decode
+ *                        (used for context repair upon CRC failure)
+ * @param v_ref_d_offset  The offset to apply on v_ref_d
+ *                        (used for context repair upon CRC failure)
+ * @param m               The LSB value to decode
+ * @param k               The length of the LSB value to decode
+ * @param decoded         OUT: The decoded value
+ * @return                true in case of success, false otherwise
  */
 static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
+                              const rohc_lsb_ref_t ref_type,
+                              const uint16_t v_ref_d_offset,
                               const uint16_t m,
                               const size_t k,
                               uint16_t *const decoded)
@@ -261,7 +300,8 @@ static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
 
 	m32 = ((uint32_t) m) & 0xffff;
 
-	is_success = rohc_lsb_decode32(lsb, m32, k, &decoded32);
+	is_success = rohc_lsb_decode32(lsb, ref_type, v_ref_d_offset, m32, k,
+	                               &decoded32);
 	if(is_success)
 	{
 		*decoded = (uint16_t) (decoded32 & 0xffff);
@@ -278,26 +318,41 @@ static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
  * value (for example, the SN value). See 4.5.1 in the RFC 3095 for details
  * about LSB encoding.
  *
- * @param lsb     The LSB object
- * @param v_ref_d The new reference value
+ * @param lsb               The LSB object
+ * @param v_ref_d           The new reference value
+ * @param keep_ref_minus_1  Keep ref -1 unchanged (used for SN context repair
+ *                          after CRC failure, see RFC3095 §5.3.2.2.5)
  */
 void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
-                      const uint32_t v_ref_d)
+                      const uint32_t v_ref_d,
+                      const bool keep_ref_minus_1)
 {
-	lsb->v_ref_d = v_ref_d;
+	/* replace ref -1 by ref 0 if not doing context repair */
+	if(!keep_ref_minus_1)
+	{
+		lsb->v_ref_d[ROHC_LSB_REF_MINUS_1] = lsb->v_ref_d[ROHC_LSB_REF_0];
+	}
+
+	/* always replace ref 0 by new value */
+	lsb->v_ref_d[ROHC_LSB_REF_0] = v_ref_d;
+
 	lsb->is_init = true;
 }
 
 
 /**
- * @brief Get the current LSB reference value
+ * @brief Get the current LSB reference value (ref 0)
  *
- * @param lsb  The LSB object
- * @return     The current reference value
+ * @param lsb       The LSB object
+ * @param ref_type  The reference value to retrieve
+ * @return          The current reference value
  */
-const uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
+const uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb,
+                                const rohc_lsb_ref_t ref_type)
 {
+	assert(lsb != NULL);
 	assert(lsb->is_init == true);
-	return lsb->v_ref_d;
+	assert(ref_type == ROHC_LSB_REF_MINUS_1 || ref_type == ROHC_LSB_REF_0);
+	return lsb->v_ref_d[ref_type];
 }
 

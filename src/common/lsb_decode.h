@@ -42,6 +42,17 @@
 struct rohc_lsb_decode;
 
 
+/** The different reference values for LSB decoding */
+typedef enum
+{
+	ROHC_LSB_REF_MINUS_1 = 0,  /**< Use the 'ref -1' reference value */
+	ROHC_LSB_REF_0       = 1,  /**< Use the 'ref 0' reference value */
+	ROHC_LSB_REF_MAX           /**< The number of different reference values */
+
+} rohc_lsb_ref_t;
+
+
+
 /*
  * Function prototypes
  */
@@ -52,17 +63,24 @@ struct rohc_lsb_decode * ROHC_EXPORT rohc_lsb_new(const rohc_lsb_shift_t p,
 
 void ROHC_EXPORT rohc_lsb_free(struct rohc_lsb_decode *const lsb);
 
+const rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+
 bool ROHC_EXPORT rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
+                                 const rohc_lsb_ref_t ref_type,
+                                 const uint32_t v_ref_d_offset,
                                  const uint32_t m,
                                  const size_t k,
                                  uint32_t *const decoded)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result, nonnull(1, 6)));
 
 void ROHC_EXPORT rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
-                                  const uint32_t v_ref_d)
+                                  const uint32_t v_ref_d,
+                                  const bool keep_ref_minus_1)
 	__attribute__((nonnull(1)));
 
-const uint32_t ROHC_EXPORT rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb)
+const uint32_t ROHC_EXPORT rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb,
+                                            const rohc_lsb_ref_t ref_type)
 	__attribute__((nonnull(1), warn_unused_result));
 
 #endif

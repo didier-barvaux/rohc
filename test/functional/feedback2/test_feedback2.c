@@ -402,10 +402,11 @@ static int test_comp_and_decomp(const char *filename,
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
+		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 		unsigned char *rohc_packet;
-		int rohc_size;
+		size_t rohc_size;
 		static unsigned char ip_packet[MAX_ROHC_SIZE];
-		int ip_size;
+		size_t ip_size;
 
 		unsigned char *feedback_data;
 		size_t feedback_size;
@@ -415,6 +416,7 @@ static int test_comp_and_decomp(const char *filename,
 		unsigned int i;
 		unsigned int opt_len;
 		unsigned int expected_opt_pos;
+		int ret;
 
 		counter++;
 
@@ -433,10 +435,9 @@ static int test_comp_and_decomp(const char *filename,
 		rohc_size = header.len - link_len;
 
 		/* decompress the ROHC packet with the ROHC decompressor */
-		ip_size = rohc_decompress(decomp,
-		                          rohc_packet, rohc_size,
-		                          ip_packet, MAX_ROHC_SIZE);
-		if(ip_size <= 0)
+		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
+		                       ip_packet, MAX_ROHC_SIZE, &ip_size);
+		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");
 			goto destroy_decomp;

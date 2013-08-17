@@ -119,8 +119,12 @@ struct rohc_extr_bits
 	bool is_context_reused; /**< Whether the context is re-used or not */
 
 	/* SN */
-	uint32_t sn;            /**< The SN bits found in ROHC header */
-	size_t sn_nr;           /**< The number of SN bits found in ROHC header */
+	uint32_t sn;         /**< The SN bits found in ROHC header */
+	size_t sn_nr;        /**< The number of SN bits found in ROHC header */
+	rohc_lsb_ref_t sn_ref_type; /**< The SN reference to use for LSB decoding
+	                                 (used for context repair after CRC failure) */
+	bool sn_ref_offset;         /**< Optional offset to add to the reference SN
+	                                 (used for context repair after CRC failure) */
 
 	/** bits related to outer IP header */
 	struct rohc_extr_ip_bits outer_ip;
@@ -316,6 +320,18 @@ struct d_generic_changes
 
 
 /**
+ * @brief The different correction algorithms available in case of CRC failure
+ */
+typedef enum
+{
+	ROHC_DECOMP_CRC_CORR_SN_NONE    = 0, /**< No correction */
+	ROHC_DECOMP_CRC_CORR_SN_WRAP    = 1, /**< Correction of SN wraparound */
+	ROHC_DECOMP_CRC_CORR_SN_UPDATES = 2, /**< Correction of incorrect SN updates */
+
+} rohc_decomp_crc_corr_t;
+
+
+/**
  * @brief The generic decompression context
  *
  * The object defines the generic context that manages IP(/nextheader) and
@@ -417,8 +433,25 @@ struct d_generic_context
 	/// Profile-specific data
 	void *specific;
 
-	/// Correction counter (see e and f in 5.3.2.2.4 of the RFC 3095)
-	unsigned int correction_counter;
+
+	/*
+	 * for correction upon CRC failure
+	 */
+
+	/** The algorithm being used for correction CRC failure */
+	rohc_decomp_crc_corr_t crc_corr;
+	/** Correction counter (see e and f in 5.3.2.2.4 of the RFC 3095) */
+	size_t correction_counter;
+/** The number of last packets to record arrival times for */
+#define ROHC_MAX_ARRIVAL_TIMES  10U
+	/** The arrival times for the last packets */
+	struct timespec arrival_times[ROHC_MAX_ARRIVAL_TIMES];
+	/** The number of arrival times in arrival_times */
+	size_t arrival_times_nr;
+	/** The index for the arrival time of the next packet */
+	size_t arrival_times_index;
+	/** The arrival time of the current packet */
+	struct timespec cur_arrival_time;
 };
 
 
@@ -490,6 +523,7 @@ void d_generic_destroy(void *const context)
 
 int d_generic_decode(struct rohc_decomp *const decomp,
                      struct d_context *const context,
+                     const struct timespec arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_length,
                      const size_t add_cid_len,

@@ -41,6 +41,7 @@
 
 static int uncompressed_decode(struct rohc_decomp *const decomp,
                                struct d_context *const context,
+                               const struct timespec arrival_time,
                                const unsigned char *const rohc_packet,
                                const size_t rohc_length,
                                const size_t add_cid_len,
@@ -108,6 +109,8 @@ void uncompressed_free_decode_data(void *context)
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
+ * @param arrival_time   The time at which packet was received (0 if unknown,
+ *                       or to disable time-related features in ROHC protocol)
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet to decode
  * @param add_cid_len    The length of the optional Add-CID field
@@ -119,6 +122,7 @@ void uncompressed_free_decode_data(void *context)
  */
 static int uncompressed_decode(struct rohc_decomp *decomp,
                                struct d_context *context,
+                               const struct timespec arrival_time,
                                const unsigned char *const rohc_packet,
                                const unsigned int rohc_length,
                                const size_t add_cid_len,

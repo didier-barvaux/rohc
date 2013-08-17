@@ -404,6 +404,7 @@ static bool build_stream(const char *const filename,
 	/* build the stream, and save it in the PCAP dump */
 	for(counter = 1; counter <= max_packets; counter++)
 	{
+		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 		const size_t payload_len = 20;
 		const size_t packet_len = sizeof(struct ipv4_hdr) +
 		                          sizeof(struct udphdr) +
@@ -461,7 +462,8 @@ static bool build_stream(const char *const filename,
 		if(strcmp(stream_type, "comp") == 0)
 		{
 			/* compress packet */
-			ret = rohc_compress2(comp, (unsigned char *) ipv4, packet_len,
+			ret = rohc_compress3(comp, arrival_time,
+			                     (unsigned char *) ipv4, packet_len,
 			                     rohc_packet, rohc_max_len, &rohc_len);
 			if(ret != ROHC_OK)
 			{

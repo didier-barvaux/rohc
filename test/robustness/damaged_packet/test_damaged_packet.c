@@ -67,7 +67,8 @@ for ./configure ? If yes, check configure output and config.log"
 static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int packet_to_damage,
-                                const rohc_packet_t expected_packet);
+                                const rohc_packet_t expected_packet,
+                                const bool do_repair);
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
@@ -95,6 +96,7 @@ int main(int argc, char *argv[])
 	int packet_to_damage;
 	char *packet_type = NULL;
 	rohc_packet_t expected_packet;
+	bool do_repair = false;
 	int srand_init;
 	int status = 1;
 
@@ -112,6 +114,10 @@ int main(int argc, char *argv[])
 			/* print help */
 			usage();
 			goto error;
+		}
+		else if(!strcmp(*argv, "--repair"))
+		{
+			do_repair = true;
 		}
 		else if(filename == NULL)
 		{
@@ -197,7 +203,8 @@ int main(int argc, char *argv[])
 	srand(srand_init + packet_to_damage);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, packet_to_damage, expected_packet);
+	status = test_comp_and_decomp(filename, packet_to_damage, expected_packet,
+	                              do_repair);
 
 error:
 	return status;
@@ -222,7 +229,8 @@ static void usage(void)
 	        "               among: ir, irdyn, uo0, uo1id, uor2 and uor2ts\n"
 	        "\n"
 	        "options:\n"
-	        "  -h           Print this usage and exit\n");
+	        "  -h           Print this usage and exit\n"
+	        "  --repair     Repair packet/context\n");
 }
 
 
@@ -235,13 +243,16 @@ static void usage(void)
  * @param packet_to_damage  The packet # to damage
  * @param expected_packet   The type of ROHC packet expected at the end of the
  *                          source capture
+ * @param do_repair         Repair the packet/context
  * @return                  0 in case of success,
  *                          1 in case of failure
  */
 static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int packet_to_damage,
-                                const rohc_packet_t expected_packet)
+                                const rohc_packet_t expected_packet,
+                                const bool do_repair)
 {
+	struct timespec arrival_time = { .tv_sec = 4242, .tv_nsec = 4242 };
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	int link_layer_type;
@@ -371,6 +382,16 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_decomp;
 	}
 
+	if(do_repair)
+	{
+		/* enable some features: CRC repair */
+		if(!rohc_decomp_set_features(decomp, ROHC_DECOMP_FEATURE_CRC_REPAIR))
+		{
+			fprintf(stderr, "failed to enabled CRC repair\n");
+			goto destroy_decomp;
+		}
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
@@ -381,10 +402,11 @@ static int test_comp_and_decomp(const char *const filename,
 		size_t rohc_size;
 		rohc_comp_last_packet_info2_t packet_info;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
-		int decomp_size;
+		size_t decomp_size;
 		int ret;
 
 		counter++;
+		arrival_time.tv_nsec += 20 * 1e6;
 
 		fprintf(stderr, "packet #%u:\n", counter);
 
@@ -432,7 +454,7 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		ret = rohc_compress2(comp, ip_packet, ip_size,
+		ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
 		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 		if(ret != ROHC_OK)
 		{
@@ -453,6 +475,7 @@ static int test_comp_and_decomp(const char *const filename,
 		/* is it the packet to damage? */
 		if(counter == packet_to_damage)
 		{
+			size_t pos;
 			unsigned char old_byte;
 			unsigned char new_byte;
 
@@ -467,23 +490,36 @@ static int test_comp_and_decomp(const char *const filename,
 			fprintf(stderr, "\tROHC packet #%u is of type %d as expected\n",
 			        packet_to_damage, expected_packet);
 
-			/* damage the packet (randomly modify its last byte) */
-			if(expected_packet == PACKET_UOR_2_TS)
+			/* damage the packet */
+			if(do_repair)
 			{
-				assert(rohc_size >= 2);
-				old_byte = rohc_packet[rohc_size - 2];
-				rohc_packet[rohc_size - 2] = 6;
-				new_byte = rohc_packet[rohc_size - 2];
+				assert(rohc_size >= 1);
+				pos = 1;
+				old_byte = rohc_packet[0];
+				rohc_packet[0] = 0x70;
+				new_byte = rohc_packet[0];
 			}
 			else
 			{
-				assert(rohc_size >= 1);
-				old_byte = rohc_packet[rohc_size - 1];
-				rohc_packet[rohc_size - 1] ^= rand() & 0xff;
-				new_byte = rohc_packet[rohc_size - 1];
+				/* damage the packet (randomly modify its last byte) */
+				pos = rohc_size;
+				if(expected_packet == PACKET_UOR_2_TS)
+				{
+					assert(rohc_size >= 2);
+					old_byte = rohc_packet[rohc_size - 2];
+					rohc_packet[rohc_size - 2] = 6;
+					new_byte = rohc_packet[rohc_size - 2];
+				}
+				else
+				{
+					assert(rohc_size >= 1);
+					old_byte = rohc_packet[rohc_size - 1];
+					rohc_packet[rohc_size - 1] ^= rand() & 0xff;
+					new_byte = rohc_packet[rohc_size - 1];
+				}
 			}
 			fprintf(stderr, "\tvoluntary damage packet (change byte #%zd from "
-			        "0x%02x to 0x%02x)\n", rohc_size, old_byte, new_byte);
+			        "0x%02x to 0x%02x)\n", pos, old_byte, new_byte);
 		}
 		else
 		{
@@ -491,11 +527,13 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
-		decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size,
-		                              decomp_packet, MAX_ROHC_SIZE);
-		if(decomp_size == ROHC_ERROR_CRC)
+		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
+		                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+		if(ret == ROHC_ERROR_CRC)
 		{
-			if(counter != packet_to_damage)
+			if((!do_repair && counter != packet_to_damage) ||
+			   (do_repair && counter != (packet_to_damage + 1) &&
+			                 counter != (packet_to_damage + 2)))
 			{
 				/* failure is NOT expected for the non-damaged packets */
 				fprintf(stderr, "\tunexpected CRC failure to decompress generated "
@@ -509,10 +547,12 @@ static int test_comp_and_decomp(const char *const filename,
 				        "packet\n");
 			}
 		}
-		else if(decomp_size <= 0)
+		else if(ret != ROHC_OK)
 		{
 			/* non-CRC failure is NOT expected except for damaged IR/IR-DYN packet */
-			if(counter != packet_to_damage)
+			if((!do_repair && counter != packet_to_damage) ||
+			   (do_repair && counter != (packet_to_damage + 1) &&
+			                 counter != (packet_to_damage + 2)))
 			{
 				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
 				        "ROHC packet\n");
@@ -532,7 +572,9 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 		else
 		{
-			if(counter != packet_to_damage)
+			if((!do_repair && counter != packet_to_damage) ||
+			   (do_repair && counter != (packet_to_damage + 1) &&
+			                 counter != (packet_to_damage + 2)))
 			{
 				/* success is expected for the non-damaged packets */
 				fprintf(stderr, "\texpected successful decompression\n");
@@ -547,8 +589,19 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* everything went fine */
-	fprintf(stderr, "all non-damaged packets were successfully decompressed\n");
-	fprintf(stderr, "all damaged packets failed to be decompressed as expected\n");
+	if(!do_repair)
+	{
+		fprintf(stderr, "all non-damaged packets were successfully decompressed\n");
+		fprintf(stderr, "all damaged packets failed to be decompressed as expected\n");
+	}
+	else
+	{
+		fprintf(stderr, "the damaged packet was successfully decompressed\n");
+		fprintf(stderr, "the 2 packets following the damaged packet failed to "
+		                "be decompressed as expected\n");
+		fprintf(stderr, "all previous and next non-damaged packets were "
+		                "successfully decompressed\n");
+	}
 	is_failure = 0;
 
 destroy_decomp:

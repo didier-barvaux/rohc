@@ -148,9 +148,12 @@ int main(int argc, char *argv[])
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
 	{
+		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 		unsigned char rohc_packet[PACKET_MAX_SIZE];
-		int rohc_len;
+		size_t rohc_len;
 		unsigned char ip_packet[PACKET_MAX_SIZE];
+		size_t ip_size;
+		int ret __attribute__((unused));
 		int i;
 
 		/* print progress from time to time */
@@ -172,10 +175,9 @@ int main(int argc, char *argv[])
 		}
 
 		/* decompress the crazy ROHC packet */
-		rohc_decompress(decomp,
-		                rohc_packet, rohc_len,
-		                ip_packet, PACKET_MAX_SIZE);
-		/* do not check for result, only robustess is checked */
+		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_len,
+		                       ip_packet, PACKET_MAX_SIZE, &ip_size);
+		/* do not check for result, only robustness is checked */
 	}
 
 	printf("\nTEST OK\n");

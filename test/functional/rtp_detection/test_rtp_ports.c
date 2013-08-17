@@ -407,6 +407,7 @@ static int compress_and_check(struct rohc_comp *comp,
                               int success_expected,
                               int profile_expected)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
@@ -465,7 +466,7 @@ static int compress_and_check(struct rohc_comp *comp,
 		}
 	}
 
-	ret = rohc_compress2(comp, ip_packet, ip_size,
+	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
 	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 
 	/* check the compression result against expected one */

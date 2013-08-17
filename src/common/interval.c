@@ -102,40 +102,7 @@ const struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
 	}
 
 	/* determine the real p value to use */
-	switch(p)
-	{
-		case ROHC_LSB_SHIFT_RTP_TS: /* special computation for RTP TS encoding */
-		{
-			if(k <= 2)
-			{
-				computed_p = 0;
-			}
-			else
-			{
-				computed_p = (1 << (k - 2)) - 1;
-			}
-		}
-		break;
-
-		/* special computation for RTP and ESP SN encoding */
-		case ROHC_LSB_SHIFT_RTP_SN: /* = ROHC_LSB_SHIFT_ESP_SN */
-		{
-			if(k <= 4)
-			{
-				computed_p = 1;
-			}
-			else
-			{
-				computed_p = (1 << (k - 5)) - 1;
-			}
-		}
-		break;
-
-		default: /* otherwise: use the p value given as parameter */
-		{
-			computed_p = p;
-		}
-	}
+	computed_p = rohc_interval_compute_p(k, p);
 
 	/* compute the minimal and maximal values of the interval:
 	 *   min = v_ref - p

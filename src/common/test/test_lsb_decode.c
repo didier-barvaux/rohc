@@ -122,7 +122,7 @@ static void test_lsb_decode(void **state)
 	lsb = rohc_lsb_new(ROHC_LSB_SHIFT_RTP_TS, 32);
 	assert_true(lsb != NULL);
 
-	rohc_lsb_set_ref(lsb, 0);
+	rohc_lsb_set_ref(lsb, 0, false);
 
 	for(test_num = 0; tests[test_num].used; test_num++)
 	{
@@ -138,7 +138,8 @@ static void test_lsb_decode(void **state)
 		expect_value(__wrap_rohc_f_32bits, p, ROHC_LSB_SHIFT_RTP_TS);
 		will_return(__wrap_rohc_f_32bits, tests[test_num].min);
 		will_return(__wrap_rohc_f_32bits, tests[test_num].max);
-		ret = rohc_lsb_decode(lsb, tests[test_num].m, tests[test_num].k, &decoded);
+		ret = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, tests[test_num].m,
+		                      tests[test_num].k, &decoded);
 		assert_true(ret == tests[test_num].exp_status);
 		if(ret)
 		{

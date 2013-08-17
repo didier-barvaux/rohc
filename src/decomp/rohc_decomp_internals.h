@@ -80,6 +80,9 @@ struct rohc_decomp
 	/** The medium associated with the decompressor */
 	struct medium medium;
 
+	/** Enabled/disabled features for the decompressor */
+	rohc_decomp_features_t features;
+
 	/** Which profiles are enabled and with one are not? */
 	bool enabled_profiles[D_NUM_PROFILES];
 
@@ -188,10 +191,15 @@ struct d_context
 	/* The number of sent feedbacks */
 	int num_sent_feedbacks;
 
-	/* The number of compression failures */
-	int num_decomp_failures;
 	/* The number of decompression failures */
-	int num_decomp_repairs;
+	int num_decomp_failures;
+	/** The number of successful corrections upon CRC failure */
+	unsigned long corrected_crc_failures;
+	/** The number of successful corrections of SN wraparound upon CRC failure */
+	unsigned long corrected_sn_wraparounds;
+	/** The number of successful corrections of incorrect SN updates upon CRC
+	 *  failure */
+	unsigned long corrected_wrong_sn_updates;
 
 	/* The size of the last 16 uncompressed packets */
 	struct c_wlsb *total_16_uncompressed;
@@ -228,6 +236,7 @@ struct d_profile
 	/* The handler used to decode a ROHC packet */
 	int (*decode)(struct rohc_decomp *const decomp,
 	              struct d_context *const context,
+	              const struct timespec arrival_time,
 	              const unsigned char *const rohc_packet,
 	              const size_t rohc_length,
 	              const size_t add_cid_len,

@@ -28,35 +28,67 @@
 #	include <sys/time.h>
 #endif
 
+
+static inline uint64_t rohc_time_interval(const struct timespec begin,
+                                          const struct timespec end)
+	__attribute__((warn_unused_result, const));
+
+
 #ifndef __KERNEL__
 
 /**
- * @brief Get the current time in milliseconds
+ * @brief Get the current time in seconds
  *
- * @return The current time in milliseconds
+ * @return The current time in seconds
  */
-static inline unsigned int get_milliseconds(void)
+static inline uint64_t rohc_get_seconds(void)
 {
 	struct timeval tv;
+
 	gettimeofday(&tv, NULL);
-	return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+	return tv.tv_sec;
 }
 
 #else /* __KERNEL__ */
 
 /**
- * @brief Get the current time in milliseconds
+ * @brief Get the current time in seconds
  *
- * @return The current time in milliseconds
+ * @return The current time in seconds
  */
-static inline unsigned int get_milliseconds(void)
+static inline uint64_t rohc_get_seconds(void)
 {
 	struct timespec ts;
+
 	ktime_get_ts(&ts);
-	return ts.tv_sec * MSEC_PER_SEC + ts.tv_nsec / NSEC_PER_MSEC;
+
+	return ts.tv_sec;
 }
 
 #endif /* __KERNEL__ */
+
+
+/**
+ * @brief Compute the interval of time between 2 timestamps
+ *
+ * @param begin  The begin timestamp (in seconds and nanoseconds)
+ * @param end    The end timestamp (in seconds and nanoseconds)
+ * @return       The interval of time in microseconds
+ */
+static inline uint64_t rohc_time_interval(const struct timespec begin,
+                                          const struct timespec end)
+{
+	uint64_t interval;
+
+	interval = end.tv_sec - begin.tv_sec; /* difference btw seconds */
+	interval *= 1e9;                      /* convert in nanoseconds */
+	interval += end.tv_nsec;              /* additional end nanoseconds */
+	interval -= begin.tv_nsec;            /* superfluous begin nanoseconds */
+	interval /= 1e3;
+
+	return interval;
+}
 
 #endif
 

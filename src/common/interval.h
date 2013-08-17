@@ -93,6 +93,10 @@ struct rohc_interval32
  * Public function prototypes:
  */
 
+static inline int32_t rohc_interval_compute_p(const size_t k,
+                                              const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, const));
+
 const struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
                                            const size_t k,
                                            const rohc_lsb_shift_t p)
@@ -102,6 +106,59 @@ const struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
                                            const size_t k,
                                            const rohc_lsb_shift_t p)
 	__attribute__((warn_unused_result, const));
+
+
+/**
+ * @brief Compute the shift parameter p for the f function
+ *
+ * @param k  The number of least significant bits of the value that are
+ *           transmitted
+ * @param p  The shift parameter (may be negative)
+ * @return   The computed shift parameter p
+ */
+static inline int32_t rohc_interval_compute_p(const size_t k,
+                                              const rohc_lsb_shift_t p)
+{
+	int32_t computed_p;
+
+	/* determine the real p value to use */
+	switch(p)
+	{
+		case ROHC_LSB_SHIFT_RTP_TS: /* special computation for RTP TS encoding */
+		{
+			if(k <= 2)
+			{
+				computed_p = 0;
+			}
+			else
+			{
+				computed_p = (1 << (k - 2)) - 1;
+			}
+		}
+		break;
+
+		/* special computation for RTP and ESP SN encoding */
+		case ROHC_LSB_SHIFT_RTP_SN: /* = ROHC_LSB_SHIFT_ESP_SN */
+		{
+			if(k <= 4)
+			{
+				computed_p = 1;
+			}
+			else
+			{
+				computed_p = (1 << (k - 5)) - 1;
+			}
+		}
+		break;
+
+		default: /* otherwise: use the p value given as parameter */
+		{
+			computed_p = p;
+		}
+	}
+
+	return computed_p;
+}
 
 #endif
 

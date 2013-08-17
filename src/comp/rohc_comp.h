@@ -287,16 +287,29 @@ bool ROHC_EXPORT rohc_comp_set_random_cb(struct rohc_comp *const comp,
 	__attribute__((warn_unused_result));
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 int ROHC_EXPORT rohc_compress(struct rohc_comp *comp,
                               unsigned char *ibuf,
                               int isize,
                               unsigned char *obuf,
                               int osize)
 	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_compress2() instead");
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+	                "use rohc_compress3() instead");
 
 int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
+                               const unsigned char *const uncomp_packet,
+                               const size_t uncomp_packet_len,
+                               unsigned char *const rohc_packet,
+                               const size_t rohc_packet_max_len,
+                               size_t *const rohc_packet_len)
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_compress3() instead");
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+int ROHC_EXPORT rohc_compress3(struct rohc_comp *const comp,
+                               const struct timespec arrival_time,
                                const unsigned char *const uncomp_packet,
                                const size_t uncomp_packet_len,
                                unsigned char *const rohc_packet,

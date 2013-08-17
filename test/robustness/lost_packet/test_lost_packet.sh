@@ -31,8 +31,10 @@ test -z "${AWK}" && AWK="`which awk`"
 
 # parse arguments
 SCRIPT="$0"
-VERBOSE="$1"
-VERY_VERBOSE="$2"
+REPAIR="$1"
+PARAMS="$2"
+VERBOSE="$3"
+VERY_VERBOSE="$4"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="./test_lost_packet${CROSS_COMPILATION_EXEEXT}"
@@ -42,14 +44,14 @@ else
 fi
 
 # extract the packet to lose and source capture from the name of the script
-PACKETS_TO_LOSE=$( echo "${SCRIPT}" | \
-                   ${SED} -e 's#^.*/test_lost_packet_\([0-9-]*\)_.*\.sh#\1#' )
+PACKETS_TO_LOSE=$( echo "${PARAMS}" | \
+                   ${SED} -e 's#^test_lost_packet_\([0-9-]*\)_.*#\1#' )
 FIRST_PACKET_TO_LOSE=$( echo "${PACKETS_TO_LOSE}" | ${AWK} -F'-' '{ print $1 }' )
 LAST_PACKET_TO_LOSE=$( echo "${PACKETS_TO_LOSE}" | ${AWK} -F'-' '{ print $2 }' )
-PACKETS_ERROR=$( echo "${SCRIPT}" | \
-                 ${SED} -e 's#^.*/test_lost_packet_[0-9-]*_\([0-9]*\).*\.sh#\1#' )
-CAPTURE_NAME=$( echo "${SCRIPT}" | \
-                ${SED} -e 's#^.*/test_lost_packet_[0-9-]*_[0-9]*_\(.*\)\.sh#\1#' )
+PACKETS_ERROR=$( echo "${PARAMS}" | \
+                 ${SED} -e 's#^test_lost_packet_[0-9-]*_\([0-9]*\).*#\1#' )
+CAPTURE_NAME=$( echo "${PARAMS}" | \
+                ${SED} -e 's#^test_lost_packet_[0-9-]*_[0-9]*_\(.*\)#\1#' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
@@ -66,7 +68,16 @@ if [ -z "${FIRST_PACKET_TO_LOSE}" ] || \
 	exit 1
 fi
 
-CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} \
+if [ "${REPAIR}" = "norepair" ] ; then
+	REPAIR=""
+elif [ "${REPAIR}" = "repair" ] ; then
+	REPAIR="--repair"
+else
+	echo "wrong repair argument" >&2
+	exit 1
+fi
+
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${REPAIR} ${CAPTURE_SOURCE} \
     ${FIRST_PACKET_TO_LOSE} ${LAST_PACKET_TO_LOSE} ${PACKETS_ERROR}"
 
 # source valgrind-related functions

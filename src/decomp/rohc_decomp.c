@@ -104,7 +104,8 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const size_t max_cid);
 
 static int d_decode_header(struct rohc_decomp *decomp,
-                           unsigned char *ibuf,
+                           const struct timespec arrival_time,
+                           const unsigned char *ibuf,
                            int isize,
                            unsigned char *obuf,
                            int osize,
@@ -117,13 +118,14 @@ static const struct d_profile *
 
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const unsigned int cid,
-                                         const struct d_profile *const profile);
+                                         const struct d_profile *const profile,
+                                         const struct timespec arrival_time);
 static struct d_context * find_context(struct rohc_decomp *decomp,
                                        int cid);
 static void context_free(struct d_context *const context);
 
 static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                  unsigned char *packet,
+                                  const unsigned char *packet,
                                   unsigned int len,
                                   struct d_decode_data *ddata);
 
@@ -138,7 +140,7 @@ static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
 
 /* feedback-related functions */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
-                                   unsigned char *packet,
+                                   const unsigned char *packet,
                                    unsigned int size,
                                    unsigned int *parsed_size);
 static int d_decode_feedback(struct rohc_decomp *const decomp,
@@ -186,14 +188,17 @@ static struct d_context * find_context(struct rohc_decomp *decomp,
 /**
  * @brief Create one new decompression context with profile specific data.
  *
- * @param decomp   The ROHC decompressor
- * @param cid      The CID of the new context
- * @param profile  The profile to be assigned with the new context
- * @return         The new context if successful, NULL otherwise
+ * @param decomp        The ROHC decompressor
+ * @param cid           The CID of the new context
+ * @param profile       The profile to be assigned with the new context
+ * @param arrival_time  The time at which packet was received (0 if unknown,
+ *                      or to disable time-related features in ROHC protocol)
+ * @return              The new context if successful, NULL otherwise
  */
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const unsigned int cid,
-                                         const struct d_profile *const profile)
+                                         const struct d_profile *const profile,
+                                         const struct timespec arrival_time)
 {
 	struct d_context *context;
 
@@ -234,13 +239,15 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 	context->num_recv_ir_dyn = 0;
 	context->num_sent_feedbacks = 0;
 	context->num_decomp_failures = 0;
-	context->num_decomp_repairs = 0;
+	context->corrected_crc_failures = 0;
+	context->corrected_sn_wraparounds = 0;
+	context->corrected_wrong_sn_updates = 0;
 	context->nr_lost_packets = 0;
 	context->nr_misordered_packets = 0;
 	context->is_duplicated = 0;
 
-	context->first_used = get_milliseconds();
-	context->latest_used = get_milliseconds();
+	context->first_used = arrival_time.tv_sec;
+	context->latest_used = arrival_time.tv_sec;
 
 	/* create 4 W-LSB windows */
 	context->total_16_uncompressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
@@ -365,6 +372,9 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 
 	/* no trace callback during decompressor creation */
 	decomp->trace_callback = NULL;
+
+	/* default feature set (empty for the moment) */
+	decomp->features = ROHC_DECOMP_FEATURE_NONE;
 
 	/* init decompressor medium */
 	decomp->medium.cid_type = ROHC_SMALL_CID;
@@ -502,8 +512,13 @@ error:
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Decompress a ROHC packet.
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_decompress2() instead
  *
  * @param decomp The ROHC decompressor
  * @param ibuf   The ROHC packet to decompress
@@ -538,40 +553,106 @@ error:
  * @ingroup rohc_decomp
  */
 int rohc_decompress(struct rohc_decomp *decomp,
-                    unsigned char *ibuf, int isize,
-                    unsigned char *obuf, int osize)
+                    unsigned char *ibuf,
+                    int isize,
+                    unsigned char *obuf,
+                    int osize)
 {
-	int ret;
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	size_t uncomp_len;
+	int code;
+
+	code = rohc_decompress2(decomp, arrival_time, ibuf, isize,
+	                        obuf, osize, &uncomp_len);
+	if(code == ROHC_OK)
+	{
+		/* decompression succeeded */
+		code = uncomp_len;
+	}
+
+	return code;
+}
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+
+/**
+ * @brief Decompress a ROHC packet
+ *
+ * @param decomp                 The ROHC decompressor
+ * @param arrival_time           The time at which packet was received
+ *                               (0 if unknown, or to disable time-related
+ *                                features in the ROHC protocol)
+ * @param rohc_packet            The compressed packet to decompress
+ * @param rohc_packet_len        The size of the compressed packet
+ * @param uncomp_packet          The buffer where to store the decompressed
+ *                               packet
+ * @param uncomp_packet_max_len  The maximum length (in bytes) of the buffer
+ *                               for the decompressed packet
+ * @param uncomp_packet_len      OUT: The length (in bytes) of the
+ *                               decompressed packet
+ * @return                       \li \e ROHC_OK if a decompressed packet is
+ *                                   returned
+ *                               \li \e ROHC_FEEDBACK_ONLY if the ROHC packet
+ *                                   contains only feedback data
+ *                               \li \e ROHC_NON_FINAL_SEGMENT if the given
+ *                                   ROHC packet is a partial segment of a
+ *                                   larger ROHC packet
+ *                               \li \e ROHC_ERROR_NO_CONTEXT if no
+ *                                   decompression context matches the CID
+ *                                   stored in the given ROHC packet and the
+ *                                   ROHC packet is not an IR packet
+ *                               \li \e ROHC_ERROR_PACKET_FAILED if the
+ *                                   decompression failed because the ROHC
+ *                                   packet is unexpected and/or malformed
+ *                               \li \e ROHC_ERROR_CRC if the CRC detected a
+ *                                   transmission or decompression problem
+ *                               \li \e ROHC_ERROR if another problem occurred
+ *
+ * @ingroup rohc_decomp
+ */
+int rohc_decompress2(struct rohc_decomp *decomp,
+                     const struct timespec arrival_time,
+                     const unsigned char *const rohc_packet,
+                     const size_t rohc_packet_len,
+                     unsigned char *const uncomp_packet,
+                     const size_t uncomp_packet_max_len,
+                     size_t *const uncomp_packet_len)
+{
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
+	int status = ROHC_ERROR; /* error status by default */
 
 	/* check inputs validity */
 	if(decomp == NULL ||
-	   ibuf == NULL || isize <= 0 ||
-	   obuf == NULL || osize <= 0)
+	   rohc_packet == NULL || rohc_packet_len <= 0 ||
+	   uncomp_packet == NULL || uncomp_packet_max_len <= 0 ||
+		uncomp_packet_len == NULL)
 	{
 		goto error;
 	}
 
 	decomp->stats.received++;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "decompress the %d-byte packet #%u\n",
-	           isize, decomp->stats.received);
+	           "decompress the %zu-byte packet #%u\n",
+	           rohc_packet_len, decomp->stats.received);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
 	rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 	                 ROHC_TRACE_DEBUG, "compressed data, max 100 bytes",
-	                 ibuf, rohc_min(isize, 100));
+	                 rohc_packet, rohc_min(rohc_packet_len, 100));
 #endif
 
 	/* decode ROHC header */
-	ret = d_decode_header(decomp, ibuf, isize, obuf, osize, &ddata);
+	status = d_decode_header(decomp, arrival_time, rohc_packet,
+	                         rohc_packet_len, uncomp_packet,
+	                         uncomp_packet_max_len, &ddata);
 	if(ddata.active == NULL &&
-	   (ret == ROHC_ERROR_PACKET_FAILED ||
-	    ret == ROHC_ERROR ||
-	    ret == ROHC_ERROR_CRC))
+	   (status == ROHC_ERROR_PACKET_FAILED ||
+	    status == ROHC_ERROR ||
+	    status == ROHC_ERROR_CRC))
 	{
-		ret = ROHC_ERROR_NO_CONTEXT;
+		status = ROHC_ERROR_NO_CONTEXT;
 	}
 
 	if(ddata.active != NULL)
@@ -581,14 +662,16 @@ int rohc_decompress(struct rohc_decomp *decomp,
 		           "state in decompressor = %d\n", ddata.active->state);
 	}
 
-	if(ret >= 0)
+	if(status >= 0)
 	{
 		/* ROHC packet was successfully decompressed, update statistics */
+		*uncomp_packet_len = status;
+		status = ROHC_OK;
 		assert(ddata.active != NULL);
-		ddata.active->total_uncompressed_size += ret;
-		ddata.active->total_compressed_size += isize;
-		c_add_wlsb(ddata.active->total_16_uncompressed, 0, ret);
-		c_add_wlsb(ddata.active->total_16_compressed, 0, isize);
+		ddata.active->total_uncompressed_size += *uncomp_packet_len;
+		ddata.active->total_compressed_size += rohc_packet_len;
+		c_add_wlsb(ddata.active->total_16_uncompressed, 0, *uncomp_packet_len);
+		c_add_wlsb(ddata.active->total_16_compressed, 0, rohc_packet_len);
 	}
 	else if(ddata.active)
 	{
@@ -598,7 +681,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	}
 
 	/* update statistics and send feedback if needed */
-	switch(ret)
+	switch(status)
 	{
 		case ROHC_ERROR_PACKET_FAILED:
 		case ROHC_ERROR:
@@ -669,7 +752,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 			}
 			break;
 
-		default: /* ROHC_OK */
+		case ROHC_OK:
 			assert(ddata.active != NULL);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "packet decompression succeeded\n");
@@ -700,12 +783,13 @@ int rohc_decompress(struct rohc_decomp *decomp,
 				                          ddata.active);
 			}
 			break;
+		default:
+			assert(0); /* should not happen */
+			break;
 	}
 
-	return ret;
-
 error:
-	return ROHC_ERROR;
+	return status;
 }
 
 
@@ -733,7 +817,10 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
                          unsigned char *obuf, int osize,
                          int large)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	size_t uncomp_len;
 	bool is_ok;
+	int code;
 
 	/* change CID type on the fly */
 	is_ok = rohc_decomp_set_cid_type(decomp,
@@ -744,7 +831,15 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	}
 
 	/* decompress the packet with the new CID type */
-	return rohc_decompress(decomp, ibuf, isize, obuf, osize);
+	code = rohc_decompress2(decomp, arrival_time, ibuf, isize,
+	                        obuf, osize, &uncomp_len);
+	if(code == ROHC_OK)
+	{
+		/* decompression succeeded */
+		code = uncomp_len;
+	}
+
+	return code;
 }
 
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
@@ -753,16 +848,19 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 /**
  * @brief Decompress the compressed headers.
  *
- * @param decomp The ROHC decompressor
- * @param ibuf   The ROHC packet to decompress
- * @param isize  The size of the ROHC packet
- * @param obuf   The buffer where to store the decompressed packet
- * @param osize  The size of the buffer for the decompressed packet
- * @param ddata  Decompression-related data (e.g. the context)
- * @return       The size of the decompressed packet
+ * @param decomp        The ROHC decompressor
+ * @param arrival_time  The time at which packet was received (0 if unknown,
+ *                      or to disable time-related features in ROHC protocol)
+ * @param ibuf          The ROHC packet to decompress
+ * @param isize         The size of the ROHC packet
+ * @param obuf          The buffer where to store the decompressed packet
+ * @param osize         The size of the buffer for the decompressed packet
+ * @param ddata         Decompression-related data (e.g. the context)
+ * @return              The size of the decompressed packet
  */
 static int d_decode_header(struct rohc_decomp *decomp,
-                           unsigned char *ibuf,
+                           const struct timespec arrival_time,
+                           const unsigned char *ibuf,
                            int isize,
                            unsigned char *obuf,
                            int osize,
@@ -770,7 +868,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 {
 	int size, casenew = 0;
 	const struct d_profile *profile;
-	unsigned char *walk = ibuf;
+	const unsigned char *walk = ibuf;
 	unsigned int feedback_size;
 	int status;
 
@@ -973,7 +1071,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			           "does not match profile 0x%04x found in IR packet\n",
 			           ddata->cid, profile_id);
 			casenew = 1;
-			ddata->active = context_create(decomp, ddata->cid, profile);
+			ddata->active = context_create(decomp, ddata->cid, profile,
+			                               arrival_time);
 			if(!ddata->active)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -985,10 +1084,11 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 		decomp->last_context = ddata->active;
 		ddata->active->num_recv_ir++;
+		ddata->active->latest_used = arrival_time.tv_sec;
 
 		/* decode the IR packet thanks to the profile-specific routines */
 		size = ddata->active->profile->decode(decomp, ddata->active,
-		                                      walk, isize,
+		                                      arrival_time, walk, isize,
 		                                      ddata->addcidUsed,
 		                                      ddata->large_cid_size,
 		                                      obuf);
@@ -1041,7 +1141,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		/* context is valid */
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "context with CID %d found\n", ddata->cid);
-		ddata->active->latest_used = get_milliseconds();
+		ddata->active->latest_used = arrival_time.tv_sec;
 		decomp->last_context = ddata->active;
 
 		/* is the ROHC packet an IR-DYN packet? */
@@ -1087,7 +1187,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		/* decode the IR-DYN or UO* packet thanks to the
 		 * profile-specific routines */
 		return ddata->active->profile->decode(decomp, ddata->active,
-		                                      walk, isize,
+		                                      arrival_time, walk, isize,
 	                                         ddata->addcidUsed,
 	                                         ddata->large_cid_size,
 	                                         obuf);
@@ -1606,10 +1706,10 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);
 
 	/* times */
-	buffer += sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
-	                  prefix, (get_milliseconds() - c->first_used) / 1000 );
-	buffer += sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
-	                  prefix, (get_milliseconds() - c->latest_used) / 1000);
+	buffer += sprintf(buffer, "%s\t<activation_time>%lu</activation_time>\n",
+	                  prefix, (unsigned long) (rohc_get_seconds() - c->first_used));
+	buffer += sprintf(buffer, "%s\t<idle_time>%lu</idle_time>\n",
+	                  prefix, (unsigned long) (rohc_get_seconds() - c->latest_used));
 
 	/* packets */
 	buffer += sprintf(buffer, "%s\t<packets recv_total=\"%d\" ", prefix, c->num_recv_packets);
@@ -1620,7 +1720,7 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	/* failures/repairs */
 	buffer += sprintf(buffer, "%s\t<decomp>\n", prefix);
 	buffer += sprintf(buffer, "%s\t\t<failures>%d</failures>\n", prefix, c->num_decomp_failures);
-	buffer += sprintf(buffer, "%s\t\t<repairs>%d</repairs>\n", prefix, c->num_decomp_repairs);
+	buffer += sprintf(buffer, "%s\t\t<repairs>%ld</repairs>\n", prefix, c->corrected_crc_failures);
 	buffer += sprintf(buffer, "%s\t</decomp>\n", prefix);
 
 	buffer += sprintf(buffer, "%s</context>\n", prefix);
@@ -1666,6 +1766,7 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state)
  * 'rohc_decomp_last_packet_info_t' structure with the 'version_major' and
  * 'version_minor' fields set to one of the following supported versions:
  *  - Major 0, minor 0
+ *  - Major 0, minor 1
  *
  * See rohc_comp_last_packet_info2_t for details about fields that
  * are supported in the above versions.
@@ -1710,12 +1811,21 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 		info->is_duplicated = decomp->last_context->is_duplicated;
 
 		/* new fields added by minor versions */
-		if(info->version_minor > 0)
+		switch(info->version_minor)
 		{
-			rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "unsupported minor version (%u) of the structure for "
-			           "last packet information", info->version_minor);
-			goto error;
+			case 1:
+				info->corrected_crc_failures =
+					decomp->last_context->corrected_crc_failures;
+				info->corrected_sn_wraparounds =
+					decomp->last_context->corrected_sn_wraparounds;
+				info->corrected_wrong_sn_updates =
+					decomp->last_context->corrected_wrong_sn_updates;
+				break;
+			default:
+				rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				           "unsupported minor version (%u) of the structure for "
+				           "last packet information", info->version_minor);
+				goto error;
 		}
 	}
 	else
@@ -2013,6 +2123,50 @@ error:
 
 
 /**
+ * @brief Enable/disable features for ROHC decompressor
+ *
+ * @warning Changing the feature set while library is used is not supported
+ *
+ * @param decomp    The ROHC decompressor
+ * @param features  The feature set to enable/disable
+ * @return          true if the feature set was successfully enabled/disabled,
+ *                  false if a problem occurred
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_set_features(struct rohc_decomp *const decomp,
+                              const rohc_decomp_features_t features)
+{
+	const rohc_decomp_features_t all_features =
+		ROHC_DECOMP_FEATURE_CRC_REPAIR;
+
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* reject unsupported features */
+	if((features & all_features) != features)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "feature set 0x%x is not supported (supported features "
+		             "set is 0x%x)\n", features, all_features);
+		goto error;
+	}
+
+	/* record new feature set */
+	decomp->features = features;
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Enable a decompression profile for a decompressor
  *
  * If the profile is already enabled, it is ignored.
@@ -2299,7 +2453,7 @@ static const struct d_profile *
  * @return        ROHC_OK in case of success, ROHC_ERROR in case of failure
  */
 static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
-                                  unsigned char *packet,
+                                  const unsigned char *packet,
                                   unsigned int len,
                                   struct d_decode_data *ddata)
 {
@@ -2389,7 +2543,7 @@ error:
  * @return             ROHC_OK in case of success, ROHC_ERROR in case of failure
  */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
-                                   unsigned char *packet,
+                                   const unsigned char *packet,
                                    unsigned int size,
                                    unsigned int *parsed_size)
 {

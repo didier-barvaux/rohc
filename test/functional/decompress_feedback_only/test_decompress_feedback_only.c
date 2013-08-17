@@ -131,11 +131,13 @@ static void usage(void)
 static int test_decomp(const unsigned char *const rohc_feedback,
                        const size_t rohc_feedback_len)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
 
 	unsigned char ip_packet[MAX_ROHC_SIZE];
-	int ip_size;
+	size_t ip_size;
 
 #define NB_RTP_PORTS 5
 	const unsigned int rtp_ports[NB_RTP_PORTS] =
@@ -143,6 +145,7 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 
 	unsigned int i;
 	int is_failure = 1;
+	int ret;
 
 	/* create the ROHC compressor with small CID */
 	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
@@ -203,11 +206,9 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 	}
 
 	/* decompress the ROHC feedback with the ROHC decompressor */
-	ip_size = rohc_decompress(decomp,
-	                          (unsigned char *) rohc_feedback,
-	                          rohc_feedback_len,
-	                          ip_packet, MAX_ROHC_SIZE);
-	if(ip_size != ROHC_FEEDBACK_ONLY)
+	ret = rohc_decompress2(decomp, arrival_time,
+	                       (unsigned char *) rohc_feedback, rohc_feedback_len,	                          ip_packet, MAX_ROHC_SIZE, &ip_size);
+	if(ret != ROHC_FEEDBACK_ONLY)
 	{
 		fprintf(stderr, "failed to decompress ROHC feedback\n");
 		goto destroy_decomp;

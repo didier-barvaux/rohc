@@ -517,10 +517,12 @@ ssize_t rohc_proc_comp_write(struct file *file,
 	/* compress the IP packet if it is complete */
 	if(couple->ip_size_current_in == couple->ip_size_total_in)
 	{
+		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+
 		pr_info("[%s] IP packet is complete, compress it now\n",
 		        THIS_MODULE->name);
 
-		ret = rohc_compress2(couple->comp,
+		ret = rohc_compress3(couple->comp, arrival_time,
 									couple->ip_packet_in, couple->ip_size_total_in,
 									couple->rohc_packet_out, MAX_ROHC_SIZE,
 									&(couple->rohc_size_out));
@@ -634,12 +636,15 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 	/* decompress the ROHC packet if it is complete */
 	if(couple->rohc_size_current_in == couple->rohc_size_total_in)
 	{
+		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+
 		pr_info("[%s] ROHC packet is complete, decompress it now\n", THIS_MODULE->name);
 
-		ret = rohc_decompress(couple->decomp,
-		                      couple->rohc_packet_in, couple->rohc_size_total_in,
-		                      couple->ip_packet_out, MAX_ROHC_SIZE);
-		if(ret <= 0)
+		ret = rohc_decompress2(couple->decomp, arrival_time,
+		                       couple->rohc_packet_in, couple->rohc_size_total_in,
+		                       couple->ip_packet_out, MAX_ROHC_SIZE,
+		                       &(couple->ip_size_out));
+		if(ret != ROHC_OK)
 		{
 			pr_err("[%s] failed to decompress the ROHC packet\n", THIS_MODULE->name);
 			goto error;
@@ -647,7 +652,6 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 
 		pr_info("[%s] ROHC packet successfully decompressed\n", THIS_MODULE->name);
 
-		couple->ip_size_out = ret;
 		kfree(couple->rohc_packet_in);
 		couple->rohc_packet_in = NULL;
 		couple->rohc_size_total_in = 0;

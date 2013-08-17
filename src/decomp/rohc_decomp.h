@@ -102,6 +102,10 @@ typedef enum
  *        nr_lost_packets
  *        nr_misordered_packets
  *        is_duplicated
+ *     - Minor = 1:
+ *        + corrected_crc_failures
+ *        + corrected_sn_wraparounds
+ *        + corrected_wrong_sn_updates
  *
  * @ingroup rohc_decomp
  */
@@ -123,7 +127,28 @@ typedef struct
 	unsigned long nr_misordered_packets;
 	/** Is last packet a (possible) duplicated packet? */
 	bool is_duplicated;
+
+	/* added in 0.1 */
+	/** The number of successful corrections upon CRC failure */
+	unsigned long corrected_crc_failures;
+	/** The number of successful corrections of SN wraparound upon CRC failure */
+	unsigned long corrected_sn_wraparounds;
+	/** The number of successful corrections of incorrect SN updates upon CRC
+	 *  failure */
+	unsigned long corrected_wrong_sn_updates;
+
 } __attribute__((packed)) rohc_decomp_last_packet_info_t;
+
+
+/** The different features of the ROHC decompressor */
+typedef enum
+{
+	/** No feature at all */
+	ROHC_DECOMP_FEATURE_NONE       = 0,
+	/** Attempt packet repair in case of CRC failure */
+	ROHC_DECOMP_FEATURE_CRC_REPAIR = (1 << 0),
+
+} rohc_decomp_features_t;
 
 
 
@@ -134,11 +159,25 @@ typedef struct
 struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor);
 void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp);
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
                                 unsigned char *ibuf,
                                 int isize,
                                 unsigned char *obuf,
-                                int osize);
+                                int osize)
+	ROHC_DEPRECATED("please do not use this function anymore, use "
+	                "rohc_decompress2() instead");
+#endif
+
+int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *decomp,
+                                 const struct timespec arrival_time,
+                                 const unsigned char *const rohc_packet,
+                                 const size_t rohc_packet_len,
+                                 unsigned char *const uncomp_packet,
+                                 const size_t uncom_packet_max_len,
+                                 size_t *const uncomp_packet_len)
+	__attribute__((warn_unused_result));
+
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      unsigned char *ibuf,
@@ -186,6 +225,10 @@ bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 
 bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                                       const size_t mrru)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_decomp_set_features(struct rohc_decomp *const decomp,
+                                          const rohc_decomp_features_t features)
 	__attribute__((warn_unused_result));
 
 

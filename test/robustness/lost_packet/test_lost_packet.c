@@ -67,6 +67,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const char *const filename,
+                                const bool do_repair,
                                 const unsigned int first_packet_to_lose,
                                 const unsigned int last_packet_to_lose,
                                 const unsigned int last_packet_in_error);
@@ -99,6 +100,7 @@ int main(int argc, char *argv[])
 	int first_packet_to_lose;
 	int last_packet_to_lose;
 	int last_packet_in_error;
+	bool do_repair = false;
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -115,6 +117,10 @@ int main(int argc, char *argv[])
 			/* print help */
 			usage();
 			goto error;
+		}
+		else if(!strcmp(*argv, "--repair"))
+		{
+			do_repair = true;
 		}
 		else if(filename == NULL)
 		{
@@ -190,7 +196,7 @@ int main(int argc, char *argv[])
 	srand(5);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, first_packet_to_lose,
+	status = test_comp_and_decomp(filename, do_repair, first_packet_to_lose,
 	                              last_packet_to_lose, last_packet_in_error);
 
 error:
@@ -206,7 +212,7 @@ static void usage(void)
 	fprintf(stderr,
 	        "Check that lost ROHC packets are correctly handled\n"
 	        "\n"
-	        "usage: test_lost_packet [OPTIONS] FLOW FIRST_PACKET_NUM \\"
+	        "usage: test_lost_packet [OPTIONS] FLOW FIRST_PACKET_NUM \\\n"
 	        "                        LAST_PACKET_NUM LAST_PACKET_ERROR\n"
 	        "\n"
 	        "with:\n"
@@ -217,7 +223,8 @@ static void usage(void)
 	        "  LAST_PACKET_ERROR  The last packet # that will fail to decompress\n"
 	        "\n"
 	        "options:\n"
-	        "  -h           Print this usage and exit\n");
+	        "  -h           Print this usage and exit\n"
+	        "  --repair     Repair packet/context\n");
 }
 
 
@@ -227,6 +234,7 @@ static void usage(void)
  *
  * @param filename              The name of the PCAP file that contains the
  *                              IP packets
+ * @param do_repair             Repair the packet/context
  * @param first_packet_to_lose  The first packet # to lost
  * @param last_packet_to_lose   The last packet # to lost
  * @param last_packet_in_error  The last packet # that will fail to decompress
@@ -234,10 +242,13 @@ static void usage(void)
  *                              1 in case of failure
  */
 static int test_comp_and_decomp(const char *const filename,
+                                const bool do_repair,
                                 const unsigned int first_packet_to_lose,
                                 const unsigned int last_packet_to_lose,
                                 const unsigned int last_packet_in_error)
 {
+	struct timespec arrival_time = { .tv_sec = 4242, .tv_nsec = 4242 };
+
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	int link_layer_type;
@@ -322,11 +333,14 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
-	/* set the default timeouts for periodic refreshes of contexts */
-	if(!rohc_comp_set_periodic_refreshes(comp, 121, 120))
+	if(!do_repair)
 	{
-		fprintf(stderr, "failed to set the timeouts for periodic refreshes\n");
-		goto destroy_comp;
+		/* set the default timeouts for periodic refreshes of contexts */
+		if(!rohc_comp_set_periodic_refreshes(comp, 121, 120))
+		{
+			fprintf(stderr, "failed to set timeouts for periodic refreshes\n");
+			goto destroy_comp;
+		}
 	}
 
 	/* reset list of RTP ports */
@@ -371,6 +385,16 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_decomp;
 	}
 
+	if(do_repair)
+	{
+		/* enable some features: CRC repair */
+		if(!rohc_decomp_set_features(decomp, ROHC_DECOMP_FEATURE_CRC_REPAIR))
+		{
+			fprintf(stderr, "failed to enabled CRC repair\n");
+			goto destroy_decomp;
+		}
+	}
+
 	/* for each packet in the dump */
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
@@ -380,10 +404,11 @@ static int test_comp_and_decomp(const char *const filename,
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
 		size_t rohc_size;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
-		int decomp_size;
+		size_t decomp_size;
 		int ret;
 
 		counter++;
+		arrival_time.tv_nsec += 20 * 1e6;
 
 		fprintf(stderr, "packet #%u:\n", counter);
 
@@ -431,7 +456,7 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		ret = rohc_compress2(comp, ip_packet, ip_size,
+		ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
 		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 		if(ret != ROHC_OK)
 		{
@@ -448,9 +473,9 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 
 		/* decompress the generated ROHC packet with the ROHC decompressor */
-		decomp_size = rohc_decompress(decomp, rohc_packet, rohc_size,
-		                              decomp_packet, MAX_ROHC_SIZE);
-		if(decomp_size <= 0)
+		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
+		                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+		if(ret != ROHC_OK)
 		{
 			if(counter > last_packet_to_lose && counter <= last_packet_in_error)
 			{

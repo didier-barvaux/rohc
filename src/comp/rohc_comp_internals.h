@@ -319,10 +319,10 @@ struct c_context
 {
 	/** Whether the context is in use or not */
 	int used;
-	/** The time when the context was created */
-	unsigned int latest_used;
-	/** The time when the context was last used */
-	unsigned int first_used;
+	/** The time when the context was created (in seconds) */
+	uint64_t latest_used;
+	/** The time when the context was last used (in seconds) */
+	uint64_t first_used;
 
 	/** The context unique ID (CID) */
 	int cid;

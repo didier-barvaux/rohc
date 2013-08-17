@@ -120,6 +120,7 @@ static int tune_env_for_perfs(void);
 
 static int test_compression_perfs(char *filename,
                                   const int use_large_cid,
+                                  const size_t wlsb_width,
                                   const unsigned int max_contexts,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
@@ -142,6 +143,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   struct pcap_pkthdr header,
                                   unsigned char *packet,
                                   size_t link_len,
+                                  const struct timespec arrival_time,
                                   unsigned long long *time_elapsed);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
@@ -169,6 +171,7 @@ int main(int argc, char *argv[])
 {
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	char *cid_type = NULL;
+	int wlsb_width = 4;
 	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
 	bool use_large_cid;
@@ -216,6 +219,13 @@ int main(int argc, char *argv[])
 			argv++;
 			argc--;
 		}
+		else if(!strcmp(*argv, "--wlsb-width"))
+		{
+			/* get the width of the WLSB window the test should use */
+			wlsb_width = atoi(argv[1]);
+			argv++;
+			argc--;
+		}
 		else if(test_type == 0)
 		{
 			/* get the name of the test */
@@ -244,6 +254,14 @@ int main(int argc, char *argv[])
 	if(test_type == NULL || filename == NULL)
 	{
 		usage();
+		goto error;
+	}
+
+	/* check WLSB width */
+	if(wlsb_width <= 0 || (wlsb_width & (wlsb_width - 1)) != 0)
+	{
+		fprintf(stderr, "invalid WLSB width %d: should be a positive power of "
+		        "two\n", wlsb_width);
 		goto error;
 	}
 
@@ -294,7 +312,7 @@ int main(int argc, char *argv[])
 	if(strcmp(test_type, "compression") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
-		ret = test_compression_perfs(filename, use_large_cid, max_contexts,
+		ret = test_compression_perfs(filename, use_large_cid, wlsb_width, max_contexts,
 		                             &packet_count, &overflows, &time_elapsed);
 	}
 	else if(strcmp(test_type, "decompression") == 0)
@@ -360,6 +378,7 @@ static void usage(void)
 		"  --verbose               Tell the application to be more verbose\n"
 		"  --help                  Print application usage and exit\n"
 		"  -h\n"
+		"  --wlsb-width NUM        The width of the WLSB window to use\n"
 		"  --max-contexts NUM      The maximum number of ROHC contexts to\n"
 		"                          simultaneously use during the test\n"
 		"\n"
@@ -440,6 +459,7 @@ error:
  *
  * @param filename      The name of the PCAP file that contains the IP packets
  * @param use_large_cid Whether the compressor shall use large CIDs
+ * @param wlsb_width    The width of the WLSB window to use
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param packet_count  OUT: the number of compressed packets, undefined if
  *                      compression failed
@@ -449,6 +469,7 @@ error:
  */
 static int test_compression_perfs(char *filename,
                                   const int use_large_cid,
+                                  const size_t wlsb_width,
                                   const unsigned int max_contexts,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
@@ -536,6 +557,13 @@ static int test_compression_perfs(char *filename,
 		goto free_compresssor;
 	}
 	rohc_c_set_large_cid(comp, use_large_cid);
+
+	/* set the WLSB window width on compressor */
+	if(!rohc_comp_set_wlsb_window_width(comp, wlsb_width))
+	{
+		fprintf(stderr, "failed to set the WLSB window width on compressor\n");
+		goto free_compresssor;
+	}
 
 	/* reset list of RTP ports */
 	if(!rohc_comp_reset_rtp_ports(comp))
@@ -627,6 +655,7 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 size_t link_len,
                                 unsigned long long *time_elapsed)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
@@ -692,7 +721,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
 
 	/* compress the packet */
-	ret = rohc_compress2(comp, ip_packet, ip_size,
+	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
 	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 
 	/* get CPU tics after compression */
@@ -706,7 +735,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* compute the time elapsed during the compression process */
-	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 10e9 +
+	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 1e9 +
 	                end_tics.tv_nsec - start_tics.tv_nsec;
 
 	/* everything went fine */
@@ -737,6 +766,7 @@ static int test_decompression_perfs(char *filename,
                                     unsigned long *overflows,
                                     unsigned long long *time_elapsed)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	int link_layer_type;
@@ -858,7 +888,7 @@ static int test_decompression_perfs(char *filename,
 
 		/* decompress the ROHC packet */
 		ret = time_decompress_packet(decomp, *packet_count,
-		                             header, packet, link_len,
+		                             header, packet, link_len, arrival_time,
 		                             &packet_time_elapsed);
 		if(ret != 0)
 		{
@@ -910,15 +940,17 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   struct pcap_pkthdr header,
                                   unsigned char *packet,
                                   size_t link_len,
+                                  const struct timespec arrival_time,
                                   unsigned long long *time_elapsed)
 {
 	unsigned char *rohc_packet;
 	unsigned int rohc_size;
 	static unsigned char ip_packet[MAX_ROHC_SIZE];
-	int ip_size;
+	size_t ip_size;
 	struct timespec start_tics;
 	struct timespec end_tics;
 	int is_failure = 1;
+	int ret;
 
 	/* check Ethernet frame length */
 	if(header.len <= link_len || header.len != header.caplen)
@@ -937,21 +969,21 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
 
 	/* decompress the packet */
-	ip_size = rohc_decompress(decomp, rohc_packet, rohc_size,
-	                          ip_packet, MAX_ROHC_SIZE);
+	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
+	                       ip_packet, MAX_ROHC_SIZE, &ip_size);
 
 	/* get CPU tics after compression */
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);
 
 	/* stop performance test if decompression failed */
-	if(ip_size <= 0)
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "packet %lu: decompression failed\n", num_packet);
 		goto error;
 	}
 
 	/* compute the time elapsed during the decompression process */
-	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 10e9 +
+	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 1e9 +
 	                end_tics.tv_nsec - start_tics.tv_nsec;
 
 	/* everything went fine */

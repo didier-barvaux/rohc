@@ -52,7 +52,7 @@ EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
 /* general */
 EXPORT_SYMBOL_GPL(rohc_alloc_compressor);
 EXPORT_SYMBOL_GPL(rohc_free_compressor);
-EXPORT_SYMBOL_GPL(rohc_compress2);
+EXPORT_SYMBOL_GPL(rohc_compress3);
 EXPORT_SYMBOL_GPL(rohc_comp_force_contexts_reinit);
 
 /* segment */
@@ -99,7 +99,7 @@ EXPORT_SYMBOL_GPL(rohc_comp_set_rtp_detection_cb);
 /* general */
 EXPORT_SYMBOL_GPL(rohc_alloc_decompressor);
 EXPORT_SYMBOL_GPL(rohc_free_decompressor);
-EXPORT_SYMBOL_GPL(rohc_decompress);
+EXPORT_SYMBOL_GPL(rohc_decompress2);
 
 /* statistics */
 EXPORT_SYMBOL_GPL(rohc_decomp_get_state_descr);

@@ -32,8 +32,10 @@ test -z "${AWK}" && AWK="`which awk`"
 
 # parse arguments
 SCRIPT="$0"
-VERBOSE="$1"
-VERY_VERBOSE="$2"
+REPAIR="$1"
+PARAMS="$2"
+VERBOSE="$3"
+VERY_VERBOSE="$4"
 if [ "x$MAKELEVEL" != "x" ] ; then
 	BASEDIR="${srcdir}"
 	APP="./test_damaged_packet${CROSS_COMPILATION_EXEEXT}"
@@ -43,12 +45,12 @@ else
 fi
 
 # extract the packet to damage and source capture from the name of the script
-PARAMS=$( echo "${SCRIPT}" | \
-          ${SED} -e 's#^.*/test_damaged_packet_##' -e 's#\.sh$##' )
-PACKET_TO_DAMAGE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $1 }' )
-CAPTURE_NAME=$( echo "${PARAMS}" | \
+PARAMS2=$( echo "${PARAMS}" | \
+           ${SED} -e 's#test_damaged_packet_##' )
+PACKET_TO_DAMAGE=$( echo "${PARAMS2}" | ${AWK} -F'_' '{ print $1 }' )
+CAPTURE_NAME=$( echo "${PARAMS2}" | \
                 ${AWK} -F'_' '{ if($3 == "") { print $2 } else { print $2 "_" $3 } }' )
-EXPECTED_PACKET=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $2 }' )
+EXPECTED_PACKET=$( echo "${PARAMS2}" | ${AWK} -F'_' '{ print $2 }' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${CAPTURE_NAME}.pcap"
 
 # check that capture exists
@@ -63,7 +65,16 @@ if [ -z "${PACKET_TO_DAMAGE}" ] || [ -z "${EXPECTED_PACKET}" ] ; then
 	exit 1
 fi
 
-CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${CAPTURE_SOURCE} ${PACKET_TO_DAMAGE} ${EXPECTED_PACKET}"
+if [ "${REPAIR}" = "norepair" ] ; then
+	REPAIR=""
+elif [ "${REPAIR}" = "repair" ] ; then
+	REPAIR="--repair"
+else
+	echo "wrong repair argument" >&2
+	exit 1
+fi
+
+CMD="${CROSS_COMPILATION_EMULATOR} ${APP} ${REPAIR} ${CAPTURE_SOURCE} ${PACKET_TO_DAMAGE} ${EXPECTED_PACKET}"
 
 # source valgrind-related functions
 . ${BASEDIR}/../../valgrind.sh

@@ -349,6 +349,8 @@ error:
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
+ * @param arrival_time   The time at which packet was received (0 if unknown,
+ *                       or to disable time-related features in ROHC protocol)
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet
  * @param add_cid_len    The length of the optional Add-CID field
@@ -359,6 +361,7 @@ error:
  */
 int d_udp_lite_decode(struct rohc_decomp *const decomp,
                       struct d_context *const context,
+                      const struct timespec arrival_time,
                       const unsigned char *const rohc_packet,
                       const size_t rohc_length,
                       const size_t add_cid_len,
@@ -396,7 +399,8 @@ int d_udp_lite_decode(struct rohc_decomp *const decomp,
 
 	/* decode the remaining part of the part as a normal IP-based packet
 	 * (with a fake length for the large CID field eventually) */
-	return d_generic_decode(decomp, context, rohc_remain_data, rohc_remain_len,
+	return d_generic_decode(decomp, context, arrival_time,
+	                        rohc_remain_data, rohc_remain_len,
 	                        add_cid_len, new_large_cid_len, dest);
 
 error:

@@ -116,7 +116,8 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
 	uint32_t offset_decoded;
 	bool is_success;
 
-	is_success = rohc_lsb_decode(ipid->lsb, m, k, &offset_decoded);
+	is_success = rohc_lsb_decode(ipid->lsb, ROHC_LSB_REF_0, 0, m, k,
+	                             &offset_decoded);
 	if(is_success)
 	{
 		/* add the decoded offset with SN, taking care of overflow */
@@ -144,6 +145,6 @@ void ip_id_offset_set_ref(struct ip_id_offset_decode *const ipid,
 	 * (overflow over 16 bits is expected if SN > IP-ID) */
 	offset_ref = id_ref - sn_ref;
 
-	rohc_lsb_set_ref(ipid->lsb, offset_ref);
+	rohc_lsb_set_ref(ipid->lsb, offset_ref, false);
 }
 

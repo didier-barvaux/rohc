@@ -110,7 +110,8 @@ static void c_destroy_contexts(struct rohc_comp *const comp);
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
                                            const struct ip_packet *ip,
-                                           const rohc_ctxt_key_t key)
+                                           const rohc_ctxt_key_t key,
+                                           const struct timespec arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
@@ -487,7 +488,7 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
  * @brief Compress a ROHC packet.
  *
  * @deprecated do not use this function anymore,
- *             use rohc_compress2() instead
+ *             use rohc_compress3() instead
  *
  * @param comp   The ROHC compressor
  * @param ibuf   The uncompressed packet to compress
@@ -505,6 +506,7 @@ int rohc_compress(struct rohc_comp *comp,
                   unsigned char *obuf,
                   int osize)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	size_t rohc_len;
 	int code;
 
@@ -514,7 +516,8 @@ int rohc_compress(struct rohc_comp *comp,
 	}
 
 	/* use the new function to keep API compatibility */
-	code = rohc_compress2(comp, ibuf, isize, obuf, osize, &rohc_len);
+	code = rohc_compress3(comp, arrival_time, ibuf, isize,
+	                      obuf, osize, &rohc_len);
 	if(code != ROHC_OK)
 	{
 		/* compression failed */
@@ -528,6 +531,43 @@ error:
 	return 0;
 }
 
+
+/**
+ * @brief Compress a ROHC packet
+ *
+ * May return a full ROHC packet, or a segment of a ROHC packet if the output
+ * buffer was too small for the ROHC packet or if MRRU was exceeded. Use the
+ * rohc_comp_get_segment function to retrieve next ROHC segments.
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_compress3() instead
+ *
+ * @param comp                 The ROHC compressor
+ * @param uncomp_packet        The uncompressed packet to compress
+ * @param uncomp_packet_len    The size of the uncompressed packet
+ * @param rohc_packet          The buffer where to store the ROHC packet
+ * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
+ *                             for the ROHC packet
+ * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
+ * @return                     \li \e ROHC_OK if a ROHC packet is returned
+ *                             \li \e ROHC_NEED_SEGMENT if no compressed data
+ *                                 is returned and segmentation required
+ *                             \li \e ROHC_ERROR if an error occurred
+ *
+ * @ingroup rohc_comp
+ */
+int rohc_compress2(struct rohc_comp *const comp,
+                   const unsigned char *const uncomp_packet,
+                   const size_t uncomp_packet_len,
+                   unsigned char *const rohc_packet,
+                   const size_t rohc_packet_max_len,
+                   size_t *const rohc_packet_len)
+{
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	return rohc_compress3(comp, arrival_time, uncomp_packet, uncomp_packet_len,
+	                      rohc_packet, rohc_packet_max_len, rohc_packet_len);
+}
+
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
@@ -539,6 +579,9 @@ error:
  * rohc_comp_get_segment function to retrieve next ROHC segments.
  *
  * @param comp                 The ROHC compressor
+ * @param arrival_time         The time at which packet was received
+ *                             (0 if unknown, or to disable time-related
+ *                              features in the ROHC protocol)
  * @param uncomp_packet        The uncompressed packet to compress
  * @param uncomp_packet_len    The size of the uncompressed packet
  * @param rohc_packet          The buffer where to store the ROHC packet
@@ -552,7 +595,8 @@ error:
  *
  * @ingroup rohc_comp
  */
-int rohc_compress2(struct rohc_comp *const comp,
+int rohc_compress3(struct rohc_comp *const comp,
+                   const struct timespec arrival_time,
                    const unsigned char *const uncomp_packet,
                    const size_t uncomp_packet_len,
                    unsigned char *const rohc_packet,
@@ -661,7 +705,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one\n");
-		c = c_create_context(comp, p, outer_ip, pkt_key);
+		c = c_create_context(comp, p, outer_ip, pkt_key, arrival_time);
 		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -670,7 +714,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 	}
 
-	c->latest_used = get_milliseconds();
+	c->latest_used = arrival_time.tv_sec;
 
 	/* create the ROHC packet: */
 	*rohc_packet_len = 0;
@@ -726,7 +770,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		c = c_find_context(comp, p, outer_ip, pkt_key);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, outer_ip, pkt_key);
+			c = c_create_context(comp, p, outer_ip, pkt_key, arrival_time);
 			if(c == NULL)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2259,10 +2303,10 @@ static int __rohc_c_context(struct rohc_comp *comp,
 	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);
 
 	/* times */
-	buffer += sprintf(buffer, "%s\t<activation_time>%u</activation_time>\n",
-	                  prefix, (get_milliseconds() - c->first_used) / 1000 );
-	buffer += sprintf(buffer, "%s\t<idle_time>%u</idle_time>\n",
-	                  prefix, (get_milliseconds() - c->latest_used) / 1000);
+	buffer += sprintf(buffer, "%s\t<activation_time>%lu</activation_time>\n",
+	                  prefix, (unsigned long) (rohc_get_seconds() - c->first_used));
+	buffer += sprintf(buffer, "%s\t<idle_time>%lu</idle_time>\n",
+	                  prefix, (unsigned long) (rohc_get_seconds() - c->latest_used));
 
 	/* packets */
 	buffer += sprintf(buffer, "%s\t<packets sent_total=\"%d\" ", prefix, c->num_sent_packets);
@@ -2964,16 +3008,20 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 /**
  * @brief Create a compression context
  *
- * @param comp    The ROHC compressor
- * @param profile The profile to associate the context with
- * @param ip      The IP packet to initialize the context
- * @param key     The key to help finding the context associated with a packet
- * @return        The compression context if successful, NULL otherwise
+ * @param comp          The ROHC compressor
+ * @param profile       The profile to associate the context with
+ * @param ip            The IP packet to initialize the context
+ * @param key           The key to help finding the context associated with a
+ *                      packet
+ * @param arrival_time  The time at which packet was received (0 if unknown,
+ *                      or to disable time-related features in ROHC protocol)
+ * @return              The compression context if successful, NULL otherwise
  */
 static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
                                            const struct ip_packet *ip,
-                                           const rohc_ctxt_key_t key)
+                                           const rohc_ctxt_key_t key,
+                                           const struct timespec arrival_time)
 {
 	struct c_context *c;
 	int index, i;
@@ -3069,8 +3117,8 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 
 	/* if creation is successful, mark the context as used */
 	c->used = 1;
-	c->first_used = get_milliseconds();
-	c->latest_used = get_milliseconds();
+	c->first_used = arrival_time.tv_sec;
+	c->latest_used = arrival_time.tv_sec;
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

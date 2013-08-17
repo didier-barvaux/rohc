@@ -950,6 +950,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned int *const cid,
                                struct sniffer_stats *stats)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
@@ -958,7 +959,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	rohc_comp_last_packet_info2_t comp_last_packet_info;
 	rohc_decomp_last_packet_info_t decomp_last_packet_info;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
-	int decomp_size;
+	size_t decomp_size;
 	unsigned long possible_unit;
 	int ret;
 
@@ -1022,7 +1023,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* compress the IP packet */
-	ret = rohc_compress2(comp, ip_packet, ip_size,
+	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
 	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 	if(ret != ROHC_OK)
 	{
@@ -1167,10 +1168,9 @@ static int compress_decompress(struct rohc_comp *comp,
 	*cid = comp_last_packet_info.context_id;
 
 	/* decompress the ROHC packet */
-	decomp_size = rohc_decompress(decomp,
-	                              rohc_packet, rohc_size,
-	                              decomp_packet, MAX_ROHC_SIZE);
-	if(decomp_size <= 0)
+	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
+	                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "decompression failed\n");
 		ret = -2;

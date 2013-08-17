@@ -533,15 +533,17 @@ static int compress_decompress(struct rohc_comp *comp,
                                int link_len_cmp,
                                FILE *size_output_file)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
 	unsigned char *rohc_packet;
 	size_t rohc_size;
 	static unsigned char decomp_packet[MAX_ROHC_SIZE];
-	int decomp_size;
+	size_t decomp_size;
 	struct ether_header *eth_header;
-	int ret = 1;
+	int status = 1;
+	int ret;
 
 	printf("\t<packet id=\"%d\" comp=\"%d\">\n", num_packet, num_comp);
 
@@ -569,7 +571,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</comparison>\n");
 
-		ret = -3;
+		status = -3;
 		goto exit;
 	}
 
@@ -607,7 +609,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* compress the IP packet */
 	printf("\t\t<compression>\n");
 	printf("\t\t\t<log>\n");
-	ret = rohc_compress2(comp, ip_packet, ip_size,
+	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
 	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
 	printf("\t\t\t</log>\n");
 	if(ret != ROHC_OK)
@@ -636,7 +638,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</ip_comparison>\n");
 
-		ret = -1;
+		status = -1;
 		goto exit;
 	}
 
@@ -697,7 +699,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			printf("\t\t\t<status>failed</status>\n");
 			printf("\t\t</ip_comparison>\n");
 
-			ret = -1;
+			status = -1;
 			goto exit;
 		}
 
@@ -714,7 +716,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	       "of reference is skipped because they will not match\n");
 	printf("\t\t\t</log>\n");
 	printf("\t\t\t<status>failed</status>\n");
-	ret = 0;
+	status = 0;
 #else
 	if(cmp_packet != NULL && cmp_size > link_len_cmp)
 	{
@@ -723,7 +725,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		{
 			printf("\t\t\t</log>\n");
 			printf("\t\t\t<status>failed</status>\n");
-			ret = 0;
+			status = 0;
 		}
 		else
 		{
@@ -737,7 +739,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		printf("No ROHC packets given for reference, cannot compare (run with the -c option)\n");
 		printf("\t\t\t</log>\n");
 		printf("\t\t\t<status>failed</status>\n");
-		ret = 0;
+		status = 0;
 	}
 #endif
 	printf("\t\t</rohc_comparison>\n\n");
@@ -745,12 +747,11 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* decompress the ROHC packet */
 	printf("\t\t<decompression>\n");
 	printf("\t\t\t<log>\n");
-	decomp_size = rohc_decompress(decomp,
-	                              rohc_packet, rohc_size,
-	                              decomp_packet, MAX_ROHC_SIZE);
+	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
+	                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
 	printf("\t\t\t</log>\n");
 
-	if(decomp_size <= 0)
+	if(ret != ROHC_OK)
 	{
 		size_t i;
 
@@ -778,7 +779,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		printf("\t\t\t<status>failed</status>\n");
 		printf("\t\t</ip_comparison>\n");
 
-		ret = -2;
+		status = -2;
 		goto exit;
 	}
 
@@ -792,7 +793,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	{
 		printf("\t\t\t</log>\n");
 		printf("\t\t\t<status>failed</status>\n");
-		ret = 0;
+		status = 0;
 	}
 	else
 	{
@@ -804,7 +805,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 exit:
 	printf("\t</packet>\n\n");
-	return ret;
+	return status;
 }
 
 

@@ -1385,6 +1385,8 @@ int tun2wan(struct rohc_comp *comp,
             const struct rohc_tunnel *const tunnel,
             int error, double ber, double pe2, double p2)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+
 	static unsigned char buffer[TUNTAP_BUFSIZE];
 	static unsigned char rohc_packet[3 + MAX_ROHC_SIZE];
 	unsigned int buffer_len = TUNTAP_BUFSIZE;
@@ -1460,7 +1462,7 @@ int tun2wan(struct rohc_comp *comp,
 #if DEBUG
 	fprintf(stderr, "compress packet #%u (%zd bytes)\n", seq, packet_len);
 #endif
-	ret = rohc_compress2(comp, packet, packet_len,
+	ret = rohc_compress3(comp, arrival_time, packet, packet_len,
 	                     rohc_packet + 3, MAX_ROHC_SIZE,
 	                     &rohc_size);
 	if(ret == ROHC_NEED_SEGMENT)
@@ -1627,12 +1629,13 @@ int wan2tun(struct rohc_decomp *const decomp,
             const int to,
             const rohc_tunnel_t tunnel_type)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 	static unsigned char packet[3 + MAX_ROHC_SIZE];
 	static unsigned char decomp_packet[MAX_ROHC_SIZE + 4];
 	unsigned int packet_len = TUNTAP_BUFSIZE;
 	unsigned char *rohc_packet;
 	unsigned int rohc_pkt_len;
-	int decomp_size;
+	size_t decomp_size;
 	int ret;
 	static unsigned int max_seq = 0;
 	unsigned int new_seq;
@@ -1720,9 +1723,9 @@ int wan2tun(struct rohc_decomp *const decomp,
 	fprintf(stderr, "decompress ROHC packet #%u (%u bytes)\n",
 	        new_seq, rohc_pkt_len);
 #endif
-	decomp_size = rohc_decompress(decomp, rohc_packet, rohc_pkt_len,
-	                              &decomp_packet[4], MAX_ROHC_SIZE);
-	if(decomp_size <= 0)
+	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_pkt_len,
+	                       &decomp_packet[4], MAX_ROHC_SIZE, &decomp_size);
+	if(ret != ROHC_OK)
 	{
 		if(decomp_size == ROHC_FEEDBACK_ONLY)
 		{

@@ -456,6 +456,19 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const uint8_t crc_packet)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
 
+static bool attempt_repair(const struct rohc_decomp *const decomp,
+                           const struct d_context *const context,
+                           struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static bool is_sn_wraparound(const struct timespec cur_arrival_time,
+                             const struct timespec arrival_times[ROHC_MAX_ARRIVAL_TIMES],
+                             const size_t arrival_times_nr,
+                             const size_t arrival_times_index,
+                             const size_t k,
+                             const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, pure));
+
 static void update_context(const struct d_context *const context,
                            const struct rohc_decoded_values decoded)
 	__attribute__((nonnull(1)));
@@ -595,6 +608,16 @@ void * d_generic_create(const struct d_context *const context,
 	/* default CRC computation */
 	g_context->compute_crc_static = compute_crc_static;
 	g_context->compute_crc_dynamic = compute_crc_dynamic;
+
+	/* at the beginning, no attempt to correct CRC failure */
+	g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
+	g_context->correction_counter = 0;
+	/* arrival times for correction upon CRC failure */
+	memset(g_context->arrival_times, 0, sizeof(struct timespec) * 10);
+	g_context->arrival_times_nr = 0;
+	g_context->arrival_times_index = 0;
+	g_context->cur_arrival_time.tv_sec = 0;
+	g_context->cur_arrival_time.tv_nsec = 0;
 
 	return g_context;
 
@@ -4058,6 +4081,8 @@ error:
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
+ * @param arrival_time   The time at which packet was received (0 if unknown,
+ *                       or to disable time-related features in ROHC protocol)
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet
  * @param add_cid_len    The length of the optional Add-CID field
@@ -4069,6 +4094,7 @@ error:
  */
 int d_generic_decode(struct rohc_decomp *const decomp,
                      struct d_context *const context,
+                     const struct timespec arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_length,
                      const size_t add_cid_len,
@@ -4090,10 +4116,18 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	const unsigned char *payload_data;
 	size_t payload_len;
 
+	/* Whether to attempt packet correction or not */
+	bool try_decoding_again;
+
 	/* helper variables for values returned by functions */
 	bool parsing_ok;
 	bool decode_ok;
 	int build_ret;
+
+
+	/* remember the arrival time of the packet (used for repair upon CRC
+	 * failure for example) */
+	g_context->cur_arrival_time = arrival_time;
 
 
  	/* A. Detect the type of the ROHC packet */
@@ -4168,85 +4202,147 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	}
 
 
-	/* D. Decode extracted bits
-	 *
-	 * All bits are now extracted from the packet, let's decode them.
-	 */
-
-	decode_ok = decode_values_from_bits(decomp, context, bits, &decoded);
-	if(!decode_ok)
+	try_decoding_again = false;
+	do
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to decode values from bits extracted from ROHC "
-		             "header\n");
-		goto error;
-	}
-
-
-	/* E. Build uncompressed headers & check for correct decompression
-	 *
-	 * All fields are now decoded, let's build the uncompressed headers.
-	 *
-	 * Use the CRC on decompressed headers to check whether decompression was
-	 * correct.
-	 */
-
-	/* build the uncompressed headers */
-	build_ret = build_uncomp_hdrs(decomp, context, decoded, payload_len,
-	                              bits.crc_type, bits.crc,
-	                              uncomp_packet, &uncomp_header_len);
-	if(build_ret != ROHC_OK)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CID %u: failed to build uncompressed headers\n",
-		             context->cid);
-		rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_WARNING, "compressed headers",
-		                 rohc_packet, rohc_header_len);
-		if(build_ret == ROHC_ERROR_CRC)
+		if(try_decoding_again)
 		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "CID %u: CRC repair: try decoding packet again with new "
+			             "assumptions\n", context->cid);
+		}
+
+
+		/* D. Decode extracted bits
+		 *
+		 * All bits are now extracted from the packet, let's decode them.
+		 */
+
+		decode_ok = decode_values_from_bits(decomp, context, bits, &decoded);
+		if(!decode_ok)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "failed to decode values from bits extracted from ROHC "
+			             "header\n");
+			goto error;
+		}
+
+
+		/* E. Build uncompressed headers & check for correct decompression
+		 *
+		 * All fields are now decoded, let's build the uncompressed headers.
+		 *
+		 * Use the CRC on decompressed headers to check whether decompression was
+		 * correct.
+		 */
+	
+		/* build the uncompressed headers */
+		build_ret = build_uncomp_hdrs(decomp, context, decoded, payload_len,
+		                              bits.crc_type, bits.crc,
+		                              uncomp_packet, &uncomp_header_len);
+		if(build_ret == ROHC_OK)
+		{
+			/* uncompressed headers successfully built and CRC is correct,
+			 * no need to try decoding with different values */
+			uncomp_packet += uncomp_header_len;
+	
+			if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
+			{
+				rohc_decomp_debug(context, "CRC is correct\n");
+			}
+			else
+			{
+				rohc_decomp_debug(context, "CID %u: CRC repair: CRC is correct\n",
+				                  context->cid);
+				try_decoding_again = false;
+			}
+		}
+		else if(build_ret != ROHC_ERROR_CRC)
+		{
+			/* uncompressed headers cannot be built, stop decoding */
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "CID %u: failed to build uncompressed headers\n",
+			             context->cid);
+			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+			                 ROHC_TRACE_WARNING, "compressed headers",
+			                 rohc_packet, rohc_header_len);
+			goto error;
+		}
+		else
+		{
+			/* uncompressed headers successfully built but CRC is incorrect,
+			 * try decoding with different values (repair) */
+	
 			/* CRC for IR and IR-DYN packets checked before, so cannot fail here */
 			assert(g_context->packet_type != PACKET_IR);
 			assert(g_context->packet_type != PACKET_IR_DYN);
 
-			/* try to guess the correct SN value in case of failure */
-			/* TODO: try to repair CRC failure */
-			goto error_crc;
-		}
-		else
-		{
-			goto error;
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "CID %u: failed to build uncompressed headers (CRC "
+			             "failure)\n", context->cid);
+
+			/* attempt a context/packet repair */
+			try_decoding_again = attempt_repair(decomp, context, &bits);
+
+			/* report CRC failure if attempt is not possible */
+			if(!try_decoding_again)
+			{
+				/* uncompressed headers successfully built, CRC is incorrect, repair
+				 * was disabled or attempted without any success, so give up */
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "CID %u: failed to build uncompressed headers "
+				             "(CRC failure)\n", context->cid);
+				rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
+				                 ROHC_TRACE_WARNING, "compressed headers",
+				                 rohc_packet, rohc_header_len);
+				goto error_crc;
+			}
 		}
 	}
-	uncomp_packet += uncomp_header_len;
+	while(try_decoding_again);
 
 	/* after CRC failure, if the SN value seems to be correctly guessed, we must
 	 * wait for 3 CRC-valid packets before the correction is approved. Two
 	 * packets are therefore thrown away. */
-	if(g_context->correction_counter == 1)
+	if(g_context->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
 	{
-		rohc_decomp_debug(context, "throw away packet, just 2 CRC-valid "
-		                  "packets so far\n");
+		if(g_context->correction_counter > 1)
+		{
+			/* update context with decoded values even if we drop the packet */
+			update_context(context, decoded);
 
-		g_context->correction_counter++;
+			g_context->correction_counter--;
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "CID %u: CRC repair: throw away packet, still %zu "
+			             "CRC-valid packets required\n", context->cid,
+			             g_context->correction_counter);
 
-		/* update context with decoded values even if we drop the packet */
-		update_context(context, decoded);
-
-		goto error_crc;
-	}
-	else if(g_context->correction_counter == 2)
-	{
-		g_context->correction_counter = 0;
-		rohc_decomp_debug(context, "the repair is deemed successful\n");
-	}
-	else if(g_context->correction_counter != 0)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CRC-valid counter not valid (%u)\n",
-		             g_context->correction_counter);
-		g_context->correction_counter = 0;
-		goto error_crc;
+			goto error_crc;
+		}
+		else if(g_context->correction_counter == 1)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "CID %u: CRC repair: correction is successful, "
+			             "keep packet\n", context->cid);
+			context->corrected_crc_failures++;
+			switch(g_context->crc_corr)
+			{
+				case ROHC_DECOMP_CRC_CORR_SN_WRAP:
+					context->corrected_sn_wraparounds++;
+					break;
+				case ROHC_DECOMP_CRC_CORR_SN_UPDATES:
+					context->corrected_wrong_sn_updates++;
+					break;
+				case ROHC_DECOMP_CRC_CORR_SN_NONE:
+				default:
+					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					           "CID %u: CRC repair: unsupported repair algorithm "
+					           "%d\n", context->cid, g_context->crc_corr);
+					break;
+			}
+			g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
+			g_context->correction_counter--;
+		}
 	}
 
 
@@ -4325,7 +4421,7 @@ error_crc:
 uint32_t d_generic_get_sn(const struct d_context *const context)
 {
 	const struct d_generic_context *const g_context = context->specific;
-	return rohc_lsb_get_ref(g_context->sn_lsb_ctxt);
+	return rohc_lsb_get_ref(g_context->sn_lsb_ctxt, ROHC_LSB_REF_0);
 }
 
 
@@ -7631,6 +7727,189 @@ error:
 
 
 /**
+ * @brief Attempt a packet/context repair upon CRC failure
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param bits           OUT: The bits extracted from the UO-0 header
+ * @return               true if repair is possible, false if not
+ */
+static bool attempt_repair(const struct rohc_decomp *const decomp,
+                           const struct d_context *const context,
+                           struct rohc_extr_bits *const bits)
+{
+	struct d_generic_context *const g_context = context->specific;
+	const uint32_t sn_ref_0 = rohc_lsb_get_ref(g_context->sn_lsb_ctxt,
+	                                           ROHC_LSB_REF_0);
+	const uint32_t sn_ref_minus_1 = rohc_lsb_get_ref(g_context->sn_lsb_ctxt,
+	                                                 ROHC_LSB_REF_MINUS_1);
+	bool attempt_repair = false;
+
+	/* do not try to repair packet/context if feature is disabled */
+	if((decomp->features & ROHC_DECOMP_FEATURE_CRC_REPAIR) == 0)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "CID %u: CRC repair: feature disabled\n", context->cid);
+		goto skip;
+	}
+
+	/* do not try to repair packet/context if repair is already in action */
+	if(g_context->crc_corr != ROHC_DECOMP_CRC_CORR_SN_NONE)
+	{
+		goto skip;
+	}
+
+	/* no correction attempt shall be already running */
+	assert(g_context->correction_counter == 0);
+
+	/* try to guess the correct SN value in case of failure */
+	rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+	             "CID %u: CRC repair: attempt to correct SN\n", context->cid);
+
+	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
+	 *   When decompression fails, the decompressor computes the time
+	 *   elapsed between the arrival of the previous, correctly decompressed
+	 *   packet and the current packet.
+	 *
+	 * step c of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
+	 *   If wraparound has occurred, INTERVAL will correspond to at least
+	 *   2^k inter-packet times, where k is the number of SN bits in the
+	 *   current header. */
+	if(is_sn_wraparound(g_context->cur_arrival_time, g_context->arrival_times,
+	                    g_context->arrival_times_nr,
+	                    g_context->arrival_times_index, bits->sn_nr,
+	                    lsb_get_p(g_context->sn_lsb_ctxt)))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "CID %u: CRC repair: CRC failure seems to be caused "
+		             "by a sequence number LSB wraparound\n", context->cid);
+
+		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_WRAP;
+
+		/* step d of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
+		 *   add 2^k to the reference SN and attempts to decompress the
+		 *   packet using the new reference SN */
+		bits->sn_ref_offset = (1 << bits->sn_nr);
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "CID %u: CRC repair: try adding 2^k = 2^%zu = %u to "
+		             "reference SN (ref 0 = %u)\n", context->cid, bits->sn_nr,
+		             bits->sn_ref_offset, sn_ref_0);
+	}
+	else if(sn_ref_0 != sn_ref_minus_1)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "CID %u: CRC repair: CRC failure seems to be caused "
+		             "by an incorrect SN update\n", context->cid);
+
+		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
+
+		/* step d of RFC3095, §5.3.2.2.5. Repair of incorrect SN updates:
+		 *   If the header generated in b. does not pass the CRC test, and the
+		 *   SN (SN curr2) generated when using ref -1 as the reference is
+		 *   different from SN curr1, an additional decompression attempt is
+		 *   performed based on SN curr2 as the decompressed SN. */
+		bits->sn_ref_type = ROHC_LSB_REF_MINUS_1;
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "CID %u: CRC repair: try using ref -1 (%u) as reference "
+		             "SN instead of ref 0 (%u)\n", context->cid, sn_ref_minus_1,
+		             sn_ref_0);
+	}
+	else
+	{
+		/* step e of RFC3095, §5.3.2.2.5. Repair of incorrect SN updates:
+		 *   If the decompressed header generated in b. does not pass the CRC
+		 *   test and SN curr2 is the same as SN curr1, an additional
+		 *   decompression attempt is not useful and is not attempted. */
+		goto skip;
+	}
+
+	/* packet/context correction is going to be attempted, 3 packets with
+	 * correct CRC are required to accept the correction */
+	g_context->correction_counter = 3;
+	attempt_repair = true;
+
+skip:
+	return attempt_repair;
+}
+
+
+/**
+ * @brief Is SN wraparound possible?
+ *
+ * According to RFC3095, §5.3.2.2.4, step c, SN wraparound is possible if the
+ * inter-packet interval of the current packet is at least 2^k times the
+ * nominal inter-packet interval (with k the number of SN bits in the current
+ * header).
+ *
+ * However SN wraparound may happen sooner depending on the shift parameter p
+ * of the W-LSB algorithm. If p is large, the interpretation interval is shifted
+ * on the left: the positive part of the interpretation interval is smaller.
+ * Less (lost) packets are needed to cause a wraparound.
+ *
+ * The 'width of the positive part of the interpretation interval' (2^k - p) is
+ * used instead of the 'width of the full interpretation interval' (2^k).
+ *
+ * A -10% marge is taken to handle problems due to clock precision.
+ *
+ * @param cur_arrival_time     The arrival time of the current packet
+ * @param arrival_times        The arrival times for the last packets
+ * @param arrival_times_nr     The number of arrival times for last packets
+ * @param arrival_times_index  The index for the arrival time of the next
+ *                             packet
+ * @param k                    The number of bits for SN
+ * @param p                    The shift parameter p for SN
+ * @return                     Whether SN wraparound is possible or not
+ */
+static bool is_sn_wraparound(const struct timespec cur_arrival_time,
+                             const struct timespec arrival_times[ROHC_MAX_ARRIVAL_TIMES],
+                             const size_t arrival_times_nr,
+                             const size_t arrival_times_index,
+                             const size_t k,
+                             const rohc_lsb_shift_t p)
+{
+	const size_t arrival_times_index_last =
+		(arrival_times_index + ROHC_MAX_ARRIVAL_TIMES - 1) % ROHC_MAX_ARRIVAL_TIMES;
+	uint64_t cur_interval; /* in microseconds */
+	uint64_t avg_interval; /* in microseconds */
+	uint64_t min_interval; /* in microseconds */
+
+	/* cannot use correction for SN wraparound if no arrival time was given
+	 * for the current packet, or if too few packets were received yet */
+	if((cur_arrival_time.tv_sec == 0 && cur_arrival_time.tv_nsec == 0) ||
+	   arrival_times_nr < ROHC_MAX_ARRIVAL_TIMES)
+	{
+		goto error;
+	}
+
+	/* compute inter-packet arrival time for current packet */
+	cur_interval = rohc_time_interval(arrival_times[arrival_times_index_last],
+	                                  cur_arrival_time);
+
+	/* compute average inter-packet arrival time for last packets */
+	avg_interval = rohc_time_interval(arrival_times[arrival_times_index],
+	                                  arrival_times[arrival_times_index_last]);
+	avg_interval /= ROHC_MAX_ARRIVAL_TIMES - 1;
+
+	/* compute the minimum inter-packet interval that the current interval
+	 * shall exceed so that SN wraparound is detected */
+	if(rohc_interval_compute_p(k, p) >= (1 << k))
+	{
+		goto error;
+	}
+	min_interval = ((1 << k) - rohc_interval_compute_p(k, p)) * avg_interval;
+
+	/* substract 10% to handle problems related to clock precision */
+	min_interval -= min_interval * 10 / 100;
+
+	/* enough time elapsed for SN wraparound? */
+	return (cur_interval >= min_interval);
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Build an extension list in IPv6 header
  *
  * @param decomp      The list decompressor
@@ -7749,8 +8028,8 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 	else
 	{
 		/* decode SN from packet bits and context */
-		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt,
-		                            bits.sn, bits.sn_nr,
+		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt, bits.sn_ref_type,
+		                            bits.sn_ref_offset, bits.sn, bits.sn_nr,
 		                            &decoded->sn);
 		if(!decode_ok)
 		{
@@ -8192,7 +8471,20 @@ static void update_context(const struct d_context *const context,
 	g_context = context->specific;
 
 	/* update SN */
-	rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn);
+	if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_UPDATES &&
+	   g_context->correction_counter == 3)
+	{
+		/* step f of RFC3095, 5.3.2.2.5. Repair of incorrect SN updates:
+		 *   If the decompressed header generated in d. passes the CRC test,
+		 *   ref -1 is not changed while ref 0 is set to SN curr2. */
+		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, true);
+	}
+	else
+	{
+		/* nominal case and other repair algorithms replace both ref 0 and
+		 * ref -1 */
+		rohc_lsb_set_ref(g_context->sn_lsb_ctxt, decoded.sn, false);
+	}
 
 	/* update fields related to the outer IP header */
 	ip_set_version(&g_context->outer_ip_changes->ip, decoded.outer_ip.version);
@@ -8241,6 +8533,14 @@ static void update_context(const struct d_context *const context,
 		}
 	}
 
+	/* update arrival time */
+	g_context->arrival_times[g_context->arrival_times_index] =
+		g_context->cur_arrival_time;
+	g_context->arrival_times_index =
+		(g_context->arrival_times_index + 1) % ROHC_MAX_ARRIVAL_TIMES;
+	g_context->arrival_times_nr =
+		rohc_min(g_context->arrival_times_nr + 1, ROHC_MAX_ARRIVAL_TIMES);
+
 	/* update context with decoded fields for next header if required */
 	if(g_context->update_context != NULL)
 	{
@@ -8282,6 +8582,13 @@ static void reset_extr_bits(const struct d_generic_context *const g_context,
 
 	/* set every bits and sizes to 0 */
 	memset(bits, 0, sizeof(struct rohc_extr_bits));
+
+	/* by default, use ref 0 for LSB decoding (ref -1 will be used only for
+	 * correction upon CRC failure) */
+	bits->sn_ref_type = ROHC_LSB_REF_0;
+	/* by default, do not apply any offset on reference SN (it will be applied
+	 * only for correction upon CRC failure) */
+	bits->sn_ref_offset = 0;
 
 	/* by default context is not re-used */
 	bits->is_context_reused = false;

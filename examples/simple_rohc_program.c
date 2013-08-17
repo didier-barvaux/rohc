@@ -67,6 +67,8 @@ static int gen_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char **argv)
 {
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+
 	struct rohc_comp *compressor;           /* the ROHC compressor */
 	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
 	                                           the IPv4 packet to compress */
@@ -201,8 +203,7 @@ int main(int argc, char **argv)
 	 * for details about rohc_compress in the API documentation.
 	 */
 	printf("\ncompress the fake IP packet\n");
-	ret = rohc_compress2(compressor,
-	                     ip_packet, ip_packet_len,
+	ret = rohc_compress3(compressor, arrival_time, ip_packet, ip_packet_len,
 	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
 	if(ret != ROHC_OK)
 	{
