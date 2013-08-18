@@ -2653,24 +2653,46 @@ int code_UO1_packet(struct c_context *const context,
 	unsigned char s_byte;
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
-	int is_ip_v4;
+	rohc_ext_t extension;
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
 	unsigned int crc;
 	const unsigned char *ip2_hdr;
+	int ret;
+
+	/* number of IP-ID bits and IP-ID offset to transmit  */
+	ip_header_pos_t innermost_ip_hdr;
+	size_t nr_innermost_ip_id_bits;
+	uint16_t innermost_ip_id_delta;
 
 	g_context = (struct c_generic_context *) context->specific;
 	packet_type = g_context->tmp.packet_type;
-	is_ip_v4 = g_context->ip_flags.version == IPV4;
 	is_rtp = context->profile->id == ROHC_PROFILE_RTP;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
+
+	/* determine the number of IP-ID bits and the IP-ID offset of the
+	 * innermost IPv4 header with non-random IP-ID */
+	rohc_get_innermost_ipv4_non_rnd(context, &innermost_ip_hdr,
+	                                &nr_innermost_ip_id_bits,
+	                                &innermost_ip_id_delta);
+
+	/* RFC 3095, section 5.7.5.1 says:
+	 *   While in the transient state in which an RND flag is being
+	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
+	 *   MUST NOT be used. */
+	assert(g_context->ip_flags.version != IPV4 ||
+	       g_context->ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	assert(g_context->tmp.nr_of_ip_hdr <= 1 ||
+	       g_context->ip2_flags.version != IPV4 ||
+	       g_context->ip2_flags.info.v4.rnd_count >= MAX_FO_COUNT);
 
 	switch(packet_type)
 	{
 		case PACKET_UO_1:
 			rohc_comp_debug(context, "code UO-1 packet (CID = %d)\n", context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_ip_v4, error, "UO-1 packet is for IPv4 only\n");
+			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
+			            "UO-1 packet is for IPv4 only\n");
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            !is_rtp, error, "UO-1 packet is for non-RTP profiles\n");
 			break;
@@ -2684,16 +2706,10 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_comp_debug(context, "code UO-1-ID packet (CID = %d)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_ip_v4, error, "UO-1-ID packet is for IPv4 only\n");
+			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
+			            "UO-1-ID packet is for IPv4 only\n");
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-ID packet is for RTP profile only\n");
-			/* TODO: when extensions are supported within the UO-1-ID packet,
-			 * please check whether the !rtp_context->tmp.is_marker_bit_set
-			 * condition could be removed or not */
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            !rtp_context->tmp.is_marker_bit_set, error,
-			            "UO-1-ID packet without extension support does not "
-			            "contain room for the RTP Marker (M) flag\n");
 			break;
 		case PACKET_UO_1_TS:
 			rohc_comp_debug(context, "code UO-1-TS packet (CID = %d)\n",
@@ -2721,18 +2737,153 @@ int code_UO1_packet(struct c_context *const context,
 		                                         dest, counter, &first_position);
 	}
 
+	/* part 5: decide which extension to use (UO-1-ID only) */
+	if(packet_type == PACKET_UO_1_ID)
+	{
+		extension = g_context->decide_extension(context);
+		if(extension == PACKET_EXT_UNKNOWN)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to determine the extension to code\n");
+			goto error;
+		}
+		rohc_comp_debug(context, "extension '%s' chosen\n",
+		                rohc_get_ext_descr(extension));
+
+		/* UO-1-ID packet without extension or with extension 0, 1 or 2
+		 * cannot change the RTP Marker (M) flag */
+		rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		            (extension == PACKET_EXT_3 ||
+		             !rtp_context->tmp.is_marker_bit_set), error,
+		            "UO-1-ID packet without extension 3 does not contain room "
+		            "for the RTP Marker (M) flag\n");
+
+	}
+	else
+	{
+		extension = PACKET_NOEXT;
+	}
+
 	/* part 2 */
 	switch(packet_type)
 	{
 		case PACKET_UO_1:
-			f_byte = g_context->ip_flags.info.v4.id_delta & 0x3f;
+			f_byte = innermost_ip_id_delta & 0x3f;
 			break;
 		case PACKET_UO_1_RTP:
 			f_byte = rtp_context->tmp.ts_send & 0x3f;
 			break;
 		case PACKET_UO_1_ID:
-			f_byte = g_context->ip_flags.info.v4.id_delta & 0x1f;
+		{
+			switch(extension)
+			{
+				case PACKET_NOEXT:
+				{
+					/* part 2: 5 bits of 5-bit innermost IP-ID with non-random
+					 *         IP-ID */
+					f_byte = innermost_ip_id_delta & 0x1f;
+					rohc_comp_debug(context, "5 bits of 5-bit innermost "
+					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					break;
+				}
+				case PACKET_EXT_0:
+				{
+					/* part 2: 5 bits of 8-bit innermost IP-ID with non-random
+					 *         IP-ID */
+					f_byte = (innermost_ip_id_delta >> 3) & 0x1f;
+					rohc_comp_debug(context, "5 bits of 8-bit innermost "
+					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					break;
+				}
+				case PACKET_EXT_1:
+				{
+					/* part 2: 5 bits of 8-bit innermost IP-ID with non-random
+					 *         IP-ID */
+					f_byte = (innermost_ip_id_delta >> 3) & 0x1f;
+					rohc_comp_debug(context, "5 bits of 8-bit innermost "
+					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					break;
+				}
+				case PACKET_EXT_2:
+				{
+					/* part 2: 5 bits of 16-bit innermost IP-ID with non-random
+					 *         IP-ID */
+					f_byte = (innermost_ip_id_delta >> 11) & 0x1f;
+					rohc_comp_debug(context, "5 bits of 16-bit innermost "
+					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					break;
+				}
+				case PACKET_EXT_3:
+				{
+					size_t innermost_ip_id_rnd_count;
+
+					rohc_comp_debug(context, "code UO-1-ID packet with extension 3\n");
+
+					if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
+					{
+						innermost_ip_id_rnd_count = g_context->ip_flags.info.v4.rnd_count;
+					}
+					else /* ROHC_IP_HDR_SECOND */
+					{
+						innermost_ip_id_rnd_count = g_context->ip2_flags.info.v4.rnd_count;
+					}
+
+					/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
+					if(innermost_ip_id_rnd_count < MAX_FO_COUNT)
+					{
+						/* RND changed in the last few packets, so use the 16-bit
+						 * field in the EXT3 header and fill the 5-bit field of
+						 * UO-1-ID with zeroes */
+						f_byte = 0;
+						rohc_comp_debug(context, "5 zero bits of innermost "
+						                "non-random IP-ID with changed RND = "
+						                "0x%x\n", f_byte & 0x1f);
+					}
+					else if(nr_innermost_ip_id_bits <= 5)
+					{
+						/* transmit <= 5 bits of IP-ID, so use the 5-bit field in
+						 * the UO-1-ID field and do not use the 16-bit field in the
+						 * EXT3 header */
+						f_byte = innermost_ip_id_delta & 0x1f;
+						rohc_comp_debug(context, "5 bits of less-than-5-bit "
+						                "innermost non-random IP-ID = 0x%x\n",
+						                f_byte & 0x1f);
+					}
+					else
+					{
+						/* transmitting > 16 bits of IP-ID is not possible */
+						assert(nr_innermost_ip_id_bits <= 16);
+
+						/* transmit > 5 bits of IP-ID, so use the 16-bit field in
+						 * the EXT3 header and fill the 5-bit field of UOR-2-ID
+						 * with zeroes */
+						f_byte = 0;
+						rohc_comp_debug(context, "5 zero bits of more-than-5-bit "
+						                "innermost non-random IP-ID = 0x%x\n",
+						                f_byte & 0x1f);
+					}
+
+					/* transmit all TS bits in extension 3 */
+					rtp_context->tmp.nr_ts_bits_ext3 =
+						sdvl_get_min_len(rtp_context->tmp.nr_ts_bits, 0);
+					assert(rtp_context->tmp.nr_ts_bits_ext3 < 32);
+					rtp_context->tmp.ts_send &=
+						(1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
+					rohc_comp_debug(context, "%zu bits of TS (0 in header, "
+					                "%zu in EXT3)\n", rtp_context->tmp.nr_ts_bits,
+					                rtp_context->tmp.nr_ts_bits_ext3);
+
+					break;
+				}
+				default:
+				{
+					rohc_assert(context->compressor, ROHC_TRACE_COMP,
+					            context->profile->id, false, error,
+					            "unknown extension (%d)\n", extension);
+				}
+			}
 			break;
+		}
 		case PACKET_UO_1_TS:
 			f_byte = rtp_context->tmp.ts_send & 0x1f;
 			f_byte |= 0x20;
@@ -2775,19 +2926,113 @@ int code_UO1_packet(struct c_context *const context,
 			                g_context->sn & 0x0f, crc, s_byte);
 			break;
 		case PACKET_UO_1_ID:
+		{
 			/* X + SN + CRC (CRC was added before) */
-			s_byte |= (g_context->sn & 0x0f) << 3;
-			s_byte |= (0 /* TODO: handle X bit */ & 0x01) << 7;
-			rohc_comp_debug(context, "X (%d) + SN (%u) + CRC (0x%x) = 0x%02x\n",
-			                0 /* TODO: handle X bit */, g_context->sn & 0x0f,
-			                crc, s_byte);
+			switch(extension)
+			{
+				case PACKET_NOEXT:
+				{
+					s_byte &= ~0x80;
+					assert(g_context->tmp.nr_sn_bits <= 4);
+					s_byte |= (g_context->sn & 0x0f) << 3;
+					rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x\n",
+					                (s_byte >> 3) & 0x0f);
+					break;
+				}
+				case PACKET_EXT_0:
+				{
+					s_byte |= 0x80;
+					assert(g_context->tmp.nr_sn_bits <= 7);
+					s_byte |= ((g_context->sn >> 3) & 0x0f) << 3;
+					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x\n",
+					                (s_byte >> 3) & 0x0f);
+					break;
+				}
+				case PACKET_EXT_1:
+				{
+					s_byte |= 0x80;
+					assert(g_context->tmp.nr_sn_bits <= 7);
+					s_byte |= ((g_context->sn >> 3) & 0x0f) << 3;
+					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x\n",
+					                (s_byte >> 3) & 0x0f);
+					break;
+				}
+				case PACKET_EXT_2:
+				{
+					s_byte |= 0x80;
+					assert(g_context->tmp.nr_sn_bits <= 7);
+					s_byte |= ((g_context->sn >> 3) & 0x0f) << 3;
+					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x\n",
+					                (s_byte >> 3) & 0x0f);
+					break;
+				}
+				case PACKET_EXT_3:
+				{
+					s_byte |= 0x80;
+					if(g_context->tmp.nr_sn_bits <= 4)
+					{
+						s_byte |= (g_context->sn & 0x0f) << 3;
+						rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x\n",
+						                (s_byte >> 3) & 0x0f);
+					}
+					else
+					{
+						assert(g_context->tmp.nr_sn_bits <= (4 + 8));
+						s_byte |= ((g_context->sn >> 8) & 0x0f) << 3;
+						rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x\n",
+						                (s_byte >> 3) & 0x0f);
+					}
+					break;
+				}
+				default:
+				{
+					rohc_assert(context->compressor, ROHC_TRACE_COMP,
+					            context->profile->id, false, error,
+					            "unknown extension (%d)\n", extension);
+				}
+			}
+			rohc_comp_debug(context, "X (%u) + SN (%u) + CRC (0x%x) = "
+			                "0x%02x\n", !!(extension != PACKET_NOEXT),
+			                (s_byte >> 3) & 0x0f, crc, s_byte);
 			break;
+		}
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            false, error, "bad packet type (%d)\n", packet_type);
 	}
 	dest[counter] = s_byte;
 	counter++;
+
+	/* part 5: code extension */
+	switch(extension)
+	{
+		case PACKET_NOEXT:
+			ret = counter;
+			break;
+		case PACKET_EXT_0:
+			ret = code_EXT0_packet(context, dest, counter);
+			break;
+		case PACKET_EXT_1:
+			ret = code_EXT1_packet(context, dest, counter);
+			break;
+		case PACKET_EXT_2:
+			ret = code_EXT2_packet(context, dest, counter);
+			break;
+		case PACKET_EXT_3:
+			ret = code_EXT3_packet(context, ip, ip2, dest, counter);
+			break;
+		default:
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "unknown extension (%d)\n", extension);
+			goto error;
+	}
+	if(ret < 0)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "cannot build extension\n");
+		goto error;
+	}
+	counter = ret;
 
 	/* build the UO tail */
 	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
@@ -3043,7 +3288,6 @@ int code_UO2_packet(struct c_context *const context,
 			             "unknown extension (%d)\n", extension);
 			goto error;
 	}
-
 	if(ret < 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3397,10 +3641,11 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			/* part 2: 5 bits of TS */
 			rohc_comp_debug(context, "TS to send = 0x%x\n", ts_send);
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 6);
-			assert(nr_ts_bits_ext3 <= nr_ts_bits);
 			rohc_comp_debug(context, "%zd bits of TS (%zd in header, %zd in "
-			                "EXT3)\n", nr_ts_bits, nr_ts_bits - nr_ts_bits_ext3,
-			                nr_ts_bits_ext3);
+			                "EXT3)\n", nr_ts_bits,
+			                (nr_ts_bits_ext3 <= nr_ts_bits ?
+			                 nr_ts_bits - nr_ts_bits_ext3 : 0),
+			                rohc_min(nr_ts_bits_ext3, nr_ts_bits));
 			/* be sure not to send bad TS bits because of the shift, apply the two masks:
 			 *  - the 5-bit mask (0x1f) for the 5-bit field
 			 *  - the variable-length mask (depending on the number of TS bits in UOR-2-RTP)
@@ -3964,7 +4209,6 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
 			rohc_comp_debug(context, "1-bit M flag = %u\n",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
@@ -3986,6 +4230,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 #endif
 
 			/* compute TS to send in extension 3 and its length */
+			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);
 			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp.nr_ts_bits_ext3 = nr_ts_bits_ext3;
@@ -4070,6 +4315,7 @@ int code_EXT0_packet(const struct c_context *context,
 
 		case PACKET_UOR_2_ID:
 		case PACKET_UOR_2:
+		case PACKET_UO_1_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4215,6 +4461,7 @@ int code_EXT1_packet(const struct c_context *context,
 		}
 
 		case PACKET_UOR_2_ID:
+		case PACKET_UO_1_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4230,6 +4477,8 @@ int code_EXT1_packet(const struct c_context *context,
 			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= innermost_ip_id_delta & 0x07;
+			rohc_comp_debug(context, "3 bits of inner IP-ID in 1st byte = "
+			                "0x%x\n", f_byte & 0x07);
 			s_byte = rtp_context->tmp.ts_send & 0xff;
 			rohc_comp_debug(context, "8 bits of TS in 2nd byte = 0x%x\n",
 			                s_byte & 0xff);
@@ -4390,6 +4639,7 @@ int code_EXT2_packet(const struct c_context *context,
 		}
 
 		case PACKET_UOR_2_ID:
+		case PACKET_UO_1_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4550,16 +4800,15 @@ int code_EXT3_packet(const struct c_context *context,
 	switch(packet_type)
 	{
 		case PACKET_UO_1_ID:
-			/* TODO: extension not supported in \ref code_UO1_packet yet */
-			S = nr_sn_bits > 4;
+			S = (nr_sn_bits > 4);
 			break;
 		case PACKET_UOR_2:
-			S = nr_sn_bits > 5;
+			S = (nr_sn_bits > 5);
 			break;
 		case PACKET_UOR_2_RTP:
 		case PACKET_UOR_2_TS:
 		case PACKET_UOR_2_ID:
-			S = nr_sn_bits > 6;
+			S = (nr_sn_bits > 6);
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4584,13 +4833,14 @@ int code_EXT3_packet(const struct c_context *context,
 			/* TODO: handle PACKET_UO_1_ID packet once \ref code_UO1_packet
 			 *       supports extensions */
 			case PACKET_UOR_2_RTP:
-				rts = nr_ts_bits > 6;
+				rts = (nr_ts_bits > 6);
 				break;
 			case PACKET_UOR_2_TS:
-				rts = nr_ts_bits > 5;
+				rts = (nr_ts_bits > 5);
 				break;
 			case PACKET_UOR_2_ID:
-				rts = nr_ts_bits > 0;
+			case PACKET_UO_1_ID:
+				rts = (nr_ts_bits > 0);
 				break;
 			default:
 				rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4607,6 +4857,8 @@ int code_EXT3_packet(const struct c_context *context,
 		 *  - RTP PT changed in the last few packets,
 		 *  - RTP Padding bit changed in this packet,
 		 *  - RTP Padding bit changed in the last few packets,
+		 *  - RTP Marker bit is set in this packet and no M bit is present in
+		 *    base header (UO-1-ID only),
 		 *  - RTP eXtension bit changed in this packet,
 		 *  - RTP eXtension bit changed in the last few packets,
 		 *  - RTP TS and TS_STRIDE must be initialized.
@@ -4615,6 +4867,7 @@ int code_EXT3_packet(const struct c_context *context,
 		       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
 		       rtp_context->tmp.padding_bit_changed ||
 		       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
+		       (packet_type == PACKET_UO_1_ID && rtp_context->tmp.is_marker_bit_set) ||
 		       rtp_context->tmp.extension_bit_changed ||
 		       rtp_context->rtp_extension_change_count < MAX_IR_COUNT ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
@@ -4645,11 +4898,15 @@ int code_EXT3_packet(const struct c_context *context,
 		{
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
-			if(g_context->tmp.packet_type != PACKET_UOR_2_ID && nr_ip_id_bits > 0)
+			if((g_context->tmp.packet_type == PACKET_UOR_2_ID ||
+			    g_context->tmp.packet_type == PACKET_UO_1_ID) &&
+			   nr_ip_id_bits > 5)
 			{
 				I = 1;
 			}
-			else if(g_context->tmp.packet_type == PACKET_UOR_2_ID && nr_ip_id_bits > 5)
+			else if(g_context->tmp.packet_type != PACKET_UOR_2_ID &&
+			        g_context->tmp.packet_type != PACKET_UO_1_ID &&
+			        nr_ip_id_bits > 0)
 			{
 				I = 1;
 			}
@@ -4688,11 +4945,15 @@ int code_EXT3_packet(const struct c_context *context,
 			/* inner IP header is IPv4 with non-random IP-ID */
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 
-			if(g_context->tmp.packet_type != PACKET_UOR_2_ID && nr_ip_id_bits2 > 0)
+			if((g_context->tmp.packet_type == PACKET_UOR_2_ID ||
+			    g_context->tmp.packet_type == PACKET_UO_1_ID) &&
+			   nr_ip_id_bits2 > 5)
 			{
 				I = 1;
 			}
-			else if(g_context->tmp.packet_type == PACKET_UOR_2_ID && nr_ip_id_bits2 > 5)
+			else if(g_context->tmp.packet_type != PACKET_UOR_2_ID &&
+			        g_context->tmp.packet_type != PACKET_UO_1_ID &&
+			        nr_ip_id_bits2 > 0)
 			{
 				I = 1;
 			}
@@ -4731,11 +4992,15 @@ int code_EXT3_packet(const struct c_context *context,
 			 * IP header is */
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
-			if(g_context->tmp.packet_type != PACKET_UOR_2_ID && nr_ip_id_bits > 0)
+			if((g_context->tmp.packet_type == PACKET_UOR_2_ID ||
+			    g_context->tmp.packet_type == PACKET_UO_1_ID) &&
+			   nr_ip_id_bits > 5)
 			{
 				I = 1;
 			}
-			else if(g_context->tmp.packet_type == PACKET_UOR_2_ID && nr_ip_id_bits > 5)
+			else if(g_context->tmp.packet_type != PACKET_UOR_2_ID &&
+			        g_context->tmp.packet_type != PACKET_UO_1_ID &&
+			        nr_ip_id_bits > 0)
 			{
 				I = 1;
 			}
@@ -6124,7 +6389,7 @@ error:
 
 
 /**
- * @brief Decide what extension shall be used in the UO-1/UO-2 packet.
+ * @brief Decide what extension shall be used in the UO-1-ID/UOR-2 packet.
  *
  * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
  *
@@ -6319,6 +6584,55 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			        nr_ts_bits <= 8 &&
 			        nr_innermost_ip_id_bits <= 16 &&
 			        nr_outermost_ip_id_bits == 0)
+			{
+				ext = PACKET_EXT_2;
+			}
+			else
+			{
+				ext = PACKET_EXT_3;
+			}
+
+			break;
+		}
+
+		case PACKET_UO_1_ID:
+		{
+			const struct sc_rtp_context *rtp_context;
+			size_t nr_ts_bits;
+
+			rtp_context = (struct sc_rtp_context *) g_context->specific;
+			nr_ts_bits = rtp_context->tmp.nr_ts_bits;
+
+			/* NO_EXT, EXT_0, EXT_1, EXT_2 and EXT_3 */
+			if(nr_sn_bits <= 4 &&
+			   nr_ts_bits == 0 &&
+			   nr_innermost_ip_id_bits <= 5 &&
+			   nr_outermost_ip_id_bits == 0 &&
+			   !rtp_context->tmp.is_marker_bit_set)
+			{
+				ext = PACKET_NOEXT;
+			}
+			else if(nr_sn_bits <= 7 &&
+			        nr_ts_bits == 0 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits == 0 &&
+			        !rtp_context->tmp.is_marker_bit_set)
+			{
+				ext = PACKET_EXT_0;
+			}
+			else if(nr_sn_bits <= 7 &&
+			        nr_ts_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 8 &&
+			        nr_outermost_ip_id_bits == 0 &&
+			        !rtp_context->tmp.is_marker_bit_set)
+			{
+				ext = PACKET_EXT_1;
+			}
+			else if(nr_sn_bits <= 7 &&
+			        nr_ts_bits <= 8 &&
+			        nr_innermost_ip_id_bits <= 16 &&
+			        nr_outermost_ip_id_bits == 0 &&
+			        !rtp_context->tmp.is_marker_bit_set)
 			{
 				ext = PACKET_EXT_2;
 			}

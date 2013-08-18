@@ -693,7 +693,9 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
  * @param context The compression context
  * @return        The packet type among:
  *                 - PACKET_UO_0
- *                 - PACKET_UO_1
+ *                 - PACKET_UO_1_RTP
+ *                 - PACKET_UO_1_TS
+ *                 - PACKET_UO_1_ID
  *                 - PACKET_UOR_2_RTP
  *                 - PACKET_UOR_2_TS
  *                 - PACKET_UOR_2_ID
@@ -742,10 +744,14 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	if(g_context->ip_flags.version == IPV4)
 	{
 		assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+		assert(g_context->ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+		assert(g_context->ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 	}
 	if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->ip2_flags.version == IPV4)
 	{
 		assert(g_context->ip2_flags.info.v4.sid_count >= MAX_FO_COUNT);
+		assert(g_context->ip2_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+		assert(g_context->ip2_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 	}
 	assert(g_context->tmp.send_static == 0);
 	assert(g_context->tmp.send_dynamic == 0);
@@ -820,10 +826,7 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	        is_ts_scaled && (nr_ts_bits == 0 || is_ts_deducible) &&
 	        !rtp_context->tmp.is_marker_bit_set)
 	{
-		/* TODO: when extensions are supported within the UO-1-ID packet,
-		 * please check whether the !is_marker_bit_set condition could be
-		 * removed or not, and whether nr_ipv4_non_rnd_with_bits == 1 should
-		 * not be replaced by nr_ipv4_non_rnd_with_bits >= 1 */
+		/* UO-1-ID without extension */
 		packet = PACKET_UO_1_ID;
 		rohc_comp_debug(context, "choose packet UO-1-ID because only one of the "
 		                "%zd IP header(s) is IPv4 with non-random IP-ID with "
@@ -843,6 +846,21 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 		                "some IP-ID bits to to transmit for that IP header, "
 		                "%zd <= 4 SN bits must be transmitted, and "
 		                "%zd <= 6 TS bits must be transmitted\n",
+		                nr_of_ip_hdr, nr_sn_bits, nr_ts_bits);
+	}
+	else if(nr_sn_bits <= 12 &&
+	        nr_ipv4_non_rnd_with_bits >= 1 &&
+	        sdvl_can_length_be_encoded(nr_ts_bits))
+	{
+		/* UO-1-ID packet with extension can be used only if SN stand on
+		 * <= 12 bits (4 bits in base header + 8 bits in extension 3) */
+
+		packet = PACKET_UO_1_ID;
+		rohc_comp_debug(context, "choose packet UO-1-ID because at least "
+		                "one of the %zd IP header(s) is IPv4 with "
+		                "non-random IP-ID with at least 1 bit of IP-ID to "
+		                "transmit, %zu <= 12 SN bits must be transmitted, "
+		                "and %zd TS bits can be SDVL-encoded\n",
 		                nr_of_ip_hdr, nr_sn_bits, nr_ts_bits);
 	}
 	else if(nr_sn_bits <= 14)

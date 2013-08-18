@@ -373,6 +373,8 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 		if(g_context->ip_flags.version == IPV4)
 		{
 			assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+			assert(g_context->ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+			assert(g_context->ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 		}
 
 		if(nr_sn_bits <= 4 &&
@@ -419,10 +421,14 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
 		if(g_context->ip_flags.version == IPV4)
 		{
 			assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+			assert(g_context->ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+			assert(g_context->ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 		}
 		if(g_context->ip2_flags.version == IPV4)
 		{
 			assert(g_context->ip2_flags.info.v4.sid_count >= MAX_FO_COUNT);
+			assert(g_context->ip2_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+			assert(g_context->ip2_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 		}
 
 		if(nr_sn_bits <= 4 &&

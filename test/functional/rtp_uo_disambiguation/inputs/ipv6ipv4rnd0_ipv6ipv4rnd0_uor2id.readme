@@ -1,0 +1,6 @@
+>>> packets = []
+>>> for i in range(0, 6):
+...   packets.append(Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/IPv6(nh=41)/IP(id=i)/UDP(dport=1234)/RTP(sequence=i, timestamp=i*240))
+... 
+>>> packets.append(Ether(src='00:00:00:00:00:01', dst='00:00:00:00:00:02')/IPv6(nh=41)/IP(id=6)/UDP(dport=1234)/RTP(sequence=6+5020, timestamp=(6+5020)*240))
+>>> wrpcap('ipv6ipv4rnd0_ipv6ipv4rnd0_uor2id.pcap', packets)

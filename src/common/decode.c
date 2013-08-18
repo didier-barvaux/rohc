@@ -179,6 +179,21 @@ bool d_is_uo1(const uint8_t *const data, const size_t len)
 
 
 /**
+ * @brief Find out whether a ROHC packet is an UO-1-TS packet or not
+ *
+ * Check the T field that discriminates between UO-1-TS and UO-1-ID.
+ *
+ * @param data  The ROHC packet to analyze
+ * @param len   The length of the ROHC packet
+ * @return      Whether the ROHC packet is an UO-1-TS packet or not
+ */
+bool d_is_uo1_ts(const uint8_t *const data, const size_t len)
+{
+	return (len > 0 && GET_BIT_5(data) != 0);
+}
+
+
+/**
  * @brief Find out whether a ROHC packet is an UOR-2* packet or not
  *
  * @param data  The ROHC packet to analyze

@@ -73,10 +73,15 @@ bool ROHC_EXPORT d_is_ir(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 bool ROHC_EXPORT d_is_irdyn(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
+
 bool ROHC_EXPORT d_is_uo0(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
+
 bool ROHC_EXPORT d_is_uo1(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT d_is_uo1_ts(const uint8_t *const data, const size_t len)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+
 bool ROHC_EXPORT d_is_uor2(const uint8_t *const data, const size_t len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 bool ROHC_EXPORT d_is_uor2_ts(const uint8_t *const data,

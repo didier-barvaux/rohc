@@ -112,6 +112,8 @@ size_t sdvl_get_min_len(const size_t nr_min_required,
 		}
 	}
 
+	assert((nr_encoded + nr_needed) >= nr_min_required);
+
 	return nr_needed;
 }
 

@@ -887,7 +887,7 @@ AC_CONFIG_FILES([ \
 	test/functional/feedback_ring/Makefile \
 	test/functional/decompress_feedback_only/Makefile \
 	test/functional/context_reuse/Makefile \
-	test/functional/rtp_uor2_disambiguation/Makefile \
+	test/functional/rtp_uo_disambiguation/Makefile \
 	test/functional/rtp_detection/Makefile \
 	test/functional/segment/Makefile \
 	test/robustness/Makefile \
