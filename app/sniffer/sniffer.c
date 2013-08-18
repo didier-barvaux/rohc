@@ -707,7 +707,7 @@ static bool sniff(const int use_large_cid,
 	}
 
 	/* create the ROHC compressor */
-	comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
+	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
