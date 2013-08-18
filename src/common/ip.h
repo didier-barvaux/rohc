@@ -295,11 +295,12 @@ static inline uint16_t from32to16(const uint32_t x)
 
 static inline uint16_t from32to16(const uint32_t x)
 {
+	uint32_t y;
 	/* add up 16-bit and 16-bit for 16+c bit */
-	x = (x & 0xffff) + (x >> 16);
+	y = (x & 0xffff) + (x >> 16);
 	/* add up carry.. */
-	x = (x & 0xffff) + (x >> 16);
-	return x;
+	y = (y & 0xffff) + (y >> 16);
+	return y;
 }
 
 static inline uint16_t ip_fast_csum(const uint8_t *const iph,
