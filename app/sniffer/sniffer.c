@@ -149,8 +149,9 @@ static void sniffer_print_stats(int signal);
 
 static bool sniff(const int use_large_cid,
                   const unsigned int max_contexts,
+                  const int enabled_profiles[],
                   const char *const device_name)
-	__attribute__((nonnull(3)));
+	__attribute__((nonnull(4)));
 static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_decomp *decomp,
                                struct pcap_pkthdr header,
@@ -221,6 +222,7 @@ static int last_traces_last;
  */
 int main(int argc, char *argv[])
 {
+	int enabled_profiles[ROHC_PROFILE_UDPLITE + 1];
 	char *cid_type = NULL;
 	char *device_name = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
@@ -237,6 +239,16 @@ int main(int argc, char *argv[])
 
 	/* set to quiet mode by default */
 	is_verbose = false;
+
+	/* enable all ROHC profiles by default */
+	enabled_profiles[ROHC_PROFILE_UNCOMPRESSED] = 1;
+	enabled_profiles[ROHC_PROFILE_RTP] = 1;
+	enabled_profiles[ROHC_PROFILE_UDP] = 1;
+	enabled_profiles[ROHC_PROFILE_ESP] = 1;
+	enabled_profiles[ROHC_PROFILE_IP] = 1;
+	enabled_profiles[0x0005] = -1;
+	enabled_profiles[ROHC_PROFILE_TCP] = 1;
+	enabled_profiles[ROHC_PROFILE_UDPLITE] = 1;
 
 	/* no traces at the moment */
 	for(i = 0; i < MAX_LAST_TRACES; i++)
@@ -279,6 +291,18 @@ int main(int argc, char *argv[])
 		{
 			/* get the maximum number of contexts the test should use */
 			max_contexts = atoi(argv[1]);
+			args_used++;
+		}
+		else if(!strcmp(*argv, "--disable"))
+		{
+			/* disable the given ROHC profile */
+			const int rohc_profile = atoi(argv[1]);
+			if(rohc_profile >= ROHC_PROFILE_UNCOMPRESSED &&
+			   rohc_profile <= ROHC_PROFILE_UDPLITE)
+			{
+				enabled_profiles[rohc_profile] = 0;
+				fprintf(stderr, "disable ROHC profile 0x%04x\n", rohc_profile);
+			}
 			args_used++;
 		}
 		else if(cid_type == NULL)
@@ -349,7 +373,7 @@ int main(int argc, char *argv[])
 	signal(SIGUSR1, sniffer_print_stats);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	if(!sniff(use_large_cid, max_contexts, device_name))
+	if(!sniff(use_large_cid, max_contexts, enabled_profiles, device_name))
 	{
 		goto error;
 	}
@@ -380,6 +404,8 @@ static void usage(void)
 	       "  -h                  Print this usage and exit\n"
 	       "  --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                      simultaneously use during the test\n"
+	       "  --disable PROFILE   A ROHC profile to disable\n"
+	       "                      (may be specified several times)\n"
 	       "  --verbose           Make the test more verbose\n");
 }
 
@@ -637,11 +663,13 @@ static void sniffer_print_stats(int signal)
  *
  * @param use_large_cid        Whether the compressor shall use large CIDs
  * @param max_contexts         The maximum number of ROHC contexts to use
+ * @param enabled_profiles     The ROHC profiles to enable
  * @param device_name          The name of the network device
  * @return                     Whether the sniffer setup was OK
  */
 static bool sniff(const int use_large_cid,
                   const unsigned int max_contexts,
+                  const int enabled_profiles[],
                   const char *const device_name)
 {
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -722,13 +750,18 @@ static bool sniff(const int use_large_cid,
 	}
 
 	/* enable the compression profiles */
-	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
-	                              ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
-	                              ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	for(i = ROHC_PROFILE_UNCOMPRESSED; i <= ROHC_PROFILE_UDPLITE; i++)
 	{
-		fprintf(stderr, "failed to enable the compression profiles\n");
-		goto destroy_comp;
+		if(enabled_profiles[i] == 1 && !rohc_comp_enable_profile(comp, i))
+		{
+			fprintf(stderr, "failed to enable compression profile 0x%04x\n", i);
+			goto destroy_comp;
+		}
+		else if(enabled_profiles[i] == 0 && !rohc_comp_disable_profile(comp, i))
+		{
+			fprintf(stderr, "failed to disable compression profile 0x%04x\n", i);
+			goto destroy_comp;
+		}
 	}
 
 	/* configure SMALL_CID / LARGE_CID and MAX_CID */
@@ -805,14 +838,20 @@ static bool sniff(const int use_large_cid,
 		}
 	}
 
-	/* activate all the decompression profiles */
-	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
-	                                ROHC_PROFILE_RTP, ROHC_PROFILE_UDP,
-	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDPLITE,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	/* enable the decompression profiles */
+	for(i = ROHC_PROFILE_UNCOMPRESSED; i <= ROHC_PROFILE_UDPLITE; i++)
 	{
-		fprintf(stderr, "failed to enable the decompression profiles\n");
-		goto destroy_decomp;
+		if(enabled_profiles[i] == 1 && !rohc_decomp_enable_profile(decomp, i))
+		{
+			fprintf(stderr, "failed to enable decompression profile 0x%04x\n", i);
+			goto destroy_decomp;
+		}
+		else if(enabled_profiles[i] == 0 &&
+		        !rohc_decomp_disable_profile(decomp, i))
+		{
+			fprintf(stderr, "failed to disable decompression profile 0x%04x\n", i);
+			goto destroy_decomp;
+		}
 	}
 
 	/* reset the PCAP dumpers (used to save sniffed packets in several PCAP
