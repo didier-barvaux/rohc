@@ -1813,7 +1813,11 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 		/* new fields added by minor versions */
 		switch(info->version_minor)
 		{
+			case 0:
+				/* nothing to add */
+				break;
 			case 1:
+				/* new fields in 0.1 */
 				info->corrected_crc_failures =
 					decomp->last_context->corrected_crc_failures;
 				info->corrected_sn_wraparounds =
