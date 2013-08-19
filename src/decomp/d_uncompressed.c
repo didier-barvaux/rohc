@@ -120,14 +120,14 @@ void uncompressed_free_decode_data(void *context)
  *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                       or ROHC_ERROR if an error occurs
  */
-static int uncompressed_decode(struct rohc_decomp *decomp,
-                               struct d_context *context,
+static int uncompressed_decode(struct rohc_decomp *const decomp,
+                               struct d_context *const context,
                                const struct timespec arrival_time,
                                const unsigned char *const rohc_packet,
-                               const unsigned int rohc_length,
+                               const size_t rohc_length,
                                const size_t add_cid_len,
                                const size_t large_cid_len,
-                               unsigned char *dest)
+                               unsigned char *const dest)
 {
 	if(d_is_ir(rohc_packet, rohc_length))
 	{

@@ -372,7 +372,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP,
 				             context->profile->id,
-				             "CRC check failed (size = %d)\n", feedback->size);
+				             "CRC check failed (size = %zu)\n", feedback->size);
 				return;
 			}
 		}
@@ -673,7 +673,8 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	dest[counter] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                              CRC_INIT_8,
 	                              context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC on %d bytes = 0x%02x\n", counter, dest[counter]);
+	rohc_comp_debug(context, "CRC on %zu bytes = 0x%02x\n", counter,
+	                dest[counter]);
 	counter++;
 
 	*payload_offset = 0;
@@ -737,7 +738,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	/* part 2 */
 	dest[first_position] = (ip_get_raw_data(ip))[0];
 
-	rohc_comp_debug(context, "header length = %d, payload length = %d\n",
+	rohc_comp_debug(context, "header length = %zu, payload length = %u\n",
 	                counter - 1, ip_get_totlen(ip));
 
 	*payload_offset = 1;
