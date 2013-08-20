@@ -31,7 +31,6 @@
 #include "rohc_utils.h"
 #include "rohc_packets.h"
 #include "crc.h"
-#include "rohc_decomp_internals.h"
 #include "protocols/udp_lite.h"
 
 

@@ -31,7 +31,6 @@
 #include "sdvl.h"
 #include "crc.h"
 #include "decode.h"
-#include "rohc_decomp_internals.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
 

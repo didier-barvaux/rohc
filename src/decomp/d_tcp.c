@@ -23,7 +23,6 @@
 
 #include "d_tcp.h"
 #include "rohc_bit_ops.h"
-#include "rohc_decomp_internals.h"
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 #include "rohc_debug.h"

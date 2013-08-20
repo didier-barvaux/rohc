@@ -29,7 +29,6 @@
 #include "rohc_debug.h" /* for zfree() */
 #include "rohc_utils.h"
 #include "decode.h"
-#include "rohc_decomp_internals.h"
 
 #include <assert.h>
 

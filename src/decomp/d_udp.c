@@ -29,7 +29,6 @@
 #include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/udp.h"
-#include "rohc_decomp_internals.h"
 
 #include <assert.h>
 

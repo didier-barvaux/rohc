@@ -30,7 +30,6 @@
 #include "crc.h"
 #include "protocols/esp.h"
 #include "lsb_decode.h"
-#include "rohc_decomp_internals.h"
 
 #include <stdint.h>
 #ifndef __KERNEL__
