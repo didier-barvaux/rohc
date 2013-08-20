@@ -2372,6 +2372,8 @@ error:
  *                   \li The callback function used to manage traces
  *                   \li NULL to remove the previous callback
  * @return         true on success, false otherwise
+ *
+ * @ingroup rohc_decomp
  */
 bool rohc_decomp_set_traces_cb(struct rohc_decomp *decomp,
                                rohc_trace_callback_t callback)
