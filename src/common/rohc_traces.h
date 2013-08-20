@@ -26,14 +26,19 @@
 #define ROHC_TRACES_H
 
 
-/** A general profile number used for traces not related to a specific profile */
+/**
+ * @brief A general profile number used for traces not related to a specific
+ *        profile
+ *
+ * @ingroup rohc_common
+ */
 #define ROHC_PROFILE_GENERAL       0xffff
 
 
 /**
  * @brief The different levels of the traces
  *
- * @ingroup rohc_comp
+ * @ingroup rohc_common
  */
 typedef enum
 {
@@ -48,7 +53,7 @@ typedef enum
 /**
  * @brief The different entities concerned by the traces
  *
- * @ingroup rohc_comp
+ * @ingroup rohc_common
  */
 typedef enum
 {
@@ -66,8 +71,7 @@ typedef enum
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
  *
- * @ingroup rohc_comp
- * @ingroup rohc_decomp
+ * @ingroup rohc_common
  */
 typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
                                        const rohc_trace_entity_t entity,
