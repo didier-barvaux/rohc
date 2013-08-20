@@ -1,3 +1,53 @@
+XX Xxx 2013 - release 1.7.0
+  Compatibility:
+    - Version 1.7.0 is not compatible with versions < 1.7.0 wrt packet format
+      because of several fixes related to IETF RFCs that change the format of
+      ROHC packets.
+    - The library API is fully compatible with earlier versions.
+
+  License/Authors:
+    - Viveris Technologies for the packet/context repair upon CRC failure.
+    - Viveris Technologies for better conformance to ROHC standards.
+    - FWX for ROHCv1 TCP profile.
+
+  Acknowledgments for bug reports and/or bug fixes:
+    - Thanks to Friedrich for his help designing the new API function
+      rohc_feedback_avail_bytes().
+    - Thanks to Fabrice Bellard for finding several non-conformances to ROHC
+      standards.
+
+  Main changes:
+    - ROHC protocol:
+       - Add support for packet/context repair upon CRC failure.
+       - Add support for extensions on UO-1-ID packets.
+       - Add support for the ROHCv1 TCP profile.
+    - Library API/usage:
+       - New API rohc_feedback_avail_bytes().
+
+  API changes:
+    - Add rohc_compress3() for specifying arrival time.
+    - Add rohc_decompress2() for specifying arrival time.
+    - rohc_compress2() is deprecated by rohc_compress3().
+    - rohc_decompress() is deprecated by rohc_decompress2().
+
+  Build system:
+    TODO
+
+  Q&A:
+    TODO
+
+  Performances:
+    TODO
+
+  Applications:
+    TODO
+    Performances test:
+      - More reliable way to compute (de)compression time.
+
+  Bug fixes:
+    TODO
+
+
 09 Jun 2013 - release 1.6.0
   Compatibility:
     - Version 1.6.0 is not compatible with versions < 1.6.0 because of several
