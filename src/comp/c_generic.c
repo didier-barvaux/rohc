@@ -1166,7 +1166,7 @@ void c_generic_feedback(struct c_context *const context,
 				/* ignore feedback in case of bad CRC */
 				if(crc_in_packet != crc_computed)
 				{
-					rohc_comp_debug(context, "CRC check failed (size = %d)\n",
+					rohc_comp_debug(context, "CRC check failed (size = %zu)\n",
 					                feedback->size);
 					return;
 				}
@@ -1806,7 +1806,7 @@ int code_IR_packet(struct c_context *const context,
 	dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                                   CRC_INIT_8,
 	                                   context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC (header length = %d, crc = 0x%x)\n",
+	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)\n",
 	                counter, dest[crc_position]);
 
 error:
@@ -1941,7 +1941,7 @@ int code_IR_DYN_packet(struct c_context *const context,
 	dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
 	                                   CRC_INIT_8,
 	                                   context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC (header length = %d, crc = 0x%x)\n",
+	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)\n",
 	                counter, dest[crc_position]);
 
 error:

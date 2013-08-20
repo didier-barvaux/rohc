@@ -519,8 +519,8 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	assert(dest != NULL);
 
 	rohc_decomp_debug(context, "decomp = %p, context = %p, rohc_packet = %p, "
-	                  "rohc_length = %d, add_cid_len = %zd, "
-	                  "large_cid_len = %zd, dest = %p\n", decomp, context,
+	                  "rohc_length = %zu, add_cid_len = %zu, "
+	                  "large_cid_len = %zu, dest = %p\n", decomp, context,
 	                  rohc_packet, rohc_length, add_cid_len, large_cid_len,
 	                  dest);
 

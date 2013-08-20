@@ -389,8 +389,8 @@ struct d_generic_context
 	/// @brief The handler used to parse the dynamic part of the next header
 	///        in the ROHC packet
 	int (*parse_dyn_next_hdr)(const struct d_context *const context,
-	                          const unsigned char *packet,
-	                          unsigned int length,
+	                          const uint8_t *packet,
+	                          const size_t length,
 	                          struct rohc_extr_bits *const bits);
 
 	/// The handler used to parse the tail of the UO* ROHC packet

@@ -213,7 +213,7 @@ int ip_parse_dynamic_ip(const struct d_context *const context,
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 			             context->profile->id,
-			             "ROHC packet too small (len = %d)\n", length);
+			             "ROHC packet too small (len = %zu)\n", length);
 			goto error;
 		}
 

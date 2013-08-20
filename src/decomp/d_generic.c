@@ -953,7 +953,7 @@ static bool create_ip6_item(const unsigned char *const data,
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		             "packet too small for Next Header and Length fields: "
-		             "only %d bytes available while at least 2 bytes are "
+		             "only %zd bytes available while at least 2 bytes are "
 		             "required\n", length);
 		goto error;
 	}
@@ -3693,7 +3693,7 @@ static int parse_static_part_ip(const struct d_context *const context,
 	if(length < 1)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -3752,7 +3752,7 @@ static int parse_static_part_ipv4(const struct d_context *const context,
 	if(length < 10)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -3818,7 +3818,7 @@ static int parse_static_part_ipv6(const struct d_context *const context,
 	if(length < 36)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -3942,7 +3942,7 @@ static int parse_dynamic_part_ipv4(const struct d_context *const context,
 	if(length < IPV4_DYN_PART_SIZE)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -4033,7 +4033,7 @@ static int parse_dynamic_part_ipv6(const struct d_context *const context,
 	if(length < 2)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -4359,7 +4359,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC %s header (%zd bytes) and payload (%zd bytes) "
-		             "do not match the full ROHC %s packet (%u bytes)\n",
+		             "do not match the full ROHC %s packet (%zu bytes)\n",
 		             rohc_get_packet_descr(g_context->packet_type), rohc_header_len,
 		             payload_len, rohc_get_packet_descr(g_context->packet_type),
 		             rohc_length);
@@ -7245,7 +7245,7 @@ static int parse_inner_header_flags(const struct rohc_decomp *const decomp,
 	if(length < is_tos + is_ttl + is_pr + is_ipx)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -7405,7 +7405,7 @@ static int parse_outer_header_flags(const struct rohc_decomp *const decomp,
 	if((length - read) < is_I2 * 2)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length - read);
+		             "ROHC packet too small (len = %zu)\n", length - read);
 		goto error;
 	}
 
@@ -7694,7 +7694,7 @@ static size_t build_uncomp_ipv4(const struct d_context *const context,
 
 	/* inferred fields */
 	ip->tot_len = rohc_hton16(payload_size + ip->ihl * 4);
-	rohc_decomp_debug(context, "Total Length = 0x%04x (IHL * 4 + %d)\n",
+	rohc_decomp_debug(context, "Total Length = 0x%04x (IHL * 4 + %zu)\n",
 	                  rohc_ntoh16(ip->tot_len), payload_size);
 	ip->check = 0;
 	ip->check = ip_fast_csum(dest, ip->ihl);
@@ -7772,8 +7772,8 @@ static size_t build_uncomp_ipv6(const struct d_context *const context,
 
 	/* inferred fields */
 	ip->ip6_plen = rohc_hton16(payload_size + ext_size);
-	rohc_decomp_debug(context, "Payload Length = 0x%04x (extensions = %zd "
-	                  "bytes, payload = %u bytes)\n",
+	rohc_decomp_debug(context, "Payload Length = 0x%04x (extensions = %zu "
+	                  "bytes, payload = %zu bytes)\n",
 	                  rohc_ntoh16(ip->ip6_plen), ext_size, payload_size);
 
 	return sizeof(struct ipv6_hdr) + ext_size;
@@ -8192,7 +8192,7 @@ static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
 			memcpy(dest + size + 2, elt->item->data + 2, size_data - 2);
 			size += size_data;
 
-			rd_list_debug(decomp, "build one %d-byte IPv6 extension header with "
+			rd_list_debug(decomp, "build one %zu-byte IPv6 extension header with "
 			              "Next Header 0x%02x\n", size_data, nh_type);
 		}
 	}

@@ -42,8 +42,8 @@ static void d_udp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
 static int udp_parse_dynamic_udp(const struct d_context *const context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
+                                 const uint8_t *packet,
+                                 const size_t length,
                                  struct rohc_extr_bits *const bits);
 
 static int udp_parse_uo_remainder(const struct d_context *const context,
@@ -231,7 +231,7 @@ int udp_parse_static_udp(const struct d_context *const context,
 	if(length < 4)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -289,8 +289,8 @@ error:
  *                     -1 in case of failure
  */
 static int udp_parse_dynamic_udp(const struct d_context *const context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
+                                 const uint8_t *packet,
+                                 const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
@@ -310,7 +310,7 @@ static int udp_parse_dynamic_udp(const struct d_context *const context,
 	if(length < 2)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);

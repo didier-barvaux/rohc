@@ -84,8 +84,8 @@ static int rtp_parse_static_rtp(const struct d_context *const context,
                                 struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 static int rtp_parse_dynamic_rtp(const struct d_context *const context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
+                                 const uint8_t *packet,
+                                 const size_t length,
                                  struct rohc_extr_bits *const bits);
 static int rtp_parse_uo_remainder(const struct d_context *const context,
                                   const unsigned char *packet,
@@ -623,7 +623,7 @@ static int rtp_parse_static_rtp(const struct d_context *const context,
 	if(length < sizeof(uint32_t))
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -663,13 +663,13 @@ error:
  *                     -1 in case of failure
  */
 static int rtp_parse_dynamic_rtp(const struct d_context *const context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
+                                 const uint8_t *packet,
+                                 const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
 	struct d_rtp_context *rtp_context;
-	int read = 0; /* number of bytes read from the packet */
+	size_t remain_len = length;
 	int rx;
 
 	assert(context != NULL);
@@ -681,10 +681,10 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	assert(bits != NULL);
 
 	/* part 1: UDP checksum */
-	if(length < sizeof(uint16_t))
+	if(remain_len < sizeof(uint16_t))
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", remain_len);
 		goto error;
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
@@ -692,18 +692,17 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
 	                  rohc_ntoh16(bits->udp_check));
 	packet += sizeof(uint16_t);
-	read += sizeof(uint16_t);
-	length -= sizeof(uint16_t);
+	remain_len -= sizeof(uint16_t);
 
 	/* determine whether the UDP checksum will be present in UO packets */
 	rtp_context->udp_checksum_present = (bits->udp_check > 0);
 
 	/* check the minimal length to decode the constant part of the RTP
 	   dynamic part (parts 2-6) */
-	if(length < RTP_CONST_DYN_PART_SIZE)
+	if(remain_len < RTP_CONST_DYN_PART_SIZE)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", length);
+		             "ROHC packet too small (len = %zu)\n", remain_len);
 		goto error;
 	}
 
@@ -720,8 +719,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	rx = GET_REAL(GET_BIT_4(packet));
 	rohc_decomp_debug(context, "RX = 0x%x\n", rx);
 	packet++;
-	read++;
-	length--;
+	remain_len--;
 
 	/* part 3 */
 	bits->rtp_m = GET_REAL(GET_BIT_7(packet));
@@ -731,24 +729,21 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	bits->rtp_pt_nr = 7;
 	rohc_decomp_debug(context, "payload type = 0x%x\n", bits->rtp_pt);
 	packet++;
-	read++;
-	length--;
+	remain_len--;
 
 	/* part 4: 16-bit RTP SN */
 	bits->sn = rohc_ntoh16(GET_NEXT_16_BITS(packet));
 	bits->sn_nr = 16;
 	packet += sizeof(uint16_t);
-	read += sizeof(uint16_t);
-	length -= sizeof(uint16_t);
+	remain_len-= sizeof(uint16_t);
 	rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
 
 	/* part 5: 4-byte TimeStamp (TS) */
 	memcpy(&bits->ts, packet, sizeof(uint32_t));
 	bits->ts = rohc_ntoh32(bits->ts);
 	bits->ts_nr = 32;
-	read += sizeof(uint32_t);
 	packet += sizeof(uint32_t);
-	length -= sizeof(uint32_t);
+	remain_len -= sizeof(uint32_t);
 	rohc_decomp_debug(context, "timestamp = 0x%08x\n", bits->ts);
 
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
@@ -760,8 +755,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 		goto error;
 	}
 	packet++;
-	read++;
-	length--;
+	remain_len--;
 
 	/* part 7 */
 	if(rx)
@@ -770,11 +764,11 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 
 		/* check the minimal length to decode the flags that are only present
 		   if RX flag is set */
-		if(length < 1)
+		if(remain_len < 1)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 			             context->profile->id,
-			             "ROHC packet too small (len = %u)\n", length);
+			             "ROHC packet too small (len = %zu)\n", remain_len);
 			goto error;
 		}
 
@@ -785,9 +779,8 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 		tss = GET_REAL(GET_BIT_0(packet));
 		rohc_decomp_debug(context, "X = %u, rohc_mode = %d, tis = %d, "
 		                  "tss = %d\n", bits->rtp_x, mode, tis, tss);
-		read++;
 		packet++;
-		length--;
+		remain_len--;
 
 		/* part 8 */
 		if(tss)
@@ -797,7 +790,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 			size_t ts_stride_bits_nr;
 
 			/* decode the SDVL-encoded TS_STRIDE field */
-			ts_stride_sdvl_len = sdvl_decode(packet, length,
+			ts_stride_sdvl_len = sdvl_decode(packet, remain_len,
 			                                 &ts_stride, &ts_stride_bits_nr);
 			if(ts_stride_sdvl_len <= 0)
 			{
@@ -810,9 +803,8 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 			                  ts_stride, ts_stride);
 
 			/* skip the SDVL-encoded TS_STRIDE field in packet */
-			read += ts_stride_sdvl_len;
 			packet += ts_stride_sdvl_len;
-			length -= ts_stride_sdvl_len;
+			remain_len -= ts_stride_sdvl_len;
 
 			/* temporarily store the decoded TS_STRIDE in context */
 			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
@@ -822,12 +814,12 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 		if(tis)
 		{
 			/* check the minimal length to decode the SDVL-encoded TIME_STRIDE */
-			if(length < 1)
+			if(remain_len < 1)
 			{
 				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 				             context->profile->id,
-				             "ROHC packet too small (len = %u) for 1st byte "
-				             "of SDVL-encoded TIME_STRIDE\n", length);
+				             "ROHC packet too small (len = %zu) for 1st byte "
+				             "of SDVL-encoded TIME_STRIDE\n", remain_len);
 				goto error;
 			}
 
@@ -837,7 +829,9 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 		}
 	}
 
-	return read;
+	assert(remain_len < length);
+
+	return (length - remain_len);
 
 error:
 	return -1;

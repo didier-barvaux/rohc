@@ -70,8 +70,8 @@ static int esp_parse_static_esp(const struct d_context *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
 static int esp_parse_dynamic_esp(const struct d_context *const context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
+                                 const uint8_t *packet,
+                                 const size_t length,
                                  struct rohc_extr_bits *const bits);
 
 static bool esp_decode_values_from_bits(const struct d_context *context,
@@ -260,7 +260,7 @@ static int esp_parse_static_esp(const struct d_context *const context,
 	if(length < spi_length)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -301,8 +301,8 @@ error:
  *                 -1 in case of failure
  */
 static int esp_parse_dynamic_esp(const struct d_context *const context,
-                                 const unsigned char *packet,
-                                 unsigned int length,
+                                 const uint8_t *packet,
+                                 const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
 	const size_t sn_length = sizeof(uint32_t);
@@ -317,7 +317,7 @@ static int esp_parse_dynamic_esp(const struct d_context *const context,
 	if(length < sn_length)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 

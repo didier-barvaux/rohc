@@ -97,8 +97,8 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
-                                      const unsigned char *packet,
-                                      unsigned int length,
+                                      const uint8_t *packet,
+                                      const size_t length,
                                       struct rohc_extr_bits *const bits);
 
 static int udp_lite_parse_uo_remainder(const struct d_context *const context,
@@ -419,8 +419,8 @@ error:
  *                     -1 in case of failure
  */
 static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
-                                      const unsigned char *packet,
-                                      unsigned int length,
+                                      const uint8_t *packet,
+                                      const size_t length,
                                       struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
@@ -442,7 +442,7 @@ static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
 	if(length < udplite_dyn_length)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		             "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 

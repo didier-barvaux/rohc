@@ -1511,7 +1511,7 @@ static int c_tcp_encode(struct c_context *const context,
 		counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
 		                          dest, g_context->tmp.max_size,
 		                          &first_position);
-		rohc_comp_debug(context, "counter = %d, first_position = %d, "
+		rohc_comp_debug(context, "counter = %d, first_position = %zu, "
 		                "dest[0] = 0x%02x, dest[1] = 0x%02x\n", counter,
 		                first_position, dest[0], dest[1]);
 
@@ -3812,7 +3812,7 @@ static int code_CO_packet(struct c_context *const context,
 	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
 	                          dest, g_context->tmp.max_size,
 	                          &first_position);
-	rohc_comp_debug(context, "dest = %p, counter = %d, first_position = %d, "
+	rohc_comp_debug(context, "dest = %p, counter = %d, first_position = %zu, "
 	                "dest[0] = 0x%02x, dest[1] = 0x%02x\n", dest, counter,
 	                first_position, dest[0], dest[1]);
 
