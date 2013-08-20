@@ -425,6 +425,8 @@ bool ROHC_EXPORT rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 int ROHC_EXPORT rohc_feedback_flush(struct rohc_comp *comp,
                                     unsigned char *obuf,
                                     int osize);
+size_t ROHC_EXPORT rohc_feedback_avail_bytes(const struct rohc_comp *const comp)
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_feedback_remove_locked(struct rohc_comp *const comp)
 	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_feedback_unlock(struct rohc_comp *const comp)

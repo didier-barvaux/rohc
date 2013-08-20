@@ -342,9 +342,28 @@ int main(int argc, char *argv[])
 
 	/* rohc_feedback_remove_locked() */
 	CHECK(rohc_feedback_remove_locked(NULL) == false);
+	CHECK(rohc_feedback_remove_locked(comp) == true);
+
+	/* rohc_feedback_avail_bytes() */
+	{
+		const size_t buflen = 12;
+		unsigned char buf[buflen];
+		unsigned char buf1[1];
+		unsigned char buf2[8];
+		CHECK(rohc_feedback_avail_bytes(NULL) == 0);
+		CHECK(rohc_feedback_avail_bytes(comp) == 0);
+		CHECK(rohc_comp_piggyback_feedback(comp, buf1, 1) == true);
+		CHECK(rohc_feedback_avail_bytes(comp) == 2);
+		CHECK(rohc_comp_piggyback_feedback(comp, buf2, 8) == true);
+		CHECK(rohc_feedback_avail_bytes(comp) == 12);
+		CHECK(rohc_feedback_flush(comp, buf, buflen) == 12);
+		CHECK(rohc_feedback_avail_bytes(comp) == 0);
+	}
 
 	/* rohc_feedback_unlock() */
 	CHECK(rohc_feedback_unlock(NULL) == false);
+	CHECK(rohc_feedback_unlock(comp) == true);
+	CHECK(rohc_feedback_avail_bytes(comp) == 12);
 
 	/* rohc_comp_deliver_feedback() */
 	{

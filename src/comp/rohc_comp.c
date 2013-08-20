@@ -2598,6 +2598,58 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 }
 
 
+/**
+ * @brief How many bytes of unsent feedback data are available at compressor?
+ *
+ * @param comp  The ROHC compressor
+ * @return      The number of bytes of unsent feedback data,
+ *              0 if no unsent feedback data is available
+ *
+ * @ingroup rohc_comp
+ */
+size_t rohc_feedback_avail_bytes(const struct rohc_comp *const comp)
+{
+	size_t feedback_length;
+	size_t i;
+
+	/* check input validity */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	feedback_length = 0;
+	for(i = 0; i < FEEDBACK_RING_SIZE; i++)
+	{
+		/* take only defined, unlocked feedbacks into account */
+		if(comp->feedbacks[i].length > 0 && !comp->feedbacks[i].is_locked)
+		{
+			/* retrieve the length of the feedback data */
+			feedback_length += comp->feedbacks[i].length;
+
+			/* how many additional bytes are required to encode length? */
+			if(comp->feedbacks[i].length < 8)
+			{
+				feedback_length++;
+			}
+			else
+			{
+				feedback_length += 2;
+			}
+		}
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "there are %zu byte(s) of available unsent feedback data\n",
+	           feedback_length);
+
+	return feedback_length;
+
+error:
+	return 0;
+}
+
+
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /**
