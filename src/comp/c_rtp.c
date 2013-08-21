@@ -1480,9 +1480,8 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
 			ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
 			/* encode TS_STRIDE in SDVL and write it to packet */
-			if(!sdvl_encode(dest + counter + nr_written, 4U /* TODO */,
-			                &ts_stride_sdvl_len, ts_stride,
-			                0 /* length detection */))
+			if(!sdvl_encode_full(dest + counter + nr_written, 4U /* TODO */,
+			                     &ts_stride_sdvl_len, ts_stride))
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 				             "failed to SDVL-encode TS_STRIDE %u\n", ts_stride);

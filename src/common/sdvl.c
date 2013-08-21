@@ -125,64 +125,33 @@ size_t sdvl_get_min_len(const size_t nr_min_required,
  * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
  *
  * @param value  The value to encode
- * @param length The length of the value to encode
- *               (0 to let the SDVL encoding find the length itself)
  * @return       The size needed to represent the SDVL-encoded value
  */
-size_t sdvl_get_len(const uint32_t value, const size_t length)
+size_t sdvl_get_encoded_len(const uint32_t value)
 {
 	size_t size;
 
-	if(length == 0)
+	/* find the length for SDVL-encoding */
+	if(value <= ROHC_SDVL_MAX_VALUE_IN_1_BYTE)
 	{
-		/* value length is unknown, find the length ourselves, then
-		 * find the length for SDVL-encoding */
-		if(value <= ROHC_SDVL_MAX_VALUE_IN_1_BYTE)
-		{
-			size = 1;
-		}
-		else if(value <= ROHC_SDVL_MAX_VALUE_IN_2_BYTES)
-		{
-			size = 2;
-		}
-		else if(value <= ROHC_SDVL_MAX_VALUE_IN_3_BYTES)
-		{
-			size = 3;
-		}
-		else if(value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES)
-		{
-			size = 4;
-		}
-		else
-		{
-			/* value is too large for SDVL-encoding */
-			size = 5;
-		}
+		size = 1;
+	}
+	else if(value <= ROHC_SDVL_MAX_VALUE_IN_2_BYTES)
+	{
+		size = 2;
+	}
+	else if(value <= ROHC_SDVL_MAX_VALUE_IN_3_BYTES)
+	{
+		size = 3;
+	}
+	else if(value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES)
+	{
+		size = 4;
 	}
 	else
 	{
-		/* value length is known, find the length for SDVL-encoding */
-		if(length <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
-		{
-			size = 1;
-		}
-		else if(length <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
-		{
-			size = 2;
-		}
-		else if(length <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
-		{
-			size = 3;
-		}
-		else if(length <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
-		{
-			size = 4;
-		}
-		else
-		{
-			/* value is too large for SDVL-encoding */
-			size = 5;
-		}
+		/* value is too large for SDVL-encoding */
+		size = 5;
 	}
 
 	return size;
@@ -200,8 +169,7 @@ size_t sdvl_get_len(const uint32_t value, const size_t length)
  * @param sdvl_bytes_max_nr  The maximum available free bytes for SDVL
  * @param sdvl_bytes_nr      OUT: The number of SDVL bytes written
  * @param value              The value to encode
- * @param length             The length of the value to encode (0 to let the
- *                           SDVL encoding find the length itself)
+ * @param bits_nr            The number of bits to encode
  * @return                   true if SDVL encoding is successful,
  *                           false in case of failure
  */
@@ -209,57 +177,125 @@ bool sdvl_encode(uint8_t *const sdvl_bytes,
                  const size_t sdvl_bytes_max_nr,
                  size_t *const sdvl_bytes_nr,
                  const uint32_t value,
-                 const size_t length)
+                 const size_t bits_nr)
 {
-	/* find out the number of bytes needed to represent the SDVL-encoded value */
-	*sdvl_bytes_nr = sdvl_get_len(value, length);
-	if((*sdvl_bytes_nr) > 4)
+	/* encoding 0 bit is an error */
+	assert(bits_nr > 0);
+
+	/* encode the value according to the number of available bits */
+	if(bits_nr <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
+	{
+		*sdvl_bytes_nr = 1;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* bit pattern 0 */
+		sdvl_bytes[0] = value & 0x7f;
+	}
+	else if(bits_nr <= ROHC_SDVL_MAX_BITS_IN_2_BYTES)
+	{
+		*sdvl_bytes_nr = 2;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 2 = bit pattern 10 */
+		sdvl_bytes[0] = ((2 << 6) | ((value >> 8) & 0x3f)) & 0xff;
+		sdvl_bytes[1] = value & 0xff;
+	}
+	else if(bits_nr <= ROHC_SDVL_MAX_BITS_IN_3_BYTES)
+	{
+		*sdvl_bytes_nr = 3;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 6 = bit pattern 110 */
+		sdvl_bytes[0] = ((6 << 5) | ((value >> 16) & 0x1f)) & 0xff;
+		sdvl_bytes[1] = (value >> 8) & 0xff;
+		sdvl_bytes[2] = value & 0xff;
+	}
+	else if(bits_nr <= ROHC_SDVL_MAX_BITS_IN_4_BYTES)
+	{
+		*sdvl_bytes_nr = 4;
+		if(sdvl_bytes_max_nr < (*sdvl_bytes_nr))
+		{
+			/* number of bytes needed is too large for buffer */
+			goto error;
+		}
+
+		/* 7 = bit pattern 111 */
+		sdvl_bytes[0] = ((7 << 5) | ((value >> 24) & 0x1f)) & 0xff;
+		sdvl_bytes[1] = (value >> 16) & 0xff;
+		sdvl_bytes[2] = (value >> 8) & 0xff;
+		sdvl_bytes[3] = value & 0xff;
+	}
+	else
 	{
 		/* number of bytes needed is too large (value must be < 2^29) */
 		goto error;
 	}
-	else if((*sdvl_bytes_nr) > sdvl_bytes_max_nr)
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Encode a value using Self-Describing Variable-Length (SDVL) encoding
+ *
+ * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
+ *
+ * Encoding failures may be due to a value greater than 2^29.
+ *
+ * @param sdvl_bytes         IN/OUT: The SDVL-encoded bytes
+ * @param sdvl_bytes_max_nr  The maximum available free bytes for SDVL
+ * @param sdvl_bytes_nr      OUT: The number of SDVL bytes written
+ * @param value              The value to encode
+ * @return                   true if SDVL encoding is successful,
+ *                           false in case of failure
+ */
+bool sdvl_encode_full(uint8_t *const sdvl_bytes,
+                      const size_t sdvl_bytes_max_nr,
+                      size_t *const sdvl_bytes_nr,
+                      const uint32_t value)
+{
+	size_t bits_nr;
+
+	/* find the number of bits for SDVL-encoding */
+	if(value <= ROHC_SDVL_MAX_VALUE_IN_1_BYTE)
 	{
-		/* number of bytes needed is too large for buffer */
+		bits_nr = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+	}
+	else if(value <= ROHC_SDVL_MAX_VALUE_IN_2_BYTES)
+	{
+		bits_nr = ROHC_SDVL_MAX_BITS_IN_2_BYTES;
+	}
+	else if(value <= ROHC_SDVL_MAX_VALUE_IN_3_BYTES)
+	{
+		bits_nr = ROHC_SDVL_MAX_BITS_IN_3_BYTES;
+	}
+	else if(value <= ROHC_SDVL_MAX_VALUE_IN_4_BYTES)
+	{
+		bits_nr = ROHC_SDVL_MAX_BITS_IN_4_BYTES;
+	}
+	else
+	{
+		/* value is too large for SDVL-encoding */
 		goto error;
 	}
 
-	/* encode the value according to the number of available bytes */
-	switch(*sdvl_bytes_nr)
-	{
-		case 4:
-			/* 7 = bit pattern 111 */
-			sdvl_bytes[0] = ((7 << 5) | ((value >> 24) & 0x1f)) & 0xff;
-			sdvl_bytes[1] = (value >> 16) & 0xff;
-			sdvl_bytes[2] = (value >> 8) & 0xff;
-			sdvl_bytes[3] = value & 0xff;
-			break;
-
-		case 3:
-			/* 6 = bit pattern 110 */
-			sdvl_bytes[0] = ((6 << 5) | ((value >> 16) & 0x1f)) & 0xff;
-			sdvl_bytes[1] = (value >> 8) & 0xff;
-			sdvl_bytes[2] = value & 0xff;
-			break;
-
-		case 2:
-			/* 2 = bit pattern 10 */
-			sdvl_bytes[0] = ((2 << 6) | ((value >> 8) & 0x3f)) & 0xff;
-			sdvl_bytes[1] = value & 0xff;
-			break;
-
-		case 1:
-			/* bit pattern 0 */
-			sdvl_bytes[0] = value & 0x7f;
-			break;
-
-		default:
-			/* invalid length for SDVL encoding */
-			assert(0);
-			break;
-	}
-
-	return true;
+	return sdvl_encode(sdvl_bytes, sdvl_bytes_max_nr, sdvl_bytes_nr,
+	                   value, bits_nr);
 
 error:
 	return false;

@@ -67,14 +67,20 @@ size_t ROHC_EXPORT sdvl_get_min_len(const size_t nr_min_required,
                                     const size_t nr_encoded)
 	__attribute__((warn_unused_result, const));
 
-size_t ROHC_EXPORT sdvl_get_len(const uint32_t value, const size_t length)
+size_t ROHC_EXPORT sdvl_get_encoded_len(const uint32_t value)
 	__attribute__((warn_unused_result, const));
 
 bool ROHC_EXPORT sdvl_encode(uint8_t *const packet,
                              const size_t packet_max_len,
                              size_t *const packet_len,
                              const uint32_t value,
-                             const size_t length)
+                             const size_t bits_nr)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
+
+bool ROHC_EXPORT sdvl_encode_full(uint8_t *const packet,
+                                  const size_t packet_max_len,
+                                  size_t *const packet_len,
+                                  const uint32_t value)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 
 size_t ROHC_EXPORT sdvl_decode(const uint8_t *const data,

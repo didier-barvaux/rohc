@@ -5386,8 +5386,8 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
 		/* SDVL-encode the TS_STRIDE value */
-		success = sdvl_encode(dest + counter, 4U /* TODO */, &sdvl_size,
-		                      ts_stride, 0 /* length detection */);
+		success = sdvl_encode_full(dest + counter, 4U /* TODO */, &sdvl_size,
+		                           ts_stride);
 		if(!success)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,

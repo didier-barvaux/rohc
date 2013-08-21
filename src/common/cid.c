@@ -88,8 +88,7 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		counter++;
 
 		/* SDVL-encode the large CID */
-		if(!sdvl_encode(dest + counter, dest_size, &sdvl_len,
-		                cid, 0 /* length detection */))
+		if(!sdvl_encode_full(dest + counter, dest_size, &sdvl_len, cid))
 		{
 			/* failed to SDVL-encode the large CID */
 			assert(0); /* TODO: should handle the error */
