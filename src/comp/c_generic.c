@@ -5112,23 +5112,9 @@ int code_EXT3_packet(const struct c_context *context,
 			nr_ts_bits_ext3 = rtp_context->tmp.nr_ts_bits_ext3;
 			ts_send = rtp_context->tmp.ts_send;
 
-			/* determine the size of the SDVL-encoded TS value */
-			sdvl_size = sdvl_get_len(ts_send, nr_ts_bits_ext3);
-			assert(sdvl_size > 0 && sdvl_size <= 5);
-			if(sdvl_size <= 0 || sdvl_size > 4)
-			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "failed to determine the number of bits required "
-				             "to SDVL-encode %zd bits of TS\n", nr_ts_bits_ext3);
-				goto error;
-			}
-
-			rohc_comp_debug(context, "ts_send = %u (0x%x) needs %zd bits in "
-			                "EXT3, will be SDVL-coded on %zd bytes\n", ts_send,
-			                ts_send, nr_ts_bits_ext3, sdvl_size);
-
 			/* SDVL-encode the TS value */
-			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
+			if(!sdvl_encode(dest + counter, 4U /* TODO */, &sdvl_size,
+			                ts_send, nr_ts_bits_ext3))
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 				             "TS length greater than 29 (value = %u, "
@@ -5136,6 +5122,9 @@ int code_EXT3_packet(const struct c_context *context,
 				goto error;
 			}
 			counter += sdvl_size;
+			rohc_comp_debug(context, "ts_send = %u (0x%x) needs %zu bits in "
+			                "EXT3, so SDVL-code it on %zu bytes\n", ts_send,
+			                ts_send, nr_ts_bits_ext3, sdvl_size);
 		}
 
 		/* parts */
@@ -5212,23 +5201,9 @@ int code_EXT3_packet(const struct c_context *context,
 			nr_ts_bits_ext3 = rtp_context->tmp.nr_ts_bits_ext3;
 			ts_send = rtp_context->tmp.ts_send;
 
-			/* determine the size of the SDVL-encoded TS value */
-			sdvl_size = sdvl_get_len(ts_send, nr_ts_bits_ext3);
-			assert(sdvl_size > 0 && sdvl_size <= 5);
-			if(sdvl_size <= 0 || sdvl_size > 4)
-			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "failed to determine the number of bits required "
-				             "to SDVL-encode %zd bits of TS\n", nr_ts_bits_ext3);
-				goto error;
-			}
-
-			rohc_comp_debug(context, "ts_send = %u (0x%x) needs %zd bits in "
-			                "EXT3, will be SDVL-coded on %zd bytes\n", ts_send,
-			                ts_send, nr_ts_bits_ext3, sdvl_size);
-
 			/* SDVL-encode the TS value */
-			if(!c_encodeSdvl(&dest[counter], ts_send, nr_ts_bits_ext3))
+			if(!sdvl_encode(dest + counter, 4U /* TODO */, &sdvl_size,
+			                ts_send, nr_ts_bits_ext3))
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 				             "TS length greater than 29 (value = %u, "
@@ -5236,6 +5211,9 @@ int code_EXT3_packet(const struct c_context *context,
 				goto error;
 			}
 			counter += sdvl_size;
+			rohc_comp_debug(context, "ts_send = %u (0x%x) needs %zu bits in "
+			                "EXT3, so SDVL-code it on %zu bytes\n", ts_send,
+			                ts_send, nr_ts_bits_ext3, sdvl_size);
 		}
 
 		/* part 5 */
@@ -5407,19 +5385,9 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		/* determine the TS_STRIDE to transmit */
 		ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
-		/* determine the size of the SDVL-encoded TS_STRIDE value */
-		sdvl_size = sdvl_get_len(ts_stride, 0 /* length detection */);
-		assert(sdvl_size > 0 && sdvl_size <= 5);
-		if(sdvl_size <= 0 || sdvl_size > 4)
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to determine the number of bits required to "
-			             "SDVL-encode TS_STRIDE %u\n", ts_stride);
-			goto error;
-		}
-
 		/* SDVL-encode the TS_STRIDE value */
-		success = c_encodeSdvl(&dest[counter], ts_stride, 0 /* length detection */);
+		success = sdvl_encode(dest + counter, 4U /* TODO */, &sdvl_size,
+		                      ts_stride, 0 /* length detection */);
 		if(!success)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,

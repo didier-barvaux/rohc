@@ -1475,36 +1475,22 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
 		{
 			uint32_t ts_stride;
 			size_t ts_stride_sdvl_len;
-			int ret;
 
 			/* get the TS_STRIDE to send in packet */
 			ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
-			/* how many bytes are required by SDVL to encode TS_STRIDE ? */
-			ts_stride_sdvl_len = sdvl_get_len(ts_stride, 0 /* length detection */);
-			if(ts_stride_sdvl_len <= 0 || ts_stride_sdvl_len > 4)
-			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "failed to determine the number of bits required to "
-				             "SDVL-encode TS_STRIDE %u (%zd)\n", ts_stride,
-				             ts_stride_sdvl_len);
-				/* TODO: should handle error gracefully */
-				assert(0);
-			}
-
-			rohc_comp_debug(context, "send ts_stride = 0x%08x encoded with SDVL "
-			                "on %zd bytes\n", ts_stride, ts_stride_sdvl_len);
-
 			/* encode TS_STRIDE in SDVL and write it to packet */
-			ret = c_encodeSdvl(&dest[counter + nr_written], ts_stride,
-			                   0 /* length detection */);
-			if(ret != 1)
+			if(!sdvl_encode(dest + counter + nr_written, 4U /* TODO */,
+			                &ts_stride_sdvl_len, ts_stride,
+			                0 /* length detection */))
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 				             "failed to SDVL-encode TS_STRIDE %u\n", ts_stride);
 				/* TODO: should handle error gracefully */
 				assert(0);
 			}
+			rohc_comp_debug(context, "send TS_STRIDE = 0x%08x encoded with SDVL "
+			                "on %zu bytes\n", ts_stride, ts_stride_sdvl_len);
 
 			/* skip the bytes used to encode TS_STRIDE in SDVL */
 			nr_written += ts_stride_sdvl_len;

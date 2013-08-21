@@ -67,6 +67,7 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		if(cid > 0)
 		{
 			/* Add-CID */
+			assert(dest_size >= 2);
 			dest[counter] = c_add_cid(cid);
 			*first_position = 1;
 			counter = 2;
@@ -74,37 +75,26 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		else
 		{
 			/* no Add-CID */
+			assert(dest_size >= 1);
 			*first_position = 0;
 			counter = 1;
 		}
 	}
 	else /* large CID */
 	{
-		size_t len;
-		int ret;
+		size_t sdvl_len;
 
 		*first_position = 0;
 		counter++;
 
-		/* determine the size of the SDVL-encoded large CID */
-		len = sdvl_get_len(cid, 0 /* length detection */);
-		assert(len > 0 && len <= 5);
-		if(len <= 0 || len > 4)
-		{
-			/* failed to determine the number of bits required to SDVL-encode
-			 * the large CID */
-			assert(0); /* TODO: should handle the error */
-		}
-
 		/* SDVL-encode the large CID */
-		ret = c_encodeSdvl(&dest[counter], cid, 0 /* length detection */);
-		if(ret != 1)
+		if(!sdvl_encode(dest + counter, dest_size, &sdvl_len,
+		                cid, 0 /* length detection */))
 		{
 			/* failed to SDVL-encode the large CID */
 			assert(0); /* TODO: should handle the error */
 		}
-
-		counter += len;
+		counter += sdvl_len;
 	}
 
 	return counter;

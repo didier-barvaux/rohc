@@ -194,55 +194,63 @@ size_t sdvl_get_len(const uint32_t value, const size_t length)
  *
  * See 4.5.6 in the RFC 3095 for details about SDVL encoding.
  *
- * @param dest   The destination to write the SDVL-encoded to
- * @param value  The value to encode
- * @param length The length of the value to encode
- *               (0 to let the SDVL encoding find the length itself)
- * @return       true if SDVL encoding is successful, false in case of failure
- *               (failure may be due to a value greater than 2^29)
+ * Encoding failures may be due to a value greater than 2^29.
+ *
+ * @param sdvl_bytes         IN/OUT: The SDVL-encoded bytes
+ * @param sdvl_bytes_max_nr  The maximum available free bytes for SDVL
+ * @param sdvl_bytes_nr      OUT: The number of SDVL bytes written
+ * @param value              The value to encode
+ * @param length             The length of the value to encode (0 to let the
+ *                           SDVL encoding find the length itself)
+ * @return                   true if SDVL encoding is successful,
+ *                           false in case of failure
  */
-bool c_encodeSdvl(uint8_t *const dest,
-                  const uint32_t value,
-                  const size_t length)
+bool sdvl_encode(uint8_t *const sdvl_bytes,
+                 const size_t sdvl_bytes_max_nr,
+                 size_t *const sdvl_bytes_nr,
+                 const uint32_t value,
+                 const size_t length)
 {
-	size_t size;
-
 	/* find out the number of bytes needed to represent the SDVL-encoded value */
-	size = sdvl_get_len(value, length);
-	assert(size > 0 && size <= 5);
-	if(size > 4)
+	*sdvl_bytes_nr = sdvl_get_len(value, length);
+	if((*sdvl_bytes_nr) > 4)
 	{
 		/* number of bytes needed is too large (value must be < 2^29) */
 		goto error;
 	}
+	else if((*sdvl_bytes_nr) > sdvl_bytes_max_nr)
+	{
+		/* number of bytes needed is too large for buffer */
+		goto error;
+	}
 
 	/* encode the value according to the number of available bytes */
-	switch(size)
+	switch(*sdvl_bytes_nr)
 	{
 		case 4:
 			/* 7 = bit pattern 111 */
-			dest[0] = ((7 << 5) | ((value >> 24) & 0x1f)) & 0xff;
-			dest[1] = (value >> 16) & 0xff;
-			dest[2] = (value >> 8) & 0xff;
-			dest[3] = value & 0xff;
+			sdvl_bytes[0] = ((7 << 5) | ((value >> 24) & 0x1f)) & 0xff;
+			sdvl_bytes[1] = (value >> 16) & 0xff;
+			sdvl_bytes[2] = (value >> 8) & 0xff;
+			sdvl_bytes[3] = value & 0xff;
 			break;
 
 		case 3:
 			/* 6 = bit pattern 110 */
-			dest[0] = ((6 << 5) | ((value >> 16) & 0x1f)) & 0xff;
-			dest[1] = (value >> 8) & 0xff;
-			dest[2] = value & 0xff;
+			sdvl_bytes[0] = ((6 << 5) | ((value >> 16) & 0x1f)) & 0xff;
+			sdvl_bytes[1] = (value >> 8) & 0xff;
+			sdvl_bytes[2] = value & 0xff;
 			break;
 
 		case 2:
 			/* 2 = bit pattern 10 */
-			dest[0] = ((2 << 6) | ((value >> 8) & 0x3f)) & 0xff;
-			dest[1] = value & 0xff;
+			sdvl_bytes[0] = ((2 << 6) | ((value >> 8) & 0x3f)) & 0xff;
+			sdvl_bytes[1] = value & 0xff;
 			break;
 
 		case 1:
 			/* bit pattern 0 */
-			dest[0] = value & 0x7f;
+			sdvl_bytes[0] = value & 0x7f;
 			break;
 
 		default:
