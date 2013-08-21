@@ -64,23 +64,26 @@ static rohc_packet_t decide_packet(const struct c_context *context,
                                    const struct ip_packet *ip,
                                    const struct ip_packet *ip2);
 
-int code_packet(struct c_context *const context,
-                const struct ip_packet *ip,
-                const struct ip_packet *ip2,
-                const unsigned char *next_header,
-                unsigned char *const dest);
+static int code_packet(struct c_context *const context,
+                       const struct ip_packet *ip,
+                       const struct ip_packet *ip2,
+                       const unsigned char *next_header,
+                       unsigned char *const rohc_pkt,
+                       const size_t rohc_pkt_max_len);
 
 int code_IR_packet(struct c_context *const context,
                    const struct ip_packet *ip,
                    const struct ip_packet *ip2,
                    const unsigned char *next_header,
-                   unsigned char *const dest);
+                   unsigned char *const rohc_pkt,
+                   const size_t rohc_pkt_max_len);
 
 int code_IR_DYN_packet(struct c_context *const context,
                        const struct ip_packet *ip,
                        const struct ip_packet *ip2,
                        const unsigned char *next_header,
-                       unsigned char *const dest);
+                       unsigned char *const rohc_pkt,
+                       const size_t rohc_pkt_max_len);
 
 int code_generic_static_part(const struct c_context *context,
                              struct ip_header_info *const header_info,
@@ -129,19 +132,22 @@ int code_UO0_packet(struct c_context *const context,
                     const struct ip_packet *ip,
                     const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *const dest);
+                    unsigned char *const rohc_pkt,
+                    const size_t rohc_pkt_max_len);
 
 int code_UO1_packet(struct c_context *const context,
                     const struct ip_packet *ip,
                     const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *const dest);
+                    unsigned char *const rohc_pkt,
+                    const size_t rohc_pkt_max_len);
 
 int code_UO2_packet(struct c_context *const context,
                     const struct ip_packet *ip,
                     const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *const dest);
+                    unsigned char *const rohc_pkt,
+                    const size_t rohc_pkt_max_len);
 
 int code_UOR2_bytes(const struct c_context *context,
                     const rohc_ext_t extension,
@@ -457,7 +463,6 @@ void c_init_tmp_variables(struct generic_tmp_vars *tmp_vars)
 	tmp_vars->nr_ip_id_bits2 = 0;
 
 	tmp_vars->packet_type = PACKET_UNKNOWN;
-	tmp_vars->max_size = 0;
 }
 
 
@@ -828,21 +833,21 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context        The compression context
- * @param ip             The IP packet to encode
- * @param packet_size    The length of the IP packet to encode
- * @param dest           The rohc-packet-under-build buffer
- * @param dest_size      The length of the rohc-packet-under-build buffer
- * @param packet_type    OUT: The type of ROHC packet that is created
- * @param payload_offset The offset for the payload in the IP packet
- * @return               The length of the created ROHC packet
- *                       or -1 in case of failure
+ * @param context           The compression context
+ * @param ip                The IP packet to encode
+ * @param packet_size       The length of the IP packet to encode
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       OUT: The type of ROHC packet that is created
+ * @param payload_offset    OUT: The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,
                      const size_t packet_size,
-                     unsigned char *const dest,
-                     const size_t dest_size,
+                     unsigned char *const rohc_pkt,
+                     const size_t rohc_pkt_max_len,
                      rohc_packet_t *const packet_type,
                      int *const payload_offset)
 {
@@ -861,7 +866,6 @@ int c_generic_encode(struct c_context *const context,
 	g_context->tmp.changed_fields2 = 0;
 	g_context->tmp.nr_ip_id_bits2 = 0;
 	g_context->tmp.packet_type = PACKET_UNKNOWN;
-	g_context->tmp.max_size = dest_size;
 
 	/* STEP 1:
 	 *  - check double IP headers
@@ -979,7 +983,8 @@ int c_generic_encode(struct c_context *const context,
 	g_context->tmp.packet_type = decide_packet(context, ip, inner_ip);
 
 	/* STEP 6: code the packet (and the extension if needed) */
-	size = code_packet(context, ip, inner_ip, next_header, dest);
+	size = code_packet(context, ip, inner_ip, next_header,
+	                   rohc_pkt, rohc_pkt_max_len);
 	if(size < 0)
 	{
 		goto error;
@@ -1564,26 +1569,29 @@ error:
 /**
  * @brief Build the ROHC packet to send.
  *
- * @param context     The compression context
- * @param ip          The outer IP header
- * @param ip2         The inner IP header
- * @param next_header The next header such as UDP or UDP-Lite
- * @param dest        The rohc-packet-under-build buffer
- * @return            The position in the rohc-packet-under-build buffer
- *                    if successful, -1 otherwise
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip2               The inner IP header
+ * @param next_header       The next header such as UDP or UDP-Lite
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int code_packet(struct c_context *const context,
                 const struct ip_packet *ip,
                 const struct ip_packet *ip2,
                 const unsigned char *next_header,
-                unsigned char *const dest)
+                unsigned char *const rohc_pkt,
+                const size_t rohc_pkt_max_len)
 {
 	struct c_generic_context *g_context;
 	int (*code_packet_type)(struct c_context *context,
 	                        const struct ip_packet *ip,
 	                        const struct ip_packet *ip2,
 	                        const unsigned char *next_header,
-	                        unsigned char *dest);
+	                        unsigned char *const rohc_pkt,
+	                        const size_t rohc_pkt_max_len);
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -1620,7 +1628,8 @@ int code_packet(struct c_context *const context,
 			goto error;
 	}
 
-	return code_packet_type(context, ip, ip2, next_header, dest);
+	return code_packet_type(context, ip, ip2, next_header,
+	                        rohc_pkt, rohc_pkt_max_len);
 
 error:
 	return -1;
@@ -1665,20 +1674,23 @@ error:
 
 \endverbatim
  *
- * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header data used to code the static and
- *                     dynamic parts of the next header for some profiles such
- *                     as UDP, UDP-Lite, and so on.
- * @param dest         The rohc-packet-under-build buffer
- * @return             The position in the rohc-packet-under-build buffer
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip2               The inner IP header
+ * @param next_header       The next header data used to code the static and
+ *                          dynamic parts of the next header for some profiles
+ *                          such as UDP, UDP-Lite, and so on.
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int code_IR_packet(struct c_context *const context,
                    const struct ip_packet *ip,
                    const struct ip_packet *ip2,
                    const unsigned char *next_header,
-                   unsigned char *const dest)
+                   unsigned char *const rohc_pkt,
+                   const size_t rohc_pkt_max_len)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
@@ -1690,7 +1702,7 @@ int code_IR_packet(struct c_context *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	assert(dest != NULL);
+	assert(rohc_pkt != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
@@ -1714,7 +1726,7 @@ int code_IR_packet(struct c_context *const context,
 	 *  - part 4 will start at 'counter'
 	 */
 	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          dest, g_context->tmp.max_size, &first_position);
+	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* initialize some profile-specific things when building an IR
 	 * or IR-DYN packet */
@@ -1727,23 +1739,23 @@ int code_IR_packet(struct c_context *const context,
 	type = 0xfc;
 	type |= 1; /* D flag */
 	rohc_comp_debug(context, "type of packet + D flag = 0x%02x\n", type);
-	dest[first_position] = type;
+	rohc_pkt[first_position] = type;
 
 	/* part 4 */
 	rohc_comp_debug(context, "profile ID = 0x%02x\n", context->profile->id);
-	dest[counter] = context->profile->id;
+	rohc_pkt[counter] = context->profile->id;
 	counter++;
 
 	/* part 5: the CRC is computed later since it must be computed
 	 * over the whole packet with an empty CRC field */
 	rohc_comp_debug(context, "CRC = 0x00 for CRC calculation\n");
 	crc_position = counter;
-	dest[counter] = 0;
+	rohc_pkt[counter] = 0;
 	counter++;
 
 	/* part 6: static part */
 	ret = code_generic_static_part(context, &g_context->ip_flags,
-	                                   ip, dest, counter);
+	                               ip, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1753,7 +1765,7 @@ int code_IR_packet(struct c_context *const context,
 	if(nr_of_ip_hdr > 1)
 	{
 		ret = code_generic_static_part(context, &g_context->ip2_flags,
-		                               ip2, dest, counter);
+		                               ip2, rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -1765,13 +1777,13 @@ int code_IR_packet(struct c_context *const context,
 	{
 		/* static part of next header */
 		counter = g_context->code_static_part(context, next_header,
-		                                      dest, counter);
+		                                      rohc_pkt, counter);
 	}
 
 	/* part 7: if we do not want dynamic part in IR packet, we should not
 	 * send the following */
 	ret = code_generic_dynamic_part(context, &g_context->ip_flags,
-	                                    ip, dest, counter);
+	                                ip, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1781,7 +1793,7 @@ int code_IR_packet(struct c_context *const context,
 	if(nr_of_ip_hdr > 1)
 	{
 		ret = code_generic_dynamic_part(context, &g_context->ip2_flags,
-		                                ip2, dest, counter);
+		                                ip2, rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -1793,21 +1805,21 @@ int code_IR_packet(struct c_context *const context,
 	{
 		/* dynamic part of next header */
 		counter = g_context->code_dynamic_part(context, next_header,
-		                                       dest, counter);
+		                                       rohc_pkt, counter);
 	}
 
 	/* part 8: IR remainder header */
 	if(g_context->code_ir_remainder != NULL)
 	{
-		counter = g_context->code_ir_remainder(context, dest, counter);
+		counter = g_context->code_ir_remainder(context, rohc_pkt, counter);
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
-	                                   CRC_INIT_8,
-	                                   context->compressor->crc_table_8);
+	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
+	                                       CRC_INIT_8,
+	                                       context->compressor->crc_table_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)\n",
-	                counter, dest[crc_position]);
+	                counter, rohc_pkt[crc_position]);
 
 error:
 	return counter;
@@ -1848,20 +1860,23 @@ error:
 
 \endverbatim
  *
- * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header data used to code the dynamic part
- *                     of the next header for some profiles such as UDP,
- *                     UDP-Lite, etc.
- * @param dest         The rohc-packet-under-build buffer
- * @return             The position in the rohc-packet-under-build buffer
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip2               The inner IP header
+ * @param next_header       The next header data used to code the dynamic part
+ *                          of the next header for some profiles such as UDP,
+ *                          UDP-Lite, etc.
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int code_IR_DYN_packet(struct c_context *const context,
                        const struct ip_packet *ip,
                        const struct ip_packet *ip2,
                        const unsigned char *next_header,
-                       unsigned char *const dest)
+                       unsigned char *const rohc_pkt,
+                       const size_t rohc_pkt_max_len)
 {
 	struct c_generic_context *g_context;
 	size_t counter;
@@ -1871,7 +1886,7 @@ int code_IR_DYN_packet(struct c_context *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	assert(dest != NULL);
+	assert(rohc_pkt != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -1882,7 +1897,7 @@ int code_IR_DYN_packet(struct c_context *const context,
 	 *  - part 4 will start at 'counter'
 	 */
 	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          dest, g_context->tmp.max_size, &first_position);
+	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* initialize some profile-specific things when building an IR
 	 * or IR-DYN packet */
@@ -1892,22 +1907,22 @@ int code_IR_DYN_packet(struct c_context *const context,
 	}
 
 	/* part 2 */
-	dest[first_position] = 0xf8;
+	rohc_pkt[first_position] = 0xf8;
 
 	/* part 4 */
-	dest[counter] = context->profile->id;
+	rohc_pkt[counter] = context->profile->id;
 	counter++;
 
 	/* part 5: the CRC is computed later since it must be computed
 	 * over the whole packet with an empty CRC field */
 	crc_position = counter;
-	dest[counter] = 0;
+	rohc_pkt[counter] = 0;
 	counter++;
 
 	/* part 6: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
 	ret = code_generic_dynamic_part(context, &g_context->ip_flags,
-	                                ip, dest, counter);
+	                                ip, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1917,7 +1932,7 @@ int code_IR_DYN_packet(struct c_context *const context,
 	if(g_context->tmp.nr_of_ip_hdr > 1)
 	{
 		ret = code_generic_dynamic_part(context, &g_context->ip2_flags,
-		                                ip2, dest, counter);
+		                                ip2, rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -1928,21 +1943,22 @@ int code_IR_DYN_packet(struct c_context *const context,
 	if(g_context->code_dynamic_part != NULL && next_header != NULL)
 	{
 		/* dynamic part of next header */
-		counter = g_context->code_dynamic_part(context, next_header, dest, counter);
+		counter = g_context->code_dynamic_part(context, next_header, rohc_pkt,
+		                                       counter);
 	}
 
 	/* part 7: IR-DYN remainder header */
 	if(g_context->code_ir_remainder != NULL)
 	{
-		counter = g_context->code_ir_remainder(context, dest, counter);
+		counter = g_context->code_ir_remainder(context, rohc_pkt, counter);
 	}
 
 	/* part 5 */
-	dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, dest, counter,
-	                                   CRC_INIT_8,
-	                                   context->compressor->crc_table_8);
+	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
+	                                       CRC_INIT_8,
+	                                       context->compressor->crc_table_8);
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)\n",
-	                counter, dest[crc_position]);
+	                counter, rohc_pkt[crc_position]);
 
 error:
 	return counter;
@@ -2506,19 +2522,21 @@ int code_uo_remainder(struct c_context *const context,
 
 \endverbatim
  *
- * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header such as UDP or UDP-Lite
- * @param dest         The rohc-packet-under-build buffer
- * @return             The position in the rohc-packet-under-build buffer
- *                     if successful, -1 otherwise
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip2               The inner IP header
+ * @param next_header       The next header such as UDP or UDP-Lite
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int code_UO0_packet(struct c_context *const context,
                     const struct ip_packet *ip,
                     const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *const dest)
+                    unsigned char *const rohc_pkt,
+                    const size_t rohc_pkt_max_len)
 {
 	size_t counter;
 	size_t first_position;
@@ -2536,13 +2554,13 @@ int code_UO0_packet(struct c_context *const context,
 	 *  - part 4 will start at 'counter'
 	 */
 	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          dest, g_context->tmp.max_size, &first_position);
+	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
 	{
 		counter = g_context->code_UO_packet_head(context, next_header,
-		                                         dest, counter, &first_position);
+		                                         rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2: SN + CRC
@@ -2559,10 +2577,10 @@ int code_UO0_packet(struct c_context *const context,
 	                                     context->compressor->crc_table_3);
 	f_byte |= crc;
 	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
-	dest[first_position] = f_byte;
+	rohc_pkt[first_position] = f_byte;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
+	counter = code_uo_remainder(context, ip, ip2, next_header, rohc_pkt, counter);
 
 	return counter;
 }
@@ -2633,19 +2651,21 @@ int code_UO0_packet(struct c_context *const context,
 
 \endverbatim
  *
- * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header such as UDP or UDP-Lite
- * @param dest         The rohc-packet-under-build buffer
- * @return             The position in the rohc-packet-under-build buffer
- *                     if successful, -1 otherwise
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip2               The inner IP header
+ * @param next_header       The next header such as UDP or UDP-Lite
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int code_UO1_packet(struct c_context *const context,
                     const struct ip_packet *ip,
                     const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *const dest)
+                    unsigned char *const rohc_pkt,
+                    const size_t rohc_pkt_max_len)
 {
 	size_t counter;
 	size_t first_position;
@@ -2728,13 +2748,13 @@ int code_UO1_packet(struct c_context *const context,
 	 *  - part 4 will start at 'counter'
 	 */
 	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          dest, g_context->tmp.max_size, &first_position);
+	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
 	{
 		counter = g_context->code_UO_packet_head(context, next_header,
-		                                         dest, counter, &first_position);
+		                                         rohc_pkt, counter, &first_position);
 	}
 
 	/* part 5: decide which extension to use (UO-1-ID only) */
@@ -2893,7 +2913,7 @@ int code_UO1_packet(struct c_context *const context,
 			            false, error, "bad packet type (%d)\n", packet_type);
 	}
 	f_byte |= 0x80;
-	dest[first_position] = f_byte;
+	rohc_pkt[first_position] = f_byte;
 	rohc_comp_debug(context, "1 0 + T + TS/IP-ID = 0x%02x\n", f_byte);
 
 	/* part 4: (M / X +) SN + CRC
@@ -3000,7 +3020,7 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            false, error, "bad packet type (%d)\n", packet_type);
 	}
-	dest[counter] = s_byte;
+	rohc_pkt[counter] = s_byte;
 	counter++;
 
 	/* part 5: code extension */
@@ -3010,16 +3030,16 @@ int code_UO1_packet(struct c_context *const context,
 			ret = counter;
 			break;
 		case PACKET_EXT_0:
-			ret = code_EXT0_packet(context, dest, counter);
+			ret = code_EXT0_packet(context, rohc_pkt, counter);
 			break;
 		case PACKET_EXT_1:
-			ret = code_EXT1_packet(context, dest, counter);
+			ret = code_EXT1_packet(context, rohc_pkt, counter);
 			break;
 		case PACKET_EXT_2:
-			ret = code_EXT2_packet(context, dest, counter);
+			ret = code_EXT2_packet(context, rohc_pkt, counter);
 			break;
 		case PACKET_EXT_3:
-			ret = code_EXT3_packet(context, ip, ip2, dest, counter);
+			ret = code_EXT3_packet(context, ip, ip2, rohc_pkt, counter);
 			break;
 		default:
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3035,7 +3055,7 @@ int code_UO1_packet(struct c_context *const context,
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
+	counter = code_uo_remainder(context, ip, ip2, next_header, rohc_pkt, counter);
 
 	return counter;
 
@@ -3116,19 +3136,21 @@ error:
 
 \endverbatim
  *
- * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header such as UDP or UDP-Lite
- * @param dest         The rohc-packet-under-build buffer
- * @return             The position in the rohc-packet-under-build buffer
- *                     if successful, -1 otherwise
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param ip2               The inner IP header
+ * @param next_header       The next header such as UDP or UDP-Lite
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 int code_UO2_packet(struct c_context *const context,
                     const struct ip_packet *ip,
                     const struct ip_packet *ip2,
                     const unsigned char *next_header,
-                    unsigned char *const dest)
+                    unsigned char *const rohc_pkt,
+                    const size_t rohc_pkt_max_len)
 {
 	unsigned char f_byte;     /* part 2 */
 	unsigned char s_byte = 0; /* part 4 */
@@ -3188,13 +3210,13 @@ int code_UO2_packet(struct c_context *const context,
 	 *  - parts 4/5 will start at 'counter'
 	 */
 	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          dest, g_context->tmp.max_size, &first_position);
+	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
 	{
 		counter = g_context->code_UO_packet_head(context, next_header,
-		                                         dest, counter, &first_position);
+		                                         rohc_pkt, counter, &first_position);
 	}
 
 	/* part 2: to be continued, we need to add the 5 bits of SN */
@@ -3255,14 +3277,14 @@ int code_UO2_packet(struct c_context *const context,
 		goto error;
 	}
 
-	dest[first_position] = f_byte;
+	rohc_pkt[first_position] = f_byte;
 	rohc_comp_debug(context, "f_byte = 0x%02x\n", f_byte);
 	if(is_rtp)
 	{
-		dest[s_byte_position] = s_byte;
+		rohc_pkt[s_byte_position] = s_byte;
 		rohc_comp_debug(context, "s_byte = 0x%02x\n", s_byte);
 	}
-	dest[t_byte_position] = t_byte;
+	rohc_pkt[t_byte_position] = t_byte;
 	rohc_comp_debug(context, "t_byte = 0x%02x\n", t_byte);
 
 	/* part 6: code extension */
@@ -3272,16 +3294,16 @@ int code_UO2_packet(struct c_context *const context,
 			ret = counter;
 			break;
 		case PACKET_EXT_0:
-			ret = code_EXT0_packet(context, dest, counter);
+			ret = code_EXT0_packet(context, rohc_pkt, counter);
 			break;
 		case PACKET_EXT_1:
-			ret = code_EXT1_packet(context, dest, counter);
+			ret = code_EXT1_packet(context, rohc_pkt, counter);
 			break;
 		case PACKET_EXT_2:
-			ret = code_EXT2_packet(context, dest, counter);
+			ret = code_EXT2_packet(context, rohc_pkt, counter);
 			break;
 		case PACKET_EXT_3:
-			ret = code_EXT3_packet(context, ip, ip2, dest, counter);
+			ret = code_EXT3_packet(context, ip, ip2, rohc_pkt, counter);
 			break;
 		default:
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3297,7 +3319,7 @@ int code_UO2_packet(struct c_context *const context,
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, ip, ip2, next_header, dest, counter);
+	counter = code_uo_remainder(context, ip, ip2, next_header, rohc_pkt, counter);
 
 	return counter;
 

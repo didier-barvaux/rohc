@@ -282,12 +282,22 @@ struct c_profile
 
 	/**
 	 * @brief The handler used to encode uncompressed IP packets
+	 *
+	 * @param context            The compression context
+	 * @param ip                 The IP packet to encode
+	 * @param packet_size        The length of the IP packet to encode
+	 * @param rohc_pkt           OUT: The ROHC packet
+	 * @param rohc_pkt_max_len   The maximum length of the ROHC packet
+	 * @param packet_type        OUT: The type of ROHC packet that is created
+	 * @param payload_offset     OUT: The offset for the payload in the IP packet
+	 * @return                   The length of the ROHC packet if successful,
+	 *                           -1 otherwise
 	 */
 	int (*encode)(struct c_context *const context,
 	              const struct ip_packet *packet,
 	              const size_t packet_size,
-	              unsigned char *const dest,
-	              const size_t dest_size,
+	              unsigned char *const rohc_pkt,
+	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type,
 	              int *const payload_offset);
 

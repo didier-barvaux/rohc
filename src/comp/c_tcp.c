@@ -350,8 +350,8 @@ static bool c_tcp_check_context(const struct c_context *const context,
 static int c_tcp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
                         const size_t packet_size,
-                        unsigned char *const dest,
-                        const size_t dest_size,
+                        unsigned char *const rohc_pkt,
+                        const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset);
 
@@ -413,18 +413,20 @@ static int code_CO_packet(struct c_context *const context,
                           const struct ip_packet *ip,
                           const int packet_size,
                           const unsigned char *next_header,
-                          unsigned char *const dest,
+                          unsigned char *const rohc_pkt,
+                          const size_t rohc_pkt_max_len,
                           rohc_packet_t *const packet_type,
                           int *const payload_offset);
 static int co_baseheader(struct c_context *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_ptr_t ip_inner_context,
                          base_header_ip_t base_header,
-                         unsigned char *const dest,
+                         unsigned char *const rohc_pkt,
+                         const size_t rohc_pkt_max_len,
                          rohc_packet_t *const packet_type,
                          int size_payload,
                          int ttl_irregular_chain_flag)
-	__attribute__((nonnull(1, 2, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 2, 5, 7), warn_unused_result));
 
 
 /*
@@ -1101,21 +1103,21 @@ bad_context:
  * @brief Encode an IP/TCP packet according to a pattern decided by several
  *        different factors.
  *
- * @param context        The compression context
- * @param ip             The IP packet to encode
- * @param packet_size    The length of the IP packet to encode
- * @param dest           The rohc-packet-under-build buffer
- * @param dest_size      The length of the rohc-packet-under-build buffer
- * @param packet_type    OUT: The type of ROHC packet that is created
- * @param payload_offset The offset for the payload in the IP packet
- * @return               The length of the created ROHC packet
- *                       or -1 in case of failure
+ * @param context           The compression context
+ * @param ip                The IP packet to encode
+ * @param packet_size       The length of the IP packet to encode
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       OUT: The type of ROHC packet that is created
+ * @param payload_offset    OUT: The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 static int c_tcp_encode(struct c_context *const context,
                         const struct ip_packet *ip,
                         const size_t packet_size,
-                        unsigned char *const dest,
-                        const size_t dest_size,
+                        unsigned char *const rohc_pkt,
+                        const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
                         int *const payload_offset)
 {
@@ -1138,12 +1140,12 @@ static int c_tcp_encode(struct c_context *const context,
 #endif
 
 	assert(context != NULL);
-	assert(dest != NULL);
+	assert(rohc_pkt != NULL);
 
 	rohc_comp_debug(context, "context = %p, ip = %p, packet_size = %zu, "
-	                "dest = %p, dest_size = %zu, packet_type = %p, "
-	                "payload_offset = %p\n", context, ip, packet_size, dest,
-	                dest_size, packet_type, payload_offset);
+	                "rohc_pkt = %p, rohc_pkt_max_len = %zu, packet_type = %p, "
+	                "payload_offset = %p\n", context, ip, packet_size,
+	                rohc_pkt, rohc_pkt_max_len, packet_type, payload_offset);
 
 	*packet_type = PACKET_UNKNOWN;
 
@@ -1496,9 +1498,10 @@ static int c_tcp_encode(struct c_context *const context,
 	if((*packet_type) == PACKET_UNKNOWN)
 	{
 		counter = code_CO_packet(context, ip, packet_size, base_header.uint8,
-		                         dest, packet_type, payload_offset);
+		                         rohc_pkt, rohc_pkt_max_len, packet_type,
+		                         payload_offset);
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "current ROHC packet", dest, counter);
+		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 	}
 	else /* PACKET_IR or PACKET_IR_DYN */
 	{
@@ -1508,38 +1511,38 @@ static int c_tcp_encode(struct c_context *const context,
 		 *  - part 2 will be placed at 'first_position'
 		 *  - part 4 will start at 'counter'
 		 */
-		counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-		                          dest, g_context->tmp.max_size,
+		counter = code_cid_values(context->compressor->medium.cid_type,
+		                          context->cid, rohc_pkt, rohc_pkt_max_len,
 		                          &first_position);
 		rohc_comp_debug(context, "counter = %d, first_position = %zu, "
-		                "dest[0] = 0x%02x, dest[1] = 0x%02x\n", counter,
-		                first_position, dest[0], dest[1]);
+		                "rohc_pkt[0] = 0x%02x, rohc_pkt[1] = 0x%02x\n", counter,
+		                first_position, rohc_pkt[0], rohc_pkt[1]);
 
 		/* part 2: type of packet */
 		if((*packet_type) == PACKET_IR)
 		{
-			dest[first_position] = PACKET_TYPE_IR;
+			rohc_pkt[first_position] = PACKET_TYPE_IR;
 		}
 		else /* PACKET_IR_DYN */
 		{
-			dest[first_position] = PACKET_TYPE_IR_DYN;
+			rohc_pkt[first_position] = PACKET_TYPE_IR_DYN;
 		}
 		rohc_comp_debug(context, "packet type = 0x%02x\n",
-		                dest[first_position]);
+		                rohc_pkt[first_position]);
 
 		/* part 4 */
 		rohc_comp_debug(context, "profile ID = 0x%02x\n", context->profile->id);
-		dest[counter] = context->profile->id;
+		rohc_pkt[counter] = context->profile->id;
 		counter++;
 
 		/* part 5: the CRC is computed later since it must be computed
 		 * over the whole packet with an empty CRC field */
 		rohc_comp_debug(context, "CRC = 0x00 for CRC calculation\n");
 		crc_position = counter;
-		dest[counter] = 0;
+		rohc_pkt[counter] = 0;
 		counter++;
 
-		mptr.uint8 = &dest[counter];
+		mptr.uint8 = &rohc_pkt[counter];
 
 		if((*packet_type) == PACKET_IR)
 		{
@@ -1590,7 +1593,7 @@ static int c_tcp_encode(struct c_context *const context,
 						return -1;
 				}
 				rohc_comp_debug(context, "counter = %d, protocol = %d\n",
-				                (int)(mptr.uint8 - &dest[counter]), protocol);
+				                (int)(mptr.uint8 - &rohc_pkt[counter]), protocol);
 
 			}
 			while(rohc_is_tunneling(protocol));
@@ -1599,7 +1602,7 @@ static int c_tcp_encode(struct c_context *const context,
 			mptr.uint8 = tcp_code_static_tcp_part(context,base_header.tcphdr,mptr);
 			rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 			                 ROHC_TRACE_DEBUG, "current ROHC packet",
-			                 dest, mptr.uint8 - dest);
+			                 rohc_pkt, mptr.uint8 - rohc_pkt);
 		}
 
 		/* Packet IP or IR-DYN : add dynamic chain */
@@ -1654,9 +1657,9 @@ static int c_tcp_encode(struct c_context *const context,
 		// add TCP dynamic part
 		mptr.uint8 = tcp_code_dynamic_tcp_part(context,base_header.uint8,mptr);
 
-		counter = (int) ( mptr.uint8 - dest );
+		counter = (int) ( mptr.uint8 - rohc_pkt );
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "current ROHC packet", dest, counter);
+		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
 		rohc_comp_debug(context, "base_header %p\n", base_header.uint8);
 
@@ -1669,17 +1672,18 @@ static int c_tcp_encode(struct c_context *const context,
 		rohc_comp_debug(context, "payload size %d\n", size);
 
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "current ROHC packet", dest, counter);
+		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
 		/* part 5 */
-		dest[crc_position] = crc_calculate(ROHC_CRC_TYPE_8,  dest, counter, CRC_INIT_8,
-		                                   context->compressor->crc_table_8);
+		rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
+		                                       counter, CRC_INIT_8,
+		                                       context->compressor->crc_table_8);
 		rohc_comp_debug(context, "CRC (header length = %d, crc = 0x%x)\n",
-		                counter, dest[crc_position]);
+		                counter, rohc_pkt[crc_position]);
 
 		rohc_comp_debug(context, "IR packet, length %d\n",counter);
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "current ROHC packet", dest, counter);
+		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
 		*packet_type = PACKET_IR;
 		*payload_offset = base_header.uint8 - (uint8_t*) ip->data;
@@ -3638,22 +3642,25 @@ error:
 
 \endverbatim
  *
- * @param context         The compression context
- * @param ip              The outer IP header
- * @param packet_size     The length of the uncompressed packet (in bytes)
- * @param next_header     The next header data used to code the static and
- *                        dynamic parts of the next header for some profiles such
- *                        as UDP, UDP-Lite, and so on.
- * @param dest            The rohc-packet-under-build buffer
- * @param packet_type     OUT: The type of ROHC packet that is created
- * @param payload_offset  The offset for the payload in the IP packet
- * @return                The position in the rohc-packet-under-build buffer
+ * @param context           The compression context
+ * @param ip                The outer IP header
+ * @param packet_size       The length of the uncompressed packet (in bytes)
+ * @param next_header       The next header data used to code the static and
+ *                          dynamic parts of the next header for some profiles
+ *                          such as UDP, UDP-Lite, and so on.
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       OUT: The type of ROHC packet that is created
+ * @param payload_offset    OUT: The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 static int code_CO_packet(struct c_context *const context,
                           const struct ip_packet *ip,
                           const int packet_size,
                           const unsigned char *next_header,
-                          unsigned char *const dest,
+                          unsigned char *const rohc_pkt,
+                          const size_t rohc_pkt_max_len,
                           rohc_packet_t *const packet_type,
                           int *const payload_offset)
 {
@@ -3691,8 +3698,8 @@ static int code_CO_packet(struct c_context *const context,
 	rohc_comp_debug(context, "code CO packet (CID = %d)\n", context->cid);
 
 	rohc_comp_debug(context, "context = %p, ip = %p, packet_size = %d, "
-	                "next_header = %p, dest = %p\n", context, ip, packet_size,
-	                next_header, dest);
+	                "next_header = %p, rohc_pkt = %p\n", context, ip,
+	                packet_size, next_header, rohc_pkt);
 
 	rohc_comp_debug(context, "parse the %u-byte IP packet\n", ip->size);
 	base_header.ipvx = (base_header_ip_vx_t*) ip->data;
@@ -3809,20 +3816,21 @@ static int code_CO_packet(struct c_context *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          dest, g_context->tmp.max_size,
+	counter = code_cid_values(context->compressor->medium.cid_type,
+	                          context->cid, rohc_pkt, rohc_pkt_max_len,
 	                          &first_position);
-	rohc_comp_debug(context, "dest = %p, counter = %d, first_position = %zu, "
-	                "dest[0] = 0x%02x, dest[1] = 0x%02x\n", dest, counter,
-	                first_position, dest[0], dest[1]);
+	rohc_comp_debug(context, "rohc_pkt = %p, counter = %d, "
+	                "first_position = %zu, rohc_pkt[0] = 0x%02x, "
+	                "rohc_pkt[1] = 0x%02x\n", rohc_pkt, counter,
+	                first_position, rohc_pkt[0], rohc_pkt[1]);
 
 	/* part 4: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
 #if ROHC_EXTRA_DEBUG == 1
-	puchar = &dest[counter];
+	puchar = &rohc_pkt[counter];
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "puchar", puchar,
-	                 counter + (puchar - dest));
+	                 counter + (puchar - rohc_pkt));
 #endif
 
 	// If SMALL_CID
@@ -3832,11 +3840,12 @@ static int code_CO_packet(struct c_context *const context,
 	//               1 <= counter <= 5  first_position = 0
 
 	/* save the last CID octet */
-	save_first_byte = dest[counter - 1];
+	save_first_byte = rohc_pkt[counter - 1];
 
 	i = co_baseheader(context, tcp_context, ip_inner_context,
-	                  base_header_inner, &dest[counter - 1], packet_type,
-	                  payload_size, ttl_irregular_chain_flag);
+	                  base_header_inner,
+	                  &rohc_pkt[counter - 1], rohc_pkt_max_len,
+	                  packet_type, payload_size, ttl_irregular_chain_flag);
 	if(i < 0)
 	{
 		rohc_comp_debug(context, "failed to build co_baseheader\n");
@@ -3845,7 +3854,7 @@ static int code_CO_packet(struct c_context *const context,
 
 	// Now add irregular chain
 
-	mptr.uint8 = &dest[counter - 1] + i;
+	mptr.uint8 = &rohc_pkt[counter - 1] + i;
 
 	// Init pointer to the initial packet
 	base_header.ipvx = (base_header_ip_vx_t *)ip->data;
@@ -3900,18 +3909,18 @@ static int code_CO_packet(struct c_context *const context,
 
 	if(context->compressor->medium.cid_type != ROHC_SMALL_CID)
 	{
-		rohc_comp_debug(context, "counter = %d, dest[counter-1] = 0x%02x, "
+		rohc_comp_debug(context, "counter = %d, rohc_pkt[counter-1] = 0x%02x, "
 		                "save_first_byte = 0x%02x\n", counter,
-		                dest[counter - 1], save_first_byte);
+		                rohc_pkt[counter - 1], save_first_byte);
 		// Restore byte saved
-		dest[first_position] = dest[counter - 1];
-		dest[counter - 1] = save_first_byte;
+		rohc_pkt[first_position] = rohc_pkt[counter - 1];
+		rohc_pkt[counter - 1] = save_first_byte;
 	}
 
-	counter = mptr.uint8 - dest;
+	counter = mptr.uint8 - rohc_pkt;
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-	                 ROHC_TRACE_DEBUG, "CO packet", dest, counter);
+	                 ROHC_TRACE_DEBUG, "CO packet", rohc_pkt, counter);
 
 error:
 	return counter;
@@ -3927,7 +3936,8 @@ error:
  * @param tcp_context               The specific TCP context
  * @param ip_context                The specific IP innermost context
  * @param base_header               The innermost IP header
- * @param dest                      The rohc-packet-under-build buffer
+ * @param rohc_pkt                  OUT: The ROHC packet
+ * @param rohc_pkt_max_len          The maximum length of the ROHC packet
  * @param packet_type               OUT: The type of ROHC packet that is created
  * @param payload_size              The size of the payload
  * @param ttl_irregular_chain_flag  Set if the TTL/Hop Limit of an outer header has changed
@@ -3938,7 +3948,8 @@ static int co_baseheader(struct c_context *const context,
 								 struct sc_tcp_context *const tcp_context,
 								 ip_context_ptr_t ip_context,
 								 base_header_ip_t base_header,
-								 unsigned char *const dest,
+								 unsigned char *const rohc_pkt,
+								 const size_t rohc_pkt_max_len,
                          rohc_packet_t *const packet_type,
 								 int payload_size,
 								 int ttl_irregular_chain_flag)
@@ -3980,13 +3991,13 @@ static int co_baseheader(struct c_context *const context,
 	*packet_type = PACKET_UNKNOWN;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "base_header_ip = %p, dest = %p, payload_size = %d, "
+	                "base_header_ip = %p, rohc_pkt = %p, payload_size = %d, "
 	                "ttl_irregular_chain_flag = %d\n",
-	                tcp_context, ip_context.uint8, base_header.uint8, dest,
+	                tcp_context, ip_context.uint8, base_header.uint8, rohc_pkt,
 	                payload_size, ttl_irregular_chain_flag);
 
 	// Init pointer on rohc compressed buffer
-	c_base_header.uint8 = dest;
+	c_base_header.uint8 = rohc_pkt;
 
 	if(base_header.ipvx->version == IPV4)
 	{
@@ -4659,8 +4670,8 @@ static int co_baseheader(struct c_context *const context,
 	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d\n",
 	                ttl_irregular_chain_flag);
 	mptr.uint8 = (uint8_t*)(c_base_header.co_common + 1);
-	rohc_comp_debug(context, "dest = %p, co_common = %p, seq_number = %p\n",
-	                dest, c_base_header.co_common, mptr.uint8);
+	rohc_comp_debug(context, "rohc_pkt = %p, co_common = %p, seq_number = %p\n",
+	                rohc_pkt, c_base_header.co_common, mptr.uint8);
 
 	c_base_header.co_common->discriminator = 0x7D; // '1111101'
 	c_base_header.co_common->ttl_hopl_outer_flag = ttl_irregular_chain_flag;
@@ -4842,10 +4853,10 @@ static int co_baseheader(struct c_context *const context,
 	                 ROHC_TRACE_DEBUG, "compressed header",
 	                 c_base_header.uint8, mptr.uint8 - c_base_header.uint8);
 
-	counter = mptr.uint8 - dest;
+	counter = mptr.uint8 - rohc_pkt;
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-	                 ROHC_TRACE_DEBUG, "co_header", dest, counter);
+	                 ROHC_TRACE_DEBUG, "co_header", rohc_pkt, counter);
 
 	/* update context with new values (done at the very end to avoid wrongly
 	 * updating the context in case of compression failure) */

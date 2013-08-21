@@ -172,9 +172,6 @@ struct generic_tmp_vars
 
 	/// The type of packet the compressor must send: IR, IR-DYN, UO*
 	rohc_packet_t packet_type;
-
-	/// The maximal size of the compressed packet
-	size_t max_size;
 };
 
 
@@ -401,8 +398,8 @@ rohc_ext_t decide_extension(const struct c_context *context);
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,
                      const size_t packet_size,
-                     unsigned char *const dest,
-                     const size_t dest_size,
+                     unsigned char *const rohc_pkt,
+                     const size_t rohc_pkt_max_len,
                      rohc_packet_t *const packet_type,
                      int *const payload_offset);
 

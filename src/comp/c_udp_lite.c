@@ -124,8 +124,8 @@ static bool c_udp_lite_check_context(const struct c_context *const context,
 static int c_udp_lite_encode(struct c_context *const context,
                              const struct ip_packet *ip,
                              const size_t packet_size,
-                             unsigned char *const dest,
-                             const size_t dest_size,
+                             unsigned char *const rohc_pkt,
+                             const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
                              int *const payload_offset);
 
@@ -542,21 +542,21 @@ bad_context:
  * @brief Encode an IP/UDP-lite packet according to a pattern decided by several
  *        different factors.
  *
- * @param context        The compression context
- * @param ip             The IP packet to encode
- * @param packet_size    The length of the IP packet to encode
- * @param dest           The rohc-packet-under-build buffer
- * @param dest_size      The length of the rohc-packet-under-build buffer
- * @param packet_type    OUT: The type of ROHC packet that is created
- * @param payload_offset The offset for the payload in the IP packet
- * @return               The length of the created ROHC packet
- *                       or -1 in case of failure
+ * @param context           The compression context
+ * @param ip                The IP packet to encode
+ * @param packet_size       The length of the IP packet to encode
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       OUT: The type of ROHC packet that is created
+ * @param payload_offset    OUT: The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 static int c_udp_lite_encode(struct c_context *const context,
                              const struct ip_packet *ip,
                              const size_t packet_size,
-                             unsigned char *const dest,
-                             const size_t dest_size,
+                             unsigned char *const rohc_pkt,
+                             const size_t rohc_pkt_max_len,
                              rohc_packet_t *const packet_type,
                              int *const payload_offset)
 {
@@ -608,7 +608,8 @@ static int c_udp_lite_encode(struct c_context *const context,
 	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
 
 	/* encode the IP packet */
-	size = c_generic_encode(context, ip, packet_size, dest, dest_size,
+	size = c_generic_encode(context, ip, packet_size,
+	                        rohc_pkt, rohc_pkt_max_len,
 	                        packet_type, payload_offset);
 	if(size < 0)
 	{
