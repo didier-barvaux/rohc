@@ -87,7 +87,7 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		counter++;
 
 		/* determine the size of the SDVL-encoded large CID */
-		len = c_bytesSdvl(cid, 0 /* length detection */);
+		len = sdvl_get_len(cid, 0 /* length detection */);
 		assert(len > 0 && len <= 5);
 		if(len <= 0 || len > 4)
 		{

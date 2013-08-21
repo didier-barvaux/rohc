@@ -1479,7 +1479,7 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
 			ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
 			/* how many bytes are required by SDVL to encode TS_STRIDE ? */
-			ts_stride_sdvl_len = c_bytesSdvl(ts_stride, 0 /* length detection */);
+			ts_stride_sdvl_len = sdvl_get_len(ts_stride, 0 /* length detection */);
 			if(ts_stride_sdvl_len <= 0 || ts_stride_sdvl_len > 4)
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,

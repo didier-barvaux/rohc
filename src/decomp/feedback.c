@@ -321,7 +321,7 @@ static bool f_append_cid(struct d_feedback *const feedback,
 		assert(cid <= ROHC_LARGE_CID_MAX);
 
 		/* determine the number of bits required for the SDVL-encoded large CID */
-		largecidsize = c_bytesSdvl(cid, 0 /* length detection */);
+		largecidsize = sdvl_get_len(cid, 0 /* length detection */);
 		assert(largecidsize > 0 && largecidsize <= 5);
 		if(largecidsize <= 0 || largecidsize > 4)
 		{

@@ -129,7 +129,7 @@ size_t sdvl_get_min_len(const size_t nr_min_required,
  *               (0 to let the SDVL encoding find the length itself)
  * @return       The size needed to represent the SDVL-encoded value
  */
-size_t c_bytesSdvl(const uint32_t value, const size_t length)
+size_t sdvl_get_len(const uint32_t value, const size_t length)
 {
 	size_t size;
 
@@ -208,7 +208,7 @@ bool c_encodeSdvl(uint8_t *const dest,
 	size_t size;
 
 	/* find out the number of bytes needed to represent the SDVL-encoded value */
-	size = c_bytesSdvl(value, length);
+	size = sdvl_get_len(value, length);
 	assert(size > 0 && size <= 5);
 	if(size > 4)
 	{

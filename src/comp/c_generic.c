@@ -5091,7 +5091,7 @@ int code_EXT3_packet(const struct c_context *context,
 			ts_send = rtp_context->tmp.ts_send;
 
 			/* determine the size of the SDVL-encoded TS value */
-			sdvl_size = c_bytesSdvl(ts_send, nr_ts_bits_ext3);
+			sdvl_size = sdvl_get_len(ts_send, nr_ts_bits_ext3);
 			assert(sdvl_size > 0 && sdvl_size <= 5);
 			if(sdvl_size <= 0 || sdvl_size > 4)
 			{
@@ -5191,7 +5191,7 @@ int code_EXT3_packet(const struct c_context *context,
 			ts_send = rtp_context->tmp.ts_send;
 
 			/* determine the size of the SDVL-encoded TS value */
-			sdvl_size = c_bytesSdvl(ts_send, nr_ts_bits_ext3);
+			sdvl_size = sdvl_get_len(ts_send, nr_ts_bits_ext3);
 			assert(sdvl_size > 0 && sdvl_size <= 5);
 			if(sdvl_size <= 0 || sdvl_size > 4)
 			{
@@ -5386,7 +5386,7 @@ int rtp_header_flags_and_fields(const struct c_context *context,
 		ts_stride = get_ts_stride(&rtp_context->ts_sc);
 
 		/* determine the size of the SDVL-encoded TS_STRIDE value */
-		sdvl_size = c_bytesSdvl(ts_stride, 0 /* length detection */);
+		sdvl_size = sdvl_get_len(ts_stride, 0 /* length detection */);
 		assert(sdvl_size > 0 && sdvl_size <= 5);
 		if(sdvl_size <= 0 || sdvl_size > 4)
 		{

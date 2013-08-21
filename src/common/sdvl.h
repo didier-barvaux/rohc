@@ -67,7 +67,7 @@ size_t ROHC_EXPORT sdvl_get_min_len(const size_t nr_min_required,
                                     const size_t nr_encoded)
 	__attribute__((warn_unused_result, const));
 
-size_t ROHC_EXPORT c_bytesSdvl(const uint32_t value, const size_t length)
+size_t ROHC_EXPORT sdvl_get_len(const uint32_t value, const size_t length)
 	__attribute__((warn_unused_result, const));
 
 bool ROHC_EXPORT c_encodeSdvl(uint8_t *const dest,
