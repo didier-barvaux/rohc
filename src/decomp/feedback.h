@@ -74,7 +74,7 @@ struct d_feedback
 	/// The type of feedback (1 for FEEDBACK-1 and 2 for FEEDBACK-2)
 	int type;
 	/// The feedback data
-	char data[FEEDBACK_DATA_MAX_LEN];
+	uint8_t data[FEEDBACK_DATA_MAX_LEN];
 	/// The size of feedback data
 	int size;
 };

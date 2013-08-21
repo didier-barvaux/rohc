@@ -314,7 +314,6 @@ static bool f_append_cid(struct d_feedback *const feedback,
 
 	if(cid_type == ROHC_LARGE_CID)
 	{
-		unsigned char *acid;
 		size_t largecidsize;
 
 		/* large CIDs are used */
@@ -352,31 +351,16 @@ static bool f_append_cid(struct d_feedback *const feedback,
 			feedback->data[i - 1 + largecidsize] = feedback->data[i - 1];
 		}
 
-		/* allocate memory for the large CID */
-		acid = (unsigned char *) malloc(largecidsize);
-		if(acid == NULL)
-		{
-			feedback->size = 0;
-			return false;
-		}
-
 		/* SDVL-encode the large CID */
-		if(!c_encodeSdvl(acid, cid, 0 /* length detection */))
+		if(!c_encodeSdvl(feedback->data, cid, 0 /* length detection */))
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("failed to SDVL-encoded large CID %u, should never "
 			       "happen!\n", cid);
 #endif
-			zfree(acid);
 			return false;
 		}
-
-		/* copy the large CID to the feedback packet */
-		memcpy(feedback->data, acid, largecidsize);
 		feedback->size += largecidsize;
-
-		/* free the large CID */
-		zfree(acid);
 	}
 	else /* small CID */
 	{
