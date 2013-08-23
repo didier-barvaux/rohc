@@ -105,5 +105,77 @@
 #endif
 
 
+/** Append new LSB bits to already extracted bits */
+#define APPEND_BITS(field_descr, ext_no, field, field_nr, bits, bits_nr, max) \
+	do \
+	{ \
+		/* ensure not to eval variables several times */ \
+		const typeof(bits) _bits = (bits); \
+		const size_t _bits_nr = (bits_nr); \
+		const size_t _max = (max); \
+		/* print a description of what we do */ \
+		rohc_decomp_debug(context, \
+		                  "%zd bits of " #field_descr " found in %s = 0x%x\n", \
+		                  (_bits_nr), rohc_get_ext_descr(ext_no), (_bits)); \
+		/* is there enough room for all existing and new bits? */ \
+		if(((field_nr) + (_bits_nr)) <= (_max)) \
+		{ \
+			/* enough room: make and clear room, copy LSB */ \
+			field <<= (_bits_nr); \
+			field &= ~((1 << (_bits_nr)) - 1); \
+			field |= (_bits); \
+			field_nr += (_bits_nr); \
+		} \
+		else \
+		{ \
+			/* not enough room: drop some MSB */ \
+			typeof(field) _mask; \
+			assert((_bits_nr) > 0); \
+			assert((_bits_nr) <= (_max)); \
+			/* remove extra MSB (warn if dropped MSB are non-zero) */ \
+			_mask = (1 << ((_max) - (_bits_nr))) - 1; \
+			if((field & _mask) != field) \
+			{ \
+				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
+				          "too many bits for " #field_descr ": %zd bits " \
+				          "found in %s, and %zd bits already found before " \
+				          "for a %zd-bit field\n", (_bits_nr), \
+				          rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
+			} \
+			field &= _mask; \
+			/* make room and clear that room for new LSB */ \
+			field <<= (_bits_nr); \
+			field &= ~((1 << (_bits_nr)) - 1); \
+			/* add new LSB */ \
+			field |= (_bits); \
+			field_nr = (_max); \
+		} \
+	} \
+	while(0)
+
+/** SN: append new LSB bits to already extracted bits */
+#define APPEND_SN_BITS(ext_no, base, bits, bits_nr) \
+	APPEND_BITS(SN, ext_no, \
+	            (base)->sn, (base)->sn_nr, \
+	            (bits), (bits_nr), 32)
+
+/** Outer IP-ID: append new LSB bits to already extracted bits */
+#define APPEND_OUTER_IP_ID_BITS(ext_no, base, bits, bits_nr) \
+	APPEND_BITS(outer IP-ID, ext_no, \
+	            (base)->outer_ip.id, (base)->outer_ip.id_nr, \
+	            (bits), (bits_nr), 16)
+
+/** Inner IP-ID: append new LSB bits to already extracted bits */
+#define APPEND_INNER_IP_ID_BITS(ext_no, base, bits, bits_nr) \
+	APPEND_BITS(inner IP-ID, ext_no, \
+	            (base)->inner_ip.id, (base)->inner_ip.id_nr, \
+	            (bits), (bits_nr), 16)
+
+/** TS: append new LSB bits to already extracted bits */
+#define APPEND_TS_BITS(ext_no, base, bits, bits_nr) \
+	APPEND_BITS(TS, ext_no, \
+	            (base)->ts, (base)->ts_nr, \
+	            (bits), (bits_nr), 32)
+
 #endif
 

@@ -82,10 +82,23 @@ static int rtp_parse_static_rtp(const struct d_context *const context,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+
 static int rtp_parse_dynamic_rtp(const struct d_context *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits);
+
+static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
+                                const struct d_context *const context,
+                                const unsigned char *const rohc_data,
+                                const size_t rohc_data_len,
+                                struct rohc_extr_bits *const bits)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+
+static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
+                                            const int are_all_ipv4_rnd)
+	__attribute__((warn_unused_result, const));
+
 static int rtp_parse_uo_remainder(const struct d_context *const context,
                                   const unsigned char *packet,
                                   unsigned int length,
@@ -177,6 +190,7 @@ void * d_rtp_create(const struct d_context *const context)
 	g_context->detect_packet_type = rtp_detect_packet_type;
 	g_context->parse_static_next_hdr = rtp_parse_static_rtp;
 	g_context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
+	g_context->parse_extension3 = rtp_parse_extension3;
 	g_context->parse_uo_remainder = rtp_parse_uo_remainder;
 	g_context->decode_values_from_bits = rtp_decode_values_from_bits;
 	g_context->build_next_header = rtp_build_uncomp_rtp;
@@ -834,6 +848,588 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 
 error:
 	return -1;
+}
+
+
+/**
+ * @brief Parse the extension 3 of the UO-1-ID or UOR-2* packet
+ *
+ * \verbatim
+
+ Extension 3 for RTP profile (5.7.5):
+
+       0     1     2     3     4     5     6     7
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+ 1  |  1     1  |  S  |R-TS | Tsc |  I  | ip  | rtp |
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+ 2  |            Inner IP header flags        | ip2 |  if ip = 1
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+ 3  |            Outer IP header flags              |  if ip2 = 1
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+ 4  |                      SN                       |  if S = 1
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |                                               |
+4.1 /                      TS                       / 1-4 octets, if R-TS = 1
+    |                                               |
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |                                               |
+ 5  /            Inner IP header fields             /  variable,
+    |                                               |  if ip = 1
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+ 6  |                     IP-ID                     |  2 octets, if I = 1
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |                                               |
+ 7  /            Outer IP header fields             /  variable,
+    |                                               |  if ip2 = 1
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |                                               |  variable,
+ 8  /          RTP Header flags and fields          /  if rtp = 1
+    |                                               |
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+
+\endverbatim
+ *
+ * @param decomp        The ROHC decompressor
+ * @param context       The decompression context
+ * @param rohc_data     The ROHC data to parse
+ * @param rohc_data_len The length of the ROHC data to parse
+ * @param bits          IN: the bits already found in base header
+ *                      OUT: the bits found in the extension header 3
+ * @return              The data length read from the ROHC packet,
+ *                      -2 in case packet must be parsed again,
+ *                      -1 in case of error
+ */
+static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
+                                const struct d_context *const context,
+                                const unsigned char *const rohc_data,
+                                const size_t rohc_data_len,
+                                struct rohc_extr_bits *const bits)
+{
+	struct d_generic_context *g_context;
+	const unsigned char *ip_flags_pos = NULL;
+	const unsigned char *ip2_flags_pos = NULL;
+	int S, rts, I, ip, rtp, ip2;
+	uint16_t I_bits;
+	int size;
+	rohc_packet_t packet_type;
+
+	/* remaining ROHC data */
+	const unsigned char *rohc_remain_data;
+	size_t rohc_remain_len;
+
+	/* whether all RND values for outer and inner IP headers are set to 1 or
+	 * not (use value(RND) if RND bits are present in the extension, use
+	 * context(RND) = 1 otherwise) */
+	int are_all_ipv4_rnd = 1;
+
+	/* whether at least one RND flag changed in extension 3 */
+	bool rnd_changed = false;
+
+	/* sanity checks */
+	assert(decomp != NULL);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	assert(rohc_data != NULL);
+	assert(bits != NULL);
+
+	g_context = context->specific;
+	packet_type = g_context->packet_type;
+
+	rohc_decomp_debug(context, "decode %s extension 3\n",
+	                  rohc_get_packet_descr(packet_type));
+
+	rohc_remain_data = rohc_data;
+	rohc_remain_len = rohc_data_len;
+
+	/* check the minimal length to decode the flags */
+	if(rohc_remain_len < 1)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* decode the first byte of flags */
+	S = GET_REAL(GET_BIT_5(rohc_remain_data));
+	rts = GET_REAL(GET_BIT_4(rohc_remain_data));
+	bits->is_ts_scaled = GET_BOOL(GET_BIT_3(rohc_remain_data));
+	I = GET_REAL(GET_BIT_2(rohc_remain_data));
+	ip = GET_REAL(GET_BIT_1(rohc_remain_data));
+	rtp = GET_REAL(GET_BIT_0(rohc_remain_data));
+
+	/* decode the optional ip2 flag */
+	if(ip)
+	{
+		/* check the minimal length to decode the ip2 flag */
+		if(rohc_remain_len < 1)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
+
+		ip2 = GET_REAL(GET_BIT_0(rohc_remain_data + 1));
+	}
+	else
+	{
+		ip2 = 0;
+	}
+	rohc_decomp_debug(context, "S = %d, R-TS = %d, Tsc = %d, I = %d, ip = %d, "
+	                  "rtp = %d, ip2 = %d\n", S, rts, bits->is_ts_scaled, I,
+	                  ip, rtp, ip2);
+	rohc_remain_data++;
+	rohc_remain_len--;
+
+	/* check the minimal length to decode the inner & outer IP header flags
+	 * and the SN */
+	if(rohc_remain_len < (ip + ip2 + S))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* remember position of inner IP header flags if present */
+	if(ip)
+	{
+		rohc_decomp_debug(context, "inner IP header flags field is present in "
+		                  "EXT-3 = 0x%02x\n", GET_BIT_0_7(rohc_remain_data));
+		if(g_context->multiple_ip)
+		{
+			ip2_flags_pos = rohc_remain_data;
+		}
+		else
+		{
+			ip_flags_pos = rohc_remain_data;
+		}
+		rohc_remain_data++;
+		rohc_remain_len--;
+	}
+
+	/* remember position of outer IP header flags if present */
+	if(ip2)
+	{
+		rohc_decomp_debug(context, "outer IP header flags field is present in "
+		                  "EXT-3 = 0x%02x\n", GET_BIT_0_7(rohc_remain_data));
+		ip_flags_pos = rohc_remain_data;
+		rohc_remain_data++;
+		rohc_remain_len--;
+	}
+
+	/* extract the SN if present */
+	if(S)
+	{
+		APPEND_SN_BITS(PACKET_EXT_3, bits, GET_BIT_0_7(rohc_remain_data), 8);
+		rohc_remain_data++;
+		rohc_remain_len--;
+	}
+
+	/* extract and decode TS if present */
+	if(rts)
+	{
+		size_t ts_sdvl_size;
+		uint32_t ts_ext; /* TS bits extracted from extension header */
+		size_t ts_ext_nr;
+
+		/* decode SDVL-encoded TS value */
+		ts_sdvl_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
+		                           &ts_ext, &ts_ext_nr);
+		if(ts_sdvl_size <= 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "failed to decode SDVL-encoded TS field\n");
+			goto error;
+		}
+		APPEND_TS_BITS(PACKET_EXT_3, bits, ts_ext, ts_ext_nr);
+
+		rohc_remain_data += ts_sdvl_size;
+		rohc_remain_len -= ts_sdvl_size;
+	}
+
+	/* decode the inner IP header fields (pointed by packet) according to the
+	 * inner IP header flags (pointed by ip(2)_flags_pos) if present */
+	if(ip)
+	{
+		if(g_context->multiple_ip)
+		{
+			size = parse_inner_header_flags(decomp, context, ip2_flags_pos,
+			                                rohc_remain_data, rohc_remain_len,
+			                                &bits->inner_ip);
+
+			/* inner RND changed? */
+			if(bits->inner_ip.rnd_nr > 0)
+			{
+				are_all_ipv4_rnd &= bits->inner_ip.rnd;
+				if(bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+				{
+					rohc_decomp_debug(context, "RND changed for inner IP header "
+					                  "(%u -> %u)\n", g_context->inner_ip_changes->rnd,
+					                  bits->inner_ip.rnd);
+					rnd_changed = true;
+				}
+			}
+			else if(bits->inner_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->inner_ip_changes->rnd;
+			}
+		}
+		else
+		{
+			size = parse_inner_header_flags(decomp, context, ip_flags_pos,
+			                                rohc_remain_data, rohc_remain_len,
+			                                &bits->outer_ip);
+
+			/* outer RND changed? */
+			if(bits->outer_ip.rnd_nr > 0)
+			{
+				are_all_ipv4_rnd &= bits->outer_ip.rnd;
+				if(bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+				{
+					rohc_decomp_debug(context, "RND changed for outer IP header "
+					                  "(%u -> %u)\n", g_context->outer_ip_changes->rnd,
+					                  bits->outer_ip.rnd);
+					rnd_changed = true;
+				}
+			}
+			else if(bits->outer_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+			}
+		}
+		if(size < 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "cannot decode the inner IP header flags & fields\n");
+			goto error;
+		}
+
+		rohc_remain_data += size;
+		rohc_remain_len -= size;
+	}
+	else
+	{
+		/* no inner IP header flags, so get context(RND) */
+		if(g_context->multiple_ip)
+		{
+			if(bits->inner_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->inner_ip_changes->rnd;
+			}
+		}
+		else
+		{
+			if(bits->outer_ip.version == IPV4)
+			{
+				are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+			}
+		}
+	}
+
+	/* skip the IP-ID if present, it will be parsed later once all RND bits
+	 * have been parsed (ie. outer IP header flags), otherwise a problem
+	 * may occur: if you have context(outer RND) = 1 and context(inner RND) = 0
+	 * and value(outer RND) = 0 and value(inner RND) = 1, then here in the
+	 * code, we have no IP header with non-random IP-ID */
+	if(I)
+	{
+		/* check the minimal length to decode the IP-ID field */
+		if(rohc_remain_len < 2)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
+
+		/* both inner and outer IP-ID fields are 2-byte long */
+		I_bits = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
+		rohc_remain_data += 2;
+		rohc_remain_len -= 2;
+	}
+	else
+	{
+		I_bits = 0;
+	}
+
+	/* decode the outer IP header fields according to the outer IP header
+	 * flags if present */
+	if(ip2)
+	{
+		size = parse_outer_header_flags(decomp, context, ip_flags_pos,
+		                                rohc_remain_data, rohc_remain_len,
+		                                &bits->outer_ip);
+		if(size == -1)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "cannot decode the outer IP header flags & fields\n");
+			goto error;
+		}
+
+		/* outer RND changed? */
+		if(bits->outer_ip.rnd_nr > 0)
+		{
+			are_all_ipv4_rnd &= bits->outer_ip.rnd;
+			if(bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+			{
+				rohc_decomp_debug(context, "RND changed for outer IP header "
+				                  "(%u -> %u)\n", g_context->outer_ip_changes->rnd,
+				                  bits->outer_ip.rnd);
+				rnd_changed = true;
+			}
+		}
+		else if(bits->outer_ip.version == IPV4)
+		{
+			are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+		}
+
+		rohc_remain_data += size;
+		rohc_remain_len -= size;
+	}
+	else if(g_context->multiple_ip && bits->outer_ip.version == IPV4)
+	{
+		/* no outer IP header flags, so get context(RND) */
+		are_all_ipv4_rnd &= g_context->outer_ip_changes->rnd;
+	}
+
+	/* if RND changed while parsing UO-1-ID, UOR-2-RTP, UOR-2-ID, or UOR-2-TS,
+	 * we might have to restart parsing */
+	if(packet_type == PACKET_UO_1_ID && rnd_changed)
+	{
+		/* RFC 3095, section 5.7.5.1 says:
+		 *   The values of the RND and RND2 flags are changed by sending UOR-2
+		 *   headers with Extension 3, or IR-DYN headers, where the flag(s) have
+		 *   their new values.
+		 *   [...]
+		 *   When no IPv4 header is present in the static context, or the RND
+		 *   flags for all IPv4 headers in the context have been established to
+		 *   be 1, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS MUST
+		 *   NOT be used.
+		 *   [...]
+		 *   While in the transient state in which an RND flag is being
+		 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
+		 *   MUST NOT be used. */
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "at least one RND changed while parsing UO-1-ID, "
+		             "compressor does not conform to RFC, discard packet\n");
+		goto error;
+	}
+	else if(is_uor2_reparse_required(packet_type, are_all_ipv4_rnd))
+	{
+		/* RFC 3095, section 5.7.5.1 says:
+		 *   While in the transient state in which an RND flag is being
+		 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
+		 *   MUST NOT be used.  This implies that the RND flag(s) of Extension 3
+		 *   may have to be inspected before the exact format of a base header
+		 *   carrying an Extension 3 can be determined, i.e., whether a T-bit is
+		 *   present or not. */
+		rohc_decomp_debug(context, "at least one RND changed and it makes our "
+		                  "choice of packet type wrong, we must reparse the "
+		                  "UOR-2* packet with a different packet type\n");
+		goto reparse;
+	}
+
+	if(I)
+	{
+		/* determine which IP header is the innermost IPv4 header with
+		 * non-random IP-ID */
+		if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+		{
+			/* inner IP header is IPv4 with non-random IP-ID */
+			if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "IP-ID field present (I = 1) but inner IP-ID "
+				             "already updated\n");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+				goto error;
+#endif
+			}
+			bits->inner_ip.id = I_bits;
+			bits->inner_ip.id_nr = 16;
+			rohc_decomp_debug(context, "%zd bits of inner IP-ID in EXT3 = 0x%x\n",
+			                  bits->inner_ip.id_nr, bits->inner_ip.id);
+		}
+		else if(is_ipv4_non_rnd_pkt(bits->outer_ip))
+		{
+			/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
+			 * IP header is */
+			if(bits->outer_ip.id_nr > 0 && bits->outer_ip.id != 0)
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "IP-ID field present (I = 1) but outer IP-ID "
+				             "already updated\n");
+#ifdef ROHC_RFC_STRICT_DECOMPRESSOR
+				goto error;
+#endif
+			}
+			bits->outer_ip.id = I_bits;
+			bits->outer_ip.id_nr = 16;
+			rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
+			                  bits->outer_ip.id_nr, bits->outer_ip.id);
+		}
+		else
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "extension 3 cannot contain IP-ID bits because "
+			             "no IP header is IPv4 with non-random IP-ID\n");
+			goto error;
+		}
+	}
+
+	/* decode RTP header flags & fields if present */
+	if(rtp)
+	{
+		int rpt, csrc, tss, tis;
+		uint8_t rtp_m_ext; /* the RTP Marker (M) flag in extension header */
+
+		/* check the minimal length to decode RTP header flags */
+		if(rohc_remain_len < 1)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
+
+		/* decode RTP header flags */
+		bits->mode = GET_BIT_6_7(rohc_remain_data);
+		bits->mode_nr = 2;
+		rpt = GET_REAL(GET_BIT_5(rohc_remain_data));
+		rtp_m_ext = GET_REAL(GET_BIT_4(rohc_remain_data));
+		/* check that the RTP Marker (M) value found in the extension is the
+		 * same as the one we previously found in UO* base header. RFC 4815 at
+		 * §8.4 says:
+		 *   The RTP header part of Extension 3, as defined by RFC 3095
+		 *   Section 5.7.5, includes a one-bit field for the RTP Marker bit.
+		 *   This field is also present in all compressed base header formats
+		 *   except for UO-1-ID; meaning, there may be two occurrences of the
+		 *   field within one single compressed header. In such cases, the
+		 *   two M fields must have the same value.
+		 */
+		if(bits->rtp_m_nr > 0 && bits->rtp_m != rtp_m_ext)
+		{
+			assert(bits->rtp_m_nr == 1);
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "RTP Marker flag mismatch (base header = %u, "
+			             "extension 3 = %u)\n", bits->rtp_m, rtp_m_ext);
+			goto error;
+		}
+		else
+		{
+			/* set RTP M flag */
+			bits->rtp_m = rtp_m_ext;
+			bits->rtp_m_nr = 1;
+		}
+		rohc_decomp_debug(context, "%zd-bit RTP Marker (M) = %u\n",
+		                  bits->rtp_m_nr, bits->rtp_m);
+		bits->rtp_x = GET_REAL(GET_BIT_3(rohc_remain_data));
+		bits->rtp_x_nr = 1;
+		rohc_decomp_debug(context, "%zd-bit RTP eXtension (R-X) = %u\n",
+		                  bits->rtp_x_nr, bits->rtp_x);
+		csrc = GET_REAL(GET_BIT_2(rohc_remain_data));
+		tss = GET_REAL(GET_BIT_1(rohc_remain_data));
+		tis = GET_REAL(GET_BIT_0(rohc_remain_data));
+		rohc_remain_data++;
+		rohc_remain_len--;
+
+		/* check the minimal length to decode RTP header fields */
+		if(rohc_remain_len < (rpt + csrc + tss + tis))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			            "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			goto error;
+		}
+
+		/* decode RTP header fields */
+		if(rpt)
+		{
+			bits->rtp_p = GET_REAL(GET_BIT_7(rohc_remain_data));
+			bits->rtp_p_nr = 1;
+			rohc_decomp_debug(context, "%zd-bit RTP Padding (R-P) = 0x%x\n",
+			                  bits->rtp_p_nr, bits->rtp_p);
+			bits->rtp_pt = GET_BIT_0_6(rohc_remain_data);
+			bits->rtp_pt_nr = 7;
+			rohc_decomp_debug(context, "%zd-bit RTP Payload Type (R-PT) = 0x%x\n",
+			                  bits->rtp_pt_nr, bits->rtp_pt);
+			rohc_remain_data++;
+			rohc_remain_len--;
+		}
+
+		if(csrc)
+		{
+			/* TODO: Compressed CSRC list */
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "Compressed CSRC list not supported yet\n");
+			goto error;
+		}
+
+		if(tss)
+		{
+			struct d_rtp_context *rtp_context;
+			uint32_t ts_stride;
+			size_t ts_stride_bits_nr;
+			size_t ts_stride_size;
+
+			rtp_context = (struct d_rtp_context *) g_context->specific;
+
+			/* decode SDVL-encoded TS value */
+			ts_stride_size = sdvl_decode(rohc_remain_data, rohc_remain_len,
+			                             &ts_stride, &ts_stride_bits_nr);
+			if(ts_stride_size <= 0)
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "failed to decode SDVL-encoded TS_STRIDE field\n");
+				goto error;
+			}
+			rohc_decomp_debug(context, "decoded TS_STRIDE = %u / 0x%x\n",
+			                  ts_stride, ts_stride);
+
+			rohc_remain_data += ts_stride_size;
+			rohc_remain_len -= ts_stride_size;
+
+			/* temporarily store the decoded TS_STRIDE in context */
+			d_record_ts_stride(rtp_context->ts_scaled_ctxt, ts_stride);
+		}
+
+		if(tis)
+		{
+			/* TODO: TIME_STRIDE */
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "TIME_STRIDE not supported yet\n");
+			goto error;
+		}
+	}
+
+	return (rohc_data_len - rohc_remain_len);
+
+error:
+	return -1;
+reparse:
+	return -2;
+}
+
+
+/**
+ * @brief Does the UOR-2* packet need to be parsed again?
+ *
+ * When parsing a UOR-2* packet, if RND changes, the packet might need to be
+ * parsed again with another UOR-2* packet type in mind:
+ *  - UOR-2-RTP needs to be parsed again as UOR-2-ID or UOR-2-TS
+ *    if one of the RND flags becomes 0.
+ *  - UOR-2-ID needs to be parsed again as UOR-2-RTP
+ *    if none of the RND flags is 0 anymore.
+ *  - UOR-2-TS needs to be parsed again as UOR-2-RTP
+ *    if none of the RND flags is 0 anymore.
+ *
+ * @param packet_type       The packet type
+ * @param are_all_ipv4_rnd  Whether all RND values for outer and inner IP
+ *                          headers are set to 1
+ * @return                  Whether packet shall be parsed again or not
+ */
+static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
+                                            const int are_all_ipv4_rnd)
+{
+	return ((packet_type == PACKET_UOR_2_RTP && !are_all_ipv4_rnd) ||
+	        (packet_type == PACKET_UOR_2_ID && are_all_ipv4_rnd) ||
+	        (packet_type == PACKET_UOR_2_TS && are_all_ipv4_rnd));
 }
 
 

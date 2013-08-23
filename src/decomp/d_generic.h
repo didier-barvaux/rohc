@@ -393,6 +393,26 @@ struct d_generic_context
 	                          const size_t length,
 	                          struct rohc_extr_bits *const bits);
 
+	/**
+	 * @brief The handler used to parse the extension 3 of the UO* ROHC packet
+	 *
+	 * @param decomp        The ROHC decompressor
+	 * @param context       The decompression context
+	 * @param rohc_data     The ROHC data to parse
+	 * @param rohc_data_len The length of the ROHC data to parse
+	 * @param bits          IN: the bits already found in base header
+	 *                      OUT: the bits found in the extension header 3
+	 * @return              The data length read from the ROHC packet,
+	 *                      -2 in case packet must be parsed again,
+	 *                      -1 in case of error
+	 */
+	int (*parse_extension3)(const struct rohc_decomp *const decomp,
+	                        const struct d_context *const context,
+	                        const unsigned char *const rohc_data,
+	                        const size_t rohc_data_len,
+	                        struct rohc_extr_bits *const bits)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+
 	/// The handler used to parse the tail of the UO* ROHC packet
 	int (*parse_uo_remainder)(const struct d_context *const context,
 	                          const unsigned char *packet,
@@ -531,6 +551,59 @@ int d_generic_decode(struct rohc_decomp *const decomp,
                      unsigned char *uncomp_packet);
 
 uint32_t d_generic_get_sn(const struct d_context *const context);
+
+
+
+/*
+ * Helper functions
+ */
+
+
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
+	__attribute__((warn_unused_result, const));
+
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
+	__attribute__((warn_unused_result, const));
+
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
+	__attribute__((warn_unused_result, const));
+
+
+/**
+ * @brief Is the given IP header IPV4 wrt packet?
+ *
+ * @param bits  The bits extracted from packet
+ * @return      true if IPv4, false if IPv6
+ */
+static inline bool is_ipv4_pkt(const struct rohc_extr_ip_bits bits)
+{
+	return (bits.version == IPV4);
+}
+
+
+/**
+ * @brief Is the given IP header IPv4 and its IP-ID random wrt packet?
+ *
+ * @param bits  The bits extracted from packet
+ * @return      true if IPv4 and random, false otherwise
+ */
+static inline bool is_ipv4_rnd_pkt(const struct rohc_extr_ip_bits bits)
+{
+	return (is_ipv4_pkt(bits) && bits.rnd == 1);
+}
+
+
+/**
+ * @brief Is the given IP header IPv4 and its IP-ID non-random wrt packet?
+ *
+ * @param bits  The bits extracted from packet
+ * @return      true if IPv4 and non-random, false otherwise
+ */
+static inline bool is_ipv4_non_rnd_pkt(const struct rohc_extr_ip_bits bits)
+{
+	return (is_ipv4_pkt(bits) && bits.rnd == 0);
+}
+
 
 #endif
 

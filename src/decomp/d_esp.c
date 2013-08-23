@@ -146,6 +146,7 @@ static void * d_esp_create(const struct d_context *const context)
 	g_context->detect_packet_type = ip_detect_packet_type;
 	g_context->parse_static_next_hdr = esp_parse_static_esp;
 	g_context->parse_dyn_next_hdr = esp_parse_dynamic_esp;
+	g_context->parse_extension3 = ip_parse_extension3;
 	g_context->parse_uo_remainder = NULL;
 	g_context->decode_values_from_bits = esp_decode_values_from_bits;
 	g_context->build_next_header = esp_build_uncomp_esp;
