@@ -46,7 +46,7 @@ static void d_rtp_destroy(void *const context)
 
 static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
                                             const struct d_context *const context,
-                                            const uint8_t *const packet,
+                                            const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -175,7 +175,6 @@ void * d_rtp_create(const struct d_context *const context)
 
 	/* some RTP-specific values and functions */
 	g_context->next_header_len = nh_len;
-	g_context->detect_packet_type = rtp_detect_packet_type;
 	g_context->parse_static_next_hdr = rtp_parse_static_rtp;
 	g_context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
 	g_context->parse_extension3 = rtp_parse_extension3;
@@ -283,14 +282,14 @@ static void d_rtp_destroy(void *const context)
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
- * @param packet         The ROHC packet
+ * @param rohc_packet    The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
 static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
                                             const struct d_context *const context,
-                                            const uint8_t *const packet,
+                                            const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
 {
@@ -304,29 +303,29 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 		goto error;
 	}
 
-	if(d_is_uo0(packet, rohc_length))
+	if(d_is_uo0(rohc_packet, rohc_length))
 	{
 		/* UO-0 packet */
 		type = PACKET_UO_0;
 	}
-	else if(d_is_uo1(packet, rohc_length))
+	else if(d_is_uo1(rohc_packet, rohc_length))
 	{
 		/* choose between the UO-1-RTP, UO-1-ID, and UO-1-TS variants */
-		type = rtp_choose_uo1_variant(decomp, context, packet, rohc_length);
+		type = rtp_choose_uo1_variant(decomp, context, rohc_packet, rohc_length);
 	}
-	else if(d_is_uor2(packet, rohc_length))
+	else if(d_is_uor2(rohc_packet, rohc_length))
 	{
 		/* UOR-2* packet */
 
 #if RTP_BIT_TYPE
 
 		/* UOR-2-RTP or UOR-2-ID/TS packet, check the RTP disambiguation bit */
-		if(d_is_uor2_rtp(packet, rohc_length, large_cid_len))
+		if(d_is_uor2_rtp(rohc_packet, rohc_length, large_cid_len))
 		{
 			/* UOR-2-RTP packet */
 			type = PACKET_UOR_2_RTP;
 		}
-		else if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
+		else if(d_is_uor2_ts(rohc_packet, rohc_length, large_cid_len))
 		{
 			/* UOR-2-TS packet */
 			type = PACKET_UOR_2_TS;
@@ -340,18 +339,18 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 #else /* !RTP_BIT_TYPE */
 
 		/* choose between the UOR-2-RTP, UOR-2-ID, and UOR-2-TS variants */
-		type = rtp_choose_uor2_variant(decomp, context, packet, rohc_length,
+		type = rtp_choose_uor2_variant(decomp, context, rohc_packet, rohc_length,
 		                               large_cid_len);
 
 #endif /* RTP_BIT_TYPE */
 
 	}
-	else if(d_is_irdyn(packet, rohc_length))
+	else if(d_is_irdyn(rohc_packet, rohc_length))
 	{
 		/* IR-DYN packet */
 		type = PACKET_IR_DYN;
 	}
-	else if(d_is_ir(packet, rohc_length))
+	else if(d_is_ir(rohc_packet, rohc_length))
 	{
 		/* IR packet */
 		type = PACKET_IR;
@@ -361,7 +360,7 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 		/* unknown packet */
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to recognize the packet type in byte 0x%02x\n",
-		             *packet);
+		             rohc_packet[0]);
 		type = PACKET_UNKNOWN;
 	}
 
@@ -1929,7 +1928,8 @@ struct d_profile d_rtp_profile =
 {
 	ROHC_PROFILE_RTP,       /* profile ID (see 8 in RFC 3095) */
 	"RTP / Decompressor",   /* profile description */
-	d_generic_decode,       /* profile handlers */
+	.detect_packet_type = rtp_detect_packet_type,
+	d_generic_decode,
 	d_rtp_create,
 	d_rtp_destroy,
 	d_generic_get_sn,

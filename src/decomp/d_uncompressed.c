@@ -39,6 +39,13 @@
  * Prototypes of private functions
  */
 
+static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const decomp,
+                                               const struct d_context *const context,
+                                               const uint8_t *const rohc_packet,
+                                               const size_t rohc_length,
+                                               const size_t large_cid_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
 static int uncompressed_decode(struct rohc_decomp *const decomp,
                                struct d_context *const context,
                                const struct timespec arrival_time,
@@ -103,6 +110,37 @@ void uncompressed_free_decode_data(void *context)
 
 
 /**
+ * @brief Detect the type of ROHC packet for the Uncompressed profile
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               The packet type
+ */
+static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const decomp,
+                                               const struct d_context *const context,
+                                               const uint8_t *const rohc_packet,
+                                               const size_t rohc_length,
+                                               const size_t large_cid_len)
+{
+	rohc_packet_t type;
+
+	if(d_is_ir(rohc_packet, rohc_length))
+	{
+		type = PACKET_IR;
+	}
+	else
+	{
+		type = PACKET_NORMAL;
+	}
+
+	return type;
+}
+
+
+/**
  * @brief Decode one IR or Normal packet for the Uncompressed profile.
  *
  * This function is one of the functions that must exist in one profile for the
@@ -117,7 +155,8 @@ void uncompressed_free_decode_data(void *context)
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the large CID field
  * @param dest           The decoded IP packet
- * @param packet_type    OUT: The type of the decompressed ROHC packet
+ * @param packet_type    IN:  The type of the ROHC packet to parse
+ *                       OUT: The type of the parsed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                       or ROHC_ERROR if an error occurs
@@ -132,19 +171,28 @@ static int uncompressed_decode(struct rohc_decomp *const decomp,
                                unsigned char *const dest,
                                rohc_packet_t *const packet_type)
 {
-	if(d_is_ir(rohc_packet, rohc_length))
+	int status;
+
+	if((*packet_type) == PACKET_IR)
 	{
-		*packet_type = PACKET_IR;
-		return uncompressed_decode_ir(decomp, context, rohc_packet, rohc_length,
-		                              add_cid_len, large_cid_len, dest);
+		status = uncompressed_decode_ir(decomp, context,
+		                                rohc_packet, rohc_length,
+		                                add_cid_len, large_cid_len, dest);
+	}
+	else if((*packet_type) == PACKET_NORMAL)
+	{
+		status = uncompressed_decode_normal(decomp, context,
+		                                    rohc_packet, rohc_length,
+		                                    add_cid_len, large_cid_len, dest);
 	}
 	else
 	{
-		*packet_type = PACKET_NORMAL;
-		return uncompressed_decode_normal(decomp, context,
-		                                  rohc_packet, rohc_length,
-		                                  add_cid_len, large_cid_len, dest);
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "unsupported ROHC packet type %u\n", *packet_type);
+		status = ROHC_ERROR;
 	}
+
+	return status;
 }
 
 
@@ -333,7 +381,8 @@ struct d_profile d_uncomp_profile =
 {
 	ROHC_PROFILE_UNCOMPRESSED,     /* profile ID (see 8 in RFC 3095) */
 	"Uncompressed / Decompressor", /* profile description */
-	uncompressed_decode,           /* profile handlers */
+	.detect_packet_type = uncomp_detect_packet_type,
+	uncompressed_decode,
 	uncompressed_allocate_decode_data,
 	uncompressed_free_decode_data,
 	uncompressed_get_sn,

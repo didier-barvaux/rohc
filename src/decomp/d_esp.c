@@ -143,7 +143,6 @@ static void * d_esp_create(const struct d_context *const context)
 
 	/* some ESP-specific values and functions */
 	g_context->next_header_len = sizeof(struct esphdr);
-	g_context->detect_packet_type = ip_detect_packet_type;
 	g_context->parse_static_next_hdr = esp_parse_static_esp;
 	g_context->parse_dyn_next_hdr = esp_parse_dynamic_esp;
 	g_context->parse_extension3 = ip_parse_extension3;
@@ -445,7 +444,8 @@ struct d_profile d_esp_profile =
 {
 	ROHC_PROFILE_ESP,       /* profile ID (see 8 in RFC 3095) */
 	"ESP / Decompressor",   /* profile description */
-	d_generic_decode,       /* profile handlers */
+	.detect_packet_type = ip_detect_packet_type,
+	d_generic_decode,
 	d_esp_create,
 	d_esp_destroy,
 	d_generic_get_sn,

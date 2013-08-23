@@ -90,7 +90,7 @@ static void d_udp_lite_destroy(void *const context)
 
 static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
                                                  const struct d_context *const context,
-                                                 const uint8_t *const packet,
+                                                 const uint8_t *const rohc_packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
@@ -175,7 +175,6 @@ void * d_udp_lite_create(const struct d_context *const context)
 
 	/* some UDP-Lite-specific values and functions */
 	g_context->next_header_len = sizeof(struct udphdr);
-	g_context->detect_packet_type = udp_lite_detect_packet_type;
 	g_context->parse_static_next_hdr = udp_parse_static_udp;
 	g_context->parse_dyn_next_hdr = udp_lite_parse_dynamic_udp;
 	g_context->parse_extension3 = ip_parse_extension3;
@@ -267,14 +266,14 @@ static void d_udp_lite_destroy(void *const context)
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
- * @param packet         The ROHC packet
+ * @param rohc_packet    The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
 static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
                                                  const struct d_context *const context,
-                                                 const uint8_t *const packet,
+                                                 const uint8_t *const rohc_packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
 {
@@ -283,7 +282,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 	size_t new_large_cid_len;
 
 	/* remaining ROHC data not parsed yet */
-	const unsigned char *rohc_remain_data = packet;
+	const unsigned char *rohc_remain_data = rohc_packet;
 	size_t rohc_remain_len = rohc_length;
 
 	/* check if the ROHC packet is large enough to read the first byte */
@@ -356,7 +355,8 @@ error:
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
  * @param dest           The decoded IP packet
- * @param packet_type    OUT: The type of the decompressed ROHC packet
+ * @param packet_type    IN:  The type of the ROHC packet to parse
+ *                       OUT: The type of the parsed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  */
@@ -728,7 +728,8 @@ struct d_profile d_udplite_profile =
 {
 	ROHC_PROFILE_UDPLITE,        /* profile ID (see 7 in RFC 4019) */
 	"UDP-Lite / Decompressor",   /* profile description */
-	d_udp_lite_decode,           /* profile handlers */
+	.detect_packet_type = udp_lite_detect_packet_type,
+	d_udp_lite_decode,
 	d_udp_lite_create,
 	d_udp_lite_destroy,
 	d_generic_get_sn,

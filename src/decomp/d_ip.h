@@ -34,7 +34,7 @@
 
 rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
                                     const struct d_context *const context,
-                                    const uint8_t *const packet,
+                                    const uint8_t *const rohc_packet,
                                     const size_t rohc_length,
                                     const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));

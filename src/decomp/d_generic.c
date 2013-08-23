@@ -4016,14 +4016,16 @@ error:
  * framework to work.
  *
  * Steps:
- *  \li A. Detect the type of the ROHC packet
- *  \li B. Parsing of ROHC base header, extension header and tail of header
- *  \li C. For IR and IR-DYN packet, check for correct compressed header (CRC)
- *  \li D. Decode extracted bits
- *  \li E. Build uncompressed headers (and check for correct decompression
+ *  \li A. Parsing of ROHC base header, extension header and tail of header
+ *  \li B. For IR and IR-DYN packet, check for correct compressed header (CRC)
+ *  \li C. Decode extracted bits
+ *  \li D. Build uncompressed headers (and check for correct decompression
  *         for UO* packets)
- *  \li F. Copy the payload (if any)
- *  \li G. Update the compression context
+ *  \li E. Copy the payload (if any)
+ *  \li F. Update the compression context
+ *
+ * Steps C and D may be repeated if packet or context repair is attempted
+ * upon CRC failure.
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
@@ -4034,7 +4036,8 @@ error:
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
  * @param uncomp_packet  OUT: The decoded IP packet
- * @param packet_type    OUT: The type of the decompressed ROHC packet
+ * @param packet_type    IN:  The type of the ROHC packet to parse
+ *                       OUT: The type of the parsed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
@@ -4072,32 +4075,14 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	bool decode_ok;
 	int build_ret;
 
+	assert((*packet_type) != PACKET_UNKNOWN);
 
 	/* remember the arrival time of the packet (used for repair upon CRC
 	 * failure for example) */
 	g_context->cur_arrival_time = arrival_time;
 
 
- 	/* A. Detect the type of the ROHC packet */
-
-	*packet_type = g_context->detect_packet_type(decomp, context, rohc_packet,
-	                                             rohc_length, large_cid_len);
-
-	rohc_decomp_debug(context, "decode packet as '%s'\n",
-	                  rohc_get_packet_descr(*packet_type));
-
-	/* only the IR packet can be received in the No Context state,
-	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
-	if((*packet_type) != PACKET_IR && context->state == NO_CONTEXT)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "non-IR packet (%d) cannot be received in No Context "
-		             "state\n", *packet_type);
-		goto error;
-	}
-
-
-	/* B. Parsing of ROHC base header, extension header and tail of header */
+	/* A. Parsing of ROHC base header, extension header and tail of header */
 
 	/* let's parse the packet! */
 	parsing_ok = parse_packet(decomp, context,
@@ -4120,7 +4105,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 
 	/*
-	 * C. Check for correct compressed header (CRC)
+	 * B. Check for correct compressed header (CRC)
 	 *
 	 * Use the CRC on compressed headers to check whether IR header was
 	 * correctly received. The optional Add-CID is part of the CRC.
@@ -4159,7 +4144,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		}
 
 
-		/* D. Decode extracted bits
+		/* C. Decode extracted bits
 		 *
 		 * All bits are now extracted from the packet, let's decode them.
 		 */
@@ -4174,7 +4159,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		}
 
 
-		/* E. Build uncompressed headers & check for correct decompression
+		/* D. Build uncompressed headers & check for correct decompression
 		 *
 		 * All fields are now decoded, let's build the uncompressed headers.
 		 *
@@ -4292,7 +4277,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	}
 
 
-	/* F. Copy the payload (if any) */
+	/* E. Copy the payload (if any) */
 
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
@@ -4312,7 +4297,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	                  uncomp_header_len + payload_len);
 
 
-	/* G. Update the compression context
+	/* F. Update the compression context
 	 *
 	 * Once CRC check is done, update the compression context with the values
 	 * that were decoded earlier.

@@ -1152,20 +1152,46 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 			ddata->active->num_recv_ir_dyn++;
 		}
+
+		profile = ddata->active->profile;
 	}
 	ddata->active->latest_used = arrival_time.tv_sec;
 	decomp->last_context = ddata->active;
 
+ 	/* detect the type of the ROHC packet */
+	*packet_type = profile->detect_packet_type(decomp, ddata->active,
+	                                           walk, isize,
+	                                           ddata->large_cid_size);
+	if((*packet_type) == PACKET_UNKNOWN)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
+		             "failed to detect ROHC packet type\n");
+		goto error_malformed;
+	}
+	rohc_decomp_debug(ddata->active, "decode packet as '%s'\n",
+	                  rohc_get_packet_descr(*packet_type));
+
+	/* only the IR packet can be received in the No Context state,
+	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
+	if((*packet_type) != PACKET_IR && ddata->active->state == NO_CONTEXT)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
+		             "non-IR packet (%d) cannot be received in No Context "
+		             "state\n", *packet_type);
+		goto error_no_context;
+	}
+
+	/* only IR packet can create a new context */
+	assert((*packet_type) == PACKET_IR || !is_new_context);
+
 	/* decode the packet thanks to the profile-specific routines */
-	status = ddata->active->profile->decode(decomp, ddata->active,
-	                                        arrival_time, walk, isize,
-	                                        ddata->addcidUsed,
-	                                        ddata->large_cid_size, obuf,
-	                                        packet_type);
+	status = profile->decode(decomp, ddata->active, arrival_time, walk, isize,
+	                         ddata->addcidUsed, ddata->large_cid_size, obuf,
+	                         packet_type);
 	if(status < 0)
 	{
 		/* decompression failed, free ressources if necessary */
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "failed to decompress packet (code = %d)\n", status);
 		if(is_new_context)
 		{

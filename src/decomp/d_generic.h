@@ -371,13 +371,6 @@ struct d_generic_context
 	/// The length of the next header
 	unsigned int next_header_len;
 
-	/** The handler used to detect the packet type */
-	rohc_packet_t (*detect_packet_type)(const struct rohc_decomp *const decomp,
-	                                    const struct d_context *const context,
-	                                    const uint8_t *const packet,
-	                                    const size_t rohc_length,
-	                                    const size_t large_cid_len);
-
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
 	int (*parse_static_next_hdr)(const struct d_context *const context,

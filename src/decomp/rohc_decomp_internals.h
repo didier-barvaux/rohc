@@ -236,6 +236,14 @@ struct d_profile
 	/* A string that describes the profile */
 	char *description;
 
+	/** The handler used to detect the type of the ROHC packet */
+	rohc_packet_t (*detect_packet_type)(const struct rohc_decomp *const decomp,
+	                                    const struct d_context *const context,
+	                                    const uint8_t *const rohc_packet,
+	                                    const size_t rohc_length,
+	                                    const size_t large_cid_len)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
 	/* The handler used to decode a ROHC packet */
 	int (*decode)(struct rohc_decomp *const decomp,
 	              struct d_context *const context,

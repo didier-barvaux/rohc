@@ -115,7 +115,6 @@ void * d_udp_create(const struct d_context *const context)
 
 	/* some UDP-specific values and functions */
 	g_context->next_header_len = sizeof(struct udphdr);
-	g_context->detect_packet_type = ip_detect_packet_type;
 	g_context->parse_static_next_hdr = udp_parse_static_udp;
 	g_context->parse_dyn_next_hdr = udp_parse_dynamic_udp;
 	g_context->parse_extension3 = ip_parse_extension3;
@@ -582,7 +581,8 @@ struct d_profile d_udp_profile =
 {
 	ROHC_PROFILE_UDP,       /* profile ID (see 8 in RFC 3095) */
 	"UDP / Decompressor",   /* profile description */
-	d_generic_decode,       /* profile handlers */
+	.detect_packet_type = ip_detect_packet_type,
+	d_generic_decode,
 	d_udp_create,
 	d_udp_destroy,
 	d_generic_get_sn,

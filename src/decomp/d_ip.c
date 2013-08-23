@@ -81,7 +81,6 @@ void * d_ip_create(const struct d_context *const context)
 	}
 
 	/* some IP-specific values and functions */
-	g_context->detect_packet_type = ip_detect_packet_type;
 	g_context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
 	g_context->parse_extension3 = ip_parse_extension3;
 
@@ -119,14 +118,14 @@ void d_ip_destroy(void *const context)
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
- * @param packet         The ROHC packet
+ * @param rohc_packet    The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
 rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
                                     const struct d_context *const context,
-                                    const uint8_t *const packet,
+                                    const uint8_t *const rohc_packet,
                                     const size_t rohc_length,
                                     const size_t large_cid_len)
 {
@@ -140,27 +139,27 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
 		goto error;
 	}
 
-	if(d_is_uo0(packet, rohc_length))
+	if(d_is_uo0(rohc_packet, rohc_length))
 	{
 		/* UO-0 packet */
 		type = PACKET_UO_0;
 	}
-	else if(d_is_uo1(packet, rohc_length))
+	else if(d_is_uo1(rohc_packet, rohc_length))
 	{
 		/* UO-1 packet */
 		type = PACKET_UO_1;
 	}
-	else if(d_is_uor2(packet, rohc_length))
+	else if(d_is_uor2(rohc_packet, rohc_length))
 	{
 		/* UOR-2 packet */
 		type = PACKET_UOR_2;
 	}
-	else if(d_is_irdyn(packet, rohc_length))
+	else if(d_is_irdyn(rohc_packet, rohc_length))
 	{
 		/* IR-DYN packet */
 		type = PACKET_IR_DYN;
 	}
-	else if(d_is_ir(packet, rohc_length))
+	else if(d_is_ir(rohc_packet, rohc_length))
 	{
 		/* IR packet */
 		type = PACKET_IR;
@@ -170,7 +169,7 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
 		/* unknown packet */
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to recognize the packet type in byte 0x%02x\n",
-		             *packet);
+		             rohc_packet[0]);
 		type = PACKET_UNKNOWN;
 	}
 
@@ -780,7 +779,8 @@ struct d_profile d_ip_profile =
 {
 	ROHC_PROFILE_IP,              /* profile ID (see 5 in RFC 3843) */
 	"IP / Decompressor",          /* profile description */
-	d_generic_decode,             /* profile handlers */
+	.detect_packet_type = ip_detect_packet_type,
+	d_generic_decode,
 	d_ip_create,
 	d_ip_destroy,
 	d_generic_get_sn,

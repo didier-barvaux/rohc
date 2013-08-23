@@ -317,6 +317,12 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
                                   unsigned int length,
                                   tcphdr_t *tcp);
 
+static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp *const decomp,
+                                            const struct d_context *const context,
+                                            const uint8_t *const rohc_packet,
+                                            const size_t rohc_length,
+                                            const size_t large_cid_len);
+
 static int d_tcp_decode_ir(struct rohc_decomp *decomp,
                            struct d_context *context,
                            const unsigned char *const rohc_packet,
@@ -330,6 +336,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const unsigned int rohc_length,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
+                           const rohc_packet_t packet_type,
                            unsigned char *dest);
 
 static uint32_t d_tcp_get_msn(const struct d_context *const context)
@@ -466,6 +473,142 @@ static void d_tcp_destroy(void *const context)
 
 
 /**
+ * @brief Detect the type of ROHC packet for the TCP profile
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @return               The packet type
+ */
+static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp *const decomp,
+                                            const struct d_context *const context,
+                                            const uint8_t *const rohc_packet,
+                                            const size_t rohc_length,
+                                            const size_t large_cid_len)
+{
+	struct d_generic_context *g_context;
+	struct d_tcp_context *tcp_context;
+	ip_context_ptr_t ip_context;
+	bool is_ip_id_seq;
+	rohc_packet_t type;
+
+	assert(decomp != NULL);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
+	assert(g_context->specific != NULL);
+	tcp_context = g_context->specific;
+	ip_context.uint8 = tcp_context->ip_context;
+	assert(rohc_packet != NULL);
+
+	is_ip_id_seq =
+		(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED);
+
+	if(rohc_length < 1)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small to read the first byte that "
+		             "contains the packet type (len = %zd)\n", rohc_length);
+		goto error;
+	}
+
+	rohc_decomp_debug(context, "try to determine the header from first byte "
+	                  "0x%02x and ip_id_behavior = %d\n", rohc_packet[0],
+	                  ip_context.v4->ip_id_behavior);
+
+	if(rohc_packet[0] == PACKET_TYPE_IR)
+	{
+		type = PACKET_IR;
+	}
+	else if(rohc_packet[0] == PACKET_TYPE_IR_DYN)
+	{
+		type = PACKET_IR_DYN;
+	}
+	else if(rohc_packet[0] & 0x80)
+	{
+		switch(rohc_packet[0] & 0xf0)
+		{
+			case 0x80: /* 1000 = seq_5 / rnd_5 */
+				type = (is_ip_id_seq ? PACKET_TCP_SEQ_5 : PACKET_TCP_RND_5);
+				break;
+			case 0x90: /* 1001 = seq_3 / rnd_5 */
+				type = (is_ip_id_seq ? PACKET_TCP_SEQ_3 : PACKET_TCP_RND_5);
+				break;
+			case 0xa0: /* 1010 = seq_1 / rnd_6 */
+				type = (is_ip_id_seq ? PACKET_TCP_SEQ_1 : PACKET_TCP_RND_6);
+				break;
+			case 0xb0: /* 1011 = seq_8 / rnd_1 / rnd_7 / rnd_8 */
+				if(is_ip_id_seq)
+				{
+					type = PACKET_TCP_SEQ_8;
+				}
+				else if(rohc_packet[0] & 0x08)
+				{
+					if(rohc_packet[0] & 0x04)
+					{
+						type = PACKET_TCP_RND_7;
+					}
+					else
+					{
+						type = PACKET_TCP_RND_1;
+					}
+				}
+				else
+				{
+					type = PACKET_TCP_RND_8;
+				}
+				break;
+			case 0xc0: /* 1100 = seq_7 / rnd_2 */
+				type = (is_ip_id_seq ? PACKET_TCP_SEQ_7 : PACKET_TCP_RND_2);
+				break;
+			case 0xd0: /* 1101 = seq_2 / seq_6 / rnd_4 */
+				if(is_ip_id_seq)
+				{
+					if(rohc_packet[0] & 0x08)
+					{
+						type = PACKET_TCP_SEQ_6;
+					}
+					else
+					{
+						type = PACKET_TCP_SEQ_2;
+					}
+				}
+				else
+				{
+					type = PACKET_TCP_RND_4;
+				}
+				break;
+			case 0xf0: /* 1111 = common */
+				if((rohc_packet[0] & 0xfe) == 0xfa)
+				{
+					type = PACKET_TCP_CO_COMMON;
+				}
+				else
+				{
+					type = PACKET_UNKNOWN;
+				}
+				break;
+			default:
+				type = PACKET_UNKNOWN;
+				break;
+		}
+	}
+	else
+	{
+		/* seq_4 / rnd_3 */
+		type = (is_ip_id_seq ? PACKET_TCP_SEQ_4 : PACKET_TCP_RND_3);
+	}
+
+	return type;
+
+error:
+	return PACKET_UNKNOWN;
+}
+
+
+/**
  * @brief Decode one IR, IR-DYN, IR-CO IR-CR packet for TCP profile.
  *
  * This function is one of the functions that must exist in one profile for the
@@ -480,7 +623,8 @@ static void d_tcp_destroy(void *const context)
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
  * @param dest           OUT: The decoded IP packet
- * @param packet_type    OUT: The type of the decompressed ROHC packet
+ * @param packet_type    IN:  The type of the ROHC packet to parse
+ *                       OUT: The type of the parsed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
@@ -528,17 +672,16 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	                 ROHC_TRACE_DEBUG, "compressed data, max. 100 bytes",
 	                 rohc_packet, rohc_min(rohc_length, 100));
 
-	*packet_type = *rohc_packet;
-	rohc_decomp_debug(context, "packet type = 0x%02x\n", *packet_type);
+	rohc_decomp_debug(context, "parse packet type %u\n", *packet_type);
 
 	ip_context.uint8 = tcp_context->ip_context;
 
-	if((*packet_type) == PACKET_TYPE_IR)
+	if((*packet_type) == PACKET_IR)
 	{
 		size = d_tcp_decode_ir(decomp, context, rohc_packet, rohc_length,
 		                       add_cid_len, large_cid_len, dest);
 	}
-	else if((*packet_type) == PACKET_TYPE_IR_DYN)
+	else if((*packet_type) == PACKET_IR_DYN)
 	{
 		/* skip:
 		 *  - the first byte of the ROHC packet (field 2)
@@ -684,7 +827,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	{
 		// Uncompressed CO packet
 		size = d_tcp_decode_CO(decomp, context, rohc_packet, rohc_length,
-		                      add_cid_len, large_cid_len, dest);
+		                       add_cid_len, large_cid_len, *packet_type, dest);
 	}
 
 	rohc_decomp_debug(context, "return %d\n", size);
@@ -929,6 +1072,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 
 	}
 	while(rohc_is_tunneling(protocol));
+
+	// TODO: to be reworked
+	context->state = FULL_CONTEXT;
 
 	rohc_decomp_debug(context, "return %d\n", size);
 	return size;
@@ -3062,6 +3208,7 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
  * @param rohc_length    The length of the ROHC packet
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
+ * @param packet_type    The type of the ROHC packet to parse
  * @param dest           OUT: The decoded IP packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
@@ -3073,6 +3220,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const unsigned int rohc_length,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
+                           const rohc_packet_t packet_type,
                            unsigned char *dest)
 {
 	struct d_generic_context *g_context;
@@ -3094,6 +3242,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	int ip_inner_ecn;
 	WB_t ip_id;
 
+	size_t crc_type;
+	bool is_list_present = false;
+
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
 	unsigned int rohc_header_len;
 	unsigned int uncomp_header_len;
@@ -3109,7 +3260,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	multi_ptr_t c_base_header;
 	multi_ptr_t mptr;
 	tcphdr_t *tcp;
-	rohc_packet_t packet_type = PACKET_UNKNOWN;
 
 	assert(decomp != NULL);
 	assert(context != NULL);
@@ -3150,410 +3300,274 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	rohc_decomp_debug(context, "rohc_packet = %p, compressed base header = %p\n",
 	                  rohc_packet, c_base_header.uint8);
 
-	/* Try to determine the compressed format header used */
-	rohc_decomp_debug(context, "try to determine the header from 0x%x, "
-	                  "ip_id_behavior = %d\n", *rohc_packet,
-	                  ip_context.v4->ip_id_behavior);
-	if( (*rohc_packet) & 0x80)
+	switch(packet_type)
 	{
-		// common 1111101
-		//  rnd_1 101110
-		//  rnd_2 1100
-		//  rnd_4 1101
-		//  rnd_5 100
-		//  rnd_6 1010
-		//  rnd_7 101111
-		//  rnd_8 10110
-		//  seq_1 1010
-		//  seq_2 11010
-		//  seq_3 1001
-		//  seq_5 1000
-		//  seq_6 11011
-		//  seq_7 1100
-		//  seq_8 1011
-		switch( (*rohc_packet) & 0xF0)
-		{
-			case 0x80:  // 1000 rnd_5 seq_5
-				if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					// seq_5
-					rohc_decomp_debug(context, "header seq_5\n");
-					packet_type = PACKET_TCP_SEQ_5;
-					goto decode_seq_5;
-				}
-				else
-				{
-					// rnd_5
-					rohc_decomp_debug(context, "header rnd_5\n");
-					packet_type = PACKET_TCP_RND_5;
-					goto decode_rnd_5;
-				}
-				break;
-			case 0x90:  // 1001 rnd_5 seq_3
-				if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					// seq_3
-					rohc_decomp_debug(context, "header seq_3\n");
-					packet_type = PACKET_TCP_SEQ_3;
-					goto decode_seq_3;
-				}
-				else
-				{
-					// rnd_5
-					rohc_decomp_debug(context, "header rnd_5\n");
-					packet_type = PACKET_TCP_RND_5;
-					goto decode_rnd_5;
-				}
-				break;
-			case 0xA0:  // 1010 rnd_6 seq_1
-				if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					// seq_1
-					rohc_decomp_debug(context, "header seq_1\n");
-					packet_type = PACKET_TCP_SEQ_1;
-					goto decode_seq_1;
-				}
-				else
-				{
-					// rnd_6
-					rohc_decomp_debug(context, "header rnd_6\n");
-					packet_type = PACKET_TCP_RND_6;
-					goto decode_rnd_6;
-				}
-				break;
-			case 0xB0:  // 1011 rnd_1 rnd_7 rnd_8 seq_8
-				if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					// seq_8
-					rohc_decomp_debug(context, "header seq_8\n");
-					packet_type = PACKET_TCP_SEQ_8;
-					goto decode_seq_8;
-				}
-				else
-				{
-					if( (*rohc_packet) & 0x08)
-					{
-						// rnd_1 rnd_7
-						if( (*rohc_packet) & 0x04)
-						{
-							// rnd_7
-							rohc_decomp_debug(context, "header rnd_7\n");
-							packet_type = PACKET_TCP_RND_7;
-							goto decode_rnd_7;
-						}
-						else
-						{
-							// rnd_1
-							rohc_decomp_debug(context, "header rnd_1\n");
-							packet_type = PACKET_TCP_RND_1;
-							goto decode_rnd_1;
-						}
-					}
-					else
-					{
-						// rnd_8
-						rohc_decomp_debug(context, "header rnd_8\n");
-						packet_type = PACKET_TCP_RND_8;
-						goto decode_rnd_8;
-					}
-				}
-				break;
-			case 0xC0:  // 1100 rnd_2 seq_7
-				if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					// seq_7
-					rohc_decomp_debug(context, "header seq_7\n");
-					packet_type = PACKET_TCP_SEQ_7;
-					goto decode_seq_7;
-				}
-				else
-				{
-					// rnd_2
-					rohc_decomp_debug(context, "header rnd_2\n");
-					packet_type = PACKET_TCP_RND_2;
-					goto decode_rnd_2;
-				}
-				break;
-			case 0xD0:  // 1101 rnd_4 seq_2 seq_6
-				if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-				{
-					if( (*rohc_packet) & 0x08)
-					{
-						// seq_6
-						rohc_decomp_debug(context, "header seq_6\n");
-						packet_type = PACKET_TCP_SEQ_6;
-						goto decode_seq_6;
-					}
-					else
-					{
-						// seq_2
-						rohc_decomp_debug(context, "header seq_2\n");
-						packet_type = PACKET_TCP_SEQ_2;
-						goto decode_seq_2;
-					}
-				}
-				else
-				{
-					// rnd_4
-					rohc_decomp_debug(context, "header rnd_4\n");
-					packet_type = PACKET_TCP_RND_4;
-					goto decode_rnd_4;
-				}
-				break;
-			case 0xE0:  // 1110
-				rohc_decomp_debug(context, "header unknown\n");
-				goto error;
-			case 0xF0:  // 1111 common
-				if( ( *(rohc_packet) & 0xFE ) == 0xFA)
-				{
-					// common
-					rohc_decomp_debug(context, "header common\n");
-					packet_type = PACKET_TCP_CO_COMMON;
-					goto decode_common;
-				}
-				rohc_decomp_debug(context, "header unknown\n");
-				goto error;
-		}
+		case PACKET_TCP_RND_1:
+			assert( c_base_header.rnd1->discriminator == 0x2E ); // '101110'
+			size_header = sizeof(rnd_1_t);
+			header_crc = c_base_header.rnd1->header_crc;
+			c_base_header.rnd1->header_crc = 0;
+			msn = c_base_header.rnd1->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_2:
+			assert( c_base_header.rnd2->discriminator == 0x0C ); // '1100'
+			size_header = sizeof(rnd_2_t);
+			header_crc = c_base_header.rnd2->header_crc;
+			c_base_header.rnd2->header_crc = 0;
+			msn = c_base_header.rnd2->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_3:
+			assert( c_base_header.rnd3->discriminator == 0x00 ); // '0'
+			size_header = sizeof(rnd_3_t);
+			header_crc = c_base_header.rnd3->header_crc;
+			c_base_header.rnd3->header_crc = 0;
+			msn = c_base_header.rnd3->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_4:
+			assert( c_base_header.rnd4->discriminator == 0x0D ); // '1101'
+			size_header = sizeof(rnd_4_t);
+			header_crc = c_base_header.rnd4->header_crc;
+			c_base_header.rnd4->header_crc = 0;
+			msn = c_base_header.rnd4->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_5:
+			assert( c_base_header.rnd5->discriminator == 0x04 ); // '100'
+			size_header = sizeof(rnd_5_t);
+			header_crc = c_base_header.rnd5->header_crc;
+			c_base_header.rnd5->header_crc = 0;
+			msn = c_base_header.rnd5->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_6:
+			assert( c_base_header.rnd6->discriminator == 0x0A ); // '1010'
+			size_header = sizeof(rnd_6_t);
+			header_crc = c_base_header.rnd6->header_crc;
+			c_base_header.rnd6->header_crc = 0;
+			msn = c_base_header.rnd6->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_7:
+			assert( c_base_header.rnd7->discriminator == 0x2F ); // '101111'
+			size_header = sizeof(rnd_7_t);
+			header_crc = c_base_header.rnd7->header_crc;
+			c_base_header.rnd7->header_crc = 0;
+			msn = c_base_header.rnd7->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_RND_8:
+			assert( c_base_header.rnd8->discriminator == 0x16 ); // '10110'
+			size_header = sizeof(rnd_8_t);
+			header_crc = c_base_header.rnd8->header_crc;
+			c_base_header.rnd8->header_crc = 0;
+			msn = (c_base_header.rnd8->msn1 << 3) | c_base_header.rnd8->msn2;
+			rohc_decomp_debug(context, "rnd_8: size_header = %d\n", size_header);
+			if(c_base_header.rnd8->list_present)
+			{
+				is_list_present = true;
+			}
+			crc_type = 7;
+			break;
+
+		case PACKET_TCP_SEQ_1:
+			assert( c_base_header.seq1->discriminator == 0x0A ); // '1010'
+			size_header = sizeof(seq_1_t);
+			header_crc = c_base_header.seq1->header_crc;
+			c_base_header.seq1->header_crc = 0;
+			msn = c_base_header.seq1->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_2:
+			assert( c_base_header.seq2->discriminator == 0x1A ); // '11010'
+			size_header = sizeof(seq_2_t);
+			header_crc = c_base_header.seq2->header_crc;
+			c_base_header.seq2->header_crc = 0;
+			msn = c_base_header.seq2->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_3:
+			assert( c_base_header.seq3->discriminator == 0x09 ); // '1001'
+			size_header = sizeof(seq_3_t);
+			header_crc = c_base_header.seq3->header_crc;
+			c_base_header.seq3->header_crc = 0;
+			msn = c_base_header.seq3->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_4:
+			assert( c_base_header.seq4->discriminator == 0x00 ); // '0'
+			size_header = sizeof(seq_4_t);
+			header_crc = c_base_header.seq4->header_crc;
+			c_base_header.seq4->header_crc = 0;
+			msn = c_base_header.seq4->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_5:
+			assert( c_base_header.seq5->discriminator == 0x08 ); // '1000'
+			size_header = sizeof(seq_5_t);
+			header_crc = c_base_header.seq5->header_crc;
+			c_base_header.seq5->header_crc = 0;
+			msn = c_base_header.seq5->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_6:
+			assert( c_base_header.seq6->discriminator == 0x1B ); // '11011'
+			size_header = sizeof(seq_6_t);
+			header_crc = c_base_header.seq6->header_crc;
+			c_base_header.seq6->header_crc = 0;
+			msn = c_base_header.seq6->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_7:
+			assert( c_base_header.seq7->discriminator == 0x0C ); // '1100'
+			size_header = sizeof(seq_7_t);
+			header_crc = c_base_header.seq7->header_crc;
+			c_base_header.seq7->header_crc = 0;
+			msn = c_base_header.seq7->msn;
+			crc_type = 3;
+			break;
+
+		case PACKET_TCP_SEQ_8:
+			assert( c_base_header.seq8->discriminator == 0x0B ); // '1011'
+			size_header = sizeof(seq_8_t);
+			header_crc = c_base_header.seq8->header_crc;
+			c_base_header.seq8->header_crc = 0;
+			msn = c_base_header.seq8->msn;
+			rohc_decomp_debug(context, "seq_8: size_header = %d\n", size_header);
+			if(c_base_header.seq8->list_present)
+			{
+				is_list_present = true;
+			}
+			crc_type = 7;
+			break;
+
+		case PACKET_TCP_CO_COMMON:
+			assert( c_base_header.co_common->discriminator == 0x7D ); // '1111101'
+			size_header = sizeof(co_common_t);
+			size_options +=
+				variable_length_32_size[c_base_header.co_common->seq_indicator];
+			rohc_decomp_debug(context, "seq_indicator = %d => %d bytes of "
+			                  "options\n",
+			                  c_base_header.co_common->seq_indicator,
+			                  size_options);
+			size_options +=
+				variable_length_32_size[c_base_header.co_common->ack_indicator];
+			rohc_decomp_debug(context, "ack_indicator = %d => %d bytes of "
+			                  "options\n",
+			                  c_base_header.co_common->ack_indicator,
+			                  size_options);
+			size_options += c_base_header.co_common->ack_stride_indicator << 1;
+			rohc_decomp_debug(context, "ack_stride_indicator = %d => %d bytes "
+			                  "of options\n",
+	   		               c_base_header.co_common->ack_stride_indicator,
+									size_options);
+			size_options += c_base_header.co_common->window_indicator << 1;
+			rohc_decomp_debug(context, "window_indicator = %d => %d bytes of "
+			                  "options\n",
+			                  c_base_header.co_common->window_indicator,
+			                  size_options);
+			if(c_base_header.co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
+			   c_base_header.co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+			{
+				size_options += c_base_header.co_common->ip_id_indicator + 1;
+			}
+			rohc_decomp_debug(context, "ip_id_behavior = %d, ip_id_indicator "
+			                  "= %d => %d bytes of options\n",
+			                  c_base_header.co_common->ip_id_behavior,
+			                  c_base_header.co_common->ip_id_indicator,
+			                  size_options);
+			size_options += c_base_header.co_common->urg_ptr_present << 1;
+			rohc_decomp_debug(context, "urg_ptr_present = %d => %d bytes of "
+			                  "options\n",
+			                  c_base_header.co_common->urg_ptr_present,
+			                  size_options);
+			size_options += c_base_header.co_common->dscp_present;
+			rohc_decomp_debug(context, "dscp_present = %d => %d bytes of "
+			                  "options\n", c_base_header.co_common->dscp_present,
+			                  size_options);
+			size_options += c_base_header.co_common->ttl_hopl_present;
+			rohc_decomp_debug(context, "ttl_hopl_present = %d => %d bytes of "
+			                  "options\n",
+			                  c_base_header.co_common->ttl_hopl_present,
+			                  size_options);
+			rohc_decomp_debug(context, "list_present = %d\n",
+			                  c_base_header.co_common->list_present);
+
+			rohc_decomp_debug(context, "common size = header (%d) + options "
+			                  "(%d) = %d\n", size_header, size_options,
+			                  size_header + size_options);
+
+			/* check the crc */
+			header_crc = c_base_header.co_common->header_crc;
+			c_base_header.co_common->header_crc = 0;
+
+			msn = c_base_header.co_common->msn;
+
+			if(c_base_header.co_common->list_present)
+			{
+				is_list_present = true;
+			}
+			else
+			{
+				mptr.uint8 = c_base_header.uint8 + size_header + size_options;
+			}
+			crc_type = 7;
+			break;
+
+		default:
+			/* should not happen */
+			assert(0);
+			goto error;
 	}
-	else
+
+	if(is_list_present)
 	{
-		// rnd_3 0
-		// seq_4 0
-		if(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-		{
-			// seq_4
-			rohc_decomp_debug(context, "header seq_4\n");
-			packet_type = PACKET_TCP_SEQ_4;
-			goto decode_seq_4;
-		}
-		else
-		{
-			// rnd_3
-			rohc_decomp_debug(context, "header rnd_3\n");
-			packet_type = PACKET_TCP_RND_3;
-			goto decode_rnd_3;
-		}
-	}
-
-	// Normaly, never go here
-	assert( 1 != 1 ); // TODO: ugly, remove that
-
-decode_rnd_1:
-	assert( c_base_header.rnd1->discriminator == 0x2E ); // '101110'
-	size_header = sizeof(rnd_1_t);
-	header_crc = c_base_header.rnd1->header_crc;
-	c_base_header.rnd1->header_crc = 0;
-	msn = c_base_header.rnd1->msn;
-	goto test_checksum3;
-
-decode_rnd_2:
-	assert( c_base_header.rnd2->discriminator == 0x0C ); // '1100'
-	size_header = sizeof(rnd_2_t);
-	header_crc = c_base_header.rnd2->header_crc;
-	c_base_header.rnd2->header_crc = 0;
-	msn = c_base_header.rnd2->msn;
-	goto test_checksum3;
-
-decode_rnd_3:
-	assert( c_base_header.rnd3->discriminator == 0x00 ); // '0'
-	size_header = sizeof(rnd_3_t);
-	header_crc = c_base_header.rnd3->header_crc;
-	c_base_header.rnd3->header_crc = 0;
-	msn = c_base_header.rnd3->msn;
-	goto test_checksum3;
-
-decode_rnd_4:
-	assert( c_base_header.rnd4->discriminator == 0x0D ); // '1101'
-	size_header = sizeof(rnd_4_t);
-	header_crc = c_base_header.rnd4->header_crc;
-	c_base_header.rnd4->header_crc = 0;
-	msn = c_base_header.rnd4->msn;
-	goto test_checksum3;
-
-decode_rnd_5:
-	assert( c_base_header.rnd5->discriminator == 0x04 ); // '100'
-	size_header = sizeof(rnd_5_t);
-	header_crc = c_base_header.rnd5->header_crc;
-	c_base_header.rnd5->header_crc = 0;
-	msn = c_base_header.rnd5->msn;
-	goto test_checksum3;
-
-decode_rnd_6:
-	assert( c_base_header.rnd6->discriminator == 0x0A ); // '1010'
-	size_header = sizeof(rnd_6_t);
-	header_crc = c_base_header.rnd6->header_crc;
-	c_base_header.rnd6->header_crc = 0;
-	msn = c_base_header.rnd6->msn;
-	goto test_checksum3;
-
-decode_rnd_7:
-	assert( c_base_header.rnd7->discriminator == 0x2F ); // '101111'
-	size_header = sizeof(rnd_7_t);
-	header_crc = c_base_header.rnd7->header_crc;
-	c_base_header.rnd7->header_crc = 0;
-	msn = c_base_header.rnd7->msn;
-	goto test_checksum3;
-
-decode_rnd_8:
-	assert( c_base_header.rnd8->discriminator == 0x16 ); // '10110'
-	size_header = sizeof(rnd_8_t);
-	header_crc = c_base_header.rnd8->header_crc;
-	c_base_header.rnd8->header_crc = 0;
-	msn = (c_base_header.rnd8->msn1 << 3) | c_base_header.rnd8->msn2;
-	rohc_decomp_debug(context, "rnd_8: size_header = %d\n", size_header);
-	if(c_base_header.rnd8->list_present)
-	{
-		goto add_tcp_list_size;
-	}
-	goto test_checksum7;
-
-decode_seq_1:
-	assert( c_base_header.seq1->discriminator == 0x0A ); // '1010'
-	size_header = sizeof(seq_1_t);
-	header_crc = c_base_header.seq1->header_crc;
-	c_base_header.seq1->header_crc = 0;
-	msn = c_base_header.seq1->msn;
-	goto test_checksum3;
-
-decode_seq_2:
-	assert( c_base_header.seq2->discriminator == 0x1A ); // '11010'
-	size_header = sizeof(seq_2_t);
-	header_crc = c_base_header.seq2->header_crc;
-	c_base_header.seq2->header_crc = 0;
-	msn = c_base_header.seq2->msn;
-	goto test_checksum3;
-
-decode_seq_3:
-	assert( c_base_header.seq3->discriminator == 0x09 ); // '1001'
-	size_header = sizeof(seq_3_t);
-	header_crc = c_base_header.seq3->header_crc;
-	c_base_header.seq3->header_crc = 0;
-	msn = c_base_header.seq3->msn;
-	goto test_checksum3;
-
-decode_seq_4:
-	assert( c_base_header.seq4->discriminator == 0x00 ); // '0'
-	size_header = sizeof(seq_4_t);
-	header_crc = c_base_header.seq4->header_crc;
-	c_base_header.seq4->header_crc = 0;
-	msn = c_base_header.seq4->msn;
-	goto test_checksum3;
-
-decode_seq_5:
-	assert( c_base_header.seq5->discriminator == 0x08 ); // '1000'
-	size_header = sizeof(seq_5_t);
-	header_crc = c_base_header.seq5->header_crc;
-	c_base_header.seq5->header_crc = 0;
-	msn = c_base_header.seq5->msn;
-	goto test_checksum3;
-
-decode_seq_6:
-	assert( c_base_header.seq6->discriminator == 0x1B ); // '11011'
-	size_header = sizeof(seq_6_t);
-	header_crc = c_base_header.seq6->header_crc;
-	c_base_header.seq6->header_crc = 0;
-	msn = c_base_header.seq6->msn;
-	goto test_checksum3;
-
-decode_seq_7:
-	assert( c_base_header.seq7->discriminator == 0x0C ); // '1100'
-	size_header = sizeof(seq_7_t);
-	header_crc = c_base_header.seq7->header_crc;
-	c_base_header.seq7->header_crc = 0;
-	msn = c_base_header.seq7->msn;
-	goto test_checksum3;
-
-decode_seq_8:
-	assert( c_base_header.seq8->discriminator == 0x0B ); // '1011'
-	size_header = sizeof(seq_8_t);
-	header_crc = c_base_header.seq8->header_crc;
-	c_base_header.seq8->header_crc = 0;
-	msn = c_base_header.seq8->msn;
-	rohc_decomp_debug(context, "seq_8: size_header = %d\n", size_header);
-	if(c_base_header.seq8->list_present)
-	{
-		goto add_tcp_list_size;
-	}
-	goto test_checksum7;
-
-decode_common:
-	assert( c_base_header.co_common->discriminator == 0x7D ); // '1111101'
-	size_header = sizeof(co_common_t);
-	size_options += variable_length_32_size[c_base_header.co_common->seq_indicator];
-	rohc_decomp_debug(context, "seq_indicator = %d => %d bytes of options\n",
-	                  c_base_header.co_common->seq_indicator, size_options);
-	size_options += variable_length_32_size[c_base_header.co_common->ack_indicator];
-	rohc_decomp_debug(context, "ack_indicator = %d => %d bytes of options\n",
-	                  c_base_header.co_common->ack_indicator, size_options);
-	size_options += c_base_header.co_common->ack_stride_indicator << 1;
-	rohc_decomp_debug(context, "ack_stride_indicator = %d => %d bytes of options\n",
-	                  c_base_header.co_common->ack_stride_indicator, size_options);
-	size_options += c_base_header.co_common->window_indicator << 1;
-	rohc_decomp_debug(context, "window_indicator = %d => %d bytes of options\n",
-	                  c_base_header.co_common->window_indicator, size_options);
-	if(c_base_header.co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
-	   c_base_header.co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
-	{
-		size_options += c_base_header.co_common->ip_id_indicator + 1;
-	}
-	rohc_decomp_debug(context, "ip_id_behavior = %d, ip_id_indicator = %d "
-							"=> %d bytes of options\n",
-	                  c_base_header.co_common->ip_id_behavior,
-	                  c_base_header.co_common->ip_id_indicator,
-							size_options);
-	size_options += c_base_header.co_common->urg_ptr_present << 1;
-	rohc_decomp_debug(context, "urg_ptr_present = %d => %d bytes of options\n",
-	                  c_base_header.co_common->urg_ptr_present, size_options);
-	size_options += c_base_header.co_common->dscp_present;
-	rohc_decomp_debug(context, "dscp_present = %d => %d bytes of options\n",
-	                  c_base_header.co_common->dscp_present, size_options);
-	size_options += c_base_header.co_common->ttl_hopl_present;
-	rohc_decomp_debug(context, "ttl_hopl_present = %d => %d bytes of options\n",
-	                  c_base_header.co_common->ttl_hopl_present, size_options);
-	rohc_decomp_debug(context, "list_present = %d\n",
-	                  c_base_header.co_common->list_present);
-
-	rohc_decomp_debug(context, "common size = header (%d) + options (%d) "
-	                  "= %d\n", size_header, size_options,
-	                  size_header + size_options);
-
-	/* check the crc */
-	header_crc = c_base_header.co_common->header_crc;
-	c_base_header.co_common->header_crc = 0;
-
-	msn = c_base_header.co_common->msn;
-
-	if(c_base_header.co_common->list_present)
-	{
-add_tcp_list_size:
 		mptr.uint8 = c_base_header.uint8 + size_header + size_options;
 		rohc_decomp_debug(context, "list present at %p: PS_m = 0x%x\n",
 		                  mptr.uint8, *mptr.uint8);
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		rohc_dump_packet(context->decompressor->trace_callback,
+		                 ROHC_TRACE_DECOMP,
 		                 ROHC_TRACE_DEBUG, "list of options", mptr.uint8,
 		                 16); /* TODO: why 16 ??? */
 		size_options += tcp_size_decompress_tcp_options(context, mptr.uint8,
 		                                                &tcp_options_size);
 		rohc_decomp_debug(context, "size = header (%d) + options (%d) = %d\n",
-		                  size_header, size_options,
-		                  size_header + size_options);
+		                  size_header, size_options, size_header + size_options);
 	}
-	else
+
+	switch(crc_type)
 	{
-		mptr.uint8 = c_base_header.uint8 + size_header + size_options;
+		case 7:
+			crc = crc_calculate(ROHC_CRC_TYPE_7,  c_base_header.uint8,
+			                    size_header + size_options, CRC_INIT_7,
+			                    decomp->crc_table_7);
+			break;
+		case 3:
+			mptr.uint8 = c_base_header.uint8 + size_header;
+			crc = crc_calculate(ROHC_CRC_TYPE_3,  c_base_header.uint8,
+			                    size_header, CRC_INIT_3, decomp->crc_table_3);
+			break;
+		default:
+			/* should not happen */
+			assert(0);
+			goto error;
 	}
 
-test_checksum7:
-	crc = crc_calculate(ROHC_CRC_TYPE_7,  c_base_header.uint8, size_header + size_options, CRC_INIT_7,
-	                    decomp->crc_table_7);
-	goto test_checksum;
-
-test_checksum3:
-	mptr.uint8 = c_base_header.uint8 + size_header;
-	crc = crc_calculate(ROHC_CRC_TYPE_3,  c_base_header.uint8, size_header, CRC_INIT_3,
-	                    decomp->crc_table_3);
-
-test_checksum:
 	if(header_crc != crc)
 	{
 		rohc_decomp_debug(context, "header_crc (0x%x) != crc (0x%x) on %d "
@@ -4467,7 +4481,8 @@ struct d_profile d_tcp_profile =
 {
 	ROHC_PROFILE_TCP,       /* profile ID (see 8 in RFC 3095) */
 	"TCP / Decompressor",   /* profile description */
-	d_tcp_decode,           /* profile handlers */
+	.detect_packet_type = tcp_detect_packet_type,
+	d_tcp_decode,
 	d_tcp_create,
 	d_tcp_destroy,
 	d_tcp_get_msn
