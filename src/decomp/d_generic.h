@@ -68,6 +68,7 @@ struct rohc_extr_ip_bits
 	                      header, in UO* base header, in extension header and
 	                      in remainder of UO* header */
 	size_t id_nr;    /**< The number of IP-ID bits found */
+	bool is_id_enc;  /**< Whether value(IP-ID) is encoded or not */
 
 	uint8_t df:1;    /**< The DF bits found in dynamic chain of IR/IR-DYN
 	                      header or in extension header */
@@ -121,6 +122,7 @@ struct rohc_extr_bits
 	/* SN */
 	uint32_t sn;         /**< The SN bits found in ROHC header */
 	size_t sn_nr;        /**< The number of SN bits found in ROHC header */
+	bool is_sn_enc;      /**< Whether value(SN) is encoded with W-LSB or not */
 	rohc_lsb_ref_t sn_ref_type; /**< The SN reference to use for LSB decoding
 	                                 (used for context repair after CRC failure) */
 	bool sn_ref_offset;         /**< Optional offset to add to the reference SN
@@ -360,9 +362,6 @@ struct d_generic_context
 	/// Whether the decompressed packet contains a 2nd IP header
 	int multiple_ip;
 
-	/// The type of packet the decompressor may receive: IR, IR-DYN, UO*
-	rohc_packet_t packet_type;
-
 	/* below are some information and handlers to manage the next header
 	 * (if any) located just after the IP headers (1 or 2 IP headers) */
 
@@ -396,22 +395,24 @@ struct d_generic_context
 	/**
 	 * @brief The handler used to parse the extension 3 of the UO* ROHC packet
 	 *
-	 * @param decomp        The ROHC decompressor
-	 * @param context       The decompression context
-	 * @param rohc_data     The ROHC data to parse
-	 * @param rohc_data_len The length of the ROHC data to parse
-	 * @param bits          IN: the bits already found in base header
-	 *                      OUT: the bits found in the extension header 3
-	 * @return              The data length read from the ROHC packet,
-	 *                      -2 in case packet must be parsed again,
-	 *                      -1 in case of error
+	 * @param decomp            The ROHC decompressor
+	 * @param context           The decompression context
+	 * @param rohc_data         The ROHC data to parse
+	 * @param rohc_data_len     The length of the ROHC data to parse
+	 * @param packet_type       The type of ROHC packet to parse
+	 * @param bits              IN: the bits already found in base header
+	 *                          OUT: the bits found in the extension header 3
+	 * @return                  The data length read from the ROHC packet,
+	 *                          -2 in case packet must be reparsed,
+	 *                          -1 in case of error
 	 */
 	int (*parse_extension3)(const struct rohc_decomp *const decomp,
 	                        const struct d_context *const context,
 	                        const unsigned char *const rohc_data,
 	                        const size_t rohc_data_len,
+	                        const rohc_packet_t packet_type,
 	                        struct rohc_extr_bits *const bits)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 	/// The handler used to parse the tail of the UO* ROHC packet
 	int (*parse_uo_remainder)(const struct d_context *const context,

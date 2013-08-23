@@ -327,6 +327,7 @@ static int esp_parse_dynamic_esp(const struct d_context *const context,
 	read += sn_length;
 	bits->sn = rohc_ntoh32(sn);
 	bits->sn_nr = sn_length * 8;
+	bits->is_sn_enc = false;
 	rohc_decomp_debug(context, "ESP SN = 0x%08x\n", bits->sn);
 
 	return read;

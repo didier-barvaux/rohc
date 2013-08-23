@@ -196,34 +196,28 @@ int ip_parse_dynamic_ip(const struct d_context *const context,
                         const size_t length,
                         struct rohc_extr_bits *const bits)
 {
-	struct d_generic_context *g_context;
 	size_t read = 0; /* number of bytes read from the packet */
 
 	assert(context != NULL);
-	assert(context->specific != NULL);
-	g_context = context->specific;
 	assert(packet != NULL);
 	assert(bits != NULL);
 
-	if(g_context->packet_type == PACKET_IR ||
-	   g_context->packet_type == PACKET_IR_DYN)
+	/* check the minimal length to decode the SN field */
+	if(length < 2)
 	{
-		/* check the minimal length to decode the SN field */
-		if(length < 2)
-		{
-			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-			             context->profile->id,
-			             "ROHC packet too small (len = %zu)\n", length);
-			goto error;
-		}
-
-		/* parse 16-bit SN */
-		bits->sn = rohc_ntoh16(GET_NEXT_16_BITS(packet));
-		bits->sn_nr = 16;
-		rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
-		packet += 2;
-		read += 2;
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id,
+		             "ROHC packet too small (len = %zu)\n", length);
+		goto error;
 	}
+
+	/* parse 16-bit SN */
+	bits->sn = rohc_ntoh16(GET_NEXT_16_BITS(packet));
+	bits->sn_nr = 16;
+	bits->is_sn_enc = false;
+	rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
+	packet += 2;
+	read += 2;
 
 	return read;
 
@@ -262,20 +256,21 @@ error:
 
 \endverbatim
  *
- * @param decomp        The ROHC decompressor
- * @param context       The decompression context
- * @param rohc_data     The ROHC data to parse
- * @param rohc_data_len The length of the ROHC data to parse
- * @param bits          IN: the bits already found in base header
- *                      OUT: the bits found in the extension header 3
- * @return              The data length read from the ROHC packet,
- *                      -2 in case packet must be parsed again,
- *                      -1 in case of error
+ * @param decomp            The ROHC decompressor
+ * @param context           The decompression context
+ * @param rohc_data         The ROHC data to parse
+ * @param rohc_data_len     The length of the ROHC data to parse
+ * @param packet_type       The type of ROHC packet to parse
+ * @param bits              IN: the bits already found in base header
+ *                          OUT: the bits found in the extension header 3
+ * @return                  The data length read from the ROHC packet,
+ *                          -1 in case of error
  */
 int ip_parse_extension3(const struct rohc_decomp *const decomp,
                         const struct d_context *const context,
                         const unsigned char *const rohc_data,
                         const size_t rohc_data_len,
+                        const rohc_packet_t packet_type,
                         struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
@@ -284,7 +279,6 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 	int S, I, ip, ip2;
 	uint16_t I_bits;
 	int size;
-	rohc_packet_t packet_type;
 
 	/* remaining ROHC data */
 	const unsigned char *rohc_remain_data;
@@ -298,10 +292,8 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 	assert(bits != NULL);
 
 	g_context = context->specific;
-	packet_type = g_context->packet_type;
 
-	rohc_decomp_debug(context, "decode %s extension 3\n",
-	                  rohc_get_packet_descr(packet_type));
+	rohc_decomp_debug(context, "decode extension 3\n");
 
 	rohc_remain_data = rohc_data;
 	rohc_remain_len = rohc_data_len;

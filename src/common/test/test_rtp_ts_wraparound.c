@@ -213,8 +213,8 @@ bool run_test(bool be_verbose, const unsigned int incr)
 				ts_sc_comp.state = INIT_STRIDE;
 				/* simulate transmission */
 				/* decode received unscaled TS */
-				if(!ts_decode_unscaled_absolute(ts_sc_decomp, value_encoded,
-				                                &value_decoded))
+				if(!ts_decode_unscaled_bits(ts_sc_decomp, value_encoded,
+				                            required_bits, &value_decoded))
 				{
 					trace(be_verbose, "failed to decode received absolute unscaled TS\n");
 					goto destroy_ts_sc_decomp;

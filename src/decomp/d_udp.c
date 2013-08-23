@@ -489,16 +489,10 @@ static bool udp_decode_values_from_bits(const struct d_context *context,
 		assert(bits.udp_check_nr == 16);
 		decoded->udp_check = bits.udp_check;
 	}
-	else if(g_context->packet_type == PACKET_IR ||
-	        g_context->packet_type == PACKET_IR_DYN)
-	{
-		assert(bits.udp_check_nr == 16);
-		assert(bits.udp_check == 0);
-		decoded->udp_check = 0;
-	}
 	else
 	{
-		assert(bits.udp_check_nr == 0);
+		assert(bits.udp_check_nr == 16 || bits.udp_check_nr == 0);
+		assert(bits.udp_check == 0);
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "

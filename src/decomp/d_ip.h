@@ -49,8 +49,9 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
                         const struct d_context *const context,
                         const unsigned char *const rohc_data,
                         const size_t rohc_data_len,
+                        const rohc_packet_t packet_type,
                         struct rohc_extr_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 int parse_outer_header_flags(const struct rohc_decomp *const decomp,
                              const struct d_context *const context,

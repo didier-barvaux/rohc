@@ -79,8 +79,9 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
                                 const struct d_context *const context,
                                 const unsigned char *const rohc_data,
                                 const size_t rohc_data_len,
+                                const rohc_packet_t packet_type,
                                 struct rohc_extr_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
                                             const int are_all_ipv4_rnd)
@@ -745,6 +746,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	/* part 4: 16-bit RTP SN */
 	bits->sn = rohc_ntoh16(GET_NEXT_16_BITS(packet));
 	bits->sn_nr = 16;
+	bits->is_sn_enc = false;
 	packet += sizeof(uint16_t);
 	remain_len-= sizeof(uint16_t);
 	rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
@@ -753,6 +755,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 	memcpy(&bits->ts, packet, sizeof(uint32_t));
 	bits->ts = rohc_ntoh32(bits->ts);
 	bits->ts_nr = 32;
+	bits->is_ts_scaled = false;
 	packet += sizeof(uint32_t);
 	remain_len -= sizeof(uint32_t);
 	rohc_decomp_debug(context, "timestamp = 0x%08x\n", bits->ts);
@@ -887,20 +890,22 @@ error:
 
 \endverbatim
  *
- * @param decomp        The ROHC decompressor
- * @param context       The decompression context
- * @param rohc_data     The ROHC data to parse
- * @param rohc_data_len The length of the ROHC data to parse
- * @param bits          IN: the bits already found in base header
- *                      OUT: the bits found in the extension header 3
- * @return              The data length read from the ROHC packet,
- *                      -2 in case packet must be parsed again,
- *                      -1 in case of error
+ * @param decomp            The ROHC decompressor
+ * @param context           The decompression context
+ * @param rohc_data         The ROHC data to parse
+ * @param rohc_data_len     The length of the ROHC data to parse
+ * @param packet_type       The type of ROHC packet to parse
+ * @param bits              IN: the bits already found in base header
+ *                          OUT: the bits found in the extension header 3
+ * @return                  The data length read from the ROHC packet,
+ *                          -2 in case packet must be reparsed,
+ *                          -1 in case of error
  */
 static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
                                 const struct d_context *const context,
                                 const unsigned char *const rohc_data,
                                 const size_t rohc_data_len,
+                                const rohc_packet_t packet_type,
                                 struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
@@ -909,7 +914,6 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	int S, rts, I, ip, rtp, ip2;
 	uint16_t I_bits;
 	int size;
-	rohc_packet_t packet_type;
 
 	/* remaining ROHC data */
 	const unsigned char *rohc_remain_data;
@@ -931,10 +935,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	assert(bits != NULL);
 
 	g_context = context->specific;
-	packet_type = g_context->packet_type;
 
-	rohc_decomp_debug(context, "decode %s extension 3\n",
-	                  rohc_get_packet_descr(packet_type));
+	rohc_decomp_debug(context, "decode extension 3\n");
 
 	rohc_remain_data = rohc_data;
 	rohc_remain_len = rohc_data_len;
@@ -1586,16 +1588,10 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 		assert(bits.udp_check_nr == 16);
 		decoded->udp_check = bits.udp_check;
 	}
-	else if(g_context->packet_type == PACKET_IR ||
-	        g_context->packet_type == PACKET_IR_DYN)
-	{
-		assert(bits.udp_check_nr == 16);
-		assert(bits.udp_check == 0);
-		decoded->udp_check = 0;
-	}
 	else
 	{
-		assert(bits.udp_check_nr == 0);
+		assert(bits.udp_check_nr == 16 || bits.udp_check_nr == 0);
+		assert(bits.udp_check == 0);
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
@@ -1690,39 +1686,25 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 
 	/* decode RTP TimeStamp (TS) */
 	rohc_decomp_debug(context, "%zd-bit TS delta = 0x%x\n", bits.ts_nr, bits.ts);
-	if(g_context->packet_type == PACKET_IR ||
-	   g_context->packet_type == PACKET_IR_DYN)
-	{
-		/* the full unscaled TS value was transmitted */
-
-		bool ts_decode_ok;
-
-		rohc_decomp_debug(context, "TS absolute value is transmitted\n");
-
-		assert(bits.ts_nr == 32);
-
-		ts_decode_ok = ts_decode_unscaled_absolute(rtp_context->ts_scaled_ctxt,
-		                                           bits.ts, &decoded->ts);
-		if(!ts_decode_ok)
-		{
-			rohc_decomp_debug(context, "failed to decode %zd-bit absolute TS "
-			                  "0x%x\n", bits.ts_nr, bits.ts);
-			goto error;
-		}
-	}
-	else if(!bits.is_ts_scaled)
+	if(!bits.is_ts_scaled)
 	{
 		/* some LSB bits of the unscaled TS were transmitted */
 
 		bool ts_decode_ok;
 
-		rohc_decomp_debug(context, "TS is not scaled\n");
-
-		/* RFC 4815, §4.2 says:
-		 *   If a packet with no TS bits is received with Tsc = 0, the
-		 *   decompressor MUST discard the packet. */
-		if(bits.ts_nr == 0)
+		if(bits.ts_nr == 32)
 		{
+			rohc_decomp_debug(context, "TS absolute value is transmitted\n");
+		}
+		else if(bits.ts_nr > 0)
+		{
+			rohc_decomp_debug(context, "TS is not scaled\n");
+		}
+		else
+		{
+			/* RFC 4815, §4.2 says:
+			 *   If a packet with no TS bits is received with Tsc = 0, the
+			 *   decompressor MUST discard the packet. */
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 			             "TS not scaled (Tsc = %d) and no TS bit received, "
 			             "discard the packet\n", bits.is_ts_scaled);
