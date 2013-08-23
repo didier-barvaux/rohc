@@ -3121,11 +3121,13 @@ static int get_bit_index(unsigned char byte, int index)
  * @param large_cid_len  The length of the optional large CID field
  * @param bits           OUT: The bits extracted from the ROHC header
  * @param rohc_hdr_len   OUT: The size of the ROHC header
- * @return               true if IR is successfully parsed, false otherwise
+ * @return               true if packet is successfully parsed, false otherwise
  *
  * @see parse_ir
  * @see parse_irdyn
- * @see parse_uo
+ * @see parse_uo0
+ * @see parse_uo1
+ * @see parse_uor2
  */
 static bool parse_packet(const struct rohc_decomp *const decomp,
                          const struct d_context *const context,
