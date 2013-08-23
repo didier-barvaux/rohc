@@ -37,19 +37,6 @@
 #include <assert.h>
 
 
-/**
- * @brief The size (in bytes) of the constant RTP dynamic part
- *
- * According to RFC3095 section 5.7.7.6:
- *   1 (flags V, P, RX, CC) + 1 (flags M, PT) + 2 (RTP SN) +
- *   4 (RTP TS) + 1 (CSRC list) = 9 bytes
- *
- * The size of the Generic CSRC list field is considered constant because
- * generic CSRC list is not supported yet and thus 1 byte of zero is used.
- */
-#define RTP_CONST_DYN_PART_SIZE  9
-
-
 /*
  * Private function prototypes.
  */
@@ -680,6 +667,17 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
 {
+	/* The size (in bytes) of the constant RTP dynamic part:
+	 *
+	 * According to RFC3095 section 5.7.7.6:
+	 *   1 (flags V, P, RX, CC) + 1 (flags M, PT) + 2 (RTP SN) +
+	 *   4 (RTP TS) + 1 (CSRC list) = 9 bytes
+	 *
+	 * The size of the Generic CSRC list field is considered constant because
+	 * generic CSRC list is not supported yet and thus 1 byte of zero is used.
+	 */
+	const size_t rtp_dyn_size = 9;
+
 	struct d_generic_context *g_context;
 	struct d_rtp_context *rtp_context;
 	size_t remain_len = length;
@@ -712,7 +710,7 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 
 	/* check the minimal length to decode the constant part of the RTP
 	   dynamic part (parts 2-6) */
-	if(remain_len < RTP_CONST_DYN_PART_SIZE)
+	if(remain_len < rtp_dyn_size)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %zu)\n", remain_len);

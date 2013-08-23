@@ -48,19 +48,6 @@
  */
 
 
-/**
- * @brief The size (in bytes) of the IPv4 dynamic part
- *
- * According to RFC3095 section 5.7.7.4:
- *   1 (TOS) + 1 (TTL) + 2 (IP-ID) + 1 (flags) + 1 (header list) = 6 bytes
- *
- * The size of the generic extension header list field is considered constant
- * because generic extension header list is not supported yet and thus 1 byte
- * of zero is used.
- */
-#define IPV4_DYN_PART_SIZE  6
-
-
 /*
  * Private function prototypes for parsing the static and dynamic parts
  * of the IR and IR-DYN headers
@@ -3816,10 +3803,18 @@ static int parse_dynamic_part_ipv4(const struct d_context *const context,
                                    const size_t length,
                                    struct rohc_extr_ip_bits *const bits)
 {
+	/* The size (in bytes) of the IPv4 dynamic part:
+	 *
+	 *   1 (TOS) + 1 (TTL) + 2 (IP-ID) + 1 (flags) + 1 (header list) = 6 bytes
+	 *
+	 * The size of the generic extension header list field is considered
+	 * constant because generic extension header list is not supported yet and
+	 * thus 1 byte of zero is used. */
+	const size_t ipv4_dyn_size = 6;
 	int read = 0; /* number of bytes read from the packet */
 
 	/* check the minimal length to decode the IPv4 dynamic part */
-	if(length < IPV4_DYN_PART_SIZE)
+	if(length < ipv4_dyn_size)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %zu)\n", length);
