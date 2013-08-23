@@ -60,12 +60,6 @@
  */
 #define IPV4_DYN_PART_SIZE  6
 
-/** Constant to compute inter-arrival time between the received packets */
-#define WEIGHT_OLD  1
-
-/** Constant to compute inter-arrival time between the received packets */
-#define WEIGHT_NEW  1
-
 
 /*
  * Private function prototypes for parsing the static and dynamic parts
