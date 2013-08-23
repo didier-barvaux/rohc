@@ -120,6 +120,15 @@ static bool parse_irdyn(const struct rohc_decomp *const decomp,
                         size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7)));
 
+static bool parse_uo(const struct rohc_decomp *const decomp,
+                     const struct d_context *const context,
+                     const unsigned char *const rohc_packet,
+                     const size_t rohc_length,
+                     const size_t large_cid_len,
+                     struct rohc_extr_bits *const bits,
+                     size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7)));
+
 static bool parse_uo0(const struct rohc_decomp *const decomp,
                       const struct d_context *const context,
                       const unsigned char *const rohc_packet,
@@ -3117,9 +3126,7 @@ static int get_bit_index(unsigned char byte, int index)
  *
  * @see parse_ir
  * @see parse_irdyn
- * @see parse_uo0
- * @see parse_uo1
- * @see parse_uor2
+ * @see parse_uo
  */
 static bool parse_packet(const struct rohc_decomp *const decomp,
                          const struct d_context *const context,
@@ -3130,9 +3137,6 @@ static bool parse_packet(const struct rohc_decomp *const decomp,
                          struct rohc_extr_bits *const bits,
                          size_t *const rohc_hdr_len)
 {
-	/* Whether the current profile is RTP or not */
-	const int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
-
 	bool (*parse) (const struct rohc_decomp *const decomp,
 	               const struct d_context *const context,
 	               const unsigned char *const rohc_packet,
@@ -3163,80 +3167,16 @@ static bool parse_packet(const struct rohc_decomp *const decomp,
 		}
 
 		case PACKET_UO_0:
-		{
-			/* check packet usage */
-			if(context->state == STATIC_CONTEXT)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "UO-0 packets cannot be received in Static Context "
-				             "state\n");
-				goto error;
-			}
-
-			parse = parse_uo0;
-			break;
-		}
-
 		case PACKET_UO_1:
 		case PACKET_UO_1_RTP:
 		case PACKET_UO_1_TS:
 		case PACKET_UO_1_ID:
-		{
-			/* check packet usage */
-			if(context->state == STATIC_CONTEXT)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "%s packets cannot be received in Static Context "
-				             "state\n", rohc_get_packet_descr(packet_type));
-				goto error;
-			}
-			if(is_rtp && packet_type == PACKET_UO_1)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "UO-1 packet cannot be used with RTP profile\n");
-				assert(0);
-				goto error;
-			}
-			else if(!is_rtp && (packet_type == PACKET_UO_1_RTP ||
-			                    packet_type == PACKET_UO_1_TS ||
-			                    packet_type == PACKET_UO_1_ID))
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "UO-1-RTP/TS/ID packets cannot be used with non-RTP "
-				             "profiles\n");
-				assert(0);
-				goto error;
-			}
-
-			parse = parse_uo1;
-			break;
-		}
-
 		case PACKET_UOR_2:
 		case PACKET_UOR_2_RTP:
 		case PACKET_UOR_2_TS:
 		case PACKET_UOR_2_ID:
 		{
-			/* check packet usage */
-			if(is_rtp && packet_type == PACKET_UOR_2)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "UOR-2 packet cannot be used with RTP profile\n");
-				assert(0);
-				goto error;
-			}
-			else if(!is_rtp && (packet_type == PACKET_UOR_2_RTP ||
-			                    packet_type == PACKET_UOR_2_TS ||
-			                    packet_type == PACKET_UOR_2_ID))
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "UOR-2-RTP/TS/ID packets cannot be used with non-RTP "
-				             "profiles\n");
-				assert(0);
-				goto error;
-			}
-
-			parse = parse_uor2;
+			parse = parse_uo;
 			break;
 		}
 
@@ -4308,7 +4248,7 @@ uint32_t d_generic_get_sn(const struct d_context *const context)
 
 
 /**
- * @brief Parse one UO-0 header
+ * @brief Parse one UO* header
  *
  * \verbatim
 
@@ -4362,26 +4302,11 @@ uint32_t d_generic_get_sn(const struct d_context *const context)
      --- --- --- --- --- --- --- ---
 
 \endverbatim
-
-Here are the first octet and remainder of UO-0 header:
-
-\verbatim
-
- UO-0 (5.7.1)
-
-      0   1   2   3   4   5   6   7
-    +---+---+---+---+---+---+---+---+
- 2  | 0 |      SN       |    CRC    |
-    +===+===+===+===+===+===+===+===+
-
- Part 4 is empty.
-
-\endverbatim
  *
  * Parts 7, 8, 10, 11 and 12 are not supported.
  * Parts 1 and 3 are parsed in the parent function.
- * Parts 2, 6 and 9 are parsed in this function.
- * Parts 4 and 5 do not exist in the UO-0 packet.
+ * Parts 2, 4, and 5 are parsed in sub-functions.
+ * Parts 6 and 9 are parsed in this function.
  * Part 13 is parsed in profile-specific function.
  *
  * @param decomp         The ROHC decompressor
@@ -4389,26 +4314,42 @@ Here are the first octet and remainder of UO-0 header:
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
- * @param bits           OUT: The bits extracted from the UO-0 header
- * @param rohc_hdr_len   OUT: The size of the UO-0 header
- * @return               true if UO-0 is successfully parsed, false otherwise
+ * @param bits           OUT: The bits extracted from the UO* header
+ * @param rohc_hdr_len   OUT: The size of the UO* header
+ * @return               true if UO* is successfully parsed, false otherwise
+ *
+ * @see parse_uo0
+ * @see parse_uo1
+ * @see parse_uor2
  */
-static bool parse_uo0(const struct rohc_decomp *const decomp,
-                      const struct d_context *const context,
-                      const unsigned char *const rohc_packet,
-                      const size_t rohc_length,
-                      const size_t large_cid_len,
-                      struct rohc_extr_bits *const bits,
-                      size_t *const rohc_hdr_len)
+static bool parse_uo(const struct rohc_decomp *const decomp,
+                     const struct d_context *const context,
+                     const unsigned char *const rohc_packet,
+                     const size_t rohc_length,
+                     const size_t large_cid_len,
+                     struct rohc_extr_bits *const bits,
+                     size_t *const rohc_hdr_len)
 {
-	struct d_generic_context *const g_context = context->specific;
+	bool (*parse) (const struct rohc_decomp *const decomp,
+	               const struct d_context *const context,
+	               const unsigned char *const rohc_packet,
+	               const size_t rohc_length,
+	               const size_t large_cid_len,
+	               struct rohc_extr_bits *const bits,
+	               size_t *const rohc_hdr_len);
+
+	struct d_generic_context *g_context;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
 	   (will be computed during parsing) */
 	const unsigned char *rohc_remain_data;
 	size_t rohc_remain_len;
 
-	assert(g_context != NULL);
+	size_t base_ext_len;
+	bool is_ok;
+
+	assert(context != NULL);
+	g_context = context->specific;
 	assert(rohc_packet != NULL);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
@@ -4419,41 +4360,63 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 
 	/* reset all extracted bits */
 	reset_extr_bits(g_context, bits);
-	bits->crc_type = ROHC_CRC_TYPE_3;
 
-	/* check if the ROHC packet is large enough to parse parts 2 and 3 */
-	if(rohc_remain_len < (1 + large_cid_len))
+
+	/*
+	 * parse ROHC base header
+	 */
+
+	/* parse parts 2, 4 and 5 depending on the packet type */
+	switch(g_context->packet_type)
+	{
+		case PACKET_UO_0:
+		{
+			parse = parse_uo0;
+			break;
+		}
+
+		case PACKET_UO_1:
+		case PACKET_UO_1_RTP:
+		case PACKET_UO_1_TS:
+		case PACKET_UO_1_ID:
+		{
+			parse = parse_uo1;
+			break;
+		}
+
+		case PACKET_UOR_2:
+		case PACKET_UOR_2_RTP:
+		case PACKET_UOR_2_TS:
+		case PACKET_UOR_2_ID:
+		{
+			parse = parse_uor2;
+			break;
+		}
+
+		default:
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "unknown packet type (%d)\n", g_context->packet_type);
+			goto error;
+		}
+	}
+	is_ok = parse(decomp, context, rohc_remain_data, rohc_remain_len,
+	              large_cid_len, bits, &base_ext_len);
+	if(!is_ok)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		             "failed to parse specific parts of the UO* packet\n");
 		goto error;
 	}
-
-	/* part 2: 1-bit "0" + 4-bit SN + 3-bit CRC */
-	assert(GET_BIT_7(rohc_remain_data) == 0);
-	bits->sn = GET_BIT_3_6(rohc_remain_data);
-	bits->sn_nr = 4;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
-	bits->crc = GET_BIT_0_2(rohc_remain_data);
-	bits->crc_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
-	                  bits->crc_nr, bits->crc);
-	rohc_remain_data++;
-	rohc_remain_len--;
-	(*rohc_hdr_len)++;
-
-	/* part 3: skip large CID (handled elsewhere) */
-	rohc_remain_data += large_cid_len;
-	rohc_remain_len -= large_cid_len;
-	*rohc_hdr_len += large_cid_len;
-
-	/* part 4: no remainder of base header for UO-0 packet */
-	/* part 5: no extension for UO-0 packet */
+	rohc_remain_data += base_ext_len;
+	rohc_remain_len -= base_ext_len;
+	*rohc_hdr_len += base_ext_len;
 
 	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
 	if(is_ipv4_rnd_pkt(bits->outer_ip))
 	{
-		/* outer IP-ID is random, read its full 16-bit value */
+		/* outer IP-ID is random, read its full 16-bit value and ignore any
+		   previous bits we may have read (they should be filled with zeroes) */
 
 		/* check if the ROHC packet is large enough to read the outer IP-ID */
 		if(rohc_remain_len < 2)
@@ -4464,11 +4427,23 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 			goto error;
 		}
 
+		/* sanity check: all bits that are above 16 bits should be zero */
+		if(bits->outer_ip.id_nr > 0 && bits->outer_ip.id != 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "bad packet format: outer IP-ID bits from the base ROHC "
+			             "header shall be filled with zeroes but 0x%x was found\n",
+			             bits->outer_ip.id);
+		}
+
 		/* retrieve the full outer IP-ID value */
 		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->outer_ip.id_nr = 16;
-		rohc_decomp_debug(context, "%zd outer IP-ID bits = 0x%x\n",
-		                  bits->outer_ip.id_nr, bits->outer_ip.id);
+
+		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
+		                  "with the ones found at the end of the UO* packet "
+		                  "(0x%x on %zd bits)\n", bits->outer_ip.id,
+		                  bits->outer_ip.id_nr);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -4480,7 +4455,8 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
 	if(g_context->multiple_ip && is_ipv4_rnd_pkt(bits->inner_ip))
 	{
-		/* inner IP-ID is random, read its full 16-bit value */
+		/* inner IP-ID is random, read its full 16-bit value and ignore any
+		   previous bits we may have read (they should be filled with zeroes) */
 
 		/* check if the ROHC packet is large enough to read the inner IP-ID */
 		if(rohc_remain_len < 2)
@@ -4491,11 +4467,23 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 			goto error;
 		}
 
+		/* sanity check: all bits that are above 16 bits should be zero */
+		if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "bad packet format: inner IP-ID bits from the base ROHC "
+			             "header shall be filled with zeroes but 0x%x was found\n",
+			             bits->inner_ip.id);
+		}
+
 		/* retrieve the full inner IP-ID value */
 		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
 		bits->inner_ip.id_nr = 16;
-		rohc_decomp_debug(context, "%zd inner IP-ID bits = 0x%x\n",
-		                  bits->inner_ip.id_nr, bits->inner_ip.id);
+
+		rohc_decomp_debug(context, "replace any existing inner IP-ID bits "
+		                  "with the ones found at the end of the UO* packet "
+		                  "(0x%x on %zd bits)\n", bits->inner_ip.id,
+		                  bits->inner_ip.id_nr);
 
 		rohc_remain_data += 2;
 		rohc_remain_len -= 2;
@@ -4525,6 +4513,120 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 	/* sanity checks */
 	assert((*rohc_hdr_len) <= rohc_length);
 
+	/* UO* packet was successfully parsed */
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one UO-0 header
+ *
+ * \verbatim
+
+ UO-0 (5.7.1)
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 2  | 0 |      SN       |    CRC    |
+    +===+===+===+===+===+===+===+===+
+
+ Part 4 is empty.
+
+\endverbatim
+ *
+ * Parts 7, 8, 10, 11 and 12 are not supported.
+ * Parts 1, 3, 6, 9, and 13 are parsed in parent functions.
+ * Parts 2, 4, and 5 are parsed in this function.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @param bits           OUT: The bits extracted from the UO-0 header
+ * @param rohc_hdr_len   OUT: The size of the UO-0 header
+ * @return               true if UO-0 is successfully parsed,
+ *                       false otherwise
+ */
+static bool parse_uo0(const struct rohc_decomp *const decomp,
+                      const struct d_context *const context,
+                      const unsigned char *const rohc_packet,
+                      const size_t rohc_length,
+                      const size_t large_cid_len,
+                      struct rohc_extr_bits *const bits,
+                      size_t *const rohc_hdr_len)
+{
+	struct d_generic_context *const g_context = context->specific;
+
+	/* remaining ROHC data not parsed yet and the length of the ROHC headers
+	   (will be computed during parsing) */
+	const unsigned char *rohc_remain_data;
+	size_t rohc_remain_len;
+
+	assert(g_context != NULL);
+	assert(rohc_packet != NULL);
+	assert(bits != NULL);
+	assert(rohc_hdr_len != NULL);
+
+	rohc_remain_data = rohc_packet;
+	rohc_remain_len = rohc_length;
+	*rohc_hdr_len = 0;
+
+	/* UO-0 contains a 3-bit CRC */
+	bits->crc_type = ROHC_CRC_TYPE_3;
+
+	/* check packet usage */
+	if(context->state == STATIC_CONTEXT)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UO-0 packets cannot be received in Static Context "
+		             "state\n");
+		goto error;
+	}
+
+	/* check if the ROHC packet is large enough to parse parts 2 and 3 */
+	if(rohc_remain_len < (1 + large_cid_len))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
+	if(rohc_remain_len < (1 + large_cid_len))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "rohc packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* part 2: 1-bit "0" + 4-bit SN + 3-bit CRC */
+	assert(GET_BIT_7(rohc_remain_data) == 0);
+	bits->sn = GET_BIT_3_6(rohc_remain_data);
+	bits->sn_nr = 4;
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	bits->crc = GET_BIT_0_2(rohc_remain_data);
+	bits->crc_nr = 3;
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	                  bits->crc_nr, bits->crc);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 3: skip large CID (handled elsewhere) */
+	rohc_remain_data += large_cid_len;
+	rohc_remain_len -= large_cid_len;
+	*rohc_hdr_len += large_cid_len;
+
+	/* part 4: no remainder of base header for UO-0 packet */
+	/* part 5: no extension for UO-0 packet */
+
+	/* sanity checks */
+	assert((*rohc_hdr_len) <= rohc_length);
+
 	/* UO-0 packet was successfully parsed */
 	return true;
 
@@ -4537,61 +4639,6 @@ error:
  * @brief Parse one UO-1 header
  *
  * \verbatim
-
-      0   1   2   3   4   5   6   7
-     --- --- --- --- --- --- --- ---
- 1  :         Add-CID octet         :                    |
-    +---+---+---+---+---+---+---+---+                    |
- 2  |   first octet of base header  |                    |
-    +---+---+---+---+---+---+---+---+                    |
-    :                               :                    |
- 3  /   0, 1, or 2 octets of CID    /                    |
-    :                               :                    |
-    +---+---+---+---+---+---+---+---+                    |
-    :   remainder of base header    :                    |
- 4  /     see below for details     /                    |
-    :                               :                    |
-    +---+---+---+---+---+---+---+---+                    |
-    :                               :                    |
- 5  /           Extension           /                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 6  +   IP-ID of outer IPv4 header  +
-    :                               :     (see section 5.7 or [RFC-3095])
-     --- --- --- --- --- --- --- ---
- 7  /    AH data for outer list     /                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 8  +         GRE checksum          +                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 9  +   IP-ID of inner IPv4 header  +                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---                     |
- 10 /    AH data for inner list     /                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 11 +         GRE checksum          +                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---
-    :            List of            :
- 12 /        Dynamic chains         /  variable, given by static chain
-    :   for additional IP headers   :  (includes no SN)
-     --- --- --- --- --- --- --- ---
-
-     --- --- --- --- --- --- --- ---
-    :                               :  RTP/UDP profiles only [RFC-3095]
- 13 +         UDP Checksum          +  2 octets,
-    :                               :  if context(UDP Checksum) != 0
-     --- --- --- --- --- --- --- ---
-
-\endverbatim
-
-Here are the first octet and remainder of UO-1 base headers:
-
-\verbatim
 
  UO-1 (5.11.3):
 
@@ -4641,10 +4688,8 @@ Here are the first octet and remainder of UO-1 base headers:
 \endverbatim
  *
  * Parts 7, 8, 10, 11 and 12 are not supported.
- * Parts 1 and 3 are parsed in the parent function.
- * Parts 2, 4, 6 and 9 are parsed in this function.
- * Part 5 does not exist in the UO-1 packet.
- * Part 13 is parsed in profile-specific function.
+ * Parts 1, 3, 6, 9, and 13 are parsed in parent functions.
+ * Parts 2, 4, and 5 are parsed in this function.
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
@@ -4653,7 +4698,8 @@ Here are the first octet and remainder of UO-1 base headers:
  * @param large_cid_len  The length of the optional large CID field
  * @param bits           OUT: The bits extracted from the UO-1 header
  * @param rohc_hdr_len   OUT: The size of the UO-1 header
- * @return               true if UO-1 is successfully parsed, false otherwise
+ * @return               true if UO-1 is successfully parsed,
+ *                       false otherwise
  */
 static bool parse_uo1(const struct rohc_decomp *const decomp,
                       const struct d_context *const context,
@@ -4663,6 +4709,9 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
                       struct rohc_extr_bits *const bits,
                       size_t *const rohc_hdr_len)
 {
+	/* Whether the current profile is RTP or not */
+	const int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
+
 	struct d_generic_context *g_context;
 
 	/* remaining ROHC data not parsed yet and the length of the ROHC headers
@@ -4683,9 +4732,34 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 	rohc_remain_len = rohc_length;
 	*rohc_hdr_len = 0;
 
-	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
+	/* UO-1 contains a 3-bit CRC */
 	bits->crc_type = ROHC_CRC_TYPE_3;
+
+	/* check packet usage */
+	if(context->state == STATIC_CONTEXT)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "%s packets cannot be received in Static Context "
+		             "state\n", rohc_get_packet_descr(g_context->packet_type));
+		goto error;
+	}
+	if(is_rtp && g_context->packet_type == PACKET_UO_1)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UO-1 packet cannot be used with RTP profile\n");
+		assert(0);
+		goto error;
+	}
+	else if(!is_rtp && (g_context->packet_type == PACKET_UO_1_RTP ||
+	                    g_context->packet_type == PACKET_UO_1_TS ||
+	                    g_context->packet_type == PACKET_UO_1_ID))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UO-1-RTP/TS/ID packets cannot be used with non-RTP "
+		             "profiles\n");
+		assert(0);
+		goto error;
+	}
 
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
@@ -4710,11 +4784,11 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 	 * parse ROHC base header
 	 */
 
-	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
+	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len <= (1 + large_cid_len))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		             "rohc packet too small (len = %zd)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -5002,104 +5076,6 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 		*rohc_hdr_len += ext_size;
 	}
 
-	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(is_ipv4_rnd_pkt(bits->outer_ip))
-	{
-		/* outer IP-ID is random, read its full 16-bit value and ignore any
-		   previous bits we may have read (they should be filled with zeroes) */
-
-		/* check if the ROHC packet is large enough to read the outer IP-ID */
-		if(rohc_remain_len < 2)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "ROHC packet too small for random outer IP-ID bits "
-			             "(len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		/* sanity check: all bits that are above 16 bits should be zero */
-		if(bits->outer_ip.id_nr > 0 && bits->outer_ip.id != 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "bad packet format: outer IP-ID bits from the base ROHC "
-			             "header shall be filled with zeroes but 0x%x was found\n",
-			             bits->outer_ip.id);
-		}
-
-		/* retrieve the full outer IP-ID value */
-		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
-		bits->outer_ip.id_nr = 16;
-
-		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
-		                  "with the ones found at the end of the UO-1* packet "
-		                  "(0x%x on %zd bits)\n", bits->outer_ip.id,
-		                  bits->outer_ip.id_nr);
-
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-		*rohc_hdr_len += 2;
-	}
-
-	/* parts 7 and 8: not supported */
-
-	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip && is_ipv4_rnd_pkt(bits->inner_ip))
-	{
-		/* inner IP-ID is random, read its full 16-bit value and ignore any
-		   previous bits we may have read (they should be filled with zeroes) */
-
-		/* check if the ROHC packet is large enough to read the inner IP-ID */
-		if(rohc_remain_len < 2)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "ROHC packet too small for random inner IP-ID bits "
-			             "(len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		/* sanity check: all bits that are above 16 bits should be zero */
-		if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "bad packet format: inner IP-ID bits from the base ROHC "
-			             "header shall be filled with zeroes but 0x%x was found\n",
-			             bits->inner_ip.id);
-		}
-
-		/* retrieve the full inner IP-ID value */
-		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
-		bits->inner_ip.id_nr = 16;
-
-		rohc_decomp_debug(context, "replace any existing inner IP-ID bits "
-		                  "with the ones found at the end of the UO-1* packet "
-		                  "(0x%x on %zd bits)\n", bits->inner_ip.id,
-		                  bits->inner_ip.id_nr);
-
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-		*rohc_hdr_len += 2;
-	}
-
-	/* parts 10, 11 and 12: not supported */
-
-	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_remainder != NULL)
-	{
-		int size;
-
-		size = g_context->parse_uo_remainder(context, rohc_remain_data,
-		                                     rohc_remain_len, bits);
-		if(size < 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "cannot decode the remainder of UO* packet\n");
-			goto error;
-		}
-		rohc_remain_data += size;
-		rohc_remain_len -= size;
-		*rohc_hdr_len += size;
-	}
-
 	/* sanity checks */
 	assert((*rohc_hdr_len) <= rohc_length);
 
@@ -5121,7 +5097,8 @@ error:
  * @param large_cid_len  The length of the optional large CID field
  * @param bits           OUT: The bits extracted from the UOR-2 header
  * @param rohc_hdr_len   OUT: The size of the UOR-2 header
- * @return               true if UOR-2 is successfully parsed, false otherwise
+ * @return               true if UOR-2 is successfully parsed,
+ *                       false otherwise
  *
  * @see parse_uor2_once
  */
@@ -5133,6 +5110,9 @@ static bool parse_uor2(const struct rohc_decomp *const decomp,
                        struct rohc_extr_bits *const bits,
                        size_t *const rohc_hdr_len)
 {
+	/* Whether the current profile is RTP or not */
+	const int is_rtp = (context->profile->id == ROHC_PROFILE_RTP);
+
 	struct d_generic_context *const g_context = context->specific;
 
 	/* forced values for outer and inner RND flags */
@@ -5140,6 +5120,25 @@ static bool parse_uor2(const struct rohc_decomp *const decomp,
 	uint8_t inner_rnd;
 
 	int parsing;
+
+	/* check packet usage */
+	if(is_rtp && g_context->packet_type == PACKET_UOR_2)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UOR-2 packet cannot be used with RTP profile\n");
+		assert(0);
+		goto error;
+	}
+	else if(!is_rtp && (g_context->packet_type == PACKET_UOR_2_RTP ||
+	                    g_context->packet_type == PACKET_UOR_2_TS ||
+	                    g_context->packet_type == PACKET_UOR_2_ID))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UOR-2-RTP/TS/ID packets cannot be used with non-RTP "
+		             "profiles\n");
+		assert(0);
+		goto error;
+	}
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
@@ -5261,61 +5260,6 @@ error:
  *
  * \verbatim
 
-      0   1   2   3   4   5   6   7
-     --- --- --- --- --- --- --- ---
- 1  :         Add-CID octet         :                    |
-    +---+---+---+---+---+---+---+---+                    |
- 2  |   first octet of base header  |                    |
-    +---+---+---+---+---+---+---+---+                    |
-    :                               :                    |
- 3  /   0, 1, or 2 octets of CID    /                    |
-    :                               :                    |
-    +---+---+---+---+---+---+---+---+                    |
-    :   remainder of base header    :                    |
- 4  /     see below for details     /                    |
-    :                               :                    |
-    +---+---+---+---+---+---+---+---+                    |
-    :                               :                    |
- 5  /           Extension           /                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 6  +   IP-ID of outer IPv4 header  +
-    :                               :     (see section 5.7 or [RFC-3095])
-     --- --- --- --- --- --- --- ---
- 7  /    AH data for outer list     /                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 8  +         GRE checksum          +                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 9  +   IP-ID of inner IPv4 header  +                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---                     |
- 10 /    AH data for inner list     /                    |
-     --- --- --- --- --- --- --- ---                     |
-    :                               :                    |
- 11 +         GRE checksum          +                    |
-    :                               :                    |
-     --- --- --- --- --- --- --- ---
-    :            List of            :
- 12 /        Dynamic chains         /  variable, given by static chain
-    :   for additional IP headers   :  (includes no SN)
-     --- --- --- --- --- --- --- ---
-
-     --- --- --- --- --- --- --- ---
-    :                               :  RTP/UDP profiles only [RFC-3095]
- 13 +         UDP Checksum          +  2 octets,
-    :                               :  if context(UDP Checksum) != 0
-     --- --- --- --- --- --- --- ---
-
-\endverbatim
-
-Here are the first octet and remainder of UOR-2 base headers:
-
-\verbatim
-
  UOR-2 (5.11.3):
 
       0   1   2   3   4   5   6   7
@@ -5361,9 +5305,8 @@ Here are the first octet and remainder of UOR-2 base headers:
 \endverbatim
  *
  * Parts 7, 8, 10, 11 and 12 are not supported.
- * Parts 1 and 3 are parsed in the parent function.
- * Parts 2, 4, 5, 6 and 9 are parsed in this function.
- * Part 13 is parsed in profile-specific function.
+ * Parts 1, 3, 6, 9, and 13 are parsed in parent functions.
+ * Parts 2, 4, and 5 are parsed in this function.
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
@@ -5408,36 +5351,6 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 	rohc_remain_len = rohc_length;
 	*rohc_hdr_len = 0;
 
-	/* reset all extracted bits */
-	reset_extr_bits(g_context, bits);
-
-	/* if the RTP bit type feature is enabled at build time, CRC is one
-	 * bit less than in ROHC standard for RTP-specific UOR-2 packets */
-#if RTP_BIT_TYPE
-	if(g_context->packet_type == PACKET_UOR_2_RTP ||
-	   g_context->packet_type == PACKET_UOR_2_TS ||
-	   g_context->packet_type == PACKET_UOR_2_ID)
-	{
-		bits->crc_type = ROHC_CRC_TYPE_6;
-	}
-	else
-#endif
-	{
-		bits->crc_type = ROHC_CRC_TYPE_7;
-	}
-
-	/* force extracted RND values (for reparsing) */
-	if(bits->outer_ip.version == IPV4)
-	{
-		bits->outer_ip.rnd = outer_rnd & 0x1;
-		bits->outer_ip.rnd_nr = 1;
-	}
-	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
-	{
-		bits->inner_ip.rnd = inner_rnd & 0x1;
-		bits->inner_ip.rnd_nr = 1;
-	}
-
 	/* determine which IP header is the innermost IPv4 header with
 	 * value(RND) = 0 */
 	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
@@ -5454,6 +5367,18 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 	{
 		/* no IPv4 header with non-random IP-ID */
 		innermost_ipv4_non_rnd = ROHC_IP_HDR_NONE;
+	}
+
+	/* force extracted RND values (for reparsing) */
+	if(bits->outer_ip.version == IPV4)
+	{
+		bits->outer_ip.rnd = outer_rnd & 0x1;
+		bits->outer_ip.rnd_nr = 1;
+	}
+	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
+	{
+		bits->inner_ip.rnd = inner_rnd & 0x1;
+		bits->inner_ip.rnd_nr = 1;
 	}
 
 
@@ -5528,6 +5453,11 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 			rohc_remain_data++;
 			rohc_remain_len--;
 			(*rohc_hdr_len)++;
+			/* no IP-ID bit (needed for reparsing) */
+			bits->inner_ip.id = 0;
+			bits->inner_ip.id_nr = 0;
+			bits->outer_ip.id = 0;
+			bits->outer_ip.id_nr = 0;
 			break;
 		}
 
@@ -5555,6 +5485,11 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 			rohc_remain_data++;
 			rohc_remain_len--;
 			(*rohc_hdr_len)++;
+			/* no IP-ID bit (needed for reparsing) */
+			bits->inner_ip.id = 0;
+			bits->inner_ip.id_nr = 0;
+			bits->outer_ip.id = 0;
+			bits->outer_ip.id_nr = 0;
 			break;
 		}
 
@@ -5578,6 +5513,9 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 				rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
 				                  bits->outer_ip.id_nr, innermost_ipv4_non_rnd,
 				                  bits->outer_ip.id);
+				/* no inner IP-ID bit (needed for reparsing) */
+				bits->inner_ip.id = 0;
+				bits->inner_ip.id_nr = 0;
 			}
 			else
 			{
@@ -5586,6 +5524,9 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 				rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
 				                  bits->inner_ip.id_nr, innermost_ipv4_non_rnd,
 				                  bits->inner_ip.id);
+				/* no outer IP-ID bit (needed for reparsing) */
+				bits->outer_ip.id = 0;
+				bits->outer_ip.id_nr = 0;
 			}
 			rohc_remain_data++;
 			rohc_remain_len--;
@@ -5605,6 +5546,9 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 			rohc_remain_data++;
 			rohc_remain_len--;
 			(*rohc_hdr_len)++;
+			/* no TS bit (needed for reparsing) */
+			bits->ts = 0;
+			bits->ts_nr = 0;
 			break;
 		}
 
@@ -5617,18 +5561,24 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 		}
 	}
 
-	/* part 4: 6-bit or 7-bit CRC */
+	/* part 4: 6-bit or 7-bit CRC
+	 *   if the RTP bit type feature is enabled at build time, CRC is one
+	 *   bit less than in ROHC standard for RTP-specific UOR-2 packets */
 #if RTP_BIT_TYPE
 	if(g_context->packet_type == PACKET_UOR_2_RTP ||
 	   g_context->packet_type == PACKET_UOR_2_TS ||
 	   g_context->packet_type == PACKET_UOR_2_ID)
 	{
+		/* UOR-2* contains a 6-bit CRC if RTP bit type feature is enabled */
+		bits->crc_type = ROHC_CRC_TYPE_6;
 		bits->crc = GET_BIT_0_5(rohc_remain_data);
 		bits->crc_nr = 6;
 	}
 	else
 #endif
 	{
+		/* UOR-2* contains a 7-bit CRC */
+		bits->crc_type = ROHC_CRC_TYPE_7;
 		bits->crc = GET_BIT_0_6(rohc_remain_data);
 		bits->crc_nr = 7;
 	}
@@ -5839,109 +5789,6 @@ static int parse_uor2_once(const struct rohc_decomp *const decomp,
 		rohc_remain_data += ext_size;
 		rohc_remain_len -= ext_size;
 		*rohc_hdr_len += ext_size;
-	}
-
-
-	/*
-	 * parse of ROHC tail of header
-	 */
-
-	/* part 6: extract 16 outer IP-ID bits in case the outer IP-ID is random */
-	if(is_ipv4_rnd_pkt(bits->outer_ip))
-	{
-		/* outer IP-ID is random, read its full 16-bit value and ignore any
-		   previous bits we may have read (they should be filled with zeroes) */
-
-		/* check if the ROHC packet is large enough to read the outer IP-ID */
-		if(rohc_remain_len < 2)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			            "ROHC packet too small for random outer IP-ID bits "
-			            "(len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		/* sanity check: all bits that are above 16 bits should be zero */
-		if(bits->outer_ip.id_nr > 0 && bits->outer_ip.id != 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "bad packet format: outer IP-ID bits from the base ROHC "
-			             "header shall be filled with zeroes but 0x%x was found\n",
-			             bits->outer_ip.id);
-		}
-
-		/* retrieve the full outer IP-ID value */
-		bits->outer_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
-		bits->outer_ip.id_nr = 16;
-
-		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
-		                  "the ones found at the end of the UOR-2* packet "
-		                  "(0x%x on %zd bits)\n", bits->outer_ip.id,
-		                  bits->outer_ip.id_nr);
-
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-		*rohc_hdr_len += 2;
-	}
-
-	/* parts 7 and 8: not supported */
-
-	/* part 9: extract 16 inner IP-ID bits in case the inner IP-ID is random */
-	if(g_context->multiple_ip && is_ipv4_rnd_pkt(bits->inner_ip))
-	{
-		/* inner IP-ID is random, read its full 16-bit value and ignore any
-		   previous bits we may have read (they should be filled with zeroes) */
-
-		/* check if the ROHC packet is large enough to read the inner IP-ID */
-		if(rohc_remain_len < 2)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "ROHC packet too small for random inner IP-ID bits "
-			             "(len = %zd)\n", rohc_remain_len);
-			goto error;
-		}
-
-		/* sanity check: all bits that are above 16 bits should be zero */
-		if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "bad packet format: inner IP-ID bits from the base ROHC "
-			             "header shall be filled with zeroes but 0x%x was found\n",
-			             bits->inner_ip.id);
-		}
-
-		/* retrieve the full inner IP-ID value */
-		bits->inner_ip.id = rohc_ntoh16(GET_NEXT_16_BITS(rohc_remain_data));
-		bits->inner_ip.id_nr = 16;
-
-		rohc_decomp_debug(context, "replace any existing inner IP-ID bits with "
-		                  "the ones found at the end of the UOR-2* packet "
-		                  "(0x%x on %zd bits)\n", bits->inner_ip.id,
-		                  bits->inner_ip.id_nr);
-
-		rohc_remain_data += 2;
-		rohc_remain_len -= 2;
-		*rohc_hdr_len += 2;
-	}
-
-	/* parts 10, 11 and 12: not supported */
-
-	/* part 13: decode the tail of UO* packet */
-	if(g_context->parse_uo_remainder != NULL)
-	{
-		int size;
-
-		size = g_context->parse_uo_remainder(context, rohc_remain_data,
-		                                     rohc_remain_len, bits);
-		if(size < 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "cannot decode the remainder of UO* packet\n");
-			goto error;
-		}
-		rohc_remain_data += size;
-		rohc_remain_len -= size;
-		*rohc_hdr_len += size;
 	}
 
 	/* sanity checks */
