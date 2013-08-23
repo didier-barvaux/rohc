@@ -332,7 +332,7 @@ static bool f_append_cid(struct d_feedback *const feedback,
 		}
 
 		/* check if the feedback packet can contain a SDVL-encoded large CID */
-		if(feedback->size + largecidsize > 30)
+		if((feedback->size + largecidsize) > FEEDBACK_DATA_MAX_LEN)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
 			printf("feedback packet is too small for large CID\n");
