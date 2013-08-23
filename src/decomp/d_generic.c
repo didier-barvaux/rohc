@@ -4013,6 +4013,7 @@ error:
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
  * @param uncomp_packet  OUT: The decoded IP packet
+ * @param packet_type    OUT: The type of the decompressed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
@@ -4024,7 +4025,8 @@ int d_generic_decode(struct rohc_decomp *const decomp,
                      const size_t rohc_length,
                      const size_t add_cid_len,
                      const size_t large_cid_len,
-                     unsigned char *uncomp_packet)
+                     unsigned char *uncomp_packet,
+                     rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *const g_context = context->specific;
 
@@ -4322,6 +4324,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 
 	/* update statistics */
+	*packet_type = g_context->packet_type;
 	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
 	/* decompression is successful, return length of uncompressed packet */

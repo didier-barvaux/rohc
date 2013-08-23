@@ -480,6 +480,7 @@ static void d_tcp_destroy(void *const context)
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
  * @param dest           OUT: The decoded IP packet
+ * @param packet_type    OUT: The type of the decompressed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  *                       or ROHC_ERROR_CRC if a CRC error occurs
@@ -491,7 +492,8 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
                         const size_t rohc_length,
                         const size_t add_cid_len,
                         const size_t large_cid_len,
-                        unsigned char *const dest)
+                        unsigned char *const dest,
+                        rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
@@ -501,7 +503,6 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	tcphdr_t *tcp;
 	unsigned int payload_size;
 	int length = ROHC_ERROR;
-	uint8_t packet_type;
 	uint8_t protocol;
 	int size;
 	int read;
@@ -527,17 +528,17 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	                 ROHC_TRACE_DEBUG, "compressed data, max. 100 bytes",
 	                 rohc_packet, rohc_min(rohc_length, 100));
 
-	packet_type = *rohc_packet;
-	rohc_decomp_debug(context, "packet type = 0x%02x\n", packet_type);
+	*packet_type = *rohc_packet;
+	rohc_decomp_debug(context, "packet type = 0x%02x\n", *packet_type);
 
 	ip_context.uint8 = tcp_context->ip_context;
 
-	if(packet_type == PACKET_TYPE_IR)
+	if((*packet_type) == PACKET_TYPE_IR)
 	{
 		size = d_tcp_decode_ir(decomp, context, rohc_packet, rohc_length,
 		                       add_cid_len, large_cid_len, dest);
 	}
-	else if(packet_type == PACKET_TYPE_IR_DYN)
+	else if((*packet_type) == PACKET_TYPE_IR_DYN)
 	{
 		/* skip:
 		 *  - the first byte of the ROHC packet (field 2)

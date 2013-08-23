@@ -46,7 +46,8 @@ static int uncompressed_decode(struct rohc_decomp *const decomp,
                                const size_t rohc_length,
                                const size_t add_cid_len,
                                const size_t large_cid_len,
-                               unsigned char *const dest);
+                               unsigned char *const dest,
+                               rohc_packet_t *const packet_type);
 
 static int uncompressed_decode_ir(struct rohc_decomp *decomp,
                                   struct d_context *context,
@@ -116,6 +117,7 @@ void uncompressed_free_decode_data(void *context)
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the large CID field
  * @param dest           The decoded IP packet
+ * @param packet_type    OUT: The type of the decompressed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                       or ROHC_ERROR if an error occurs
@@ -127,15 +129,18 @@ static int uncompressed_decode(struct rohc_decomp *const decomp,
                                const size_t rohc_length,
                                const size_t add_cid_len,
                                const size_t large_cid_len,
-                               unsigned char *const dest)
+                               unsigned char *const dest,
+                               rohc_packet_t *const packet_type)
 {
 	if(d_is_ir(rohc_packet, rohc_length))
 	{
+		*packet_type = PACKET_IR;
 		return uncompressed_decode_ir(decomp, context, rohc_packet, rohc_length,
 		                              add_cid_len, large_cid_len, dest);
 	}
 	else
 	{
+		*packet_type = PACKET_NORMAL;
 		return uncompressed_decode_normal(decomp, context,
 		                                  rohc_packet, rohc_length,
 		                                  add_cid_len, large_cid_len, dest);

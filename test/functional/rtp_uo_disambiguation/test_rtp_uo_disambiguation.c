@@ -61,7 +61,6 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc.h>
 #include <rohc_comp.h>
 #include <rohc_decomp.h>
-#include "d_generic.h" /* TODO: replace that */
 
 
 /* prototypes of private functions */
@@ -228,9 +227,7 @@ static int test_comp_and_decomp(const char *const filename,
 	unsigned int counter;
 
 	rohc_packet_t pkt_type_comp = PACKET_UNKNOWN;
-#if !defined(__MINGW32__)
 	rohc_packet_t pkt_type_decomp = PACKET_UNKNOWN;
-#endif
 
 #define NB_RTP_PORTS 5
 	const unsigned int rtp_ports[NB_RTP_PORTS] =
@@ -352,7 +349,8 @@ static int test_comp_and_decomp(const char *const filename,
 		size_t ip_size;
 		static unsigned char rohc_packet[MAX_ROHC_SIZE];
 		size_t rohc_size;
-		rohc_comp_last_packet_info2_t packet_info;
+		rohc_comp_last_packet_info2_t comp_packet_info;
+		rohc_decomp_last_packet_info_t decomp_packet_info;
 		static unsigned char decomp_packet[MAX_ROHC_SIZE];
 		size_t decomp_size;
 		int ret;
@@ -415,14 +413,14 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* get packet statistics to retrieve the packet type */
-		packet_info.version_major = 0;
-		packet_info.version_minor = 0;
-		if(!rohc_comp_get_last_packet_info2(comp, &packet_info))
+		comp_packet_info.version_major = 0;
+		comp_packet_info.version_minor = 0;
+		if(!rohc_comp_get_last_packet_info2(comp, &comp_packet_info))
 		{
 			fprintf(stderr, "\tfailed to get statistics on packet to damage\n");
 			goto destroy_decomp;
 		}
-		pkt_type_comp = packet_info.packet_type;
+		pkt_type_comp = comp_packet_info.packet_type;
 		fprintf(stderr, "\tROHC packet is of type '%s' (%d)\n",
 		        rohc_get_packet_descr(pkt_type_comp), pkt_type_comp);
 
@@ -438,36 +436,35 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "\tdecompression is successful\n");
 
 		/* retrieve the packet type */
-#if !defined(__MINGW32__)
-		struct d_context *last_context = decomp->last_context;
-		struct d_generic_context *last_g_context = last_context->specific;
-		pkt_type_decomp = last_g_context->packet_type;
-		fprintf(stderr, "\tROHC packet is of type '%s' (%d)\n",
-		        rohc_get_packet_descr(pkt_type_decomp), pkt_type_decomp);
-#endif
+		decomp_packet_info.version_major = 0;
+		decomp_packet_info.version_minor = 1;
+		if(!rohc_decomp_get_last_packet_info(decomp, &decomp_packet_info))
+		{
+			fprintf(stderr, "\tfailed to get decompression info\n");
+			goto destroy_decomp;
+		}
+		pkt_type_decomp = decomp_packet_info.packet_type;
 	}
 
 	/* last compressed packet must be of the expected type */
 	if(pkt_type_comp != expected_packet)
 	{
-		fprintf(stderr, "last packet was compressed as '%s' (%d) "
-		        "while '%s' (%d) was expected\n",
+		fprintf(stderr, "last packet was compressed as '%s' (%u) "
+		        "while '%s' (%u) was expected\n",
 		        rohc_get_packet_descr(pkt_type_comp), pkt_type_comp,
 		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
 	}
 
 	/* last decompressed packet must be of the expected type */
-#if !defined(__MINGW32__)
 	if(pkt_type_decomp != expected_packet)
 	{
-		fprintf(stderr, "last packet was decompressed as '%s' (%d) "
-		        "while '%s' (%d) was expected\n",
+		fprintf(stderr, "last packet was decompressed as '%s' (%u) "
+		        "while '%s' (%u) was expected\n",
 		        rohc_get_packet_descr(pkt_type_decomp), pkt_type_decomp,
 		        rohc_get_packet_descr(expected_packet), expected_packet);
 		goto destroy_decomp;
 	}
-#endif
 
 	/* everything went fine */
 	fprintf(stderr, "all packets were successfully compressed/decompressed\n");

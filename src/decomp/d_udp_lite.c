@@ -356,6 +356,7 @@ error:
  * @param add_cid_len    The length of the optional Add-CID field
  * @param large_cid_len  The length of the optional large CID field
  * @param dest           The decoded IP packet
+ * @param packet_type    OUT: The type of the decompressed ROHC packet
  * @return               The length of the uncompressed IP packet
  *                       or ROHC_ERROR if an error occurs
  */
@@ -366,7 +367,8 @@ int d_udp_lite_decode(struct rohc_decomp *const decomp,
                       const size_t rohc_length,
                       const size_t add_cid_len,
                       const size_t large_cid_len,
-                      unsigned char *const dest)
+                      unsigned char *const dest,
+                      rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
@@ -401,7 +403,7 @@ int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	 * (with a fake length for the large CID field eventually) */
 	return d_generic_decode(decomp, context, arrival_time,
 	                        rohc_remain_data, rohc_remain_len,
-	                        add_cid_len, new_large_cid_len, dest);
+	                        add_cid_len, new_large_cid_len, dest, packet_type);
 
 error:
 	return ROHC_ERROR;

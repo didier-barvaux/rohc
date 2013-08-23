@@ -173,6 +173,9 @@ struct d_context
 
 	/* below are some statistics */
 
+	/** The type of the last decompressed ROHC packet */
+	rohc_packet_t packet_type;
+
 	/** The average size of the uncompressed packets */
 	int total_uncompressed_size;
 	/** The average size of the compressed packets */
@@ -241,7 +244,8 @@ struct d_profile
 	              const size_t rohc_length,
 	              const size_t add_cid_len,
 	              const size_t large_cid_len,
-	              unsigned char *const dest);
+	              unsigned char *const dest,
+	              rohc_packet_t *const packet_type);
 
 	/* @brief The handler used to create the profile-specific part of the
 	 *        decompression context */

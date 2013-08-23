@@ -109,7 +109,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
                            int isize,
                            unsigned char *obuf,
                            int osize,
-                           struct d_decode_data *ddata);
+                           struct d_decode_data *ddata,
+                           rohc_packet_t *const packet_type);
 
 static const struct d_profile *
 	find_profile(const struct rohc_decomp *const decomp,
@@ -620,6 +621,7 @@ int rohc_decompress2(struct rohc_decomp *decomp,
                      size_t *const uncomp_packet_len)
 {
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
+	rohc_packet_t packet_type;
 	int status = ROHC_ERROR; /* error status by default */
 
 	/* check inputs validity */
@@ -646,7 +648,7 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 	/* decode ROHC header */
 	status = d_decode_header(decomp, arrival_time, rohc_packet,
 	                         rohc_packet_len, uncomp_packet,
-	                         uncomp_packet_max_len, &ddata);
+	                         uncomp_packet_max_len, &ddata, &packet_type);
 	if(ddata.active == NULL &&
 	   (status == ROHC_ERROR_PACKET_FAILED ||
 	    status == ROHC_ERROR ||
@@ -668,6 +670,7 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 		*uncomp_packet_len = status;
 		status = ROHC_OK;
 		assert(ddata.active != NULL);
+		ddata.active->packet_type = packet_type;
 		ddata.active->total_uncompressed_size += *uncomp_packet_len;
 		ddata.active->total_compressed_size += rohc_packet_len;
 		c_add_wlsb(ddata.active->total_16_uncompressed, 0, *uncomp_packet_len);
@@ -855,7 +858,8 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
  * @param isize         The size of the ROHC packet
  * @param obuf          The buffer where to store the decompressed packet
  * @param osize         The size of the buffer for the decompressed packet
- * @param ddata         Decompression-related data (e.g. the context)
+ * @param ddata         OUT: Decompression-related data (e.g. the context)
+ * @param packet_type   OUT: The type of the decompressed ROHC packet
  * @return              The size of the decompressed packet
  */
 static int d_decode_header(struct rohc_decomp *decomp,
@@ -864,7 +868,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
                            int isize,
                            unsigned char *obuf,
                            int osize,
-                           struct d_decode_data *ddata)
+                           struct d_decode_data *ddata,
+                           rohc_packet_t *const packet_type)
 {
 	int size, casenew = 0;
 	const struct d_profile *profile;
@@ -877,6 +882,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	assert(obuf != NULL);
 	assert(osize > 0);
 	assert(ddata != NULL);
+	assert(packet_type != NULL);
 
 	if(isize < 1)
 	{
@@ -1091,7 +1097,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		                                      arrival_time, walk, isize,
 		                                      ddata->addcidUsed,
 		                                      ddata->large_cid_size,
-		                                      obuf);
+		                                      obuf, packet_type);
 		if(size > 0)
 		{
 			/* the IR decompression was successful,
@@ -1190,7 +1196,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		                                      arrival_time, walk, isize,
 	                                         ddata->addcidUsed,
 	                                         ddata->large_cid_size,
-	                                         obuf);
+	                                         obuf, packet_type);
 	} /* end of 'the ROHC packet is not an IR packet' */
 
 error:
@@ -1824,6 +1830,7 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 					decomp->last_context->corrected_sn_wraparounds;
 				info->corrected_wrong_sn_updates =
 					decomp->last_context->corrected_wrong_sn_updates;
+				info->packet_type = decomp->last_context->packet_type;
 				break;
 			default:
 				rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,

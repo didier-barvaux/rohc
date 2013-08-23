@@ -106,6 +106,7 @@ typedef enum
  *        + corrected_crc_failures
  *        + corrected_sn_wraparounds
  *        + corrected_wrong_sn_updates
+ *        + packet_type
  *
  * @ingroup rohc_decomp
  */
@@ -136,6 +137,8 @@ typedef struct
 	/** The number of successful corrections of incorrect SN updates upon CRC
 	 *  failure */
 	unsigned long corrected_wrong_sn_updates;
+	/** The type of the last decompressed ROHC packet */
+	rohc_packet_t packet_type;
 
 } __attribute__((packed)) rohc_decomp_last_packet_info_t;
 
