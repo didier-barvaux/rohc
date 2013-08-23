@@ -188,6 +188,42 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
                               struct rohc_extr_bits *const bits,
                               size_t *const rohc_hdr_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8, 9)));
+static bool parse_uor2id(const struct rohc_decomp *const decomp,
+                         const struct d_context *const context,
+                         const unsigned char *const rohc_packet,
+                         const size_t rohc_length,
+                         const size_t large_cid_len,
+                         struct rohc_extr_bits *const bits,
+                         size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7)));
+static int parse_uor2id_once(const struct rohc_decomp *const decomp,
+                             const struct d_context *const context,
+                             const unsigned char *const rohc_packet,
+                             const size_t rohc_length,
+                             const size_t large_cid_len,
+                             uint8_t outer_rnd,
+                             uint8_t inner_rnd,
+                             struct rohc_extr_bits *const bits,
+                             size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8, 9)));
+static bool parse_uor2ts(const struct rohc_decomp *const decomp,
+                         const struct d_context *const context,
+                         const unsigned char *const rohc_packet,
+                         const size_t rohc_length,
+                         const size_t large_cid_len,
+                         struct rohc_extr_bits *const bits,
+                         size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6, 7)));
+static int parse_uor2ts_once(const struct rohc_decomp *const decomp,
+                             const struct d_context *const context,
+                             const unsigned char *const rohc_packet,
+                             const size_t rohc_length,
+                             const size_t large_cid_len,
+                             uint8_t outer_rnd,
+                             uint8_t inner_rnd,
+                             struct rohc_extr_bits *const bits,
+                             size_t *const rohc_hdr_len)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 8, 9)));
 
 static bool parse_uo_remainder(const struct rohc_decomp *const decomp,
                                const struct d_context *const context,
@@ -3163,6 +3199,8 @@ static int get_bit_index(unsigned char byte, int index)
  * @see parse_uo1ts
  * @see parse_uor2
  * @see parse_uor2rtp
+ * @see parse_uor2id
+ * @see parse_uor2ts
  */
 static bool parse_packet(const struct rohc_decomp *const decomp,
                          const struct d_context *const context,
@@ -3231,10 +3269,18 @@ static bool parse_packet(const struct rohc_decomp *const decomp,
 			break;
 		}
 		case PACKET_UOR_2_RTP:
-		case PACKET_UOR_2_TS:
-		case PACKET_UOR_2_ID:
 		{
 			parse = parse_uor2rtp;
+			break;
+		}
+		case PACKET_UOR_2_TS:
+		{
+			parse = parse_uor2ts;
+			break;
+		}
+		case PACKET_UOR_2_ID:
+		{
+			parse = parse_uor2id;
 			break;
 		}
 		default:
@@ -5756,16 +5802,16 @@ error:
 
 
 /**
- * @brief Parse one UOR-2* header for RTP profile (in 2 passes if needed)
+ * @brief Parse one UOR-2 header for RTP profile (in 2 passes if needed)
  *
  * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
- * @param bits           OUT: The bits extracted from the UOR-2 header
- * @param rohc_hdr_len   OUT: The size of the UOR-2 header
- * @return               true if UOR-2 is successfully parsed,
+ * @param bits           OUT: The bits extracted from the UOR-2-RTP header
+ * @param rohc_hdr_len   OUT: The size of the UOR-2-RTP header
+ * @return               true if UOR-2-RTP is successfully parsed,
  *                       false otherwise
  *
  * @see parse_uor2rtp_once
@@ -5790,8 +5836,7 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "UOR-2-RTP/TS/ID packets cannot be used with non-RTP "
-		             "profiles\n");
+		             "UOR-2-RTP packet cannot be used with non-RTP profiles\n");
 		assert(0);
 		goto error;
 	}
@@ -5801,7 +5846,7 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 	outer_rnd = g_context->outer_ip_changes->rnd;
 	inner_rnd = g_context->inner_ip_changes->rnd;
 
-	/* try parsing UOR-2* packet with information from context */
+	/* try parsing UOR-2-RTP packet with information from context */
 	parsing = parse_uor2rtp_once(decomp, context,
 	                             rohc_packet, rohc_length, large_cid_len,
 	                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
@@ -5810,7 +5855,7 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 		if(parsing != ROHC_NEED_REPARSE)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "failed to parse the UOR-2 header\n");
+			             "failed to parse the UOR-2-RTP header\n");
 			goto error;
 		}
 
@@ -5822,29 +5867,6 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 #if RTP_BIT_TYPE
 		assert(0);
 #else
-
-		/* change packet type UOR-2-RTP <-> UOR-2-ID/TS */
-		if(g_context->packet_type == PACKET_UOR_2_RTP)
-		{
-			if(d_is_uor2_ts(rohc_packet, rohc_length, large_cid_len))
-			{
-				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				          "change for packet UOR-2-TS (T = 1)\n");
-				g_context->packet_type = PACKET_UOR_2_TS;
-			}
-			else
-			{
-				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				          "change for packet UOR-2-ID (T = 0)\n");
-				g_context->packet_type = PACKET_UOR_2_ID;
-			}
-		}
-		else /* UOR-2-ID or UOR-2-TS */
-		{
-			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			          "change for packet UOR-2-RTP\n");
-			g_context->packet_type = PACKET_UOR_2_RTP;
-		}
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -5873,10 +5895,26 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 			outer_rnd = g_context->outer_ip_changes->rnd;
 		}
 
-		/* try parsing UOR-2* packet with information from packet */
-		parsing = parse_uor2rtp_once(decomp, context,
-		                             rohc_packet, rohc_length, large_cid_len,
-		                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
+		/* change packet type UOR-2-RTP -> UOR-2-ID/TS, then try parsing UOR-2*
+		 * packet with information from packet */
+		if(d_is_uor2_ts(rohc_packet, rohc_length, large_cid_len))
+		{
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "change for packet UOR-2-TS (T = 1)\n");
+			g_context->packet_type = PACKET_UOR_2_TS;
+			parsing = parse_uor2ts_once(decomp, context,
+			                            rohc_packet, rohc_length, large_cid_len,
+			                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
+		}
+		else
+		{
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "change for packet UOR-2-ID (T = 0)\n");
+			g_context->packet_type = PACKET_UOR_2_ID;
+			parsing = parse_uor2id_once(decomp, context,
+			                            rohc_packet, rohc_length, large_cid_len,
+			                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
+		}
 		if(parsing == ROHC_NEED_REPARSE)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -5902,7 +5940,7 @@ error:
 
 
 /**
- * @brief Parse one UOR-2* header for RTP profile
+ * @brief Parse one UOR-2-RTP header for RTP profile
  *
  * \verbatim
 
@@ -5966,27 +6004,8 @@ error:
  4b | X |            CRC            |
     +---+---+---+---+---+---+---+---+
 
- UOR-2-TS (5.7.4):
-
-      0   1   2   3   4   5   6   7
-    +---+---+---+---+---+---+---+---+
- 2  | 1   1   0 |        TS         |
-    +===+===+===+===+===+===+===+===+
- 4a |T=1| M |          SN           |
-    +---+---+---+---+---+---+---+---+
- 4b | X |           CRC             |
-    +---+---+---+---+---+---+---+---+
-
- UOR-2-ID (5.7.4):
-
-      0   1   2   3   4   5   6   7
-    +---+---+---+---+---+---+---+---+
- 2  | 1   1   0 |      IP-ID        |
-    +===+===+===+===+===+===+===+===+
- 4a |T=0| M |          SN           |
-    +---+---+---+---+---+---+---+---+
- 4b | X |           CRC             |
-    +---+---+---+---+---+---+---+---+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
 
 \endverbatim
  *
@@ -6002,9 +6021,9 @@ error:
  * @param large_cid_len  The length of the optional large CID field
  * @param outer_rnd      The forced value for outer RND (used for reparsing)
  * @param inner_rnd      The forced value for inner RND (used for reparsing)
- * @param bits           OUT: The bits extracted from the UOR-2* header
- * @param rohc_hdr_len   OUT: The size of the UOR-2* header
- * @return               ROHC_OK if UOR-2* is successfully parsed,
+ * @param bits           OUT: The bits extracted from the UOR-2-RTP header
+ * @param rohc_hdr_len   OUT: The size of the UOR-2-RTP header
+ * @return               ROHC_OK if UOR-2-RTP is successfully parsed,
  *                       ROHC_NEED_REPARSE if packet needs to be parsed again,
  *                       ROHC_ERROR otherwise
  */
@@ -6080,124 +6099,517 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 		goto error;
 	}
 
-	/* parts 2 and 4 depending on the packet type:
-	   TimeStamp or IP-ID + Sequence Number + M flag */
-	switch(g_context->packet_type)
+	/* part 2: 3-bit "110" + 5-bit TS */
+	assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
+	bits->ts = GET_BIT_0_4(rohc_remain_data) << 1;
+	bits->ts_nr = 5;
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 3: skip large CID (handled elsewhere) */
+	rohc_remain_data += large_cid_len;
+	rohc_remain_len -= large_cid_len;
+	*rohc_hdr_len += large_cid_len;
+
+	/* part 4a: 1-bit TS + 1-bit M flag + 6-bit SN */
+	bits->ts |= GET_REAL(GET_BIT_7(rohc_remain_data));
+	bits->ts_nr += 1;
+	rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
+	bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
+	bits->rtp_m_nr = 1;
+	rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
+	bits->sn = GET_BIT_0_5(rohc_remain_data);
+	bits->sn_nr = 6;
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 4: 6-bit or 7-bit CRC + 1-bit X (extension) flag
+	 *   if the RTP bit type feature is enabled at build time, CRC is one
+	 *   bit less than in ROHC standard for RTP-specific UOR-2 packets */
+#if RTP_BIT_TYPE
+	/* UOR-2* contains a 6-bit CRC if RTP bit type feature is enabled */
+	bits->crc_type = ROHC_CRC_TYPE_6;
+	bits->crc = GET_BIT_0_5(rohc_remain_data);
+	bits->crc_nr = 6;
+#else
+	/* UOR-2* contains a 7-bit CRC */
+	bits->crc_type = ROHC_CRC_TYPE_7;
+	bits->crc = GET_BIT_0_6(rohc_remain_data);
+	bits->crc_nr = 7;
+#endif
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	                  bits->crc_nr, bits->crc);
+	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
+	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 5: Extension */
+	if(bits->ext_flag == 0)
 	{
-		case PACKET_UOR_2_RTP:
-		{
-			/* part 2: 3-bit "110" + 5-bit TS */
-			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			bits->ts = GET_BIT_0_4(rohc_remain_data) << 1;
-			bits->ts_nr = 5;
-			rohc_remain_data++;
-			rohc_remain_len--;
-			(*rohc_hdr_len)++;
-			/* part 3: skip large CID (handled elsewhere) */
-			rohc_remain_data += large_cid_len;
-			rohc_remain_len -= large_cid_len;
-			*rohc_hdr_len += large_cid_len;
-			/* part 4a: 1-bit TS + 1-bit M flag + 6-bit SN */
-			bits->ts |= GET_REAL(GET_BIT_7(rohc_remain_data));
-			bits->ts_nr += 1;
-			rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
-			bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
-			bits->rtp_m_nr = 1;
-			rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
-			bits->sn = GET_BIT_0_5(rohc_remain_data);
-			bits->sn_nr = 6;
-			rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			(*rohc_hdr_len)++;
-			break;
-		}
+		/* no extension */
+		rohc_decomp_debug(context, "no extension to decode in UOR-2-RTP packet\n");
+	}
+	else
+	{
+		rohc_ext_t ext_type;
+		int ext_size;
 
-		case PACKET_UOR_2_TS:
-		{
-			/* part 2: 3-bit "110" + 5-bit TS */
-			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			bits->ts = GET_BIT_0_4(rohc_remain_data);
-			bits->ts_nr = 5;
-			rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			(*rohc_hdr_len)++;
-			/* part 3: skip large CID (handled elsewhere) */
-			rohc_remain_data += large_cid_len;
-			rohc_remain_len -= large_cid_len;
-			*rohc_hdr_len += large_cid_len;
-			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
-			bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
-			bits->rtp_m_nr = 1;
-			rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
-			bits->sn = GET_BIT_0_5(rohc_remain_data);
-			bits->sn_nr = 6;
-			rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			(*rohc_hdr_len)++;
-			break;
-		}
-
-		case PACKET_UOR_2_ID:
-		{
-			/* check extension usage */
-			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "cannot use the UOR-2-ID packet with no 'IPv4 "
-				             "header with non-random IP-ID'\n");
-				goto error;
-			}
-
-			/* part 2: 3-bit "110" + 5-bit IP-ID */
-			assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
-			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
-			{
-				bits->outer_ip.id = GET_BIT_0_4(rohc_remain_data);
-				bits->outer_ip.id_nr = 5;
-				rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
-				                  bits->outer_ip.id_nr, innermost_ipv4_non_rnd,
-				                  bits->outer_ip.id);
-			}
-			else
-			{
-				bits->inner_ip.id = GET_BIT_0_4(rohc_remain_data);
-				bits->inner_ip.id_nr = 5;
-				rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
-				                  bits->inner_ip.id_nr, innermost_ipv4_non_rnd,
-				                  bits->inner_ip.id);
-			}
-			rohc_remain_data++;
-			rohc_remain_len--;
-			(*rohc_hdr_len)++;
-
-			/* part 3: skip large CID (handled elsewhere) */
-			rohc_remain_data += large_cid_len;
-			rohc_remain_len -= large_cid_len;
-			*rohc_hdr_len += large_cid_len;
-			/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
-			bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
-			bits->rtp_m_nr = 1;
-			rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
-			bits->sn = GET_BIT_0_5(rohc_remain_data);
-			bits->sn_nr = 6;
-			rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
-			rohc_remain_data++;
-			rohc_remain_len--;
-			(*rohc_hdr_len)++;
-			break;
-		}
-
-		default:
+		/* check if the ROHC packet is large enough to read extension type */
+		if(rohc_remain_len < 1)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "bad packet type (%d)\n", g_context->packet_type);
+			             "ROHC packet too small for extension (len = %zd)\n",
+			             rohc_remain_len);
+			goto error;
+		}
+
+		/* decode extension */
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		                  GET_BIT_0_7(rohc_remain_data));
+		ext_type = parse_extension_type(rohc_remain_data);
+		switch(ext_type)
+		{
+			case PACKET_EXT_0:
+			{
+				/* decode extension 0 */
+				ext_size = parse_extension0(decomp, context,
+				                            rohc_remain_data, rohc_remain_len,
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
+
+				break;
+			}
+
+			case PACKET_EXT_1:
+			{
+				/* decode extension 1 */
+				ext_size = parse_extension1(decomp, context,
+				                            rohc_remain_data, rohc_remain_len,
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
+
+				break;
+			}
+
+			case PACKET_EXT_2:
+			{
+				if(innermost_ipv4_non_rnd != ROHC_IP_HDR_NONE)
+				{
+					rohc_decomp_debug(context, "IP header #%d is the innermost "
+					                  "IPv4 header with a non-random IP-ID\n",
+					                  innermost_ipv4_non_rnd);
+				}
+
+				/* decode extension 2 */
+				ext_size = parse_extension2(decomp, context,
+				                            rohc_remain_data, rohc_remain_len,
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
+				break;
+			}
+
+			case PACKET_EXT_3:
+			{
+				/* decode the extension */
+				ext_size = g_context->parse_extension3(decomp, context,
+				                                       rohc_remain_data,
+				                                       rohc_remain_len,
+				                                       bits);
+				break;
+			}
+
+			default:
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "unknown extension (0x%x)\n", ext_type);
+				goto error;
+			}
+		}
+
+		/* was the extension successfully parsed? */
+		if(ext_size == -2)
+		{
+			assert(ext_type == PACKET_EXT_3);
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet needs to be reparsed because RND changed "
+			          "in extension 3\n");
+			goto reparse;
+		}
+		else if(ext_size < 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "cannot decode extension %u of the UOR-2-RTP packet\n",
+			             ext_type);
+			goto error;
+		}
+
+		/* now, skip the extension in the ROHC header */
+		rohc_remain_data += ext_size;
+		rohc_remain_len -= ext_size;
+		*rohc_hdr_len += ext_size;
+	}
+
+	/* parts 6, 9, and 13: UO* remainder */
+	if(!parse_uo_remainder(decomp, context, rohc_remain_data, rohc_remain_len,
+	                       bits, &rohc_remainder_len))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "failed to parse UOR-2-RTP remainder\n");
+		goto error;
+	}
+	rohc_remain_data += rohc_remainder_len;
+	rohc_remain_len -= rohc_remainder_len;
+	*rohc_hdr_len += rohc_remainder_len;
+
+	/* sanity checks */
+	assert((*rohc_hdr_len) <= rohc_length);
+
+	/* UOR-2-RTP packet was successfully parsed */
+	return ROHC_OK;
+
+reparse:
+	return ROHC_NEED_REPARSE;
+error:
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Parse one UOR-2-ID header for RTP profile (in 2 passes if needed)
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @param bits           OUT: The bits extracted from the UOR-2-ID header
+ * @param rohc_hdr_len   OUT: The size of the UOR-2-ID header
+ * @return               true if UOR-2-ID is successfully parsed,
+ *                       false otherwise
+ *
+ * @see parse_uor2id_once
+ */
+static bool parse_uor2id(const struct rohc_decomp *const decomp,
+                         const struct d_context *const context,
+                         const unsigned char *const rohc_packet,
+                         const size_t rohc_length,
+                         const size_t large_cid_len,
+                         struct rohc_extr_bits *const bits,
+                         size_t *const rohc_hdr_len)
+{
+	struct d_generic_context *const g_context = context->specific;
+
+	/* forced values for outer and inner RND flags */
+	uint8_t outer_rnd;
+	uint8_t inner_rnd;
+
+	int parsing;
+
+	/* check packet usage */
+	if(context->profile->id != ROHC_PROFILE_RTP)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UOR-2-ID packet cannot be used with non-RTP profiles\n");
+		assert(0);
+		goto error;
+	}
+
+	/* for the first parsing, use the context values for the outer/inner RND
+	 * flags, force them for reparse later if required */
+	outer_rnd = g_context->outer_ip_changes->rnd;
+	inner_rnd = g_context->inner_ip_changes->rnd;
+
+	/* try parsing UOR-2-ID packet with information from context */
+	parsing = parse_uor2id_once(decomp, context,
+	                            rohc_packet, rohc_length, large_cid_len,
+	                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
+	if(parsing != ROHC_OK)
+	{
+		if(parsing != ROHC_NEED_REPARSE)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "failed to parse the UOR-2-ID header\n");
+			goto error;
+		}
+
+		/* UOR-2* packet overrided some context values, so reparsing with new
+		 * assumptions is required */
+		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		          "packet needs to be reparsed with different assumptions "
+		          "for packet type\n");
+#if RTP_BIT_TYPE
+		assert(0);
+#else
+
+		/* determine the new RND values for outer and inner IP headers */
+		if(g_context->multiple_ip &&
+		   bits->inner_ip.rnd_nr > 0 &&
+		   bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+		{
+			/* inner RND flag changed */
+			assert(bits->inner_ip.rnd_nr == 1);
+			inner_rnd = bits->inner_ip.rnd;
+		}
+		else
+		{
+			/* inner RND flag did not change */
+			inner_rnd = g_context->inner_ip_changes->rnd;
+		}
+		if(bits->outer_ip.rnd_nr > 0 &&
+		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+		{
+			/* outer RND flag changed */
+			assert(bits->outer_ip.rnd_nr == 1);
+			outer_rnd = bits->outer_ip.rnd;
+		}
+		else
+		{
+			/* inner RND flag did not change */
+			outer_rnd = g_context->outer_ip_changes->rnd;
+		}
+
+		/* change packet type UOR-2-ID -> UOR-2-RTP, then try parsing UOR-2*
+		 * packet with information from packet */
+		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		          "change for packet UOR-2-RTP\n");
+		g_context->packet_type = PACKET_UOR_2_RTP;
+		parsing = parse_uor2rtp_once(decomp, context,
+		                             rohc_packet, rohc_length, large_cid_len,
+		                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
+		if(parsing == ROHC_NEED_REPARSE)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "reparse required by the reparse, there is an internal "
+			             "problem\n");
 			assert(0);
 			goto error;
 		}
+		else if(parsing != ROHC_OK)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "failed to reparse the UOR-2 header\n");
+			goto error;
+		}
+#endif /* RTP_BIT_TYPE */
 	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one UOR-2-ID header for RTP profile
+ *
+ * \verbatim
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  :         Add-CID octet         :                    |
+    +---+---+---+---+---+---+---+---+                    |
+ 2  |   first octet of base header  |                    |
+    +---+---+---+---+---+---+---+---+                    |
+    :                               :                    |
+ 3  /   0, 1, or 2 octets of CID    /                    |
+    :                               :                    |
+    +---+---+---+---+---+---+---+---+                    |
+    :   remainder of base header    :                    |
+ 4  /     see below for details     /                    |
+    :                               :                    |
+    +---+---+---+---+---+---+---+---+                    |
+    :                               :                    |
+ 5  /           Extension           /                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 6  +   IP-ID of outer IPv4 header  +
+    :                               :     (see section 5.7 or [RFC-3095])
+     --- --- --- --- --- --- --- ---
+ 7  /    AH data for outer list     /                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 8  +         GRE checksum          +                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 9  +   IP-ID of inner IPv4 header  +                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---                     |
+ 10 /    AH data for inner list     /                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 11 +         GRE checksum          +                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---
+    :            List of            :
+ 12 /        Dynamic chains         /  variable, given by static chain
+    :   for additional IP headers   :  (includes no SN)
+     --- --- --- --- --- --- --- ---
+
+     --- --- --- --- --- --- --- ---
+    :                               :  RTP/UDP profiles only [RFC-3095]
+ 13 +         UDP Checksum          +  2 octets,
+    :                               :  if context(UDP Checksum) != 0
+     --- --- --- --- --- --- --- ---
+
+ UOR-2-ID (5.7.4):
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   1   0 |      IP-ID        |
+    +===+===+===+===+===+===+===+===+
+ 4a |T=0| M |          SN           |
+    +---+---+---+---+---+---+---+---+
+ 4b | X |           CRC             |
+    +---+---+---+---+---+---+---+---+
+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
+
+ T: T = 0 indicates format UOR-2-ID;
+    T = 1 indicates format UOR-2-TS.
+
+\endverbatim
+ *
+ * Parts 7, 8, 10, 11 and 12 are not supported.
+ * Parts 1 and 3 are parsed in parent functions.
+ * Parts 6, 9, and 13 are parsed in sub-function.
+ * Parts 2, 4, and 5 are parsed in this function.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @param outer_rnd      The forced value for outer RND (used for reparsing)
+ * @param inner_rnd      The forced value for inner RND (used for reparsing)
+ * @param bits           OUT: The bits extracted from the UOR-2-ID header
+ * @param rohc_hdr_len   OUT: The size of the UOR-2-ID header
+ * @return               ROHC_OK if UOR-2-ID is successfully parsed,
+ *                       ROHC_NEED_REPARSE if packet needs to be parsed again,
+ *                       ROHC_ERROR otherwise
+ *
+ * @see parse_uor2id
+ */
+static int parse_uor2id_once(const struct rohc_decomp *const decomp,
+                             const struct d_context *const context,
+                             const unsigned char *const rohc_packet,
+                             const size_t rohc_length,
+                             const size_t large_cid_len,
+                             uint8_t outer_rnd,
+                             uint8_t inner_rnd,
+                             struct rohc_extr_bits *const bits,
+                             size_t *const rohc_hdr_len)
+{
+	struct d_generic_context *g_context;
+	size_t rohc_remainder_len;
+
+	/* remaining ROHC data not parsed yet and the length of the ROHC headers
+	   (will be computed during parsing) */
+	const unsigned char *rohc_remain_data;
+	size_t rohc_remain_len;
+
+	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
+	ip_header_pos_t innermost_ipv4_non_rnd;
+
+	assert(context != NULL);
+	g_context = context->specific;
+	assert(rohc_packet != NULL);
+	assert(bits != NULL);
+	assert(rohc_hdr_len != NULL);
+
+	rohc_remain_data = rohc_packet;
+	rohc_remain_len = rohc_length;
+	*rohc_hdr_len = 0;
+
+	/* reset all extracted bits */
+	reset_extr_bits(g_context, bits);
+
+	/* force extracted RND values (for reparsing) */
+	if(bits->outer_ip.version == IPV4)
+	{
+		bits->outer_ip.rnd = outer_rnd & 0x1;
+		bits->outer_ip.rnd_nr = 1;
+	}
+	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
+	{
+		bits->inner_ip.rnd = inner_rnd & 0x1;
+		bits->inner_ip.rnd_nr = 1;
+	}
+
+	/* determine which IP header is the innermost IPv4 header with
+	 * value(RND) = 0 */
+	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	{
+		/* inner IP header is IPv4 with non-random IP-ID */
+		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
+	}
+	else if(is_ipv4_non_rnd_pkt(bits->outer_ip))
+	{
+		/* outer IP header is IPv4 with non-random IP-ID */
+		innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
+	}
+	else
+	{
+		/* no IPv4 header with non-random IP-ID */
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "cannot use the UOR-2-ID packet with no 'IPv4 "
+		             "header with non-random IP-ID'\n");
+		goto error;
+	}
+
+	/* check if the ROHC packet is large enough to parse parts 2, 3, 4, 4a */
+	if(rohc_remain_len < (1 + large_cid_len + 2))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* part 2: 3-bit "110" + 5-bit IP-ID */
+	assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
+	if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
+	{
+		bits->outer_ip.id = GET_BIT_0_4(rohc_remain_data);
+		bits->outer_ip.id_nr = 5;
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		                  bits->outer_ip.id_nr, innermost_ipv4_non_rnd,
+		                  bits->outer_ip.id);
+	}
+	else
+	{
+		bits->inner_ip.id = GET_BIT_0_4(rohc_remain_data);
+		bits->inner_ip.id_nr = 5;
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		                  bits->inner_ip.id_nr, innermost_ipv4_non_rnd,
+		                  bits->inner_ip.id);
+	}
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 3: skip large CID (handled elsewhere) */
+	rohc_remain_data += large_cid_len;
+	rohc_remain_len -= large_cid_len;
+	*rohc_hdr_len += large_cid_len;
+
+	/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
+	bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
+	bits->rtp_m_nr = 1;
+	rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
+	bits->sn = GET_BIT_0_5(rohc_remain_data);
+	bits->sn_nr = 6;
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
 
 	/* part 4: 6-bit or 7-bit CRC + 1-bit X (extension) flag
 	 *   if the RTP bit type feature is enabled at build time, CRC is one
@@ -6249,103 +6661,29 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 		{
 			case PACKET_EXT_0:
 			{
-				/* check extension usage */
-				switch(g_context->packet_type)
-				{
-					case PACKET_UOR_2_ID:
-						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
-						{
-							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-							             "cannot use extension 0 for the UOR-2 or "
-							             "UOR-2-ID packet with no IPv4 header that "
-							             "got a non-random IP-ID\n");
-							goto error;
-						}
-						break;
-					case PACKET_UOR_2_RTP:
-					case PACKET_UOR_2_TS:
-						/* nothing */
-						break;
-					default:
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "bad packet type (%d)\n", g_context->packet_type);
-						goto error;
-				}
-
 				/* decode extension 0 */
 				ext_size = parse_extension0(decomp, context,
 				                            rohc_remain_data, rohc_remain_len,
 				                            g_context->packet_type,
 				                            innermost_ipv4_non_rnd, bits);
-
 				break;
 			}
 
 			case PACKET_EXT_1:
 			{
-				/* check extension usage */
-				switch(g_context->packet_type)
-				{
-					case PACKET_UOR_2_ID:
-					case PACKET_UOR_2_TS:
-						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
-						{
-							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-							             "cannot use extension 1 for the UOR-2, "
-							             "UOR-2-ID or UOR-2-TS packet with no IPv4 "
-							             "header that got a non-random IP-ID\n");
-							goto error;
-						}
-						break;
-					case PACKET_UOR_2_RTP:
-						/* nothing */
-						break;
-					default:
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "bad packet type (%d)\n", g_context->packet_type);
-						goto error;
-				}
-
 				/* decode extension 1 */
 				ext_size = parse_extension1(decomp, context,
 				                            rohc_remain_data, rohc_remain_len,
 				                            g_context->packet_type,
 				                            innermost_ipv4_non_rnd, bits);
-
 				break;
 			}
 
 			case PACKET_EXT_2:
 			{
-				/* check extension usage */
-				switch(g_context->packet_type)
-				{
-					case PACKET_UOR_2_ID:
-					case PACKET_UOR_2_TS:
-						if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
-						{
-							rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-							             "cannot use extension 2 for the UOR-2-ID, "
-							             "or UOR-2-TS packet with no IPv4 header "
-							             "that got a non-random IP-ID\n");
-							goto error;
-						}
-						break;
-					case PACKET_UOR_2_RTP:
-						/* nothing */
-						break;
-					default:
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "bad packet type (%d)\n", g_context->packet_type);
-						goto error;
-				}
-
-				if(innermost_ipv4_non_rnd != ROHC_IP_HDR_NONE)
-				{
-					rohc_decomp_debug(context, "IP header #%d is the innermost "
-					                  "IPv4 header with a non-random IP-ID\n",
-					                  innermost_ipv4_non_rnd);
-				}
+				rohc_decomp_debug(context, "IP header #%d is the innermost "
+				                  "IPv4 header with a non-random IP-ID\n",
+				                  innermost_ipv4_non_rnd);
 
 				/* decode extension 2 */
 				ext_size = parse_extension2(decomp, context,
@@ -6387,7 +6725,7 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 		else if(ext_size < 0)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "cannot decode extension %u of the UOR-2* packet\n",
+			             "cannot decode extension %u of the UOR-2-ID packet\n",
 			             ext_type);
 			goto error;
 		}
@@ -6398,12 +6736,12 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 		*rohc_hdr_len += ext_size;
 	}
 
-	/* parts 6, 9, and 13: UO* remainder */
+	/* parts 6, 9, and 13: UOR-2-ID remainder */
 	if(!parse_uo_remainder(decomp, context, rohc_remain_data, rohc_remain_len,
 	                       bits, &rohc_remainder_len))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to parse UO* remainder\n");
+		             "failed to parse UOR-2-ID remainder\n");
 		goto error;
 	}
 	rohc_remain_data += rohc_remainder_len;
@@ -6413,7 +6751,491 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 	/* sanity checks */
 	assert((*rohc_hdr_len) <= rohc_length);
 
-	/* UOR-2* packet was successfully parsed */
+	/* UOR-2-ID packet was successfully parsed */
+	return ROHC_OK;
+
+reparse:
+	return ROHC_NEED_REPARSE;
+error:
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Parse one UOR-2-TS header for RTP profile (in 2 passes if needed)
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @param bits           OUT: The bits extracted from the UOR-2-TS header
+ * @param rohc_hdr_len   OUT: The size of the UOR-2-TS header
+ * @return               true if UOR-2-TS is successfully parsed,
+ *                       false otherwise
+ *
+ * @see parse_uor2ts_once
+ */
+static bool parse_uor2ts(const struct rohc_decomp *const decomp,
+                         const struct d_context *const context,
+                         const unsigned char *const rohc_packet,
+                         const size_t rohc_length,
+                         const size_t large_cid_len,
+                         struct rohc_extr_bits *const bits,
+                         size_t *const rohc_hdr_len)
+{
+	struct d_generic_context *const g_context = context->specific;
+
+	/* forced values for outer and inner RND flags */
+	uint8_t outer_rnd;
+	uint8_t inner_rnd;
+
+	int parsing;
+
+	/* check packet usage */
+	if(context->profile->id != ROHC_PROFILE_RTP)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "UOR-2-TS packet cannot be used with non-RTP profiles\n");
+		assert(0);
+		goto error;
+	}
+
+	/* for the first parsing, use the context values for the outer/inner RND
+	 * flags, force them for reparse later if required */
+	outer_rnd = g_context->outer_ip_changes->rnd;
+	inner_rnd = g_context->inner_ip_changes->rnd;
+
+	/* try parsing UOR-2-TS packet with information from context */
+	parsing = parse_uor2ts_once(decomp, context,
+	                            rohc_packet, rohc_length, large_cid_len,
+	                            outer_rnd, inner_rnd, bits, rohc_hdr_len);
+	if(parsing != ROHC_OK)
+	{
+		if(parsing != ROHC_NEED_REPARSE)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "failed to parse the UOR-2-TS header\n");
+			goto error;
+		}
+
+		/* UOR-2* packet overrided some context values, so reparsing with new
+		 * assumptions is required */
+		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		          "packet needs to be reparsed with different assumptions "
+		          "for packet type\n");
+#if RTP_BIT_TYPE
+		assert(0);
+#else
+
+		/* determine the new RND values for outer and inner IP headers */
+		if(g_context->multiple_ip &&
+		   bits->inner_ip.rnd_nr > 0 &&
+		   bits->inner_ip.rnd != g_context->inner_ip_changes->rnd)
+		{
+			/* inner RND flag changed */
+			assert(bits->inner_ip.rnd_nr == 1);
+			inner_rnd = bits->inner_ip.rnd;
+		}
+		else
+		{
+			/* inner RND flag did not change */
+			inner_rnd = g_context->inner_ip_changes->rnd;
+		}
+		if(bits->outer_ip.rnd_nr > 0 &&
+		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
+		{
+			/* outer RND flag changed */
+			assert(bits->outer_ip.rnd_nr == 1);
+			outer_rnd = bits->outer_ip.rnd;
+		}
+		else
+		{
+			/* inner RND flag did not change */
+			outer_rnd = g_context->outer_ip_changes->rnd;
+		}
+
+		/* change packet type UOR-2-ID -> UOR-2-RTP, then try parsing UOR-2*
+		 * packet with information from packet */
+		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		          "change for packet UOR-2-RTP\n");
+		g_context->packet_type = PACKET_UOR_2_RTP;
+		parsing = parse_uor2rtp_once(decomp, context,
+		                             rohc_packet, rohc_length, large_cid_len,
+		                             outer_rnd, inner_rnd, bits, rohc_hdr_len);
+		if(parsing == ROHC_NEED_REPARSE)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "reparse required by the reparse, there is an internal "
+			             "problem\n");
+			assert(0);
+			goto error;
+		}
+		else if(parsing != ROHC_OK)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "failed to reparse the UOR-2 header\n");
+			goto error;
+		}
+#endif /* RTP_BIT_TYPE */
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Parse one UOR-2-TS header for RTP profile
+ *
+ * \verbatim
+
+      0   1   2   3   4   5   6   7
+     --- --- --- --- --- --- --- ---
+ 1  :         Add-CID octet         :                    |
+    +---+---+---+---+---+---+---+---+                    |
+ 2  |   first octet of base header  |                    |
+    +---+---+---+---+---+---+---+---+                    |
+    :                               :                    |
+ 3  /   0, 1, or 2 octets of CID    /                    |
+    :                               :                    |
+    +---+---+---+---+---+---+---+---+                    |
+    :   remainder of base header    :                    |
+ 4  /     see below for details     /                    |
+    :                               :                    |
+    +---+---+---+---+---+---+---+---+                    |
+    :                               :                    |
+ 5  /           Extension           /                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 6  +   IP-ID of outer IPv4 header  +
+    :                               :     (see section 5.7 or [RFC-3095])
+     --- --- --- --- --- --- --- ---
+ 7  /    AH data for outer list     /                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 8  +         GRE checksum          +                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 9  +   IP-ID of inner IPv4 header  +                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---                     |
+ 10 /    AH data for inner list     /                    |
+     --- --- --- --- --- --- --- ---                     |
+    :                               :                    |
+ 11 +         GRE checksum          +                    |
+    :                               :                    |
+     --- --- --- --- --- --- --- ---
+    :            List of            :
+ 12 /        Dynamic chains         /  variable, given by static chain
+    :   for additional IP headers   :  (includes no SN)
+     --- --- --- --- --- --- --- ---
+
+     --- --- --- --- --- --- --- ---
+    :                               :  RTP/UDP profiles only [RFC-3095]
+ 13 +         UDP Checksum          +  2 octets,
+    :                               :  if context(UDP Checksum) != 0
+     --- --- --- --- --- --- --- ---
+
+ UOR-2-TS (5.7.4):
+
+      0   1   2   3   4   5   6   7
+    +---+---+---+---+---+---+---+---+
+ 2  | 1   1   0 |        TS         |
+    +===+===+===+===+===+===+===+===+
+ 4a |T=1| M |          SN           |
+    +---+---+---+---+---+---+---+---+
+ 4b | X |           CRC             |
+    +---+---+---+---+---+---+---+---+
+
+ X: X = 0 indicates that no extension is present;
+    X = 1 indicates that an extension is present.
+
+ T: T = 0 indicates format UOR-2-ID;
+    T = 1 indicates format UOR-2-TS.
+
+\endverbatim
+ *
+ * Parts 7, 8, 10, 11 and 12 are not supported.
+ * Parts 1 and 3 are parsed in parent functions.
+ * Parts 6, 9, and 13 are parsed in sub-function.
+ * Parts 2, 4, and 5 are parsed in this function.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param context        The decompression context
+ * @param rohc_packet    The ROHC packet to decode
+ * @param rohc_length    The length of the ROHC packet
+ * @param large_cid_len  The length of the optional large CID field
+ * @param outer_rnd      The forced value for outer RND (used for reparsing)
+ * @param inner_rnd      The forced value for inner RND (used for reparsing)
+ * @param bits           OUT: The bits extracted from the UOR-2-TS header
+ * @param rohc_hdr_len   OUT: The size of the UOR-2-TS header
+ * @return               ROHC_OK if UOR-2-TS is successfully parsed,
+ *                       ROHC_NEED_REPARSE if packet needs to be parsed again,
+ *                       ROHC_ERROR otherwise
+ *
+ * @see parse_uor2ts
+ */
+static int parse_uor2ts_once(const struct rohc_decomp *const decomp,
+                             const struct d_context *const context,
+                             const unsigned char *const rohc_packet,
+                             const size_t rohc_length,
+                             const size_t large_cid_len,
+                             uint8_t outer_rnd,
+                             uint8_t inner_rnd,
+                             struct rohc_extr_bits *const bits,
+                             size_t *const rohc_hdr_len)
+{
+	struct d_generic_context *g_context;
+	size_t rohc_remainder_len;
+
+	/* remaining ROHC data not parsed yet and the length of the ROHC headers
+	   (will be computed during parsing) */
+	const unsigned char *rohc_remain_data;
+	size_t rohc_remain_len;
+
+	/* which IP header is the innermost IPv4 header with non-random IP-ID ? */
+	ip_header_pos_t innermost_ipv4_non_rnd;
+
+	assert(context != NULL);
+	g_context = context->specific;
+	assert(rohc_packet != NULL);
+	assert(bits != NULL);
+	assert(rohc_hdr_len != NULL);
+
+	rohc_remain_data = rohc_packet;
+	rohc_remain_len = rohc_length;
+	*rohc_hdr_len = 0;
+
+	/* reset all extracted bits */
+	reset_extr_bits(g_context, bits);
+
+	/* force extracted RND values (for reparsing) */
+	if(bits->outer_ip.version == IPV4)
+	{
+		bits->outer_ip.rnd = outer_rnd & 0x1;
+		bits->outer_ip.rnd_nr = 1;
+	}
+	if(g_context->multiple_ip && bits->inner_ip.version == IPV4)
+	{
+		bits->inner_ip.rnd = inner_rnd & 0x1;
+		bits->inner_ip.rnd_nr = 1;
+	}
+
+	/* determine which IP header is the innermost IPv4 header with
+	 * value(RND) = 0 */
+	if(g_context->multiple_ip && is_ipv4_non_rnd_pkt(bits->inner_ip))
+	{
+		/* inner IP header is IPv4 with non-random IP-ID */
+		innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
+	}
+	else if(is_ipv4_non_rnd_pkt(bits->outer_ip))
+	{
+		/* outer IP header is IPv4 with non-random IP-ID */
+		innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
+	}
+	else
+	{
+		/* no IPv4 header with non-random IP-ID */
+		innermost_ipv4_non_rnd = ROHC_IP_HDR_NONE;
+	}
+
+	/* check if the ROHC packet is large enough to parse parts 2, 3, 4, 4a */
+	if(rohc_remain_len < (1 + large_cid_len + 2))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		goto error;
+	}
+
+	/* part 2: 3-bit "110" + 5-bit TS */
+	assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
+	bits->ts = GET_BIT_0_4(rohc_remain_data);
+	bits->ts_nr = 5;
+	rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 3: skip large CID (handled elsewhere) */
+	rohc_remain_data += large_cid_len;
+	rohc_remain_len -= large_cid_len;
+	*rohc_hdr_len += large_cid_len;
+
+	/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
+	bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
+	bits->rtp_m_nr = 1;
+	rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
+	bits->sn = GET_BIT_0_5(rohc_remain_data);
+	bits->sn_nr = 6;
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 4: 6-bit or 7-bit CRC + 1-bit X (extension) flag
+	 *   if the RTP bit type feature is enabled at build time, CRC is one
+	 *   bit less than in ROHC standard for RTP-specific UOR-2 packets */
+#if RTP_BIT_TYPE
+	/* UOR-2* contains a 6-bit CRC if RTP bit type feature is enabled */
+	bits->crc_type = ROHC_CRC_TYPE_6;
+	bits->crc = GET_BIT_0_5(rohc_remain_data);
+	bits->crc_nr = 6;
+#else
+	/* UOR-2* contains a 7-bit CRC */
+	bits->crc_type = ROHC_CRC_TYPE_7;
+	bits->crc = GET_BIT_0_6(rohc_remain_data);
+	bits->crc_nr = 7;
+#endif
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	                  bits->crc_nr, bits->crc);
+	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
+	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
+	rohc_remain_data++;
+	rohc_remain_len--;
+	(*rohc_hdr_len)++;
+
+	/* part 5: Extension */
+	if(bits->ext_flag == 0)
+	{
+		/* no extension */
+		rohc_decomp_debug(context, "no extension to decode in UOR-2* packet\n");
+	}
+	else
+	{
+		rohc_ext_t ext_type;
+		int ext_size;
+
+		/* check if the ROHC packet is large enough to read extension type */
+		if(rohc_remain_len < 1)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "ROHC packet too small for extension (len = %zd)\n",
+			             rohc_remain_len);
+			goto error;
+		}
+
+		/* decode extension */
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		                  GET_BIT_0_7(rohc_remain_data));
+		ext_type = parse_extension_type(rohc_remain_data);
+		switch(ext_type)
+		{
+			case PACKET_EXT_0:
+			{
+				/* decode extension 0 */
+				ext_size = parse_extension0(decomp, context,
+				                            rohc_remain_data, rohc_remain_len,
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
+				break;
+			}
+
+			case PACKET_EXT_1:
+			{
+				/* check extension usage */
+				if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					             "cannot use extension 1 for the UOR-2-TS packet "
+					             "with no IPv4 header that got non-random IP-ID\n");
+					goto error;
+				}
+
+				/* decode extension 1 */
+				ext_size = parse_extension1(decomp, context,
+				                            rohc_remain_data, rohc_remain_len,
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
+				break;
+			}
+
+			case PACKET_EXT_2:
+			{
+				/* check extension usage */
+				if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
+				{
+					rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+					             "cannot use extension 2 for the UOR-2-TS packet "
+					             "with no IPv4 header that got non-random IP-ID\n");
+					goto error;
+				}
+				else
+				{
+					rohc_decomp_debug(context, "IP header #%d is the innermost "
+					                  "IPv4 header with a non-random IP-ID\n",
+					                  innermost_ipv4_non_rnd);
+				}
+
+				/* decode extension 2 */
+				ext_size = parse_extension2(decomp, context,
+				                            rohc_remain_data, rohc_remain_len,
+				                            g_context->packet_type,
+				                            innermost_ipv4_non_rnd, bits);
+				break;
+			}
+
+			case PACKET_EXT_3:
+			{
+				/* decode the extension */
+				ext_size = g_context->parse_extension3(decomp, context,
+				                                       rohc_remain_data,
+				                                       rohc_remain_len,
+				                                       bits);
+				break;
+			}
+
+			default:
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+				             "unknown extension (0x%x)\n", ext_type);
+				goto error;
+			}
+		}
+
+		/* was the extension successfully parsed? */
+		if(ext_size == -2)
+		{
+			assert(ext_type == PACKET_EXT_3);
+			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			          "packet needs to be reparsed because RND changed "
+			          "in extension 3\n");
+			goto reparse;
+		}
+		else if(ext_size < 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "cannot decode extension %u of the UOR-2-TS packet\n",
+			             ext_type);
+			goto error;
+		}
+
+		/* now, skip the extension in the ROHC header */
+		rohc_remain_data += ext_size;
+		rohc_remain_len -= ext_size;
+		*rohc_hdr_len += ext_size;
+	}
+
+	/* parts 6, 9, and 13: UOR-2-TS remainder */
+	if(!parse_uo_remainder(decomp, context, rohc_remain_data, rohc_remain_len,
+	                       bits, &rohc_remainder_len))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "failed to parse UOR-2-TS remainder\n");
+		goto error;
+	}
+	rohc_remain_data += rohc_remainder_len;
+	rohc_remain_len -= rohc_remainder_len;
+	*rohc_hdr_len += rohc_remainder_len;
+
+	/* sanity checks */
+	assert((*rohc_hdr_len) <= rohc_length);
+
+	/* UOR-2-TS packet was successfully parsed */
 	return ROHC_OK;
 
 reparse:
