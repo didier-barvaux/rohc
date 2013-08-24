@@ -274,6 +274,31 @@ bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                        const uint32_t value,
                        size_t *const bits_nr)
 {
+	assert(wlsb != NULL);
+	return wlsb_get_kp_32bits(wlsb, value, wlsb->p, bits_nr);
+}
+
+
+/**
+ * @brief Find out the minimal number of bits of the to-be-encoded value
+ *        required to be able to uniquely recreate it given the window
+ *
+ * The function is dedicated to 32-bit fields.
+ *
+ * @param wlsb     The W-LSB object
+ * @param value    The value to encode using the LSB algorithm
+ * @param p        The shift parameter p
+ * @param bits_nr  OUT: The number of bits required to uniquely recreate the
+ *                      value
+ * @return         true in case of success,
+ *                 false if the minimal number of bits can not be found
+ */
+bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
+                        const uint32_t value,
+                        const rohc_lsb_shift_t p,
+                        size_t *const bits_nr)
+
+{
 	size_t entry;
 	uint32_t min;
 	uint32_t max;
@@ -332,108 +357,6 @@ bool wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
 
 error:
 	return false;
-}
-
-
-/**
- * @brief Get the Least Significant Bits (LSB) of the value
- *
- * The function is dedicated to 16-bit fields.
- *
- * This function matches the lsb() method from RFC4997 section-4.11.5:
- *   field  =:=   lsb(num_lsbs_param, offset_param);
- * with:
- *   bits_nr = num_lsbs_param
- *   p       = offset_param
- *
- * @param wlsb     The W-LSB object
- * @param value    The value to encode using the LSB algorithm
- * @param bits_nr  The number of bits required to uniquely recreate the value
- * @param p        The shift parameter
- * @return         The LSB of the encoded value
- */
-uint16_t wlsb_get_lsb_16bits(const struct c_wlsb *const wlsb,
-                             const uint16_t value,
-                             const size_t bits_nr,
-                             const rohc_lsb_shift_t p)
-{
-	struct rohc_interval16 interval;
-	uint16_t lsb_mask;
-	size_t entry;
-	uint32_t min;
-	uint32_t max;
-	size_t i;
-
-	assert(wlsb != NULL);
-	assert(wlsb->window != NULL);
-	assert(wlsb->count > 0);
-	assert(value <= 0xffff);
-	assert(bits_nr > 0);
-	assert(bits_nr <= 16);
-
-	/* compute the mask for bits_nr bits */
-	if(bits_nr == 16)
-	{
-		lsb_mask = 0xffff;
-	}
-	else
-	{
-		lsb_mask = (1 << bits_nr) - 1;
-	}
-
-	min = 0xffffffff;
-	max = 0;
-
-	/* find out the interval in which all the values from the window stand */
-	for(i = wlsb->count, entry = wlsb->oldest;
-	    i > 0;
-	    i--, entry = (entry + 1) & wlsb->window_mask)
-	{
-		/* change the minimal and maximal values if appropriate */
-		if(wlsb->window[entry].value < min)
-		{
-			min = wlsb->window[entry].value;
-		}
-		if(wlsb->window[entry].value > max)
-		{
-			max = wlsb->window[entry].value;
-		}
-	}
-
-	/* compute the interpretation interval around min */
-	interval = rohc_f_16bits(min, bits_nr, p);
-	if(interval.min <= interval.max)
-	{
-		/* interpretation interval does not straddle field boundaries,
-		 * check if value is in [min, max] */
-		assert(value >= interval.min && value <= interval.max);
-	}
-	else
-	{
-		/* the interpretation interval does straddle the field boundaries,
-		 * check if value is in [min, 0xffff] or [0, max] */
-		assert(value >= interval.min || value <= interval.max);
-	}
-
-	if(max != min)
-	{
-		/* compute the interpretation interval around max */
-		interval = rohc_f_16bits(max, bits_nr, p);
-		if(interval.min <= interval.max)
-		{
-			/* interpretation interval does not straddle field boundaries,
-			 * check if value is in [min, max] */
-			assert(value >= interval.min && value <= interval.max);
-		}
-		else
-		{
-			/* the interpretation interval does straddle the field boundaries,
-			 * check if value is in [min, 0xffff] or [0, max] */
-			assert(value >= interval.min || value <= interval.max);
-		}
-	}
-
-	return (value & lsb_mask);
 }
 
 
