@@ -406,7 +406,11 @@ static int test_comp_and_decomp(const char *const filename,
 		int ret;
 
 		counter++;
-		arrival_time.tv_nsec += 20 * 1e6;
+		arrival_time.tv_nsec += 20 * 1e6; /* 20ms between consecutive packets */
+
+		/* avoid overflow of tv_nsec */
+		arrival_time.tv_sec += arrival_time.tv_nsec / (unsigned long) 1e9;
+		arrival_time.tv_nsec %= (unsigned long) 1e9;
 
 		fprintf(stderr, "packet #%u:\n", counter);
 
