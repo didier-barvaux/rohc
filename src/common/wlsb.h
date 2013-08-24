@@ -63,6 +63,12 @@ bool ROHC_EXPORT wlsb_get_k_32bits(const struct c_wlsb *const wlsb,
                                    size_t *const bits_nr)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 
+uint16_t wlsb_get_lsb_16bits(const struct c_wlsb *const wlsb,
+                             const uint16_t value,
+                             const size_t bits_nr,
+                             const rohc_lsb_shift_t p)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 void ROHC_EXPORT c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
 	__attribute__((nonnull(1)));
 

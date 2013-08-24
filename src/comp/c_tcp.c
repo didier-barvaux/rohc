@@ -31,6 +31,7 @@
 #include "cid.h"
 #include "crc.h"
 #include "c_generic.h"
+#include "c_ip.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -252,9 +253,6 @@ struct sc_tcp_context
 {
 	/// The number of times the sequence number field was added to the compressed header
 	int tcp_seq_number_change_count;
-
-	// The Master Sequence Number
-	uint16_t msn;
 
 	// Explicit Congestion Notification used
 	uint8_t ecn_used;
@@ -581,6 +579,7 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 static bool c_tcp_create(struct c_context *const context,
                          const struct ip_packet *const ip)
 {
+	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
@@ -592,11 +591,11 @@ static bool c_tcp_create(struct c_context *const context,
 	int size;
 
 	/* create and initialize the generic part of the profile context */
-	if(!c_generic_create(context, 0, ip))
+	if(!c_generic_create(context, ROHC_LSB_SHIFT_VAR, ip))
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "generic context creation failed\n");
-		goto quit;
+		goto error;
 	}
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -617,12 +616,12 @@ static bool c_tcp_create(struct c_context *const context,
 				// No option
 				if(base_header.ipv4->header_length != 5)
 				{
-					return -1;
+					goto clean;
 				}
 				// No fragmentation
 				if(base_header.ipv4->mf != 0 || base_header.ipv4->rf != 0)
 				{
-					return -1;
+					goto clean;
 				}
 				/* get the transport protocol */
 				protocol = base_header.ipv4->protocol;
@@ -669,7 +668,7 @@ static bool c_tcp_create(struct c_context *const context,
 							break;
 						// case ROHC_IPPROTO_ESP : ???
 						default:
-							return -1;
+							goto clean;
 					}
 					protocol = base_header.ipv6_opt->next_header;
 					size += size_option;
@@ -677,7 +676,7 @@ static bool c_tcp_create(struct c_context *const context,
 				}
 				break;
 			default:
-				return -1;
+				goto clean;
 		}
 
 	}
@@ -685,7 +684,7 @@ static bool c_tcp_create(struct c_context *const context,
 
 	if(size >= ip->size)
 	{
-		return -1;
+		goto clean;
 	}
 
 	tcp = base_header.tcphdr;
@@ -790,12 +789,12 @@ static bool c_tcp_create(struct c_context *const context,
 							break;
 						// case ROHC_IPPROTO_ESP : ???
 						default:
-							return -1;
+							goto clean;
 					}
 				}
 				break;
 			default:
-				return -1;
+				goto clean;
 		}
 
 	}
@@ -817,10 +816,8 @@ static bool c_tcp_create(struct c_context *const context,
 #endif
 
 	/* init the Master Sequence Number to a random value */
-	tcp_context->msn = 0xffff &
-		context->compressor->random_cb(context->compressor,
-		                               context->compressor->random_cb_ctxt);
-	rohc_comp_debug(context, "MSN = 0x%04x\n", tcp_context->msn);
+	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
+	rohc_comp_debug(context, "MSN = 0x%04x\n", g_context->sn);
 
 	tcp_context->ack_stride = 0;
 
@@ -835,6 +832,7 @@ static bool c_tcp_create(struct c_context *const context,
 #endif
 	g_context->decide_state = NULL;
 	g_context->init_at_IR = NULL;
+	g_context->get_next_sn = c_ip_get_next_sn;
 	g_context->code_static_part = NULL;
 #ifdef TODO
 	g_context->code_dynamic_part = tcp_code_dynamic_tcp_part;
@@ -849,7 +847,7 @@ static bool c_tcp_create(struct c_context *const context,
 
 clean:
 	c_generic_destroy(context);
-quit:
+error:
 	return false;
 }
 
@@ -1103,6 +1101,14 @@ bad_context:
  * @brief Encode an IP/TCP packet according to a pattern decided by several
  *        different factors.
  *
+ * 1. Check if we have double IP headers.\n
+ * 2. Check if the IP-ID fields are random and if they are in NBO.\n
+ * 3. Decide in which state to go (IR, FO or SO).\n
+ * 4. Decide how many bits are needed to send the IP-ID and SN fields and more
+ *    important update the sliding windows.\n
+ * 5. Decide which packet type to send.\n
+ * 6. Code the packet.\n
+ *
  * @param context           The compression context
  * @param ip                The IP packet to encode
  * @param packet_size       The length of the IP packet to encode
@@ -1165,13 +1171,19 @@ static int c_tcp_encode(struct c_context *const context,
 		return -1;
 	}
 
+
+	/* STEP 1:
+	 *  - check double IP headers
+	 *  - find the next header
+	 *  - compute the payload offset
+	 *  - discard IP fragments
+	 */
+
 	// Init pointer to the initial packet
 	base_header.ipvx = (base_header_ip_vx_t *)ip->data;
 	ip_context.uint8 = tcp_context->ip_context;
-
 	size = 0;
 	ecn_used = 0;
-
 	do
 	{
 		rohc_comp_debug(context, "base_header %p IP version %d\n",
@@ -1288,80 +1300,27 @@ static int c_tcp_encode(struct c_context *const context,
 	}
 	while(protocol != ROHC_IPPROTO_TCP && size < ip->size);
 
+	/* find the next header */
 	tcp = base_header.tcphdr;
-
 	ecn_used |= tcp->ecn_flags;
 	tcp_context->ecn_used = ecn_used;
 	rohc_comp_debug(context, "ecn_used %d\n", tcp_context->ecn_used);
-
 	// Reinit source pointer
 	base_header.uint8 = (uint8_t*) ip->data;
 
-	/* how many TCP fields changed? */
-#ifdef TODO
-	tcp_context->tmp_variables.send_tcp_dynamic = tcp_changed_tcp_dynamic(context, tcp);
-#endif
-
-	rohc_comp_debug(context, "MSN = 0x%x\n", tcp_context->msn);
-
-	/* Decide the state that should be used for the next packet compressed
-	 * with the ROHC TCP profile.
-	 *
-	 * The three states are:
-	 *  - Initialization and Refresh (IR),
-	 *  - First Order (FO),
-	 *  - Second Order (SO).
-	 */
-	rohc_comp_debug(context, "state %d\n", context->state);
-
-	#ifdef LKHSLQKH
-	// DBX
-	if(tcp_context->tmp_variables.send_tcp_dynamic)
-	{
-		change_state(context, IR);
-	}
-	else
-	{
-		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
-		decide_state(context);
-	}
-	#endif
-
-	// Calculate payload size
+	/* find the offset of the payload and its size */
 	size = packet_size - size - sizeof(tcphdr_t);
 	rohc_comp_debug(context, "payload_size = %d\n", size);
 
-	// See RFC4996 page 32/33
-	c_field_scaling(tcp_context->seq_number_scaled,tcp_context->seq_number_residue,size,
-	                tcp->seq_number);
-	rohc_comp_debug(context, "seq_number = 0x%x, scaled = 0x%x, "
-	                "residue = 0x%x\n", tcp->seq_number,
-	                tcp_context->seq_number_scaled,
-	                tcp_context->seq_number_residue);
-	c_field_scaling(tcp_context->ack_number_scaled,tcp_context->ack_number_residue,
-	                tcp_context->ack_stride,
-	                tcp->ack_number);
-	rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, "
-	                "residue = 0x%x\n", tcp->ack_number,
-	                tcp_context->ack_number_scaled,
-	                tcp_context->ack_number_residue);
 
-	switch(context->state)
-	{
-		case IR:  /* The Initialization and Refresh (IR) state */
-			change_state(context, FO);
-			*packet_type = PACKET_IR;
-			break;
-		case FO:  /* The First Order (FO) state */
-			change_state(context, SO);
-			*packet_type = PACKET_IR_DYN;
-			break;
-		case SO:  /* The Second Order (SO) state */
-		default:
-			*packet_type = PACKET_UNKNOWN;
-			break;
-	}
+	/* STEP 2:
+	 *  - check NBO and RND of the IP-ID of the outer and inner IP headers
+	 *    (IPv4 only, if the current packet is not the first one)
+	 *  - get the next the Sequence Number (SN)
+	 *  - find how many static and dynamic IP fields changed
+	 */
 
+	/* detect the behaviors of the IP-ID fields for IPv4 headers */
 	if(base_header_inner.ipvx->version == IPV4)
 	{
 		WB_t swapped_ip_id;
@@ -1490,10 +1449,83 @@ static int c_tcp_encode(struct c_context *const context,
 			default:
 				break;
 		}
-
 	}
 
-	/* encode the IP packet */
+	g_context->sn = g_context->get_next_sn(context, ip, NULL);
+	rohc_comp_debug(context, "MSN = 0x%x\n", g_context->sn);
+
+	/* how many TCP fields changed? */
+#ifdef TODO
+	tcp_context->tmp_variables.send_tcp_dynamic = tcp_changed_tcp_dynamic(context, tcp);
+#endif
+
+
+	/*
+	 * STEP 3: decide in which state to go
+	 */
+	rohc_comp_debug(context, "state %d\n", context->state);
+
+#ifdef TODO
+	if(tcp_context->tmp_variables.send_tcp_dynamic)
+	{
+		change_state(context, IR);
+	}
+	else
+	{
+		/* generic function used by the IP-only, UDP and UDP-Lite profiles */
+		decide_state(context);
+	}
+#endif
+
+
+	/*
+	 * STEP 4: compute how many bits are needed to send header fields
+	 */
+
+	/* add the new SN to the W-LSB encoding object */
+	c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
+
+	// See RFC4996 page 32/33
+	c_field_scaling(tcp_context->seq_number_scaled,tcp_context->seq_number_residue,size,
+	                tcp->seq_number);
+	rohc_comp_debug(context, "seq_number = 0x%x, scaled = 0x%x, "
+	                "residue = 0x%x\n", tcp->seq_number,
+	                tcp_context->seq_number_scaled,
+	                tcp_context->seq_number_residue);
+	c_field_scaling(tcp_context->ack_number_scaled,tcp_context->ack_number_residue,
+	                tcp_context->ack_stride,
+	                tcp->ack_number);
+	rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, "
+	                "residue = 0x%x\n", tcp->ack_number,
+	                tcp_context->ack_number_scaled,
+	                tcp_context->ack_number_residue);
+
+
+	/*
+	 * STEP 5: decide which packet to send
+	 */
+
+	switch(context->state)
+	{
+		case IR:  /* The Initialization and Refresh (IR) state */
+			change_state(context, FO);
+			*packet_type = PACKET_IR;
+			break;
+		case FO:  /* The First Order (FO) state */
+			change_state(context, SO);
+			*packet_type = PACKET_IR_DYN;
+			break;
+		case SO:  /* The Second Order (SO) state */
+		default:
+			*packet_type = PACKET_UNKNOWN;
+			break;
+	}
+
+
+	/*
+	 * STEP 6: code the packet
+	 */
+
 	rohc_comp_debug(context, "state %d\n", context->state);
 	if((*packet_type) == PACKET_UNKNOWN)
 	{
@@ -1690,8 +1722,6 @@ static int c_tcp_encode(struct c_context *const context,
 	}
 
 	rohc_comp_debug(context, "payload_offset = %d\n", *payload_offset);
-
-	++tcp_context->msn;
 
 	/* update the context with the new TCP header */
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(tcphdr_t));
@@ -2468,7 +2498,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	tcp_dynamic->psh_flag = tcp->psh_flag;
 	tcp_dynamic->rsf_flags = tcp->rsf_flags;
 
-	tcp_dynamic->msn = rohc_hton16(tcp_context->msn);
+	tcp_dynamic->msn = rohc_hton16(g_context->sn);
 	tcp_dynamic->seq_number = tcp->seq_number;
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
@@ -3954,6 +3984,7 @@ static int co_baseheader(struct c_context *const context,
 								 int payload_size,
 								 int ttl_irregular_chain_flag)
 {
+	struct c_generic_context *g_context = context->specific;
 	tcphdr_t *tcp;
 	multi_ptr_t c_base_header; // compressed
 	uint8_t ttl_hopl;
@@ -4685,8 +4716,8 @@ static int co_baseheader(struct c_context *const context,
 	// =:= rsf_index_enc [ 2 ];
 	c_base_header.co_common->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
 	// =:= lsb(4, 4) [ 4 ];
-	c_base_header.co_common->msn = c_lsb(context, 4, 4, tcp_context->msn,
-	                                     tcp_context->msn);
+	c_base_header.co_common->msn =
+		wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	puchar = mptr.uint8;
 	// =:= irregular(2) [ 2 ];
 	c_base_header.co_common->seq_indicator =
@@ -4724,7 +4755,7 @@ static int co_baseheader(struct c_context *const context,
 		// =:= irregular(1) [ 1 ];
 		c_base_header.co_common->ip_id_indicator =
 		   c_optional_ip_id_lsb(context, &mptr, ip_context.v4->ip_id_behavior,
-		                        ip_context.v4->last_ip_id, ip_id, tcp_context->msn);
+		                        ip_context.v4->last_ip_id, ip_id, g_context->sn);
 		ip_context.v4->last_ip_id.uint16 = ip_id.uint16;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = ip_context.v4->ip_id_behavior;
@@ -4888,9 +4919,12 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_1_t *const rnd1)
 {
+	struct c_generic_context *g_context;
 	uint32_t seq_number;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd1 != NULL);
@@ -4902,7 +4936,7 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
 	                   rohc_ntoh32(tcp->seq_number));
 	rnd1->seq_number1 = (seq_number >> 16) & 0xffff;
 	rnd1->seq_number2 = rohc_hton16(seq_number & 0xffff);
-	rnd1->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd1->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd1->psh_flag = tcp->psh_flag;
 	rnd1->header_crc = 0; /* for CRC computation */
 	rnd1->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd1,
@@ -4930,7 +4964,11 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_2_t *const rnd2)
 {
+	struct c_generic_context *g_context;
+
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd2 != NULL);
@@ -4940,7 +4978,7 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
 	rnd2->discriminator = 0x0c; /* '1100' */
 	rnd2->seq_number_scaled = c_lsb(context, 4, 7, tcp_context->seq_number,
 	                                tcp_context->seq_number_scaled);
-	rnd2->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd2->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd2->header_crc = 0; /* for CRC computation */
 	rnd2->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd2,
 	                                 sizeof(rnd_2_t), CRC_INIT_3,
@@ -4967,9 +5005,12 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_3_t *const rnd3)
 {
+	struct c_generic_context *g_context;
 	uint16_t ack_number;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd3 != NULL);
@@ -4983,7 +5024,7 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
 	rnd3->ack_number2 = ack_number & 0xff;
 	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)\n",
 	                ack_number, rnd3->ack_number1, rnd3->ack_number2);
-	rnd3->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd3->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd3->psh_flag = tcp->psh_flag;
 	rnd3->header_crc = 0; /* for CRC computation */
 	rnd3->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd3,
@@ -5011,7 +5052,11 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_4_t *const rnd4)
 {
+	struct c_generic_context *g_context;
+
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp_context->ack_stride != 0);
 	assert(tcp != NULL);
@@ -5023,7 +5068,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
 	rnd4->ack_number_scaled = c_lsb(context, 4, 3,
 	                                /*tcp_context->ack_number*/ 0,
 	                                tcp_context->ack_number_scaled);
-	rnd4->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd4->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd4->psh_flag = tcp->psh_flag;
 	rnd4->header_crc = 0; /* for CRC computation */
 	rnd4->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd4,
@@ -5051,10 +5096,13 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_5_t *const rnd5)
 {
+	struct c_generic_context *g_context;
 	uint16_t seq_number;
 	uint16_t ack_number;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd5 != NULL);
@@ -5063,7 +5111,7 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
 
 	rnd5->discriminator = 0x04; /* '100' */
 	rnd5->psh_flag = tcp->psh_flag;
-	rnd5->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd5->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 
 	/* sequence number */
 	seq_number = c_lsb(context, 14, 8191, tcp_context->seq_number,
@@ -5108,7 +5156,11 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_6_t *const rnd6)
 {
+	struct c_generic_context *g_context;
+
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd6 != NULL);
@@ -5120,7 +5172,7 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
 	rnd6->psh_flag = tcp->psh_flag;
 	rnd6->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
-	rnd6->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd6->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd6->seq_number_scaled = c_lsb(context, 4, 7, tcp_context->seq_number,
 	                                tcp_context->seq_number_scaled);
 	rnd6->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd6,
@@ -5148,9 +5200,12 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 rnd_7_t *const rnd7)
 {
+	struct c_generic_context *g_context;
 	uint32_t ack_number;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd7 != NULL);
@@ -5163,7 +5218,7 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
 	rnd7->ack_number1 = (ack_number >> 16) & 0x03;
 	rnd7->ack_number2 = rohc_hton16(ack_number & 0xffff);
 	rnd7->window = tcp->window;
-	rnd7->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	rnd7->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd7->psh_flag = tcp->psh_flag;
 	rnd7->header_crc = 0; /* for CRC computation */
 	rnd7->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd7,
@@ -5197,12 +5252,15 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 										rnd_8_t *const rnd8,
 										size_t *const rnd8_len)
 {
+	struct c_generic_context *g_context;
 	size_t comp_opts_len;
 	uint8_t ttl_hl;
 	uint8_t msn;
 	bool is_ok;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(tcp_context != NULL);
 	assert(tcp != NULL);
 	assert(rnd8 != NULL);
@@ -5216,7 +5274,7 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 	rnd8->header_crc = 0; /* for CRC computation */
 
 	/* MSN */
-	msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	rnd8->msn1 = (msn >> 3) & 0x01;
 	rnd8->msn2 = msn & 0x07;
 
@@ -5303,9 +5361,12 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_1_t *const seq1)
 {
+	struct c_generic_context *g_context;
 	WB_t ip_id;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5318,10 +5379,10 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq1->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
+	                          g_context->sn);
 	seq1->seq_number = rohc_hton16(c_lsb(context, 16, 32767, tcp_context->seq_number,
 	                               rohc_ntoh32(tcp->seq_number)));
-	seq1->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq1->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq1->psh_flag = tcp->psh_flag;
 	seq1->header_crc = 0; /* for CRC computation */
 	seq1->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq1,
@@ -5353,10 +5414,13 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_2_t *const seq2)
 {
+	struct c_generic_context *g_context;
 	WB_t ip_id;
 	uint8_t ip_id_lsb;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5369,12 +5433,12 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	ip_id_lsb = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 7, 3,
 	                        ip_context.v4->last_ip_id, ip_id,
-	                        tcp_context->msn);
+	                        g_context->sn);
 	seq2->ip_id1 = (ip_id_lsb >> 4) & 0x7;
 	seq2->ip_id2 = ip_id_lsb & 0x0f;
 	seq2->seq_number_scaled = c_lsb(context, 4, 7, tcp_context->seq_number,
 	                                tcp_context->seq_number_scaled);
-	seq2->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq2->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq2->psh_flag = tcp->psh_flag;
 	seq2->header_crc = 0; /* for CRC computation */
 	seq2->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq2,
@@ -5406,9 +5470,12 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_3_t *const seq3)
 {
+	struct c_generic_context *g_context;
 	WB_t ip_id;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5421,10 +5488,10 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq3->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
+	                          g_context->sn);
 	seq3->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
-	seq3->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq3->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq3->psh_flag = tcp->psh_flag;
 	seq3->header_crc = 0; /* for CRC computation */
 	seq3->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq3,
@@ -5456,9 +5523,12 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_4_t *const seq4)
 {
+	struct c_generic_context *g_context;
 	WB_t ip_id;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(tcp_context->ack_stride != 0);
@@ -5475,8 +5545,8 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq4->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 3, 1,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
-	seq4->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	                          g_context->sn);
+	seq4->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq4->psh_flag = tcp->psh_flag;
 	seq4->header_crc = 0; /* for CRC computation */
 	seq4->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq4,
@@ -5508,9 +5578,12 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_5_t *const seq5)
 {
+	struct c_generic_context *g_context;
 	WB_t ip_id;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5523,12 +5596,12 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq5->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
+	                          g_context->sn);
 	seq5->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq5->seq_number = rohc_hton16(c_lsb(context, 16, 32767, tcp_context->seq_number,
 	                               rohc_ntoh32(tcp->seq_number)));
-	seq5->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq5->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq5->psh_flag = tcp->psh_flag;
 	seq5->header_crc = 0; /* for CRC computation */
 	seq5->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq5,
@@ -5559,10 +5632,13 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_6_t *const seq6)
 {
+	struct c_generic_context *g_context;
 	uint8_t seq_number_scaled;
 	WB_t ip_id;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5583,10 +5659,10 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq6->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 7, 3,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
+	                          g_context->sn);
 	seq6->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
-	seq6->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq6->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq6->psh_flag = tcp->psh_flag;
 	seq6->header_crc = 0; /* for CRC computation */
 	seq6->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq6,
@@ -5618,10 +5694,13 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
                                 const tcphdr_t *const tcp,
                                 seq_7_t *const seq7)
 {
+	struct c_generic_context *g_context;
 	uint16_t window;
 	WB_t ip_id;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5643,10 +5722,10 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq7->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 5, 3,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
+	                          g_context->sn);
 	seq7->ack_number = rohc_hton16(c_lsb(context, 16, 32767, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
-	seq7->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq7->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq7->psh_flag = tcp->psh_flag;
 	seq7->header_crc = 0; /* for CRC computation */
 	seq7->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq7,
@@ -5680,6 +5759,7 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
                                 seq_8_t *const seq8,
 										  size_t *const seq8_len)
 {
+	struct c_generic_context *g_context;
 	size_t comp_opts_len;
 	uint16_t ack_number;
 	uint16_t seq_number;
@@ -5687,6 +5767,8 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 	bool is_ok;
 
 	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = context->specific;
 	assert(ip_context.vx->version == IPV4);
 	assert(tcp_context != NULL);
 	assert(ip.ipvx->version == IPV4);
@@ -5702,11 +5784,11 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
 	seq8->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
 	                          ip_context.v4->last_ip_id, ip_id,
-	                          tcp_context->msn);
+	                          g_context->sn);
 
 	seq8->list_present = 0; /* options are set later */
 	seq8->header_crc = 0; /* for CRC computation */
-	seq8->msn = c_lsb(context, 4, 4, tcp_context->msn, tcp_context->msn);
+	seq8->msn = wlsb_get_lsb_16bits(g_context->sn_window, g_context->sn, 4, 4);
 	seq8->psh_flag = tcp->psh_flag;
 
 	/* TTL/HL */
