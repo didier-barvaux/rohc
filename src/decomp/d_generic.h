@@ -425,20 +425,20 @@ struct d_generic_context
 	                         const unsigned int payload_len);
 
 	/// @brief The handler used to compute the CRC-STATIC value
-	const uint8_t (*compute_crc_static)(const uint8_t *const ip,
-	                                    const uint8_t *const ip2,
-	                                    const uint8_t *const next_header,
-	                                    const rohc_crc_type_t crc_type,
-	                                    const uint8_t init_val,
-	                                    const uint8_t *const crc_table);
+	uint8_t (*compute_crc_static)(const uint8_t *const ip,
+	                              const uint8_t *const ip2,
+	                              const uint8_t *const next_header,
+	                              const rohc_crc_type_t crc_type,
+	                              const uint8_t init_val,
+	                              const uint8_t *const crc_table);
 
 	/// @brief The handler used to compute the CRC-DYNAMIC value
-	const uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
-	                                     const uint8_t *const ip2,
-	                                     const uint8_t *const next_header,
-	                                     const rohc_crc_type_t crc_type,
-	                                     const uint8_t init_val,
-	                                     const uint8_t *const crc_table);
+	uint8_t (*compute_crc_dynamic)(const uint8_t *const ip,
+	                               const uint8_t *const ip2,
+	                               const uint8_t *const next_header,
+	                               const rohc_crc_type_t crc_type,
+	                               const uint8_t init_val,
+	                               const uint8_t *const crc_table);
 
 	/** The handler used to update context with decoded next header fields */
 	void (*update_context)(const struct d_context *context,
