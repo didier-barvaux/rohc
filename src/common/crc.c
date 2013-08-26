@@ -123,18 +123,18 @@ static const uint32_t crc_table_fcs32[256] =
  * Prototypes of private functions
  */
 
-static const uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
-                                              const rohc_crc_type_t crc_type,
-                                              const uint8_t init_val,
-                                              const uint8_t *const crc_table)
+static uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
+                                        const rohc_crc_type_t crc_type,
+                                        const uint8_t init_val,
+                                        const uint8_t *const crc_table)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
-static const uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
-                                           const rohc_crc_type_t crc_type,
-                                           const uint8_t init_val,
-                                           const uint8_t *const crc_table)
+static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
+                                     const rohc_crc_type_t crc_type,
+                                     const uint8_t init_val,
+                                     const uint8_t *const crc_table)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
-static const uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
-                                                uint8_t *const type)
+static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
+                                          uint8_t *const type)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
@@ -143,30 +143,30 @@ static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
 	__attribute__((nonnull(2), warn_unused_result));
 
 
-static inline const uint8_t crc_calc_8(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_8(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 4), warn_unused_result, pure));
-static inline const uint8_t crc_calc_7(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_7(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 4), warn_unused_result, pure));
-static inline const uint8_t crc_calc_6(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_6(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 4), warn_unused_result, pure));
-static inline const uint8_t crc_calc_3(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_3(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 4), warn_unused_result, pure));
-static inline const uint8_t crc_calc_2(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_2(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 4), warn_unused_result, pure));
 
 
@@ -896,10 +896,10 @@ uint8_t tcp_compute_crc_dynamic(const uint8_t *const ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-static const uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
-                                              const rohc_crc_type_t crc_type,
-                                              const uint8_t init_val,
-                                              const uint8_t *const crc_table)
+static uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
+                                        const rohc_crc_type_t crc_type,
+                                        const uint8_t init_val,
+                                        const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	const uint8_t *ext;
@@ -933,10 +933,10 @@ static const uint8_t ipv6_ext_calc_crc_static(const uint8_t *const ip,
  * @param crc_table   The pre-computed table for fast CRC computation
  * @return            The checksum
  */
-static const uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
-                                           const rohc_crc_type_t crc_type,
-                                           const uint8_t init_val,
-                                           const uint8_t *const crc_table)
+static uint8_t ipv6_ext_calc_crc_dyn(const uint8_t *const ip,
+                                     const rohc_crc_type_t crc_type,
+                                     const uint8_t init_val,
+                                     const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	const uint8_t *ext;
@@ -1011,8 +1011,8 @@ error:
  * @param type The type of the extension
  * @return     The extension, NULL if there is no extension
  */
-static const uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
-                                                uint8_t *const type)
+static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
+                                          uint8_t *const type)
 {
 	struct ipv6_hdr *ip_hdr;
 
@@ -1049,10 +1049,10 @@ end:
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline const uint8_t crc_calc_8(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_8(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	int i;
@@ -1075,10 +1075,10 @@ static inline const uint8_t crc_calc_8(const uint8_t *const buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline const uint8_t crc_calc_7(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_7(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	int i;
@@ -1101,10 +1101,10 @@ static inline const uint8_t crc_calc_7(const uint8_t *const buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline const uint8_t crc_calc_6(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_6(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	int i;
@@ -1127,10 +1127,10 @@ static inline const uint8_t crc_calc_6(const uint8_t *const buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline const uint8_t crc_calc_3(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_3(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	int i;
@@ -1153,10 +1153,10 @@ static inline const uint8_t crc_calc_3(const uint8_t *const buf,
  * @param crc_table  The pre-computed table for fast CRC computation
  * @return           The CRC byte
  */
-static inline const uint8_t crc_calc_2(const uint8_t *const buf,
-                                       const size_t size,
-                                       const uint8_t init_val,
-                                       const uint8_t *const crc_table)
+static inline uint8_t crc_calc_2(const uint8_t *const buf,
+                                 const size_t size,
+                                 const uint8_t init_val,
+                                 const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
 	int i;
