@@ -588,6 +588,46 @@ if test "x$enable_rohc_tests" = "xyes" || \
 fi
 
 
+# if performance app is enabled:
+#  - clock_gettime() is mandatory
+#  - CLOCK_MONOTONIC_RAW is mandatory
+if test "x$enable_app_perf" = "xyes" ; then
+
+	# Check if clock_gettime() is available without external library then
+	# with librt
+	AC_CHECK_FUNC([clock_gettime], clock_gettime_lib="",
+	              [AC_CHECK_LIB([rt], clock_gettime,
+	                            clock_gettime_lib="-lrt",
+	                            clock_gettime_lib="not found")])
+	AC_SUBST([clock_gettime_lib], [$clock_gettime_lib])
+	if test "x$clock_gettime_lib" = "xnot found" ; then
+		echo
+		echo "ERROR: clock_gettime() not found"
+		echo
+		echo "You must disable the performance application with "
+		echo "--disable-app-perf to continue."
+		exit 1
+	fi
+
+	# check for CLOCK_MONOTONIC_RAW symbol
+	AC_MSG_CHECKING([whether CLOCK_MONOTONIC_RAW is defined by libc])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#if HAVE_TIME_H == 1
+	                                     #  include <time.h>
+	                                     #else
+	                                     #  error "time.h header not found"
+	                                     #endif
+	                                     int type;]],
+	                                   [[type = CLOCK_MONOTONIC_RAW;]])],
+	                  [clock_mono_raw_defined="yes"],
+	                  [clock_mono_raw_defined="no"])
+	AC_MSG_RESULT([$clock_mono_raw_defined])
+	if test "x$clock_mono_raw_defined" != "xyes" ; then
+		AC_DEFINE([CLOCK_MONOTONIC_RAW], [4],
+		          [Define CLOCK_MONOTONIC_RAW if not defined by the system])
+	fi
+fi
+
+
 # check requirements for valgrind support to tests
 if test "x$enable_rohc_tests_valgrind" = "xyes" ; then
 
