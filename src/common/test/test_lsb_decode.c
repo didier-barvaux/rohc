@@ -32,9 +32,9 @@
 
 
 /** Stub for \ref rohc_f_32bits */
-const struct rohc_interval32 __wrap_rohc_f_32bits(const uint32_t v_ref,
-																  const size_t k,
-																  const rohc_lsb_shift_t p)
+struct rohc_interval32 __wrap_rohc_f_32bits(const uint32_t v_ref,
+                                            const size_t k,
+                                            const rohc_lsb_shift_t p)
 {
 	struct rohc_interval32 interval;
 

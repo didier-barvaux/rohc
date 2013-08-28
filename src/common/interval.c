@@ -44,9 +44,9 @@
  * @param p     The shift parameter (may be negative)
  * @return      The computed interval
  */
-const struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
-                                           const size_t k,
-                                           const rohc_lsb_shift_t p)
+struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
+                                     const size_t k,
+                                     const rohc_lsb_shift_t p)
 {
 	struct rohc_interval32 interval32;
 	struct rohc_interval16 interval16;
@@ -80,9 +80,9 @@ const struct rohc_interval16 rohc_f_16bits(const uint16_t v_ref,
  * @param p     The shift parameter (may be negative)
  * @return      The computed interval
  */
-const struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
-                                           const size_t k,
-                                           const rohc_lsb_shift_t p)
+struct rohc_interval32 rohc_f_32bits(const uint32_t v_ref,
+                                     const size_t k,
+                                     const rohc_lsb_shift_t p)
 {
 	struct rohc_interval32 interval32;
 	uint32_t interval_width;

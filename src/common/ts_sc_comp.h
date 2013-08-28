@@ -133,11 +133,11 @@ bool ROHC_EXPORT nb_bits_scaled(const struct ts_sc_comp *const ts_sc,
 void ROHC_EXPORT add_scaled(const struct ts_sc_comp *const ts_sc,
                             const uint16_t sn);
 
-const uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp *const ts_sc)
+uint32_t ROHC_EXPORT get_ts_stride(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
-const uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp *const ts_sc)
+uint32_t ROHC_EXPORT get_ts_scaled(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
-const uint32_t ROHC_EXPORT get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
+uint32_t ROHC_EXPORT get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
 	__attribute__((nonnull(1), warn_unused_result, pure));
 
 bool ROHC_EXPORT rohc_ts_sc_is_deducible(const struct ts_sc_comp *const ts_sc)

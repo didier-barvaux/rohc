@@ -122,7 +122,7 @@ void rohc_lsb_free(struct rohc_lsb_decode *const lsb)
  * @param lsb  The LSB object used to decode
  * @return     The shift parameter p
  */
-const rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
+rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
 {
 	assert(lsb != NULL);
 	return lsb->p;
@@ -347,8 +347,8 @@ void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
  * @param ref_type  The reference value to retrieve
  * @return          The current reference value
  */
-const uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb,
-                                const rohc_lsb_ref_t ref_type)
+uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb,
+                          const rohc_lsb_ref_t ref_type)
 {
 	assert(lsb != NULL);
 	assert(lsb->is_init == true);

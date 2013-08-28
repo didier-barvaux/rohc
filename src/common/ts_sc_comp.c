@@ -378,7 +378,7 @@ void add_scaled(const struct ts_sc_comp *const ts_sc, const uint16_t sn)
  * @param ts_sc        The ts_sc_comp object
  * @return             TS_STRIDE value
  */
-const uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
+uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
 {
 	return ts_sc->ts_stride;
 }
@@ -390,7 +390,7 @@ const uint32_t get_ts_stride(const struct ts_sc_comp *const ts_sc)
  * @param ts_sc        The ts_sc_comp object
  * @return             The TS_SCALED value
  */
-const uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
+uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
 {
 	return ts_sc->ts_scaled;
 }
@@ -402,7 +402,7 @@ const uint32_t get_ts_scaled(const struct ts_sc_comp *const ts_sc)
  * @param ts_sc  The ts_sc_comp object
  * @return       The unscaled TS value
  */
-const uint32_t get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
+uint32_t get_ts_unscaled(const struct ts_sc_comp *const ts_sc)
 {
 	return ts_sc->ts;
 }
