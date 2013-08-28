@@ -2450,6 +2450,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	struct c_context *c;
 	struct c_feedback feedback;
 	const uint8_t *p = packet;
+	bool is_success = false;
 
 	/* sanity check */
 	if(packet == NULL || size <= 0)
@@ -2461,7 +2462,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	 * feedback */
 	if(comp == NULL)
 	{
-		goto quit;
+		goto ignore;
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2544,13 +2545,16 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	/* deliver feedback to profile with the context */
 	c->profile->feedback(c, &feedback);
 
-quit:
-	return true;
+	/* everything went fine */
+	is_success = true;
 
 clean:
 	zfree(feedback.data);
 error:
-	return false;
+	return is_success;
+
+ignore:
+	return true;
 }
 
 
