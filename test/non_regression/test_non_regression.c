@@ -606,6 +606,18 @@ static int compress_decompress(struct rohc_comp *comp,
 		}
 	}
 
+	/* fix IPv4 packets with non-standard-compliant 0xffff checksums instead
+	 * of 0x0000 (Windows Vista seems to be faulty for the latter), to avoid
+	 * false comparison failures after decompression) */
+	if(((ip_packet[0] >> 4) & 0x0f) == 4 &&
+	   ip_size >= sizeof(struct ipv4_hdr) &&
+	   ip_packet[10] == 0xff && ip_packet[11] == 0xff)
+	{
+		fprintf(stderr, "fix IPv4 packet with 0xffff IP checksum\n");
+		ip_packet[10] = 0x00;
+		ip_packet[11] = 0x00;
+	}
+
 	/* compress the IP packet */
 	printf("\t\t<compression>\n");
 	printf("\t\t\t<log>\n");
