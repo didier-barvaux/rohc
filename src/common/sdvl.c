@@ -94,6 +94,8 @@ size_t sdvl_get_min_len(const size_t nr_min_required,
 	{
 		const size_t remaining = nr_min_required - nr_encoded;
 
+		assert(remaining <= ROHC_SDVL_MAX_BITS_IN_4_BYTES);
+
 		if(remaining <= ROHC_SDVL_MAX_BITS_IN_1_BYTE)
 		{
 			nr_needed = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
