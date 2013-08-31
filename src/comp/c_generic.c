@@ -4842,7 +4842,7 @@ int code_EXT3_packet(const struct c_context *context,
 	 *         Mode bits otherwise */
 	if(is_rtp)
 	{
-		const struct sc_rtp_context *rtp_context;
+		struct sc_rtp_context *rtp_context;
 		size_t nr_ts_bits; /* nb of TS bits needed */
 		uint8_t tsc; /* Tsc bit */
 
@@ -4861,6 +4861,16 @@ int code_EXT3_packet(const struct c_context *context,
 			case PACKET_UOR_2_ID:
 			case PACKET_UO_1_ID:
 				rts = (nr_ts_bits > 0);
+				/* force sending some TS bits in extension 3 if TS is not scaled
+				 * (Tsc = 0) and the base header contains zero bit */
+				if(!rts && rtp_context->ts_sc.state != SEND_SCALED)
+				{
+					rohc_comp_debug(context, "force R-TS = 1 because Tsc = 0 and "
+					                "base header contains no TS bit\n");
+					assert(rtp_context->tmp.nr_ts_bits_ext3 == 0);
+					rts = 1;
+					rtp_context->tmp.nr_ts_bits_ext3 = 1;
+				}
 				break;
 			default:
 				rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
