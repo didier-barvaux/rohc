@@ -9099,7 +9099,11 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp *const decomp,
 			}
 			else
 			{
+#if WORDS_BIGENDIAN == 1
+				decoded->id = swab16(bits.id);
+#else
 				decoded->id = bits.id;
+#endif
 			}
 		}
 		else if(decoded->rnd)
