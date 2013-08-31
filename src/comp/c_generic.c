@@ -4852,8 +4852,6 @@ int code_EXT3_packet(const struct c_context *context,
 		/* R-TS bit */
 		switch(packet_type)
 		{
-			/* TODO: handle PACKET_UO_1_ID packet once \ref code_UO1_packet
-			 *       supports extensions */
 			case PACKET_UOR_2_RTP:
 				rts = (nr_ts_bits > 6);
 				break;
