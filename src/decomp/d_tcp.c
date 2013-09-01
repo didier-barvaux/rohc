@@ -2129,7 +2129,15 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					memcpy(pValue + 1,mptr.uint8 + 1,*pValue);
 					/* update first free offset */
 					tcp_context->tcp_options_free_offset += 1 + (*pValue);
-					assert(tcp_context->tcp_options_free_offset < MAX_TCP_OPT_SIZE);
+					if(tcp_context->tcp_options_free_offset >= MAX_TCP_OPT_SIZE)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "TCP options too large: "
+						             "%u bytes while only %u are accepted\n",
+						             tcp_context->tcp_options_free_offset,
+						             MAX_TCP_OPT_SIZE);
+						goto error;
+					}
 					mptr.uint8 += 1 + *pValue;
 				}
 				else
