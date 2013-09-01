@@ -2140,13 +2140,21 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					}
 					mptr.uint8 += 1 + *pValue;
 				}
-				else
+				else /* index already used */
 				{
-					/* Verify the value */
+					/* verify the value with the recorded one */
 					rohc_decomp_debug(context, "tcp_options_list[%d] = %d <=> %d\n",
 					                  index, tcp_context->tcp_options_list[index],
 					                  *mptr.uint8);
-					assert(tcp_context->tcp_options_list[index] == *mptr.uint8);
+					if(tcp_context->tcp_options_list[index] != *mptr.uint8)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "unexpected TCP option "
+						             "at index %u: 0x%02x received while 0x%02x "
+						             "expected\n", index, *mptr.uint8,
+						             tcp_context->tcp_options_list[index]);
+						goto error;
+					}
 					++mptr.uint8;
 					pValue = tcp_context->tcp_options_values +
 					         tcp_context->tcp_options_offset[index];
