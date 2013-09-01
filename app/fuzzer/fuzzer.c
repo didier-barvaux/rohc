@@ -56,7 +56,7 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 #define MAX_TRACE_LEN  300
 
 /** The ring buffer for the last traces */
-static char last_traces[MAX_LAST_TRACES][MAX_LAST_TRACES + 1];
+static char last_traces[MAX_LAST_TRACES][MAX_TRACE_LEN + 1];
 /** The index of the first trace */
 static int last_traces_first;
 /** The index of the last trace */
@@ -222,6 +222,7 @@ static void print_rohc_traces(const rohc_trace_level_t level,
                               const char *format, ...)
 {
 	va_list args;
+	int ret;
 
 	if(last_traces_last == -1)
 	{
@@ -233,8 +234,8 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 	}
 
 	va_start(args, format);
-	vsnprintf(last_traces[last_traces_last], MAX_TRACE_LEN + 1, format, args);
-	/* TODO: check return code */
+	ret = vsnprintf(last_traces[last_traces_last], MAX_TRACE_LEN + 1,
+	                format, args);
 	last_traces[last_traces_last][MAX_TRACE_LEN] = '\0';
 	va_end(args);
 
@@ -245,6 +246,12 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 	else if(last_traces_first == last_traces_last)
 	{
 		last_traces_first = (last_traces_first + 1) % MAX_LAST_TRACES;
+	}
+
+	/* if trace was truncated, mention it */
+	if(ret > MAX_TRACE_LEN)
+	{
+		print_rohc_traces(level, entity, profile, "previous trace truncated\n");
 	}
 }
 
