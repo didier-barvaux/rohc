@@ -2042,108 +2042,109 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					index = ( (*pBeginList) & 0x70 ) >> 4;
 				}
 			}
-			// item must present in dynamic part
-			assert( present != 0 );
 			rohc_decomp_debug(context, "TCP index %d %s\n", index,
 			                  present != 0 ? "present" : "absent");
-			/* if item present in the list */
-			if(present != 0)
+			// item must present in dynamic part
+			if(present == 0)
 			{
-				// if known index (see RFC4996 page 27)
-				if(index <= TCP_INDEX_SACK)
+				rohc_decomp_debug(context, "list item #%u not present: not "
+				                  "allowed in dynamic part, packet is "
+				                  "malformed\n", i);
+				goto error;
+			}
+			/* if known index (see RFC4996 page 27) */
+			if(index <= TCP_INDEX_SACK)
+			{
+				/* save TCP option for this index */
+				tcp_context->tcp_options_list[index] = *mptr.uint8;
+
+				switch(*mptr.uint8)
 				{
+					case TCP_OPT_EOL:
+						rohc_decomp_debug(context, "TCP option EOL\n");
+						++mptr.uint8;
+						++size;
+						break;
+					case TCP_OPT_NOP:
+						rohc_decomp_debug(context, "TCP option NOP\n");
+						++mptr.uint8;
+						++size;
+						break;
+					case TCP_OPT_MAXSEG:
+						memcpy(&tcp_context->tcp_option_maxseg, mptr.uint8 + 2, 2);
+						rohc_decomp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
+						                  rohc_ntoh16(tcp_context->tcp_option_maxseg),
+						                  rohc_ntoh16(tcp_context->tcp_option_maxseg));
+						mptr.uint8 += TCP_OLEN_MAXSEG;
+						size += TCP_OLEN_MAXSEG;
+						break;
+					case TCP_OPT_WINDOW:
+						tcp_context->tcp_option_window = *(mptr.uint8 + 2);
+						rohc_decomp_debug(context, "TCP option WINDOW = %d\n",
+						                  tcp_context->tcp_option_window);
+						mptr.uint8 += TCP_OLEN_WINDOW;
+						size += TCP_OLEN_WINDOW;
+						break;
+					case TCP_OPT_SACK_PERMITTED:
+						rohc_decomp_debug(context, "TCP option SACK PERMITTED\n");
+						mptr.uint8 += TCP_OLEN_SACK_PERMITTED;
+						size += TCP_OLEN_SACK_PERMITTED;
+						break;
+					case TCP_OPT_SACK:
+						tcp_context->tcp_option_sack_length = *(mptr.uint8 + 1) - 2;
+						rohc_decomp_debug(context, "TCP option SACK Length = %d\n",
+						                  tcp_context->tcp_option_sack_length);
+						assert(tcp_context->tcp_option_sack_length <= (8 * 4));
+						memcpy(tcp_context->tcp_option_sackblocks,mptr.uint8 + 2,
+						       tcp_context->tcp_option_sack_length);
+						size += *(mptr.uint8 + 1);
+						mptr.uint8 += *(mptr.uint8 + 1);
+						break;
+					case TCP_OPT_TIMESTAMP:
+						rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
+						memcpy(&tcp_context->tcp_option_timestamp, mptr.uint8 + 2,
+								 sizeof(struct tcp_option_timestamp));
+						mptr.uint8 += TCP_OLEN_TIMESTAMP;
+						size += TCP_OLEN_TIMESTAMP;
+						break;
+				}
+			}
+			else /* unknown index */
+			{
+				uint8_t *pValue;
 
+				/* was index already used? */
+				if(tcp_context->tcp_options_list[index] == 0xff)
+				{
+					/* index was never used before */
 					/* save TCP option for this index */
-					tcp_context->tcp_options_list[index] = *mptr.uint8;
-
-					switch(*mptr.uint8)
-					{
-						case TCP_OPT_EOL:
-							rohc_decomp_debug(context, "TCP option EOL\n");
-							++mptr.uint8;
-							++size;
-							break;
-						case TCP_OPT_NOP:
-							rohc_decomp_debug(context, "TCP option NOP\n");
-							++mptr.uint8;
-							++size;
-							break;
-						case TCP_OPT_MAXSEG:
-							memcpy(&tcp_context->tcp_option_maxseg,mptr.uint8 + 2,2);
-							rohc_decomp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
-							                  rohc_ntoh16(tcp_context->tcp_option_maxseg),
-							                  rohc_ntoh16(tcp_context->tcp_option_maxseg));
-							mptr.uint8 += TCP_OLEN_MAXSEG;
-							size += TCP_OLEN_MAXSEG;
-							break;
-						case TCP_OPT_WINDOW:
-							tcp_context->tcp_option_window = *(mptr.uint8 + 2);
-							rohc_decomp_debug(context, "TCP option WINDOW = %d\n",
-							                  tcp_context->tcp_option_window);
-							mptr.uint8 += TCP_OLEN_WINDOW;
-							size += TCP_OLEN_WINDOW;
-							break;
-						case TCP_OPT_SACK_PERMITTED:
-							rohc_decomp_debug(context, "TCP option SACK PERMITTED\n");
-							mptr.uint8 += TCP_OLEN_SACK_PERMITTED;
-							size += TCP_OLEN_SACK_PERMITTED;
-							break;
-						case TCP_OPT_SACK:
-							tcp_context->tcp_option_sack_length = *(mptr.uint8 + 1) - 2;
-							rohc_decomp_debug(context, "TCP option SACK Length = %d\n",
-							                  tcp_context->tcp_option_sack_length);
-							assert( tcp_context->tcp_option_sack_length <= (8 * 4) );
-							memcpy(tcp_context->tcp_option_sackblocks,mptr.uint8 + 2,
-							       tcp_context->tcp_option_sack_length);
-							size += *(mptr.uint8 + 1);
-							mptr.uint8 += *(mptr.uint8 + 1);
-							break;
-						case TCP_OPT_TIMESTAMP:
-							rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
-							memcpy(&tcp_context->tcp_option_timestamp, mptr.uint8 + 2,
-									 sizeof(struct tcp_option_timestamp));
-							mptr.uint8 += TCP_OLEN_TIMESTAMP;
-							size += TCP_OLEN_TIMESTAMP;
-							break;
-					}
+					tcp_context->tcp_options_list[index] = *(mptr.uint8++);
+					tcp_context->tcp_options_offset[index] = tcp_context->tcp_options_free_offset;
+					pValue = tcp_context->tcp_options_values + tcp_context->tcp_options_free_offset;
+					/* save length (without option_static) */
+					*pValue = ((*mptr.uint8) & 0x7F) - 2;
+					rohc_decomp_debug(context, "%d-byte TCP option of type %d\n",
+					                  *pValue, tcp_context->tcp_options_list[index]);
+					/* save value */
+					memcpy(pValue + 1,mptr.uint8 + 1,*pValue);
+					/* update first free offset */
+					tcp_context->tcp_options_free_offset += 1 + (*pValue);
+					assert(tcp_context->tcp_options_free_offset < MAX_TCP_OPT_SIZE);
+					mptr.uint8 += 1 + *pValue;
 				}
 				else
 				{
-					uint8_t *pValue;
-
-					// If index never used before
-					if(tcp_context->tcp_options_list[index] == 0xFF)
-					{
-						/* Save TCP option for this index */
-						tcp_context->tcp_options_list[index] = *(mptr.uint8++);
-						tcp_context->tcp_options_offset[index] = tcp_context->tcp_options_free_offset;
-						pValue = tcp_context->tcp_options_values + tcp_context->tcp_options_free_offset;
-						// Save length (without option_static)
-						*pValue = ( (*mptr.uint8) & 0x7F ) - 2;
-						rohc_decomp_debug(context, "%d-byte TCP option of type %d\n",
-						                  *pValue,
-						                  tcp_context->tcp_options_list[index]);
-						// Save value
-						memcpy(pValue + 1,mptr.uint8 + 1,*pValue);
-						// Update first free offset
-						tcp_context->tcp_options_free_offset += 1 + (*pValue);
-						assert( tcp_context->tcp_options_free_offset < MAX_TCP_OPT_SIZE );
-						mptr.uint8 += 1 + *pValue;
-					}
-					else
-					{
-						// Verify the value
-						rohc_decomp_debug(context, "tcp_options_list[%d] = %d <=> "
-						                  "%d\n", index,
-						                  tcp_context->tcp_options_list[index],
-						                  *mptr.uint8);
-						assert( tcp_context->tcp_options_list[index] == *mptr.uint8 );
-						++mptr.uint8;
-						pValue = tcp_context->tcp_options_values + tcp_context->tcp_options_offset[index];
-						assert( (*pValue) + 2 == ( (*mptr.uint8) & 0x7F ) );
-						assert( memcmp(pValue + 1,mptr.uint8 + 1,*pValue) == 0 );
-						mptr.uint8 += 1 + *pValue;
-					}
+					/* Verify the value */
+					rohc_decomp_debug(context, "tcp_options_list[%d] = %d <=> %d\n",
+					                  index, tcp_context->tcp_options_list[index],
+					                  *mptr.uint8);
+					assert(tcp_context->tcp_options_list[index] == *mptr.uint8);
+					++mptr.uint8;
+					pValue = tcp_context->tcp_options_values +
+					         tcp_context->tcp_options_offset[index];
+					assert((*pValue) + 2 == ((*mptr.uint8) & 0x7F));
+					assert(memcmp(pValue + 1, mptr.uint8 + 1, *pValue) == 0);
+					mptr.uint8 += 1 + *pValue;
 				}
 			}
 		}
