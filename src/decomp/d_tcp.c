@@ -3624,6 +3624,28 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		base_header_inner.uint8 = base_header.uint8;
 		ip_inner_context.uint8 = ip_context.uint8;
 
+		/* check minimal length */
+		if(ip_context.vx->version == IPV4)
+		{
+			if((ip_context.uint8 + sizeof(ipv4_context_t)) >
+				(tcp_context->ip_context + MAX_IP_CONTEXT_SIZE))
+			{
+				goto error;
+			}
+		}
+		else if(ip_context.vx->version == IPV6)
+		{
+			if((ip_context.uint8 + sizeof(ipv6_context_t)) >
+			   (tcp_context->ip_context + MAX_IP_CONTEXT_SIZE))
+			{
+				goto error;
+			}
+		}
+		else
+		{
+			goto error;
+		}
+
 		/* Init static part in IP header */
 		uncomp_header_len += tcp_copy_static_ip(context, ip_context, base_header);
 
@@ -3665,7 +3687,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		                 ROHC_TRACE_DEBUG, "current IP packet", dest,
 		                 uncomp_header_len);
 
-		assert( ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE] );
+		assert(ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE]);
 
 	}
 	while(protocol != ROHC_IPPROTO_TCP);
