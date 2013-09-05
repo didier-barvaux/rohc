@@ -226,6 +226,12 @@ int main(int argc, char *argv[])
 		else if(!strcmp(*argv, "-o"))
 		{
 			/* get the name of the file to store the ROHC packets */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option -o takes one argument\n\n");
+				usage();
+				goto error;
+			}
 			ofilename = argv[1];
 			args_used++;
 		}
@@ -233,24 +239,48 @@ int main(int argc, char *argv[])
 		{
 			/* get the name of the file where the ROHC packets used for comparison
 			 * are stored */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option -c takes one argument\n\n");
+				usage();
+				goto error;
+			}
 			cmp_filename = argv[1];
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--rohc-size-output"))
 		{
 			/* get the name of the file to store the sizes of every ROHC packets */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --rohc-size-output takes one argument\n\n");
+				usage();
+				goto error;
+			}
 			rohc_size_ofilename = argv[1];
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--max-contexts"))
 		{
 			/* get the maximum number of contexts the test should use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --max-contexts takes one argument\n\n");
+				usage();
+				goto error;
+			}
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
 		else if(!strcmp(*argv, "--wlsb-width"))
 		{
 			/* get the width of the WLSB window the test should use */
+			if(argc <= 1)
+			{
+				fprintf(stderr, "option --wlsb-width takes one argument\n\n");
+				usage();
+				goto error;
+			}
 			wlsb_width = atoi(argv[1]);
 			args_used++;
 		}
@@ -274,7 +304,13 @@ int main(int argc, char *argv[])
 	}
 
 	/* check CID type */
-	if(!strcmp(cid_type, "smallcid"))
+	if(cid_type == NULL)
+	{
+		fprintf(stderr, "CID_TYPE is a mandatory parameter\n\n");
+		usage();
+		goto error;
+	}
+	else if(!strcmp(cid_type, "smallcid"))
 	{
 		use_large_cid = 0;
 
@@ -318,6 +354,7 @@ int main(int argc, char *argv[])
 	/* the source filename is mandatory */
 	if(src_filename == NULL)
 	{
+		fprintf(stderr, "FLOW is a mandatory parameter\n\n");
 		usage();
 		goto error;
 	}
