@@ -224,7 +224,7 @@ static int test_comp_and_decomp(const char *filename)
 	srand(time(NULL));
 
 	/* create the ROHC compressor with small CID */
-	comp = rohc_alloc_compressor(0 /* only one context */, 0, 0, 0);
+	comp = rohc_comp_new(ROHC_SMALL_CID, 0 /* only one context */);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -383,7 +383,7 @@ static int test_comp_and_decomp(const char *filename)
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_input:
 	pcap_close(handle);
 error:

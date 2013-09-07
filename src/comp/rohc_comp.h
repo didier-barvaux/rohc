@@ -271,11 +271,26 @@ typedef int (*rohc_comp_random_cb_t) (const struct rohc_comp *const comp,
  * Prototypes of main public functions related to ROHC compression
  */
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 struct rohc_comp * ROHC_EXPORT rohc_alloc_compressor(int max_cid,
                                                      int jam_use,
                                                      int adapt_size,
-                                                     int encap_size);
-void ROHC_EXPORT rohc_free_compressor(struct rohc_comp *comp);
+                                                     int encap_size)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_new() instead");
+
+void ROHC_EXPORT rohc_free_compressor(struct rohc_comp *comp)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_free() instead");
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+struct rohc_comp * ROHC_EXPORT rohc_comp_new(const rohc_cid_type_t cid_type,
+                                             const rohc_cid_t max_cid)
+	__attribute__((warn_unused_result));
+
+void ROHC_EXPORT rohc_comp_free(struct rohc_comp *comp);
 
 bool ROHC_EXPORT rohc_comp_set_traces_cb(struct rohc_comp *const comp,
                                          rohc_trace_callback_t callback)

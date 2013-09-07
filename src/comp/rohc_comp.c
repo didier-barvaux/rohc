@@ -162,8 +162,12 @@ static int __rohc_c_context(struct rohc_comp *comp,
  */
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Create one ROHC compressor
+ *
+ * @deprecated do not use this function anymore, use rohc_comp_new() instead
  *
  * @param max_cid     The maximal CID value the compressor should use for contexts
  * @param jam_use     not used anymore, must be 0
@@ -204,21 +208,123 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
                                          int adapt_size,
                                          int encap_size)
 {
-	struct rohc_comp *comp;
-	bool is_fine;
-	int i;
-
 	if(jam_use != 0 || adapt_size != 0 || encap_size != 0)
 	{
 		/* the jamming algorithm was removed, please set jam_use, adapt_size,
 		 * and encap_size to 0 */
 		goto error;
 	}
-	if(max_cid < 0 || max_cid > ROHC_SMALL_CID_MAX)
+
+	return rohc_comp_new(ROHC_SMALL_CID, max_cid);
+
+error:
+	return NULL;
+}
+
+
+/**
+ * @brief Destroy one ROHC compressor.
+ *
+ * Destroy a ROHC compressor that was successfully created with
+ * \ref rohc_alloc_compressor
+ *
+ * @deprecated do not use this function anymore, use rohc_comp_free() instead
+ *
+ * @param comp The compressor to destroy
+ *
+ * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
+ * @see rohc_alloc_compressor
+ */
+void rohc_free_compressor(struct rohc_comp *comp)
+{
+	rohc_comp_free(comp);
+}
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+
+/**
+ * @brief Create a new ROHC compressor
+ *
+ * @param cid_type  The type of Context IDs (CID) that the ROHC compressor
+ *                  shall operate with. Accepted values are:
+ *                    \li \ref ROHC_SMALL_CID for small CIDs
+ *                    \li \ref ROHC_LARGE_CID for large CIDs
+ * @param max_cid   The maximum value that the ROHC compressor should use for
+ *                  context IDs (CID). As CIDs starts with value 0, the number
+ *                  of contexts is \e max_cid + 1. Accepted values are:
+ *                    \li [0, \ref ROHC_SMALL_CID_MAX] if \e cid_type is \ref ROHC_SMALL_CID
+ *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is \ref ROHC_LARGE_CID
+ * @return          The created compressor if successful,
+ *                  NULL if creation failed
+ *
+ * @warning Don't forget to free compressor memory with \ref rohc_comp_free
+ *          if rohc_comp_new succeeded
+ *
+ * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
+ * @see rohc_comp_free
+ * @see rohc_comp_set_traces_cb
+ * @see rohc_comp_set_random_cb
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_disable_profiles
+ * @see rohc_comp_disable_profile
+ * @see rohc_comp_set_wlsb_window_width
+ * @see rohc_comp_set_periodic_refreshes
+ * @see rohc_comp_set_rtp_detection_cb
+ * @see rohc_comp_reset_rtp_ports
+ * @see rohc_comp_add_rtp_port
+ * @see rohc_comp_remove_rtp_port
+ */
+struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
+                                 const rohc_cid_t max_cid)
+{
+	struct rohc_comp *comp;
+	bool is_fine;
+	int i;
+
+	/* check input parameters */
+	if(cid_type == ROHC_SMALL_CID)
 	{
+		/* use small CIDs in range [0, ROHC_SMALL_CID_MAX] */
+		if(max_cid > ROHC_SMALL_CID_MAX)
+		{
+			goto error;
+		}
+	}
+	else if(cid_type == ROHC_LARGE_CID)
+	{
+		/* use large CIDs in range [0, ROHC_LARGE_CID_MAX] */
+		if(max_cid > ROHC_LARGE_CID_MAX)
+		{
+			goto error;
+		}
+	}
+	else
+	{
+		/* unexpected CID type */
 		goto error;
 	}
 
+	/* allocate memory for the ROHC compressor */
 	comp = malloc(sizeof(struct rohc_comp));
 	if(comp == NULL)
 	{
@@ -227,8 +333,8 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	memset(comp, 0, sizeof(struct rohc_comp));
 
 	comp->enabled = 1;
+	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;
-	comp->medium.cid_type = ROHC_SMALL_CID;
 	comp->mrru = 0; /* no segmentation by default */
 
 	/* all compression profiles are disabled by default */
@@ -243,6 +349,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 		comp->rtp_ports[i] = 0;
 	}
 
+	/* reset statistics */
 	comp->num_packets = 0;
 	comp->total_compressed_size = 0;
 	comp->total_uncompressed_size = 0;
@@ -251,11 +358,15 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	/* set default callback for traces */
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
-	comp->trace_callback = rohc_comp_print_trace_default;
+	is_fine = rohc_comp_set_traces_cb(comp, rohc_comp_print_trace_default);
 #else
 	/* no behaviour compatibility with previous 1.x.y versions: no trace */
-	comp->trace_callback = NULL;
+	is_fine = rohc_comp_set_traces_cb(comp, NULL);
 #endif
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
 
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
@@ -274,9 +385,13 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	}
 
 	/* set default callback for random numbers */
-	comp->random_cb = rohc_comp_get_random_default;
-	comp->random_cb_ctxt = NULL;
+	is_fine = rohc_comp_set_random_cb(comp, rohc_comp_get_random_default, NULL);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 	/* set default UDP ports dedicated to RTP traffic (for compatibility) */
 	{
 		const size_t default_rtp_ports_nr = 5;
@@ -292,6 +407,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 			}
 		}
 	}
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 	/* init the tables for fast CRC computation */
 	is_fine = rohc_crc_init_table(comp->crc_table_2, ROHC_CRC_TYPE_2);
@@ -331,7 +447,7 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 	comp->feedbacks_first_unlocked = 0;
 	comp->feedbacks_next = 0;
 
-	/* create the MAX_CID contexts */
+	/* create the MAX_CID + 1 contexts */
 	if(!c_create_contexts(comp))
 	{
 		goto destroy_comp;
@@ -347,12 +463,12 @@ error:
 
 
 /**
- * @brief Destroy one ROHC compressor.
+ * @brief Destroy the given ROHC compressor
  *
  * Destroy a ROHC compressor that was successfully created with
- * \ref rohc_alloc_compressor
+ * \ref rohc_comp_new
  *
- * @param comp The compressor to destroy
+ * @param comp  The ROHC compressor to destroy
  *
  * @ingroup rohc_comp
  *
@@ -364,14 +480,14 @@ error:
 \endverbatim
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
- * @see rohc_alloc_compressor
+ * @see rohc_comp_new
  */
-void rohc_free_compressor(struct rohc_comp *comp)
+void rohc_comp_free(struct rohc_comp *comp)
 {
 	if(comp != NULL)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "free compressor\n");
+		           "free ROHC compressor\n");
 
 		/* free memory used by contexts */
 		c_destroy_contexts(comp);

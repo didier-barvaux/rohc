@@ -148,7 +148,7 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 	int ret;
 
 	/* create the ROHC compressor with small CID */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -207,7 +207,8 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 
 	/* decompress the ROHC feedback with the ROHC decompressor */
 	ret = rohc_decompress2(decomp, arrival_time,
-	                       (unsigned char *) rohc_feedback, rohc_feedback_len,	                          ip_packet, MAX_ROHC_SIZE, &ip_size);
+	                       (unsigned char *) rohc_feedback, rohc_feedback_len,
+	                       ip_packet, MAX_ROHC_SIZE, &ip_size);
 	if(ret != ROHC_FEEDBACK_ONLY)
 	{
 		fprintf(stderr, "failed to decompress ROHC feedback\n");
@@ -221,7 +222,7 @@ static int test_decomp(const unsigned char *const rohc_feedback,
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 error:
 	return is_failure;
 }

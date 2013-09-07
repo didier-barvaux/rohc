@@ -220,7 +220,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	srand(4 /* chosen by fair dice roll, guaranteed to be random */);
 
 	/* create the ROHC compressor with small CID */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -442,7 +442,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 error:
 	return is_failure;
 }

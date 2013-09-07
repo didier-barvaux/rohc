@@ -77,14 +77,24 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* rohc_alloc_compressor() */
-	CHECK(rohc_alloc_compressor(-1, 0, 0, 0) == NULL);
-	CHECK(rohc_alloc_compressor(ROHC_SMALL_CID_MAX + 1, 0, 0, 0) == NULL);
-	CHECK(rohc_alloc_compressor(ROHC_LARGE_CID_MAX, 0, 0, 0) == NULL);
-	CHECK(rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 1, 0, 0) == NULL);
-	CHECK(rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 1, 0) == NULL);
-	CHECK(rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 1, 1) == NULL);
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	/* rohc_comp_new() */
+	CHECK(rohc_comp_new(-1, ROHC_SMALL_CID_MAX) == NULL);
+	CHECK(rohc_comp_new(ROHC_SMALL_CID + 1, ROHC_SMALL_CID_MAX) == NULL);
+	comp = rohc_comp_new(ROHC_SMALL_CID, 0);
+	CHECK(comp != NULL);
+	rohc_comp_free(comp);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	CHECK(comp != NULL);
+	rohc_comp_free(comp);
+	CHECK(rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX + 1) == NULL);
+	comp = rohc_comp_new(ROHC_LARGE_CID, 0);
+	CHECK(comp != NULL);
+	rohc_comp_free(comp);
+	comp = rohc_comp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX);
+	CHECK(comp != NULL);
+	rohc_comp_free(comp);
+	CHECK(rohc_comp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX + 1) == NULL);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	CHECK(comp != NULL);
 
 	/* rohc_comp_set_traces_cb() */
@@ -375,9 +385,9 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_deliver_feedback(comp, buf, 4) == true);
 	}
 
-	/* rohc_free_compressor() */
-	rohc_free_compressor(NULL);
-	rohc_free_compressor(comp);
+	/* rohc_comp_free() */
+	rohc_comp_free(NULL);
+	rohc_comp_free(comp);
 
 	/* test succeeds */
 	trace(verbose, "all tests are successful\n");

@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 	 */
 	printf("\ncreate the ROHC compressor\n");
 //! [create ROHC compressor]
-	compressor = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	compressor = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(compressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC compressor\n");
@@ -244,7 +244,9 @@ int main(int argc, char **argv)
 	 * for details about rohc_free_compressor in the API documentation.
 	 */
 	printf("\n\ndestroy the ROHC decompressor\n");
-	rohc_free_compressor(compressor);
+//! [destroy ROHC compressor]
+	rohc_comp_free(compressor);
+//! [destroy ROHC compressor]
 
 
 	printf("\nThe program ended successfully. The ROHC packet is larger than the "
@@ -255,9 +257,7 @@ int main(int argc, char **argv)
 	return 0;
 
 release_compressor:
-//! [destroy ROHC compressor]
-	rohc_free_compressor(compressor);
-//! [destroy ROHC compressor]
+	rohc_comp_free(compressor);
 error:
 	fprintf(stderr, "an error occured during program execution, "
 	        "abort program\n");

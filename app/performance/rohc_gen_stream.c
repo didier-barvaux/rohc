@@ -305,6 +305,8 @@ static bool build_stream(const char *const filename,
                          const size_t wlsb_width,
                          const unsigned int max_contexts)
 {
+	const rohc_cid_type_t cid_type =
+		(use_large_cid ? ROHC_LARGE_CID : ROHC_SMALL_CID);
 	bool is_success = false;
 	int ret;
 
@@ -341,7 +343,7 @@ static bool build_stream(const char *const filename,
 		int i;
 
 		/* create the compressor */
-		comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
+		comp = rohc_comp_new(cid_type, max_contexts - 1);
 		if(comp == NULL)
 		{
 			fprintf(stderr, "cannot create the compressor\n");
@@ -365,7 +367,6 @@ static bool build_stream(const char *const filename,
 			fprintf(stderr, "failed to enable the compression profiles\n");
 			goto destroy_comp;
 		}
-		rohc_c_set_large_cid(comp, use_large_cid);
 
 		/* set the callback for random numbers on compressor */
 		if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
@@ -500,7 +501,7 @@ static bool build_stream(const char *const filename,
 destroy_comp:
 	if(comp != NULL)
 	{
-		rohc_free_compressor(comp);
+		rohc_comp_free(comp);
 	}
 close_dumper:
 	pcap_dump_close(dumper);

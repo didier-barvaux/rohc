@@ -307,7 +307,7 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* create the ROHC compressor with small CID */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -331,7 +331,6 @@ static int test_comp_and_decomp(const char *const filename,
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
 	}
-	rohc_c_set_large_cid(comp, 0);
 
 	/* set the callback for random numbers on compressor A */
 	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
@@ -611,7 +610,7 @@ static int test_comp_and_decomp(const char *const filename,
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_input:
 	pcap_close(handle);
 error:

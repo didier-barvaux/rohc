@@ -193,7 +193,7 @@ static int test_comp_and_decomp(void)
 	srand(time(NULL));
 
 	/* create the ROHC compressor A with small CID */
-	compA = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	compA = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(compA == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor A\n");
@@ -207,9 +207,6 @@ static int test_comp_and_decomp(void)
 		        "compressor A\n");
 		goto destroy_compA;
 	}
-
-	/* configure compressor A for small CIDs */
-	rohc_c_set_large_cid(compA, 0);
 
 	/* enable profiles for compressor A */
 	if(!rohc_comp_enable_profiles(compA, ROHC_PROFILE_UNCOMPRESSED,
@@ -248,7 +245,7 @@ static int test_comp_and_decomp(void)
 	}
 
 	/* create the ROHC compressor B with small CID */
-	compB = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	compB = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(compB == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor B\n");
@@ -262,9 +259,6 @@ static int test_comp_and_decomp(void)
 		        "compressor B\n");
 		goto destroy_compB;
 	}
-
-	/* configure compressor B for small CIDs */
-	rohc_c_set_large_cid(compB, 0);
 
 	/* enable profiles for compressor B */
 	if(!rohc_comp_enable_profiles(compB, ROHC_PROFILE_UNCOMPRESSED,
@@ -473,9 +467,9 @@ destroy_decompB:
 destroy_decompA:
 	rohc_free_decompressor(decompA);
 destroy_compB:
-	rohc_free_compressor(compB);
+	rohc_comp_free(compB);
 destroy_compA:
-	rohc_free_compressor(compA);
+	rohc_comp_free(compA);
 error:
 	return is_failure;
 }

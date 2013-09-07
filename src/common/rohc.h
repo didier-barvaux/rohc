@@ -110,7 +110,7 @@ typedef enum
  *
  * @ingroup rohc_common
  *
- * @see rohc_alloc_compressor
+ * @see rohc_comp_new
  * @see rohc_c_set_max_cid
  * @see rohc_decomp_set_max_cid
  */
@@ -121,7 +121,7 @@ typedef enum
  *
  * @ingroup rohc_common
  *
- * @see rohc_alloc_compressor
+ * @see rohc_comp_new
  * @see rohc_c_set_max_cid
  * @see rohc_decomp_set_max_cid
  *
@@ -133,13 +133,18 @@ typedef enum
 
 
 /**
- * @brief The different types of Context IDs (CID) a stream/context may use
+ * @brief The different types of Context IDs (CID) a ROHC compressor or a ROHC
+ *        decompressor may use
  *
- * Possible values are: \ref ROHC_LARGE_CID, \ref ROHC_SMALL_CID.
- *
- * Small CID means CID in the \f$[0-ROHC\_SMALL\_CID\_MAX]\f$ interval.
- *
- * Large CID means CID in the \f$[0-ROHC\_LARGE\_CID\_MAX]\f$ interval.
+ * Possible values are:
+ *  \li \ref ROHC_LARGE_CID : large CID means that a ROHC compressor or a ROHC
+ *      decompressor may identify contexts with IDs in the range
+ *      [0, \ref ROHC_LARGE_CID_MAX], ie. it may uniquely identify at
+ *      most \e ROHC_LARGE_CID_MAX + 1 streams.
+ *  \li \ref ROHC_SMALL_CID : small CID means that a ROHC compressor or a ROHC
+ *      decompressor may identify contexts with IDs in the range
+ *      [0, \ref ROHC_SMALL_CID_MAX], ie. it may uniquely identify at
+ *      most \e ROHC_SMALL_CID_MAX + 1 streams.
  *
  * @see ROHC_SMALL_CID_MAX ROHC_LARGE_CID_MAX
  *
@@ -150,15 +155,16 @@ typedef enum
 	/**
 	 * @brief The context uses large CID
 	 *
-	 * Value in the \f$[0-ROHC\_LARGE\_CID\_MAX]\f$ interval.
+	 * CID values shall be in the range [0, \ref ROHC_LARGE_CID_MAX].
 	 */
 	ROHC_LARGE_CID,
 	/**
 	 * @brief The context uses small CID
 	 *
-	 * Value in the \f$[0-ROHC\_SMALL\_CID\_MAX]\f$ interval.
+	 * CID value shall be in the range [0, \ref ROHC_SMALL_CID_MAX].
 	 */
 	ROHC_SMALL_CID,
+
 } rohc_cid_type_t;
 
 

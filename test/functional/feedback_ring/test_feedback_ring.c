@@ -146,7 +146,7 @@ static int test_feedback_ring(void)
 	srand(time(NULL));
 
 	/* create the ROHC compressor with small CID */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -330,7 +330,7 @@ static int test_feedback_ring(void)
 	is_failure = 0;
 
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 error:
 	return is_failure;
 }

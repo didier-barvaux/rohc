@@ -150,7 +150,7 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	memset(couple, 0, sizeof(struct rohc_couple));
 
 	/* create the compressor */
-	couple->comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	couple->comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(couple->comp == NULL)
 	{
 		pr_err("[%s] \t cannot create the ROHC compressor\n",
@@ -214,7 +214,7 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	return 0;
 
 free_compressor:
-	rohc_free_compressor(couple->comp);
+	rohc_comp_free(couple->comp);
 error:
 	return 1;
 }
@@ -303,7 +303,7 @@ free_rohc_packet:
 free_decompressor:
 	rohc_free_decompressor(couple->decomp);
 free_compressor:
-	rohc_free_compressor(couple->comp);
+	rohc_comp_free(couple->comp);
 	return 1;
 }
 
@@ -350,7 +350,7 @@ void rohc_couple_release(struct rohc_couple *couple, int index)
 
 	/* free (de)compressor */
 	if(couple->comp != NULL)
-		rohc_free_compressor(couple->comp);
+		rohc_comp_free(couple->comp);
 	if(couple->decomp != NULL)
 		rohc_free_decompressor(couple->decomp);
 

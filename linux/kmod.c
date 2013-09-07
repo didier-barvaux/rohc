@@ -50,8 +50,8 @@ EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
  */
 
 /* general */
-EXPORT_SYMBOL_GPL(rohc_alloc_compressor);
-EXPORT_SYMBOL_GPL(rohc_free_compressor);
+EXPORT_SYMBOL_GPL(rohc_comp_new);
+EXPORT_SYMBOL_GPL(rohc_comp_free);
 EXPORT_SYMBOL_GPL(rohc_compress3);
 EXPORT_SYMBOL_GPL(rohc_comp_force_contexts_reinit);
 

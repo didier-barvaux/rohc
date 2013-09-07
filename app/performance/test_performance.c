@@ -475,6 +475,8 @@ static int test_compression_perfs(char *filename,
                                   unsigned long *overflows,
                                   unsigned long long *time_elapsed)
 {
+	const rohc_cid_type_t cid_type =
+		(use_large_cid ? ROHC_LARGE_CID : ROHC_SMALL_CID);
 	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	int link_layer_type;
@@ -526,7 +528,7 @@ static int test_compression_perfs(char *filename,
 	}
 
 	/* create ROHC compressor */
-	comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
+	comp = rohc_comp_new(cid_type, max_contexts - 1);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -556,7 +558,6 @@ static int test_compression_perfs(char *filename,
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto free_compresssor;
 	}
-	rohc_c_set_large_cid(comp, use_large_cid);
 
 	/* set the WLSB window width on compressor */
 	if(!rohc_comp_set_wlsb_window_width(comp, wlsb_width))
@@ -626,7 +627,7 @@ static int test_compression_perfs(char *filename,
 	is_failure = 0;
 
 free_compresssor:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_input:
 	pcap_close(handle);
 exit:

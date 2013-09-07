@@ -60,7 +60,7 @@ for ./configure ? If yes, check configure output and config.log"
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const char *filename,
-                                const int is_large_cid,
+                                const rohc_cid_type_t cid_type,
                                 const char *expected_type,
                                 char **expected_options,
                                 const unsigned short expected_options_nr);
@@ -89,11 +89,11 @@ static int gen_random_num(const struct rohc_comp *const comp,
 int main(int argc, char *argv[])
 {
 	char *filename = NULL;
-	char *cid_type = NULL;
+	char *cid_type_name = NULL;
 	char *ack_type = NULL;
 	char **ack_options = NULL;
 	unsigned short ack_options_nr = 0;
-	int is_large_cid;
+	rohc_cid_type_t cid_type;
 	int args_read;
 	int status = 1;
 
@@ -118,10 +118,10 @@ int main(int argc, char *argv[])
 			filename = argv[0];
 			args_read = 1;
 		}
-		else if(cid_type == NULL)
+		else if(cid_type_name == NULL)
 		{
 			/* get the CID type to use to decompress ROHC packets */
-			cid_type = argv[0];
+			cid_type_name = argv[0];
 			args_read = 1;
 		}
 		else if(ack_type == NULL)
@@ -145,30 +145,30 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* the source filename and the ACK type are mandatory */
-	if(filename == NULL || ack_type == NULL)
+	/* the source filename, the CID type and the ACK type are mandatory */
+	if(filename == NULL || cid_type_name == NULL || ack_type == NULL)
 	{
 		usage();
 		goto error;
 	}
 
 	/* determine if we use small or large CIDs */
-	if(strcmp(cid_type, "smallcid") == 0)
+	if(strcmp(cid_type_name, "smallcid") == 0)
 	{
-		is_large_cid = 0;
+		cid_type = ROHC_SMALL_CID;
 	}
-	else if(strcmp(cid_type, "largecid") == 0)
+	else if(strcmp(cid_type_name, "largecid") == 0)
 	{
-		is_large_cid = 1;
+		cid_type = ROHC_LARGE_CID;
 	}
 	else
 	{
-		fprintf(stderr, "unknown CID type '%s'\n", cid_type);
+		fprintf(stderr, "unknown CID type '%s'\n", cid_type_name);
 		goto error;
 	}
 
 	/* test ROHC decompression with the packets from the file */
-	status = test_comp_and_decomp(filename, is_large_cid, ack_type,
+	status = test_comp_and_decomp(filename, cid_type, ack_type,
 	                              ack_options, ack_options_nr);
 
 error:
@@ -206,7 +206,7 @@ static void usage(void)
  *
  * @param filename             The name of the PCAP file that contains the
  *                             ROHC packets
- * @param is_large_cid         Whether we use large CID or not
+ * @param cid_type             The type of CID to use
  * @param expected_type        The type of acknowledgement that shall be
  *                             generated during the decompression of every
  *                             packet of the source capture
@@ -218,11 +218,13 @@ static void usage(void)
  *                             1 in case of failure
  */
 static int test_comp_and_decomp(const char *filename,
-                                const int is_large_cid,
+                                const rohc_cid_type_t cid_type,
                                 const char *expected_type,
                                 char **expected_options,
                                 const unsigned short expected_options_nr)
 {
+	const rohc_cid_t max_cid =
+		(cid_type == ROHC_SMALL_CID ? ROHC_SMALL_CID_MAX : ROHC_LARGE_CID_MAX);
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	int link_layer_type;
@@ -280,7 +282,7 @@ static int test_comp_and_decomp(const char *filename,
 	srand(time(NULL));
 
 	/* create the ROHC compressor with small CID */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(cid_type, max_cid);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -303,17 +305,6 @@ static int test_comp_and_decomp(const char *filename,
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
-	}
-
-	/* configure compressor for small or large CIDs */
-	if(is_large_cid)
-	{
-		rohc_c_set_large_cid(comp, 1);
-		rohc_c_set_max_cid(comp, ROHC_LARGE_CID_MAX);
-	}
-	else
-	{
-		rohc_c_set_large_cid(comp, 0);
 	}
 
 	/* set the callback for random numbers */
@@ -357,35 +348,16 @@ static int test_comp_and_decomp(const char *filename,
 	}
 
 	/* set CID type and MAX_CID for decompressor */
-	if(is_large_cid)
+	if(!rohc_decomp_set_cid_type(decomp, cid_type))
 	{
-		if(!rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID))
-		{
-			fprintf(stderr, "failed to set CID type to large CIDs for "
-			        "decompressor\n");
-			goto destroy_decomp;
-		}
-		if(!rohc_decomp_set_max_cid(decomp, ROHC_LARGE_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for "
-			        "decompressor\n", ROHC_LARGE_CID_MAX);
-			goto destroy_decomp;
-		}
+		fprintf(stderr, "failed to set CID type for decompressor\n");
+		goto destroy_decomp;
 	}
-	else
+	if(!rohc_decomp_set_max_cid(decomp, max_cid))
 	{
-		if(!rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID))
-		{
-			fprintf(stderr, "failed to set CID type to small CIDs for "
-			        "decompressor\n");
-			goto destroy_decomp;
-		}
-		if(!rohc_decomp_set_max_cid(decomp, ROHC_SMALL_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for "
-			        "decompressor\n", ROHC_SMALL_CID_MAX);
-			goto destroy_decomp;
-		}
+		fprintf(stderr, "failed to set MAX_CID to %zu for decompressor\n",
+		        max_cid);
+		goto destroy_decomp;
 	}
 
 	/* enable decompression profiles */
@@ -464,7 +436,7 @@ static int test_comp_and_decomp(const char *filename,
 		}
 
 		/* is there a Add-CID octet? */
-		if(is_large_cid)
+		if(cid_type == ROHC_LARGE_CID)
 		{
 			size_t sdvl_size;
 			uint32_t cid;
@@ -651,7 +623,7 @@ static int test_comp_and_decomp(const char *filename,
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_input:
 	pcap_close(handle);
 error:

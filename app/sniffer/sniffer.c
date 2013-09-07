@@ -147,7 +147,7 @@ static void usage(void);
 static void sniffer_interrupt(int signal);
 static void sniffer_print_stats(int signal);
 
-static bool sniff(const int use_large_cid,
+static bool sniff(const rohc_cid_type_t cid_type,
                   const unsigned int max_contexts,
                   const int enabled_profiles[],
                   const char *const device_name)
@@ -157,7 +157,6 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct pcap_pkthdr header,
                                unsigned char *packet,
                                size_t link_len_src,
-                               bool use_large_cid,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
                                unsigned int *const cid,
@@ -223,10 +222,10 @@ static int last_traces_last;
 int main(int argc, char *argv[])
 {
 	int enabled_profiles[ROHC_PROFILE_UDPLITE + 1];
-	char *cid_type = NULL;
+	char *cid_type_name = NULL;
 	char *device_name = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
-	int use_large_cid;
+	rohc_cid_type_t cid_type;
 	int args_used;
 	int i;
 
@@ -305,10 +304,10 @@ int main(int argc, char *argv[])
 			}
 			args_used++;
 		}
-		else if(cid_type == NULL)
+		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
-			cid_type = argv[0];
+			cid_type_name = argv[0];
 		}
 		else if(device_name == NULL)
 		{
@@ -325,9 +324,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* check CID type */
-	if(!strcmp(cid_type, "smallcid"))
+	if(!strcmp(cid_type_name, "smallcid"))
 	{
-		use_large_cid = 0;
+		cid_type = ROHC_SMALL_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
@@ -338,9 +337,9 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 	}
-	else if(!strcmp(cid_type, "largecid"))
+	else if(!strcmp(cid_type_name, "largecid"))
 	{
-		use_large_cid = 1;
+		cid_type = ROHC_LARGE_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
@@ -354,7 +353,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and "
-		        "'largecid' expected\n", cid_type);
+		        "'largecid' expected\n", cid_type_name);
 		goto error;
 	}
 
@@ -373,7 +372,7 @@ int main(int argc, char *argv[])
 	signal(SIGUSR1, sniffer_print_stats);
 
 	/* test ROHC compression/decompression with the packets from the file */
-	if(!sniff(use_large_cid, max_contexts, enabled_profiles, device_name))
+	if(!sniff(cid_type, max_contexts, enabled_profiles, device_name))
 	{
 		goto error;
 	}
@@ -661,13 +660,13 @@ static void sniffer_print_stats(int signal)
  * @brief Test the ROHC library with a sniffed flow of IP packets going
  *        through one compressor/decompressor pair
  *
- * @param use_large_cid        Whether the compressor shall use large CIDs
- * @param max_contexts         The maximum number of ROHC contexts to use
- * @param enabled_profiles     The ROHC profiles to enable
- * @param device_name          The name of the network device
- * @return                     Whether the sniffer setup was OK
+ * @param cid_type          The type of CIDs that the compressor shall use
+ * @param max_contexts      The maximum number of ROHC contexts to use
+ * @param enabled_profiles  The ROHC profiles to enable
+ * @param device_name       The name of the network device
+ * @return                  Whether the sniffer setup was OK
  */
-static bool sniff(const int use_large_cid,
+static bool sniff(const rohc_cid_type_t cid_type,
                   const unsigned int max_contexts,
                   const int enabled_profiles[],
                   const char *const device_name)
@@ -735,7 +734,7 @@ static bool sniff(const int use_large_cid,
 	}
 
 	/* create the ROHC compressor */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(cid_type, max_contexts - 1);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -763,10 +762,6 @@ static bool sniff(const int use_large_cid,
 			goto destroy_comp;
 		}
 	}
-
-	/* configure SMALL_CID / LARGE_CID and MAX_CID */
-	rohc_c_set_large_cid(comp, use_large_cid);
-	rohc_c_set_max_cid(comp, max_contexts - 1);
 
 	/* set the callback for random numbers on compressor */
 	if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
@@ -807,35 +802,16 @@ static bool sniff(const int use_large_cid,
 	}
 
 	/* set CID type and MAX_CID for decompressor */
-	if(use_large_cid)
+	if(!rohc_decomp_set_cid_type(decomp, cid_type))
 	{
-		if(!rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID))
-		{
-			fprintf(stderr, "failed to set CID type to large CIDs for "
-			        "decompressor\n");
-			goto destroy_decomp;
-		}
-		if(!rohc_decomp_set_max_cid(decomp, ROHC_LARGE_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for decompressor\n",
-			        ROHC_LARGE_CID_MAX);
-			goto destroy_decomp;
-		}
+		fprintf(stderr, "failed to set CID type for decompressor\n");
+		goto destroy_decomp;
 	}
-	else
+	if(!rohc_decomp_set_max_cid(decomp, max_contexts - 1))
 	{
-		if(!rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID))
-		{
-			fprintf(stderr, "failed to set CID type to small CIDs for "
-			        "decompressor\n");
-			goto destroy_decomp;
-		}
-		if(!rohc_decomp_set_max_cid(decomp, ROHC_SMALL_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for decompressor\n",
-			        ROHC_SMALL_CID_MAX);
-			goto destroy_decomp;
-		}
+		fprintf(stderr, "failed to set MAX_CID to %u for decompressor\n",
+		        max_contexts - 1);
+		goto destroy_decomp;
 	}
 
 	/* enable the decompression profiles */
@@ -886,8 +862,7 @@ static bool sniff(const int use_large_cid,
 
 		/* compress & decompress from compressor to decompressor */
 		ret = compress_decompress(comp, decomp, header, packet,
-		                          link_len_src, use_large_cid,
-		                          handle, dumpers, &cid, &stats);
+		                          link_len_src, handle, dumpers, &cid, &stats);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -948,7 +923,7 @@ static bool sniff(const int use_large_cid,
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_input:
 	pcap_close(handle);
 error:
@@ -965,7 +940,6 @@ error:
  * @param header         The PCAP header for the packet
  * @param packet         The packet to compress/decompress (link layer included)
  * @param link_len_src   The length of the link layer header before IP data
- * @param use_large_cid  Whether use large CID or not
  * @param handle         The PCAP handler that sniffed the packet
  * @param dumpers        The PCAP dumpers, one per context
  * @param cid            OUT: the CID used for the last packet
@@ -983,7 +957,6 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct pcap_pkthdr header,
                                unsigned char *packet,
                                size_t link_len_src,
-                               bool use_large_cid,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
                                unsigned int *const cid,

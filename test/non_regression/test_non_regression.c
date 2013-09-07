@@ -124,7 +124,7 @@ for ./configure ? If yes, check configure output and config.log"
 
 /* prototypes of private functions */
 static void usage(void);
-static int test_comp_and_decomp(const int use_large_cid,
+static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const unsigned int max_contexts,
                                 char *src_filename,
@@ -138,7 +138,6 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct pcap_pkthdr header,
                                unsigned char *packet,
                                int link_len_src,
-                               int use_large_cid,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -181,7 +180,7 @@ static int is_verbose;
  */
 int main(int argc, char *argv[])
 {
-	char *cid_type = NULL;
+	char *cid_type_name = NULL;
 	char *rohc_size_ofilename = NULL;
 	char *src_filename = NULL;
 	char *ofilename = NULL;
@@ -189,7 +188,7 @@ int main(int argc, char *argv[])
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int wlsb_width = 4;
 	int status = 1;
-	int use_large_cid;
+	rohc_cid_type_t cid_type;
 	int args_used;
 
 	/* set to quiet mode by default */
@@ -284,10 +283,10 @@ int main(int argc, char *argv[])
 			wlsb_width = atoi(argv[1]);
 			args_used++;
 		}
-		else if(cid_type == NULL)
+		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
-			cid_type = argv[0];
+			cid_type_name = argv[0];
 		}
 		else if(src_filename == NULL)
 		{
@@ -304,15 +303,15 @@ int main(int argc, char *argv[])
 	}
 
 	/* check CID type */
-	if(cid_type == NULL)
+	if(cid_type_name == NULL)
 	{
 		fprintf(stderr, "CID_TYPE is a mandatory parameter\n\n");
 		usage();
 		goto error;
 	}
-	else if(!strcmp(cid_type, "smallcid"))
+	else if(!strcmp(cid_type_name, "smallcid"))
 	{
-		use_large_cid = 0;
+		cid_type = ROHC_SMALL_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
@@ -323,9 +322,9 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 	}
-	else if(!strcmp(cid_type, "largecid"))
+	else if(!strcmp(cid_type_name, "largecid"))
 	{
-		use_large_cid = 1;
+		cid_type = ROHC_LARGE_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
@@ -339,7 +338,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
-		        "expected\n", cid_type);
+		        "expected\n", cid_type_name);
 		goto error;
 	}
 
@@ -360,7 +359,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(use_large_cid, wlsb_width, max_contexts,
+	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
 	                              src_filename, ofilename, cmp_filename,
 	                              rohc_size_ofilename);
 
@@ -541,7 +540,6 @@ error:
  * @param header           The PCAP header for the packet
  * @param packet           The packet to compress/decompress (link layer included)
  * @param link_len_src     The length of the link layer header before IP data
- * @param use_large_cid    Whether use large CID or not
  * @param dumper           The PCAP output dump file
  * @param cmp_packet       The ROHC packet for comparison purpose
  * @param cmp_size         The size of the ROHC packet used for comparison
@@ -563,7 +561,6 @@ static int compress_decompress(struct rohc_comp *comp,
                                struct pcap_pkthdr header,
                                unsigned char *packet,
                                int link_len_src,
-                               int use_large_cid,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -862,7 +859,7 @@ exit:
  * @brief Test the ROHC library with a flow of IP packets going through
  *        two compressor/decompressor pairs
  *
- * @param use_large_cid        Whether the compressor shall use large CIDs
+ * @param cid_type             The type of CIDs the compressor shall use
  * @param max_contexts         The maximum number of ROHC contexts to use
  * @param wlsb_width           The width of the WLSB window to use
  * @param src_filename         The name of the PCAP file that contains the
@@ -877,7 +874,7 @@ exit:
  *                             1 in case of failure,
  *                             77 if test is skipped
  */
-static int test_comp_and_decomp(const int use_large_cid,
+static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const unsigned int max_contexts,
                                 char *src_filename,
@@ -1056,7 +1053,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	}
 
 	/* create the compressor 1 */
-	comp1 = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
+	comp1 = rohc_comp_new(cid_type, max_contexts - 1);
 	if(comp1 == NULL)
 	{
 		printf("cannot create the compressor 1\n");
@@ -1088,7 +1085,6 @@ static int test_comp_and_decomp(const int use_large_cid,
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp1;
 	}
-	rohc_c_set_large_cid(comp1, use_large_cid);
 
 	/* set the callback for random numbers on compressor 1 */
 	if(!rohc_comp_set_random_cb(comp1, gen_false_random_num, NULL))
@@ -1144,7 +1140,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 	}
 
 	/* create the compressor 2 */
-	comp2 = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
+	comp2 = rohc_comp_new(cid_type, max_contexts - 1);
 	if(comp2 == NULL)
 	{
 		printf("cannot create the compressor 2\n");
@@ -1178,7 +1174,6 @@ static int test_comp_and_decomp(const int use_large_cid,
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp2;
 	}
-	rohc_c_set_large_cid(comp2, use_large_cid);
 
 	/* set the callback for random numbers on compressor 2 */
 	if(!rohc_comp_set_random_cb(comp2, gen_false_random_num, NULL))
@@ -1257,35 +1252,16 @@ static int test_comp_and_decomp(const int use_large_cid,
 	}
 
 	/* set CID type and MAX_CID for decompressor 1 */
-	if(use_large_cid)
+	if(!rohc_decomp_set_cid_type(decomp1, cid_type))
 	{
-		if(!rohc_decomp_set_cid_type(decomp1, ROHC_LARGE_CID))
-		{
-			fprintf(stderr, "failed to set CID type to large CIDs for "
-			        "decompressor 1\n");
-			goto destroy_decomp1;
-		}
-		if(!rohc_decomp_set_max_cid(decomp1, ROHC_LARGE_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for "
-			        "decompressor 1\n", ROHC_LARGE_CID_MAX);
-			goto destroy_decomp1;
-		}
+		fprintf(stderr, "failed to set CID type for decompressor 1\n");
+		goto destroy_decomp1;
 	}
-	else
+	if(!rohc_decomp_set_max_cid(decomp1, max_contexts - 1))
 	{
-		if(!rohc_decomp_set_cid_type(decomp1, ROHC_SMALL_CID))
-		{
-			fprintf(stderr, "failed to set CID type to small CIDs for "
-			        "decompressor 1\n");
-			goto destroy_decomp1;
-		}
-		if(!rohc_decomp_set_max_cid(decomp1, ROHC_SMALL_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for "
-			        "decompressor 1\n", ROHC_SMALL_CID_MAX);
-			goto destroy_decomp1;
-		}
+		fprintf(stderr, "failed to set MAX_CID to %zu for decompressor 1\n",
+		        max_contexts - 1);
+		goto destroy_decomp1;
 	}
 
 	/* enable decompression profiles on decompressor 1 */
@@ -1320,39 +1296,20 @@ static int test_comp_and_decomp(const int use_large_cid,
 		printf("\t</startup>\n\n");
 		printf("\t<shutdown>\n");
 		printf("\t\t<log>\n");
-		goto destroy_decomp1;
+		goto destroy_decomp2;
 	}
 
 	/* set CID type and MAX_CID for decompressor 2 */
-	if(use_large_cid)
+	if(!rohc_decomp_set_cid_type(decomp2, cid_type))
 	{
-		if(!rohc_decomp_set_cid_type(decomp2, ROHC_LARGE_CID))
-		{
-			fprintf(stderr, "failed to set CID type to large CIDs for "
-			        "decompressor 2\n");
-			goto destroy_decomp2;
-		}
-		if(!rohc_decomp_set_max_cid(decomp2, ROHC_LARGE_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for "
-			        "decompressor 2\n", ROHC_LARGE_CID_MAX);
-			goto destroy_decomp2;
-		}
+		fprintf(stderr, "failed to set CID type for decompressor 2\n");
+		goto destroy_decomp2;
 	}
-	else
+	if(!rohc_decomp_set_max_cid(decomp2, max_contexts - 1))
 	{
-		if(!rohc_decomp_set_cid_type(decomp2, ROHC_SMALL_CID))
-		{
-			fprintf(stderr, "failed to set CID type to small CIDs for "
-			        "decompressor 2\n");
-			goto destroy_decomp2;
-		}
-		if(!rohc_decomp_set_max_cid(decomp2, ROHC_SMALL_CID_MAX))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for "
-			        "decompressor 2\n", ROHC_SMALL_CID_MAX);
-			goto destroy_decomp2;
-		}
+		fprintf(stderr, "failed to set MAX_CID to %zu for decompressor 2\n",
+		        max_contexts - 1);
+		goto destroy_decomp2;
 	}
 
 	/* enable decompression profiles on decompressor 2 */
@@ -1388,8 +1345,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
 		ret = compress_decompress(comp1, decomp1, 1, counter, header, packet,
-		                          link_len_src, use_large_cid,
-		                          dumper, cmp_packet,
+		                          link_len_src, dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file);
 		if(ret == -1)
@@ -1428,8 +1384,7 @@ static int test_comp_and_decomp(const int use_large_cid,
 
 		/* compress & decompress from compressor 2 to decompressor 2 */
 		ret = compress_decompress(comp2, decomp2, 2, counter, header, packet,
-		                          link_len_src, use_large_cid,
-		                          dumper, cmp_packet,
+		                          link_len_src, dumper, cmp_packet,
 		                          cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file);
 		if(ret == -1)
@@ -1497,9 +1452,9 @@ destroy_decomp2:
 destroy_decomp1:
 	rohc_free_decompressor(decomp1);
 destroy_comp2:
-	rohc_free_compressor(comp2);
+	rohc_comp_free(comp2);
 destroy_comp1:
-	rohc_free_compressor(comp1);
+	rohc_comp_free(comp1);
 	printf("\t\t</log>\n");
 	printf("\t\t<status>ok</status>\n");
 	printf("\t</shutdown>\n\n");

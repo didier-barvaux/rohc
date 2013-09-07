@@ -722,7 +722,7 @@ int main(int argc, char *argv[])
 	 */
 
 	/* create the compressor and activate profiles */
-	comp = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
+	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -774,7 +774,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	/* 
+	/*
 	 * Main program:
 	 */
 
@@ -889,7 +889,7 @@ close_stats_comp:
 destroy_decomp:
 	rohc_free_decompressor(decomp);
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_wan:
 	close(wan);
 close_tun:
