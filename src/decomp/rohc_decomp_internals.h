@@ -26,7 +26,7 @@
 #ifndef ROHC_DECOMP_INTERNALS_H
 #define ROHC_DECOMP_INTERNALS_H
 
-#include "rohc.h" /* for struct medium */
+#include "rohc_internal.h"
 #include "rohc_decomp.h"
 
 

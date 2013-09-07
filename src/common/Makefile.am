@@ -35,6 +35,7 @@ public_headers = \
 	rohc_traces.h
 
 private_headers = \
+	rohc_internal.h \
 	rohc_bit_ops.h \
 	rohc_debug.h \
 	rohc_traces_internal.h \

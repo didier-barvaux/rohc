@@ -25,7 +25,7 @@
 #ifndef ROHC_COMP_INTERNALS_H
 #define ROHC_COMP_INTERNALS_H
 
-#include "rohc.h" /* for struct medium */
+#include "rohc_internal.h"
 #include "rohc_packets.h"
 #include "rohc_comp.h"
 #include "wlsb.h"
