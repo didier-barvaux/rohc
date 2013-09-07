@@ -148,7 +148,7 @@ struct rohc_decomp
 struct d_context
 {
 	/** The Context IDentifier (CID) */
-	unsigned int cid;
+	rohc_cid_t cid;
 
 	/** The associated decompressor */
 	struct rohc_decomp *decompressor;

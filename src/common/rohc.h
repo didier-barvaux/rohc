@@ -25,6 +25,8 @@
 #ifndef ROHC_H
 #define ROHC_H
 
+#include <stdlib.h>
+
 
 /** Macro that handles deprecated declarations gracefully */
 #if defined __GNUC__ && \
@@ -158,6 +160,10 @@ typedef enum
 	 */
 	ROHC_SMALL_CID,
 } rohc_cid_type_t;
+
+
+/** A ROHC Context ID (CID) */
+typedef size_t rohc_cid_t;
 
 
 /*

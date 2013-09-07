@@ -117,7 +117,9 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
                                          const struct ip_packet *ip,
                                          const rohc_ctxt_key_t pkt_key);
-static struct c_context * c_get_context(struct rohc_comp *comp, int cid);
+static struct c_context * c_get_context(struct rohc_comp *const comp,
+                                        const rohc_cid_t cid)
+	__attribute__((nonnull(1), warn_unused_result));
 
 
 /*
@@ -1108,7 +1110,7 @@ error:
  */
 bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 {
-	int i;
+	rohc_cid_t i;
 
 	if(comp == NULL)
 	{
@@ -1922,7 +1924,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 	   and remove the port if found */
 	for(idx = 0; idx < MAX_RTP_PORTS && !is_found; idx++)
 	{
-		int i;
+		rohc_cid_t i;
 
 		/* if the current entry in table is empty or if the current entry
 		   in table is greater than the port to remove, stop search */
@@ -2151,7 +2153,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 		v = 0;
 	}
 	buffer += sprintf(buffer, "%s\t<compression_ratio>%d%%</compression_ratio>\n", prefix, v);
-	buffer += sprintf(buffer, "%s\t<max_cid>%d</max_cid>\n", prefix, comp->medium.max_cid);
+	buffer += sprintf(buffer, "%s\t<max_cid>%zu</max_cid>\n", prefix, comp->medium.max_cid);
 	buffer += sprintf(buffer, "%s\t<mrru>%zd</mrru>\n", prefix, comp->mrru);
 	buffer += sprintf(buffer, "%s\t<large_cid>%s</large_cid>\n", prefix,
 	                  comp->medium.cid_type == ROHC_LARGE_CID ? "yes" : "no");
@@ -2238,6 +2240,11 @@ static int __rohc_c_context(struct rohc_comp *comp,
 	char *prefix;
 	char *save;
 	int v;
+
+	if(cid < 0)
+	{
+		return -1;
+	}
 
 	if(cid > comp->medium.max_cid)
 	{
@@ -2574,7 +2581,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	{
 		/* context was not found */
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "context not found (CID = %d)\n", feedback.cid);
+		           "context not found (CID = %u)\n", feedback.cid);
 		goto clean;
 	}
 
@@ -3120,14 +3127,13 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct timespec arrival_time)
 {
 	struct c_context *c;
-	int index, i;
-	unsigned int oldest;
+	rohc_cid_t cid_to_use;
 
 	assert(comp != NULL);
 	assert(profile != NULL);
 	assert(ip != NULL);
 
-	index = 0;
+	cid_to_use = 0;
 
 	/* if all the contexts in the array are used:
 	 *   => recycle the oldest context to make room
@@ -3139,24 +3145,26 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 		/* all the contexts in the array were used, recycle the oldest context
 		 * to make some room */
 
+		uint64_t oldest;
+		rohc_cid_t i;
+
 		/* find the oldest context */
-		index = 0;
 		oldest = 0xffffffff;
 		for(i = 0; i <= comp->medium.max_cid; i++)
 		{
 			if(comp->contexts[i].latest_used < oldest)
 			{
 				oldest = comp->contexts[i].latest_used;
-				index = i;
+				cid_to_use = i;
 			}
 		}
 
 		/* destroy the oldest context before replacing it with a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "recycle oldest context (CID = %d)\n", index);
-		comp->contexts[index].profile->destroy(&comp->contexts[index]);
-		comp->contexts[index].key = 0; /* reset context key */
-		comp->contexts[index].used = 0;
+		           "recycle oldest context (CID = %zu)\n", cid_to_use);
+		comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
+		comp->contexts[cid_to_use].key = 0; /* reset context key */
+		comp->contexts[cid_to_use].used = 0;
 		comp->num_contexts_used--;
 	}
 	else
@@ -3164,22 +3172,24 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 		/* there was at least one unused context in the array, pick the first
 		 * unused context in the context array */
 
+		rohc_cid_t i;
+
 		/* find the first unused context */
 		for(i = 0; i <= comp->medium.max_cid; i++)
 		{
 			if(comp->contexts[i].used == 0)
 			{
-				index = i;
+				cid_to_use = i;
 				break;
 			}
 		}
 
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "take the first unused context (CID = %d)\n", index);
+		           "take the first unused context (CID = %zu)\n", cid_to_use);
 	}
 
 	/* initialize the previously found context */
-	c = &comp->contexts[index];
+	c = &comp->contexts[cid_to_use];
 
 	c->total_uncompressed_size = 0;
 	c->total_compressed_size = 0;
@@ -3196,7 +3206,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	c->num_sent_ir_dyn = 0;
 	c->num_recv_feedbacks = 0;
 
-	c->cid = index;
+	c->cid = cid_to_use;
 	c->profile = profile;
 	c->key = key;
 
@@ -3218,7 +3228,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "context (CID = %d) created (num_used = %d)\n",
+	           "context (CID = %zu) created (num_used = %d)\n",
 	           c->cid, comp->num_contexts_used);
 	return c;
 }
@@ -3241,7 +3251,7 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 {
 	struct c_context *c = NULL;
 	size_t num_used_ctxt_seen = 0;
-	int i;
+	rohc_cid_t i;
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
@@ -3303,7 +3313,8 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
  * @param cid  The CID of the context to find
  * @return     The context with the given CID if found, NULL otherwise
  */
-static struct c_context * c_get_context(struct rohc_comp *comp, int cid)
+static struct c_context * c_get_context(struct rohc_comp *const comp,
+                                        const rohc_cid_t cid)
 {
 	/* the CID must not be larger than the context array */
 	if(cid > comp->medium.max_cid)
@@ -3332,7 +3343,7 @@ not_found:
  */
 static bool c_create_contexts(struct rohc_comp *const comp)
 {
-	size_t i;
+	rohc_cid_t i;
 
 	assert(comp != NULL);
 	assert(comp->contexts == NULL);
@@ -3340,7 +3351,7 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 	comp->num_contexts_used = 0;
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "create enough room for %d contexts (MAX_CID = %d)\n",
+	          "create enough room for %zu contexts (MAX_CID = %zu)\n",
 	          comp->medium.max_cid + 1, comp->medium.max_cid);
 
 	comp->contexts = calloc(comp->medium.max_cid + 1,
@@ -3382,7 +3393,7 @@ error:
  */
 static void c_destroy_contexts(struct rohc_comp *const comp)
 {
-	int i;
+	rohc_cid_t i;
 
 	assert(comp != NULL);
 	assert(comp->contexts != NULL);

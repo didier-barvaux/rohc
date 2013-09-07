@@ -126,7 +126,7 @@ struct rohc_medium
 	rohc_cid_type_t cid_type;
 
 	/// The maximum CID value
-	int max_cid;
+	rohc_cid_t max_cid;
 };
 
 

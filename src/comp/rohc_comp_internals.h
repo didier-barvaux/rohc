@@ -335,7 +335,7 @@ struct c_context
 	uint64_t first_used;
 
 	/** The context unique ID (CID) */
-	int cid;
+	rohc_cid_t cid;
 
 	/** The key to help finding the context associated with a packet */
 	rohc_ctxt_key_t key; /* may not be unique */
@@ -402,7 +402,7 @@ struct c_context
 struct c_feedback
 {
 	/** The Context ID to which the feedback packet is related */
-	int cid;
+	rohc_cid_t cid;
 
 	/**
 	 * @brief The type of feedback packet
