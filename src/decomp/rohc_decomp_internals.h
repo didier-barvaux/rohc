@@ -78,7 +78,7 @@ struct rohc_decomp
 	struct rohc_comp *compressor;
 
 	/** The medium associated with the decompressor */
-	struct medium medium;
+	struct rohc_medium medium;
 
 	/** Enabled/disabled features for the decompressor */
 	rohc_decomp_features_t features;

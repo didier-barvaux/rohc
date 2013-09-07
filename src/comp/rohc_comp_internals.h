@@ -120,7 +120,7 @@ struct rohc_comp
 	int enabled;
 
 	/** The medium associated with the decompressor */
-	struct medium medium;
+	struct rohc_medium medium;
 
 	/** The array of compression contexts that use the compressor */
 	struct c_context *contexts;

@@ -120,7 +120,7 @@
 /**
  * @brief ROHC medium (CID characteristics)
  */
-struct medium
+struct rohc_medium
 {
 	/** The CID type: large or small */
 	rohc_cid_type_t cid_type;
