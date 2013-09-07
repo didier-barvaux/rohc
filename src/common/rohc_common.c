@@ -36,6 +36,9 @@
  * @return the version of the library
  *
  * @ingroup rohc_common
+ *
+ * \par Example:
+ * @snippet print_rohc_version.c get ROHC version
  */
 char * rohc_version(void)
 {
