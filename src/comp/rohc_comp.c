@@ -170,7 +170,32 @@ static int __rohc_c_context(struct rohc_comp *comp,
  * @return            The newly-created compressor if successful,
  *                    NULL otherwise
  *
+ * @warning Don't forget to free compressor memory with
+ *          \ref rohc_free_compressor if rohc_alloc_compressor succeeded
+ *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
+ * @see rohc_free_compressor
+ * @see rohc_comp_set_traces_cb
+ * @see rohc_comp_set_random_cb
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_disable_profiles
+ * @see rohc_comp_disable_profile
+ * @see rohc_comp_set_wlsb_window_width
+ * @see rohc_comp_set_periodic_refreshes
+ * @see rohc_comp_set_rtp_detection_cb
+ * @see rohc_comp_reset_rtp_ports
+ * @see rohc_comp_add_rtp_port
+ * @see rohc_comp_remove_rtp_port
  */
 struct rohc_comp * rohc_alloc_compressor(int max_cid,
                                          int jam_use,
@@ -322,9 +347,22 @@ error:
 /**
  * @brief Destroy one ROHC compressor.
  *
+ * Destroy a ROHC compressor that was successfully created with
+ * \ref rohc_alloc_compressor
+ *
  * @param comp The compressor to destroy
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
+ * @see rohc_alloc_compressor
  */
 void rohc_free_compressor(struct rohc_comp *comp)
 {

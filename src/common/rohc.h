@@ -192,9 +192,30 @@ typedef enum
 } rohc_mode;
 
 
-/** The maximum value for large CIDs */
+/**
+ * @brief The maximum value for large CIDs
+ *
+ * @ingroup rohc_common
+ *
+ * @see rohc_alloc_compressor
+ * @see rohc_c_set_max_cid
+ * @see rohc_decomp_set_max_cid
+ */
 #define ROHC_LARGE_CID_MAX  ((1 << 14) - 1) /* 2^14 - 1 = 16383 */
-/** The maximum value for small CIDs */
+
+/**
+ * @brief The maximum value for small CIDs
+ *
+ * @ingroup rohc_common
+ *
+ * @see rohc_alloc_compressor
+ * @see rohc_c_set_max_cid
+ * @see rohc_decomp_set_max_cid
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \snippet simple_rohc_program.c create ROHC compressor
+ */
 #define ROHC_SMALL_CID_MAX  15
 
 

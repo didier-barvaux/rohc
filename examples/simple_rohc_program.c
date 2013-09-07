@@ -26,6 +26,12 @@
  * Mailing list public archives:  http://lists.launchpad.net/rohc/
  */
 
+/**
+ * @example simple_rohc_program.c
+ *
+ * How to compress one IP packet into one ROHC packet.
+ */
+
 /* system includes */
 #include <stdlib.h>
 #include <stdio.h>
@@ -69,7 +75,9 @@ int main(int argc, char **argv)
 {
 	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
 
+//! [define ROHC compressor]
 	struct rohc_comp *compressor;           /* the ROHC compressor */
+//! [define ROHC compressor]
 	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
 	                                           the IPv4 packet to compress */
 	size_t ip_packet_len;                   /* the length (in bytes) of the
@@ -93,12 +101,14 @@ int main(int argc, char **argv)
 	 * for details about rohc_alloc_compressor in the API documentation.
 	 */
 	printf("\ncreate the ROHC compressor\n");
+//! [create ROHC compressor]
 	compressor = rohc_alloc_compressor(ROHC_SMALL_CID_MAX, 0, 0, 0);
 	if(compressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC compressor\n");
 		goto error;
 	}
+//! [create ROHC compressor]
 
 	/* set the callback for random numbers */
 	if(!rohc_comp_set_random_cb(compressor, gen_random_num, NULL))
@@ -245,7 +255,9 @@ int main(int argc, char **argv)
 	return 0;
 
 release_compressor:
+//! [destroy ROHC compressor]
 	rohc_free_compressor(compressor);
+//! [destroy ROHC compressor]
 error:
 	fprintf(stderr, "an error occured during program execution, "
 	        "abort program\n");
