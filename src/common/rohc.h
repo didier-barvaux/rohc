@@ -66,23 +66,47 @@
  * Below are some return codes:
  */
 
-/// Return code: the action done without problem
+/**
+ * @brief Return code: the action was performed without problem
+ * @ingroup rohc_common
+ */
 #define ROHC_OK                     1
-/// Return code: the action can not proceed because no context is defined
+/**
+ * @brief Return code: the action failed because no context is defined
+ * @ingroup rohc_common
+ */
 #define ROHC_ERROR_NO_CONTEXT      -1
-/// Return code: the action failed due to an unattended or malformed packet
+/**
+ * @brief Return code: the action failed due to an unattended or malformed packet
+ * @ingroup rohc_common
+ */
 #define ROHC_ERROR_PACKET_FAILED   -2
-/// Return code: the action failed because the packet only contains feedback info
+/**
+ * @brief Return code: the action failed because the packet only contains feedback info
+ * @ingroup rohc_common
+ */
 #define ROHC_FEEDBACK_ONLY         -3
-/// Return code: the action failed due to a CRC failure
+/**
+ * @brief Return code: the action failed due to a CRC failure
+ * @ingroup rohc_common
+ */
 #define ROHC_ERROR_CRC             -4
-/// Return code: the action encountered a problem
+/**
+ * @brief Return code: the action encountered a problem
+ * @ingroup rohc_common
+ */
 #define ROHC_ERROR                 -5
 /// Return code: the packet needs to be parsed again
 #define ROHC_NEED_REPARSE          -6
-/// Return code: the packet needs to be segmented
+/**
+ * @brief Return code: the action succeeded but packet needs to be segmented
+ * @ingroup rohc_common
+ */
 #define ROHC_NEED_SEGMENT          -7
-/// Return code: the action failed because the packet is a non-final segment
+/**
+ * @brief Return code: the action succeeded but packet is a non-final segment
+ * @ingroup rohc_common
+ */
 #define ROHC_NON_FINAL_SEGMENT     -8
 
 
