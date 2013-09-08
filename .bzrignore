@@ -115,4 +115,6 @@ test_*.sh.trs
 ./examples/simple_rohc_program.exe
 ./examples/print_rohc_version
 ./examples/print_rohc_version.exe
+./examples/example_rohc_decomp
+./examples/example_rohc_decomp.exe
 contrib/rohc.spec
