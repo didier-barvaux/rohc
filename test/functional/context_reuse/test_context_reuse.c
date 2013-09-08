@@ -275,7 +275,8 @@ static int test_comp_and_decomp(const char *filename)
 	}
 
 	/* create the ROHC decompressor in bi-directional mode */
-	decomp = rohc_alloc_decompressor(comp);
+	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                         ROHC_O_MODE, comp);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
@@ -381,7 +382,7 @@ static int test_comp_and_decomp(const char *filename)
 	is_failure = 0;
 
 destroy_decomp:
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 destroy_comp:
 	rohc_comp_free(comp);
 close_input:

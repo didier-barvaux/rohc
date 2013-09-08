@@ -260,7 +260,8 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	}
 
 	/* create the ROHC decompressor in uni-directional mode */
-	decomp = rohc_alloc_decompressor(NULL);
+	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                         ROHC_U_MODE, NULL);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
@@ -440,7 +441,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	is_failure = 0;
 
 destroy_decomp:
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 destroy_comp:
 	rohc_comp_free(comp);
 error:

@@ -298,7 +298,8 @@ static int test_comp_and_decomp(void)
 
 	/* create the ROHC decompressor A with associated compressor B for its
 	 * feedback channel */
-	decompA = rohc_alloc_decompressor(compB);
+	decompA = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                          ROHC_O_MODE, compB);
 	if(decompA == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor A\n");
@@ -324,7 +325,8 @@ static int test_comp_and_decomp(void)
 
 	/* create the ROHC decompressor B with associated compressor A for its
 	 * feedback channel */
-	decompB = rohc_alloc_decompressor(compA);
+	decompB = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                          ROHC_O_MODE, compA);
 	if(decompB == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor B\n");
@@ -446,9 +448,9 @@ static int test_comp_and_decomp(void)
 	is_failure = 0;
 
 destroy_decompB:
-	rohc_free_decompressor(decompB);
+	rohc_decomp_free(decompB);
 destroy_decompA:
-	rohc_free_decompressor(decompA);
+	rohc_decomp_free(decompA);
 destroy_compB:
 	rohc_comp_free(compB);
 destroy_compA:

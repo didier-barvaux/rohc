@@ -97,8 +97,8 @@ EXPORT_SYMBOL_GPL(rohc_comp_set_rtp_detection_cb);
  */
 
 /* general */
-EXPORT_SYMBOL_GPL(rohc_alloc_decompressor);
-EXPORT_SYMBOL_GPL(rohc_free_decompressor);
+EXPORT_SYMBOL_GPL(rohc_decomp_new);
+EXPORT_SYMBOL_GPL(rohc_decomp_free);
 EXPORT_SYMBOL_GPL(rohc_decompress2);
 
 /* statistics */

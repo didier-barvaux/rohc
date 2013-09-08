@@ -242,7 +242,8 @@ int rohc_couple_init_phase2(struct rohc_couple *couple,
 
 	/* create the decompressor and associate it with the compressor
 	   of the other ROHC couple */
-	couple->decomp = rohc_alloc_decompressor(associated_comp);
+	couple->decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                                 ROHC_O_MODE, associated_comp);
 	if(couple->decomp == NULL)
 	{
 		pr_err("[%s] \t cannot create the ROHC decompressor\n",
@@ -301,7 +302,7 @@ int rohc_couple_init_phase2(struct rohc_couple *couple,
 free_rohc_packet:
 	kfree(couple->rohc_packet_out);
 free_decompressor:
-	rohc_free_decompressor(couple->decomp);
+	rohc_decomp_free(couple->decomp);
 free_compressor:
 	rohc_comp_free(couple->comp);
 	return 1;
@@ -352,7 +353,7 @@ void rohc_couple_release(struct rohc_couple *couple, int index)
 	if(couple->comp != NULL)
 		rohc_comp_free(couple->comp);
 	if(couple->decomp != NULL)
-		rohc_free_decompressor(couple->decomp);
+		rohc_decomp_free(couple->decomp);
 
 	pr_info("[%s] ROHC couple #%d successfully released\n",
 	        THIS_MODULE->name, index + 1);

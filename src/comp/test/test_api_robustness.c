@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
 		CHECK(rohc_feedback_flush(comp, buf, buflen) == 0); /* empty */
 	}
 
-	/* rohc_compress2() */
+	/* rohc_compress3() */
 	{
 		const struct timespec time = { .tv_sec = 0, .tv_nsec = 0 };
 		unsigned char buf1[1];

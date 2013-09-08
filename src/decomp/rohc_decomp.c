@@ -352,8 +352,12 @@ static void context_free(struct d_context *const context)
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Create one ROHC decompressor.
+ *
+ * @deprecated do not use this function anymore, use rohc_decomp_new() instead
  *
  * @param compressor  Two possible cases:
  *                      \li You want to run the ROHC decompressor in bidirectional
@@ -485,6 +489,9 @@ error:
 /**
  * @brief Destroy one ROHC decompressor.
  *
+ * @deprecated do not use this function anymore, use rohc_decomp_free()
+ *             instead
+ *
  * @param decomp  The decompressor to destroy
  *
  * @ingroup rohc_decomp
@@ -520,6 +527,270 @@ error:
 	return;
 }
 
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+/**
+ * @brief Create a new ROHC decompressor
+ *
+ * @param cid_type  The type of Context IDs (CID) that the ROHC decompressor
+ *                  shall operate with. Accepted values are:
+ *                    \li \ref ROHC_SMALL_CID for small CIDs
+ *                    \li \ref ROHC_LARGE_CID for large CIDs
+ * @param max_cid   The maximum value that the ROHC decompressor should use
+ *                  for context IDs (CID). As CIDs starts with value 0, the
+ *                  number of contexts is \e max_cid + 1. Accepted values are:
+ *                    \li [0, \ref ROHC_SMALL_CID_MAX] if \e cid_type is
+ *                        \ref ROHC_SMALL_CID
+ *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is
+ *                        \ref ROHC_LARGE_CID
+ * @param mode      The operational mode that the ROHC decompressor shall
+ *                  transit to. Accepted avalues are:
+ *                    \li \ref ROHC_U_MODE for the Unidirectional mode,
+ *                    \li \ref ROHC_O_MODE for the Bidirectional Optimistic
+ *                        mode,
+ *                    \li \ref ROHC_R_MODE for the Bidirectional Reliable mode
+ *                        is not supported yet: specifying \ref ROHC_R_MODE is
+ *                        an error.
+ * @param comp      The associated ROHC compressor for the feedback channel.
+ *                  Accepted values:
+ *                    \li a valid ROHC compressor created with
+ *                        \ref rohc_comp_new to enable the feedback channel,
+ *                    \li NULL to disable the feedback channel.
+ *
+ *                  The feedback channel is optional in Unidirectional mode:
+ *                    \li if NULL, no feedback is emitted at all,
+ *                    \li if not NULL, positive acknowlegments may be
+ *                        transmitted on feedback channel to increase timeouts
+ *                        of IR and FO refreshes.
+ *
+ *                  The feedback channel is mandatory in both Bidirectional
+ *                  modes: specifying NULL is an error.
+ * @return          The created decompressor if successful,
+ *                  NULL if creation failed
+ *
+ * @warning Don't forget to free decompressor memory with
+ *          \ref rohc_decomp_free if rohc_decomp_new succeeded
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_free
+ * @see rohc_decomp_set_traces_cb
+ * @see rohc_decomp_enable_profiles
+ * @see rohc_decomp_enable_profile
+ * @see rohc_decomp_disable_profiles
+ * @see rohc_decomp_disable_profile
+ * @see rohc_decomp_set_cid_type
+ * @see rohc_decomp_set_max_cid
+ * @see rohc_decomp_set_mrru
+ * @see rohc_decomp_set_features
+ */
+struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
+                                     const rohc_cid_t max_cid,
+                                     const rohc_mode_t mode,
+                                     struct rohc_comp *const comp)
+{
+	struct rohc_decomp *decomp;
+	bool is_fine;
+	size_t i;
+
+	/* check input parameters */
+	if(cid_type == ROHC_SMALL_CID)
+	{
+		/* use small CIDs in range [0, ROHC_SMALL_CID_MAX] */
+		if(max_cid > ROHC_SMALL_CID_MAX)
+		{
+			goto error;
+		}
+	}
+	else if(cid_type == ROHC_LARGE_CID)
+	{
+		/* use large CIDs in range [0, ROHC_LARGE_CID_MAX] */
+		if(max_cid > ROHC_LARGE_CID_MAX)
+		{
+			goto error;
+		}
+	}
+	else
+	{
+		/* unexpected CID type */
+		goto error;
+	}
+	if(mode == ROHC_U_MODE)
+	{
+		/* U-mode: compressor is optional */
+	}
+	else if(mode == ROHC_O_MODE)
+	{
+		/* O-mode: compressor is mandatory */
+		if(comp == NULL)
+		{
+			goto error;
+		}
+	}
+	else if(mode == ROHC_R_MODE)
+	{
+		/* R-mode is not supported yet */
+		goto error;
+	}
+	else
+	{
+		/* unexpected operational mode */
+		goto error;
+	}
+
+	/* allocate memory for the decompressor */
+	decomp = (struct rohc_decomp *) malloc(sizeof(struct rohc_decomp));
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	/* no trace callback during decompressor creation */
+	decomp->trace_callback = NULL;
+
+	/* default feature set (empty for the moment) */
+	decomp->features = ROHC_DECOMP_FEATURE_NONE;
+
+	/* init decompressor medium */
+	decomp->medium.cid_type = cid_type;
+	decomp->medium.max_cid = max_cid;
+
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* all decompression profiles are enabled by default for compatibility
+	 * with earlier releases (except TCP since it came after and it is not
+	 * stable enough) */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		decomp->enabled_profiles[i] = true;
+	}
+	is_fine = rohc_decomp_disable_profile(decomp, ROHC_PROFILE_TCP);
+	if(!is_fine)
+	{
+		goto destroy_decomp;
+	}
+#else
+	/* all decompression profiles are disabled by default */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		decomp->enabled_profiles[i] = false;
+	}
+#endif
+
+	/* no associated ROHC compressor by default, ie. no feedback channel by
+	 * default */
+	decomp->compressor = comp;
+
+	/* initialize the array of decompression contexts to its minimal value */
+	decomp->contexts = NULL;
+	is_fine = rohc_decomp_create_contexts(decomp, decomp->medium.max_cid);
+	if(!is_fine)
+	{
+		goto destroy_decomp;
+	}
+	decomp->last_context = NULL;
+
+	decomp->maxval = 300;
+	decomp->errval = 100;
+	decomp->okval = 12;
+	decomp->curval = 0;
+
+	/* no Reconstructed Reception Unit (RRU) at the moment */
+	decomp->rru_len = 0;
+	/* no segmentation by default */
+	decomp->mrru = 0;
+
+	/* init the tables for fast CRC computation */
+	is_fine = rohc_crc_init_table(decomp->crc_table_2, ROHC_CRC_TYPE_2);
+	if(is_fine != true)
+	{
+		goto destroy_contexts;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
+	if(is_fine != true)
+	{
+		goto destroy_contexts;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_6, ROHC_CRC_TYPE_6);
+	if(is_fine != true)
+	{
+		goto destroy_contexts;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_7, ROHC_CRC_TYPE_7);
+	if(is_fine != true)
+	{
+		goto destroy_contexts;
+	}
+	is_fine = rohc_crc_init_table(decomp->crc_table_8, ROHC_CRC_TYPE_8);
+	if(is_fine != true)
+	{
+		goto destroy_contexts;
+	}
+
+	/* reset the decompressor statistics */
+	clear_statistics(decomp);
+
+	/* set the default trace callback */
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+	/* keep same behaviour as previous 1.x.y versions: traces on by default */
+	decomp->trace_callback = rohc_decomp_print_trace_default;
+#else
+	/* no behaviour compatibility with previous 1.x.y versions: no trace */
+	decomp->trace_callback = NULL;
+#endif
+
+	return decomp;
+
+destroy_contexts:
+	free(decomp->contexts);
+destroy_decomp:
+	free(decomp);
+error:
+	return NULL;
+}
+
+
+/**
+ * @brief Destroy the given ROHC decompressor
+ *
+ * Destroy a ROHC decompressor that was successfully created with
+ * \ref rohc_decomp_new
+ *
+ * @param decomp  The decompressor to destroy
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_new
+ */
+void rohc_decomp_free(struct rohc_decomp *decomp)
+{
+	rohc_cid_t i;
+
+	/* sanity check */
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+	assert(decomp->contexts != NULL);
+
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "free ROHC decompressor\n");
+
+	/* destroy all the contexts owned by the decompressor */
+	for(i = 0; i <= decomp->medium.max_cid; i++)
+	{
+		if(decomp->contexts[i] != NULL)
+		{
+			context_free(decomp->contexts[i]);
+		}
+	}
+	zfree(decomp->contexts);
+
+	/* destroy the decompressor itself */
+	free(decomp);
+
+error:
+	return;
+}
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 

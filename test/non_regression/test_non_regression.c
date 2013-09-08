@@ -1227,7 +1227,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 1 */
-	decomp1 = rohc_alloc_decompressor(comp2);
+	decomp1 = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp2);
 	if(decomp1 == NULL)
 	{
 		printf("cannot create the decompressor 1\n");
@@ -1251,19 +1251,6 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		goto destroy_decomp1;
 	}
 
-	/* set CID type and MAX_CID for decompressor 1 */
-	if(!rohc_decomp_set_cid_type(decomp1, cid_type))
-	{
-		fprintf(stderr, "failed to set CID type for decompressor 1\n");
-		goto destroy_decomp1;
-	}
-	if(!rohc_decomp_set_max_cid(decomp1, max_contexts - 1))
-	{
-		fprintf(stderr, "failed to set MAX_CID to %zu for decompressor 1\n",
-		        max_contexts - 1);
-		goto destroy_decomp1;
-	}
-
 	/* enable decompression profiles on decompressor 1 */
 	if(!rohc_decomp_enable_profiles(decomp1, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
@@ -1275,7 +1262,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 2 */
-	decomp2 = rohc_alloc_decompressor(comp1);
+	decomp2 = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp1);
 	if(decomp2 == NULL)
 	{
 		printf("cannot create the decompressor 2\n");
@@ -1296,19 +1283,6 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		printf("\t</startup>\n\n");
 		printf("\t<shutdown>\n");
 		printf("\t\t<log>\n");
-		goto destroy_decomp2;
-	}
-
-	/* set CID type and MAX_CID for decompressor 2 */
-	if(!rohc_decomp_set_cid_type(decomp2, cid_type))
-	{
-		fprintf(stderr, "failed to set CID type for decompressor 2\n");
-		goto destroy_decomp2;
-	}
-	if(!rohc_decomp_set_max_cid(decomp2, max_contexts - 1))
-	{
-		fprintf(stderr, "failed to set MAX_CID to %zu for decompressor 2\n",
-		        max_contexts - 1);
 		goto destroy_decomp2;
 	}
 
@@ -1448,9 +1422,9 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 #endif
 
 destroy_decomp2:
-	rohc_free_decompressor(decomp2);
+	rohc_decomp_free(decomp2);
 destroy_decomp1:
-	rohc_free_decompressor(decomp1);
+	rohc_decomp_free(decomp1);
 destroy_comp2:
 	rohc_comp_free(comp2);
 destroy_comp1:

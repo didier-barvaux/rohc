@@ -921,6 +921,7 @@ AC_CONFIG_FILES([ \
 	src/comp/Makefile \
 	src/comp/test/Makefile \
 	src/decomp/Makefile \
+	src/decomp/test/Makefile \
 	test/Makefile \
 	test/functional/Makefile \
 	test/functional/feedback2/Makefile \

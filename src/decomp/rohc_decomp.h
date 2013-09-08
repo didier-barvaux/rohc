@@ -159,8 +159,21 @@ typedef enum
  * Functions related to decompressor:
  */
 
-struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor);
-void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_decomp_new() instead");
+void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_decomp_free() instead");
+#endif
+
+struct rohc_decomp * ROHC_EXPORT rohc_decomp_new(const rohc_cid_type_t cid_type,
+                                                 const rohc_cid_t max_cid,
+                                                 const rohc_mode_t mode,
+                                                 struct rohc_comp *const comp)
+	__attribute__((warn_unused_result));
+void ROHC_EXPORT rohc_decomp_free(struct rohc_decomp *decomp);
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,

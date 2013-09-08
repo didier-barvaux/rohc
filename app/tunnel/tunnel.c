@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
 	double p2 = 0;
 
 	/* ROHC mode */
-	int is_umode;
+	rohc_mode_t mode;
 
 	size_t arg_count;
 
@@ -655,12 +655,12 @@ int main(int argc, char *argv[])
 		if(strcmp(argv[arg_count], "unidirectional") == 0)
 		{
 			fprintf(stderr, "force unidirectional mode\n");
-			is_umode = 1;
+			mode = ROHC_U_MODE;
 		}
 		else if(strcmp(argv[arg_count], "bidirectional") == 0)
 		{
 			fprintf(stderr, "force bidirectional mode\n");
-			is_umode = 0;
+			mode = ROHC_O_MODE;
 		}
 		else
 		{
@@ -671,7 +671,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		fprintf(stderr, "force bidirectional mode (default)\n");
-		is_umode = 0;
+		mode = ROHC_O_MODE;
 	}
 
 
@@ -759,7 +759,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* create the decompressor (associate it with the compressor) */
-	decomp = rohc_alloc_decompressor(is_umode ? NULL : comp);
+	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, mode,
+	                         mode == ROHC_U_MODE ? NULL : comp);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
@@ -887,7 +888,7 @@ int main(int argc, char *argv[])
 close_stats_comp:
 	fclose(stats_comp);
 destroy_decomp:
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 destroy_comp:
 	rohc_comp_free(comp);
 close_wan:

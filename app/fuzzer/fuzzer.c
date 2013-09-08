@@ -133,7 +133,8 @@ int main(int argc, char *argv[])
 	srand(rand_seed);
 
 	/* create ROHC decompressor */
-	decomp = rohc_alloc_decompressor(NULL);
+	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                         ROHC_U_MODE, NULL);
 	assert(decomp != NULL);
 
 	/* set the callback for traces on ROHC decompressor */
@@ -182,7 +183,7 @@ int main(int argc, char *argv[])
 
 	printf("\nTEST OK\n");
 
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 	return 0;
 
 error:

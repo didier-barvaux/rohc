@@ -5,6 +5,9 @@
 # Description: create the ROHC decompression library
 ################################################################################
 
+SUBDIRS = . test
+
+
 lib_LTLIBRARIES = librohc_decomp.la
 
 librohc_decomp_la_SOURCES = \

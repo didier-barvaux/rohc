@@ -119,7 +119,7 @@ static void usage(void);
 static int tune_env_for_perfs(void);
 
 static int test_compression_perfs(char *filename,
-                                  const int use_large_cid,
+                                  const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const unsigned int max_contexts,
                                   unsigned long *packet_count,
@@ -133,7 +133,7 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long long *time_elapsed);
 
 static int test_decompression_perfs(char *filename,
-                                    const int use_large_cid,
+                                    const rohc_cid_type_t cid_type,
                                     const unsigned int max_contexts,
                                     unsigned long *packet_count,
                                     unsigned long *overflows,
@@ -170,11 +170,11 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
 int main(int argc, char *argv[])
 {
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
-	char *cid_type = NULL;
+	char *cid_type_name = NULL;
 	int wlsb_width = 4;
 	char *test_type = NULL; /* the name of the test to perform */
 	char *filename = NULL; /* the name of the PCAP capture used as input */
-	bool use_large_cid;
+	rohc_cid_type_t cid_type;
 	unsigned long packet_count = 0;
 	unsigned long overflows = 0;
 	unsigned long long time_elapsed = 0;
@@ -231,10 +231,10 @@ int main(int argc, char *argv[])
 			/* get the name of the test */
 			test_type = argv[0];
 		}
-		else if(cid_type == NULL)
+		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
-			cid_type = argv[0];
+			cid_type_name = argv[0];
 		}
 		else if(filename == NULL)
 		{
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* the test type and source filename are mandatory */
-	if(test_type == NULL || filename == NULL)
+	if(test_type == NULL || cid_type_name == NULL || filename == NULL)
 	{
 		usage();
 		goto error;
@@ -266,9 +266,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* check CID type */
-	if(!strcmp(cid_type, "smallcid"))
+	if(!strcmp(cid_type_name, "smallcid"))
 	{
-		use_large_cid = false;
+		cid_type = ROHC_SMALL_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
@@ -279,9 +279,9 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 	}
-	else if(!strcmp(cid_type, "largecid"))
+	else if(!strcmp(cid_type_name, "largecid"))
 	{
-		use_large_cid = true;
+		cid_type = ROHC_LARGE_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
-		        "expected\n", cid_type);
+		        "expected\n", cid_type_name);
 		usage();
 		goto error;
 	}
@@ -312,13 +312,13 @@ int main(int argc, char *argv[])
 	if(strcmp(test_type, "compression") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
-		ret = test_compression_perfs(filename, use_large_cid, wlsb_width, max_contexts,
+		ret = test_compression_perfs(filename, cid_type, wlsb_width, max_contexts,
 		                             &packet_count, &overflows, &time_elapsed);
 	}
 	else if(strcmp(test_type, "decompression") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
-		ret = test_decompression_perfs(filename, use_large_cid, max_contexts,
+		ret = test_decompression_perfs(filename, cid_type, max_contexts,
 		                               &packet_count, &overflows, &time_elapsed);
 	}
 	else
@@ -458,7 +458,7 @@ error:
  *        with a flow of IP packets
  *
  * @param filename      The name of the PCAP file that contains the IP packets
- * @param use_large_cid Whether the compressor shall use large CIDs
+ * @param cid_type      The type of CIDs the compressor shall use
  * @param wlsb_width    The width of the WLSB window to use
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param packet_count  OUT: the number of compressed packets, undefined if
@@ -468,15 +468,13 @@ error:
  * @return              0 in case of success, 1 otherwise
  */
 static int test_compression_perfs(char *filename,
-                                  const int use_large_cid,
+                                  const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const unsigned int max_contexts,
                                   unsigned long *packet_count,
                                   unsigned long *overflows,
                                   unsigned long long *time_elapsed)
 {
-	const rohc_cid_type_t cid_type =
-		(use_large_cid ? ROHC_LARGE_CID : ROHC_SMALL_CID);
 	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	int link_layer_type;
@@ -752,7 +750,7 @@ error:
  *        with a flow of IP packets
  *
  * @param filename      The name of the PCAP file that contains the ROHC packets
- * @param use_large_cid Whether the decompressor shall use large CIDs
+ * @param cid_type      The type of CIDs the decompressor shall use
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param packet_count  OUT: the number of decompressed packets, undefined if
  *                      decompression failed
@@ -761,7 +759,7 @@ error:
  * @return              0 in case of success, 1 otherwise
  */
 static int test_decompression_perfs(char *filename,
-                                    const int use_large_cid,
+                                    const rohc_cid_type_t cid_type,
                                     const unsigned int max_contexts,
                                     unsigned long *packet_count,
                                     unsigned long *overflows,
@@ -814,7 +812,7 @@ static int test_decompression_perfs(char *filename,
 	}
 
 	/* create ROHC decompressor */
-	decomp = rohc_alloc_decompressor(NULL);
+	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_U_MODE, NULL);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
@@ -826,38 +824,6 @@ static int test_decompression_perfs(char *filename,
 	{
 		fprintf(stderr, "cannot set trace callback for decompressor\n");
 		goto free_decompressor;
-	}
-
-	/* set CID type and MAX_CID for decompressor 1 */
-	if(use_large_cid)
-	{
-		if(!rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID))
-		{
-			fprintf(stderr, "failed to set CID type to large CIDs for "
-			        "decompressor\n");
-			goto free_decompressor;
-		}
-		if(!rohc_decomp_set_max_cid(decomp, max_contexts - 1))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for decompressor\n",
-			        ROHC_LARGE_CID_MAX);
-			goto free_decompressor;
-		}
-	}
-	else
-	{
-		if(!rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID))
-		{
-			fprintf(stderr, "failed to set CID type to small CIDs for "
-			        "decompressor\n");
-			goto free_decompressor;
-		}
-		if(!rohc_decomp_set_max_cid(decomp, max_contexts - 1))
-		{
-			fprintf(stderr, "failed to set MAX_CID to %d for decompressor\n",
-			        ROHC_SMALL_CID_MAX);
-			goto free_decompressor;
-		}
 	}
 
 	/* activate all the decompression profiles */
@@ -914,7 +880,7 @@ static int test_decompression_perfs(char *filename,
 	is_failure = 0;
 
 free_decompressor:
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 close_input:
 	pcap_close(handle);
 exit:

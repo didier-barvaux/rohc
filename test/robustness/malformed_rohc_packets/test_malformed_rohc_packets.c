@@ -196,25 +196,12 @@ static int test_decomp(const char *const filename,
 	}
 
 	/* create the decompressor */
-	decomp = rohc_alloc_decompressor(NULL);
+	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                         ROHC_U_MODE, NULL);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the decompressor\n");
 		goto close_input;
-	}
-
-	/* set CID type and MAX_CID for decompressor 1 */
-	if(!rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID))
-	{
-		fprintf(stderr, "failed to set CID type to small CIDs for "
-		        "decompressor\n");
-		goto destroy_decomp;
-	}
-	if(!rohc_decomp_set_max_cid(decomp, ROHC_SMALL_CID_MAX))
-	{
-		fprintf(stderr, "failed to set MAX_CID to %d for "
-		        "decompressor\n", ROHC_SMALL_CID_MAX);
-		goto destroy_decomp;
 	}
 
 	/* enable decompression profiles */
@@ -285,7 +272,7 @@ static int test_decomp(const char *const filename,
 	status = 0;
 
 destroy_decomp:
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 close_input:
 	pcap_close(handle);
 error:

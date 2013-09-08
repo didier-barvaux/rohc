@@ -56,6 +56,9 @@ test_*.sh.trs
 ./src/comp/test/test_api_robustness
 ./src/comp/test/test_api_robustness.exe
 ./src/comp/test/test_api_robustness.log
+./src/decomp/test/test_api_robustness
+./src/decomp/test/test_api_robustness.exe
+./src/decomp/test/test_api_robustness.log
 ./test/functional/feedback2/test_feedback2
 ./test/functional/feedback2/test_feedback2.exe
 ./test/functional/feedback_ring/test_feedback_ring

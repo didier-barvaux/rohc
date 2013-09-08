@@ -787,7 +787,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor (bi-directional mode) */
-	decomp = rohc_alloc_decompressor(comp);
+	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the decompressor\n");
@@ -798,19 +798,6 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
 	{
 		printf("cannot set trace callback for decompressor\n");
-		goto destroy_decomp;
-	}
-
-	/* set CID type and MAX_CID for decompressor */
-	if(!rohc_decomp_set_cid_type(decomp, cid_type))
-	{
-		fprintf(stderr, "failed to set CID type for decompressor\n");
-		goto destroy_decomp;
-	}
-	if(!rohc_decomp_set_max_cid(decomp, max_contexts - 1))
-	{
-		fprintf(stderr, "failed to set MAX_CID to %u for decompressor\n",
-		        max_contexts - 1);
 		goto destroy_decomp;
 	}
 
@@ -921,7 +908,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 destroy_decomp:
-	rohc_free_decompressor(decomp);
+	rohc_decomp_free(decomp);
 destroy_comp:
 	rohc_comp_free(comp);
 close_input:
