@@ -111,7 +111,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
 static void uncompressed_decide_state(struct c_context *const context);
 static void uncompressed_periodic_down_transition(struct c_context *const context);
 static void uncompressed_change_mode(struct c_context *const context,
-                                     const rohc_mode new_mode);
+                                     const rohc_mode_t new_mode);
 static void uncompressed_change_state(struct c_context *const context,
                                       const rohc_c_state new_state);
 
@@ -289,7 +289,7 @@ static bool c_uncompressed_reinit_context(struct c_context *const context)
 	assert(context != NULL);
 
 	/* go back to U-mode and IR state */
-	uncompressed_change_mode(context, U_MODE);
+	uncompressed_change_mode(context, ROHC_U_MODE);
 	uncompressed_change_state(context, IR);
 
 	return true;
@@ -448,7 +448,7 @@ static void uncompressed_decide_state(struct c_context *const context)
 		uncompressed_change_state(context, FO);
 	}
 
-	if(context->mode == U_MODE)
+	if(context->mode == ROHC_U_MODE)
 	{
 		uncompressed_periodic_down_transition(context);
 	}
@@ -488,7 +488,7 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
  * @param new_mode The new mode the context must enter in
  */
 static void uncompressed_change_mode(struct c_context *const context,
-                                     const rohc_mode new_mode)
+                                     const rohc_mode_t new_mode)
 {
 	if(context->mode != new_mode)
 	{

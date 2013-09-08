@@ -159,7 +159,7 @@ struct d_context
 	void *specific;
 
 	/** The operation mode in which the context operates */
-	rohc_mode mode;
+	rohc_mode_t mode;
 	/** The operation state in which the context operates */
 	rohc_d_state state;
 

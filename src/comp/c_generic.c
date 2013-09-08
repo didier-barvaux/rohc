@@ -775,7 +775,7 @@ bad_profile:
  * @param context  The compression context
  * @param new_mode The new mode the context must enter in
  */
-void change_mode(struct c_context *const context, const rohc_mode new_mode)
+void change_mode(struct c_context *const context, const rohc_mode_t new_mode)
 {
 	if(context->mode != new_mode)
 	{
@@ -1059,7 +1059,7 @@ bool c_generic_reinit_context(struct c_context *const context)
 	assert(context != NULL);
 
 	/* go back to U-mode and IR state */
-	change_mode(context, U_MODE);
+	change_mode(context, ROHC_U_MODE);
 	change_state(context, IR);
 
 	return true;
@@ -1435,7 +1435,7 @@ void decide_state(struct c_context *const context)
 
 	change_state(context, next_state);
 
-	if(context->mode == U_MODE)
+	if(context->mode == ROHC_U_MODE)
 	{
 		periodic_down_transition(context);
 	}

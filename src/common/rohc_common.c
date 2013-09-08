@@ -59,15 +59,15 @@ char * rohc_version(void)
  *
  * @ingroup rohc_common
  */
-const char * rohc_get_mode_descr(const rohc_mode mode)
+const char * rohc_get_mode_descr(const rohc_mode_t mode)
 {
 	switch(mode)
 	{
-		case U_MODE:
+		case ROHC_U_MODE:
 			return "U-mode";
-		case O_MODE:
+		case ROHC_O_MODE:
 			return "O-mode";
-		case R_MODE:
+		case ROHC_R_MODE:
 			return "R-mode";
 		default:
 			return "no description";

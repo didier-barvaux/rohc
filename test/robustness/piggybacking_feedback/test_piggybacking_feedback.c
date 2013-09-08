@@ -430,29 +430,12 @@ static int test_comp_and_decomp(void)
 		fprintf(stderr, "failed to get statistics on packet\n");
 		goto destroy_decompB;
 	}
-	fprintf(stderr, "context mode = ");
-	switch(last_packet_info.context_mode)
-	{
-		case U_MODE:
-			fprintf(stderr, "U-Mode\n");
-			break;
-		case O_MODE:
-			fprintf(stderr, "O-Mode\n");
-			break;
-		case R_MODE:
-			fprintf(stderr, "R-Mode\n");
-			break;
-		default:
-			/* could not happen */
-			fprintf(stderr, "unknown context mode %d\n",
-			        last_packet_info.context_mode);
-			assert(0);
-			goto destroy_decompB;
-	}
+	fprintf(stderr, "context mode = %s\n",
+	        rohc_get_mode_descr(last_packet_info.context_mode));
 
 	/* compression context shall now be in O-Mode because of the received
 	 * feedback */
-	if(last_packet_info.context_mode != O_MODE)
+	if(last_packet_info.context_mode != ROHC_O_MODE)
 	{
 		fprintf(stderr, "compression context is not in O-Mode as expected\n");
 		goto destroy_decompB;

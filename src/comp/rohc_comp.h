@@ -92,7 +92,7 @@ typedef enum
 typedef struct
 {
 	/** The mode of the last context used by the compressor */
-	rohc_mode context_mode;
+	rohc_mode_t context_mode;
 	/** The state of the last context used by the compressor */
 	rohc_c_state context_state;
 	/** The type of ROHC packet created for the last compressed packet */
@@ -163,7 +163,7 @@ typedef struct
 	/** Whether the context was initialized (created/re-used) by the packet */
 	bool is_context_init;
 	/** The mode of the last context used by the compressor */
-	rohc_mode context_mode;
+	rohc_mode_t context_mode;
 	/** The state of the last context used by the compressor */
 	rohc_c_state context_state;
 	/** Whether the last context used by the compressor is still in use */

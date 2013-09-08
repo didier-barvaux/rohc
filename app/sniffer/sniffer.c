@@ -112,7 +112,7 @@ struct sniffer_stats
 	/** Cumulative number of packets per ROHC profile */
 	unsigned long comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE + 1];
 	/** Cumulative number of packets per ROHC mode */
-	unsigned long comp_nr_pkts_per_mode[R_MODE + 1];
+	unsigned long comp_nr_pkts_per_mode[ROHC_R_MODE + 1];
 	/** Cumulative number of packets per state */
 	unsigned long comp_nr_pkts_per_state[SO + 1];
 	/** Cumulative number of packets per packet type */
@@ -610,19 +610,19 @@ static void sniffer_print_stats(int signal)
 	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
 
 	/* packets per mode */
-	total = stats.comp_nr_pkts_per_mode[U_MODE] +
-	        stats.comp_nr_pkts_per_mode[O_MODE] +
-	        stats.comp_nr_pkts_per_mode[R_MODE];
+	total = stats.comp_nr_pkts_per_mode[ROHC_U_MODE] +
+	        stats.comp_nr_pkts_per_mode[ROHC_O_MODE] +
+	        stats.comp_nr_pkts_per_mode[ROHC_R_MODE];
 	printf("packets per mode:\n");
 	printf("\tU-mode: %lu packets (%llu%%)\n",
-	       stats.comp_nr_pkts_per_mode[U_MODE],
-	       percent(stats.comp_nr_pkts_per_mode[U_MODE], total));
+	       stats.comp_nr_pkts_per_mode[ROHC_U_MODE],
+	       percent(stats.comp_nr_pkts_per_mode[ROHC_U_MODE], total));
 	printf("\tO-mode: %lu packets (%llu%%)\n",
-	       stats.comp_nr_pkts_per_mode[O_MODE],
-	       percent(stats.comp_nr_pkts_per_mode[O_MODE], total));
+	       stats.comp_nr_pkts_per_mode[ROHC_O_MODE],
+	       percent(stats.comp_nr_pkts_per_mode[ROHC_O_MODE], total));
 	printf("\tR-mode: %lu packets (%llu%%)\n",
-	       stats.comp_nr_pkts_per_mode[R_MODE],
-	       percent(stats.comp_nr_pkts_per_mode[R_MODE], total));
+	       stats.comp_nr_pkts_per_mode[ROHC_R_MODE],
+	       percent(stats.comp_nr_pkts_per_mode[ROHC_R_MODE], total));
 
 	/* packets per state */
 	total = stats.comp_nr_pkts_per_state[IR] +

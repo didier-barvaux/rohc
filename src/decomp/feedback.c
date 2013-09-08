@@ -65,7 +65,8 @@ void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
  * @brief Build a FEEDBACK-2 packet.
  *
  * @param acktype  The type of acknowledgement: ACK, NACK or S-NACK
- * @param mode     The mode in which ROHC operates: U_MODE, O_MODE or R_MODE
+ * @param mode     The mode in which ROHC operates: ROHC_U_MODE, ROHC_O_MODE
+ *                 or ROHC_R_MODE
  * @param sn       The Sequence Number (SN) the feedback packet is
  *                 associated with
  * @param feedback The feedback packet to build
@@ -73,7 +74,7 @@ void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
  *                 false otherwise
  */
 bool f_feedback2(const int acktype,
-                 const rohc_mode mode,
+                 const rohc_mode_t mode,
                  const uint32_t sn,
                  struct d_feedback *const feedback)
 {

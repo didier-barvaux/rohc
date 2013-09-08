@@ -117,7 +117,7 @@ typedef struct
 	/** The minor version of this structure */
 	unsigned short version_minor;
 	/** The mode of the last context used by the compressor */
-	rohc_mode context_mode;
+	rohc_mode_t context_mode;
 	/** The state of the last context used by the compressor */
 	rohc_d_state context_state;
 	/** The profile ID of the last context used by the compressor */

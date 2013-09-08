@@ -86,6 +86,8 @@
 #define ROHC_NON_FINAL_SEGMENT     -8
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief ROHC operation modes (see 4.4 in the RFC 3095)
  *
@@ -102,7 +104,30 @@ typedef enum
 	O_MODE = 2,
 	/// The Bidirectional Reliable mode (R-mode)
 	R_MODE = 3,
-} rohc_mode;
+} rohc_mode
+	ROHC_DEPRECATED("please do not use this type anymore, "
+	                "use rohc_mode_t instead");
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+
+/**
+ * @brief ROHC operation modes (see 4.4 in the RFC 3095)
+ *
+ * If you add a new operation mode, please also add the corresponding textual
+ * description in \ref rohc_get_mode_descr.
+ *
+ * @ingroup rohc_common
+ */
+typedef enum
+{
+	/** The Unidirectional mode (U-mode) */
+	ROHC_U_MODE = 1,
+	/** The Bidirectional Optimistic mode (O-mode) */
+	ROHC_O_MODE = 2,
+	/** The Bidirectional Reliable mode (R-mode) */
+	ROHC_R_MODE = 3,
+
+} rohc_mode_t;
 
 
 /**
@@ -248,7 +273,7 @@ extern unsigned char ROHC_EXPORT crc_table_8[256]
 
 char * ROHC_EXPORT rohc_version(void);
 
-const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode mode);
+const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode);
 
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1

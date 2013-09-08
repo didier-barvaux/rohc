@@ -88,7 +88,7 @@ void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
 	__attribute__((nonnull(2)));
 
 bool f_feedback2(const int acktype,
-                 const rohc_mode mode,
+                 const rohc_mode_t mode,
                  const uint32_t sn,
                  struct d_feedback *const feedback)
 	__attribute__((warn_unused_result, nonnull(4)));

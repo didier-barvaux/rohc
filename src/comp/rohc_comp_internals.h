@@ -348,8 +348,9 @@ struct c_context
 	/** Profile-specific data, defined by the profiles */
 	void *specific;
 
-	/** The operation mode in which the context operates: U_MODE, O_MODE, R_MODE */
-	rohc_mode mode;
+	/** The operation mode in which the context operates among:
+	 *  ROHC_U_MODE, ROHC_O_MODE, ROHC_R_MODE */
+	rohc_mode_t mode;
 	/** The operation state in which the context operates: IR, FO, SO */
 	rohc_c_state state;
 

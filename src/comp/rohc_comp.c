@@ -3326,7 +3326,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	c->profile = profile;
 	c->key = key;
 
-	c->mode = U_MODE;
+	c->mode = ROHC_U_MODE;
 	c->state = IR;
 
 	c->compressor = comp;

@@ -234,7 +234,7 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 	context->profile = profile;
 
 	/* initialize mode and state */
-	context->mode = U_MODE;
+	context->mode = ROHC_U_MODE;
 	context->state = NO_CONTEXT;
 	context->curval = 0;
 
@@ -724,7 +724,7 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 				d_operation_mode_feedback(decomp, ROHC_ERROR_NO_CONTEXT, ddata.cid,
 				                          ddata.addcidUsed,
 				                          decomp->medium.cid_type,
-				                          O_MODE, NULL);
+				                          ROHC_O_MODE, NULL);
 			}
 			break;
 
@@ -783,10 +783,10 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "feedback curr %d\n", ddata.active->curval);
-			if(decomp->compressor != NULL && ddata.active->mode == U_MODE)
+			if(decomp->compressor != NULL && ddata.active->mode == ROHC_U_MODE)
 			{
 				/* switch active context to O-mode */
-				ddata.active->mode = O_MODE;
+				ddata.active->mode = ROHC_O_MODE;
 				d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
 				                          ddata.addcidUsed,
 				                          decomp->medium.cid_type,
@@ -1362,7 +1362,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* create a STATIC NACK feedback */
 			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			          "send a STATIC-NACK feedback for CID %zu\n", cid);
-			ret = f_feedback2(ACKTYPE_STATIC_NACK, O_MODE, 0, &sfeedback);
+			ret = f_feedback2(ACKTYPE_STATIC_NACK, ROHC_O_MODE, 0, &sfeedback);
 			if(ret != ROHC_OK)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -1522,7 +1522,7 @@ skip:
  * @param addcidUsed   Whether add-CID is used or not
  * @param cid_type     The type of CID used for the feedback
  * @param mode         The mode in which the ROHC decompressor operates:
- *                     U_MODE, O_MODE or R_MODE
+ *                     ROHC_U_MODE, ROHC_O_MODE or ROHC_R_MODE
  * @param context      The context to which the feedback is related
  */
 void d_operation_mode_feedback(struct rohc_decomp *decomp,
@@ -1535,16 +1535,16 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
 {
 	switch(mode)
 	{
-		case U_MODE:
+		case ROHC_U_MODE:
 			/* no feedback needed */
 			//break;
 
-		case O_MODE:
+		case ROHC_O_MODE:
 			d_optimistic_feedback(decomp, rohc_status, cid, addcidUsed,
 			                      cid_type, context);
 			break;
 
-		case R_MODE:
+		case ROHC_R_MODE:
 			/* TODO: send feedback (not implemented) */
 			break;
 	}

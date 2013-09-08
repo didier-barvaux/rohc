@@ -1412,8 +1412,6 @@ int tun2wan(struct rohc_comp *comp,
 
 	/* statistics output */
 	rohc_comp_last_packet_info2_t last_packet_info;
-	const char *modes[] = { "error", "U-mode", "O-mode", "R-mode" };
-	const char *states[] = { "error", "IR", "FO", "SO" };
 
 	/* init the error model variables */
 	if(error > 0)
@@ -1578,8 +1576,8 @@ int tun2wan(struct rohc_comp *comp,
 	}
 	fprintf(stats_comp, "%d\t%s\t%s\t%lu\t%lu\t%lu\t%lu\t%u\n",
 	        seq,
-	        modes[last_packet_info.context_mode],
-	        states[last_packet_info.context_state],
+	        rohc_get_mode_descr(last_packet_info.context_mode),
+	        rohc_comp_get_state_descr(last_packet_info.context_state),
 	        last_packet_info.total_last_uncomp_size,
 	        last_packet_info.header_last_uncomp_size,
 	        last_packet_info.total_last_comp_size,
