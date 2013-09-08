@@ -54,11 +54,14 @@
  */
 int main(int argc, char **argv)
 {
+//! [define arrival time]
 	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+//! [define arrival time]
 
 //! [define ROHC decompressor]
 	struct rohc_decomp *decompressor;       /* the ROHC decompressor */
 //! [define ROHC decompressor]
+//! [define IP and ROHC packets]
 	unsigned char rohc_packet[BUFFER_SIZE]; /* the buffer that will contain
 	                                           the ROHC packet to decompress */
 	size_t rohc_packet_len;                 /* the length (in bytes) of the
@@ -67,67 +70,51 @@ int main(int argc, char **argv)
 	                                           the decompressed IPv4 packet */
 	size_t ip_packet_len;                   /* the length (in bytes) of the
 	                                           decompressed IPv4 packet */
+//! [define IP and ROHC packets]
 	size_t i;
 	int ret;
 
+//! [create ROHC decompressor #1]
 	/* Create a ROHC decompressor to operate:
 	 *  - with large CIDs,
 	 *  - with the maximum of 5 streams (MAX_CID = 4),
 	 *  - in Unidirectional mode (U-mode),
 	 *  - with no feedback channel.
 	 */
+//! [create ROHC decompressor #1]
 	printf("\ncreate the ROHC decompressor\n");
-//! [create ROHC decompressor]
+//! [create ROHC decompressor #2]
 	decompressor = rohc_decomp_new(ROHC_LARGE_CID, 4, ROHC_U_MODE, NULL);
 	if(decompressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC decompressor\n");
 		goto error;
 	}
-//! [create ROHC decompressor]
+//! [create ROHC decompressor #2]
 
-	/* Enable the decompression profiles you need
-	 * (comment or uncomment some lines) */
+	/* Enable the decompression profiles you need */
 	printf("\nenable several ROHC decompression profiles\n");
+//! [enable ROHC decompression profile]
 	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_UNCOMPRESSED))
 	{
 		fprintf(stderr, "failed to enable the Uncompressed profile\n");
 		goto release_decompressor;
 	}
-#if 0
-	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_RTP))
-	{
-		fprintf(stderr, "failed to enable the IP/UDP/RTP profile\n");
-		goto release_decompressor;
-	}
-	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_UDP))
-	{
-		fprintf(stderr, "failed to enable the IP/UDP profile\n");
-		goto release_decompressor;
-	}
-#endif
 	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_IP))
 	{
 		fprintf(stderr, "failed to enable the IP-only profile\n");
 		goto release_decompressor;
 	}
-#if 0
-	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_UDPLITE))
+//! [enable ROHC decompression profile]
+//! [enable ROHC decompression profiles]
+	if(!rohc_decomp_enable_profiles(decompressor, ROHC_PROFILE_UDP,
+	                                ROHC_PROFILE_UDPLITE, -1))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP-Lite profile\n");
+		fprintf(stderr, "failed to enable the IP/UDP and IP/UDP-Lite "
+		        "profiles\n");
 		goto release_decompressor;
 	}
-	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_ESP))
-	{
-		fprintf(stderr, "failed to enable the IP/ESP profile\n");
-		goto release_decompressor;
-	}
-	if(!rohc_decomp_enable_profile(decompressor, ROHC_PROFILE_TCP))
-	{
-		fprintf(stderr, "failed to enable the IP/TCP profile\n");
-		goto release_decompressor;
-	}
-#endif
+//! [enable ROHC decompression profiles]
 
 
 	/* create a fake ROHC packet for the purpose of this program */
@@ -177,6 +164,7 @@ int main(int argc, char **argv)
 
 	/* Now, decompress this fake ROHC packet */
 	printf("\ndecompress the fake ROHC packet\n");
+//! [decompress ROHC packet #1]
 	ret = rohc_decompress2(decompressor, arrival_time,
 	                       rohc_packet, rohc_packet_len,
 	                       ip_packet, BUFFER_SIZE, &ip_packet_len);
@@ -193,6 +181,9 @@ int main(int argc, char **argv)
 	}
 	else if(ret == ROHC_OK)
 	{
+		/* success: ip_packet_len bytes of decompressed IP data available in
+		 * ip_packet */
+//! [decompress ROHC packet #1]
 		/* dump the ROHC packet on terminal (if any) */
 		printf("\nIP packet resulting from the ROHC decompression:\n");
 		for(i = 0; i < ip_packet_len; i++)
@@ -207,12 +198,17 @@ int main(int argc, char **argv)
 		{
 			printf("\n");
 		}
+//! [decompress ROHC packet #2]
 	}
 	else
 	{
-		fprintf(stderr, "compression of fake IP packet failed\n");
+		/* failure: decompressor failed to decompress the ROHC packet */
+//! [decompress ROHC packet #2]
+		fprintf(stderr, "decompression of fake ROHC packet failed\n");
 		goto release_decompressor;
+//! [decompress ROHC packet #3]
 	}
+//! [decompress ROHC packet #3]
 
 
 	/* Release the ROHC decompressor when you do not need it anymore */

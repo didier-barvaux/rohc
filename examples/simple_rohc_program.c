@@ -73,11 +73,14 @@ static int gen_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char **argv)
 {
+//! [define arrival time]
 	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+//! [define arrival time]
 
 //! [define ROHC compressor]
 	struct rohc_comp *compressor;           /* the ROHC compressor */
 //! [define ROHC compressor]
+//! [define IP and ROHC packets]
 	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
 	                                           the IPv4 packet to compress */
 	size_t ip_packet_len;                   /* the length (in bytes) of the
@@ -86,6 +89,7 @@ int main(int argc, char **argv)
 	                                           the resulting ROHC packet */
 	size_t rohc_packet_len;                 /* the length (in bytes) of the
 	                                           resulting ROHC packet */
+//! [define IP and ROHC packets]
 	unsigned int seed;
 	size_t i;
 	int ret;
@@ -113,48 +117,29 @@ int main(int argc, char **argv)
 		goto release_compressor;
 	}
 
-	/* Enable the compression profiles you need
-	 * (comment or uncomment some lines) */
+	/* Enable the compression profiles you need */
 	printf("\nenable several ROHC compression profiles\n");
+//! [enable ROHC compression profile]
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UNCOMPRESSED))
 	{
 		fprintf(stderr, "failed to enable the Uncompressed profile\n");
 		goto release_compressor;
 	}
-#if 0
-	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_RTP))
-	{
-		fprintf(stderr, "failed to enable the IP/UDP/RTP profile\n");
-		goto release_compressor;
-	}
-	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UDP))
-	{
-		fprintf(stderr, "failed to enable the IP/UDP profile\n");
-		goto release_compressor;
-	}
-#endif
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_IP))
 	{
 		fprintf(stderr, "failed to enable the IP-only profile\n");
 		goto release_compressor;
 	}
-#if 0
-	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UDPLITE))
+//! [enable ROHC compression profile]
+//! [enable ROHC compression profiles]
+	if(!rohc_comp_enable_profiles(compressor, ROHC_PROFILE_UDP,
+	                              ROHC_PROFILE_UDPLITE, -1))
 	{
-		fprintf(stderr, "failed to enable the IP/UDP-Lite profile\n");
+		fprintf(stderr, "failed to enable the IP/UDP and IP/UDP-Lite "
+		        "profiles\n");
 		goto release_compressor;
 	}
-	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_ESP))
-	{
-		fprintf(stderr, "failed to enable the IP/ESP profile\n");
-		goto release_compressor;
-	}
-	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_TCP))
-	{
-		fprintf(stderr, "failed to enable the IP/TCP profile\n");
-		goto release_compressor;
-	}
-#endif
+//! [enable ROHC compression profiles]
 
 
 	/* create a fake IP packet for the purpose of this simple program */
@@ -202,29 +187,53 @@ int main(int argc, char **argv)
 
 	/* Now, compress this fake IP packet */
 	printf("\ncompress the fake IP packet\n");
+//! [compress IP packet #1]
 	ret = rohc_compress3(compressor, arrival_time, ip_packet, ip_packet_len,
 	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
-	if(ret != ROHC_OK)
+	if(ret == ROHC_NEED_SEGMENT)
 	{
-		fprintf(stderr, "compression of fake IP packet failed\n");
-		goto release_compressor;
+		/* success: compression succeeded, but resulting ROHC packet was too
+		 * large for the Maximum Reconstructed Reception Unit (MRRU) configured
+		 * with \ref rohc_comp_set_mrru, the rohc_packet buffer contains the
+		 * first ROHC segment of rohc_packet_len bytes and
+		 * \ref rohc_comp_get_segment can be used to retrieve the next ones. */
+//! [compress IP packet #1]
+//! [compress IP packet #2]
 	}
-
-
-	/* dump the ROHC packet on terminal */
-	printf("\nROHC packet resulting from the ROHC compression:\n");
-	for(i = 0; i < rohc_packet_len; i++)
+	else if(ret == ROHC_OK)
 	{
-		printf("0x%02x ", rohc_packet[i]);
-		if(i != 0 && ((i + 1) % 8) == 0)
+		/* success: compression succeeded, and resulting ROHC packet fits the
+		 * Maximum Reconstructed Reception Unit (MRRU) configured with
+		 * \ref rohc_comp_set_mrru, the rohc_packet buffer contains the
+		 * rohc_packet_len bytes of the ROHC packet */
+//! [compress IP packet #2]
+
+		/* dump the ROHC packet on terminal */
+		printf("\nROHC packet resulting from the ROHC compression:\n");
+		for(i = 0; i < rohc_packet_len; i++)
+		{
+			printf("0x%02x ", rohc_packet[i]);
+			if(i != 0 && ((i + 1) % 8) == 0)
+			{
+				printf("\n");
+			}
+		}
+		if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
 		{
 			printf("\n");
 		}
+//! [compress IP packet #3]
 	}
-	if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
+	else
 	{
-		printf("\n");
+		/* compressor failed to compress the IP packet */
+//! [compress IP packet #3]
+		fprintf(stderr, "compression of fake IP packet failed\n");
+		goto release_compressor;
+//! [compress IP packet #4]
 	}
+//! [compress IP packet #4]
+
 
 
 	/* Release the ROHC compressor when you do not need it anymore */

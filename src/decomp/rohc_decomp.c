@@ -573,7 +573,20 @@ error:
  *
  * @ingroup rohc_decomp
  *
+ * \par Example:
+ * \snippet example_rohc_decomp.c define ROHC decompressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c create ROHC decompressor #1
+ * \snippet example_rohc_decomp.c create ROHC decompressor #2
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c destroy ROHC decompressor
+ *
  * @see rohc_decomp_free
+ * @see rohc_decompress2
  * @see rohc_decomp_set_traces_cb
  * @see rohc_decomp_enable_profiles
  * @see rohc_decomp_enable_profile
@@ -759,6 +772,18 @@ error:
  *
  * @ingroup rohc_decomp
  *
+ * \par Example:
+ * \snippet example_rohc_decomp.c define ROHC decompressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c create ROHC decompressor #1
+ * \snippet example_rohc_decomp.c create ROHC decompressor #2
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c destroy ROHC decompressor
+ *
  * @see rohc_decomp_new
  */
 void rohc_decomp_free(struct rohc_decomp *decomp)
@@ -857,39 +882,70 @@ int rohc_decompress(struct rohc_decomp *decomp,
 
 
 /**
- * @brief Decompress a ROHC packet
+ * @brief Decompress the given ROHC packet into one IP packet
+ *
+ * The function may succeed in three different ways:
+ *  \li return \ref ROHC_OK and a decompressed IP packet,
+ *  \li return \ref ROHC_FEEDBACK_ONLY and no decompressed IP packet if the
+ *      ROHC packet contains only feedback information,
+ *  \li return \ref ROHC_NON_FINAL_SEGMENT and no decompressed IP packet if
+ *      the ROHC packet is a non-final ROHC segment, ie. the ROHC packet is
+ *      not the last segment of a larger, segmented ROHC packet.
  *
  * @param decomp                 The ROHC decompressor
  * @param arrival_time           The time at which packet was received
  *                               (0 if unknown, or to disable time-related
  *                                features in the ROHC protocol)
  * @param rohc_packet            The compressed packet to decompress
- * @param rohc_packet_len        The size of the compressed packet
+ * @param rohc_packet_len        The size of the compressed packet (in bytes)
  * @param uncomp_packet          The buffer where to store the decompressed
  *                               packet
  * @param uncomp_packet_max_len  The maximum length (in bytes) of the buffer
  *                               for the decompressed packet
  * @param uncomp_packet_len      OUT: The length (in bytes) of the
  *                               decompressed packet
- * @return                       \li \e ROHC_OK if a decompressed packet is
+ * @return                       \li \ref ROHC_OK if a decompressed packet is
  *                                   returned
- *                               \li \e ROHC_FEEDBACK_ONLY if the ROHC packet
- *                                   contains only feedback data
- *                               \li \e ROHC_NON_FINAL_SEGMENT if the given
+ *                               \li \ref ROHC_FEEDBACK_ONLY if the ROHC
+ *                                   packet contains only feedback data
+ *                               \li \ref ROHC_NON_FINAL_SEGMENT if the given
  *                                   ROHC packet is a partial segment of a
  *                                   larger ROHC packet
- *                               \li \e ROHC_ERROR_NO_CONTEXT if no
+ *                               \li \ref ROHC_ERROR_NO_CONTEXT if no
  *                                   decompression context matches the CID
  *                                   stored in the given ROHC packet and the
  *                                   ROHC packet is not an IR packet
- *                               \li \e ROHC_ERROR_PACKET_FAILED if the
+ *                               \li \ref ROHC_ERROR_PACKET_FAILED if the
  *                                   decompression failed because the ROHC
  *                                   packet is unexpected and/or malformed
- *                               \li \e ROHC_ERROR_CRC if the CRC detected a
+ *                               \li \ref ROHC_ERROR_CRC if the CRC detected a
  *                                   transmission or decompression problem
- *                               \li \e ROHC_ERROR if another problem occurred
+ *                               \li \ref ROHC_ERROR if another problem
+ *                                   occurred
  *
  * @ingroup rohc_decomp
+ *
+ * \par Example #1:
+ * \snippet example_rohc_decomp.c define ROHC decompressor
+ * \snippet example_rohc_decomp.c define arrival time
+ * \snippet example_rohc_decomp.c define IP and ROHC packets
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c decompress ROHC packet #1
+ * \verbatim
+                ...
+\endverbatim
+ * \snippet example_rohc_decomp.c decompress ROHC packet #2
+ * \verbatim
+                ...
+\endverbatim
+ * \snippet example_rohc_decomp.c decompress ROHC packet #3
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_decomp_set_mrru
  */
 int rohc_decompress2(struct rohc_decomp *decomp,
                      const struct timespec arrival_time,
@@ -2397,20 +2453,44 @@ error:
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
- * The MRRU value must be in range [0 ; ROHC_MAX_MRRU]. Remember that the
- * MRRU includes the 32-bit CRC that protects it.
+ * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
+ * that are parts of the same ROHC packet. In short, the ROHC decompressor
+ * does not expect to reassemble ROHC segments whose total length is larger
+ * than MRRU. So, the ROHC compressor shall not segment ROHC packets greater
+ * than the MRRU.
  *
+ * The MRRU value must be in range [0 ; \ref ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. Every received segment will be dropped.
+ *
+ * If segmentation is enabled and used by the compressor, the function
+ * \ref rohc_decompress2 will return \ref ROHC_NON_FINAL_SEGMENT as status
+ * code (and no decompressed data) until the final ROHC segment is received
+ * (decompressed data will be returned at that time).
  *
  * @warning Changing the MRRU value while library is used may lead to
  *          destruction of the current RRU.
  *
  * @param decomp  The ROHC decompressor
- * @param mrru    The new MRRU value
+ * @param mrru    The new MRRU value (in bytes)
  * @return        true if the MRRU was successfully set, false otherwise
  *
  * @ingroup rohc_decomp
+ *
+ * \par Example:
+ * \snippet test_segment.c define ROHC decompressor
+ * \verbatim
+        size_t mrru = 500;
+        ...
+\endverbatim
+ * \snippet test_segment.c set decompressor MRRU
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_comp_set_mrru
+ * @see ROHC_NON_FINAL_SEGMENT
  */
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
@@ -2498,6 +2578,20 @@ error:
  *                 false if the profile does not exist
  *
  * @ingroup rohc_decomp
+ *
+ * \par Example:
+ * \snippet example_rohc_decomp.c define ROHC decompressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c enable ROHC decompression profile
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_decomp_enable_profiles
+ * @see rohc_decomp_disable_profile
+ * @see rohc_decomp_disable_profiles
  */
 bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
                                 const unsigned int profile)
@@ -2549,6 +2643,10 @@ error:
  *                 false if the profile does not exist
  *
  * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_enable_profile
+ * @see rohc_decomp_enable_profiles
+ * @see rohc_decomp_disable_profiles
  */
 bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
                                  const unsigned int profile)
@@ -2601,6 +2699,20 @@ error:
  *                false if at least one of the profiles does not exist
  *
  * @ingroup rohc_decomp
+ *
+ * \par Example:
+ * \snippet example_rohc_decomp.c define ROHC decompressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet example_rohc_decomp.c enable ROHC decompression profiles
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_decomp_enable_profile
+ * @see rohc_decomp_disable_profile
+ * @see rohc_decomp_disable_profiles
  */
 bool rohc_decomp_enable_profiles(struct rohc_decomp *const decomp,
                                  ...)
@@ -2647,6 +2759,10 @@ error:
  *                false if at least one of the profiles does not exist
  *
  * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_enable_profile
+ * @see rohc_decomp_enable_profiles
+ * @see rohc_decomp_disable_profile
  */
 bool rohc_decomp_disable_profiles(struct rohc_decomp *const decomp,
                                   ...)

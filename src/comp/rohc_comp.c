@@ -283,12 +283,14 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_free
+ * @see rohc_compress3
  * @see rohc_comp_set_traces_cb
  * @see rohc_comp_set_random_cb
  * @see rohc_comp_enable_profiles
  * @see rohc_comp_enable_profile
  * @see rohc_comp_disable_profiles
  * @see rohc_comp_disable_profile
+ * @see rohc_comp_set_mrru
  * @see rohc_comp_set_wlsb_window_width
  * @see rohc_comp_set_periodic_refreshes
  * @see rohc_comp_set_rtp_detection_cb
@@ -732,11 +734,19 @@ int rohc_compress2(struct rohc_comp *const comp,
 
 
 /**
- * @brief Compress a ROHC packet
+ * @brief Compress the given IP packet into a ROHC packet
  *
- * May return a full ROHC packet, or a segment of a ROHC packet if the output
- * buffer was too small for the ROHC packet or if MRRU was exceeded. Use the
- * rohc_comp_get_segment function to retrieve next ROHC segments.
+ * ROHC compression may succeed into two ways:
+ *   \li return \ref ROHC_OK and a full ROHC packet,
+ *   \li return \ref ROHC_NEED_SEGMENT and no ROHC data if ROHC segmentation
+ *       is required.
+ *
+ * The ROHC compressor has to use ROHC segmentation if the output buffer
+ * rohc_packet was too small for the compressed ROHC packet and if the
+ * Maximum Reconstructed Reception Unit (MRRU) configured with
+ * \ref rohc_comp_set_mrru was not exceeded. If ROHC segmentation is used, one
+ * may use the \ref rohc_comp_get_segment function to retrieve all the ROHC
+ * segments one by one.
  *
  * @param comp                 The ROHC compressor
  * @param arrival_time         The time at which packet was received
@@ -748,12 +758,40 @@ int rohc_compress2(struct rohc_comp *const comp,
  * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
  *                             for the ROHC packet
  * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
- * @return                     \li ROHC_OK if a ROHC packet is returned
- *                             \li ROHC_NEED_SEGMENT if no compressed data is
- *                                 returned and segmentation required
- *                             \li ROHC_ERROR if an error occurred
+ * @return                     \li \ref ROHC_OK if a ROHC packet is returned
+ *                             \li \ref ROHC_NEED_SEGMENT if no ROHC data is
+ *                                 returned and ROHC segments can be
+ *                                 retrieved with \ref rohc_comp_get_segment
+ *                             \li \ref ROHC_ERROR if an error occurred
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \snippet simple_rohc_program.c define arrival time
+ * \snippet simple_rohc_program.c define IP and ROHC packets
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c compress IP packet #1
+ * \verbatim
+                ...
+\endverbatim
+ * \snippet simple_rohc_program.c compress IP packet #2
+ * \verbatim
+                ...
+\endverbatim
+ * \snippet simple_rohc_program.c compress IP packet #3
+ * \verbatim
+                ...
+\endverbatim
+ * \snippet simple_rohc_program.c compress IP packet #4
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_comp_set_mrru
+ * @see rohc_comp_get_segment
  */
 int rohc_compress3(struct rohc_comp *const comp,
                    const struct timespec arrival_time,
@@ -1110,20 +1148,48 @@ error:
  * @brief Get the next ROHC segment if any
  *
  * To get all the segments of one ROHC packet, call this function until
- * ROHC_SEGMENT_LAST is returned.
+ * \ref ROHC_OK is returned.
  *
  * @param comp     The ROHC compressor
  * @param segment  The buffer where to store the ROHC segment
  * @param max_len  The maximum length (in bytes) of the buffer for the
  *                 ROHC segment
  * @param len      OUT: The length (in bytes) of the ROHC segment
- * @return         \li ROHC_NEED_SEGMENT if a ROHC segment is returned
+ * @return         \li \ref ROHC_NEED_SEGMENT if a ROHC segment is returned
  *                     and more segments are available,
- *                 \li ROHC_OK if a ROHC segment is returned
+ *                 \li \ref ROHC_OK if a ROHC segment is returned
  *                     and no more ROHC segment is available
- *                 \li ROHC_ERROR if an error occurred
+ *                 \li \ref ROHC_ERROR if an error occurred
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet test_segment.c define ROHC compressor
+ * \code
+        // compress the IP packet with a small ROHC buffer
+\endcode
+ * \snippet test_segment.c segment ROHC packet #1
+ * \snippet test_segment.c segment ROHC packet #2
+ * \code
+                        ...
+                        // decompress the ROHC segment here, the function
+                        // rohc_decompress2 shall return
+                        // ROHC_NON_FINAL_SEGMENT
+                        ...
+\endcode
+ * \snippet test_segment.c segment ROHC packet #3
+ * \code
+                // decompress the final ROHC segment here, the function
+                // rohc_decompress2 shall return ROHC_OK
+\endcode
+ * \snippet test_segment.c segment ROHC packet #4
+ * \code
+                ...
+\endcode
+ *
+ * @see rohc_comp_get_mrru
+ * @see rohc_comp_set_mrru
+ * @see rohc_compress3
  */
 int rohc_comp_get_segment(struct rohc_comp *const comp,
                           unsigned char *const segment,
@@ -1457,6 +1523,20 @@ error:
  *                 false if the profile does not exist
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c enable ROHC compression profile
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_disable_profile
+ * @see rohc_comp_disable_profiles
  */
 bool rohc_comp_enable_profile(struct rohc_comp *const comp,
                               const unsigned int profile)
@@ -1508,6 +1588,10 @@ error:
  *                 false if the profile does not exist
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_disable_profiles
  */
 bool rohc_comp_disable_profile(struct rohc_comp *const comp,
                                const unsigned int profile)
@@ -1560,6 +1644,20 @@ error:
  *              false if at least one of the profiles does not exist
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \verbatim
+        ...
+\endverbatim
+ * \snippet simple_rohc_program.c enable ROHC compression profiles
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_disable_profile
+ * @see rohc_comp_disable_profiles
  */
 bool rohc_comp_enable_profiles(struct rohc_comp *const comp,
                                ...)
@@ -1606,6 +1704,10 @@ error:
  *              false if at least one of the profiles does not exist
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_disable_profile
  */
 bool rohc_comp_disable_profiles(struct rohc_comp *const comp,
                                 ...)
@@ -1703,17 +1805,40 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
- * The MRRU value must be in range [0 ; ROHC_MAX_MRRU]. Remember that the
- * MRRU includes the 32-bit CRC that protects it.
+ * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
+ * that are parts of the same ROHC packet. In short, the ROHC decompressor
+ * does not expect to reassemble ROHC segments whose total length is larger
+ * than MRRU. So, the ROHC compressor shall not segment ROHC packets greater
+ * than the MRRU.
  *
+ * The MRRU value must be in range [0 ; \ref ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
  * If set to 0, segmentation is disabled as no segment headers are allowed
  * on the channel. No segment will be generated.
  *
+ * If segmentation is enabled and used by the compressor, the function
+ * \ref rohc_comp_get_segment can be used to retrieve ROHC segments.
+ *
  * @param comp  The ROHC compressor
- * @param mrru  The new MRRU value
+ * @param mrru  The new MRRU value (in bytes)
  * @return      true if the MRRU was successfully set, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet test_segment.c define ROHC compressor
+ * \verbatim
+        size_t mrru = 500;
+        ...
+\endverbatim
+ * \snippet test_segment.c set compressor MRRU
+ * \verbatim
+        ...
+\endverbatim
+ *
+ * @see rohc_comp_get_mrru
+ * @see rohc_comp_get_segment
+ * @see rohc_decomp_set_mrru
  */
 bool rohc_comp_set_mrru(struct rohc_comp *const comp,
                         const size_t mrru)
@@ -1749,16 +1874,40 @@ error:
 /**
  * @brief Get the Maximum Reconstructed Reception Unit (MRRU).
  *
- * The MRRU value is in range [0 ; ROHC_MAX_MRRU]. Remember that the MRRU
- * includes the 32-bit CRC that protects it.
+ * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
+ * that are parts of the same ROHC packet. In short, the ROHC decompressor
+ * does not expect to reassemble ROHC segments whose total length is larger
+ * than MRRU. So, the ROHC compressor shall not segment ROHC packets greater
+ * than the MRRU.
  *
+ * The MRRU value must be in range [0 ; \ref ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
  * If MRRU value is 0, segmentation is disabled.
  *
+ * If segmentation is enabled and used by the compressor, the function
+ * \ref rohc_comp_get_segment can be used to retrieve ROHC segments.
+ *
  * @param comp  The ROHC compressor
- * @param mrru  OUT: The current MRRU value
+ * @param mrru  OUT: The current MRRU value (in bytes)
  * @return      true if MRRU was successfully retrieved, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet test_segment.c define ROHC compressor
+ * \verbatim
+        size_t mrru;
+        ...
+\endverbatim
+ * \snippet test_non_regression.c get compressor MRRU
+ * \code
+        printf("the current MMRU at compressor is %zu bytes\n", mrru);
+        ...
+\endcode
+ *
+ * @see rohc_comp_set_mrru
+ * @see rohc_comp_get_segment
+ * @see rohc_decomp_set_mrru
  */
 bool rohc_comp_get_mrru(const struct rohc_comp *const comp,
                         size_t *const mrru)

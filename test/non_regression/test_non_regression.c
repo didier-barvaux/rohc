@@ -503,12 +503,14 @@ static bool show_rohc_comp_stats(const struct rohc_comp *const comp)
 	}
 	printf("\t\t\t<max_cid>%zd</max_cid>\n", max_cid);
 
-	/* MRRU */
+//! [get compressor MRRU]
+	/* retrieve current compressor MRRU */
 	if(!rohc_comp_get_mrru(comp, &mrru))
 	{
 		fprintf(stderr, "failed to get MRRU for compressor\n");
 		goto error;
 	}
+//! [get compressor MRRU]
 	printf("\t\t\t<mrru>%zd</mrru>\n", mrru);
 
 	/* CID type */
