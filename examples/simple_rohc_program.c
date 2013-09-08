@@ -94,12 +94,8 @@ int main(int argc, char **argv)
 	seed = time(NULL);
 	srand(seed);
 
-	/* Create a ROHC compressor with small CIDs, no jamming and no adaptation
-	 * to encapsulation frames.
-	 *
-	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga721fd34fc0cd9e1d789b693eb6bb6485
-	 * for details about rohc_alloc_compressor in the API documentation.
-	 */
+	/* Create a ROHC compressor with small CIDs and the largest MAX_CID
+	 * possible for small CIDs */
 	printf("\ncreate the ROHC compressor\n");
 //! [create ROHC compressor]
 	compressor = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
@@ -117,11 +113,8 @@ int main(int argc, char **argv)
 		goto release_compressor;
 	}
 
-	/* Enable the compression profiles you need (comment or uncomment some lines).
-	 *
-	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga1a444eb91681521f726712a60a4df867
-	 * for details about rohc_activate_profile in the API documentation.
-	 */
+	/* Enable the compression profiles you need
+	 * (comment or uncomment some lines) */
 	printf("\nenable several ROHC compression profiles\n");
 	if(!rohc_comp_enable_profile(compressor, ROHC_PROFILE_UNCOMPRESSED))
 	{
@@ -207,11 +200,7 @@ int main(int argc, char **argv)
 	}
 
 
-	/* Now, compress this fake IP packet.
-	 *
-	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga99be8242b7bc4f442f4519461a99726b
-	 * for details about rohc_compress in the API documentation.
-	 */
+	/* Now, compress this fake IP packet */
 	printf("\ncompress the fake IP packet\n");
 	ret = rohc_compress3(compressor, arrival_time, ip_packet, ip_packet_len,
 	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
@@ -238,11 +227,7 @@ int main(int argc, char **argv)
 	}
 
 
-	/* Release the ROHC compressor when you do not need it anymore.
-	 *
-	 * See http://rohc-lib.org/doc/latest/group__rohc__comp.html#ga736ea1760d7af54ad903c29765df5bd3
-	 * for details about rohc_free_compressor in the API documentation.
-	 */
+	/* Release the ROHC compressor when you do not need it anymore */
 	printf("\n\ndestroy the ROHC decompressor\n");
 //! [destroy ROHC compressor]
 	rohc_comp_free(compressor);
