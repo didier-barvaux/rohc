@@ -255,13 +255,17 @@ void rohc_free_compressor(struct rohc_comp *comp)
 /**
  * @brief Create a new ROHC compressor
  *
+ * Create a new ROHC compressor with the given type of CIDs and MAX_CID.
+ *
  * @param cid_type  The type of Context IDs (CID) that the ROHC compressor
- *                  shall operate with. Accepted values are:
+ *                  shall operate with. \n
+ *                  Accepted values are:
  *                    \li \ref ROHC_SMALL_CID for small CIDs
  *                    \li \ref ROHC_LARGE_CID for large CIDs
  * @param max_cid   The maximum value that the ROHC compressor should use for
  *                  context IDs (CID). As CIDs starts with value 0, the number
- *                  of contexts is \e max_cid + 1. Accepted values are:
+ *                  of contexts is \e max_cid + 1. \n
+ *                  Accepted values are:
  *                    \li [0, \ref ROHC_SMALL_CID_MAX] if \e cid_type is
  *                        \ref ROHC_SMALL_CID
  *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is
