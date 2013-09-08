@@ -4139,7 +4139,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		if(try_decoding_again)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CID %u: CRC repair: try decoding packet again with new "
+			             "CID %zu: CRC repair: try decoding packet again with new "
 			             "assumptions\n", context->cid);
 		}
 
@@ -4183,7 +4183,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			}
 			else
 			{
-				rohc_decomp_debug(context, "CID %u: CRC repair: CRC is correct\n",
+				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct\n",
 				                  context->cid);
 				try_decoding_again = false;
 			}
@@ -4192,7 +4192,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		{
 			/* uncompressed headers cannot be built, stop decoding */
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CID %u: failed to build uncompressed headers\n",
+			             "CID %zu: failed to build uncompressed headers\n",
 			             context->cid);
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 ROHC_TRACE_WARNING, "compressed headers",
@@ -4209,7 +4209,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			assert((*packet_type) != PACKET_IR_DYN);
 
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CID %u: failed to build uncompressed headers (CRC "
+			             "CID %zu: failed to build uncompressed headers (CRC "
 			             "failure)\n", context->cid);
 
 			/* attempt a context/packet repair */
@@ -4221,7 +4221,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				/* uncompressed headers successfully built, CRC is incorrect, repair
 				 * was disabled or attempted without any success, so give up */
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "CID %u: failed to build uncompressed headers "
+				             "CID %zu: failed to build uncompressed headers "
 				             "(CRC failure)\n", context->cid);
 				rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 				                 ROHC_TRACE_WARNING, "compressed headers",
@@ -4244,7 +4244,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 			g_context->correction_counter--;
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CID %u: CRC repair: throw away packet, still %zu "
+			             "CID %zu: CRC repair: throw away packet, still %zu "
 			             "CRC-valid packets required\n", context->cid,
 			             g_context->correction_counter);
 
@@ -4253,7 +4253,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		else if(g_context->correction_counter == 1)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "CID %u: CRC repair: correction is successful, "
+			             "CID %zu: CRC repair: correction is successful, "
 			             "keep packet\n", context->cid);
 			context->corrected_crc_failures++;
 			switch(g_context->crc_corr)
@@ -4267,7 +4267,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				case ROHC_DECOMP_CRC_CORR_SN_NONE:
 				default:
 					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					           "CID %u: CRC repair: unsupported repair algorithm "
+					           "CID %zu: CRC repair: unsupported repair algorithm "
 					           "%d\n", context->cid, g_context->crc_corr);
 					break;
 			}
@@ -8550,7 +8550,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	if((decomp->features & ROHC_DECOMP_FEATURE_CRC_REPAIR) == 0)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CID %u: CRC repair: feature disabled\n", context->cid);
+		             "CID %zu: CRC repair: feature disabled\n", context->cid);
 		goto skip;
 	}
 
@@ -8565,7 +8565,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 
 	/* try to guess the correct SN value in case of failure */
 	rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-	             "CID %u: CRC repair: attempt to correct SN\n", context->cid);
+	             "CID %zu: CRC repair: attempt to correct SN\n", context->cid);
 
 	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
 	 *   When decompression fails, the decompressor computes the time
@@ -8582,7 +8582,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	                    lsb_get_p(g_context->sn_lsb_ctxt)))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CID %u: CRC repair: CRC failure seems to be caused "
+		             "CID %zu: CRC repair: CRC failure seems to be caused "
 		             "by a sequence number LSB wraparound\n", context->cid);
 
 		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_WRAP;
@@ -8592,14 +8592,14 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 		 *   packet using the new reference SN */
 		bits->sn_ref_offset = (1 << bits->sn_nr);
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CID %u: CRC repair: try adding 2^k = 2^%zu = %u to "
+		             "CID %zu: CRC repair: try adding 2^k = 2^%zu = %u to "
 		             "reference SN (ref 0 = %u)\n", context->cid, bits->sn_nr,
 		             bits->sn_ref_offset, sn_ref_0);
 	}
 	else if(sn_ref_0 != sn_ref_minus_1)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CID %u: CRC repair: CRC failure seems to be caused "
+		             "CID %zu: CRC repair: CRC failure seems to be caused "
 		             "by an incorrect SN update\n", context->cid);
 
 		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
@@ -8611,7 +8611,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 		 *   performed based on SN curr2 as the decompressed SN. */
 		bits->sn_ref_type = ROHC_LSB_REF_MINUS_1;
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CID %u: CRC repair: try using ref -1 (%u) as reference "
+		             "CID %zu: CRC repair: try using ref -1 (%u) as reference "
 		             "SN instead of ref 0 (%u)\n", context->cid, sn_ref_minus_1,
 		             sn_ref_0);
 	}

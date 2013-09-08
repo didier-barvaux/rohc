@@ -781,7 +781,7 @@ void change_mode(struct c_context *const context, const rohc_mode new_mode)
 	{
 		/* change mode and go back to IR state */
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %d: change from mode %d to mode %d\n",
+		          "CID %zu: change from mode %d to mode %d\n",
 		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
 		change_state(context, IR);
@@ -804,7 +804,7 @@ void change_state(struct c_context *const context, const rohc_c_state new_state)
 	if(context->state != new_state)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %d: change from state %d to state %d\n",
+		          "CID %zu: change from state %d to state %d\n",
 		          context->cid, context->state, new_state);
 
 		/* reset counters */
@@ -1087,6 +1087,7 @@ void c_generic_feedback(struct c_context *const context,
 	assert(context->specific != NULL);
 	assert(context->used == 1);
 	assert(feedback != NULL);
+	assert(feedback->cid == context->cid);
 	assert(feedback->data != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -1182,8 +1183,8 @@ void c_generic_feedback(struct c_context *const context,
 			{
 				rohc_info(context->compressor, ROHC_TRACE_COMP,
 				          context->profile->id, "mode change (%d -> %d) "
-				          "requested by feedback for CID %d\n",
-				          context->mode, mode, context->profile->id);
+				          "requested by feedback for CID %zu\n",
+				          context->mode, mode, context->cid);
 
 				/* mode can be changed only if feedback is protected by a CRC */
 				if(is_crc_used == true)
@@ -1201,7 +1202,7 @@ void c_generic_feedback(struct c_context *const context,
 			switch(feedback->acktype)
 			{
 				case ACK:
-					rohc_comp_debug(context, "ACK received (CID = %d, SN = 0x%08x, "
+					rohc_comp_debug(context, "ACK received (CID = %zu, SN = 0x%08x, "
 					                "SN-not-valid = %u)\n", feedback->cid, sn,
 					                sn_not_valid);
 					if(sn_not_valid == 0)
@@ -1222,7 +1223,7 @@ void c_generic_feedback(struct c_context *const context,
 
 				case NACK:
 					rohc_info(context->compressor, ROHC_TRACE_COMP,
-					          context->profile->id, "NACK received for CID %d\n",
+					          context->profile->id, "NACK received for CID %zu\n",
 					          feedback->cid);
 					if(context->state == SO)
 					{
@@ -1233,7 +1234,7 @@ void c_generic_feedback(struct c_context *const context,
 				case STATIC_NACK:
 					rohc_info(context->compressor, ROHC_TRACE_COMP,
 					          context->profile->id, "STATIC-NACK received "
-					          "for CID %d\n", feedback->cid);
+					          "for CID %zu\n", feedback->cid);
 					change_state(context, IR);
 					break;
 
@@ -1287,7 +1288,7 @@ void periodic_down_transition(struct c_context *context)
 	g_context = (struct c_generic_context *) context->specific;
 
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "CID %d: timeouts for periodic refreshes: FO = %d / %zd, "
+	           "CID %zu: timeouts for periodic refreshes: FO = %d / %zd, "
 	           "IR = %d / %zd\n", context->cid, g_context->go_back_fo_count,
 	           context->compressor->periodic_refreshes_fo_timeout,
 	           g_context->go_back_ir_count,
@@ -1297,7 +1298,7 @@ void periodic_down_transition(struct c_context *context)
 	   context->compressor->periodic_refreshes_fo_timeout)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %d: periodic change to FO state\n", context->cid);
+		          "CID %zu: periodic change to FO state\n", context->cid);
 		g_context->go_back_fo_count = 0;
 		change_state(context, FO);
 	}
@@ -1305,7 +1306,7 @@ void periodic_down_transition(struct c_context *context)
 	        context->compressor->periodic_refreshes_ir_timeout)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %d: periodic change to IR state\n", context->cid);
+		          "CID %zu: periodic change to IR state\n", context->cid);
 		g_context->go_back_ir_count = 0;
 		change_state(context, IR);
 	}
@@ -1719,7 +1720,7 @@ int code_IR_packet(struct c_context *const context,
 	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) != IPV4 &&
 	        g_context->tmp.nr_ip_id_bits2 == 0));
 
-	rohc_comp_debug(context, "code IR packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %zu)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -1890,7 +1891,7 @@ int code_IR_DYN_packet(struct c_context *const context,
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	rohc_comp_debug(context, "code IR-DYN packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code IR-DYN packet (CID = %zu)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -2547,7 +2548,7 @@ int code_UO0_packet(struct c_context *const context,
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	rohc_comp_debug(context, "code UO-0 packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code UO-0 packet (CID = %zu)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -2709,7 +2710,7 @@ int code_UO1_packet(struct c_context *const context,
 	switch(packet_type)
 	{
 		case PACKET_UO_1:
-			rohc_comp_debug(context, "code UO-1 packet (CID = %d)\n", context->cid);
+			rohc_comp_debug(context, "code UO-1 packet (CID = %zu)\n", context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
 			            "UO-1 packet is for IPv4 only\n");
@@ -2717,13 +2718,13 @@ int code_UO1_packet(struct c_context *const context,
 			            !is_rtp, error, "UO-1 packet is for non-RTP profiles\n");
 			break;
 		case PACKET_UO_1_RTP:
-			rohc_comp_debug(context, "code UO-1-RTP packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-RTP packet is for RTP profile only\n");
 			break;
 		case PACKET_UO_1_ID:
-			rohc_comp_debug(context, "code UO-1-ID packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
@@ -2732,7 +2733,7 @@ int code_UO1_packet(struct c_context *const context,
 			            is_rtp, error, "UO-1-ID packet is for RTP profile only\n");
 			break;
 		case PACKET_UO_1_TS:
-			rohc_comp_debug(context, "code UO-1-TS packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-TS packet is for RTP profile only\n");
@@ -3181,22 +3182,22 @@ int code_UO2_packet(struct c_context *const context,
 	switch(packet_type)
 	{
 		case PACKET_UOR_2:
-			rohc_comp_debug(context, "code UOR-2 packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UOR-2 packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_bytes;
 			break;
 		case PACKET_UOR_2_RTP:
-			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_RTP_bytes;
 			break;
 		case PACKET_UOR_2_ID:
-			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_ID_bytes;
 			break;
 		case PACKET_UOR_2_TS:
-			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %d)\n",
+			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_TS_bytes;
 			break;

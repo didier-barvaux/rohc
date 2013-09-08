@@ -119,7 +119,7 @@ static const struct d_profile *
 	__attribute__((warn_unused_result));
 
 static struct d_context * context_create(struct rohc_decomp *decomp,
-                                         const unsigned int cid,
+                                         const rohc_cid_t cid,
                                          const struct d_profile *const profile,
                                          const struct timespec arrival_time);
 static struct d_context * find_context(const struct rohc_decomp *const decomp,
@@ -158,6 +158,12 @@ static void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                       const rohc_cid_type_t cid_type,
                                       int mode,
                                       struct d_context *context);
+static void d_optimistic_feedback(struct rohc_decomp *decomp,
+                                  int rohc_status,
+                                  const rohc_cid_t cid,
+                                  int addcidUsed,
+                                  const rohc_cid_type_t cid_type,
+                                  struct d_context *context);
 
 /* statistics-related functions */
 static int rohc_d_context(struct rohc_decomp *decomp,
@@ -330,7 +336,7 @@ static void context_free(struct d_context *const context)
 	assert(context->header_16_compressed != NULL);
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "free context with CID %u\n", context->cid);
+	           "free context with CID %zu\n", context->cid);
 
 	/* destroy the profile-specific data */
 	context->profile->free_decode_data(context->specific);
@@ -1067,7 +1073,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			/* the decompression context associated with the CID already exists
 			 * and the context profile and the packet profile match. */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "context with CID %d already exists and matches profile "
+			           "context with CID %zu already exists and matches profile "
 			           "0x%04x found in IR packet\n", ddata->cid, profile_id);
 			ddata->active = decomp->contexts[ddata->cid];
 		}
@@ -1076,7 +1082,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			/* the decompression context does not exist or the profiles do not
 			 * match, create a new context */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "context with CID %d either does not already exist or "
+			           "context with CID %zu either does not already exist or "
 			           "does not match profile 0x%04x found in IR packet\n",
 			           ddata->cid, profile_id);
 			ddata->active = context_create(decomp, ddata->cid, profile,
@@ -1084,7 +1090,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			if(!ddata->active)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-				             "failed to create a new context with CID %d and "
+				             "failed to create a new context with CID %zu and "
 				             "profile 0x%04x\n", ddata->cid, profile_id);
 				goto error_no_context;
 			}
@@ -1103,7 +1109,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		if(!ddata->active)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "context with CID %d either does not exist "
+			             "context with CID %zu either does not exist "
 			             "or no profile is associated with the context\n",
 			             ddata->cid);
 			goto error_no_context;
@@ -1112,7 +1118,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 		/* context is valid */
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "context with CID %d found\n", ddata->cid);
+		           "context with CID %zu found\n", ddata->cid);
 
 		/* is the ROHC packet an IR-DYN packet? */
 		if(d_is_irdyn(walk, isize))
@@ -1244,12 +1250,12 @@ error_no_context:
  * @param cid_type     The type of CID used for the feedback
  * @param context      The context to which the feedback is related
  */
-void d_optimistic_feedback(struct rohc_decomp *decomp,
-                           int rohc_status,
-                           const uint16_t cid,
-                           int addcidUsed,
-                           const rohc_cid_type_t cid_type,
-                           struct d_context *context)
+static void d_optimistic_feedback(struct rohc_decomp *decomp,
+                                  int rohc_status,
+                                  const rohc_cid_t cid,
+                                  int addcidUsed,
+                                  const rohc_cid_type_t cid_type,
+                                  struct d_context *context)
 {
 	struct d_feedback sfeedback;
 	uint8_t *feedback;
@@ -1289,14 +1295,14 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 	if(decomp->medium.cid_type == ROHC_SMALL_CID && cid > ROHC_SMALL_CID_MAX)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected small CID %d: not in range [0, %d]\n", cid,
+		             "unexpected small CID %zu: not in range [0, %d]\n", cid,
 		             ROHC_SMALL_CID_MAX);
 		return;
 	}
 	else if(cid > ROHC_LARGE_CID_MAX) /* large CID */
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected large CID %d: not in range [0, %d]\n", cid,
+		             "unexpected large CID %zu: not in range [0, %d]\n", cid,
 		             ROHC_LARGE_CID_MAX);
 		return;
 	}
@@ -1355,7 +1361,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 		case ROHC_ERROR_NO_CONTEXT:
 			/* create a STATIC NACK feedback */
 			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			          "send a STATIC-NACK feedback for CID %d\n", cid);
+			          "send a STATIC-NACK feedback for CID %zu\n", cid);
 			ret = f_feedback2(ACKTYPE_STATIC_NACK, O_MODE, 0, &sfeedback);
 			if(ret != ROHC_OK)
 			{
@@ -1404,7 +1410,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				case NO_CONTEXT:
 					/* create a STATIC-NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					          "send a STATIC-NACK feedback for CID %d\n", cid);
+					          "send a STATIC-NACK feedback for CID %zu\n", cid);
 					ret = f_feedback2(ACKTYPE_STATIC_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
@@ -1441,7 +1447,7 @@ void d_optimistic_feedback(struct rohc_decomp *decomp,
 				case FULL_CONTEXT:
 					/* create a NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-					          "send a NACK feedback for CID %d\n", cid);
+					          "send a NACK feedback for CID %zu\n", cid);
 					ret = f_feedback2(ACKTYPE_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
@@ -2523,7 +2529,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 			ddata->addcidUsed = 1;
 			ddata->cid = d_decode_add_cid(packet);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "add-CID present (0x%x) contains CID = %d\n",
+			           "add-CID present (0x%x) contains CID = %zu\n",
 			           packet[0], ddata->cid);
 		}
 		else
@@ -2559,8 +2565,8 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		}
 		ddata->cid = large_cid;
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "%u-byte large CID = %d (0x%02x)\n",
-		           ddata->large_cid_size, ddata->cid, ddata->cid);
+		           "%u-byte large CID = %zu\n",
+		           ddata->large_cid_size, ddata->cid);
 	}
 	else
 	{

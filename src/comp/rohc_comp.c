@@ -1244,7 +1244,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 			if(!comp->contexts[i].profile->reinit_context(&(comp->contexts[i])))
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to force re-initialization for CID %d\n", i);
+				             "failed to force re-initialization for CID %zu\n", i);
 				goto error;
 			}
 		}
@@ -2075,7 +2075,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 			                                           rohc_hton16(port)))
 			{
 				rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				           "destroy context with CID %d because it uses "
+				           "destroy context with CID %zu because it uses "
 				           "UDP port %u that is removed from the list of "
 				           "RTP ports\n", i, port);
 				comp->contexts[i].profile->destroy(&comp->contexts[i]);
@@ -2387,7 +2387,7 @@ static int __rohc_c_context(struct rohc_comp *comp,
 	save = buffer;
 	buffer += strlen(buffer);
 
-	buffer += sprintf(buffer, "\n%s<context type=\"compressor\" cid=\"%d\">\n", prefix, c->cid);
+	buffer += sprintf(buffer, "\n%s<context type=\"compressor\" cid=\"%zu\">\n", prefix, c->cid);
 	buffer += sprintf(buffer, "%s\t<cid_state>%s</cid_state>\n", prefix, c->used ? "USED" : "UNUSED");
 	buffer += sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
 	                  rohc_comp_get_state_descr(c->state));
@@ -2664,7 +2664,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	}
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "feedback CID = %d\n", feedback.cid);
+	           "feedback CID = %zu\n", feedback.cid);
 
 	feedback.specific_size = size - (p - packet);
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -2697,7 +2697,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	{
 		/* context was not found */
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "context not found (CID = %u)\n", feedback.cid);
+		           "context not found (CID = %zu)\n", feedback.cid);
 		goto clean;
 	}
 
@@ -3399,7 +3399,7 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 		if(context_match)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "using context CID = %d\n", c->cid);
+			           "using context CID = %zu\n", c->cid);
 			break;
 		}
 

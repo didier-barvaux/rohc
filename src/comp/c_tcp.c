@@ -3852,7 +3852,7 @@ static int code_CO_packet(struct c_context *const context,
 
 	*packet_type = PACKET_UNKNOWN;
 
-	rohc_comp_debug(context, "code CO packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code CO packet (CID = %zu)\n", context->cid);
 
 	rohc_comp_debug(context, "context = %p, ip = %p, packet_size = %d, "
 	                "next_header = %p, rohc_pkt = %p\n", context, ip,

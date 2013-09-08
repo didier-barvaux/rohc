@@ -126,7 +126,7 @@ for ./configure ? If yes, check configure output and config.log"
 static void usage(void);
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
-                                const unsigned int max_contexts,
+                                const size_t max_contexts,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -876,7 +876,7 @@ exit:
  */
 static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
-                                const unsigned int max_contexts,
+                                const size_t max_contexts,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,

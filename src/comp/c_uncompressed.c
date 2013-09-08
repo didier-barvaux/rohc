@@ -651,7 +651,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
 	size_t counter;
 	size_t first_position;
 
-	rohc_comp_debug(context, "code IR packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %zu)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -727,7 +727,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	size_t counter;
 	size_t first_position;
 
-	rohc_comp_debug(context, "code normal packet (CID = %d)\n", context->cid);
+	rohc_comp_debug(context, "code normal packet (CID = %zu)\n", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'

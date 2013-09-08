@@ -73,7 +73,7 @@ for ./configure ? If yes, check configure output and config.log"
 
 /* prototypes of private functions */
 static void usage(void);
-static int generate_comp_stats_all(const int use_large_cid,
+static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
                                    const char *filename);
 static int generate_comp_stats_one(struct rohc_comp *comp,
@@ -103,11 +103,11 @@ static int gen_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char *argv[])
 {
-	char *cid_type = NULL;
+	char *cid_type_name = NULL;
 	char *source_filename = NULL;
 	int status = 1;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
-	int use_large_cid;
+	rohc_cid_type_t cid_type;
 	int args_used;
 
 	/* parse program arguments, print the help message in case of failure */
@@ -133,10 +133,10 @@ int main(int argc, char *argv[])
 			max_contexts = atoi(argv[1]);
 			args_used++;
 		}
-		else if(cid_type == NULL)
+		else if(cid_type_name == NULL)
 		{
 			/* get the type of CID to use within the ROHC library */
-			cid_type = argv[0];
+			cid_type_name = argv[0];
 		}
 		else if(source_filename == NULL)
 		{
@@ -152,9 +152,15 @@ int main(int argc, char *argv[])
 	}
 
 	/* check CID type */
-	if(!strcmp(cid_type, "smallcid"))
+	if(cid_type_name == NULL)
 	{
-		use_large_cid = 0;
+		fprintf(stderr, "parameter CID_TYPE is mandatory\n");
+		usage();
+		goto error;
+	}
+	else if(!strcmp(cid_type_name, "smallcid"))
+	{
+		cid_type = ROHC_SMALL_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
@@ -165,9 +171,9 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 	}
-	else if(!strcmp(cid_type, "largecid"))
+	else if(!strcmp(cid_type_name, "largecid"))
 	{
-		use_large_cid = 1;
+		cid_type = ROHC_LARGE_CID;
 
 		/* the maximum number of ROHC contexts should be valid */
 		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
@@ -181,7 +187,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
-		        "expected\n", cid_type);
+		        "expected\n", cid_type_name);
 		usage();
 		goto error;
 	}
@@ -195,7 +201,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* generate ROHC compression statistics with the packets from the file */
-	status = generate_comp_stats_all(use_large_cid, max_contexts, source_filename);
+	status = generate_comp_stats_all(cid_type, max_contexts, source_filename);
 
 error:
 	return status;
@@ -229,13 +235,13 @@ static void usage(void)
 /**
  * @brief Generate ROHC compression statistics with a flow of IP packets
  *
- * @param use_large_cid  Whether the compressor shall use large CIDs
+ * @param cid_type       The type of CIDs the compressor shall use
  * @param max_contexts   The maximum number of ROHC contexts to use
  * @param filename       The name of the PCAP file that contains the IP packets
  * @return               0 in case of success,
  *                       1 in case of failure
  */
-static int generate_comp_stats_all(const int use_large_cid,
+static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
                                    const unsigned int max_contexts,
                                    const char *filename)
 {
@@ -295,7 +301,7 @@ static int generate_comp_stats_all(const int use_large_cid,
 	srand(time(NULL));
 
 	/* create the ROHC compressor */
-	comp = rohc_alloc_compressor(max_contexts - 1, 0, 0, 0);
+	comp = rohc_comp_new(cid_type, max_contexts - 1);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -319,9 +325,6 @@ static int generate_comp_stats_all(const int use_large_cid,
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
 	}
-
-	/* configure compressor for small or large CIDs */
-	rohc_c_set_large_cid(comp, use_large_cid);
 
 	/* set the callback for random numbers */
 	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
@@ -384,7 +387,7 @@ static int generate_comp_stats_all(const int use_large_cid,
 	is_failure = 0;
 
 destroy_comp:
-	rohc_free_compressor(comp);
+	rohc_comp_free(comp);
 close_input:
 	pcap_close(handle);
 error:
