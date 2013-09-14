@@ -350,7 +350,9 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	}
 	memset(comp, 0, sizeof(struct rohc_comp));
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	comp->enabled = 1;
+#endif
 	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;
 	comp->mrru = 0; /* no segmentation by default */
@@ -2403,10 +2405,15 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Enable the ROHC compressor
  *
  * Enable the ROHC compressor.
+ *
+ * @deprecated do not use this function anymore,
+ *             the ROHC compressor shall be considered always enabled now
  *
  * @param comp   The ROHC compressor
  * @param enable 1 to enable the compressor, 0 to disable it
@@ -2432,6 +2439,9 @@ void rohc_c_set_enable(struct rohc_comp *comp, int enable)
  *
  * Return whether the ROHC compressor is enabled or not.
  *
+ * @deprecated do not use this function anymore,
+ *             the ROHC compressor shall be considered always enabled now
+ *
  * @param comp  The ROHC compressor
  * @return      1 if the compressor is enabled, 0 if not
  *
@@ -2442,8 +2452,6 @@ int rohc_c_is_enabled(struct rohc_comp *comp)
 	return (comp != NULL && comp->enabled);
 }
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get information about available compression profiles

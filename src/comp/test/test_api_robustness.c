@@ -232,17 +232,6 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_reset_rtp_ports(NULL) == false);
 	CHECK(rohc_comp_reset_rtp_ports(comp) == true);
 
-	/* rohc_c_set_enable() */
-	rohc_c_set_enable(NULL, 1);
-	rohc_c_set_enable(comp, -1);
-	rohc_c_set_enable(comp, 2);
-	rohc_c_set_enable(comp, 0);
-	rohc_c_set_enable(comp, 1);
-
-	/* rohc_c_is_enabled() */
-	CHECK(rohc_c_is_enabled(NULL) == 0);
-	CHECK(rohc_c_is_enabled(comp) == 1);
-
 	/* rohc_comp_piggyback_feedback() */
 	{
 		unsigned char buf[1];

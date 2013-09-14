@@ -479,9 +479,6 @@ static bool show_rohc_comp_stats(const struct rohc_comp *const comp)
 	printf("\t\t<instance>\n");
 	printf("\t\t\t<creator>%s</creator>\n", PACKAGE_NAME " (" PACKAGE_URL ")");
 	printf("\t\t\t<version>%s</version>\n", rohc_version());
-	printf("\t\t\t<status>%s</status>\n",
-	       rohc_c_is_enabled((struct rohc_comp *) comp) ?
-	       "enabled" : "disabled");
 	printf("\t\t\t<flows>%zd</flows>\n", general_info.contexts_nr);
 	printf("\t\t\t<packets>%lu</packets>\n", general_info.packets_nr);
 	if(general_info.uncomp_bytes_nr != 0)

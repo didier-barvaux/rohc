@@ -112,12 +112,14 @@ struct rohc_feedback
  */
 struct rohc_comp
 {
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/**
 	 * @brief Whether the compressor is enabled or not
 	 *
 	 * The compressor is enabled by default and may be disabled by user.
 	 */
 	int enabled;
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/** The medium associated with the decompressor */
 	struct rohc_medium medium;

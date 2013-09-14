@@ -357,8 +357,10 @@ bool ROHC_EXPORT rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
  * Prototypes of public functions related to user interaction
  */
 
-int ROHC_EXPORT rohc_c_is_enabled(struct rohc_comp *comp);
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+int ROHC_EXPORT rohc_c_is_enabled(struct rohc_comp *comp)
+	ROHC_DEPRECATED("do not use this function anymore, the ROHC compressor "
+	                "shall be considered always enabled now");
 int ROHC_EXPORT rohc_c_using_small_cid(struct rohc_comp *comp)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_comp_get_cid_type() instead");
@@ -419,7 +421,11 @@ bool ROHC_EXPORT rohc_comp_get_cid_type(const struct rohc_comp *const comp,
                                         rohc_cid_type_t *const cid_type)
 	__attribute__((warn_unused_result));
 
-void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value);
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value)
+	ROHC_DEPRECATED("do not use this function anymore, the ROHC compressor "
+	                "shall be considered always enabled now");
+#endif
 
 /* RTP stream detection through UDP ports */
 bool ROHC_EXPORT rohc_comp_add_rtp_port(struct rohc_comp *const comp,
