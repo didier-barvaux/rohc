@@ -150,6 +150,9 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
                                           const char *const format,
                                           ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+
+static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value);
+
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
@@ -2018,6 +2021,9 @@ error:
 /**
  * @brief Set the maximal CID value the compressor should use
  *
+ * @deprecated please do not use this function anymore, use the parameter
+ *             max_cid of rohc_comp_new() instead
+ *
  * @param comp  The ROHC compressor
  * @param value The new maximal CID value
  *
@@ -2025,45 +2031,7 @@ error:
  */
 void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 {
-	if(comp == NULL)
-	{
-		goto error;
-	}
-
-	/* check validity of the new MAX_CID */
-	if(comp->medium.cid_type == ROHC_LARGE_CID)
-	{
-		/* large CID */
-		if(value < 0 || value > ROHC_LARGE_CID_MAX)
-		{
-			goto error;
-		}
-	}
-	else /* small CID */
-	{
-		if(value < 0 || value > ROHC_SMALL_CID_MAX)
-		{
-			goto error;
-		}
-	}
-
-	if(value != comp->medium.max_cid)
-	{
-		/* free memory used by contexts */
-		c_destroy_contexts(comp);
-
-		/* change MAX_CID */
-		comp->medium.max_cid = value;
-
-		/* create the MAX_CID contexts */
-		if(!c_create_contexts(comp))
-		{
-			goto error;
-		}
-	}
-
-error:
-	return;
+	__rohc_c_set_max_cid(comp, value);
 }
 
 
@@ -2099,6 +2067,9 @@ error:
 /**
  * @brief Tell the compressor to use large CIDs
  *
+ * @deprecated please do not use this function anymore, use the parameter
+ *             cid_type of rohc_comp_new() instead
+ *
  * @param comp      The ROHC compressor
  * @param large_cid Whether to use large CIDs or not
  *
@@ -2126,7 +2097,7 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 		/* reduce the MAX_CID parameter if needed */
 		if(comp->medium.max_cid > ROHC_SMALL_CID_MAX)
 		{
-			rohc_c_set_max_cid(comp, ROHC_SMALL_CID_MAX);
+			__rohc_c_set_max_cid(comp, ROHC_SMALL_CID_MAX);
 		}
 	}
 }
@@ -4032,4 +4003,58 @@ static void rohc_feedback_destroy(struct rohc_comp *const comp)
 	comp->feedbacks_first_unlocked = 0;
 	comp->feedbacks_next = 0;
 }
+
+
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
+/**
+ * @brief Set the maximal CID value the compressor should use
+ *
+ * @param comp  The ROHC compressor
+ * @param value The new maximal CID value
+ */
+static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value)
+{
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* check validity of the new MAX_CID */
+	if(comp->medium.cid_type == ROHC_LARGE_CID)
+	{
+		/* large CID */
+		if(value < 0 || value > ROHC_LARGE_CID_MAX)
+		{
+			goto error;
+		}
+	}
+	else /* small CID */
+	{
+		if(value < 0 || value > ROHC_SMALL_CID_MAX)
+		{
+			goto error;
+		}
+	}
+
+	if(value != comp->medium.max_cid)
+	{
+		/* free memory used by contexts */
+		c_destroy_contexts(comp);
+
+		/* change MAX_CID */
+		comp->medium.max_cid = value;
+
+		/* create the MAX_CID contexts */
+		if(!c_create_contexts(comp))
+		{
+			goto error;
+		}
+	}
+
+error:
+	return;
+}
+
+#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 

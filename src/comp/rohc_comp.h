@@ -393,12 +393,20 @@ bool ROHC_EXPORT rohc_comp_get_mrru(const struct rohc_comp *const comp,
                                     size_t *const mrru)
 	__attribute__((warn_unused_result));
 
-void ROHC_EXPORT rohc_c_set_max_cid(struct rohc_comp *compressor, int value);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+void ROHC_EXPORT rohc_c_set_max_cid(struct rohc_comp *compressor, int value)
+	ROHC_DEPRECATED("please do not use this function anymore, use the "
+	                "parameter max_cid of rohc_comp_new() instead");
+#endif
 bool ROHC_EXPORT rohc_comp_get_max_cid(const struct rohc_comp *const comp,
                                        size_t *const max_cid)
 	__attribute__((warn_unused_result));
 
-void ROHC_EXPORT rohc_c_set_large_cid(struct rohc_comp *compressor, int value);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+void ROHC_EXPORT rohc_c_set_large_cid(struct rohc_comp *compressor, int value)
+	ROHC_DEPRECATED("please do not use this function anymore, use the "
+	                "parameter cid_type of rohc_comp_new() instead");
+#endif
 bool ROHC_EXPORT rohc_comp_get_cid_type(const struct rohc_comp *const comp,
                                         rohc_cid_type_t *const cid_type)
 	__attribute__((warn_unused_result));

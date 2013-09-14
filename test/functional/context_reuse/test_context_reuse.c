@@ -248,7 +248,6 @@ static int test_comp_and_decomp(const char *filename)
 		fprintf(stderr, "failed to enable the compression profiles\n");
 		goto destroy_comp;
 	}
-	rohc_c_set_large_cid(comp, 0);
 
 	/* set the callback for random numbers */
 	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))

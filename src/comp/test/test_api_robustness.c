@@ -188,11 +188,6 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_get_mrru(comp, &mrru) == true);
 	}
 
-	/* rohc_c_set_max_cid() */
-	rohc_c_set_max_cid(NULL, ROHC_SMALL_CID_MAX);
-	rohc_c_set_max_cid(comp, -1);
-	rohc_c_set_max_cid(comp, 0xffff);
-
 	/* rohc_comp_get_max_cid() */
 	{
 		size_t max_cid;
@@ -202,19 +197,13 @@ int main(int argc, char *argv[])
 		CHECK(max_cid == ROHC_SMALL_CID_MAX);
 	}
 
-	/* rohc_c_set_large_cid() */
-	rohc_c_set_large_cid(NULL, 1);
-	rohc_c_set_large_cid(comp, -1);
-	rohc_c_set_large_cid(comp, 0);
-	rohc_c_set_large_cid(comp, 1);
-
 	/* rohc_comp_get_cid_type() */
 	{
 		rohc_cid_type_t cid_type;
 		CHECK(rohc_comp_get_cid_type(NULL, &cid_type) == false);
 		CHECK(rohc_comp_get_cid_type(comp, NULL) == false);
 		CHECK(rohc_comp_get_cid_type(comp, &cid_type) == true);
-		CHECK(cid_type == ROHC_LARGE_CID);
+		CHECK(cid_type == ROHC_SMALL_CID);
 	}
 
 	/* rohc_comp_add_rtp_port() */
