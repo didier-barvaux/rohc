@@ -1848,9 +1848,14 @@ int rohc_c_using_small_cid(struct rohc_comp *comp)
 }
 
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the maximal header size. The maximal header size is ignored
  *        for the moment.
+ *
+ * @deprecated do not use this function anymore,
+ *             simply remove it from your code
  *
  * @param comp   The ROHC compressor
  * @param header The maximal header size
@@ -1859,11 +1864,9 @@ int rohc_c_using_small_cid(struct rohc_comp *comp)
  */
 void rohc_c_set_header(struct rohc_comp *comp, int header)
 {
-	comp->max_header_size = header;
+	/* nothing to do */
 }
 
-
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).

@@ -383,7 +383,11 @@ bool ROHC_EXPORT rohc_comp_disable_profiles(struct rohc_comp *const comp,
                                            ...)
 	__attribute__((warn_unused_result));
 
-void ROHC_EXPORT rohc_c_set_header(struct rohc_comp *compressor, int value);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+void ROHC_EXPORT rohc_c_set_header(struct rohc_comp *compressor, int value)
+	ROHC_DEPRECATED("do not use this function anymore, "
+	                "simply remove it from your code");
+#endif
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT rohc_c_set_mrru(struct rohc_comp *compressor, int value)

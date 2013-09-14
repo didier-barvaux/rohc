@@ -214,10 +214,8 @@ struct rohc_comp
 	/** The maximal number of packets sent in > FO states (= SO state)
 	 *  before changing back the state to FO (periodic refreshes) */
 	size_t periodic_refreshes_fo_timeout;
-	/** Maximum Reconstructed Reception Unit (currently not used) */
+	/** Maximum Reconstructed Reception Unit */
 	size_t mrru;
-	/** Maximum header size that will be compressed (currently not used) */
-	int max_header_size;
 	/** The connection type (currently not used) */
 	int connection_type;
 
