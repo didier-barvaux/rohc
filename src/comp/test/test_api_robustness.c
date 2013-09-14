@@ -186,6 +186,7 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_get_mrru(NULL, &mrru) == false);
 		CHECK(rohc_comp_get_mrru(comp, NULL) == false);
 		CHECK(rohc_comp_get_mrru(comp, &mrru) == true);
+		CHECK(mrru == 65535);
 	}
 
 	/* rohc_comp_get_max_cid() */

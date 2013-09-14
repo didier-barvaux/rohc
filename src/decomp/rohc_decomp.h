@@ -263,6 +263,9 @@ bool ROHC_EXPORT rohc_decomp_get_max_cid(const struct rohc_decomp *const decomp,
 bool ROHC_EXPORT rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                                       const size_t mrru)
 	__attribute__((warn_unused_result));
+bool ROHC_EXPORT rohc_decomp_get_mrru(const struct rohc_decomp *const decomp,
+                                      size_t *const mrru)
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_set_features(struct rohc_decomp *const decomp,
                                           const rohc_decomp_features_t features)

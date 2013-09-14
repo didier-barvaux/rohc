@@ -2001,6 +2001,7 @@ error:
  * @see rohc_comp_set_mrru
  * @see rohc_comp_get_segment
  * @see rohc_decomp_set_mrru
+ * @see rohc_decomp_get_mrru
  */
 bool rohc_comp_get_mrru(const struct rohc_comp *const comp,
                         size_t *const mrru)

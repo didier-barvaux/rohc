@@ -155,6 +155,15 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_set_mrru(decomp, 0) == true);
 	CHECK(rohc_decomp_set_mrru(decomp, 65535) == true);
 
+	/* rohc_decomp_get_mrru() */
+	{
+		size_t mrru;
+		CHECK(rohc_decomp_get_mrru(NULL, &mrru) == false);
+		CHECK(rohc_decomp_get_mrru(decomp, NULL) == false);
+		CHECK(rohc_decomp_get_mrru(decomp, &mrru) == true);
+		CHECK(mrru == 65535);
+	}
+
 	/* rohc_decomp_get_max_cid() */
 	{
 		size_t max_cid;

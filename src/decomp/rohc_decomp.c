@@ -2524,6 +2524,52 @@ error:
 
 
 /**
+ * @brief Get the Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * Get the current Maximum Reconstructed Reception Unit (MRRU).
+ *
+ * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
+ * that are parts of the same ROHC packet. In short, the ROHC decompressor
+ * does not expect to reassemble ROHC segments whose total length is larger
+ * than MRRU. So, the ROHC compressor shall not segment ROHC packets greater
+ * than the MRRU.
+ *
+ * The MRRU value must be in range [0 ; \ref ROHC_MAX_MRRU]. Remember that the
+ * MRRU includes the 32-bit CRC that protects it.
+ * If MRRU value is 0, segmentation is disabled.
+ *
+ * If segmentation is enabled and used by the compressor, the function
+ * \ref rohc_decompress2 will return ROHC_NON_FINAL_SEGMENT upon decompression
+ * until the last segment is received (or a non-segment is received).
+ *
+ * @param decomp     The ROHC decompressor
+ * @param[out] mrru  The current MRRU value (in bytes)
+ * @return           true if MRRU was successfully retrieved, false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_set_mrru
+ * @see rohc_decompress2
+ * @see rohc_comp_set_mrru
+ * @see rohc_comp_get_mrru
+ */
+bool rohc_decomp_get_mrru(const struct rohc_decomp *const decomp,
+                          size_t *const mrru)
+{
+	if(decomp == NULL || mrru == NULL)
+	{
+		goto error;
+	}
+
+	*mrru = decomp->mrru;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Enable/disable features for ROHC decompressor
  *
  * Enable/disable features for ROHC decompressor. Features control whether
