@@ -107,6 +107,7 @@ EXPORT_SYMBOL_GPL(rohc_decomp_get_last_packet_info);
 
 /* configuration */
 EXPORT_SYMBOL_GPL(rohc_decomp_set_cid_type);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_cid_type);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_max_cid);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_max_cid);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_mrru);

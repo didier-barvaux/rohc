@@ -2395,6 +2395,35 @@ error:
 
 
 /**
+ * @brief Get the CID type that the decompressor uses
+ *
+ * Get the CID type that the decompressor currently uses.
+ *
+ * @param decomp         The ROHC decompressor
+ * @param[out] cid_type  The current CID type among \ref ROHC_SMALL_CID and
+ *                       \ref ROHC_LARGE_CID
+ * @return               true if the CID type was successfully retrieved,
+ *                       false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp,
+                              rohc_cid_type_t *const cid_type)
+{
+	if(decomp == NULL || cid_type == NULL)
+	{
+		goto error;
+	}
+
+	*cid_type = decomp->medium.cid_type;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Set the MAX_CID allowed for the given decompressor
  *
  * Set the MAX_CID allowed for the given decompressor.

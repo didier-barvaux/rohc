@@ -2133,9 +2133,9 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 
 
 /**
- * @brief Get the CID type the compressor uses
+ * @brief Get the CID type that the compressor uses
  *
- * Get the CID type the compressor curently uses.
+ * Get the CID type that the compressor currently uses.
  *
  * @param comp           The ROHC compressor
  * @param[out] cid_type  The current CID type among \ref ROHC_SMALL_CID and
@@ -2159,6 +2159,7 @@ bool rohc_comp_get_cid_type(const struct rohc_comp *const comp,
 error:
 	return false;
 }
+
 
 /**
  * @brief Add a port to the list of UDP ports dedicated for RTP traffic

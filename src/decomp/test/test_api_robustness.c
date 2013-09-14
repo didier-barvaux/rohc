@@ -176,6 +176,15 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID) == true);
 	CHECK(rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID + 1) == false);
 
+	/* rohc_decomp_get_cid_type() */
+	{
+		rohc_cid_type_t cid_type;
+		CHECK(rohc_decomp_get_cid_type(NULL, &cid_type) == false);
+		CHECK(rohc_decomp_get_cid_type(decomp, NULL) == false);
+		CHECK(rohc_decomp_get_cid_type(decomp, &cid_type) == true);
+		CHECK(cid_type == ROHC_LARGE_CID);
+	}
+
 	/* rohc_decompress2() */
 	{
 		const struct timespec time = { .tv_sec = 0, .tv_nsec = 0 };

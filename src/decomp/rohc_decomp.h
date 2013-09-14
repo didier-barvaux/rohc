@@ -242,6 +242,9 @@ void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
 bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                                           const rohc_cid_type_t cid_type)
 	__attribute__((warn_unused_result));
+bool ROHC_EXPORT rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp,
+                                          rohc_cid_type_t *const cid_type)
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                          const size_t max_cid)
