@@ -26,16 +26,22 @@
 
 
 /**
- * @defgroup rohc_common ROHC compressor/decompressor common API
+ * @defgroup rohc  The ROHC compressor/decompressor common API
+ *
+ * The common API of the ROHC library allows a program to print the version of
+ * the ROHC library, or retrieve the description of ROHC modes and packets. No
+ * initialization is required.
  */
 
 
 /**
  * @brief Get the version of the ROHC library
  *
+ * Get the version of the ROHC library
+ *
  * @return the version of the library
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  *
  * \par Example:
  * @snippet print_rohc_version.c get ROHC version
@@ -49,6 +55,8 @@ char * rohc_version(void)
 /**
  * @brief Give a description for the given ROHC mode
  *
+ * Give a description for the given ROHC mode.
+ *
  * The descriptions are not part of the API. They may change between
  * releases without any warning. Do NOT use them for other means that
  * providing to users a textual description of modes used by the
@@ -57,7 +65,7 @@ char * rohc_version(void)
  * @param mode  The ROHC mode to get a description for
  * @return      A string that describes the given ROHC mode
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 const char * rohc_get_mode_descr(const rohc_mode_t mode)
 {

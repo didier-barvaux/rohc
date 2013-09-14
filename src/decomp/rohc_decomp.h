@@ -54,9 +54,12 @@ struct rohc_decomp;
 /**
  * @brief The ROHC decompressor states
  *
- * See 4.3.2 in the RFC 3095.
+ * The different ROHC operation states at decompressor as defined in section
+ * 4.3.2 of RFC 3095.
  *
  * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_get_state_descr
  */
 typedef enum
 {
@@ -72,11 +75,14 @@ typedef enum
 /**
  * @brief Some information about the last decompressed packet
  *
+ * The structure is used by the \ref rohc_decomp_get_last_packet_info function
+ * to store some information about the last decompressed packet.
+ *
  * Versioning works as follow:
- *  - The 'version_major' field defines the compatibility level. If the major
+ *  - The \e version_major field defines the compatibility level. If the major
  *    number given by user does not match the one expected by the library,
  *    an error is returned.
- *  - The 'version_minor' field defines the extension level. If the minor
+ *  - The \e version_minor field defines the extension level. If the minor
  *    number given by user does not match the one expected by the library,
  *    only the fields supported in that minor version will be filled by
  *    \ref rohc_decomp_get_last_packet_info.
@@ -92,23 +98,15 @@ typedef enum
  *  - The structure must be packed.
  *
  * Supported versions:
- *  - Major = 0:
- *     - Minor = 0:
- *        version_major
- *        version_minor
- *        context_mode
- *        context_state
- *        profile_id
- *        nr_lost_packets
- *        nr_misordered_packets
- *        is_duplicated
- *     - Minor = 1:
- *        + corrected_crc_failures
- *        + corrected_sn_wraparounds
- *        + corrected_wrong_sn_updates
- *        + packet_type
+ *  - Major 0 / Minor 0 contains: version_major, version_minor, context_mode,
+ *    context_state, profile_id, nr_lost_packets, nr_misordered_packets, and
+ *    is_duplicated
+ *  - Major 0 / Minor = 1 added: corrected_crc_failures,
+ *    corrected_sn_wraparounds, corrected_wrong_sn_updates, and packet_type
  *
  * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_get_last_packet_info
  */
 typedef struct
 {
@@ -143,7 +141,17 @@ typedef struct
 } __attribute__((packed)) rohc_decomp_last_packet_info_t;
 
 
-/** The different features of the ROHC decompressor */
+/**
+ * @brief The different features of the ROHC decompressor
+ *
+ * Features for the ROHC decompressor control whether mechanisms defined as
+ * optional by RFCs are enabled or not. They can be set or unset with the
+ * function \ref rohc_decomp_set_features.
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_set_features
+ */
 typedef enum
 {
 	/** No feature at all */

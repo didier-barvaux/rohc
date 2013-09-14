@@ -57,7 +57,7 @@
  *
  * @see http://standards.ieee.org/regauth/ethertype/eth.txt
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_ETHERTYPE  0x22f1
 
@@ -68,44 +68,44 @@
 
 /**
  * @brief Return code: the action was performed without problem
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_OK                     1
 /**
  * @brief Return code: the action failed because no context is defined
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_ERROR_NO_CONTEXT      -1
 /**
  * @brief Return code: the action failed due to an unattended or malformed packet
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_ERROR_PACKET_FAILED   -2
 /**
  * @brief Return code: the action failed because the packet only contains feedback info
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_FEEDBACK_ONLY         -3
 /**
  * @brief Return code: the action failed due to a CRC failure
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_ERROR_CRC             -4
 /**
  * @brief Return code: the action encountered a problem
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_ERROR                 -5
 /// Return code: the packet needs to be parsed again
 #define ROHC_NEED_REPARSE          -6
 /**
  * @brief Return code: the action succeeded but packet needs to be segmented
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_NEED_SEGMENT          -7
 /**
  * @brief Return code: the action succeeded but packet is a non-final segment
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_NON_FINAL_SEGMENT     -8
 
@@ -118,7 +118,11 @@
  * If you add a new operation mode, please also add the corresponding textual
  * description in \ref rohc_get_mode_descr.
  *
- * @ingroup rohc_common
+ * @deprecated do not use this type anymore, use \ref rohc_mode_t instead
+ *
+ * @ingroup rohc
+ *
+ * @see rohc_mode_t
  */
 typedef enum
 {
@@ -135,12 +139,16 @@ typedef enum
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 /**
- * @brief ROHC operation modes (see 4.4 in the RFC 3095)
+ * @brief ROHC operation modes
+ *
+ * The different ROHC operation modes as defined in section 4.4 of RFC 3095.
  *
  * If you add a new operation mode, please also add the corresponding textual
  * description in \ref rohc_get_mode_descr.
  *
- * @ingroup rohc_common
+ * @ingroup rohc
+ *
+ * @see rohc_get_mode_descr
  */
 typedef enum
 {
@@ -157,7 +165,7 @@ typedef enum
 /**
  * @brief The maximum value for large CIDs
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  *
  * @see rohc_comp_new
  * @see rohc_c_set_max_cid
@@ -168,7 +176,7 @@ typedef enum
 /**
  * @brief The maximum value for small CIDs
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  *
  * @see rohc_comp_new
  * @see rohc_c_set_max_cid
@@ -182,22 +190,27 @@ typedef enum
 
 
 /**
- * @brief The different types of Context IDs (CID) a ROHC compressor or a ROHC
- *        decompressor may use
+ * @brief The different types of Context IDs (CID)
+ *
+ * The different types of Context IDs (CID) a ROHC compressor or a ROHC
+ * decompressor may use.
  *
  * Possible values are:
  *  \li \ref ROHC_LARGE_CID : large CID means that a ROHC compressor or a ROHC
  *      decompressor may identify contexts with IDs in the range
- *      [0, \ref ROHC_LARGE_CID_MAX], ie. it may uniquely identify at
+ *      [0, \ref ROHC_LARGE_CID_MAX ], ie. it may uniquely identify at
  *      most \e ROHC_LARGE_CID_MAX + 1 streams.
  *  \li \ref ROHC_SMALL_CID : small CID means that a ROHC compressor or a ROHC
  *      decompressor may identify contexts with IDs in the range
- *      [0, \ref ROHC_SMALL_CID_MAX], ie. it may uniquely identify at
+ *      [0, \ref ROHC_SMALL_CID_MAX ], ie. it may uniquely identify at
  *      most \e ROHC_SMALL_CID_MAX + 1 streams.
+ *
+ * In short, you choose the CID type in function of the number of simultaneous
+ * streams you have to compress efficiently.
  *
  * @see ROHC_SMALL_CID_MAX ROHC_LARGE_CID_MAX
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 typedef enum
 {

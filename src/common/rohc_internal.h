@@ -76,7 +76,7 @@
  * <p>The APIs for ROHC common, compression and decompression are available on
  * separate pages:
  *  <ul>
- *    <li>\ref rohc_common</li>
+ *    <li>\ref rohc</li>
  *    <li>\ref rohc_comp</li>
  *    <li>\ref rohc_decomp</li>
  *  </ul>

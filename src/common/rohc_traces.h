@@ -30,7 +30,7 @@
  * @brief A general profile number used for traces not related to a specific
  *        profile
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 #define ROHC_PROFILE_GENERAL       0xffff
 
@@ -38,7 +38,14 @@
 /**
  * @brief The different levels of the traces
  *
- * @ingroup rohc_common
+ * Used for the \e level parameter of the \ref rohc_trace_callback_t
+ * user-defined callback.
+ *
+ * @ingroup rohc
+ *
+ * @see rohc_trace_callback_t
+ * @see rohc_comp_set_traces_cb
+ * @see rohc_decomp_set_traces_cb
  */
 typedef enum
 {
@@ -53,7 +60,14 @@ typedef enum
 /**
  * @brief The different entities concerned by the traces
  *
- * @ingroup rohc_common
+ * Used for the source \e entity parameter of the \ref rohc_trace_callback_t
+ * user-defined callback.
+ *
+ * @ingroup rohc
+ *
+ * @see rohc_trace_callback_t
+ * @see rohc_comp_set_traces_cb
+ * @see rohc_decomp_set_traces_cb
  */
 typedef enum
 {
@@ -66,12 +80,29 @@ typedef enum
 /**
  * @brief The function prototype for the trace callback
  *
+ * User-defined function that is called by the ROHC library every time it
+ * wants to print something, from errors to debug. User may thus decide what
+ * traces are interesting (filter on \e level, source \e entity, or
+ * \e profile) and what to do with them (print on console, storage in file,
+ * syslog...).
+ *
+ * The user-defined function is set by calling:
+ *  \li function \ref rohc_comp_set_traces_cb for a ROHC compressor,
+ *  \li function \ref rohc_decomp_set_traces_cb for a ROHC decompressor.
+ *
+ * Both functions accept the NULL value to fully disable tracing.
+ *
  * @param level    The level of the message, @see rohc_trace_level_t
  * @param entity   The entity concerned by the traces, @see rohc_trace_entity_t
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
  *
- * @ingroup rohc_common
+ * @ingroup rohc
+ *
+ * @see rohc_trace_level_t
+ * @see rohc_trace_entity_t
+ * @see rohc_comp_set_traces_cb
+ * @see rohc_decomp_set_traces_cb
  */
 typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
                                        const rohc_trace_entity_t entity,

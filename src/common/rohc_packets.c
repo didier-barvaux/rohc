@@ -26,6 +26,8 @@
 /**
  * @brief Give a description for the given type of ROHC packet
  *
+ * Give a description for the given type of ROHC packet.
+ *
  * The descriptions are not part of the API. They may change between
  * releases without any warning. Do NOT use them for other means that
  * providing to users a textual description of the packets used by the
@@ -34,7 +36,7 @@
  * @param packet_type  The type of packet to get a description for
  * @return             A string that describes the given packet type
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 {
@@ -122,6 +124,8 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 /**
  * @brief Give a description for the given type of ROHC extension
  *
+ * Give a description for the given type of ROHC extension.
+ *
  * The descriptions are not part of the API. They may change between
  * releases without any warning. Do NOT use them for other means that
  * providing to users a textual description of the extensions used by
@@ -130,7 +134,7 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
  * @param ext_type  The type of extension to get a description for
  * @return          A string that describes the given extension type
  *
- * @ingroup rohc_common
+ * @ingroup rohc
  */
 const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 {

@@ -62,12 +62,15 @@ struct rohc_comp;
 /**
  * @brief The different ROHC compressor states
  *
- * See 4.3.1 in the RFC 3095.
+ * The different ROHC operation states at compressor as defined in section
+ * 4.3.1 of RFC 3095.
  *
  * If you add a new compressor state, please also add the corresponding
  * textual description in \ref rohc_comp_get_state_descr.
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_get_state_descr
  */
 typedef enum
 {
@@ -85,26 +88,23 @@ typedef enum
 /**
  * @brief Some information about the last compressed packet
  *
- * Non-extensible version of rohc_comp_last_packet_info2_t
+ * Non-extensible version of \ref rohc_comp_last_packet_info2_t
+ *
+ * @deprecated do not use this struct anymore,
+ *             use rohc_comp_last_packet_info2_t instead
  *
  * @ingroup rohc_comp
  */
 typedef struct
 {
-	/** The mode of the last context used by the compressor */
-	rohc_mode_t context_mode;
-	/** The state of the last context used by the compressor */
-	rohc_c_state context_state;
-	/** The type of ROHC packet created for the last compressed packet */
-	rohc_packet_t packet_type;
-	/** The uncompressed size (in bytes) of the last compressed packet */
-	unsigned long total_last_uncomp_size;
-	/** The uncompressed size (in bytes) of the last compressed header */
-	unsigned long header_last_uncomp_size;
-	/** The compressed size (in bytes) of the last compressed packet */
-	unsigned long total_last_comp_size;
-	/** The compressed size (in bytes) of the last compressed header */
-	unsigned long header_last_comp_size;
+	rohc_mode_t context_mode;              /**< Compression mode */
+	rohc_c_state context_state;            /**< Compression state */
+	rohc_packet_t packet_type;             /**< Packet type */
+	unsigned long total_last_uncomp_size;  /**< Uncompressed packet size (bytes) */
+	unsigned long header_last_uncomp_size; /**< Uncompressed header size (bytes) */
+	unsigned long total_last_comp_size;    /**< Compressed packet size (bytes) */
+	unsigned long header_last_comp_size;   /**< Compressed header size (bytes) */
+
 } rohc_comp_last_packet_info_t;
 
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
@@ -113,12 +113,14 @@ typedef struct
 /**
  * @brief Some information about the last compressed packet
  *
- * Extensible version of rohc_comp_last_packet_info_t. Versioning works
- * as follow:
- *  - The 'version_major' field defines the compatibility level. If the major
+ * The structure is used by the \ref rohc_comp_get_last_packet_info2 function
+ * to store some information about the last compressed packet.
+ *
+ * Versioning works as follow:
+ *  - The \e version_major field defines the compatibility level. If the major
  *    number given by user does not match the one expected by the library,
  *    an error is returned.
- *  - The 'version_minor' field defines the extension level. If the minor
+ *  - The \e version_minor field defines the extension level. If the minor
  *    number given by user does not match the one expected by the library,
  *    only the fields supported in that minor version will be filled by
  *    \ref rohc_comp_get_last_packet_info2.
@@ -134,23 +136,14 @@ typedef struct
  *  - The structure must be packed.
  *
  * Supported versions:
- *  - Major = 0:
- *     - Minor = 0:
- *        version_major
- *        version_minor
- *        context_id
- *        is_context_init
- *        context_mode
- *        context_state
- *        context_used
- *        profile_id
- *        packet_type
- *        total_last_uncomp_size
- *        header_last_uncomp_size
- *        total_last_comp_size
- *        header_last_comp_size
+ *  - Major 0 / Minor 0 contains: version_major, version_minor, context_id,
+ *    is_context_init, context_mode, context_state, context_used, profile_id,
+ *    packet_type, total_last_uncomp_size, header_last_uncomp_size,
+ *    total_last_comp_size, and header_last_comp_size
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_get_last_packet_info2
  */
 typedef struct
 {
@@ -186,11 +179,14 @@ typedef struct
 /**
  * @brief Some general information about the compressor
  *
+ * The structure is used by the \ref rohc_comp_get_general_info function
+ * to store some general information about the compressor.
+ *
  * Versioning works as follow:
- *  - The 'version_major' field defines the compatibility level. If the major
+ *  - The \e version_major field defines the compatibility level. If the major
  *    number given by user does not match the one expected by the library,
  *    an error is returned.
- *  - The 'version_minor' field defines the extension level. If the minor
+ *  - The \e version_minor field defines the extension level. If the minor
  *    number given by user does not match the one expected by the library,
  *    only the fields supported in that minor version will be filled by
  *    \ref rohc_comp_get_general_info.
@@ -206,12 +202,12 @@ typedef struct
  *  - The structure must be packed.
  *
  * Supported versions:
- *  - Major = 0:
- *     - Minor = 0:
- *        version_major
- *        version_minor
+ *  - major 0 and minor = 0 contains: version_major, version_minor,
+ *    contexts_nr, packets_nr, uncomp_bytes_nr, and comp_bytes_nr.
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_get_general_info
  */
 typedef struct
 {
@@ -232,6 +228,14 @@ typedef struct
 
 /**
  * @brief The prototype of the RTP detection callback
+ *
+ * User-defined function that is called by the ROHC library for every UDP
+ * packet to determine whether the UDP packet transports RTP data. If the
+ * function returns true, the RTP profile is used to compress the packet.
+ * Otherwise the UDP profile is used.
+ *
+ * The user-defined function is set by calling the function
+ * \ref rohc_comp_set_rtp_detection_cb
  *
  * @param ip           The innermost IP packet
  * @param udp          The UDP header of the packet
@@ -254,6 +258,13 @@ typedef bool (*rohc_rtp_detection_callback_t)(const unsigned char *const ip,
 
 /**
  * @brief The prototype of the callback for random numbers
+ *
+ * User-defined function that is called when the ROHC library requires a random
+ * number. Currently, the ROHC library uses it when initializing the Sequence
+ * Number (SN) of contexts using the IP-only, IP/UDP, and IP/UDP-Lite profiles.
+ *
+ * The user-defined function is set by calling the function
+ * \ref rohc_comp_set_random_cb
  *
  * @param comp          The ROHC compressor
  * @param user_context  The context given by the user when he/she called the

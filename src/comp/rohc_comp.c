@@ -24,7 +24,14 @@
  */
 
 /**
- * @defgroup rohc_comp ROHC compression API
+ * @defgroup rohc_comp  The ROHC compression API
+ *
+ * The compression API of the ROHC library allows a program to compress the
+ * protocol headers of some uncompressed packets into ROHC packets.
+ *
+ * The program shall first create a compressor context and configure it. It
+ * then may compress as many packets as needed. When done, the ROHC compressor
+ * context shall be destroyed.
  */
 
 #include "rohc_comp.h"
@@ -177,7 +184,7 @@ static int __rohc_c_context(struct rohc_comp *comp,
  *                    NULL otherwise
  *
  * @warning Don't forget to free compressor memory with
- *          \ref rohc_free_compressor if rohc_alloc_compressor succeeded
+ *          \ref rohc_free_compressor if \e rohc_alloc_compressor succeeded
  *
  * @ingroup rohc_comp
  *
@@ -258,7 +265,7 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * Create a new ROHC compressor with the given type of CIDs and MAX_CID.
  *
  * @param cid_type  The type of Context IDs (CID) that the ROHC compressor
- *                  shall operate with. \n
+ *                  shall operate with.
  *                  Accepted values are:
  *                    \li \ref ROHC_SMALL_CID for small CIDs
  *                    \li \ref ROHC_LARGE_CID for large CIDs
@@ -274,7 +281,7 @@ void rohc_free_compressor(struct rohc_comp *comp)
  *                  NULL if creation failed
  *
  * @warning Don't forget to free compressor memory with \ref rohc_comp_free
- *          if rohc_comp_new succeeded
+ *          if \e rohc_comp_new succeeded
  *
  * @ingroup rohc_comp
  *
@@ -512,6 +519,15 @@ void rohc_comp_free(struct rohc_comp *comp)
 /**
  * @brief Set the callback function used to manage traces in compressor
  *
+ * Set the user-defined callback function used to manage traces in the
+ * compressor.
+ *
+ * The function will be called by the ROHC library every time it wants to
+ * print something related to compression, from errors to debug. User may
+ * thus decide what traces are interesting (filter on \e level, source
+ * \e entity, or \e profile) and what to do with them (print on console,
+ * storage in file, syslog...).
+ *
  * @warning The callback can not be modified after library initialization
  *
  * @param comp     The ROHC compressor
@@ -563,6 +579,7 @@ error:
  * @param entity   The entity concerned by the traces
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
+ * @param ...      The arguments related to the format string
  */
 static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
                                           const rohc_trace_entity_t entity,
@@ -595,6 +612,11 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 /**
  * @brief Set the user-defined callback for random numbers
  *
+ * Set the user-defined callback for random numbers. The callback is called
+ * by the ROHC library every time a new random number is required. It
+ * currently happens only to initiate the Sequence Number (SN) of new IP-only,
+ * IP/UDP, or IP/UDP-Lite streams to a random value as defined by RFC 3095.
+ *
  * If no callback is defined, an internal one that always returns 0 will be
  * defined for compatibility reasons.
  *
@@ -604,6 +626,8 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
  *                      be used as a context by user
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_random_cb_t
  */
 bool rohc_comp_set_random_cb(struct rohc_comp *const comp,
                              rohc_comp_random_cb_t callback,
@@ -714,7 +738,7 @@ error:
  * @param rohc_packet          The buffer where to store the ROHC packet
  * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
  *                             for the ROHC packet
- * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
+ * @param[out] rohc_packet_len The length (in bytes) of the ROHC packet
  * @return                     \li \e ROHC_OK if a ROHC packet is returned
  *                             \li \e ROHC_NEED_SEGMENT if no compressed data
  *                                 is returned and segmentation required
@@ -740,33 +764,35 @@ int rohc_compress2(struct rohc_comp *const comp,
 /**
  * @brief Compress the given IP packet into a ROHC packet
  *
- * ROHC compression may succeed into two ways:
+ * Compress the given IP packet into a ROHC packet. The compression may
+ * succeed into two different ways:
  *   \li return \ref ROHC_OK and a full ROHC packet,
  *   \li return \ref ROHC_NEED_SEGMENT and no ROHC data if ROHC segmentation
  *       is required.
  *
  * The ROHC compressor has to use ROHC segmentation if the output buffer
  * rohc_packet was too small for the compressed ROHC packet and if the
- * Maximum Reconstructed Reception Unit (MRRU) configured with
+ * Maximum Reconstructed Reception Unit (MRRU) configured with the function
  * \ref rohc_comp_set_mrru was not exceeded. If ROHC segmentation is used, one
  * may use the \ref rohc_comp_get_segment function to retrieve all the ROHC
  * segments one by one.
  *
- * @param comp                 The ROHC compressor
- * @param arrival_time         The time at which packet was received
- *                             (0 if unknown, or to disable time-related
- *                              features in the ROHC protocol)
- * @param uncomp_packet        The uncompressed packet to compress
- * @param uncomp_packet_len    The size of the uncompressed packet
- * @param rohc_packet          The buffer where to store the ROHC packet
- * @param rohc_packet_max_len  The maximum length (in bytes) of the buffer
- *                             for the ROHC packet
- * @param rohc_packet_len      OUT: The length (in bytes) of the ROHC packet
- * @return                     \li \ref ROHC_OK if a ROHC packet is returned
- *                             \li \ref ROHC_NEED_SEGMENT if no ROHC data is
- *                                 returned and ROHC segments can be
- *                                 retrieved with \ref rohc_comp_get_segment
- *                             \li \ref ROHC_ERROR if an error occurred
+ * @param comp                  The ROHC compressor
+ * @param arrival_time          The time at which packet was received
+ *                              (0 if unknown, or to disable time-related
+ *                               features in the ROHC protocol)
+ * @param uncomp_packet         The uncompressed packet to compress
+ * @param uncomp_packet_len     The size of the uncompressed packet
+ * @param rohc_packet           The buffer where to store the ROHC packet
+ * @param rohc_packet_max_len   The maximum length (in bytes) of the buffer
+ *                              for the ROHC packet
+ * @param[out] rohc_packet_len  The length (in bytes) of the ROHC packet
+ * @return                      Possible return values:
+ *                              \li \ref ROHC_OK if a ROHC packet is returned
+ *                              \li \ref ROHC_NEED_SEGMENT if no ROHC data is
+ *                                  returned and ROHC segments can be
+ *                                  retrieved with \ref rohc_comp_get_segment
+ *                              \li \ref ROHC_ERROR if an error occurred
  *
  * @ingroup rohc_comp
  *
@@ -1151,19 +1177,22 @@ error:
 /**
  * @brief Get the next ROHC segment if any
  *
+ * Get the next ROHC segment if any.
+ *
  * To get all the segments of one ROHC packet, call this function until
  * \ref ROHC_OK is returned.
  *
- * @param comp     The ROHC compressor
- * @param segment  The buffer where to store the ROHC segment
- * @param max_len  The maximum length (in bytes) of the buffer for the
- *                 ROHC segment
- * @param len      OUT: The length (in bytes) of the ROHC segment
- * @return         \li \ref ROHC_NEED_SEGMENT if a ROHC segment is returned
- *                     and more segments are available,
- *                 \li \ref ROHC_OK if a ROHC segment is returned
- *                     and no more ROHC segment is available
- *                 \li \ref ROHC_ERROR if an error occurred
+ * @param comp      The ROHC compressor
+ * @param segment   The buffer where to store the ROHC segment
+ * @param max_len   The maximum length (in bytes) of the buffer for the
+ *                  ROHC segment
+ * @param[out] len  The length (in bytes) of the ROHC segment
+ * @return          Possible return values:
+ *                  \li \ref ROHC_NEED_SEGMENT if a ROHC segment is returned
+ *                      and more segments are available,
+ *                  \li \ref ROHC_OK if a ROHC segment is returned
+ *                      and no more ROHC segment is available
+ *                  \li \ref ROHC_ERROR if an error occurred
  *
  * @ingroup rohc_comp
  *
@@ -1330,11 +1359,16 @@ error:
 
 
 /**
- * @brief Set the window width for the W-LSB algorithm
+ * @brief Set the window width for the W-LSB encoding scheme
  *
- * W-LSB window width is set to \ref C_WINDOW_WIDTH by default.
+ * Set the window width for the Window-based Least Significant Bits (W-LSB)
+ * encoding. See section 4.5.2 of RFC 3095 for more details about the encoding
+ * scheme.
+ *
+ * The width of the W-LSB window is set to \ref C_WINDOW_WIDTH by default.
  *
  * @warning The value must be a power of 2
+ *
  * @warning The value can not be modified after library initialization
  *
  * @param comp   The ROHC compressor
@@ -1388,11 +1422,12 @@ bool rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
 /**
  * @brief Set the timeout values for IR and FO periodic refreshes
  *
- * The IR timeout shall be greater than the FO timeout. Both timeouts are
- * expressed in number of compressed packets.
+ * Set the timeout values for IR and FO periodic refreshes. The IR timeout
+ * shall be greater than the FO timeout. Both timeouts are expressed in
+ * number of compressed packets.
  *
- * IR timeout is set to \ref CHANGE_TO_IR_COUNT by default.
- * FO timeout is set to \ref CHANGE_TO_FO_COUNT by default.
+ * The IR timeout is set to \ref CHANGE_TO_IR_COUNT by default.
+ * The FO timeout is set to \ref CHANGE_TO_FO_COUNT by default.
  *
  * @warning The values can not be modified after library initialization
  *
@@ -1447,6 +1482,18 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 /**
  * @brief Set the RTP detection callback function
  *
+ * Set or replace the callback function that the ROHC library will call to
+ * detect RTP streams among other UDP streams.
+ *
+ * The function is called once per UDP packet to compress, with the IP and
+ * UDP headers and the UDP payload. If the callback function returns true, the
+ * RTP profile is used for compression, otherwise the IP/UDP profile is used
+ * instead.
+ *
+ * Special value NULL may be used to disable the detection of RTP streams with
+ * the callback method. The detection will then be based on a list of UDP
+ * ports dedicated for RTP streams.
+ *
  * @param comp        The ROHC compressor
  * @param callback    The callback function used to detect RTP packets
  *                    The callback is deactivated if NULL is given as parameter
@@ -1455,6 +1502,11 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
  * @return            true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_rtp_detection_callback_t
+ * @see rohc_comp_add_rtp_port
+ * @see rohc_comp_remove_rtp_port
+ * @see rohc_comp_reset_rtp_ports
  */
 bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
                                     rohc_rtp_detection_callback_t callback,
@@ -1519,7 +1571,14 @@ error:
 /**
  * @brief Enable a compression profile for a compressor
  *
- * If the profile is already enabled, it is ignored.
+ * Enable a compression profiles for a compressor.
+ *
+ * The ROHC compressor does not use the compression profiles that are not
+ * enabled. Thus not enabling a profile might affect compression performances.
+ * Compression will fail if no profile at all is enabled.
+ *
+ * If the profile is already enabled, nothing is performed and success is
+ * reported.
  *
  * @param comp     The ROHC compressor
  * @param profile  The ID of the profile to enable
@@ -1584,7 +1643,14 @@ error:
 /**
  * @brief Disable a compression profile for a compressor
  *
- * If the profile is already disabled, it is ignored.
+ * Disable a compression profile for a compressor.
+ *
+ * The ROHC compressor does not use the compression profiles that were
+ * disabled. Thus disabling a profile might affect compression performances.
+ * Compression will fail if no profile at all is enabled.
+ *
+ * If the profile is already disabled, nothing is performed and success is
+ * reported.
  *
  * @param comp     The ROHC compressor
  * @param profile  The ID of the profile to disable
@@ -1639,11 +1705,19 @@ error:
 /**
  * @brief Enable several compression profiles for a compressor
  *
- * The list of profile IDs to enable shall stop with -1.
+ * Enable several compression profiles for a compressor. The list of profile
+ * IDs to enable shall stop with -1.
  *
- * If one or more of the profiles are already enabled, they are ignored.
+ * The ROHC compressor does not use the compression profiles that are not
+ * enabled. Thus not enabling a profile might affect compression performances.
+ * Compression will fail if no profile at all is enabled.
+ *
+ * If one or more of the profiles are already enabled, nothing is performed
+ * and success is reported.
  *
  * @param comp  The ROHC compressor
+ * @param ...   The sequence of IDs of the compression profiles to enable,
+ *              sequence shall be terminated by -1
  * @return      true if all of the profiles exist,
  *              false if at least one of the profiles does not exist
  *
@@ -1699,11 +1773,19 @@ error:
 /**
  * @brief Disable several compression profiles for a compressor
  *
- * The list of profile IDs to disable shall stop with -1.
+ * Disable several compression profiles for a compressor. The list of profile
+ * IDs to disable shall stop with -1.
  *
- * If one or more of the profiles are already disabled, they are ignored.
+ * The ROHC compressor does not use the compression profiles that were
+ * disabled. Thus disabling a profile might affect compression performances.
+ * Compression will fail if no profile at all is enabled.
+ *
+ * If one or more of the profiles are already disabled, nothing is performed
+ * and success is reported.
  *
  * @param comp  The ROHC compressor
+ * @param ...   The sequence of IDs of the compression profiles to disable,
+ *              sequence shall be terminated by -1
  * @return      true if all of the profiles exist,
  *              false if at least one of the profiles does not exist
  *
@@ -1809,6 +1891,8 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
+ * Set the Maximum Reconstructed Reception Unit (MRRU).
+ *
  * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
  * that are parts of the same ROHC packet. In short, the ROHC decompressor
  * does not expect to reassemble ROHC segments whose total length is larger
@@ -1878,6 +1962,8 @@ error:
 /**
  * @brief Get the Maximum Reconstructed Reception Unit (MRRU).
  *
+ * Get the current Maximum Reconstructed Reception Unit (MRRU).
+ *
  * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
  * that are parts of the same ROHC packet. In short, the ROHC decompressor
  * does not expect to reassemble ROHC segments whose total length is larger
@@ -1891,9 +1977,9 @@ error:
  * If segmentation is enabled and used by the compressor, the function
  * \ref rohc_comp_get_segment can be used to retrieve ROHC segments.
  *
- * @param comp  The ROHC compressor
- * @param mrru  OUT: The current MRRU value (in bytes)
- * @return      true if MRRU was successfully retrieved, false otherwise
+ * @param comp       The ROHC compressor
+ * @param[out] mrru  The current MRRU value (in bytes)
+ * @return           true if MRRU was successfully retrieved, false otherwise
  *
  * @ingroup rohc_comp
  *
@@ -1984,9 +2070,13 @@ error:
 /**
  * @brief Get the maximal CID value the compressor uses
  *
- * @param comp     The ROHC compressor
- * @param max_cid  OUT: The current maximal CID value
- * @return         true if MAX_CID was successfully retrieved, false otherwise
+ * Get the maximal CID value the compressor uses, ie. the \e MAX_CID parameter
+ * defined in RFC 3095.
+ *
+ * @param comp          The ROHC compressor
+ * @param[out] max_cid  The current maximal CID value
+ * @return              true if MAX_CID was successfully retrieved,
+ *                      false otherwise
  *
  * @ingroup rohc_comp
  */
@@ -2045,11 +2135,13 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 /**
  * @brief Get the CID type the compressor uses
  *
- * @param comp      The ROHC compressor
- * @param cid_type  OUT: The current CID type among ROHC_SMALL_CID and
- *                       ROHC_LARGE_CID
- * @return          true if the CID type was successfully retrieved,
- *                  false otherwise
+ * Get the CID type the compressor curently uses.
+ *
+ * @param comp           The ROHC compressor
+ * @param[out] cid_type  The current CID type among \ref ROHC_SMALL_CID and
+ *                       \ref ROHC_LARGE_CID
+ * @return               true if the CID type was successfully retrieved,
+ *                       false otherwise
  *
  * @ingroup rohc_comp
  */
@@ -2071,11 +2163,21 @@ error:
 /**
  * @brief Add a port to the list of UDP ports dedicated for RTP traffic
  *
+ * If no function callback was defined for the detection of RTP streams, the
+ * detection is based on a list of UDP ports dedicated for RTP streams.
+ *
+ * This function allows to update the list by adding the given UDP port to the
+ * list of UDP ports dedicated for RTP traffic.
+ *
  * @param comp  The ROHC compressor
  * @param port  The UDP port to add in the list
  * @return      true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_remove_rtp_port
+ * @see rohc_comp_reset_rtp_ports
+ * @see rohc_comp_set_rtp_detection_cb
  */
 bool rohc_comp_add_rtp_port(struct rohc_comp *const comp,
                             const unsigned int port)
@@ -2158,11 +2260,20 @@ error:
 /**
  * @brief Remove a port from the list of UDP ports dedicated to RTP traffic
  *
+ * If no function callback was defined for the detection of RTP streams, the
+ * detection is based on a list of UDP ports dedicated for RTP streams.
+ *
+ * This function allows to update the list by removing the given UDP port to
+ * the list of UDP ports dedicated for RTP traffic.
+ *
  * @param comp  The ROHC compressor
  * @param port  The UDP port to remove
  * @return      true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_add_rtp_port
+ * @see rohc_comp_reset_rtp_ports
  */
 bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
                                const unsigned int port)
@@ -2265,10 +2376,19 @@ error:
 /**
  * @brief Reset the list of dedicated RTP ports
  *
+ * If no function callback was defined for the detection of RTP streams, the
+ * detection is based on a list of UDP ports dedicated for RTP streams.
+ *
+ * This function allows to update the list by emptying the list of UDP ports
+ * dedicated for RTP traffic.
+ *
  * @param comp  The ROHC compressor
  * @return      true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_add_rtp_port
+ * @see rohc_comp_remove_rtp_port
  */
 bool rohc_comp_reset_rtp_ports(struct rohc_comp *const comp)
 {
@@ -2299,8 +2419,10 @@ error:
 /**
  * @brief Enable the ROHC compressor
  *
+ * Enable the ROHC compressor.
+ *
  * @param comp   The ROHC compressor
- * @param enable Whether to enable the compressor or not
+ * @param enable 1 to enable the compressor, 0 to disable it
  *
  * @ingroup rohc_comp
  */
@@ -2321,8 +2443,10 @@ void rohc_c_set_enable(struct rohc_comp *comp, int enable)
 /**
  * @brief Whether the ROHC compressor is enabled or not
  *
+ * Return whether the ROHC compressor is enabled or not.
+ *
  * @param comp  The ROHC compressor
- * @return      Whether the compressor is enabled or not
+ * @return      1 if the compressor is enabled, 0 if not
  *
  * @ingroup rohc_comp
  */
@@ -2877,13 +3001,37 @@ ignore:
 /**
  * @brief Send as much feedback data as possible
  *
- * @param comp   The ROHC compressor
- * @param obuf   The buffer where to store the feedback-only packet
- * @param osize  The size of the buffer for the feedback-only packet
- * @return       The size of the feedback-only packet,
- *               0 if there is no feedback data to send
+ * Flush unsent feedback data as much as possible. Flushing stops either
+ * because there is no more unsent feedback data in compressor, or either
+ * because the given buffer is too small.
+ *
+ * The \e rohc_feedback_flush function starts a transaction. The feedback data
+ * are not removed from the compressor's context when the function is called
+ * (they are only locked). There are two ways to close the transaction:
+ *  \li A call to the function \ref rohc_feedback_remove_locked to tell the
+ *      ROHC compressor that feedback bytes were successfully sent. The
+ *      feedback data will be removed from the compressor's context.
+ *  \li A call to the function \ref rohc_feedback_unlock to tell the ROHC
+ *      compressor that feedback bytes failed to be sent successfully (eg. a
+ *      temporary network problem). The feedback data will be unlocked but not
+ *      removed from the compressor's context. This way, the compressor will
+ *      try to send them again.
+ *
+ * The \ref rohc_feedback_avail_bytes function might be useful to flush only
+ * when a given amount of unsent feedback data is reached. It might be useful
+ * to correctly size the buffer given to \e rohc_feedback_flush.
+ *
+ * @param comp       The ROHC compressor
+ * @param[out] obuf  The buffer where to store the feedback-only packet
+ * @param osize      The size of the buffer for the feedback-only packet
+ * @return           The size of the feedback-only packet,
+ *                   0 if there is no feedback data to send
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_feedback_remove_locked
+ * @see rohc_feedback_unlock
+ * @see rohc_feedback_avail_bytes
  */
 int rohc_feedback_flush(struct rohc_comp *comp,
                         unsigned char *obuf,
@@ -2921,11 +3069,17 @@ int rohc_feedback_flush(struct rohc_comp *comp,
 /**
  * @brief How many bytes of unsent feedback data are available at compressor?
  *
+ * How many bytes of unsent feedback data are available at compressor? It
+ * might be useful to know how many feedback data is waiting to be sent before
+ * flushing them with the \ref rohc_feedback_flush function.
+ *
  * @param comp  The ROHC compressor
  * @return      The number of bytes of unsent feedback data,
  *              0 if no unsent feedback data is available
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_feedback_flush
  */
 size_t rohc_feedback_avail_bytes(const struct rohc_comp *const comp)
 {
@@ -2978,9 +3132,11 @@ error:
  * @deprecated do not use this function anymore,
  *             use rohc_comp_get_last_packet_info2() instead
  *
- * @param comp  The ROHC compressor to get information from
- * @param info  IN/OUT: the structure where information will be stored
- * @return      ROHC_OK in case of success, ROHC_ERROR otherwise
+ * @param comp          The ROHC compressor to get information from
+ * @param[in,out] info  the structure where information will be stored
+ * @return              Possible return values:
+ *                      \li \ref ROHC_OK in case of success,
+ *                      \li \ref ROHC_ERROR otherwise
  *
  * @ingroup rohc_comp
  */
@@ -3023,19 +3179,23 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 /**
  * @brief Get some information about the last compressed packet
  *
+ * Get some information about the last compressed packet.
+ *
  * To use the function, call it with a pointer on a pre-allocated
- * 'rohc_comp_last_packet_info2_t' structure with the 'version_major' and
- * 'version_minor' fields set to one of the following supported versions:
+ * \ref rohc_comp_last_packet_info2_t structure with the \e version_major and
+ * \e version_minor fields set to one of the following supported versions:
  *  - Major 0, minor 0
  *
- * See rohc_comp_last_packet_info2_t for details about fields that
- * are supported in the above versions.
+ * See the \ref rohc_comp_last_packet_info2_t structure for details about
+ * fields that are supported in the above versions.
  *
- * @param comp  The ROHC compressor to get information from
- * @param info  IN/OUT: the structure where information will be stored
- * @return      true in case of success, false otherwise
+ * @param comp          The ROHC compressor to get information from
+ * @param[in,out] info  The structure where information will be stored
+ * @return              true in case of success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_last_packet_info2_t
  */
 bool rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
                                      rohc_comp_last_packet_info2_t *const info)
@@ -3100,21 +3260,25 @@ error:
 
 
 /**
- * @brief Get some generak information about the compressor
+ * @brief Get some general information about the compressor
+ *
+ * Get some general information about the compressor.
  *
  * To use the function, call it with a pointer on a pre-allocated
- * 'rohc_comp_general_info_t' structure with the 'version_major' and
- * 'version_minor' fields set to one of the following supported versions:
+ * \ref rohc_comp_general_info_t structure with the \e version_major and
+ * \e version_minor fields set to one of the following supported versions:
  *  - Major 0, minor 0
  *
- * See rohc_comp_general_info_t for details about fields that are supported
- * in the above versions.
+ * See the \ref rohc_comp_general_info_t structure for details about fields
+ * that are supported in the above versions.
  *
- * @param comp  The ROHC compressor to get information from
- * @param info  IN/OUT: the structure where information will be stored
- * @return      true in case of success, false otherwise
+ * @param comp          The ROHC compressor to get information from
+ * @param[in,out] info  The structure where information will be stored
+ * @return              true in case of success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_comp_general_info_t
  */
 bool rohc_comp_get_general_info(const struct rohc_comp *const comp,
                                 rohc_comp_general_info_t *const info)
@@ -3167,6 +3331,8 @@ error:
 /**
  * @brief Give a description for the given ROHC compression context state
  *
+ * Give a description for the given ROHC compression context state.
+ *
  * The descriptions are not part of the API. They may change between
  * releases without any warning. Do NOT use them for other means that
  * providing to users a textual description of compression context states
@@ -3196,13 +3362,24 @@ const char * rohc_comp_get_state_descr(const rohc_c_state state)
 /**
  * @brief Remove all feedbacks locked during the packet build
  *
- * This function does remove the locked feedbacks. See function
- * \ref rohc_feedback_unlock instead if you want not to remove them.
+ * Remove all feedbacks locked during the packet build from the compressor's
+ * context. A call to function \e rohc_feedback_remove_locked closes the
+ * transaction started by the function \ref rohc_feedback_flush. It frees
+ * the compressor's internal memory related to feedback data once the feedback
+ * data was sent for sure.
+ *
+ * If the feedback data failed to be sent correctly (eg. temporary network
+ * problem), then the feedback data shall not be removed but only unlocked
+ * with the \ref rohc_feedback_unlock function. This way, feedback data could
+ * be sent again later.
  *
  * @param comp  The ROHC compressor
  * @return      true if action succeeded, false in case of error
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_feedback_unlock
+ * @see rohc_feedback_flush
  */
 bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
 {
@@ -3246,13 +3423,23 @@ error:
 /**
  * @brief Unlock all feedbacks locked during the packet build
  *
- * This function does not remove the locked feedbacks. See function
- * \ref rohc_feedback_remove_locked instead if you want to remove them.
+ * Unlock all feedbacks locked during the packet build, but do not remove them
+ * from the compressor's context. A call to function \e rohc_feedback_unlock
+ * closes the transaction started by the function \ref rohc_feedback_flush. It
+ * allows the compressor to send the unlocked feedback bytes again after the
+ * the program failed to send them correctly (eg. temporary network problem).
+ *
+ * If the feedback data was sent successfully, then the feedback data shall
+ * not be unlocked, but removed with the \ref rohc_feedback_remove_locked
+ * function. This way, feedback data will not be sent again later.
  *
  * @param comp  The ROHC compressor
  * @return      true if action succeeded, false in case of error
  *
  * @ingroup rohc_comp
+ *
+ * @see rohc_feedback_remove_locked
+ * @see rohc_feedback_flush
  */
 bool rohc_feedback_unlock(struct rohc_comp *const comp)
 {
@@ -3322,17 +3509,17 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
 /**
  * @brief Find out a ROHC profile given an IP protocol ID
  *
- * @param comp      The ROHC compressor
- * @param outer_ip  The outer IP header of the network packet that will help
- *                  choosing the best profile
- * @param inner_ip  One the following 2 values:
- *                  \li The inner IP header of the network packet that will
- *                      help choosing the best profile if any
- *                  \li NULL if there is no inner IP header in the packet
- * @param protocol  The transport protocol of the network packet
- * @param pkt_key   OUT: The key to help finding the context associated with
- *                       the given packet
- * @return          The ROHC profile if found, NULL otherwise
+ * @param comp          The ROHC compressor
+ * @param outer_ip      The outer IP header of the network packet that will
+ *                      help choosing the best profile
+ * @param inner_ip      One the following 2 values:
+ *                      \li The inner IP header of the network packet that
+ *                          will help choosing the best profile if any
+ *                      \li NULL if there is no inner IP header in the packet
+ * @param protocol      The transport protocol of the network packet
+ * @param[out] pkt_key  The key to help finding the context associated with
+ *                      the given packet
+ * @return              The ROHC profile if found, NULL otherwise
  */
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
                                                           const struct ip_packet *outer_ip,

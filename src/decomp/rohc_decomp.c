@@ -24,7 +24,14 @@
  */
 
 /**
- * @defgroup rohc_decomp ROHC decompression API
+ * @defgroup rohc_decomp  The ROHC decompression API
+ *
+ * The decompression API of the ROHC library allows a program to decompress
+ * some ROHC packets into uncompressed packets.
+ *
+ * The program shall first create a decompressor context and configure it. It
+ * then may decompress as many packets as needed. When done, the ROHC
+ * decompressor context shall be destroyed.
  */
 
 #include "rohc_decomp.h"
@@ -532,26 +539,33 @@ error:
 /**
  * @brief Create a new ROHC decompressor
  *
+ * Create a new ROHC decompressor with the given type of CIDs, MAX_CID,
+ * operational mode, and (optionally) related compressor for the feedback
+ * channel.
+ *
  * @param cid_type  The type of Context IDs (CID) that the ROHC decompressor
- *                  shall operate with. Accepted values are:
+ *                  shall operate with.\n
+ *                  Accepted values are:
  *                    \li \ref ROHC_SMALL_CID for small CIDs
  *                    \li \ref ROHC_LARGE_CID for large CIDs
  * @param max_cid   The maximum value that the ROHC decompressor should use
  *                  for context IDs (CID). As CIDs starts with value 0, the
- *                  number of contexts is \e max_cid + 1. Accepted values are:
+ *                  number of contexts is \e max_cid + 1.\n
+ *                  Accepted values are:
  *                    \li [0, \ref ROHC_SMALL_CID_MAX] if \e cid_type is
  *                        \ref ROHC_SMALL_CID
  *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is
  *                        \ref ROHC_LARGE_CID
  * @param mode      The operational mode that the ROHC decompressor shall
- *                  transit to. Accepted avalues are:
+ *                  transit to.\n
+ *                  Accepted values are:
  *                    \li \ref ROHC_U_MODE for the Unidirectional mode,
  *                    \li \ref ROHC_O_MODE for the Bidirectional Optimistic
  *                        mode,
  *                    \li \ref ROHC_R_MODE for the Bidirectional Reliable mode
  *                        is not supported yet: specifying \ref ROHC_R_MODE is
  *                        an error.
- * @param comp      The associated ROHC compressor for the feedback channel.
+ * @param comp      The associated ROHC compressor for the feedback channel.\n
  *                  Accepted values:
  *                    \li a valid ROHC compressor created with
  *                        \ref rohc_comp_new to enable the feedback channel,
@@ -892,36 +906,37 @@ int rohc_decompress(struct rohc_decomp *decomp,
  *      the ROHC packet is a non-final ROHC segment, ie. the ROHC packet is
  *      not the last segment of a larger, segmented ROHC packet.
  *
- * @param decomp                 The ROHC decompressor
- * @param arrival_time           The time at which packet was received
- *                               (0 if unknown, or to disable time-related
- *                                features in the ROHC protocol)
- * @param rohc_packet            The compressed packet to decompress
- * @param rohc_packet_len        The size of the compressed packet (in bytes)
- * @param uncomp_packet          The buffer where to store the decompressed
- *                               packet
- * @param uncomp_packet_max_len  The maximum length (in bytes) of the buffer
- *                               for the decompressed packet
- * @param uncomp_packet_len      OUT: The length (in bytes) of the
- *                               decompressed packet
- * @return                       \li \ref ROHC_OK if a decompressed packet is
- *                                   returned
- *                               \li \ref ROHC_FEEDBACK_ONLY if the ROHC
- *                                   packet contains only feedback data
- *                               \li \ref ROHC_NON_FINAL_SEGMENT if the given
- *                                   ROHC packet is a partial segment of a
- *                                   larger ROHC packet
- *                               \li \ref ROHC_ERROR_NO_CONTEXT if no
- *                                   decompression context matches the CID
- *                                   stored in the given ROHC packet and the
- *                                   ROHC packet is not an IR packet
- *                               \li \ref ROHC_ERROR_PACKET_FAILED if the
- *                                   decompression failed because the ROHC
- *                                   packet is unexpected and/or malformed
- *                               \li \ref ROHC_ERROR_CRC if the CRC detected a
- *                                   transmission or decompression problem
- *                               \li \ref ROHC_ERROR if another problem
- *                                   occurred
+ * @param decomp                  The ROHC decompressor
+ * @param arrival_time            The time at which packet was received
+ *                                (0 if unknown, or to disable time-related
+ *                                 features in the ROHC protocol)
+ * @param rohc_packet             The compressed packet to decompress
+ * @param rohc_packet_len         The size of the compressed packet (in bytes)
+ * @param uncomp_packet           The buffer where to store the decompressed
+ *                                packet
+ * @param uncomp_packet_max_len   The maximum length (in bytes) of the buffer
+ *                                for the decompressed packet
+ * @param[out] uncomp_packet_len  The length (in bytes) of the
+ *                                decompressed packet
+ * @return                        Possible return values:
+ *                                \li \ref ROHC_OK if a decompressed packet is
+ *                                    returned
+ *                                \li \ref ROHC_FEEDBACK_ONLY if the ROHC
+ *                                    packet contains only feedback data
+ *                                \li \ref ROHC_NON_FINAL_SEGMENT if the given
+ *                                    ROHC packet is a partial segment of a
+ *                                    larger ROHC packet
+ *                                \li \ref ROHC_ERROR_NO_CONTEXT if no
+ *                                    decompression context matches the CID
+ *                                    stored in the given ROHC packet and the
+ *                                    ROHC packet is not an IR packet
+ *                                \li \ref ROHC_ERROR_PACKET_FAILED if the
+ *                                    decompression failed because the ROHC
+ *                                    packet is unexpected and/or malformed
+ *                                \li \ref ROHC_ERROR_CRC if the CRC detected
+ *                                    a transmission or decompression problem
+ *                                \li \ref ROHC_ERROR if another problem
+ *                                    occurred
  *
  * @ingroup rohc_decomp
  *
@@ -2105,6 +2120,8 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 /**
  * @brief Give a description for the given ROHC decompression context state
  *
+ * Give a description for the given ROHC decompression context state.
+ *
  * The descriptions are not part of the API. They may change between
  * releases without any warning. Do NOT use them for other means that
  * providing to users a textual description of decompression context states
@@ -2134,20 +2151,25 @@ const char * rohc_decomp_get_state_descr(const rohc_d_state state)
 /**
  * @brief Get some information about the last decompressed packet
  *
+ * Get some information about the last decompressed packet.
+ *
  * To use the function, call it with a pointer on a pre-allocated
- * 'rohc_decomp_last_packet_info_t' structure with the 'version_major' and
- * 'version_minor' fields set to one of the following supported versions:
+ * \ref rohc_decomp_last_packet_info_t structure with the \e version_major
+ * and \e version_minor fields set to one of the following supported
+ * versions:
  *  - Major 0, minor 0
  *  - Major 0, minor 1
  *
- * See rohc_comp_last_packet_info2_t for details about fields that
+ * See \ref rohc_decomp_last_packet_info_t for details about fields that
  * are supported in the above versions.
  *
- * @param decomp  The ROHC decompressor to get information from
- * @param info    IN/OUT: the structure where information will be stored
- * @return        true in case of success, false otherwise
+ * @param decomp        The ROHC decompressor to get information from
+ * @param[in,out] info  The structure where information will be stored
+ * @return              true in case of success, false otherwise
  *
  * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_last_packet_info_t
  */
 bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
                                       rohc_decomp_last_packet_info_t *const info)
@@ -2312,6 +2334,8 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 /**
  * @brief Set the type of CID to use for the given decompressor
  *
+ * Set the type of CID to use for the given decompressor.
+ *
  * @warning Changing the CID type while library is used may lead to
  *          destruction of decompression contexts
  *
@@ -2372,6 +2396,8 @@ error:
 
 /**
  * @brief Set the MAX_CID allowed for the given decompressor
+ *
+ * Set the MAX_CID allowed for the given decompressor.
  *
  * @warning Changing the MAX_CID value while library is used may lead to
  *          destruction of decompression contexts
@@ -2453,6 +2479,8 @@ error:
 /**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
+ * Set the Maximum Reconstructed Reception Unit (MRRU).
+ *
  * The MRRU is the largest cumulative length (in bytes) of the ROHC segments
  * that are parts of the same ROHC packet. In short, the ROHC decompressor
  * does not expect to reassemble ROHC segments whose total length is larger
@@ -2526,6 +2554,12 @@ error:
 /**
  * @brief Enable/disable features for ROHC decompressor
  *
+ * Enable/disable features for ROHC decompressor. Features control whether
+ * mechanisms defined as optional by RFCs are enabled or not.
+ *
+ * Available features are listed by \ref rohc_decomp_features_t. They may be
+ * combined by XOR'ing them together.
+ *
  * @warning Changing the feature set while library is used is not supported
  *
  * @param decomp    The ROHC decompressor
@@ -2534,6 +2568,8 @@ error:
  *                  false if a problem occurred
  *
  * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_features_t
  */
 bool rohc_decomp_set_features(struct rohc_decomp *const decomp,
                               const rohc_decomp_features_t features)
@@ -2570,7 +2606,14 @@ error:
 /**
  * @brief Enable a decompression profile for a decompressor
  *
- * If the profile is already enabled, it is ignored.
+ * Enable a decompression profiles for a decompressor.
+ *
+ * The ROHC decompressor does not use the decompression profiles that are not
+ * enabled. Thus not enabling a profile might cause the decompressor to reject
+ * streams. Decompression will always fail if no profile at all is enabled.
+ *
+ * If the profile is already enabled, nothing is performed and success is
+ * reported.
  *
  * @param decomp   The ROHC decompressor
  * @param profile  The ID of the profile to enable
@@ -2635,7 +2678,14 @@ error:
 /**
  * @brief Disable a decompression profile for a decompressor
  *
- * If the profile is already disabled, it is ignored.
+ * Disable a decompression profiles for a decompressor.
+ *
+ * The ROHC decompressor does not use the decompression profiles that were
+ * disabled. Thus disabling a profile might cause the decompressor to reject
+ * streams. Decompression will always fail if no profile at all is enabled.
+ *
+ * If the profile is already disabled, nothing is performed and success is
+ * reported.
  *
  * @param decomp   The ROHC decompressor
  * @param profile  The ID of the profile to disable
@@ -2690,11 +2740,19 @@ error:
 /**
  * @brief Enable several decompression profiles for a decompressor
  *
- * The list of profile IDs to enable shall stop with -1.
+ * Enable several decompression profiles for a decompressor. The list of
+ * profile IDs to enable shall stop with -1.
  *
- * If one or more of the profiles are already enabled, they are ignored.
+ * The ROHC decompressor does not use the decompression profiles that are not
+ * enabled. Thus not enabling a profile might cause the decompressor to reject
+ * streams. Decompression will always fail if no profile at all is enabled.
+ *
+ * If one or more of the profiles are already enabled, nothing is performed
+ * and success is reported.
  *
  * @param decomp  The ROHC decompressor
+ * @param ...     The sequence of IDs of the decompression profiles to enable,
+ *                sequence shall be terminated by -1
  * @return        true if all of the profiles exist,
  *                false if at least one of the profiles does not exist
  *
@@ -2750,11 +2808,19 @@ error:
 /**
  * @brief Disable several decompression profiles for a decompressor
  *
- * The list of profile IDs to disable shall stop with -1.
+ * Disable several decompression profiles for a decompressor. The list of
+ * profile IDs to disable shall stop with -1.
  *
- * If one or more of the profiles are already disabled, they are ignored.
+ * The ROHC decompressor does not use the decompression profiles that were
+ * disabled. Thus disabling a profile might cause the decompressor to reject
+ * streams. Decompression will always fail if no profile at all is enabled.
+ *
+ * If one or more of the profiles are already disabled, nothing is performed
+ * and success is reported.
  *
  * @param decomp  The ROHC decompressor
+ * @param ...     The sequence of IDs of the decompression profiles to disable,
+ *                sequence shall be terminated by -1
  * @return        true if all of the profiles exist,
  *                false if at least one of the profiles does not exist
  *
@@ -2799,6 +2865,17 @@ error:
 
 /**
  * @brief Set the callback function used to manage traces in decompressor
+ *
+ * Set the user-defined callback function used to manage traces in the
+ * decompressor.
+ *
+ * The function will be called by the ROHC library every time it wants to
+ * print something related to decompression, from errors to debug. User may
+ * thus decide what traces are interesting (filter on \e level, source
+ * \e entity, or \e profile) and what to do with them (print on console,
+ * storage in file, syslog...).
+ *
+ * @warning The callback can not be modified after library initialization
  *
  * @param decomp   The ROHC decompressor
  * @param callback Two possible cases:
@@ -3153,6 +3230,7 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
  * @param entity   The entity concerned by the traces
  * @param profile  The number of the profile concerned by the message
  * @param format   The format string for the trace message
+ * @param ...      The arguments related to the format string
  */
 static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
                                             const rohc_trace_entity_t entity,
