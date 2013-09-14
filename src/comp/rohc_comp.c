@@ -1834,6 +1834,9 @@ error:
 /**
  * @brief Whether the compressor uses small CID or not
  *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_get_cid_type() instead
+ *
  * @param comp The ROHC compressor
  * @return     Whether the compressor uses small CID or not
  *

@@ -170,10 +170,6 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_set_rtp_detection_cb(comp, fct, NULL) == true);
 	}
 
-	/* rohc_c_using_small_cid() */
-	CHECK(rohc_c_using_small_cid(NULL) == 0);
-	CHECK(rohc_c_using_small_cid(comp) == 1);
-
 	/* rohc_comp_set_mrru() */
 	CHECK(rohc_comp_set_mrru(NULL, 10) == false);
 	CHECK(rohc_comp_set_mrru(comp, 65535 + 1) == false);

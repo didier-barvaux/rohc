@@ -358,7 +358,11 @@ bool ROHC_EXPORT rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
  */
 
 int ROHC_EXPORT rohc_c_is_enabled(struct rohc_comp *comp);
-int ROHC_EXPORT rohc_c_using_small_cid(struct rohc_comp *comp);
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+int ROHC_EXPORT rohc_c_using_small_cid(struct rohc_comp *comp)
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_get_cid_type() instead");
+#endif
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile)
