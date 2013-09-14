@@ -140,12 +140,21 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   struct d_decode_data *ddata);
 
 #if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+
 static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
                                             const rohc_trace_entity_t entity,
                                             const int profile,
                                             const char *const format,
                                             ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+
+static bool __rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
+                                       const rohc_cid_type_t cid_type)
+	__attribute__((warn_unused_result));
+static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
+                                      const size_t max_cid)
+	__attribute__((warn_unused_result));
+
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 /* feedback-related functions */
@@ -606,8 +615,6 @@ error:
  * @see rohc_decomp_enable_profile
  * @see rohc_decomp_disable_profiles
  * @see rohc_decomp_disable_profile
- * @see rohc_decomp_set_cid_type
- * @see rohc_decomp_set_max_cid
  * @see rohc_decomp_set_mrru
  * @see rohc_decomp_set_features
  */
@@ -1151,9 +1158,8 @@ error:
 /**
  * @brief Decompress both large and small CID packets.
  *
- * @deprecated do not use this function anymore,
- *             use rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid()
- *             instead
+ * @deprecated do not use this function anymore, use rohc_decomp_new() and
+ *             rohc_decompress2() instead
  *
  * @param decomp The ROHC decompressor
  * @param ibuf   The ROHC packet to decompress
@@ -1176,8 +1182,8 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	int code;
 
 	/* change CID type on the fly */
-	is_ok = rohc_decomp_set_cid_type(decomp,
-	                                 large ? ROHC_LARGE_CID : ROHC_SMALL_CID);
+	is_ok = __rohc_decomp_set_cid_type(decomp, large ? ROHC_LARGE_CID :
+	                                   ROHC_SMALL_CID);
 	if(!is_ok)
 	{
 		return ROHC_ERROR;
@@ -2339,6 +2345,9 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
  * @warning Changing the CID type while library is used may lead to
  *          destruction of decompression contexts
  *
+ * @deprecated please do not use this function anymore, use the parameter
+ *             cid_type of rohc_decomp_new() instead
+ *
  * @param decomp   The decompressor for which to set CID type
  * @param cid_type The new CID type among \ref ROHC_SMALL_CID or
  *                                 \ref ROHC_LARGE_CID
@@ -2349,48 +2358,7 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                               const rohc_cid_type_t cid_type)
 {
-	rohc_cid_type_t old_cid_type;
-
-	/* decompressor must be valid */
-	if(decomp == NULL)
-	{
-		/* cannot print a trace without a valid decompressor */
-		goto error;
-	}
-
-	/* new CID type value must be ROHC_SMALL_CID or ROHC_LARGE_CID */
-	if(cid_type != ROHC_SMALL_CID && cid_type != ROHC_LARGE_CID)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected CID type: must be ROHC_SMALL_CID or "
-		             "ROHC_LARGE_CID\n");
-		goto error;
-	}
-
-	/* set the new CID type (make a backup to be able to revert) */
-	if(cid_type != decomp->medium.cid_type)
-	{
-		old_cid_type = decomp->medium.cid_type;
-		decomp->medium.cid_type = cid_type;
-
-		/* reduce MAX_CID if required */
-		if(!rohc_decomp_set_max_cid(decomp, decomp->medium.max_cid))
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "failed to reduce MAX_CID after changing CID type\n");
-			goto revert_cid_type;
-		}
-
-		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "CID type is now set to %d\n", decomp->medium.cid_type);
-	}
-
-	return true;
-
-revert_cid_type:
-	decomp->medium.cid_type = old_cid_type;
-error:
-	return false;
+	return __rohc_decomp_set_cid_type(decomp, cid_type);
 }
 
 
@@ -2431,6 +2399,9 @@ error:
  * @warning Changing the MAX_CID value while library is used may lead to
  *          destruction of decompression contexts
  *
+ * @deprecated please do not use this function anymore, use the parameter
+ *             max_cid of rohc_decomp_new() instead
+ *
  * @param decomp   The decompressor for which to set MAX_CID
  * @param max_cid  The new MAX_CID value:
  *                  - in range [0, \ref ROHC_SMALL_CID_MAX] if CID type is
@@ -2444,64 +2415,7 @@ error:
 bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                              const size_t max_cid)
 {
-	int max_possible_cid;
-
-	/* decompressor must be valid */
-	if(decomp == NULL)
-	{
-		/* cannot print a trace without a valid decompressor */
-		goto error;
-	}
-
-	/* what is the maximum possible MAX_CID value wrt CID type? */
-	if(decomp->medium.cid_type == ROHC_SMALL_CID)
-	{
-		max_possible_cid = ROHC_SMALL_CID_MAX;
-	}
-	else
-	{
-		max_possible_cid = ROHC_LARGE_CID_MAX;
-	}
-
-	/* new MAX_CID value must be in range [0, max_possible_cid] */
-	if(max_cid > max_possible_cid)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected MAX_CID value: must be in range [0, %d]\n",
-		             max_possible_cid);
-		goto error;
-	}
-
-	/* set the new MAX_CID value (make a backup to be able to revert) */
-	if(max_cid != decomp->medium.max_cid)
-	{
-		/* resize the array of decompression contexts */
-		if(!rohc_decomp_create_contexts(decomp, max_cid))
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "failed to re-create decompression contexts after "
-			             "changing MAX_CID\n");
-			goto error;
-		}
-
-		/* warn about destroyed contexts */
-		if(max_cid < decomp->medium.max_cid)
-		{
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "%zu decompression contexts are about to be destroyed "
-			           "due to MAX_CID change\n",
-			           (size_t) (decomp->medium.max_cid - max_cid));
-		}
-
-		decomp->medium.max_cid = max_cid;
-		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "MAX_CID is now set to %zu\n", decomp->medium.max_cid);
-	}
-
-	return true;
-
-error:
-	return false;
+	return __rohc_decomp_set_max_cid(decomp, max_cid);
 }
 
 
@@ -3313,6 +3227,147 @@ static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
 	vfprintf(stdout, format, args);
 	va_end(args);
 #endif
+}
+
+
+/**
+ * @brief Set the type of CID to use for the given decompressor
+ *
+ * Set the type of CID to use for the given decompressor.
+ *
+ * @warning Changing the CID type while library is used may lead to
+ *          destruction of decompression contexts
+ *
+ * @param decomp   The decompressor for which to set CID type
+ * @param cid_type The new CID type among \ref ROHC_SMALL_CID or
+ *                                 \ref ROHC_LARGE_CID
+ * @return         true if the CID type was successfully set, false otherwise
+ */
+static bool __rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
+                                       const rohc_cid_type_t cid_type)
+{
+	rohc_cid_type_t old_cid_type;
+
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* new CID type value must be ROHC_SMALL_CID or ROHC_LARGE_CID */
+	if(cid_type != ROHC_SMALL_CID && cid_type != ROHC_LARGE_CID)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unexpected CID type: must be ROHC_SMALL_CID or "
+		             "ROHC_LARGE_CID\n");
+		goto error;
+	}
+
+	/* set the new CID type (make a backup to be able to revert) */
+	if(cid_type != decomp->medium.cid_type)
+	{
+		old_cid_type = decomp->medium.cid_type;
+		decomp->medium.cid_type = cid_type;
+
+		/* reduce MAX_CID if required */
+		if(!__rohc_decomp_set_max_cid(decomp, decomp->medium.max_cid))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "failed to reduce MAX_CID after changing CID type\n");
+			goto revert_cid_type;
+		}
+
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "CID type is now set to %d\n", decomp->medium.cid_type);
+	}
+
+	return true;
+
+revert_cid_type:
+	decomp->medium.cid_type = old_cid_type;
+error:
+	return false;
+}
+
+
+/**
+ * @brief Set the MAX_CID allowed for the given decompressor
+ *
+ * Set the MAX_CID allowed for the given decompressor.
+ *
+ * @warning Changing the MAX_CID value while library is used may lead to
+ *          destruction of decompression contexts
+ *
+ * @param decomp   The decompressor for which to set MAX_CID
+ * @param max_cid  The new MAX_CID value:
+ *                  - in range [0, \ref ROHC_SMALL_CID_MAX] if CID type is
+ *                    \ref ROHC_SMALL_CID
+ *                  - in range [0, \ref ROHC_LARGE_CID_MAX] if CID type is
+ *                    \ref ROHC_LARGE_CID
+ * @return         true if the MAX_CID was successfully set, false otherwise
+ */
+static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
+                                      const size_t max_cid)
+{
+	int max_possible_cid;
+
+	/* decompressor must be valid */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* what is the maximum possible MAX_CID value wrt CID type? */
+	if(decomp->medium.cid_type == ROHC_SMALL_CID)
+	{
+		max_possible_cid = ROHC_SMALL_CID_MAX;
+	}
+	else
+	{
+		max_possible_cid = ROHC_LARGE_CID_MAX;
+	}
+
+	/* new MAX_CID value must be in range [0, max_possible_cid] */
+	if(max_cid > max_possible_cid)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unexpected MAX_CID value: must be in range [0, %d]\n",
+		             max_possible_cid);
+		goto error;
+	}
+
+	/* set the new MAX_CID value (make a backup to be able to revert) */
+	if(max_cid != decomp->medium.max_cid)
+	{
+		/* resize the array of decompression contexts */
+		if(!rohc_decomp_create_contexts(decomp, max_cid))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "failed to re-create decompression contexts after "
+			             "changing MAX_CID\n");
+			goto error;
+		}
+
+		/* warn about destroyed contexts */
+		if(max_cid < decomp->medium.max_cid)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "%zu decompression contexts are about to be destroyed "
+			           "due to MAX_CID change\n",
+			           (size_t) (decomp->medium.max_cid - max_cid));
+		}
+
+		decomp->medium.max_cid = max_cid;
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "MAX_CID is now set to %zu\n", decomp->medium.max_cid);
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */

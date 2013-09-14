@@ -210,8 +210,7 @@ int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      int osize,
                                      int large)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decomp_set_cid_type() and rohc_decomp_set_max_cid() "
-	                "instead");
+	                "rohc_decomp_new() and rohc_decompress2() instead");
 #endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
 
 
@@ -239,16 +238,24 @@ bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *cons
 void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
                                    int feedback_maxval);
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                                           const rohc_cid_type_t cid_type)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, use the "
+	                "parameter cid_type of rohc_decomp_new() instead");
+#endif
 bool ROHC_EXPORT rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp,
                                           rohc_cid_type_t *const cid_type)
 	__attribute__((warn_unused_result));
 
+#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                          const size_t max_cid)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, use the "
+	                "parameter max_cid of rohc_decomp_new() instead");
+#endif
 bool ROHC_EXPORT rohc_decomp_get_max_cid(const struct rohc_decomp *const decomp,
                                          size_t *const max_cid)
 	__attribute__((warn_unused_result));

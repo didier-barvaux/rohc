@@ -155,11 +155,6 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_set_mrru(decomp, 0) == true);
 	CHECK(rohc_decomp_set_mrru(decomp, 65535) == true);
 
-	/* rohc_decomp_set_max_cid() */
-	CHECK(rohc_decomp_set_max_cid(NULL, ROHC_SMALL_CID_MAX) == false);
-	CHECK(rohc_decomp_set_max_cid(decomp, -1) == false);
-	CHECK(rohc_decomp_set_max_cid(decomp, 0xffff) == false);
-
 	/* rohc_decomp_get_max_cid() */
 	{
 		size_t max_cid;
@@ -168,13 +163,6 @@ int main(int argc, char *argv[])
 		CHECK(rohc_decomp_get_max_cid(decomp, &max_cid) == true);
 		CHECK(max_cid == ROHC_SMALL_CID_MAX);
 	}
-
-	/* rohc_decomp_set_cid_type() */
-	CHECK(rohc_decomp_set_cid_type(NULL, 1) == false);
-	CHECK(rohc_decomp_set_cid_type(decomp, -1) == false);
-	CHECK(rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID) == true);
-	CHECK(rohc_decomp_set_cid_type(decomp, ROHC_LARGE_CID) == true);
-	CHECK(rohc_decomp_set_cid_type(decomp, ROHC_SMALL_CID + 1) == false);
 
 	/* rohc_decomp_get_cid_type() */
 	{
