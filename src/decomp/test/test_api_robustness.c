@@ -160,6 +160,15 @@ int main(int argc, char *argv[])
 	CHECK(rohc_decomp_set_max_cid(decomp, -1) == false);
 	CHECK(rohc_decomp_set_max_cid(decomp, 0xffff) == false);
 
+	/* rohc_decomp_get_max_cid() */
+	{
+		size_t max_cid;
+		CHECK(rohc_decomp_get_max_cid(NULL, &max_cid) == false);
+		CHECK(rohc_decomp_get_max_cid(decomp, NULL) == false);
+		CHECK(rohc_decomp_get_max_cid(decomp, &max_cid) == true);
+		CHECK(max_cid == ROHC_SMALL_CID_MAX);
+	}
+
 	/* rohc_decomp_set_cid_type() */
 	CHECK(rohc_decomp_set_cid_type(NULL, 1) == false);
 	CHECK(rohc_decomp_set_cid_type(decomp, -1) == false);

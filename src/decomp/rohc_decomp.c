@@ -2477,6 +2477,35 @@ error:
 
 
 /**
+ * @brief Get the maximal CID value the decompressor uses
+ *
+ * Get the maximal CID value the decompressor uses, ie. the \e MAX_CID
+ * parameter defined in RFC 3095.
+ *
+ * @param decomp        The ROHC decompressor
+ * @param[out] max_cid  The current maximal CID value
+ * @return              true if MAX_CID was successfully retrieved,
+ *                      false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_get_max_cid(const struct rohc_decomp *const decomp,
+                             size_t *const max_cid)
+{
+	if(decomp == NULL || max_cid == NULL)
+	{
+		goto error;
+	}
+
+	*max_cid = decomp->medium.max_cid;
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
  * @brief Set the Maximum Reconstructed Reception Unit (MRRU).
  *
  * Set the Maximum Reconstructed Reception Unit (MRRU).
