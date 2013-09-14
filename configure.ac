@@ -268,10 +268,12 @@ if test "x$enable_deprecated_api" != "xyes"; then
 	echo
 	sleep 5
 	deprecated_api=0
+	configure_cflags="${configure_cflags} -DROHC_ENABLE_DEPRECATED_API=0"
 else
+	configure_cflags="${configure_cflags} -DROHC_ENABLE_DEPRECATED_API=1"
 	deprecated_api=1
 fi
-AC_DEFINE_UNQUOTED([ENABLE_DEPRECATED_API], [$deprecated_api],
+AC_DEFINE_UNQUOTED([ROHC_ENABLE_DEPRECATED_API], [$deprecated_api],
                    [Whether deprecated API is enabled or not.])
 
 

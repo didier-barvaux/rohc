@@ -47,6 +47,8 @@
 #include "decode.h"
 #include "crc.h"
 
+#include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
+
 #ifndef __KERNEL__
 #	include <string.h>
 #endif
@@ -139,7 +141,7 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   unsigned int len,
                                   struct d_decode_data *ddata);
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
                                             const rohc_trace_entity_t entity,
@@ -155,7 +157,7 @@ static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                       const size_t max_cid)
 	__attribute__((warn_unused_result));
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 /* feedback-related functions */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
@@ -368,7 +370,7 @@ static void context_free(struct d_context *const context)
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Create one ROHC decompressor.
@@ -409,7 +411,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	decomp->medium.cid_type = ROHC_SMALL_CID;
 	decomp->medium.max_cid = ROHC_SMALL_CID_MAX;
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* all decompression profiles are enabled by default for compatibility
 	 * with earlier releases (except TCP since it came after and it is not
 	 * stable enough) */
@@ -483,7 +485,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	clear_statistics(decomp);
 
 	/* set the default trace callback */
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
 #else
@@ -543,7 +545,7 @@ error:
 	return;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 /**
  * @brief Create a new ROHC decompressor
@@ -689,7 +691,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
 	decomp->medium.cid_type = cid_type;
 	decomp->medium.max_cid = max_cid;
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* all decompression profiles are enabled by default for compatibility
 	 * with earlier releases (except TCP since it came after and it is not
 	 * stable enough) */
@@ -764,7 +766,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
 	clear_statistics(decomp);
 
 	/* set the default trace callback */
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
 #else
@@ -838,7 +840,7 @@ error:
 	return;
 }
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Decompress a ROHC packet.
@@ -899,7 +901,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	return code;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -1153,7 +1155,7 @@ error:
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Decompress both large and small CID packets.
@@ -1201,7 +1203,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	return code;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2337,6 +2339,8 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the type of CID to use for the given decompressor
  *
@@ -2360,6 +2364,8 @@ bool rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
 {
 	return __rohc_decomp_set_cid_type(decomp, cid_type);
 }
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2391,6 +2397,8 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the MAX_CID allowed for the given decompressor
  *
@@ -2417,6 +2425,8 @@ bool rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 {
 	return __rohc_decomp_set_max_cid(decomp, max_cid);
 }
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -3235,7 +3245,7 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief The default callback for traces
@@ -3416,5 +3426,5 @@ error:
 	return false;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 

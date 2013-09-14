@@ -167,7 +167,7 @@ typedef enum
  * Functions related to decompressor:
  */
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compressor)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_decomp_new() instead");
@@ -183,7 +183,7 @@ struct rohc_decomp * ROHC_EXPORT rohc_decomp_new(const rohc_cid_type_t cid_type,
 	__attribute__((warn_unused_result));
 void ROHC_EXPORT rohc_decomp_free(struct rohc_decomp *decomp);
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
                                 unsigned char *ibuf,
                                 int isize,
@@ -202,7 +202,7 @@ int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *decomp,
                                  size_t *const uncomp_packet_len)
 	__attribute__((warn_unused_result));
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      unsigned char *ibuf,
                                      int isize,
@@ -211,7 +211,7 @@ int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      int large)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
 	                "rohc_decomp_new() and rohc_decompress2() instead");
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /*
@@ -238,7 +238,7 @@ bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *cons
 void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
                                    int feedback_maxval);
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
                                           const rohc_cid_type_t cid_type)
 	__attribute__((warn_unused_result))
@@ -249,7 +249,7 @@ bool ROHC_EXPORT rohc_decomp_get_cid_type(const struct rohc_decomp *const decomp
                                           rohc_cid_type_t *const cid_type)
 	__attribute__((warn_unused_result));
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 bool ROHC_EXPORT rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                          const size_t max_cid)
 	__attribute__((warn_unused_result))

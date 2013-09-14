@@ -176,7 +176,7 @@ static inline uint8_t crc_calc_2(const uint8_t *const buf,
  */
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get the polynom for the given CRC type.
@@ -214,7 +214,7 @@ void crc_init_table(unsigned char *table, unsigned char poly)
 	 * decompressors */
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**

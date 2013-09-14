@@ -61,7 +61,7 @@
 #	include <stdbool.h>
 #endif
 #include <assert.h>
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 #include <stdio.h> /* for printf(3) */
 #endif
 #include <stdarg.h>
@@ -143,7 +143,7 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
  * Prototypes of miscellaneous private functions
  */
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
                                           const rohc_trace_entity_t entity,
                                           const int profile,
@@ -153,18 +153,18 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 
 static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value);
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
                                         void *const user_context)
 	__attribute__((nonnull(1)));
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 static int __rohc_c_context(struct rohc_comp *comp,
                             int cid,
                             unsigned int indent,
                             char *buffer);
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /*
@@ -172,7 +172,7 @@ static int __rohc_c_context(struct rohc_comp *comp,
  */
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Create one ROHC compressor
@@ -259,7 +259,7 @@ void rohc_free_compressor(struct rohc_comp *comp)
 	rohc_comp_free(comp);
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -374,7 +374,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	comp->last_context = NULL;
 
 	/* set default callback for traces */
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	is_fine = rohc_comp_set_traces_cb(comp, rohc_comp_print_trace_default);
 #else
@@ -409,7 +409,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 		goto destroy_comp;
 	}
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* set default UDP ports dedicated to RTP traffic (for compatibility) */
 	{
 		const size_t default_rtp_ports_nr = 5;
@@ -425,7 +425,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 			}
 		}
 	}
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/* init the tables for fast CRC computation */
 	is_fine = rohc_crc_init_table(comp->crc_table_2, ROHC_CRC_TYPE_2);
@@ -569,7 +569,7 @@ error:
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief The default callback for traces
@@ -609,7 +609,7 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 #endif
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -675,7 +675,7 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Compress a ROHC packet.
@@ -761,7 +761,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	                      rohc_packet, rohc_packet_max_len, rohc_packet_len);
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -1529,7 +1529,7 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Activate a profile for a compressor
@@ -1568,7 +1568,7 @@ error:
 	return;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -1831,6 +1831,8 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Whether the compressor uses small CID or not
  *
@@ -1847,8 +1849,6 @@ int rohc_c_using_small_cid(struct rohc_comp *comp)
 	return (comp != NULL && comp->medium.cid_type == ROHC_SMALL_CID);
 }
 
-
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Set the maximal header size. The maximal header size is ignored
@@ -1894,7 +1894,7 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
 	}
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2025,6 +2025,8 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the maximal CID value the compressor should use
  *
@@ -2040,6 +2042,8 @@ void rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 {
 	__rohc_c_set_max_cid(comp, value);
 }
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2070,6 +2074,8 @@ error:
 	return false;
 }
 
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Tell the compressor to use large CIDs
@@ -2108,6 +2114,8 @@ void rohc_c_set_large_cid(struct rohc_comp *comp, int large_cid)
 		}
 	}
 }
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2435,7 +2443,7 @@ int rohc_c_is_enabled(struct rohc_comp *comp)
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get information about available compression profiles
@@ -2760,7 +2768,7 @@ void c_piggyback_feedback(struct rohc_comp *comp,
 	ret = rohc_comp_piggyback_feedback(comp, feedback, size);
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -2827,7 +2835,7 @@ error:
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Callback called by a decompressor to deliver a feedback packet to the
@@ -2848,7 +2856,7 @@ void c_deliver_feedback(struct rohc_comp *comp,
 		rohc_comp_deliver_feedback(comp, packet, size);
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -3103,7 +3111,7 @@ error:
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get some information about the last compressed packet
@@ -3152,7 +3160,7 @@ int rohc_comp_get_last_packet_info(const struct rohc_comp *const comp,
 	return ROHC_OK;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -4012,7 +4020,7 @@ static void rohc_feedback_destroy(struct rohc_comp *const comp)
 }
 
 
-#if !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Set the maximal CID value the compressor should use
@@ -4063,5 +4071,5 @@ error:
 	return;
 }
 
-#endif /* !defined(ENABLE_DEPRECATED_API) || ENABLE_DEPRECATED_API == 1 */
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
