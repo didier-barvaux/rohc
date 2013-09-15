@@ -6,5 +6,5 @@ includedir=@includedir@
 Name: RObust Header Compression (ROHC)
 Description: Free and efficient library that implements the ROHC protocol
 Version: @VERSION@
-Libs: -L${libdir} -lrohc_decomp -lrohc_comp -lrohc_common @additional_platform_libs@
+Libs: -L${libdir} -lrohc @additional_platform_libs@
 Cflags: -I${includedir}
