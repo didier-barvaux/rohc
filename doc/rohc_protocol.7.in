@@ -1,0 +1,432 @@
+.TH rohc_protocol 7 2013-09-15 "ROHC" "ROHC library Programmer's Manual"
+.SH "NAME"
+rohc_protocol \- The ROHC protocol
+
+.SH DESCRIPTION
+.PP
+The \fBRObust Header Compression (ROHC) protocol\fP aims at \fBreducing
+bandwidth\fP usage on network links with \fBlimited capacity\fP or
+\fBexpensive costs\fP, such as mobile networks or satellite links. It defines
+a \fBlossless compression scheme\fP for network headers. It does not act on
+the network payload in any way.
+.PP
+The \fBROHC protocol\fP is very efficient for compressing \fBVoIP streams\fP
+that use \fBRTP\fP as transport protocol. \fBROHC\fP is also suitable for
+compressing \fBIPv4\fP, \fBIPv6\fP, \fBUDP\fP, \fBUDP-Lite\fP, \fBESP\fP, and
+\fBTCP\fP headers of Internet packets.
+
+.SH MAIN PRINCIPLES
+.PP
+The ROHC protocol compresses only network headers. It leaves the network
+payload unchanged.
+.PP
+.RS 1
+ non-compressed
+     packet               ROHC packet
+ +-----------+          +-------------+
+ |           |          |             |
+ | header #1 |--=-+-=-->| ROHC header |
+ |           |    |     |             |
+ +-----------+    :     +-------------+
+ |           |    |     |             |
+ | header #2 |-=--+ +=->|  payload    |
+ |           |    | |   |             |
+ +-----------+    : |   +-------------+
+ |           |    | |
+ | header #3 |-=--+ |
+ |           |      |
+ +-----------+      :
+ |           |      |
+ |  payload  |-=----+
+ |           |
+ +-----------+
+.RE
+.PP
+In order to compress the network headers, the ROHC protocol takes advantage of
+the information redundancy in the different headers of:
+.RS 2
+.IP o 3
+one single network packet (eg. the payload lengths in IP and UDP headers),
+.IP o 3
+several network packets that belongs to one single stream (eg. the IP
+addresses).
+.RE
+.PP
+.RS 1
+             packet #1      packet #2
+           +-----------+  +-----------+
+ header #1 |         NN|  |         OO|
+           +-----------+  +-----------+
+ header #2 |  L   NN   |  |  P   OO   |
+           +-----------+  +-----------+
+ header #3 |  L   MMM  |  |  P   MMM  |
+           +-----------+  +-----------+
+ payload   |           |  |           |
+           +-----------+  +-----------+
+.RE
+.PP
+Redundant information is transmitted in first packets only. Next packets
+contain variable information only, eg. identifiers or sequence numbers. Theses
+fields are furthermore transmitted in a adequate compressed form to save some
+more bits.
+.PP
+For better performances, the packets must be classified into streams before
+being compressed. This is a requirement to take advantage of inter-packet
+redundancy. The classification algorithm is not defined by the ROHC protocol
+itself but left to the implementations.
+.PP
+.RS 1
+                              +-----------+
+                        +---> | stream #1 |
+                        |     +-----------+
+                        |
+                        |     +-----------+
+ incoming packets ------+---> | stream #2 |
+                        |     +-----------+
+                        |          ...
+                        |     +-----------+
+                        +---> | stream #n |
+                              +-----------+
+.RE
+.PP
+Once a stream of packets was identified, it is compressed according to the
+compression profile that fits best. A compression profile defines the way to
+compress the different fields in the network headers. Several compression
+profiles are available: Uncompressed, IP-only, IP/UDP, IP/UDP-Lite, IP/ESP,
+IP/UDP/RTP, IP/UDP-Lite/RTP and IP/TCP.
+
+.SH STANDARDIZATION
+.PP
+The ROHC protocol is mainly standardized by the IETF, but some protocol
+numbers are defined by other organisms.
+.PP
+.IP IETF - Internet Engineering Task Force
+The ROHC protocol is standardized by the \fBIETF\fP. The ROHC Working Group
+was formed to specify a \fBcommon compression protocol platform\fP. Several
+Requests For Comments (RFC) were published to define the ROHC framework and a
+number of compression profiles. The RFCs are listed on the \fBSEE ALSO\fP
+section of this document.
+.IP IANA - Internet Assigned Numbers Authority
+The IANA is in charge of ROHC protocol identifiers assignments for ROHC
+profiles, but also the Internet protocol number 142 to the ROHC protocol.
+.IP IEEE - Institute of Electrical and Electronics Engineers
+The IEEE maintains the registry of Ethernet/802.3 protocol identification. The
+ROHC protocol is registered with value 0x22F1.
+
+.SH FRAMEWORK
+.PP
+The ROHC protocol defines an extensible ROHC framework capable of compressing
+different kinds of streams (IP, UDP, TCP, RTP...). The framework is generic.
+The profiles then define how the different kinds of streams are compressed.
+A profile is a set of encoding schemes and packet formats.
+.SS Definitions
+.PP
+A \fBROHC compressor\fP parses uncompressed packets, associate them to a
+stream, builds the corresponding ROHC packets and transmits them to its
+associated ROHC decompressor at the other end of the network link.
+.PP
+A \fBROHC decompressor\fP parses ROHC packets transmitted by its associated
+ROHC compressor, decodes the packet fields according to the ROHC algorithms
+and then builds the corresponding uncompressed packets.
+.PP
+One compressor is associated with only one decompressor. One decompressor is
+associated with only one compressor.
+.PP
+.RS 1
+ uncompressed                 ROHC                     uncompressed
+    packets   +------------+ packets  +--------------+ packets
+ -----------> | Compressor | -------> | Decompressor | ----------->
+              +------------+          +--------------+
+.RE
+.PP
+Both the compressor and the decompressor store some information bits for every
+network stream they handle. This information is called a \fBstream context\fP.
+The compressor and the decompressor do not store the same data in their
+context. The compressor uses uses its contexts to associate a received packet
+to a stream and to detect the fields that change over time. The decompressor
+uses its contexts to retrieve the fields that are not transmitted in all the
+packets.
+
+.SS Modes of operation
+.PP
+The ROHC protocol proposes 3 modes of operations:
+.RS 2
+.IP o 3
+the Unidirectional mode (U-mode),
+.IP o 3
+the Bidirectional Optimistic mode (O-mode),
+.IP o 3
+the Bidirectional Reliable mode (R-mode).
+.RE
+.PP
+In U-mode, packets are transmitted in one direction only: from the compressor
+to the decompressor. This is useful for network links with no or undesirable
+return path. In order to handle potential decompression errors, the compressor
+sends periodic refreshes of the stream context to the decompressor.
+.PP
+.RS 1
+ +------------+                   +--------------+
+ |            |   ROHC packets    |              |
+ | Compressor | ----------------> | Decompressor |
+ |            |                   |              |
+ +------------+                   +--------------+
+.RE
+.PP
+The O-mode works the same way as the U-mode. However feedback packets are
+transmitted by the decompressor on the return path for reporting errors or
+acknowledging successful decompression to the compressor.
+.PP
+.RS 1
+ +------------+   ROHC packets    +--------------+
+ |            | ----------------> |              |
+ | Compressor |                   | Decompressor |
+ |            | <---------------- |              |
+ +------------+   ROHC feedback   +--------------+
+.RE
+.PP
+The R-mode makes use feedback information too. However it is stricter than the
+O-mode for context updates.
+.PP
+.RS 1
+ +------------+   ROHC packets    +--------------+
+ |            | ----------------> |              |
+ | Compressor |                   | Decompressor |
+ |            | <---------------- |              |
+ +------------+   ROHC feedback   +--------------+
+.RE
+.PP
+Both the compressor and the decompressor starts in U-mode. They may then
+operate a transition to O-mode if a usable return link is available and the
+decompressor sends to the compressor a positive acknowledgement with O-mode
+specified. The transition to R-mode is achieved the same way.
+
+.SS Compressor/decompressor states
+.PP
+The notion of compressor/decompressor states is orthogonal to the operational
+modes. Whatever the mode is, both the compressor and the decompressor work in
+one of their three states. They are basically finite state machines. Every
+incoming packet may cause the compressor/decompressor to change its internal
+state. Every state refers to a defined behaviour and compression level.
+.PP
+The compressor's state machine defines the following three states:
+.RS 2
+.IP o 3
+Initialization and Refresh (IR) State,
+.IP o 3
+First Order (FO) State,
+.IP o 3
+Second Order (SO) State.
+.RE
+.PP
+.RS 1
+ +----------+         +----------+         +----------+
+ | IR State | <-----> | FO State | <-----> | SO State |
+ +----------+         +----------+         +----------+
+.RE
+.PP
+Transitions between the above states occur when the compressor:
+.RS 2
+.IP o 3
+compresses a packet that contains too many variations,
+.IP o 3
+receives a positive/negative feedback from the decompressor,
+.IP o 3
+periodically refreshes the context.
+.RE
+.PP
+The decompressor's state machine defines the following three states:
+.RS 2
+.IP o 3
+No Context State,
+.IP o 3
+Static Context State,
+.IP o 3
+Full Context State.
+.RE
+.PP
+.RS 1
+ +--------------+       +----------------+       +--------------+
+ |  No Context  | <---> | Static Context | <---> | Full Context |
+ +--------------+       +----------------+       +--------------+
+.RE
+.PP
+Transitions between the above states occur when the decompressor:
+.RS 2
+.IP o 3
+successfully decompresses a packet,
+.IP o 3
+fails to decompress several packets.
+.RE
+
+.SS Packet types
+.PP
+The Uncompressed profile defines the following ROHC packets:
+.RS 2
+.IP o 3
+IR,
+.IP o 3
+Normal.
+.RE
+.PP
+The IP/UDP/RTP profile defines the following ROHC packets:
+.RS 2
+.IP o 3
+IR,
+.IP o 3
+IR-DYN,
+.IP o 3
+Type 0: UO-0, R-0, R-0-CRC,
+.IP o 3
+Type 1: UO-1, UO-1-ID, UO-1-TS, R-1, R-1-ID, R-1-TS,
+.IP o 3
+Type 2: UOR-2.
+.RE
+.PP
+The IP-only, non-RTP IP/UDP and IP/ESP profiles define the following ROHC
+packets:
+.RS 2
+.IP o 3
+IR,
+.IP o 3
+IR-DYN,
+.IP o 3
+Type 0: UO-0, R-0, R-0-CRC,
+.IP o 3
+Type 1: UO-1 (different from RTP profile), R-1 (different from RTP profile).
+.IP o 3
+Type 2: UOR-2 (different from RTP profile).
+.RE
+.PP
+Other profiles may define other packets. Please refers to the related RFCs for
+more details.
+
+.SS Encoding schemes
+.PP
+The IP-only, IP/UDP, IP/ESP and IP/UDP/RTP profiles uses the following schemes
+in order to efficiently compress the various header fields:
+.IP Least\ Significant\ Bits\ (LSB)
+Transmit only the k least significant bits of the field value. Used for header
+fields that are usually subject to small changes. The decompressor computes
+the uncompressed value from a reference value and the transmitted bits
+according to an interpretation interval around the reference value that
+depends of the field behaviour.
+.IP Window-based\ Least\ Significant\ Bits\ (W-LSB)
+LSB algorithm modified to achieve robustness. Indeed the LSB algorithm fails
+to decode the correct value if the reference value at decompressor is not the
+same as at compressor. To achieve robustness, a sliding window of the
+successive reference values is maintained at compressor. The number of k
+least significant bits to transmit to decompressor is then computed such that
+no matter which reference value the decompressor uses (if in window) the
+correct value is decoded.
+.IP Scaled\ RTP\ Timestamp
+A compression scheme defined for the RTP Timestamp (TS). The TS value does not
+increase by an arbitrary value from packet to packet. It increases by a
+multiple of some unit that depends on the audio/video sample rate and frame
+duration. The compressor can therefore transmit only the multiplication factor
+once the increment unit is known at the decompressor.
+.IP Timer-based\ RTP\ Timestamp
+A scheme that compresses RTP Timestamp (TS) further than the Scaled RTP
+Timestamp. If the sampling rate of the source is constant, then the TS value
+closely approximates a linear function of the time of day. So, by using a
+local clock the decompressor can obtain an approximation of the scaled TS in
+the header to be decompressed by considering its arrival time. Some LSB bits
+of scaled TS are transmitted in the packets to refine the approximation and
+handle jitter.
+.IP Offset\ IP-ID
+A compression scheme dedicated to IPv4 Identification field. The RTP SN
+increases by one from one packet to another. If the IP-ID behaves similarly,
+it is more efficient to transmit the offset between the two values instead of
+the IP-ID itself.
+.IP Self-describing\ variable-length\ (SDVL)
+Not really a compression scheme, SDVL is a field format that transmits values
+between 0 and 536,870,911 in a minimal number of bytes. Only 1 byte is used
+for values up to 127, 2 bytes for values up to 16,383... The first bits of the
+field are used to encode the field length, hence the scheme's name.
+.IP List\ encoding
+List encoding is used to transmit in an efficient way different types of
+lists. They are used for CSRC lists in RTP packets and extension header chains
+in IP packets.
+.PP
+Other profiles may define other encoding scheme. Please refers to the related
+RFCs for more details.
+
+
+.SH SEE ALSO
+.BR rohc (7),
+.BR rohc_library (7),
+.BR ip (7),
+.BR ipv6 (7),
+.BR udp (7),
+.BR tcp (7)
+
+.SS IETF
+Internet Engineering Task Force <http://ietf.org/>
+.IP ROHC\ Working\ Group 3
+http://datatracker.ietf.org/wg/rohc/charter/
+.IP Requests\ For\ Comments\ (RFC)\ -\ Framework\ and\ default\ profiles 3
+RFC 3095 - ROHC: Framework and four profiles: RTP, UDP, ESP, and uncompressed
+.br
+RFC 3096 - Requirements for robust IP/UDP/RTP header compression
+.br
+RFC 3759 - ROHC: Terminology and Channel Mapping Examples
+.br
+RFC 4815 - ROHC: Corrections and Clarifications to RFC 3095
+.br
+RFC 4995 - The RObust Header Compression (ROHC) Framework
+.IP Requests\ For\ Comments\ (RFC)\ -\ PPP
+RFC 3241 - Robust Header Compression (ROHC) over PPP
+.IP Requests\ For\ Comments\ (RFC)\ -\ SNMP\ /\ MIB
+RFC 3816 - Definitions of Managed Objects for RObust Header Compression (ROHC)
+.IP Requests\ For\ Comments\ (RFC)\ -\ IP-only\ compression\ profile
+RFC 3843 - ROHC: A Compression Profile for IP
+.IP Requests\ For\ Comments\ (RFC)\ -\ IP/UDP-Lite\ and\ IP/UDP-Lite/RTP\ compression\ profiles
+RFC 4019 - ROHC: Profiles for User Datagram Protocol (UDP) Lite
+.IP Requests\ For\ Comments\ (RFC)\ -\ Context\ replication
+RFC 4164 - ROHC: Context Replication for ROHC Profiles
+.IP Requests\ For\ Comments\ (RFC)\ -\ Packet\ reordering
+RFC 4224 - ROHC: ROHC over Channels That Can Reorder Packets
+.IP Requests\ For\ Comments\ (RFC)\ -\ Link-layer\ assistance
+RFC 3242 - ROHC: A Link-Layer Assisted Profile for IP/UDP/RTP
+.br
+RFC 3243 - ROHC: Requirements and Assumptions for 0-byte IP/UDP/RTP Compression
+.br
+RFC 3409 - Lower Layer Guidelines for Robust RTP/UDP/IP Header Compression
+.br
+RFC 3408 - Zero-byte Support for R-mode in Extended Link-Layer Assisted ROHC Profile
+.br
+RFC 4362 - ROHC: A Link-Layer Assisted Profile for IP/UDP/RTP
+.IP Requests\ For\ Comments\ (RFC)\ -\ IP/TCP\ compression\ profile
+RFC 4163 - ROHC: Requirements on TCP/IP Header Compression
+.br
+RFC 4996 - ROHC: A Profile for TCP/IP (ROHC-TCP) [obsolete RFC]
+.br
+RFC 6846 - ROHC: A Profile for TCP/IP (ROHC-TCP)
+.IP Requests\ For\ Comments\ (RFC)\ -\ ROHC\ version\ 2
+RFC 5225 - ROHCv2: Profiles for RTP, UDP, IP, ESP and UDP-Lite
+.IP Requests\ For\ Comments\ (RFC)\ -\ ROHC\ &\ IPsec
+RFC 5856 - Integration of Robust Header Compression over IPsec Security Associations
+.br
+RFC 5857 - IKEv2 Extensions to Support Robust Header Compression over IPsec
+.br
+RFC 5858 - IPsec Extensions to Support Robust Header Compression over IPsec
+
+.SS IANA
+Internet Assigned Numbers Authority <http://www.iana.org/>
+.IP ROHC\ protocol\ identifiers 3
+http://www.iana.org/assignments/rohc-pro-ids/rohc-pro-ids.xml
+.IP Internet\ protocol\ numbers
+http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xml
+
+.SS IEEE
+Institute of Electrical and Electronics Engineers <http://www.ieee.org/>
+.IP Registry\ of\ Ethernet/802.3\ protocol\ identifiers 3
+.br
+http://standards.ieee.org/develop/regauth/ethertype/
+.br
+http://standards.ieee.org/develop/regauth/ethertype/eth.txt
+
+
+.SH COLOPHON
+This page is part of release @PACKAGE_VERSION@ of the @PACKAGE_NAME@ project.
+A description of the project, and information about reporting bugs, can be
+found at @PACKAGE_URL@.

@@ -1,0 +1,313 @@
+.TH rohc_library 7 2013-09-15 "ROHC" "ROHC library Programmer's Manual"
+.SH "NAME"
+rohc_library \- The ROHC library
+
+.SH SYNOPSIS
+.nf
+.B #include <rohc.h>
+.B #include <rohc_traces.h>
+.B #include <rohc_packets.h>
+.B #include <rohc_comp.h>
+.B #include <rohc_decomp.h>
+.fi
+
+.SH DESCRIPTION
+.PP
+The \fBRObust Header Compression (ROHC) library\fP is an implementation of the
+\fBROHC protocol\fP. See
+.BR rohc_protocol (7)
+for details. It provides an easy and robust way for applications to reduce
+their bandwidth usage on network links with limited capacity or expensive
+costs. Headers of network packets are compressed with the \fBROHC protocol and
+algorithms\fP.
+.PP
+The \fBROHC library\fP is intended for developers who want to reduce the
+bandwidth requirements of their applications. The library is published under
+the \fBGPL license\fP (version 2 or later).
+.PP
+The API of the \fBROHC library\fP is divided into three parts: the common API,
+the compression API, and the decompression API.
+.SS The common API
+.PP
+The common API of the ROHC library allows a program to print the version of
+the ROHC library, or retrieve the description of ROHC modes and packets. No
+initialization is required. See
+.BR rohc.h (3)
+for more details.
+.SS The compression API
+.PP
+The compression API of the ROHC library allows a program to compress the
+protocol headers of some uncompressed packets into ROHC packets. See
+.BR rohc_comp.h (3)
+for more details.
+.SS The decompression API
+.PP
+The decompression API of the ROHC library allows a program to decompress some
+ROHC packets into uncompressed packets. See
+.BR rohc_decomp.h (3)
+for more details.
+
+.SH EXAMPLE
+.PP
+The example code below creates a ROHC compressor, compresses an IP packet,
+then frees the ROHC compressor.
+.PP
+If the code is recorded in a file named example.c, the code can be compiled
+with the following command:
+.PP
+.RS 2
+.nf
+$ gcc -o example -Wall -g $( pkg-config --cflags --libs rohc ) example.c
+.fi
+.RE
+.PP
+Then the code can be executed as follow:
+.PP
+.RS 2
+.nf
+$ ./example
+create the ROHC compressor
+please define a callback for compressor traces
+enable several ROHC compression profiles
+
+build a fake IP packet
+0x45 0x00 0x00 0x26 0x00 0x00 0x00 0x00
+0x01 0x86 0xbe 0xef 0x01 0x02 0x03 0x04
+0x05 0x06 0x07 0x08 0x68 0x65 0x6c 0x6c
+0x6f 0x2c 0x20 0x52 0x4f 0x48 0x43 0x20
+0x77 0x6f 0x72 0x6c 0x64 0x21
+
+compress the fake IP packet
+ROHC packet resulting from the ROHC compression:
+0xfd 0x04 0x77 0x40 0x86 0x01 0x02 0x03
+0x04 0x05 0x06 0x07 0x08 0x00 0x01 0x00
+0x00 0x20 0x00 0x9d 0x56 0x68 0x65 0x6c
+0x6c 0x6f 0x2c 0x20 0x52 0x4f 0x48 0x43
+0x20 0x77 0x6f 0x72 0x6c 0x64 0x21
+
+destroy the ROHC decompressor
+
+The program ended successfully. The ROHC packet is larger than the IP packet
+(39 bytes versus 38 bytes). This is expected since we only compress one packet
+in this simple example. Keep in mind that ROHC is designed to compress streams
+of packets not one single packet.
+.fi
+.RE
+.PP
+Example code:
+.PP
+.RS 2
+.nf
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
+
+/* includes required to use the compression part of the ROHC library */
+#include <rohc.h>
+#include <rohc_comp.h>
+
+
+/** The size (in bytes) of the buffers used in the program */
+#define BUFFER_SIZE 2048
+
+/** The payload for the fake IP packet */
+#define FAKE_PAYLOAD "hello, ROHC world!"
+
+
+/**
+ * @brief The main entry point for the simple ROHC program
+ *
+ * @param argc  The number of arguments given to the program
+ * @param argv  The table of arguments given to the program
+ * @return      0 in case of success, 1 otherwise
+ */
+int main(int argc, char **argv)
+{
+	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+
+	struct rohc_comp *compressor;           /* the ROHC compressor */
+	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
+	                                           the IPv4 packet to compress */
+	size_t ip_packet_len;                   /* the length (in bytes) of the
+	                                           IPv4 packet */
+	unsigned char rohc_packet[BUFFER_SIZE]; /* the buffer that will contain
+	                                           the resulting ROHC packet */
+	size_t rohc_packet_len;                 /* the length (in bytes) of the
+	                                           resulting ROHC packet */
+	size_t i;
+	int ret;
+
+	/* Create a ROHC compressor with small CIDs and the largest MAX_CID
+	 * possible for small CIDs */
+	printf("create the ROHC compressor\\n");
+	compressor = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	if(compressor == NULL)
+	{
+		fprintf(stderr, "failed create the ROHC compressor\\n");
+		goto error;
+	}
+
+	/* Enable the compression profiles you need */
+	printf("enable several ROHC compression profiles\\n");
+	if(!rohc_comp_enable_profiles(compressor,
+	                              ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDP,
+	                              ROHC_PROFILE_UDPLITE, -1))
+	{
+		fprintf(stderr, "failed to enable the IP/UDP and IP/UDP-Lite "
+		        "profiles\\n");
+		goto release_compressor;
+	}
+	printf("\\n");
+
+
+	/* create a fake IP packet for the purpose of this simple program */
+	printf("build a fake IP packet\\n");
+	ip_packet[0] = 4 << 4; /* IP version 4 */
+	ip_packet[0] |= 5; /* IHL: minimal IPv4 header length (in 32-bit words) */
+	ip_packet[1] = 0; /* TOS */
+	ip_packet_len = 5 * 4 + strlen(FAKE_PAYLOAD);
+	ip_packet[2] = (ip_packet_len >> 8) & 0xff; /* Total Length */
+	ip_packet[3] = ip_packet_len & 0xff;
+	ip_packet[4] = 0; /* IP-ID */
+	ip_packet[5] = 0;
+	ip_packet[6] = 0; /* Fragment Offset and IP flags */
+	ip_packet[7] = 0;
+	ip_packet[8] = 1; /* TTL */
+	ip_packet[9] = 134; /* Protocol: unassigned number */
+	ip_packet[10] = 0xbe; /* fake Checksum */
+	ip_packet[11] = 0xef;
+	ip_packet[12] = 0x01; /* Source address */
+	ip_packet[13] = 0x02;
+	ip_packet[14] = 0x03;
+	ip_packet[15] = 0x04;
+	ip_packet[16] = 0x05; /* Destination address */
+	ip_packet[17] = 0x06;
+	ip_packet[18] = 0x07;
+	ip_packet[19] = 0x08;
+
+	/* copy the payload just after the IP header */
+	memcpy(ip_packet + 5 * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
+
+	/* dump the newly-created IP packet on terminal */
+	for(i = 0; i < ip_packet_len; i++)
+	{
+		printf("0x%02x ", ip_packet[i]);
+		if(i != 0 && ((i + 1) % 8) == 0)
+		{
+			printf("\\n");
+		}
+	}
+	if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
+	{
+		printf("\\n");
+	}
+	printf("\\n");
+
+
+	/* Now, compress this fake IP packet */
+	printf("compress the fake IP packet\\n");
+	ret = rohc_compress3(compressor, arrival_time, ip_packet, ip_packet_len,
+	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
+	if(ret == ROHC_NEED_SEGMENT)
+	{
+		/* success: compression succeeded, but resulting ROHC packet was too
+		 * large for the Maximum Reconstructed Reception Unit (MRRU) configured
+		 * with rohc_comp_set_mrru, the rohc_packet buffer contains the first
+		 * ROHC segment of rohc_packet_len bytes and rohc_comp_get_segment can
+		 * be used to retrieve the next ones. */
+	}
+	else if(ret == ROHC_OK)
+	{
+		/* success: compression succeeded, and resulting ROHC packet fits the
+		 * Maximum Reconstructed Reception Unit (MRRU) configured with
+		 * rohc_comp_set_mrru, the rohc_packet buffer contains the
+		 * rohc_packet_len bytes of the ROHC packet */
+
+		/* dump the ROHC packet on terminal */
+		printf("ROHC packet resulting from the ROHC compression:\\n");
+		for(i = 0; i < rohc_packet_len; i++)
+		{
+			printf("0x%02x ", rohc_packet[i]);
+			if(i != 0 && ((i + 1) % 8) == 0)
+			{
+				printf("\\n");
+			}
+		}
+		if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
+		{
+			printf("\\n");
+		}
+	}
+	else
+	{
+		/* compressor failed to compress the IP packet */
+		fprintf(stderr, "compression of fake IP packet failed\\n");
+		goto release_compressor;
+	}
+	printf("\\n");
+
+
+	/* Release the ROHC compressor when you do not need it anymore */
+	printf("destroy the ROHC decompressor\\n");
+	rohc_comp_free(compressor);
+	printf("\\n");
+
+
+	printf("The program ended successfully. The ROHC packet is larger than "
+	       "the IP packet (39 bytes versus 38 bytes). This is expected since "
+	       "we only compress one packet in this simple example. Keep in mind "
+	       "that ROHC is designed to compress streams of packets not one "
+	       "single packet.\\n\\n");
+
+	return 0;
+
+release_compressor:
+	rohc_comp_free(compressor);
+error:
+	fprintf(stderr, "an error occured during program execution, "
+	        "abort program\\n");
+	return 1;
+}
+.fi
+.RE
+
+.SH BUGS
+.PP
+Bugs for the @PACKAGE_NAME@ are handled in the online bugtracker at
+https://bugs.launchpad.net/rohc
+
+.SH AVAILABILITY
+.PP
+Information on how to get the @PACKAGE_NAME@ and related information is
+available at the @PACKAGE_NAME@ website <@PACKAGE_URL@>.
+
+.SH AUTHORS
+.PP
+The ROHC library is the combined work of several hackers. See the AUTHORS file
+for the list of contributors.
+.PP
+All parts of the @PACKAGE_NAME@ package are protected by GNU copyleft
+licenses. All files are distributed under the terms of the GNU General Public
+License (GPL) version 2 or later, including the documentation files. See the
+COPYING file for the full text of the license.
+
+.SH SEE ALSO
+.BR rohc (7),
+.BR rohc_protocol (7),
+.BR rohc.h (3),
+.BR rohc_comp.h (3),
+.BR rohc_decomp.h (3),
+.BR ip (7),
+.BR ipv6 (7),
+.BR udp (7),
+.BR tcp (7)
+.sp
+Official website @PACKAGE_URL@ for the @PACKAGE_NAME@ project.
+
+.SH COLOPHON
+This page is part of release @PACKAGE_VERSION@ of the @PACKAGE_NAME@ project.
+A description of the project, and information about reporting bugs, can be
+found at @PACKAGE_URL@.

@@ -850,6 +850,15 @@ AC_ARG_ENABLE(doc,
               [build_doc=no])
 AM_CONDITIONAL([BUILD_DOC], [test "x$build_doc" = "xyes"])
 
+# check if API documentation should be generated (man format with doxygen
+# and a modified version of doxy2man)
+AC_ARG_ENABLE(doc-man,
+				  AS_HELP_STRING([--enable-doc-man],
+                             [generate API documentation in man format [default=no]]),
+              [build_doc_man=$enableval],
+              [build_doc_man=no])
+AM_CONDITIONAL([BUILD_DOC_MAN], [test "x$build_doc_man" = "xyes"])
+
 
 # doxygen and latex are mandatory if API documentation generation is enabled
 if test "x$build_doc" = "xyes" ; then
@@ -891,6 +900,29 @@ if test "x$build_doc" = "xyes" ; then
 		echo
 		echo "Go get it from http://graphviz.org/ or use your package manager "
 		echo "to install it on your system."
+		exit 1
+	fi
+fi
+# if man pages need to be generated, same requirement as HTML pages in addition
+# to doxy2man
+if test "x$build_doc_man" = "xyes" ; then
+	if test "x$build_doc" != "xyes" ; then
+		echo
+		echo "ERROR: --enable-doc-man requires --enable-doc"
+		echo
+		echo "Add --enable-doc to your configure options or remove --enable-doc-man "
+		echo "from your configure options."
+		exit 1
+	fi
+
+	# check for the doxy2man binary and abort if it is not found
+	AC_CHECK_PROG(is_doxy2man_found, doxy2man, "yes", "no")
+	if test "x$is_doxy2man_found" != "xyes"; then
+		echo
+		echo "ERROR: doxy2man binary not found"
+		echo
+		echo "doxy2man is required by doxygen in order to generate the man pages "
+		echo "for the library documentation."
 		exit 1
 	fi
 fi
@@ -948,8 +980,11 @@ AC_CONFIG_FILES([ \
 	app/tunnel/Makefile \
 	app/sniffer/Makefile \
 	app/fuzzer/Makefile \
-	doc/doxygen.conf \
 	doc/Makefile \
+	doc/doxygen.conf \
+	doc/rohc.7 \
+	doc/rohc_protocol.7 \
+	doc/rohc_library.7 \
 	contrib/Makefile \
 	contrib/rohc.spec \
 	rohc.pc \

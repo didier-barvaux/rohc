@@ -38,6 +38,11 @@ test_*.sh.trs
 ./test/report_code_coverage.sh.trs
 ./doc/doxygen.conf
 ./doc/html
+./doc/xml
+./doc/rohc.7
+./doc/rohc_protocol.7
+./doc/rohc_library.7
+./doc/man
 ./src/common/test/test_lsb_decode
 ./src/common/test/test_lsb_decode.exe
 ./src/common/test/test_lsb_decode.log

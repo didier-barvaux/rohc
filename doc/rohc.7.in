@@ -1,0 +1,58 @@
+.TH rohc 7 2013-09-15 "ROHC" "ROHC library Programmer's Manual"
+.SH "NAME"
+rohc \- The ROHC protocol and library
+
+.SH DESCRIPTION
+.PP
+The \fBROHC\fP acronym stands for \fBRObust Header Compression\fP. It may
+refer to two different elements:
+.RS
+.IP o
+the \fBROHC protocol\fP,
+.IP o
+the \fBROHC library\fP.
+.RE
+
+.SS The ROHC protocol
+.PP
+The \fBROHC protocol\fP aims at \fBreducing bandwidth\fP usage on network
+links with \fBlimited capacity\fP or \fBexpensive costs\fP, such as mobile
+networks or satellite links. It defines a \fBlossless compression scheme\fP
+for network headers. It does not act on the network payload in any way.
+.PP
+The \fBROHC protocol\fP is very efficient for compressing \fBVoIP streams\fP
+that use \fBRTP\fP as transport protocol. \fBROHC\fP is also suitable for
+compressing \fBIPv4\fP, \fBIPv6\fP, \fBUDP\fP, \fBUDP-Lite\fP, \fBESP\fP, and
+\fBTCP\fP headers of Internet packets.
+.PP
+See
+.BR rohc_protocol (7)
+for more details about the ROHC protocol.
+
+.SS The ROHC library
+.PP
+The \fBROHC library\fP is an implementation of the \fBROHC protocol\fP. It
+provides an easy and robust way for applications to reduce their bandwidth
+usage on network links with limited capacity or expensive costs. Headers of
+network packets are compressed with the \fBROHC protocol and algorithms\fP.
+.PP
+The \fBROHC library\fP is intended for developers who want to reduce the
+bandwidth requirements of their applications. The library is published under
+the \fBGPL license\fP (version 2 or later).
+.PP
+See
+.BR rohc_library (7)
+for more details about the ROHC library.
+
+.SH SEE ALSO
+.BR rohc_protocol (7),
+.BR rohc_library (7),
+.BR ip (7),
+.BR ipv6 (7),
+.BR udp (7),
+.BR tcp (7)
+
+.SH COLOPHON
+This page is part of release @PACKAGE_VERSION@ of the @PACKAGE_NAME@ project.
+A description of the project, and information about reporting bugs, can be
+found at @PACKAGE_URL@.
