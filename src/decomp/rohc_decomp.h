@@ -26,8 +26,8 @@
 #ifndef ROHC_DECOMP_H
 #define ROHC_DECOMP_H
 
-#include "rohc.h"
-#include "rohc_comp.h"
+#include <rohc/rohc.h>
+#include <rohc/rohc_comp.h>
 
 
 /** Macro that handles DLL export declarations gracefully */

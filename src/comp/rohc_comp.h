@@ -25,9 +25,9 @@
 #ifndef ROHC_COMP_H
 #define ROHC_COMP_H
 
-#include "rohc.h"
-#include "rohc_packets.h"
-#include "rohc_traces.h"
+#include <rohc/rohc.h>
+#include <rohc/rohc_packets.h>
+#include <rohc/rohc_traces.h>
 
 #include <stdlib.h>
 #include <stdint.h>
