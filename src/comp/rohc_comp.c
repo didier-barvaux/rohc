@@ -194,9 +194,9 @@ static int __rohc_c_context(struct rohc_comp *comp,
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
  * \snippet simple_rohc_program.c create ROHC compressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_free_compressor
@@ -247,9 +247,9 @@ error:
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
  * \snippet simple_rohc_program.c create ROHC compressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_alloc_compressor
@@ -290,10 +290,13 @@ void rohc_free_compressor(struct rohc_comp *comp)
  *
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
- * \snippet simple_rohc_program.c create ROHC compressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_free
@@ -494,10 +497,13 @@ error:
  *
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
- * \snippet simple_rohc_program.c create ROHC compressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_new
@@ -805,25 +811,25 @@ int rohc_compress2(struct rohc_comp *const comp,
  * \snippet simple_rohc_program.c define ROHC compressor
  * \snippet simple_rohc_program.c define arrival time
  * \snippet simple_rohc_program.c define IP and ROHC packets
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c compress IP packet #1
- * \verbatim
+ * \code
                 ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c compress IP packet #2
- * \verbatim
+ * \code
                 ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c compress IP packet #3
- * \verbatim
+ * \code
                 ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c compress IP packet #4
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_comp_set_mrru
  * @see rohc_comp_get_segment
@@ -1594,13 +1600,13 @@ error:
  *
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c enable ROHC compression profile
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_comp_enable_profiles
  * @see rohc_comp_disable_profile
@@ -1730,13 +1736,13 @@ error:
  *
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet simple_rohc_program.c enable ROHC compression profiles
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_comp_enable_profile
  * @see rohc_comp_disable_profile
@@ -1926,14 +1932,14 @@ void rohc_c_set_mrru(struct rohc_comp *comp, int value)
  *
  * \par Example:
  * \snippet test_segment.c define ROHC compressor
- * \verbatim
+ * \code
         size_t mrru = 500;
         ...
-\endverbatim
+\endcode
  * \snippet test_segment.c set compressor MRRU
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_comp_get_mrru
  * @see rohc_comp_get_segment
@@ -1996,10 +2002,10 @@ error:
  *
  * \par Example:
  * \snippet test_segment.c define ROHC compressor
- * \verbatim
+ * \code
         size_t mrru;
         ...
-\endverbatim
+\endcode
  * \snippet test_non_regression.c get compressor MRRU
  * \code
         printf("the current MMRU at compressor is %zu bytes\n", mrru);

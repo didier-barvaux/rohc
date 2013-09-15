@@ -600,14 +600,14 @@ error:
  *
  * \par Example:
  * \snippet example_rohc_decomp.c define ROHC decompressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c create ROHC decompressor #1
  * \snippet example_rohc_decomp.c create ROHC decompressor #2
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c destroy ROHC decompressor
  *
  * @see rohc_decomp_free
@@ -797,14 +797,14 @@ error:
  *
  * \par Example:
  * \snippet example_rohc_decomp.c define ROHC decompressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c create ROHC decompressor #1
  * \snippet example_rohc_decomp.c create ROHC decompressor #2
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c destroy ROHC decompressor
  *
  * @see rohc_decomp_new
@@ -953,21 +953,21 @@ int rohc_decompress(struct rohc_decomp *decomp,
  * \snippet example_rohc_decomp.c define ROHC decompressor
  * \snippet example_rohc_decomp.c define arrival time
  * \snippet example_rohc_decomp.c define IP and ROHC packets
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #1
- * \verbatim
+ * \code
                 ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #2
- * \verbatim
+ * \code
                 ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #3
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_decomp_set_mrru
  */
@@ -2490,14 +2490,14 @@ error:
  *
  * \par Example:
  * \snippet test_segment.c define ROHC decompressor
- * \verbatim
+ * \code
         size_t mrru = 500;
         ...
-\endverbatim
+\endcode
  * \snippet test_segment.c set decompressor MRRU
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_comp_set_mrru
  * @see ROHC_NON_FINAL_SEGMENT
@@ -2652,13 +2652,13 @@ error:
  *
  * \par Example:
  * \snippet example_rohc_decomp.c define ROHC decompressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c enable ROHC decompression profile
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_decomp_enable_profiles
  * @see rohc_decomp_disable_profile
@@ -2788,13 +2788,13 @@ error:
  *
  * \par Example:
  * \snippet example_rohc_decomp.c define ROHC decompressor
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  * \snippet example_rohc_decomp.c enable ROHC decompression profiles
- * \verbatim
+ * \code
         ...
-\endverbatim
+\endcode
  *
  * @see rohc_decomp_enable_profile
  * @see rohc_decomp_disable_profile
