@@ -43,7 +43,12 @@ librohc_decomp_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
 
-include_HEADERS = rohc_decomp.h
+# fake public headers installed in $includedir to point
+# to the real public headers in $includedir/$packagename
+include_HEADERS = \
+	compat_headers/rohc_decomp.h
+
+pkginclude_HEADERS = rohc_decomp.h
 
 noinst_HEADERS = \
 	rohc_decomp_internals.h \

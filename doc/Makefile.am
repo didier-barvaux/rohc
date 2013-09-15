@@ -144,17 +144,17 @@ mandoc: htmldoc man-rohc man-rohc-comp man-rohc-decomp
 man-rohc:
 	$(AM_V_GEN)doxy2man --out man/man3/ --noseealsoall --nosort \
 		--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual" \
-		xml/group__rohc.xml
+		--include-prefix "rohc/" xml/group__rohc.xml
 
 man-rohc-comp:
 	$(AM_V_GEN)doxy2man --out man/man3/ --noseealsoall --nosort \
 		--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual" \
-		xml/group__rohc__comp.xml
+		--include-prefix "rohc/" xml/group__rohc__comp.xml
 
 man-rohc-decomp:
 	$(AM_V_GEN)doxy2man --out man/man3/ --noseealsoall --nosort \
 		--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual" \
-		xml/group__rohc__decomp.xml
+		--include-prefix "rohc/" xml/group__rohc__decomp.xml
 
 
 clean-local:

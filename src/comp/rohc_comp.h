@@ -22,8 +22,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef COMP_H
-#define COMP_H
+#ifndef ROHC_COMP_H
+#define ROHC_COMP_H
 
 #include "rohc.h"
 #include "rohc_packets.h"

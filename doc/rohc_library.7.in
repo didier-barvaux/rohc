@@ -4,11 +4,11 @@ rohc_library \- The ROHC library
 
 .SH SYNOPSIS
 .nf
-.B #include <rohc.h>
-.B #include <rohc_traces.h>
-.B #include <rohc_packets.h>
-.B #include <rohc_comp.h>
-.B #include <rohc_decomp.h>
+.B #include <rohc/rohc.h>
+.B #include <rohc/rohc_traces.h>
+.B #include <rohc/rohc_packets.h>
+.B #include <rohc/rohc_comp.h>
+.B #include <rohc/rohc_decomp.h>
 .fi
 
 .SH DESCRIPTION
@@ -104,8 +104,8 @@ Example code:
 #include <arpa/inet.h>
 
 /* includes required to use the compression part of the ROHC library */
-#include <rohc.h>
-#include <rohc_comp.h>
+#include <rohc/rohc.h>
+#include <rohc/rohc_comp.h>
 
 
 /** The size (in bytes) of the buffers used in the program */

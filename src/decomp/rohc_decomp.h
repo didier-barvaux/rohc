@@ -23,8 +23,8 @@
  * @author David Moreau from TAS
  */
 
-#ifndef DECOMP_H
-#define DECOMP_H
+#ifndef ROHC_DECOMP_H
+#define ROHC_DECOMP_H
 
 #include "rohc.h"
 #include "rohc_comp.h"

@@ -34,8 +34,8 @@
 #include <assert.h>
 
 /* ROHC includes */
-#include <rohc.h>
-#include <rohc_decomp.h>
+#include <rohc/rohc.h>
+#include <rohc/rohc_decomp.h>
 
 
 /** The maximum size of IP and ROHC packets */

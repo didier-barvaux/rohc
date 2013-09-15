@@ -48,8 +48,8 @@
 #endif
 
 /* includes required to use the compression part of the ROHC library */
-#include <rohc.h>
-#include <rohc_comp.h>
+#include <rohc/rohc.h>
+#include <rohc/rohc_comp.h>
 
 
 /** The size (in bytes) of the buffers used in the program */

@@ -39,7 +39,12 @@ librohc_comp_la_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common
 
+# fake public headers installed in $includedir to point
+# to the real public headers in $includedir/$packagename
 include_HEADERS = \
+	compat_headers/rohc_comp.h
+
+pkginclude_HEADERS = \
 	rohc_comp.h
 
 noinst_HEADERS = \

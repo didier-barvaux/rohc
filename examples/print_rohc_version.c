@@ -31,7 +31,7 @@
 #include <stdio.h>
 
 /* include required to use the common part of the ROHC library */
-#include <rohc.h>
+#include <rohc/rohc.h>
 
 
 /**

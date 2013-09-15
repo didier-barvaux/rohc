@@ -94,9 +94,9 @@ for ./configure ? If yes, check configure output and config.log"
 #include <protocols/ipv6.h>
 
 /* ROHC includes */
-#include <rohc.h>
-#include <rohc_comp.h>
-#include <rohc_decomp.h>
+#include <rohc/rohc.h>
+#include <rohc/rohc_comp.h>
+#include <rohc/rohc_decomp.h>
 
 
 /** The application version */
