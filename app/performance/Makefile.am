@@ -9,6 +9,12 @@ sbin_PROGRAMS = \
 	rohc_test_performance \
 	rohc_gen_stream
 
+if BUILD_DOC_MAN
+man_MANS = \
+	rohc_test_performance.1 \
+	rohc_gen_stream.1
+endif
+
 
 rohc_test_performance_CFLAGS = \
 	$(configure_cflags)
@@ -51,4 +57,17 @@ rohc_gen_stream_LDADD = \
 	-lrohc_comp \
 	-lrohc_common \
 	$(additional_platform_libs)
+
+
+rohc_test_performance.1: $(rohc_test_performance_SOURCES)
+	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
+		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
+		-n "The ROHC performance application" \
+		$(builddir)/rohc_test_performance
+
+rohc_gen_stream.1: $(rohc_gen_stream_SOURCES)
+	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
+		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
+		-n "The generator of compressed/uncompressed RTP streams" \
+		$(builddir)/rohc_gen_stream
 

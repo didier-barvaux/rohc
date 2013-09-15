@@ -102,7 +102,7 @@
  */
 
 
-#include "config.h" /* for HAVE_LINUX_IF_TUN_H */
+#include "config.h" /* for HAVE_LINUX_IF_TUN_H and PACKAGE_BUGREPORT */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -282,27 +282,31 @@ void sighandler(int sig)
  */
 void usage(void)
 {
-	printf("ROHC tunnel: make a ROHC-over-UDP or ROHC-over-Ethernet tunnel\n\
+	printf("The ROHC tunnel creates one ROHC-over-UDP or ROHC-over-Ethernet\n\
+tunnel\n\
 \n\
-usage:\n\
-  rohctunnel [ version | help ]\n\
-  rohctunnel TUNNEL [ ERROR ] [ DIR ]\n\
+You need to be root (or to have POSIX capability CAP_NET_ADMIN) to create\n\
+ROHC tunnels.\n\
 \n\
-Tunnel parameters:\n\
-  TUNNEL := NAME TYPE PARAMS\n\
+Usage: rohctunnel version\n\
+   or: rohctunnel help\n\
+   or: rohctunnel TUNNEL [ERROR] [DIR]\n\
+\n\
+Options:\n\
+  TUNNEL := NAME TYPE PARAMS    The tunnel definition\n\
   NAME   := STRING              The name of the tunnel\n\
-  TYPE   := { udp | ethernet }\n\
+  TYPE   := { udp | ethernet }  The type of the tunnel\n\
 \n\
 Tunnel parameters if TYPE = udp:\n\
-  PARAMS := remote RADDR local LADDR port PORT\n\
-  RADDR  := IPV4_ADDRESS      The IP address of the remote host\n\
-  LADDR  := IPV4_ADDRESS      The IP address of the local host\n\
-  PORT   := PORT              The UDP port to use (local and remote)\n\
+  PARAMS := REMOTE LOCAL PORT  Additional parameters for UDP\n\
+  REMOTE := remote IPV4        The IP address of the remote host\n\
+  LOCAL  := local IPV4         The IP address of the local host\n\
+  PORT   := port PORTN         The UDP port to use (local and remote)\n\
 \n\
 Tunnel parameters if TYPE = ethernet:\n\
-  PARAMS := remote RADDR local ITF\n\
-  RADDR  := MAC_ADDRESS       The Ethernet MAC address of the remote host\n\
-  ITF    := STRING            The local interface to use, eg. eth0\n\
+  PARAMS := REMOTE LOCAL    Additional parameters for Ethernet\n\
+  REMOTE := remote MAC      The Ethernet MAC address of the remote host\n\
+  LOCAL  := local ITF       The local interface to use, eg. eth0\n\
 \n\
 Error model (none if not specified):\n\
   ERROR  := error { none | uniform RATE | burst PE2 P2 }\n\
@@ -313,18 +317,24 @@ Error model (none if not specified):\n\
 Direction (bidirectional if not specified):\n\
   DIR    := dir { bidirectional | unidirectional }\n\
 \n\
+Miscellaneous:\n\
+  STRING := [a-zA-Z0-9]               A sequence of letters and numbers\n\
+  IPV4   := NUM.NUM.NUM.NUM           An IPv4 address\n\
+  MAC    := HEX:HEX:HEX:HEX:HEX:HEX   A MAC address\n\
+  PORTN  := [1,65535]                 An UDP port\n\
+  ITF    := STRING                    A network interface, eg. eth0\n\
+  NUM    := [0,255]                   A part of an IPv4 address\n\
+  HEX    := [0x00,0xff]               A part of a MAC address\n\
+\n\
 Examples:\n\
-  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000\n\
-  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
-    dir unidirectional\n\
-  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
-    error uniform 1e-5 dir bidirectional\n\
-  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 \\\n\
-    error burst 1e-5 2e-5\n\
-  # rohctunnel rohc0 ethernet remote 01:02:03:04:05:06 local eth1\n\
-  # rohctunnel rohc0 ethernet remote 01:02:03:04:05:06 local eth1 \\\n\
-    error burst 1e-5 2e-5\n\
-");
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000                                        ROHC-over-UDP tunnel with ROHC O-mode\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 dir unidirectional                     ROHC-over-UDP tunnel with ROHC U-mode\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 error uniform 1e-5 dir bidirectional   ROHC-over-UDP tunnel with ROHC O-mode and uniform BER\n\
+  # rohctunnel rohc0 udp remote 192.168.0.20 local 192.168.0.21 port 5000 error burst 1e-5 2e-5                  ROHC-over-UDP tunnel with ROHC O-mode and bursty BER\n\
+  # rohctunnel rohc0 ethernet remote 01:02:03:04:05:06 local eth1                                                ROHC-over-Ethernet tunnel with ROHC O-mode\n\
+  # rohctunnel rohc0 ethernet remote 01:02:03:04:05:06 local eth1 error burst 1e-5 2e-5                          ROHC-over-Ethernet tunnel with ROHC O-mode and bursty BER\n\
+\n\
+Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
 
 
@@ -333,7 +343,7 @@ Examples:\n\
  */
 void version(void)
 {
-	printf("ROHC tunnel version %s\n", rohc_version());
+	printf("rohctunnel version %s\n", rohc_version());
 }
 
 

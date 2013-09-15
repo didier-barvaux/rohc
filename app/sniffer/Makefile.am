@@ -7,6 +7,10 @@
 sbin_PROGRAMS = \
 	rohc_sniffer
 
+if BUILD_DOC_MAN
+man_MANS = rohc_sniffer.1
+endif
+
 
 rohc_sniffer_CFLAGS = \
 	$(configure_cflags)
@@ -33,4 +37,11 @@ rohc_sniffer_LDADD = \
 	-lrohc_decomp \
 	-lrohc_common \
 	$(additional_platform_libs)
+
+
+rohc_sniffer.1: $(rohc_sniffer_SOURCES)
+	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
+		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
+		-n "The ROHC sniffer" \
+		$(builddir)/rohc_sniffer
 

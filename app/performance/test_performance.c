@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 		if(!strcmp(*argv, "-v") || !strcmp(*argv, "--version"))
 		{
 			/* print version */
-			fprintf(stderr, APP_VERSION "\n");
+			printf("rohc_test_perf version %s\n", rohc_version());
 			goto error;
 		}
 		else if(!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
@@ -367,22 +367,36 @@ error:
  */
 static void usage(void)
 {
-	fprintf(stderr,
-		"ROHC performance test: test the performance of the ROHC library\n"
-		"                       with a flow of IP packets\n"
+	printf(
+		"Test the performance of the ROHC library.\n"
 		"\n"
-		"usage: test_performance [-h|--help] [-v|--version] [de]compression (small|large)cid flow\n"
+		"You need to be root to run the ROHC performance application.\n"
 		"\n"
-		"  --version               Print version information and exit\n"
-		"  -v\n"
-		"  --verbose               Tell the application to be more verbose\n"
-		"  --help                  Print application usage and exit\n"
-		"  -h\n"
-		"  --wlsb-width NUM        The width of the WLSB window to use\n"
-		"  --max-contexts NUM      The maximum number of ROHC contexts to\n"
+		"Usage: rohc_test_performance [General options]\n"
+		"   or: rohc_test_performance [ROHC options] ACTION CID_TYPE FLOW\n"
+		"\n"
+		"Options:\n"
+		"Mandatory parameters:\n"
+		"  ACTION            Run a compression test with 'comp' or a\n"
+		"                    decompression test with 'decomp'\n"
+		"  CID_TYPE          Run a small CID test with 'smallcid' or a\n"
+		"                    large CID test with 'largecid'\n"
+		"  FLOW              A flow of Ethernet frames to (de)compress\n"
+		"                    (in PCAP format)\n"
+		"General options:\n"
+		"  -h, --help              Print application usage and exit\n"
+		"  -v, --version           Print version information and exit\n"
+		"ROHC options:\n"
+		"      --verbose           Tell the application to be more verbose\n"
+		"      --wlsb-width NUM    The width of the WLSB window to use\n"
+		"      --max-contexts NUM  The maximum number of ROHC contexts to\n"
 		"                          simultaneously use during the test\n"
 		"\n"
-		"  flow  flow of Ethernet frames to (de)compress (PCAP format)\n");
+		"Examples:\n"
+		"  rohc_test_performance comp smallcid voip.pcap     test compression performances with small CIDs on the given VoIP stream\n"
+		"  rohc_test_performance decomp largecid a.pcap      test decompression performances with large CIDs on the given stream\n"
+		"\n"
+		"Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
 
 

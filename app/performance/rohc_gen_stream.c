@@ -20,7 +20,7 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "config.h" /* for HAVE_*_H */
+#include "config.h" /* for HAVE_*_H and PACKAGE_BUGREPORT */
 
 /* system includes */
 #include <stdio.h>
@@ -125,7 +125,13 @@ int main(int argc, char *argv[])
 	{
 		args_used = 1;
 
-		if(!strcmp(*argv, "-h"))
+		if(!strcmp(*argv, "-v") || !strcmp(*argv, "--version"))
+		{
+			/* print version */
+			printf("rohc_gen_stream version %s\n", rohc_version());
+			goto error;
+		}
+		else if(!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
 		{
 			/* print help */
 			usage();
@@ -262,27 +268,35 @@ error:
  */
 static void usage(void)
 {
-	fprintf(stderr,
-	        "Generate an (un)compressed stream for performance testing\n"
-	        "\n"
-	        "usage: rohc_gen_stream [General options]\n"
-	        "       rohc_gen_stream uncomp MAX OUTPUT\n"
-	        "       rohc_gen_stream [Compression options] comp MAX OUTPUT\n"
-	        "\n"
-	        "with:\n"
-	        "  MAX                 The number of packets to generate\n"
-	        "  OUTPUT              The name of the output file with the\n"
-	        "                      generated stream (in PCAP format)\n"
-	        "\n"
-	        "General options:\n"
-	        "  -h                  Print this usage and exit\n"
-	        "\n"
-	        "Compression options:\n"
-	        "  --cid-type STRING   The type of CID to use among 'smallcid'\n"
-	        "                      and 'largecid'\n"
-	        "  --max-contexts NUM  The maximum number of ROHC contexts to\n"
-	        "                      simultaneously use during the test\n"
-	        "  --wlsb-width NUM    The width of the WLSB window to use\n");
+	printf("Generate an (un)compressed stream for performance testing\n"
+	       "\n"
+	       "Usage: rohc_gen_stream [General options]\n"
+	       "   or: rohc_gen_stream uncomp MAX OUTPUT\n"
+	       "   or: rohc_gen_stream [Compression options] comp MAX OUTPUT\n"
+	       "\n"
+	       "Options:\n"
+	       "General options:\n"
+	       "  -h, --help              Print this usage and exit\n"
+	       "  -v, --version           Print the application version and exit\n"
+	       "Compression options:\n"
+	       "      --cid-type TYPE     The type of CID to use among 'smallcid'\n"
+	       "                          and 'largecid'\n"
+	       "      --max-contexts NUM  The maximum number of ROHC contexts to\n"
+	       "                          simultaneously use during the test\n"
+	       "      --wlsb-width NUM    The width of the WLSB window to use\n"
+	       "Mandatory parameters:\n"
+	       "  MAX                     The number of packets to generate\n"
+	       "  OUTPUT                  The name of the output file with the\n"
+	       "                          generated stream (in PCAP format)\n"
+	       "\n"
+	       "Examples:\n"
+	       "  rohc_gen_stream uncomp 1000 rtp.pcap  Generate 1000 RTP packets\n"
+	       "                                        in file rtp.pcap\n"
+	       "  rohc_gen_stream comp 500 rohc.pcap    Generate 500 RTP packets,\n"
+	       "                                        compress them, then store\n"
+	       "                                        them in file rohc.pcap\n"
+	       "\n"
+	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
 
 

@@ -7,6 +7,11 @@
 
 sbin_PROGRAMS = rohctunnel
 
+if BUILD_DOC_MAN
+man_MANS = rohctunnel.1
+endif
+
+
 rohctunnel_CFLAGS = \
 	$(configure_cflags)
 
@@ -28,4 +33,12 @@ rohctunnel_LDADD = \
 	-lrohc_comp \
 	-lrohc_decomp\
 	-lrohc_common
+
+
+rohctunnel.1: $(rohctunnel_SOURCES)
+	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
+		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
+		--help-option=help --version-option=version \
+		-n "The ROHC tunnel" \
+		$(builddir)/rohctunnel
 

@@ -23,6 +23,8 @@
  * Stress test the ROHC decompressor to discover bugs.
  */
 
+#include "config.h" /* for PACKAGE_BUGREPORT */
+
 /* system includes */
 #include <stdlib.h>
 #include <stdio.h>
@@ -92,6 +94,18 @@ int main(int argc, char *argv[])
 	if(argc != 2 && argc != 3)
 	{
 		fprintf(stderr, "wrong number of arguments\n");
+		usage();
+		goto error;
+	}
+	else if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0)
+	{
+		/* print version */
+		printf("rohc_fuzzer version %s\n", rohc_version());
+		goto error;
+	}
+	else if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
+	{
+		/* print help */
 		usage();
 		goto error;
 	}
@@ -196,13 +210,21 @@ error:
  */
 static void usage(void)
 {
-	printf("ROHC fuzzer tool: test the ROHC library robustness\n"
+	printf("The ROHC fuzzer tests the ROHC library robustness\n"
 	       "\n"
-	       "usage: rohc_fuzzer COMMAND\n"
+	       "Usage: rohc_fuzzer OPTIONS\n"
+	       "   or: rohc_fuzzer play\n"
+	       "   or: rohc_fuzzer replay SEED\n"
 	       "\n"
-	       "available commands:\n"
-	       "  play                Run a test\n"
-	       "  replay SEED         Run a specific test (to reproduce bugs)\n");
+	       "Options:\n"
+	       "  -v, --version          Print version information and exit\n"
+	       "  -h, --help             Print this usage and exit\n"
+	       "\n"
+	       "Examples:\n"
+	       "  rohc_fuzzer play       Run a test\n"
+	       "  rohc_fuzzer replay 5   Run a specific test (to reproduce bugs)\n"
+	       "\n"
+	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
 
 

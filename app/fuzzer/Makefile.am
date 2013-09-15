@@ -7,6 +7,10 @@
 sbin_PROGRAMS = \
 	rohc_fuzzer
 
+if BUILD_DOC_MAN
+man_MANS = rohc_fuzzer.1
+endif
+
 
 rohc_fuzzer_CFLAGS = \
 	$(configure_cflags)
@@ -30,6 +34,14 @@ rohc_fuzzer_LDADD = \
 	-lrohc_decomp \
 	-lrohc_common \
 	$(additional_platform_libs)
+
+
+rohc_fuzzer.1: $(rohc_fuzzer_SOURCES)
+	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
+		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
+		-n "The ROHC fuzzing tool" \
+		$(builddir)/rohc_fuzzer
+
 
 # extra files for releases
 EXTRA_DIST = \

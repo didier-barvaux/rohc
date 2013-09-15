@@ -43,7 +43,7 @@
 
 #include "test.h"
 
-#include "config.h" /* for HAVE_*_H */
+#include "config.h" /* for HAVE_*_H and PACKAGE_BUGREPORT */
 
 /* system includes */
 #include <stdio.h>
@@ -268,14 +268,13 @@ int main(int argc, char *argv[])
 	{
 		args_used = 1;
 
-		if(!strcmp(*argv, "-v"))
+		if(!strcmp(*argv, "-v") || !strcmp(*argv, "--version"))
 		{
 			/* print version */
-			printf("ROHC sniffer program, based on library version %s\n",
-			       rohc_version());
+			printf("rohc_sniffer version %s\n", rohc_version());
 			goto error;
 		}
-		else if(!strcmp(*argv, "-h"))
+		else if(!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
 		{
 			/* print help */
 			usage();
@@ -286,7 +285,7 @@ int main(int argc, char *argv[])
 			/* enable verbose mode */
 			is_verbose = true;
 		}
-		else if(!strcmp(*argv, "--max-contexts"))
+		else if(!strcmp(*argv, "-m") || !strcmp(*argv, "--max-contexts"))
 		{
 			/* get the maximum number of contexts the test should use */
 			max_contexts = atoi(argv[1]);
@@ -389,23 +388,33 @@ error:
  */
 static void usage(void)
 {
-	printf("ROHC sniffer tool: test the ROHC library with sniffed traffic\n"
+	printf("The ROHC sniffer tests the ROHC library with sniffed traffic\n"
 	       "\n"
-	       "usage: rohc_sniffer [OPTIONS] CID_TYPE DEVICE\n"
+	       "You need to be root (or to have POSIX capability CAP_NET_ADMIN)\n"
+	       "to run the ROHC sniffer.\n"
 	       "\n"
-	       "with:\n"
-	       "  CID_TYPE            The type of CID to use among 'smallcid'\n"
-	       "                      and 'largecid'\n"
-	       "  DEVICE              The name of the network device to use\n"
+	       "Usage: rohc_sniffer [OPTIONS] CID_TYPE DEVICE\n"
 	       "\n"
-	       "options:\n"
-	       "  -v                  Print version information and exit\n"
-	       "  -h                  Print this usage and exit\n"
-	       "  --max-contexts NUM  The maximum number of ROHC contexts to\n"
-	       "                      simultaneously use during the test\n"
-	       "  --disable PROFILE   A ROHC profile to disable\n"
-	       "                      (may be specified several times)\n"
-	       "  --verbose           Make the test more verbose\n");
+	       "Options:\n"
+	       "  CID_TYPE                The type of CID to use among 'smallcid'\n"
+	       "                          and 'largecid'\n"
+	       "  DEVICE                  The name of the network device to use\n"
+	       "  -v, --version           Print version information and exit\n"
+	       "  -h, --help              Print this usage and exit\n"
+	       "  -m, --max-contexts NUM  The maximum number of ROHC contexts to\n"
+	       "                          simultaneously use during the test\n"
+	       "      --disable PROFILE   A ROHC profile to disable\n"
+	       "                          (may be specified several times)\n"
+	       "      --verbose           Make the test more verbose\n"
+	       "\n"
+	       "Examples:\n"
+	       "  rohc_sniffer smallcid eth0          compress traffic from eth0\n"
+	       "                                      with small CIDs\n"
+	       "  rohc_sniffer -m 450 largecid wlan0  compress traffic from\n"
+	       "                                      wlan0 with large CIDs, no\n"
+	       "                                      more than 450 streams\n"
+	       "\n"
+	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
 
 
