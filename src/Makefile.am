@@ -5,10 +5,10 @@
 ################################################################################
 
 SUBDIRS = \
-	. \
 	common \
 	comp \
-	decomp
+	decomp \
+	.
 
 lib_LTLIBRARIES = librohc.la
 
