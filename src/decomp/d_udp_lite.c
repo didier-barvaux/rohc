@@ -74,8 +74,8 @@ struct d_udp_lite_context
 	 *
 	 * Possible values are:
 	 *  - 0 if not present
-	 *  - PACKET_CCE if present and ON
-	 *  - PACKET_CCE_OFF if present and OFF
+	 *  - ROHC_PACKET_CCE if present and ON
+	 *  - ROHC_PACKET_CCE_OFF if present and OFF
 	 */
 	int cce_packet;
 };
@@ -299,7 +299,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 	{
 		case 0xf9: /* CCE() */
 			rohc_decomp_debug(context, "CCE()\n");
-			udp_lite_context->cce_packet = PACKET_CCE;
+			udp_lite_context->cce_packet = ROHC_PACKET_CCE;
 			/* skip CCE byte (and optional large CID field) */
 			rohc_remain_data += 1 + large_cid_len;
 			rohc_remain_len -= 1 + large_cid_len;
@@ -308,7 +308,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 		case 0xfa: /* CEC(ON) */
 			rohc_decomp_debug(context, "CCE(ON)\n");
 			udp_lite_context->cfp = 1;
-			udp_lite_context->cce_packet = PACKET_CCE;
+			udp_lite_context->cce_packet = ROHC_PACKET_CCE;
 			/* skip CCE byte (and optional large CID field) */
 			rohc_remain_data += 1 + large_cid_len;
 			rohc_remain_len -= 1 + large_cid_len;
@@ -317,7 +317,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 		case 0xfb: /* CCE(OFF) */
 			rohc_decomp_debug(context, "CCE(OFF)\n");
 			udp_lite_context->cfp = 0;
-			udp_lite_context->cce_packet = PACKET_CCE_OFF;
+			udp_lite_context->cce_packet = ROHC_PACKET_CCE_OFF;
 			/* no CCE byte to skip */
 			new_large_cid_len = large_cid_len;
 			break;
@@ -336,7 +336,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 	                             new_large_cid_len);
 
 error:
-	return PACKET_UNKNOWN;
+	return ROHC_PACKET_UNKNOWN;
 }
 
 

@@ -129,11 +129,11 @@ static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const d
 
 	if(d_is_ir(rohc_packet, rohc_length))
 	{
-		type = PACKET_IR;
+		type = ROHC_PACKET_IR;
 	}
 	else
 	{
-		type = PACKET_NORMAL;
+		type = ROHC_PACKET_NORMAL;
 	}
 
 	return type;
@@ -173,13 +173,13 @@ static int uncompressed_decode(struct rohc_decomp *const decomp,
 {
 	int status;
 
-	if((*packet_type) == PACKET_IR)
+	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		status = uncompressed_decode_ir(decomp, context,
 		                                rohc_packet, rohc_length,
 		                                add_cid_len, large_cid_len, dest);
 	}
-	else if((*packet_type) == PACKET_NORMAL)
+	else if((*packet_type) == ROHC_PACKET_NORMAL)
 	{
 		status = uncompressed_decode_normal(decomp, context,
 		                                    rohc_packet, rohc_length,

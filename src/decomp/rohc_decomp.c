@@ -1520,7 +1520,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	*packet_type = profile->detect_packet_type(decomp, ddata->active,
 	                                           walk, isize,
 	                                           ddata->large_cid_size);
-	if((*packet_type) == PACKET_UNKNOWN)
+	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "failed to detect ROHC packet type\n");
@@ -1531,7 +1531,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 	/* only the IR packet can be received in the No Context state,
 	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
-	if((*packet_type) != PACKET_IR && ddata->active->state == NO_CONTEXT)
+	if((*packet_type) != ROHC_PACKET_IR && ddata->active->state == NO_CONTEXT)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "non-IR packet (%d) cannot be received in No Context "
@@ -1540,7 +1540,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 	/* only IR packet can create a new context */
-	assert((*packet_type) == PACKET_IR || !is_new_context);
+	assert((*packet_type) == ROHC_PACKET_IR || !is_new_context);
 
 	/* decode the packet thanks to the profile-specific routines */
 	status = profile->decode(decomp, ddata->active, arrival_time, walk, isize,

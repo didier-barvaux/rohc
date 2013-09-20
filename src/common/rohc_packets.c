@@ -42,77 +42,77 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 {
 	switch(packet_type)
 	{
-		case PACKET_IR:
+		case ROHC_PACKET_IR:
 			return "IR";
-		case PACKET_IR_DYN:
+		case ROHC_PACKET_IR_DYN:
 			return "IR-DYN";
 
-		case PACKET_UO_0:
+		case ROHC_PACKET_UO_0:
 			return "UO-0";
 
-		case PACKET_UO_1:
+		case ROHC_PACKET_UO_1:
 			return "UO-1 (non-RTP)";
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1_ID:
 			return "UO-1-ID";
-		case PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_TS:
 			return "UO-1-TS";
-		case PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_RTP:
 			return "UO-1 (RTP)";
 
-		case PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2:
 			return "UOR-2 (non-RTP)";
-		case PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_RTP:
 			return "UOR-2 (RTP)";
-		case PACKET_UOR_2_ID:
+		case ROHC_PACKET_UOR_2_ID:
 			return "UOR-2-ID";
-		case PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_TS:
 			return "UOR-2-TS";
 
-		case PACKET_CCE:
+		case ROHC_PACKET_CCE:
 			return "CCE";
-		case PACKET_CCE_OFF:
+		case ROHC_PACKET_CCE_OFF:
 			return "CCE(OFF)";
-		case PACKET_NORMAL:
+		case ROHC_PACKET_NORMAL:
 			return "Normal";
 
-		case PACKET_TCP_CO_COMMON:
+		case ROHC_PACKET_TCP_CO_COMMON:
 			return "TCP/co_common";
 
-		case PACKET_TCP_RND_1:
+		case ROHC_PACKET_TCP_RND_1:
 			return "TCP/rnd_1";
-		case PACKET_TCP_RND_2:
+		case ROHC_PACKET_TCP_RND_2:
 			return "TCP/rnd_2";
-		case PACKET_TCP_RND_3:
+		case ROHC_PACKET_TCP_RND_3:
 			return "TCP/rnd_3";
-		case PACKET_TCP_RND_4:
+		case ROHC_PACKET_TCP_RND_4:
 			return "TCP/rnd_4";
-		case PACKET_TCP_RND_5:
+		case ROHC_PACKET_TCP_RND_5:
 			return "TCP/rnd_5";
-		case PACKET_TCP_RND_6:
+		case ROHC_PACKET_TCP_RND_6:
 			return "TCP/rnd_6";
-		case PACKET_TCP_RND_7:
+		case ROHC_PACKET_TCP_RND_7:
 			return "TCP/rnd_7";
-		case PACKET_TCP_RND_8:
+		case ROHC_PACKET_TCP_RND_8:
 			return "TCP/rnd_8";
 
-		case PACKET_TCP_SEQ_1:
+		case ROHC_PACKET_TCP_SEQ_1:
 			return "TCP/seq_1";
-		case PACKET_TCP_SEQ_2:
+		case ROHC_PACKET_TCP_SEQ_2:
 			return "TCP/seq_2";
-		case PACKET_TCP_SEQ_3:
+		case ROHC_PACKET_TCP_SEQ_3:
 			return "TCP/seq_3";
-		case PACKET_TCP_SEQ_4:
+		case ROHC_PACKET_TCP_SEQ_4:
 			return "TCP/seq_4";
-		case PACKET_TCP_SEQ_5:
+		case ROHC_PACKET_TCP_SEQ_5:
 			return "TCP/seq_5";
-		case PACKET_TCP_SEQ_6:
+		case ROHC_PACKET_TCP_SEQ_6:
 			return "TCP/seq_6";
-		case PACKET_TCP_SEQ_7:
+		case ROHC_PACKET_TCP_SEQ_7:
 			return "TCP/seq_7";
-		case PACKET_TCP_SEQ_8:
+		case ROHC_PACKET_TCP_SEQ_8:
 			return "TCP/seq_8";
 
-		case PACKET_UNKNOWN:
+		case ROHC_PACKET_UNKNOWN:
 			return "unknown";
 
 		default:
@@ -140,17 +140,17 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 {
 	switch(ext_type)
 	{
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 			return "EXT-0";
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 			return "EXT-1";
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 			return "EXT-2";
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 			return "EXT-3";
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 			return "none";
-		case PACKET_EXT_UNKNOWN:
+		case ROHC_EXT_UNKNOWN:
 			return "unknown";
 		default:
 			return "no description";

@@ -39,9 +39,8 @@
 
 /* See RFC4996 page 37-40 */
 
-#define PACKET_TYPE_IR      0xFD
-#define PACKET_TYPE_IR_DYN  0xF8
-#define PACKET_TYPE_IR_CR   0xFC
+#define ROHC_PACKET_TYPE_IR      0xFD
+#define ROHC_PACKET_TYPE_IR_DYN  0xF8
 
 /**
  * @brief Define the IPv6 option header.

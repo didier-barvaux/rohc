@@ -462,7 +462,7 @@ void c_init_tmp_variables(struct generic_tmp_vars *tmp_vars)
 	tmp_vars->nr_ip_id_bits = 0;
 	tmp_vars->nr_ip_id_bits2 = 0;
 
-	tmp_vars->packet_type = PACKET_UNKNOWN;
+	tmp_vars->packet_type = ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -865,7 +865,7 @@ int c_generic_encode(struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 	g_context->tmp.changed_fields2 = 0;
 	g_context->tmp.nr_ip_id_bits2 = 0;
-	g_context->tmp.packet_type = PACKET_UNKNOWN;
+	g_context->tmp.packet_type = ROHC_PACKET_UNKNOWN;
 
 	/* STEP 1:
 	 *  - check double IP headers
@@ -1025,11 +1025,11 @@ int c_generic_encode(struct c_context *const context,
 	}
 
 	/* update packet counters */
-	if(g_context->tmp.packet_type == PACKET_IR)
+	if(g_context->tmp.packet_type == ROHC_PACKET_IR)
 	{
 		context->num_sent_ir++;
 	}
-	else if(g_context->tmp.packet_type == PACKET_IR_DYN)
+	else if(g_context->tmp.packet_type == ROHC_PACKET_IR_DYN)
 	{
 		context->num_sent_ir_dyn++;
 	}
@@ -1451,10 +1451,11 @@ void decide_state(struct c_context *const context)
  * @param context   The compression context
  * @param ip        The ip packet to compress
  * @param ip2       The inner ip packet
- * @return          \li The packet type among PACKET_IR, PACKET_IR_DYN,
- *                      PACKET_UO_0, PACKET_UO_1* and PACKET_UOR_2* in case
- *                      of success
- *                  \li PACKET_UNKNOWN in case of failure
+ * @return          \li The packet type among ROHC_PACKET_IR,
+ *                      ROHC_PACKET_IR_DYN, ROHC_PACKET_UO_0,
+ *                      ROHC_PACKET_UO_1* and ROHC_PACKET_UOR_2*
+ *                      in case of success
+ *                  \li ROHC_PACKET_UNKNOWN in case of failure
  */
 static rohc_packet_t decide_packet(const struct c_context *context,
                                    const struct ip_packet *ip,
@@ -1472,7 +1473,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 		{
 			rohc_comp_debug(context, "IR state\n");
 			g_context->ir_count++;
-			packet = PACKET_IR;
+			packet = ROHC_PACKET_IR;
 			break;
 		}
 
@@ -1486,7 +1487,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			}
 			else
 			{
-				packet = PACKET_IR;
+				packet = ROHC_PACKET_IR;
 			}
 			break;
 		}
@@ -1501,7 +1502,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			}
 			else
 			{
-				packet = PACKET_IR;
+				packet = ROHC_PACKET_IR;
 			}
 			break;
 		}
@@ -1532,11 +1533,11 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 		}
 		/* does the current packet fit the changes on outer IPv6 extension
 		 * headers? */
-		if(packet != PACKET_IR && g_context->ip_flags.info.v6.ext_comp->changed)
+		if(packet != ROHC_PACKET_IR && g_context->ip_flags.info.v6.ext_comp->changed)
 		{
 			rohc_comp_debug(context, "change packet type to IR-DYN because "
 			                "outer IPv6 extension headers changed\n");
-			packet = PACKET_IR_DYN;
+			packet = ROHC_PACKET_IR_DYN;
 		}
 	}
 	if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->ip2_flags.version == IPV6)
@@ -1552,18 +1553,18 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 		}
 		/* does the current packet fit the changes on inner IPv6 extension
 		 * headers? */
-		if(packet != PACKET_IR && g_context->ip2_flags.info.v6.ext_comp->changed)
+		if(packet != ROHC_PACKET_IR && g_context->ip2_flags.info.v6.ext_comp->changed)
 		{
 			rohc_comp_debug(context, "change packet type to IR-DYN because "
 			                "inner IPv6 extension headers changed\n");
-			packet = PACKET_IR_DYN;
+			packet = ROHC_PACKET_IR_DYN;
 		}
 	}
 
 	return packet;
 
 error:
-	return PACKET_UNKNOWN;
+	return ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -1598,29 +1599,29 @@ int code_packet(struct c_context *const context,
 
 	switch(g_context->tmp.packet_type)
 	{
-		case PACKET_IR:
+		case ROHC_PACKET_IR:
 			code_packet_type = code_IR_packet;
 			break;
 
-		case PACKET_IR_DYN:
+		case ROHC_PACKET_IR_DYN:
 			code_packet_type = code_IR_DYN_packet;
 			break;
 
-		case PACKET_UO_0:
+		case ROHC_PACKET_UO_0:
 			code_packet_type = code_UO0_packet;
 			break;
 
-		case PACKET_UO_1:
-		case PACKET_UO_1_RTP:
-		case PACKET_UO_1_TS:
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1:
+		case ROHC_PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_ID:
 			code_packet_type = code_UO1_packet;
 			break;
 
-		case PACKET_UOR_2:
-		case PACKET_UOR_2_RTP:
-		case PACKET_UOR_2_TS:
-		case PACKET_UOR_2_ID:
+		case ROHC_PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_ID:
 			code_packet_type = code_UO2_packet;
 			break;
 
@@ -2709,7 +2710,7 @@ int code_UO1_packet(struct c_context *const context,
 
 	switch(packet_type)
 	{
-		case PACKET_UO_1:
+		case ROHC_PACKET_UO_1:
 			rohc_comp_debug(context, "code UO-1 packet (CID = %zu)\n", context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
@@ -2717,13 +2718,13 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            !is_rtp, error, "UO-1 packet is for non-RTP profiles\n");
 			break;
-		case PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_RTP:
 			rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-RTP packet is for RTP profile only\n");
 			break;
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1_ID:
 			rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -2732,7 +2733,7 @@ int code_UO1_packet(struct c_context *const context,
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            is_rtp, error, "UO-1-ID packet is for RTP profile only\n");
 			break;
-		case PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_TS:
 			rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)\n",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -2759,10 +2760,10 @@ int code_UO1_packet(struct c_context *const context,
 	}
 
 	/* part 5: decide which extension to use (UO-1-ID only) */
-	if(packet_type == PACKET_UO_1_ID)
+	if(packet_type == ROHC_PACKET_UO_1_ID)
 	{
 		extension = g_context->decide_extension(context);
-		if(extension == PACKET_EXT_UNKNOWN)
+		if(extension == ROHC_EXT_UNKNOWN)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			             "failed to determine the extension to code\n");
@@ -2774,7 +2775,7 @@ int code_UO1_packet(struct c_context *const context,
 		/* UO-1-ID packet without extension or with extension 0, 1 or 2
 		 * cannot change the RTP Marker (M) flag */
 		rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		            (extension == PACKET_EXT_3 ||
+		            (extension == ROHC_EXT_3 ||
 		             !rtp_context->tmp.is_marker_bit_set), error,
 		            "UO-1-ID packet without extension 3 does not contain room "
 		            "for the RTP Marker (M) flag\n");
@@ -2782,23 +2783,23 @@ int code_UO1_packet(struct c_context *const context,
 	}
 	else
 	{
-		extension = PACKET_NOEXT;
+		extension = ROHC_EXT_NONE;
 	}
 
 	/* part 2 */
 	switch(packet_type)
 	{
-		case PACKET_UO_1:
+		case ROHC_PACKET_UO_1:
 			f_byte = innermost_ip_id_delta & 0x3f;
 			break;
-		case PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_RTP:
 			f_byte = rtp_context->tmp.ts_send & 0x3f;
 			break;
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1_ID:
 		{
 			switch(extension)
 			{
-				case PACKET_NOEXT:
+				case ROHC_EXT_NONE:
 				{
 					/* part 2: 5 bits of 5-bit innermost IP-ID with non-random
 					 *         IP-ID */
@@ -2807,7 +2808,7 @@ int code_UO1_packet(struct c_context *const context,
 					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
 					break;
 				}
-				case PACKET_EXT_0:
+				case ROHC_EXT_0:
 				{
 					/* part 2: 5 bits of 8-bit innermost IP-ID with non-random
 					 *         IP-ID */
@@ -2816,7 +2817,7 @@ int code_UO1_packet(struct c_context *const context,
 					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
 					break;
 				}
-				case PACKET_EXT_1:
+				case ROHC_EXT_1:
 				{
 					/* part 2: 5 bits of 8-bit innermost IP-ID with non-random
 					 *         IP-ID */
@@ -2825,7 +2826,7 @@ int code_UO1_packet(struct c_context *const context,
 					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
 					break;
 				}
-				case PACKET_EXT_2:
+				case ROHC_EXT_2:
 				{
 					/* part 2: 5 bits of 16-bit innermost IP-ID with non-random
 					 *         IP-ID */
@@ -2834,7 +2835,7 @@ int code_UO1_packet(struct c_context *const context,
 					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
 					break;
 				}
-				case PACKET_EXT_3:
+				case ROHC_EXT_3:
 				{
 					size_t innermost_ip_id_rnd_count;
 
@@ -2905,7 +2906,7 @@ int code_UO1_packet(struct c_context *const context,
 			}
 			break;
 		}
-		case PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_TS:
 			f_byte = rtp_context->tmp.ts_send & 0x1f;
 			f_byte |= 0x20;
 			break;
@@ -2931,14 +2932,14 @@ int code_UO1_packet(struct c_context *const context,
 	s_byte = crc & 0x07;
 	switch(packet_type)
 	{
-		case PACKET_UO_1:
+		case ROHC_PACKET_UO_1:
 			/* SN + CRC (CRC was added before) */
 			s_byte |= (g_context->sn & 0x1f) << 3;
 			rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x\n",
 			                g_context->sn, crc, s_byte);
 			break;
-		case PACKET_UO_1_RTP:
-		case PACKET_UO_1_TS:
+		case ROHC_PACKET_UO_1_RTP:
+		case ROHC_PACKET_UO_1_TS:
 			/* M + SN + CRC (CRC was added before) */
 			s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 			s_byte |= (g_context->sn & 0x0f) << 3;
@@ -2946,12 +2947,12 @@ int code_UO1_packet(struct c_context *const context,
 			                !!rtp_context->tmp.is_marker_bit_set,
 			                g_context->sn & 0x0f, crc, s_byte);
 			break;
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1_ID:
 		{
 			/* X + SN + CRC (CRC was added before) */
 			switch(extension)
 			{
-				case PACKET_NOEXT:
+				case ROHC_EXT_NONE:
 				{
 					s_byte &= ~0x80;
 					assert(g_context->tmp.nr_sn_bits <= 4);
@@ -2960,7 +2961,7 @@ int code_UO1_packet(struct c_context *const context,
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
-				case PACKET_EXT_0:
+				case ROHC_EXT_0:
 				{
 					s_byte |= 0x80;
 					assert(g_context->tmp.nr_sn_bits <= 7);
@@ -2969,7 +2970,7 @@ int code_UO1_packet(struct c_context *const context,
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
-				case PACKET_EXT_1:
+				case ROHC_EXT_1:
 				{
 					s_byte |= 0x80;
 					assert(g_context->tmp.nr_sn_bits <= 7);
@@ -2978,7 +2979,7 @@ int code_UO1_packet(struct c_context *const context,
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
-				case PACKET_EXT_2:
+				case ROHC_EXT_2:
 				{
 					s_byte |= 0x80;
 					assert(g_context->tmp.nr_sn_bits <= 7);
@@ -2987,7 +2988,7 @@ int code_UO1_packet(struct c_context *const context,
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
-				case PACKET_EXT_3:
+				case ROHC_EXT_3:
 				{
 					s_byte |= 0x80;
 					if(g_context->tmp.nr_sn_bits <= 4)
@@ -3013,7 +3014,7 @@ int code_UO1_packet(struct c_context *const context,
 				}
 			}
 			rohc_comp_debug(context, "X (%u) + SN (%u) + CRC (0x%x) = "
-			                "0x%02x\n", !!(extension != PACKET_NOEXT),
+			                "0x%02x\n", !!(extension != ROHC_EXT_NONE),
 			                (s_byte >> 3) & 0x0f, crc, s_byte);
 			break;
 		}
@@ -3027,19 +3028,19 @@ int code_UO1_packet(struct c_context *const context,
 	/* part 5: code extension */
 	switch(extension)
 	{
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 			ret = counter;
 			break;
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 			ret = code_EXT0_packet(context, rohc_pkt, counter);
 			break;
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 			ret = code_EXT1_packet(context, rohc_pkt, counter);
 			break;
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 			ret = code_EXT2_packet(context, rohc_pkt, counter);
 			break;
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 			ret = code_EXT3_packet(context, ip, ip2, rohc_pkt, counter);
 			break;
 		default:
@@ -3181,22 +3182,22 @@ int code_UO2_packet(struct c_context *const context,
 
 	switch(packet_type)
 	{
-		case PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2:
 			rohc_comp_debug(context, "code UOR-2 packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_bytes;
 			break;
-		case PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_RTP:
 			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_RTP_bytes;
 			break;
-		case PACKET_UOR_2_ID:
+		case ROHC_PACKET_UOR_2_ID:
 			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_ID_bytes;
 			break;
-		case PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_TS:
 			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %zu)\n",
 			                context->cid);
 			code_bytes = code_UOR2_TS_bytes;
@@ -3260,7 +3261,7 @@ int code_UO2_packet(struct c_context *const context,
 
 	/* part 6: decide which extension to use */
 	extension = g_context->decide_extension(context);
-	if(extension == PACKET_EXT_UNKNOWN)
+	if(extension == ROHC_EXT_UNKNOWN)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "failed to determine the extension to code\n");
@@ -3291,19 +3292,19 @@ int code_UO2_packet(struct c_context *const context,
 	/* part 6: code extension */
 	switch(extension)
 	{
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 			ret = counter;
 			break;
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 			ret = code_EXT0_packet(context, rohc_pkt, counter);
 			break;
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 			ret = code_EXT1_packet(context, rohc_pkt, counter);
 			break;
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 			ret = code_EXT2_packet(context, rohc_pkt, counter);
 			break;
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 			ret = code_EXT3_packet(context, ip, ip2, rohc_pkt, counter);
 			break;
 		default:
@@ -3369,7 +3370,7 @@ int code_UOR2_bytes(const struct c_context *context,
 
 	switch(extension)
 	{
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 		{
 			rohc_comp_debug(context, "code UOR-2 packet with no extension\n");
 
@@ -3383,7 +3384,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 		{
 			rohc_comp_debug(context, "code UOR-2 packet with extension 0\n");
 
@@ -3397,7 +3398,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 		{
 			rohc_comp_debug(context, "code UOR-2 packet with extension 1\n");
 
@@ -3411,7 +3412,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 		{
 			rohc_comp_debug(context, "code UOR-2 packet with extension 2\n");
 
@@ -3425,7 +3426,7 @@ int code_UOR2_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 		{
 			rohc_comp_debug(context, "code UOR-2 packet with extension 3\n");
 
@@ -3529,7 +3530,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 	/* which extension to code? */
 	switch(extension)
 	{
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 		{
 			rohc_comp_debug(context, "code UOR-2-RTP packet with no extension\n");
 
@@ -3560,7 +3561,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 		{
 			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 0\n");
 
@@ -3591,7 +3592,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 		{
 			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 1\n");
 
@@ -3622,7 +3623,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 		{
 			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 2\n");
 
@@ -3653,7 +3654,7 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 		{
 			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
@@ -3814,7 +3815,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 	/* which extension to code? */
 	switch(extension)
 	{
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 		{
 			rohc_comp_debug(context, "code UOR-2-TS packet with no extension\n");
 
@@ -3841,7 +3842,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 		{
 			rohc_comp_debug(context, "code UOR-2-TS packet with extension 0\n");
 
@@ -3868,7 +3869,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 		{
 			rohc_comp_debug(context, "code UOR-2-TS packet with extension 1\n");
 
@@ -3895,7 +3896,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 		{
 			rohc_comp_debug(context, "code UOR-2-TS packet with extension 2\n");
 
@@ -3922,7 +3923,7 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 		{
 			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
@@ -4068,7 +4069,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 	/* which extension to code? */
 	switch(extension)
 	{
-		case PACKET_NOEXT:
+		case ROHC_EXT_NONE:
 		{
 			rohc_comp_debug(context, "code UOR-2-ID packet with no extension\n");
 
@@ -4095,7 +4096,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_0:
+		case ROHC_EXT_0:
 		{
 			rohc_comp_debug(context, "code UOR-2-ID packet with extension 0\n");
 
@@ -4122,7 +4123,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_1:
+		case ROHC_EXT_1:
 		{
 			rohc_comp_debug(context, "code UOR-2-ID packet with extension 1\n");
 
@@ -4149,7 +4150,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_2:
+		case ROHC_EXT_2:
 		{
 			rohc_comp_debug(context, "code UOR-2-ID packet with extension 2\n");
 
@@ -4176,7 +4177,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_EXT_3:
+		case ROHC_EXT_3:
 		{
 			/* number of TS bits to transmit overall and in extension 3 */
 			const size_t nr_ts_bits = rtp_context->tmp.nr_ts_bits;
@@ -4328,17 +4329,17 @@ int code_EXT0_packet(const struct c_context *context,
 	/* part 1: IP-ID or TS ? */
 	switch(packet_type)
 	{
-		case PACKET_UOR_2_RTP:
-		case PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_TS:
 		{
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 			f_byte |= rtp_context->tmp.ts_send & 0x07;
 			break;
 		}
 
-		case PACKET_UOR_2_ID:
-		case PACKET_UOR_2:
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UOR_2_ID:
+		case ROHC_PACKET_UOR_2:
+		case ROHC_PACKET_UO_1_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4430,7 +4431,7 @@ int code_EXT1_packet(const struct c_context *context,
 	/* parts 1 & 2: IP-ID or TS ? */
 	switch(packet_type)
 	{
-		case PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4449,7 +4450,7 @@ int code_EXT1_packet(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_RTP:
 		{
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 			f_byte |= (rtp_context->tmp.ts_send >> 8) & 0x07;
@@ -4461,7 +4462,7 @@ int code_EXT1_packet(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_TS:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4483,8 +4484,8 @@ int code_EXT1_packet(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_UOR_2_ID:
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UOR_2_ID:
+		case ROHC_PACKET_UO_1_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4592,7 +4593,7 @@ int code_EXT2_packet(const struct c_context *context,
 	/* parts 1, 2 & 3: IP-ID or TS ? */
 	switch(packet_type)
 	{
-		case PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2:
 		{
 			/* To avoid confusion:
 			 *  - IP-ID2 in the header description is related to the outer IP header
@@ -4621,7 +4622,7 @@ int code_EXT2_packet(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_RTP:
 		{
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 			const uint32_t ts_send = rtp_context->tmp.ts_send;
@@ -4635,7 +4636,7 @@ int code_EXT2_packet(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_TS:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4661,8 +4662,8 @@ int code_EXT2_packet(const struct c_context *context,
 			break;
 		}
 
-		case PACKET_UOR_2_ID:
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UOR_2_ID:
+		case ROHC_PACKET_UO_1_ID:
 		{
 			/* number of IP-ID bits and IP-ID offset to transmit  */
 			ip_header_pos_t innermost_ip_hdr;
@@ -4822,15 +4823,15 @@ int code_EXT3_packet(const struct c_context *context,
 	/* part 1: S bit */
 	switch(packet_type)
 	{
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1_ID:
 			S = (nr_sn_bits > 4);
 			break;
-		case PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2:
 			S = (nr_sn_bits > 5);
 			break;
-		case PACKET_UOR_2_RTP:
-		case PACKET_UOR_2_TS:
-		case PACKET_UOR_2_ID:
+		case ROHC_PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_ID:
 			S = (nr_sn_bits > 6);
 			break;
 		default:
@@ -4853,14 +4854,14 @@ int code_EXT3_packet(const struct c_context *context,
 		/* R-TS bit */
 		switch(packet_type)
 		{
-			case PACKET_UOR_2_RTP:
+			case ROHC_PACKET_UOR_2_RTP:
 				rts = (nr_ts_bits > 6);
 				break;
-			case PACKET_UOR_2_TS:
+			case ROHC_PACKET_UOR_2_TS:
 				rts = (nr_ts_bits > 5);
 				break;
-			case PACKET_UOR_2_ID:
-			case PACKET_UO_1_ID:
+			case ROHC_PACKET_UOR_2_ID:
+			case ROHC_PACKET_UO_1_ID:
 				rts = (nr_ts_bits > 0);
 				/* force sending some TS bits in extension 3 if TS is not scaled
 				 * (Tsc = 0) and the base header contains zero bit */
@@ -4898,7 +4899,7 @@ int code_EXT3_packet(const struct c_context *context,
 		       rtp_context->rtp_pt_change_count < MAX_IR_COUNT ||
 		       rtp_context->tmp.padding_bit_changed ||
 		       rtp_context->rtp_padding_change_count < MAX_IR_COUNT ||
-		       (packet_type == PACKET_UO_1_ID && rtp_context->tmp.is_marker_bit_set) ||
+		       (packet_type == ROHC_PACKET_UO_1_ID && rtp_context->tmp.is_marker_bit_set) ||
 		       rtp_context->tmp.extension_bit_changed ||
 		       rtp_context->rtp_extension_change_count < MAX_IR_COUNT ||
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
@@ -4929,14 +4930,14 @@ int code_EXT3_packet(const struct c_context *context,
 		{
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
-			if((g_context->tmp.packet_type == PACKET_UOR_2_ID ||
-			    g_context->tmp.packet_type == PACKET_UO_1_ID) &&
+			if((g_context->tmp.packet_type == ROHC_PACKET_UOR_2_ID ||
+			    g_context->tmp.packet_type == ROHC_PACKET_UO_1_ID) &&
 			   nr_ip_id_bits > 5)
 			{
 				I = 1;
 			}
-			else if(g_context->tmp.packet_type != PACKET_UOR_2_ID &&
-			        g_context->tmp.packet_type != PACKET_UO_1_ID &&
+			else if(g_context->tmp.packet_type != ROHC_PACKET_UOR_2_ID &&
+			        g_context->tmp.packet_type != ROHC_PACKET_UO_1_ID &&
 			        nr_ip_id_bits > 0)
 			{
 				I = 1;
@@ -4976,14 +4977,14 @@ int code_EXT3_packet(const struct c_context *context,
 			/* inner IP header is IPv4 with non-random IP-ID */
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
 
-			if((g_context->tmp.packet_type == PACKET_UOR_2_ID ||
-			    g_context->tmp.packet_type == PACKET_UO_1_ID) &&
+			if((g_context->tmp.packet_type == ROHC_PACKET_UOR_2_ID ||
+			    g_context->tmp.packet_type == ROHC_PACKET_UO_1_ID) &&
 			   nr_ip_id_bits2 > 5)
 			{
 				I = 1;
 			}
-			else if(g_context->tmp.packet_type != PACKET_UOR_2_ID &&
-			        g_context->tmp.packet_type != PACKET_UO_1_ID &&
+			else if(g_context->tmp.packet_type != ROHC_PACKET_UOR_2_ID &&
+			        g_context->tmp.packet_type != ROHC_PACKET_UO_1_ID &&
 			        nr_ip_id_bits2 > 0)
 			{
 				I = 1;
@@ -5023,14 +5024,14 @@ int code_EXT3_packet(const struct c_context *context,
 			 * IP header is */
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
-			if((g_context->tmp.packet_type == PACKET_UOR_2_ID ||
-			    g_context->tmp.packet_type == PACKET_UO_1_ID) &&
+			if((g_context->tmp.packet_type == ROHC_PACKET_UOR_2_ID ||
+			    g_context->tmp.packet_type == ROHC_PACKET_UO_1_ID) &&
 			   nr_ip_id_bits > 5)
 			{
 				I = 1;
 			}
-			else if(g_context->tmp.packet_type != PACKET_UOR_2_ID &&
-			        g_context->tmp.packet_type != PACKET_UO_1_ID &&
+			else if(g_context->tmp.packet_type != ROHC_PACKET_UOR_2_ID &&
+			        g_context->tmp.packet_type != ROHC_PACKET_UO_1_ID &&
 			        nr_ip_id_bits > 0)
 			{
 				I = 1;
@@ -6393,9 +6394,9 @@ error:
  * Extensions 0, 1 & 2 are IPv4 only because of the IP-ID.
  *
  * @param context The compression context
- * @return        The extension code among PACKET_NOEXT, PACKET_EXT_0,
- *                PACKET_EXT_1 and PACKET_EXT_3 if successful,
- *                PACKET_EXT_UNKNOWN otherwise
+ * @return        The extension code among ROHC_EXT_NONE, ROHC_EXT_0,
+ *                ROHC_EXT_1 and ROHC_EXT_3 if successful,
+ *                ROHC_EXT_UNKNOWN otherwise
  */
 rohc_ext_t decide_extension(const struct c_context *context)
 {
@@ -6413,7 +6414,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 	{
 		rohc_comp_debug(context, "force EXT-3 because at least one static or "
 		                "dynamic field changed\n");
-		ext = PACKET_EXT_3;
+		ext = ROHC_EXT_3;
 		goto skip;
 	}
 
@@ -6424,42 +6425,42 @@ rohc_ext_t decide_extension(const struct c_context *context)
 
 	switch(g_context->tmp.packet_type)
 	{
-		case PACKET_UOR_2:
+		case ROHC_PACKET_UOR_2:
 		{
 			if(nr_sn_bits <= 5 &&
 			   nr_innermost_ip_id_bits == 0 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_NOEXT;
+				ext = ROHC_EXT_NONE;
 			}
 			else if(nr_sn_bits <= 8 &&
 			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 3 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_0;
+				ext = ROHC_EXT_0;
 			}
 			else if(nr_sn_bits <= 8 &&
 			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 11 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_1;
+				ext = ROHC_EXT_1;
 			}
 			else if(g_context->tmp.nr_of_ip_hdr > 1 &&
 			        nr_sn_bits <= 3 &&
 			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits <= 11)
 			{
-				ext = PACKET_EXT_2;
+				ext = ROHC_EXT_2;
 			}
 			else
 			{
-				ext = PACKET_EXT_3;
+				ext = ROHC_EXT_3;
 			}
 
 			break;
 		}
 
-		case PACKET_UOR_2_RTP:
+		case ROHC_PACKET_UOR_2_RTP:
 		{
 			const struct sc_rtp_context *rtp_context;
 			size_t nr_ts_bits;
@@ -6473,38 +6474,38 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			   nr_innermost_ip_id_bits == 0 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_NOEXT;
+				ext = ROHC_EXT_NONE;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 9 &&
 			        nr_innermost_ip_id_bits == 0 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_0;
+				ext = ROHC_EXT_0;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 17 &&
 			        nr_innermost_ip_id_bits == 0 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_1;
+				ext = ROHC_EXT_1;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 25 &&
 			        nr_innermost_ip_id_bits == 0 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_2;
+				ext = ROHC_EXT_2;
 			}
 			else
 			{
-				ext = PACKET_EXT_3;
+				ext = ROHC_EXT_3;
 			}
 
 			break;
 		}
 
-		case PACKET_UOR_2_TS:
+		case ROHC_PACKET_UOR_2_TS:
 		{
 			const struct sc_rtp_context *rtp_context;
 			size_t nr_ts_bits;
@@ -6518,38 +6519,38 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			   nr_innermost_ip_id_bits == 0 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_NOEXT;
+				ext = ROHC_EXT_NONE;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 8 &&
 			        nr_innermost_ip_id_bits == 0 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_0;
+				ext = ROHC_EXT_0;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 8 &&
 			        nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_1;
+				ext = ROHC_EXT_1;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 16 &&
 			        nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_2;
+				ext = ROHC_EXT_2;
 			}
 			else
 			{
-				ext = PACKET_EXT_3;
+				ext = ROHC_EXT_3;
 			}
 
 			break;
 		}
 
-		case PACKET_UOR_2_ID:
+		case ROHC_PACKET_UOR_2_ID:
 		{
 			const struct sc_rtp_context *rtp_context;
 			size_t nr_ts_bits;
@@ -6563,38 +6564,38 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			   nr_innermost_ip_id_bits <= 5 &&
 			   nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_NOEXT;
+				ext = ROHC_EXT_NONE;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits == 0 &&
 			        nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_0;
+				ext = ROHC_EXT_0;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 8 &&
 			        nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_1;
+				ext = ROHC_EXT_1;
 			}
 			else if(nr_sn_bits <= 9 &&
 			        nr_ts_bits <= 8 &&
 			        nr_innermost_ip_id_bits <= 16 &&
 			        nr_outermost_ip_id_bits == 0)
 			{
-				ext = PACKET_EXT_2;
+				ext = ROHC_EXT_2;
 			}
 			else
 			{
-				ext = PACKET_EXT_3;
+				ext = ROHC_EXT_3;
 			}
 
 			break;
 		}
 
-		case PACKET_UO_1_ID:
+		case ROHC_PACKET_UO_1_ID:
 		{
 			const struct sc_rtp_context *rtp_context;
 			size_t nr_ts_bits;
@@ -6609,7 +6610,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			   nr_outermost_ip_id_bits == 0 &&
 			   !rtp_context->tmp.is_marker_bit_set)
 			{
-				ext = PACKET_NOEXT;
+				ext = ROHC_EXT_NONE;
 			}
 			else if(nr_sn_bits <= 7 &&
 			        nr_ts_bits == 0 &&
@@ -6617,7 +6618,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			        nr_outermost_ip_id_bits == 0 &&
 			        !rtp_context->tmp.is_marker_bit_set)
 			{
-				ext = PACKET_EXT_0;
+				ext = ROHC_EXT_0;
 			}
 			else if(nr_sn_bits <= 7 &&
 			        nr_ts_bits <= 8 &&
@@ -6625,7 +6626,7 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			        nr_outermost_ip_id_bits == 0 &&
 			        !rtp_context->tmp.is_marker_bit_set)
 			{
-				ext = PACKET_EXT_1;
+				ext = ROHC_EXT_1;
 			}
 			else if(nr_sn_bits <= 7 &&
 			        nr_ts_bits <= 8 &&
@@ -6633,11 +6634,11 @@ rohc_ext_t decide_extension(const struct c_context *context)
 			        nr_outermost_ip_id_bits == 0 &&
 			        !rtp_context->tmp.is_marker_bit_set)
 			{
-				ext = PACKET_EXT_2;
+				ext = ROHC_EXT_2;
 			}
 			else
 			{
-				ext = PACKET_EXT_3;
+				ext = ROHC_EXT_3;
 			}
 
 			break;
@@ -6655,7 +6656,7 @@ skip:
 	return ext;
 
 error:
-	return PACKET_EXT_UNKNOWN;
+	return ROHC_EXT_UNKNOWN;
 }
 
 

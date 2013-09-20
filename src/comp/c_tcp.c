@@ -1198,7 +1198,7 @@ static int c_tcp_encode(struct c_context *const context,
 	                "payload_offset = %p\n", context, ip, packet_size,
 	                rohc_pkt, rohc_pkt_max_len, packet_type, payload_offset);
 
-	*packet_type = PACKET_UNKNOWN;
+	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	g_context = (struct c_generic_context *) context->specific;
 	if(g_context == NULL)
@@ -1633,15 +1633,15 @@ static int c_tcp_encode(struct c_context *const context,
 	{
 		case IR:  /* The Initialization and Refresh (IR) state */
 			change_state(context, FO);
-			*packet_type = PACKET_IR;
+			*packet_type = ROHC_PACKET_IR;
 			break;
 		case FO:  /* The First Order (FO) state */
 			change_state(context, SO);
-			*packet_type = PACKET_IR_DYN;
+			*packet_type = ROHC_PACKET_IR_DYN;
 			break;
 		case SO:  /* The Second Order (SO) state */
 		default:
-			*packet_type = PACKET_UNKNOWN;
+			*packet_type = ROHC_PACKET_UNKNOWN;
 			break;
 	}
 
@@ -1651,7 +1651,7 @@ static int c_tcp_encode(struct c_context *const context,
 	 */
 
 	rohc_comp_debug(context, "state %d\n", context->state);
-	if((*packet_type) == PACKET_UNKNOWN)
+	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
 		counter = code_CO_packet(context, ip, packet_size, base_header.uint8,
 		                         rohc_pkt, rohc_pkt_max_len, packet_type,
@@ -1659,9 +1659,10 @@ static int c_tcp_encode(struct c_context *const context,
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 	}
-	else /* PACKET_IR or PACKET_IR_DYN */
+	else /* ROHC_PACKET_IR or ROHC_PACKET_IR_DYN */
 	{
-		assert((*packet_type) == PACKET_IR || (*packet_type) == PACKET_IR_DYN);
+		assert((*packet_type) == ROHC_PACKET_IR ||
+		       (*packet_type) == ROHC_PACKET_IR_DYN);
 
 		/* parts 1 and 3:
 		 *  - part 2 will be placed at 'first_position'
@@ -1675,13 +1676,13 @@ static int c_tcp_encode(struct c_context *const context,
 		                first_position, rohc_pkt[0], rohc_pkt[1]);
 
 		/* part 2: type of packet */
-		if((*packet_type) == PACKET_IR)
+		if((*packet_type) == ROHC_PACKET_IR)
 		{
-			rohc_pkt[first_position] = PACKET_TYPE_IR;
+			rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR;
 		}
-		else /* PACKET_IR_DYN */
+		else /* ROHC_PACKET_IR_DYN */
 		{
-			rohc_pkt[first_position] = PACKET_TYPE_IR_DYN;
+			rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR_DYN;
 		}
 		rohc_comp_debug(context, "packet type = 0x%02x\n",
 		                rohc_pkt[first_position]);
@@ -1700,7 +1701,7 @@ static int c_tcp_encode(struct c_context *const context,
 
 		mptr.uint8 = &rohc_pkt[counter];
 
-		if((*packet_type) == PACKET_IR)
+		if((*packet_type) == ROHC_PACKET_IR)
 		{
 			/* part 6 : static chain */
 
@@ -1841,7 +1842,7 @@ static int c_tcp_encode(struct c_context *const context,
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
-		*packet_type = PACKET_IR;
+		*packet_type = ROHC_PACKET_IR;
 		*payload_offset = base_header.uint8 - (uint8_t*) ip->data;
 	}
 
@@ -3850,7 +3851,7 @@ static int code_CO_packet(struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
-	*packet_type = PACKET_UNKNOWN;
+	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	rohc_comp_debug(context, "code CO packet (CID = %zu)\n", context->cid);
 
@@ -4142,7 +4143,7 @@ static int co_baseheader(struct c_context *const context,
 	bool is_ok;
 
 	assert(packet_type != NULL);
-	*packet_type = PACKET_UNKNOWN;
+	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
 	                "base_header_ip = %p, rohc_pkt = %p, payload_size = %d, "
@@ -4323,7 +4324,7 @@ static int co_baseheader(struct c_context *const context,
 	   tcp_ecn_flag_changed || tcp_ack_number_hi16_changed)
 	{
 		TRACE_GOTO_CHOICE;
-		*packet_type = PACKET_TCP_CO_COMMON;
+		*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 	}
 	else if(ecn_used != 0) /* ecn used change */
 	{
@@ -4336,18 +4337,18 @@ static int co_baseheader(struct c_context *const context,
 		{
 			/* IP_ID_BEHAVIOR_SEQUENTIAL or IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED */
 			TRACE_GOTO_CHOICE;
-			*packet_type = PACKET_TCP_SEQ_8;
+			*packet_type = ROHC_PACKET_TCP_SEQ_8;
 		}
 		else if(tcp_context->tmp.nr_seq_bits_65535 <= 16 &&
 		        !tcp_window_changed)
 		{
 			TRACE_GOTO_CHOICE;
-			*packet_type = PACKET_TCP_RND_8;
+			*packet_type = ROHC_PACKET_TCP_RND_8;
 		}
 		else
 		{
 			TRACE_GOTO_CHOICE;
-			*packet_type = PACKET_TCP_CO_COMMON;
+			*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
 	}
 	else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
@@ -4371,12 +4372,12 @@ static int co_baseheader(struct c_context *const context,
 			{
 				/* seq_8 is possible */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_SEQ_8;
+				*packet_type = ROHC_PACKET_TCP_SEQ_8;
 			}
 			else
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
 		else /* no TCP option */
@@ -4397,18 +4398,18 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* seq_8 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_8;
+					*packet_type = ROHC_PACKET_TCP_SEQ_8;
 				}
 				else
 				{
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 			}
 			else if(tcp_context->tmp.nr_seq_bits_65535 > 0)
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 			else if(tcp_window_changed)
 			{
@@ -4417,13 +4418,13 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* more than 5 LSBs required for IP-ID => co_common */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 				else
 				{
 					/* seq_7 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_7;
+					*packet_type = ROHC_PACKET_TCP_SEQ_7;
 				}
 			}
 			else if(tcp->ack_flag != 0 && !tcp_ack_number_changed)
@@ -4435,26 +4436,26 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* seq_1 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_1;
+					*packet_type = ROHC_PACKET_TCP_SEQ_1;
 				}
 				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
 						  ip_id_hi13_changed)
 				{
 					/* more than 3 LSBs required for IP-ID => co_common */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 				else if(tcp_context->ack_stride != 0)
 				{
 					/* seq_4 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_4;
+					*packet_type = ROHC_PACKET_TCP_SEQ_4;
 				}
 				else
 				{
 					/* seq_1 and seq_4 not possible => co_common */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 			}
 			else if(tcp->ack_flag != 0 &&
@@ -4470,13 +4471,13 @@ static int co_baseheader(struct c_context *const context,
 					{
 						/* more than 3 LSBs required for IP-ID => co_common */
 						TRACE_GOTO_CHOICE;
-						*packet_type = PACKET_TCP_CO_COMMON;
+						*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 					}
 					else
 					{
 						/* seq_4 is possible */
 						TRACE_GOTO_CHOICE;
-						*packet_type = PACKET_TCP_SEQ_4;
+						*packet_type = ROHC_PACKET_TCP_SEQ_4;
 					}
 				}
 				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
@@ -4484,13 +4485,13 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* more than 4 LSBs required for IP-ID => co_common */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 				else
 				{
 					/* seq_3 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_3;
+					*packet_type = ROHC_PACKET_TCP_SEQ_3;
 				}
 			}
 			else if(tcp->ack_flag != 0 &&
@@ -4503,13 +4504,13 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* more than 7 LSBs required for IP-ID => co_common */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 				else
 				{
 					/* seq_6 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_6;
+					*packet_type = ROHC_PACKET_TCP_SEQ_6;
 				}
 			}
 			else if(tcp->ack_flag != 0)
@@ -4517,7 +4518,7 @@ static int co_baseheader(struct c_context *const context,
 				/* ACK number present */
 				/* seq_5 is possible */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_SEQ_5;
+				*packet_type = ROHC_PACKET_TCP_SEQ_5;
 			}
 			else if(tcp->ack_flag == 0 &&
 			        tcp_context->tmp.nr_seq_bits_32767 <= 16)
@@ -4531,13 +4532,13 @@ static int co_baseheader(struct c_context *const context,
 					{
 						/* more than 7 LSBs required for IP-ID => co_common */
 						TRACE_GOTO_CHOICE;
-						*packet_type = PACKET_TCP_CO_COMMON;
+						*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 					}
 					else
 					{
 						/* seq_2 is possible */
 						TRACE_GOTO_CHOICE;
-						*packet_type = PACKET_TCP_SEQ_2;
+						*packet_type = ROHC_PACKET_TCP_SEQ_2;
 					}
 				}
 				else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
@@ -4545,40 +4546,40 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* more than 4 LSBs required for IP-ID => co_common */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 				else
 				{
 					/* seq_1 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_SEQ_1;
+					*packet_type = ROHC_PACKET_TCP_SEQ_1;
 				}
 			}
 			else if(tcp->ack_flag == 0)
 			{
 				/* ACK number absent */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 			else if(ip_context.vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL &&
 				     ip_id_hi11_changed)
 			{
 				/* more than 5 LSBs required for IP-ID => co_common */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 			else
 			{
 				/* seq_7 is possible */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_SEQ_7;
+				*packet_type = ROHC_PACKET_TCP_SEQ_7;
 			}
 		} /* no TCP option */
 
 		/* IP-ID is sequential, so only co_common and seq_X packets are allowed */
-		assert((*packet_type) == PACKET_TCP_CO_COMMON ||
-		       ((*packet_type) >= PACKET_TCP_SEQ_1 &&
-		        (*packet_type) <= PACKET_TCP_SEQ_8));
+		assert((*packet_type) == ROHC_PACKET_TCP_CO_COMMON ||
+		       ((*packet_type) >= ROHC_PACKET_TCP_SEQ_1 &&
+		        (*packet_type) <= ROHC_PACKET_TCP_SEQ_8));
 	}
 	else if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_RANDOM ||
 	        ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
@@ -4591,12 +4592,12 @@ static int co_baseheader(struct c_context *const context,
 			if(tcp_window_changed)
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 			else
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_RND_8;
+				*packet_type = ROHC_PACKET_TCP_RND_8;
 			}
 		}
 		else /* no TCP option */
@@ -4606,25 +4607,25 @@ static int co_baseheader(struct c_context *const context,
 				if(tcp_window_changed)
 				{
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 				else
 				{
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_8;
+					*packet_type = ROHC_PACKET_TCP_RND_8;
 				}
 			}
 			else if((rohc_ntoh32(tcp->seq_number) & 0xFFFF) !=
 				     (rohc_ntoh32(tcp_context->old_tcphdr.seq_number) & 0xFFFF))
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 			else if(tcp_window_changed)
 			{
 				/* rnd_7 is possible */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_RND_7;
+				*packet_type = ROHC_PACKET_TCP_RND_7;
 			}
 			else if(tcp->ack_flag != 0 && !tcp_ack_number_changed)
 			{
@@ -4633,13 +4634,13 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* rnd_4 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_4;
+					*packet_type = ROHC_PACKET_TCP_RND_4;
 				}
 				else
 				{
 					/* rnd_1 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_1;
+					*packet_type = ROHC_PACKET_TCP_RND_1;
 				}
 			}
 			else if(tcp->ack_flag != 0 &&
@@ -4650,13 +4651,13 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* rnd_4 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_4;
+					*packet_type = ROHC_PACKET_TCP_RND_4;
 				}
 				else
 				{
 					/* rnd_3 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_3;
+					*packet_type = ROHC_PACKET_TCP_RND_3;
 				}
 			}
 			else if(tcp->ack_flag != 0 &&
@@ -4666,14 +4667,14 @@ static int co_baseheader(struct c_context *const context,
 				/* ACK number present */
 				/* rnd_6 is possible */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_RND_6;
+				*packet_type = ROHC_PACKET_TCP_RND_6;
 			}
 			else if(tcp->ack_flag != 0)
 			{
 				/* ACK number present */
 				/* rnd_5 is possible */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_RND_5;
+				*packet_type = ROHC_PACKET_TCP_RND_5;
 			}
 			else if(tcp->ack_flag == 0 &&
 			        tcp_context->tmp.nr_seq_bits_65535 <= 18)
@@ -4684,27 +4685,27 @@ static int co_baseheader(struct c_context *const context,
 				{
 					/* rnd_2 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_2;
+					*packet_type = ROHC_PACKET_TCP_RND_2;
 				}
 				else
 				{
 					/* rnd_1 is possible */
 					TRACE_GOTO_CHOICE;
-					*packet_type = PACKET_TCP_RND_1;
+					*packet_type = ROHC_PACKET_TCP_RND_1;
 				}
 			}
 			else
 			{
 				/* ACK number absent */
 				TRACE_GOTO_CHOICE;
-				*packet_type = PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		} /* no TCP option */
 
 		/* IP-ID is NOT sequential, so only co_common and rnd_X packets are allowed */
-		assert((*packet_type) == PACKET_TCP_CO_COMMON ||
-		       ((*packet_type) >= PACKET_TCP_RND_1 &&
-		        (*packet_type) <= PACKET_TCP_RND_8));
+		assert((*packet_type) == ROHC_PACKET_TCP_CO_COMMON ||
+		       ((*packet_type) >= ROHC_PACKET_TCP_RND_1 &&
+		        (*packet_type) <= ROHC_PACKET_TCP_RND_8));
 	}
 	else
 	{
@@ -4717,35 +4718,35 @@ static int co_baseheader(struct c_context *const context,
 
 	switch(*packet_type)
 	{
-		case PACKET_TCP_RND_1:
+		case ROHC_PACKET_TCP_RND_1:
 			mptr.uint8 += c_tcp_build_rnd_1(context, tcp_context, tcp,
 													  c_base_header.rnd1);
 			break;
-		case PACKET_TCP_RND_2:
+		case ROHC_PACKET_TCP_RND_2:
 			mptr.uint8 += c_tcp_build_rnd_2(context, tcp_context, tcp,
 													  c_base_header.rnd2);
 			break;
-		case PACKET_TCP_RND_3:
+		case ROHC_PACKET_TCP_RND_3:
 			mptr.uint8 += c_tcp_build_rnd_3(context, tcp_context, tcp,
 													  c_base_header.rnd3);
 			break;
-		case PACKET_TCP_RND_4:
+		case ROHC_PACKET_TCP_RND_4:
 			mptr.uint8 += c_tcp_build_rnd_4(context, tcp_context, tcp,
 													  c_base_header.rnd4);
 			break;
-		case PACKET_TCP_RND_5:
+		case ROHC_PACKET_TCP_RND_5:
 			mptr.uint8 += c_tcp_build_rnd_5(context, tcp_context, tcp,
 													  c_base_header.rnd5);
 			break;
-		case PACKET_TCP_RND_6:
+		case ROHC_PACKET_TCP_RND_6:
 			mptr.uint8 += c_tcp_build_rnd_6(context, tcp_context, tcp,
 													  c_base_header.rnd6);
 			break;
-		case PACKET_TCP_RND_7:
+		case ROHC_PACKET_TCP_RND_7:
 			mptr.uint8 += c_tcp_build_rnd_7(context, tcp_context, tcp,
 													  c_base_header.rnd7);
 			break;
-		case PACKET_TCP_RND_8:
+		case ROHC_PACKET_TCP_RND_8:
 		{
 			size_t rnd8_len;
 
@@ -4762,35 +4763,35 @@ static int co_baseheader(struct c_context *const context,
 			mptr.uint8 += rnd8_len;
 			break;
 		}
-		case PACKET_TCP_SEQ_1:
+		case ROHC_PACKET_TCP_SEQ_1:
 			mptr.uint8 += c_tcp_build_seq_1(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq1);
 			break;
-		case PACKET_TCP_SEQ_2:
+		case ROHC_PACKET_TCP_SEQ_2:
 			mptr.uint8 += c_tcp_build_seq_2(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq2);
 			break;
-		case PACKET_TCP_SEQ_3:
+		case ROHC_PACKET_TCP_SEQ_3:
 			mptr.uint8 += c_tcp_build_seq_3(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq3);
 			break;
-		case PACKET_TCP_SEQ_4:
+		case ROHC_PACKET_TCP_SEQ_4:
 			mptr.uint8 += c_tcp_build_seq_4(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq4);
 			break;
-		case PACKET_TCP_SEQ_5:
+		case ROHC_PACKET_TCP_SEQ_5:
 			mptr.uint8 += c_tcp_build_seq_5(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq5);
 			break;
-		case PACKET_TCP_SEQ_6:
+		case ROHC_PACKET_TCP_SEQ_6:
 			mptr.uint8 += c_tcp_build_seq_6(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq6);
 			break;
-		case PACKET_TCP_SEQ_7:
+		case ROHC_PACKET_TCP_SEQ_7:
 			mptr.uint8 += c_tcp_build_seq_7(context, ip_context, tcp_context,
 													  base_header, tcp, c_base_header.seq7);
 			break;
-		case PACKET_TCP_SEQ_8:
+		case ROHC_PACKET_TCP_SEQ_8:
 		{
 			size_t seq8_len;
 
@@ -4807,7 +4808,7 @@ static int co_baseheader(struct c_context *const context,
 			mptr.uint8 += seq8_len;
 			break;
 		}
-		case PACKET_TCP_CO_COMMON:
+		case ROHC_PACKET_TCP_CO_COMMON:
 		{
 	rohc_comp_debug(context, "code common\n");
 	// See RFC4996 page 80:

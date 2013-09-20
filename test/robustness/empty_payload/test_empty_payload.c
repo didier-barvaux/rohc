@@ -187,23 +187,23 @@ int main(int argc, char *argv[])
 	/* parse the packet type */
 	if(strcmp(packet_type, "ir") == 0)
 	{
-		expected_packet = PACKET_IR;
+		expected_packet = ROHC_PACKET_IR;
 	}
 	else if(strcmp(packet_type, "irdyn") == 0)
 	{
-		expected_packet = PACKET_IR_DYN;
+		expected_packet = ROHC_PACKET_IR_DYN;
 	}
 	else if(strcmp(packet_type, "uo0") == 0)
 	{
-		expected_packet = PACKET_UO_0;
+		expected_packet = ROHC_PACKET_UO_0;
 	}
 	else if(strcmp(packet_type, "uo1") == 0)
 	{
-		expected_packet = PACKET_UO_1_TS;
+		expected_packet = ROHC_PACKET_UO_1_TS;
 	}
 	else if(strcmp(packet_type, "uor2") == 0)
 	{
-		expected_packet = PACKET_UOR_2_TS;
+		expected_packet = ROHC_PACKET_UOR_2_TS;
 	}
 	else
 	{
@@ -267,7 +267,7 @@ static int test_comp_and_decomp(const char *filename,
 
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
-	rohc_packet_t last_packet_type = PACKET_UNKNOWN;
+	rohc_packet_t last_packet_type = ROHC_PACKET_UNKNOWN;
 
 	struct pcap_pkthdr header;
 	unsigned char *packet;

@@ -142,27 +142,27 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
 	if(d_is_uo0(rohc_packet, rohc_length))
 	{
 		/* UO-0 packet */
-		type = PACKET_UO_0;
+		type = ROHC_PACKET_UO_0;
 	}
 	else if(d_is_uo1(rohc_packet, rohc_length))
 	{
 		/* UO-1 packet */
-		type = PACKET_UO_1;
+		type = ROHC_PACKET_UO_1;
 	}
 	else if(d_is_uor2(rohc_packet, rohc_length))
 	{
 		/* UOR-2 packet */
-		type = PACKET_UOR_2;
+		type = ROHC_PACKET_UOR_2;
 	}
 	else if(d_is_irdyn(rohc_packet, rohc_length))
 	{
 		/* IR-DYN packet */
-		type = PACKET_IR_DYN;
+		type = ROHC_PACKET_IR_DYN;
 	}
 	else if(d_is_ir(rohc_packet, rohc_length))
 	{
 		/* IR packet */
-		type = PACKET_IR;
+		type = ROHC_PACKET_IR;
 	}
 	else
 	{
@@ -170,13 +170,13 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to recognize the packet type in byte 0x%02x\n",
 		             rohc_packet[0]);
-		type = PACKET_UNKNOWN;
+		type = ROHC_PACKET_UNKNOWN;
 	}
 
 	return type;
 
 error:
-	return PACKET_UNKNOWN;
+	return ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -356,7 +356,7 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 	/* extract the SN if present */
 	if(S)
 	{
-		APPEND_SN_BITS(PACKET_EXT_3, bits, GET_BIT_0_7(rohc_remain_data), 8);
+		APPEND_SN_BITS(ROHC_EXT_3, bits, GET_BIT_0_7(rohc_remain_data), 8);
 		rohc_remain_data++;
 		rohc_remain_len--;
 	}

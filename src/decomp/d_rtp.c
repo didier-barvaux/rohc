@@ -306,7 +306,7 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 	if(d_is_uo0(rohc_packet, rohc_length))
 	{
 		/* UO-0 packet */
-		type = PACKET_UO_0;
+		type = ROHC_PACKET_UO_0;
 	}
 	else if(d_is_uo1(rohc_packet, rohc_length))
 	{
@@ -323,17 +323,17 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 		if(d_is_uor2_rtp(rohc_packet, rohc_length, large_cid_len))
 		{
 			/* UOR-2-RTP packet */
-			type = PACKET_UOR_2_RTP;
+			type = ROHC_PACKET_UOR_2_RTP;
 		}
 		else if(d_is_uor2_ts(rohc_packet, rohc_length, large_cid_len))
 		{
 			/* UOR-2-TS packet */
-			type = PACKET_UOR_2_TS;
+			type = ROHC_PACKET_UOR_2_TS;
 		}
 		else
 		{
 			/* UOR-2-ID packet */
-			type = PACKET_UOR_2_ID;
+			type = ROHC_PACKET_UOR_2_ID;
 		}
 
 #else /* !RTP_BIT_TYPE */
@@ -348,12 +348,12 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 	else if(d_is_irdyn(rohc_packet, rohc_length))
 	{
 		/* IR-DYN packet */
-		type = PACKET_IR_DYN;
+		type = ROHC_PACKET_IR_DYN;
 	}
 	else if(d_is_ir(rohc_packet, rohc_length))
 	{
 		/* IR packet */
-		type = PACKET_IR;
+		type = ROHC_PACKET_IR;
 	}
 	else
 	{
@@ -361,13 +361,13 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to recognize the packet type in byte 0x%02x\n",
 		             rohc_packet[0]);
-		type = PACKET_UNKNOWN;
+		type = ROHC_PACKET_UNKNOWN;
 	}
 
 	return type;
 
 error:
-	return PACKET_UNKNOWN;
+	return ROHC_PACKET_UNKNOWN;
 }
 
 
@@ -431,7 +431,7 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const deco
 		/* no IPv4 header at all, so only UO-1-RTP packet can be used */
 		rohc_decomp_debug(context, "UO-1* packet disambiguation: no IPv4 "
 		                  "header at all, so parse as UO-1-RTP\n");
-		type = PACKET_UO_1_RTP;
+		type = ROHC_PACKET_UO_1_RTP;
 	}
 	else if(nr_ipv4_non_rnd == 0)
 	{
@@ -441,7 +441,7 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const deco
 		rohc_decomp_debug(context, "UO-1* packet disambiguation: no IPv4 "
 		                  "header with context(RND) = 0, so parse as "
 		                  "UO-1-RTP\n");
-		type = PACKET_UO_1_RTP;
+		type = ROHC_PACKET_UO_1_RTP;
 	}
 	else
 	{
@@ -458,14 +458,14 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const deco
 			/* UO-1-TS packet */
 			rohc_decomp_debug(context, "UO-1* packet disambiguation: T = 1, "
 			                  "so parse as UO-1-TS\n");
-			type = PACKET_UO_1_TS;
+			type = ROHC_PACKET_UO_1_TS;
 		}
 		else
 		{
 			/* UO-1-ID packet */
 			rohc_decomp_debug(context, "UO-1* packet disambiguation: T = 0, "
 			                  "so parse as UO-1-ID\n");
-			type = PACKET_UO_1_ID;
+			type = ROHC_PACKET_UO_1_ID;
 		}
 	}
 
@@ -535,7 +535,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const dec
 		/* no IPv4 header at all, so only *-RTP packet can be used */
 		rohc_decomp_debug(context, "UOR-2* packet disambiguation: no IPv4 "
 		                  "header at all, so parse as UOR-2-RTP\n");
-		type = PACKET_UOR_2_RTP;
+		type = ROHC_PACKET_UOR_2_RTP;
 	}
 	else if(nr_ipv4_non_rnd == 0)
 	{
@@ -547,7 +547,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const dec
 		                  "header with context(RND) = 0, so try parsing as "
 		                  "UOR-2-RTP, and fallback on UOR-2-ID/TS later if "
 		                  "value(RND) = 0 in packet\n");
-		type = PACKET_UOR_2_RTP;
+		type = ROHC_PACKET_UOR_2_RTP;
 	}
 	else
 	{
@@ -567,7 +567,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const dec
 			rohc_decomp_debug(context, "UOR-2* packet disambiguation: T = 1, "
 			                  "so try parsing as UOR-2-TS, and fallback on "
 			                  "UOR-2-RTP later if value(RND) = 1 in packet\n");
-			type = PACKET_UOR_2_TS;
+			type = ROHC_PACKET_UOR_2_TS;
 		}
 		else
 		{
@@ -575,7 +575,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const dec
 			rohc_decomp_debug(context, "UOR-2* packet disambiguation: T = 0, "
 			                  "so try parsing as UOR-2-ID, and fallback on "
 			                  "UOR-2-RTP later if value(RND) = 1 in packet\n");
-			type = PACKET_UOR_2_ID;
+			type = ROHC_PACKET_UOR_2_ID;
 		}
 	}
 
@@ -1018,7 +1018,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	/* extract the SN if present */
 	if(S)
 	{
-		APPEND_SN_BITS(PACKET_EXT_3, bits, GET_BIT_0_7(rohc_remain_data), 8);
+		APPEND_SN_BITS(ROHC_EXT_3, bits, GET_BIT_0_7(rohc_remain_data), 8);
 		rohc_remain_data++;
 		rohc_remain_len--;
 	}
@@ -1039,7 +1039,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 			             "failed to decode SDVL-encoded TS field\n");
 			goto error;
 		}
-		APPEND_TS_BITS(PACKET_EXT_3, bits, ts_ext, ts_ext_nr);
+		APPEND_TS_BITS(ROHC_EXT_3, bits, ts_ext, ts_ext_nr);
 
 		rohc_remain_data += ts_sdvl_size;
 		rohc_remain_len -= ts_sdvl_size;
@@ -1191,7 +1191,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 
 	/* if RND changed while parsing UO-1-ID, UOR-2-RTP, UOR-2-ID, or UOR-2-TS,
 	 * we might have to restart parsing */
-	if(packet_type == PACKET_UO_1_ID && rnd_changed)
+	if(packet_type == ROHC_PACKET_UO_1_ID && rnd_changed)
 	{
 		/* RFC 3095, section 5.7.5.1 says:
 		 *   The values of the RND and RND2 flags are changed by sending UOR-2
@@ -1426,9 +1426,9 @@ reparse:
 static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
                                             const int are_all_ipv4_rnd)
 {
-	return ((packet_type == PACKET_UOR_2_RTP && !are_all_ipv4_rnd) ||
-	        (packet_type == PACKET_UOR_2_ID && are_all_ipv4_rnd) ||
-	        (packet_type == PACKET_UOR_2_TS && are_all_ipv4_rnd));
+	return ((packet_type == ROHC_PACKET_UOR_2_RTP && !are_all_ipv4_rnd) ||
+	        (packet_type == ROHC_PACKET_UOR_2_ID && are_all_ipv4_rnd) ||
+	        (packet_type == ROHC_PACKET_UOR_2_TS && are_all_ipv4_rnd));
 }
 
 

@@ -42,51 +42,83 @@
 typedef enum
 {
 	/* IR and IR-DYN packets */
-	PACKET_IR        =  0, /**< ROHC IR packet */
-	PACKET_IR_DYN    =  1, /**< ROHC IR-DYN packet */
+	ROHC_PACKET_IR        =  0, /**< ROHC IR packet */
+#define PACKET_IR ROHC_PACKET_IR
+	ROHC_PACKET_IR_DYN    =  1, /**< ROHC IR-DYN packet */
+#define PACKET_IR_DYN ROHC_PACKET_IR_DYN
 
 	/* UO-0 packets */
-	PACKET_UO_0      =  2, /**< ROHC UO-0 packet */
+	ROHC_PACKET_UO_0      =  2, /**< ROHC UO-0 packet */
+#define PACKET_UO_0 ROHC_PACKET_UO_0
 
 	/* UO-1 packets */
-	PACKET_UO_1      =  3, /**< ROHC UO-1 packet (for all non-RTP profiles) */
-	PACKET_UO_1_ID   =  4, /**< ROHC UO-1-ID packet (RTP profile only) */
-	PACKET_UO_1_TS   =  5, /**< ROHC UO-1-TS packet (RTP profile only) */
-	PACKET_UO_1_RTP  =  6, /**< ROHC UO-1-RTP packet (RTP profile only) */
+	ROHC_PACKET_UO_1      =  3, /**< ROHC UO-1 packet (for all non-RTP profiles) */
+#define PACKET_UO_1 ROHC_PACKET_UO_1
+	ROHC_PACKET_UO_1_ID   =  4, /**< ROHC UO-1-ID packet (RTP profile only) */
+#define PACKET_UO_1_ID ROHC_PACKET_UO_1_ID
+	ROHC_PACKET_UO_1_TS   =  5, /**< ROHC UO-1-TS packet (RTP profile only) */
+#define PACKET_UO_1_TS ROHC_PACKET_UO_1_TS
+	ROHC_PACKET_UO_1_RTP  =  6, /**< ROHC UO-1-RTP packet (RTP profile only) */
+#define PACKET_UO_1_RTP ROHC_PACKET_UO_1_RTP
 
 	/* UOR-2 packets */
-	PACKET_UOR_2     =  7, /**< ROHC UOR-2 packet (for all non-RTP profiles) */
-	PACKET_UOR_2_RTP =  8, /**< ROHC UO-2 packet (RTP profile only) */
-	PACKET_UOR_2_ID  =  9, /**< ROHC UO-2-ID packet (RTP profile only) */
-	PACKET_UOR_2_TS  = 10, /**< ROHC UO-2-TS packet (RTP profile only) */
+	ROHC_PACKET_UOR_2     =  7, /**< ROHC UOR-2 packet (for all non-RTP profiles) */
+#define PACKET_UOR_2 ROHC_PACKET_UOR_2
+	ROHC_PACKET_UOR_2_RTP =  8, /**< ROHC UO-2 packet (RTP profile only) */
+#define PACKET_UOR_2_RTP ROHC_PACKET_UOR_2_RTP
+	ROHC_PACKET_UOR_2_ID  =  9, /**< ROHC UO-2-ID packet (RTP profile only) */
+#define PACKET_UOR_2_ID ROHC_PACKET_UOR_2_ID
+	ROHC_PACKET_UOR_2_TS  = 10, /**< ROHC UO-2-TS packet (RTP profile only) */
+#define PACKET_UOR_2_TS ROHC_PACKET_UOR_2_TS
 
 	/* CCE packets (UDP-Lite profile only) */
-	PACKET_CCE       = 11, /**< ROHC CCE packet (UDP-Lite profile only) */
-	PACKET_CCE_OFF   = 12, /**< ROHC CCE(OFF) packet (UDP-Lite profile only) */
+	ROHC_PACKET_CCE       = 11, /**< ROHC CCE packet (UDP-Lite profile only) */
+#define PACKET_CCE ROHC_PACKET_CCE
+	ROHC_PACKET_CCE_OFF   = 12, /**< ROHC CCE(OFF) packet (UDP-Lite profile only) */
+#define PACKET_CCE_OFF ROHC_PACKET_CCE_OFF
 
 	/* Normal packet (Uncompressed profile only) */
-	PACKET_NORMAL    = 13, /**< ROHC Normal packet (Uncompressed profile only) */
+	ROHC_PACKET_NORMAL    = 13, /**< ROHC Normal packet (Uncompressed profile only) */
+#define PACKET_NORMAL ROHC_PACKET_NORMAL
 
-	PACKET_UNKNOWN   = 14, /**< Unknown packet type */
+	ROHC_PACKET_UNKNOWN   = 14, /**< Unknown packet type */
+#define PACKET_UNKNOWN ROHC_PACKET_UNKNOWN
 
 	/* packets for TCP profile */
-	PACKET_TCP_CO_COMMON = 100, /**< TCP co_common packet */
-	PACKET_TCP_RND_1     = 111, /**< TCP rnd_1 packet */
-	PACKET_TCP_RND_2     = 112, /**< TCP rnd_2 packet */
-	PACKET_TCP_RND_3     = 113, /**< TCP rnd_3 packet */
-	PACKET_TCP_RND_4     = 114, /**< TCP rnd_4 packet */
-	PACKET_TCP_RND_5     = 115, /**< TCP rnd_5 packet */
-	PACKET_TCP_RND_6     = 116, /**< TCP rnd_6 packet */
-	PACKET_TCP_RND_7     = 117, /**< TCP rnd_7 packet */
-	PACKET_TCP_RND_8     = 118, /**< TCP rnd_8 packet */
-	PACKET_TCP_SEQ_1     = 121, /**< TCP seq_1 packet */
-	PACKET_TCP_SEQ_2     = 122, /**< TCP seq_2 packet */
-	PACKET_TCP_SEQ_3     = 123, /**< TCP seq_3 packet */
-	PACKET_TCP_SEQ_4     = 124, /**< TCP seq_4 packet */
-	PACKET_TCP_SEQ_5     = 125, /**< TCP seq_5 packet */
-	PACKET_TCP_SEQ_6     = 126, /**< TCP seq_6 packet */
-	PACKET_TCP_SEQ_7     = 127, /**< TCP seq_7 packet */
-	PACKET_TCP_SEQ_8     = 128, /**< TCP seq_8 packet */
+	ROHC_PACKET_TCP_CO_COMMON = 100, /**< TCP co_common packet */
+#define PACKET_TCP_CO_COMMON ROHC_PACKET_TCP_CO_COMMON
+	ROHC_PACKET_TCP_RND_1     = 111, /**< TCP rnd_1 packet */
+#define PACKET_TCP_RND_1 ROHC_PACKET_TCP_RND_1
+	ROHC_PACKET_TCP_RND_2     = 112, /**< TCP rnd_2 packet */
+#define PACKET_TCP_RND_2 ROHC_PACKET_TCP_RND_2
+	ROHC_PACKET_TCP_RND_3     = 113, /**< TCP rnd_3 packet */
+#define PACKET_TCP_RND_3 ROHC_PACKET_TCP_RND_3
+	ROHC_PACKET_TCP_RND_4     = 114, /**< TCP rnd_4 packet */
+#define PACKET_TCP_RND_4 ROHC_PACKET_TCP_RND_4
+	ROHC_PACKET_TCP_RND_5     = 115, /**< TCP rnd_5 packet */
+#define PACKET_TCP_RND_5 ROHC_PACKET_TCP_RND_5
+	ROHC_PACKET_TCP_RND_6     = 116, /**< TCP rnd_6 packet */
+#define PACKET_TCP_RND_6 ROHC_PACKET_TCP_RND_6
+	ROHC_PACKET_TCP_RND_7     = 117, /**< TCP rnd_7 packet */
+#define PACKET_TCP_RND_7 ROHC_PACKET_TCP_RND_7
+	ROHC_PACKET_TCP_RND_8     = 118, /**< TCP rnd_8 packet */
+#define PACKET_TCP_RND_8 ROHC_PACKET_TCP_RND_8
+	ROHC_PACKET_TCP_SEQ_1     = 121, /**< TCP seq_1 packet */
+#define PACKET_TCP_SEQ_1 ROHC_PACKET_TCP_SEQ_1
+	ROHC_PACKET_TCP_SEQ_2     = 122, /**< TCP seq_2 packet */
+#define PACKET_TCP_SEQ_2 ROHC_PACKET_TCP_SEQ_2
+	ROHC_PACKET_TCP_SEQ_3     = 123, /**< TCP seq_3 packet */
+#define PACKET_TCP_SEQ_3 ROHC_PACKET_TCP_SEQ_3
+	ROHC_PACKET_TCP_SEQ_4     = 124, /**< TCP seq_4 packet */
+#define PACKET_TCP_SEQ_4 ROHC_PACKET_TCP_SEQ_4
+	ROHC_PACKET_TCP_SEQ_5     = 125, /**< TCP seq_5 packet */
+#define PACKET_TCP_SEQ_5 ROHC_PACKET_TCP_SEQ_5
+	ROHC_PACKET_TCP_SEQ_6     = 126, /**< TCP seq_6 packet */
+#define PACKET_TCP_SEQ_6 ROHC_PACKET_TCP_SEQ_6
+	ROHC_PACKET_TCP_SEQ_7     = 127, /**< TCP seq_7 packet */
+#define PACKET_TCP_SEQ_7 ROHC_PACKET_TCP_SEQ_7
+	ROHC_PACKET_TCP_SEQ_8     = 128, /**< TCP seq_8 packet */
+#define PACKET_TCP_SEQ_8 ROHC_PACKET_TCP_SEQ_8
 
 } rohc_packet_t;
 
@@ -99,12 +131,18 @@ typedef enum
  */
 typedef enum
 {
-	PACKET_EXT_0 = 0,  /**< The EXT-0 extension for UO-1-ID/UOR-2* packets */
-	PACKET_EXT_1 = 1,  /**< The EXT-1 extension for UO-1-ID/UOR-2* packets */
-	PACKET_EXT_2 = 2,  /**< The EXT-2 extension for UO-1-ID/UOR-2* packets */
-	PACKET_EXT_3 = 3,  /**< The EXT-3 extension for UO-1-ID/UOR-2* packets */
-	PACKET_NOEXT = 4,  /**< No extension for UO-1-ID/UOR-2* packets */
-	PACKET_EXT_UNKNOWN = 5, /**< Unknown packet extension type */
+	ROHC_EXT_0       = 0,  /**< The EXT-0 extension for UO-1-ID/UOR-2* packets */
+#define PACKET_EXT_0 ROHC_EXT_0
+	ROHC_EXT_1       = 1,  /**< The EXT-1 extension for UO-1-ID/UOR-2* packets */
+#define PACKET_EXT_1 ROHC_EXT_1
+	ROHC_EXT_2       = 2,  /**< The EXT-2 extension for UO-1-ID/UOR-2* packets */
+#define PACKET_EXT_2 ROHC_EXT_2
+	ROHC_EXT_3       = 3,  /**< The EXT-3 extension for UO-1-ID/UOR-2* packets */
+#define PACKET_EXT_3 ROHC_EXT_3
+	ROHC_EXT_NONE    = 4,  /**< No extension for UO-1-ID/UOR-2* packets */
+#define PACKET_NOEXT ROHC_EXT_NONE
+	ROHC_EXT_UNKNOWN = 5,  /**< Unknown packet extension type */
+#define PACKET_EXT_UNKNOWN ROHC_EXT_UNKNOWN
 } rohc_ext_t;
 
 

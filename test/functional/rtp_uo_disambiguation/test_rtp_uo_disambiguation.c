@@ -138,27 +138,27 @@ int main(int argc, char *argv[])
 	/* parse the packet type */
 	if(strlen(packet_type) == 6 && strcmp(packet_type, "uo1rtp") == 0)
 	{
-		expected_packet = PACKET_UO_1_RTP;
+		expected_packet = ROHC_PACKET_UO_1_RTP;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1ts") == 0)
 	{
-		expected_packet = PACKET_UO_1_TS;
+		expected_packet = ROHC_PACKET_UO_1_TS;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
 	{
-		expected_packet = PACKET_UO_1_ID;
+		expected_packet = ROHC_PACKET_UO_1_ID;
 	}
 	else if(strlen(packet_type) == 7 && strcmp(packet_type, "uor2rtp") == 0)
 	{
-		expected_packet = PACKET_UOR_2_RTP;
+		expected_packet = ROHC_PACKET_UOR_2_RTP;
 	}
 	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
 	{
-		expected_packet = PACKET_UOR_2_TS;
+		expected_packet = ROHC_PACKET_UOR_2_TS;
 	}
 	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2id") == 0)
 	{
-		expected_packet = PACKET_UOR_2_ID;
+		expected_packet = ROHC_PACKET_UOR_2_ID;
 	}
 	else
 	{
@@ -226,8 +226,8 @@ static int test_comp_and_decomp(const char *const filename,
 	unsigned char *packet;
 	unsigned int counter;
 
-	rohc_packet_t pkt_type_comp = PACKET_UNKNOWN;
-	rohc_packet_t pkt_type_decomp = PACKET_UNKNOWN;
+	rohc_packet_t pkt_type_comp = ROHC_PACKET_UNKNOWN;
+	rohc_packet_t pkt_type_decomp = ROHC_PACKET_UNKNOWN;
 
 #define NB_RTP_PORTS 5
 	const unsigned int rtp_ports[NB_RTP_PORTS] =

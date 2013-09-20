@@ -163,32 +163,32 @@ int main(int argc, char *argv[])
 	/* parse the packet type */
 	if(strlen(packet_type) == 2 && strcmp(packet_type, "ir") == 0)
 	{
-		expected_packet = PACKET_IR;
+		expected_packet = ROHC_PACKET_IR;
 		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "irdyn") == 0)
 	{
-		expected_packet = PACKET_IR_DYN;
+		expected_packet = ROHC_PACKET_IR_DYN;
 		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 3 && strcmp(packet_type, "uo0") == 0)
 	{
-		expected_packet = PACKET_UO_0;
+		expected_packet = ROHC_PACKET_UO_0;
 		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 5 && strcmp(packet_type, "uo1id") == 0)
 	{
-		expected_packet = PACKET_UO_1_ID;
+		expected_packet = ROHC_PACKET_UO_1_ID;
 		srand_init = 6;
 	}
 	else if(strlen(packet_type) == 4 && strcmp(packet_type, "uor2") == 0)
 	{
-		expected_packet = PACKET_UOR_2_RTP;
+		expected_packet = ROHC_PACKET_UOR_2_RTP;
 		srand_init = 5;
 	}
 	else if(strlen(packet_type) == 6 && strcmp(packet_type, "uor2ts") == 0)
 	{
-		expected_packet = PACKET_UOR_2_TS;
+		expected_packet = ROHC_PACKET_UOR_2_TS;
 		srand_init = 21;
 	}
 	else
@@ -507,7 +507,7 @@ static int test_comp_and_decomp(const char *const filename,
 			{
 				/* damage the packet (randomly modify its last byte) */
 				pos = rohc_size;
-				if(expected_packet == PACKET_UOR_2_TS)
+				if(expected_packet == ROHC_PACKET_UOR_2_TS)
 				{
 					assert(rohc_size >= 2);
 					old_byte = rohc_packet[rohc_size - 2];
@@ -562,7 +562,8 @@ static int test_comp_and_decomp(const char *const filename,
 				        "ROHC packet\n");
 				goto destroy_decomp;
 			}
-			else if(expected_packet != PACKET_IR && expected_packet != PACKET_IR_DYN)
+			else if(expected_packet != ROHC_PACKET_IR &&
+			        expected_packet != ROHC_PACKET_IR_DYN)
 			{
 				fprintf(stderr, "\tunexpected non-CRC failure to decompress generated "
 				        "ROHC non-IR/IR-DYN packet\n");

@@ -554,7 +554,7 @@ static int uncompressed_code_packet(const struct c_context *context,
 	/* decide what packet to send depending on state and uncompressed packet */
 	if(context->state == IR)
 	{
-		*packet_type = PACKET_IR;
+		*packet_type = ROHC_PACKET_IR;
 	}
 	else if(context->state == FO)
 	{
@@ -565,29 +565,29 @@ static int uncompressed_code_packet(const struct c_context *context,
 		{
 			rohc_comp_debug(context, "force IR packet to avoid conflict between "
 			                "first payload byte and ROHC packet types\n");
-			*packet_type = PACKET_IR;
+			*packet_type = ROHC_PACKET_IR;
 		}
 		else
 		{
-			*packet_type = PACKET_NORMAL;
+			*packet_type = ROHC_PACKET_NORMAL;
 		}
 	}
 	else
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "unknown state, cannot build packet\n");
-		*packet_type = PACKET_UNKNOWN;
+		*packet_type = ROHC_PACKET_UNKNOWN;
 		assert(0); /* should not happen */
 		goto error;
 	}
 
-	if((*packet_type) == PACKET_IR)
+	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		rohc_comp_debug(context, "build IR packet\n");
 		uncomp_context->ir_count++;
 		code_packet = uncompressed_code_IR_packet;
 	}
-	else /* PACKET_NORMAL */
+	else /* ROHC_PACKET_NORMAL */
 	{
 		rohc_comp_debug(context, "build normal packet\n");
 		uncomp_context->normal_count++;

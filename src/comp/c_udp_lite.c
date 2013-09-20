@@ -617,8 +617,8 @@ static int c_udp_lite_encode(struct c_context *const context,
 	}
 
 	/* update the context with the new UDP-Lite header */
-	if(g_context->tmp.packet_type == PACKET_IR ||
-	   g_context->tmp.packet_type == PACKET_IR_DYN)
+	if(g_context->tmp.packet_type == ROHC_PACKET_IR ||
+	   g_context->tmp.packet_type == ROHC_PACKET_IR_DYN)
 	{
 		memcpy(&udp_lite_context->old_udp_lite, udp_lite, sizeof(struct udphdr));
 	}
