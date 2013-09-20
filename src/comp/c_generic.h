@@ -338,10 +338,10 @@ struct list_comp
 
 	/// @brief the handler used to get the extension in the IP packet
 	unsigned char * (*get_extension)(const struct ip_packet *ip,
-	                                 const int index);
+	                                 const size_t pos);
 
 	/// @brief the handler used to get the index in based table for the corresponding item
-	int (*get_index_table)(const struct ip_packet *ip, const int index);
+	int (*get_index_table)(const struct ip_packet *ip, const size_t pos);
 
 	/// @brief the handler used to get the size of an extension
 	unsigned short (*get_size)(const unsigned char *ext);
@@ -355,7 +355,7 @@ struct list_comp
 	/// @brief the handler used to create the item with the corresponding
 	///        type of the extension
 	void (*create_item)(struct list_comp *const comp,
-	                    const unsigned int index_table,
+	                    const size_t index_table,
 	                    const unsigned char *const ext_data,
 	                    const size_t ext_size);
 

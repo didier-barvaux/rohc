@@ -1991,7 +1991,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		uint8_t *pBeginList;
 		uint8_t PS;
 		uint8_t present;
-		uint8_t index;
+		uint8_t opt_idx;
 		uint8_t m;
 		uint8_t i;
 		uint8_t *tcp_options;
@@ -2024,7 +2024,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			if(PS != 0)
 			{
 				present = (*pBeginList) & 0x80;
-				index = (*pBeginList) & 0x0F;
+				opt_idx = (*pBeginList) & 0x0F;
 				++pBeginList;
 			}
 			else
@@ -2033,16 +2033,16 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 				if(i & 1)
 				{
 					present = (*pBeginList) & 0x08;
-					index = (*pBeginList) & 0x07;
+					opt_idx = (*pBeginList) & 0x07;
 					++pBeginList;
 				}
 				else
 				{
 					present = (*pBeginList) & 0x80;
-					index = ( (*pBeginList) & 0x70 ) >> 4;
+					opt_idx = ((*pBeginList) & 0x70) >> 4;
 				}
 			}
-			rohc_decomp_debug(context, "TCP index %d %s\n", index,
+			rohc_decomp_debug(context, "TCP index %u %s\n", opt_idx,
 			                  present != 0 ? "present" : "absent");
 			// item must present in dynamic part
 			if(present == 0)
@@ -2053,10 +2053,10 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 				goto error;
 			}
 			/* if known index (see RFC4996 page 27) */
-			if(index <= TCP_INDEX_SACK)
+			if(opt_idx <= TCP_INDEX_SACK)
 			{
 				/* save TCP option for this index */
-				tcp_context->tcp_options_list[index] = *mptr.uint8;
+				tcp_context->tcp_options_list[opt_idx] = *mptr.uint8;
 
 				switch(*mptr.uint8)
 				{
@@ -2114,17 +2114,19 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 				uint8_t *pValue;
 
 				/* was index already used? */
-				if(tcp_context->tcp_options_list[index] == 0xff)
+				if(tcp_context->tcp_options_list[opt_idx] == 0xff)
 				{
 					/* index was never used before */
 					/* save TCP option for this index */
-					tcp_context->tcp_options_list[index] = *(mptr.uint8++);
-					tcp_context->tcp_options_offset[index] = tcp_context->tcp_options_free_offset;
-					pValue = tcp_context->tcp_options_values + tcp_context->tcp_options_free_offset;
+					tcp_context->tcp_options_list[opt_idx] = *(mptr.uint8++);
+					tcp_context->tcp_options_offset[opt_idx] =
+						tcp_context->tcp_options_free_offset;
+					pValue = tcp_context->tcp_options_values +
+						tcp_context->tcp_options_free_offset;
 					/* save length (without option_static) */
 					*pValue = ((*mptr.uint8) & 0x7F) - 2;
 					rohc_decomp_debug(context, "%d-byte TCP option of type %d\n",
-					                  *pValue, tcp_context->tcp_options_list[index]);
+					                  *pValue, tcp_context->tcp_options_list[opt_idx]);
 					/* save value */
 					memcpy(pValue + 1,mptr.uint8 + 1,*pValue);
 					/* update first free offset */
@@ -2143,21 +2145,22 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 				else /* index already used */
 				{
 					/* verify the value with the recorded one */
-					rohc_decomp_debug(context, "tcp_options_list[%d] = %d <=> %d\n",
-					                  index, tcp_context->tcp_options_list[index],
+					rohc_decomp_debug(context, "tcp_options_list[%u] = %d <=> %d\n",
+					                  opt_idx,
+					                  tcp_context->tcp_options_list[opt_idx],
 					                  *mptr.uint8);
-					if(tcp_context->tcp_options_list[index] != *mptr.uint8)
+					if(tcp_context->tcp_options_list[opt_idx] != *mptr.uint8)
 					{
 						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 						             context->profile->id, "unexpected TCP option "
 						             "at index %u: 0x%02x received while 0x%02x "
-						             "expected\n", index, *mptr.uint8,
-						             tcp_context->tcp_options_list[index]);
+						             "expected\n", opt_idx, *mptr.uint8,
+						             tcp_context->tcp_options_list[opt_idx]);
 						goto error;
 					}
 					++mptr.uint8;
 					pValue = tcp_context->tcp_options_values +
-					         tcp_context->tcp_options_offset[index];
+					         tcp_context->tcp_options_offset[opt_idx];
 					assert((*pValue) + 2 == ((*mptr.uint8) & 0x7F));
 					assert(memcmp(pValue + 1, mptr.uint8 + 1, *pValue) == 0);
 					mptr.uint8 += 1 + *pValue;
@@ -2808,7 +2811,7 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 	uint8_t present;
 	uint8_t *pValue;
 	uint8_t PS;
-	int index;
+	uint8_t opt_idx;
 	int m;
 	int i;
 
@@ -2846,29 +2849,29 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 			/* if odd digit */
 			if(i & 1)
 			{
-				index = *(ptr++);
+				opt_idx = *(ptr++);
 			}
 			else
 			{
-				index = (*ptr) >> 4;
+				opt_idx = (*ptr) >> 4;
 			}
-			present = index & 0x08;
-			index &= 0x07;
+			present = opt_idx & 0x08;
+			opt_idx &= 0x07;
 			++i;
 		}
 		else
 		{
 			/* 8-bit XI fields */
 			present = (*ptr) & 0x80;
-			index = *(ptr++) & 0x0F;
+			opt_idx = *(ptr++) & 0x0F;
 		}
 
-		rohc_decomp_debug(context, "TCP option index %d %s\n", index,
+		rohc_decomp_debug(context, "TCP option index %u %s\n", opt_idx,
 		                  present == 0 ? "" : "present");
 
 		if(present)
 		{
-			switch(index)
+			switch(opt_idx)
 			{
 				case TCP_INDEX_NOP:  // NOP
 					*(options++) = TCP_OPT_NOP;
@@ -2931,8 +2934,8 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					break;
 				default:  // Generic options
 					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "TCP option with index %d "
-					             "not handled\n", index);
+					             context->profile->id, "TCP option with index %u "
+					             "not handled\n", opt_idx);
 					// TODO
 					compressed_options = d_tcp_opt_generic(tcp_context,compressed_options,&options);
 					break;
@@ -2940,7 +2943,7 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 		}
 		else
 		{
-			switch(index)
+			switch(opt_idx)
 			{
 				case TCP_INDEX_NOP:  // NOP
 					*(options++) = TCP_OPT_NOP;
@@ -2987,10 +2990,11 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					options += tcp_context->tcp_option_sack_length;
 					break;
 				default:  // Generic options
-					rohc_decomp_debug(context, "TCP option with index %d not "
-					                  "handled\n", index);
-					*(options++) = tcp_context->tcp_options_list[index];
-					pValue = tcp_context->tcp_options_values + tcp_context->tcp_options_offset[index];
+					rohc_decomp_debug(context, "TCP option with index %u not "
+					                  "handled\n", opt_idx);
+					*(options++) = tcp_context->tcp_options_list[opt_idx];
+					pValue = tcp_context->tcp_options_values +
+					         tcp_context->tcp_options_offset[opt_idx];
 					// Length
 					*(options++) = *pValue;
 					// Value
@@ -3046,7 +3050,7 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 	uint8_t *items;
 	uint8_t present;
 	uint8_t PS;
-	int index;
+	uint8_t opt_idx;
 	size_t xi_len;
 	int comp_size;
 	int m;
@@ -3095,25 +3099,25 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 			/* if odd digit */
 			if(i & 1)
 			{
-				index = *(ptr++);
+				opt_idx = *(ptr++);
 			}
 			else
 			{
-				index = (*ptr) >> 4;
+				opt_idx = (*ptr) >> 4;
 			}
-			present = index & 0x08;
-			index &= 0x07;
+			present = opt_idx & 0x08;
+			opt_idx &= 0x07;
 			rohc_decomp_debug(context, "TCP options list: 4-bit XI field #%d: "
-			                  "item with index %d is %s\n", i, index,
+			                  "item with index %u is %s\n", i, opt_idx,
 			                  present ? "present" : "not present");
 		}
 		else
 		{
 			/* 8-bit XI fields */
 			present = (*ptr) & 0x80;
-			index = *(ptr++) & 0x0F;
+			opt_idx = *(ptr++) & 0x0F;
 			rohc_decomp_debug(context, "TCP options list: 8-bit XI field #%d: "
-			                  "item with index %d is %s\n", i, index,
+			                  "item with index %u is %s\n", i, opt_idx,
 			                  present ? "present" : "not present");
 		}
 
@@ -3122,7 +3126,7 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 		{
 			size_t comp_opt_len = 0;
 
-			switch(index)
+			switch(opt_idx)
 			{
 				case TCP_INDEX_NOP:  // NOP
 					++(*uncompressed_size);
@@ -3162,21 +3166,22 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					comp_opt_len += j;
 					break;
 				default:  // Generic options
-					rohc_decomp_debug(context, "TCP option with index %d not "
-					                  "handled\n", index);
+					rohc_decomp_debug(context, "TCP option with index %u not "
+					                  "handled\n", opt_idx);
 					j = d_tcp_size_opt_generic(tcp_context, items,
 					                           uncompressed_size);
 					items += j;
 					comp_opt_len += j;
 					break;
 			}
-			rohc_decomp_debug(context, "TCP option with index %d is %zd-byte "
-			                  "long in compressed packet\n", index, comp_opt_len);
+			rohc_decomp_debug(context, "TCP option with index %u is %zd-byte "
+			                  "long in compressed packet\n", opt_idx,
+			                  comp_opt_len);
 			comp_size += comp_opt_len;
 		}
 		else
 		{
-			switch(index)
+			switch(opt_idx)
 			{
 				case TCP_INDEX_NOP:  // NOP
 					++(*uncompressed_size);
@@ -3197,12 +3202,12 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					*uncompressed_size += TCP_OLEN_SACK_PERMITTED;
 					break;
 				case TCP_INDEX_SACK:  // SACK see RFC2018
-					*uncompressed_size +=
-					   *( tcp_context->tcp_options_values + tcp_context->tcp_options_list[index] );
+					*uncompressed_size += *(tcp_context->tcp_options_values +
+					                        tcp_context->tcp_options_list[opt_idx]);
 					break;
 				default:  // Generic options
-					*uncompressed_size +=
-					   *( tcp_context->tcp_options_values + tcp_context->tcp_options_list[index] );
+					*uncompressed_size += *(tcp_context->tcp_options_values +
+					                        tcp_context->tcp_options_list[opt_idx]);
 					break;
 			}
 		}

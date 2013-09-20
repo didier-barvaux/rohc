@@ -502,13 +502,13 @@ struct list_decomp
 	                           unsigned char *const dest);
 	/// The handler used to check if the index
 	/// corresponds to an existing item
-	bool(*check_index)(const struct list_decomp *const decomp,
-	                   const int index);
+	bool (*check_item)(const struct list_decomp *const decomp,
+	                   const size_t index_table);
 	/// The handler used to create the item at
 	/// the corresponding index of the based table
 	bool (*create_item)(const unsigned char *const data,
 	                    const size_t length,
-	                    const int index,
+	                    const size_t index_table,
 	                    struct list_decomp *const decomp);
 	/// The handler used to get the size of an extension
 	int (*get_ext_size)(const unsigned char *data, const size_t data_len);

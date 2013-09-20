@@ -3903,7 +3903,7 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
                              const unsigned int max)
 {
 	size_t feedback_length;
-	int index = 0;
+	size_t pos = 0;
 
 	assert(comp->feedbacks_first_unlocked >= 0);
 	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
@@ -3964,22 +3964,22 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 			/* length is small, use only 3 bits to code it */
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "use 1-byte form factor for feedback length\n");
-			buffer[index] = 0xf0 | feedback_length;
-			index++;
+			buffer[pos] = 0xf0 | feedback_length;
+			pos++;
 		}
 		else
 		{
 			/* size is large, use 8 bits to code it */
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "use 2-byte form factor for feedback length\n");
-			buffer[index] = 0xf0;
-			index++;
-			buffer[index] = feedback_length;
-			index++;
+			buffer[pos] = 0xf0;
+			pos++;
+			buffer[pos] = feedback_length;
+			pos++;
 		}
 
 		/* copy feedback data in the buffer */
-		memcpy(buffer + index,
+		memcpy(buffer + pos,
 		       comp->feedbacks[comp->feedbacks_first_unlocked].data,
 		       feedback_length);
 
@@ -3996,12 +3996,11 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	{
 		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
 		                 ROHC_TRACE_DEBUG, "feedback data added",
-		                 buffer + index, feedback_length);
+		                 buffer + pos, feedback_length);
 	}
 
-	/* return the length of the feedback header/data,
-	 * or zero if no feedback */
-	return index + feedback_length;
+	/* return the length of the feedback header/data, or zero if no feedback */
+	return (pos + feedback_length);
 
 full:
 	return -1;

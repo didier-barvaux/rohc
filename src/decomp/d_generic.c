@@ -383,11 +383,11 @@ static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
                                       const unsigned int gen_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static int get_bit_index(const unsigned char byte, const int index)
+static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
 	__attribute__((warn_unused_result, const));
 
-static bool check_ip6_index(const struct list_decomp *const decomp,
-                            const int index)
+static bool check_ip6_item(const struct list_decomp *const decomp,
+                           const size_t index_table)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static void list_decomp_ipv6_destroy_table(struct list_decomp *const decomp)
@@ -400,7 +400,7 @@ static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
 
 static bool create_ip6_item(const unsigned char *const data,
                             const size_t length,
-                            const int index,
+                            const size_t index_table,
                             struct list_decomp *const decomp)
 	__attribute__((warn_unused_result, nonnull(1, 4)));
 
@@ -542,7 +542,7 @@ void * d_generic_create(const struct d_context *const context,
 	ip6_d_init_table(g_context->list_decomp1);
 	g_context->list_decomp1->free_table = list_decomp_ipv6_destroy_table;
 	g_context->list_decomp1->encode_extension = rohc_build_ip6_extension;
-	g_context->list_decomp1->check_index = check_ip6_index;
+	g_context->list_decomp1->check_item = check_ip6_item;
 	g_context->list_decomp1->create_item = create_ip6_item;
 	g_context->list_decomp1->get_ext_size = get_ip6_ext_size;
 	g_context->list_decomp1->trace_callback = trace_callback;
@@ -559,7 +559,7 @@ void * d_generic_create(const struct d_context *const context,
 	ip6_d_init_table(g_context->list_decomp2);
 	g_context->list_decomp2->free_table = list_decomp_ipv6_destroy_table;
 	g_context->list_decomp2->encode_extension = rohc_build_ip6_extension;
-	g_context->list_decomp2->check_index = check_ip6_index;
+	g_context->list_decomp2->check_item = check_ip6_item;
 	g_context->list_decomp2->create_item = create_ip6_item;
 	g_context->list_decomp2->get_ext_size = get_ip6_ext_size;
 	g_context->list_decomp2->trace_callback = trace_callback;
@@ -864,19 +864,19 @@ static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
 
 
 /**
- * @brief Check if the index is correct in IPv6 table
+ * @brief Check if the item is correct in IPv6 table
  *
- * @param decomp The list decompressor
- * @param index The specified index
- * @return 1 if successful, 0 else
+ * @param decomp       The list decompressor
+ * @param index_table  The index of the item to check the presence
+ * @return             true if item is found, false if not
  */
-static bool check_ip6_index(const struct list_decomp *const decomp,
-                            const int index)
+static bool check_ip6_item(const struct list_decomp *const decomp,
+                           const size_t index_table)
 {
-	if(index > 3)
+	if(index_table > MAX_ITEM)
 	{
-		rd_list_debug(decomp, "no item in based table at this index: %d\n",
-		              index);
+		rd_list_debug(decomp, "no item in based table at position %zu\n",
+		              index_table);
 		goto error;
 	}
 
@@ -890,19 +890,18 @@ error:
 /**
  * @brief Create an IPv6 item extension list
  *
- * @param data    The data in the item
- * @param length  The length of the item
- * @param index   The index of the item in based table
- * @param decomp  The list decompressor
- * @return        true in case of success, false otherwise
+ * @param data         The data in the item
+ * @param length       The length of the item
+ * @param index_table  The index of the item in based table
+ * @param decomp       The list decompressor
+ * @return             true in case of success, false otherwise
 */
 static bool create_ip6_item(const unsigned char *const data,
                             const size_t length,
-                            const int index,
+                            const size_t index_table,
                             struct list_decomp *const decomp)
 {
 	assert(decomp != NULL);
-	assert(index >= 0 && index < MAX_ITEM);
 
 	/* check minimal length for Next Header and Length fields */
 	if(length < 2)
@@ -914,29 +913,29 @@ static bool create_ip6_item(const unsigned char *const data,
 		goto error;
 	}
 
-	decomp->based_table[index].length = length;
-	decomp->trans_table[index].known = 1;
+	decomp->based_table[index_table].length = length;
+	decomp->trans_table[index_table].known = 1;
 
-	if(decomp->based_table[index].data != NULL)
+	if(decomp->based_table[index_table].data != NULL)
 	{
-		zfree(decomp->based_table[index].data);
+		zfree(decomp->based_table[index_table].data);
 	}
 
-	decomp->based_table[index].data = malloc(length);
-	if(decomp->based_table[index].data == NULL)
+	decomp->based_table[index_table].data = malloc(length);
+	if(decomp->based_table[index_table].data == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		             "failed to allocate memory for new IPv6 item\n");
 		goto error;
 	}
-	memcpy(decomp->based_table[index].data, data, length);
+	memcpy(decomp->based_table[index_table].data, data, length);
 
 	return true;
 
 error:
-	decomp->based_table[index].data = NULL;
-	decomp->based_table[index].length = 0;
-	decomp->trans_table[index].known = 0;
+	decomp->based_table[index_table].data = NULL;
+	decomp->based_table[index_table].length = 0;
+	decomp->trans_table[index_table].known = 0;
 	return false;
 }
 
@@ -1065,7 +1064,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 				xi_x_value = GET_BIT_3(packet + xi_index / 2);
 				xi_index_value = GET_BIT_0_2(packet);
 			}
-			if(!decomp->check_index(decomp, xi_index_value))
+			if(!decomp->check_item(decomp, xi_index_value))
 			{
 				goto error;
 			}
@@ -1143,7 +1142,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			/* 8-bit XI */
 			xi_x_value = GET_BIT_7(packet + xi_index);
 			xi_index_value = GET_BIT_0_6(packet + xi_index);
-			if(!decomp->check_index(decomp, xi_index_value))
+			if(!decomp->check_item(decomp, xi_index_value))
 			{
 				goto error;
 			}
@@ -1442,7 +1441,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 
 	for(i = 6; i >= 0; i--)
 	{
-		if(get_bit_index(mask[0], i))
+		if(rohc_get_bit(mask[0], i))
 		{
 			k++;
 		}
@@ -1464,7 +1463,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 
 		for(i = 7; i >= 0; i--)
 		{
-			if(get_bit_index(mask[1], i))
+			if(rohc_get_bit(mask[1], i))
 			{
 				k++;
 			}
@@ -1531,12 +1530,12 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		if(i < 7)
 		{
 			/* bit is located in first byte of insertion mask */
-			new_item_to_insert = get_bit_index(mask[0], 6 - i);
+			new_item_to_insert = rohc_get_bit(mask[0], 6 - i);
 		}
 		else
 		{
 			/* bit is located in 2nd byte of insertion mask */
-			new_item_to_insert = get_bit_index(mask[1], 14 - i);
+			new_item_to_insert = rohc_get_bit(mask[1], 14 - i);
 		}
 
 		/* insert item if required */
@@ -1583,7 +1582,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse XI field */
 					xi_x_value = GET_BIT_3(&xi_1);
 					xi_index_value = GET_BIT_0_2(&xi_1);
-					if(!decomp->check_index(decomp, xi_index_value))
+					if(!decomp->check_item(decomp, xi_index_value))
 					{
 						goto error;
 					}
@@ -1664,7 +1663,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse XI field */
 					xi_x_value = GET_BIT_7(packet + (xi_index - 1) / 2);
 					xi_index_value = GET_BIT_4_6(packet + (xi_index - 1) / 2);
-					if(!decomp->check_index(decomp, xi_index_value))
+					if(!decomp->check_item(decomp, xi_index_value))
 					{
 						goto error;
 					}
@@ -1746,7 +1745,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 					/* parse XI field */
 					xi_x_value = GET_BIT_3(packet + (xi_index - 1) / 2);
 					xi_index_value = GET_BIT_0_2(packet + (xi_index - 1) / 2);
-					if(!decomp->check_index(decomp, xi_index_value))
+					if(!decomp->check_item(decomp, xi_index_value))
 					{
 						goto error;
 					}
@@ -1829,7 +1828,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				/* parse XI field */
 				xi_x_value = GET_BIT_3(packet + xi_index);
 				xi_index_value = GET_BIT_0_2(packet + xi_index);
-				if(!decomp->check_index(decomp, xi_index))
+				if(!decomp->check_item(decomp, xi_index))
 				{
 					goto error;
 				}
@@ -2161,12 +2160,12 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 			if(i < 7)
 			{
 				/* bit is located in first byte of removal mask */
-				item_to_remove = get_bit_index(mask[0], 6 - i);
+				item_to_remove = rohc_get_bit(mask[0], 6 - i);
 			}
 			else
 			{
 				/* bit is located in 2nd byte of insertion mask */
-				item_to_remove = get_bit_index(mask[1], 14 - i);
+				item_to_remove = rohc_get_bit(mask[1], 14 - i);
 			}
 
 			/* remove item if required */
@@ -2493,12 +2492,12 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			if(i < 7)
 			{
 				/* bit is located in first byte of removal mask */
-				item_to_remove = get_bit_index(rem_mask[0], 6 - i);
+				item_to_remove = rohc_get_bit(rem_mask[0], 6 - i);
 			}
 			else
 			{
 				/* bit is located in 2nd byte of insertion mask */
-				item_to_remove = get_bit_index(rem_mask[1], 14 - i);
+				item_to_remove = rohc_get_bit(rem_mask[1], 14 - i);
 			}
 
 			/* remove item if required */
@@ -2577,7 +2576,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 
 	for(i = 6; i >= 0; i--)
 	{
-		if(get_bit_index(ins_mask[0], i))
+		if(rohc_get_bit(ins_mask[0], i))
 		{
 			k++;
 		}
@@ -2600,7 +2599,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 
 		for(i = 7; i >= 0; i--)
 		{
-			if(get_bit_index(ins_mask[1], i))
+			if(rohc_get_bit(ins_mask[1], i))
 			{
 				k++;
 			}
@@ -2670,12 +2669,12 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		if(i < 7)
 		{
 			/* bit is located in first byte of insertion mask */
-			new_item_to_insert = get_bit_index(ins_mask[0], 6 - i);
+			new_item_to_insert = rohc_get_bit(ins_mask[0], 6 - i);
 		}
 		else
 		{
 			/* bit is located in 2nd byte of insertion mask */
-			new_item_to_insert = get_bit_index(ins_mask[1], 14 - i);
+			new_item_to_insert = rohc_get_bit(ins_mask[1], 14 - i);
 		}
 
 		/* insert item if required */
@@ -2723,7 +2722,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse XI field */
 					xi_x_value = GET_BIT_3(&xi_1);
 					xi_index_value = GET_BIT_0_2(&xi_1);
-					if(!decomp->check_index(decomp, xi_index_value))
+					if(!decomp->check_item(decomp, xi_index_value))
 					{
 						goto error;
 					}
@@ -2810,7 +2809,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse XI field */
 					xi_x_value = GET_BIT_7(packet + (xi_index - 1) / 2);
 					xi_index_value = GET_BIT_4_6(packet + (xi_index - 1) / 2);
-					if(!decomp->check_index(decomp, xi_index_value))
+					if(!decomp->check_item(decomp, xi_index_value))
 					{
 						goto error;
 					}
@@ -2897,7 +2896,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 					/* parse XI field */
 					xi_x_value = GET_BIT_3(packet + (xi_index - 1) / 2);
 					xi_index_value = GET_BIT_0_2(packet + (xi_index - 1) / 2);
-					if(!decomp->check_index(decomp, xi_index_value))
+					if(!decomp->check_item(decomp, xi_index_value))
 					{
 						goto error;
 					}
@@ -2985,7 +2984,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				/* parse XI field */
 				xi_x_value = GET_BIT_3(packet + xi_index);
 				xi_index_value = GET_BIT_0_2(packet + xi_index);
-				if(!decomp->check_index(decomp, xi_index_value))
+				if(!decomp->check_item(decomp, xi_index_value))
 				{
 					goto error;
 				}
@@ -3147,15 +3146,17 @@ error:
 
 
 /**
- * @brief Get the bit in the byte at the specified index
- * @param byte the byte to analyse
- * @param index the specified index
- * @return the bit
+ * @brief Get the bit in the given byte at the given position
+ *
+ * @param byte   The byte to analyse
+ * @param pos    The position between 0 and 7
+ * @return       The requested bit
  */
-static int get_bit_index(unsigned char byte, int index)
+static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
 {
-	int bit;
-	switch(index)
+	uint8_t bit;
+
+	switch(pos)
 	{
 		case 0:
 			bit = GET_BIT_0(&byte);
@@ -3183,10 +3184,11 @@ static int get_bit_index(unsigned char byte, int index)
 			break;
 		default:
 			/* there is no such bit in a byte */
-			bit = -1;
 			assert(0); /* should not happen */
+			bit = 0;
 			break;
 	}
+
 	return bit;
 }
 

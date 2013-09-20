@@ -136,21 +136,21 @@ void ROHC_EXPORT list_destroy(struct c_list *list);
 /* add elements */
 bool ROHC_EXPORT list_add_at_beginning(struct c_list *const list,
                                        const struct rohc_list_item *const item,
-                                       const int index)
+                                       const int index_table)
 	__attribute__((warn_unused_result));
 bool ROHC_EXPORT list_add_at_end(struct c_list *const list,
                                  const struct rohc_list_item *const item,
-                                 const int index)
+                                 const int index_table)
 	__attribute__((warn_unused_result));
 bool ROHC_EXPORT list_add_at_index(struct c_list *const list,
                                    const struct rohc_list_item *const item,
-                                   const int index,
+                                   const size_t pos,
                                    const int index_table)
 	__attribute__((warn_unused_result));
 
 /* get an element from its position or the position from the element */
 struct list_elt * ROHC_EXPORT list_get_elt_by_index(const struct c_list *const list,
-																	 const size_t index)
+																	 const size_t pos)
 	__attribute__((warn_unused_result));
 int ROHC_EXPORT list_get_index_by_elt(const struct c_list *const list,
                                       const struct rohc_list_item *const item)

@@ -187,7 +187,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	__attribute__((nonnull(1)));
 static int rohc_d_context(struct rohc_decomp *decomp,
-                          int index,
+                          const size_t pos,
                           unsigned int indent,
                           char *buffer);
 
@@ -1960,7 +1960,7 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 	struct d_profile *p;
 	char *prefix;
 	char *save;
-	int i;
+	size_t i;
 
 	/* compute the indent prefix */
 	prefix = malloc((indent + 1) * sizeof(char));
@@ -2015,14 +2015,14 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
  *
  * The buffer must be large enough to store the statistics of one context.
  *
- * @param decomp The ROHC decompressor
- * @param index  The index of the decompression context in the contexts array
- * @param indent The level of indentation to add during output
- * @param buffer The buffer where to outputs the statistics
- * @return       The length of data written to the buffer
+ * @param decomp  The ROHC decompressor
+ * @param pos     The pos of the decompression context in the contexts array
+ * @param indent  The level of indentation to add during output
+ * @param buffer  The buffer where to outputs the statistics
+ * @return        The length of data written to the buffer
  */
 static int rohc_d_context(struct rohc_decomp *decomp,
-                          int index,
+                          const size_t pos,
                           unsigned int indent,
                           char *buffer)
 {
@@ -2031,17 +2031,12 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	char *save;
 	int v;
 
-	if(index < 0)
-	{
-		return -1;
-	}
-
-	if(index > decomp->medium.max_cid)
+	if(pos > decomp->medium.max_cid)
 	{
 		return -2;
 	}
 
-	c = decomp->contexts[index];
+	c = decomp->contexts[pos];
 	if(!c || !c->profile)
 	{
 		return -1;
@@ -2061,7 +2056,7 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	save = buffer;
 	buffer += strlen(buffer);
 
-	buffer += sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%d\">\n", prefix, index);
+	buffer += sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%d\">\n", prefix, pos);
 	buffer += sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
 	                  rohc_decomp_get_state_descr(c->state));
 	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,

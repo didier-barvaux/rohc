@@ -80,7 +80,7 @@ struct c_wlsb
  * Private function prototypes:
  */
 
-static void c_ack_remove(struct c_wlsb *const s, const size_t index)
+static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
 	__attribute__((nonnull(1)));
 
 static size_t rohc_g_16bits(const uint16_t v_ref,
@@ -449,12 +449,12 @@ int c_mean_wlsb(const struct c_wlsb *const s)
  */
 
 /**
- * @brief Removes all W-LSB window entries prior to the given index
+ * @brief Removes all W-LSB window entries prior to the given position
  *
- * @param s       The W-LSB object
- * @param index   The position to set as the oldest
+ * @param s    The W-LSB object
+ * @param pos  The position to set as the oldest
  */
-static void c_ack_remove(struct c_wlsb *const s, const size_t index)
+static void c_ack_remove(struct c_wlsb *const s, const size_t pos)
 {
 	size_t entry;
 	size_t i;
@@ -466,7 +466,7 @@ static void c_ack_remove(struct c_wlsb *const s, const size_t index)
 		/* remove the oldest entry */
 		s->count--;
 		s->oldest = (s->oldest + 1) & s->window_mask;
-		if(entry == index)
+		if(entry == pos)
 		{
 			break;
 		}

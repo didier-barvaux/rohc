@@ -270,16 +270,16 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *context,
 static void ip6_c_init_table(struct list_comp *const comp);
 static void list_comp_ipv6_destroy_table(struct list_comp *const comp);
 static void create_ipv6_item(struct list_comp *const comp,
-                             const unsigned int index_table,
+                             const size_t index_table,
                              const unsigned char *ext_data,
                              const size_t ext_size);
 static unsigned char * get_ipv6_extension(const struct ip_packet *ip,
-                                          const int index);
+                                          const size_t pos);
 static int ipv6_compare(const struct list_comp *const comp,
                         const unsigned char *const ext,
                         const int size,
                         const int index_table);
-static int get_index_ipv6_table(const struct ip_packet *ip, const int index);
+static int get_index_ipv6_table(const struct ip_packet *ip, const size_t pos);
 
 static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
                                               const struct ip_packet *const ip);
@@ -289,7 +289,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
  * Prototypes of private functions related to list compression
  */
 
-static bool rohc_list_create_current(const int index,
+static bool rohc_list_create_current(const size_t pos,
                                      struct list_comp *const comp,
                                      const unsigned char *ext,
                                      const int index_table);
@@ -6871,11 +6871,12 @@ static int ipv6_compare(const struct list_comp *const comp,
  * @param ext_size     The size of the data (in bytes)
  */
 static void create_ipv6_item(struct list_comp *const comp,
-                             const unsigned int index_table,
+                             const size_t index_table,
                              const unsigned char *ext_data,
                              const size_t ext_size)
 {
 	assert(comp != NULL);
+	assert(index_table < MAX_ITEM);
 	assert(ext_data != NULL);
 	assert(ext_size > 0);
 
@@ -6897,20 +6898,20 @@ static void create_ipv6_item(struct list_comp *const comp,
  *
  * Extract the IP extension at the given index.
  *
- * @param ip     The IP packet to analyse
- * @param index  The index of the extension to retrieve in the IP packet
- * @return       the extension
+ * @param ip   The IP packet to analyse
+ * @param pos  The position of the extension to retrieve in the IP packet
+ * @return     The extension
  */
 static unsigned char * get_ipv6_extension(const struct ip_packet *ip,
-                                          const int index)
+                                          const size_t pos)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
-	int i = 0;
+	size_t i = 0;
 
 	/* get the next known IP extension in packet */
 	next_header = ip_get_next_ext_from_ip(ip, &next_header_type);
-	while(i < index && next_header != NULL)
+	while(i < pos && next_header != NULL)
 	{
 		/* get the next known IP extension */
 		next_header = ip_get_next_ext_from_ext(next_header, &next_header_type);
@@ -6924,20 +6925,20 @@ static unsigned char * get_ipv6_extension(const struct ip_packet *ip,
 /**
  * @brief Return the based table index for the Nth IP extension of the IP packet
  *
- * @param ip     The IP packet to analyse
- * @param index  The index of the extension to retrieve in the IP packet
- * @return       the based table index
+ * @param ip   The IP packet to analyse
+ * @param pos  The position of the extension to retrieve in the IP packet
+ * @return     The based table index
  */
-static int get_index_ipv6_table(const struct ip_packet *ip, const int index)
+static int get_index_ipv6_table(const struct ip_packet *ip, const size_t pos)
 {
 	int index_table = -1;
 	unsigned char *next_header;
 	uint8_t next_header_type;
-	int i = 0;
+	size_t i = 0;
 
 	/* get the next known IP extension in packet */
 	next_header = ip_get_next_ext_from_ip(ip, &next_header_type);
-	while(i < index && next_header != NULL)
+	while(i < pos && next_header != NULL)
 	{
 		/* get the next known IP extension */
 		next_header = ip_get_next_ext_from_ext(next_header, &next_header_type);
@@ -6986,9 +6987,9 @@ error:
 static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
                                               const struct ip_packet *const ip)
 {
-	int i;
+	size_t i;
 	int size;
-	int j;
+	size_t j;
 	int index_table;
 	struct list_elt *elt;
 
@@ -7193,20 +7194,20 @@ error:
 /**
  * @brief Create the current list
  *
- * @param index        The number of the extension
+ * @param pos          The position of the extension
  * @param comp         The list compressor
  * @param ext          The extension
  * @param index_table  The index of the item in the based table
  * @return             true if successful, false otherwise
  */
-static bool rohc_list_create_current(const int index,
+static bool rohc_list_create_current(const size_t pos,
                                      struct list_comp *const comp,
                                      const unsigned char *ext,
                                      const int index_table)
 {
 	struct list_elt *elt;
 	int curr_index;
-	int i;
+	size_t i;
 	int size;
 
 	size = comp->get_size(ext);
@@ -7226,11 +7227,11 @@ static bool rohc_list_create_current(const int index,
 			comp->trans_table[index_table].counter = 0;
 
 			/* are some elements not transmitted anymore ? */
-			if(index < curr_index)
+			if(pos < curr_index)
 			{
 				/* the elements not transmitted are deleted,
 				   the extension which was modified is deleted */
-				for(i = index; i < (curr_index + 1); i++)
+				for(i = pos; i < (curr_index + 1); i++)
 				{
 					elt = list_get_elt_by_index(comp->curr_list, i);
 					rc_list_debug(comp, "delete IPv6 extension of type %d from "
@@ -7239,10 +7240,10 @@ static bool rohc_list_create_current(const int index,
 					list_remove(comp->curr_list,elt->item);
 				}
 			}
-			else if(index == curr_index)
+			else if(pos == curr_index)
 			{
 				/* the extension which was modified is deleted */
-				elt = list_get_elt_by_index(comp->curr_list, index);
+				elt = list_get_elt_by_index(comp->curr_list, pos);
 				rc_list_debug(comp, "delete IPv6 extension of type %d from "
 				              "current list because it was modified\n",
 				              elt->item->type);
@@ -7257,7 +7258,7 @@ static bool rohc_list_create_current(const int index,
 			              "modified\n", comp->based_table[index_table].type);
 			if(!list_add_at_index(comp->curr_list,
 			                      &(comp->based_table[index_table]),
-			                      index, index_table))
+			                      pos, index_table))
 			{
 				goto error;
 			}
@@ -7274,22 +7275,22 @@ static bool rohc_list_create_current(const int index,
 				              "yet\n", comp->based_table[index_table].type);
 				if(!list_add_at_index(comp->curr_list,
 				                      &comp->based_table[index_table],
-				                      index, index_table))
+				                      pos, index_table))
 				{
 					goto error;
 				}
 				comp->counter = 0;
 			}
-			else if(index < curr_index)
+			else if(pos < curr_index)
 			{
 				/* some elements are not transmitted anymore, delete them */
-				for(i = index; i < curr_index; i++)
+				for(i = pos; i < curr_index; i++)
 				{
 					elt = list_get_elt_by_index(comp->curr_list, i);
 					rc_list_debug(comp, "delete IPv6 extension of type %d from "
 					              "current list because it is not transmitted "
 					              "anymore\n", elt->item->type);
-					list_remove(comp->curr_list,elt->item);
+					list_remove(comp->curr_list, elt->item);
 				}
 				comp->counter = 0;
 			}
@@ -7319,10 +7320,10 @@ static bool rohc_list_create_current(const int index,
 
 			curr_index = list_get_index_by_elt(comp->curr_list,
 			                                   &(comp->based_table[index_table]));
-			if(index < curr_index)
+			if(pos < curr_index)
 			{
 				/* some elements are not transmitted anymore, delete them */
-				for(i = index; i < curr_index; i++)
+				for(i = pos; i < curr_index; i++)
 				{
 					elt = list_get_elt_by_index(comp->curr_list, i);
 					rc_list_debug(comp, "delete IPv6 extension of type %d from "
@@ -7335,11 +7336,11 @@ static bool rohc_list_create_current(const int index,
 		else /* extension modified */
 		{
 			/* are some elements not transmitted anymore ? */
-			if(index < curr_index)
+			if(pos < curr_index)
 			{
 				/* the elements not transmitted are deleted,
 				   the extension which was modified is deleted */
-				for(i = index; i < (curr_index + 1); i++)
+				for(i = pos; i < (curr_index + 1); i++)
 				{
 					elt = list_get_elt_by_index(comp->curr_list, i);
 					rc_list_debug(comp, "delete IPv6 extension of type %d from "
@@ -7348,10 +7349,10 @@ static bool rohc_list_create_current(const int index,
 					list_remove(comp->curr_list,elt->item);
 				}
 			}
-			else if(index == curr_index)
+			else if(pos == curr_index)
 			{
 				/* the extension which was modified is deleted */
-				elt = list_get_elt_by_index(comp->curr_list, index);
+				elt = list_get_elt_by_index(comp->curr_list, pos);
 				rc_list_debug(comp, "delete IPv6 extension of type %d from "
 				              "current list list because it was modified\n",
 				              elt->item->type);
@@ -7364,7 +7365,7 @@ static bool rohc_list_create_current(const int index,
 			              "modified\n", comp->based_table[index_table].type);
 			if(!list_add_at_index(comp->curr_list,
 			                      &comp->based_table[index_table],
-			                      index, index_table))
+			                      pos, index_table))
 			{
 				goto error;
 			}

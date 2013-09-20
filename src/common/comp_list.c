@@ -72,14 +72,14 @@ void list_destroy(struct c_list *list)
 /**
  * @brief Add an element at the beginning of the list
  *
- * @param list   the list where the element is added
- * @param item   the item of the new element
- * @param index  the index in based table
- * @return       true if successful, false otherwise
+ * @param list         The list where the element is added
+ * @param item         The item of the new element
+ * @param index_table  The index of the item in based table (may be -1)
+ * @return             true if successful, false otherwise
  */
 bool list_add_at_beginning(struct c_list *const list,
                            const struct rohc_list_item *const item,
-                           const int index)
+                           const int index_table)
 {
 	struct list_elt *elt;
 
@@ -93,7 +93,7 @@ bool list_add_at_beginning(struct c_list *const list,
 	}
 
 	elt->item = item;
-	elt->index_table = index;
+	elt->index_table = index_table;
 	elt->next_elt = NULL;
 	elt->prev_elt = NULL;
 
@@ -118,14 +118,14 @@ error:
 /**
  * @brief Add an element at the end of the list
  *
- * @param list   the list where the element is added
- * @param item   the item of the new element
- * @param index  the index in based table
- * @return       true if successful, false otherwise
+ * @param list         The list where the element is added
+ * @param item         The item of the new element
+ * @param index_table  The index of the item in based table (may be -1)
+ * @return             true if successful, false otherwise
  */
 bool list_add_at_end(struct c_list *const list,
                      const struct rohc_list_item *const item,
-                     const int index)
+                     const int index_table)
 {
 	bool is_success = false;
 	struct list_elt *elt;
@@ -136,7 +136,7 @@ bool list_add_at_end(struct c_list *const list,
 
 	if(list->first_elt == NULL)
 	{
-		is_success = list_add_at_beginning(list, item, index);
+		is_success = list_add_at_beginning(list, item, index_table);
 	}
 	else
 	{
@@ -147,7 +147,7 @@ bool list_add_at_end(struct c_list *const list,
 		}
 
 		elt->item = item;
-		elt->index_table = index;
+		elt->index_table = index_table;
 		elt->next_elt = NULL;
 		elt->prev_elt = NULL;
 
@@ -171,28 +171,27 @@ error:
  *
  * @param list         The list in which the element is inserted
  * @param item         The element to insert
- * @param index        The position
- * @param index_table  The index in based_table
+ * @param pos          The position
+ * @param index_table  The index in based_table (may be -1)
  * @return             true if successful, false otherwise
  */
 bool list_add_at_index(struct c_list *const list,
                        const struct rohc_list_item *const item,
-                       const int index,
+                       const size_t pos,
                        const int index_table)
 {
 	size_t size_l;
-	int i;
 
 	assert(list != NULL);
 	assert(item != NULL);
 
 	size_l = list_get_size(list);
-	if(index > size_l)
+	if(pos > size_l)
 	{
 		goto error;
 	}
 
-	if(index == 0)
+	if(pos == 0)
 	{
 		/* special case for first element */
 		if(!list_add_at_beginning(list, item, index_table))
@@ -204,6 +203,7 @@ bool list_add_at_index(struct c_list *const list,
 	{
 		struct list_elt *elt;
 		struct list_elt *curr_elt;
+		size_t i;
 
 		/* create a new element */
 		elt = malloc(sizeof(struct list_elt));
@@ -216,9 +216,9 @@ bool list_add_at_index(struct c_list *const list,
 		elt->prev_elt = NULL;
 		elt->index_table = index_table;
 
-		/* loop on list elements towards the given index */
+		/* loop on list elements towards the given position */
 		curr_elt = list->first_elt;
-		for(i = 0; i < index; i++)
+		for(i = 0; i < pos; i++)
 		{
 			if(curr_elt->next_elt != NULL)
 			{
@@ -227,7 +227,7 @@ bool list_add_at_index(struct c_list *const list,
 		}
 
 		/* insert new element before current element */
-		if(index == size_l)
+		if(pos == size_l)
 		{
 			/* insert at the very end of the list */
 			curr_elt->next_elt = elt;
@@ -254,28 +254,29 @@ error:
 
 
 /**
- * @brief Get the element at the specified index
+ * @brief Get the element at the specified position
  *
- * @param list   the list where is the element
- * @param index  the specified index
- * @return       item, NULL if there is no element at this index
+ * @param list  The list where is the element
+ * @param pos   The specified position
+ * @return      The item in case of success,
+ *              NULL if there is no element at this position
  */
 struct list_elt * list_get_elt_by_index(const struct c_list *const list,
-                                        const size_t index)
+                                        const size_t pos)
 {
 	struct list_elt *curr_elt;
 	size_t i;
 
 	assert(list != NULL);
 
-	if(index >= list_get_size(list))
+	if(pos >= list_get_size(list))
 	{
 		goto error;
 	}
 
 	i = 0;
 	curr_elt = list->first_elt;
-	while(i < index)
+	while(i < pos)
 	{
 		curr_elt = curr_elt->next_elt;
 		i++;
