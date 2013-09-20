@@ -612,7 +612,7 @@ static void udp_decide_state(struct c_context *const context)
 	{
 		rohc_comp_debug(context, "go back to IR state because UDP checksum "
 		                "behaviour changed in the last few packets\n");
-		change_state(context, IR);
+		change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else
 	{

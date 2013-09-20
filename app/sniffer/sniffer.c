@@ -114,7 +114,7 @@ struct sniffer_stats
 	/** Cumulative number of packets per ROHC mode */
 	unsigned long comp_nr_pkts_per_mode[ROHC_R_MODE + 1];
 	/** Cumulative number of packets per state */
-	unsigned long comp_nr_pkts_per_state[SO + 1];
+	unsigned long comp_nr_pkts_per_state[ROHC_COMP_STATE_SO + 1];
 	/** Cumulative number of packets per packet type */
 	unsigned long comp_nr_pkts_per_pkt_type[ROHC_PACKET_UNKNOWN];
 	/** Cumulative number of times a context is reused (first time included) */
@@ -634,19 +634,19 @@ static void sniffer_print_stats(int signal)
 	       percent(stats.comp_nr_pkts_per_mode[ROHC_R_MODE], total));
 
 	/* packets per state */
-	total = stats.comp_nr_pkts_per_state[IR] +
-	        stats.comp_nr_pkts_per_state[FO] +
-	        stats.comp_nr_pkts_per_state[SO];
+	total = stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR] +
+	        stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO] +
+	        stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO];
 	printf("packets per state:\n");
 	printf("\tIR state: %lu packets (%llu%%)\n",
-	       stats.comp_nr_pkts_per_state[IR],
-	       percent(stats.comp_nr_pkts_per_state[IR], total));
+	       stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR],
+	       percent(stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_IR], total));
 	printf("\tFO state: %lu packets (%llu%%)\n",
-	       stats.comp_nr_pkts_per_state[FO],
-	       percent(stats.comp_nr_pkts_per_state[FO], total));
+	       stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO],
+	       percent(stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_FO], total));
 	printf("\tSO state: %lu packets (%llu%%)\n",
-	       stats.comp_nr_pkts_per_state[SO],
-	       percent(stats.comp_nr_pkts_per_state[SO], total));
+	       stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO],
+	       percent(stats.comp_nr_pkts_per_state[ROHC_COMP_STATE_SO], total));
 
 	/* packets per packet type */
 	printf("packets per packet type:\n");

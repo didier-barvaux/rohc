@@ -1090,11 +1090,11 @@ static void rtp_decide_state(struct c_context *const context)
 		 * IR-DYN packet is */
 		rohc_comp_debug(context, "go back to IR state because UDP checksum "
 		                "behaviour changed in the last few packets\n");
-		change_state(context, IR);
+		change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else if(rtp_context->tmp.send_rtp_dynamic)
 	{
-		if(context->state == IR)
+		if(context->state == ROHC_COMP_STATE_IR)
 		{
 			rohc_comp_debug(context, "%d RTP dynamic fields changed, stay in "
 			                "IR state\n", rtp_context->tmp.send_rtp_dynamic);
@@ -1103,7 +1103,7 @@ static void rtp_decide_state(struct c_context *const context)
 		{
 			rohc_comp_debug(context, "%d RTP dynamic fields changed, go in FO "
 			                "state\n", rtp_context->tmp.send_rtp_dynamic);
-			change_state(context, FO);
+			change_state(context, ROHC_COMP_STATE_FO);
 		}
 	}
 	else
@@ -1114,7 +1114,8 @@ static void rtp_decide_state(struct c_context *const context)
 
 	/* force initializing TS, TS_STRIDE and TS_SCALED again after
 	 * transition back to IR */
-	if(context->state == IR && rtp_context->ts_sc.state > INIT_STRIDE)
+	if(context->state == ROHC_COMP_STATE_IR &&
+	   rtp_context->ts_sc.state > INIT_STRIDE)
 	{
 		rtp_context->ts_sc.state = INIT_STRIDE;
 		rtp_context->ts_sc.nr_init_stride_packets = 0;

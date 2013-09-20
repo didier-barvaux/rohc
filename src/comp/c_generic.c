@@ -784,7 +784,7 @@ void change_mode(struct c_context *const context, const rohc_mode_t new_mode)
 		          "CID %zu: change from mode %d to mode %d\n",
 		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
-		change_state(context, IR);
+		change_state(context, ROHC_COMP_STATE_IR);
 	}
 }
 
@@ -795,7 +795,8 @@ void change_mode(struct c_context *const context, const rohc_mode_t new_mode)
  * @param context   The compression context
  * @param new_state The new state the context must enter in
  */
-void change_state(struct c_context *const context, const rohc_c_state new_state)
+void change_state(struct c_context *const context,
+                  const rohc_comp_state_t new_state)
 {
 	struct c_generic_context *g_context;
 
@@ -1060,7 +1061,7 @@ bool c_generic_reinit_context(struct c_context *const context)
 
 	/* go back to U-mode and IR state */
 	change_mode(context, ROHC_U_MODE);
-	change_state(context, IR);
+	change_state(context, ROHC_COMP_STATE_IR);
 
 	return true;
 }
@@ -1225,9 +1226,9 @@ void c_generic_feedback(struct c_context *const context,
 					rohc_info(context->compressor, ROHC_TRACE_COMP,
 					          context->profile->id, "NACK received for CID %zu\n",
 					          feedback->cid);
-					if(context->state == SO)
+					if(context->state == ROHC_COMP_STATE_SO)
 					{
-						change_state(context, FO);
+						change_state(context, ROHC_COMP_STATE_FO);
 					}
 					break;
 
@@ -1235,7 +1236,7 @@ void c_generic_feedback(struct c_context *const context,
 					rohc_info(context->compressor, ROHC_TRACE_COMP,
 					          context->profile->id, "STATIC-NACK received "
 					          "for CID %zu\n", feedback->cid);
-					change_state(context, IR);
+					change_state(context, ROHC_COMP_STATE_IR);
 					break;
 
 				case RESERVED:
@@ -1300,7 +1301,7 @@ void periodic_down_transition(struct c_context *context)
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to FO state\n", context->cid);
 		g_context->go_back_fo_count = 0;
-		change_state(context, FO);
+		change_state(context, ROHC_COMP_STATE_FO);
 	}
 	else if(g_context->go_back_ir_count >=
 	        context->compressor->periodic_refreshes_ir_timeout)
@@ -1308,14 +1309,15 @@ void periodic_down_transition(struct c_context *context)
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		          "CID %zu: periodic change to IR state\n", context->cid);
 		g_context->go_back_ir_count = 0;
-		change_state(context, IR);
+		change_state(context, ROHC_COMP_STATE_IR);
 	}
 
-	if(context->state == SO)
+	if(context->state == ROHC_COMP_STATE_SO)
 	{
 		g_context->go_back_fo_count++;
 	}
-	if(context->state == SO || context->state == FO)
+	if(context->state == ROHC_COMP_STATE_SO ||
+	   context->state == ROHC_COMP_STATE_FO)
 	{
 		g_context->go_back_ir_count++;
 	}
@@ -1335,27 +1337,27 @@ void periodic_down_transition(struct c_context *context)
 void decide_state(struct c_context *const context)
 {
 	struct c_generic_context *g_context;
-	rohc_c_state curr_state;
-	rohc_c_state next_state;
+	rohc_comp_state_t curr_state;
+	rohc_comp_state_t next_state;
 
 	curr_state = context->state;
 	g_context = (struct c_generic_context *) context->specific;
 
-	if(curr_state == IR && g_context->ir_count >= MAX_IR_COUNT)
+	if(curr_state == ROHC_COMP_STATE_IR && g_context->ir_count >= MAX_IR_COUNT)
 	{
 		if(g_context->tmp.send_static)
 		{
 			rohc_comp_debug(context, "%d STATIC fields changed now or in the "
 			                "last few packets, so stay in IR state\n",
 			                g_context->tmp.send_static);
-			next_state = IR;
+			next_state = ROHC_COMP_STATE_IR;
 		}
 		else if(g_context->tmp.send_dynamic)
 		{
 			rohc_comp_debug(context, "no STATIC field changed, but %d DYNAMIC "
 			                "fields changed now or in the last few packets, so "
 			                "go to FO state\n", g_context->tmp.send_dynamic);
-			next_state = FO;
+			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((g_context->ip_flags.version == IPV4 &&
 		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
@@ -1365,16 +1367,17 @@ void decide_state(struct c_context *const context)
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go to FO state\n");
-			next_state = FO;
+			next_state = ROHC_COMP_STATE_FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
 			                "the last few packets, so go to SO state\n");
-			next_state = SO;
+			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
-	else if(curr_state == FO && g_context->fo_count >= MAX_FO_COUNT)
+	else if(curr_state == ROHC_COMP_STATE_FO &&
+	        g_context->fo_count >= MAX_FO_COUNT)
 	{
 		if(g_context->tmp.send_static || g_context->tmp.send_dynamic)
 		{
@@ -1382,7 +1385,7 @@ void decide_state(struct c_context *const context)
 			                "now or in the last few packets, so stay in FO "
 			                "state\n", g_context->tmp.send_static,
 			                g_context->tmp.send_dynamic);
-			next_state = FO;
+			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((g_context->ip_flags.version == IPV4 &&
 		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
@@ -1392,16 +1395,16 @@ void decide_state(struct c_context *const context)
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so stay in FO state\n");
-			next_state = FO;
+			next_state = ROHC_COMP_STATE_FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
 			                "the last few packets, so go to SO state\n");
-			next_state = SO;
+			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
-	else if(curr_state == SO)
+	else if(curr_state == ROHC_COMP_STATE_SO)
 	{
 		if(g_context->tmp.send_static || g_context->tmp.send_dynamic)
 		{
@@ -1409,7 +1412,7 @@ void decide_state(struct c_context *const context)
 			                "now or in the last few packets, so go back to FO "
 			                "state\n", g_context->tmp.send_static,
 			                g_context->tmp.send_dynamic);
-			next_state = FO;
+			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((g_context->ip_flags.version == IPV4 &&
 		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
@@ -1419,13 +1422,13 @@ void decide_state(struct c_context *const context)
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go back to FO state\n");
-			next_state = FO;
+			next_state = ROHC_COMP_STATE_FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
 			                "the last few packets, so stay in SO state\n");
-			next_state = SO;
+			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
 	else
@@ -1469,7 +1472,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 
 	switch(context->state)
 	{
-		case IR:
+		case ROHC_COMP_STATE_IR:
 		{
 			rohc_comp_debug(context, "IR state\n");
 			g_context->ir_count++;
@@ -1477,7 +1480,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			break;
 		}
 
-		case FO:
+		case ROHC_COMP_STATE_FO:
 		{
 			rohc_comp_debug(context, "FO state\n");
 			g_context->fo_count++;
@@ -1492,7 +1495,7 @@ static rohc_packet_t decide_packet(const struct c_context *context,
 			break;
 		}
 
-		case SO:
+		case ROHC_COMP_STATE_SO:
 		{
 			rohc_comp_debug(context, "SO state\n");
 			g_context->so_count++;
@@ -6227,7 +6230,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 		                g_context->sn);
 
 		/* how many bits are required to encode the new SN ? */
-		if(context->state == IR)
+		if(context->state == ROHC_COMP_STATE_IR)
 		{
 			/* send all bits in IR state */
 			g_context->tmp.nr_sn_bits = 16;
@@ -6270,7 +6273,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 		                g_context->ip_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == IR)
+		if(context->state == ROHC_COMP_STATE_IR)
 		{
 			/* send all bits in IR state */
 			g_context->tmp.nr_ip_id_bits = 16;
@@ -6327,7 +6330,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 		                g_context->ip2_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
-		if(context->state == IR)
+		if(context->state == ROHC_COMP_STATE_IR)
 		{
 			/* send all bits in IR state */
 			g_context->tmp.nr_ip_id_bits2 = 16;

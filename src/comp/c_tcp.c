@@ -1274,7 +1274,7 @@ static int c_tcp_encode(struct c_context *const context,
 								memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,
 								       ip_context.v6_option->option_length - 2);
 #ifdef TODO
-								new_context_state = IR;
+								new_context_state = ROHC_COMP_STATE_IR;
 #endif
 								break;
 							}
@@ -1288,7 +1288,7 @@ static int c_tcp_encode(struct c_context *const context,
 								memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,
 								       ip_context.v6_option->option_length - 2);
 #ifdef TODO
-								new_context_state = IR;
+								new_context_state = ROHC_COMP_STATE_IR;
 #endif
 								break;
 							}
@@ -1301,7 +1301,7 @@ static int c_tcp_encode(struct c_context *const context,
 								                ip_context.v6_gre_option->c_flag,
 								                base_header.ip_gre_opt->c_flag);
 #ifdef TODO
-								new_context_state = IR;
+								new_context_state = ROHC_COMP_STATE_IR;
 #endif
 								break;
 							}
@@ -1316,7 +1316,7 @@ static int c_tcp_encode(struct c_context *const context,
 								ip_context.v6_option->option_length =
 								   (2 + base_header.ip_mime_opt->s_bit) << 3;
 #ifdef TODO
-								new_context_state = IR;
+								new_context_state = ROHC_COMP_STATE_IR;
 #endif
 								break;
 							}
@@ -1327,7 +1327,7 @@ static int c_tcp_encode(struct c_context *const context,
 								                ip_context.v6_mime_option->checksum,
 								                base_header.ip_mime_opt->checksum);
 #ifdef TODO
-								new_context_state = IR;
+								new_context_state = ROHC_COMP_STATE_IR;
 #endif
 								break;
 							}
@@ -1513,7 +1513,7 @@ static int c_tcp_encode(struct c_context *const context,
 #ifdef TODO
 	if(tcp_context->tmp_variables.send_tcp_dynamic)
 	{
-		change_state(context, IR);
+		change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else
 	{
@@ -1530,7 +1530,7 @@ static int c_tcp_encode(struct c_context *const context,
 	rohc_comp_debug(context, "required bits:\n");
 
 	/* how many bits are required to encode the new SN ? */
-	if(context->state == IR)
+	if(context->state == ROHC_COMP_STATE_IR)
 	{
 		/* send all bits in IR state */
 		g_context->tmp.nr_sn_bits = 16;
@@ -1554,7 +1554,7 @@ static int c_tcp_encode(struct c_context *const context,
 	c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
 
 	/* how many bits are required to encode the new sequence number? */
-	if(context->state == IR)
+	if(context->state == ROHC_COMP_STATE_IR)
 	{
 		/* send all bits in IR state */
 		tcp_context->tmp.nr_seq_bits_65535 = 32;
@@ -1631,15 +1631,15 @@ static int c_tcp_encode(struct c_context *const context,
 
 	switch(context->state)
 	{
-		case IR:  /* The Initialization and Refresh (IR) state */
-			change_state(context, FO);
+		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
+			change_state(context, ROHC_COMP_STATE_FO);
 			*packet_type = ROHC_PACKET_IR;
 			break;
-		case FO:  /* The First Order (FO) state */
-			change_state(context, SO);
+		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
+			change_state(context, ROHC_COMP_STATE_SO);
 			*packet_type = ROHC_PACKET_IR_DYN;
 			break;
-		case SO:  /* The Second Order (SO) state */
+		case ROHC_COMP_STATE_SO: /* The Second Order (SO) state */
 		default:
 			*packet_type = ROHC_PACKET_UNKNOWN;
 			break;
@@ -2494,7 +2494,7 @@ static void tcp_decide_state(struct c_context *const context)
 
 	if(tcp_context->tmp_variables.send_tcp_dynamic)
 	{
-		change_state(context, IR);
+		change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else
 	{

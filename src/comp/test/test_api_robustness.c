@@ -319,9 +319,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* rohc_comp_get_state_descr() */
-	CHECK(strcmp(rohc_comp_get_state_descr(IR), "IR") == 0);
-	CHECK(strcmp(rohc_comp_get_state_descr(FO), "FO") == 0);
-	CHECK(strcmp(rohc_comp_get_state_descr(SO), "SO") == 0);
+	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_IR), "IR") == 0);
+	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_FO), "FO") == 0);
+	CHECK(strcmp(rohc_comp_get_state_descr(ROHC_COMP_STATE_SO), "SO") == 0);
 	CHECK(strcmp(rohc_comp_get_state_descr(0xffff), "no description") == 0);
 
 	/* rohc_comp_force_contexts_reinit() with some contexts init'ed */

@@ -113,7 +113,7 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 static void uncompressed_change_mode(struct c_context *const context,
                                      const rohc_mode_t new_mode);
 static void uncompressed_change_state(struct c_context *const context,
-                                      const rohc_c_state new_state);
+                                      const rohc_comp_state_t new_state);
 
 
 
@@ -290,7 +290,7 @@ static bool c_uncompressed_reinit_context(struct c_context *const context)
 
 	/* go back to U-mode and IR state */
 	uncompressed_change_mode(context, ROHC_U_MODE);
-	uncompressed_change_state(context, IR);
+	uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 
 	return true;
 }
@@ -411,7 +411,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
 			case STATIC_NACK:
 				rohc_warning(context->compressor, ROHC_TRACE_COMP,
 				             context->profile->id, "STATIC-NACK received\n");
-				uncompressed_change_state(context, IR);
+				uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 				break;
 			case RESERVED:
 				rohc_warning(context->compressor, ROHC_TRACE_COMP,
@@ -443,9 +443,10 @@ static void uncompressed_decide_state(struct c_context *const context)
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
 
-	if(context->state == IR && uncomp_context->ir_count >= MAX_IR_COUNT)
+	if(context->state == ROHC_COMP_STATE_IR &&
+	   uncomp_context->ir_count >= MAX_IR_COUNT)
 	{
-		uncompressed_change_state(context, FO);
+		uncompressed_change_state(context, ROHC_COMP_STATE_FO);
 	}
 
 	if(context->mode == ROHC_U_MODE)
@@ -471,10 +472,10 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
 	{
 		rohc_comp_debug(context, "periodic change to IR state\n");
 		uncomp_context->go_back_ir_count = 0;
-		uncompressed_change_state(context, IR);
+		uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 	}
 
-	if(context->state == FO)
+	if(context->state == ROHC_COMP_STATE_FO)
 	{
 		uncomp_context->go_back_ir_count++;
 	}
@@ -493,7 +494,7 @@ static void uncompressed_change_mode(struct c_context *const context,
 	if(context->mode != new_mode)
 	{
 		context->mode = new_mode;
-		uncompressed_change_state(context, IR);
+		uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 	}
 }
 
@@ -505,7 +506,7 @@ static void uncompressed_change_mode(struct c_context *const context,
  * @param new_state The new state the context must enter in
  */
 static void uncompressed_change_state(struct c_context *const context,
-                                      const rohc_c_state new_state)
+                                      const rohc_comp_state_t new_state)
 {
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -552,11 +553,11 @@ static int uncompressed_code_packet(const struct c_context *context,
 	int size;
 
 	/* decide what packet to send depending on state and uncompressed packet */
-	if(context->state == IR)
+	if(context->state == ROHC_COMP_STATE_IR)
 	{
 		*packet_type = ROHC_PACKET_IR;
 	}
-	else if(context->state == FO)
+	else if(context->state == ROHC_COMP_STATE_FO)
 	{
 		/* non-IPv4/6 packets cannot be compressed with Normal packets
 		 * because the first byte could be mis-interpreted as ROHC packet

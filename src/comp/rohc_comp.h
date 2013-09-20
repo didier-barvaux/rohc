@@ -59,6 +59,38 @@ struct rohc_comp;
  */
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
+/**
+ * @brief The different ROHC compressor states
+ *
+ * The different ROHC operation states at compressor as defined in section
+ * 4.3.1 of RFC 3095.
+ *
+ * If you add a new compressor state, please also add the corresponding
+ * textual description in \ref rohc_comp_get_state_descr.
+ *
+ * @deprecated do not use this type anymore, use \ref rohc_comp_state_t
+ *             instead
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_comp_get_state_descr
+ */
+typedef enum
+{
+	/** The Initialization and Refresh (IR) compressor state */
+	IR = 1,
+	/** The First Order (FO) compressor state */
+	FO = 2,
+	/** The Second Order (SO) compressor state */
+	SO = 3,
+} rohc_c_state
+	ROHC_DEPRECATED("please do not use this type anymore, "
+	                "use rohc_comp_state_t instead");
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API) */
+
 /**
  * @brief The different ROHC compressor states
  *
@@ -74,13 +106,14 @@ struct rohc_comp;
  */
 typedef enum
 {
-	/** The Initialization and Refresh (IR) state */
-	IR = 1,
-	/** The First Order (FO) state */
-	FO = 2,
-	/** The Second Order (SO) state */
-	SO = 3,
-} rohc_c_state;
+	/** The Initialization and Refresh (IR) compressor state */
+	ROHC_COMP_STATE_IR = 1,
+	/** The First Order (FO) compressor state */
+	ROHC_COMP_STATE_FO = 2,
+	/** The Second Order (SO) compressor state */
+	ROHC_COMP_STATE_SO = 3,
+
+} rohc_comp_state_t;
 
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
@@ -98,7 +131,7 @@ typedef enum
 typedef struct
 {
 	rohc_mode_t context_mode;              /**< Compression mode */
-	rohc_c_state context_state;            /**< Compression state */
+	rohc_comp_state_t context_state;       /**< Compression state */
 	rohc_packet_t packet_type;             /**< Packet type */
 	unsigned long total_last_uncomp_size;  /**< Uncompressed packet size (bytes) */
 	unsigned long header_last_uncomp_size; /**< Uncompressed header size (bytes) */
@@ -158,7 +191,7 @@ typedef struct
 	/** The mode of the last context used by the compressor */
 	rohc_mode_t context_mode;
 	/** The state of the last context used by the compressor */
-	rohc_c_state context_state;
+	rohc_comp_state_t context_state;
 	/** Whether the last context used by the compressor is still in use */
 	bool context_used;
 	/** The profile ID of the last context used by the compressor */
@@ -522,7 +555,7 @@ bool ROHC_EXPORT rohc_comp_get_general_info(const struct rohc_comp *const comp,
 bool ROHC_EXPORT rohc_comp_get_last_packet_info2(const struct rohc_comp *const comp,
                                                  rohc_comp_last_packet_info2_t *const info);
 
-const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_c_state state);
+const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_comp_state_t state);
 
 
 #undef ROHC_EXPORT /* do not pollute outside this header */

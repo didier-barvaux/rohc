@@ -3344,15 +3344,15 @@ error:
  *
  * @ingroup rohc_comp
  */
-const char * rohc_comp_get_state_descr(const rohc_c_state state)
+const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 {
 	switch(state)
 	{
-		case IR:
+		case ROHC_COMP_STATE_IR:
 			return "IR";
-		case FO:
+		case ROHC_COMP_STATE_FO:
 			return "FO";
-		case SO:
+		case ROHC_COMP_STATE_SO:
 			return "SO";
 		default:
 			return "no description";
@@ -3670,7 +3670,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	c->key = key;
 
 	c->mode = ROHC_U_MODE;
-	c->state = IR;
+	c->state = ROHC_COMP_STATE_IR;
 
 	c->compressor = comp;
 

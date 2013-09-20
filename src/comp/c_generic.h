@@ -391,7 +391,8 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 void change_mode(struct c_context *const context, const rohc_mode_t new_mode);
-void change_state(struct c_context *const context, const rohc_c_state new_state);
+void change_state(struct c_context *const context,
+                  const rohc_comp_state_t new_state);
 
 rohc_ext_t decide_extension(const struct c_context *context);
 

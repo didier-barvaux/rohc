@@ -352,7 +352,7 @@ struct c_context
 	 *  ROHC_U_MODE, ROHC_O_MODE, ROHC_R_MODE */
 	rohc_mode_t mode;
 	/** The operation state in which the context operates: IR, FO, SO */
-	rohc_c_state state;
+	rohc_comp_state_t state;
 
 	/* below are some statistics */
 
