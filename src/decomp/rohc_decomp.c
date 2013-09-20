@@ -253,7 +253,7 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 
 	/* initialize mode and state */
 	context->mode = ROHC_U_MODE;
-	context->state = NO_CONTEXT;
+	context->state = ROHC_DECOMP_STATE_NC;
 	context->curval = 0;
 
 	/* init some statistics */
@@ -1499,7 +1499,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			}
 
 			/* if IR-DYN changes profile, make the decompressor transit to the
-			 * NO_CONTEXT state */
+			 * No Context state */
 			if(profile != ddata->active->profile)
 			{
 				decomp->curval = decomp->maxval;
@@ -1531,7 +1531,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 	/* only the IR packet can be received in the No Context state,
 	 * the IR-DYN, UO-0, UO-1 or UOR-2 can not. */
-	if((*packet_type) != ROHC_PACKET_IR && ddata->active->state == NO_CONTEXT)
+	if((*packet_type) != ROHC_PACKET_IR &&
+	   ddata->active->state == ROHC_DECOMP_STATE_NC)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "non-IR packet (%d) cannot be received in No Context "
@@ -1622,19 +1623,19 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 		if(rohc_status == ROHC_ERROR_PACKET_FAILED ||
 		   rohc_status == ROHC_ERROR_CRC)
 		{
-			if(context->state == STATIC_CONTEXT)
+			if(context->state == ROHC_DECOMP_STATE_SC)
 			{
 				rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				          "U-mode: change from state %d to state %d because "
-				          "of error(s)\n", context->state, NO_CONTEXT);
-				context->state = NO_CONTEXT;
+				          "of error(s)\n", context->state, ROHC_DECOMP_STATE_NC);
+				context->state = ROHC_DECOMP_STATE_NC;
 			}
-			else if(context->state == FULL_CONTEXT)
+			else if(context->state == ROHC_DECOMP_STATE_FC)
 			{
 				rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				          "U-mode: change from state %d to state %d because "
-				          "of error(s)\n", context->state, STATIC_CONTEXT);
-				context->state = STATIC_CONTEXT;
+				          "of error(s)\n", context->state, ROHC_DECOMP_STATE_SC);
+				context->state = ROHC_DECOMP_STATE_SC;
 			}
 		}
 
@@ -1757,7 +1758,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			context->num_sent_feedbacks++;
 			switch(context->state)
 			{
-				case NO_CONTEXT:
+				case ROHC_DECOMP_STATE_NC:
 					/* create a STATIC-NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					          "send a STATIC-NACK feedback for CID %zu\n", cid);
@@ -1793,8 +1794,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					zfree(feedback);
 					break;
 
-				case STATIC_CONTEXT:
-				case FULL_CONTEXT:
+				case ROHC_DECOMP_STATE_SC:
+				case ROHC_DECOMP_STATE_FC:
 					/* create a NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					          "send a NACK feedback for CID %zu\n", cid);
@@ -1827,21 +1828,21 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					}
 
 					/* change state */
-					if(context->state == STATIC_CONTEXT)
+					if(context->state == ROHC_DECOMP_STATE_SC)
 					{
 						rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 						          "change from state %d to state %d because of "
 						          "decompression error(s)\n", context->state,
-						          NO_CONTEXT);
-						context->state = NO_CONTEXT;
+						          ROHC_DECOMP_STATE_NC);
+						context->state = ROHC_DECOMP_STATE_NC;
 					}
-					if(context->state == FULL_CONTEXT)
+					if(context->state == ROHC_DECOMP_STATE_FC)
 					{
 						rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 						          "change from state %d to state %d because of "
 						          "decompression error(s)\n", context->state,
-						          STATIC_CONTEXT);
-						context->state = STATIC_CONTEXT;
+						          ROHC_DECOMP_STATE_SC);
+						context->state = ROHC_DECOMP_STATE_SC;
 					}
 
 					/* destroy the feedback */
@@ -2140,15 +2141,15 @@ static int rohc_d_context(struct rohc_decomp *decomp,
  *
  * @ingroup rohc_decomp
  */
-const char * rohc_decomp_get_state_descr(const rohc_d_state state)
+const char * rohc_decomp_get_state_descr(const rohc_decomp_state_t state)
 {
 	switch(state)
 	{
-		case NO_CONTEXT:
+		case ROHC_DECOMP_STATE_NC:
 			return "No Context";
-		case STATIC_CONTEXT:
+		case ROHC_DECOMP_STATE_SC:
 			return "Static Context";
-		case FULL_CONTEXT:
+		case ROHC_DECOMP_STATE_FC:
 			return "Full Context";
 		default:
 			return "no description";

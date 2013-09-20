@@ -3575,7 +3575,7 @@ static bool parse_ir(const struct rohc_decomp *const decomp,
 			*rohc_hdr_len += size;
 		}
 	}
-	else if(context->state != FULL_CONTEXT)
+	else if(context->state != ROHC_DECOMP_STATE_FC)
 	{
 		/* in 'Static Context' or 'No Context' state and the packet does not
 		 * contain a dynamic part */
@@ -4307,11 +4307,11 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 	/* we are either already in full context state or we can transit
 	 * through it */
-	if(context->state != FULL_CONTEXT)
+	if(context->state != ROHC_DECOMP_STATE_FC)
 	{
 		rohc_decomp_debug(context, "change from state %d to state %d\n",
-		                  context->state, FULL_CONTEXT);
-		context->state = FULL_CONTEXT;
+		                  context->state, ROHC_DECOMP_STATE_FC);
+		context->state = ROHC_DECOMP_STATE_FC;
 	}
 
 	/* tell compressor about the current decompressor's operating mode
@@ -4468,7 +4468,7 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 	reset_extr_bits(g_context, bits);
 
 	/* check packet usage */
-	if(context->state == STATIC_CONTEXT)
+	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "UO-0 packets cannot be received in Static Context "
@@ -4672,7 +4672,7 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 	}
 
 	/* check packet usage */
-	if(context->state == STATIC_CONTEXT)
+	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "UO-1 packet cannot be received in Static Context state\n");
@@ -4888,7 +4888,7 @@ static bool parse_uo1rtp(const struct rohc_decomp *const decomp,
 	reset_extr_bits(g_context, bits);
 
 	/* check packet usage */
-	if(context->state == STATIC_CONTEXT)
+	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "UO-1-RTP packet cannot be received in Static Context "
@@ -5110,7 +5110,7 @@ static bool parse_uo1id(const struct rohc_decomp *const decomp,
 	}
 
 	/* check packet usage */
-	if(context->state == STATIC_CONTEXT)
+	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "UO-1-ID packet cannot be received in Static Context "
@@ -5423,7 +5423,7 @@ static bool parse_uo1ts(const struct rohc_decomp *const decomp,
 	reset_extr_bits(g_context, bits);
 
 	/* check packet usage */
-	if(context->state == STATIC_CONTEXT)
+	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "UO-1-TS packet cannot be received in Static Context "

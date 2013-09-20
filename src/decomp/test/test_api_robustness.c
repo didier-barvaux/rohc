@@ -227,9 +227,9 @@ int main(int argc, char *argv[])
 	}
 
 	/* rohc_decomp_get_state_descr() */
-	CHECK(strcmp(rohc_decomp_get_state_descr(NO_CONTEXT), "No Context") == 0);
-	CHECK(strcmp(rohc_decomp_get_state_descr(STATIC_CONTEXT), "Static Context") == 0);
-	CHECK(strcmp(rohc_decomp_get_state_descr(FULL_CONTEXT), "Full Context") == 0);
+	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_NC), "No Context") == 0);
+	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_SC), "Static Context") == 0);
+	CHECK(strcmp(rohc_decomp_get_state_descr(ROHC_DECOMP_STATE_FC), "Full Context") == 0);
 	CHECK(strcmp(rohc_decomp_get_state_descr(0xffff), "no description") == 0);
 
 	/* rohc_decomp_free() */

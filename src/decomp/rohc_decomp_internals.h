@@ -161,7 +161,7 @@ struct d_context
 	/** The operation mode in which the context operates */
 	rohc_mode_t mode;
 	/** The operation state in which the context operates */
-	rohc_d_state state;
+	rohc_decomp_state_t state;
 
 	/** Usage timestamp */
 	unsigned int latest_used;

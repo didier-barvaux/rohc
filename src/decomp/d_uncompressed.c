@@ -240,7 +240,7 @@ static int uncompressed_decode_ir(struct rohc_decomp *decomp,
 	}
 
 	/* change state to Full Context */
-	context->state = FULL_CONTEXT;
+	context->state = ROHC_DECOMP_STATE_FC;
 
 	/* skip the IR type, optional large CID bytes, and Profile ID */
 	rohc_remain_data += large_cid_len + 2;
@@ -320,7 +320,7 @@ int uncompressed_decode_normal(struct rohc_decomp *decomp,
 	           "decode Normal packet\n");
 
 	/* state must not be No Context */
-	if(context->state == NO_CONTEXT)
+	if(context->state == ROHC_DECOMP_STATE_NC)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		             "cannot receive Normal packets in No Context state\n");

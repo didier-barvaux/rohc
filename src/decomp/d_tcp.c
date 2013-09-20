@@ -1074,7 +1074,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	while(rohc_is_tunneling(protocol));
 
 	// TODO: to be reworked
-	context->state = FULL_CONTEXT;
+	context->state = ROHC_DECOMP_STATE_FC;
 
 	rohc_decomp_debug(context, "return %d\n", size);
 	return size;
@@ -4449,7 +4449,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	                  uncomp_header_len, uncomp_header_len);
 
 	// TODO: to be reworked
-	context->state = FULL_CONTEXT;
+	context->state = ROHC_DECOMP_STATE_FC;
 
 	rohc_decomp_debug(context, "size_header = %d, size_options = %d, "
 	                  "rohc_length = %d\n", size_header, size_options,

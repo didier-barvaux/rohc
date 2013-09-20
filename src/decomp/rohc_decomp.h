@@ -51,11 +51,17 @@ struct rohc_decomp;
  * Public structures and types
  */
 
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief The ROHC decompressor states
  *
  * The different ROHC operation states at decompressor as defined in section
  * 4.3.2 of RFC 3095.
+ *
+ * @deprecated do not use this type anymore, use \ref rohc_decomp_state_t
+ *             instead
  *
  * @ingroup rohc_decomp
  *
@@ -69,7 +75,31 @@ typedef enum
 	STATIC_CONTEXT = 2,
 	/// The Full Context state
 	FULL_CONTEXT = 3,
-} rohc_d_state;
+} rohc_d_state
+	ROHC_DEPRECATED("please do not use this type anymore, "
+	                "use rohc_decomp_state_t instead");
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API) */
+
+/**
+ * @brief The ROHC decompressor states
+ *
+ * The different ROHC operation states at decompressor as defined in section
+ * 4.3.2 of RFC 3095.
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_get_state_descr
+ */
+typedef enum
+{
+	/** The No Context state */
+	ROHC_DECOMP_STATE_NC = 1,
+	/** The Static Context state */
+	ROHC_DECOMP_STATE_SC = 2,
+	/** The Full Context state */
+	ROHC_DECOMP_STATE_FC = 3,
+} rohc_decomp_state_t;
 
 
 /**
@@ -117,7 +147,7 @@ typedef struct
 	/** The mode of the last context used by the compressor */
 	rohc_mode_t context_mode;
 	/** The state of the last context used by the compressor */
-	rohc_d_state context_state;
+	rohc_decomp_state_t context_state;
 	/** The profile ID of the last context used by the compressor */
 	int profile_id;
 	/** The number of (possible) lost packet(s) before last packet */
@@ -224,7 +254,7 @@ int ROHC_EXPORT rohc_d_statistics(struct rohc_decomp *decomp,
 
 void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp);
 
-const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_d_state state);
+const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state);
 
 bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 																  rohc_decomp_last_packet_info_t *const info)
