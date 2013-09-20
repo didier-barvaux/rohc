@@ -13,16 +13,15 @@ html_DATA = \
 	html/*.css \
 	html/*.png
 
-if BUILD_DOC_MAN
-man_MANS = \
-	rohc.7 \
-	rohc_protocol.7 \
-	rohc_library.7 \
+
+rohc_common_mans = \
 	man/man3/rohc.h.3 \
 	man/man3/rohc_version.3 \
 	man/man3/rohc_get_mode_descr.3 \
 	man/man3/rohc_get_packet_descr.3 \
-	man/man3/rohc_get_ext_descr.3 \
+	man/man3/rohc_get_ext_descr.3
+
+rohc_comp_mans = \
 	man/man3/rohc_comp.h.3 \
 	man/man3/rohc_comp_new.3 \
 	man/man3/rohc_comp_free.3 \
@@ -51,7 +50,9 @@ man_MANS = \
 	man/man3/rohc_feedback_avail_bytes.3 \
 	man/man3/rohc_feedback_flush.3 \
 	man/man3/rohc_feedback_remove_locked.3 \
-	man/man3/rohc_feedback_unlock.3 \
+	man/man3/rohc_feedback_unlock.3
+
+rohc_decomp_mans = \
 	man/man3/rohc_decomp.h.3 \
 	man/man3/rohc_decomp_new.3 \
 	man/man3/rohc_decomp_free.3 \
@@ -69,101 +70,107 @@ man_MANS = \
 	man/man3/rohc_decomp_get_state_descr.3 \
 	man/man3/rohc_decomp_get_last_packet_info.3 \
 	man/man3/rohc_d_statistics.3
+
+if BUILD_DOC_MAN
+man_MANS = \
+	rohc.7 \
+	rohc_protocol.7 \
+	rohc_library.7 \
+	$(rohc_common_mans) \
+	$(rohc_comp_mans) \
+	$(rohc_decomp_mans)
 else
 man_MANS =
 endif
 
-html/*.html: html-am
-html/*.map: html-am
-html/*.css: html-am
-html/*.png: html-am
 
-html-am: htmldoc
+rohc_all_sources = \
+	$(top_srcdir)/src/*.h \
+	$(top_srcdir)/src/common/*.c \
+	$(top_srcdir)/src/common/*.h \
+	$(top_srcdir)/src/common/protocols/*.c \
+	$(top_srcdir)/src/common/protocols/*.h \
+	$(top_srcdir)/src/common/test/*.c \
+	$(top_srcdir)/src/comp/*.c \
+	$(top_srcdir)/src/comp/*.h \
+	$(top_srcdir)/src/comp/test/*.c \
+	$(top_srcdir)/src/decomp/*.c \
+	$(top_srcdir)/src/decomp/*.h \
+	$(top_srcdir)/src/decomp/test/*.c \
+	$(top_srcdir)/examples/*.c \
+	$(top_srcdir)/statistics/*.c \
+	$(top_srcdir)/app/fuzzer/*.c \
+	$(top_srcdir)/app/performance/*.c \
+	$(top_srcdir)/app/sniffer/*.c \
+	$(top_srcdir)/app/tunnel/*.c \
+	$(top_srcdir)/linux/include/*.h \
+	$(top_srcdir)/linux/*.c \
+	$(top_srcdir)/linux/kmod/*.c \
+	$(top_srcdir)/test/*.h \
+	$(top_srcdir)/test/functional/context_reuse/*.c \
+	$(top_srcdir)/test/functional/decompress_feedback_only/*.c \
+	$(top_srcdir)/test/functional/feedback2/*.c \
+	$(top_srcdir)/test/functional/feedback_ring/*.c \
+	$(top_srcdir)/test/functional/rtp_detection/*.c \
+	$(top_srcdir)/test/functional/rtp_uo_disambiguation/*.c \
+	$(top_srcdir)/test/functional/segment/*.c \
+	$(top_srcdir)/test/robustness/damaged_packet/*.c \
+	$(top_srcdir)/test/robustness/empty_payload/*.c \
+	$(top_srcdir)/test/robustness/lost_packet/*.c \
+	$(top_srcdir)/test/robustness/malformed_rohc_packets/*.c \
+	$(top_srcdir)/test/robustness/piggybacking_feedback/*.c \
+	$(top_srcdir)/test/non_regression/*.c
 
-htmldoc:
+doxygen: $(rohc_all_sources)
 	$(AM_V_GEN)doxygen doxygen.conf
+	@touch doxygen
 
 
-man/man3/rohc.h.3: mandoc
-man/man3/rohc_version.3: mandoc
-man/man3/rohc_get_mode_descr.3: mandoc
-man/man3/rohc_get_packet_descr.3: mandoc
-man/man3/rohc_get_ext_descr.3: mandoc
+html/*.html:
+html/*.map:
+html/*.css:
+html/*.png:
 
-man/man3/rohc_comp.h.3: mandoc
-man/man3/rohc_comp_new.3: mandoc
-man/man3/rohc_comp_free.3: mandoc
-man/man3/rohc_compress3.3: mandoc
-man/man3/rohc_comp_get_segment.3: mandoc
-man/man3/rohc_comp_enable_profile.3: mandoc
-man/man3/rohc_comp_enable_profiles.3: mandoc
-man/man3/rohc_comp_disable_profile.3: mandoc
-man/man3/rohc_comp_disable_profiles.3: mandoc
-man/man3/rohc_comp_set_random_cb.3: mandoc
-man/man3/rohc_comp_set_traces_cb.3: mandoc
-man/man3/rohc_comp_set_rtp_detection_cb.3: mandoc
-man/man3/rohc_comp_add_rtp_port.3: mandoc
-man/man3/rohc_comp_remove_rtp_port.3: mandoc
-man/man3/rohc_comp_reset_rtp_ports.3: mandoc
-man/man3/rohc_comp_force_contexts_reinit.3: mandoc
-man/man3/rohc_comp_get_cid_type.3: mandoc
-man/man3/rohc_comp_get_max_cid.3: mandoc
-man/man3/rohc_comp_set_periodic_refreshes.3: mandoc
-man/man3/rohc_comp_set_wlsb_window_width.3: mandoc
-man/man3/rohc_comp_get_mrru.3: mandoc
-man/man3/rohc_comp_set_mrru.3: mandoc
-man/man3/rohc_comp_get_state_descr.3: mandoc
-man/man3/rohc_comp_get_general_info.3: mandoc
-man/man3/rohc_comp_get_last_packet_info2.3: mandoc
+doxy2man_options = \
+	--out man/man3/ --noseealsoall --nosort --include-prefix "rohc/" \
+	--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual"
 
-man/man3/rohc_feedback_avail_bytes.3: mandoc
-man/man3/rohc_feedback_flush.3: mandoc
-man/man3/rohc_feedback_remove_locked.3: mandoc
-man/man3/rohc_feedback_unlock.3: mandoc
 
-man/man3/rohc_decomp.h.3: mandoc
-man/man3/rohc_decomp_new.3: mandoc
-man/man3/rohc_decomp_free.3: mandoc
-man/man3/rohc_decompress2.3: mandoc
-man/man3/rohc_decomp_enable_profile.3: mandoc
-man/man3/rohc_decomp_enable_profiles.3: mandoc
-man/man3/rohc_decomp_disable_profile.3: mandoc
-man/man3/rohc_decomp_disable_profiles.3: mandoc
-man/man3/rohc_decomp_set_features.3: mandoc
-man/man3/rohc_decomp_set_traces_cb.3: mandoc
-man/man3/rohc_decomp_get_cid_type.3: mandoc
-man/man3/rohc_decomp_get_max_cid.3: mandoc
-man/man3/rohc_decomp_set_mrru.3: mandoc
-man/man3/rohc_decomp_get_mrru.3: mandoc
-man/man3/rohc_decomp_get_state_descr.3: mandoc
-man/man3/rohc_decomp_get_last_packet_info.3: mandoc
-man/man3/rohc_d_statistics.3: mandoc
+rohc_common_sources = \
+	$(top_srcdir)/src/common/rohc_common.c \
+	$(top_srcdir)/src/common/rohc.h \
+	$(top_srcdir)/src/common/rohc_packets.c \
+	$(top_srcdir)/src/common/rohc_packets.h \
+	$(top_srcdir)/src/common/rohc_traces.h
 
-mandoc: htmldoc man-rohc man-rohc-comp man-rohc-decomp
+$(rohc_common_mans): $(rohc_common_sources) | doxygen
+	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc.xml
 
-man-rohc:
-	$(AM_V_GEN)doxy2man --out man/man3/ --noseealsoall --nosort \
-		--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual" \
-		--include-prefix "rohc/" xml/group__rohc.xml
 
-man-rohc-comp:
-	$(AM_V_GEN)doxy2man --out man/man3/ --noseealsoall --nosort \
-		--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual" \
-		--include-prefix "rohc/" xml/group__rohc__comp.xml
+rohc_comp_sources = \
+	$(top_srcdir)/src/comp/rohc_comp.c \
+	$(top_srcdir)/src/comp/rohc_comp.h
 
-man-rohc-decomp:
-	$(AM_V_GEN)doxy2man --out man/man3/ --noseealsoall --nosort \
-		--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual" \
-		--include-prefix "rohc/" xml/group__rohc__decomp.xml
+$(rohc_comp_mans): $(rohc_comp_sources) | doxygen
+	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__comp.xml
+
+
+rohc_decomp_sources = \
+	$(top_srcdir)/src/decomp/rohc_decomp.c \
+	$(top_srcdir)/src/decomp/rohc_decomp.h
+
+$(rohc_decomp_mans): $(rohc_decomp_sources) | doxygen
+	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__decomp.xml
 
 
 clean-local:
-	-$(RM) -rf html/
-	-$(RM) -rf man/
+	-$(RM) doxygen
+	-$(RM) -r html/
+	-$(RM) -r xml/
+	-$(RM) -r man/
 
 
 # extra files for releases
 EXTRA_DIST = \
 	doxygen.conf
-
 

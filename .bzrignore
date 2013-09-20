@@ -37,6 +37,7 @@ test_*.sh.trs
 ./test/report_code_coverage.sh.log
 ./test/report_code_coverage.sh.trs
 ./doc/doxygen.conf
+./doc/doxygen
 ./doc/html
 ./doc/xml
 ./doc/rohc.7
