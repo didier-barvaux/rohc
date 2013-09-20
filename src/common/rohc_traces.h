@@ -25,6 +25,11 @@
 #ifndef ROHC_TRACES_H
 #define ROHC_TRACES_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 
 /**
  * @brief A general profile number used for traces not related to a specific
@@ -120,5 +125,9 @@ typedef void (*rohc_trace_callback_t) (const rohc_trace_level_t level,
 #endif
 
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* ROHC_TRACES_H */
 

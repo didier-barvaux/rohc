@@ -25,6 +25,11 @@
 #ifndef ROHC_H
 #define ROHC_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 
@@ -332,5 +337,9 @@ void ROHC_EXPORT crc_init_table(unsigned char *table, unsigned char polynum)
 
 #undef ROHC_EXPORT /* do not pollute outside this header */
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* ROHC_H */
 

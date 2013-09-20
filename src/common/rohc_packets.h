@@ -23,6 +23,10 @@
 #ifndef ROHC_PACKETS_H
 #define ROHC_PACKETS_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /** Macro that handles DLL export declarations gracefully */
 #ifdef DLL_EXPORT /* passed by autotools on command line */
@@ -157,5 +161,9 @@ const char * ROHC_EXPORT rohc_get_ext_descr(const rohc_ext_t ext_type);
 
 #undef ROHC_EXPORT /* do not pollute outside this header */
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* ROHC_PACKETS_H */
 

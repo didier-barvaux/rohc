@@ -26,6 +26,11 @@
 #ifndef ROHC_DECOMP_H
 #define ROHC_DECOMP_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <rohc/rohc.h>
 #include <rohc/rohc_comp.h>
 
@@ -337,5 +342,9 @@ bool ROHC_EXPORT rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
 
 #undef ROHC_EXPORT /* do not pollute outside this header */
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* ROHC_DECOMP_H */
 

@@ -25,6 +25,11 @@
 #ifndef ROHC_COMP_H
 #define ROHC_COMP_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <rohc/rohc.h>
 #include <rohc/rohc_packets.h>
 #include <rohc/rohc_traces.h>
@@ -560,5 +565,9 @@ const char * ROHC_EXPORT rohc_comp_get_state_descr(const rohc_comp_state_t state
 
 #undef ROHC_EXPORT /* do not pollute outside this header */
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* ROHC_COMP_H */
 
