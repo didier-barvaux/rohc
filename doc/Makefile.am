@@ -14,15 +14,17 @@ html_DATA = \
 	html/*.png
 
 
+rohc_common_man = \
+	man/man3/rohc.h.3
 rohc_common_mans = \
-	man/man3/rohc.h.3 \
 	man/man3/rohc_version.3 \
 	man/man3/rohc_get_mode_descr.3 \
 	man/man3/rohc_get_packet_descr.3 \
 	man/man3/rohc_get_ext_descr.3
 
+rohc_comp_man = \
+	man/man3/rohc_comp.h.3
 rohc_comp_mans = \
-	man/man3/rohc_comp.h.3 \
 	man/man3/rohc_comp_new.3 \
 	man/man3/rohc_comp_free.3 \
 	man/man3/rohc_compress3.3 \
@@ -52,8 +54,9 @@ rohc_comp_mans = \
 	man/man3/rohc_feedback_remove_locked.3 \
 	man/man3/rohc_feedback_unlock.3
 
+rohc_decomp_man = \
+	man/man3/rohc_decomp.h.3
 rohc_decomp_mans = \
-	man/man3/rohc_decomp.h.3 \
 	man/man3/rohc_decomp_new.3 \
 	man/man3/rohc_decomp_free.3 \
 	man/man3/rohc_decompress2.3 \
@@ -76,8 +79,11 @@ man_MANS = \
 	rohc.7 \
 	rohc_protocol.7 \
 	rohc_library.7 \
+	$(rohc_common_man) \
 	$(rohc_common_mans) \
+	$(rohc_comp_man) \
 	$(rohc_comp_mans) \
+	$(rohc_decomp_man) \
 	$(rohc_decomp_mans)
 else
 man_MANS =
@@ -126,10 +132,10 @@ doxygen: $(rohc_all_sources)
 	@touch doxygen
 
 
-html/*.html:
-html/*.map:
-html/*.css:
-html/*.png:
+html/*.html: $(rohc_all_sources) | doxygen
+html/*.map: $(rohc_all_sources) | doxygen
+html/*.css: $(rohc_all_sources) | doxygen
+html/*.png: $(rohc_all_sources) | doxygen
 
 doxy2man_options = \
 	--out man/man3/ --noseealsoall --nosort --include-prefix "rohc/" \
@@ -143,24 +149,27 @@ rohc_common_sources = \
 	$(top_srcdir)/src/common/rohc_packets.h \
 	$(top_srcdir)/src/common/rohc_traces.h
 
-$(rohc_common_mans): $(rohc_common_sources) | doxygen
+$(rohc_common_man): $(rohc_common_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc.xml
+$(rohc_common_mans):
 
 
 rohc_comp_sources = \
 	$(top_srcdir)/src/comp/rohc_comp.c \
 	$(top_srcdir)/src/comp/rohc_comp.h
 
-$(rohc_comp_mans): $(rohc_comp_sources) | doxygen
+$(rohc_comp_man): $(rohc_comp_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__comp.xml
+$(rohc_comp_mans):
 
 
 rohc_decomp_sources = \
 	$(top_srcdir)/src/decomp/rohc_decomp.c \
 	$(top_srcdir)/src/decomp/rohc_decomp.h
 
-$(rohc_decomp_mans): $(rohc_decomp_sources) | doxygen
+$(rohc_decomp_man): $(rohc_decomp_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__decomp.xml
+$(rohc_decomp_mans):
 
 
 clean-local:
