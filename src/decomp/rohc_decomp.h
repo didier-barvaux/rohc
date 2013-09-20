@@ -252,7 +252,10 @@ int ROHC_EXPORT rohc_d_statistics(struct rohc_decomp *decomp,
                                   unsigned int indent,
                                   char *buffer);
 
-void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp);
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp)
+	ROHC_DEPRECATED("please do not use this function anymore");
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state);
 

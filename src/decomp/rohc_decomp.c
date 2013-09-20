@@ -184,6 +184,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   struct d_context *context);
 
 /* statistics-related functions */
+static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
+	__attribute__((nonnull(1)));
 static int rohc_d_context(struct rohc_decomp *decomp,
                           int index,
                           unsigned int indent,
@@ -482,7 +484,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	}
 
 	/* reset the decompressor statistics */
-	clear_statistics(decomp);
+	rohc_decomp_reset_stats(decomp);
 
 	/* set the default trace callback */
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
@@ -763,7 +765,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
 	}
 
 	/* reset the decompressor statistics */
-	clear_statistics(decomp);
+	rohc_decomp_reset_stats(decomp);
 
 	/* set the default trace callback */
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
@@ -1902,15 +1904,36 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Clear all the statistics.
  *
  * @param decomp The ROHC decompressor
  *
+ * @deprecated please do not use this function anymore
+ *
  * @ingroup rohc_decomp
  */
 void clear_statistics(struct rohc_decomp *decomp)
 {
+	if(decomp != NULL)
+	{
+		rohc_decomp_reset_stats(decomp);
+	}
+}
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
+
+/**
+ * @brief Reset all the statistics of the given ROHC decompressor
+ *
+ * @param decomp The ROHC decompressor
+ */
+static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
+{
+	assert(decomp != NULL);
 	decomp->stats.received = 0;
 	decomp->stats.failed_crc = 0;
 	decomp->stats.failed_no_context = 0;
