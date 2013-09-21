@@ -2440,13 +2440,9 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 			// ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE )
 			if(ecn_used != 0)
 			{
-#if WORDS_BIGENDIAN != 1
-				*(mptr.uint8++) =
-				   ( ( ( base_header.ipv6->dscp1 <<
-				         2 ) | base_header.ipv6->dscp2 ) << 2 ) | base_header.ipv4->ip_ecn_flags;
-#else
-				*(mptr.uint8++) = ( base_header.ipv6->dscp << 2 ) | base_header.ipv4->ip_ecn_flags;
-#endif
+				uint8_t dscp = (base_header.ipv6->dscp1 << 2) |
+				               base_header.ipv6->dscp2;
+				*(mptr.uint8++) = (dscp << 2) | base_header.ipv4->ip_ecn_flags;
 				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x\n",
 				                *(mptr.uint8 - 1));
 			}
@@ -4890,10 +4886,17 @@ static int co_baseheader(struct c_context *const context,
 		                (unsigned int) (mptr.uint8 - puchar),
 		                c_base_header.co_common->ip_id_indicator,
 		                c_base_header.co_common->ip_id_behavior);
-		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->dscp_present = dscp_encode(&mptr,ip_context.vx->dscp,
-		                                                    base_header.ipv4->dscp);
+
+		/* dscp_present =:= irregular(1) [ 1 ] */
+		c_base_header.co_common->dscp_present =
+			dscp_encode(&mptr, ip_context.vx->dscp, base_header.ipv4->dscp);
+		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
+		                "value = 0x%02x) => length = %u bytes\n",
+		                c_base_header.co_common->dscp_present,
+		                ip_context.vx->dscp, base_header.ipv4->dscp,
+		                (unsigned int) (mptr.uint8 - puchar));
 		ip_context.vx->dscp = base_header.ipv4->dscp;
+
 		// =:= irregular(1) [ 1 ];
 		c_base_header.co_common->ttl_hopl_present = c_static_or_irreg8(&mptr,ip_context.vx->ttl_hopl,
 		                                                               ttl_hopl);
@@ -4917,10 +4920,17 @@ static int co_baseheader(struct c_context *const context,
 		                (unsigned int) (mptr.uint8 - puchar),
 		                c_base_header.co_common->ip_id_indicator,
 		                c_base_header.co_common->ip_id_behavior);
-		// =:= irregular(1) [ 1 ];
+
+		/* dscp_present =:= irregular(1) [ 1 ] */
 		c_base_header.co_common->dscp_present =
-		   dscp_encode(&mptr,ip_context.vx->dscp,DSCP_V6(base_header.ipv6));
+			dscp_encode(&mptr, ip_context.vx->dscp, DSCP_V6(base_header.ipv6));
+		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
+		                "value = 0x%02x) => length = %u bytes\n",
+		                c_base_header.co_common->dscp_present,
+		                ip_context.vx->dscp, DSCP_V6(base_header.ipv6),
+		                (unsigned int) (mptr.uint8 - puchar));
 		ip_context.vx->dscp = DSCP_V6(base_header.ipv6);
+
 		// =:= irregular(1) [ 1 ];
 		c_base_header.co_common->ttl_hopl_present = c_static_or_irreg8(&mptr,ip_context.vx->ttl_hopl,
 		                                                               ttl_hopl);

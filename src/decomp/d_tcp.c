@@ -1668,12 +1668,8 @@ static int tcp_decode_dynamic_ip(struct d_context *const context,
 	}
 	else
 	{
-#if WORDS_BIGENDIAN != 1
 		base_header.ipv6->dscp1 = c_base_header.ipv6_dynamic->dscp >> 2;
 		base_header.ipv6->dscp2 = c_base_header.ipv6_dynamic->dscp & 0x03;
-#else
-		base_header.ipv6->dscp = c_base_header.ipv6_dynamic->dscp;
-#endif
 		base_header.ipv6->ip_ecn_flags = c_base_header.ipv6_dynamic->ip_ecn_flags;
 		base_header.ipv6->ttl_hopl = c_base_header.ipv6_dynamic->ttl_hopl;
 
@@ -1783,12 +1779,8 @@ static uint8_t * tcp_decode_irregular_ip(struct d_context *const context,
 			// ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE )
 			if(tcp_context->ecn_used != 0)
 			{
-#if WORDS_BIGENDIAN != 1
-				base_header.ipv6->dscp1 = *mptr.uint8 >> 4;
-				base_header.ipv6->dscp2 = ( *mptr.uint8 >> 2 ) & 0x03;
-#else
-				base_header.ipv6->dscp = *mptr.uint8 >> 2;
-#endif
+				base_header.ipv6->dscp1 = (*mptr.uint8) >> 4;
+				base_header.ipv6->dscp2 = ((*mptr.uint8) >> 2 ) & 0x03;
 				base_header.ipv4->ip_ecn_flags = *(mptr.uint8++) & 0x03;
 			}
 			if(ttl_irregular_chain_flag == 1)
@@ -3725,12 +3717,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		else
 		{
 			ip_inner_ecn = base_header.ipv6->ip_ecn_flags;
-#if WORDS_BIGENDIAN != 1
 			base_header.ipv6->dscp1 = ip_context.v6->dscp >> 2;
 			base_header.ipv6->dscp2 = ip_context.v6->dscp & 0x03;
-#else
-			base_header.ipv6->dscp = ip_context.v6->dscp;
-#endif
 			base_header.ipv6->ttl_hopl = ip_context.v6->ttl_hopl;
 			protocol = ip_context.v6->next_header;
 			++base_header.ipv6;
@@ -3812,10 +3800,16 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		tcp_context->ecn_used = c_base_header.co_common->ecn_used;
 		if(ip_inner_context.vx->version == IPV4)
 		{
-			base_header_inner.ipv4->dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
-			                                           c_base_header.co_common->dscp_present);
-			rohc_decomp_debug(context, "DSCP = 0x%x\n",
-			                  base_header_inner.ipv4->dscp);
+			/* DSCP */
+			base_header_inner.ipv4->dscp =
+				dscp_decode(&mptr, ip_inner_context.vx->dscp,
+				            c_base_header.co_common->dscp_present);
+			rohc_decomp_debug(context, "DSCP = 0x%02x (indicator = %d, context "
+			                  "= 0x%02x)\n", base_header_inner.ipv4->dscp,
+			                  c_base_header.co_common->dscp_present,
+			                  ip_inner_context.vx->dscp);
+			ip_inner_context.vx->dscp = base_header_inner.ipv4->dscp;
+
 			ip_inner_context.v4->df = c_base_header.co_common->df;
 			base_header_inner.ipv4->ttl_hopl =
 				d_static_or_irreg8(&mptr, ip_inner_context.vx->ttl_hopl,
@@ -3826,21 +3820,18 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		}
 		else
 		{
-#if WORDS_BIGENDIAN != 1
-			{
-				uint8_t dscp;
-				dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
-				                   c_base_header.co_common->dscp_present);
-				base_header_inner.ipv6->dscp1 = dscp >> 2;
-				base_header_inner.ipv6->dscp2 = dscp & 0x03;
-				rohc_decomp_debug(context, "DSCP = 0x%x\n", dscp);
-			}
-#else
-			base_header_inner.ipv6->dscp = dscp_decode(&mptr,ip_inner_context.vx->dscp,
-			                                           c_base_header.co_common->dscp_present);
-			rohc_decomp_debug(context, "DSCP = 0x%x\n",
-			                  base_header_inner.ipv6->dscp);
-#endif
+			uint8_t dscp;
+
+			dscp = dscp_decode(&mptr, ip_inner_context.vx->dscp,
+			                   c_base_header.co_common->dscp_present);
+			base_header_inner.ipv6->dscp1 = dscp >> 2;
+			base_header_inner.ipv6->dscp2 = dscp & 0x03;
+			rohc_decomp_debug(context, "DSCP = 0x%02x (indicator = %d, context "
+			                  "= 0x%02x)\n", DSCP_V6(base_header_inner.ipv6),
+			                  c_base_header.co_common->dscp_present,
+			                  ip_inner_context.vx->dscp);
+			ip_inner_context.vx->dscp = DSCP_V6(base_header_inner.ipv6);
+
 			base_header_inner.ipv6->ttl_hopl =
 				d_static_or_irreg8(&mptr, ip_inner_context.vx->ttl_hopl,
 				                   c_base_header.co_common->ttl_hopl_present);

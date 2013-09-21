@@ -503,19 +503,23 @@ unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
  * See RFC4996 page 75
  *
  * @param pmptr            The destination for the compressed value
- * @param context_value    The context value of DSCP
- * @param value            The DSCP value to compress
+ * @param context_value    The DSCP value in the compression context
+ * @param packet_value     The DSCP value in the packet to compress
  * @return                 Indicator 1 if value compressed, 0 otherwise
  */
-
-unsigned int dscp_encode( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value )
+unsigned int dscp_encode(multi_ptr_t *pmptr,
+                         const uint8_t context_value,
+                         const uint8_t packet_value)
 {
-	if(value == context_value)
+	if(packet_value == context_value)
 	{
 		return 0;
 	}
-	// 6 bits + 2 bits padding
-	*(pmptr->uint8)++ = value & 0x3F;
-	return 1;
+	else
+	{
+		/* 6 bits + 2 bits padding */
+		*(pmptr->uint8)++ = packet_value & 0x3F;
+		return 1;
+	}
 }
 

@@ -23,9 +23,9 @@
  */
 
 #include "feedback.h"
+#include "crc.h"
 #include "rohc_debug.h"
 #include "sdvl.h"
-#include "crc.h"
 
 #ifdef ROHC_FEEDBACK_DEBUG
 #  include <stdio.h>

@@ -367,7 +367,8 @@ typedef struct __attribute__((packed)) base_header_ip_v6
 	uint8_t dscp2 : 2;
 #else
 	uint16_t version : 4;
-	uint16_t dscp : 6;
+	uint16_t dscp1:4;
+	uint16_t dscp2:2;
 	uint16_t ip_ecn_flags : 2;
 	uint16_t flow_label1 : 4;
 #endif
@@ -380,11 +381,7 @@ typedef struct __attribute__((packed)) base_header_ip_v6
 	// extension_headers
 } base_header_ip_v6_t;
 
-#if WORDS_BIGENDIAN != 1
-#  define DSCP_V6(ptr)       (((ptr)->dscp1 << 2) | (ptr)->dscp2)
-#else
-#  define DSCP_V6(ptr)       ((ptr)->dscp)
-#endif
+#define DSCP_V6(ptr)       (((ptr)->dscp1 << 2) | (ptr)->dscp2)
 #define FLOW_LABEL_V6(ptr) (((ptr->flow_label1) << 16) | ptr->flow_label2)
 
 /**

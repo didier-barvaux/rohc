@@ -21,11 +21,11 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
+#include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "rohc_decomp_internals.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
-#include "rohc_bit_ops.h"
 #include "rohc_utils.h"
 #include "wlsb.h"
 #include "sdvl.h"
@@ -481,13 +481,19 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
  * @param indicator      Indicator of the compression
  * @return               The DSCP decoded
  */
-
-uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator )
+uint8_t dscp_decode(multi_ptr_t *pmptr,
+                    const uint8_t context_value,
+                    const int indicator)
 {
 	if(indicator == 0)
 	{
+		/* DSCP value not transmitted in packet, take value from context */
 		return context_value;
 	}
-	return (*(pmptr->uint8)++) & 0x3F;
+	else
+	{
+		/* DSCP value transmitted in packet */
+		return (*(pmptr->uint8)++) & 0x3F;
+	}
 }
 

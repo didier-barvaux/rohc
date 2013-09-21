@@ -96,7 +96,10 @@ unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
                                   WB_t ip_id,
                                   uint16_t msn);
 // RFC4996 page 75
-unsigned int dscp_encode( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value );
+unsigned int dscp_encode(multi_ptr_t *pmptr,
+                         const uint8_t context_value,
+                         const uint8_t value)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 #endif /* ROHC_COMP_RFC4996_ENCODING_H */
 

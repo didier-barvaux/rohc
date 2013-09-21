@@ -77,7 +77,11 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
                           WB_t context_ip_id,
                           uint16_t *ip_id,
                           uint16_t msn);
-uint8_t dscp_decode( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
+
+uint8_t dscp_decode(multi_ptr_t *pmptr,
+                    const uint8_t context_value,
+                    const int indicator)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 #endif /* ROHC_DECOMP_RFC4996_DECODING_H */
 
