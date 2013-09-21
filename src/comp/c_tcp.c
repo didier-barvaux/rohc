@@ -1659,8 +1659,15 @@ static int c_tcp_encode(struct c_context *const context,
 		counter = code_CO_packet(context, ip, packet_size, base_header.uint8,
 		                         rohc_pkt, rohc_pkt_max_len, packet_type,
 		                         payload_offset);
+		if(counter < 0)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to build CO packet\n");
+			goto error;
+		}
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
+		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt,
+		                 counter);
 	}
 	else /* ROHC_PACKET_IR or ROHC_PACKET_IR_DYN */
 	{
@@ -1750,7 +1757,11 @@ static int c_tcp_encode(struct c_context *const context,
 						}
 						break;
 					default:
-						return -1;
+						rohc_warning(context->compressor, ROHC_TRACE_COMP,
+						             context->profile->id, "unexpected IP version "
+						             "%u\n", base_header.ipvx->version);
+						assert(0);
+						goto error;
 				}
 				rohc_comp_debug(context, "counter = %d, protocol = %d\n",
 				                (int)(mptr.uint8 - &rohc_pkt[counter]), protocol);
@@ -1773,7 +1784,6 @@ static int c_tcp_encode(struct c_context *const context,
 
 		do
 		{
-
 			rohc_comp_debug(context, "base_header = %p, IP version = %d\n",
 			                base_header.uint8, base_header.ipvx->version);
 
@@ -1807,9 +1817,12 @@ static int c_tcp_encode(struct c_context *const context,
 					}
 					break;
 				default:
-					return -1;
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+					             context->profile->id, "unexpected IP version "
+					             "%u\n", base_header.ipvx->version);
+					assert(0);
+					goto error;
 			}
-
 		}
 		while(rohc_is_tunneling(protocol));
 
@@ -4015,7 +4028,8 @@ static int code_CO_packet(struct c_context *const context,
 	                  packet_type, payload_size, ttl_irregular_chain_flag);
 	if(i < 0)
 	{
-		rohc_comp_debug(context, "failed to build co_baseheader\n");
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to build co_baseheader\n");
 		goto error;
 	}
 
@@ -4089,8 +4103,10 @@ static int code_CO_packet(struct c_context *const context,
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "CO packet", rohc_pkt, counter);
 
-error:
 	return counter;
+
+error:
+	return -1;
 }
 
 
