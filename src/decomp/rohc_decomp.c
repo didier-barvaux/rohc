@@ -50,9 +50,11 @@
 #include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
 
 #ifndef __KERNEL__
-#	include <string.h>
+#  include <string.h>
 #endif
-#include <stdio.h> /* for printf(3) and sprintf(3) */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+#  include <stdio.h> /* for printf(3) and sprintf(3) */
+#endif
 #include <stdarg.h>
 #include <assert.h>
 
