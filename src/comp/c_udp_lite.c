@@ -1048,7 +1048,6 @@ struct c_profile c_udp_lite_profile =
 {
 	ROHC_IPPROTO_UDPLITE,     /* IP protocol */
 	ROHC_PROFILE_UDPLITE,     /* profile ID (see 7 in RFC 4019) */
-	"UDP-Lite / Compressor",  /* profile description */
 	c_udp_lite_create,        /* profile handlers */
 	c_generic_destroy,
 	c_udp_lite_check_profile,

@@ -315,11 +315,11 @@ bool ROHC_EXPORT rohc_decomp_set_features(struct rohc_decomp *const decomp,
  */
 
 bool ROHC_EXPORT rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
-                                            const unsigned int profile)
+                                            const rohc_profile_t profile)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
-                                             const unsigned int profile)
+                                             const rohc_profile_t profile)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_enable_profiles(struct rohc_decomp *const decomp,

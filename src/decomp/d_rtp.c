@@ -1927,7 +1927,6 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const 
 struct d_profile d_rtp_profile =
 {
 	ROHC_PROFILE_RTP,       /* profile ID (see 8 in RFC 3095) */
-	"RTP / Decompressor",   /* profile description */
 	.detect_packet_type = rtp_detect_packet_type,
 	d_generic_decode,
 	d_rtp_create,

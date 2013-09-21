@@ -243,20 +243,34 @@ typedef size_t rohc_cid_t;
  * ROHC profiles numbers allocated by the IANA (see 8 in the RFC 3095):
  */
 
-/// The number allocated for the ROHC Uncompressed profile (RFC 3095, 5.10)
-#define ROHC_PROFILE_UNCOMPRESSED  0x0000
-/// The number allocated for the ROHC RTP profile (RFC 3095, 8)
-#define ROHC_PROFILE_RTP           0x0001
-/// The number allocated for the ROHC UDP profile (RFC 3095, 5.11)
-#define ROHC_PROFILE_UDP           0x0002
-/// The number allocated for the ROHC ESP profile (RFC 3095, 5.12)
-#define ROHC_PROFILE_ESP           0x0003
-/// The number allocated for the ROHC IP-only profile (see 5 in the RFC 3843)
-#define ROHC_PROFILE_IP            0x0004
-/// The number allocated for the ROHC TCP profile (see the RFC 4996)
-#define ROHC_PROFILE_TCP           0x0006
-/// The number allocated for the ROHC UDP-Lite profile (see 7 in the RFC 4019)
-#define ROHC_PROFILE_UDPLITE       0x0008
+/**
+ * @brief The different ROHC compression/decompression profiles
+ *
+ * If you add a new compression/decompression profile, please also add the
+ * corresponding textual description in \ref rohc_get_profile_descr.
+ *
+ * @ingroup rohc
+ *
+ * @see rohc_get_profile_descr
+ */
+typedef enum
+{
+	/** The ROHC Uncompressed profile (RFC 3095, section 5.10) */
+	ROHC_PROFILE_UNCOMPRESSED = 0x0000,
+	/** The ROHC RTP profile (RFC 3095, section 8) */
+	ROHC_PROFILE_RTP          = 0x0001,
+	/** The ROHC UDP profile (RFC 3095, section 5.11) */
+	ROHC_PROFILE_UDP          = 0x0002,
+	/** The ROHC ESP profile (RFC 3095, section 5.12) */
+	ROHC_PROFILE_ESP          = 0x0003,
+	/** The ROHC IP-only profile (RFC 3843, section 5) */
+	ROHC_PROFILE_IP           = 0x0004,
+	/** The ROHC TCP profile (RFC 4996) */
+	ROHC_PROFILE_TCP          = 0x0006,
+	/** The ROHC UDP-Lite profile (RFC 4019, section 7) */
+	ROHC_PROFILE_UDPLITE      = 0x0008,
+
+} rohc_profile_t;
 
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
@@ -316,6 +330,9 @@ extern unsigned char ROHC_EXPORT crc_table_8[256]
 char * ROHC_EXPORT rohc_version(void);
 
 const char * ROHC_EXPORT rohc_get_mode_descr(const rohc_mode_t mode);
+
+const char * ROHC_EXPORT rohc_get_profile_descr(const rohc_profile_t profile)
+	__attribute__((warn_unused_result));
 
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1

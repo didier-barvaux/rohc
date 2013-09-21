@@ -5983,7 +5983,6 @@ struct c_profile c_tcp_profile =
 {
 	ROHC_IPPROTO_TCP,    /* IP protocol */
 	ROHC_PROFILE_TCP,    /* profile ID (see 8 in RFC 3095) */
-	"TCP / Compressor",  /* profile description */
 	c_tcp_create,        /* profile handlers */
 	c_tcp_destroy,
 	c_tcp_check_profile,

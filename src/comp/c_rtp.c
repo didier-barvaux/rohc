@@ -1714,7 +1714,6 @@ struct c_profile c_rtp_profile =
 {
 	ROHC_IPPROTO_UDP,    /* IP protocol */
 	ROHC_PROFILE_RTP,    /* profile ID */
-	"RTP / Compressor",  /* profile description */
 	c_rtp_create,        /* profile handlers */
 	c_rtp_destroy,
 	c_rtp_check_profile,

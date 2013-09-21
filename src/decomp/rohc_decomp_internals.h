@@ -37,7 +37,7 @@
 
 
 /** The number of ROHC profiles ready to be used */
-#define D_NUM_PROFILES 7
+#define D_NUM_PROFILES 7U
 
 /** Print a debug trace for the given decompression context */
 #define rohc_decomp_debug(context, format, ...) \
@@ -231,10 +231,7 @@ struct d_context
 struct d_profile
 {
 	/* The profile ID as reserved by IANA */
-	int id;
-
-	/* A string that describes the profile */
-	char *description;
+	const rohc_profile_t id;
 
 	/** The handler used to detect the type of the ROHC packet */
 	rohc_packet_t (*detect_packet_type)(const struct rohc_decomp *const decomp,

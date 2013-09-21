@@ -443,7 +443,6 @@ static void esp_update_context(const struct d_context *context,
 struct d_profile d_esp_profile =
 {
 	ROHC_PROFILE_ESP,       /* profile ID (see 8 in RFC 3095) */
-	"ESP / Decompressor",   /* profile description */
 	.detect_packet_type = ip_detect_packet_type,
 	d_generic_decode,
 	d_esp_create,

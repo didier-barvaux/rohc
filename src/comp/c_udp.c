@@ -790,7 +790,6 @@ struct c_profile c_udp_profile =
 {
 	ROHC_IPPROTO_UDP,    /* IP protocol */
 	ROHC_PROFILE_UDP,    /* profile ID (see 8 in RFC 3095) */
-	"UDP / Compressor",  /* profile description */
 	c_udp_create,        /* profile handlers */
 	c_generic_destroy,
 	c_udp_check_profile,

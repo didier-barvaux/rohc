@@ -380,7 +380,6 @@ static uint32_t uncompressed_get_sn(const struct d_context *const context)
 struct d_profile d_uncomp_profile =
 {
 	ROHC_PROFILE_UNCOMPRESSED,     /* profile ID (see 8 in RFC 3095) */
-	"Uncompressed / Decompressor", /* profile description */
 	.detect_packet_type = uncomp_detect_packet_type,
 	uncompressed_decode,
 	uncompressed_allocate_decode_data,

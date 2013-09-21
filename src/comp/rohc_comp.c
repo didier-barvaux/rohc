@@ -935,7 +935,8 @@ int rohc_compress3(struct rohc_comp *const comp,
 		goto error;
 	}
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "using profile '%s' (0x%04x)\n", p->description, p->id);
+	           "using profile '%s' (0x%04x)\n", rohc_get_profile_descr(p->id),
+	           p->id);
 
 	/* get the context using help from the profiles */
 	c = c_find_context(comp, p, outer_ip, pkt_key);
@@ -1592,7 +1593,7 @@ error:
  * reported.
  *
  * @param comp     The ROHC compressor
- * @param profile  The ID of the profile to enable
+ * @param profile  The profile to enable
  * @return         true if the profile exists,
  *                 false if the profile does not exist
  *
@@ -1613,9 +1614,9 @@ error:
  * @see rohc_comp_disable_profiles
  */
 bool rohc_comp_enable_profile(struct rohc_comp *const comp,
-                              const unsigned int profile)
+                              const rohc_profile_t profile)
 {
-	int i;
+	size_t i;
 
 	if(comp == NULL)
 	{
@@ -1642,7 +1643,7 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	/* mark the profile as enabled */
 	comp->enabled_profiles[i] = true;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC compression profile (ID = %u) enabled\n", profile);
+	          "ROHC compression profile (ID = %d) enabled\n", profile);
 
 	return true;
 
@@ -1664,7 +1665,7 @@ error:
  * reported.
  *
  * @param comp     The ROHC compressor
- * @param profile  The ID of the profile to disable
+ * @param profile  The profile to disable
  * @return         true if the profile exists,
  *                 false if the profile does not exist
  *
@@ -1675,9 +1676,9 @@ error:
  * @see rohc_comp_disable_profiles
  */
 bool rohc_comp_disable_profile(struct rohc_comp *const comp,
-                               const unsigned int profile)
+                               const rohc_profile_t profile)
 {
-	int i;
+	size_t i;
 
 	if(comp == NULL)
 	{
@@ -1704,7 +1705,7 @@ bool rohc_comp_disable_profile(struct rohc_comp *const comp,
 	/* mark the profile as disabled */
 	comp->enabled_profiles[i] = false;
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "ROHC compression profile (ID = %u) disabled\n", profile);
+	          "ROHC compression profile (ID = %d) disabled\n", profile);
 
 	return true;
 
@@ -1716,8 +1717,8 @@ error:
 /**
  * @brief Enable several compression profiles for a compressor
  *
- * Enable several compression profiles for a compressor. The list of profile
- * IDs to enable shall stop with -1.
+ * Enable several compression profiles for a compressor. The list of profiles
+ * to enable shall stop with -1.
  *
  * The ROHC compressor does not use the compression profiles that are not
  * enabled. Thus not enabling a profile might affect compression performances.
@@ -1727,8 +1728,8 @@ error:
  * and success is reported.
  *
  * @param comp  The ROHC compressor
- * @param ...   The sequence of IDs of the compression profiles to enable,
- *              sequence shall be terminated by -1
+ * @param ...   The sequence of compression profiles to enable, the sequence
+ *              shall be terminated by -1
  * @return      true if all of the profiles exist,
  *              false if at least one of the profiles does not exist
  *
@@ -1784,8 +1785,8 @@ error:
 /**
  * @brief Disable several compression profiles for a compressor
  *
- * Disable several compression profiles for a compressor. The list of profile
- * IDs to disable shall stop with -1.
+ * Disable several compression profiles for a compressor. The list of profiles
+ * to disable shall stop with -1.
  *
  * The ROHC compressor does not use the compression profiles that were
  * disabled. Thus disabling a profile might affect compression performances.
@@ -1795,8 +1796,8 @@ error:
  * and success is reported.
  *
  * @param comp  The ROHC compressor
- * @param ...   The sequence of IDs of the compression profiles to disable,
- *              sequence shall be terminated by -1
+ * @param ...   The sequence of compression profiles to disable, the sequence
+ *              shall be terminated by -1
  * @return      true if all of the profiles exist,
  *              false if at least one of the profiles does not exist
  *
@@ -2485,7 +2486,8 @@ int rohc_c_info(char *buffer)
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		buffer += sprintf(buffer, "\t<profile id=\"%d\" ", c_profiles[i]->id);
-		buffer += sprintf(buffer, "name=\"%s\" ", c_profiles[i]->description);
+		buffer += sprintf(buffer, "name=\"%s\" ",
+		                  rohc_get_profile_descr(c_profiles[i]->id));
 		buffer += sprintf(buffer, "/>\n");
 	}
 
@@ -2564,7 +2566,8 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 		p = c_profiles[i];
 
 		buffer += sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
-		buffer += sprintf(buffer, "name=\"%s\" ", p->description);
+		buffer += sprintf(buffer, "name=\"%s\" ",
+		                  rohc_get_profile_descr(p->id));
 		buffer += sprintf(buffer, "active=\"%s\" ",
 		                  comp->enabled_profiles[i] ? "yes" : "no");
 		buffer += sprintf(buffer, "/>\n");
@@ -2673,7 +2676,8 @@ static int __rohc_c_context(struct rohc_comp *comp,
 	                  rohc_comp_get_state_descr(c->state));
 	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
 	                  rohc_get_mode_descr(c->mode));
-	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
+	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix,
+	                  rohc_get_profile_descr(c->profile->id));
 
 	/* compression ratio */
 	buffer += sprintf(buffer, "%s\t<ratio>\n", prefix);
@@ -3540,7 +3544,8 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "skip disabled profile '%s' (0x%04x)\n",
-			           c_profiles[i]->description, c_profiles[i]->id);
+			           rohc_get_profile_descr(c_profiles[i]->id),
+			           c_profiles[i]->id);
 			continue;
 		}
 
@@ -3553,8 +3558,8 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 		if(!check_profile)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "skip profile '%s' (0x%04x) because it does not "
-			           "match packet\n", c_profiles[i]->description,
+			           "skip profile '%s' (0x%04x) because it does not match "
+			           "packet\n",rohc_get_profile_descr(c_profiles[i]->id),
 			           c_profiles[i]->id);
 			continue;
 		}

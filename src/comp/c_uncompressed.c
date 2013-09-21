@@ -774,7 +774,6 @@ struct c_profile c_uncompressed_profile =
 {
 	0,                            /* IP protocol */
 	ROHC_PROFILE_UNCOMPRESSED,    /* profile ID (see 8 in RFC 3095) */
-	"Uncompressed / Compressor",  /* profile description */
 	c_uncompressed_create,        /* profile handlers */
 	c_uncompressed_destroy,
 	c_uncompressed_check_profile,

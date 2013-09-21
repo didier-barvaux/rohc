@@ -778,7 +778,6 @@ error:
 struct d_profile d_ip_profile =
 {
 	ROHC_PROFILE_IP,              /* profile ID (see 5 in RFC 3843) */
-	"IP / Decompressor",          /* profile description */
 	.detect_packet_type = ip_detect_packet_type,
 	d_generic_decode,
 	d_ip_create,

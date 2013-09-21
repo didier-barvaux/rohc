@@ -549,7 +549,6 @@ struct c_profile c_ip_profile =
 {
 	0,                  /* IP protocol */
 	ROHC_PROFILE_IP,    /* profile ID (see 5 in RFC 3843) */
-	"IP / Compressor",  /* profile description */
 	rohc_ip_ctxt_create,
 	c_generic_destroy,
 	c_generic_check_profile,

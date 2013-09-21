@@ -43,7 +43,7 @@
  */
 
 /** The number of ROHC profiles ready to be used */
-#define C_NUM_PROFILES 7
+#define C_NUM_PROFILES 7U
 
 /** The maximal number of outgoing feedbacks that can be queued */
 #define FEEDBACK_RING_SIZE 1000
@@ -241,10 +241,7 @@ struct c_profile
 	const unsigned short protocol;
 
 	/** The profile ID as reserved by IANA */
-	const unsigned short id;
-
-	/** A string that describes the profile */
-	const char *description;
+	const rohc_profile_t id;
 
 	/**
 	 * @brief The handler used to create the profile-specific part of the

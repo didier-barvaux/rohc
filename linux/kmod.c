@@ -41,6 +41,7 @@ MODULE_DESCRIPTION(PACKAGE_NAME ", version " PACKAGE_VERSION " (" PACKAGE_URL ")
 
 EXPORT_SYMBOL_GPL(rohc_version);
 EXPORT_SYMBOL_GPL(rohc_get_mode_descr);
+EXPORT_SYMBOL_GPL(rohc_get_profile_descr);
 EXPORT_SYMBOL_GPL(rohc_get_packet_descr);
 EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
 

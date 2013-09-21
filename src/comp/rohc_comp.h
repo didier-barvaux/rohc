@@ -410,10 +410,10 @@ void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile)
 	                "use rohc_comp_enable_profile() instead");
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 bool ROHC_EXPORT rohc_comp_enable_profile(struct rohc_comp *const comp,
-                                          const unsigned int profile)
+                                          const rohc_profile_t profile)
 	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_disable_profile(struct rohc_comp *const comp,
-                                           const unsigned int profile)
+                                           const rohc_profile_t profile)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_comp_enable_profiles(struct rohc_comp *const comp,

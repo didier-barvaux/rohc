@@ -124,7 +124,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 static const struct d_profile *
 	find_profile(const struct rohc_decomp *const decomp,
-	             const unsigned int profile_id)
+	             const rohc_profile_t profile_id)
 	__attribute__((warn_unused_result));
 
 static struct d_context * context_create(struct rohc_decomp *decomp,
@@ -1987,7 +1987,8 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 
 		buffer += sprintf(buffer, "%s\t\t<profile ", prefix);
 		buffer += sprintf(buffer, "id=\"%d\" ", p->id);
-		buffer += sprintf(buffer, "name=\"%s\" ", p->description);
+		buffer += sprintf(buffer, "name=\"%s\" ",
+		                  rohc_get_profile_descr(p->id));
 		buffer += sprintf(buffer, "active=\"yes\" />\n");
 	}
 
@@ -2061,7 +2062,8 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	                  rohc_decomp_get_state_descr(c->state));
 	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,
 	                  rohc_get_mode_descr(c->mode));
-	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix, c->profile->description);
+	buffer += sprintf(buffer, "%s\t<profile>%s</profile>\n", prefix,
+	                  rohc_get_profile_descr(c->profile->id));
 
 	/* compression ratio */
 	buffer += sprintf(buffer, "%s\t<ratio>\n", prefix);
@@ -2663,7 +2665,7 @@ error:
  * reported.
  *
  * @param decomp   The ROHC decompressor
- * @param profile  The ID of the profile to enable
+ * @param profile  The profile to enable
  * @return         true if the profile exists,
  *                 false if the profile does not exist
  *
@@ -2684,9 +2686,9 @@ error:
  * @see rohc_decomp_disable_profiles
  */
 bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
-                                const unsigned int profile)
+                                const rohc_profile_t profile)
 {
-	int i;
+	size_t i;
 
 	if(decomp == NULL)
 	{
@@ -2713,7 +2715,7 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	/* mark the profile as enabled */
 	decomp->enabled_profiles[i] = true;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "ROHC decompression profile (ID = %u) enabled\n", profile);
+	          "ROHC decompression profile (ID = %d) enabled\n", profile);
 
 	return true;
 
@@ -2735,7 +2737,7 @@ error:
  * reported.
  *
  * @param decomp   The ROHC decompressor
- * @param profile  The ID of the profile to disable
+ * @param profile  The profile to disable
  * @return         true if the profile exists,
  *                 false if the profile does not exist
  *
@@ -2746,9 +2748,9 @@ error:
  * @see rohc_decomp_disable_profiles
  */
 bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
-                                 const unsigned int profile)
+                                 const rohc_profile_t profile)
 {
-	int i;
+	size_t i;
 
 	if(decomp == NULL)
 	{
@@ -2775,7 +2777,7 @@ bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
 	/* mark the profile as disabled */
 	decomp->enabled_profiles[i] = false;
 	rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	          "ROHC decompression profile (ID = %u) disabled\n", profile);
+	          "ROHC decompression profile (ID = %d) disabled\n", profile);
 
 	return true;
 
@@ -2788,7 +2790,7 @@ error:
  * @brief Enable several decompression profiles for a decompressor
  *
  * Enable several decompression profiles for a decompressor. The list of
- * profile IDs to enable shall stop with -1.
+ * profiles to enable shall stop with -1.
  *
  * The ROHC decompressor does not use the decompression profiles that are not
  * enabled. Thus not enabling a profile might cause the decompressor to reject
@@ -2798,7 +2800,7 @@ error:
  * and success is reported.
  *
  * @param decomp  The ROHC decompressor
- * @param ...     The sequence of IDs of the decompression profiles to enable,
+ * @param ...     The sequence of decompression profiles to enable, the
  *                sequence shall be terminated by -1
  * @return        true if all of the profiles exist,
  *                false if at least one of the profiles does not exist
@@ -2856,7 +2858,7 @@ error:
  * @brief Disable several decompression profiles for a decompressor
  *
  * Disable several decompression profiles for a decompressor. The list of
- * profile IDs to disable shall stop with -1.
+ * profiles to disable shall stop with -1.
  *
  * The ROHC decompressor does not use the decompression profiles that were
  * disabled. Thus disabling a profile might cause the decompressor to reject
@@ -2866,7 +2868,7 @@ error:
  * and success is reported.
  *
  * @param decomp  The ROHC decompressor
- * @param ...     The sequence of IDs of the decompression profiles to disable,
+ * @param ...     The sequence of decompression profiles to disable, the
  *                sequence shall be terminated by -1
  * @return        true if all of the profiles exist,
  *                false if at least one of the profiles does not exist
@@ -2975,9 +2977,9 @@ error:
  */
 static const struct d_profile *
 	find_profile(const struct rohc_decomp *const decomp,
-	             const unsigned int profile_id)
+	             const rohc_profile_t profile_id)
 {
-	unsigned int i;
+	size_t i;
 
 	assert(decomp != NULL);
 

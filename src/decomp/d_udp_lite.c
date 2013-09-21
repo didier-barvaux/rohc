@@ -727,7 +727,6 @@ static int udp_lite_build_uncomp_udp(const struct d_context *const context,
 struct d_profile d_udplite_profile =
 {
 	ROHC_PROFILE_UDPLITE,        /* profile ID (see 7 in RFC 4019) */
-	"UDP-Lite / Decompressor",   /* profile description */
 	.detect_packet_type = udp_lite_detect_packet_type,
 	d_udp_lite_decode,
 	d_udp_lite_create,

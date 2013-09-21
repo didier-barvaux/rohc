@@ -19,6 +19,7 @@ rohc_common_man = \
 rohc_common_mans = \
 	man/man3/rohc_version.3 \
 	man/man3/rohc_get_mode_descr.3 \
+	man/man3/rohc_get_profile_descr.3 \
 	man/man3/rohc_get_packet_descr.3 \
 	man/man3/rohc_get_ext_descr.3
 

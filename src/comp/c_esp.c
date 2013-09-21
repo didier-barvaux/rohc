@@ -688,7 +688,6 @@ struct c_profile c_esp_profile =
 {
 	ROHC_IPPROTO_ESP,    /* IP protocol */
 	ROHC_PROFILE_ESP,    /* profile ID (see 8 in RFC 3095) */
-	"ESP / Compressor",  /* profile description */
 	c_esp_create,        /* profile handlers */
 	c_generic_destroy,
 	c_esp_check_profile,
