@@ -293,7 +293,7 @@ bool ts_decode_unscaled_bits(struct ts_sc_decomp *const ts_sc,
 		         rohc_lsb_get_ref(ts_sc->lsb_ts_unscaled, ROHC_LSB_REF_0));
 		lsb_decode_ok = rohc_lsb_decode(ts_sc->lsb_ts_unscaled, ROHC_LSB_REF_0, 0,
 		                                ts_unscaled_bits, ts_unscaled_bits_nr,
-		                                decoded_ts);
+		                                ROHC_LSB_SHIFT_RTP_TS, decoded_ts);
 		if(!lsb_decode_ok)
 		{
 			rohc_error(ts_sc, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -384,7 +384,7 @@ bool ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
 	         rohc_lsb_get_ref(ts_sc->lsb_ts_scaled, ROHC_LSB_REF_0));
 	lsb_decode_ok = rohc_lsb_decode(ts_sc->lsb_ts_scaled, ROHC_LSB_REF_0, 0,
 	                                ts_scaled_bits, ts_scaled_bits_nr,
-	                                &ts_scaled_decoded);
+	                                ROHC_LSB_SHIFT_RTP_TS, &ts_scaled_decoded);
 	if(!lsb_decode_ok)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,

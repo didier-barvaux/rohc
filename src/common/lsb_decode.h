@@ -71,8 +71,9 @@ bool ROHC_EXPORT rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
                                  const uint32_t v_ref_d_offset,
                                  const uint32_t m,
                                  const size_t k,
+                                 const rohc_lsb_shift_t p,
                                  uint32_t *const decoded)
-	__attribute__((warn_unused_result, nonnull(1, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 7)));
 
 void ROHC_EXPORT rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
                                   const uint32_t v_ref_d,

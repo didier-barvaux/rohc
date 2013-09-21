@@ -8832,6 +8832,7 @@ static bool decode_values_from_bits(const struct rohc_decomp *const decomp,
 		/* decode SN from packet bits and context */
 		decode_ok = rohc_lsb_decode(g_context->sn_lsb_ctxt, bits.sn_ref_type,
 		                            bits.sn_ref_offset, bits.sn, bits.sn_nr,
+		                            lsb_get_p(g_context->sn_lsb_ctxt),
 		                            &decoded->sn);
 		if(!decode_ok)
 		{

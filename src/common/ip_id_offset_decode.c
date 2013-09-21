@@ -117,7 +117,7 @@ bool ip_id_offset_decode(const struct ip_id_offset_decode *const ipid,
 	bool is_success;
 
 	is_success = rohc_lsb_decode(ipid->lsb, ROHC_LSB_REF_0, 0, m, k,
-	                             &offset_decoded);
+	                             ROHC_LSB_SHIFT_IP_ID, &offset_decoded);
 	if(is_success)
 	{
 		/* add the decoded offset with SN, taking care of overflow */

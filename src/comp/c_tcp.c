@@ -1572,39 +1572,42 @@ static int c_tcp_encode(struct c_context *const context,
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP,
 			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number and "
-			             "p = 65535\n");
+			             "number of bits required for sequence number 0x%08x "
+			             "and p = 65535\n", rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number with p = 65535\n",
-		                tcp_context->tmp.nr_seq_bits_65535);
+		                "number 0x%08x with p = 65535\n",
+		                tcp_context->tmp.nr_seq_bits_65535,
+		                rohc_ntoh32(tcp->seq_number));
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb,
 		                       rohc_ntoh32(tcp->seq_number), 32767,
 		                       &tcp_context->tmp.nr_seq_bits_32767))
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP,
 			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number and "
-			             "p = 32767\n");
+			             "number of bits required for sequence number 0x%08x "
+			             "and p = 32767\n", rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number with p = 32767\n",
-		                tcp_context->tmp.nr_seq_bits_32767);
+		                "number 0x%08x with p = 32767\n",
+		                tcp_context->tmp.nr_seq_bits_32767,
+		                rohc_ntoh32(tcp->seq_number));
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb,
 		                       rohc_ntoh32(tcp->seq_number), 8191,
 		                       &tcp_context->tmp.nr_seq_bits_8191))
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP,
 			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number and "
-			             "p = 8191\n");
+			             "number of bits required for sequence number 0x%08x"
+			             "and p = 8191\n", rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number with p = 8191\n",
-		                tcp_context->tmp.nr_seq_bits_8191);
+		                "number 0x%08x with p = 8191\n",
+		                tcp_context->tmp.nr_seq_bits_8191,
+		                rohc_ntoh32(tcp->seq_number));
 	}
 	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn,
 	           rohc_ntoh32(tcp->seq_number));
@@ -4320,7 +4323,7 @@ static int co_baseheader(struct c_context *const context,
 						 "hi17_changed = %d, hi28_changed = %d, changed = %d\n",
 						 tcp_ack_number_hi16_changed, tcp_ack_number_hi17_changed,
 						 tcp_ack_number_hi28_changed, tcp_ack_number_changed);
-	rohc_comp_debug(context, "sequence number requires = %zu bits for p = "
+	rohc_comp_debug(context, "sequence number requires %zu bits for p = "
 	                "65535, %zu bits for p = 32767, %zu bits for p = 8191\n",
 	                tcp_context->tmp.nr_seq_bits_65535,
 	                tcp_context->tmp.nr_seq_bits_32767,
@@ -4599,15 +4602,15 @@ static int co_baseheader(struct c_context *const context,
 
 		if(tcp->data_offset > 5)
 		{
-			if(tcp_window_changed)
+			if(!tcp_window_changed && tcp_context->tmp.nr_seq_bits_65535 <= 16)
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
+				*packet_type = ROHC_PACKET_TCP_RND_8;
 			}
 			else
 			{
 				TRACE_GOTO_CHOICE;
-				*packet_type = ROHC_PACKET_TCP_RND_8;
+				*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
 		else /* no TCP option */
@@ -5420,6 +5423,8 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 	/* sequence number */
 	seq_number = rohc_ntoh32(tcp->seq_number) & 0xffff;
 	rnd8->seq_number = rohc_hton16(seq_number);
+	rohc_comp_debug(context, "16 bits of sequence number = 0x%04x\n",
+	                seq_number);
 
 	/* ACK number */
 	rnd8->ack_number = rohc_hton16(c_lsb(context, 16, 65535, tcp_context->ack_number,

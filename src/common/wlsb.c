@@ -339,14 +339,14 @@ bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
 	if(min == max)
 	{
 		/* find the minimal number of bits for the lower/upper limit of the interval */
-		*bits_nr = rohc_g_32bits(min, value, wlsb->p, wlsb->bits);
+		*bits_nr = rohc_g_32bits(min, value, p, wlsb->bits);
 	}
 	else
 	{
 		/* find the minimal number of bits for the lower limit of the interval */
-		const size_t k1 = rohc_g_32bits(min, value, wlsb->p, wlsb->bits);
+		const size_t k1 = rohc_g_32bits(min, value, p, wlsb->bits);
 		/* find the minimal number of bits for the upper limit of the interval */
-		const size_t k2 = rohc_g_32bits(max, value, wlsb->p, wlsb->bits);
+		const size_t k2 = rohc_g_32bits(max, value, p, wlsb->bits);
 		/* keep the greatest one */
 		*bits_nr = (k1 > k2) ? k1 : k2;
 	}

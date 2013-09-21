@@ -269,7 +269,7 @@ static bool run_test16_with_shift_param(bool be_verbose,
 			trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
 			      value16_encoded);
 			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value16_encoded,
-			                                required_bits, &decoded32);
+			                                required_bits, p, &decoded32);
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
@@ -424,7 +424,7 @@ static bool run_test32_with_shift_param(bool be_verbose,
 			trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
 			      value32_encoded);
 			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value32_encoded,
-			                                required_bits, &value32_decoded);
+			                                required_bits, p, &value32_decoded);
 			if(!lsb_decode_ok)
 			{
 				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);

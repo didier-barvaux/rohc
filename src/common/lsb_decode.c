@@ -57,16 +57,18 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
                               const uint32_t v_ref_d_offset,
                               const uint32_t m,
                               const size_t k,
+                              const rohc_lsb_shift_t p,
                               uint32_t *const decoded)
-	__attribute__((nonnull(1, 6), warn_unused_result));
+	__attribute__((nonnull(1, 7), warn_unused_result));
 
 static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
                               const rohc_lsb_ref_t ref_type,
                               const uint16_t v_ref_d_offset,
                               const uint16_t m,
                               const size_t k,
+                              const rohc_lsb_shift_t p,
                               uint16_t *const decoded)
-	__attribute__((nonnull(1, 6), warn_unused_result));
+	__attribute__((nonnull(1, 7), warn_unused_result));
 
 
 /*
@@ -141,6 +143,8 @@ rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
  *                        (used for context repair upon CRC failure)
  * @param m               The LSB value to decode
  * @param k               The length of the LSB value to decode
+ * @param p               The shift value p used to efficiently encode/decode
+ *                        the values
  * @param decoded         OUT: The decoded value
  * @return                true in case of success, false otherwise
  */
@@ -149,6 +153,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
                      const uint32_t v_ref_d_offset,
                      const uint32_t m,
                      const size_t k,
+                     const rohc_lsb_shift_t p,
                      uint32_t *const decoded)
 {
 	bool is_success;
@@ -165,7 +170,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 		assert(lsb->max_len == 16);
 		assert(k <= 16);
 
-		is_success = rohc_lsb_decode16(lsb, ref_type, v_ref_d_offset, m, k,
+		is_success = rohc_lsb_decode16(lsb, ref_type, v_ref_d_offset, m, k, p,
 		                               &decoded16);
 		if(is_success)
 		{
@@ -177,7 +182,7 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
 		assert(lsb->max_len == 32);
 		assert(k <= 32);
 
-		is_success = rohc_lsb_decode32(lsb, ref_type, v_ref_d_offset, m, k,
+		is_success = rohc_lsb_decode32(lsb, ref_type, v_ref_d_offset, m, k, p,
 		                               decoded);
 	}
 
@@ -197,6 +202,8 @@ bool rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,
  *                        (used for context repair upon CRC failure)
  * @param m               The LSB value to decode
  * @param k               The length of the LSB value to decode
+ * @param p               The shift value p used to efficiently encode/decode
+ *                        the values
  * @param decoded         OUT: The decoded value
  * @return                true in case of success, false otherwise
  */
@@ -205,6 +212,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
                               const uint32_t v_ref_d_offset,
                               const uint32_t m,
                               const size_t k,
+                              const rohc_lsb_shift_t p,
                               uint32_t *const decoded)
 {
 	struct rohc_interval32 interval;
@@ -224,7 +232,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 	assert((m & mask) == m);
 
 	/* determine the interval in which the decoded value should be present */
-	interval = rohc_f_32bits(lsb->v_ref_d[ref_type] + v_ref_d_offset, k, lsb->p);
+	interval = rohc_f_32bits(lsb->v_ref_d[ref_type] + v_ref_d_offset, k, p);
 
 	/* search the value that matches the k lower bits of the value m to decode */
 	if(interval.min <= interval.max)
@@ -284,6 +292,8 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
  *                        (used for context repair upon CRC failure)
  * @param m               The LSB value to decode
  * @param k               The length of the LSB value to decode
+ * @param p               The shift value p used to efficiently encode/decode
+ *                        the values
  * @param decoded         OUT: The decoded value
  * @return                true in case of success, false otherwise
  */
@@ -292,6 +302,7 @@ static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
                               const uint16_t v_ref_d_offset,
                               const uint16_t m,
                               const size_t k,
+                              const rohc_lsb_shift_t p,
                               uint16_t *const decoded)
 {
 	uint32_t m32;
@@ -300,7 +311,7 @@ static bool rohc_lsb_decode16(const struct rohc_lsb_decode *const lsb,
 
 	m32 = ((uint32_t) m) & 0xffff;
 
-	is_success = rohc_lsb_decode32(lsb, ref_type, v_ref_d_offset, m32, k,
+	is_success = rohc_lsb_decode32(lsb, ref_type, v_ref_d_offset, m32, k, p,
 	                               &decoded32);
 	if(is_success)
 	{
