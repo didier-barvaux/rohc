@@ -159,6 +159,14 @@ static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1
                             struct rohc_comp *comp2, struct rohc_decomp *decomp2);
 static bool show_rohc_comp_stats(const struct rohc_comp *const comp)
 	__attribute__((nonnull(1), warn_unused_result));
+static void show_rohc_comp_profile(const struct rohc_comp *const comp,
+                                   const rohc_profile_t profile)
+	__attribute__((nonnull(1)));
+static bool show_rohc_decomp_stats(const struct rohc_decomp *const decomp)
+	__attribute__((nonnull(1), warn_unused_result));
+static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
+                                     const rohc_profile_t profile)
+	__attribute__((nonnull(1)));
 
 static int compare_packets(unsigned char *pkt1, int pkt1_size,
                            unsigned char *pkt2, int pkt2_size);
@@ -412,12 +420,6 @@ static void usage(void)
 static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1,
                             struct rohc_comp *comp2, struct rohc_decomp *decomp2)
 {
-	char buffer[80000];
-	int len;
-	unsigned int indent = 2;
-
-	buffer[0] = '\0';
-
 	/* print compressor statistics */
 	if(!show_rohc_comp_stats(comp1))
 	{
@@ -430,22 +432,17 @@ static void show_rohc_stats(struct rohc_comp *comp1, struct rohc_decomp *decomp1
 		goto error;
 	}
 
-	/* compute decompressor statistics */
-	len = rohc_d_statistics(decomp1, indent, buffer);
-	if(len < 0)
+	/* print decompressor statistics */
+	if(!show_rohc_decomp_stats(decomp1))
 	{
-		fprintf(stderr, "failed to compute statistics for decompressor 1\n");
+		fprintf(stderr, "failed to print statistics for decompressor 1\n");
 		goto error;
 	}
-	len = rohc_d_statistics(decomp2, indent, buffer);
-	if(len < 0)
+	if(!show_rohc_decomp_stats(decomp2))
 	{
-		fprintf(stderr, "failed to compute statistics for decompressor 2\n");
+		fprintf(stderr, "failed to print statistics for decompressor 1\n");
 		goto error;
 	}
-
-	/* print statistics */
-	printf("%s", buffer);
 
 error:
 	return;
@@ -476,11 +473,51 @@ static bool show_rohc_comp_stats(const struct rohc_comp *const comp)
 		fprintf(stderr, "failed to get general information for compressor\n");
 		goto error;
 	}
-	printf("\t\t<instance>\n");
+	printf("\t\t<instance type=\"compressor\">\n");
 	printf("\t\t\t<creator>%s</creator>\n", PACKAGE_NAME " (" PACKAGE_URL ")");
 	printf("\t\t\t<version>%s</version>\n", rohc_version());
-	printf("\t\t\t<flows>%zd</flows>\n", general_info.contexts_nr);
-	printf("\t\t\t<packets>%lu</packets>\n", general_info.packets_nr);
+
+	/* configuration */
+	printf("\t\t\t<configuration>\n");
+	if(!rohc_comp_get_cid_type(comp, &cid_type))
+	{
+		fprintf(stderr, "failed to get CID type for compressor\n");
+		goto error;
+	}
+	printf("\t\t\t\t<cid_type>%s</cid_type>\n",
+	       cid_type == ROHC_LARGE_CID ? "large" : "small");
+	if(!rohc_comp_get_max_cid(comp, &max_cid))
+	{
+		fprintf(stderr, "failed to get MAX_CID for compressor\n");
+		goto error;
+	}
+	printf("\t\t\t\t<max_cid>%zd</max_cid>\n", max_cid);
+//! [get compressor MRRU]
+	/* retrieve current compressor MRRU */
+	if(!rohc_comp_get_mrru(comp, &mrru))
+	{
+		fprintf(stderr, "failed to get MRRU for compressor\n");
+		goto error;
+	}
+//! [get compressor MRRU]
+	printf("\t\t\t\t<mrru>%zd</mrru>\n", mrru);
+	printf("\t\t\t</configuration>\n");
+
+	/* profiles */
+	printf("\t\t\t<profiles>\n");
+	show_rohc_comp_profile(comp, ROHC_PROFILE_UNCOMPRESSED);
+	show_rohc_comp_profile(comp, ROHC_PROFILE_RTP);
+	show_rohc_comp_profile(comp, ROHC_PROFILE_UDP);
+	show_rohc_comp_profile(comp, ROHC_PROFILE_ESP);
+	show_rohc_comp_profile(comp, ROHC_PROFILE_IP);
+	show_rohc_comp_profile(comp, ROHC_PROFILE_TCP);
+	show_rohc_comp_profile(comp, ROHC_PROFILE_UDPLITE);
+	printf("\t\t\t</profiles>\n");
+
+	/* statistics */
+	printf("\t\t\t<statistics>\n");
+	printf("\t\t\t\t<flows>%zd</flows>\n", general_info.contexts_nr);
+	printf("\t\t\t\t<packets>%lu</packets>\n", general_info.packets_nr);
 	if(general_info.uncomp_bytes_nr != 0)
 	{
 		percent = (100 * general_info.comp_bytes_nr) /
@@ -490,34 +527,8 @@ static bool show_rohc_comp_stats(const struct rohc_comp *const comp)
 	{
 		percent = 0;
 	}
-	printf("\t\t\t<compression_ratio>%lu%%</compression_ratio>\n", percent);
-
-	/* MAX_CID */
-	if(!rohc_comp_get_max_cid(comp, &max_cid))
-	{
-		fprintf(stderr, "failed to get MAX_CID for compressor\n");
-		goto error;
-	}
-	printf("\t\t\t<max_cid>%zd</max_cid>\n", max_cid);
-
-//! [get compressor MRRU]
-	/* retrieve current compressor MRRU */
-	if(!rohc_comp_get_mrru(comp, &mrru))
-	{
-		fprintf(stderr, "failed to get MRRU for compressor\n");
-		goto error;
-	}
-//! [get compressor MRRU]
-	printf("\t\t\t<mrru>%zd</mrru>\n", mrru);
-
-	/* CID type */
-	if(!rohc_comp_get_cid_type(comp, &cid_type))
-	{
-		fprintf(stderr, "failed to get CID type for compressor\n");
-		goto error;
-	}
-	printf("\t\t\t<large_cid>%s</large_cid>\n",
-	       cid_type == ROHC_LARGE_CID ? "yes" : "no");
+	printf("\t\t\t\t<compression_ratio>%lu%%</compression_ratio>\n", percent);
+	printf("\t\t\t</statistics>\n");
 
 	printf("\t\t</instance>\n");
 
@@ -525,6 +536,128 @@ static bool show_rohc_comp_stats(const struct rohc_comp *const comp)
 
 error:
 	return false;
+}
+
+
+/**
+ * @brief Print details about a compression profile
+ *
+ * @param comp     The compressor to print statistics for
+ * @param profile  The compression profile to print details for
+ */
+static void show_rohc_comp_profile(const struct rohc_comp *const comp,
+                                   const rohc_profile_t profile)
+{
+	printf("\t\t\t\t<profile id=\"%d\" name=\"%s\" active=\"%s\" />\n",
+	       profile, rohc_get_profile_descr(profile),
+	       rohc_comp_profile_enabled(comp, profile) ? "yes" : "no");
+}
+
+
+/**
+ * @brief Print statistics about the given decompressor
+ *
+ * @param decomp  The decompressor to print statistics for
+ * @return        true if statistics were printed, false if a problem occurred
+ */
+static bool show_rohc_decomp_stats(const struct rohc_decomp *const decomp)
+{
+	rohc_decomp_general_info_t general_info;
+	unsigned long percent;
+	size_t max_cid;
+	size_t mrru;
+	rohc_cid_type_t cid_type;
+
+	assert(decomp != NULL);
+
+	/* general information */
+	general_info.version_major = 0;
+	general_info.version_minor = 0;
+	if(!rohc_decomp_get_general_info(decomp, &general_info))
+	{
+		fprintf(stderr, "failed to get general information for decompressor\n");
+		goto error;
+	}
+
+	printf("\t\t<instance type=\"decompressor\">\n");
+	printf("\t\t\t<creator>%s</creator>\n", PACKAGE_NAME " (" PACKAGE_URL ")");
+	printf("\t\t\t<version>%s</version>\n", rohc_version());
+
+	/* configuration */
+	printf("\t\t\t<configuration>\n");
+	if(!rohc_decomp_get_cid_type(decomp, &cid_type))
+	{
+		fprintf(stderr, "failed to get CID type for decompressor\n");
+		goto error;
+	}
+	printf("\t\t\t\t<cid_type>%s</cid_type>\n",
+	       cid_type == ROHC_LARGE_CID ? "large" : "small");
+	if(!rohc_decomp_get_max_cid(decomp, &max_cid))
+	{
+		fprintf(stderr, "failed to get MAX_CID for decompressor\n");
+		goto error;
+	}
+	printf("\t\t\t\t<max_cid>%zd</max_cid>\n", max_cid);
+//! [get decompressor MRRU]
+	/* retrieve current decompressor MRRU */
+	if(!rohc_decomp_get_mrru(decomp, &mrru))
+	{
+		fprintf(stderr, "failed to get MRRU for decompressor\n");
+		goto error;
+	}
+//! [get decompressor MRRU]
+	printf("\t\t\t\t<mrru>%zd</mrru>\n", mrru);
+	printf("\t\t\t</configuration>\n");
+
+	/* profiles */
+	printf("\t\t\t<profiles>\n");
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_UNCOMPRESSED);
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_RTP);
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_UDP);
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_ESP);
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_IP);
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_TCP);
+	show_rohc_decomp_profile(decomp, ROHC_PROFILE_UDPLITE);
+	printf("\t\t\t</profiles>\n");
+
+	/* statistics */
+	printf("\t\t\t<statistics>\n");
+	printf("\t\t\t\t<flows>%zd</flows>\n", general_info.contexts_nr);
+	printf("\t\t\t\t<packets>%lu</packets>\n", general_info.packets_nr);
+	if(general_info.comp_bytes_nr != 0)
+	{
+		percent = (100 * general_info.uncomp_bytes_nr) /
+		          general_info.comp_bytes_nr;
+	}
+	else
+	{
+		percent = 0;
+	}
+	printf("\t\t\t\t<decompression_ratio>%lu%%</decompression_ratio>\n",
+	       percent);
+	printf("\t\t\t</statistics>\n");
+
+	printf("\t\t</instance>\n");
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Print details about a decompression profile
+ *
+ * @param decomp   The decompressor to print statistics for
+ * @param profile  The decompression profile to print details for
+ */
+static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
+                                     const rohc_profile_t profile)
+{
+	printf("\t\t\t\t<profile id=\"%d\" name=\"%s\" active=\"%s\" />\n",
+	       profile, rohc_get_profile_descr(profile),
+	       rohc_decomp_profile_enabled(decomp, profile) ? "yes" : "no");
 }
 
 

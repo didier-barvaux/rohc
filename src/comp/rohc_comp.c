@@ -1538,6 +1538,60 @@ bool rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
 }
 
 
+/**
+ * @brief Is the given compression profile enabled for a compressor?
+ *
+ * Is the given compression profile enabled or disabled for a compressor?
+ *
+ * @param comp     The ROHC compressor
+ * @param profile  The profile to ask status for
+ * @return         Possible return values:
+ *                  \li true if the profile exists and is enabled,
+ *                  \li false if the compressor is not valid, the profile
+ *                      does not exist, or the profile is disabled
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_disable_profile
+ * @see rohc_comp_disable_profiles
+ */
+bool rohc_comp_profile_enabled(const struct rohc_comp *const comp,
+                               const rohc_profile_t profile)
+{
+	size_t i;
+
+	if(comp == NULL)
+	{
+		goto error;
+	}
+
+	/* search the profile location */
+	for(i = 0; i < C_NUM_PROFILES; i++)
+	{
+		if(c_profiles[i]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(i == C_NUM_PROFILES)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unknown ROHC compression profile (ID = %d)\n", profile);
+		goto error;
+	}
+
+	/* return profile status */
+	return comp->enabled_profiles[i];
+
+error:
+	return false;
+}
+
+
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**

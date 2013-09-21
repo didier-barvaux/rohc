@@ -71,6 +71,7 @@ EXPORT_SYMBOL_GPL(rohc_comp_get_general_info);
 EXPORT_SYMBOL_GPL(rohc_comp_get_last_packet_info2);
 
 /* configuration */
+EXPORT_SYMBOL_GPL(rohc_comp_profile_enabled);
 EXPORT_SYMBOL_GPL(rohc_comp_enable_profile);
 EXPORT_SYMBOL_GPL(rohc_comp_disable_profile);
 EXPORT_SYMBOL_GPL(rohc_comp_enable_profiles);
@@ -102,9 +103,15 @@ EXPORT_SYMBOL_GPL(rohc_decompress2);
 
 /* statistics */
 EXPORT_SYMBOL_GPL(rohc_decomp_get_state_descr);
+EXPORT_SYMBOL_GPL(rohc_decomp_get_general_info);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_last_packet_info);
 
 /* configuration */
+EXPORT_SYMBOL_GPL(rohc_decomp_profile_enabled);
+EXPORT_SYMBOL_GPL(rohc_decomp_enable_profile);
+EXPORT_SYMBOL_GPL(rohc_decomp_disable_profile);
+EXPORT_SYMBOL_GPL(rohc_decomp_enable_profiles);
+EXPORT_SYMBOL_GPL(rohc_decomp_disable_profiles);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_cid_type);
 EXPORT_SYMBOL_GPL(rohc_decomp_get_max_cid);
 EXPORT_SYMBOL_GPL(rohc_decomp_set_mrru);

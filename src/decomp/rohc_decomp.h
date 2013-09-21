@@ -177,6 +177,56 @@ typedef struct
 
 
 /**
+ * @brief Some general information about the decompressor
+ *
+ * The structure is used by the \ref rohc_decomp_get_general_info function
+ * to store some general information about the decompressor.
+ *
+ * Versioning works as follow:
+ *  - The \e version_major field defines the compatibility level. If the major
+ *    number given by user does not match the one expected by the library,
+ *    an error is returned.
+ *  - The \e version_minor field defines the extension level. If the minor
+ *    number given by user does not match the one expected by the library,
+ *    only the fields supported in that minor version will be filled by
+ *    \ref rohc_decomp_get_general_info.
+ *
+ * Notes for developers:
+ *  - Increase the major version if a field is removed.
+ *  - Increase the major version if a field is added at the beginning or in
+ *    the middle of the structure.
+ *  - Increase the minor version if a field is added at the very end of the
+ *    structure.
+ *  - The version_major and version_minor fields must be located at the very
+ *    beginning of the structure.
+ *  - The structure must be packed.
+ *
+ * Supported versions:
+ *  - major 0 and minor = 0 contains: version_major, version_minor,
+ *    contexts_nr, packets_nr, comp_bytes_nr, and uncomp_bytes_nr.
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_get_general_info
+ */
+typedef struct
+{
+	/** The major version of this structure */
+	unsigned short version_major;
+	/** The minor version of this structure */
+	unsigned short version_minor;
+	/** The number of contexts used by the decompressor */
+	size_t contexts_nr;
+	/** The number of packets processed by the decompressor */
+	unsigned long packets_nr;
+	/** The number of compressed bytes received by the decompressor */
+	unsigned long comp_bytes_nr;
+	/** The number of uncompressed bytes produced by the decompressor */
+	unsigned long uncomp_bytes_nr;
+} __attribute__((packed)) rohc_decomp_general_info_t;
+
+
+/**
  * @brief The different features of the ROHC decompressor
  *
  * Features for the ROHC decompressor control whether mechanisms defined as
@@ -253,16 +303,23 @@ int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
  * Functions related to statistics:
  */
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_d_statistics(struct rohc_decomp *decomp,
                                   unsigned int indent,
-                                  char *buffer);
+                                  char *buffer)
+	ROHC_DEPRECATED("please do not use this function anymore, use "
+	                "rohc_decomp_get_general_info() and "
+	                "rohc_decomp_get_last_packet_info() instead");
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp)
 	ROHC_DEPRECATED("please do not use this function anymore");
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state);
+
+bool rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
+                                  rohc_decomp_general_info_t *const info)
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 																  rohc_decomp_last_packet_info_t *const info)
@@ -313,6 +370,10 @@ bool ROHC_EXPORT rohc_decomp_set_features(struct rohc_decomp *const decomp,
 /*
  * Functions related to decompression profiles
  */
+
+bool ROHC_EXPORT rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
+                                             const rohc_profile_t profile)
+	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
                                             const rohc_profile_t profile)

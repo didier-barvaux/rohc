@@ -186,10 +186,12 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 /* statistics-related functions */
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	__attribute__((nonnull(1)));
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 static int rohc_d_context(struct rohc_decomp *decomp,
                           const size_t pos,
                           unsigned int indent,
                           char *buffer);
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 
@@ -321,6 +323,11 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 		goto destroy_window_hc;
 	}
 
+	/* decompressor got one more context (for a short moment, decompressor
+	 * might have MAX_CID + 2 contexts) */
+	assert(decomp->num_contexts_used <= decomp->medium.max_cid);
+	decomp->num_contexts_used++;
+
 	return context;
 
 destroy_window_hc:
@@ -366,6 +373,10 @@ static void context_free(struct d_context *const context)
 	c_destroy_wlsb(context->total_16_compressed);
 	c_destroy_wlsb(context->header_16_uncompressed);
 	c_destroy_wlsb(context->header_16_compressed);
+
+	/* decompressor got one more context */
+	assert(context->decompressor->num_contexts_used > 0);
+	context->decompressor->num_contexts_used--;
 
 	/* destroy the context itself */
 	free(context);
@@ -439,6 +450,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 
 	/* initialize the array of decompression contexts to its minimal value */
 	decomp->contexts = NULL;
+	decomp->num_contexts_used = 0;
 	is_fine = rohc_decomp_create_contexts(decomp, decomp->medium.max_cid);
 	if(!is_fine)
 	{
@@ -539,6 +551,7 @@ void rohc_free_decompressor(struct rohc_decomp *decomp)
 		}
 	}
 	zfree(decomp->contexts);
+	assert(decomp->num_contexts_used == 0);
 
 	/* destroy the decompressor itself */
 	free(decomp);
@@ -720,6 +733,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
 
 	/* initialize the array of decompression contexts to its minimal value */
 	decomp->contexts = NULL;
+	decomp->num_contexts_used = 0;
 	is_fine = rohc_decomp_create_contexts(decomp, decomp->medium.max_cid);
 	if(!is_fine)
 	{
@@ -834,6 +848,7 @@ void rohc_decomp_free(struct rohc_decomp *decomp)
 		}
 	}
 	zfree(decomp->contexts);
+	assert(decomp->num_contexts_used == 0);
 
 	/* destroy the decompressor itself */
 	free(decomp);
@@ -996,7 +1011,7 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 
 	decomp->stats.received++;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "decompress the %zu-byte packet #%u\n",
+	           "decompress the %zu-byte packet #%lu\n",
 	           rohc_packet_len, decomp->stats.received);
 
 #if ROHC_EXTRA_DEBUG == 1
@@ -1034,6 +1049,8 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 		ddata.active->packet_type = packet_type;
 		ddata.active->total_uncompressed_size += *uncomp_packet_len;
 		ddata.active->total_compressed_size += rohc_packet_len;
+		decomp->stats.total_uncompressed_size += *uncomp_packet_len;
+		decomp->stats.total_compressed_size += rohc_packet_len;
 		c_add_wlsb(ddata.active->total_16_uncompressed, 0, *uncomp_packet_len);
 		c_add_wlsb(ddata.active->total_16_compressed, 0, rohc_packet_len);
 	}
@@ -1939,12 +1956,20 @@ static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	decomp->stats.failed_no_context = 0;
 	decomp->stats.failed_decomp = 0;
 	decomp->stats.feedbacks = 0;
+	decomp->stats.total_compressed_size = 0;
+	decomp->stats.total_uncompressed_size = 0;
 }
 
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Output the decompression statistics of one decompressor to a buffer.
  * The buffer must be large enough to store all the statistics.
+ *
+ * @deprecated please do not use this function anymore, use
+ *             rohc_decomp_get_general_info() and
+ *             rohc_decomp_get_last_packet_info() instead
  *
  * @param decomp The ROHC decompressor
  * @param indent The level of indentation to add during output
@@ -2145,6 +2170,8 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	return buffer - save;
 }
 
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
 
 /**
  * @brief Give a description for the given ROHC decompression context state
@@ -2261,6 +2288,75 @@ bool rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,
 		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "unsupported major version (%u) of the structure for last "
 		           "packet information", info->version_major);
+		goto error;
+	}
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Get some general information about the decompressor
+ *
+ * Get some general information about the decompressor.
+ *
+ * To use the function, call it with a pointer on a pre-allocated
+ * \ref rohc_decomp_general_info_t structure with the \e version_major and
+ * \e version_minor fields set to one of the following supported versions:
+ *  - Major 0, minor 0
+ *
+ * See the \ref rohc_decomp_general_info_t structure for details about fields
+ * that are supported in the above versions.
+ *
+ * @param decomp        The ROHC decompressor to get information from
+ * @param[in,out] info  The structure where information will be stored
+ * @return              true in case of success, false otherwise
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_general_info_t
+ */
+bool rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
+                                  rohc_decomp_general_info_t *const info)
+{
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	if(info == NULL)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "structure for general information is not valid\n");
+		goto error;
+	}
+
+	/* check compatibility version */
+	if(info->version_major == 0)
+	{
+		/* base fields for major version 0 */
+		info->contexts_nr = decomp->num_contexts_used;
+		info->packets_nr = decomp->stats.received;
+		info->comp_bytes_nr = decomp->stats.total_compressed_size;
+		info->uncomp_bytes_nr = decomp->stats.total_uncompressed_size;
+
+		/* new fields added by minor versions */
+		if(info->version_minor > 0)
+		{
+			rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "unsupported minor version (%u) of the structure for "
+			           "general information", info->version_minor);
+			goto error;
+		}
+	}
+	else
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "unsupported major version (%u) of the structure for "
+		           "general information", info->version_major);
 		goto error;
 	}
 
@@ -2646,6 +2742,60 @@ bool rohc_decomp_set_features(struct rohc_decomp *const decomp,
 	decomp->features = features;
 
 	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Is the given decompression profile enabled for a decompressor?
+ *
+ * Is the given decompression profile enabled or disabled for a decompressor?
+ *
+ * @param decomp   The ROHC decompressor
+ * @param profile  The profile to ask status for
+ * @return         Possible return values:
+ *                  \li true if the profile exists and is enabled,
+ *                  \li false if the decompressor is not valid, the profile
+ *                      does not exist, or the profile is disabled
+ *
+ * @ingroup rohc_decomp
+ *
+ * @see rohc_decomp_enable_profile
+ * @see rohc_decomp_enable_profiles
+ * @see rohc_decomp_disable_profile
+ * @see rohc_decomp_disable_profiles
+ */
+bool rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
+                                 const rohc_profile_t profile)
+{
+	size_t i;
+
+	if(decomp == NULL)
+	{
+		goto error;
+	}
+
+	/* search the profile location */
+	for(i = 0; i < D_NUM_PROFILES; i++)
+	{
+		if(d_profiles[i]->id == profile)
+		{
+			/* found */
+			break;
+		}
+	}
+
+	if(i == D_NUM_PROFILES)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unknown ROHC decompression profile (ID = %d)\n", profile);
+		goto error;
+	}
+
+	/* return profile status */
+	return decomp->enabled_profiles[i];
 
 error:
 	return false;
@@ -3252,9 +3402,23 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 	/* move as many existing contexts as possible if needed */
 	if(decomp->contexts != NULL)
 	{
+		size_t i;
+
+		/* move existing contexts in range [0, new MAX_CID] */
 		memcpy(new_contexts, decomp->contexts,
 		       (rohc_min(decomp->medium.max_cid, max_cid) + 1) *
 		       sizeof(struct d_context *));
+
+		/* free existing contexts in range ]new MAX_CID, old MAX_CID] */
+		for(i = max_cid + 1; i <= decomp->medium.max_cid; i++)
+		{
+			if(decomp->contexts[i] != NULL)
+			{
+				context_free(decomp->contexts[i]);
+			}
+		}
+		assert(decomp->num_contexts_used <= (max_cid + 1));
+
 		zfree(decomp->contexts);
 	}
 	decomp->contexts = new_contexts;

@@ -57,15 +57,20 @@
 struct d_statistics
 {
 	/* The number of received packets */
-	unsigned int received;
+	unsigned long received;
 	/* The number of bad decompressions due to wrong CRC */
-	unsigned int failed_crc;
+	unsigned long failed_crc;
 	/* The number of bad decompressions due to being in the No Context state */
-	unsigned int failed_no_context;
+	unsigned long failed_no_context;
 	/* The number of bad decompressions */
-	unsigned int failed_decomp;
+	unsigned long failed_decomp;
 	/* The number of feedback packets sent to the associated compressor */
-	unsigned int feedbacks;
+	unsigned long feedbacks;
+
+	/** The cumulative size of the compressed packets */
+	unsigned long total_compressed_size;
+	/** The cumulative size of the uncompressed packets */
+	unsigned long total_uncompressed_size;
 };
 
 
@@ -88,6 +93,8 @@ struct rohc_decomp
 
 	/** The array of decompression contexts that use the decompressor */
 	struct d_context **contexts;
+	/** The number of decompression contexts in use */
+	size_t num_contexts_used;
 	/** The last decompression context used by the decompressor */
 	struct d_context *last_context;
 

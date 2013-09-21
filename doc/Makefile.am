@@ -30,6 +30,7 @@ rohc_comp_mans = \
 	man/man3/rohc_comp_free.3 \
 	man/man3/rohc_compress3.3 \
 	man/man3/rohc_comp_get_segment.3 \
+	man/man3/rohc_comp_profile_enabled.3 \
 	man/man3/rohc_comp_enable_profile.3 \
 	man/man3/rohc_comp_enable_profiles.3 \
 	man/man3/rohc_comp_disable_profile.3 \
@@ -61,6 +62,7 @@ rohc_decomp_mans = \
 	man/man3/rohc_decomp_new.3 \
 	man/man3/rohc_decomp_free.3 \
 	man/man3/rohc_decompress2.3 \
+	man/man3/rohc_decomp_profile_enabled.3 \
 	man/man3/rohc_decomp_enable_profile.3 \
 	man/man3/rohc_decomp_enable_profiles.3 \
 	man/man3/rohc_decomp_disable_profile.3 \
@@ -72,8 +74,8 @@ rohc_decomp_mans = \
 	man/man3/rohc_decomp_set_mrru.3 \
 	man/man3/rohc_decomp_get_mrru.3 \
 	man/man3/rohc_decomp_get_state_descr.3 \
-	man/man3/rohc_decomp_get_last_packet_info.3 \
-	man/man3/rohc_d_statistics.3
+	man/man3/rohc_decomp_get_general_info.3 \
+	man/man3/rohc_decomp_get_last_packet_info.3
 
 if BUILD_DOC_MAN
 man_MANS = \

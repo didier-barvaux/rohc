@@ -404,6 +404,10 @@ int ROHC_EXPORT rohc_c_using_small_cid(struct rohc_comp *comp)
 	                "use rohc_comp_get_cid_type() instead");
 #endif
 
+bool ROHC_EXPORT rohc_comp_profile_enabled(const struct rohc_comp *const comp,
+                                           const rohc_profile_t profile)
+	__attribute__((warn_unused_result));
+
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT rohc_activate_profile(struct rohc_comp *comp, int profile)
 	ROHC_DEPRECATED("please do not use this function anymore, "

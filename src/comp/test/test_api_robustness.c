@@ -111,6 +111,17 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_set_random_cb(comp, fct, NULL) == false);
 	}
 
+	/* rohc_comp_profile_enabled() */
+	CHECK(rohc_comp_profile_enabled(NULL, ROHC_PROFILE_IP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_GENERAL) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UNCOMPRESSED) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_RTP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_ESP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_IP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_TCP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDPLITE) == false);
+
 	/* rohc_comp_enable_profile() */
 	CHECK(rohc_comp_enable_profile(NULL, ROHC_PROFILE_IP) == false);
 	CHECK(rohc_comp_enable_profile(comp, ROHC_PROFILE_GENERAL) == false);
@@ -134,6 +145,15 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_disable_profiles(comp, ROHC_PROFILE_UDP, -1) == true);
 	CHECK(rohc_comp_disable_profiles(comp, ROHC_PROFILE_UDP,
 	                                 ROHC_PROFILE_RTP, -1) == true);
+
+	/* rohc_comp_profile_enabled() */
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UNCOMPRESSED) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_RTP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_ESP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_IP) == true);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_TCP) == false);
+	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDPLITE) == false);
 
 	/* rohc_comp_get_segment() */
 	{
