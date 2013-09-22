@@ -4856,15 +4856,15 @@ static int co_baseheader(struct c_context *const context,
 		{
 			if(tcp_rsf_flag_changed)
 			{
-				if(tcp_window_changed)
+				if(!tcp_window_changed && tcp_context->tmp.nr_seq_bits_65535 <= 16)
 				{
 					TRACE_GOTO_CHOICE;
-					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
+					*packet_type = ROHC_PACKET_TCP_RND_8;
 				}
 				else
 				{
 					TRACE_GOTO_CHOICE;
-					*packet_type = ROHC_PACKET_TCP_RND_8;
+					*packet_type = ROHC_PACKET_TCP_CO_COMMON;
 				}
 			}
 			else if((rohc_ntoh32(tcp->seq_number) & 0xFFFF) !=
