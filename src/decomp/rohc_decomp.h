@@ -279,7 +279,7 @@ int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
 #endif
 
 int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *decomp,
-                                 const struct timespec arrival_time,
+                                 const struct rohc_timestamp arrival_time,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_packet_len,
                                  unsigned char *const uncomp_packet,
@@ -317,8 +317,8 @@ void ROHC_EXPORT clear_statistics(struct rohc_decomp *decomp)
 
 const char * ROHC_EXPORT rohc_decomp_get_state_descr(const rohc_decomp_state_t state);
 
-bool rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
-                                  rohc_decomp_general_info_t *const info)
+bool ROHC_EXPORT rohc_decomp_get_general_info(const struct rohc_decomp *const decomp,
+                                              rohc_decomp_general_info_t *const info)
 	__attribute__((warn_unused_result));
 
 bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *const decomp,

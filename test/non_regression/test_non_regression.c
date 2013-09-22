@@ -699,7 +699,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                int link_len_cmp,
                                FILE *size_output_file)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];

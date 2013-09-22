@@ -24,13 +24,15 @@
 #ifndef ROHC_TIME_H
 #define ROHC_TIME_H
 
+#include "rohc.h"
+
 #ifndef __KERNEL__
 #	include <sys/time.h>
 #endif
 
 
-static inline uint64_t rohc_time_interval(const struct timespec begin,
-                                          const struct timespec end)
+static inline uint64_t rohc_time_interval(const struct rohc_timestamp begin,
+                                          const struct rohc_timestamp end)
 	__attribute__((warn_unused_result, const));
 
 
@@ -76,15 +78,15 @@ static inline uint64_t rohc_get_seconds(void)
  * @param end    The end timestamp (in seconds and nanoseconds)
  * @return       The interval of time in microseconds
  */
-static inline uint64_t rohc_time_interval(const struct timespec begin,
-                                          const struct timespec end)
+static inline uint64_t rohc_time_interval(const struct rohc_timestamp begin,
+                                          const struct rohc_timestamp end)
 {
 	uint64_t interval;
 
-	interval = end.tv_sec - begin.tv_sec; /* difference btw seconds */
-	interval *= 1e9;                      /* convert in nanoseconds */
-	interval += end.tv_nsec;              /* additional end nanoseconds */
-	interval -= begin.tv_nsec;            /* superfluous begin nanoseconds */
+	interval = end.sec - begin.sec; /* difference btw seconds */
+	interval *= 1e9;                /* convert in nanoseconds */
+	interval += end.nsec;           /* additional end nanoseconds */
+	interval -= begin.nsec;         /* superfluous begin nanoseconds */
 	interval /= 1e3;
 
 	return interval;

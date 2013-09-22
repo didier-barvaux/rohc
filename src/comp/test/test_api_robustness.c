@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 
 	/* rohc_compress3() */
 	{
-		const struct timespec time = { .tv_sec = 0, .tv_nsec = 0 };
+		const struct rohc_timestamp ts = { .sec = 0, .nsec = 0 };
 		unsigned char buf1[1];
 		unsigned char buf2[100];
 		unsigned char buf[] =
@@ -299,13 +299,13 @@ int main(int argc, char *argv[])
 			0x34, 0x35, 0x36, 0x37
 		};
 		size_t len;
-		CHECK(rohc_compress3(NULL, time, buf1, 1, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, time, NULL, 1, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, time, buf1, 0, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, time, buf1, 1, NULL, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, time, buf1, 1, buf2, 0, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, time, buf1, 1, buf2, 1, NULL) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, time, buf, sizeof(buf), buf2, sizeof(buf2), &len) == ROHC_OK);
+		CHECK(rohc_compress3(NULL, ts, buf1, 1, buf2, 1, &len) == ROHC_ERROR);
+		CHECK(rohc_compress3(comp, ts, NULL, 1, buf2, 1, &len) == ROHC_ERROR);
+		CHECK(rohc_compress3(comp, ts, buf1, 0, buf2, 1, &len) == ROHC_ERROR);
+		CHECK(rohc_compress3(comp, ts, buf1, 1, NULL, 1, &len) == ROHC_ERROR);
+		CHECK(rohc_compress3(comp, ts, buf1, 1, buf2, 0, &len) == ROHC_ERROR);
+		CHECK(rohc_compress3(comp, ts, buf1, 1, buf2, 1, NULL) == ROHC_ERROR);
+		CHECK(rohc_compress3(comp, ts, buf, sizeof(buf), buf2, sizeof(buf2), &len) == ROHC_OK);
 	}
 
 	/* rohc_comp_get_last_packet_info2() */

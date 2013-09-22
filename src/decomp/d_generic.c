@@ -439,8 +439,8 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
                            struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static bool is_sn_wraparound(const struct timespec cur_arrival_time,
-                             const struct timespec arrival_times[ROHC_MAX_ARRIVAL_TIMES],
+static bool is_sn_wraparound(const struct rohc_timestamp cur_arrival_time,
+                             const struct rohc_timestamp arrival_times[ROHC_MAX_ARRIVAL_TIMES],
                              const size_t arrival_times_nr,
                              const size_t arrival_times_index,
                              const size_t k,
@@ -576,11 +576,11 @@ void * d_generic_create(const struct d_context *const context,
 	g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
 	g_context->correction_counter = 0;
 	/* arrival times for correction upon CRC failure */
-	memset(g_context->arrival_times, 0, sizeof(struct timespec) * 10);
+	memset(g_context->arrival_times, 0, sizeof(struct rohc_timestamp) * 10);
 	g_context->arrival_times_nr = 0;
 	g_context->arrival_times_index = 0;
-	g_context->cur_arrival_time.tv_sec = 0;
-	g_context->cur_arrival_time.tv_nsec = 0;
+	g_context->cur_arrival_time.sec = 0;
+	g_context->cur_arrival_time.nsec = 0;
 
 	return g_context;
 
@@ -4046,7 +4046,7 @@ error:
  */
 int d_generic_decode(struct rohc_decomp *const decomp,
                      struct d_context *const context,
-                     const struct timespec arrival_time,
+                     const struct rohc_timestamp arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_length,
                      const size_t add_cid_len,
@@ -8663,8 +8663,8 @@ skip:
  * @param p                    The shift parameter p for SN
  * @return                     Whether SN wraparound is possible or not
  */
-static bool is_sn_wraparound(const struct timespec cur_arrival_time,
-                             const struct timespec arrival_times[ROHC_MAX_ARRIVAL_TIMES],
+static bool is_sn_wraparound(const struct rohc_timestamp cur_arrival_time,
+                             const struct rohc_timestamp arrival_times[ROHC_MAX_ARRIVAL_TIMES],
                              const size_t arrival_times_nr,
                              const size_t arrival_times_index,
                              const size_t k,
@@ -8678,7 +8678,7 @@ static bool is_sn_wraparound(const struct timespec cur_arrival_time,
 
 	/* cannot use correction for SN wraparound if no arrival time was given
 	 * for the current packet, or if too few packets were received yet */
-	if((cur_arrival_time.tv_sec == 0 && cur_arrival_time.tv_nsec == 0) ||
+	if((cur_arrival_time.sec == 0 && cur_arrival_time.nsec == 0) ||
 	   arrival_times_nr < ROHC_MAX_ARRIVAL_TIMES)
 	{
 		goto error;

@@ -410,7 +410,7 @@ static int test_comp_and_decomp(const char *filename,
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+		const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 		rohc_comp_last_packet_info2_t last_packet_info;
 		unsigned char *ip_packet;
 		size_t ip_size;

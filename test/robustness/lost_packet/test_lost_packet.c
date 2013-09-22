@@ -247,7 +247,7 @@ static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int last_packet_to_lose,
                                 const unsigned int last_packet_in_error)
 {
-	struct timespec arrival_time = { .tv_sec = 4242, .tv_nsec = 4242 };
+	struct rohc_timestamp arrival_time = { .sec = 4242, .nsec = 4242 };
 
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -408,11 +408,11 @@ static int test_comp_and_decomp(const char *const filename,
 		int ret;
 
 		counter++;
-		arrival_time.tv_nsec += 20 * 1e6; /* 20ms between consecutive packets */
+		arrival_time.nsec += 20 * 1e6; /* 20ms between consecutive packets */
 
 		/* avoid overflow of tv_nsec */
-		arrival_time.tv_sec += arrival_time.tv_nsec / (unsigned long) 1e9;
-		arrival_time.tv_nsec %= (unsigned long) 1e9;
+		arrival_time.sec += arrival_time.nsec / (unsigned long) 1e9;
+		arrival_time.nsec %= (unsigned long) 1e9;
 
 		fprintf(stderr, "packet #%u:\n", counter);
 

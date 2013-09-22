@@ -407,7 +407,7 @@ static int compress_and_check(struct rohc_comp *comp,
                               int success_expected,
                               int profile_expected)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 	unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];

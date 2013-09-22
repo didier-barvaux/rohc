@@ -518,7 +518,7 @@ ssize_t rohc_proc_comp_write(struct file *file,
 	/* compress the IP packet if it is complete */
 	if(couple->ip_size_current_in == couple->ip_size_total_in)
 	{
-		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+		const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 
 		pr_info("[%s] IP packet is complete, compress it now\n",
 		        THIS_MODULE->name);
@@ -637,7 +637,7 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 	/* decompress the ROHC packet if it is complete */
 	if(couple->rohc_size_current_in == couple->rohc_size_total_in)
 	{
-		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+		const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 
 		pr_info("[%s] ROHC packet is complete, decompress it now\n", THIS_MODULE->name);
 

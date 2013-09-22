@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
 	{
-		const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+		const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 		unsigned char rohc_packet[PACKET_MAX_SIZE];
 		size_t rohc_len;
 		unsigned char ip_packet[PACKET_MAX_SIZE];

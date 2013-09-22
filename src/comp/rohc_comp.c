@@ -118,7 +118,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
                                            const struct ip_packet *ip,
                                            const rohc_ctxt_key_t key,
-                                           const struct timespec arrival_time)
+                                           const struct rohc_timestamp arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *comp,
                                          const struct c_profile *profile,
@@ -707,7 +707,7 @@ int rohc_compress(struct rohc_comp *comp,
                   unsigned char *obuf,
                   int osize)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 	size_t rohc_len;
 	int code;
 
@@ -764,7 +764,7 @@ int rohc_compress2(struct rohc_comp *const comp,
                    const size_t rohc_packet_max_len,
                    size_t *const rohc_packet_len)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 	return rohc_compress3(comp, arrival_time, uncomp_packet, uncomp_packet_len,
 	                      rohc_packet, rohc_packet_max_len, rohc_packet_len);
 }
@@ -835,7 +835,7 @@ int rohc_compress2(struct rohc_comp *const comp,
  * @see rohc_comp_get_segment
  */
 int rohc_compress3(struct rohc_comp *const comp,
-                   const struct timespec arrival_time,
+                   const struct rohc_timestamp arrival_time,
                    const unsigned char *const uncomp_packet,
                    const size_t uncomp_packet_len,
                    unsigned char *const rohc_packet,
@@ -954,7 +954,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 		}
 	}
 
-	c->latest_used = arrival_time.tv_sec;
+	c->latest_used = arrival_time.sec;
 
 	/* create the ROHC packet: */
 	*rohc_packet_len = 0;
@@ -3642,7 +3642,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
                                            const struct c_profile *profile,
                                            const struct ip_packet *ip,
                                            const rohc_ctxt_key_t key,
-                                           const struct timespec arrival_time)
+                                           const struct rohc_timestamp arrival_time)
 {
 	struct c_context *c;
 	rohc_cid_t cid_to_use;
@@ -3741,8 +3741,8 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 
 	/* if creation is successful, mark the context as used */
 	c->used = 1;
-	c->first_used = arrival_time.tv_sec;
-	c->latest_used = arrival_time.tv_sec;
+	c->first_used = arrival_time.sec;
+	c->latest_used = arrival_time.sec;
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

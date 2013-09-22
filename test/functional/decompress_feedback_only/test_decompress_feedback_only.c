@@ -131,7 +131,7 @@ static void usage(void)
 static int test_decomp(const unsigned char *const rohc_feedback,
                        const size_t rohc_feedback_len)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;

@@ -362,7 +362,7 @@ error:
  */
 int d_udp_lite_decode(struct rohc_decomp *const decomp,
                       struct d_context *const context,
-                      const struct timespec arrival_time,
+                      const struct rohc_timestamp arrival_time,
                       const unsigned char *const rohc_packet,
                       const size_t rohc_length,
                       const size_t add_cid_len,

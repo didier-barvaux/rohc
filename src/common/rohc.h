@@ -31,6 +31,7 @@ extern "C"
 #endif
 
 #include <stdlib.h>
+#include <inttypes.h>
 
 
 /** Macro that handles deprecated declarations gracefully */
@@ -271,6 +272,28 @@ typedef enum
 	ROHC_PROFILE_UDPLITE      = 0x0008,
 
 } rohc_profile_t;
+
+
+/**
+ * @brief A timestamp for the ROHC library
+ *
+ * Could be easily created from \e struct \e timespec on UNIX:
+ * \code
+   struct rohc_timestamp rohc_ts;
+   struct timespec unix_ts;
+   ...
+   rohc_ts.sec = unix_ts.tv_sec;
+   rohc_ts.nsec = unix_ts.tv_nsec;
+   ...
+\endcode
+ *
+ * @ingroup rohc
+ */
+struct rohc_timestamp
+{
+	uint64_t sec;   /**< The seconds part of the timestamp */
+	uint64_t nsec;  /**< The nanoseconds part of the timestamp */
+};
 
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1

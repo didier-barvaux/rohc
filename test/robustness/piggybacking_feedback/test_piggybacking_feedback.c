@@ -158,7 +158,7 @@ static void usage(void)
  */
 static int test_comp_and_decomp(void)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 
 	/* compressors and decompressors used during the test */
 	struct rohc_comp *compA;

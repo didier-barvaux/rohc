@@ -186,7 +186,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
                                 const bool is_comp_expected_ok,
                                 const size_t expected_segments_nr)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 
 //! [define ROHC compressor]
 	struct rohc_comp *comp;

@@ -63,7 +63,7 @@ struct rohc_lsb_decode * ROHC_EXPORT rohc_lsb_new(const rohc_lsb_shift_t p,
 
 void ROHC_EXPORT rohc_lsb_free(struct rohc_lsb_decode *const lsb);
 
-rohc_lsb_shift_t lsb_get_p(const struct rohc_lsb_decode *const lsb)
+rohc_lsb_shift_t ROHC_EXPORT lsb_get_p(const struct rohc_lsb_decode *const lsb)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 bool ROHC_EXPORT rohc_lsb_decode(const struct rohc_lsb_decode *const lsb,

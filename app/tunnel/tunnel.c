@@ -1396,7 +1396,7 @@ int tun2wan(struct rohc_comp *comp,
             const struct rohc_tunnel *const tunnel,
             int error, double ber, double pe2, double p2)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 
 	static unsigned char buffer[TUNTAP_BUFSIZE];
 	static unsigned char rohc_packet[3 + MAX_ROHC_SIZE];
@@ -1638,7 +1638,7 @@ int wan2tun(struct rohc_decomp *const decomp,
             const int to,
             const rohc_tunnel_t tunnel_type)
 {
-	const struct timespec arrival_time = { .tv_sec = 0, .tv_nsec = 0 };
+	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
 	static unsigned char packet[3 + MAX_ROHC_SIZE];
 	static unsigned char decomp_packet[MAX_ROHC_SIZE + 4];
 	unsigned int packet_len = TUNTAP_BUFSIZE;
