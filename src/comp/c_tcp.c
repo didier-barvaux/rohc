@@ -29,6 +29,7 @@
 #include "protocols/tcp.h"
 #include "rfc4996_encoding.h"
 #include "cid.h"
+#include "sdvl.h"
 #include "crc.h"
 #include "c_generic.h"
 #include "c_ip.h"
@@ -79,6 +80,19 @@ struct tcp_tmp_variables
 	/** The minimal number of bits required to encode the TCP sequence number
 	 *  with p = 8191 */
 	size_t nr_seq_bits_8191;
+
+	/** The minimal number of bits required to encode the TCP option timestamp
+	 *  echo request with p = -1 */
+	size_t nr_opt_ts_req_bits_minus_1;
+	/** The minimal number of bits required to encode the TCP option timestamp
+	 *  echo request with p = 0x40000 */
+	size_t nr_opt_ts_req_bits_0x40000;
+	/** The minimal number of bits required to encode the TCP option timestamp
+	 *  echo reply with p = -1 */
+	size_t nr_opt_ts_reply_bits_minus_1;
+	/** The minimal number of bits required to encode the TCP option timestamp
+	 *  echo reply with p = 0x40000 */
+	size_t nr_opt_ts_reply_bits_0x40000;
 };
 
 #define MAX_IPV6_OPTION_LENGTH        6   // FOR Destination/Hop-by-Hop/Routing/ah
@@ -287,7 +301,11 @@ struct sc_tcp_context
 	uint8_t tcp_options_offset[16];
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
+
 	struct tcp_option_timestamp tcp_option_timestamp;
+	struct c_wlsb *opt_ts_req_wlsb;
+	struct c_wlsb *opt_ts_reply_wlsb;
+
 	uint8_t tcp_option_sack_length;
 	sack_block_t tcp_option_sackblocks[4];
 	uint8_t tcp_options_free_offset;
@@ -630,12 +648,12 @@ static bool c_tcp_create(struct c_context *const context,
 				// No option
 				if(base_header.ipv4->header_length != 5)
 				{
-					goto clean;
+					goto free_context;
 				}
 				// No fragmentation
 				if(base_header.ipv4->mf != 0 || base_header.ipv4->rf != 0)
 				{
-					goto clean;
+					goto free_context;
 				}
 				/* get the transport protocol */
 				protocol = base_header.ipv4->protocol;
@@ -682,7 +700,7 @@ static bool c_tcp_create(struct c_context *const context,
 							break;
 						// case ROHC_IPPROTO_ESP : ???
 						default:
-							goto clean;
+							goto free_context;
 					}
 					protocol = base_header.ipv6_opt->next_header;
 					size += size_option;
@@ -690,7 +708,7 @@ static bool c_tcp_create(struct c_context *const context,
 				}
 				break;
 			default:
-				goto clean;
+				goto free_context;
 		}
 
 	}
@@ -698,7 +716,7 @@ static bool c_tcp_create(struct c_context *const context,
 
 	if(size >= ip->size)
 	{
-		goto clean;
+		goto free_context;
 	}
 
 	tcp = base_header.tcphdr;
@@ -709,7 +727,7 @@ static bool c_tcp_create(struct c_context *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "no memory for the TCP part of the profile context\n");
-		goto clean;
+		goto free_context;
 	}
 	g_context->specific = tcp_context;
 
@@ -803,12 +821,12 @@ static bool c_tcp_create(struct c_context *const context,
 							break;
 						// case ROHC_IPPROTO_ESP : ???
 						default:
-							goto clean;
+							goto free_context;
 					}
 				}
 				break;
 			default:
-				goto clean;
+				goto free_context;
 		}
 
 	}
@@ -822,6 +840,7 @@ static bool c_tcp_create(struct c_context *const context,
 
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(tcphdr_t));
 
+	/* TCP sequence number */
 	tcp_context->seq_number = rohc_ntoh32(tcp->seq_number);
 	tcp_context->seq_wlsb =
 		c_create_wlsb(32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
@@ -829,7 +848,7 @@ static bool c_tcp_create(struct c_context *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP sequence number\n");
-		goto clean;
+		goto free_context;
 	}
 
 	tcp_context->ack_number = rohc_ntoh32(tcp->ack_number);
@@ -847,6 +866,27 @@ static bool c_tcp_create(struct c_context *const context,
 
 	// Initialize TCP options list index used
 	memset(tcp_context->tcp_options_list,0xFF,16);
+
+	/* TCP option Timestamp (request) */
+	tcp_context->opt_ts_req_wlsb =
+		c_create_wlsb(32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(tcp_context->opt_ts_req_wlsb == NULL)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP option Timestamp "
+		           "request\n");
+		goto free_wlsb_seq;
+	}
+	/* TCP option Timestamp (reply) */
+	tcp_context->opt_ts_reply_wlsb =
+		c_create_wlsb(32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(tcp_context->opt_ts_reply_wlsb == NULL)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP option Timestamp "
+		           "reply\n");
+		goto free_wlsb_opt_ts_req;
+	}
 
 	/* init the TCP-specific variables and functions */
 	g_context->next_header_proto = ROHC_IPPROTO_TCP;
@@ -869,7 +909,11 @@ static bool c_tcp_create(struct c_context *const context,
 
 	return true;
 
-clean:
+free_wlsb_opt_ts_req:
+	c_destroy_wlsb(tcp_context->opt_ts_req_wlsb);
+free_wlsb_seq:
+	c_destroy_wlsb(tcp_context->seq_wlsb);
+free_context:
 	c_generic_destroy(context);
 error:
 	return false;
@@ -892,6 +936,8 @@ static void c_tcp_destroy(struct c_context *const context)
 	assert(g_context->specific != NULL);
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
+	c_destroy_wlsb(tcp_context->opt_ts_reply_wlsb);
+	c_destroy_wlsb(tcp_context->opt_ts_req_wlsb);
 	c_destroy_wlsb(tcp_context->seq_wlsb);
 	c_generic_destroy(context);
 }
@@ -1189,6 +1235,10 @@ static int c_tcp_encode(struct c_context *const context,
 #ifdef TODO
 	uint8_t new_context_state;
 #endif
+	bool opt_ts_present = false;
+	bool opt_ts_changed = false;
+	uint32_t ts = 0;
+	uint32_t ts_reply = 0;
 
 	assert(context != NULL);
 	assert(rohc_pkt != NULL);
@@ -1496,6 +1546,67 @@ static int c_tcp_encode(struct c_context *const context,
 		}
 	}
 
+	/* parse TCP options */
+	{
+		uint8_t *opts;
+		size_t opts_len;
+		size_t opt_len;
+		size_t opts_offset;
+
+		opts = ((uint8_t *) tcp) + sizeof(tcphdr_t);
+		opts_len = (tcp->data_offset << 2) - sizeof(tcphdr_t);
+
+		for(opts_offset = 0; opts_offset < opts_len; opts_offset += opt_len)
+		{
+			rohc_comp_debug(context, "TCP option %u found\n", opts[opts_offset]);
+
+			if(opts[opts_offset] == 0x00 || opts[opts_offset] == 0x01)
+			{
+				/* EOL or NOP */
+				opt_len = 1;
+			}
+			else
+			{
+				if((opts_offset + 1) >= opts_len)
+				{
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+					             context->profile->id, "malformed TCP header: not "
+					             "enough room for the length field of option %u\n",
+					             opts[opts_offset]);
+					goto error;
+				}
+				opt_len = opts[opts_offset + 1];
+				if((opts_offset + opt_len) > opts_len)
+				{
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+					             context->profile->id, "malformed TCP header: not "
+					             "enough room for option %u (%zu bytes required "
+					             "but only %zu available)\n", opts[opts_offset],
+					             opt_len, opts_len - opts_offset);
+					goto error;
+				}
+
+				if(opts[opts_offset] == 0x08)
+				{
+					memcpy(&ts, opts + opts_offset + 2, sizeof(uint32_t));
+					memcpy(&ts_reply, opts + opts_offset + 6, sizeof(uint32_t));
+					opt_ts_present = true;
+
+					if(memcmp(&tcp_context->tcp_option_timestamp,
+					          opts + opts_offset + 2,
+								 sizeof(struct tcp_option_timestamp)) == 0)
+					{
+						opt_ts_changed = false;
+					}
+					else
+					{
+						opt_ts_changed = true;
+					}
+				}
+			}
+		}
+	}
+
 	g_context->sn = g_context->get_next_sn(context, ip, NULL);
 	rohc_comp_debug(context, "MSN = 0x%x\n", g_context->sn);
 
@@ -1612,6 +1723,111 @@ static int c_tcp_encode(struct c_context *const context,
 	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn,
 	           rohc_ntoh32(tcp->seq_number));
 
+	/* how many bits are required to encode the new timestamp echo request and
+	 * timestamp echo reply? */
+	if(!opt_ts_present)
+	{
+		/* no bit to send */
+		tcp_context->tmp.nr_opt_ts_req_bits_minus_1 = 0;
+		tcp_context->tmp.nr_opt_ts_req_bits_0x40000 = 0;
+		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 0;
+		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 0;
+		rohc_comp_debug(context, "no TS option: O bit required to encode the "
+		                "new timestamp echo request/reply numbers\n");
+	}
+	else if(context->state == ROHC_COMP_STATE_IR)
+	{
+		/* send all bits in IR state */
+		tcp_context->tmp.nr_opt_ts_req_bits_minus_1 = 32;
+		tcp_context->tmp.nr_opt_ts_req_bits_0x40000 = 32;
+		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 32;
+		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 32;
+		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
+		                "new timestamp echo request/reply numbers\n");
+	}
+	else if(!opt_ts_changed)
+	{
+		/* no bit to send */
+		tcp_context->tmp.nr_opt_ts_req_bits_minus_1 = 0;
+		tcp_context->tmp.nr_opt_ts_req_bits_0x40000 = 0;
+		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 0;
+		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 0;
+		rohc_comp_debug(context, "TS option unchanged: 0 bit required to "
+		                "encode new timestamp echo request/reply numbers\n");
+	}
+	else
+	{
+		/* send only required bits in FO or SO states */
+
+		/* how many bits are required to encode the timestamp echo request
+		 * with p = -1 ? */
+		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_req_wlsb,
+		                       rohc_ntoh32(ts), -1,
+		                       &tcp_context->tmp.nr_opt_ts_req_bits_minus_1))
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to find the minimal number of bits required "
+			             "for timestamp echo request 0x%08x and p = -1\n",
+			             rohc_ntoh32(ts));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new "
+		                "timestamp echo request 0x%08x with p = -1\n",
+		                tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
+		                rohc_ntoh32(ts));
+
+		/* how many bits are required to encode the timestamp echo request
+		 * with p = 0x40000 ? */
+		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_req_wlsb,
+		                       rohc_ntoh32(ts), 0x40000,
+		                       &tcp_context->tmp.nr_opt_ts_req_bits_0x40000))
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to find the minimal number of bits required "
+			             "for timestamp echo request 0x%08x and p = 0x40000\n",
+			             rohc_ntoh32(ts));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new "
+		                "timestamp echo request 0x%08x with p = 0x40000\n",
+		                tcp_context->tmp.nr_opt_ts_req_bits_0x40000,
+		                rohc_ntoh32(ts));
+
+		/* how many bits are required to encode the timestamp echo reply
+		 * with p = -1 ? */
+		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_reply_wlsb,
+		                       rohc_ntoh32(ts_reply), -1,
+		                       &tcp_context->tmp.nr_opt_ts_reply_bits_minus_1))
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to find the minimal number of bits required "
+			             "for timestamp echo reply 0x%08x and p = -1\n",
+			             rohc_ntoh32(ts_reply));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new "
+		                "timestamp echo reply 0x%08x with p = -1\n",
+		                tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
+		                rohc_ntoh32(ts_reply));
+
+		/* how many bits are required to encode the timestamp echo reply
+		 * with p = 0x40000 ? */
+		if(!wlsb_get_kp_32bits(tcp_context->opt_ts_reply_wlsb,
+		                       rohc_ntoh32(ts_reply), 0x40000,
+		                       &tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to find the minimal number of bits required "
+			             "for timestamp echo reply 0x%08x and p = 0x40000\n",
+			             rohc_ntoh32(ts_reply));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new "
+		                "timestamp echo reply 0x%08x with p = 0x40000\n",
+		                tcp_context->tmp.nr_opt_ts_reply_bits_0x40000,
+		                rohc_ntoh32(ts_reply));
+	}
+
 	// See RFC4996 page 32/33
 	c_field_scaling(tcp_context->seq_number_scaled,tcp_context->seq_number_residue,size,
 	                tcp->seq_number);
@@ -1644,7 +1860,17 @@ static int c_tcp_encode(struct c_context *const context,
 			break;
 		case ROHC_COMP_STATE_SO: /* The Second Order (SO) state */
 		default:
-			*packet_type = ROHC_PACKET_UNKNOWN;
+			if(!sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_req_bits_0x40000) ||
+			   !sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
+			{
+				rohc_comp_debug(context, "force packet IR-DYN because the TCP "
+				                "option changed too much\n");
+				*packet_type = ROHC_PACKET_IR_DYN;
+			}
+			else
+			{
+				*packet_type = ROHC_PACKET_UNKNOWN;
+			}
 			break;
 	}
 
@@ -2790,6 +3016,10 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						                rohc_ntoh32(ts), rohc_ntoh32(ts_reply));
 						memcpy(&tcp_context->tcp_option_timestamp, options + 2,
 								 sizeof(struct tcp_option_timestamp));
+						c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
+						           rohc_ntoh32(ts));
+						c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
+						           rohc_ntoh32(ts_reply));
 						break;
 					}
 					default:
@@ -3074,69 +3304,58 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
  *
  * See RFC4996 page 65
  *
- * @param context             The compression context
- * @param dest                OUT: Pointer to the compressed value
- * @param context_timestamp   The context value
- * @param timestamp           The value to compress
- * @return                    true if compression was successful, false otherwise
+ * @param context          The compression context
+ * @param[out] dest        Pointer to the compressed value
+ * @param timestamp        The timestamp value to compress
+ * @param nr_bits_minus_1  The minimal number of required bits for p = -1
+ * @param nr_bits_0x40000  The minimal number of required bits for p = 0x40000
+ * @return                 true if compression was successful, false otherwise
  */
 static bool c_ts_lsb(const struct c_context *const context,
                      uint8_t **dest,
-                     const uint32_t context_timestamp,
-                     const uint32_t timestamp)
+                     const uint32_t timestamp,
+                     const size_t nr_bits_minus_1,
+                     const size_t nr_bits_0x40000)
 {
-	const uint32_t last_timestamp = rohc_ntoh32(context_timestamp);
 	uint8_t *ptr = *dest;
 
 	assert(context != NULL);
 	assert(ptr != NULL);
 
-	rohc_comp_debug(context, "context_timestamp = 0x%x, timestamp = 0x%x\n",
-	                last_timestamp, timestamp);
+	rohc_comp_debug(context, "encode timestamp = 0x%x\n", timestamp);
 
-	if( ( timestamp & 0xFFFFFF80 ) == ( last_timestamp & 0xFFFFFF80 ) )
+	if(nr_bits_minus_1 <= 7)
 	{
-		// Discriminator '0'
+		/* discriminator '0' */
 		*(ptr++) = timestamp & 0x7F;
+	}
+	else if(nr_bits_minus_1 <= 14)
+	{
+		/* discriminator '10' */
+		*(ptr++) = 0x80 | ((timestamp >> 8) & 0x3F);
+		*(ptr++) = timestamp;
+	}
+	else if(nr_bits_0x40000 <= 21)
+	{
+		/* discriminator '110' */
+		*(ptr++) = 0xC0 | ((timestamp >> 16) & 0x1F);
+		*(ptr++) = timestamp >> 8;
+		*(ptr++) = timestamp;
+	}
+	else if(nr_bits_0x40000 <= 29)
+	{
+		/* discriminator '111' */
+		*(ptr++) = 0xE0 | ((timestamp >> 24) & 0x1F);
+		*(ptr++) = timestamp >> 16;
+		*(ptr++) = timestamp >> 8;
+		*(ptr++) = timestamp;
 	}
 	else
 	{
-		if( ( timestamp & 0xFFFFC000 ) == ( last_timestamp & 0xFFFFC000 ) )
-		{
-			// Discriminator '10'
-			*(ptr++) = 0x80 | ( ( timestamp >> 8 ) & 0x3F );
-			*(ptr++) = timestamp;
-		}
-		else
-		{
-			if( ( timestamp & 0xFFE00000 ) == ( last_timestamp & 0xFFE00000 ) )
-			{
-				// Discriminator '110'
-				*(ptr++) = 0xC0 | ( ( timestamp >> 16 ) & 0x1F );
-				*(ptr++) = timestamp >> 8;
-				*(ptr++) = timestamp;
-			}
-			else
-			{
-				if( ( timestamp & 0xE0000000 ) == ( last_timestamp & 0xE0000000 ) )
-				{
-					// Discriminator '111'
-					*(ptr++) = 0xE0 | ( ( timestamp >> 24 ) & 0x1F );
-					*(ptr++) = timestamp >> 16;
-					*(ptr++) = timestamp >> 8;
-					*(ptr++) = timestamp;
-				}
-				else
-				{
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-									 context->profile->id,
-									 "failed to compress timestamp 0x%08x (previous "
-									 "value = 0x%08x): more than 29 bits required\n",
-									 timestamp, last_timestamp);
-					goto error;
-				}
-			}
-		}
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to compress timestamp 0x%08x: more than 29 bits "
+		             "required\n", timestamp);
+		goto error;
 	}
 
 	*dest = ptr;
@@ -3673,7 +3892,9 @@ new_index_with_compressed_value:
 				// see RFC4996 page65
 				// ptr_compressed_options = c_tcp_opt_ts(ptr_compressed_options,options+2);
 				is_ok = c_ts_lsb(context, &ptr_compressed_options,
-									  tcp_context->tcp_option_timestamp.ts, rohc_ntoh32(ts));
+				                 rohc_ntoh32(ts),
+				                 tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
+				                 tcp_context->tmp.nr_opt_ts_req_bits_0x40000);
 				if(!is_ok)
 				{
 					rohc_warning(context->compressor, ROHC_TRACE_COMP,
@@ -3683,8 +3904,9 @@ new_index_with_compressed_value:
 					goto error;
 				}
 				is_ok = c_ts_lsb(context, &ptr_compressed_options,
-									  tcp_context->tcp_option_timestamp.ts_reply,
-									  rohc_ntoh32(ts_reply));
+									  rohc_ntoh32(ts_reply),
+				                 tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
+				                 tcp_context->tmp.nr_opt_ts_reply_bits_0x40000);
 				if(!is_ok)
 				{
 					rohc_warning(context->compressor, ROHC_TRACE_COMP,
@@ -3694,9 +3916,14 @@ new_index_with_compressed_value:
 					goto error;
 				}
 
-				// Save value after compression
+				/* save value after compression */
 				memcpy(&tcp_context->tcp_option_timestamp, options + 2,
-						 sizeof(struct tcp_option_timestamp));
+				       sizeof(struct tcp_option_timestamp));
+				c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
+				           rohc_ntoh32(ts));
+				c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
+				           rohc_ntoh32(ts_reply));
+
 				i -= TCP_OLEN_TIMESTAMP;
 				options += TCP_OLEN_TIMESTAMP;
 				break;

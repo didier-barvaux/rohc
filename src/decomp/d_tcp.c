@@ -250,7 +250,11 @@ struct d_tcp_context
 	uint8_t tcp_options_offset[16];
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
+
 	struct tcp_option_timestamp tcp_option_timestamp;
+	struct rohc_lsb_decode *opt_ts_req_lsb_ctxt;
+	struct rohc_lsb_decode *opt_ts_reply_lsb_ctxt;
+
 	uint8_t tcp_option_sack_length;
 	uint8_t tcp_option_sackblocks[8 * 4];
 	uint8_t tcp_options_free_offset;
@@ -405,6 +409,28 @@ static void * d_tcp_create(const struct d_context *const context)
 
 	memset(tcp_context->tcp_options_list,0xFF,16);
 
+	/* create the LSB decoding context for the TCP option Timestamp echo
+	 * request */
+	tcp_context->opt_ts_req_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_VAR, 32);
+	if(tcp_context->opt_ts_req_lsb_ctxt == NULL)
+	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the LSB decoding context for the TCP "
+		           "option Timestamp echo request\n");
+		goto free_lsb_seq;
+	}
+
+	/* create the LSB decoding context for the TCP option Timestamp echo
+	 * reply */
+	tcp_context->opt_ts_reply_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_VAR, 32);
+	if(tcp_context->opt_ts_reply_lsb_ctxt == NULL)
+	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the LSB decoding context for the TCP "
+		           "option Timestamp echo reply\n");
+		goto free_lsb_ts_opt_req;
+	}
+
 	/* some TCP-specific values and functions */
 	g_context->next_header_len = sizeof(tcphdr_t);
 	g_context->build_next_header = NULL;
@@ -425,7 +451,7 @@ static void * d_tcp_create(const struct d_context *const context)
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the TCP-specific part of the "
 		           "outer IP header changes\n");
-		goto free_lsb_seq;
+		goto free_lsb_ts_opt_reply;
 	}
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(tcphdr_t));
 
@@ -448,6 +474,10 @@ static void * d_tcp_create(const struct d_context *const context)
 
 free_outer_next_header:
 	zfree(g_context->outer_ip_changes->next_header);
+free_lsb_ts_opt_reply:
+	rohc_lsb_free(tcp_context->opt_ts_reply_lsb_ctxt);
+free_lsb_ts_opt_req:
+	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
 free_lsb_seq:
 	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
 free_tcp_context:
@@ -485,6 +515,12 @@ static void d_tcp_destroy(void *const context)
 	assert(g_context->inner_ip_changes->next_header != NULL);
 	zfree(g_context->inner_ip_changes->next_header);
 
+	/* destroy the LSB decoding context for the TCP option Timestamp echo
+	 * request */
+	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
+	/* destroy the LSB decoding context for the TCP option Timestamp echo
+	 * reply */
+	rohc_lsb_free(tcp_context->opt_ts_reply_lsb_ctxt);
 	/* destroy the LSB decoding context for the sequence number */
 	rohc_lsb_free(tcp_context->seq_lsb_ctxt);
 
@@ -2130,6 +2166,12 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 						break;
 					case TCP_OPT_TIMESTAMP:
 						rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
+						rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
+						                 rohc_ntoh32(*((uint32_t *) (mptr.uint8 + 2))),
+						                 false);
+						rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
+						                 rohc_ntoh32(*((uint32_t *) (mptr.uint8 + 6))),
+						                 false);
 						memcpy(&tcp_context->tcp_option_timestamp, mptr.uint8 + 2,
 								 sizeof(struct tcp_option_timestamp));
 						mptr.uint8 += TCP_OLEN_TIMESTAMP;
@@ -2331,71 +2373,82 @@ static uint8_t * tcp_decode_irregular_tcp(struct d_context *const context,
  *
  * See RFC4996 page 65
  *
- * @param context             The decompression context
- * @param ptr                 Pointer to the compressed value
- * @param context_timestamp   The context value
- * @param pTimestamp          Pointer to the uncompressed value
- * @return                    Pointer to the next compressed value
+ * @param context    The decompression context
+ * @param lsb        The LSB decoding context
+ * @param ptr        Pointer to the compressed value
+ * @param timestamp  Pointer to the uncompressed value
+ * @return           Pointer to the next compressed value
  */
 static uint8_t * d_ts_lsb(const struct d_context *const context,
+                          const struct rohc_lsb_decode *const lsb,
                           uint8_t *ptr,
-                          const uint32_t context_timestamp,
-                          uint32_t *pTimestamp)
+                          uint32_t *const timestamp)
 {
-	const uint32_t last_timestamp = rohc_ntoh32(context_timestamp);
-	uint32_t timestamp;
-#if ROHC_EXTRA_DEBUG == 1
-	uint8_t *pBegin = ptr;
-#endif
+	uint32_t ts_bits;
+	size_t ts_bits_nr;
+	rohc_lsb_shift_t p;
+	bool decode_ok;
+	uint32_t decoded;
 
 	assert(context != NULL);
+	assert(lsb != NULL);
 	assert(ptr != NULL);
+	assert(timestamp != NULL);
 
-	if(*ptr & 0x80)
+	if(((*ptr) & 0x80) == 0)
 	{
-		if(*ptr & 0x40)
-		{
-			if(*ptr & 0x20)
-			{
-				// Discriminator '111'
-				timestamp = ( *(ptr++) & 0x1F ) << 24;
-				timestamp |= *(ptr++) << 16;
-				timestamp |= *(ptr++) << 8;
-				timestamp |= *(ptr++);
-				timestamp |= last_timestamp & 0xE0000000;
-			}
-			else
-			{
-				// Discriminator '110'
-				timestamp = ( *(ptr++) & 0x1F ) << 16;
-				timestamp |= *(ptr++) << 8;
-				timestamp |= *(ptr++);
-				timestamp |= last_timestamp & 0xFFE00000;
-			}
-		}
-		else
-		{
-			// Discriminator '10'
-			timestamp = ( *(ptr++) & 0x3F ) << 8;
-			timestamp |= *(ptr++);
-			timestamp |= last_timestamp & 0xFFFFC000;
-		}
+		/* discriminator '0' */
+		ts_bits = *(ptr++);
+		ts_bits_nr = 7;
+		p = -1;
+	}
+	else if(((*ptr) & 0x40) == 0)
+	{
+		/* discriminator '10' */
+		ts_bits = (*(ptr++) & 0x3F) << 8;
+		ts_bits |= *(ptr++);
+		ts_bits_nr = 14;
+		p = -1;
+	}
+	else if(((*ptr) & 0x20) == 0)
+	{
+		/* discriminator '110' */
+		ts_bits = (*(ptr++) & 0x1F) << 16;
+		ts_bits |= *(ptr++) << 8;
+		ts_bits |= *(ptr++);
+		ts_bits_nr = 21;
+		p = 0x40000;
 	}
 	else
 	{
-		// Discriminator '0'
-		timestamp = *(ptr++);
-		timestamp |= last_timestamp & 0xFFFFFF80;
+		/* discriminator '111' */
+		ts_bits = (*(ptr++) & 0x1F) << 24;
+		ts_bits |= *(ptr++) << 16;
+		ts_bits |= *(ptr++) << 8;
+		ts_bits |= *(ptr++);
+		ts_bits_nr = 29;
+		p = 0x40000;
 	}
 
-#if ROHC_EXTRA_DEBUG == 1
-	rohc_decomp_debug(context, "pTimestamp = 0x%x, context = 0x%x "
-	                  "=> timestamp 0x%x\n", rohc_ntoh32(*pBegin), last_timestamp,
-	                  timestamp);
-#endif
-	*pTimestamp = rohc_hton32(timestamp);
+	decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, ts_bits, ts_bits_nr, p,
+	                            &decoded);
+	if(!decode_ok)
+	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id,
+		             "failed to decode %zu timestamp bits 0x%x with p = %u\n",
+		             ts_bits_nr, ts_bits, p);
+		goto error;
+	}
+	rohc_decomp_debug(context, "decoded timestamp = 0x%08x (%zu bits 0x%x "
+	                  "with p = %d)\n", decoded, ts_bits_nr, ts_bits, p);
+
+	*timestamp = rohc_hton32(decoded);
 
 	return ptr;
+
+error:
+	return NULL;
 }
 
 
@@ -2931,13 +2984,30 @@ static uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
 					// Timestamp
 					// compressed_options = d_tcp_opt_ts(compressed_options);
 					compressed_options =
-					   d_ts_lsb(context, compressed_options,
-					            tcp_context->tcp_option_timestamp.ts,
-					            (uint32_t *) options);
+						d_ts_lsb(context, tcp_context->opt_ts_req_lsb_ctxt,
+						         compressed_options, (uint32_t *) options);
+					if(compressed_options == NULL)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to decompress "
+						             "TCP option Timestamp echo request\n");
+						goto error;
+					}
+					rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
+					                 rohc_ntoh32(*((uint32_t *) options)), false);
 					compressed_options =
-					   d_ts_lsb(context, compressed_options,
-					            tcp_context->tcp_option_timestamp.ts_reply,
-					            (uint32_t *) (options + 4));
+					   d_ts_lsb(context, tcp_context->opt_ts_reply_lsb_ctxt,
+					            compressed_options, (uint32_t *) (options + 4));
+					if(compressed_options == NULL)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to decompress "
+						             "TCP option Timestamp echo reply\n");
+						goto error;
+					}
+					rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
+					                 rohc_ntoh32(*((uint32_t *) (options + 4))),
+					                 false);
 					memcpy(&tcp_context->tcp_option_timestamp, options,
 							 sizeof(struct tcp_option_timestamp));
 					options += sizeof(struct tcp_option_timestamp);
@@ -4594,7 +4664,7 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
 	if(!decode_ok)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to decode %zu sequence number bits 0x%x with \n"
+		             "failed to decode %zu sequence number bits 0x%x with "
 		             "p = %u\n", seq_bits_nr, seq_bits, p);
 		return false;
 	}
