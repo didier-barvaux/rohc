@@ -140,6 +140,10 @@ html/*.map: $(rohc_all_sources) | doxygen
 html/*.css: $(rohc_all_sources) | doxygen
 html/*.png: $(rohc_all_sources) | doxygen
 
+
+rohc_examples_sources = \
+	$(top_srcdir)/examples/*.c
+
 doxy2man_options = \
 	--out man/man3/ --noseealsoall --nosort --include-prefix "rohc/" \
 	--short-pkg "ROHC" --pkg "ROHC library Programmer's Manual"
@@ -152,7 +156,7 @@ rohc_common_sources = \
 	$(top_srcdir)/src/common/rohc_packets.h \
 	$(top_srcdir)/src/common/rohc_traces.h
 
-$(rohc_common_man): $(rohc_common_sources) | doxygen
+$(rohc_common_man): $(rohc_common_sources) $(rohc_examples_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc.xml
 $(rohc_common_mans):
 
@@ -161,7 +165,7 @@ rohc_comp_sources = \
 	$(top_srcdir)/src/comp/rohc_comp.c \
 	$(top_srcdir)/src/comp/rohc_comp.h
 
-$(rohc_comp_man): $(rohc_comp_sources) | doxygen
+$(rohc_comp_man): $(rohc_comp_sources) $(rohc_examples_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__comp.xml
 $(rohc_comp_mans):
 
@@ -170,7 +174,7 @@ rohc_decomp_sources = \
 	$(top_srcdir)/src/decomp/rohc_decomp.c \
 	$(top_srcdir)/src/decomp/rohc_decomp.h
 
-$(rohc_decomp_man): $(rohc_decomp_sources) | doxygen
+$(rohc_decomp_man): $(rohc_decomp_sources) $(rohc_examples_sources) | doxygen
 	$(AM_V_GEN)doxy2man $(doxy2man_options) xml/group__rohc__decomp.xml
 $(rohc_decomp_mans):
 
