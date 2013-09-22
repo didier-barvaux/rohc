@@ -327,7 +327,7 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 
 	/* decompressor got one more context (for a short moment, decompressor
 	 * might have MAX_CID + 2 contexts) */
-	assert(decomp->num_contexts_used <= decomp->medium.max_cid);
+	assert(decomp->num_contexts_used <= (decomp->medium.max_cid + 1));
 	decomp->num_contexts_used++;
 
 	return context;
