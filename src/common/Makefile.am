@@ -78,3 +78,7 @@ include_HEADERS = $(public_compat_headers)
 pkginclude_HEADERS = $(public_headers)
 noinst_HEADERS = $(private_headers)
 
+# extra files for releases
+EXTRA_DIST = \
+	rohc
+

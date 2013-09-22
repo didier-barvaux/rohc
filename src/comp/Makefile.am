@@ -58,3 +58,7 @@ noinst_HEADERS = \
 	c_tcp.h \
 	rfc4996_encoding.h
 
+# extra files for releases
+EXTRA_DIST = \
+	rohc
+
