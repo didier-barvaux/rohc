@@ -116,7 +116,7 @@ struct sniffer_stats
 	/** Cumulative number of packets per state */
 	unsigned long comp_nr_pkts_per_state[ROHC_COMP_STATE_SO + 1];
 	/** Cumulative number of packets per packet type */
-	unsigned long comp_nr_pkts_per_pkt_type[ROHC_PACKET_UNKNOWN];
+	unsigned long comp_nr_pkts_per_pkt_type[ROHC_PACKET_TCP_SEQ_8 + 1];
 	/** Cumulative number of times a context is reused (first time included) */
 	unsigned long comp_nr_reused_cid;
 
@@ -599,6 +599,7 @@ static void sniffer_print_stats(int signal)
 	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_RTP] +
 	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDP] +
 	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP] +
+	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP] +
 	        stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE];
 	printf("packets per profile:\n");
 	printf("\tUncompressed profile: %lu packets (%llu%%)\n",
@@ -614,6 +615,9 @@ static void sniffer_print_stats(int signal)
 	printf("\tIP-only profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP],
 	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_IP], total));
+	printf("\tIP/TCP profile: %lu packets (%llu%%)\n",
+	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP],
+	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_TCP], total));
 	printf("\tIP/UDP-Lite profile: %lu packets (%llu%%)\n",
 	       stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE],
 	       percent(stats.comp_nr_pkts_per_profile[ROHC_PROFILE_UDPLITE], total));
@@ -651,16 +655,19 @@ static void sniffer_print_stats(int signal)
 	/* packets per packet type */
 	printf("packets per packet type:\n");
 	total = 0;
-	for(i = ROHC_PACKET_IR; i < ROHC_PACKET_UNKNOWN; i++)
+	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
 	{
 		total += stats.comp_nr_pkts_per_pkt_type[i];
 	}
-	for(i = ROHC_PACKET_IR; i < ROHC_PACKET_UNKNOWN; i++)
+	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
 	{
-		printf("\tpacket type %s: %lu packets (%llu%%)\n",
-		       rohc_get_packet_descr(i),
-		       stats.comp_nr_pkts_per_pkt_type[i],
-		       percent(stats.comp_nr_pkts_per_pkt_type[i], total));
+		if(strcmp(rohc_get_packet_descr(i), "no description") != 0)
+		{
+			printf("\tpacket type %s: %lu packets (%llu%%)\n",
+			       rohc_get_packet_descr(i),
+			       stats.comp_nr_pkts_per_pkt_type[i],
+			       percent(stats.comp_nr_pkts_per_pkt_type[i], total));
+		}
 	}
 }
 
