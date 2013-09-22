@@ -2084,7 +2084,7 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	save = buffer;
 	buffer += strlen(buffer);
 
-	buffer += sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%d\">\n", prefix, pos);
+	buffer += sprintf(buffer, "\n%s<context type=\"decompressor\" cid=\"%zu\">\n", prefix, pos);
 	buffer += sprintf(buffer, "%s\t<state>%s</state>\n", prefix,
 	                  rohc_decomp_get_state_descr(c->state));
 	buffer += sprintf(buffer, "%s\t<mode>%s</mode>\n", prefix,

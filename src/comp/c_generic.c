@@ -7145,7 +7145,7 @@ static bool rohc_list_decide_ipv6_compression(struct list_comp *const comp,
 				comp->trans_table[j].counter++;
 				if(comp->trans_table[j].counter >= L)
 				{
-					rc_list_debug(comp, "extension #%d was sent at least L = %d "
+					rc_list_debug(comp, "extension #%zu was sent at least L = %d "
 					              "times (%d times), mark it as known\n", j, L,
 					              comp->trans_table[j].counter);
 					comp->trans_table[j].known = 1;
