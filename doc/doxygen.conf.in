@@ -591,7 +591,10 @@ RECURSIVE              = YES
 EXCLUDE                = common/test comp/test decomp/test \
                          common/compat_headers \
                          comp/compat_headers \
-                         decomp/compat_headers
+                         decomp/compat_headers \
+                         common/rohc \
+                         comp/rohc \
+                         decomp/rohc
 
 # The EXCLUDE_SYMLINKS tag can be used select whether or not files or 
 # directories that are symbolic links (a Unix filesystem feature) are excluded 
@@ -605,7 +608,7 @@ EXCLUDE_SYMLINKS       = NO
 # against the file with absolute path, so to exclude all test directories 
 # for example use the pattern */test/*
 
-EXCLUDE_PATTERNS       = */test/* */compat_headers/*
+EXCLUDE_PATTERNS       = */test/* */compat_headers/* */common/rohc/* */comp/rohc/* */decomp/rohc/*
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names 
 # (namespaces, classes, functions, etc.) that should be excluded from the 
