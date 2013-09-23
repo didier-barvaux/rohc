@@ -303,6 +303,7 @@ struct sc_tcp_context
 	uint8_t tcp_option_window;
 
 	struct tcp_option_timestamp tcp_option_timestamp;
+	bool tcp_option_timestamp_init;
 	struct c_wlsb *opt_ts_req_wlsb;
 	struct c_wlsb *opt_ts_reply_wlsb;
 
@@ -867,6 +868,7 @@ static bool c_tcp_create(struct c_context *const context,
 	// Initialize TCP options list index used
 	memset(tcp_context->tcp_options_list,0xFF,16);
 
+	tcp_context->tcp_option_timestamp_init = false;
 	/* TCP option Timestamp (request) */
 	tcp_context->opt_ts_req_wlsb =
 		c_create_wlsb(32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
@@ -1592,7 +1594,8 @@ static int c_tcp_encode(struct c_context *const context,
 					memcpy(&ts_reply, opts + opts_offset + 6, sizeof(uint32_t));
 					opt_ts_present = true;
 
-					if(memcmp(&tcp_context->tcp_option_timestamp,
+					if(tcp_context->tcp_option_timestamp_init &&
+					   memcmp(&tcp_context->tcp_option_timestamp,
 					          opts + opts_offset + 2,
 								 sizeof(struct tcp_option_timestamp)) == 0)
 					{
@@ -3016,6 +3019,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						                rohc_ntoh32(ts), rohc_ntoh32(ts_reply));
 						memcpy(&tcp_context->tcp_option_timestamp, options + 2,
 								 sizeof(struct tcp_option_timestamp));
+						tcp_context->tcp_option_timestamp_init = true;
 						c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
 						           rohc_ntoh32(ts));
 						c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
@@ -3919,6 +3923,7 @@ new_index_with_compressed_value:
 				/* save value after compression */
 				memcpy(&tcp_context->tcp_option_timestamp, options + 2,
 				       sizeof(struct tcp_option_timestamp));
+				tcp_context->tcp_option_timestamp_init = true;
 				c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
 				           rohc_ntoh32(ts));
 				c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
