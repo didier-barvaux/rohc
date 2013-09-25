@@ -162,15 +162,17 @@ uint32_t variable_length_32_dec(const struct d_context *const context,
 			value = 0;
 			break;
 		case 1:
-			value = (*pmptr->uint8) & 0x000f;
+			value = (*pmptr->uint8) & 0xff;
 			pmptr->uint8++;
+			value = rohc_hton32(value);
 			break;
 		case 2:
 			value = 0;
-			value |= ((*pmptr->uint8) << 8) & 0x00f0;
+			value |= ((*pmptr->uint8) << 8) & 0xff00;
 			pmptr->uint8++;
-			value |= (*pmptr->uint8) & 0x000f;
+			value |= (*pmptr->uint8) & 0xff;
 			pmptr->uint8++;
+			value = rohc_hton32(value);
 			break;
 		case 3:
 			memcpy(&value, pmptr->uint8, sizeof(uint32_t));
