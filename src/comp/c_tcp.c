@@ -4620,7 +4620,7 @@ static int co_baseheader(struct c_context *const context,
 			 *  - at most 14 LSB of the TCP sequence number are required,
 			 *  - the 17 MSBs of ACK number didn't change,
 			 *  - at most 4 LSBs of IP-ID must be transmitted
-			 * otherwise use seq_8 packet */
+			 * otherwise use co_common packet */
 			if(!tcp_window_changed &&
 			   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 			   !tcp_ack_number_hi17_changed &&
