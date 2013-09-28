@@ -291,7 +291,7 @@ typedef struct __attribute__((packed)) ip_ah_opt_static
 typedef struct __attribute__((packed)) ip_ah_opt_dynamic
 {
 	uint32_t sequence_number;
-	uint32_t auth_data[1];
+	uint32_t auth_data[0];
 } ip_ah_opt_dynamic_t;
 
 /**
