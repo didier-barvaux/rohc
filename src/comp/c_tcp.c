@@ -2877,45 +2877,37 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	tcp_context->tcp_last_seq_number = rohc_ntoh32(tcp->seq_number);
 	tcp_context->tcp_seq_number_change_count++;
 
-	/* if ack_number valide */
-	if(tcp->ack_flag == 1)
+	/* ack_zero flag and ACK number: always check for the ACK number value even
+	 * if the ACK flag is not set in the uncompressed TCP header, this is
+	 * important to transmit all packets without any change, even if those bits
+	 * will be ignored at reception */
+	if(tcp->ack_number == 0)
 	{
-		if(tcp->ack_number == 0)
-		{
-			tcp_dynamic->ack_zero = 1;
-		}
-		else
-		{
-			tcp_dynamic->ack_zero = 0;
-			WRITE32_TO_MPTR(mptr,tcp->ack_number);
-			rohc_comp_debug(context, "TCP add ack_number\n");
-		}
+		tcp_dynamic->ack_zero = 1;
 	}
 	else
 	{
-		tcp_dynamic->ack_zero = 1;
+		tcp_dynamic->ack_zero = 0;
+		WRITE32_TO_MPTR(mptr,tcp->ack_number);
+		rohc_comp_debug(context, "TCP add ack_number\n");
 	}
 
 	WRITE16_TO_MPTR(mptr,tcp->window);
 	WRITE16_TO_MPTR(mptr,tcp->checksum);
 
-	/* if urg_ptr valide */
-	if(tcp->urg_flag == 1)
+	/* urp_zero flag and URG pointer: always check for the URG pointer value
+	 * even if the URG flag is not set in the uncompressed TCP header, this is
+	 * important to transmit all packets without any change, even if those
+	 * bits will be ignored at reception */
+	if(tcp->urg_ptr == 0)
 	{
-		if(tcp->urg_ptr == 0)
-		{
-			tcp_dynamic->urp_zero = 1;
-		}
-		else
-		{
-			tcp_dynamic->urp_zero = 0;
-			WRITE16_TO_MPTR(mptr,tcp->urg_ptr);
-			rohc_comp_debug(context, "TCP add urg_ptr\n");
-		}
+		tcp_dynamic->urp_zero = 1;
 	}
 	else
 	{
-		tcp_dynamic->urp_zero = 1;
+		tcp_dynamic->urp_zero = 0;
+		WRITE16_TO_MPTR(mptr, tcp->urg_ptr);
+		rohc_comp_debug(context, "TCP add urg_ptr\n");
 	}
 
 	if(tcp_context->ack_stride == 0)
