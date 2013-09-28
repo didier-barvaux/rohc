@@ -2674,14 +2674,14 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 								goto error;
 							}
 							rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
-							rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
-							                 rohc_ntoh32(*((uint32_t *) mptr.uint8)),
-							                 false);
-							rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
-							                 rohc_ntoh32(*((uint32_t *) (mptr.uint8 + 4))),
-							                 false);
 							memcpy(&tcp_context->tcp_option_timestamp, mptr.uint8,
 							       sizeof(struct tcp_option_timestamp));
+							rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
+							                 rohc_ntoh32(tcp_context->tcp_option_timestamp.ts),
+							                 false);
+							rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
+							                 rohc_ntoh32(tcp_context->tcp_option_timestamp.ts_reply),
+							                 false);
 							break;
 						default:
 							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
