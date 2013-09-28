@@ -497,10 +497,29 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
+	if(pidfilename != NULL)
+	{
+		ret = unlink(pidfilename);
+		if(ret != 0)
+		{
+			SNIFFER_LOG(LOG_WARNING, "failed to remove PID file '%s': %s (%d)",
+			            pidfilename, strerror(errno), errno);
+			goto error;
+		}
+	}
 	closelog();
 	return 0;
 
 error:
+	if(pidfilename != NULL)
+	{
+		ret = unlink(pidfilename);
+		if(ret != 0)
+		{
+			SNIFFER_LOG(LOG_WARNING, "failed to remove PID file '%s': %s (%d)",
+			            pidfilename, strerror(errno), errno);
+		}
+	}
 	closelog();
 	return 1;
 }
