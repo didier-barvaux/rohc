@@ -1,0 +1,7 @@
+#ROHC_SNIFFER="rohc_sniffer"
+#ROHC_SNIFFER_BIN="/usr/sbin/${ROHC_SNIFFER}"
+#PIDFILE="/var/run/${ROHC_SNIFFER}.pid"
+#MAX_CONTEXTS=450
+#CID_TYPE=large
+#INTERFACE=eth0
+#TIMEOUT=15

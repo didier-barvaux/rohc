@@ -1,0 +1,89 @@
+#!/sbin/runscript
+# Copyright 2013 Didier Barvaux <didier@barvaux.org>
+# Distributed under the terms of the GNU General Public License v2
+
+extra_started_commands="fullstatus"
+
+description_fullstatus="Gives the full status of the ROHC sniffer"
+
+depend() {
+	need net
+	use logger
+}
+
+checkconfig() {
+	ROHC_SNIFFER="${ROHC_SNIFFER:-rohc_sniffer}"
+	ROHC_SNIFFER_BIN="${ROHC_SNIFFER_BIN:-/usr/sbin/${ROHC_SNIFFER}}"
+	PIDFILE="${PIDFILE:-/var/run/${ROHC_SNIFFER}.pid}"
+	MAX_CONTEXTS=${MAX_CONTEXTS:-450}
+	CID_TYPE=${CID_TYPE:-large}
+	INTERFACE=${INTERFACE:-eth0}
+	TIMEOUT=${TIMEOUT:-15}
+
+	if [[ ! -x "${ROHC_SNIFFER_BIN}" ]] ; then
+		eerror "binary ${ROHC_SNIFFER_BIN} not found"
+		return 1
+	fi
+	if [[ "${CID_TYPE}" != "small" ]] ; then
+		if [[ "${CID_TYPE}" != "large" ]] ; then
+			eerror "invalid CID type ${CID_TYPE}"
+			return 1
+		fi
+	fi
+	if [[ "x${INTERFACE}" = "x" ]] ; then
+		eerror "empty interface name"
+		return 1
+	fi
+}
+
+start() {
+	checkconfig || return 1
+
+	ebegin "Starting ${SVCNAME} on interface ${INTERFACE}"
+	${ROHC_SNIFFER_BIN} \
+		--max-contexts ${MAX_CONTEXTS} \
+		--daemon --pidfile ${PIDFILE} \
+		${CID_TYPE}cid ${INTERFACE}
+
+	i=0
+	while [ ! -e "${PIDFILE}" ] && [ $i -lt ${TIMEOUT} ]; do
+		sleep 1 && i=$(expr $i + 1)
+	done
+
+	eend $(test $i -lt ${TIMEOUT})
+}
+
+stop() {
+	checkconfig || return 1
+
+	PID=$(cat "${PIDFILE}" 2>/dev/null)
+	if [ -z "${PID}" ]; then
+		einfo "${SVCNAME} not running (no pid file)"
+		return 0
+	fi
+
+	ebegin "Stopping ${SVCNAME}"
+	start-stop-daemon --signal INT -p ${PIDFILE}
+
+	i=0
+	while ( test -f "${PIDFILE}" && pgrep -P ${PID} ${ROHC_SNIFFER} >/dev/null ) \
+		&& [ $i -lt ${TIMEOUT} ]; do
+		sleep 1 && i=$(expr $i + 1)
+	done
+
+	eend $(test $i -lt ${TIMEOUT})
+}
+
+fullstatus() {
+	checkconfig || return 1
+
+	PID=$(cat "${PIDFILE}" 2>/dev/null)
+	if [ -z "${PID}" ]; then
+		einfo "${SVCNAME} not running (no pid file)"
+		return 0
+	fi
+
+	kill -USR1 ${PID}
+}
+
+# vim: ts=4 filetype=gentoo-init-d
