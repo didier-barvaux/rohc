@@ -245,6 +245,7 @@ int main(int argc, char *argv[])
 	const int do_change_dir = 1;
 	const int do_close_fds = 1;
 	int enabled_profiles[ROHC_PROFILE_UDPLITE + 1];
+	char *pidfilename = NULL;
 	char *cid_type_name = NULL;
 	char *device_name = NULL;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
@@ -318,6 +319,12 @@ int main(int argc, char *argv[])
 		{
 			/* enable daemon mode */
 			is_daemon = true;
+		}
+		else if(!strcmp(*argv, "-p") || !strcmp(*argv, "--pidfile"))
+		{
+			/* get the name of the pidfile */
+			pidfilename = argv[1];
+			args_used++;
 		}
 		else if(!strcmp(*argv, "-m") || !strcmp(*argv, "--max-contexts"))
 		{
@@ -393,6 +400,16 @@ int main(int argc, char *argv[])
 	/* the source filename is mandatory */
 	if(device_name == NULL)
 	{
+		SNIFFER_LOG(LOG_WARNING, "device name is mandatory");
+		usage();
+		goto error;
+	}
+
+	/* --pidfile cannot be used in foreground mode */
+	if(pidfilename != NULL && !is_daemon)
+	{
+		SNIFFER_LOG(LOG_WARNING, "option --pidfile cannot be used without "
+		            "option --daemon");
 		usage();
 		goto error;
 	}
@@ -415,7 +432,7 @@ int main(int argc, char *argv[])
 
 		/* create temporary directory for captures */
 		ret = mkdir(dirname, 0700);
-		if(ret != 0)
+		if(ret != 0 && errno != EEXIST)
 		{
 			SNIFFER_LOG(LOG_WARNING, "failed to create directory '%s': %s (%d)",
 			            dirname, strerror(errno), errno);
@@ -429,6 +446,39 @@ int main(int argc, char *argv[])
 			SNIFFER_LOG(LOG_WARNING, "failed to enter directory '%s': %s (%d)",
 			            dirname, strerror(errno), errno);
 			goto error;
+		}
+
+		if(pidfilename != NULL)
+		{
+			FILE *pidfile;
+
+			pidfile = fopen(pidfilename, "w");
+			if(pidfile == NULL)
+			{
+				SNIFFER_LOG(LOG_WARNING, "failed to open PID file '%s': %s (%d)",
+				            pidfilename, strerror(errno), errno);
+				goto error;
+			}
+			ret = fprintf(pidfile, "%d\n", getpid());
+			if(ret <= 0)
+			{
+				SNIFFER_LOG(LOG_WARNING, "failed to write PID in file '%s': "
+				            "%s (%d)", pidfilename, strerror(errno), errno);
+				ret = fclose(pidfile);
+				if(ret != 0)
+				{
+					SNIFFER_LOG(LOG_WARNING, "failed to close PID file '%s': "
+					            "%s (%d)", pidfilename, strerror(errno), errno);
+				}
+				goto error;
+			}
+			ret = fclose(pidfile);
+			if(ret != 0)
+			{
+				SNIFFER_LOG(LOG_WARNING, "failed to close PID file '%s': %s (%d)",
+				            pidfilename, strerror(errno), errno);
+				goto error;
+			}
 		}
 	}
 
@@ -475,6 +525,7 @@ static void usage(void)
 	       "  -v, --version           Print version information and exit\n"
 	       "  -h, --help              Print this usage and exit\n"
 	       "  -d, --daemon            Run in background, trace in syslog\n"
+	       "  -p, --pidfile FILE      Write daemon PID in the given file\n"
 	       "  -m, --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                          simultaneously use during the test\n"
 	       "      --disable PROFILE   A ROHC profile to disable\n"
