@@ -58,6 +58,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <syslog.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /* include for the PCAP library */
 #if HAVE_PCAP_PCAP_H == 1
@@ -195,6 +197,9 @@ static bool stop_program;
 /** Some statistics collected by the sniffer */
 static struct sniffer_stats stats;
 
+/** Whether the application runs in daemon mode or not */
+static bool is_daemon;
+
 /** Whether the application runs in verbose mode or not */
 static bool is_verbose;
 
@@ -220,6 +225,7 @@ static bool do_print_stderr;
 		if(do_print_stderr) \
 		{ \
 			fprintf(stderr, format "\n", ##__VA_ARGS__); \
+			fflush(stderr); \
 		} \
 		syslog(prio, format, ##__VA_ARGS__); \
 	} while(0)
@@ -256,6 +262,8 @@ int main(int argc, char *argv[])
 
 	/* set to quiet mode by default */
 	is_verbose = false;
+	/* disable daemon mode by default */
+	is_daemon = false;
 
 	/* enable all ROHC profiles by default */
 	enabled_profiles[ROHC_PROFILE_UNCOMPRESSED] = 1;
@@ -305,6 +313,11 @@ int main(int argc, char *argv[])
 		{
 			/* enable verbose mode */
 			is_verbose = true;
+		}
+		else if(!strcmp(*argv, "--daemon") || !strcmp(*argv, "-d"))
+		{
+			/* enable daemon mode */
+			is_daemon = true;
 		}
 		else if(!strcmp(*argv, "-m") || !strcmp(*argv, "--max-contexts"))
 		{
@@ -384,16 +397,40 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	ret = daemon(do_change_dir, do_close_fds);
-	if(ret != 0)
+	/* run in daemon mode if asked */
+	if(is_daemon)
 	{
-		SNIFFER_LOG(LOG_WARNING, "failed to run in background: %s (%d)",
-		            strerror(errno), errno);
-		goto error;
-	}
+		const char dirname[] = "/var/tmp/rohc_sniffer/";
 
-	/* do not write on stderr, only syslog */
-	do_print_stderr = false;
+		ret = daemon(do_change_dir, do_close_fds);
+		if(ret != 0)
+		{
+			SNIFFER_LOG(LOG_WARNING, "failed to run in background: %s (%d)",
+			            strerror(errno), errno);
+			goto error;
+		}
+
+		/* in daemon mode, do not write on stderr anymore, only syslog */
+		do_print_stderr = false;
+
+		/* create temporary directory for captures */
+		ret = mkdir(dirname, 0700);
+		if(ret != 0)
+		{
+			SNIFFER_LOG(LOG_WARNING, "failed to create directory '%s': %s (%d)",
+			            dirname, strerror(errno), errno);
+			goto error;
+		}
+
+		/* enter the temporary directory */
+		ret = chdir(dirname);
+		if(ret != 0)
+		{
+			SNIFFER_LOG(LOG_WARNING, "failed to enter directory '%s': %s (%d)",
+			            dirname, strerror(errno), errno);
+			goto error;
+		}
+	}
 
 	SNIFFER_LOG(LOG_INFO, "starting ROHC sniffer");
 
@@ -437,6 +474,7 @@ static void usage(void)
 	       "  DEVICE                  The name of the network device to use\n"
 	       "  -v, --version           Print version information and exit\n"
 	       "  -h, --help              Print this usage and exit\n"
+	       "  -d, --daemon            Run in background, trace in syslog\n"
 	       "  -m, --max-contexts NUM  The maximum number of ROHC contexts to\n"
 	       "                          simultaneously use during the test\n"
 	       "      --disable PROFILE   A ROHC profile to disable\n"
@@ -900,10 +938,15 @@ static bool sniff(const rohc_cid_type_t cid_type,
 
 		stats.total_packets++;
 
-		if(is_verbose &&
+		if(!is_daemon &&
 		   (stats.total_packets == 1 || (stats.total_packets % 100) == 0))
 		{
-			SNIFFER_LOG(LOG_INFO, "packet #%lu", stats.total_packets);
+			if(stats.total_packets > 1)
+			{
+				printf("\r");
+			}
+			printf("packet #%lu", stats.total_packets);
+			fflush(stdout);
 		}
 
 		/* compress & decompress from compressor to decompressor */
@@ -1420,13 +1463,19 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 	if(level >= ROHC_TRACE_WARNING || is_verbose)
 	{
 		va_list args;
-		fprintf(stdout, "[%s] ", level_descrs[level]);
-		va_start(args, format);
-		vfprintf(stdout, format, args);
-		va_end(args);
-		va_start(args, format);
-		vsyslog(LOG_DEBUG, format, args);
-		va_end(args);
+		if(do_print_stderr)
+		{
+			fprintf(stdout, "[%s] ", level_descrs[level]);
+			va_start(args, format);
+			vfprintf(stdout, format, args);
+			va_end(args);
+		}
+		if(is_daemon)
+		{
+			va_start(args, format);
+			vsyslog(LOG_DEBUG, format, args);
+			va_end(args);
+		}
 	}
 
 	if(last_traces_last == -1)
