@@ -28,7 +28,7 @@
 #include "rohc_packets.h"
 #include "rohc_debug.h" /* for zfree() */
 #include "rohc_utils.h"
-#include "decode.h"
+#include "rohc_decomp_detect_packet.h"
 
 #include <assert.h>
 
@@ -139,27 +139,27 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
 		goto error;
 	}
 
-	if(d_is_uo0(rohc_packet, rohc_length))
+	if(rohc_decomp_packet_is_uo0(rohc_packet, rohc_length))
 	{
 		/* UO-0 packet */
 		type = ROHC_PACKET_UO_0;
 	}
-	else if(d_is_uo1(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_uo1(rohc_packet, rohc_length))
 	{
 		/* UO-1 packet */
 		type = ROHC_PACKET_UO_1;
 	}
-	else if(d_is_uor2(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_uor2(rohc_packet, rohc_length))
 	{
 		/* UOR-2 packet */
 		type = ROHC_PACKET_UOR_2;
 	}
-	else if(d_is_irdyn(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_irdyn(rohc_packet, rohc_length))
 	{
 		/* IR-DYN packet */
 		type = ROHC_PACKET_IR_DYN;
 	}
-	else if(d_is_ir(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length))
 	{
 		/* IR packet */
 		type = ROHC_PACKET_IR;

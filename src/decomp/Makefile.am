@@ -11,6 +11,7 @@ SUBDIRS = . test
 lib_LTLIBRARIES = librohc_decomp.la
 
 librohc_decomp_la_SOURCES = \
+	rohc_decomp_detect_packet.c \
 	rohc_decomp.c \
 	feedback.c \
 	d_uncompressed.c \
@@ -52,6 +53,7 @@ pkginclude_HEADERS = rohc_decomp.h
 
 noinst_HEADERS = \
 	rohc_decomp_internals.h \
+	rohc_decomp_detect_packet.h \
 	feedback.h \
 	d_uncompressed.h \
 	d_generic.h \

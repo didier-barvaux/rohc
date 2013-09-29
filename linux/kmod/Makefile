@@ -19,7 +19,6 @@ rohc_common_sources = \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/crc.c \
 	../../src/common/rohc_add_cid.c \
-	../../src/common/decode.c \
 	../../src/common/ip_id_offset_decode.c \
 	../../src/common/interval.c \
 	../../src/common/lsb_decode.c \
@@ -44,6 +43,7 @@ rohc_comp_sources = \
 	../../src/comp/c_tcp.c
 
 rohc_decomp_sources = \
+	../../src/decomp/rohc_decomp_detect_packet.c \
 	../../src/decomp/rohc_decomp.c \
 	../../src/decomp/feedback.c \
 	../../src/decomp/d_uncompressed.c \

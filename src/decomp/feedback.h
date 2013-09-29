@@ -31,6 +31,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "dllexport.h"
+
 
 /// CRC option for the FEEDBACK-2 packet
 #define OPT_TYPE_CRC           1
@@ -83,6 +85,12 @@ struct d_feedback
 /*
  * Prototypes of public functions.
  */
+
+size_t ROHC_EXPORT rohc_decomp_feedback_size(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
+
+size_t ROHC_EXPORT rohc_decomp_feedback_headersize(const uint8_t *const data)
+	__attribute__((warn_unused_result, nonnull(1), pure));
 
 void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
 	__attribute__((nonnull(2)));

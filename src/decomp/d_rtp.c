@@ -30,7 +30,7 @@
 #include "ts_sc_decomp.h"
 #include "sdvl.h"
 #include "crc.h"
-#include "decode.h"
+#include "rohc_decomp_detect_packet.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
 
@@ -303,28 +303,28 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 		goto error;
 	}
 
-	if(d_is_uo0(rohc_packet, rohc_length))
+	if(rohc_decomp_packet_is_uo0(rohc_packet, rohc_length))
 	{
 		/* UO-0 packet */
 		type = ROHC_PACKET_UO_0;
 	}
-	else if(d_is_uo1(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_uo1(rohc_packet, rohc_length))
 	{
 		/* choose between the UO-1-RTP, UO-1-ID, and UO-1-TS variants */
 		type = rtp_choose_uo1_variant(decomp, context, rohc_packet, rohc_length);
 	}
-	else if(d_is_uor2(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_uor2(rohc_packet, rohc_length))
 	{
 		/* choose between the UOR-2-RTP, UOR-2-ID, and UOR-2-TS variants */
-		type = rtp_choose_uor2_variant(decomp, context, rohc_packet, rohc_length,
-		                               large_cid_len);
+		type = rtp_choose_uor2_variant(decomp, context, rohc_packet,
+		                               rohc_length, large_cid_len);
 	}
-	else if(d_is_irdyn(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_irdyn(rohc_packet, rohc_length))
 	{
 		/* IR-DYN packet */
 		type = ROHC_PACKET_IR_DYN;
 	}
-	else if(d_is_ir(rohc_packet, rohc_length))
+	else if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length))
 	{
 		/* IR packet */
 		type = ROHC_PACKET_IR;
@@ -427,7 +427,7 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const deco
 		                  "as UO-1-ID or UO-1-TS\n");
 
 		/* UO-1-ID or UO-1-TS packet, check the T field */
-		if(d_is_uo1_ts(packet, rohc_length))
+		if(rohc_decomp_packet_is_uo1_ts(packet, rohc_length))
 		{
 			/* UO-1-TS packet */
 			rohc_decomp_debug(context, "UO-1* packet disambiguation: T = 1, "
@@ -535,7 +535,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const dec
 		                  "later if value(RND) = 1 in packet\n");
 
 		/* UOR-2-ID or UOR-2-TS packet, check the T field */
-		if(d_is_uor2_ts(packet, rohc_length, large_cid_len))
+		if(rohc_decomp_packet_is_uor2_ts(packet, rohc_length, large_cid_len))
 		{
 			/* UOR-2-TS packet */
 			rohc_decomp_debug(context, "UOR-2* packet disambiguation: T = 1, "

@@ -28,7 +28,7 @@
 #include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "crc.h"
-#include "decode.h" /* for d_is_ir() */
+#include "rohc_decomp_detect_packet.h" /* for rohc_decomp_packet_is_ir() */
 
 #ifndef __KERNEL__
 #	include <string.h>
@@ -127,7 +127,7 @@ static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const d
 {
 	rohc_packet_t type;
 
-	if(d_is_ir(rohc_packet, rohc_length))
+	if(rohc_decomp_packet_is_ir(rohc_packet, rohc_length))
 	{
 		type = ROHC_PACKET_IR;
 	}

@@ -45,7 +45,7 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "rohc_add_cid.h"
-#include "decode.h"
+#include "rohc_decomp_detect_packet.h"
 #include "crc.h"
 
 #include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
@@ -1294,7 +1294,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 	/* ROHC segment? */
-	if(d_is_segment(walk))
+	if(rohc_decomp_packet_is_segment(walk))
 	{
 		const bool is_final = !!GET_REAL(GET_BIT_0(walk));
 		uint32_t crc_computed;
@@ -1410,7 +1410,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 	/* is the ROHC packet an IR packet? */
-	if(d_is_ir(walk, isize))
+	if(rohc_decomp_packet_is_ir(walk, isize))
 	{
 		uint8_t profile_id;
 
@@ -1493,7 +1493,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		           "context with CID %zu found\n", ddata->cid);
 
 		/* is the ROHC packet an IR-DYN packet? */
-		if(d_is_irdyn(walk, isize))
+		if(rohc_decomp_packet_is_irdyn(walk, isize))
 		{
 			uint8_t profile_id;
 
@@ -3269,7 +3269,7 @@ static int d_decode_feedback_first(struct rohc_decomp *decomp,
 	*parsed_size = 0;
 
 	/* remove all padded bytes */
-	while(size > 0 && d_is_padding(packet))
+	while(size > 0 && rohc_decomp_packet_is_padding(packet))
 	{
 		packet++;
 		size--;
@@ -3279,7 +3279,7 @@ static int d_decode_feedback_first(struct rohc_decomp *decomp,
 	           "skip %u byte(s) of padding\n", *parsed_size);
 
 	/* parse as much feedback data as possible */
-	while(size > 0 && d_is_feedback(packet))
+	while(size > 0 && rohc_decomp_packet_is_feedback(packet))
 	{
 		size_t feedback_size;
 		int ret;
@@ -3332,7 +3332,7 @@ static int d_decode_feedback(struct rohc_decomp *const decomp,
 	}
 
 	/* extract the size of the feedback */
-	data_size = d_feedback_size(packet);
+	data_size = rohc_decomp_feedback_size(packet);
 	if(data_size > len)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -3342,7 +3342,7 @@ static int d_decode_feedback(struct rohc_decomp *const decomp,
 	}
 
 	/* extract the size of the feedback header */
-	header_size = d_feedback_headersize(packet);
+	header_size = rohc_decomp_feedback_headersize(packet);
 	if((header_size + data_size) > len)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,

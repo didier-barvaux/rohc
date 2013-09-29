@@ -34,7 +34,7 @@
 #include "rohc_bit_ops.h"
 #include "rohc_decomp_internals.h"
 #include "comp_list.h"
-#include "decode.h"
+#include "rohc_decomp_detect_packet.h"
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
@@ -5930,7 +5930,8 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 
 		/* change packet type UOR-2-RTP -> UOR-2-ID/TS, then try parsing UOR-2*
 		 * packet with information from packet */
-		if(d_is_uor2_ts(rohc_packet, rohc_length, large_cid_len))
+		if(rohc_decomp_packet_is_uor2_ts(rohc_packet, rohc_length,
+		                                 large_cid_len))
 		{
 			rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			          "change for packet UOR-2-TS (T = 1)\n");
