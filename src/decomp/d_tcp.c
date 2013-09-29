@@ -1586,7 +1586,9 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
+#if ROHC_EXTRA_DEBUG == 1
 	uint8_t *data_orig = c_base_header.uint8;
+#endif
 	size_t remain_len = length;
 	int size;
 
