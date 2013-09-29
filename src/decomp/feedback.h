@@ -50,12 +50,16 @@ typedef enum
 } rohc_feedback_opt_t;
 
 
-/// Feedback ACK
-#define ACKTYPE_ACK          0
-/// Feedback Negative ACK
-#define ACKTYPE_NACK         1
-/// Feedback Satic Negative ACK
-#define ACKTYPE_STATIC_NACK  2
+/**
+ * @brief The different types of feedback acknowledgements
+ */
+typedef enum
+{
+	ROHC_ACK_TYPE_ACK         = 0, /**< positive ACKnowledgement (ACK) */
+	ROHC_ACK_TYPE_NACK        = 1, /**< Negative ACKnowledgement (NACK) */
+	ROHC_ACK_TYPE_STATIC_NACK = 2, /**< static Negative ACK (STATIC-NACK) */
+
+} rohc_ack_type_t;
 
 
 /// Do not add a CRC option in Feedback packet
@@ -95,7 +99,7 @@ size_t ROHC_EXPORT rohc_decomp_feedback_headersize(const uint8_t *const data)
 void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
 	__attribute__((nonnull(2)));
 
-bool f_feedback2(const int acktype,
+bool f_feedback2(const rohc_ack_type_t ack_type,
                  const rohc_mode_t mode,
                  const uint32_t sn,
                  struct d_feedback *const feedback)

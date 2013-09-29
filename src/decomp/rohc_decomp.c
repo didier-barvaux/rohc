@@ -1698,7 +1698,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* create an ACK feedback */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			           "send an ACK feedback\n");
-			ret = f_feedback2(ACKTYPE_ACK, context->mode,
+			ret = f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
 			                  context->profile->get_sn(context), &sfeedback);
 			if(ret != ROHC_OK)
 			{
@@ -1735,7 +1735,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			/* create a STATIC NACK feedback */
 			rohc_info(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			          "send a STATIC-NACK feedback for CID %zu\n", cid);
-			ret = f_feedback2(ACKTYPE_STATIC_NACK, ROHC_O_MODE, 0, &sfeedback);
+			ret = f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, ROHC_O_MODE,
+			                  0 /* unknown SN */, &sfeedback);
 			if(ret != ROHC_OK)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -1785,7 +1786,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					/* create a STATIC-NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					          "send a STATIC-NACK feedback for CID %zu\n", cid);
-					ret = f_feedback2(ACKTYPE_STATIC_NACK, context->mode,
+					ret = f_feedback2(ROHC_ACK_TYPE_STATIC_NACK, context->mode,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
 					{
@@ -1822,8 +1823,9 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					/* create a NACK feedback */
 					rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					          "send a NACK feedback for CID %zu\n", cid);
-					ret = f_feedback2(ACKTYPE_NACK, context->mode,
-					                  context->profile->get_sn(context), &sfeedback);
+					ret = f_feedback2(ROHC_ACK_TYPE_NACK, context->mode,
+					                  context->profile->get_sn(context),
+					                  &sfeedback);
 					if(ret != ROHC_OK)
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -2412,7 +2414,7 @@ void d_change_mode_feedback(const struct rohc_decomp *const decomp,
 	}
 
 	/* create an ACK feedback */
-	is_ok = f_feedback2(ACKTYPE_ACK, context->mode,
+	is_ok = f_feedback2(ROHC_ACK_TYPE_ACK, context->mode,
 	                    context->profile->get_sn(context), &sfeedback);
 	if(!is_ok)
 	{

@@ -127,16 +127,21 @@ void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
 /**
  * @brief Build a FEEDBACK-2 packet.
  *
- * @param acktype  The type of acknowledgement: ACK, NACK or S-NACK
- * @param mode     The mode in which ROHC operates: ROHC_U_MODE, ROHC_O_MODE
- *                 or ROHC_R_MODE
- * @param sn       The Sequence Number (SN) the feedback packet is
- *                 associated with
- * @param feedback The feedback packet to build
- * @return         true if the packet is successfully built
- *                 false otherwise
+ * @param ack_type  The type of acknowledgement:
+ *                    \li \ref ROHC_ACK_TYPE_ACK,
+ *                    \li \ref ROHC_ACK_TYPE_NACK,
+ *                    \li \ref ROHC_ACK_TYPE_STATIC_NACK
+ * @param mode      The mode in which ROHC operates:
+ *                    \li \ref ROHC_U_MODE,
+ *                    \li \ref ROHC_O_MODE,
+ *                    \li \ref ROHC_R_MODE
+ * @param sn        The Sequence Number (SN) the feedback packet is
+ *                  associated with, zero if unknown
+ * @param feedback  The feedback packet to build
+ * @return          true if the packet is successfully built,
+ *                  false otherwise
  */
-bool f_feedback2(const int acktype,
+bool f_feedback2(const rohc_ack_type_t ack_type,
                  const rohc_mode_t mode,
                  const uint32_t sn,
                  struct d_feedback *const feedback)
@@ -145,10 +150,10 @@ bool f_feedback2(const int acktype,
 
 	feedback->type = 2; /* set type for add_option */
 	feedback->size = 2; /* size of FEEDBACK-2 header */
-	feedback->data[0] = ((acktype & 0x3) << 6) | ((mode & 0x3) << 4);
+	feedback->data[0] = ((ack_type & 0x3) << 6) | ((mode & 0x3) << 4);
 #ifdef ROHC_FEEDBACK_DEBUG
 	printf("FEEDBACK-2: first 4 bits = 0x%02x (ACK type = %d, mode = %d)\n",
-	       feedback->data[0], acktype, mode);
+	       feedback->data[0], ack_type, mode);
 #endif
 
 	if(sn < (1 << 12)) /* SN may be stored on 12 bits */
