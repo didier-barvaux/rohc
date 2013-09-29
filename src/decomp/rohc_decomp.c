@@ -1742,7 +1742,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				             "failed to build the STATIC-NACK feedback\n");
 				return;
 			}
-			ret = f_add_option(&sfeedback, OPT_TYPE_SN_NOT_VALID, NULL, 0);
+			ret = f_add_option(&sfeedback, ROHC_FEEDBACK_OPT_SN_NOT_VALID,
+			                   NULL, 0);
 			if(ret != ROHC_OK)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,

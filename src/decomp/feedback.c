@@ -179,7 +179,8 @@ bool f_feedback2(const int acktype,
 #endif
 
 		/* SN option */
-		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt, sizeof(sn_opt));
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt,
+		                     sizeof(sn_opt));
 		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -210,7 +211,8 @@ bool f_feedback2(const int acktype,
 #endif
 
 		/* first SN option */
-		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt1,
+		                     sizeof(sn_opt1));
 		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -223,7 +225,8 @@ bool f_feedback2(const int acktype,
 #endif
 
 		/* second SN option */
-		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt2,
+		                     sizeof(sn_opt2));
 		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -256,7 +259,8 @@ bool f_feedback2(const int acktype,
 #endif
 
 		/* first SN option */
-		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt1, sizeof(sn_opt1));
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt1,
+		                     sizeof(sn_opt1));
 		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -269,7 +273,8 @@ bool f_feedback2(const int acktype,
 #endif
 
 		/* second SN option */
-		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt2, sizeof(sn_opt2));
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt2,
+		                     sizeof(sn_opt2));
 		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -282,7 +287,8 @@ bool f_feedback2(const int acktype,
 #endif
 
 		/* third SN option */
-		is_ok = f_add_option(feedback, OPT_TYPE_SN, &sn_opt3, sizeof(sn_opt3));
+		is_ok = f_add_option(feedback, ROHC_FEEDBACK_OPT_SN, &sn_opt3,
+		                     sizeof(sn_opt3));
 		if(!is_ok)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG
@@ -313,7 +319,7 @@ error:
  *                 ROHC_ERROR otherwise
  */
 bool f_add_option(struct d_feedback *const feedback,
-                  const uint8_t opt_type,
+                  const rohc_feedback_opt_t opt_type,
                   const unsigned char *const data,
                   const size_t data_len)
 {
@@ -323,14 +329,14 @@ bool f_add_option(struct d_feedback *const feedback,
 	/* write option header: type and size */
 	feedback->data[feedback->size] = opt_type & 0xf;
 	feedback->data[feedback->size] <<= 4;
-	if(opt_type == OPT_TYPE_CRC || data != NULL)
+	if(opt_type == ROHC_FEEDBACK_OPT_CRC || data != NULL)
 	{
 		assert(data_len == 0 || data_len == 1);
 		feedback->data[feedback->size] |= 1;
 	}
 	feedback->size++;
 
-	if(opt_type == OPT_TYPE_CRC)
+	if(opt_type == ROHC_FEEDBACK_OPT_CRC)
 	{
 		/* force 0x00 as data in case of CRC option */
 		assert(data == NULL);
@@ -494,7 +500,7 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("add CRC option to feedback\n");
 #endif
-		ret = f_add_option(feedback, OPT_TYPE_CRC, NULL, 0);
+		ret = f_add_option(feedback, ROHC_FEEDBACK_OPT_CRC, NULL, 0);
 		if(ret != ROHC_OK)
 		{
 #ifdef ROHC_FEEDBACK_DEBUG

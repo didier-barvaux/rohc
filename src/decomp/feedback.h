@@ -34,20 +34,20 @@
 #include "dllexport.h"
 
 
-/// CRC option for the FEEDBACK-2 packet
-#define OPT_TYPE_CRC           1
-/// Reject option for the FEEDBACK-2 packet
-#define OPT_TYPE_REJECT        2
-/// SN-not-valid option for the FEEDBACK-2 packet
-#define OPT_TYPE_SN_NOT_VALID  3
-/// SN option for the FEEDBACK-2 packet
-#define OPT_TYPE_SN            4
-/// Clock option for the FEEDBACK-2 packet (not used)
-#define OPT_TYPE_CLOCK         5
-/// Jitter option for the FEEDBACK-2 packet (not used)
-#define OPT_TYPE_JITTER        6
-/// Loss option for the FEEDBACK-2 packet
-#define OPT_TYPE_LOSS          7
+/**
+ * @brief The different feedback options
+ */
+typedef enum
+{
+	ROHC_FEEDBACK_OPT_CRC          = 1, /**< FEEDBACK-2 CRC option */
+	ROHC_FEEDBACK_OPT_REJECT       = 2, /**< FEEDBACK-2 Reject option */
+	ROHC_FEEDBACK_OPT_SN_NOT_VALID = 3, /**< FEEDBACK-2 SN-not-valid option */
+	ROHC_FEEDBACK_OPT_SN           = 4, /**< FEEDBACK-2 SN option */
+	ROHC_FEEDBACK_OPT_CLOCK        = 5, /**< FEEDBACK-2 Clock option */
+	ROHC_FEEDBACK_OPT_JITTER       = 6, /**< FEEDBACK-2 Jitter option */
+	ROHC_FEEDBACK_OPT_LOSS         = 7, /**< FEEDBACK-2 Loss option */
+
+} rohc_feedback_opt_t;
 
 
 /// Feedback ACK
@@ -102,7 +102,7 @@ bool f_feedback2(const int acktype,
 	__attribute__((warn_unused_result, nonnull(4)));
 
 bool f_add_option(struct d_feedback *const feedback,
-                  const uint8_t opt_type,
+                  const rohc_feedback_opt_t opt_type,
                   const unsigned char *const data,
                   const size_t data_len)
 	__attribute__((warn_unused_result, nonnull(1)));
