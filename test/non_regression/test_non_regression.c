@@ -115,7 +115,6 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc.h>
 #include <rohc_comp.h>
 #include <rohc_decomp.h>
-#include "config.h" /* for RTP_BIT_TYPE definition */
 
 
 /// The program version
@@ -889,13 +888,6 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* compare the ROHC packets with the ones given by the user if asked */
 	printf("\t\t<rohc_comparison>\n");
 	printf("\t\t\t<log>\n");
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-	printf("RTP bit type option enabled, comparison with ROHC packets "
-	       "of reference is skipped because they will not match\n");
-	printf("\t\t\t</log>\n");
-	printf("\t\t\t<status>failed</status>\n");
-	status = 0;
-#else
 	if(cmp_packet != NULL && cmp_size > link_len_cmp)
 	{
 		if(!compare_packets(cmp_packet + link_len_cmp, cmp_size - link_len_cmp,
@@ -919,7 +911,6 @@ static int compress_decompress(struct rohc_comp *comp,
 		printf("\t\t\t<status>failed</status>\n");
 		status = 0;
 	}
-#endif
 	printf("\t\t</rohc_comparison>\n\n");
 
 	/* decompress the ROHC packet */
@@ -1534,16 +1525,6 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	printf("\t<shutdown>\n");
 	printf("\t\t<log>\n\n");
 
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-	if(err_comp == 0 && err_decomp == 0 &&
-	   nb_bad == 0 && nb_ref == (counter * 2) &&
-	   nb_ok == 0)
-	{
-		/* test is successful, but exit with code 77 to report test as skipped
-		   because of the RTP bit type option */
-		status = 77;
-	}
-#else
 	if(err_comp == 0 && err_decomp == 0 &&
 	   nb_bad == 0 && nb_ref == 0 &&
 	   nb_ok == (counter * 2))
@@ -1551,7 +1532,6 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		/* test is successful */
 		status = 0;
 	}
-#endif
 
 destroy_decomp2:
 	rohc_decomp_free(decomp2);

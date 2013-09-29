@@ -831,15 +831,19 @@ AC_ARG_ENABLE(rtp_bit_type,
               AS_HELP_STRING([--enable-rtp-bit-type],
                              [enable RTP bit type (use an additionnal bit \
                               to distinguish UOR-2-TS and UOR-2-ID packets) \
-                              [[default=no]]]),
+                              [deprecated]]),
               enable_rtp_bit_type=$enableval,
               enable_rtp_bit_type=no)
 if test "$enable_rtp_bit_type" = "yes"; then
-	rtp_bit_type=1
-else
-	rtp_bit_type=0
+	echo
+	echo "The RTP bit type was not part of any RFC standard. It was also a "
+	echo "maintenance burden. It was therefore removed from the ROHC library. "
+	echo
+	echo "Please remove the --enable-rtp-bit-type option from the ./autogen.sh "
+	echo "or ./configure command to continue."
+	echo
+	exit 1
 fi
-AC_DEFINE_UNQUOTED([RTP_BIT_TYPE], [$rtp_bit_type], [Whether RTP bit type is enabled or not.])
 
 
 # check if API documentation should be generated (HTML format with doxygen)

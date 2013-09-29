@@ -41,7 +41,7 @@
 #endif
 #include <assert.h>
 
-#include "config.h" /* for RTP_BIT_TYPE and ROHC_EXTRA_DEBUG definitions */
+#include "config.h" /* for ROHC_EXTRA_DEBUG definition */
 
 
 /*
@@ -3243,14 +3243,6 @@ int code_UO2_packet(struct c_context *const context,
 	crc = CRC_INIT_7;
 	crc_type = ROHC_CRC_TYPE_7;
 	crc_table = context->compressor->crc_table_7;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-	if(is_rtp)
-	{
-		crc = CRC_INIT_6;
-		crc_type = ROHC_CRC_TYPE_6;
-		crc_table = context->compressor->crc_table_6;
-	}
-#endif
 	ip2_hdr = (g_context->tmp.nr_of_ip_hdr > 1) ? ip2->data : NULL;
 	/* compute CRC on CRC-STATIC fields */
 	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
@@ -3503,9 +3495,6 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-	const int rtp_type_bit = 0;
-#endif
 	uint32_t ts_send;
 	uint32_t ts_mask;
 
@@ -3556,11 +3545,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 0 + type_bit to 0 */
+			/* part 5: set the X bit to 0 */
 			*t_byte &= ~0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3587,11 +3573,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3618,11 +3601,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3649,11 +3629,8 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3705,11 +3682,9 @@ int code_UOR2_RTP_bytes(const struct c_context *context,
 				                g_context->tmp.nr_sn_bits, (*s_byte) & 0x3f);
 			}
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
+
 			/* compute TS to send in extension 3 and its length */
 			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
@@ -3770,9 +3745,6 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-	const int rtp_type_bit = 0;
-#endif
 	uint32_t ts_send;
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -3837,11 +3809,8 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 0 + type_bit to 0*/
+			/* part 5: set the X bit to 0 */
 			*t_byte &= ~0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3864,11 +3833,8 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3891,11 +3857,8 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3918,11 +3881,8 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -3983,11 +3943,9 @@ int code_UOR2_TS_bytes(const struct c_context *context,
 				                (*s_byte) & 0x3f);
 			}
 
-			/* part 5: set the X bit to 1 + type_bit to 0 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
+
 			/* compute TS to send in extension 3 and its length */
 			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
@@ -4048,9 +4006,7 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-	const int rtp_type_bit = 1;
-#endif
+
 	/* number of IP-ID bits and IP-ID offset to transmit  */
 	ip_header_pos_t innermost_ip_hdr;
 	size_t nr_innermost_ip_id_bits;
@@ -4091,11 +4047,8 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 0 + type_bit to 1*/
+			/* part 5: set the X bit to 0 */
 			*t_byte &= ~0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -4118,11 +4071,8 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 1 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -4145,11 +4095,8 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 1 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -4172,11 +4119,8 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
 			                (*s_byte) & 0x3f);
 
-			/* part 5: set the X bit to 1 + type_bit to 1 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 			break;
 		}
 
@@ -4250,11 +4194,8 @@ int code_UOR2_ID_bytes(const struct c_context *context,
 				                (*s_byte) & 0x3f);
 			}
 
-			/* part 5: set the X bit to 1 + type_bit to 1 */
+			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
-#if defined(RTP_BIT_TYPE) && RTP_BIT_TYPE
-			*t_byte |= (rtp_type_bit & 0x01) << 6;
-#endif
 
 			/* compute TS to send in extension 3 and its length */
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 0);

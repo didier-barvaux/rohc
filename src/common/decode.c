@@ -25,8 +25,6 @@
 #include "decode.h"
 #include "rohc_bit_ops.h"
 
-#include "config.h" /* for RTP_BIT_TYPE definition */
-
 
 /**
  * @brief Find out whether the field is a segment field or not
@@ -222,34 +220,6 @@ bool d_is_uor2_ts(const uint8_t *const data,
 {
 	return (data_len > (1 + large_cid_len) &&
 	        GET_BIT_7(data + 1 + large_cid_len) != 0);
-}
-
-
-/**
- * @brief Find out whether a ROHC packet is an UOR-2-RTP packet or not
- *
- * If RTP disambiguation bit is enabled, check it. Otherwise, always return
- * true.
- *
- * The RTP disambiguation bit type is a proprietary extension to the ROHC
- * standard. It was introduced to avoid reparsing the UOR-2* headers in cases
- * where RND changes in extension 3.
- *
- * @param data           The ROHC packet to analyze
- * @param data_len       The length of the ROHC packet
- * @param large_cid_len  The length of the optional large CID field
- * @return               Whether the ROHC packet is an UOR-2-RTP packet or not
- */
-bool d_is_uor2_rtp(const uint8_t *const data,
-                   const size_t data_len,
-                   const size_t large_cid_len)
-{
-#if RTP_BIT_TYPE
-	return (data_len > (1 + large_cid_len + 1) &&
-	        GET_BIT_6(data + 1 + large_cid_len + 1) == 0);
-#else
-	return true;
-#endif
 }
 
 

@@ -88,10 +88,6 @@ bool ROHC_EXPORT d_is_uor2_ts(const uint8_t *const data,
                               const size_t data_len,
                               const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-bool ROHC_EXPORT d_is_uor2_rtp(const uint8_t *const data,
-                               const size_t data_len,
-                               const size_t large_cid_len)
-	__attribute__((warn_unused_result, nonnull(1), pure));
 
 bool ROHC_EXPORT d_is_add_cid(const uint8_t *const data)
 	__attribute__((warn_unused_result, nonnull(1), pure));

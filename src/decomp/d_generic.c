@@ -26,7 +26,6 @@
 
 #include "d_generic.h"
 #include "d_rtp.h"
-#include "config.h" /* for RTP_BIT_TYPE and ROHC_EXTRA_DEBUG definition */
 #include "rohc_traces_internal.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
@@ -39,6 +38,8 @@
 #include "wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
+
+#include "config.h" /* for ROHC_EXTRA_DEBUG definition */
 
 #include <assert.h>
 
@@ -5670,14 +5671,14 @@ static bool parse_uor2(const struct rohc_decomp *const decomp,
 	rohc_remain_len -= large_cid_len;
 	*rohc_hdr_len += large_cid_len;
 
-	/* part 4: 7-bit CRC + 1-bit X (extension) flag */
+	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
+	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
+	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
 	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
 	                  bits->crc_nr, bits->crc);
-	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -5899,9 +5900,6 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
 		          "for packet type\n");
-#if RTP_BIT_TYPE
-		assert(0);
-#else
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -5964,7 +5962,6 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 			             "failed to reparse the UOR-2 header\n");
 			goto error;
 		}
-#endif /* RTP_BIT_TYPE */
 	}
 
 	return true;
@@ -6164,24 +6161,14 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
 
-	/* part 4: 6-bit or 7-bit CRC + 1-bit X (extension) flag
-	 *   if the RTP bit type feature is enabled at build time, CRC is one
-	 *   bit less than in ROHC standard for RTP-specific UOR-2 packets */
-#if RTP_BIT_TYPE
-	/* UOR-2* contains a 6-bit CRC if RTP bit type feature is enabled */
-	bits->crc_type = ROHC_CRC_TYPE_6;
-	bits->crc = GET_BIT_0_5(rohc_remain_data);
-	bits->crc_nr = 6;
-#else
-	/* UOR-2* contains a 7-bit CRC */
+	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
+	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
+	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-#endif
 	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
 	                  bits->crc_nr, bits->crc);
-	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -6383,9 +6370,6 @@ static bool parse_uor2id(const struct rohc_decomp *const decomp,
 		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
 		          "for packet type\n");
-#if RTP_BIT_TYPE
-		assert(0);
-#else
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -6436,7 +6420,6 @@ static bool parse_uor2id(const struct rohc_decomp *const decomp,
 			             "failed to reparse the UOR-2 header\n");
 			goto error;
 		}
-#endif /* RTP_BIT_TYPE */
 	}
 
 	return true;
@@ -6657,24 +6640,14 @@ static int parse_uor2id_once(const struct rohc_decomp *const decomp,
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
 
-	/* part 4: 6-bit or 7-bit CRC + 1-bit X (extension) flag
-	 *   if the RTP bit type feature is enabled at build time, CRC is one
-	 *   bit less than in ROHC standard for RTP-specific UOR-2 packets */
-#if RTP_BIT_TYPE
-	/* UOR-2* contains a 6-bit CRC if RTP bit type feature is enabled */
-	bits->crc_type = ROHC_CRC_TYPE_6;
-	bits->crc = GET_BIT_0_5(rohc_remain_data);
-	bits->crc_nr = 6;
-#else
-	/* UOR-2* contains a 7-bit CRC */
+	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
+	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
+	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-#endif
 	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
 	                  bits->crc_nr, bits->crc);
-	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -6873,9 +6846,6 @@ static bool parse_uor2ts(const struct rohc_decomp *const decomp,
 		rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
 		          "for packet type\n");
-#if RTP_BIT_TYPE
-		assert(0);
-#else
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -6926,7 +6896,6 @@ static bool parse_uor2ts(const struct rohc_decomp *const decomp,
 			             "failed to reparse the UOR-2 header\n");
 			goto error;
 		}
-#endif /* RTP_BIT_TYPE */
 	}
 
 	return true;
@@ -7129,24 +7098,14 @@ static int parse_uor2ts_once(const struct rohc_decomp *const decomp,
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
 
-	/* part 4: 6-bit or 7-bit CRC + 1-bit X (extension) flag
-	 *   if the RTP bit type feature is enabled at build time, CRC is one
-	 *   bit less than in ROHC standard for RTP-specific UOR-2 packets */
-#if RTP_BIT_TYPE
-	/* UOR-2* contains a 6-bit CRC if RTP bit type feature is enabled */
-	bits->crc_type = ROHC_CRC_TYPE_6;
-	bits->crc = GET_BIT_0_5(rohc_remain_data);
-	bits->crc_nr = 6;
-#else
-	/* UOR-2* contains a 7-bit CRC */
+	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
+	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
+	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-#endif
 	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
 	                  bits->crc_nr, bits->crc);
-	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;

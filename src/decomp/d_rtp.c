@@ -315,35 +315,9 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 	}
 	else if(d_is_uor2(rohc_packet, rohc_length))
 	{
-		/* UOR-2* packet */
-
-#if RTP_BIT_TYPE
-
-		/* UOR-2-RTP or UOR-2-ID/TS packet, check the RTP disambiguation bit */
-		if(d_is_uor2_rtp(rohc_packet, rohc_length, large_cid_len))
-		{
-			/* UOR-2-RTP packet */
-			type = ROHC_PACKET_UOR_2_RTP;
-		}
-		else if(d_is_uor2_ts(rohc_packet, rohc_length, large_cid_len))
-		{
-			/* UOR-2-TS packet */
-			type = ROHC_PACKET_UOR_2_TS;
-		}
-		else
-		{
-			/* UOR-2-ID packet */
-			type = ROHC_PACKET_UOR_2_ID;
-		}
-
-#else /* !RTP_BIT_TYPE */
-
 		/* choose between the UOR-2-RTP, UOR-2-ID, and UOR-2-TS variants */
 		type = rtp_choose_uor2_variant(decomp, context, rohc_packet, rohc_length,
 		                               large_cid_len);
-
-#endif /* RTP_BIT_TYPE */
-
 	}
 	else if(d_is_irdyn(rohc_packet, rohc_length))
 	{
