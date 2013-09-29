@@ -1707,8 +1707,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-			                           WITH_CRC, decomp->crc_table_8,
-			                           &feedbacksize);
+			                           ROHC_FEEDBACK_WITH_CRC,
+			                           decomp->crc_table_8, &feedbacksize);
 			if(feedback == NULL)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -1753,8 +1753,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-			                           WITH_CRC, decomp->crc_table_8,
-			                           &feedbacksize);
+			                           ROHC_FEEDBACK_WITH_CRC,
+			                           decomp->crc_table_8, &feedbacksize);
 			if(feedback == NULL)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -1795,8 +1795,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-					                           WITH_CRC, decomp->crc_table_8,
-					                           &feedbacksize);
+					                           ROHC_FEEDBACK_WITH_CRC,
+					                           decomp->crc_table_8, &feedbacksize);
 					if(feedback == NULL)
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -1833,8 +1833,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
-					                           WITH_CRC, decomp->crc_table_8,
-					                           &feedbacksize);
+					                           ROHC_FEEDBACK_WITH_CRC,
+					                           decomp->crc_table_8, &feedbacksize);
 					if(feedback == NULL)
 					{
 						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
@@ -2423,7 +2423,7 @@ void d_change_mode_feedback(const struct rohc_decomp *const decomp,
 		return;
 	}
 	feedback = f_wrap_feedback(&sfeedback, cid, decomp->medium.cid_type,
-	                           WITH_CRC, decomp->crc_table_8,
+	                           ROHC_FEEDBACK_WITH_CRC, decomp->crc_table_8,
 	                           &feedbacksize);
 	if(feedback == NULL)
 	{

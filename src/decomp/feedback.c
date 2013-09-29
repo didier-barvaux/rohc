@@ -473,18 +473,19 @@ static bool f_append_cid(struct d_feedback *const feedback,
  * @warning CID may be greater than MAX_CID if the context was not found and
  *          generated a No Context feedback; it must however respect CID type
  *
- * @param feedback     The feedback packet to which the CID must be appended
- * @param cid          The Context ID (CID) to append
- * @param cid_type     The type of CID used for the feedback
- * @param with_crc     Whether the CRC option must be added or not
- * @param crc_table    The pre-computed table for fast CRC computation
- * @param final_size   OUT: The final size of the feedback packet
- * @return             The feedback packet if successful, NULL otherwise
+ * @param feedback          The feedback packet to which the CID must be
+ *                          appended
+ * @param cid               The Context ID (CID) to append
+ * @param cid_type          The type of CID used for the feedback
+ * @param protect_with_crc  Whether the CRC option must be added or not
+ * @param crc_table         The pre-computed table for fast CRC computation
+ * @param final_size        OUT: The final size of the feedback packet
+ * @return                  The feedback packet if successful, NULL otherwise
  */
 uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
                           const uint16_t cid,
                           const rohc_cid_type_t cid_type,
-                          const bool with_crc,
+                          const rohc_feedback_crc_t protect_with_crc,
                           const uint8_t *const crc_table,
                           size_t *const final_size)
 {
@@ -500,7 +501,7 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 	}
 
 	/* add the CRC option if specified */
-	if(with_crc)
+	if(protect_with_crc)
 	{
 #ifdef ROHC_FEEDBACK_DEBUG
 		printf("add CRC option to feedback\n");
@@ -528,7 +529,7 @@ uint8_t * f_wrap_feedback(struct d_feedback *const feedback,
 	memcpy(feedback_packet, feedback->data, feedback->size);
 
 	/* compute the CRC and store it in the feedback packet if specified */
-	if(with_crc)
+	if(protect_with_crc)
 	{
 		crc = crc_calculate(ROHC_CRC_TYPE_8, feedback_packet, feedback->size,
 		                    CRC_INIT_8, crc_table);

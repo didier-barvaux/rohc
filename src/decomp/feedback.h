@@ -62,10 +62,15 @@ typedef enum
 } rohc_ack_type_t;
 
 
-/// Do not add a CRC option in Feedback packet
-#define NO_CRC    false
-/// Do add a CRC option in Feedback packet
-#define WITH_CRC  true
+/**
+ * @brief Whether the feedback is protected by a CRC or not
+ */
+typedef enum
+{
+	ROHC_FEEDBACK_NO_CRC   = false, /**< No CRC option protects the feedback */
+	ROHC_FEEDBACK_WITH_CRC = true,  /**< A CRC option protects the feedback */
+
+} rohc_feedback_crc_t;
 
 
 /// The maximum length (in bytes) of the feedback data
@@ -114,7 +119,7 @@ bool f_add_option(struct d_feedback *const feedback,
 uint8_t * f_wrap_feedback(struct d_feedback *feedback,
                           const uint16_t cid,
                           const rohc_cid_type_t cid_type,
-                          const bool with_crc,
+                          const rohc_feedback_crc_t protect_with_crc,
                           const uint8_t *const crc_table,
                           size_t *const final_size)
 	__attribute__((warn_unused_result, nonnull(1, 5, 6)));
