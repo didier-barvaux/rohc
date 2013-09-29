@@ -43,7 +43,7 @@
 #include "rohc_debug.h"
 #include "rohc_utils.h"
 #include "sdvl.h"
-#include "decode.h"
+#include "rohc_add_cid.h"
 #include "ip.h"
 #include "crc.h"
 #include "protocols/udp.h"
@@ -2989,10 +2989,10 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	}
 	else
 	{
-		/* decode small CID */
-		if(d_is_add_cid(p))
+		/* decode small CID if present */
+		if(rohc_add_cid_is_present(p))
 		{
-			feedback.cid = d_decode_add_cid(p);
+			feedback.cid = rohc_add_cid_decode(p);
 			p++;
 		}
 		else

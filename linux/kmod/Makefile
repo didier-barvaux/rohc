@@ -18,6 +18,7 @@ rohc_common_sources = \
 	../../src/common/rohc_packets.c \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/crc.c \
+	../../src/common/rohc_add_cid.c \
 	../../src/common/decode.c \
 	../../src/common/ip_id_offset_decode.c \
 	../../src/common/interval.c \

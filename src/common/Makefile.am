@@ -17,6 +17,7 @@ sources = \
 	rohc_traces_internal.c \
 	rohc_utils.c \
 	crc.c \
+	rohc_add_cid.c \
 	decode.c \
 	ip_id_offset_decode.c \
 	interval.c \
@@ -49,6 +50,7 @@ private_headers = \
 	rohc_time.h \
 	rohc_utils.h \
 	crc.h \
+	rohc_add_cid.h \
 	decode.h \
 	ip_id_offset_decode.h \
 	interval.h \

@@ -44,6 +44,7 @@
 #include "feedback.h"
 #include "wlsb.h"
 #include "sdvl.h"
+#include "rohc_add_cid.h"
 #include "decode.h"
 #include "crc.h"
 
@@ -3189,10 +3190,10 @@ static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
 		ddata->large_cid_size = 0;
 
 		/* if add-CID is present, extract the CID value */
-		if(d_is_add_cid(packet))
+		if(rohc_add_cid_is_present(packet))
 		{
 			ddata->addcidUsed = 1;
-			ddata->cid = d_decode_add_cid(packet);
+			ddata->cid = rohc_add_cid_decode(packet);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "add-CID present (0x%x) contains CID = %zu\n",
 			           packet[0], ddata->cid);

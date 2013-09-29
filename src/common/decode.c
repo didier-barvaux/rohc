@@ -222,39 +222,3 @@ bool d_is_uor2_ts(const uint8_t *const data,
 	        GET_BIT_7(data + 1 + large_cid_len) != 0);
 }
 
-
-/**
- * @brief Check whether a ROHC packet starts with an add-CID byte or not
- *
- * @param data The ROHC packet with a possible add-CID byte
- * @return     Whether the ROHC packet starts with an add-CID byte or not
- */
-bool d_is_add_cid(const uint8_t *const data)
-{
-	return (GET_BIT_4_7(data) == D_ADD_CID);
-}
-
-
-/**
- * @brief Decode the add-CID byte of a ROHC packet (if the add-CID byte is
- *        present)
- *
- * @param data The ROHC packet with a possible add-CID byte
- * @return     0 if no add-CID byte is present, the CID value otherwise
- */
-uint8_t d_decode_add_cid(const uint8_t *const data)
-{
-	uint8_t cid;
-
-	if(d_is_add_cid(data))
-	{
-		cid = GET_BIT_0_3(data);
-	}
-	else
-	{
-		cid = 0;
-	}
-
-	return cid;
-}
-
