@@ -490,6 +490,12 @@ int main(int argc, char *argv[])
 	signal(SIGSEGV, sniffer_interrupt);
 	signal(SIGABRT, sniffer_interrupt);
 	signal(SIGUSR1, sniffer_print_stats);
+	{
+		struct sigaction action;
+		memset(&action, 0, sizeof(struct sigaction));
+		action.sa_handler = SIG_IGN;
+		sigaction(SIGHUP, &action, NULL);
+	}
 
 	/* test ROHC compression/decompression with the packets from the file */
 	if(!sniff(cid_type, max_contexts, enabled_profiles, device_name))
