@@ -1546,6 +1546,12 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "failed to detect ROHC packet type\n");
+		if(is_new_context)
+		{
+			context_free(ddata->active);
+			ddata->active = NULL;
+			decomp->last_context = NULL;
+		}
 		goto error_malformed;
 	}
 	rohc_decomp_debug(ddata->active, "decode packet as '%s'\n",
@@ -1559,6 +1565,12 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "non-IR packet (%d) cannot be received in No Context "
 		             "state\n", *packet_type);
+		if(is_new_context)
+		{
+			context_free(ddata->active);
+			ddata->active = NULL;
+			decomp->last_context = NULL;
+		}
 		goto error_no_context;
 	}
 
