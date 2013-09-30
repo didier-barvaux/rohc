@@ -1181,7 +1181,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 
 	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
 
-	rohc_decomp_debug(context, "ROHC header is %d-byte length\n",
+	rohc_decomp_debug(context, "ROHC header is %zu-byte length\n",
 	                  rohc_length - remain_len);
 	rohc_decomp_debug(context, "uncompressed header is %d-byte length\n", size);
 	payload_size = remain_len;
