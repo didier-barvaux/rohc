@@ -23,8 +23,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef C_GENERIC_H
-#define C_GENERIC_H
+#ifndef ROHC_COMP_GENERIC_H
+#define ROHC_COMP_GENERIC_H
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"

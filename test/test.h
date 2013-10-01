@@ -21,8 +21,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef TEST__H
-#define TEST__H
+#ifndef ROHC_TEST__H
+#define ROHC_TEST__H
 
 #include <stdint.h>
 

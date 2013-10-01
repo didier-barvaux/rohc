@@ -22,8 +22,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef D_RTP_H
-#define D_RTP_H
+#ifndef ROHC_DECOMP_RTP_H
+#define ROHC_DECOMP_RTP_H
 
 #include "d_generic.h"
 #include "d_udp.h"

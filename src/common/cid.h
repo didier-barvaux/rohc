@@ -21,8 +21,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef CID_H
-#define CID_H
+#ifndef ROHC_COMMON_CID_H
+#define ROHC_COMMON_CID_H
 
 #include "rohc.h"
 #include "dllexport.h"

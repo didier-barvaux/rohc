@@ -22,8 +22,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef ROHC_IP_ID_OFFSET_H
-#define ROHC_IP_ID_OFFSET_H
+#ifndef ROHC_COMMON_IP_ID_OFFSET_DECODE_H
+#define ROHC_COMMON_IP_ID_OFFSET_DECODE_H
 
 #include "lsb_decode.h"
 #include "dllexport.h"

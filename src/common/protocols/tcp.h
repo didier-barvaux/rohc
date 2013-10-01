@@ -22,8 +22,8 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef TCP_H
-#define TCP_H
+#ifndef ROHC_PROTOCOLS_TCP_H
+#define ROHC_PROTOCOLS_TCP_H
 
 #include <stdint.h>
 
@@ -1560,5 +1560,6 @@ typedef union __attribute__((packed))
 	uint32_t uint32;
 } LWB_t;
 
-#endif // TCP_H
+
+#endif /* ROHC_PROTOCOLS_TCP_H */
 

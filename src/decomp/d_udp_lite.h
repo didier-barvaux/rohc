@@ -22,8 +22,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef D_UDP_LITE_H
-#define D_UDP_LITE_H
+#ifndef ROHC_DECOMP_UDP_LITE_H
+#define ROHC_DECOMP_UDP_LITE_H
 
 /* nothing public for the UDP-Lite decompression profile */
 

@@ -21,8 +21,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef SDVL_H
-#define SDVL_H
+#ifndef ROHC_COMMON_SDVL_H
+#define ROHC_COMMON_SDVL_H
 
 #include "dllexport.h"
 

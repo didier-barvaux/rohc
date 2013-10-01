@@ -21,8 +21,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef C_ESP_H
-#define C_ESP_H
+#ifndef ROHC_COMP_ESP_H
+#define ROHc_COMP_ESP_H
 
 /* nothing public for the ESP compression profile */
 

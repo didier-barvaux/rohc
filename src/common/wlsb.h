@@ -22,8 +22,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef WLSB_H
-#define WLSB_H
+#ifndef ROHC_COMMON_WLSB_H
+#define ROHC_COMMON_WLSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
 #include "dllexport.h"

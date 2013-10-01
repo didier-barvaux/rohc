@@ -24,8 +24,8 @@
  * @author David Moreau from TAS
  */
 
-#ifndef D_GENERIC_H
-#define D_GENERIC_H
+#ifndef ROHC_DECOMP_GENERIC_H
+#define ROHC_DECOMP_GENERIC_H
 
 #include "rohc_decomp.h"
 #include "rohc_decomp_internals.h"

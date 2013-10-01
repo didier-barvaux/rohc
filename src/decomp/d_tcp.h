@@ -21,8 +21,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef D_TCP_H
-#define D_TCP_H
+#ifndef ROHC_DECOMP_TCP_H
+#define ROHC_DECOMP_TCP_H
 
 /* nothing public needed */
 

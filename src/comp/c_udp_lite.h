@@ -21,8 +21,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef C_UDP_LITE_H
-#define C_UDP_LITE_H
+#ifndef ROHC_COMP_UDP_LITE_H
+#define ROHC_COMP_UDP_LITE_H
 
 /* nothing public here */
 

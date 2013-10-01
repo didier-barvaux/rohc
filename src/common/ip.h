@@ -20,8 +20,8 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef IP_H
-#define IP_H
+#ifndef ROHC_COMMON_IP_H
+#define ROHC_COMMON_IP_H
 
 #include "dllexport.h"
 #include "protocols/ipv4.h"

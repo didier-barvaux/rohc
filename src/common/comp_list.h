@@ -21,8 +21,8 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef COMP_LIST_H
-#define COMP_LIST_H
+#ifndef ROHC_COMMON_COMP_LIST_H
+#define ROHC_COMMON_COMP_LIST_H
 
 #include "protocols/ipv6.h"
 #include "protocols/ip_numbers.h"

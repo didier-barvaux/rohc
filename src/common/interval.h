@@ -20,8 +20,8 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef INTERVAL_H
-#define INTERVAL_H
+#ifndef ROHC_COMMON_INTERVAL_H
+#define ROHC_COMMON_INTERVAL_H
 
 #include <stdlib.h>
 #include <stdint.h>

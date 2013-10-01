@@ -22,8 +22,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef D_UDP_H
-#define D_UDP_H
+#ifndef ROHC_DECOMP_UDP_H
+#define ROHC_DECOMP_UDP_H
 
 #include "d_generic.h"
 #include "d_ip.h"

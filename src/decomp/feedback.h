@@ -22,8 +22,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef FEEDBACK_H
-#define FEEDBACK_H
+#ifndef ROHC_DECOMP_FEEDBACK_H
+#define ROHC_DECOMP_FEEDBACK_H
 
 #include "rohc.h"
 

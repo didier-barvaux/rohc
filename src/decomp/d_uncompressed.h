@@ -21,8 +21,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef D_UNCOMPRESSED_H
-#define D_UNCOMPRESSED_H
+#ifndef ROHC_DECOMP_UNCOMPRESSED_H
+#define ROHC_DECOMP_UNCOMPRESSED_H
 
 /* nothing public needed */
 

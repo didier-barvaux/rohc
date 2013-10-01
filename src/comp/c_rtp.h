@@ -21,8 +21,8 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#ifndef C_RTP_H
-#define C_RTP_H
+#ifndef ROHC_COMP_RTP_H
+#define ROHC_COMP_RTP_H
 
 #include "c_generic.h"
 #include "ts_sc_comp.h"

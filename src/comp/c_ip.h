@@ -21,8 +21,8 @@
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef C_IP_H
-#define C_IP_H
+#ifndef ROHC_COMP_IP_H
+#define ROHC_COMP_IP_H
 
 #include "c_generic.h"
 

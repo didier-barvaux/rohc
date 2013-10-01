@@ -23,8 +23,8 @@
  * @author FWX <rohc_team@dialine.fr>
  */
 
-#ifndef CRC_H
-#define CRC_H
+#ifndef ROHC_COMMON_CRC_H
+#define ROHC_COMMON_CRC_H
 
 #include "ip.h"
 #include "dllexport.h"
