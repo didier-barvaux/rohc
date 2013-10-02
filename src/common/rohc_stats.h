@@ -1,6 +1,8 @@
 #ifndef ROHC_STATS_H
 #define ROHC_STATS_H
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -28,6 +30,8 @@ uint32_t ROHC_EXPORT rohc_stats_sum(const struct rohc_stats *const stats)
 
 uint32_t ROHC_EXPORT rohc_stats_mean(const struct rohc_stats *const stats)
 	__attribute__((nonnull(1), pure));
+
+#endif /* ROHC_ENABLE_DEPRECATED_API */
 
 #endif
 

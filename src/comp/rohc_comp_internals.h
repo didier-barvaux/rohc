@@ -384,6 +384,7 @@ struct c_context
 	/** The number of received feedbacks */
 	int num_recv_feedbacks;
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/** The size of the last 16 uncompressed packets */
 	struct rohc_stats total_16_uncompressed;
 	/** The size of the last 16 compressed packets */
@@ -392,6 +393,7 @@ struct c_context
 	struct rohc_stats header_16_uncompressed;
 	/** The size of the last 16 compressed headers */
 	struct rohc_stats header_16_compressed;
+#endif
 };
 
 

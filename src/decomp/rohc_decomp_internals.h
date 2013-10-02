@@ -212,6 +212,7 @@ struct d_context
 	 *  failure */
 	unsigned long corrected_wrong_sn_updates;
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* The size of the last 16 uncompressed packets */
 	struct rohc_stats total_16_uncompressed;
 	/* The size of the last 16 compressed packets */
@@ -220,6 +221,7 @@ struct d_context
 	struct rohc_stats header_16_uncompressed;
 	/* The size of the last 16 compressed headers */
 	struct rohc_stats header_16_compressed;
+#endif
 
 	/** The number of (possible) lost packet(s) before last packet */
 	unsigned long nr_lost_packets;

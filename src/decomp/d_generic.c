@@ -9324,9 +9324,11 @@ static void stats_add_decomp_success(struct d_context *const context,
 {
 	assert(context != NULL);
 	context->header_compressed_size += comp_hdr_len;
-	rohc_stats_add(&context->header_16_compressed, comp_hdr_len);
 	context->header_uncompressed_size += uncomp_hdr_len;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	rohc_stats_add(&context->header_16_compressed, comp_hdr_len);
 	rohc_stats_add(&context->header_16_uncompressed, uncomp_hdr_len);
+#endif
 }
 
 

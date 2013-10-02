@@ -1,4 +1,6 @@
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 #include "rohc_stats.h"
 
 
@@ -70,4 +72,6 @@ uint32_t rohc_stats_mean(const struct rohc_stats *const stats)
 	}
 	return (rohc_stats_sum(stats) / stats->count);
 }
+
+#endif /* ROHC_ENABLE_DEPRECATED_API */
 

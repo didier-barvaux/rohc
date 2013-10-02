@@ -282,11 +282,13 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 	context->first_used = arrival_time.sec;
 	context->latest_used = arrival_time.sec;
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* be sure to start with statistics set to zero */
 	memset(&(context->total_16_uncompressed), 0, sizeof(struct rohc_stats));
 	memset(&(context->total_16_compressed), 0, sizeof(struct rohc_stats));
 	memset(&(context->header_16_uncompressed), 0, sizeof(struct rohc_stats));
 	memset(&(context->header_16_compressed), 0, sizeof(struct rohc_stats));
+#endif
 
 	/* profile-specific data (created at the every end so that everything
 	   is initialized in context first) */
@@ -1008,8 +1010,10 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 		ddata.active->total_compressed_size += rohc_packet_len;
 		decomp->stats.total_uncompressed_size += *uncomp_packet_len;
 		decomp->stats.total_compressed_size += rohc_packet_len;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 		rohc_stats_add(&ddata.active->total_16_uncompressed, *uncomp_packet_len);
 		rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet_len);
+#endif
 	}
 	else if(ddata.active)
 	{

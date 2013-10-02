@@ -5223,9 +5223,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
-	rohc_stats_add(&context->header_16_compressed, rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	rohc_stats_add(&context->header_16_compressed, rohc_header_len);
 	rohc_stats_add(&context->header_16_uncompressed, uncomp_header_len);
+#endif
 
 	return (uncomp_header_len + payload_len);
 

@@ -1159,10 +1159,12 @@ int rohc_compress3(struct rohc_comp *const comp,
 	c->header_last_uncompressed_size = payload_offset;
 	c->header_last_compressed_size = rohc_hdr_size;
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	rohc_stats_add(&c->total_16_uncompressed, uncomp_packet_len);
 	rohc_stats_add(&c->total_16_compressed, *rohc_packet_len);
 	rohc_stats_add(&c->header_16_uncompressed, payload_offset);
 	rohc_stats_add(&c->header_16_compressed, rohc_hdr_size);
+#endif
 
 	/* compression is successful */
 	return status;
@@ -3861,7 +3863,9 @@ not_found:
  */
 static bool c_create_contexts(struct rohc_comp *const comp)
 {
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	rohc_cid_t i;
+#endif
 
 	assert(comp != NULL);
 	assert(comp->contexts == NULL);
@@ -3881,6 +3885,7 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 		goto error;
 	}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* initialize all the contexts */
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
@@ -3894,6 +3899,7 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 		memset(&comp->contexts[i].header_16_compressed, 0,
 		       sizeof(struct rohc_stats));
 	}
+#endif
 
 	return true;
 
