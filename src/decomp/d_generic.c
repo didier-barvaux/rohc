@@ -25,7 +25,6 @@
  */
 
 #include "d_generic.h"
-#include "d_rtp.h"
 #include "rohc_traces_internal.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
@@ -41,6 +40,9 @@
 
 #include "config.h" /* for ROHC_EXTRA_DEBUG definition */
 
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 #include <assert.h>
 
 

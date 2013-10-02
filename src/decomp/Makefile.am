@@ -57,8 +57,7 @@ noinst_HEADERS = \
 	feedback.h \
 	d_generic.h \
 	d_ip.h \
-	d_udp.h \
-	d_rtp.h
+	d_udp.h
 
 # extra files for releases
 EXTRA_DIST = \

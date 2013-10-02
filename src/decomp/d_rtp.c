@@ -22,7 +22,7 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "d_rtp.h"
+#include "d_udp.h"
 #include "d_ip.h"
 #include "rohc_traces_internal.h"
 #include "rohc_bit_ops.h"
@@ -30,11 +30,34 @@
 #include "rohc_utils.h"
 #include "sdvl.h"
 #include "crc.h"
+#include "schemes/scaled_rtp_ts.h"
 #include "rohc_decomp_detect_packet.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
 
+#ifndef __KERNEL__
+#	include <string.h>
+#endif
 #include <assert.h>
+
+
+/**
+ * @brief Define the RTP part of the decompression profile context.
+ *
+ * This object must be used with the generic part of the decompression
+ * context d_generic_context.
+ *
+ * @see d_generic_context
+ */
+struct d_rtp_context
+{
+	/** The RTP SSRC */
+	uint32_t ssrc;
+	/** Whether the UDP checksum field is encoded in the ROHC packet or not */
+	int udp_checksum_present;
+	/** The scaled RTP Timestamp decoding context */
+	struct ts_sc_decomp *ts_scaled_ctxt;
+};
 
 
 /*
