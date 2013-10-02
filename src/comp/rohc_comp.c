@@ -318,6 +318,7 @@ void rohc_free_compressor(struct rohc_comp *comp)
 struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
                                  const rohc_cid_t max_cid)
 {
+	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
 	struct rohc_comp *comp;
 	bool is_fine;
 	int i;
@@ -392,7 +393,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	}
 
 	/* set the default W-LSB window width */
-	is_fine = rohc_comp_set_wlsb_window_width(comp, C_WINDOW_WIDTH);
+	is_fine = rohc_comp_set_wlsb_window_width(comp, wlsb_width);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -1379,7 +1380,7 @@ error:
  * encoding. See section 4.5.2 of RFC 3095 for more details about the encoding
  * scheme.
  *
- * The width of the W-LSB window is set to \ref C_WINDOW_WIDTH by default.
+ * The width of the W-LSB window is set to 4 by default.
  *
  * @warning The value must be a power of 2
  *

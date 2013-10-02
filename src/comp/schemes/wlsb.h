@@ -33,9 +33,6 @@
 #include <stdbool.h>
 
 
-/// Default window width for W-LSB encoding
-#define C_WINDOW_WIDTH 4
-
 /* The definition of the W-LSB encoding object is private */
 struct c_wlsb;
 
