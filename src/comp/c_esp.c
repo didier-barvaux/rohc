@@ -21,7 +21,6 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "c_esp.h"
 #include "c_generic.h"
 #include "c_ip.h"
 #include "rohc_traces_internal.h"

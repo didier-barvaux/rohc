@@ -22,7 +22,6 @@
  * @author The hackers from ROHC for Linux
  */
 
-#include "d_udp_lite.h"
 #include "d_udp.h"
 #include "d_generic.h"
 #include "rohc_bit_ops.h"

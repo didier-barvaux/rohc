@@ -15,14 +15,13 @@
  */
 
 /**
- * @file c_udp_lite.h
- * @brief ROHC compression context for the UDP-Lite profile.
+ * @file   c_udp_lite.c
+ * @brief  ROHC compression context for the UDP-Lite profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
-#include "c_udp_lite.h"
 #include "c_udp.h"
 #include "c_ip.h"
 #include "rohc_traces_internal.h"

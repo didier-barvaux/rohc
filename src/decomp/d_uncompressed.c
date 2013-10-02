@@ -22,7 +22,6 @@
  * @author The hackers from ROHC for Linux
  */
 
-#include "d_uncompressed.h"
 #include "rohc_decomp.h"
 #include "rohc_decomp_internals.h"
 #include "rohc_bit_ops.h"

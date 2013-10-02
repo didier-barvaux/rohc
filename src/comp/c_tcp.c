@@ -22,7 +22,6 @@
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#include "c_tcp.h"
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 #include "rohc_packets.h"

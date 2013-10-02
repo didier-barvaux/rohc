@@ -52,10 +52,7 @@ noinst_HEADERS = \
 	c_generic.h \
 	c_ip.h \
 	c_udp.h \
-	c_udp_lite.h \
-	c_esp.h \
-	c_rtp.h \
-	c_tcp.h
+	c_rtp.h
 
 # extra files for releases
 EXTRA_DIST = \

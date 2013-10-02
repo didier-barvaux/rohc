@@ -55,14 +55,10 @@ noinst_HEADERS = \
 	rohc_decomp_internals.h \
 	rohc_decomp_detect_packet.h \
 	feedback.h \
-	d_uncompressed.h \
 	d_generic.h \
 	d_ip.h \
 	d_udp.h \
-	d_udp_lite.h \
-	d_esp.h \
-	d_rtp.h \
-	d_tcp.h
+	d_rtp.h
 
 # extra files for releases
 EXTRA_DIST = \

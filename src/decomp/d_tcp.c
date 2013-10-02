@@ -21,7 +21,6 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "d_tcp.h"
 #include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
