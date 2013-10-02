@@ -1832,15 +1832,15 @@ static int c_tcp_encode(struct c_context *const context,
 	}
 
 	// See RFC4996 page 32/33
-	c_field_scaling(tcp_context->seq_number_scaled,tcp_context->seq_number_residue,size,
-	                tcp->seq_number);
+	c_field_scaling(&(tcp_context->seq_number_scaled),
+	                &(tcp_context->seq_number_residue), size, tcp->seq_number);
 	rohc_comp_debug(context, "seq_number = 0x%x, scaled = 0x%x, "
 	                "residue = 0x%x\n", tcp->seq_number,
 	                tcp_context->seq_number_scaled,
 	                tcp_context->seq_number_residue);
-	c_field_scaling(tcp_context->ack_number_scaled,tcp_context->ack_number_residue,
-	                tcp_context->ack_stride,
-	                tcp->ack_number);
+	c_field_scaling(&(tcp_context->ack_number_scaled),
+	                &(tcp_context->ack_number_residue),
+	                tcp_context->ack_stride, tcp->ack_number);
 	rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, "
 	                "residue = 0x%x\n", tcp->ack_number,
 	                tcp_context->ack_number_scaled,

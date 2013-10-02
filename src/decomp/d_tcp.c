@@ -4596,7 +4596,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				                             tcp_context->old_tcphdr.ack_number),
 				                          c_base_header.rnd4->ack_number_scaled);
 				assert( tcp_context->ack_stride != 0 );
-				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,ack_number_scaled,
+				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,
+				                                  ack_number_scaled,
 				                                  tcp_context->ack_number_residue);
 				rohc_decomp_debug(context, "ack_number_scaled = 0x%x, "
 				                  "ack_number_residue = 0x%x -> ack_number = "
@@ -4801,7 +4802,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ack_number_scaled = d_lsb(context, 4,3,rohc_ntoh32(
 				                             tcp_context->old_tcphdr.ack_number),
 				                          c_base_header.seq4->ack_number_scaled);
-				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,ack_number_scaled,
+				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,
+				                                  ack_number_scaled,
 				                                  tcp_context->ack_number_residue);
 				rohc_decomp_debug(context, "ack_number_scaled = 0x%x, "
 				                  "ack_number_residue = 0x%x -> ack_number = "

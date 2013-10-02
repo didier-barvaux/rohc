@@ -58,24 +58,12 @@ unsigned int c_optional32( multi_ptr_t *pmptr, uint32_t context_value, uint32_t 
 // RFC4996 page 47
 void c_lsb_7_31( multi_ptr_t *pmptr, uint32_t value );
 
-#ifdef USE_ROHC_TCP_MACROS
-// RFC4996 page 49
-#define c_field_scaling(scaled_value,residue_field,scaling_factor,unscaled_value) \
-   if(scaling_factor == 0) \
-	{ \
-		residue_field = unscaled_value; \
-		scaled_value = 0; \
-	} \
-   else \
-	{ \
-		residue_field = unscaled_value % scaling_factor; \
-		scaled_value = unscaled_value / scaling_factor; \
-		assert( unscaled_value == ( ( scaled_value * scaling_factor ) + residue_field ) ); \
-	}
-#else
-void c_field_scaling( uint32_t *scaled_value, uint32_t *residue_field, uint32_t scaling_factor,
-                      uint32_t unscaled_value );
-#endif
+/* RFC4996 page 49 */
+void c_field_scaling(uint32_t *const scaled_value,
+                     uint32_t *const residue_field,
+                     const uint32_t scaling_factor,
+                     const uint32_t unscaled_value)
+	__attribute__((nonnull(1, 2)));
 
 // RFC4996 page 71
 unsigned int rsf_index_enc(const struct c_context *const context,

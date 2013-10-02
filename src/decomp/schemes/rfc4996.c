@@ -234,8 +234,6 @@ uint32_t d_lsb_7_31( multi_ptr_t *pmptr )
 }
 
 
-#ifndef USE_ROHC_TCP_MACROS
-
 /**
  * @brief Calculate the value from the scaling factor, scaled value and residue
  *
@@ -246,25 +244,13 @@ uint32_t d_lsb_7_31( multi_ptr_t *pmptr )
  * @param residue_field    The residue value
  * @return                 The unscaled value
  */
-
-uint32_t d_field_scaling( uint32_t scaling_factor, uint32_t scaled_value,
-                           uint32_t residue_field )
+uint32_t d_field_scaling(const uint32_t scaling_factor,
+                         const uint32_t scaled_value,
+                         const uint32_t residue_field)
 {
-	uint32_t unscaled_value;
-
-	if(scaling_factor == 0)
-	{
-		unscaled_value = residue_field;
-	}
-	else
-	{
-		unscaled_value = ( scaled_value * scaling_factor ) + residue_field;
-	}
-	return unscaled_value;
+	return ((scaled_value * scaling_factor) + residue_field);
 }
 
-
-#endif
 
 /**
  * @brief Calculate the rsf flags from the rsf index

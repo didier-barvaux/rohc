@@ -52,13 +52,13 @@ uint32_t variable_length_32_dec(const struct d_context *const context,
 uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value );
 // RFC4996 page 47
 uint32_t d_lsb_7_31( multi_ptr_t *pmptr );
-#ifdef USE_ROHC_TCP_MACROS
+
 // RFC4996 page 49
-#define d_field_scaling(scaling_factor,scaled_value,residue_field) \
-   ( (scaled_value) * (scaling_factor) ) + (residue_field);
-#else
-uint32_t d_field_scaling( uint32_t stride_value, uint32_t scaled_value, uint32_t residue_field );
-#endif
+uint32_t d_field_scaling(const uint32_t stride_value,
+                         const uint32_t scaled_value,
+                         const uint32_t residue_field)
+	__attribute__((warn_unused_result, const));
+
 // RFC4996 page 71
 unsigned int rsf_index_dec( unsigned int rsf_index );
 // RFC4996 page 75

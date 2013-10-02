@@ -34,9 +34,6 @@
 #endif
 
 
-#define USE_ROHC_TCP_MACROS    // Undef to use procedures
-
-
 /* See RFC4996 page 37-40 */
 
 #define ROHC_PACKET_TYPE_IR      0xFD
