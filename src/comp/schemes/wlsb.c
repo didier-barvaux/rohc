@@ -15,8 +15,8 @@
  */
 
 /**
- * @file wlsb.c
- * @brief Window-based Least Significant Bits (W-LSB) encoding
+ * @file   src/comp/schemes/wlsb.c
+ * @brief  Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
@@ -386,61 +386,6 @@ void c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
 			break;
 		}
 	}
-}
-
-
-/**
- * @brief Compute the sum of all the values stored in the W-LSB window
- *
- * This function is used for statistics.
- *
- * @param s The W-LSB object
- * @return  The sum over the W-LSB window
- */
-int c_sum_wlsb(const struct c_wlsb *const s)
-{
-	size_t entry;
-	int sum = 0;
-	size_t i;
-
-	for(i = s->count, entry = s->oldest;
-	    i > 0;
-	    i--, entry = (entry + 1) & s->window_mask)
-	{
-		sum += s->window[entry].value;
-	}
-
-	return sum;
-}
-
-
-/**
- * @brief Compute the mean of all the values stored in the W-LSB window
- *
- * This function is used for statistics.
- *
- * @param s The W-LSB object
- * @return  The mean over the W-LSB window
- */
-int c_mean_wlsb(const struct c_wlsb *const s)
-{
-	size_t entry;
-	int sum = 0;
-	size_t i;
-
-	if(s->count == 0)
-	{
-		return 0;
-	}
-
-	for(i = s->count, entry = s->oldest;
-	    i > 0;
-	    i--, entry = (entry + 1) & s->window_mask)
-	{
-		sum += s->window[entry].value;
-	}
-
-	return (sum / s->count);
 }
 
 

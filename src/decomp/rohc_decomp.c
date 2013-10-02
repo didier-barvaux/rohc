@@ -42,7 +42,6 @@
 #include "rohc_bit_ops.h"
 #include "rohc_debug.h"
 #include "feedback.h"
-#include "wlsb.h"
 #include "sdvl.h"
 #include "rohc_add_cid.h"
 #include "rohc_decomp_detect_packet.h"
@@ -283,38 +282,11 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 	context->first_used = arrival_time.sec;
 	context->latest_used = arrival_time.sec;
 
-	/* create 4 W-LSB windows */
-	context->total_16_uncompressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-	if(context->total_16_uncompressed == NULL)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "cannot create the total_16_uncompressed W-LSB window\n");
-		goto destroy_context;
-	}
-
-	context->total_16_compressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-	if(context->total_16_compressed == NULL)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "cannot create the total_16_compressed W-LSB window\n");
-		goto destroy_window_tu;
-	}
-
-	context->header_16_uncompressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-	if(context->header_16_uncompressed == NULL)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "cannot create the header_16_uncompressed W-LSB window\n");
-		goto destroy_window_tc;
-	}
-
-	context->header_16_compressed = c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-	if(context->header_16_compressed == NULL)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "cannot create the header_16_compressed W-LSB window\n");
-		goto destroy_window_hu;
-	}
+	/* be sure to start with statistics set to zero */
+	memset(&(context->total_16_uncompressed), 0, sizeof(struct rohc_stats));
+	memset(&(context->total_16_compressed), 0, sizeof(struct rohc_stats));
+	memset(&(context->header_16_uncompressed), 0, sizeof(struct rohc_stats));
+	memset(&(context->header_16_compressed), 0, sizeof(struct rohc_stats));
 
 	/* profile-specific data (created at the every end so that everything
 	   is initialized in context first) */
@@ -323,7 +295,7 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
 		             "cannot allocate profile-specific data\n");
-		goto destroy_window_hc;
+		goto destroy_context;
 	}
 
 	/* decompressor got one more context (for a short moment, decompressor
@@ -333,14 +305,6 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 
 	return context;
 
-destroy_window_hc:
-	c_destroy_wlsb(context->header_16_compressed);
-destroy_window_hu:
-	c_destroy_wlsb(context->header_16_uncompressed);
-destroy_window_tc:
-	c_destroy_wlsb(context->total_16_compressed);
-destroy_window_tu:
-	c_destroy_wlsb(context->total_16_uncompressed);
 destroy_context:
 	zfree(context);
 error:
@@ -360,22 +324,12 @@ static void context_free(struct d_context *const context)
 	assert(context->decompressor != NULL);
 	assert(context->profile != NULL);
 	assert(context->specific != NULL);
-	assert(context->total_16_uncompressed != NULL);
-	assert(context->total_16_compressed != NULL);
-	assert(context->header_16_uncompressed != NULL);
-	assert(context->header_16_compressed != NULL);
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 	           "free context with CID %zu\n", context->cid);
 
 	/* destroy the profile-specific data */
 	context->profile->free_decode_data(context->specific);
-
-	/* destroy the W-LSB windows for statistics */
-	c_destroy_wlsb(context->total_16_uncompressed);
-	c_destroy_wlsb(context->total_16_compressed);
-	c_destroy_wlsb(context->header_16_uncompressed);
-	c_destroy_wlsb(context->header_16_compressed);
 
 	/* decompressor got one more context */
 	assert(context->decompressor->num_contexts_used > 0);
@@ -1054,8 +1008,8 @@ int rohc_decompress2(struct rohc_decomp *decomp,
 		ddata.active->total_compressed_size += rohc_packet_len;
 		decomp->stats.total_uncompressed_size += *uncomp_packet_len;
 		decomp->stats.total_compressed_size += rohc_packet_len;
-		c_add_wlsb(ddata.active->total_16_uncompressed, 0, *uncomp_packet_len);
-		c_add_wlsb(ddata.active->total_16_compressed, 0, rohc_packet_len);
+		rohc_stats_add(&ddata.active->total_16_uncompressed, *uncomp_packet_len);
+		rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet_len);
 	}
 	else if(ddata.active)
 	{
@@ -2131,17 +2085,17 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	}
 	buffer += sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
 
-	v = c_sum_wlsb(c->total_16_uncompressed);
+	v = rohc_stats_sum(&c->total_16_uncompressed);
 	if(v != 0)
 	{
-		v = (100 * c_sum_wlsb(c->total_16_compressed)) / v;
+		v = (100 * rohc_stats_sum(&c->total_16_compressed)) / v;
 	}
 	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
 
-	v = c_sum_wlsb(c->header_16_uncompressed);
+	v = rohc_stats_sum(&c->header_16_uncompressed);
 	if(v != 0)
 	{
-		v = (100 * c_sum_wlsb(c->header_16_compressed)) / v;
+		v = (100 * rohc_stats_sum(&c->header_16_compressed)) / v;
 	}
 	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
 
@@ -2156,10 +2110,10 @@ static int rohc_d_context(struct rohc_decomp *decomp,
 	v = c->header_compressed_size / c->num_recv_packets;
 	buffer += sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
 
-	v = c_mean_wlsb(c->total_16_compressed);
+	v = rohc_stats_mean(&c->total_16_compressed);
 	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
 
-	v = c_mean_wlsb(c->header_16_compressed);
+	v = rohc_stats_mean(&c->header_16_compressed);
 	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
 
 	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);

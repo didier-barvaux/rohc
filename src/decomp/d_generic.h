@@ -31,8 +31,8 @@
 #include "rohc_decomp_internals.h"
 #include "rohc_packets.h"
 #include "comp_list.h"
-#include "lsb_decode.h"
-#include "ip_id_offset_decode.h"
+#include "schemes/wlsb.h"
+#include "schemes/ip_id_offset.h"
 #include "ip.h"
 #include "crc.h"
 

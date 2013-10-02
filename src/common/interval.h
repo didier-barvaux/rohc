@@ -43,7 +43,6 @@ typedef enum
 	ROHC_LSB_SHIFT_RTP_SN =  3,  /**< need to compute real value for RTP SN */
 	ROHC_LSB_SHIFT_ESP_SN =  3,  /**< need to compute real value for ESP SN */
 	ROHC_LSB_SHIFT_SN     = -1,  /**< real value for non-RTP SN */
-	ROHC_LSB_SHIFT_STATS  = -1,  /**< real value for internal statistics */
 	ROHC_LSB_SHIFT_VAR    =  1,  /**< real value is variable */
 } rohc_lsb_shift_t;
 

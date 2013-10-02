@@ -1159,10 +1159,10 @@ int rohc_compress3(struct rohc_comp *const comp,
 	c->header_last_uncompressed_size = payload_offset;
 	c->header_last_compressed_size = rohc_hdr_size;
 
-	c_add_wlsb(c->total_16_uncompressed, 0, uncomp_packet_len);
-	c_add_wlsb(c->total_16_compressed, 0, *rohc_packet_len);
-	c_add_wlsb(c->header_16_uncompressed, 0, payload_offset);
-	c_add_wlsb(c->header_16_compressed, 0, rohc_hdr_size);
+	rohc_stats_add(&c->total_16_uncompressed, uncomp_packet_len);
+	rohc_stats_add(&c->total_16_compressed, *rohc_packet_len);
+	rohc_stats_add(&c->header_16_uncompressed, payload_offset);
+	rohc_stats_add(&c->header_16_compressed, rohc_hdr_size);
 
 	/* compression is successful */
 	return status;
@@ -2756,17 +2756,17 @@ static int __rohc_c_context(struct rohc_comp *comp,
 	}
 	buffer += sprintf(buffer, "%s\t\t<all_headers>%d%%</all_headers>\n", prefix, v);
 
-	v = c_sum_wlsb(c->total_16_uncompressed);
+	v = rohc_stats_sum(&c->total_16_uncompressed);
 	if(v != 0)
 	{
-		v = (100 * c_sum_wlsb(c->total_16_compressed)) / v;
+		v = (100 * rohc_stats_sum(&c->total_16_compressed)) / v;
 	}
 	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d%%</last_16_packets>\n", prefix, v);
 
-	v = c_sum_wlsb(c->header_16_uncompressed);
+	v = rohc_stats_sum(&c->header_16_uncompressed);
 	if(v != 0)
 	{
-		v = (100 * c_sum_wlsb(c->header_16_compressed)) / v;
+		v = (100 * rohc_stats_sum(&c->header_16_compressed)) / v;
 	}
 	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d%%</last_16_headers>\n", prefix, v);
 
@@ -2795,10 +2795,10 @@ static int __rohc_c_context(struct rohc_comp *comp,
 	}
 	buffer += sprintf(buffer, "%s\t\t<all_headers>%d</all_headers>\n", prefix, v);
 
-	v = c_mean_wlsb(c->total_16_compressed);
+	v = rohc_stats_mean(&c->total_16_compressed);
 	buffer += sprintf(buffer, "%s\t\t<last_16_packets>%d</last_16_packets>\n", prefix, v);
 
-	v = c_mean_wlsb(c->header_16_compressed);
+	v = rohc_stats_mean(&c->header_16_compressed);
 	buffer += sprintf(buffer, "%s\t\t<last_16_headers>%d</last_16_headers>\n", prefix, v);
 
 	buffer += sprintf(buffer, "%s\t</mean>\n", prefix);
@@ -3884,15 +3884,15 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 	/* initialize all the contexts */
 	for(i = 0; i <= comp->medium.max_cid; i++)
 	{
-		/* create windows with 16 entries for statistics */
-		comp->contexts[i].total_16_uncompressed =
-			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-		comp->contexts[i].total_16_compressed =
-			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-		comp->contexts[i].header_16_uncompressed =
-			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
-		comp->contexts[i].header_16_compressed =
-			c_create_wlsb(32, 16, ROHC_LSB_SHIFT_STATS);
+		/* create contexts for statistics */
+		memset(&comp->contexts[i].total_16_uncompressed, 0,
+		       sizeof(struct rohc_stats));
+		memset(&comp->contexts[i].total_16_compressed, 0,
+		       sizeof(struct rohc_stats));
+		memset(&comp->contexts[i].header_16_uncompressed, 0,
+		       sizeof(struct rohc_stats));
+		memset(&comp->contexts[i].header_16_compressed, 0,
+		       sizeof(struct rohc_stats));
 	}
 
 	return true;
@@ -3922,11 +3922,6 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 		{
 			comp->contexts[i].profile->destroy(&comp->contexts[i]);
 		}
-
-		c_destroy_wlsb(comp->contexts[i].total_16_uncompressed);
-		c_destroy_wlsb(comp->contexts[i].total_16_compressed);
-		c_destroy_wlsb(comp->contexts[i].header_16_uncompressed);
-		c_destroy_wlsb(comp->contexts[i].header_16_compressed);
 
 		if(comp->contexts[i].used)
 		{

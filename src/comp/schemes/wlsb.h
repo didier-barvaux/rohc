@@ -15,15 +15,15 @@
  */
 
 /**
- * @file wlsb.h
- * @brief Window-based Least Significant Bits (W-LSB) encoding
+ * @file   src/comp/schemes/wlsb.h
+ * @brief  Window-based Least Significant Bits (W-LSB) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author David Moreau from TAS
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef ROHC_COMMON_WLSB_H
-#define ROHC_COMMON_WLSB_H
+#ifndef ROHC_COMP_SCHEMES_WLSB_H
+#define ROHC_COMP_SCHEMES_WLSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
 #include "dllexport.h"
@@ -70,11 +70,6 @@ bool ROHC_EXPORT wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
 
 void ROHC_EXPORT c_ack_sn_wlsb(struct c_wlsb *const s, const uint32_t sn)
 	__attribute__((nonnull(1)));
-
-int ROHC_EXPORT c_sum_wlsb(const struct c_wlsb *const s)
-	__attribute__((nonnull(1), pure));
-int ROHC_EXPORT c_mean_wlsb(const struct c_wlsb *const s)
-	__attribute__((nonnull(1), pure));
 
 #endif
 

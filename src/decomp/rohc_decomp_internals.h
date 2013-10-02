@@ -28,6 +28,7 @@
 
 #include "rohc_internal.h"
 #include "rohc_decomp.h"
+#include "rohc_stats.h"
 
 
 
@@ -212,13 +213,13 @@ struct d_context
 	unsigned long corrected_wrong_sn_updates;
 
 	/* The size of the last 16 uncompressed packets */
-	struct c_wlsb *total_16_uncompressed;
+	struct rohc_stats total_16_uncompressed;
 	/* The size of the last 16 compressed packets */
-	struct c_wlsb *total_16_compressed;
+	struct rohc_stats total_16_compressed;
 	/* The size of the last 16 uncompressed headers */
-	struct c_wlsb *header_16_uncompressed;
+	struct rohc_stats header_16_uncompressed;
 	/* The size of the last 16 compressed headers */
-	struct c_wlsb *header_16_compressed;
+	struct rohc_stats header_16_compressed;
 
 	/** The number of (possible) lost packet(s) before last packet */
 	unsigned long nr_lost_packets;

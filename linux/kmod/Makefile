@@ -19,18 +19,17 @@ rohc_common_sources = \
 	../../src/common/rohc_traces_internal.c \
 	../../src/common/crc.c \
 	../../src/common/rohc_add_cid.c \
-	../../src/common/ip_id_offset_decode.c \
 	../../src/common/interval.c \
-	../../src/common/lsb_decode.c \
 	../../src/common/sdvl.c \
-	../../src/common/wlsb.c \
 	../../src/common/ip.c \
-	../../src/common/ts_sc_comp.c \
-	../../src/common/ts_sc_decomp.c \
 	../../src/common/comp_list.c \
-	../../src/common/cid.c
+	../../src/common/rohc_stats.c
 
 rohc_comp_sources = \
+	../../src/comp/schemes/cid.c \
+	../../src/comp/schemes/wlsb.c \
+	../../src/comp/schemes/scaled_rtp_ts.c \
+	../../src/comp/schemes/rfc4996.c \
 	../../src/comp/rohc_comp.c \
 	../../src/comp/c_uncompressed.c \
 	../../src/comp/c_generic.c \
@@ -39,10 +38,13 @@ rohc_comp_sources = \
 	../../src/comp/c_udp_lite.c \
 	../../src/comp/c_rtp.c \
 	../../src/comp/c_esp.c \
-	../../src/comp/rfc4996_encoding.c \
 	../../src/comp/c_tcp.c
 
 rohc_decomp_sources = \
+	../../src/decomp/schemes/wlsb.c \
+	../../src/decomp/schemes/ip_id_offset.c \
+	../../src/decomp/schemes/scaled_rtp_ts.c \
+	../../src/decomp/schemes/rfc4996.c \
 	../../src/decomp/rohc_decomp_detect_packet.c \
 	../../src/decomp/rohc_decomp.c \
 	../../src/decomp/feedback.c \
@@ -53,7 +55,6 @@ rohc_decomp_sources = \
 	../../src/decomp/d_udp_lite.c \
 	../../src/decomp/d_rtp.c \
 	../../src/decomp/d_esp.c \
-	../../src/decomp/rfc4996_decoding.c \
 	../../src/decomp/d_tcp.c
 
 rohc_sources = \
@@ -72,7 +73,9 @@ EXTRA_CFLAGS += \
 	-I$(M)/../../src \
 	-I$(M)/../../src/common \
 	-I$(M)/../../src/comp \
-	-I$(M)/../../src/decomp
+	-I$(M)/../../src/comp/schemes \
+	-I$(M)/../../src/decomp \
+	-I$(M)/../../src/decomp/schemes
 
 # Module that exports the ROHC library in kernel land
 obj-m += $(rohc_modname).o

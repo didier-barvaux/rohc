@@ -15,14 +15,14 @@
  */
 
 /**
- * @file   rfc4996_encoding.h
+ * @file   src/comp/schemes/rfc4996.h
  * @brief  Library of encoding methods from RFC4997 and RFC4996
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_COMP_RFC4996_ENCODING_H
-#define ROHC_COMP_RFC4996_ENCODING_H
+#ifndef ROHC_COMP_SCHEMES_RFC4996_H
+#define ROHC_COMP_SCHEMES_RFC4996_H
 
 #include <stdint.h>
 

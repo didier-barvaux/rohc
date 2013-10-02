@@ -27,7 +27,7 @@
 
 #include "d_generic.h"
 #include "d_udp.h"
-#include "ts_sc_decomp.h"
+#include "schemes/scaled_rtp_ts.h"
 
 #include <stdint.h>
 #ifndef __KERNEL__

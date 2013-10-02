@@ -15,18 +15,18 @@
  */
 
 /**
- * @file ts_sc_decomp.h
- * @brief Scaled RTP Timestamp decoding
+ * @file   decomp/schemes/scaled_rtp_ts.h
+ * @brief  Scaled RTP Timestamp decoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef TS_SC_DECOMP_H
-#define TS_SC_DECOMP_H
+#ifndef ROHC_DECOMP_SCHEMES_SCALED_RTP_TS_H
+#define ROHC_DECOMP_SCHEMES_SCALED_RTP_TS_H
 
-#include "lsb_decode.h"
 #include "rohc_traces.h"
 
+#include <stdlib.h>
 #include <stdint.h>
 #ifdef __KERNEL__
 #	include <linux/types.h>

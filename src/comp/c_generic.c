@@ -32,7 +32,7 @@
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_utils.h"
-#include "cid.h"
+#include "schemes/cid.h"
 #include "sdvl.h"
 #include "crc.h"
 

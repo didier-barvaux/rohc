@@ -26,7 +26,7 @@
 #include "rohc_traces.h"
 #include "rohc_traces_internal.h"
 #include "rohc_debug.h"
-#include "cid.h"
+#include "schemes/cid.h"
 #include "crc.h"
 
 #include <assert.h>

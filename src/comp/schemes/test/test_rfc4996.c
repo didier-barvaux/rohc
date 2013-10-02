@@ -48,7 +48,7 @@ typedef union __attribute__((packed))
 } LWB_t;
 
 
-#include "rfc4996_encoding.h"
+#include "rfc4996.h"
 
 #include "config.h"
 

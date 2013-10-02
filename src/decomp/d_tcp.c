@@ -27,8 +27,8 @@
 #include "rohc_utils.h"
 #include "rohc_debug.h"
 #include "rohc_time.h"
-#include "rfc4996_decoding.h"
-#include "wlsb.h"
+#include "schemes/rfc4996.h"
+#include "schemes/wlsb.h"
 #include "protocols/tcp.h"
 #include "crc.h"
 #include "d_generic.h"
@@ -5223,9 +5223,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
-	c_add_wlsb(context->header_16_compressed, 0, rohc_header_len);
+	rohc_stats_add(&context->header_16_compressed, rohc_header_len);
 	context->header_uncompressed_size += uncomp_header_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_header_len);
+	rohc_stats_add(&context->header_16_uncompressed, uncomp_header_len);
 
 	return (uncomp_header_len + payload_len);
 

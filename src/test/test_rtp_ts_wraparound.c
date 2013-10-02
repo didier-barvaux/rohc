@@ -20,8 +20,8 @@
  * @author  Didier Barvaux <didier@barvaux.org>
  */
 
-#include "ts_sc_comp.h"
-#include "ts_sc_decomp.h"
+#include "comp/schemes/scaled_rtp_ts.h"
+#include "decomp/schemes/scaled_rtp_ts.h"
 
 #include <stdio.h>
 #include <stdbool.h>

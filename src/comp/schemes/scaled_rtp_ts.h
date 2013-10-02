@@ -15,8 +15,8 @@
  */
 
 /**
- * @file ts_sc_comp.h
- * @brief Scaled RTP Timestamp encoding
+ * @file   src/comp/schemes/scaled_rtp_ts.h
+ * @brief  Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
@@ -25,8 +25,8 @@
  * encoding.
  */
 
-#ifndef TS_SC_COMP_H
-#define TS_SC_COMP_H
+#ifndef ROHC_COMP_SCHEMES_SCALED_RTP_TS_H
+#define ROHC_COMP_SCHEMES_SCALED_RTP_TS_H
 
 #include "wlsb.h"
 #include "rohc_traces.h"

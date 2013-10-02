@@ -28,8 +28,9 @@
 #include "rohc_internal.h"
 #include "rohc_packets.h"
 #include "rohc_comp.h"
-#include "wlsb.h"
+#include "schemes/wlsb.h"
 #include "ip.h"
+#include "rohc_stats.h"
 
 #ifdef __KERNEL__
 #	include <linux/types.h>
@@ -384,13 +385,13 @@ struct c_context
 	int num_recv_feedbacks;
 
 	/** The size of the last 16 uncompressed packets */
-	struct c_wlsb *total_16_uncompressed;
+	struct rohc_stats total_16_uncompressed;
 	/** The size of the last 16 compressed packets */
-	struct c_wlsb *total_16_compressed;
+	struct rohc_stats total_16_compressed;
 	/** The size of the last 16 uncompressed headers */
-	struct c_wlsb *header_16_uncompressed;
+	struct rohc_stats header_16_uncompressed;
 	/** The size of the last 16 compressed headers */
-	struct c_wlsb *header_16_compressed;
+	struct rohc_stats header_16_compressed;
 };
 
 

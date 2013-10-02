@@ -15,7 +15,7 @@
  */
 
 /**
- * @file   rfc4996_encoding.c
+ * @file   src/comp/schemes/rfc4996.c
  * @brief  Library of encoding methods from RFC4997 and RFC4996
  * @author Didier Barvaux <didier@barvaux.org>
  */
@@ -26,7 +26,7 @@
 #include "rohc_bit_ops.h"
 #include "rohc_utils.h"
 #include "protocols/tcp.h" // For IP_ID_BEHAVIOR
-#include "rfc4996_encoding.h"
+#include "rfc4996.h"
 #include "crc.h"
 
 #ifndef __KERNEL__

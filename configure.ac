@@ -964,13 +964,17 @@ AC_CONFIG_FILES([ \
 	Makefile \
 	bzr_revno \
 	src/Makefile \
+	src/test/Makefile \
 	src/common/Makefile \
 	src/common/protocols/Makefile \
-	src/common/test/Makefile \
 	src/comp/Makefile \
 	src/comp/test/Makefile \
+	src/comp/schemes/Makefile \
+	src/comp/schemes/test/Makefile \
 	src/decomp/Makefile \
 	src/decomp/test/Makefile \
+	src/decomp/schemes/Makefile \
+	src/decomp/schemes/test/Makefile \
 	test/Makefile \
 	test/functional/Makefile \
 	test/functional/feedback2/Makefile \

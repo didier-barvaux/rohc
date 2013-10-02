@@ -29,7 +29,7 @@
 #include "rohc_utils.h"
 #include "crc.h"
 #include "protocols/esp.h"
-#include "lsb_decode.h"
+#include "schemes/wlsb.h"
 
 #include <stdint.h>
 #ifndef __KERNEL__

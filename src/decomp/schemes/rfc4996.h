@@ -15,14 +15,14 @@
  */
 
 /**
- * @file   rfc4996_decoding.h
+ * @file   decomp/schemes/rfc4996.h
  * @brief  Library of decoding methods from RFC4997 and RFC4996
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_DECOMP_RFC4996_DECODING_H
-#define ROHC_DECOMP_RFC4996_DECODING_H
+#ifndef ROHC_DECOMP_SCHEMES_RFC4996_H
+#define ROHC_DECOMP_SCHEMES_RFC4996_H
 
 #include "protocols/tcp.h"
 

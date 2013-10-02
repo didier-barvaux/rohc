@@ -35,7 +35,7 @@
 #include "rohc_decomp_internals.h"
 #include "comp_list.h"
 #include "rohc_decomp_detect_packet.h"
-#include "wlsb.h"
+#include "schemes/wlsb.h"
 #include "sdvl.h"
 #include "crc.h"
 
@@ -9324,9 +9324,9 @@ static void stats_add_decomp_success(struct d_context *const context,
 {
 	assert(context != NULL);
 	context->header_compressed_size += comp_hdr_len;
-	c_add_wlsb(context->header_16_compressed, 0, comp_hdr_len);
+	rohc_stats_add(&context->header_16_compressed, comp_hdr_len);
 	context->header_uncompressed_size += uncomp_hdr_len;
-	c_add_wlsb(context->header_16_uncompressed, 0, uncomp_hdr_len);
+	rohc_stats_add(&context->header_16_uncompressed, uncomp_hdr_len);
 }
 
 

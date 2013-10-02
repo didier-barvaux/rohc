@@ -15,12 +15,12 @@
  */
 
 /**
- * @file    test_lsb_decode.c
- * @brief   Test LSB encoding/decoding
+ * @file    test_wlsb.c
+ * @brief   Test W-LSB decoding
  * @author  Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  */
 
-#include "lsb_decode.h"
+#include "wlsb.h"
 
 #include <setjmp.h>
 #include <stddef.h>

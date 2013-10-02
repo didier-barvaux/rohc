@@ -5,7 +5,7 @@
 # Description: create the ROHC compression library
 ################################################################################
 
-SUBDIRS = . test
+SUBDIRS = schemes . test
 
 
 lib_LTLIBRARIES = librohc_comp.la
@@ -19,11 +19,11 @@ librohc_comp_la_SOURCES = \
 	c_udp_lite.c \
 	c_esp.c \
 	c_rtp.c \
-	c_tcp.c \
-	rfc4996_encoding.c
+	c_tcp.c
 
 librohc_comp_la_LIBADD = \
 	-lrohc_common \
+	$(builddir)/schemes/librohc_comp_schemes.la \
 	$(additional_platform_libs)
 
 librohc_comp_la_LDFLAGS = \
@@ -55,8 +55,7 @@ noinst_HEADERS = \
 	c_udp_lite.h \
 	c_esp.h \
 	c_rtp.h \
-	c_tcp.h \
-	rfc4996_encoding.h
+	c_tcp.h
 
 # extra files for releases
 EXTRA_DIST = \

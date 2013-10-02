@@ -8,6 +8,7 @@ SUBDIRS = \
 	common \
 	comp \
 	decomp \
+	test \
 	.
 
 lib_LTLIBRARIES = librohc.la

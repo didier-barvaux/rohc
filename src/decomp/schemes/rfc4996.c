@@ -15,7 +15,7 @@
  */
 
 /**
- * @file   rfc4996_decoding.c
+ * @file   decomp/schemes/rfc4996.c
  * @brief  Library of decoding methods from RFC4997 and RFC4996
  * @author FWX <rohc_team@dialine.fr>
  * @author Didier Barvaux <didier@barvaux.org>
@@ -28,10 +28,9 @@
 #include "rohc_debug.h"
 #include "rohc_utils.h"
 #include "wlsb.h"
-#include "sdvl.h"
 #include "crc.h"
 #include "protocols/tcp.h"
-#include "rfc4996_decoding.h"
+#include "rfc4996.h"
 #include "rohc_packets.h"
 #include "rohc_decomp.h"
 

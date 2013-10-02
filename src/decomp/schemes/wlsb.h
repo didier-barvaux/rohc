@@ -15,15 +15,15 @@
  */
 
 /**
- * @file   lsb_decode.h
- * @brief  Least Significant Bits (LSB) encoding
+ * @file   decomp/schemes/wlsb.h
+ * @brief  Window-based Least Significant Bits (W-LSB) decoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef ROHC_COMMON_LSB_DECODE_H
-#define ROHC_COMMON_LSB_DECODE_H
+#ifndef ROHC_DECOMP_SCHEMES_WLSB_H
+#define ROHC_DECOMP_SCHEMES_WLSB_H
 
 #include "interval.h" /* for rohc_lsb_shift_t */
 #include "dllexport.h"

@@ -5,7 +5,7 @@
 # Description: create the ROHC decompression library
 ################################################################################
 
-SUBDIRS = . test
+SUBDIRS = schemes . test
 
 
 lib_LTLIBRARIES = librohc_decomp.la
@@ -21,12 +21,12 @@ librohc_decomp_la_SOURCES = \
 	d_udp_lite.c \
 	d_esp.c \
 	d_rtp.c \
-	d_tcp.c \
-	rfc4996_decoding.c
+	d_tcp.c
 
 librohc_decomp_la_LIBADD = \
 	-lrohc_common \
 	-lrohc_comp \
+	$(builddir)/schemes/librohc_decomp_schemes.la \
 	$(additional_platform_libs)
 
 librohc_decomp_la_LDFLAGS = \
@@ -62,8 +62,7 @@ noinst_HEADERS = \
 	d_udp_lite.h \
 	d_esp.h \
 	d_rtp.h \
-	d_tcp.h \
-	rfc4996_decoding.h
+	d_tcp.h
 
 # extra files for releases
 EXTRA_DIST = \

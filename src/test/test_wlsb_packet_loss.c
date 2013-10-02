@@ -15,13 +15,13 @@
  */
 
 /**
- * @file    test_lsb_decode_wraparound.c
- * @brief   Test Least Significant Bits (LSB) encoding/decoding at wraparound
+ * @file    test_lsb_decode_packet_loss.c
+ * @brief   Test the robustness of LSB encoding/decoding against packet loss
  * @author  Didier Barvaux <didier@barvaux.org>
  */
 
-#include "wlsb.h"
-#include "lsb_decode.h"
+#include "comp/schemes/wlsb.h"
+#include "decomp/schemes/wlsb.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -42,12 +42,18 @@
 	} while(0)
 
 
-static bool run_test16_with_shift_param(bool be_verbose, const short p);
-static bool run_test32_with_shift_param(bool be_verbose, const short p);
+static bool run_test16_with_shift_param(bool be_verbose,
+                                        const short p,
+                                        const size_t win_size,
+                                        const size_t loss_nr);
+static bool run_test32_with_shift_param(bool be_verbose,
+                                        const short p,
+                                        const size_t win_size,
+                                        const size_t loss_nr);
 
 
 /**
- * @brief Test LSB encoding/decoding at wraparound
+ * @brief Test the robustness of LSB encoding/decoding against packet loss
  *
  * @param argc  The number of command line arguments
  * @param argv  The command line arguments
@@ -68,6 +74,10 @@ int main(int argc, char *argv[])
 	bool verbose; /* whether to run in verbose mode or not */
 	bool extraverbose; /* whether to run in extra verbose mode or not */
 	int is_failure = 1; /* test fails by default */
+
+	const size_t win_size = ROHC_WLSB_WINDOW_WIDTH;
+	assert(win_size > 0);
+	const size_t loss_nr = win_size - 1;
 
 	/* do we run in verbose mode ? */
 	if(argc == 1)
@@ -94,7 +104,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		/* invalid usage */
-		printf("test the Least Significant Bits (LSB) encoding/decoding at wraparound\n");
+		printf("test the robustness of LSB encoding/decoding against packet loss\n");
 		printf("usage: %s [verbose [verbose]]\n", argv[0]);
 		goto error;
 	}
@@ -103,9 +113,11 @@ int main(int argc, char *argv[])
 	for(p_index = 0; p_index < p_nums; p_index++)
 	{
 		/* 16-bit field */
-		trace(verbose, "run test with 16-bit field and shift parameter %d\n",
-		      p_params[p_index]);
-		if(!run_test16_with_shift_param(extraverbose, p_params[p_index]))
+		trace(verbose, "run test with 16-bit field, shift parameter %d, windows "
+		      "width %zd, and %zd lost values\n", p_params[p_index], win_size,
+		      loss_nr);
+		if(!run_test16_with_shift_param(extraverbose, p_params[p_index],
+		                                win_size, loss_nr))
 		{
 			fprintf(stderr, "test with 16-bit field and shift parameter %d "
 			        "failed\n", p_params[p_index]);
@@ -114,9 +126,11 @@ int main(int argc, char *argv[])
 		trace(extraverbose, "\n");
 
 		/* 32-bit field */
-		trace(verbose, "run test with 32-bit field and shift parameter %d\n",
-		      p_params[p_index]);
-		if(!run_test32_with_shift_param(extraverbose, p_params[p_index]))
+		trace(verbose, "run test with 32-bit field, shift parameter %d, windows "
+		      "width %zd, and %zd lost values\n", p_params[p_index], win_size,
+		      loss_nr);
+		if(!run_test32_with_shift_param(extraverbose, p_params[p_index],
+		                                win_size, loss_nr))
 		{
 			fprintf(stderr, "test with 32-bit field and shift parameter %d "
 			        "failed\n", p_params[p_index]);
@@ -139,9 +153,14 @@ error:
  *
  * @param be_verbose  Whether to print traces or not
  * @param p           The shift parameter to run test with
+ * @param win_size    The width of the W-LSB window
+ * @param loss_nr     The number of values to lose
  * @return            true if test succeeds, false otherwise
  */
-bool run_test16_with_shift_param(bool be_verbose, const short p)
+static bool run_test16_with_shift_param(bool be_verbose,
+                                        const short p,
+                                        const size_t win_size,
+                                        const size_t loss_nr)
 {
 	struct c_wlsb *wlsb; /* the W-LSB encoding context */
 	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
@@ -154,8 +173,10 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 
 	uint32_t i;
 
+	assert(win_size > 0);
+
 	/* create the W-LSB encoding context */
-	wlsb = c_create_wlsb(16, ROHC_WLSB_WINDOW_WIDTH, p);
+	wlsb = c_create_wlsb(16, win_size, p);
 	if(wlsb == NULL)
 	{
 		fprintf(stderr, "no memory to allocate W-LSB encoding context\n");
@@ -192,12 +213,16 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		rohc_lsb_set_ref(lsb, value16_decoded, false);
 	}
 
-	/* encode then decode 16-bit values from ranges [3, 0xffff] and [0, 100] */
-	for(i = 3; i <= (((uint32_t) 0xffff) + 1 + 100); i++)
+	/* 1/ encode then decode 16-bit values from range [3, win_size]
+	 * 2/ encode then drop 16-bit values from range
+	 *    [win_size + 1, win_size + loss_nr]
+	 * 3/ encode then decode 16-bit values from range
+	 *    [win_size + loss_nr + 1, win_size + loss_nr + 10]
+	 */
+	for(i = 3; i <= ((uint32_t) (win_size + loss_nr + 10)); i++)
 	{
 		size_t required_bits;
 		uint16_t required_bits_mask;
-		uint32_t decoded32;
 		bool wlsb_k_ok;
 		bool lsb_decode_ok;
 
@@ -229,29 +254,41 @@ bool run_test16_with_shift_param(bool be_verbose, const short p)
 		/* update encoding context */
 		c_add_wlsb(wlsb, value16, value16);
 
-		/* decode */
-		trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
-		      value16_encoded);
-		lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value16_encoded,
-		                                required_bits, p, &decoded32);
-		if(!lsb_decode_ok)
+		/* do we lose that value? */
+		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
 		{
-			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
-			goto destroy_lsb;
+			/* value is lost, so do not decode it */
+			trace(be_verbose, "\t\tlose %zd-bit value 0x%04x\n", required_bits,
+			      value16_encoded);
 		}
-		assert(decoded32 <= 0xffff);
-		value16_decoded = decoded32;
-		trace(be_verbose, "\t\tdecoded: 0x%04x\n", value16_decoded);
-
-		/* update decoding context */
-		rohc_lsb_set_ref(lsb, value16_decoded, false);
-
-		/* check test result */
-		if(value16 != value16_decoded)
+		else
 		{
-			fprintf(stderr, "original and decoded values do not match while "
-			        "testing value 0x%04x with shift parameter %d\n", value16, p);
-			goto destroy_lsb;
+			uint32_t decoded32;
+
+			/* value is not lost, so decode it */
+			trace(be_verbose, "\t\tdecode %zd-bit value 0x%04x ...\n", required_bits,
+			      value16_encoded);
+			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value16_encoded,
+			                                required_bits, p, &decoded32);
+			if(!lsb_decode_ok)
+			{
+				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+				goto destroy_lsb;
+			}
+			assert(decoded32 <= 0xffff);
+			value16_decoded = decoded32;
+			trace(be_verbose, "\t\tdecoded: 0x%04x\n", value16_decoded);
+
+			/* update decoding context */
+			rohc_lsb_set_ref(lsb, value16_decoded, false);
+
+			/* check test result */
+			if(value16 != value16_decoded)
+			{
+				fprintf(stderr, "original and decoded values do not match while "
+				        "testing value 0x%04x with shift parameter %d\n", value16, p);
+				goto destroy_lsb;
+			}
 		}
 	}
 
@@ -273,9 +310,14 @@ error:
  *
  * @param be_verbose  Whether to print traces or not
  * @param p           The shift parameter to run test with
+ * @param win_size    The width of the W-LSB window
+ * @param loss_nr     The number of values to lose
  * @return            true if test succeeds, false otherwise
  */
-bool run_test32_with_shift_param(bool be_verbose, const short p)
+static bool run_test32_with_shift_param(bool be_verbose,
+                                        const short p,
+                                        const size_t win_size,
+                                        const size_t loss_nr)
 {
 	struct c_wlsb *wlsb; /* the W-LSB encoding context */
 	struct rohc_lsb_decode *lsb; /* the LSB decoding context */
@@ -287,6 +329,8 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 	int is_success = false; /* test fails by default */
 
 	uint64_t i;
+
+	assert(win_size > 0);
 
 	/* create the W-LSB encoding context */
 	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, p);
@@ -326,8 +370,13 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		rohc_lsb_set_ref(lsb, value32_decoded, false);
 	}
 
-	/* encode then decode 32-bit values from ranges [3, 100] */
-	for(i = 3; i <= 100; i++)
+	/* 1/ encode then decode 16-bit values from range [3, win_size]
+	 * 2/ encode then drop 16-bit values from range
+	 *    [win_size + 1, win_size + loss_nr]
+	 * 3/ encode then decode 16-bit values from range
+	 *    [win_size + loss_nr + 1, win_size + loss_nr + 10]
+	 */
+	for(i = 3; i <= ((uint32_t) (win_size + loss_nr + 10)); i++)
 	{
 		size_t required_bits;
 		uint32_t required_bits_mask;
@@ -362,131 +411,37 @@ bool run_test32_with_shift_param(bool be_verbose, const short p)
 		/* update encoding context */
 		c_add_wlsb(wlsb, value32, value32);
 
-		/* decode */
-		trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
-		      value32_encoded);
-		lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value32_encoded,
-		                                required_bits, p, &value32_decoded);
-		if(!lsb_decode_ok)
+		/* do we lose that value? */
+		if(i >= (win_size + 1) && i <= (win_size + loss_nr))
 		{
-			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
-			goto destroy_lsb;
-		}
-		trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);
-
-		/* update decoding context */
-		rohc_lsb_set_ref(lsb, value32_decoded, false);
-
-		/* check test result */
-		if(value32 != value32_decoded)
-		{
-			fprintf(stderr, "original and decoded values do not match while "
-			        "testing value 0x%08x with shift parameter %d\n", value32, p);
-			goto destroy_lsb;
-		}
-	}
-
-	/* destroy the LSB decoding context */
-	rohc_lsb_free(lsb);
-	/* destroy the W-LSB encoding context */
-	c_destroy_wlsb(wlsb);
-
-	/* create the W-LSB encoding context again */
-	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, p);
-	if(wlsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate W-LSB encoding\n");
-		goto error;
-	}
-
-	/* init the LSB decoding context with value 0xffffffff - 100 - 3 */
-	value32 = 0xffffffff - 100 - 3;
-	trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-	lsb = rohc_lsb_new(p, 32);
-	if(lsb == NULL)
-	{
-		fprintf(stderr, "no memory to allocate LSB decoding context\n");
-		goto destroy_wlsb;
-	}
-	rohc_lsb_set_ref(lsb, value32, false);
-
-	/* initialize the W-LSB encoding context */
-	for(i = (0xffffffff - 100 - 3); i < (0xffffffff - 100); i++)
-	{
-		/* value to encode/decode */
-		value32 = i % 0xffffffff;
-
-		trace(be_verbose, "\tinitialize with 32 bits of value 0x%08x ...\n", value32);
-
-		/* update encoding context */
-		c_add_wlsb(wlsb, value32, value32);
-
-		/* transmit all bits without encoding */
-		value32_encoded = value32;
-		value32_decoded = value32_encoded;
-
-		/* update decoding context */
-		rohc_lsb_set_ref(lsb, value32_decoded, false);
-	}
-
-	/* encode then decode 32-bit values from ranges
-	 * [0xffffffff-100, 0xffffffff] and [0, 100] */
-	for(i = (0xffffffff - 100); i <= (((uint64_t) 0xffffffff) + 1 + 100); i++)
-	{
-		size_t required_bits;
-		uint32_t required_bits_mask;
-		bool wlsb_k_ok;
-		bool lsb_decode_ok;
-
-		/* value to encode/decode */
-		value32 = i % (((uint64_t) 0xffffffff) + 1);
-
-		/* encode */
-		trace(be_verbose, "\tencode value 0x%08x ...\n", value32);
-		wlsb_k_ok = wlsb_get_k_32bits(wlsb, value32, &required_bits);
-		if(!wlsb_k_ok)
-		{
-			fprintf(stderr, "failed to determine how many bits are required "
-			        "to be sent\n");
-			goto destroy_lsb;
-		}
-		assert(required_bits <= 32);
-		if(required_bits == 32)
-		{
-			required_bits_mask = 0xffffffff;
+			/* value is lost, so do not decode it */
+			trace(be_verbose, "\t\tlose %zd-bit value 0x%04x\n", required_bits,
+			      value32_encoded);
 		}
 		else
 		{
-			required_bits_mask = (1 << required_bits) - 1;
-		}
-		value32_encoded = value32 & required_bits_mask;
-		trace(be_verbose, "\t\tencoded on %zd bits: 0x%08x\n", required_bits,
-		      value32_encoded);
+			/* decode */
+			trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
+			      value32_encoded);
+			lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value32_encoded,
+			                                required_bits, p, &value32_decoded);
+			if(!lsb_decode_ok)
+			{
+				fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
+				goto destroy_lsb;
+			}
+			trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);
 
-		/* update encoding context */
-		c_add_wlsb(wlsb, value32, value32);
+			/* update decoding context */
+			rohc_lsb_set_ref(lsb, value32_decoded, false);
 
-		/* decode */
-		trace(be_verbose, "\t\tdecode %zd-bit value 0x%08x ...\n", required_bits,
-		      value32_encoded);
-		lsb_decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value32_encoded,
-		                                required_bits, p, &value32_decoded);
-		if(!lsb_decode_ok)
-		{
-			fprintf(stderr, "failed to decode %zd-bit value\n", required_bits);
-			goto destroy_lsb;
-		}
-		trace(be_verbose, "\t\tdecoded: 0x%08x\n", value32_decoded);
-
-		/* update decoding context */
-		rohc_lsb_set_ref(lsb, value32_decoded, false);
-
-		/* check test result */
-		if(value32 != value32_decoded)
-		{
-			fprintf(stderr, "original and decoded values do not match while "
-			        "testing value 0x%08x with shift parameter %d\n", value32, p);
-			goto destroy_lsb;
+			/* check test result */
+			if(value32 != value32_decoded)
+			{
+				fprintf(stderr, "original and decoded values do not match while "
+				        "testing value 0x%08x with shift parameter %d\n", value32, p);
+				goto destroy_lsb;
+			}
 		}
 	}
 

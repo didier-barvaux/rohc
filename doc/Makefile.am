@@ -95,17 +95,23 @@ endif
 
 rohc_all_sources = \
 	$(top_srcdir)/src/*.h \
+	$(top_srcdir)/src/test/*.c \
 	$(top_srcdir)/src/common/*.c \
 	$(top_srcdir)/src/common/*.h \
 	$(top_srcdir)/src/common/protocols/*.c \
 	$(top_srcdir)/src/common/protocols/*.h \
-	$(top_srcdir)/src/common/test/*.c \
 	$(top_srcdir)/src/comp/*.c \
 	$(top_srcdir)/src/comp/*.h \
 	$(top_srcdir)/src/comp/test/*.c \
+	$(top_srcdir)/src/comp/schemes/*.c \
+	$(top_srcdir)/src/comp/schemes/*.h \
+	$(top_srcdir)/src/comp/schemes/test/*.c \
 	$(top_srcdir)/src/decomp/*.c \
 	$(top_srcdir)/src/decomp/*.h \
 	$(top_srcdir)/src/decomp/test/*.c \
+	$(top_srcdir)/src/decomp/schemes/*.c \
+	$(top_srcdir)/src/decomp/schemes/*.h \
+	$(top_srcdir)/src/decomp/schemes/test/*.c \
 	$(top_srcdir)/examples/*.c \
 	$(top_srcdir)/statistics/*.c \
 	$(top_srcdir)/app/fuzzer/*.c \

@@ -15,20 +15,25 @@
  */
 
 /**
- * @file   ip_id_offset_decode.h
+ * @file   ip_id_offset.h
  * @brief  Offset IP-ID decoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
-#ifndef ROHC_COMMON_IP_ID_OFFSET_DECODE_H
-#define ROHC_COMMON_IP_ID_OFFSET_DECODE_H
-
-#include "lsb_decode.h"
-#include "dllexport.h"
+#ifndef ROHC_DECOMP_IP_ID_OFFSET_H
+#define ROHC_DECOMP_IP_ID_OFFSET_H
 
 #include <stdint.h>
+#include <stdlib.h>
+#ifdef __KERNEL__
+#	include <linux/types.h>
+#else
+#	include <stdbool.h>
+#endif
+
+#include "dllexport.h"
 
 
 /* The definition of the Offset IP-ID decoding object is private */

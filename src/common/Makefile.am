@@ -6,7 +6,7 @@
 ################################################################################
 
 
-SUBDIRS = protocols . test
+SUBDIRS = protocols .
 
 
 lib_LTLIBRARIES = librohc_common.la
@@ -18,16 +18,11 @@ sources = \
 	rohc_utils.c \
 	crc.c \
 	rohc_add_cid.c \
-	ip_id_offset_decode.c \
 	interval.c \
-	lsb_decode.c \
 	sdvl.c \
-	wlsb.c \
 	ip.c \
-	ts_sc_comp.c \
-	ts_sc_decomp.c \
 	comp_list.c \
-	cid.c
+	rohc_stats.c
 
 public_headers = \
 	rohc.h \
@@ -50,16 +45,11 @@ private_headers = \
 	rohc_utils.h \
 	crc.h \
 	rohc_add_cid.h \
-	ip_id_offset_decode.h \
 	interval.h \
-	lsb_decode.h \
 	sdvl.h \
-	wlsb.h \
 	ip.h \
-	ts_sc_comp.h \
-	ts_sc_decomp.h \
 	comp_list.h \
-	cid.h
+	rohc_stats.h
 
 librohc_common_la_SOURCES = $(sources)
 librohc_common_la_LIBADD = \

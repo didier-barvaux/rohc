@@ -15,14 +15,14 @@
  */
 
 /**
- * @file ts_sc_comp.c
- * @brief Scaled RTP Timestamp encoding
+ * @file   src/comp/schemes/scaled_rtp_ts.c
+ * @brief  Scaled RTP Timestamp encoding
  * @author David Moreau from TAS
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "ts_sc_comp.h"
+#include "scaled_rtp_ts.h"
 #include "sdvl.h"
 #include "rohc_traces_internal.h"
 

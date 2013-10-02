@@ -25,7 +25,7 @@
 #define ROHC_COMP_RTP_H
 
 #include "c_generic.h"
-#include "ts_sc_comp.h"
+#include "schemes/scaled_rtp_ts.h"
 #include "protocols/udp.h"
 #include "protocols/rtp.h"
 

@@ -6,29 +6,26 @@
 
 
 TESTS = \
-	test_api_robustness.sh
+	test_rfc4996.sh
 
 
 check_PROGRAMS = \
-	test_api_robustness
+	test_rfc4996
 
 
-test_api_robustness_SOURCES = test_api_robustness.c
-test_api_robustness_LDADD = \
-	-lrohc_comp \
-	-lrohc_common
-test_api_robustness_LDFLAGS = \
-	$(configure_ldflags) \
-	-L$(top_builddir)/src/common/.libs \
+test_rfc4996_SOURCES = test_rfc4996.c
+test_rfc4996_LDADD = \
+	-lrohc_comp
+test_rfc4996_LDFLAGS = \
 	-L$(top_builddir)/src/comp/.libs
-test_api_robustness_CFLAGS = \
+test_rfc4996_CFLAGS = \
 	$(configure_cflags)
-test_api_robustness_CPPFLAGS = \
+test_rfc4996_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
-	-I$(top_srcdir)/src/comp
+	-I$(srcdir)/..
 
 
 EXTRA_DIST = \
-	test_api_robustness.sh
+	test_rfc4996.sh
 

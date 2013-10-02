@@ -15,15 +15,15 @@
  */
 
 /**
- * @file   ip_id_offset_decode.c
+ * @file   ip_id_offset.c
  * @brief  Offset IP-ID decoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  * @author The hackers from ROHC for Linux
  */
 
-#include "ip_id_offset_decode.h"
-#include "lsb_decode.h"
+#include "ip_id_offset.h"
+#include "wlsb.h"
 
 #include <stdlib.h>
 #include <assert.h>
