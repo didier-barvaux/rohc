@@ -22,6 +22,7 @@
  * @author The hackers from ROHC for Linux
  */
 
+#include "d_ip.h"
 #include "d_udp.h"
 #include "d_generic.h"
 #include "rohc_bit_ops.h"
@@ -31,6 +32,10 @@
 #include "rohc_packets.h"
 #include "crc.h"
 #include "protocols/udp_lite.h"
+
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 
 
 /*

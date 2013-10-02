@@ -26,36 +26,6 @@
 #define ROHC_DECOMP_UDP_H
 
 #include "d_generic.h"
-#include "d_ip.h"
-
-#include <stdint.h>
-#ifndef __KERNEL__
-#	include <string.h>
-#endif
-
-
-/**
- * @brief Define the UDP part of the decompression profile context.
- *
- * This object must be used with the generic part of the decompression
- * context d_generic_context.
- *
- * @see d_generic_context
- */
-struct d_udp_context
-{
-	/** UDP source port */
-	uint16_t sport;
-	/** UDP destination port */
-	uint16_t dport;
-	/// Whether the UDP checksum field is encoded in the ROHC packet or not
-	int udp_checksum_present;
-};
-
-
-/*
- * Public function prototypes.
- */
 
 int udp_parse_static_udp(const struct d_context *const context,
                          const unsigned char *packet,
