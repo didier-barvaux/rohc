@@ -6160,6 +6160,8 @@ static int encode_uncomp_fields(struct c_context *const context,
 	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
 	assert(ip != NULL);
+	assert(g_context->tmp.nr_of_ip_hdr == 1 ||
+	       g_context->tmp.nr_of_ip_hdr == 2);
 	assert((g_context->tmp.nr_of_ip_hdr == 1 && ip2 == NULL) ||
 	       (g_context->tmp.nr_of_ip_hdr == 2 && ip2 != NULL));
 

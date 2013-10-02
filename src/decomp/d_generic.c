@@ -433,7 +433,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
                              const unsigned char *const next_header,
                              const rohc_crc_type_t crc_type,
                              const uint8_t crc_packet)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 static bool attempt_repair(const struct rohc_decomp *const decomp,
                            const struct d_context *const context,
