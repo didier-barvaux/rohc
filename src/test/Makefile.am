@@ -18,9 +18,9 @@ check_PROGRAMS = \
 
 test_wlsb_wraparound_SOURCES = test_wlsb_wraparound.c
 test_wlsb_wraparound_LDADD = \
-	-lrohc_common \
 	$(top_builddir)/src/comp/schemes/librohc_comp_schemes.la \
-	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la
+	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la \
+	-lrohc_common
 test_wlsb_wraparound_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
@@ -33,9 +33,9 @@ test_wlsb_wraparound_CPPFLAGS = \
 
 test_wlsb_packet_loss_SOURCES = test_wlsb_packet_loss.c
 test_wlsb_packet_loss_LDADD = \
-	-lrohc_common \
 	$(top_builddir)/src/comp/schemes/librohc_comp_schemes.la \
-	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la
+	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la \
+	-lrohc_common
 test_wlsb_packet_loss_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
@@ -48,9 +48,9 @@ test_wlsb_packet_loss_CPPFLAGS = \
 
 test_rtp_ts_wraparound_SOURCES = test_rtp_ts_wraparound.c
 test_rtp_ts_wraparound_LDADD = \
-	-lrohc_common \
 	$(top_builddir)/src/comp/schemes/librohc_comp_schemes.la \
-	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la
+	$(top_builddir)/src/decomp/schemes/librohc_decomp_schemes.la \
+	-lrohc_common
 test_rtp_ts_wraparound_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs
