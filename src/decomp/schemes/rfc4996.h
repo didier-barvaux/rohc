@@ -41,14 +41,26 @@ uint32_t d_lsb(const struct d_context *const context,
                unsigned int context_value,
                unsigned int value);
 
-// RFC4996 page 46
-uint8_t d_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, int indicator );
-uint16_t d_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, int indicator );
+int d_static_or_irreg8(const uint8_t *rohc_data,
+                       const uint8_t context_value,
+                       const int indicator,
+                       uint8_t *const decoded_value)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
+
+int d_static_or_irreg16(const uint8_t *rohc_data,
+                        const uint16_t context_value,
+                        const int indicator,
+                        uint16_t *const decoded_value)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
+
 // RFC4996 page 46
 extern unsigned int variable_length_32_size[];
-uint32_t variable_length_32_dec(const struct d_context *const context,
-                                multi_ptr_t *pmptr,
-                                int indicator);
+
+int variable_length_32_dec(const struct d_context *const context,
+                           const uint8_t *rohc_data,
+                           const int indicator,
+                           uint32_t *const decoded_value);
+
 uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value );
 // RFC4996 page 47
 uint32_t d_lsb_7_31( multi_ptr_t *pmptr );
@@ -70,18 +82,20 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
                      uint16_t value,
                      uint16_t msn);
 // RFC4996 page 76
-void d_optional_ip_id_lsb(const struct d_context *const context,
-                          multi_ptr_t *pmptr,
-                          int behavior,
-                          int indicator,
-                          WB_t context_ip_id,
-                          uint16_t *ip_id,
-                          uint16_t msn);
+int d_optional_ip_id_lsb(const struct d_context *const context,
+                         const uint8_t *const rohc_data,
+                         int behavior,
+                         int indicator,
+                         WB_t context_ip_id,
+                         uint16_t *ip_id,
+                         uint16_t msn)
+	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 
-uint8_t dscp_decode(multi_ptr_t *pmptr,
-                    const uint8_t context_value,
-                    const int indicator)
-	__attribute__((warn_unused_result, nonnull(1)));
+int dscp_decode(const uint8_t *const rohc_data,
+                const uint8_t context_value,
+                const int indicator,
+                uint8_t *const decoded_value)
+	__attribute__((warn_unused_result, nonnull(1, 4)));
 
 #endif /* ROHC_DECOMP_RFC4996_DECODING_H */
 

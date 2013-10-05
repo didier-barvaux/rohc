@@ -83,48 +83,68 @@ uint32_t d_lsb(const struct d_context *const context,
 
 
 /**
- * @brief Decompress the 8 bits given value, according to the indicator
+ * @brief Decompress the 8-bit given value, according to the indicator
  *
- * See RFC4996 page 46
- *
- * @param pmptr            Pointer to the compressed value
- * @param context_value    The value of the context
- * @param indicator        Indicator of compression
- * @return                 The uncompressed value
+ * @param rohc_data           The packet value
+ * @param context_value       The context value
+ * @param indicator           The indicator of compression
+ * @param[out] decoded_value  The decoded value
+ * @return                    The length (in bytes) of the compressed value,
+ *                            -1 if ROHC data is malformed
  */
-
-uint8_t d_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, int indicator )
+int d_static_or_irreg8(const uint8_t *rohc_data,
+                       const uint8_t context_value,
+                       const int indicator,
+                       uint8_t *const decoded_value)
 {
+	size_t length;
+
 	if(indicator == 0)
 	{
-		return context_value;
+		*decoded_value = context_value;
+		length = 0;
 	}
 	else
 	{
-		return *(pmptr->uint8)++;
+		/* TODO: check ROHC packet length */
+		*decoded_value = rohc_data[0];
+		length = 1;
 	}
+
+	return length;
 }
 
 
 /**
- * @brief Decompress the 16 bits given value, according to the indicator
+ * @brief Decompress the 16-bit given value, according to the indicator
  *
- * @param pmptr            Pointer to the compressed value
- * @param context_value    The value of the context
- * @param indicator        Indicator of compression
- * @return                 The uncompressed value
+ * @param rohc_data           The packet value
+ * @param context_value       The context value
+ * @param indicator           The indicator of compression
+ * @param[out] decoded_value  The decoded value
+ * @return                    The length (in bytes) of the compressed value,
+ *                            -1 if ROHC data is malformed
  */
-
-uint16_t d_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, int indicator )
+int d_static_or_irreg16(const uint8_t *rohc_data,
+                        const uint16_t context_value,
+                        const int indicator,
+                        uint16_t *const decoded_value)
 {
+	size_t length;
+
 	if(indicator == 0)
 	{
-		return context_value;
+		*decoded_value = context_value;
+		length = 0;
 	}
 	else
 	{
-		return READ16_FROM_PMPTR(pmptr);
+		/* TODO: check ROHC packet length */
+		memcpy(decoded_value, rohc_data, sizeof(uint16_t));
+		length = sizeof(uint16_t);
 	}
+
+	return length;
 }
 
 
@@ -142,40 +162,51 @@ unsigned int variable_length_32_size[4] =
  *
  * See RFC4996 page 46
  *
- * @param context    The decompression context
- * @param pmptr      Pointer to the compressed value
- * @param indicator  Indicator of compression
- * @return           The uncompressed value
+ * @param context             The decompression context
+ * @param rohc_data           The compressed value
+ * @param indicator           The indicator of compression
+ * @param[out] decoded_value  The decoded value
+ * @return                    The length (in bytes) of the compressed value,
+ *                            -1 if ROHC data is malformed
  */
-uint32_t variable_length_32_dec(const struct d_context *const context,
-                                multi_ptr_t *pmptr,
-                                int indicator)
+int variable_length_32_dec(const struct d_context *const context,
+                           const uint8_t *rohc_data,
+                           const int indicator,
+                           uint32_t *const decoded_value)
 {
 	uint32_t value;
+	size_t length = 0;
 
 	assert(context != NULL);
+	assert(rohc_data != NULL);
+	assert(decoded_value != NULL);
 
+	/* TODO: check ROHC packet length */
 	switch(indicator)
 	{
 		case 0:
 			value = 0;
 			break;
 		case 1:
-			value = (*pmptr->uint8) & 0xff;
-			pmptr->uint8++;
+			value = rohc_data[0] & 0xff;
+			rohc_data++;
+			length++;
 			value = rohc_hton32(value);
 			break;
 		case 2:
 			value = 0;
-			value |= ((*pmptr->uint8) << 8) & 0xff00;
-			pmptr->uint8++;
-			value |= (*pmptr->uint8) & 0xff;
-			pmptr->uint8++;
+			value |= (rohc_data[0] << 8) & 0xff00;
+			rohc_data++;
+			length++;
+			value |= rohc_data[0] & 0xff;
+			rohc_data++;
+			length++;
 			value = rohc_hton32(value);
 			break;
 		case 3:
-			memcpy(&value, pmptr->uint8, sizeof(uint32_t));
-			pmptr->uint8 += 4;
+			memcpy(&value, rohc_data, sizeof(uint32_t));
+			rohc_data += sizeof(uint32_t);
+			length += sizeof(uint32_t);
 			break;
 		default:
 			/* should not happen */
@@ -186,8 +217,9 @@ uint32_t variable_length_32_dec(const struct d_context *const context,
 
 	rohc_decomp_debug(context, "indicator = %d, return value = %u (0x%x)\n",
 	                  indicator, value, value);
+	*decoded_value = value;
 
-	return value;
+	return length;
 }
 
 
@@ -364,7 +396,7 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
 			                       ip_id_offset);
 			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = 0x%x, "
 			                  "value = 0x%x\n", ip_id.uint16, ip_id_offset, value);
-			assert( ip_id_offset == value );
+			assert(ip_id_offset == value); /* TODO: should not assert */
 			return ip_id.uint16;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
 			ip_id.uint8[0] = context_ip_id.uint8[1];
@@ -375,7 +407,7 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
 			                       ip_id_offset);
 			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = 0x%x, "
 			                  "value = 0x%x\n", ip_id.uint16, ip_id_offset, value);
-			assert( ip_id_offset == value );
+			assert(ip_id_offset == value); /* TODO: should not assert */
 			return ip_id.uint16;
 	}
 
@@ -389,21 +421,25 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
  * See RFC4996 page 76
  *
  * @param context        The decompression context
- * @param pmptr          Pointer to the compressed value
+ * @param rohc_data      The compressed value
  * @param behavior       The IP-ID behavior
  * @param indicator      The compression indicator
  * @param context_ip_id  The context IP-ID value
  * @param ip_id          Pointer to the uncompressed IP-ID
  * @param msn            The Master Sequence Number
+ * @return               The length (in bytes) of the compressed value,
+ *                       -1 if ROHC data is malformed
  */
-void d_optional_ip_id_lsb(const struct d_context *const context,
-                          multi_ptr_t *pmptr,
-                          int behavior,
-                          int indicator,
-                          WB_t context_ip_id,
-                          uint16_t *ip_id,
-                          uint16_t msn)
+int d_optional_ip_id_lsb(const struct d_context *const context,
+                         const uint8_t *const rohc_data,
+                         int behavior,
+                         int indicator,
+                         WB_t context_ip_id,
+                         uint16_t *ip_id,
+                         uint16_t msn)
 {
+	size_t length = 0;
+
 	assert(context != NULL);
 
 	rohc_decomp_debug(context, "behavior = %d, indicator = %d, "
@@ -417,14 +453,16 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
 			{
 				*ip_id = (context_ip_id.uint16 & 0xFF00) |
 				         d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
-				                     *pmptr->uint8, msn);
+				                     rohc_data[0], msn);
 				rohc_decomp_debug(context, "read ip_id = 0x%x -> 0x%x\n",
-				                  *pmptr->uint8, *ip_id);
-				pmptr->uint8++;
+				                  rohc_data[0], *ip_id);
+				length++;
 			}
 			else
 			{
-				*ip_id = rohc_ntoh16(READ16_FROM_PMPTR(pmptr));
+				memcpy(ip_id, rohc_data, sizeof(uint16_t));
+				length += sizeof(uint16_t);
+				*ip_id = rohc_ntoh16(*ip_id);
 				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
 			}
 			break;
@@ -437,14 +475,16 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
 			{
 				*ip_id = (swapped_context_ip_id.uint16 & 0xFF00) |
 				          d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
-				                      *pmptr->uint8, msn);
+				                      rohc_data[0], msn);
 				rohc_decomp_debug(context, "read ip_id = 0x%x -> 0x%x\n",
-				                  *pmptr->uint8, *ip_id);
-				pmptr->uint8++;
+				                  rohc_data[0], *ip_id);
+				length++;
 			}
 			else
 			{
-				*ip_id = rohc_ntoh16(READ16_FROM_PMPTR(pmptr));
+				memcpy(ip_id, rohc_data, sizeof(uint16_t));
+				length += sizeof(uint16_t);
+				*ip_id = rohc_ntoh16(*ip_id);
 				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
 			}
 		}
@@ -457,30 +497,42 @@ void d_optional_ip_id_lsb(const struct d_context *const context,
 		default:
 			break;
 	}
+
+	return length;
 }
 
 
 /**
  * @brief Decode the DSCP field
  *
- * @param pmptr          Pointer to the compressed value
- * @param context_value  The context DSCP value
- * @param indicator      Indicator of the compression
- * @return               The DSCP decoded
+ * @param rohc_data           The compressed value
+ * @param context_value       The context DSCP value
+ * @param indicator           The indicator of the compression
+ * @param[out] decoded_value  The decoded value
+ * @return                    The length (in bytes) of the compressed value,
+ *                            -1 if ROHC data is malformed
  */
-uint8_t dscp_decode(multi_ptr_t *pmptr,
-                    const uint8_t context_value,
-                    const int indicator)
+int dscp_decode(const uint8_t *const rohc_data,
+                const uint8_t context_value,
+                const int indicator,
+                uint8_t *const decoded_value)
 {
+	size_t length;
+
 	if(indicator == 0)
 	{
 		/* DSCP value not transmitted in packet, take value from context */
-		return context_value;
+		*decoded_value = context_value;
+		length = 0;
 	}
 	else
 	{
+		/* TODO: check packet length */
 		/* DSCP value transmitted in packet */
-		return (*(pmptr->uint8)++) & 0x3F;
+		*decoded_value = (rohc_data[0] & 0x3f);
+		length = 1;
 	}
+
+	return length;
 }
 
