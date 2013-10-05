@@ -334,6 +334,13 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
                            unsigned char *dest);
+static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
+                              struct d_context *context,
+                              const unsigned char *const rohc_packet,
+                              const unsigned int rohc_length,
+                              const size_t add_cid_len,
+                              const size_t large_cid_len,
+                              unsigned char *dest);
 static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            struct d_context *context,
                            const unsigned char *const rohc_packet,
@@ -701,24 +708,10 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
                         unsigned char *const dest,
                         rohc_packet_t *const packet_type)
 {
-	struct d_generic_context *g_context;
-	struct d_tcp_context *tcp_context;
-	ip_context_ptr_t ip_context;
-	base_header_ip_t base_header;
-	multi_ptr_t c_base_header;
-	tcphdr_t *tcp;
-	unsigned int payload_size;
-	int length = ROHC_ERROR;
-	uint8_t protocol;
-	int size;
-	int read;
+	int ret;
 
 	assert(decomp != NULL);
 	assert(context != NULL);
-	assert(context->specific != NULL);
-	g_context = context->specific;
-	assert(g_context->specific != NULL);
-	tcp_context = g_context->specific;
 	assert(rohc_packet != NULL);
 	assert(add_cid_len == 0 || add_cid_len == 1);
 	assert(large_cid_len >= 0 && large_cid_len <= 2);
@@ -733,200 +726,32 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	rohc_decomp_debug(context, "parse packet type '%s' (%d)\n",
 	                  rohc_get_packet_descr(*packet_type), *packet_type);
 
-	ip_context.uint8 = tcp_context->ip_context;
-
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
-		size = d_tcp_decode_ir(decomp, context, rohc_packet, rohc_length,
-		                       add_cid_len, large_cid_len, dest);
+		/* decode IR packet */
+		ret = d_tcp_decode_ir(decomp, context, rohc_packet, rohc_length,
+		                      add_cid_len, large_cid_len, dest);
 	}
 	else if((*packet_type) == ROHC_PACKET_IR_DYN)
 	{
-		/* skip:
-		 *  - the first byte of the ROHC packet (field 2)
-		 *  - the Profile byte (field 4) */
-		length = 2;
-		c_base_header.uint8 = (uint8_t*)( rohc_packet + large_cid_len + length);
-
-		/* parse CRC */
-		/* TODO Didier */
-		c_base_header.uint8++;
-		length++;
-
-		base_header.uint8 = dest;
-		ip_context.uint8 = tcp_context->ip_context;
-		size = 0;
-
-		do
-		{
-			/* Init static part in IP header */
-			size += tcp_copy_static_ip(context, ip_context, base_header);
-
-			/* Decode dynamic part */
-			read = tcp_decode_dynamic_ip(context, ip_context, c_base_header,
-			                             rohc_length - length, base_header.uint8);
-			if(read < 0)
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "malformed ROHC packet: malformed IP dynamic part\n");
-				goto error;
-			}
-			length += read;
-			c_base_header.uint8 += read;
-			rohc_decomp_debug(context, "length = %d, read = %d, size = %d\n",
-			                  length, read, size);
-
-			if(ip_context.vx->version == IPV4)
-			{
-				protocol = ip_context.v4->protocol;
-				++base_header.ipv4;
-				++ip_context.v4;
-			}
-			else
-			{
-				protocol = ip_context.v6->next_header;
-				++base_header.ipv6;
-				++ip_context.v6;
-				while(rohc_is_ipv6_opt(protocol))
-				{
-					size += tcp_copy_static_ipv6_option(context, protocol,
-					                                    ip_context, base_header);
-					protocol = ip_context.v6_option->next_header;
-					base_header.uint8 += ip_context.v6_option->option_length;
-					ip_context.uint8 += ip_context.v6_option->context_length;
-				}
-			}
-			if(ip_context.uint8 >= &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE])
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "decompressor does not support as many IP headers "
-				             "as ROHC packet contains\n");
-				goto error;
-			}
-		}
-		while(rohc_is_tunneling(protocol));
-
-		tcp = base_header.tcphdr;
-
-		tcp_copy_static_tcp(context, tcp);
-
-// TODO: to be completed? loop on dynamic chain?
-		read = tcp_decode_dynamic_tcp(context, c_base_header.tcp_dynamic,
-		                              rohc_length - length, tcp);
-		if(read < 0)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "malformed ROHC packet: malformed TCP dynamic part\n");
-			goto error;
-		}
-		length += read;
-		c_base_header.uint8 += read;
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
-
-
-		/* add TCP header and TCP options */
-		size += (tcp->data_offset << 2);
-
-		rohc_decomp_debug(context, "read = %d, length = %d, size = %d\n",
-		                  read, length, size);
-
-		memcpy(&tcp_context->old_tcphdr,tcp,sizeof(tcphdr_t));
-
-		payload_size = rohc_length - length - large_cid_len;
-
-		// Calculate scaled value and residue (see RFC4996 page 32/33)
-		if(payload_size != 0)
-		{
-			tcp_context->seq_number_scaled = rohc_ntoh32(tcp->seq_number) / payload_size;
-			tcp_context->seq_number_residue = rohc_ntoh32(tcp->seq_number) % payload_size;
-		}
-
-		// copy payload datas
-		memcpy(dest + size, c_base_header.uint8, payload_size);
-		rohc_decomp_debug(context, "copy %d bytes of payload\n", payload_size);
-		size += payload_size;
-
-		base_header.uint8 = dest;
-		ip_context.uint8 = tcp_context->ip_context;
-
-		length = size;
-
-		do
-		{
-
-			if(ip_context.vx->version == IPV4)
-			{
-				base_header.ipv4->length = rohc_hton16(length);
-				base_header.ipv4->checksum = 0;
-				base_header.ipv4->checksum =
-					ip_fast_csum(base_header.uint8,
-					             base_header.ipv4->header_length);
-				rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
-				                  rohc_ntoh16(base_header.ipv4->checksum),
-				                  base_header.ipv4->header_length);
-				protocol = ip_context.v4->protocol;
-				length -= sizeof(base_header_ip_v4_t);
-				++base_header.ipv4;
-				++ip_context.v4;
-			}
-			else
-			{
-				length -= sizeof(base_header_ip_v6_t);
-				base_header.ipv6->payload_length = rohc_hton16(length);
-				rohc_decomp_debug(context, "payload_length = %d\n",
-				                  rohc_ntoh16(base_header.ipv6->payload_length));
-				protocol = ip_context.v6->next_header;
-				++base_header.ipv6;
-				++ip_context.v6;
-				while(rohc_is_ipv6_opt(protocol))
-				{
-					protocol = ip_context.v6_option->next_header;
-					length -= ip_context.v6_option->option_length;
-					base_header.uint8 += ip_context.v6_option->option_length;
-					ip_context.uint8 += ip_context.v6_option->context_length;
-				}
-			}
-			if(ip_context.uint8 >= &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE])
-			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "decompressor does not support as many IP headers "
-				             "as ROHC packet contains\n");
-				goto error;
-			}
-		}
-		while(rohc_is_tunneling(protocol));
-
-		rohc_decomp_debug(context, "new MSN = 0x%x\n", tcp_context->msn);
-
-		rohc_decomp_debug(context, "Total length = %d\n", size);
-
-		/* update context (to be completed) */
-		rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp->seq_number),
-		                 false);
-		rohc_decomp_debug(context, "sequence number 0x%08x is the new reference\n",
-		                  rohc_ntoh32(tcp->seq_number));
+		/* decode IR-DYN packet */
+		ret = d_tcp_decode_irdyn(decomp, context, rohc_packet, rohc_length,
+		                         add_cid_len, large_cid_len, dest);
 	}
 	else
 	{
-		// Uncompressed CO packet
-		size = d_tcp_decode_CO(decomp, context, rohc_packet, rohc_length,
-		                       add_cid_len, large_cid_len, *packet_type, dest);
+		/* decode CO packet */
+		ret = d_tcp_decode_CO(decomp, context, rohc_packet, rohc_length,
+		                      add_cid_len, large_cid_len, *packet_type, dest);
 	}
 
-	rohc_decomp_debug(context, "return %d\n", size);
-	return size;
-
-error:
-	return ROHC_ERROR;
+	rohc_decomp_debug(context, "return %d\n", ret);
+	return ret;
 }
 
 
 /**
  * @brief Decode one IR packet for the TCP profile.
- *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
  *
  * @param decomp          The ROHC decompressor
  * @param context         The decompression context
@@ -1090,7 +915,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
 	                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 
-	/* dynamic chain (IP and TCP parts) */
+	/* dynamic chain (IPv4/IPv6 headers and extension headers) */
 	base_header.uint8 = dest;
 	ip_context.uint8 = tcp_context->ip_context;
 	do
@@ -1203,8 +1028,8 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	base_header.uint8 = dest;
 	ip_context.uint8 = tcp_context->ip_context;
 
+	/* compute payload lengths and checksums for all headers */
 	uncomp_len = size;
-
 	do
 	{
 		if(base_header.ipvx->version == IPV4)
@@ -1259,6 +1084,237 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	context->state = ROHC_DECOMP_STATE_FC;
 
 	rohc_decomp_debug(context, "return %d\n", size);
+	return size;
+
+error:
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Decode one IR-DYN packet for the TCP profile.
+ *
+ * @param decomp          The ROHC decompressor
+ * @param context         The decompression context
+ * @param rohc_packet     The ROHC packet to decode
+ * @param rohc_length     The length of the ROHC packet to decode
+ * @param add_cid_len     The length of the optional Add-CID field
+ * @param large_cid_len   The length of the optional large CID field
+ * @param dest            The decoded IP packet
+ * @return                The length of the uncompressed IP packet
+ *                        or ROHC_OK_NO_DATA if packet is feedback only
+ *                        or ROHC_ERROR if an error occurs
+ */
+static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
+                              struct d_context *context,
+                              const unsigned char *const rohc_packet,
+                              const unsigned int rohc_length,
+                              const size_t add_cid_len,
+                              const size_t large_cid_len,
+                              unsigned char *dest)
+{
+	struct d_generic_context *g_context = context->specific;
+	struct d_tcp_context *tcp_context = g_context->specific;
+	ip_context_ptr_t ip_context;
+	base_header_ip_t base_header;
+	multi_ptr_t c_base_header;
+	tcphdr_t *tcp;
+	unsigned int payload_size;
+	const uint8_t *remain_data = rohc_packet;
+	size_t remain_len = rohc_length;
+	size_t uncomp_len;
+	uint8_t protocol;
+	uint16_t size;
+	int read;
+
+	c_base_header.uint8 = (uint8_t *) rohc_packet;
+
+	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	                 ROHC_TRACE_DEBUG, "IR-DYN packet", rohc_packet, rohc_length);
+
+	/* skip:
+	 * - the first byte of the ROHC packet (field 2)
+	 * - the Profile byte (field 4) */
+	if(remain_len < (1 + large_cid_len + 1))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "malformed ROHC packet: too short for first byte, large "
+		             "CID bytes, and profile byte\n");
+		goto error;
+	}
+	c_base_header.uint8 += 1 + large_cid_len + 1;
+	remain_data += 1 + large_cid_len + 1;
+	remain_len -= 1 + large_cid_len + 1;
+
+	/* parse CRC */
+	if(remain_len < 1)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "malformed ROHC packet: too short for the CRC bytes\n");
+		goto error;
+	}
+	/* TODO: check CRC */
+	c_base_header.uint8++;
+	remain_data++;
+	remain_len--;
+
+	base_header.uint8 = dest;
+	ip_context.uint8 = tcp_context->ip_context;
+
+	/* dynamic chain (IPv4/IPv6 headers and extension headers) */
+	size = 0;
+	do
+	{
+		/* get IP static part from context */
+		size += tcp_copy_static_ip(context, ip_context, base_header);
+
+		/* Decode dynamic part */
+		read = tcp_decode_dynamic_ip(context, ip_context, c_base_header,
+		                             remain_len, base_header.uint8);
+		if(read < 0)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "malformed ROHC packet: malformed IP dynamic part\n");
+			goto error;
+		}
+		rohc_decomp_debug(context, "IPv%d dynamic part is %d-byte length\n",
+								base_header.ipvx->version, read);
+		c_base_header.uint8 += read;
+		remain_data += read;
+		remain_len -= read;
+
+		protocol = ip_context.vx->next_header;
+		ip_context.uint8 += ip_context.vx->context_length;
+		if(ip_context.vx->version == IPV4)
+		{
+			++base_header.ipv4;
+		}
+		else
+		{
+			++base_header.ipv6;
+			while(rohc_is_ipv6_opt(protocol))
+			{
+				size += tcp_copy_static_ipv6_option(context, protocol,
+				                                    ip_context, base_header);
+				protocol = ip_context.v6_option->next_header;
+				base_header.uint8 += ip_context.v6_option->option_length;
+				ip_context.uint8 += ip_context.v6_option->context_length;
+			}
+		}
+		if(ip_context.uint8 >= &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE])
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "decompressor does not support as many IP headers "
+			             "as ROHC packet contains\n");
+			goto error;
+		}
+	}
+	while(rohc_is_tunneling(protocol));
+
+	tcp = base_header.tcphdr;
+
+	/* get TCP static part from context */
+	tcp_copy_static_tcp(context, tcp);
+
+	/* TCP dynamic part */
+	read = tcp_decode_dynamic_tcp(context, c_base_header.tcp_dynamic,
+	                              remain_len, tcp);
+	if(read < 0)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "malformed ROHC packet: malformed TCP dynamic part\n");
+		goto error;
+	}
+	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length\n", read);
+	c_base_header.uint8 += read;
+	remain_data += read;
+	remain_len -= read;
+
+	/* add TCP header and TCP options */
+	size += (tcp->data_offset << 2);
+
+	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest, size);
+
+	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
+
+	rohc_decomp_debug(context, "ROHC header is %zu-byte length\n",
+	                  rohc_length - remain_len);
+	rohc_decomp_debug(context, "uncompressed header is %d-byte length\n", size);
+	payload_size = remain_len;
+	rohc_decomp_debug(context, "ROHC payload is %d-byte length\n", payload_size);
+
+
+	// Calculate scaled value and residue (see RFC4996 page 32/33)
+	if(payload_size != 0)
+	{
+		tcp_context->seq_number_scaled = rohc_ntoh32(tcp->seq_number) / payload_size;
+		tcp_context->seq_number_residue = rohc_ntoh32(tcp->seq_number) % payload_size;
+	}
+
+	// copy payload datas
+	memcpy(dest + size, remain_data, payload_size);
+	rohc_decomp_debug(context, "copy %d bytes of payload\n", payload_size);
+	size += payload_size;
+
+	base_header.uint8 = dest;
+	ip_context.uint8 = tcp_context->ip_context;
+
+	/* compute payload lengths and checksums for all headers */
+	uncomp_len = size;
+	do
+	{
+		if(ip_context.vx->version == IPV4)
+		{
+			protocol = ip_context.v4->protocol;
+			base_header.ipv4->length = rohc_hton16(uncomp_len);
+			base_header.ipv4->checksum = 0;
+			base_header.ipv4->checksum =
+				ip_fast_csum(base_header.uint8, base_header.ipv4->header_length);
+			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
+			                  rohc_ntoh16(base_header.ipv4->checksum),
+			                  base_header.ipv4->header_length);
+			++base_header.ipv4;
+			++ip_context.v4;
+			uncomp_len -= sizeof(base_header_ip_v4_t);
+		}
+		else
+		{
+			protocol = ip_context.v6->next_header;
+			uncomp_len -= sizeof(base_header_ip_v6_t);
+			base_header.ipv6->payload_length = rohc_hton16(uncomp_len);
+			rohc_decomp_debug(context, "payload_length = %d\n",
+			                  rohc_ntoh16(base_header.ipv6->payload_length));
+			++base_header.ipv6;
+			++ip_context.v6;
+			while(rohc_is_ipv6_opt(protocol))
+			{
+				uncomp_len -= ip_context.v6_option->option_length;
+				protocol = ip_context.v6_option->next_header;
+				base_header.uint8 += ip_context.v6_option->option_length;
+				ip_context.uint8 += ip_context.v6_option->context_length;
+			}
+		}
+		if(ip_context.uint8 >= &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE])
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+			             "decompressor does not support as many IP headers "
+			             "as ROHC packet contains\n");
+			goto error;
+		}
+	}
+	while(rohc_is_tunneling(protocol));
+
+	rohc_decomp_debug(context, "new MSN = 0x%x\n", tcp_context->msn);
+
+	rohc_decomp_debug(context, "Total length = %d\n", size);
+
+	/* update context (to be completed) */
+	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp->seq_number),
+	                 false);
+	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference\n",
+	                  rohc_ntoh32(tcp->seq_number));
+
 	return size;
 
 error:
