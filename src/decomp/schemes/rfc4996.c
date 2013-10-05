@@ -267,28 +267,6 @@ error:
 
 
 /**
- * @brief Decompress the 7 or 31 bits of a 32 bits value
- *
- * See RFC4996 page 47
- *
- * @param pmptr            Pointer to the compressed value
- * @return                 The uncompressed value
- */
-
-uint32_t d_lsb_7_31( multi_ptr_t *pmptr )
-{
-	if((*pmptr->uint8) & 0x80)
-	{
-		return rohc_ntoh32(READ32_FROM_PMPTR(pmptr)) & 0x7FFFFFFF;
-	}
-	else
-	{
-		return *(pmptr->uint8++);
-	}
-}
-
-
-/**
  * @brief Calculate the value from the scaling factor, scaled value and residue
  *
  * See RFC4996 page 49

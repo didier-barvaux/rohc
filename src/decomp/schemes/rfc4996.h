@@ -68,9 +68,6 @@ int d_optional32(const int flag,
                  uint32_t *const decoded_value)
 	__attribute__((warn_unused_result, nonnull(2, 5)));
 
-// RFC4996 page 47
-uint32_t d_lsb_7_31( multi_ptr_t *pmptr );
-
 // RFC4996 page 49
 uint32_t d_field_scaling(const uint32_t stride_value,
                          const uint32_t scaled_value,
