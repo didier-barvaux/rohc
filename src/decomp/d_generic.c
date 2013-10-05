@@ -4489,14 +4489,6 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 		goto error;
 	}
 
-	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
-	if(rohc_remain_len < (1 + large_cid_len))
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "rohc packet too small (len = %zd)\n", rohc_remain_len);
-		goto error;
-	}
-
 	/* part 2: 1-bit "0" + 4-bit SN + 3-bit CRC */
 	assert(GET_BIT_7(rohc_remain_data) == 0);
 	bits->sn = GET_BIT_3_6(rohc_remain_data);
