@@ -1329,6 +1329,7 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
 {
 	const ip_opt_static_t *ip_opt_static;
 	int size;
+	int ret;
 
 	assert(context != NULL);
 	assert(rohc_packet != NULL);
@@ -1395,9 +1396,8 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
 		{
 			const ip_gre_opt_static_t *const ip_gre_opt_static =
 				(ip_gre_opt_static_t *) ip_opt_static;
-			size = ip_gre_opt_static->c_flag + ip_gre_opt_static->k_flag +
-			       ip_gre_opt_static->s_flag + 1;
-			if(rohc_length < size)
+
+			if(rohc_length < sizeof(ip_gre_opt_static_t))
 			{
 				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 				             context->profile->id,
@@ -1406,7 +1406,6 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
 				goto error;
 			}
 			ip_context.v6_option->context_length = sizeof(ipv6_gre_option_context_t);
-			ip_context.v6_option->option_length = size << 3;
 			if((ip_context.v6_gre_option->protocol ==
 			    ip_gre_opt_static->protocol) == 0) // TODO: check that
 			{
@@ -1420,17 +1419,33 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
 			base_header.ip_gre_opt->c_flag = ip_context.v6_gre_option->c_flag;
 			ip_context.v6_gre_option->s_flag = ip_gre_opt_static->s_flag;
 			base_header.ip_gre_opt->s_flag = ip_context.v6_gre_option->s_flag;
-			if( ( ip_context.v6_gre_option->k_flag = ip_gre_opt_static->k_flag ) != 0)
+			ip_context.v6_gre_option->k_flag = ip_gre_opt_static->k_flag;
+			base_header.ip_gre_opt->k_flag = ip_gre_opt_static->k_flag;
+			size = sizeof(ip_gre_opt_static_t);
+
+			ret = d_optional32(ip_gre_opt_static->k_flag,
+			                   ip_gre_opt_static->options,
+			                   rohc_length - size,
+			                   ip_context.v6_gre_option->key,
+			                   &(base_header.ip_gre_opt->datas[ip_context.v6_gre_option->c_flag]));
+			if(ret < 0)
 			{
-				base_header.ip_gre_opt->k_flag = 1;
-				ip_context.v6_gre_option->key = ip_gre_opt_static->key;
+				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+				             context->profile->id, "ROHC packet too small for "
+				             "optional key field in GRE static part\n");
+				goto error;
+			}
+			ip_context.v6_gre_option->key =
+				base_header.ip_gre_opt->datas[ip_context.v6_gre_option->c_flag];
+			size += ret;
+
+			ip_context.v6_option->option_length = size << 3;
+
+			if(ip_gre_opt_static->k_flag != 0)
+			{
 				base_header.ip_gre_opt->datas[ip_context.v6_gre_option->c_flag] =
 				   ip_context.v6_gre_option->key;
-				size = sizeof(ip_gre_opt_static_t);
-				break;
 			}
-			base_header.ip_gre_opt->k_flag = 0;
-			size = sizeof(ip_gre_opt_static_t) - sizeof(uint32_t);
 			break;
 		}
 		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
@@ -1645,6 +1660,7 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 {
 	size_t remain_len = rohc_length;
 	int size = 0;
+	int ret;
 
 	assert(context != NULL);
 	assert(rohc_packet != NULL);
@@ -1691,22 +1707,19 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 				size += sizeof(uint32_t);
 				remain_len -= sizeof(uint32_t);
 			}
-			if(ip_context.v6_gre_option->s_flag != 0)
+			ret = d_optional32(ip_context.v6_gre_option->s_flag,
+			                   rohc_packet + size, remain_len,
+			                   base_header.ip_gre_opt->datas[ip_context.v6_gre_option->c_flag],
+			                   &base_header.ip_gre_opt->datas[ip_context.v6_gre_option->c_flag]);
+			if(ret < 0)
 			{
-				if(remain_len < sizeof(uint32_t))
-				{
-					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "malformed IPv6 option: "
-					             "malformed option GRE: %zu bytes available while "
-					             "4 bytes required\n", remain_len);
-					goto error;
-				}
-				memcpy(base_header.ip_gre_opt->datas +
-				       ip_context.v6_gre_option->c_flag, rohc_packet + size,
-				       sizeof(uint32_t));
-				size += sizeof(uint32_t);
-				remain_len -= sizeof(uint32_t);
+				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+				             context->profile->id, "malformed IPv6 option: "
+				             "malformed option GRE\n");
+				goto error;
 			}
+			size += ret;
+			remain_len -= ret;
 			break;
 		}
 		case ROHC_IPPROTO_MINE:

@@ -61,7 +61,13 @@ int variable_length_32_dec(const struct d_context *const context,
                            const int indicator,
                            uint32_t *const decoded_value);
 
-uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value );
+int d_optional32(const int flag,
+                 const uint8_t *const data,
+                 const size_t data_len,
+                 uint32_t context_value,
+                 uint32_t *const decoded_value)
+	__attribute__((warn_unused_result, nonnull(2, 5)));
+
 // RFC4996 page 47
 uint32_t d_lsb_7_31( multi_ptr_t *pmptr );
 

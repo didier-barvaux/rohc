@@ -211,7 +211,7 @@ typedef struct __attribute__((packed)) ip_gre_opt_static
 	uint8_t s_flag : 1;
 	uint8_t padding : 4;
 #endif
-	uint32_t key;     // if k_flag
+	uint8_t options[0];     // if k_flag
 } ip_gre_opt_static_t;
 
 /**

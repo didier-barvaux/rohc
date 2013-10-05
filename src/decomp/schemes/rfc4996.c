@@ -228,19 +228,41 @@ int variable_length_32_dec(const struct d_context *const context,
  *
  * See RFC4996 page 47
  *
- * @param pmptr            Pointer to the compressed value
- * @param flag             Flag of compression
- * @param context_value    The context value
- * @return                 The uncompressed value
+ * @param flag                Flag of compression
+ * @param data                The remaining part of the ROHC packet
+ * @param data_len            The length of the remaining part of the packet
+ * @param context_value       The context value
+ * @param[out] decoded_value  The uncompressed value
+ * @return                    The number of ROHC bytes parsed,
+ *                            -1 if packet is malformed
  */
-
-uint32_t d_optional32( multi_ptr_t *pmptr, int flag, uint32_t context_value )
+int d_optional32(const int flag,
+                 const uint8_t *const data,
+                 const size_t data_len,
+                 uint32_t context_value,
+                 uint32_t *const decoded_value)
 {
+	size_t length;
+
 	if(flag == 1)
 	{
-		return READ32_FROM_PMPTR(pmptr);
+		if(data_len < sizeof(uint32_t))
+		{
+			goto error;
+		}
+		memcpy(decoded_value, data, sizeof(uint32_t));
+		length = sizeof(uint32_t);
 	}
-	return context_value;
+	else
+	{
+		*decoded_value = context_value;
+		length = 0;
+	}
+
+	return length;
+
+error:
+	return -1;
 }
 
 

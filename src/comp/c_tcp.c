@@ -2162,16 +2162,16 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const contex
 			}
 			mptr.ip_gre_opt_static->c_flag = base_header.ip_gre_opt->c_flag;
 			mptr.ip_gre_opt_static->s_flag = base_header.ip_gre_opt->s_flag;
+			mptr.ip_gre_opt_static->k_flag = base_header.ip_gre_opt->k_flag;
 			mptr.ip_gre_opt_static->padding = 0;
-			if( ( mptr.ip_gre_opt_static->k_flag = base_header.ip_gre_opt->k_flag ) != 0)
+			size = sizeof(ip_gre_opt_static_t);
+
+			if(mptr.ip_gre_opt_static->k_flag != 0)
 			{
-				mptr.ip_gre_opt_static->key =
-				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
-				size = sizeof(ip_gre_opt_static_t);
-			}
-			else
-			{
-				size = sizeof(ip_gre_opt_static_t) - sizeof(uint32_t);
+				memcpy(mptr.ip_gre_opt_static->options,
+				       &base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag],
+				       sizeof(uint32_t));
+				size += sizeof(uint32_t);
 			}
 			break;
 		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
