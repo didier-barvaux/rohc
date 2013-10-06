@@ -5150,16 +5150,32 @@ static int co_baseheader(struct c_context *const context,
 	// =:= lsb(4, 4) [ 4 ];
 	c_base_header.co_common->msn = g_context->sn & 0xf;
 	puchar = mptr.uint8;
-	// =:= irregular(2) [ 2 ];
-	c_base_header.co_common->seq_indicator =
-		variable_length_32_enc(&mptr, tcp->seq_number);
+
+	/* seq_number */
+	ret = variable_length_32_enc(tcp->seq_number, mptr.uint8, &indicator);
+	if(ret < 0)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to variable_length_32_enc(seq_number)\n");
+		goto error;
+	}
+	c_base_header.co_common->seq_indicator = indicator;
+	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, seq_indicator = %d, seq_number = 0x%x\n",
 	                (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->seq_indicator,
 	                rohc_ntoh32(tcp->seq_number));
-	// =:= irregular(2) [ 2 ];
-	c_base_header.co_common->ack_indicator =
-		variable_length_32_enc(&mptr, tcp->ack_number);
+
+	/* ack_number */
+	ret = variable_length_32_enc(tcp->ack_number, mptr.uint8, &indicator);
+	if(ret < 0)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to variable_length_32_enc(ack_number)\n");
+		goto error;
+	}
+	c_base_header.co_common->ack_indicator = indicator;
+	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, ack_indicator = %d, ack_number = 0x%x\n",
 	                (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->seq_indicator,

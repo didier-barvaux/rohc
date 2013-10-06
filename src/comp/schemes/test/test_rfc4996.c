@@ -109,9 +109,8 @@ error:
 static bool run_test_variable_length_32_enc(const bool be_verbose)
 {
 	uint8_t compressed_data[sizeof(uint32_t)];
-	multi_ptr_t mptr;
-	unsigned int indicator;
 	size_t i;
+	int ret;
 
 	const struct
 	{
@@ -136,12 +135,21 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	i = 0;
 	while(inputs[i].expected_indicator <= 3)
 	{
-		mptr.uint8 = compressed_data;
+		int indicator;
+		size_t comp_len;
 
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
 		      inputs[i].uncomp_value);
-		indicator = variable_length_32_enc(&mptr, inputs[i].uncomp_value);
+		ret = variable_length_32_enc(inputs[i].uncomp_value, compressed_data,
+		                             &indicator);
+		if(ret < 0)
+		{
+			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) failed\n",
+			        inputs[i].uncomp_value);
+			goto error;
+		}
+		comp_len = ret;
 
 		/* check that returned indicator is as expected */
 		if(indicator != inputs[i].expected_indicator)
@@ -153,12 +161,12 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		}
 
 		/* check that written data is as expected */
-		if((mptr.uint8 - compressed_data) != inputs[i].expected_len)
+		if(comp_len != inputs[i].expected_len)
 		{
 			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) wrote one "
 			        "%zd-byte compressed value while one %zd-byte value was "
-			        "expected\n", inputs[i].uncomp_value,
-			        mptr.uint8 - compressed_data, inputs[i].expected_len);
+			        "expected\n", inputs[i].uncomp_value, comp_len,
+			        inputs[i].expected_len);
 			goto error;
 		}
 

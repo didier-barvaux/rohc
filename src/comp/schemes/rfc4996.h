@@ -147,10 +147,11 @@ int c_zero_or_irreg32(const uint32_t packet_value,
                       int *const indicator)
 	__attribute__((warn_unused_result, nonnull(2, 3)));
 
-// RFC4996 page 46
-unsigned int ROHC_EXPORT variable_length_32_enc(multi_ptr_t *const pmptr,
-                                                const uint32_t value)
-	__attribute__((nonnull(1), warn_unused_result));
+/* variable_length_32_enc encoding method */
+int ROHC_EXPORT variable_length_32_enc(const uint32_t value,
+                                       uint8_t *const rohc_data,
+                                       int *const indicator)
+	__attribute__((nonnull(2, 3), warn_unused_result));
 
 /* optional32 encoding method */
 int c_optional32(const int indicator,

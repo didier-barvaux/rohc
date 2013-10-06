@@ -261,61 +261,59 @@ int c_zero_or_irreg32(const uint32_t packet_value,
  *
  * @todo TODO: value should be LSB-encoded if indicator = 1 or 2
  *
- * @param pmptr   The destination for the compressed value
- * @param value   The 32-bit value to compress
- * @return        The indicator for the compressed value
+ * @param value           The 32-bit value to compress
+ * @param[out] rohc_data  The compressed value
+ * @param[out] indicator  The indicator for the compressed value
+ * @return                The number of ROHC bytes written,
+ *                        -1 if a problem occurs
  */
-unsigned int variable_length_32_enc(multi_ptr_t *const pmptr,
-                                    const uint32_t value)
+int variable_length_32_enc(const uint32_t value,
+                           uint8_t *const rohc_data,
+                           int *const indicator)
 {
-	uint8_t *bytes;
+	const uint8_t *const bytes = (uint8_t *) &value;
 	size_t encoded_len;
-	unsigned int indicator;
 
-	assert(pmptr != NULL);
-	assert(pmptr->uint8 != NULL);
-
-	bytes = (uint8_t *) &value;
+	assert(rohc_data != NULL);
 
 	/* determine the number of bytes needed for the value */
 	if(bytes[0] != 0)
 	{
 		/* 4-byte value */
 		encoded_len = 4;
-		indicator = 3;
+		*indicator = 3;
 	}
 	else if(bytes[1] != 0)
 	{
 		/* 3-byte value, but use 4 bytes */
 		encoded_len = 4;
-		indicator = 3;
+		*indicator = 3;
 	}
 	else if(bytes[2] != 0)
 	{
 		/* 2-byte value */
 		encoded_len = 2;
-		indicator = 2;
+		*indicator = 2;
 	}
 	else if(bytes[3] != 0)
 	{
 		/* 1-byte value */
 		encoded_len = 1;
-		indicator = 1;
+		*indicator = 1;
 	}
 	else
 	{
 		/* 0-byte value */
 		encoded_len = 0;
-		indicator = 0;
+		*indicator = 0;
 	}
 	assert(encoded_len <= sizeof(uint32_t));
-	assert(indicator <= 3);
+	assert((*indicator) <= 3);
 
 	/* copy the needed bytes */
-	memcpy(pmptr->uint8, bytes + sizeof(uint32_t) - encoded_len, encoded_len);
-	pmptr->uint8 += encoded_len;
+	memcpy(rohc_data, bytes + sizeof(uint32_t) - encoded_len, encoded_len);
 
-	return indicator;
+	return encoded_len;
 }
 
 
