@@ -113,25 +113,6 @@ typedef union
 } multi_ptr_t;
 
 
-#if defined(__arm__) || defined(__ARM_EABI__)
-
-#define WRITE16_TO_MPTR(mptr,a)     (mptr.ua16++)->uint16 = a
-#define WRITE32_TO_MPTR(mptr,a)     (mptr.ua32++)->uint32 = a
-
-#define WRITE16_TO_PMPTR(pmptr,a)   { (((pmptr)->ua16)++)->uint16 = a; }
-#define WRITE32_TO_PMPTR(pmptr,a)   { (((pmptr)->ua32)++)->uint32 = a; }
-
-#else
-
-#define WRITE16_TO_MPTR(mptr,a)     *(mptr.uint16++) = a
-#define WRITE32_TO_MPTR(mptr,a)     *(mptr.uint32++) = a
-
-#define WRITE16_TO_PMPTR(pmptr,a)   *(pmptr->uint16)++ = a
-#define WRITE32_TO_PMPTR(pmptr,a)   *(pmptr->uint32)++ = a
-
-#endif
-
-
 
 // RFC4997 page 27
 uint32_t ROHC_EXPORT c_lsb(const struct c_context *const context,

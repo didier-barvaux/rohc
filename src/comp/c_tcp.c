@@ -422,7 +422,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
                                             ip_context_ptr_t ip_context,
                                             base_header_ip_t base_header,
                                             const int packet_size,
-                                            multi_ptr_t mptr,
+                                            uint8_t *rohc_data,
                                             int ecn_used,
                                             int is_innermost,
                                             int ttl_irregular_chain_flag,
@@ -436,7 +436,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
                                             multi_ptr_t mptr);
 static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
                                              tcphdr_t *tcp,
-                                             multi_ptr_t mptr,
+                                             uint8_t *const rohc_data,
                                              int ip_inner_ecn);
 
 static int code_CO_packet(struct c_context *const context,
@@ -2646,7 +2646,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
  * @param ip_context                The specific IP compression context
  * @param base_header               The IP header
  * @param packet_size               The size of packet
- * @param mptr                      The current pointer in the rohc-packet-under-build buffer
+ * @param rohc_data                 The current pointer in the rohc-packet-under-build buffer
  * @param ecn_used                  The indicator of ECN usage
  * @param is_innermost              True if IP header is the innermost of the packet
  * @param ttl_irregular_chain_flag  True if the TTL/Hop Limit of an outer header has changed
@@ -2657,14 +2657,14 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
                                             ip_context_ptr_t ip_context,
                                             base_header_ip_t base_header,
                                             const int packet_size,
-                                            multi_ptr_t mptr,
+                                            uint8_t *rohc_data,
                                             int ecn_used,
                                             int is_innermost,
                                             int ttl_irregular_chain_flag,
                                             int ip_inner_ecn)
 {
 #if ROHC_EXTRA_DEBUG == 1
-	uint8_t *ptr = mptr.uint8;
+	const uint8_t *const rohc_data_orig = rohc_data;
 #endif
 
 	assert(context != NULL);
@@ -2684,7 +2684,8 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 		// ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE )
 		if(ip_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_RANDOM)
 		{
-			WRITE16_TO_MPTR(mptr,base_header.ipv4->ip_id);
+			memcpy(rohc_data, &base_header.ipv4->ip_id, sizeof(uint16_t));
+			rohc_data += sizeof(uint16_t);
 			rohc_comp_debug(context, "add ip_id 0x%04x\n",
 			                rohc_ntoh16(base_header.ipv4->ip_id));
 		}
@@ -2696,17 +2697,19 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 			// ip_ecn_flags =:= static_or_irreg( ecn_used.UVALUE )
 			if(ecn_used != 0)
 			{
-				*(mptr.uint8++) = ( base_header.ipv4->dscp << 2 ) | base_header.ipv4->ip_ecn_flags;
+				rohc_data[0] = (base_header.ipv4->dscp << 2) |
+				               base_header.ipv4->ip_ecn_flags;
 				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x\n",
-				                *(mptr.uint8 - 1));
+				                rohc_data[0]);
+				rohc_data++;
 			}
 			if(ttl_irregular_chain_flag != 0)
 			{
 				// ipv4_outer_with_ttl_irregular
 				// ttl_hopl =:= irregular(8)
-				*(mptr.uint8++) = base_header.ipv4->ttl_hopl;
-				rohc_comp_debug(context, "add ttl_hopl = 0x%02x\n",
-				                *(mptr.uint8 - 1));
+				rohc_data[0] = base_header.ipv4->ttl_hopl;
+				rohc_comp_debug(context, "add ttl_hopl = 0x%02x\n", rohc_data[0]);
+				rohc_data++;
 			}
 			/* else: ipv4_outer_without_ttl_irregular */
 		}
@@ -2724,17 +2727,18 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 			{
 				uint8_t dscp = (base_header.ipv6->dscp1 << 2) |
 				               base_header.ipv6->dscp2;
-				*(mptr.uint8++) = (dscp << 2) | base_header.ipv4->ip_ecn_flags;
+				rohc_data[0] = (dscp << 2) | base_header.ipv4->ip_ecn_flags;
 				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x\n",
-				                *(mptr.uint8 - 1));
+				                rohc_data[0]);
+				rohc_data++;
 			}
 			if(ttl_irregular_chain_flag != 0)
 			{
 				// ipv6_outer_with_ttl_irregular
 				// ttl_hopl =:= irregular(8)
-				*(mptr.uint8++) = base_header.ipv6->ttl_hopl;
-				rohc_comp_debug(context, "add ttl_hopl = 0x%02x\n",
-				                *(mptr.uint8 - 1));
+				rohc_data[0] = base_header.ipv6->ttl_hopl;
+				rohc_comp_debug(context, "add ttl_hopl = 0x%02x\n", rohc_data[0]);
+				rohc_data++;
 			}
 			/* else: ipv6_outer_without_ttl_irregular */
 		}
@@ -2743,11 +2747,11 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 
 #if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-	                 ROHC_TRACE_DEBUG, "IP irregular part", ptr,
-	                 mptr.uint8 - ptr);
+	                 ROHC_TRACE_DEBUG, "IP irregular part", rohc_data_orig,
+	                 rohc_data - rohc_data_orig);
 #endif
 
-	return mptr.uint8;
+	return rohc_data;
 }
 
 
@@ -2935,8 +2939,13 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	rohc_comp_debug(context, "TCP ack_number %spresent\n",
 	                tcp_dynamic->ack_zero ? "not " : "");
 
-	WRITE16_TO_MPTR(mptr,tcp->window);
-	WRITE16_TO_MPTR(mptr,tcp->checksum);
+	/* window */
+	memcpy(mptr.uint8, &tcp->window, sizeof(uint16_t));
+	mptr.uint8 += sizeof(uint16_t);
+
+	/* checksum */
+	memcpy(mptr.uint8, &tcp->checksum, sizeof(uint16_t));
+	mptr.uint8 += sizeof(uint16_t);
 
 	/* urp_zero flag and URG pointer: always check for the URG pointer value
 	 * even if the URG flag is not set in the uncompressed TCP header, this is
@@ -3296,20 +3305,18 @@ error:
  *
  * @param context       The compression context
  * @param tcp           The TCP header
- * @param mptr          The current pointer in the rohc-packet-under-build buffer
+ * @param rohc_data     The current pointer in the rohc-packet-under-build buffer
  * @param ip_inner_ecn  The ecn flags of the ip inner
  * @return              The new pointer in the rohc-packet-under-build buffer
  */
 static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
                                              tcphdr_t *tcp,
-                                             multi_ptr_t mptr,
+                                             uint8_t *const rohc_data,
                                              int ip_inner_ecn)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
-#if ROHC_EXTRA_DEBUG == 1
-	uint8_t *ptr = mptr.uint8;
-#endif
+	uint8_t *remain_data = rohc_data;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -3322,23 +3329,26 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
 	// tcp_ecn_flags =:= static_or_irreg(ecn_used.CVALUE,2)
 	if(tcp_context->ecn_used != 0)
 	{
-		*(mptr.uint8++) =
-		   ( ( ( ip_inner_ecn << 2 ) | tcp->ecn_flags ) << 4 ) | tcp->res_flags;
+		remain_data[0] =
+			(((ip_inner_ecn << 2) | tcp->ecn_flags) << 4) | tcp->res_flags;
 		rohc_comp_debug(context, "add TCP ecn_flags res_flags = 0x%02x\n",
-		                *(mptr.uint8 - 1));
+		                remain_data[0]);
+		remain_data++;
 	}
 
 	// checksum =:= irregular(16)
-	WRITE16_TO_MPTR(mptr,tcp->checksum);
+	memcpy(remain_data, &tcp->checksum, sizeof(uint16_t));
+	remain_data += sizeof(uint16_t);
 	rohc_comp_debug(context, "add TCP checksum = 0x%04x\n",
 	                rohc_ntoh16(tcp->checksum));
 
 #if ROHC_EXTRA_DEBUG == 1
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-	                 ROHC_TRACE_DEBUG, "TCP irregular part", ptr,
-	                 mptr.uint8 - ptr);
+	                 ROHC_TRACE_DEBUG, "TCP irregular part", rohc_data,
+	                 remain_data - rohc_data);
 #endif
-	return mptr.uint8;
+
+	return remain_data;
 }
 
 
@@ -4319,7 +4329,8 @@ static int code_CO_packet(struct c_context *const context,
 		                base_header.uint8, base_header.ipvx->version);
 
 		mptr.uint8 = tcp_code_irregular_ip_part(context, ip_context,
-		                                        base_header, payload_size, mptr,
+		                                        base_header, payload_size,
+		                                        mptr.uint8,
 		                                        tcp_context->ecn_used,
 		                                        base_header.ipvx == base_header_inner.ipvx ? 1 : 0, // int is_innermost,
 		                                        ttl_irregular_chain_flag,
@@ -4364,7 +4375,8 @@ static int code_CO_packet(struct c_context *const context,
 	}
 	while(rohc_is_tunneling(protocol));
 
-	mptr.uint8 = tcp_code_irregular_tcp_part(context, tcp, mptr, ip_inner_ecn);
+	mptr.uint8 = tcp_code_irregular_tcp_part(context, tcp, mptr.uint8,
+	                                         ip_inner_ecn);
 
 	if(context->compressor->medium.cid_type != ROHC_SMALL_CID)
 	{
