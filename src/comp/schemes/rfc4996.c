@@ -164,44 +164,93 @@ int c_static_or_irreg16(const uint16_t context_value,
 /**
  * @brief Compress the 8 bits value, regarding if null or not
  *
- * @param pmptr            The destination of the compress value
- * @param value            The value to compress
- * @return                 1 if null value, 0 otherwise
+ * @param packet_value     The packet value
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 1 if present, 0 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
  */
-
-uint8_t c_zero_or_irreg8( multi_ptr_t *pmptr, uint8_t value )
+int c_zero_or_irreg8(const uint8_t packet_value,
+                     uint8_t *const rohc_data,
+                     int *const indicator)
 {
-	if(value != 0)
+	size_t length;
+
+	if(packet_value != 0)
 	{
-		*(pmptr->uint8)++ = value;
-		return 0;
+		rohc_data[0] = packet_value;
+		*indicator = 0;
+		length = 1;
 	}
 	else
 	{
-		return 1;
+		*indicator = 1;
+		length = 0;
 	}
+
+	return length;
 }
 
 
 /**
  * @brief Compress the 16 bits value, regarding if null or not
  *
- * @param pmptr            The destination of the compress value
- * @param value            The value to compress
- * @return                 1 if null value, 0 otherwise
+ * @param packet_value     The packet value
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 1 if present, 0 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
  */
-
-uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value )
+int c_zero_or_irreg16(const uint16_t packet_value,
+                      uint8_t *const rohc_data,
+                      int *const indicator)
 {
-	if(value != 0)
+	size_t length;
+
+	if(packet_value != 0)
 	{
-		WRITE16_TO_PMPTR(pmptr,value);
-		return 0;
+		memcpy(rohc_data, &packet_value, sizeof(uint16_t));
+		*indicator = 0;
+		length = sizeof(uint16_t);
 	}
 	else
 	{
-		return 1;
+		*indicator = 1;
+		length = 0;
 	}
+
+	return length;
+}
+
+
+/**
+ * @brief Compress the 32 bits value, regarding if null or not
+ *
+ * @param packet_value     The packet value
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 1 if present, 0 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
+ */
+int c_zero_or_irreg32(const uint32_t packet_value,
+                      uint8_t *const rohc_data,
+                      int *const indicator)
+{
+	size_t length;
+
+	if(packet_value != 0)
+	{
+		memcpy(rohc_data, &packet_value, sizeof(uint32_t));
+		*indicator = 0;
+		length = sizeof(uint32_t);
+	}
+	else
+	{
+		*indicator = 1;
+		length = 0;
+	}
+
+	return length;
 }
 
 

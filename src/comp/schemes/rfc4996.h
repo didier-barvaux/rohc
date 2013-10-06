@@ -140,21 +140,31 @@ uint32_t ROHC_EXPORT c_lsb(const struct c_context *const context,
                            unsigned int context_value,
                            unsigned int original_value);
 
-// RFC4996 page 46
+/* static_or_irreg encoding for 8-bit and 16-bit values */
 int c_static_or_irreg8(const uint8_t context_value,
                        const uint8_t packet_value,
                        uint8_t *const rohc_data,
                        int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 4)));
-
 int c_static_or_irreg16(const uint16_t context_value,
                         const uint16_t packet_value,
                         uint8_t *const rohc_data,
                         int *const indicator)
 	__attribute__((warn_unused_result, nonnull(3, 4)));
 
-uint8_t c_zero_or_irreg8( multi_ptr_t *pmptr, uint8_t value );
-uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value );
+/* zero_or_irreg encoding for 8-bit, 16-bit and 32-bit values */
+int c_zero_or_irreg8(const uint8_t packet_value,
+                     uint8_t *const rohc_data,
+                     int *const indicator)
+	__attribute__((warn_unused_result, nonnull(2, 3)));
+int c_zero_or_irreg16(const uint16_t packet_value,
+                      uint8_t *const rohc_data,
+                      int *const indicator)
+	__attribute__((warn_unused_result, nonnull(2, 3)));
+int c_zero_or_irreg32(const uint32_t packet_value,
+                      uint8_t *const rohc_data,
+                      int *const indicator)
+	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 // RFC4996 page 46
 unsigned int ROHC_EXPORT variable_length_32_enc(multi_ptr_t *const pmptr,

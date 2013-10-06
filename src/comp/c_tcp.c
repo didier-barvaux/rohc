@@ -2881,16 +2881,17 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	 * if the ACK flag is not set in the uncompressed TCP header, this is
 	 * important to transmit all packets without any change, even if those bits
 	 * will be ignored at reception */
-	if(tcp->ack_number == 0)
+	ret = c_zero_or_irreg32(tcp->ack_number, mptr.uint8, &indicator);
+	if(ret < 0)
 	{
-		tcp_dynamic->ack_zero = 1;
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to encode zero_or_irreg(ack_number)\n");
+		goto error;
 	}
-	else
-	{
-		tcp_dynamic->ack_zero = 0;
-		WRITE32_TO_MPTR(mptr,tcp->ack_number);
-		rohc_comp_debug(context, "TCP add ack_number\n");
-	}
+	tcp_dynamic->ack_zero = indicator;
+	mptr.uint8 += ret;
+	rohc_comp_debug(context, "TCP ack_number %spresent\n",
+	                tcp_dynamic->ack_zero ? "not " : "");
 
 	WRITE16_TO_MPTR(mptr,tcp->window);
 	WRITE16_TO_MPTR(mptr,tcp->checksum);
@@ -2899,16 +2900,17 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	 * even if the URG flag is not set in the uncompressed TCP header, this is
 	 * important to transmit all packets without any change, even if those
 	 * bits will be ignored at reception */
-	if(tcp->urg_ptr == 0)
+	ret = c_zero_or_irreg16(tcp->urg_ptr, mptr.uint8, &indicator);
+	if(ret < 0)
 	{
-		tcp_dynamic->urp_zero = 1;
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to encode zero_or_irreg(urg_ptr)\n");
+		goto error;
 	}
-	else
-	{
-		tcp_dynamic->urp_zero = 0;
-		WRITE16_TO_MPTR(mptr, tcp->urg_ptr);
-		rohc_comp_debug(context, "TCP add urg_ptr\n");
-	}
+	tcp_dynamic->urp_zero = indicator;
+	mptr.uint8 += ret;
+	rohc_comp_debug(context, "TCP urg_ptr %spresent\n",
+	                tcp_dynamic->urp_zero ? "not " : "");
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
 	ret = c_static_or_irreg16(tcp_context->ack_stride,
