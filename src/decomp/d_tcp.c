@@ -768,7 +768,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 static int d_tcp_decode_ir(struct rohc_decomp *decomp,
                            struct d_context *context,
                            const unsigned char *const rohc_packet,
-                           const unsigned int rohc_length,
+                           const size_t rohc_length,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
                            unsigned char *dest)
@@ -790,7 +790,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	remain_len = rohc_length;
 
 	rohc_decomp_debug(context, "decomp = %p, context = %p, rohc_packet = %p, "
-	                  "rohc_length = %d, add_cid_len = %zd, "
+	                  "rohc_length = %zu, add_cid_len = %zu, "
 	                  "large_cid_len = %zd, dest = %p\n", decomp, context,
 	                  rohc_packet, rohc_length, add_cid_len, large_cid_len,
 	                  dest);
@@ -1099,7 +1099,7 @@ error:
 static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
                               struct d_context *context,
                               const unsigned char *const rohc_packet,
-                              const unsigned int rohc_length,
+                              const size_t rohc_length,
                               const size_t add_cid_len,
                               const size_t large_cid_len,
                               unsigned char *dest)
@@ -2235,7 +2235,7 @@ static int tcp_decode_static_tcp(struct d_context *const context,
 	if(rohc_length < sizeof(tcp_static_t))
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", rohc_length);
+		             "ROHC packet too small (len = %zu)\n", rohc_length);
 		goto error;
 	}
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
@@ -4098,15 +4098,15 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	bool is_list_present = false;
 
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
-	unsigned int rohc_header_len;
-	unsigned int uncomp_header_len;
+	size_t rohc_header_len;
+	size_t uncomp_header_len;
 
 	/* remaining ROHC data not parsed yet */
 	unsigned char *rohc_remain_data;
 	size_t rohc_remain_len;
 
 	/* ROHC and uncompressed payloads (they are the same) */
-	unsigned int payload_len;
+	size_t payload_len;
 
 	base_header_ip_t base_header_inner;
 	base_header_ip_t base_header;
@@ -4130,7 +4130,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	rohc_decomp_debug(context, "context = %p, g_context = %p, "
 	                  "tcp_context = %p, add_cid_len = %zd, "
 	                  "large_cid_len = %zd, rohc_packet = %p, "
-	                  "rohc_length = %d\n", context, g_context, tcp_context,
+	                  "rohc_length = %zu\n", context, g_context, tcp_context,
 	                  add_cid_len, large_cid_len, rohc_packet, rohc_length);
 
 	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
@@ -4521,19 +4521,19 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 			co_common_opt_len +=
 				variable_length_32_size[co_common->seq_indicator];
-			rohc_decomp_debug(context, "seq_indicator = %d => %d bytes of "
+			rohc_decomp_debug(context, "seq_indicator = %d => %zu bytes of "
 			                  "options\n", co_common->seq_indicator,
 			                  co_common_opt_len);
 			co_common_opt_len += variable_length_32_size[co_common->ack_indicator];
-			rohc_decomp_debug(context, "ack_indicator = %d => %d bytes of "
+			rohc_decomp_debug(context, "ack_indicator = %d => %zu bytes of "
 			                  "options\n", co_common->ack_indicator,
 			                  co_common_opt_len);
 			co_common_opt_len += co_common->ack_stride_indicator << 1;
-			rohc_decomp_debug(context, "ack_stride_indicator = %d => %d bytes "
+			rohc_decomp_debug(context, "ack_stride_indicator = %d => %zu bytes "
 			                  "of options\n", co_common->ack_stride_indicator,
 									co_common_opt_len);
 			co_common_opt_len += co_common->window_indicator << 1;
-			rohc_decomp_debug(context, "window_indicator = %d => %d bytes of "
+			rohc_decomp_debug(context, "window_indicator = %d => %zu bytes of "
 			                  "options\n", co_common->window_indicator,
 			                  co_common_opt_len);
 			if(co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
@@ -4542,25 +4542,25 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				co_common_opt_len += co_common->ip_id_indicator + 1;
 			}
 			rohc_decomp_debug(context, "ip_id_behavior = %d, ip_id_indicator "
-			                  "= %d => %d bytes of options\n",
+			                  "= %d => %zu bytes of options\n",
 			                  co_common->ip_id_behavior,
 			                  co_common->ip_id_indicator, co_common_opt_len);
 			co_common_opt_len += co_common->urg_ptr_present << 1;
-			rohc_decomp_debug(context, "urg_ptr_present = %d => %d bytes of "
+			rohc_decomp_debug(context, "urg_ptr_present = %d => %zu bytes of "
 			                  "options\n", co_common->urg_ptr_present,
 			                  co_common_opt_len);
 			co_common_opt_len += co_common->dscp_present;
-			rohc_decomp_debug(context, "dscp_present = %d => %d bytes of "
+			rohc_decomp_debug(context, "dscp_present = %d => %zu bytes of "
 			                  "options\n", co_common->dscp_present,
 			                  co_common_opt_len);
 			co_common_opt_len += co_common->ttl_hopl_present;
-			rohc_decomp_debug(context, "ttl_hopl_present = %d => %d bytes of "
+			rohc_decomp_debug(context, "ttl_hopl_present = %d => %zu bytes of "
 			                  "options\n", co_common->ttl_hopl_present,
 			                  co_common_opt_len);
 			rohc_decomp_debug(context, "list_present = %d\n",
 			                  co_common->list_present);
-			rohc_decomp_debug(context, "common size = header (%d) + options "
-			                  "(%d) = %d\n", rohc_header_len, co_common_opt_len,
+			rohc_decomp_debug(context, "common size = header (%zu) + options "
+			                  "(%zu) = %zu\n", rohc_header_len, co_common_opt_len,
 			                  rohc_header_len + co_common_opt_len);
 			rohc_header_len += co_common_opt_len;
 
@@ -5523,7 +5523,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 
 	uncomp_header_len += tcp->data_offset << 2;
-	rohc_decomp_debug(context, "uncomp_header_len = %d (+ %d)\n",
+	rohc_decomp_debug(context, "uncomp_header_len = %zu (+ %d)\n",
 	                  uncomp_header_len, tcp->data_offset << 2);
 
 	/* count large CID in header length now */
@@ -5606,20 +5606,20 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest,
 	                 (((unsigned char *) tcp) - dest) + size);
 
-	rohc_decomp_debug(context, "uncomp_header_len = %d (0x%x)\n",
+	rohc_decomp_debug(context, "uncomp_header_len = %zu (0x%x)\n",
 	                  uncomp_header_len, uncomp_header_len);
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
 
 	/* copy the payload */
-	rohc_decomp_debug(context, "ROHC payload (length = %u bytes) starts at "
-	                  "offset %u\n", payload_len, rohc_header_len);
+	rohc_decomp_debug(context, "ROHC payload (length = %zu bytes) starts at "
+	                  "offset %zu\n", payload_len, rohc_header_len);
 	if((rohc_header_len + payload_len) != rohc_length)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC CO header (%u bytes) and payload (%u bytes) "
-		             "do not match the full ROHC CO packet (%u bytes)\n",
+		             "ROHC CO header (%zu bytes) and payload (%zu bytes) "
+		             "do not match the full ROHC CO packet (%zu bytes)\n",
 		             rohc_header_len, payload_len, rohc_length);
 		goto error;
 	}
