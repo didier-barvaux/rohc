@@ -98,46 +98,66 @@ uint32_t c_lsb(const struct c_context *const context,
  *
  * See RFC4996 page 46
  *
- * @param pmptr            The destination pointer, where to store the compressed value
- * @param context_value    The value of the context
- * @param value            The value to compress
- * @return                 The size of the compressed value in octets
+ * @param context_value    The context value
+ * @param packet_value     The packet value
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 1 if present, 0 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
  */
-
-uint8_t c_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value )
+int c_static_or_irreg8(const uint8_t context_value,
+                       const uint8_t packet_value,
+                       uint8_t *const rohc_data,
+                       int *const indicator)
 {
-	if(value == context_value)
+	size_t length;
+
+	if(packet_value == context_value)
 	{
-		return 0;
+		*indicator = 0;
+		length = 0;
 	}
 	else
 	{
-		*(pmptr->uint8)++ = value;
-		return 1;
+		rohc_data[0] = packet_value;
+		*indicator = 1;
+		length = 1;
 	}
+
+	return length;
 }
 
 
 /**
  * @brief Compress the 16 bits given, depending of the context value.
  *
- * @param pmptr            The destination pointer, where to store the compressed value
- * @param context_value    The value of the context
- * @param value            The value to compress
- * @return                 The size of the compressed value in octets
+ * @param context_value    The context value
+ * @param packet_value     The packet value
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 1 if present, 0 if not
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
  */
-
-uint16_t c_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, uint16_t value )
+int c_static_or_irreg16(const uint16_t context_value,
+                        const uint16_t packet_value,
+                        uint8_t *const rohc_data,
+                        int *const indicator)
 {
-	if(value == context_value)
+	size_t length;
+
+	if(packet_value == context_value)
 	{
-		return 0;
+		*indicator = 0;
+		length = 0;
 	}
 	else
 	{
-		WRITE16_TO_PMPTR(pmptr,value);
-		return 1;
+		memcpy(rohc_data, &packet_value, sizeof(uint16_t));
+		*indicator = 1;
+		length = 2;
 	}
+
+	return length;
 }
 
 

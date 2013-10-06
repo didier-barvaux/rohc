@@ -141,8 +141,18 @@ uint32_t ROHC_EXPORT c_lsb(const struct c_context *const context,
                            unsigned int original_value);
 
 // RFC4996 page 46
-uint8_t c_static_or_irreg8( multi_ptr_t *pmptr, uint8_t context_value, uint8_t value );
-uint16_t c_static_or_irreg16( multi_ptr_t *pmptr, uint16_t context_value, uint16_t value );
+int c_static_or_irreg8(const uint8_t context_value,
+                       const uint8_t packet_value,
+                       uint8_t *const rohc_data,
+                       int *const indicator)
+	__attribute__((warn_unused_result, nonnull(3, 4)));
+
+int c_static_or_irreg16(const uint16_t context_value,
+                        const uint16_t packet_value,
+                        uint8_t *const rohc_data,
+                        int *const indicator)
+	__attribute__((warn_unused_result, nonnull(3, 4)));
+
 uint8_t c_zero_or_irreg8( multi_ptr_t *pmptr, uint8_t value );
 uint16_t c_zero_or_irreg16( multi_ptr_t *pmptr, uint16_t value );
 

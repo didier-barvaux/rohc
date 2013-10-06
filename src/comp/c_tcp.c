@@ -5052,6 +5052,9 @@ static int co_baseheader(struct c_context *const context,
 		}
 		case ROHC_PACKET_TCP_CO_COMMON:
 		{
+	int ret;
+	int indicator;
+
 	rohc_comp_debug(context, "code common\n");
 	// See RFC4996 page 80:
 	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d\n",
@@ -5088,17 +5091,35 @@ static int co_baseheader(struct c_context *const context,
 	                (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->seq_indicator,
 	                rohc_ntoh32(tcp->ack_number));
-	// =:= irregular(2) [ 2 ];
-	c_base_header.co_common->ack_stride_indicator = c_static_or_irreg16(
-	   &mptr,tcp_context->ack_stride, rohc_hton16(tcp_context->ack_stride));
+
+	/* ack_stride */
+	ret = c_static_or_irreg16(tcp_context->ack_stride,
+	                          rohc_hton16(tcp_context->ack_stride),
+	                          mptr.uint8, &indicator);
+	if(ret < 0)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to encode static_or_irreg(ack_stride)\n");
+		goto error;
+	}
+	c_base_header.co_common->ack_stride_indicator = indicator;
+	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, ack_stride_indicator = %d, "
 	                "ack_stride 0x%x\n", (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->ack_stride_indicator,
 	                tcp_context->ack_stride);
-	// =:= irregular(1) [ 1 ];
-	c_base_header.co_common->window_indicator =
-	   c_static_or_irreg16(&mptr,tcp_context->old_tcphdr.window,
-	                       tcp->window);
+
+	/* window */
+	ret = c_static_or_irreg16(tcp_context->old_tcphdr.window, tcp->window,
+	                          mptr.uint8, &indicator);
+	if(ret < 0)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to encode static_or_irreg(window)\n");
+		goto error;
+	}
+	c_base_header.co_common->window_indicator = indicator;
+	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, window_indicator = %d, "
 	                "old_window = 0x%x, window = 0x%x\n",
 	                (unsigned)(mptr.uint8 - puchar),
@@ -5130,9 +5151,18 @@ static int co_baseheader(struct c_context *const context,
 		                (unsigned int) (mptr.uint8 - puchar));
 		ip_context.vx->dscp = base_header.ipv4->dscp;
 
-		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->ttl_hopl_present = c_static_or_irreg8(&mptr,ip_context.vx->ttl_hopl,
-		                                                               ttl_hopl);
+		/* ttl_hopl */
+		ret = c_static_or_irreg8(ip_context.vx->ttl_hopl, ttl_hopl, mptr.uint8,
+		                         &indicator);
+		if(ret < 0)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to encode static_or_irreg(ttl_hopl)\n");
+			goto error;
+		}
+		c_base_header.co_common->ttl_hopl_present = indicator;
+		mptr.uint8 += ret;
+
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		c_base_header.co_common->df = base_header.ipv4->df;
 		ip_context.v4->df = base_header.ipv4->df;
@@ -5164,9 +5194,18 @@ static int co_baseheader(struct c_context *const context,
 		                (unsigned int) (mptr.uint8 - puchar));
 		ip_context.vx->dscp = DSCP_V6(base_header.ipv6);
 
-		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->ttl_hopl_present = c_static_or_irreg8(&mptr,ip_context.vx->ttl_hopl,
-		                                                               ttl_hopl);
+		/* ttl_hopl */
+		ret = c_static_or_irreg8(ip_context.vx->ttl_hopl, ttl_hopl, mptr.uint8,
+		                         &indicator);
+		if(ret < 0)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to encode static_or_irreg(ttl_hopl)\n");
+			goto error;
+		}
+		c_base_header.co_common->ttl_hopl_present = indicator;
+		mptr.uint8 += ret;
+
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		c_base_header.co_common->df = 0;
 		rohc_comp_debug(context, "size = %u, dscp_present = %d, "
@@ -5191,9 +5230,17 @@ static int co_baseheader(struct c_context *const context,
 	// =:= irregular(1) [ 1 ];
 	if( (c_base_header.co_common->urg_flag = tcp->urg_flag) != 0) // TODO: check that!
 	{
-		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->urg_ptr_present = c_static_or_irreg16(
-		   &mptr,tcp_context->old_tcphdr.urg_ptr,tcp->urg_ptr);
+		/* urg_ptr */
+		ret = c_static_or_irreg16(tcp_context->old_tcphdr.urg_ptr, tcp->urg_ptr,
+		                          mptr.uint8, &indicator);
+		if(ret < 0)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to encode static_or_irreg(urg_ptr)\n");
+			goto error;
+		}
+		c_base_header.co_common->urg_ptr_present = indicator;
+		mptr.uint8 += ret;
 		rohc_comp_debug(context, "urg_flag = %d, urg_ptr_present = %d\n",
 		                c_base_header.co_common->urg_flag,
 		                c_base_header.co_common->urg_ptr_present);
