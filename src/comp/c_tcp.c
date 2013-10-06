@@ -5190,9 +5190,17 @@ static int co_baseheader(struct c_context *const context,
 	if(version == IPV4)
 	{
 		// =:= irregular(1) [ 1 ];
-		c_base_header.co_common->ip_id_indicator =
-		   c_optional_ip_id_lsb(context, &mptr, ip_context.v4->ip_id_behavior,
-		                        ip_context.v4->last_ip_id, ip_id, g_context->sn);
+		ret = c_optional_ip_id_lsb(context, ip_context.v4->ip_id_behavior,
+		                           ip_context.v4->last_ip_id, ip_id,
+		                           g_context->sn, mptr.uint8, &indicator);
+		if(ret < 0)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to encode optional_ip_id_lsb(ip_id)\n");
+			goto error;
+		}
+		c_base_header.co_common->ip_id_indicator = indicator;
+		mptr.uint8 += ret;
 		ip_context.v4->last_ip_id = ip_id;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = ip_context.v4->ip_id_behavior;

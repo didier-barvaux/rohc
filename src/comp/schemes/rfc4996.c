@@ -517,20 +517,25 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
  * See RFC4996 page 76
  *
  * @param context          The compressor context
- * @param pmptr            The destination for the compressed value
  * @param behavior         The IP-ID behavior
  * @param context_ip_id    The context value of IP-ID
  * @param ip_id            The IP-ID value to compress
  * @param msn              The Master Sequence Number
- * @return                 Indicator : 0 if short, 1 if long
+ * @param[out] rohc_data   The compressed value
+ * @param[out] indicator   The indicator: 0 if short, 1 if long
+ * @return                 The number of ROHC bytes written,
+ *                         -1 if a problem occurs
  */
-unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
-                                  multi_ptr_t *pmptr,
-                                  const int behavior,
-                                  const uint16_t context_ip_id,
-                                  const uint16_t ip_id,
-                                  const uint16_t msn)
+int c_optional_ip_id_lsb(const struct c_context *const context,
+                         const int behavior,
+                         const uint16_t context_ip_id,
+                         const uint16_t ip_id,
+                         const uint16_t msn,
+                         uint8_t *const rohc_data,
+                         int *const indicator)
 {
+	size_t length = 0;
+
 	assert(context != NULL);
 
 	rohc_comp_debug(context, "behavior = 0x%04x, context_ip_id = 0x%04x, "
@@ -542,43 +547,54 @@ unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
 			if((context_ip_id & 0xff00) == (ip_id & 0xff00))
 			{
-				*(pmptr->uint8)++ = c_ip_id_lsb(context, behavior, 8, 3,
-				                                context_ip_id, ip_id, msn);
-				rohc_comp_debug(context, "write ip_id = 0x%04x\n",
-				                *(pmptr->uint8 - 1));
-				return 0;
+				rohc_data[0] = c_ip_id_lsb(context, behavior, 8, 3,
+				                           context_ip_id, ip_id, msn);
+				*indicator = 0;
+				length++;
+				rohc_comp_debug(context, "write ip_id = 0x%02x\n", rohc_data[0]);
 			}
 			else
 			{
-				WRITE16_TO_PMPTR(pmptr, rohc_hton16(ip_id));
+				const uint16_t ip_id_nbo = rohc_hton16(ip_id);
+				memcpy(rohc_data, &ip_id_nbo, sizeof(uint16_t));
+				length += sizeof(uint16_t);
+				*indicator = 1;
 				rohc_comp_debug(context, "write ip_id = 0x%04x\n", ip_id);
-				return 1;
 			}
 			break;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
 			if((context_ip_id & 0x00ff) == (ip_id & 0x00ff))
 			{
-				*(pmptr->uint8)++ = c_ip_id_lsb(context, behavior, 8, 3,
-				                                context_ip_id, ip_id, msn);
-				rohc_comp_debug(context, "write ip_id = 0x%04x\n",
-				                *(pmptr->uint8 - 1));
-				return 0;
+				rohc_data[0] = c_ip_id_lsb(context, behavior, 8, 3,
+				                           context_ip_id, ip_id, msn);
+				*indicator = 0;
+				length++;
+				rohc_comp_debug(context, "write ip_id = 0x%02x\n", rohc_data[0]);
 			}
 			else
 			{
 				const uint16_t swapped_ip_id = swab16(ip_id);
-				WRITE16_TO_PMPTR(pmptr, rohc_hton16(swapped_ip_id));
-				rohc_comp_debug(context, "write ip_id = 0x%04x\n", swapped_ip_id);
-				return 1;
+				const uint16_t swapped_ip_id_nbo = rohc_hton16(swapped_ip_id);
+				memcpy(rohc_data, &swapped_ip_id_nbo, sizeof(uint16_t));
+				*indicator = 1;
+				length += sizeof(uint16_t);
+				rohc_comp_debug(context, "write ip_id = 0x%04x\n",
+				                swapped_ip_id_nbo);
 			}
 			break;
 		case IP_ID_BEHAVIOR_RANDOM:
 		case IP_ID_BEHAVIOR_ZERO:
+			*indicator = 0;
+			length = 0;
+			break;
 		default:
+			assert(0); /* should never happen */
+			*indicator = 0;
+			length = 0;
 			break;
 	}
 
-	return 0;
+	return length;
 }
 
 

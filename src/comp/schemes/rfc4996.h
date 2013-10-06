@@ -203,14 +203,15 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
                      const uint16_t msn)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-// RFC4996 page 76
-unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
-                                  multi_ptr_t *pmptr,
-                                  const int behavior,
-                                  const uint16_t context_ip_id,
-                                  const uint16_t ip_id,
-                                  const uint16_t msn)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+/* optional_ip_id_lsb encoding method */
+int c_optional_ip_id_lsb(const struct c_context *const context,
+                         const int behavior,
+                         const uint16_t context_ip_id,
+                         const uint16_t ip_id,
+                         const uint16_t msn,
+                         uint8_t *const rohc_data,
+                         int *const indicator)
+	__attribute__((warn_unused_result, nonnull(1, 6, 7)));
 
 // RFC4996 page 75
 unsigned int dscp_encode(multi_ptr_t *pmptr,
