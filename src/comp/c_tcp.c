@@ -2047,9 +2047,14 @@ static int c_tcp_encode(struct c_context *const context,
 		}
 		while(rohc_is_tunneling(protocol));
 
-
 		// add TCP dynamic part
 		mptr.uint8 = tcp_code_dynamic_tcp_part(context,base_header.uint8,mptr);
+		if(mptr.uint8 == NULL)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to code the TCP part of the dynamic chain\n");
+			goto error;
+		}
 
 		counter = (int) ( mptr.uint8 - rohc_pkt );
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
@@ -2815,6 +2820,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 #if ROHC_EXTRA_DEBUG == 1
 	uint8_t *debug_ptr;
 #endif
+	int indicator;
+	int ret;
 
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
@@ -2903,20 +2910,20 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		rohc_comp_debug(context, "TCP add urg_ptr\n");
 	}
 
-	if(tcp_context->ack_stride == 0)
+	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
+	ret = c_static_or_irreg16(tcp_context->ack_stride,
+	                          rohc_hton16(tcp_context->ack_stride),
+	                          mptr.uint8, &indicator);
+	if(ret < 0)
 	{
-		tcp_dynamic->ack_stride_flag = 1;
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to encode static_or_irreg(ack_stride)\n");
+		goto error;
 	}
-	else
-	{
-		tcp_dynamic->ack_stride_flag = 0;
-		WRITE16_TO_MPTR(mptr, rohc_hton16(tcp_context->ack_stride));
-		rohc_comp_debug(context, "TCP add ack_stride\n");
-	}
-	rohc_comp_debug(context, "TCP ack_zero = %d, urp_zero = %d, "
-	                "ack_stride_flag = %d\n", tcp_dynamic->ack_zero,
-	                tcp_dynamic->urp_zero,
-	                tcp_dynamic->ack_stride_flag);
+	tcp_dynamic->ack_stride_flag = indicator;
+	mptr.uint8 += ret;
+	rohc_comp_debug(context, "TCP ack_stride %spresent\n",
+	                tcp_dynamic->ack_stride_flag ? "" : "not ");
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "TCP dynamic part",
@@ -3234,6 +3241,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	                 mptr.uint8 - (uint8_t *) tcp_dynamic);
 
 	return mptr.uint8;
+
+error:
+	return NULL;
 }
 
 
@@ -5092,7 +5102,7 @@ static int co_baseheader(struct c_context *const context,
 	                c_base_header.co_common->seq_indicator,
 	                rohc_ntoh32(tcp->ack_number));
 
-	/* ack_stride */
+	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
 	ret = c_static_or_irreg16(tcp_context->ack_stride,
 	                          rohc_hton16(tcp_context->ack_stride),
 	                          mptr.uint8, &indicator);

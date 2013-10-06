@@ -2438,7 +2438,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 	                  rohc_ntoh16(tcp->urg_ptr));
 
 	/* ACK stride */
-	if(tcp_dynamic->ack_stride_flag == 1)
+	if(tcp_dynamic->ack_stride_flag == 0)
 	{
 		tcp_context->ack_stride = 0;
 	}
