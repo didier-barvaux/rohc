@@ -76,22 +76,25 @@ uint32_t d_field_scaling(const uint32_t stride_value,
 
 // RFC4996 page 71
 unsigned int rsf_index_dec( unsigned int rsf_index );
+
 // RFC4996 page 75
 uint16_t d_ip_id_lsb(const struct d_context *const context,
-                     int behavior,
-                     unsigned int k,
-                     unsigned int p,
-                     WB_t context_ip_id,
-                     uint16_t value,
-                     uint16_t msn);
+                     const int behavior,
+                     const unsigned int k,
+                     const unsigned int p,
+                     const uint16_t context_ip_id,
+                     const uint16_t value,
+                     const uint16_t msn)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 // RFC4996 page 76
 int d_optional_ip_id_lsb(const struct d_context *const context,
                          const uint8_t *const rohc_data,
-                         int behavior,
-                         int indicator,
-                         WB_t context_ip_id,
-                         uint16_t *ip_id,
-                         uint16_t msn)
+                         const int behavior,
+                         const int indicator,
+                         const uint16_t context_ip_id,
+                         uint16_t *const ip_id,
+                         const uint16_t msn)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 
 int dscp_decode(const uint8_t *const rohc_data,

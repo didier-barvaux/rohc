@@ -371,44 +371,44 @@ static uint32_t d_c_lsb(const struct d_context *const context,
  * @return               The IP-ID
  */
 uint16_t d_ip_id_lsb(const struct d_context *const context,
-                     int behavior,
-                     unsigned int k,
-                     unsigned int p,
-                     WB_t context_ip_id,
-                     uint16_t value,
-                     uint16_t msn)
+                     const int behavior,
+                     const unsigned int k,
+                     const unsigned int p,
+                     const uint16_t context_ip_id,
+                     const uint16_t value,
+                     const uint16_t msn)
 {
 	uint16_t ip_id_offset;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 
 	rohc_decomp_debug(context, "behavior = %d, k = %d, p = %d, "
 	                  "context_ip_id = 0x%04x, value = 0x%04x, msn = 0x%04x\n",
-	                  behavior, k, p, context_ip_id.uint16, value, msn);
+	                  behavior, k, p, context_ip_id, value, msn);
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
-			ip_id.uint16 = context_ip_id.uint16 + 1;
-			ip_id_offset = ip_id.uint16 - msn;
-			ip_id_offset = d_c_lsb(context, k, p, context_ip_id.uint16 - msn,
+			ip_id = context_ip_id + 1;
+			ip_id_offset = ip_id - msn;
+			ip_id_offset = d_c_lsb(context, k, p, context_ip_id - msn,
 			                       ip_id_offset);
-			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = 0x%x, "
-			                  "value = 0x%x\n", ip_id.uint16, ip_id_offset, value);
+			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = "
+			                  "0x%04x, value = 0x%04x\n", ip_id, ip_id_offset,
+			                  value);
 			assert(ip_id_offset == value); /* TODO: should not assert */
-			return ip_id.uint16;
+			return ip_id;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
-			ip_id.uint8[0] = context_ip_id.uint8[1];
-			ip_id.uint8[1] = context_ip_id.uint8[0];
-			++ip_id.uint16;
-			ip_id_offset = ip_id.uint16 - msn;
-			ip_id_offset = d_c_lsb(context, k, p, ip_id.uint16 - 1 - msn,
-			                       ip_id_offset);
-			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = 0x%x, "
-			                  "value = 0x%x\n", ip_id.uint16, ip_id_offset, value);
+			ip_id = swab16(context_ip_id);
+			ip_id++;
+			ip_id_offset = ip_id - msn;
+			ip_id_offset = d_c_lsb(context, k, p, ip_id - 1 - msn, ip_id_offset);
+			rohc_decomp_debug(context, "new ip_id = 0x%04x, ip_id_offset = "
+			                  "0x%04x, value = 0x%04x\n", ip_id, ip_id_offset,
+			                  value);
 			assert(ip_id_offset == value); /* TODO: should not assert */
-			return ip_id.uint16;
+			return ip_id;
 	}
 
 	return 0;
@@ -432,29 +432,29 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
  */
 int d_optional_ip_id_lsb(const struct d_context *const context,
                          const uint8_t *const rohc_data,
-                         int behavior,
-                         int indicator,
-                         WB_t context_ip_id,
-                         uint16_t *ip_id,
-                         uint16_t msn)
+                         const int behavior,
+                         const int indicator,
+                         const uint16_t context_ip_id,
+                         uint16_t *const ip_id,
+                         const uint16_t msn)
 {
 	size_t length = 0;
 
 	assert(context != NULL);
 
 	rohc_decomp_debug(context, "behavior = %d, indicator = %d, "
-	                  "context_ip_id = 0x%x, msn = 0x%x\n", behavior,
-	                  indicator, context_ip_id.uint16, msn);
+	                  "context_ip_id = 0x%04x, msn = 0x%04x\n", behavior,
+	                  indicator, context_ip_id, msn);
 
 	switch(behavior)
 	{
 		case IP_ID_BEHAVIOR_SEQUENTIAL:
 			if(indicator == 0)
 			{
-				*ip_id = (context_ip_id.uint16 & 0xFF00) |
+				*ip_id = (context_ip_id & 0xff00) |
 				         d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
 				                     rohc_data[0], msn);
-				rohc_decomp_debug(context, "read ip_id = 0x%x -> 0x%x\n",
+				rohc_decomp_debug(context, "read ip_id = 0x%04x -> 0x%04x\n",
 				                  rohc_data[0], *ip_id);
 				length++;
 			}
@@ -463,20 +463,18 @@ int d_optional_ip_id_lsb(const struct d_context *const context,
 				memcpy(ip_id, rohc_data, sizeof(uint16_t));
 				length += sizeof(uint16_t);
 				*ip_id = rohc_ntoh16(*ip_id);
-				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
+				rohc_decomp_debug(context, "read ip_id = 0x%04x\n", *ip_id);
 			}
 			break;
 		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
 		{
-			WB_t swapped_context_ip_id;
-			swapped_context_ip_id.uint8[0] = context_ip_id.uint8[1];
-			swapped_context_ip_id.uint8[1] = context_ip_id.uint8[0];
+			const uint16_t swapped_context_ip_id = swab16(context_ip_id);
 			if(indicator == 0)
 			{
-				*ip_id = (swapped_context_ip_id.uint16 & 0xFF00) |
+				*ip_id = (swapped_context_ip_id & 0xff00) |
 				          d_ip_id_lsb(context, behavior, 8, 3, context_ip_id,
 				                      rohc_data[0], msn);
-				rohc_decomp_debug(context, "read ip_id = 0x%x -> 0x%x\n",
+				rohc_decomp_debug(context, "read ip_id = 0x%04x -> 0x%04x\n",
 				                  rohc_data[0], *ip_id);
 				length++;
 			}
@@ -485,10 +483,10 @@ int d_optional_ip_id_lsb(const struct d_context *const context,
 				memcpy(ip_id, rohc_data, sizeof(uint16_t));
 				length += sizeof(uint16_t);
 				*ip_id = rohc_ntoh16(*ip_id);
-				rohc_decomp_debug(context, "read ip_id = 0x%x\n", *ip_id);
+				rohc_decomp_debug(context, "read ip_id = 0x%04x\n", *ip_id);
 			}
+			break;
 		}
-		break;
 		case IP_ID_BEHAVIOR_RANDOM:
 			break;
 		case IP_ID_BEHAVIOR_ZERO:

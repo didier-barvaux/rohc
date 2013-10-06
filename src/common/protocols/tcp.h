@@ -979,8 +979,6 @@ typedef struct __attribute__((packed)) rnd_3
 #endif
 } rnd_3_t;
 
-#define OFFSET_RND3_ACK_NUMBER ((0 * 8) + 1)
-
 
 /**
  * @brief Define the rnd_4 compressed packet format
@@ -1043,9 +1041,6 @@ typedef struct __attribute__((packed)) rnd_5
 	uint32_t ack_number2 : 8;          // =:= lsb(15, 8191)                                  [ 15 ];
 #endif
 } rnd_5_t;
-
-#define OFFSET_RND5_ACK_NUMBER ((1 * 8) + 3)
-#define OFFSET_RND5_SEQ_NUMBER ((3 * 8) + 1)
 
 
 /**
@@ -1392,9 +1387,6 @@ typedef struct __attribute__((packed)) seq_8
 	uint8_t options[0];                // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
 } seq_8_t;
 
-#define OFFSET_SEQ8_ACK_NUMBER ((3 * 8) + 1)
-#define OFFSET_SEQ8_SEQ_NUMBER ((5 * 8) + 2)
-
 
 /**
  * @brief Define union of different header pointers
@@ -1416,31 +1408,6 @@ typedef union
 	ip_ah_opt_t *ip_ah_opt;
 	tcphdr_t *tcphdr;
 } base_header_ip_t;
-
-
-/**
- * @brief Define union of for 16 bits data
- *
- */
-
-typedef union __attribute__((packed))
-{
-	uint8_t uint8[2];
-	uint16_t uint16;
-} WB_t;
-
-
-/**
- * @brief Define union of for 32 bits data
- *
- */
-
-typedef union __attribute__((packed))
-{
-	uint8_t uint8[4];
-	uint16_t uint16[2];
-	uint32_t uint32;
-} LWB_t;
 
 
 #endif /* ROHC_PROTOCOLS_TCP_H */

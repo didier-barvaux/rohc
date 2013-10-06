@@ -23,31 +23,6 @@
 
 #include <stdint.h>
 
-/** Fake multi_ptr_t for testing */
-typedef union
-{
-	unsigned int uint;
-	uint8_t *uint8;
-	uint16_t *uint16;
-	uint32_t *uint32;
-} multi_ptr_t;
-
-/** Fake WB_t for testing */
-typedef union __attribute__((packed))
-{
-	uint8_t uint8[2];
-	uint16_t uint16;
-} WB_t;
-
-/** Fake LWB_t for testing */
-typedef union __attribute__((packed))
-{
-	uint8_t uint8[4];
-	uint16_t uint16[2];
-	uint32_t uint32;
-} LWB_t;
-
-
 #include "rfc4996.h"
 
 #include "config.h"

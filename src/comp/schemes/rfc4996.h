@@ -24,6 +24,8 @@
 #ifndef ROHC_COMP_SCHEMES_RFC4996_H
 #define ROHC_COMP_SCHEMES_RFC4996_H
 
+#include "protocols/tcp.h"
+
 #include <stdint.h>
 
 #include "dllexport.h"
@@ -165,20 +167,24 @@ void c_field_scaling(uint32_t *const scaled_value,
 unsigned int rsf_index_enc(const struct c_context *const context,
                            unsigned int rsf_flags);
 // RFC4996 page 75
-unsigned int c_ip_id_lsb(const struct c_context *const context,
-                         int behavior,
-                         unsigned int k,
-                         unsigned int p,
-                         WB_t context_ip_id,
-                         WB_t ip_id,
-                         uint16_t msn);
+uint16_t c_ip_id_lsb(const struct c_context *const context,
+                     const int behavior,
+                     const unsigned int k,
+                     const unsigned int p,
+                     const uint16_t context_ip_id,
+                     const uint16_t ip_id,
+                     const uint16_t msn)
+	__attribute__((warn_unused_result, nonnull(1)));
+
 // RFC4996 page 76
 unsigned int c_optional_ip_id_lsb(const struct c_context *const context,
                                   multi_ptr_t *pmptr,
-                                  int behavior,
-                                  WB_t context_ip_id,
-                                  WB_t ip_id,
-                                  uint16_t msn);
+                                  const int behavior,
+                                  const uint16_t context_ip_id,
+                                  const uint16_t ip_id,
+                                  const uint16_t msn)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+
 // RFC4996 page 75
 unsigned int dscp_encode(multi_ptr_t *pmptr,
                          const uint8_t context_value,

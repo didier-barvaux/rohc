@@ -211,7 +211,7 @@ typedef struct __attribute__((packed)) ipv4_context
 
 	uint8_t ip_id_behavior;
 	uint8_t last_ip_id_behavior;
-	WB_t last_ip_id;
+	uint16_t last_ip_id;
 
 	uint32_t src_addr;
 	uint32_t dst_addr;
@@ -750,10 +750,8 @@ static bool c_tcp_create(struct c_context *const context,
 		switch(base_header.ipvx->version)
 		{
 			case IPV4:
-				ip_context.v4->last_ip_id.uint16 =
-					rohc_ntoh16(base_header.ipv4->ip_id);
-				rohc_comp_debug(context, "IP-ID 0x%04x\n",
-				                ip_context.v4->last_ip_id.uint16);
+				ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
+				rohc_comp_debug(context, "IP-ID 0x%04x\n", ip_context.v4->last_ip_id);
 				ip_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_UNKNOWN;
 				/* get the transport protocol */
 				protocol = base_header.ipv4->protocol;
@@ -1417,71 +1415,66 @@ static int c_tcp_encode(struct c_context *const context,
 	 */
 
 	/* detect the behaviors of the IP-ID fields for IPv4 headers */
+	/* TODO: could be simplified! */
 	if(base_header_inner.ipvx->version == IPV4)
 	{
-		WB_t swapped_ip_id;
-		WB_t ip_id;
+		uint16_t swapped_ip_id;
+		uint16_t ip_id;
 
 		/* Try to determine the IP_ID behavior of the innermost header */
-		ip_id.uint16 = rohc_ntoh16(base_header_inner.ipv4->ip_id);
+		ip_id = rohc_ntoh16(base_header_inner.ipv4->ip_id);
 		rohc_comp_debug(context, "ip_id_behavior = %d, last_ip_id = 0x%x, "
 		                "ip_id = 0x%x\n", ip_inner_context.v4->ip_id_behavior,
-		                ip_inner_context.v4->last_ip_id.uint16, ip_id.uint16);
+		                ip_inner_context.v4->last_ip_id, ip_id);
 
 		switch(ip_inner_context.v4->ip_id_behavior)
 		{
 			case IP_ID_BEHAVIOR_SEQUENTIAL:
-				if( (ip_inner_context.v4->last_ip_id.uint16 + 1) != ip_id.uint16)
+				if((ip_inner_context.v4->last_ip_id + 1) != ip_id)
 				{
 					// Problem
 					rohc_comp_debug(context, "ip_id_behavior not SEQUENTIAL: "
-					                "0x%x + 1 != 0x%x\n",
-					                ip_inner_context.v4->last_ip_id.uint16,
-					                ip_id.uint16);
+					                "0x%04x + 1 != 0x%04x\n",
+					                ip_inner_context.v4->last_ip_id, ip_id);
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
 					break;
 				}
 				break;
 			case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
-				swapped_ip_id.uint8[0] = ip_inner_context.v4->last_ip_id.uint8[1];
-				swapped_ip_id.uint8[1] = ip_inner_context.v4->last_ip_id.uint8[0];
+				swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
 				rohc_comp_debug(context, " swapped_ip_id = 0x%04x + 1 = 0x%04x, "
-				                "ip_id = 0x%04x\n", swapped_ip_id.uint16,
-				                swapped_ip_id.uint16 + 1, ip_id.uint16);
-				++swapped_ip_id.uint16;
-				if(swapped_ip_id.uint8[0] != ip_id.uint8[1] ||
-				   swapped_ip_id.uint8[1] != ip_id.uint8[0])
+				                "ip_id = 0x%04x\n", swapped_ip_id,
+				                swapped_ip_id + 1, ip_id);
+				swapped_ip_id++;
+				if(swapped_ip_id != swab16(ip_id))
 				{
 					// Problem
 					rohc_comp_debug(context, "ip_id_behavior not "
-					                "SEQUENTIAL_SWAPPED: 0x%x + 1 != 0x%x\n",
-					                ip_inner_context.v4->last_ip_id.uint16,
-					                swapped_ip_id.uint16);
+					                "SEQUENTIAL_SWAPPED: 0x%04x + 1 != 0x%04x\n",
+					                ip_inner_context.v4->last_ip_id, swapped_ip_id);
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
 					break;
 				}
 				break;
 			case IP_ID_BEHAVIOR_RANDOM:
-				if( (ip_inner_context.v4->last_ip_id.uint16 + 1) == ip_id.uint16)
+				if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
 				{
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
 					break;
 				}
-				swapped_ip_id.uint8[0] = ip_inner_context.v4->last_ip_id.uint8[1];
-				swapped_ip_id.uint8[1] = ip_inner_context.v4->last_ip_id.uint8[0];
-				rohc_comp_debug(context, " swapped_ip_id: 0x%04x + 1 = 0x%04x, "
-				                "ip_id = 0x%04x\n", swapped_ip_id.uint16,
-				                swapped_ip_id.uint16 + 1, ip_id.uint16);
-				++swapped_ip_id.uint16;
-				if(swapped_ip_id.uint8[0] == ip_id.uint8[1] &&
-				   swapped_ip_id.uint8[1] == ip_id.uint8[0])
+				swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
+				rohc_comp_debug(context, "swapped_ip_id: 0x%04x + 1 = 0x%04x, "
+				                "ip_id = 0x%04x\n", swapped_ip_id,
+				                swapped_ip_id + 1, ip_id);
+				swapped_ip_id++;
+				if(swapped_ip_id == swab16(ip_id))
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
 					break;
 				}
-				if(ip_id.uint16 == 0)
+				if(ip_id == 0)
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL ZERO\n");
@@ -1489,15 +1482,15 @@ static int c_tcp_encode(struct c_context *const context,
 				}
 				break;
 			case IP_ID_BEHAVIOR_ZERO:
-				if(ip_id.uint16 != 0)
+				if(ip_id != 0)
 				{
-					if(ip_id.uint16 == 0x0001)
+					if(ip_id == 0x0001)
 					{
 						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
 						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
 						break;
 					}
-					if(ip_id.uint16 == 0x0100)
+					if(swab16(ip_id) == 0x0001)
 					{
 						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
 						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
@@ -1505,37 +1498,36 @@ static int c_tcp_encode(struct c_context *const context,
 					}
 					// Problem
 					rohc_comp_debug(context, "ip_id_behavior not ZERO: "
-					                "0x%04x != 0\n", ip_id.uint16);
+					                "0x%04x != 0\n", ip_id);
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
 					break;
 				}
 				break;
 			case IP_ID_BEHAVIOR_UNKNOWN:
-				if(ip_id.uint16 == 0)
+				if(ip_id == 0)
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
 					rohc_comp_debug(context, "ip_id_behavior ZERO\n");
 					break;
 				}
-				if( (ip_inner_context.v4->last_ip_id.uint16 + 1) == ip_id.uint16)
+				if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
 					break;
 				}
-				if(ip_inner_context.v4->last_ip_id.uint16 == ip_id.uint16)
+				if(ip_inner_context.v4->last_ip_id == ip_id)
 				{
 					break;
 				}
-				swapped_ip_id.uint8[0] = ip_id.uint8[1];
-				swapped_ip_id.uint8[1] = ip_id.uint8[0];
-				if( (ip_inner_context.v4->last_ip_id.uint16 + 1) == swapped_ip_id.uint16)
+				swapped_ip_id = swab16(ip_id);
+				if((ip_inner_context.v4->last_ip_id + 1) == swapped_ip_id)
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL_SWAPPED\n");
 					break;
 				}
-				if(ip_inner_context.v4->last_ip_id.uint16 == swapped_ip_id.uint16)
+				if(ip_inner_context.v4->last_ip_id == swapped_ip_id)
 				{
 					break;
 				}
@@ -1543,6 +1535,7 @@ static int c_tcp_encode(struct c_context *const context,
 				rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
 				break;
 			default:
+				assert(0); /* should never happen */
 				break;
 		}
 	}
@@ -2489,7 +2482,6 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
                                            multi_ptr_t mptr,
                                            int is_innermost)
 {
-	WB_t ip_id;
 	int size;
 
 	rohc_comp_debug(context, "context = %p, ip_context = %p, "
@@ -2498,13 +2490,15 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 
 	if(base_header.ipvx->version == IPV4)
 	{
+		uint16_t ip_id;
+
 		assert( ip_context.v4->version == IPV4 );
 
 		/* Read the IP_ID */
-		ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
+		ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 		rohc_comp_debug(context, "ip_id_behavior = %d, last IP-ID = 0x%04x, "
 		                "IP-ID = 0x%04x\n", ip_context.v4->ip_id_behavior,
-		                ip_context.v4->last_ip_id.uint16, ip_id.uint16);
+		                ip_context.v4->last_ip_id, ip_id);
 
 		mptr.ipv4_dynamic1->reserved = 0;
 		mptr.ipv4_dynamic1->df = base_header.ipv4->df;
@@ -2571,7 +2565,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 		ip_context.v4->dscp = base_header.ipv4->dscp;
 		ip_context.v4->ttl_hopl = base_header.ipv4->ttl_hopl;
 		ip_context.v4->df = base_header.ipv4->df;
-		ip_context.v4->last_ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
+		ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 	}
 	else
 	{
@@ -4366,7 +4360,7 @@ static int co_baseheader(struct c_context *const context,
 	uint8_t ttl_hopl;
 	int counter;
 	multi_ptr_t mptr;
-	WB_t ip_id;
+	uint16_t ip_id;
 	uint8_t *puchar;
 	int version;
 	bool ip_id_behavior_changed;
@@ -4406,7 +4400,7 @@ static int co_baseheader(struct c_context *const context,
 	{
 		version = IPV4;
 		assert( ip_context.v4->version == IPV4 );
-		ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
+		ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 		rohc_comp_debug(context, "payload_size = %d\n", payload_size);
 		ttl_hopl = base_header.ipv4->ttl_hopl;
 		tcp = (tcphdr_t*) ( base_header.ipv4 + 1 );
@@ -4415,7 +4409,7 @@ static int co_baseheader(struct c_context *const context,
 	{
 		version = IPV6;
 		assert( ip_context.v6->version == IPV6 );
-		ip_id.uint16 = 0; /* TODO: added to avoid warning, not the best way to handle the warning however */
+		ip_id = 0; /* TODO: added to avoid warning, not the best way to handle the warning however */
 		rohc_comp_debug(context, "payload_size = %d\n", payload_size);
 		ttl_hopl = base_header.ipv6->ttl_hopl;
 		tcp = (tcphdr_t*) ( base_header.ipv6 + 1 );
@@ -4487,25 +4481,25 @@ static int co_baseheader(struct c_context *const context,
 			(ip_context.v4->last_ip_id_behavior != ip_context.v4->ip_id_behavior);
 		if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
 		{
-			ip_id_hi9_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFF80) !=
-			                     (ip_id.uint16 & 0xFF80));
-			ip_id_hi11_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFFE0) !=
-			                      (ip_id.uint16 & 0xFFE0));
-			ip_id_hi12_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFFF0) !=
-			                      (ip_id.uint16 & 0xFFF0));
-			ip_id_hi13_changed = ((ip_context.v4->last_ip_id.uint16 & 0xFFF8) !=
-			                      (ip_id.uint16 & 0xFFF8));
+			ip_id_hi9_changed =
+				((ip_context.v4->last_ip_id & 0xFF80) != (ip_id & 0xFF80));
+			ip_id_hi11_changed =
+				((ip_context.v4->last_ip_id & 0xFFE0) != (ip_id & 0xFFE0));
+			ip_id_hi12_changed =
+				((ip_context.v4->last_ip_id & 0xFFF0) != (ip_id & 0xFFF0));
+			ip_id_hi13_changed =
+				((ip_context.v4->last_ip_id & 0xFFF8) != (ip_id & 0xFFF8));
 		}
 		else if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
 		{
-			ip_id_hi9_changed = ((ip_context.v4->last_ip_id.uint16 & 0x80FF) !=
-			                     (ip_id.uint16 & 0x80FF));
-			ip_id_hi11_changed = ((ip_context.v4->last_ip_id.uint16 & 0xE0FF) !=
-			                      (ip_id.uint16 & 0xE0FF));
-			ip_id_hi12_changed = ((ip_context.v4->last_ip_id.uint16 & 0xF0FF) !=
-			                      (ip_id.uint16 & 0xF0FF));
-			ip_id_hi13_changed = ((ip_context.v4->last_ip_id.uint16 & 0xF8FF) !=
-			                      (ip_id.uint16 & 0xF8FF));
+			ip_id_hi9_changed =
+				((ip_context.v4->last_ip_id & 0x80FF) != (ip_id & 0x80FF));
+			ip_id_hi11_changed =
+				((ip_context.v4->last_ip_id & 0xE0FF) != (ip_id & 0xE0FF));
+			ip_id_hi12_changed =
+				((ip_context.v4->last_ip_id & 0xF0FF) != (ip_id & 0xF0FF));
+			ip_id_hi13_changed =
+				((ip_context.v4->last_ip_id & 0xF8FF) != (ip_id & 0xF8FF));
 		}
 		else
 		{
@@ -5117,7 +5111,7 @@ static int co_baseheader(struct c_context *const context,
 		c_base_header.co_common->ip_id_indicator =
 		   c_optional_ip_id_lsb(context, &mptr, ip_context.v4->ip_id_behavior,
 		                        ip_context.v4->last_ip_id, ip_id, g_context->sn);
-		ip_context.v4->last_ip_id.uint16 = ip_id.uint16;
+		ip_context.v4->last_ip_id = ip_id;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = ip_context.v4->ip_id_behavior;
 		rohc_comp_debug(context, "size = %u, ip_id_indicator = %d, "
@@ -5739,7 +5733,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	uint32_t seq_number;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -5753,10 +5747,9 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
 	rohc_comp_debug(context, "code seq_1\n");
 
 	seq1->discriminator = 0x0a; /* '1010' */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq1->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq_number = rohc_ntoh32(tcp->seq_number) & 0xffff;
 	seq1->seq_number = rohc_hton16(seq_number);
 	seq1->msn = g_context->sn & 0xf;
@@ -5792,7 +5785,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
                                 seq_2_t *const seq2)
 {
 	struct c_generic_context *g_context;
-	WB_t ip_id;
+	uint16_t ip_id;
 	uint8_t ip_id_lsb;
 
 	assert(context != NULL);
@@ -5807,10 +5800,9 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
 	rohc_comp_debug(context, "code seq_2\n");
 
 	seq2->discriminator = 0x1a; /* '11010' */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	ip_id_lsb = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 7, 3,
-	                        ip_context.v4->last_ip_id, ip_id,
-	                        g_context->sn);
+	                        ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq2->ip_id1 = (ip_id_lsb >> 4) & 0x7;
 	seq2->ip_id2 = ip_id_lsb & 0x0f;
 	seq2->seq_number_scaled = c_lsb(context, 4, 7, tcp_context->seq_number,
@@ -5848,7 +5840,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
                                 seq_3_t *const seq3)
 {
 	struct c_generic_context *g_context;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -5862,10 +5854,9 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
 	rohc_comp_debug(context, "code seq_3\n");
 
 	seq3->discriminator = 0x09; /* '1001' */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq3->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq3->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq3->msn = g_context->sn & 0xf;
@@ -5901,7 +5892,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
                                 seq_4_t *const seq4)
 {
 	struct c_generic_context *g_context;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -5919,10 +5910,9 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
 	seq4->ack_number_scaled = c_lsb(context, 4, 3,
 	                                /*tcp_context->ack_number*/ 0,
 	                                tcp_context->ack_number_scaled);
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq4->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 3, 1,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq4->msn = g_context->sn & 0xf;
 	seq4->psh_flag = tcp->psh_flag;
 	seq4->header_crc = 0; /* for CRC computation */
@@ -5957,7 +5947,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	uint32_t seq_number;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -5971,10 +5961,9 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
 	rohc_comp_debug(context, "code seq_5\n");
 
 	seq5->discriminator = 0x08; /* '1000' */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq5->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq5->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq_number = rohc_ntoh32(tcp->seq_number) & 0xffff;
@@ -6012,7 +6001,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	uint8_t seq_number_scaled;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -6034,10 +6023,9 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
 	seq6->seq_number_scaled2 = seq_number_scaled & 0x01;
 
 	/* IP-ID */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq6->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 7, 3,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq6->ack_number = rohc_hton16(c_lsb(context, 16, 16383, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq6->msn = g_context->sn & 0xf;
@@ -6074,7 +6062,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	uint16_t window;
-	WB_t ip_id;
+	uint16_t ip_id;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -6097,10 +6085,9 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
 	seq7->window3 = window & 0x07;
 
 	/* IP-ID */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq7->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 5, 3,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 	seq7->ack_number = rohc_hton16(c_lsb(context, 16, 32767, tcp_context->ack_number,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq7->msn = g_context->sn & 0xf;
@@ -6141,7 +6128,7 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 	size_t comp_opts_len;
 	uint16_t ack_number;
 	uint16_t seq_number;
-	WB_t ip_id;
+	uint16_t ip_id;
 	bool is_ok;
 
 	assert(context != NULL);
@@ -6159,10 +6146,9 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 	seq8->discriminator = 0x0b; /* '1011' */
 
 	/* IP-ID */
-	ip_id.uint16 = rohc_ntoh16(ip.ipv4->ip_id);
+	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
 	seq8->ip_id = c_ip_id_lsb(context, ip_context.v4->ip_id_behavior, 4, 3,
-	                          ip_context.v4->last_ip_id, ip_id,
-	                          g_context->sn);
+	                          ip_context.v4->last_ip_id, ip_id, g_context->sn);
 
 	seq8->list_present = 0; /* options are set later */
 	seq8->header_crc = 0; /* for CRC computation */

@@ -154,7 +154,7 @@ typedef struct __attribute__((packed)) ipv4_context
 	uint8_t ttl_hopl;
 
 	uint8_t ip_id_behavior;
-	WB_t last_ip_id;
+	uint16_t last_ip_id;
 
 	uint32_t src_addr;
 	uint32_t dst_addr;
@@ -2009,9 +2009,9 @@ static int tcp_decode_dynamic_ip(struct d_context *const context,
 		if(ipv4_dynamic1->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
 		{
 			base_header.ipv4->ip_id = 0;
-			ip_context.v4->last_ip_id.uint16 = 0;
+			ip_context.v4->last_ip_id = 0;
 			rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
-			                  ip_context.v4->last_ip_id.uint16);
+			                  ip_context.v4->last_ip_id);
 			size = sizeof(ipv4_dynamic1_t);
 		}
 		else
@@ -2035,9 +2035,9 @@ static int tcp_decode_dynamic_ip(struct d_context *const context,
 			{
 				base_header.ipv4->ip_id = ipv4_dynamic2->ip_id;
 			}
-			ip_context.v4->last_ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
+			ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 			rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
-			                  ip_context.v4->last_ip_id.uint16);
+			                  ip_context.v4->last_ip_id);
 			size = sizeof(ipv4_dynamic2_t);
 		}
 		rohc_decomp_debug(context, "IP-ID = 0x%04x\n",
@@ -2124,9 +2124,9 @@ static int tcp_decode_irregular_ip(struct d_context *const context,
 			remain_data += sizeof(uint16_t);
 			rohc_decomp_debug(context, "read ip_id = 0x%04x (ip_id_behavior = %d)\n",
 			                  base_header.ipv4->ip_id, ip_context.v4->ip_id_behavior);
-			ip_context.v4->last_ip_id.uint16 = rohc_ntoh16(base_header.ipv4->ip_id);
+			ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 			rohc_decomp_debug(context, "new last IP-ID = 0x%04x\n",
-			                  ip_context.v4->last_ip_id.uint16);
+			                  ip_context.v4->last_ip_id);
 		}
 		if(is_innermost == 0)
 		{
@@ -4088,10 +4088,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	uint16_t msn;
 	size_t rohc_opts_len;
 	int size;
-	WB_t wb;
 	int ttl_irregular_chain_flag = 0;
 	int ip_inner_ecn;
-	WB_t ip_id;
+	uint16_t ip_id;
 	int ret;
 
 	size_t crc_type;
@@ -4833,7 +4832,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		                           co_common->ip_id_behavior,
 		                           co_common->ip_id_indicator,
 		                           ip_inner_context.v4->last_ip_id,
-		                           &ip_id.uint16, msn);
+		                           &ip_id, msn);
 		if(ret < 0)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
@@ -4842,7 +4841,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			goto error;
 		}
 		rohc_decomp_debug(context, "IP-ID = 0x%04x (%d bytes in packet)\n",
-		                  ip_id.uint16, ret);
+		                  ip_id, ret);
 		rohc_opts_data += ret;
 
 		/* URG pointer */
@@ -5009,20 +5008,15 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			case ROHC_PACKET_TCP_RND_3:
 			{
 				const rnd_3_t *const rnd_3 = (rnd_3_t *) packed_rohc_packet;
+				uint16_t enc_ack_num;
 
 				rohc_decomp_debug(context, "decode rnd_3 packet\n");
 
-#if WORDS_BIGENDIAN != 1
-				wb.uint8[1] = packed_rohc_packet[OFFSET_RND3_ACK_NUMBER >> 3] &
-				              lsb_masks[8 - (OFFSET_RND3_ACK_NUMBER & 0x07)];
-				wb.uint8[0] = packed_rohc_packet[(OFFSET_RND3_ACK_NUMBER >> 3) + 1];
-#else
-				wb.uint8[0] = packed_rohc_packet[OFFSET_RND3_ACK_NUMBER >> 3] &
-				              lsb_masks[8 - (OFFSET_RND3_ACK_NUMBER & 0x07)];
-				wb.uint8[1] = packed_rohc_packet[(OFFSET_RND3_ACK_NUMBER >> 3) + 1];
-#endif
+				enc_ack_num = (rnd_3->ack_number1 << 1) | rnd_3->ack_number2;
 				tcp->ack_number =
-				   rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),wb.uint16) );
+				   rohc_hton32(d_lsb(context, 15, 8191,
+				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                     enc_ack_num));
 				tcp->psh_flag = rnd_3->psh_flag;
 				break;
 			}
@@ -5058,42 +5052,33 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			{
 				const rnd_5_t *const rnd_5 = (rnd_5_t *) packed_rohc_packet;
 				uint32_t decoded_seq_number;
+				uint16_t enc_seq_num;
+				uint16_t enc_ack_num;
 
 				rohc_decomp_debug(context, "decode rnd_5 packet\n");
 
 				tcp->psh_flag = rnd_5->psh_flag;
-#if WORDS_BIGENDIAN != 1
-				wb.uint8[1] = (packed_rohc_packet[OFFSET_RND5_ACK_NUMBER >> 3] & 0x1f) << 1;
-				wb.uint8[1] |= packed_rohc_packet[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 7;
-				wb.uint8[0] = packed_rohc_packet[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 1;
-				wb.uint8[0] |= packed_rohc_packet[(OFFSET_RND5_ACK_NUMBER >> 3) + 2] >> 7;
-#else
-				wb.uint8[0] = (packed_rohc_packet[OFFSET_RND5_ACK_NUMBER >> 3] & 0x1f) << 1;
-				wb.uint8[0] |= packed_rohc_packet[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 7;
-				wb.uint8[1] = packed_rohc_packet[(OFFSET_RND5_ACK_NUMBER >> 3) + 1] << 1;
-				wb.uint8[1] |= packed_rohc_packet[(OFFSET_RND5_ACK_NUMBER >> 3) + 2] >> 7;
-#endif
 
 				/* decode sequence number from packet bits and context */
-				if(!rohc_decomp_tcp_decode_seq(decomp, context, wb.uint16,
+				enc_seq_num = (rnd_5->seq_number1 << 9) |
+				              (rnd_5->seq_number2 << 8) |
+				              rnd_5->seq_number3;
+				if(!rohc_decomp_tcp_decode_seq(decomp, context, enc_seq_num,
 				                               14, 8191, &decoded_seq_number))
 				{
 					goto error;
 				}
 				tcp->seq_number = rohc_hton32(decoded_seq_number);
 
-#if WORDS_BIGENDIAN != 1
-				wb.uint8[1] = packed_rohc_packet[OFFSET_RND5_SEQ_NUMBER >> 3] & 0x7F;
-				wb.uint8[0] = packed_rohc_packet[(OFFSET_RND5_SEQ_NUMBER >> 3) + 1] << 1;
-#else
-				wb.uint8[0] = packed_rohc_packet[OFFSET_RND5_SEQ_NUMBER >> 3] & 0x7F;
-				wb.uint8[1] = packed_rohc_packet[(OFFSET_RND5_SEQ_NUMBER >> 3) + 1] << 1;
-#endif
+				/* decode ack number from packet bits and context */
+				enc_ack_num = (rnd_5->ack_number1 << 8) | rnd_5->ack_number2;
 				tcp->ack_number =
-				   rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),wb.uint16) );
-				rohc_decomp_debug(context, "ack_number = 0x%x, uint16 = 0x%04x "
-				                  "(0x%02x 0x%02x)\n", rohc_ntoh32(tcp->ack_number),
-				                  wb.uint16, wb.uint8[0], wb.uint8[1]);
+				   rohc_hton32(d_lsb(context, 15, 8191,
+				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                     enc_ack_num));
+				rohc_decomp_debug(context, "ack_number = 0x%04x (encoded = "
+				                  "0x%04x)\n", rohc_ntoh32(tcp->ack_number),
+				                  enc_ack_num);
 				break;
 			}
 			case ROHC_PACKET_TCP_RND_6:
@@ -5192,9 +5177,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				rohc_decomp_debug(context, "decode seq_1 packet\n");
 
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 4, 3,
-				               ip_inner_context.v4->last_ip_id, seq_1->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    4, 3, ip_inner_context.v4->last_ip_id,
+				                    seq_1->ip_id, msn);
 
 				/* decode sequence number from packet bits and context */
 				encoded_seq_number = rohc_ntoh16(seq_1->seq_number);
@@ -5216,9 +5201,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				rohc_decomp_debug(context, "decode seq_2 packet\n");
 
 				ip_id_lsb = (seq_2->ip_id1 << 4) | seq_2->ip_id2;
-				ip_id.uint16 =
-					d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 7, 3,
-					            ip_inner_context.v4->last_ip_id, ip_id_lsb, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    7, 3, ip_inner_context.v4->last_ip_id,
+				                    ip_id_lsb, msn);
 				seq_number_scaled =
 					d_lsb(context, 4, 7, tcp_context->seq_number_scaled,
 					      seq_2->seq_number_scaled);
@@ -5232,9 +5217,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				rohc_decomp_debug(context, "decode seq_3 packet\n");
 
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 4, 3,
-				               ip_inner_context.v4->last_ip_id, seq_3->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    4, 3, ip_inner_context.v4->last_ip_id,
+				                    seq_3->ip_id, msn);
 				tcp->ack_number =
 				   rohc_hton32(d_lsb(context, 16, 16383,
 				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
@@ -5267,9 +5252,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				                  "0x%x\n", ack_number_scaled,
 				                  tcp_context->ack_number_residue,
 				                  rohc_ntoh32(tcp->ack_number));
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 3, 1,
-				               ip_inner_context.v4->last_ip_id, seq_4->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    3, 1, ip_inner_context.v4->last_ip_id,
+				                    seq_4->ip_id, msn);
 				tcp->psh_flag = seq_4->psh_flag;
 				break;
 			}
@@ -5280,9 +5265,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				uint32_t decoded_seq_number;
 
 				rohc_decomp_debug(context, "decode seq_5 packet\n");
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 4, 3,
-				               ip_inner_context.v4->last_ip_id, seq_5->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    4, 3, ip_inner_context.v4->last_ip_id,
+				                    seq_5->ip_id, msn);
 				tcp->ack_number =
 				   rohc_hton32(d_lsb(context, 16, 16383,
 				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
@@ -5313,9 +5298,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					d_lsb(context, 4, 7, tcp_context->seq_number_scaled,
 					      seq_scaled_lsb);
 				seq_number_scaled_used = 1;
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 7, 3,
-				               ip_inner_context.v4->last_ip_id, seq_6->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    7, 3, ip_inner_context.v4->last_ip_id,
+				                    seq_6->ip_id, msn);
 				tcp->ack_number =
 				   rohc_hton32(d_lsb(context, 16, 16383,
 				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
@@ -5333,9 +5318,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				window = (seq_7->window1 << 11) | (seq_7->window2 << 3) |
 				         seq_7->window3;
 				tcp->window = rohc_hton16( d_lsb(context, 15,16383,rohc_ntoh16(tcp_context->old_tcphdr.window),window) );
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 5, 3,
-				               ip_inner_context.v4->last_ip_id, seq_7->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    5, 3, ip_inner_context.v4->last_ip_id,
+				                    seq_7->ip_id, msn);
 				tcp->ack_number =
 				   rohc_hton32(d_lsb(context, 16, 32767,
 				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
@@ -5349,11 +5334,13 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				const uint8_t *const rohc_opts_data =
 					packed_rohc_packet + sizeof(seq_8_t);
 				uint32_t decoded_seq_number;
+				uint16_t enc_ack_num;
+				uint16_t enc_seq_num;
 
 				rohc_decomp_debug(context, "decode seq_8 packet\n");
-				ip_id.uint16 =
-				   d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior, 4, 3,
-				               ip_inner_context.v4->last_ip_id, seq_8->ip_id, msn);
+				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
+				                    4, 3, ip_inner_context.v4->last_ip_id,
+				                    seq_8->ip_id, msn);
 				tcp->psh_flag = seq_8->psh_flag;
 				ttl_hopl = d_lsb(context, 3, 3, ip_inner_context.vx->ttl_hopl,
 				                 seq_8->ttl_hopl);
@@ -5373,34 +5360,21 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				}
 				rohc_decomp_debug(context, "ecn_used = %d\n", seq_8->ecn_used);
 				tcp_context->ecn_used = seq_8->ecn_used;
-#if WORDS_BIGENDIAN != 1
-				wb.uint8[1] = packed_rohc_packet[OFFSET_SEQ8_ACK_NUMBER >> 3] &
-				              lsb_masks[8 - (OFFSET_SEQ8_ACK_NUMBER & 0x07)];
-				wb.uint8[0] = packed_rohc_packet[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1];
-#else
-				wb.uint8[0] = packed_rohc_packet[OFFSET_SEQ8_ACK_NUMBER >> 3] &
-				              lsb_masks[ 8 - (OFFSET_SEQ8_ACK_NUMBER & 0x07) ];
-				wb.uint8[1] = packed_rohc_packet[(OFFSET_SEQ8_ACK_NUMBER >> 3) + 1];
-#endif
+
+				/* decode ack number from packet bits and context */
+				enc_ack_num = (seq_8->ack_number1 << 8) | seq_8->ack_number2;
 				tcp->ack_number =
-				   rohc_hton32( d_lsb(context, 15,8191,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),wb.uint16) );
-				rohc_decomp_debug(context, "ack_number = 0x%02x 0x%02x => "
-				                  "0x%04x, ack_number = 0x%x\n", wb.uint8[0],
-				                  wb.uint8[1], wb.uint16, rohc_ntoh32(tcp->ack_number));
+				   rohc_hton32(d_lsb(context, 15, 8191,
+				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+				                     enc_ack_num));
+				rohc_decomp_debug(context, "ack_number = 0x%04x (encoded = "
+				                  "0x%04x)\n", rohc_ntoh32(tcp->ack_number),
+				                  enc_ack_num);
 				tcp->rsf_flags = rsf_index_dec(seq_8->rsf_flags);
 
-#if WORDS_BIGENDIAN != 1
-				wb.uint8[1] = packed_rohc_packet[OFFSET_SEQ8_SEQ_NUMBER >> 3] &
-				              lsb_masks[ 8 - (OFFSET_SEQ8_SEQ_NUMBER & 0x07) ];
-				wb.uint8[0] = packed_rohc_packet[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1];
-#else
-				wb.uint8[0] = packed_rohc_packet[OFFSET_SEQ8_SEQ_NUMBER >> 3] &
-				              lsb_masks[ 8 - (OFFSET_SEQ8_SEQ_NUMBER & 0x07) ];
-				wb.uint8[1] = packed_rohc_packet[(OFFSET_SEQ8_SEQ_NUMBER >> 3) + 1];
-#endif
-
 				/* decode sequence number from packet bits and context */
-				if(!rohc_decomp_tcp_decode_seq(decomp, context, wb.uint16,
+				enc_seq_num = (seq_8->seq_number1 << 8) | seq_8->seq_number2;
+				if(!rohc_decomp_tcp_decode_seq(decomp, context, enc_seq_num,
 				                               14, 8191, &decoded_seq_number))
 				{
 					goto error;
@@ -5501,13 +5475,13 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					             "RND_%d\n", packet_type - ROHC_PACKET_TCP_RND_1 + 1);
 					goto error;
 				}
-				base_header_inner.ipv4->ip_id = rohc_hton16(ip_id.uint16);
-				ip_inner_context.v4->last_ip_id.uint16 = ip_id.uint16;
+				base_header_inner.ipv4->ip_id = rohc_hton16(ip_id);
+				ip_inner_context.v4->last_ip_id = ip_id;
 				break;
 			}
 			case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
 			{
-				WB_t swapped_ip_id;
+				const uint16_t swapped_ip_id = swab16(ip_id);
 
 				rohc_decomp_debug(context, "IP-ID follows a swapped sequential "
 										"behavior\n");
@@ -5521,10 +5495,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					goto error;
 				}
 
-				swapped_ip_id.uint8[0] = ip_id.uint8[1];
-				swapped_ip_id.uint8[1] = ip_id.uint8[0];
-				base_header_inner.ipv4->ip_id = rohc_hton16(swapped_ip_id.uint16);
-				ip_inner_context.v4->last_ip_id.uint16 = swapped_ip_id.uint16;
+				base_header_inner.ipv4->ip_id = rohc_hton16(swapped_ip_id);
+				ip_inner_context.v4->last_ip_id = swapped_ip_id;
 				break;
 			}
 			case IP_ID_BEHAVIOR_RANDOM:
@@ -5537,7 +5509,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			{
 				rohc_decomp_debug(context, "IP-ID follows a zero behavior\n");
 				base_header_inner.ipv4->ip_id = 0;
-				ip_inner_context.v4->last_ip_id.uint16 = 0;
+				ip_inner_context.v4->last_ip_id = 0;
 				break;
 			}
 			default:
