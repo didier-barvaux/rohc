@@ -177,8 +177,11 @@ int c_optional32(const int indicator,
                  uint8_t *const rohc_data)
 	__attribute__((warn_unused_result, nonnull(3)));
 
-// RFC4996 page 47
-void c_lsb_7_31( multi_ptr_t *pmptr, uint32_t value );
+/* lsb_7_or_31 encoding method */
+int c_lsb_7_or_31(const uint32_t context_value,
+                  const uint32_t packet_value,
+                  uint8_t *const rohc_data)
+	__attribute__((warn_unused_result, nonnull(3)));
 
 /* RFC4996 page 49 */
 void c_field_scaling(uint32_t *const scaled_value,

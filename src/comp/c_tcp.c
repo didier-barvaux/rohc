@@ -2344,7 +2344,8 @@ error:
  * @param protocol       The IPv6 protocol option
  * @param base_header    The IP header
  * @param packet_size    The size of packet
- * @return               The new pointer in the rohc-packet-under-build buffer
+ * @return               The new pointer in the rohc-packet-under-build buffer,
+ *                       NULL if a problem occurs
  */
 static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const context,
 																	  ip_context_ptr_t ip_context,
@@ -2360,6 +2361,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const con
 #endif
 	uint32_t sequence_number;
 	int size;
+	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -2385,34 +2387,32 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const con
 			if(base_header.ip_gre_opt->s_flag != 0)
 			{
 				sequence_number = rohc_ntoh32(base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag]);
-				if( ( sequence_number & 0xFFFFFF80 ) ==
-				    ( ip_context.v6_gre_option->sequence_number & 0xFFFFFF80 ) )
+				ret = c_lsb_7_or_31(ip_context.v6_gre_option->sequence_number,
+				                    sequence_number, mptr.uint8);
+				if(ret < 0)
 				{
-					// discriminator =:= '0'
-					*(mptr.uint8++) = sequence_number & 0x7F;
+					rohc_warning(context->compressor, ROHC_TRACE_COMP,
+					             context->profile->id,
+					             "failed to code lsb_7_or_31(sequence_number)\n");
+					goto error;
 				}
-				else
-				{
-					// discriminator =:= '1'
-					WRITE32_TO_MPTR(mptr, rohc_hton32(0x80000000 | sequence_number));
-				}
+				mptr.uint8 += ret;
 				ip_context.v6_gre_option->sequence_number =
 				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
 			}
 			break;
 		case ROHC_IPPROTO_AH:
 			sequence_number = rohc_ntoh32(base_header.ip_ah_opt->sequence_number);
-			if( ( sequence_number & 0xFFFFFF80 ) ==
-			    ( ip_context.v6_ah_option->sequence_number & 0xFFFFFF80 ) )
+			ret = c_lsb_7_or_31(ip_context.v6_ah_option->sequence_number,
+			                    sequence_number, mptr.uint8);
+			if(ret < 0)
 			{
-				// discriminator =:= '0'
-				*(mptr.uint8++) = sequence_number & 0x7F;
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "failed to code lsb_7_or_31(sequence_number)\n");
+				goto error;
 			}
-			else
-			{
-				// discriminator =:= '1'
-				WRITE32_TO_MPTR(mptr, rohc_hton32(0x80000000 | sequence_number));
-			}
+			mptr.uint8 += ret;
 			ip_context.v6_ah_option->sequence_number = sequence_number;
 			size = (base_header.ip_ah_opt->length - 1) << 3;
 			memcpy(mptr.uint8,base_header.ip_ah_opt->auth_data,size);
@@ -2429,6 +2429,9 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const con
 #endif
 
 	return mptr.uint8;
+
+error:
+	return NULL;
 }
 
 
@@ -4342,13 +4345,20 @@ static int code_CO_packet(struct c_context *const context,
 					                                       mptr, protocol,
 					                                       base_header,
 					                                       packet_size);
+					if(mptr.uint8 == NULL)
+					{
+						rohc_warning(context->compressor, ROHC_TRACE_COMP,
+						             context->profile->id, "failed to encode the "
+						             "IPv6 extension part of the irregular chain\n");
+						goto error;
+					}
 					protocol = base_header.ipv6_opt->next_header;
 					base_header.uint8 += ip_context.v6_option->option_length;
 					ip_context.uint8 += ip_context.v6_option->context_length;
 				}
 				break;
 			default:
-				return -1;
+				goto error;
 		}
 
 	}
