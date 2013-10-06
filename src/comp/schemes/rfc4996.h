@@ -171,8 +171,12 @@ unsigned int ROHC_EXPORT variable_length_32_enc(multi_ptr_t *const pmptr,
                                                 const uint32_t value)
 	__attribute__((nonnull(1), warn_unused_result));
 
-// RFC4996 page 47
-unsigned int c_optional32( multi_ptr_t *pmptr, uint32_t context_value, uint32_t value );
+/* optional32 encoding method */
+int c_optional32(const int indicator,
+                 const uint32_t packet_value,
+                 uint8_t *const rohc_data)
+	__attribute__((warn_unused_result, nonnull(3)));
+
 // RFC4996 page 47
 void c_lsb_7_31( multi_ptr_t *pmptr, uint32_t value );
 

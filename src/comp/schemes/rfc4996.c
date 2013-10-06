@@ -324,20 +324,29 @@ unsigned int variable_length_32_enc(multi_ptr_t *const pmptr,
  *
  * See RFC4996 page 47
  *
- * @param pmptr            The destination for the compressed value
- * @param context_value    The context value
- * @param value            The value to compress
- * @return                 Indicator 1 if compressed, 0 if same than context value
+ * @param indicator     The indicator: 1 if present, 0 if not
+ * @param packet_value  The packet value
+ * @param rohc_data     The compressed value
+ * @return              The number of ROHC bytes written,
+ *                      -1 if a problem occurs
  */
-
-unsigned int c_optional32( multi_ptr_t *pmptr, uint32_t context_value, uint32_t value )
+int c_optional32(const int indicator,
+                 const uint32_t packet_value,
+                 uint8_t *const rohc_data)
 {
-	if(value == context_value)
+	size_t length;
+
+	if(indicator == 0)
 	{
-		return 0;
+		length = 0;
 	}
-	WRITE32_TO_PMPTR(pmptr,value);
-	return 1;
+	else
+	{
+		memcpy(rohc_data, &packet_value, sizeof(uint32_t));
+		length = sizeof(uint32_t);
+	}
+
+	return length;
 }
 
 

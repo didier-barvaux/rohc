@@ -1972,6 +1972,14 @@ static int c_tcp_encode(struct c_context *const context,
 							                                    mptr, protocol,
 							                                    base_header,
 							                                    packet_size);
+							if(mptr.uint8 == NULL)
+							{
+								rohc_warning(context->compressor, ROHC_TRACE_COMP,
+								             context->profile->id, "failed to code "
+								             "the IPv6 extension part of the static "
+								             "chain\n");
+								goto error;
+							}
 							protocol = base_header.ipv6_opt->next_header;
 							base_header.uint8 += ip_context.v6_option->option_length;
 							ip_context.uint8 += ip_context.v6_option->context_length;
@@ -2032,6 +2040,13 @@ static int c_tcp_encode(struct c_context *const context,
 						                                     mptr, protocol,
 						                                     base_header,
 						                                     packet_size);
+						if(mptr.uint8 == NULL)
+						{
+							rohc_warning(context->compressor, ROHC_TRACE_COMP,
+							             context->profile->id, "failed to code the "
+							             "IPv6 extension part of the dynamic chain\n");
+							goto error;
+						}
 						protocol = base_header.ipv6_opt->next_header;
 						base_header.uint8 += ip_context.v6_option->option_length;
 						ip_context.uint8 += ip_context.v6_option->context_length;
@@ -2111,7 +2126,8 @@ error:
  * @param protocol       The IPv6 protocol option
  * @param base_header    The IP header
  * @param packet_size    The size of packet
- * @return               The new pointer in the rohc-packet-under-build buffer
+ * @return               The new pointer in the rohc-packet-under-build buffer,
+ *                       NULL if a problem occurs
  */
 static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const context,
 																  ip_context_ptr_t ip_context,
@@ -2123,6 +2139,7 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const contex
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
 	uint8_t size;
+	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -2164,13 +2181,17 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const contex
 			mptr.ip_gre_opt_static->padding = 0;
 			size = sizeof(ip_gre_opt_static_t);
 
-			if(mptr.ip_gre_opt_static->k_flag != 0)
+			ret = c_optional32(base_header.ip_gre_opt->k_flag,
+			                   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag],
+			                   mptr.ip_gre_opt_static->options);
+			if(ret < 0)
 			{
-				memcpy(mptr.ip_gre_opt_static->options,
-				       &base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag],
-				       sizeof(uint32_t));
-				size += sizeof(uint32_t);
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id,
+				             "failed to encode optional32(key)\n");
+				goto error;
 			}
+			size += sizeof(uint32_t);
 			break;
 		case ROHC_IPPROTO_DSTOPTS:  // IPv6 destination options
 			mptr.ip_dest_opt_static->length = base_header.ipv6_opt->length;
@@ -2205,6 +2226,9 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const contex
 #endif
 
 	return mptr.uint8 + size;
+
+error:
+	return NULL;
 }
 
 
@@ -2217,7 +2241,8 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const contex
  * @param protocol       The IPv6 protocol option
  * @param base_header    The IP header
  * @param packet_size    The size of packet
- * @return               The new pointer in the rohc-packet-under-build buffer
+ * @return               The new pointer in the rohc-packet-under-build buffer,
+ *                       NULL if a problem occurs
  */
 static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const context,
 																	ip_context_ptr_t ip_context,
@@ -2229,6 +2254,7 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const conte
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
 	int size;
+	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -2262,12 +2288,22 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const conte
 				size += sizeof(uint16_t);
 			}
 			// sequence_number =:= optional_32(s_flag.UVALUE)
+			ret = c_optional32(base_header.ip_gre_opt->s_flag,
+			                   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag],
+			                   mptr.uint8);
+			if(ret < 0)
+			{
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "failed to encode "
+				             "optional32(sequence_number)\n");
+				goto error;
+			}
+			mptr.uint8 += ret;
+			size += ret;
 			if(base_header.ip_gre_opt->s_flag != 0)
 			{
 				ip_context.v6_gre_option->sequence_number =
 				   base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag];
-				WRITE32_TO_MPTR(mptr,base_header.ip_gre_opt->datas[base_header.ip_gre_opt->c_flag]);
-				size += sizeof(uint32_t);
 			}
 			mptr.uint8 -= size;
 			break;
@@ -2293,6 +2329,9 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const conte
 #endif
 
 	return mptr.uint8 + size;
+
+error:
+	return NULL;
 }
 
 
