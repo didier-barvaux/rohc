@@ -3113,37 +3113,70 @@ error:
 /**
  * @brief Calculate the size of TimeStamp compressed TCP option
  *
- * @param ptr   Pointer to the compressed value
- * @return      Return the size of the compressed TCP option
+ * @param context      The decompression context
+ * @param rohc_data    The remaining ROHC data
+ * @param rohc_length  The length (in bytes) of the remaining ROHC data
+ * @return             The length (in bytes) of the compressed TCP option,
+ *                     -1 in case of problem
  */
-static int d_size_ts_lsb(const uint8_t *const ptr)
+static int d_size_ts_lsb(const struct d_context *const context,
+                         const uint8_t *const rohc_data,
+                         const size_t rohc_length)
 {
-	if(*ptr & 0x80)
+	size_t lsb_len;
+
+	/* enough data for the discriminator byte? */
+	if(rohc_length < 1)
 	{
-		if(*ptr & 0x40)
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id,
+		             "remaining ROHC data too small (%zu bytes) for the "
+		             "LSB-encoded TCP TimeStamp value\n", rohc_length);
+		goto error;
+	}
+
+	if(rohc_data[0] & 0x80)
+	{
+		if(rohc_data[0] & 0x40)
 		{
-			if(*ptr & 0x20)
+			if(rohc_data[0] & 0x20)
 			{
 				// Discriminator '111'
-				return 4;
+				lsb_len = 4;
 			}
 			else
 			{
 				// Discriminator '110'
-				return 3;
+				lsb_len = 3;
 			}
 		}
 		else
 		{
 			// Discriminator '10'
-			return 2;
+			lsb_len = 2;
 		}
 	}
 	else
 	{
 		// Discriminator '0'
-		return 1;
+		lsb_len = 1;
 	}
+
+	/* enough data for the full LSB field? */
+	if(rohc_length < lsb_len)
+	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id,
+		             "remaining ROHC data too small (%zu bytes) for the "
+		             "%zu-byte LSB-encoded TCP TimeStamp value\n", rohc_length,
+		             lsb_len);
+		goto error;
+	}
+
+	return lsb_len;
+
+error:
+	return -1;
 }
 
 
@@ -3342,39 +3375,70 @@ error:
  * See RFC6846 page 67
  * (and RFC2018 for Selective Acknowledgement option)
  *
- * @param ptr    Pointer to the compressed sack field value
- * @return       The size (in octets) of the compressed value
+ * @param context      The decompression context
+ * @param rohc_data    The remaining ROHC data to decode
+ * @param rohc_length  The length (in bytes) of the remaining ROHC data
+ * @return             The size (in bytes) of the compressed value,
+ *                     -1 in case of problem
  */
-static int d_sack_var_length_size_dec(const uint8_t *ptr)
+static int d_sack_var_length_size_dec(const struct d_context *const context,
+                                      const uint8_t *const rohc_data,
+                                      const size_t rohc_length)
 {
-	int len;
+	size_t block_len;
 
-	if(((*ptr) & 0x80) == 0)
+	/* enough data for discriminator? */
+	if(rohc_length < 1)
+	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id, "remaining ROHC data too small "
+		             "(%zu bytes) for the discriminator of SACK block_start or "
+		             "SACK block_end\n", rohc_length);
+		goto error;
+	}
+
+	if((rohc_data[0] & 0x80) == 0)
 	{
 		/* discriminator '0' */
-		len = 2;
+		block_len = 2;
 	}
-	else if(((*ptr) & 0x40) == 0)
+	else if((rohc_data[0] & 0x40) == 0)
 	{
 		/* discriminator '10' */
-		len = 3;
+		block_len = 3;
 	}
-	else if(((*ptr) & 0x20) == 0)
+	else if((rohc_data[0] & 0x20) == 0)
 	{
 		/* discriminator '110' */
-		len = 4;
+		block_len = 4;
 	}
-	else if((*ptr) == 0xff)
+	else if(rohc_data[0] == 0xff)
 	{
 		/* discriminator '11111111' */
-		len = 5;
+		block_len = 5;
 	}
 	else
 	{
-		len = -1;
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id, "invalid discriminator (%u) for the "
+		             "SACK block_start or SACK block_end\n", rohc_data[0]);
+		block_len = -1;
 	}
 
-	return len;
+	/* enough data for the whole compressed data? */
+	if(rohc_length < block_len)
+	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id, "remaining ROHC data too small "
+		             "(%zu bytes) for the %zu-byte SACK block_start or SACK "
+		             "block_end\n", rohc_length, block_len);
+		goto error;
+	}
+
+	return block_len;
+
+error:
+	return -1;
 }
 
 
@@ -3384,28 +3448,46 @@ static int d_sack_var_length_size_dec(const uint8_t *ptr)
  * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
- * @param ptr          Pointer to the compressed sack block
- * @return             The size (in octets) of the compressed SACK block,
+ * @param context      The decompression context
+ * @param rohc_data    The remaining ROHC data to decode
+ * @param rohc_length  The length (in bytes) of the remaining ROHC data
+ * @return             The size (in bytes) of the compressed value,
  *                     -1 in case of problem
  */
-static int d_sack_block_size(const uint8_t *ptr)
+static int d_sack_block_size(const struct d_context *const context,
+                             const uint8_t *const rohc_data,
+                             const size_t rohc_length)
 {
-	int size;
+	const uint8_t *remain_data = rohc_data;
+	size_t remain_len = rohc_length;
+	size_t size = 0;
+	int ret;
 
 	/* decode block start */
-	size = d_sack_var_length_size_dec(ptr);
-	if(size < 0)
+	ret = d_sack_var_length_size_dec(context, remain_data, remain_len);
+	if(ret < 0)
 	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id, "failed to decode the TCP SACK "
+		             "block_start\n");
 		goto error;
 	}
-	ptr += size;
+	remain_data += ret;
+	remain_len -= ret;
+	size += ret;
 
 	/* decode block end */
-	size += d_sack_var_length_size_dec(ptr);
-	if(size < 0)
+	ret = d_sack_var_length_size_dec(context, remain_data, remain_len);
+	if(ret < 0)
 	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+		             context->profile->id, "failed to decode the TCP SACK "
+		             "block_end\n");
 		goto error;
 	}
+	remain_data += ret;
+	remain_len -= ret;
+	size += ret;
 
 	return size;
 
@@ -3420,29 +3502,43 @@ error:
  * See RFC6846 page 68
  * (and RFC2018 for Selective Acknowledgement option)
  *
- * @param context            The decompression context
- * @param ptr                Pointer to the compressed SACK TCP option
- * @param uncompressed_size  Pointer to the uncompressed TCP option size
- * @return                   The size (in octets) of the compressed SACK TCP
- *                           option, -1 in case of problem
+ * @param context      The decompression context
+ * @param rohc_data    The remaining ROHC data to decode
+ * @param rohc_length  The length (in bytes) of the remaining ROHC data
+ * @param uncomp_len   The length (in bytes) of the uncompressed TCP option
+ * @return             The size (in bytes) of the compressed value,
+ *                     -1 in case of problem
  */
 static int d_tcp_size_opt_sack(const struct d_context *const context,
-                               const uint8_t *ptr,
-                               uint16_t *uncompressed_size)
+                               const uint8_t *const rohc_data,
+                               const size_t rohc_length,
+                               uint16_t *const uncomp_len)
 {
+	const uint8_t *remain_data;
+	size_t remain_len;
 	uint8_t discriminator;
-	int size = 0;
-	int i;
+	size_t size = 0;
+	size_t i;
 
 	assert(context != NULL);
+	assert(rohc_data != NULL);
+	assert(uncomp_len != NULL);
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "next 16 bytes starting from the "
-	                 "compressed TCP SACK option", ptr, 16);
+	remain_data = rohc_data;
+	remain_len = rohc_length;
 
 	/* parse discriminator */
-	discriminator = *ptr;
-	ptr++;
+	if(remain_len < 1)
+	{
+		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		             "remaining ROHC data too small (%zu bytes) for the "
+		             "discriminator of the compressed TCP SACK option\n",
+		             remain_len);
+		goto error;
+	}
+	discriminator = remain_data[0];
+	remain_data++;
+	remain_len--;
 	size++;
 	if(discriminator > 4)
 	{
@@ -3453,19 +3549,20 @@ static int d_tcp_size_opt_sack(const struct d_context *const context,
 
 	for(i = 0; i < discriminator; i++)
 	{
-		const int block_len = d_sack_block_size(ptr);
+		const int block_len = d_sack_block_size(context, remain_data, remain_len);
 		if(block_len < 0)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 			             context->profile->id, "failed to determine the length "
-			             " of SACK block #%d\n", i + 1);
+			             " of SACK block #%zu\n", i + 1);
 			goto error;
 		}
+		remain_data += block_len;
+		remain_len -= block_len;
 		size += block_len;
-		ptr += block_len;
 	}
 
-	rohc_decomp_debug(context, "TCP SACK option is compressed on %d bytes\n",
+	rohc_decomp_debug(context, "TCP SACK option is compressed on %zu bytes\n",
 	                  size);
 
 	return size;
@@ -3514,16 +3611,18 @@ static const uint8_t * d_tcp_opt_generic(struct d_tcp_context *tcp_context,
  *
  * See RFC4996 page 67
  *
- * @param tcp_context        The specific TCP context
- * @param ptr                Pointer to the compressed TCP option
- * @param uncompressed_size  Pointer to the uncompressed TCP option size
- * @return                   Pointer to the next compressed value
+ * @param tcp_context  The specific TCP context
+ * @param rohc_data    The remaining ROHC data
+ * @param rohc_length  The length (in bytes) of the remaining ROHC data
+ * @param uncomp_len   The length (in bytes) of the uncompressed TCP option
+ * @return             The number of ROHC bytes parsed
  */
 static int d_tcp_size_opt_generic(struct d_tcp_context *tcp_context,
-                                  const uint8_t *ptr,
-                                  uint16_t *uncompressed_size)
+                                  const uint8_t *const rohc_data,
+                                  const size_t rohc_length,
+                                  uint16_t *const uncomp_len)
 {
-	int size = 0;
+	size_t size = 0;
 
 	/* to be completed */
 
@@ -3833,6 +3932,7 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
 	const uint8_t *items;
+	size_t items_max_len;
 	uint8_t present;
 	uint8_t PS;
 	uint8_t opt_idx;
@@ -3889,6 +3989,7 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 	                 "options", data, xi_len);
 	comp_size += xi_len;
 	items = data + xi_len;
+	items_max_len = data_len - comp_size;
 
 	for(i = 0; m != 0; i++, m--)
 	{
@@ -3944,32 +4045,64 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
 					(*uncomp_len) += TCP_OLEN_TIMESTAMP;
-					j = d_size_ts_lsb(items);
+					j = d_size_ts_lsb(context, items, items_max_len);
+					if(j < 0)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to determine "
+						             "the length of the compressed TCP Timestamp "
+						             "option\n");
+						goto error;
+					}
 					items += j;
+					items_max_len -= j;
 					comp_opt_len += j;
-					j = d_size_ts_lsb(items);
+					j = d_size_ts_lsb(context, items, items_max_len);
+					if(j < 0)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to determine "
+						             "the length of the compressed TCP Timestamp "
+						             "option\n");
+						goto error;
+					}
 					items += j;
+					items_max_len -= j;
 					comp_opt_len += j;
 					break;
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
 					(*uncomp_len) += TCP_OLEN_SACK_PERMITTED;
 					break;
 				case TCP_INDEX_SACK:  // SACK see RFC2018
-					j = d_tcp_size_opt_sack(context, items, uncomp_len);
+					j = d_tcp_size_opt_sack(context, items, items_max_len,
+					                        uncomp_len);
 					if(j < 0)
 					{
 						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 						             context->profile->id, "failed to determine "
-						             "the length of compressed TCP SACK option\n");
+						             "the length of the compressed TCP SACK "
+						             "option\n");
+						goto error;
 					}
 					items += j;
+					items_max_len -= j;
 					comp_opt_len += j;
 					break;
 				default:  // Generic options
 					rohc_decomp_debug(context, "TCP option with index %u not "
 					                  "handled\n", opt_idx);
-					j = d_tcp_size_opt_generic(tcp_context, items, uncomp_len);
+					j = d_tcp_size_opt_generic(tcp_context, items, items_max_len,
+					                           uncomp_len);
+					if(j < 0)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to determine "
+						             "the length of the compressed TCP generic "
+						             "option\n");
+						goto error;
+					}
 					items += j;
+					items_max_len -= j;
 					comp_opt_len += j;
 					break;
 			}
@@ -4074,7 +4207,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            const rohc_packet_t packet_type,
                            unsigned char *dest)
 {
-	unsigned char packed_rohc_packet[5000]; // TODO: change that
+	unsigned char *packed_rohc_packet = malloc(5000); // TODO: change that
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
 	ip_context_ptr_t ip_inner_context;
@@ -5647,9 +5780,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	rohc_stats_add(&context->header_16_uncompressed, uncomp_header_len);
 #endif
 
+	free(packed_rohc_packet);
 	return (uncomp_header_len + payload_len);
 
 error:
+	free(packed_rohc_packet);
 	return ROHC_ERROR;
 }
 
