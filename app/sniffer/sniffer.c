@@ -274,6 +274,7 @@ int main(int argc, char *argv[])
 	enabled_profiles[ROHC_PROFILE_IP] = 1;
 	enabled_profiles[0x0005] = -1;
 	enabled_profiles[ROHC_PROFILE_TCP] = 1;
+	enabled_profiles[0x0007] = -1;
 	enabled_profiles[ROHC_PROFILE_UDPLITE] = 1;
 
 	/* no traces at the moment */
