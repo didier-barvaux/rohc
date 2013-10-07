@@ -5739,8 +5739,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest,
 	                 (((unsigned char *) tcp) - dest) + size);
 
-	rohc_decomp_debug(context, "uncomp_header_len = %zu (0x%x)\n",
-	                  uncomp_header_len, uncomp_header_len);
+	rohc_decomp_debug(context, "uncomp_header_len = %zu\n",
+	                  uncomp_header_len);
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
