@@ -37,23 +37,6 @@ extern unsigned int ROHC_EXPORT lsb_masks[];
 extern unsigned int ROHC_EXPORT lsb_xor_masks[];
 
 
-
-// TEST
-#if defined(__arm__) || defined(__ARM_EABI__)
-
-typedef struct __attribute__((packed))
-{
-	uint16_t uint16;
-} unaligned_uint16_t;
-
-typedef struct __attribute__((packed))
-{
-	uint32_t uint32;
-} unaligned_uint32_t;
-
-#endif
-
-
 /**
  * @brief Define union of different compressed datas pointers
  */
@@ -64,10 +47,6 @@ typedef union
 	uint16_t *uint16;
 	uint32_t *uint32;
 
-#if defined(__arm__) || defined(__ARM_EABI__)
-	unaligned_uint16_t *ua16;
-	unaligned_uint32_t *ua32;
-#endif
 	ip_opt_static_t *ip_opt_static;
 	ip_opt_dynamic_t *ip_opt_dynamic;
 
