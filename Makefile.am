@@ -98,3 +98,7 @@ TESTS_CODE_COVERAGE = test/report_code_coverage.sh
 endif
 TESTS = $(TESTS_CODE_COVERAGE)
 
+distclean-local:
+	$(RM) output.zcov
+	$(RM) -r coverage-report/
+
