@@ -3055,20 +3055,20 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						break;
 					case TCP_OPT_TIMESTAMP:
 					{
-						uint32_t ts;
-						uint32_t ts_reply;
+						const struct tcp_option_timestamp *const opt_ts =
+							(struct tcp_option_timestamp *) (options + 2);
 
-						memcpy(&ts, options + 2, sizeof(uint32_t));
-						memcpy(&ts_reply, options + 6, sizeof(uint32_t));
 						rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-						                rohc_ntoh32(ts), rohc_ntoh32(ts_reply));
-						memcpy(&tcp_context->tcp_option_timestamp, options + 2,
-								 sizeof(struct tcp_option_timestamp));
+						                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
+
+						tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
+						tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
 						tcp_context->tcp_option_timestamp_init = true;
+
 						c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
-						           rohc_ntoh32(ts));
+						           rohc_ntoh32(opt_ts->ts));
 						c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
-						           rohc_ntoh32(ts_reply));
+						           rohc_ntoh32(opt_ts->ts_reply));
 						break;
 					}
 					default:
@@ -3124,13 +3124,16 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 						                        tcp_context->tcp_option_sack_length);
 						break;
 					case TCP_OPT_TIMESTAMP:
+					{
+						const struct tcp_option_timestamp *const opt_ts =
+							(struct tcp_option_timestamp *) (options + 2);
+
 						rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-						                rohc_ntoh32(*(uint32_t*)(options + 2)),
-						                rohc_ntoh32(*(uint32_t*)(options + 6)));
-						compare_value = memcmp(&tcp_context->tcp_option_timestamp,
-													  options + 2,
-													  sizeof(struct tcp_option_timestamp));
+						                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
+						compare_value = (tcp_context->tcp_option_timestamp.ts != opt_ts->ts);
+						compare_value += (tcp_context->tcp_option_timestamp.ts_reply != opt_ts->ts_reply);
 						break;
+					}
 					default:
 						pValue = tcp_context->tcp_options_values +
 						         tcp_context->tcp_options_offset[opt_idx];
@@ -3934,18 +3937,16 @@ new_index_with_compressed_value:
 				break;
 			case TCP_OPT_TIMESTAMP:
 			{
-				uint32_t ts;
-				uint32_t ts_reply;
-
-				memcpy(&ts, options + 2, sizeof(uint32_t));
-				memcpy(&ts_reply, options + 6, sizeof(uint32_t));
+				const struct tcp_option_timestamp *const opt_ts =
+					(struct tcp_option_timestamp *) (options + 2);
 
 				rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-				                rohc_ntoh32(ts), rohc_ntoh32(ts_reply));
+				                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
+
 				// see RFC4996 page65
 				// ptr_compressed_options = c_tcp_opt_ts(ptr_compressed_options,options+2);
 				is_ok = c_ts_lsb(context, &ptr_compressed_options,
-				                 rohc_ntoh32(ts),
+				                 rohc_ntoh32(opt_ts->ts),
 				                 tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
 				                 tcp_context->tmp.nr_opt_ts_req_bits_0x40000);
 				if(!is_ok)
@@ -3956,8 +3957,9 @@ new_index_with_compressed_value:
 									 "Timestamp option\n");
 					goto error;
 				}
+
 				is_ok = c_ts_lsb(context, &ptr_compressed_options,
-									  rohc_ntoh32(ts_reply),
+									  rohc_ntoh32(opt_ts->ts_reply),
 				                 tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
 				                 tcp_context->tmp.nr_opt_ts_reply_bits_0x40000);
 				if(!is_ok)
@@ -3970,13 +3972,13 @@ new_index_with_compressed_value:
 				}
 
 				/* save value after compression */
-				memcpy(&tcp_context->tcp_option_timestamp, options + 2,
-				       sizeof(struct tcp_option_timestamp));
+				tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
+				tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
 				tcp_context->tcp_option_timestamp_init = true;
 				c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
-				           rohc_ntoh32(ts));
+				           rohc_ntoh32(opt_ts->ts));
 				c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
-				           rohc_ntoh32(ts_reply));
+				           rohc_ntoh32(opt_ts->ts_reply));
 
 				i -= TCP_OLEN_TIMESTAMP;
 				options += TCP_OLEN_TIMESTAMP;

@@ -2726,6 +2726,10 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 							       tcp_context->tcp_option_sack_length);
 							break;
 						case TCP_OPT_TIMESTAMP:
+						{
+							const struct tcp_option_timestamp *const opt_ts =
+								(struct tcp_option_timestamp *) remain_data;
+
 							if(opt_len != TCP_OLEN_TIMESTAMP)
 							{
 								rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
@@ -2737,15 +2741,14 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 								goto error;
 							}
 							rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
-							memcpy(&tcp_context->tcp_option_timestamp, remain_data,
-							       sizeof(struct tcp_option_timestamp));
+							tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
+							tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
 							rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
-							                 rohc_ntoh32(tcp_context->tcp_option_timestamp.ts),
-							                 false);
+							                 rohc_ntoh32(opt_ts->ts), false);
 							rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
-							                 rohc_ntoh32(tcp_context->tcp_option_timestamp.ts_reply),
-							                 false);
+							                 rohc_ntoh32(opt_ts->ts_reply), false);
 							break;
+						}
 						default:
 							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 							             context->profile->id, "TCP options list: "
@@ -3047,6 +3050,7 @@ static const uint8_t * d_ts_lsb(const struct d_context *const context,
 	rohc_lsb_shift_t p;
 	bool decode_ok;
 	uint32_t decoded;
+	uint32_t decoded_nbo;
 
 	assert(context != NULL);
 	assert(lsb != NULL);
@@ -3101,7 +3105,8 @@ static const uint8_t * d_ts_lsb(const struct d_context *const context,
 	rohc_decomp_debug(context, "decoded timestamp = 0x%08x (%zu bits 0x%x "
 	                  "with p = %d)\n", decoded, ts_bits_nr, ts_bits, p);
 
-	*timestamp = rohc_hton32(decoded);
+	decoded_nbo = rohc_hton32(decoded);
+	memcpy(timestamp, &decoded_nbo, sizeof(uint32_t));
 
 	return ptr;
 
@@ -3759,9 +3764,14 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 					   *(options++) = *(compressed_options++);
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
+				{
+					const struct tcp_option_timestamp *const opt_ts =
+						(struct tcp_option_timestamp *) (options + 2);
+
 					*(options++) = TCP_OPT_TIMESTAMP;
 					// Length
 					*(options++) = TCP_OLEN_TIMESTAMP;
+
 					// Timestamp
 					// compressed_options = d_tcp_opt_ts(compressed_options);
 					compressed_options =
@@ -3775,7 +3785,8 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 						goto error;
 					}
 					rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
-					                 rohc_ntoh32(*((uint32_t *) options)), false);
+					                 rohc_ntoh32(opt_ts->ts), false);
+
 					compressed_options =
 					   d_ts_lsb(context, tcp_context->opt_ts_reply_lsb_ctxt,
 					            compressed_options, (uint32_t *) (options + 4));
@@ -3787,12 +3798,14 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 						goto error;
 					}
 					rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
-					                 rohc_ntoh32(*((uint32_t *) (options + 4))),
-					                 false);
-					memcpy(&tcp_context->tcp_option_timestamp, options,
-							 sizeof(struct tcp_option_timestamp));
+					                 rohc_ntoh32(opt_ts->ts_reply), false);
+
+					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
+					tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
+
 					options += sizeof(struct tcp_option_timestamp);
 					break;
+				}
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
 					*(options++) = TCP_OPT_SACK_PERMITTED;
 					// Length
@@ -3848,14 +3861,19 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 					*(options++) = tcp_context->tcp_option_window;
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
+				{
+					struct tcp_option_timestamp *const opt_ts =
+						(struct tcp_option_timestamp *) (options + 2);
+
 					*(options++) = TCP_OPT_TIMESTAMP;
 					// Length
 					*(options++) = TCP_OLEN_TIMESTAMP;
 					// Timestamp value
-					memcpy(options, &tcp_context->tcp_option_timestamp,
-							 sizeof(struct tcp_option_timestamp));
+					opt_ts->ts = tcp_context->tcp_option_timestamp.ts;
+					opt_ts->ts_reply = tcp_context->tcp_option_timestamp.ts_reply;
 					options += TCP_OLEN_TIMESTAMP - 2;
 					break;
+				}
 				case TCP_INDEX_SACK_PERMITTED:  // SACK-PERMITTED see RFC2018
 					*(options++) = TCP_OPT_SACK_PERMITTED;
 					// Length
