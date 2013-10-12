@@ -5212,7 +5212,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 				/* decode sequence number from packet bits and context */
 				enc_seq_num = (rnd_5->seq_number1 << 9) |
-				              (rnd_5->seq_number2 << 8) |
+				              (rnd_5->seq_number2 << 1) |
 				              rnd_5->seq_number3;
 				if(!rohc_decomp_tcp_decode_seq(decomp, context, enc_seq_num,
 				                               14, 8191, &decoded_seq_number))
