@@ -474,6 +474,11 @@ static bool build_stream(const char *const filename,
 		rtp->timestamp = htonl(500000 + counter * 160);
 		rtp->ssrc = htonl(0x42424242);
 
+		for(int i = 0; i < payload_len; i++)
+		{
+			packet[ETHER_HDR_LEN + sizeof(struct ipv4_hdr) + sizeof(struct udphdr) + sizeof(struct rtphdr) + i] = i % 0xff;
+		}
+
 		if(strcmp(stream_type, "comp") == 0)
 		{
 			/* compress packet */
