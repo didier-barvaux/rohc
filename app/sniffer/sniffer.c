@@ -51,6 +51,9 @@
 #include <strings.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/tcp.h>
 #include <math.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -168,7 +171,11 @@ static int compress_decompress(struct rohc_comp *comp,
 static int compare_packets(const unsigned char *const pkt1,
                            const size_t pkt1_size,
                            const unsigned char *const pkt2,
-                           const size_t pkt2_size);
+                           const size_t pkt2_size)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
+static size_t get_tcp_opt_padding(const unsigned char *const packet,
+                                  const size_t length)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -1433,6 +1440,7 @@ static int compare_packets(const unsigned char *const pkt1,
 	int i, j, k;
 	char str1[4][7], str2[4][7];
 	char sep1, sep2;
+	size_t tcp_padding_bytes;
 
 	/* do not compare more than the shortest of the 2 packets */
 	min_size = min(pkt1_size, pkt2_size);
@@ -1443,6 +1451,15 @@ static int compare_packets(const unsigned char *const pkt1,
 	/* if packets are equal, do not print the packets */
 	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
 	{
+		goto skip;
+	}
+	/* packets seem different, double check for extra padding of TCP options:
+	 * packets with extra padding at the end of TCP options cannot be compared */
+	tcp_padding_bytes = get_tcp_opt_padding(pkt1, pkt1_size);
+	if(tcp_padding_bytes >= 4)
+	{
+		fprintf(stderr, "unexpected padding at the end of TCP options: "
+		        "%zu EOL bytes\n", tcp_padding_bytes);
 		goto skip;
 	}
 
@@ -1510,6 +1527,110 @@ static int compare_packets(const unsigned char *const pkt1,
 
 skip:
 	return valid;
+}
+
+
+/**
+ * @brief How many bytes of padding the packet got after TCP options?
+ *
+ * TCP options shall be padded to be aligned on 32-bit boundaries, ie. add
+ * 0 to 3 bytes of padding 0x00. Some TCP stacks however adds extra padding
+ * (4 bytes of example). This stops us to compare original and decompressed
+ * packet, since the ROHC decompressor will only add the minimal number of
+ * padding bytes.
+ *
+ * @param packet  The packet to check for padding
+ * @param length  The length (in bytes) of the packet to check
+ * @return        The number of padding bytes found after TCP options
+ */
+static size_t get_tcp_opt_padding(const unsigned char *const packet,
+                                  const size_t length)
+{
+	struct tcphdr *tcp;
+	size_t opt_len;
+	size_t nr_eol_found = 0;
+	size_t ip_len;
+	size_t i;
+
+	/* check IP version */
+	if(length < 1)
+	{
+		goto too_short;
+	}
+	if((packet[0] & 0xf0) == 0x40)
+	{
+		/* IPv4 */
+		struct iphdr *ip = (struct iphdr *) packet;
+		ip_len = ip->ihl * 4;
+		if(length <= ip_len || ip->protocol != 6)
+		{
+			goto not_tcp;
+		}
+	}
+	else if((packet[0] & 0xf0) == 0x60)
+	{
+		/* IPv6 */
+		struct ip6_hdr *ip = (struct ip6_hdr *) packet;
+		ip_len = sizeof(struct ip6_hdr);
+		if(length <= ip_len || ip->ip6_nxt != 6)
+		{
+			goto not_tcp;
+		}
+	}
+	else
+	{
+		goto not_ip;
+	}
+
+	/* enough room for IP and TCP base header? */
+	if(length < (ip_len + sizeof(struct tcphdr)))
+	{
+		goto malformed;
+	}
+
+	/* enough room for TCP options? */
+	tcp = (struct tcphdr *) (packet + ip_len);
+	if(length < (ip_len + tcp->doff * 4))
+	{
+		goto malformed;
+	}
+
+	/* parse TCP options, count padding bytes */
+	nr_eol_found = 0;
+	for(i = ip_len + sizeof(struct tcphdr);
+	    i < (ip_len + tcp->doff * 4);
+	    i += opt_len)
+	{
+		switch(packet[i])
+		{
+			case 0x01: /* NOP */
+				opt_len = 1;
+				break;
+			case 0x00: /* EOL */
+				opt_len = 1;
+				nr_eol_found++;
+				break;
+			default: /* long option TLV */
+				if(length <= (i + 1))
+				{
+					goto malformed;
+				}
+				opt_len = packet[i + 1];
+				if(length <= (i + opt_len))
+				{
+					goto malformed;
+				}
+				break;
+		}
+	}
+
+	return nr_eol_found;
+
+not_ip:
+not_tcp:
+malformed:
+too_short:
+	return 0;
 }
 
 
