@@ -18,7 +18,7 @@ checkconfig() {
 	MAX_CONTEXTS=${MAX_CONTEXTS:-450}
 	CID_TYPE=${CID_TYPE:-large}
 	INTERFACE=${INTERFACE:-eth0}
-	TIMEOUT=${TIMEOUT:-15}
+	TIMEOUT=${TIMEOUT:-20}
 
 	if [[ ! -x "${ROHC_SNIFFER_BIN}" ]] ; then
 		eerror "binary ${ROHC_SNIFFER_BIN} not found"
@@ -39,6 +39,8 @@ checkconfig() {
 start() {
 	checkconfig || return 1
 
+	rm -rf /var/tmp/${ROHC_SNIFFER}/*.pcap &>/dev/null || :
+
 	ebegin "Starting ${SVCNAME} on interface ${INTERFACE}"
 	${ROHC_SNIFFER_BIN} \
 		--max-contexts ${MAX_CONTEXTS} \
@@ -56,9 +58,13 @@ start() {
 stop() {
 	checkconfig || return 1
 
+	if [ ! -f "${PIDFILE}" ]; then
+		einfo "${SVCNAME} not running (no pid file)"
+		return 0
+	fi
 	PID=$(cat "${PIDFILE}" 2>/dev/null)
 	if [ -z "${PID}" ]; then
-		einfo "${SVCNAME} not running (no pid file)"
+		einfo "${SVCNAME} not running (no pid in pid file)"
 		return 0
 	fi
 
@@ -66,12 +72,40 @@ stop() {
 	start-stop-daemon --signal INT -p ${PIDFILE}
 
 	i=0
-	while ( test -f "${PIDFILE}" && pgrep -P ${PID} ${ROHC_SNIFFER} >/dev/null ) \
+	while ( test -f "${PIDFILE}" && pgrep -F ${PIDFILE} ${ROHC_SNIFFER} >/dev/null ) \
 		&& [ $i -lt ${TIMEOUT} ]; do
 		sleep 1 && i=$(expr $i + 1)
 	done
 
 	eend $(test $i -lt ${TIMEOUT})
+}
+
+status() {
+	checkconfig || return 1
+
+	state=1
+
+	if [ ! -f "${PIDFILE}" ]; then
+		einfo "no pid file ${PIDFILE}"
+		state=1
+	else
+		PID=$(cat "${PIDFILE}" 2>/dev/null)
+		if [ -z "${PID}" ]; then
+			einfo "no pid in pid file"
+			state=1
+		else
+			pgrep -F ${PIDFILE} ${ROHC_SNIFFER} &>/dev/null
+			state=$?
+		fi
+	fi
+
+	if [ ${state} -eq 0 ] ; then
+		einfo "status: started"
+	else
+		einfo "status: stopped"
+	fi
+
+	return ${state}
 }
 
 fullstatus() {
