@@ -1508,31 +1508,27 @@ static int c_tcp_encode(struct c_context *const context,
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
 					rohc_comp_debug(context, "ip_id_behavior ZERO\n");
-					break;
 				}
-				if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
+				else if(ip_inner_context.v4->last_ip_id == ip_id)
+				{
+					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+					rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
+				}
+				else if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
-					break;
 				}
-				if(ip_inner_context.v4->last_ip_id == ip_id)
-				{
-					break;
-				}
-				swapped_ip_id = swab16(ip_id);
-				if((ip_inner_context.v4->last_ip_id + 1) == swapped_ip_id)
+				else if((ip_inner_context.v4->last_ip_id + 1) == swab16(ip_id))
 				{
 					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
 					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL_SWAPPED\n");
-					break;
 				}
-				if(ip_inner_context.v4->last_ip_id == swapped_ip_id)
+				else
 				{
-					break;
+					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+					rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
 				}
-				ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-				rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
 				break;
 			default:
 				assert(0); /* should never happen */
@@ -2564,24 +2560,10 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 		mptr.ipv4_dynamic1->reserved = 0;
 		mptr.ipv4_dynamic1->df = base_header.ipv4->df;
 		// cf RFC4996 page 60/61 ip_id_behavior_choice() and ip_id_enc_dyn()
-		if(is_innermost != 0)
+		if(is_innermost)
 		{
 			// All behavior values possible
-			if(base_header.ipv4->ip_id == 0)
-			{
-				mptr.ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
-			}
-			else
-			{
-				if(ip_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_UNKNOWN)
-				{
-					mptr.ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-				}
-				else
-				{
-					mptr.ipv4_dynamic1->ip_id_behavior = ip_context.v4->ip_id_behavior;
-				}
-			}
+			mptr.ipv4_dynamic1->ip_id_behavior = ip_context.v4->ip_id_behavior;
 		}
 		else
 		{
@@ -5044,7 +5026,8 @@ static int co_baseheader(struct c_context *const context,
 	}
 	else
 	{
-		rohc_comp_debug(context, "unexpected unknown IP-ID behavior\n");
+		rohc_comp_debug(context, "unexpected IP-ID behavior (%d)\n",
+		                ip_context.vx->ip_id_behavior);
 		assert(0);
 		goto error;
 	}
