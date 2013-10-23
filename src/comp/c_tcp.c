@@ -1858,10 +1858,12 @@ static int c_tcp_encode(struct c_context *const context,
 	{
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
 			change_state(context, ROHC_COMP_STATE_FO);
+			rohc_comp_debug(context, "code IR packet\n");
 			*packet_type = ROHC_PACKET_IR;
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
 			change_state(context, ROHC_COMP_STATE_SO);
+			rohc_comp_debug(context, "code IR-DYN packet\n");
 			*packet_type = ROHC_PACKET_IR_DYN;
 			break;
 		case ROHC_COMP_STATE_SO: /* The Second Order (SO) state */
@@ -1871,6 +1873,7 @@ static int c_tcp_encode(struct c_context *const context,
 			{
 				rohc_comp_debug(context, "force packet IR-DYN because the TCP "
 				                "option changed too much\n");
+				rohc_comp_debug(context, "code IR-DYN packet\n");
 				*packet_type = ROHC_PACKET_IR_DYN;
 			}
 			else
@@ -4608,6 +4611,10 @@ static int co_baseheader(struct c_context *const context,
 		ip_df_changed = false;
 		dscp_changed = (DSCP_V6(base_header.ipv6) != ip_context.v6->dscp);
 	}
+	rohc_comp_debug(context, "IP-ID: ip_id_hi9_changed = %u, ip_id_hi11_changed = %u, "
+	                "ip_id_hi12_changed = %u, ip_id_hi13_changed = %u\n",
+	                ip_id_hi9_changed, ip_id_hi11_changed, ip_id_hi12_changed,
+	                ip_id_hi13_changed);
 	tcp_ack_flag_changed = (tcp->ack_flag != tcp_context->old_tcphdr.ack_flag);
 	tcp_urg_flag_present = (tcp->urg_flag != 0);
 	tcp_urg_flag_changed = (tcp->urg_flag != tcp_context->old_tcphdr.urg_flag);
@@ -5141,7 +5148,7 @@ static int co_baseheader(struct c_context *const context,
 	int ret;
 	int indicator;
 
-	rohc_comp_debug(context, "code common\n");
+	rohc_comp_debug(context, "code common packet\n");
 	// See RFC4996 page 80:
 	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d\n",
 	                ttl_irregular_chain_flag);
@@ -5455,7 +5462,7 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd1 != NULL);
 
-	rohc_comp_debug(context, "code rnd_1\n");
+	rohc_comp_debug(context, "code rnd_1 packet\n");
 
 	rnd1->discriminator = 0x2e; /* '101110' */
 	seq_number = rohc_ntoh32(tcp->seq_number) & 0x3ffff;
@@ -5498,7 +5505,7 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd2 != NULL);
 
-	rohc_comp_debug(context, "code rnd_2\n");
+	rohc_comp_debug(context, "code rnd_2 packet\n");
 
 	rnd2->discriminator = 0x0c; /* '1100' */
 	rnd2->seq_number_scaled = c_lsb(context, 4, 7, tcp_context->seq_number,
@@ -5540,7 +5547,7 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd3 != NULL);
 
-	rohc_comp_debug(context, "code rnd_3\n");
+	rohc_comp_debug(context, "code rnd_3 packet\n");
 
 	rnd3->discriminator = 0x0; /* '0' */
 	ack_number = c_lsb(context, 15, 8191, tcp_context->ack_number,
@@ -5587,7 +5594,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd4 != NULL);
 
-	rohc_comp_debug(context, "code rnd_4\n");
+	rohc_comp_debug(context, "code rnd_4 packet\n");
 
 	rnd4->discriminator = 0x0d; /* '1101' */
 	rnd4->ack_number_scaled = c_lsb(context, 4, 3,
@@ -5632,7 +5639,7 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd5 != NULL);
 
-	rohc_comp_debug(context, "code rnd_5\n");
+	rohc_comp_debug(context, "code rnd_5 packet\n");
 
 	rnd5->discriminator = 0x04; /* '100' */
 	rnd5->psh_flag = tcp->psh_flag;
@@ -5689,7 +5696,7 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd6 != NULL);
 
-	rohc_comp_debug(context, "code rnd_6\n");
+	rohc_comp_debug(context, "code rnd_6 packet\n");
 
 	rnd6->discriminator = 0x0a; /* '1010' */
 	rnd6->header_crc = 0; /* for CRC computation */
@@ -5734,7 +5741,7 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(rnd7 != NULL);
 
-	rohc_comp_debug(context, "code rnd_7\n");
+	rohc_comp_debug(context, "code rnd_7 packet\n");
 
 	rnd7->discriminator = 0x2f; /* '101111' */
 	ack_number = c_lsb(context, 18, 65535, tcp_context->ack_number,
@@ -5791,7 +5798,7 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 	assert(rnd8 != NULL);
 	assert(rnd8_len != NULL);
 
-	rohc_comp_debug(context, "code rnd_8\n");
+	rohc_comp_debug(context, "code rnd_8 packet\n");
 
 	rnd8->discriminator = 0x16; /* '10110' */
 	rnd8->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
@@ -5901,7 +5908,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq1 != NULL);
 
-	rohc_comp_debug(context, "code seq_1\n");
+	rohc_comp_debug(context, "code seq_1 packet\n");
 
 	seq1->discriminator = 0x0a; /* '1010' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -5954,7 +5961,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq2 != NULL);
 
-	rohc_comp_debug(context, "code seq_2\n");
+	rohc_comp_debug(context, "code seq_2 packet\n");
 
 	seq2->discriminator = 0x1a; /* '11010' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -6008,7 +6015,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq3 != NULL);
 
-	rohc_comp_debug(context, "code seq_3\n");
+	rohc_comp_debug(context, "code seq_3 packet\n");
 
 	seq3->discriminator = 0x09; /* '1001' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -6061,7 +6068,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq4 != NULL);
 
-	rohc_comp_debug(context, "code seq_4\n");
+	rohc_comp_debug(context, "code seq_4 packet\n");
 
 	seq4->discriminator = 0x00; /* '0' */
 	seq4->ack_number_scaled = c_lsb(context, 4, 3,
@@ -6115,7 +6122,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq5 != NULL);
 
-	rohc_comp_debug(context, "code seq_5\n");
+	rohc_comp_debug(context, "code seq_5 packet\n");
 
 	seq5->discriminator = 0x08; /* '1000' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -6169,7 +6176,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq6 != NULL);
 
-	rohc_comp_debug(context, "code seq_6\n");
+	rohc_comp_debug(context, "code seq_6 packet\n");
 
 	seq6->discriminator = 0x1b; /* '11011' */
 
@@ -6230,7 +6237,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
 	assert(tcp != NULL);
 	assert(seq7 != NULL);
 
-	rohc_comp_debug(context, "code seq_7\n");
+	rohc_comp_debug(context, "code seq_7 packet\n");
 
 	seq7->discriminator = 0x0c; /* '1100' */
 
@@ -6298,7 +6305,7 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 	assert(seq8 != NULL);
 	assert(seq8_len != NULL);
 
-	rohc_comp_debug(context, "code seq_8\n");
+	rohc_comp_debug(context, "code seq_8 packet\n");
 
 	seq8->discriminator = 0x0b; /* '1011' */
 
