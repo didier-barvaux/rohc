@@ -1740,6 +1740,17 @@ static int c_tcp_encode(struct c_context *const context,
 		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
 		                "new timestamp echo request/reply numbers\n");
 	}
+	else if(!tcp_context->tcp_option_timestamp_init)
+	{
+		/* send all bits for the first occurrence of the TCP TS option */
+		tcp_context->tmp.nr_opt_ts_req_bits_minus_1 = 32;
+		tcp_context->tmp.nr_opt_ts_req_bits_0x40000 = 32;
+		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 32;
+		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 32;
+		rohc_comp_debug(context, "first occurrence of TCP TS option: force "
+							 "using 32 bits to encode new timestamp echo "
+							 "request/reply numbers\n");
+	}
 	else if(!opt_ts_changed)
 	{
 		/* no bit to send */
