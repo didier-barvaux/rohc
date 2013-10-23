@@ -80,7 +80,7 @@ void ROHC_EXPORT rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
                                   const bool keep_ref_minus_1)
 	__attribute__((nonnull(1)));
 
-uint32_t ROHC_EXPORT rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb,
+uint32_t ROHC_EXPORT rohc_lsb_get_ref(const struct rohc_lsb_decode *const lsb,
                                       const rohc_lsb_ref_t ref_type)
 	__attribute__((nonnull(1), warn_unused_result));
 

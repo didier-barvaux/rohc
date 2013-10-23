@@ -358,7 +358,7 @@ void rohc_lsb_set_ref(struct rohc_lsb_decode *const lsb,
  * @param ref_type  The reference value to retrieve
  * @return          The current reference value
  */
-uint32_t rohc_lsb_get_ref(struct rohc_lsb_decode *const lsb,
+uint32_t rohc_lsb_get_ref(const struct rohc_lsb_decode *const lsb,
                           const rohc_lsb_ref_t ref_type)
 {
 	assert(lsb != NULL);
