@@ -311,8 +311,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 static int rohc_list_decode_type_2(struct list_decomp *const decomp,
                                    const unsigned char *const packet,
                                    const size_t packet_len,
-                                   const int gen_id,
-                                   const int ps)
+                                   const int gen_id)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_decode_type_3(struct list_decomp *const decomp,
@@ -383,7 +382,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp *const decomp,
  */
 
 static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
-                                      const unsigned int gen_id)
+                                      const int gen_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
@@ -729,11 +728,6 @@ static int rohc_list_decode(struct list_decomp *decomp,
                             const unsigned char *packet,
                             size_t packet_len)
 {
-	int et; // encoding type
-	int ps;
-	int gen_id;
-	int m;
-	uint8_t xi_1;
 	int ret;
 	size_t read_length = 0;
 
@@ -759,6 +753,13 @@ static int rohc_list_decode(struct list_decomp *decomp,
 	}
 	else
 	{
+		uint8_t et;    /* the type of list encoding */
+		bool gp;       /* whether the gen_id field is present or not */
+		uint8_t ps;    /* the type of XI field */
+		uint8_t m;     /* the CC or Count field (share bits with XI 1) */
+		uint8_t xi_1;  /* the XI 1 field (share bits with m) */
+		int gen_id;    /* the gen_id if present, -1 otherwise */
+
 		decomp->is_present = true;
 
 		/* is there enough data in packet for the ET/PS/m/XI1 and gen_id fields ? */
@@ -770,22 +771,31 @@ static int rohc_list_decode(struct list_decomp *decomp,
 			goto error;
 		}
 
-		/* parse ET, PS, and m/XI1 fields */
+		/* parse ET, GP, PS, and m/XI1 fields */
+		et = GET_BIT_6_7(packet);
+		gp = !!GET_BIT_5(packet);
+		ps = GET_REAL(GET_BIT_4(packet));
 		m = GET_BIT_0_3(packet);
 		xi_1 = m; /* m and XI 1 are the same field */
-		et = GET_BIT_6_7(packet);
-		ps = GET_REAL(GET_BIT_4(packet));
 		packet++;
 		read_length++;
 		packet_len--;
-		rd_list_debug(decomp, "ET = %d, PS = %d, m = XI 1 = %d\n", m, et, ps);
+		rd_list_debug(decomp, "ET = %d, GP = %d, PS = %d, m = XI 1 = %d\n",
+		              et, gp, ps, m);
 
-		/* parse gen_id */
-		gen_id = GET_BIT_0_7(packet);
-		packet++;
-		read_length++;
-		packet_len--;
-		rd_list_debug(decomp, "gen_id = 0x%02x\n", gen_id);
+		/* parse gen_id if present */
+		if(gp == 1)
+		{
+			gen_id = GET_BIT_0_7(packet);
+			packet++;
+			read_length++;
+			packet_len--;
+			rd_list_debug(decomp, "gen_id = 0x%02x\n", gen_id);
+		}
+		else
+		{
+			gen_id = -1;
+		}
 
 		/* decode the compressed list according to its type */
 		switch(et)
@@ -799,8 +809,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 				                              gen_id, ps, xi_1);
 				break;
 			case 2:
-				ret = rohc_list_decode_type_2(decomp, packet, packet_len,
-				                              gen_id, ps);
+				ret = rohc_list_decode_type_2(decomp, packet, packet_len, gen_id);
 				break;
 			case 3:
 				ret = rohc_list_decode_type_3(decomp, packet, packet_len,
@@ -841,16 +850,22 @@ error:
  * @brief Check if the given gen_id is known, ie. present in list table
  *
  * @param decomp  The list decompressor
- * @param gen_id  The gen_id to check for
+ * @param gen_id  The gen_id to check for, maybe -1 if not defined
  * @return        true if successful, false otherwise
  */
 static bool rohc_list_is_gen_id_known(const struct list_decomp *const decomp,
-                                      const unsigned int gen_id)
+                                      const int gen_id)
 {
 	unsigned int i;
 
 	assert(decomp != NULL);
 	assert(decomp->list_table != NULL);
+
+	if(gen_id < 0)
+	{
+		/* no gen_id defined, so cannot match a stored list */
+		return false;
+	}
 
 	for(i = 0; i < LIST_COMP_WINDOW; i++)
 	{
@@ -949,7 +964,7 @@ error:
  * @param decomp      The list decompressor
  * @param packet      The ROHC packet to decompress
  * @param packet_len  The length (in bytes) of the packet to decompress
- * @param gen_id      The id of the current list
+ * @param gen_id      The id of the current list, maybe -1 if not defined
  * @param ps          The ps field
  * @param m           The m field
  * @return            \li In case of success, the number of bytes read in the given
@@ -1267,8 +1282,9 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		i = 0;
 		while((elt = list_get_elt_by_index(decomp->list_table[decomp->counter_list], i)) != NULL)
 		{
-			rd_list_debug(decomp, "   IPv6 extension of type 0x%02x / %d\n",
-			              elt->item->type, elt->item->type);
+			rd_list_debug(decomp, "   IPv6 extension of type 0x%02x / %d "
+			              "(%zu bytes)\n", elt->item->type, elt->item->type,
+			              elt->item->length);
 			i++;
 		}
 	}
@@ -1287,7 +1303,7 @@ error:
  * @param decomp      The list decompressor
  * @param packet      The ROHC packet to decompress
  * @param packet_len  The length (in bytes) of the packet to decompress
- * @param gen_id      The id of the current list
+ * @param gen_id      The id of the current list, maybe -1 if not defined
  * @param ps          The ps field
  * @param xi_1        The XI 1 field if PS = 1 (4-bit XI)
  * @return            \li In case of success, the number of bytes read in the
@@ -1990,8 +2006,7 @@ error:
  * @param decomp      The list decompressor
  * @param packet      The ROHC packet to decompress
  * @param packet_len  The length (in bytes) of the packet to decompress
- * @param gen_id      The id of the current list
- * @param ps          The ps field
+ * @param gen_id      The id of the current list, maybe -1 if not defined
  * @return            \li In case of success, the number of bytes read in the given
  *                        packet, ie. the length of the compressed list
  *                    \li -1 in case of failure
@@ -2001,8 +2016,7 @@ error:
 static int rohc_list_decode_type_2(struct list_decomp *const decomp,
                                    const unsigned char *packet,
                                    size_t packet_len,
-                                   const int gen_id,
-                                   const int ps)
+                                   const int gen_id)
 {
 	size_t packet_read_length = 0;
 	unsigned char mask[2]; /* removal bit mask on 1-2 bytes */
@@ -2281,7 +2295,7 @@ error:
  * @param decomp      The list decompressor
  * @param packet      The ROHC packet to decompress
  * @param packet_len  The length (in bytes) of the packet to decompress
- * @param gen_id      The id of the current list
+ * @param gen_id      The id of the current list, maybe -1 if not defined
  * @param ps          The ps field
  * @param xi_1        The XI 1 field if PS = 1 (4-bit XI)
  * @return            \li In case of success, the number of bytes read in the given

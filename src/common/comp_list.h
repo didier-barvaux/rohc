@@ -89,7 +89,7 @@ struct list_elt
  */
 struct c_list
 {
-	///generation identifier
+	/** The generation identifier, may be -1 if not defined */
 	int gen_id;
 	/// first element of the list
 	struct list_elt *first_elt;
