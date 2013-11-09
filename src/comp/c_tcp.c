@@ -1168,8 +1168,8 @@ static bool c_tcp_check_context(const struct c_context *const context,
 				size -= sizeof(base_header_ip_v4_t);
 				break;
 			case IPV6:
-				if(memcmp(base_header.ipv6->src_addr,ip_context.v6->src_addr,sizeof(uint32_t) * 4 *
-				          2) != 0)
+				if(memcmp(base_header.ipv6->src_addr, ip_context.v6->src_addr, sizeof(uint32_t) * 4) != 0 ||
+				   memcmp(base_header.ipv6->dest_addr, ip_context.v6->dest_addr, sizeof(uint32_t) * 4) != 0)
 				{
 					rohc_comp_debug(context, "  not same IPv6 addresses\n");
 					goto bad_context;
