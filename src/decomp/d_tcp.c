@@ -4321,10 +4321,14 @@ static int tcp_size_decompress_tcp_options(struct d_context *const context,
 					break;
 				case TCP_INDEX_MAXSEG:  // MSS
 					(*uncomp_len) += TCP_OLEN_MAXSEG;
+					items += 2;
+					items_max_len -= 2;
 					comp_opt_len += 2;
 					break;
 				case TCP_INDEX_WINDOW:  // WINDOW SCALE
 					(*uncomp_len) += TCP_OLEN_WINDOW;
+					items++;
+					items_max_len--;
 					comp_opt_len++;
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
