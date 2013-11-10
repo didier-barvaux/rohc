@@ -501,9 +501,7 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 fi
 
 
-# if ROHC tests, statistics, or apps are enabled:
-#  - libpcap is mandatory
-#  - libcmocka is mandatory
+# if ROHC tests, statistics, or apps are enabled: libpcap is mandatory
 if test "x$enable_rohc_tests" = "xyes" || \
    test "x$enable_rohc_stats" = "xyes" || \
    test "x$enable_app_perf" = "xyes" || \
@@ -574,6 +572,11 @@ if test "x$enable_rohc_tests" = "xyes" || \
 		AC_DEFINE([DLT_LINUX_SLL], [113],
 		          [Define DLT_LINUX_SLL if not defined by the system])
 	fi
+fi
+
+
+# if ROHC tests are enabled: libcmocka is mandatory
+if test "x$enable_rohc_tests" = "xyes" ; then
 
 	PKG_CHECK_MODULES([CMOCKA], [cmocka >= 0.3.1],
 	                  [cmocka_found="yes"], [cmocka_found="no"])
