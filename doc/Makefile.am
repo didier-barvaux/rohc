@@ -120,7 +120,6 @@ rohc_all_sources = \
 	$(top_srcdir)/app/tunnel/*.c \
 	$(top_srcdir)/linux/include/*.h \
 	$(top_srcdir)/linux/*.c \
-	$(top_srcdir)/linux/kmod/*.c \
 	$(top_srcdir)/test/*.h \
 	$(top_srcdir)/test/functional/context_reuse/*.c \
 	$(top_srcdir)/test/functional/decompress_feedback_only/*.c \
