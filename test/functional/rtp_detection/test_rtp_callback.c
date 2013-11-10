@@ -564,8 +564,8 @@ static int check_profile(struct rohc_comp *comp,
  *
  * @param level    The priority level of the trace
  * @param entity   The entity that emitted the trace among:
- *                  \li ROHC_TRACE_COMPRESSOR
- *                  \li ROHC_TRACE_DECOMPRESSOR
+ *                  \li ROHC_TRACE_COMP
+ *                  \li ROHC_TRACE_DECOMP
  * @param profile  The ID of the ROHC compression/decompression profile
  *                 the trace is related to
  * @param format   The format string of the trace
