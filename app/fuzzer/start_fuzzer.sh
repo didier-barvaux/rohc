@@ -17,7 +17,6 @@
 # @file   start_fuzzer.sh
 # @brief  ROHC fuzzer helper script
 # @author Didier Barvaux <didier@barvaux.org>
-# @author Yura
 #
 # Stress test the ROHC decompressor to discover bugs.
 # Send report to the given email address.

@@ -18,7 +18,6 @@
  * @file   fuzzer.c
  * @brief  ROHC fuzzer program
  * @author Didier Barvaux <didier@barvaux.org>
- * @author Yura
  *
  * Stress test the ROHC decompressor to discover bugs.
  */
