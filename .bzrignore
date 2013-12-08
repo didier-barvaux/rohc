@@ -122,6 +122,9 @@ test_*.sh.trs
 ./app/fuzzer/rohc_fuzzer
 ./app/fuzzer/rohc_fuzzer.exe
 ./app/fuzzer/rohc_fuzzer.1
+./app/fuzzer/rohc_rtp_fuzzer
+./app/fuzzer/rohc_rtp_fuzzer.exe
+./app/fuzzer/rohc_rtp_fuzzer.1
 ./examples/simple_rohc_program
 ./examples/simple_rohc_program.exe
 ./examples/print_rohc_version
