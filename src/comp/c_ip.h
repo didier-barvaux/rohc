@@ -18,7 +18,6 @@
  * @file c_ip.h
  * @brief ROHC compression context for the IP-only profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
 #ifndef ROHC_COMP_IP_H

@@ -12,7 +12,6 @@ The following companies are/were involved in the project:
                                    cedric.baudoin@thalesaleniaspace.com
  - Thales Communications           http://www.thalescomminc.com/
  - CNES (French space agency)      http://www.cnes.fr/
- - Lulea University of Technology  http://www.ltu.se/?l=en
 
 
 The following people are/were involved in the project:
@@ -40,17 +39,9 @@ The following people are/were involved in the project:
                          <ramangupta16@gmail.com>
 
 
-The library was mainly based on the work of the ROHC Project 2003 at the Lulea
-University of Technology, Sweden (http://rohc.sourceforge.net/). People involved
-were:
-  Andreas Vernersson <andver-8@student.luth.se>
-  Daniel Pettersson <danpet-7@student.luth.se>
-  Erik Soderström <soderstrom@yahoo.com>
-  Fredrik Lindström <frelin-9@student.luth.se>
-  Johan Stenmark <johste-8@student.luth.se>
-  Martin Juhlin <juhlin@users.sourceforge.net>
-  Mikael Larsson <larmik-9@student.luth.se>
-  Robert Maxe <robmax-1@student.luth.se>
+The library started as a fork of the ROHC Project 2003 at the Lulea University
+of Technology, Sweden (http://rohc.sourceforge.net/). The code changed so much
+since then, that they are not mentioned as author anymore.
 
 
 If you think your name should appear in this file, please send your request to

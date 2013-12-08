@@ -19,7 +19,6 @@
  * @brief  Functions related to packet detection
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
- * @author The hackers from ROHC for Linux
  */
 
 #ifndef ROHC_DECOMP_DETECT_PACKET_H

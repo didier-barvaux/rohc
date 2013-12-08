@@ -18,7 +18,6 @@
  * @file cid.h
  * @brief Context ID (CID) routines.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
 #ifndef ROHC_COMP_SCHEMES_CID_H

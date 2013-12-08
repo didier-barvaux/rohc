@@ -22,7 +22,6 @@
  * @author Didier Barvaux <didier@barvaux.org>
  * @author David Moreau from TAS
  * @author Emmanuelle Pechereau <epechereau@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
 #include "c_generic.h"

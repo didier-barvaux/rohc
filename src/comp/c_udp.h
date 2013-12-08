@@ -18,7 +18,6 @@
  * @file c_udp.h
  * @brief ROHC compression context for the UDP profile.
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
- * @author The hackers from ROHC for Linux
  */
 
 #ifndef ROHC_COMP_UDP_H

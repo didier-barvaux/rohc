@@ -19,7 +19,6 @@
  * @brief Self-Describing Variable-Length (SDVL) encoding
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
- * @author The hackers from ROHC for Linux
  */
 
 #include "sdvl.h"
