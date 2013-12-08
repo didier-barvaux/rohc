@@ -309,13 +309,13 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	if(strcmp(test_type, "compression") == 0)
+	if(strcmp(test_type, "comp") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
 		ret = test_compression_perfs(filename, cid_type, wlsb_width, max_contexts,
 		                             &packet_count, &overflows, &time_elapsed);
 	}
-	else if(strcmp(test_type, "decompression") == 0)
+	else if(strcmp(test_type, "decomp") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
 		ret = test_decompression_perfs(filename, cid_type, max_contexts,
