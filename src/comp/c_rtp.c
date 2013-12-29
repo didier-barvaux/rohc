@@ -1084,7 +1084,8 @@ static void rtp_decide_state(struct c_context *const context)
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
-	if(rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
+	if(context->state != ROHC_COMP_STATE_IR &&
+	   rtp_context->udp_checksum_change_count < MAX_IR_COUNT)
 	{
 		/* TODO: could be optimized: IR state is not required, only IR or
 		 * IR-DYN packet is */

@@ -12,6 +12,8 @@ librohc_comp_schemes_la_SOURCES = \
 	cid.c \
 	wlsb.c \
 	scaled_rtp_ts.c \
+	list.c \
+	list_ipv6.c \
 	rfc4996.c
 
 librohc_comp_schemes_la_LIBADD = \
@@ -33,5 +35,7 @@ noinst_HEADERS = \
 	cid.h \
 	wlsb.h \
 	scaled_rtp_ts.h \
+	list.h \
+	list_ipv6.h \
 	rfc4996.h
 

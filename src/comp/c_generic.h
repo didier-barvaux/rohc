@@ -27,19 +27,12 @@
 
 #include "rohc_comp_internals.h"
 #include "rohc_packets.h"
-#include "comp_list.h"
+#include "schemes/list.h"
 #include "ip.h"
 #include "crc.h"
 
 #include <stdlib.h>
 
-
-/// The number of compression list items
-#define MAX_ITEM 15
-
-/// The number of compressed list to send to make the reference list
-/// L is the name specified in the RFC
-#define L 5
 
 /**
  * @brief Store information about an IPv4 header between the different
@@ -106,7 +99,7 @@ struct ipv6_header_info
 	/// The previous IPv6 header
 	struct ipv6_hdr old_ip;
 	/// The extension compressor
-	struct list_comp *ext_comp;
+	struct list_comp ext_comp;
 };
 
 
@@ -308,66 +301,6 @@ struct c_generic_context
 
 	/// Profile-specific data
 	void *specific;
-};
-
-
-/**
- * @brief The list compressor
- */
-struct list_comp
-{
-	/** Whether the extension list is present in IP header or not */
-	bool is_present;
-	/** Whether the extension list changed in the last IP header or not */
-	bool changed;
-
-	/// The reference list
-	struct c_list *ref_list;
-	/// The current list
-	struct c_list *curr_list;
-	/// counter which indicates if ref_list is reference list
-	int counter;
-	/// The compression based table
-	struct rohc_list_item based_table[MAX_ITEM];
-	/// The translation table
-	struct c_translation trans_table[MAX_ITEM];
-
-
-	/* Functions for handling the data to compress */
-
-	/// @brief the handler used to get the extension in the IP packet
-	unsigned char * (*get_extension)(const struct ip_packet *ip,
-	                                 const size_t pos);
-
-	/// @brief the handler used to get the index in based table for the corresponding item
-	int (*get_index_table)(const struct ip_packet *ip, const size_t pos);
-
-	/// @brief the handler used to get the size of an extension
-	unsigned short (*get_size)(const unsigned char *ext);
-
-	/// @brief the handler used to compare two extension of the same type
-	int (*compare)(const struct list_comp *const comp,
-	               const unsigned char *const ext,
-	               const int size,
-	               const int index_table);
-
-	/// @brief the handler used to create the item with the corresponding
-	///        type of the extension
-	void (*create_item)(struct list_comp *const comp,
-	                    const size_t index_table,
-	                    const unsigned char *const ext_data,
-	                    const size_t ext_size);
-
-	/// @brief the handler used to free the based table element
-	void (*free_table)(struct list_comp *const comp);
-
-
-	/* Traces */
-
-	/** The callback function used to manage traces */
-	rohc_trace_callback_t trace_callback;
-	/** The profile ID the compression list was created for */
-	int profile_id;
 };
 
 

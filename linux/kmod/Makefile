@@ -29,6 +29,8 @@ rohc_comp_sources = \
 	../../src/comp/schemes/cid.c \
 	../../src/comp/schemes/wlsb.c \
 	../../src/comp/schemes/scaled_rtp_ts.c \
+	../../src/comp/schemes/list.c \
+	../../src/comp/schemes/list_ipv6.c \
 	../../src/comp/schemes/rfc4996.c \
 	../../src/comp/rohc_comp.c \
 	../../src/comp/c_uncompressed.c \
@@ -44,6 +46,8 @@ rohc_decomp_sources = \
 	../../src/decomp/schemes/wlsb.c \
 	../../src/decomp/schemes/ip_id_offset.c \
 	../../src/decomp/schemes/scaled_rtp_ts.c \
+	../../src/decomp/schemes/list.c \
+	../../src/decomp/schemes/list_ipv6.c \
 	../../src/decomp/schemes/rfc4996.c \
 	../../src/decomp/rohc_decomp_detect_packet.c \
 	../../src/decomp/rohc_decomp.c \
@@ -73,9 +77,7 @@ EXTRA_CFLAGS += \
 	-I$(M)/../../src \
 	-I$(M)/../../src/common \
 	-I$(M)/../../src/comp \
-	-I$(M)/../../src/comp/schemes \
-	-I$(M)/../../src/decomp \
-	-I$(M)/../../src/decomp/schemes
+	-I$(M)/../../src/decomp
 
 # Module that exports the ROHC library in kernel land
 obj-m += $(rohc_modname).o

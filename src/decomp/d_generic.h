@@ -32,6 +32,7 @@
 #include "comp_list.h"
 #include "schemes/wlsb.h"
 #include "schemes/ip_id_offset.h"
+#include "schemes/list.h"
 #include "ip.h"
 #include "crc.h"
 
@@ -41,16 +42,6 @@
 #else
 #	include <stdbool.h>
 #endif
-
-
-#define MAX_ITEM 15
-#if MAX_ITEM <= 7
-	#error "translation table must be larger enough for indexes stored on 3 bits"
-#endif
-
-#define LIST_COMP_WINDOW 100
-
-#define L 5
 
 
 /** The outer or inner IP bits extracted from ROHC headers */
@@ -354,9 +345,9 @@ struct d_generic_context
 	struct ip_id_offset_decode *inner_ip_id_offset_ctxt;
 
 	/// The list decompressor of the outer IP header
-	struct list_decomp *list_decomp1;
+	struct list_decomp list_decomp1;
 	/// The list decompressor of the inner IP header
-	struct list_decomp *list_decomp2;
+	struct list_decomp list_decomp2;
 
 	/// Whether the decompressed packet contains a 2nd IP header
 	int multiple_ip;
@@ -465,60 +456,6 @@ struct d_generic_context
 	size_t arrival_times_index;
 	/** The arrival time of the current packet */
 	struct rohc_timestamp cur_arrival_time;
-};
-
-
-/**
- * @brief The list decompressor
- */
-struct list_decomp
-{
-	/// The reference list
-	struct c_list *ref_list;
-	/// The table of lists
-	struct c_list *list_table[LIST_COMP_WINDOW];
-	/// The compression based table
-	struct rohc_list_item based_table[MAX_ITEM];
-	/// The translation table
-	struct d_translation trans_table[MAX_ITEM];
-	/// counter in list table
-	int counter_list;
-	/// counter which indicates if the list is reference list
-	int counter;
-	/// boolean which indicates if there is a list to decompress
-	bool is_present;
-	/// boolean which indicates if the ref list must be decompressed
-	int ref_ok;
-
-
-	/* Functions for handling the data to decompress */
-
-	/// The handler used to free the based table
-	void (*free_table)(struct list_decomp *decomp);
-	/// The handler used to add the extension to IP packet
-	size_t (*encode_extension)(const struct list_decomp *const decomp,
-	                           const uint8_t ip_nh_type,
-	                           unsigned char *const dest);
-	/// The handler used to check if the index
-	/// corresponds to an existing item
-	bool (*check_item)(const struct list_decomp *const decomp,
-	                   const size_t index_table);
-	/// The handler used to create the item at
-	/// the corresponding index of the based table
-	bool (*create_item)(const unsigned char *const data,
-	                    const size_t length,
-	                    const size_t index_table,
-	                    struct list_decomp *const decomp);
-	/// The handler used to get the size of an extension
-	int (*get_ext_size)(const unsigned char *data, const size_t data_len);
-
-
-	/* Traces */
-
-	/** The callback function used to manage traces */
-	rohc_trace_callback_t trace_callback;
-	/** The profile ID the decompression list was created for */
-	int profile_id;
 };
 
 

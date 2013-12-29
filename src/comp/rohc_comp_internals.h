@@ -25,6 +25,7 @@
 #define ROHC_COMP_INTERNALS_H
 
 #include "rohc_internal.h"
+#include "rohc_traces_internal.h"
 #include "rohc_packets.h"
 #include "rohc_comp.h"
 #include "schemes/wlsb.h"
