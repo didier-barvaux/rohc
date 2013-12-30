@@ -1463,10 +1463,12 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			             "CRC detected a transmission failure for IR packet\n");
+#if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 ROHC_TRACE_WARNING, "IR headers",
 			                 rohc_packet - add_cid_len,
 			                 rohc_header_len + add_cid_len);
+#endif
 			goto error_crc;
 		}
 
@@ -1536,9 +1538,11 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			             "CID %zu: failed to build uncompressed headers\n",
 			             context->cid);
+#if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 ROHC_TRACE_WARNING, "compressed headers",
 			                 rohc_packet, rohc_header_len);
+#endif
 			goto error;
 		}
 		else
@@ -1565,9 +1569,11 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 				             "CID %zu: failed to build uncompressed headers "
 				             "(CRC failure)\n", context->cid);
+#if ROHC_EXTRA_DEBUG == 1
 				rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 				                 ROHC_TRACE_WARNING, "compressed headers",
 				                 rohc_packet, rohc_header_len);
+#endif
 				goto error_crc;
 			}
 		}
@@ -5469,9 +5475,11 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 			             rohc_get_packet_descr(packet_type),
 			             rohc_decomp_get_state_descr(context->state),
 			             rohc_get_mode_descr(context->mode));
+#if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 ROHC_TRACE_WARNING, "uncompressed headers",
 			                 outer_ip_hdr, *uncomp_hdrs_len);
+#endif
 			goto error_crc;
 		}
 	}

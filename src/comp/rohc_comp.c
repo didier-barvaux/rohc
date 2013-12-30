@@ -4114,12 +4114,12 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "add %zd byte(s) of feedback data\n", feedback_length);
-	if(feedback_length > 0)
-	{
-		rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "feedback data added",
-		                 buffer + pos, feedback_length);
-	}
+
+#if ROHC_EXTRA_DEBUG == 1
+	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP,
+	                 ROHC_TRACE_DEBUG, "feedback data added",
+	                 buffer + pos, feedback_length);
+#endif
 
 	/* return the length of the feedback header/data, or zero if no feedback */
 	return (pos + feedback_length);
