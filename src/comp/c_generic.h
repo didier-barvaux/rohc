@@ -322,11 +322,12 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
                              rohc_ctxt_key_t *const ctxt_key)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
-void change_mode(struct c_context *const context, const rohc_mode_t new_mode);
 void change_state(struct c_context *const context,
-                  const rohc_comp_state_t new_state);
+                  const rohc_comp_state_t new_state)
+	__attribute__((nonnull(1)));
 
-rohc_ext_t decide_extension(const struct c_context *context);
+rohc_ext_t decide_extension(const struct c_context *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 int c_generic_encode(struct c_context *const context,
                      const struct ip_packet *ip,
@@ -346,9 +347,10 @@ bool c_generic_use_udp_port(const struct c_context *const context,
 
 void decide_state(struct c_context *const context);
 
-void rohc_get_ipid_bits(const struct c_context *context,
+void rohc_get_ipid_bits(const struct c_context *const context,
                         size_t *const nr_innermost_bits,
-                        size_t *const nr_outermost_bits);
+                        size_t *const nr_outermost_bits)
+	__attribute__((nonnull(1, 2, 3)));
 
 #endif
 
