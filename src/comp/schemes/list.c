@@ -137,11 +137,12 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 			rc_list_debug(comp, "  extension #%zu: extension type "
 			              "%u uses %s entry #%d in translation table (%s entry "
-			              "sent %zu/%u times)\n", comp->pkt_list.items_nr,
+			              "sent %zu/%zu times)\n", comp->pkt_list.items_nr,
 			              ext_type, (entry_changed ? "updated" : "existing"),
 			              index_table, comp->trans_table[index_table].known ?
 			              "known" : "not-yet-known",
-			              comp->trans_table[index_table].counter, ROHC_LIST_L);
+			              comp->trans_table[index_table].counter,
+			              comp->list_trans_nr);
 		}
 		while((ext = ip_get_next_ext_from_ext(ext, &ext_type)) != NULL &&
 		      comp->pkt_list.items_nr < ROHC_LIST_ITEMS_MAX);
@@ -233,7 +234,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 		*list_content_changed = true;
 	}
 	else if(new_cur_id != ROHC_LIST_GEN_ID_NONE &&
-	        comp->lists[new_cur_id].counter < ROHC_LIST_L)
+	        comp->lists[new_cur_id].counter < comp->list_trans_nr)
 	{
 		rc_list_debug(comp, "send some bits for extension header list of the "
 		              "outer IPv6 header because it was not sent enough times\n");
@@ -364,7 +365,7 @@ void rohc_list_update_context(struct list_comp *const comp)
 		if(!comp->lists[comp->cur_id].items[i]->known)
 		{
 			comp->lists[comp->cur_id].items[i]->counter++;
-			if(comp->lists[comp->cur_id].items[i]->counter >= ROHC_LIST_L)
+			if(comp->lists[comp->cur_id].items[i]->counter >= comp->list_trans_nr)
 			{
 				comp->lists[comp->cur_id].items[i]->known = true;
 			}
@@ -375,23 +376,23 @@ void rohc_list_update_context(struct list_comp *const comp)
 	if(comp->cur_id != comp->ref_id)
 	{
 		comp->lists[comp->cur_id].counter++;
-		if(comp->lists[comp->cur_id].counter >= ROHC_LIST_L)
+		if(comp->lists[comp->cur_id].counter >= comp->list_trans_nr)
 		{
 			if(comp->ref_id != ROHC_LIST_GEN_ID_NONE)
 			{
 				/* replace previous reference list */
 				rc_list_debug(comp, "replace the reference list (gen_id = %u) by "
 				              "current list (gen_id = %u) because it was "
-				              "transmitted at least L = %u times\n", comp->ref_id,
-				              comp->cur_id, ROHC_LIST_L);
+				              "transmitted at least L = %zu times\n",
+				              comp->ref_id, comp->cur_id, comp->list_trans_nr);
 			}
 			else
 			{
 				/* first reference list */
 				rc_list_debug(comp, "use the current list (gen_id = %u) as the "
 				              "first reference list because it was transmitted "
-				              "at least L = %u times\n", comp->cur_id,
-				              ROHC_LIST_L);
+				              "at least L = %zu times\n", comp->cur_id,
+				              comp->list_trans_nr);
 			}
 			comp->ref_id = comp->cur_id;
 		}

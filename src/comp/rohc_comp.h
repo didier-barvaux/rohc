@@ -521,13 +521,23 @@ bool ROHC_EXPORT rohc_feedback_remove_locked(struct rohc_comp *const comp)
 bool ROHC_EXPORT rohc_feedback_unlock(struct rohc_comp *const comp)
 	__attribute__((warn_unused_result));
 
-/* Configure robustness to packet loss/damage */
+
+/*
+ * Prototypes of public functions that configure robustness to packet
+ * loss/damage
+ */
+
 bool ROHC_EXPORT rohc_comp_set_wlsb_window_width(struct rohc_comp *const comp,
                                                  const size_t width)
 	__attribute__((warn_unused_result));
+
 bool ROHC_EXPORT rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 																  const size_t ir_timeout,
 																  const size_t fo_timeout)
+	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
+                                             const size_t list_trans_nr)
 	__attribute__((warn_unused_result));
 
 

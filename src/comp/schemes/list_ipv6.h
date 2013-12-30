@@ -27,6 +27,7 @@
 
 
 void ROHC_EXPORT rohc_comp_list_ipv6_new(struct list_comp *const comp,
+                                         const size_t list_trans_nr,
                                          rohc_trace_callback_t trace_callback,
                                          const int profile_id)
 	__attribute__((nonnull(1)));

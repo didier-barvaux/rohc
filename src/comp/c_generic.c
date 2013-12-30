@@ -306,6 +306,8 @@ static bool is_field_changed(const unsigned short changed_fields,
  *
  * @param header_info        The inner or outer IP header info to initialize
  * @param ip                 The inner or outer IP header
+ * @param list_trans_nr      The number of uncompressed transmissions for
+ *                           list compression (L)
  * @param wlsb_window_width  The width of the W-LSB sliding window for IPv4
  *                           IP-ID (must be > 0)
  * @param trace_callback     The function to call for printing traces
@@ -314,6 +316,7 @@ static bool is_field_changed(const unsigned short changed_fields,
  */
 int c_init_header_info(struct ip_header_info *header_info,
                        const struct ip_packet *ip,
+                       const size_t list_trans_nr,
                        const size_t wlsb_window_width,
                        rohc_trace_callback_t trace_callback,
                        const int profile_id)
@@ -355,7 +358,7 @@ int c_init_header_info(struct ip_header_info *header_info,
 	else
 	{
 		/* init the compression context for IPv6 extension header list */
-		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp,
+		rohc_comp_list_ipv6_new(&header_info->info.v6.ext_comp, list_trans_nr,
 		                        trace_callback, profile_id);
 	}
 
@@ -468,6 +471,7 @@ bool c_generic_create(struct c_context *const context,
 
 	/* step 4 */
 	if(!c_init_header_info(&g_context->ip_flags, ip,
+	                       context->compressor->list_trans_nr,
 	                       context->compressor->wlsb_window_width,
 	                       context->compressor->trace_callback,
 	                       context->profile->id))
@@ -808,6 +812,7 @@ int c_generic_encode(struct c_context *const context,
 		if(!g_context->is_ip2_initialized)
 		{
 			if(!c_init_header_info(&g_context->ip2_flags, inner_ip,
+			                       context->compressor->list_trans_nr,
 			                       context->compressor->wlsb_window_width,
 			                       context->compressor->trace_callback,
 			                       context->profile->id))

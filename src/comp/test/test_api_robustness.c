@@ -182,6 +182,12 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 	CHECK(rohc_comp_set_periodic_refreshes(comp, 5, 10) == false);
 
+	/* rohc_comp_set_list_trans_nr() */
+	CHECK(rohc_comp_set_list_trans_nr(NULL, 5) == false);
+	CHECK(rohc_comp_set_list_trans_nr(comp, 0) == false);
+	CHECK(rohc_comp_set_list_trans_nr(comp, 1) == true);
+	CHECK(rohc_comp_set_list_trans_nr(comp, 5) == true);
+
 	/* rohc_comp_set_rtp_detection_cb() */
 	{
 		rohc_rtp_detection_callback_t fct =

@@ -407,6 +407,14 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 		goto destroy_comp;
 	}
 
+	/* set the default number of uncompressed transmissions for list
+	 * compression */
+	is_fine = rohc_comp_set_list_trans_nr(comp, ROHC_LIST_DEFAULT_L);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+
 	/* set default callback for random numbers */
 	is_fine = rohc_comp_set_random_cb(comp, rohc_comp_get_random_default, NULL);
 	if(is_fine != true)
@@ -1488,6 +1496,60 @@ bool rohc_comp_set_periodic_refreshes(struct rohc_comp *const comp,
 	          "context periodic refreshes set to %zd\n", ir_timeout);
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "FO timeout for "
 	          "context periodic refreshes set to %zd\n", fo_timeout);
+
+	return true;
+}
+
+
+/**
+ * @brief Set the number of uncompressed transmissions for list compression
+ *
+ * Set the number of transmissions required for list compression. This matches
+ * the L parameter described in RFC 3095 and 4815. The compressor sends the
+ * list items uncompressed L times before compressing them. The compressor
+ * also sends the list structure L times before compressing it out.
+ *
+ * The L parameter is set to \ref ROHC_LIST_DEFAULT_L by default.
+ *
+ * @warning The value can not be modified after library initialization
+ *
+ * @param comp           The ROHC compressor
+ * @param list_trans_nr  The number of times the list items or the list itself
+ *                       are sent uncompressed before being sent compressed
+ * @return               true if the new value is accepted,
+ *                       false if the value is rejected
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
+                                 const size_t list_trans_nr)
+{
+	/* we need a valid compressor and a positive non-zero value for L */
+	if(comp == NULL)
+	{
+		return false;
+	}
+	if(list_trans_nr <= 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "invalid "
+		             "value for uncompressed transmissions of list compression "
+		             "(%zu)\n", list_trans_nr);
+		return false;
+	}
+
+	/* refuse to set values if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "unable to modify the value for uncompressed transmissions"
+		             " of list compression after initialization\n");
+		return false;
+	}
+
+	comp->list_trans_nr = list_trans_nr;
+
+	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "uncompressed "
+	          "transmissions of list compression set to %zu\n", list_trans_nr);
 
 	return true;
 }

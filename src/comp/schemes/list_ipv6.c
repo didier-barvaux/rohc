@@ -41,10 +41,12 @@ static bool cmp_ipv6_ext(const struct rohc_list_item *const item,
  * @brief Create one context for compressing lists of IPv6 extension headers
  *
  * @param comp            The context to create
+ * @param list_trans_nr   The number of uncompressed transmissions (L)
  * @param trace_callback  The function to call for printing traces
  * @param profile_id      The ID of the associated decompression profile
  */
 void rohc_comp_list_ipv6_new(struct list_comp *const comp,
+                             const size_t list_trans_nr,
                              rohc_trace_callback_t trace_callback,
                              const int profile_id)
 {
@@ -67,6 +69,8 @@ void rohc_comp_list_ipv6_new(struct list_comp *const comp,
 	{
 		rohc_list_item_reset(&comp->trans_table[i]);
 	}
+
+	comp->list_trans_nr = list_trans_nr;
 
 	/* specific callbacks for IPv6 extension headers */
 	comp->get_size = ip_get_extension_size;

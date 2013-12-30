@@ -69,6 +69,14 @@
  *  state before being able to switch to the SEND_SCALED state */
 #define ROHC_INIT_TS_STRIDE_MIN  3U
 
+/**
+ * @brief Default number of transmission for lists to become a reference list
+ *
+ * The minimal number of times of compressed list shall be sent to become
+ * a reference list. L is the name specified in the RFC.
+ */
+#define ROHC_LIST_DEFAULT_L  5U
+
 /** Print a debug trace for the given compression context */
 #define rohc_comp_debug(context, format, ...) \
 	rohc_debug((context)->compressor, ROHC_TRACE_COMP, \
@@ -221,6 +229,8 @@ struct rohc_comp
 	size_t mrru;
 	/** The connection type (currently not used) */
 	int connection_type;
+	/** The number of uncompressed transmissions for list compression (L) */
+	size_t list_trans_nr;
 
 	/** The callback function used to manage traces */
 	rohc_trace_callback_t trace_callback;

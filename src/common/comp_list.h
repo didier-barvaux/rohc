@@ -38,15 +38,6 @@
 #endif
 
 
-/**
- * @brief Number of transmission for lists to become a reference list
- *
- * The minimal number of times of compressed list shall be sent to become
- * a reference list. L is the name specified in the RFC.
- */
-#define ROHC_LIST_L  5U  /* TODO: define API to set this */
-
-
 /// Header version
 typedef enum
 {
