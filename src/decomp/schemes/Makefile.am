@@ -29,6 +29,7 @@ librohc_decomp_schemes_la_CFLAGS = \
 librohc_decomp_schemes_la_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp \
 	-I$(srcdir)/..
 
 noinst_HEADERS = \
