@@ -25,6 +25,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb4_smallcid.sh \
@@ -143,6 +144,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb64_smallcid.sh \
@@ -266,6 +268,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb4_smallcid.sh \
@@ -384,6 +387,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb64_smallcid.sh \
@@ -512,6 +516,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_ipv6_icmp_maxcontexts0_wlsb4_largecid.sh \
@@ -630,6 +635,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_ipv6_icmp_maxcontexts0_wlsb64_largecid.sh \
@@ -753,6 +759,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_ipv6_icmp_maxcontexts1_wlsb4_largecid.sh \
@@ -871,6 +878,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY = \
 	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp-same-ipv6ext-different-content_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_ipv6_icmp_maxcontexts1_wlsb64_largecid.sh \
