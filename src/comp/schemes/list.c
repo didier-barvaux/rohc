@@ -897,7 +897,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		size_t xi_index = 0;
 
 		/* each XI item is stored on 8 bits */
-		rc_list_debug(comp, "use 8-bit format for the %d XIs\n", m);
+		rc_list_debug(comp, "use 8-bit format for the %zu XIs\n", m);
 
 		for(k = 0; k < m; k++)
 		{
@@ -916,7 +916,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			 * is confident that item is known by decompressor */
 			if(mask[k] == 0 && item->known)
 			{
-				rc_list_debug(comp, "ignore element #%d because it is present "
+				rc_list_debug(comp, "ignore element #%zu because it is present "
 				              "in the reference list and already known\n", k);
 				continue;
 			}
@@ -933,7 +933,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			/* 7-bit Index */
 			dest[counter] |= index_table & 0x7f;
 
-			rc_list_debug(comp, "add 8-bit XI #%d = 0x%x\n", k, dest[counter]);
+			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x\n", k, dest[counter]);
 
 			/* byte is full, write to next one next time */
 			counter++;
@@ -944,7 +944,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		size_t xi_index = 0;
 
 		/* each XI item is stored on 4 bits */
-		rc_list_debug(comp, "use 4-bit format for the %d XIs\n", m);
+		rc_list_debug(comp, "use 4-bit format for the %zu XIs\n", m);
 
 		for(k = 0; k < m; k++)
 		{
@@ -963,7 +963,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			 * is confident that item is known by decompressor */
 			if(mask[k] == 0 && item->known)
 			{
-				rc_list_debug(comp, "ignore element #%d because it is present "
+				rc_list_debug(comp, "ignore element #%zu because it is present "
 				              "in the reference list and already known\n", k);
 				continue;
 			}
@@ -982,7 +982,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 				/* 3-bit Index */
 				dest[counter - (3 + mask_size)] |= index_table & 0x07;
 
-				rc_list_debug(comp, "add 4-bit XI #%d in part 1 = 0x%x\n", k,
+				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x\n", k,
 				              (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
 			}
 			else
@@ -1003,7 +1003,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 					/* 3-bit Index */
 					dest[counter] |= (index_table & 0x07) << 4;
 
-					rc_list_debug(comp, "add 4-bit XI #%d in MSB = 0x%x\n", k,
+					rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x\n", k,
 					              (dest[counter] & 0xf0) >> 4);
 				}
 				else
@@ -1018,7 +1018,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 					/* 3-bit Index */
 					dest[counter] |= (index_table & 0x07) << 0;
 
-					rc_list_debug(comp, "add 4-bit XI #%d = 0x%x in LSB\n",
+					rc_list_debug(comp, "add 4-bit XI #%zu = 0x%x in LSB\n",
 					              k + 1, dest[counter] & 0xf0);
 
 					/* byte is full, write to next one next time */
@@ -1048,7 +1048,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		/* skip element if it present in the reference list */
 		if(mask[k] == 0 && item->known)
 		{
-			rc_list_debug(comp, "ignore element #%d because it is present "
+			rc_list_debug(comp, "ignore element #%zu because it is present "
 			              "in the reference list and already known\n", k);
 			continue;
 		}
@@ -1056,7 +1056,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zd-byte unknown item #%d in packet\n",
+			rc_list_debug(comp, "add %zu-byte unknown item #%zu in packet\n",
 			              item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;
@@ -1145,7 +1145,7 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
 
 	/* part 1: ET, GP, res and Count */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
-	rc_list_debug(comp, "ET = %d, GP = %d, Count = %d\n", et, gp, count);
+	rc_list_debug(comp, "ET = %d, GP = %d, Count = %zu\n", et, gp, count);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
 	dest[counter] &= ~(0x01 << 4); /* clear the reserved bit */
@@ -1558,7 +1558,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		size_t xi_index = 0;
 
 		/* each XI item is stored on 8 bits */
-		rc_list_debug(comp, "use 8-bit format for the %d XIs\n", m);
+		rc_list_debug(comp, "use 8-bit format for the %zu XIs\n", m);
 
 		for(k = 0; k < m; k++)
 		{
@@ -1577,7 +1577,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 			 * is confident that item is known by decompressor */
 			if(ins_mask[k] == 0 && item->known)
 			{
-				rc_list_debug(comp, "ignore element #%d because it is present "
+				rc_list_debug(comp, "ignore element #%zu because it is present "
 				              "in the reference list and already known\n", k);
 				continue;
 			}
@@ -1594,7 +1594,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 			/* 7-bit Index */
 			dest[counter] |= (index_table & 0x7f);
 
-			rc_list_debug(comp, "add 8-bit XI #%d = 0x%x\n", k, dest[counter]);
+			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x\n", k, dest[counter]);
 
 			/* byte is full, write to next one next time */
 			counter++;
@@ -1605,7 +1605,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		size_t xi_index = 0;
 
 		/* each XI item is stored on 4 bits */
-		rc_list_debug(comp, "use 4-bit format for the %d XIs\n", m);
+		rc_list_debug(comp, "use 4-bit format for the %zu XIs\n", m);
 
 		for(k = 0; k < m; k++)
 		{
@@ -1624,7 +1624,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 			 * is confident that item is known by decompressor */
 			if(ins_mask[k] == 0 && item->known)
 			{
-				rc_list_debug(comp, "ignore element #%d because it is present "
+				rc_list_debug(comp, "ignore element #%zu because it is present "
 				              "in the reference list and already known\n", k);
 				continue;
 			}
@@ -1643,7 +1643,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 				/* 3-bit Index */
 				dest[counter - (3 + mask_size)] |= index_table & 0x07;
 
-				rc_list_debug(comp, "add 4-bit XI #%d in part 1 = 0x%x\n", k,
+				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x\n", k,
 				              (dest[counter - (3 + mask_size)] & 0x0f) >> 4);
 			}
 			else
@@ -1664,7 +1664,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 					/* 3-bit Index */
 					dest[counter] |= (index_table & 0x07) << 4;
 
-					rc_list_debug(comp, "add 4-bit XI #%d in MSB = 0x%x\n", k,
+					rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x\n", k,
 					              (dest[counter] & 0xf0) >> 4);
 				}
 				else
@@ -1679,7 +1679,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 					/* 3-bit Index */
 					dest[counter] |= (index_table & 0x07) << 0;
 
-					rc_list_debug(comp, "add 4-bit XI #%d in LSB = 0x%x\n",
+					rc_list_debug(comp, "add 4-bit XI #%zu in LSB = 0x%x\n",
 					              k + 1, dest[counter] & 0xf0);
 
 					/* byte is full, write to next one next time */

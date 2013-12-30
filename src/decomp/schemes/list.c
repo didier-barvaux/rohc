@@ -344,7 +344,7 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		             "packet too small for the full item of XI #%u (only %zu "
-		             "bytes available while at least %d bytes are required)\n",
+		             "bytes available while at least %zu bytes are required)\n",
 		             xi_index, rohc_max_len, *item_length);
 		goto error;
 	}
@@ -1339,12 +1339,10 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			if(removal_list_cur_pos < removal_list.items_nr)
 			{
 				/* new list, insert the item from reference list */
-				rd_list_debug(decomp, "use item from reference list "
-				              "(index %zu) into current list (index %u)\n",
-				              removal_list_cur_pos, i);
+				rd_list_debug(decomp, "use item from reference list (index %zu) into "
+				              "current list (index %zu)\n", removal_list_cur_pos, i);
 				/* use next item from reference list */
-				decomp->pkt_list.items[i] =
-					removal_list.items[removal_list_cur_pos];
+				decomp->pkt_list.items[i] = removal_list.items[removal_list_cur_pos];
 				decomp->pkt_list.items_nr++;
 				/* skip item in removal list */
 				removal_list_cur_pos++;
