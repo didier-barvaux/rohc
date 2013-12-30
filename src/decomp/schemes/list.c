@@ -621,10 +621,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	packet_read_len++;
 	packet_len--;
 	rd_list_debug(decomp, "ref_id = 0x%02x\n", ref_id);
+	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		             "unknown ID 0x%02x given for reference list\n", ref_id);
+		goto error;
+	}
+	/* reference list must not be empty (RFC 4815, §5.7) */
+	if(decomp->lists[ref_id].items_nr == 0)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+		             "list encoding type 1 must not be used with an empty "
+		             "reference list, discard packet\n");
 		goto error;
 	}
 
@@ -930,10 +939,19 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	packet_read_len++;
 	packet_len--;
 	rd_list_debug(decomp, "ref_id = 0x%02x\n", ref_id);
+	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		             "unknown ID 0x%02x given for reference list\n", ref_id);
+		goto error;
+	}
+	/* reference list must not be empty (RFC 4815, §5.7) */
+	if(decomp->lists[ref_id].items_nr == 0)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+		             "list encoding type 2 must not be used with an empty "
+		             "reference list, discard packet\n");
 		goto error;
 	}
 
@@ -1107,10 +1125,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	packet_read_len++;
 	packet_len--;
 	rd_list_debug(decomp, "ref_id = 0x%02x\n", ref_id);
+	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 		             "unknown ID 0x%02x given for reference list\n", ref_id);
+		goto error;
+	}
+	/* reference list must not be empty (RFC 4815, §5.7) */
+	if(decomp->lists[ref_id].items_nr == 0)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
+		             "list encoding type 2 must not be used with an empty "
+		             "reference list, discard packet\n");
 		goto error;
 	}
 

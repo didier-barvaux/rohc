@@ -409,6 +409,15 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 		              "reference list yet\n");
 		encoding_type = 0;
 	}
+	else if(comp->lists[comp->ref_id].items_nr == 0)
+	{
+		/* empty reference list, so use encoding type 0 (RFC 4815, §5.7 reads
+		 * that encoding types 1, 2, and 3 must not be used with an empty
+		 * reference list) */
+		rc_list_debug(comp, "use list encoding type 0 because reference list "
+		              "is the empty list\n");
+		encoding_type = 0;
+	}
 	else if(comp->lists[comp->cur_id].counter > 0)
 	{
 		/* the structure of the list did not change, so use encoding type 0 */
