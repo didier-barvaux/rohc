@@ -6,13 +6,16 @@
 # authors:     Didier Barvaux <didier.barvaux@toulouse.viveris.com>
 #              Didier Barvaux <didier@barvaux.org>
 #
-# This script may be used by creating a link "test_non_regression_STREAM.sh"
+# This script may be used by creating a link "test_non_regression_maxcontextsN_wlsbM_CIDTYPE_STREAM.sh"
 # where:
+#    N       is the maximum number of contexts the ROHC library may use
+#    M       is the width of the W-LSB window the ROHC library shall use
+#    CIDTYPE is the type of CID the ROHC library shall use
 #    STREAM  is the path to the capture file that contains the IP stream to
 #            test library with (separators '/' are replaced by '_')
 #
 # Script arguments:
-#    test_non_regression_STREAM.sh [verbose]
+#    test_non_regression_maxcontextsN_wlsbM_CIDTYPE_STREAM.sh [verbose]
 # where:
 #   verbose          prints the traces of test application
 #
@@ -42,12 +45,13 @@ fi
 # extract the CID type and capture name from the name of the script
 PARAMS=$( echo "${SCRIPT}" | \
           ${SED} -e 's#^.*/test_non_regression_##' -e 's#\.sh$##' )
+MAX_CONTEXTS=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-2) }' | sed -e 's/maxcontexts//' )
 WLSB_WIDTH=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF-1) }' | sed -e 's/wlsb//' )
 CID_TYPE=$( echo "${PARAMS}" | ${AWK} -F'_' '{ print $(NF) }' )
-STREAM=$( echo "${PARAMS}" | ${AWK} -F'_' '{ OFS="/" ; $(NF-1)="" ; $(NF)="" ; print $0 }' )
+STREAM=$( echo "${PARAMS}" | ${AWK} -F'_' '{ OFS="/" ; $(NF-2)="" ; $(NF-1)="" ; $(NF)="" ; print $0 }' )
 CAPTURE_SOURCE="${BASEDIR}/inputs/${STREAM}/source.pcap"
-CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_wlsb${WLSB_WIDTH}_${CID_TYPE}.pcap"
-SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_sizes_wlsb${WLSB_WIDTH}_${CID_TYPE}"
+CAPTURE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_maxcontexts${MAX_CONTEXTS}_wlsb${WLSB_WIDTH}_${CID_TYPE}.pcap"
+SIZE_COMPARE="${BASEDIR}/inputs/${STREAM}/rohc_maxcontexts${MAX_CONTEXTS}_wlsb${WLSB_WIDTH}_${CID_TYPE}.sizes"
 
 # check that capture names are not empty
 if [ -z "${CAPTURE_SOURCE}" ] ; then
@@ -71,16 +75,31 @@ if [ "${VERBOSE}" != "generate" ] && [ ! -f "${SIZE_COMPARE}" ] ; then
 	exit 1
 fi
 
+# determine the maximum number of contexts if MAX_CONTEXTS == 0
+if [ ${MAX_CONTEXTS} -eq 0 ] ; then
+	if [ "${CID_TYPE}" == "smallcid" ] ; then
+		MAX_CONTEXTS=16
+	else
+		MAX_CONTEXTS=16384
+	fi
+fi
+
 CMD="${CROSS_COMPILATION_EMULATOR} ${APP}"
 if [ -n "${KERNEL_SUFFIX}" ] ; then
 	# normal mode for kernel: compare with existing ROHC output captures
 	CMD="${CMD} -c ${CAPTURE_COMPARE} ${CAPTURE_SOURCE}"
 elif [ "${VERBOSE}" = "generate" ] ; then
 	# generate ROHC output captures
-	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE} --wlsb-width ${WLSB_WIDTH} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD="${CMD} -o ${CAPTURE_COMPARE} --rohc-size-output ${SIZE_COMPARE}"
+	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
+	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
+	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
 else
 	# normal mode: compare with existing ROHC output captures
-	CMD="${CMD} -c ${CAPTURE_COMPARE} --wlsb-width ${WLSB_WIDTH} ${CID_TYPE} ${CAPTURE_SOURCE}"
+	CMD="${CMD} -c ${CAPTURE_COMPARE}"
+	CMD="${CMD} --wlsb-width ${WLSB_WIDTH}"
+	CMD="${CMD} --max-contexts ${MAX_CONTEXTS}"
+	CMD="${CMD} ${CID_TYPE} ${CAPTURE_SOURCE}"
 	if [ "${VERBOSE}" = "verbose" ] ; then
 		CMD="${CMD} --verbose"
 	fi

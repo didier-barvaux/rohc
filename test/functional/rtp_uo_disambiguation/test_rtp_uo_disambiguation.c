@@ -286,6 +286,14 @@ static int test_comp_and_decomp(const char *const filename,
 		goto destroy_comp;
 	}
 
+	/* reduce uncompressed transmissions for list compression to ease test */
+	if(!rohc_comp_set_list_trans_nr(comp, 2U))
+	{
+		fprintf(stderr, "failed to reduce uncompressed transmissions for list "
+		        "compression\n");
+		goto destroy_comp;
+	}
+
 	/* enable profiles */
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_RTP, -1))
 	{

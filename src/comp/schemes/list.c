@@ -75,7 +75,6 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 	unsigned int new_cur_id = ROHC_LIST_GEN_ID_NONE;
 	unsigned char *ext;
 	uint8_t ext_type;
-	bool list_empty;
 	int ret;
 
 	/* reset the list of the current packet */
@@ -87,13 +86,11 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 	{
 		/* there is no list of IPv6 extension headers in the current packet */
 		rc_list_debug(comp, "there is no IPv6 extension in packet\n");
-		list_empty = true;
 	}
 	else
 	{
 		/* there is one extension or more */
 		rc_list_debug(comp, "there is at least one IPv6 extension in packet\n");
-		list_empty = false;
 
 		/* parse all extension headers:
 		 *  - update the related entries in the translation table,
@@ -158,19 +155,10 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 	/* now that translation table is updated and packet list is generated,
 	 * search for a context list with the same structure:
-	 *  - if there is no list in the stream, do not send one,
 	 *  - check the reference list first as it is probably the correct one,
 	 *  - then check the other lists */
-	if(comp->ref_id == ROHC_LIST_GEN_ID_NONE &&
-	   comp->cur_id == ROHC_LIST_GEN_ID_NONE &&
-	   list_empty)
-	{
-		/* do not send a list if there is none in the whole stream life */
-		rc_list_debug(comp, "list is empty and no list was ever sent\n");
-		new_cur_id = ROHC_LIST_GEN_ID_NONE;
-	}
-	else if(comp->ref_id != ROHC_LIST_GEN_ID_NONE &&
-	        rohc_list_equal(&comp->pkt_list, &comp->lists[comp->ref_id]))
+	if(comp->ref_id != ROHC_LIST_GEN_ID_NONE &&
+	   rohc_list_equal(&comp->pkt_list, &comp->lists[comp->ref_id]))
 	{
 		/* reference list matches, no need for a new list */
 		rc_list_debug(comp, "send reference list with gen_id = %u\n",

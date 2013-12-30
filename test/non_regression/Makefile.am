@@ -7,486 +7,977 @@
 
 
 #
-# WLSB width 4 + small CID
+# max contexts + WLSB width 4 + small CID
 #
 
-TESTS_WLSB4_SMALLCID_MISC = \
-	test_non_regression_malformed-too-short_wlsb4_smallcid.sh \
-	test_non_regression_unknown_wlsb4_smallcid.sh \
-	test_non_regression_ipvx_wlsb4_smallcid.sh \
-	test_non_regression_ipv4fragmented_wlsb4_smallcid.sh \
-	test_non_regression_ipv4-with-options_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_unknown_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipvx_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_IPONLY = \
-	test_non_regression_ipv4_icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_icmp_bug580491_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_icmp+tcp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6ext_icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6ext_icmp-large-ipv6-ext_wlsb4_smallcid.sh \
-	test_non_regression_ipv6ext_icmp-variable-ipv6ext_wlsb4_smallcid.sh \
-	test_non_regression_ipv6ext_ipv6ext_icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv6_icmp_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_IP_UDP = \
-	test_non_regression_ipv4_udp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_udp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_udp_bug1166618_wlsb4_smallcid.sh \
-	test_non_regression_ipv6ext_udp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udp_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_IP_UDPLITE = \
-	test_non_regression_ipv4_udplite_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_udplite_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udplite_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udplite_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udplite_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_IP_UDP_RTP = \
-	test_non_regression_ipv4_udp_rtp_h323_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_misc_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_mp3_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_video2_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_video3_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_video1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip+video_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1080055_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_audio-vlc_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_video2_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_video1_wlsb4_smallcid.sh \
-	test_non_regression_ipv6ext_udp_rtp_audio-vlc_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video2_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video1_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video2_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_ESP = \
-	test_non_regression_ipv4_esp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_esp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_esp_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_esp_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_BUG804552 = \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID_TCP = \
-	test_non_regression_ipv4_tcp_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_tcp_wlsb4_smallcid.sh \
-	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb4_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb4_smallcid.sh
 
-TESTS_WLSB4_SMALLCID = \
-	$(TESTS_WLSB4_SMALLCID_MISC) \
-	$(TESTS_WLSB4_SMALLCID_IPONLY) \
-	$(TESTS_WLSB4_SMALLCID_IP_UDP) \
-	$(TESTS_WLSB4_SMALLCID_IP_UDPLITE) \
-	$(TESTS_WLSB4_SMALLCID_IP_UDP_RTP) \
-	$(TESTS_WLSB4_SMALLCID_ESP) \
-	$(TESTS_WLSB4_SMALLCID_BUG804552) \
-	$(TESTS_WLSB4_SMALLCID_TCP)
+TESTS_MAXCONTEXTS0_WLSB4_SMALLCID = \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_MISC) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IPONLY) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_ESP) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_BUG804552) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_TCP)
 
 
 #
-# WLSB width 64 + small CID
+# max contexts + WLSB width 64 + small CID
 #
 
-TESTS_WLSB64_SMALLCID_MISC = \
-	test_non_regression_malformed-too-short_wlsb64_smallcid.sh \
-	test_non_regression_unknown_wlsb64_smallcid.sh \
-	test_non_regression_ipvx_wlsb64_smallcid.sh \
-	test_non_regression_ipv4fragmented_wlsb64_smallcid.sh \
-	test_non_regression_ipv4-with-options_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_unknown_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipvx_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_IPONLY = \
-	test_non_regression_ipv4_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_icmp_bug580491_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_icmp+tcp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_icmp-large-ipv6-ext_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_icmp-variable-ipv6ext_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_ipv6ext_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_icmp_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_IP_UDP = \
-	test_non_regression_ipv4_udp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_bug1166618_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_udp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udp_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_IP_UDPLITE = \
-	test_non_regression_ipv4_udplite_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udplite_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udplite_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udplite_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udplite_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_IP_UDP_RTP = \
-	test_non_regression_ipv4_udp_rtp_h323_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_misc_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_mp3_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_video2_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_video3_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_video1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_voip+video_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1080055_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_audio-vlc_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_video2_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_video1_wlsb64_smallcid.sh \
-	test_non_regression_ipv6ext_udp_rtp_audio-vlc_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video2_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video1_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video2_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_ESP = \
-	test_non_regression_ipv4_esp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_esp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_esp_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_esp_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_BUG804552 = \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID_TCP = \
-	test_non_regression_ipv4_tcp_wlsb64_smallcid.sh \
-	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_tcp_wlsb64_smallcid.sh \
-	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb64_smallcid.sh
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb64_smallcid.sh
 
-TESTS_WLSB64_SMALLCID = \
-	$(TESTS_WLSB64_SMALLCID_MISC) \
-	$(TESTS_WLSB64_SMALLCID_IPONLY) \
-	$(TESTS_WLSB64_SMALLCID_IP_UDP) \
-	$(TESTS_WLSB64_SMALLCID_IP_UDPLITE) \
-	$(TESTS_WLSB64_SMALLCID_IP_UDP_RTP) \
-	$(TESTS_WLSB64_SMALLCID_ESP) \
-	$(TESTS_WLSB64_SMALLCID_BUG804552) \
-	$(TESTS_WLSB64_SMALLCID_TCP)
+TESTS_MAXCONTEXTS0_WLSB64_SMALLCID = \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_MISC) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IPONLY) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_ESP) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_BUG804552) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_TCP)
+
+
+TESTS_MAXCONTEXTS0_SMALLCID = \
+	$(TESTS_MAXCONTEXTS0_WLSB4_SMALLCID) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_SMALLCID)
+
+
+#
+# max contexts 1 + WLSB width 4 + small CID
+#
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_unknown_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipvx_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_esp_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb4_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_SMALLCID = \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_MISC) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IPONLY) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_ESP) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_BUG804552) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_TCP)
+
+
+#
+# max contexts 1 + WLSB width 64 + small CID
+#
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_unknown_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipvx_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_esp_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb64_smallcid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_SMALLCID = \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_MISC) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IPONLY) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_ESP) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_BUG804552) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_TCP)
+
+
+TESTS_MAXCONTEXTS1_SMALLCID = \
+	$(TESTS_MAXCONTEXTS1_WLSB4_SMALLCID) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_SMALLCID)
 
 
 TESTS_SMALLCID = \
-	$(TESTS_WLSB4_SMALLCID) \
-	$(TESTS_WLSB64_SMALLCID)
-
-
-
-#
-# WLSB width 4 + large CID
-#
-
-TESTS_WLSB4_LARGECID_MISC = \
-	test_non_regression_malformed-too-short_wlsb4_largecid.sh \
-	test_non_regression_unknown_wlsb4_largecid.sh \
-	test_non_regression_ipvx_wlsb4_largecid.sh \
-	test_non_regression_ipv4fragmented_wlsb4_largecid.sh \
-	test_non_regression_ipv4-with-options_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_IPONLY = \
-	test_non_regression_ipv4_icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_icmp_bug580491_wlsb4_largecid.sh \
-	test_non_regression_ipv4_icmp+tcp_wlsb4_largecid.sh \
-	test_non_regression_ipv6_icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv6ext_icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv6ext_icmp-large-ipv6-ext_wlsb4_largecid.sh \
-	test_non_regression_ipv6ext_icmp-variable-ipv6ext_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv6_icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv6ext_ipv6ext_icmp_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_IP_UDP = \
-	test_non_regression_ipv4_udp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_bug1166618_wlsb4_largecid.sh \
-	test_non_regression_ipv6ext_udp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv6_udp_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_IP_UDPLITE = \
-	test_non_regression_ipv4_udplite_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udplite_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udplite_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udplite_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv6_udplite_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_IP_UDP_RTP = \
-	test_non_regression_ipv4_udp_rtp_h323_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_misc_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_mp3_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_video2_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_video3_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_video1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_voip_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_voip+video_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1080055_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb4_smallcid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video2_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video1_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video2_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_wlsb4_largecid.sh \
-	test_non_regression_ipv6ext_udp_rtp_audio-vlc_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_audio-vlc_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_video2_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_video1_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_ESP = \
-	test_non_regression_ipv4_esp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_wlsb4_largecid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_wlsb4_largecid.sh \
-	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv6_esp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_esp_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_BUG804552 = \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh \
-	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID_TCP = \
-	test_non_regression_ipv4_tcp_wlsb4_largecid.sh \
-	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb4_largecid.sh \
-	test_non_regression_ipv6_tcp_wlsb4_largecid.sh \
-	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb4_largecid.sh
-
-TESTS_WLSB4_LARGECID = \
-	$(TESTS_WLSB4_LARGECID_MISC) \
-	$(TESTS_WLSB4_LARGECID_IPONLY) \
-	$(TESTS_WLSB4_LARGECID_IP_UDP) \
-	$(TESTS_WLSB4_LARGECID_IP_UDPLITE) \
-	$(TESTS_WLSB4_LARGECID_IP_UDP_RTP) \
-	$(TESTS_WLSB4_LARGECID_ESP) \
-	$(TESTS_WLSB4_LARGECID_BUG804552) \
-	$(TESTS_WLSB4_LARGECID_TCP)
+	$(TESTS_MAXCONTEXTS0_SMALLCID) \
+	$(TESTS_MAXCONTEXTS1_SMALLCID)
 
 
 #
-# WLSB width 64 + large CID
+# max contexts + WLSB width 4 + large CID
 #
 
-TESTS_WLSB64_LARGECID_MISC = \
-	test_non_regression_malformed-too-short_wlsb64_largecid.sh \
-	test_non_regression_unknown_wlsb64_largecid.sh \
-	test_non_regression_ipvx_wlsb64_largecid.sh \
-	test_non_regression_ipv4fragmented_wlsb64_largecid.sh \
-	test_non_regression_ipv4-with-options_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_unknown_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipvx_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_IPONLY = \
-	test_non_regression_ipv4_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_icmp_bug580491_wlsb64_largecid.sh \
-	test_non_regression_ipv4_icmp+tcp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_icmp-large-ipv6-ext_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_icmp-variable-ipv6ext_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_ipv6ext_icmp_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_IP_UDP = \
-	test_non_regression_ipv4_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_bug1166618_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_udp_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_IP_UDPLITE = \
-	test_non_regression_ipv4_udplite_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udplite_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udplite_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udplite_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_udplite_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_IP_UDP_RTP = \
-	test_non_regression_ipv4_udp_rtp_h323_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_misc_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_mp3_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_video2_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_video3_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_video1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_voip_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_voip+video_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1080055_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1038637_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_video2_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video1_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_video2_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_wlsb64_largecid.sh \
-	test_non_regression_ipv6ext_udp_rtp_audio-vlc_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_audio-vlc_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_video2_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_video1_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_ESP = \
-	test_non_regression_ipv4_esp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_wlsb64_largecid.sh \
-	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_wlsb64_largecid.sh \
-	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv6_esp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_esp_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_esp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_BUG804552 = \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh \
-	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID_TCP = \
-	test_non_regression_ipv4_tcp_wlsb64_largecid.sh \
-	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_wlsb64_largecid.sh \
-	test_non_regression_ipv6_tcp_wlsb64_largecid.sh \
-	test_non_regression_ipv6_tcp_non-zero-dscp_wlsb64_largecid.sh
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb4_largecid.sh
 
-TESTS_WLSB64_LARGECID = \
-	$(TESTS_WLSB64_LARGECID_MISC) \
-	$(TESTS_WLSB64_LARGECID_IPONLY) \
-	$(TESTS_WLSB64_LARGECID_IP_UDP) \
-	$(TESTS_WLSB64_LARGECID_IP_UDPLITE) \
-	$(TESTS_WLSB64_LARGECID_IP_UDP_RTP) \
-	$(TESTS_WLSB64_LARGECID_ESP) \
-	$(TESTS_WLSB64_LARGECID_BUG804552) \
-	$(TESTS_WLSB64_LARGECID_TCP)
+TESTS_MAXCONTEXTS0_WLSB4_LARGECID = \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_MISC) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IPONLY) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_ESP) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_BUG804552) \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID_TCP)
+
+
+#
+# max contexts + WLSB width 64 + large CID
+#
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_unknown_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipvx_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_esp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts0_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS0_WLSB64_LARGECID = \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_MISC) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IPONLY) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_ESP) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_BUG804552) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID_TCP)
+
+
+TESTS_MAXCONTEXTS0_LARGECID = \
+	$(TESTS_MAXCONTEXTS0_WLSB4_LARGECID) \
+	$(TESTS_MAXCONTEXTS0_WLSB64_LARGECID)
+
+
+#
+# max contexts 1 + WLSB width 4 + large CID
+#
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_unknown_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipvx_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_esp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb4_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB4_LARGECID = \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_MISC) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IPONLY) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_ESP) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_BUG804552) \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID_TCP)
+
+
+#
+# max contexts 1 + WLSB width 64 + large CID
+#
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC = \
+	test_non_regression_malformed-too-short_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_unknown_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipvx_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4fragmented_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4-with-options_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY = \
+	test_non_regression_ipv4_icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_icmp_bug580491_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_icmp+tcp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp-large-ipv6-ext_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_icmp-variable-ipv6ext_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_ipv6ext_icmp_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP = \
+	test_non_regression_ipv4_udp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDPLITE = \
+	test_non_regression_ipv4_udplite_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udplite_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udplite_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udplite_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_udplite_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP_RTP = \
+	test_non_regression_ipv4_udp_rtp_h323_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_misc_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_mp3_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_rtp+rtp+icmp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video2_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video3_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_video1_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip-large-ts-stride_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_voip+video_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_more-than-14-bits-of-sn_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_lsb-interval-wraparound_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1001614-zero-ts-stride_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1080055_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1083294-uor2ts-disambiguation-with-too-many-ts-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1088004-uor2id-with-too-many-ipid-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1092660-rtp-padding-bit_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1038637_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp-with-changing-checksum-behaviour_rtp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug1210498-ip-id-little-endian_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_mp3-variable-pt-and-rnd-outer-ip-id_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video1_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_video2_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_SO-state-double-ipv4-non-rnd-without-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_innermost-ipid-bits-in-ext3_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video1_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_video2_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6ext_udp_rtp_video1_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_udp_rtp_audio-vlc_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_audio-vlc_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video2_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_video1_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_ESP = \
+	test_non_regression_ipv4_esp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-nonrnd-ip-id_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_esp_large-sn-and-rnd-ip-id_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_esp_bug1089106-non-rtp-with-14-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_esp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_esp_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_BUG804552 = \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2id-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2ts-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv4_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_ipv6_udp_rtp_bug804552-uor2rtp-with-too-many-sn-bits_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID_TCP = \
+	test_non_regression_ipv4_tcp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv4_tcp_sack-opt-with-duplicate-ack_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_tcp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6_tcp_non-zero-dscp_maxcontexts1_wlsb64_largecid.sh
+
+TESTS_MAXCONTEXTS1_WLSB64_LARGECID = \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_MISC) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IPONLY) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDPLITE) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP_RTP) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_ESP) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_BUG804552) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID_TCP)
+
+
+TESTS_MAXCONTEXTS1_LARGECID = \
+	$(TESTS_MAXCONTEXTS1_WLSB4_LARGECID) \
+	$(TESTS_MAXCONTEXTS1_WLSB64_LARGECID)
 
 
 TESTS_LARGECID = \
-	$(TESTS_WLSB4_LARGECID) \
-	$(TESTS_WLSB64_LARGECID)
+	$(TESTS_MAXCONTEXTS0_LARGECID) \
+	$(TESTS_MAXCONTEXTS1_LARGECID)
 
 
 
