@@ -594,7 +594,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 
 	/* part 1: ET, GP, PS, CC */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
-	rc_list_debug(comp, "ET = %d, GP = %d, PS = %d, CC = m = %d\n",
+	rc_list_debug(comp, "ET = %d, GP = %d, PS = %zu, CC = m = %zu\n",
 	              et, gp, ps, m);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
@@ -664,7 +664,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 			assert((index_table & 0x07) == index_table);
 			dest[counter] |= (index_table & 0x07) << 4;
 
-			rc_list_debug(comp, "add 4-bit XI #%d in MSB = 0x%x\n", k,
+			rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x\n", k,
 			              (dest[counter] & 0xf0) >> 4);
 
 			/* second 4-bit XI or padding? */
@@ -685,7 +685,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 				assert((index_table2 & 0x07) == index_table2);
 				dest[counter] |= (index_table2 & 0x07) << 0;
 
-				rc_list_debug(comp, "add 4-bit XI #%d in LSB = 0x%x\n", k + 1,
+				rc_list_debug(comp, "add 4-bit XI #%zu in LSB = 0x%x\n", k + 1,
 				              dest[counter] & 0x0f);
 			}
 			else
@@ -706,7 +706,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		/* copy the list element if not known yet */
 		if(!item->known)
 		{
-			rc_list_debug(comp, "add %zd-byte not-yet-known item #%d in "
+			rc_list_debug(comp, "add %zu-byte not-yet-known item #%zu in "
 			              "packet\n", item->length, k);
 			assert(item->length > 1);
 			dest[counter] = item->type & 0xff;
@@ -933,7 +933,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			ps = 1; /* 8-bit indexes are required */
 		}
 	}
-	rc_list_debug(comp, "PS = %d\n", ps);
+	rc_list_debug(comp, "PS = %zu\n", ps);
 	dest[ps_pos] |= (ps & 0x01) << 4;
 
 	/* part 5: k XI (= X + Indexes) */
@@ -1609,7 +1609,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 			ps = 1; /* 8-bit indexes are required */
 		}
 	}
-	rc_list_debug(comp, "PS = %d\n", ps);
+	rc_list_debug(comp, "PS = %zu\n", ps);
 	dest[ps_pos] |= (ps & 0x01) << 4;
 
 	/* part 6: k XI (= X + Indexes) */
