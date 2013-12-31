@@ -44,9 +44,9 @@
  * @param size   The length of the IP packet data
  * @return       Whether the IP packet was successfully created or not
  */
-int ip_create(struct ip_packet *const ip,
-              const unsigned char *packet,
-              const unsigned int size)
+bool ip_create(struct ip_packet *const ip,
+               const unsigned char *const packet,
+               const size_t size)
 {
 	ip_version version;
 
@@ -165,6 +165,34 @@ const unsigned char * ip_get_raw_data(const struct ip_packet *const ip)
 
 
 /**
+ * @brief Whether the given IP protocol type is a IP extension header type
+ *
+ * List retrieved from the registry maintained by IANA at:
+ *   http://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml
+ * Remember to update \ref get_index_ipv6_table if you update the list.
+ *
+ * @param next_header_type  The next header type to check
+ * @return                  true if the next header is a IP extension header
+ */
+bool rohc_ip_is_ext(const uint8_t next_header_type)
+{
+	return (next_header_type == ROHC_IPPROTO_HOPOPTS ||
+	        next_header_type == ROHC_IPPROTO_ROUTING ||
+	        next_header_type == ROHC_IPPROTO_FRAGMENT ||
+#if 0 /* IP/ESP profile is preferred */
+	        next_header_type == ROHC_IPPROTO_ESP ||
+#endif
+	        next_header_type == ROHC_IPPROTO_AH ||
+	        next_header_type == ROHC_IPPROTO_DSTOPTS ||
+	        next_header_type == ROHC_IPPROTO_MOBILITY ||
+	        next_header_type == ROHC_IPPROTO_HIP ||
+	        next_header_type == ROHC_IPPROTO_SHIM ||
+	        next_header_type == ROHC_IPPROTO_RESERVED1 ||
+	        next_header_type == ROHC_IPPROTO_RESERVED2);
+}
+
+
+/**
  * @brief Get the inner IP packet (IP in IP)
  *
  * The function does not handle \ref ip_packet whose \ref ip_packet::version
@@ -174,13 +202,18 @@ const unsigned char * ip_get_raw_data(const struct ip_packet *const ip)
  * @param inner The inner IP packet to create
  * @return      Whether the inner IP header is successfully created or not
  */
-int ip_get_inner_packet(const struct ip_packet *const outer,
-                        struct ip_packet *const inner)
+bool ip_get_inner_packet(const struct ip_packet *const outer,
+                         struct ip_packet *const inner)
 {
 	unsigned char *next_header;
 
 	/* get the next header data in the IP packet (skip IP extensions) */
 	next_header = ip_get_next_layer(outer);
+	if(next_header == NULL)
+	{
+		/* no next header, or malformed packet */
+		return false;
+	}
 
 	/* create an IP packet with the next header data */
 	return ip_create(inner, next_header, ip_get_plen(outer));
@@ -231,35 +264,53 @@ unsigned char * ip_get_next_header(const struct ip_packet *const ip,
  * is \ref IP_UNKNOWN.
  *
  * @param ip   The IP packet to analyze
- * @return     The next header that is not an IP extension
+ * @return     The next header that is not an IP extension if there is one,
+ *             NULL if there is none
  */
 unsigned char * ip_get_next_layer(const struct ip_packet *const ip)
 {
 	unsigned char *next_header;
 	uint8_t next_header_type;
+	size_t remain_ip_len;
 	uint8_t length;
 
 	/* get the next header data in the IP packet */
 	next_header = ip_get_next_header(ip, &next_header_type);
+	remain_ip_len = ip->size - ip_get_hdrlen(ip);
 
 	/* skip IPv6 extensions */
 	if(ip->version == IPV6)
 	{
-		/* TODO: stop when IP total length is reached */
-		while(next_header_type == ROHC_IPPROTO_HOPOPTS ||
-		      next_header_type == ROHC_IPPROTO_DSTOPTS ||
-		      next_header_type == ROHC_IPPROTO_ROUTING ||
-		      next_header_type == ROHC_IPPROTO_AH)
+		while(rohc_ip_is_ext(next_header_type))
 		{
-			/* next header is an IPv4 extension header, skip it and
+			size_t ext_len;
+
+			/* next header is an IPv6 extension header, skip it and
 			   get the next header */
+
+			/* parse the next header type and length fields */
+			if(remain_ip_len < 2)
+			{
+				goto error;
+			}
 			next_header_type = next_header[0];
 			length = next_header[1];
-			next_header = next_header + (length + 1) * 8;
+			ext_len = (length + 1) * 8;
+
+			/* ensure that the header is complete */
+			if(remain_ip_len < ext_len)
+			{
+				goto error;
+			}
+			next_header = next_header + ext_len;
+			remain_ip_len -= ext_len;
 		}
 	}
 
 	return next_header;
+
+error:
+	return NULL;
 }
 
 
@@ -291,22 +342,16 @@ unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
 
 	/* get the next header data in the IP packet */
 	next_header = ip_get_next_header(ip, type);
-	switch(*type)
+
+	if(rohc_ip_is_ext(*type))
 	{
-		case ROHC_IPPROTO_HOPOPTS:
-		case ROHC_IPPROTO_DSTOPTS:
-		case ROHC_IPPROTO_ROUTING:
-		case ROHC_IPPROTO_AH:
-			/* known extension headers */
-			break;
-		default:
-			goto end;
+		/* known extension headers */
+		return next_header;
 	}
-
-	return next_header;
-
-end:
-	return NULL;
+	else
+	{
+		return NULL;
+	}
 }
 
 
@@ -328,24 +373,18 @@ unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
 
 	*type = ext[0];
 
-	switch(*type)
+	if(rohc_ip_is_ext(*type))
 	{
-		case ROHC_IPPROTO_HOPOPTS:
-		case ROHC_IPPROTO_DSTOPTS:
-		case ROHC_IPPROTO_ROUTING:
-		case ROHC_IPPROTO_AH:
-			/* known extension headers */
-			length = ext[1];
-			next_header = (unsigned char *)(ext + (length + 1) * 8);
-			break;
-		default:
-			goto end;
+		/* known extension headers */
+		length = ext[1];
+		next_header = (unsigned char *)(ext + (length + 1) * 8);
+	}
+	else
+	{
+		next_header = NULL;
 	}
 
 	return next_header;
-
-end:
-	return NULL;
 }
 
 
@@ -572,19 +611,15 @@ unsigned int ip_get_protocol(const struct ip_packet *const ip)
 	else if(ip->version == IPV6)
 	{
 		next_header_type = ip->header.v6.ip6_nxt;
-		switch(next_header_type)
+		if(rohc_ip_is_ext(next_header_type))
 		{
-			case ROHC_IPPROTO_HOPOPTS:
-			case ROHC_IPPROTO_DSTOPTS:
-			case ROHC_IPPROTO_ROUTING:
-			case ROHC_IPPROTO_AH:
-				/* known extension headers */
-				next_header = ((unsigned char *) ip->data) + sizeof(struct ipv6_hdr);
-				protocol = ext_get_protocol(next_header);
-				break;
-			default:
-				protocol = next_header_type;
-				break;
+			/* known extension headers */
+			next_header = ((unsigned char *) ip->data) + sizeof(struct ipv6_hdr);
+			protocol = ext_get_protocol(next_header);
+		}
+		else
+		{
+			protocol = next_header_type;
 		}
 	}
 	else /* IP_UNKNOWN */
@@ -612,19 +647,16 @@ unsigned int ext_get_protocol(const unsigned char *const ext)
 
 	type = ext[0];
 	length = ext[1];
-	switch(type)
+
+	if(rohc_ip_is_ext(type))
 	{
-		case ROHC_IPPROTO_HOPOPTS:
-		case ROHC_IPPROTO_DSTOPTS:
-		case ROHC_IPPROTO_ROUTING:
-		case ROHC_IPPROTO_AH:
-			/* known extension headers */
-			next_header = ((unsigned char *) ext) + (length + 1) * 8;
-			protocol = ext_get_protocol(next_header);
-			break;
-		default:
-			protocol = type;
-			break;
+		/* known extension headers */
+		next_header = ((unsigned char *) ext) + (length + 1) * 8;
+		protocol = ext_get_protocol(next_header);
+	}
+	else
+	{
+		protocol = type;
 	}
 
 	return protocol;

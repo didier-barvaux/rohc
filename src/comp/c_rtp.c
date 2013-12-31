@@ -173,6 +173,7 @@ static bool c_rtp_create(struct c_context *const context,
 	}
 
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp != NULL);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* initialize SN with the SN found in the RTP header */
@@ -348,6 +349,10 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the UDP header and the UDP payload */
 	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
+	if(udp_header == NULL)
+	{
+		goto bad_profile;
+	}
 	udp_payload = (unsigned char *) (udp_header + 1);
 	udp_payload_size = ip_get_plen(last_ip_header) - sizeof(struct udphdr);
 
@@ -523,6 +528,7 @@ static bool c_rtp_check_context(const struct c_context *const context,
 
 	/* get UDP and RTP headers */
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp != NULL);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* check the RTP SSRC field */
@@ -1027,6 +1033,7 @@ static int c_rtp_encode(struct c_context *const context,
 		return -1;
 	}
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp != NULL);
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* how many UDP/RTP fields changed? */

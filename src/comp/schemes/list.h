@@ -86,7 +86,6 @@ bool ROHC_EXPORT detect_ipv6_ext_changes(struct list_comp *const comp,
 int ROHC_EXPORT rohc_list_encode(struct list_comp *const comp,
                                  unsigned char *const dest,
                                  int counter,
-                                 const int ps,
                                  const int size)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 

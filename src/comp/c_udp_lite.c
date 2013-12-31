@@ -226,6 +226,7 @@ static bool c_udp_lite_create(struct c_context *const context,
 	}
 
 	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp_lite != NULL);
 
 	/* create the UDP-Lite part of the profile context */
 	udp_lite_context = malloc(sizeof(struct sc_udp_lite_context));
@@ -362,6 +363,10 @@ static bool c_udp_lite_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the UDP-Lite header */
 	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
+	if(udp_header == NULL)
+	{
+		goto bad_profile;
+	}
 	*ctxt_key ^= udp_header->source;
 	*ctxt_key ^= udp_header->dest;
 
@@ -525,6 +530,7 @@ static bool c_udp_lite_check_context(const struct c_context *const context,
 
 	/* check UDP-Lite ports */
 	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp_lite != NULL);
 	is_udp_lite_same =
 		udp_lite_context->old_udp_lite.source == udp_lite->source &&
 		udp_lite_context->old_udp_lite.dest == udp_lite->dest;
@@ -604,6 +610,7 @@ static int c_udp_lite_encode(struct c_context *const context,
 		return -1;
 	}
 	udp_lite = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp_lite != NULL);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size,

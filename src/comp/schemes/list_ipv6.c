@@ -97,6 +97,10 @@ void rohc_comp_list_ipv6_free(struct list_comp *const comp)
 /**
  * @brief Get the index for the given IPv6 extension type
  *
+ * List retrieved from the registry maintained by IANA at:
+ *   http://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml
+ * Remember to update \ref rohc_ip_is_ext if you update the list.
+ *
  * @param next_header_type  The Next Header type to get an index for
  * @return                  The based table index
  */
@@ -118,14 +122,39 @@ static int get_index_ipv6_table(const uint8_t next_header_type)
 		case ROHC_IPPROTO_AH:
 			index_table = 3;
 			break;
+		case ROHC_IPPROTO_FRAGMENT:
+			index_table = 4;
+			break;
+#if 0 /* IP/ESP profile is preferred */
+		case ROHC_IPPROTO_ESP:
+			index_table = 5;
+			break;
+#endif
+		case ROHC_IPPROTO_MOBILITY:
+			index_table = 6;
+			break;
+		case ROHC_IPPROTO_HIP:
+			index_table = 7;
+			break;
+		case ROHC_IPPROTO_SHIM:
+			index_table = 8;
+			break;
+		case ROHC_IPPROTO_RESERVED1:
+			index_table = 9;
+			break;
+		case ROHC_IPPROTO_RESERVED2:
+			index_table = 10;
+			break;
 		default:
-			goto error;
+			/* unknown extension */
+			index_table = -1;
 	}
 
-	return index_table;
+	/* either we didn't find an index or we should have one that stand in the
+	 * 8-bit format for indexes */
+	assert(index_table == -1 || (index_table & 0x7f) == index_table);
 
-error:
-	return -1;
+	return index_table;
 }
 
 

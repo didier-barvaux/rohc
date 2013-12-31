@@ -37,6 +37,7 @@ TESTS_MAXCONTEXTS0_WLSB4_SMALLCID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb4_smallcid.sh
@@ -156,6 +157,7 @@ TESTS_MAXCONTEXTS0_WLSB64_SMALLCID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb64_smallcid.sh
@@ -280,6 +282,7 @@ TESTS_MAXCONTEXTS1_WLSB4_SMALLCID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb4_smallcid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb4_smallcid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb4_smallcid.sh
@@ -399,6 +402,7 @@ TESTS_MAXCONTEXTS1_WLSB64_SMALLCID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb64_smallcid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb64_smallcid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb64_smallcid.sh
@@ -528,6 +532,7 @@ TESTS_MAXCONTEXTS0_WLSB4_LARGECID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb4_largecid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb4_largecid.sh
@@ -647,6 +652,7 @@ TESTS_MAXCONTEXTS0_WLSB64_LARGECID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts0_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts0_wlsb64_largecid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts0_wlsb64_largecid.sh
@@ -771,6 +777,7 @@ TESTS_MAXCONTEXTS1_WLSB4_LARGECID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb4_largecid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb4_largecid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb4_largecid.sh
@@ -890,6 +897,7 @@ TESTS_MAXCONTEXTS1_WLSB64_LARGECID_IP_UDP = \
 	test_non_regression_ipv6_udp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_udp_bug1166618_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6ext_udp_maxcontexts1_wlsb64_largecid.sh \
+	test_non_regression_ipv6ext_udp-torture-test-for-list-comp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv4_udp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv4_ipv6_udp_maxcontexts1_wlsb64_largecid.sh \
 	test_non_regression_ipv6_ipv6_udp_maxcontexts1_wlsb64_largecid.sh

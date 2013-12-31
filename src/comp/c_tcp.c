@@ -1082,6 +1082,10 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the TCP header */
 	tcp_header = (const struct tcphdr *) ip_get_next_layer(last_ip_header);
+	if(tcp_header == NULL)
+	{
+		goto bad_profile;
+	}
 	if(ip_payload_size < (tcp_header->data_offset * 4))
 	{
 		goto bad_profile;

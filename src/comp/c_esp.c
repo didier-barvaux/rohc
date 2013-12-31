@@ -174,6 +174,7 @@ static bool c_esp_create(struct c_context *const context,
 	}
 
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
+	assert(esp != NULL);
 
 	/* initialize SN with the SN found in the ESP header */
 	g_context->sn = rohc_ntoh32(esp->sn);
@@ -305,6 +306,10 @@ static bool c_esp_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the ESP header */
 	esp_header = (const struct esphdr *) ip_get_next_layer(last_ip_header);
+	if(esp_header == NULL)
+	{
+		goto bad_profile;
+	}
 	*ctxt_key ^= esp_header->spi;
 
 	return true;
@@ -473,6 +478,7 @@ bool c_esp_check_context(const struct c_context *const context,
 
 	/* check Security parameters index (SPI) */
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
+	assert(esp != NULL);
 	is_esp_same = esp_context->old_esp.spi == esp->spi;
 
 	return is_esp_same;
@@ -550,6 +556,7 @@ static int c_esp_encode(struct c_context *const context,
 		return -1;
 	}
 	esp = (struct esphdr *) ip_get_next_layer(last_ip_header);
+	assert(esp != NULL);
 
 	/* encode the IP packet */
 	size = c_generic_encode(context, ip, packet_size,

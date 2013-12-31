@@ -877,6 +877,12 @@ int c_generic_encode(struct c_context *const context,
 
 	/* find the next header */
 	next_header = ip_get_next_layer(last_ip_header);
+	if(next_header == NULL)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to detect the header after the IP headers\n");
+		goto error;
+	}
 
 	/* find the offset of the payload and its size */
 	*payload_offset = ip_get_hdrlen(ip) + ip_get_total_extension_size(ip);
@@ -2336,7 +2342,7 @@ static int code_ipv6_dynamic_part(const struct c_context *const context,
 		{
 			rohc_comp_debug(context, "extension header list: send some bits\n");
 			counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest,
-			                           counter, 0,
+			                           counter,
 			                           header_info->info.v6.ext_comp.pkt_list.items_nr);
 			/* TODO: ps forced to 0, test with 8+ extensions */
 			if(counter < 0)

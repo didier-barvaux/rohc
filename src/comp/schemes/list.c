@@ -32,26 +32,22 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 
 static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_encode_type_1(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_encode_type_2(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_encode_type_3(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
@@ -112,7 +108,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 			/* update item in translation table if it changed */
 			ret = rohc_list_item_update_if_changed(comp->cmp_item,
-			                                       &comp->trans_table[index_table],
+			                                       &(comp->trans_table[index_table]),
 			                                       ext_type, ext, comp->get_size(ext));
 			if(ret < 0)
 			{
@@ -129,7 +125,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 			/* update current list in context */
 			comp->pkt_list.items[comp->pkt_list.items_nr] =
-				&comp->trans_table[index_table];
+				&(comp->trans_table[index_table]);
 			comp->pkt_list.items_nr++;
 
 			rc_list_debug(comp, "  extension #%zu: extension type "
@@ -205,7 +201,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 			              "create a new one with gen_id %u\n", gen_id);
 			assert(comp->lists[gen_id].id == gen_id);
 			memcpy(comp->lists[gen_id].items, comp->pkt_list.items,
-					 ROHC_LIST_ITEMS_MAX);
+					 ROHC_LIST_ITEMS_MAX * sizeof(struct rohc_list_item *));
 			comp->lists[gen_id].items_nr = comp->pkt_list.items_nr;
 			comp->lists[gen_id].counter = 0;
 		}
@@ -266,7 +262,6 @@ error:
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @param ps       The size of the index
  * @param size     The number of element in current list
  * @return         The new position in the rohc-packet-under-build buffer,
  *                 -1 in case of error
@@ -274,7 +269,6 @@ error:
 int rohc_list_encode(struct list_comp *const comp,
                      unsigned char *const dest,
                      int counter,
-                     const int ps,
                      const int size)
 {
 	int encoding_type;
@@ -293,16 +287,16 @@ int rohc_list_encode(struct list_comp *const comp,
 	switch(encoding_type)
 	{
 		case 0: /* Encoding type 0 (generic scheme) */
-			counter = rohc_list_encode_type_0(comp, dest, counter, ps);
+			counter = rohc_list_encode_type_0(comp, dest, counter);
 			break;
 		case 1: /* Encoding type 1 (insertion only scheme) */
-			counter = rohc_list_encode_type_1(comp, dest, counter, ps);
+			counter = rohc_list_encode_type_1(comp, dest, counter);
 			break;
 		case 2: /* Encoding type 2 (removal only scheme) */
-			counter = rohc_list_encode_type_2(comp, dest, counter, ps);
+			counter = rohc_list_encode_type_2(comp, dest, counter);
 			break;
 		case 3: /* encoding type 3 (remove then insert scheme) */
-			counter = rohc_list_encode_type_3(comp, dest, counter, ps);
+			counter = rohc_list_encode_type_3(comp, dest, counter);
 			break;
 		default:
 			rohc_assert(comp, ROHC_TRACE_COMP, comp->profile_id,
@@ -432,20 +426,31 @@ static int rohc_list_decide_type(struct list_comp *const comp)
 		/* the structure of the list changed, there are fewer items in the
 		 * current list than in the reference list: are all the items of the
 		 * current list in the reference list? */
-		if(rohc_list_supersede(&comp->lists[comp->ref_id],
-		                       &comp->lists[comp->cur_id]))
-		{
-			/* all the items of the current list are present in the reference
-			 * list, so the 'Removal Only scheme' (type 2) may be used to
-			 * encode the current list */
-			encoding_type = 2;
-		}
-		else
+		if(!rohc_list_supersede(&comp->lists[comp->ref_id],
+		                        &comp->lists[comp->cur_id]))
 		{
 			/* some items of the current list are not present in the reference
 			 * list, so the 'Remove Then Insert scheme' (type 3) is required
 			 * to encode the current list */
 			encoding_type = 3;
+		}
+		else
+		{
+			/* all the items of the current list are present in the reference
+			 * list, so the 'Removal Only scheme' (type 2) might be used to
+			 * encode the current list, but check before that all items of the
+			 * current list are known because encoding type 2 cannot update
+			 * items */
+			size_t k;
+			encoding_type = 2;
+			for(k = 0; k < comp->lists[comp->cur_id].items_nr; k++)
+			{
+				if(!comp->lists[comp->cur_id].items[k]->known)
+				{
+					encoding_type = 0;
+					break;
+				}
+			}
 		}
 	}
 	else
@@ -547,18 +552,17 @@ static int rohc_list_decide_type(struct list_comp *const comp)
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
 static int rohc_list_encode_type_0(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 {
 	const uint8_t et = 0; /* list encoding type 0 */
 	uint8_t gp;
-	int m; /* the number of elements in current list = number of XIs */
-	int k; /* the index of the current element in list */
+	size_t m; /* the number of elements in current list = number of XIs */
+	size_t k; /* the index of the current element in list */
+	size_t ps; /* indicate the size of the indexes */
 
 	assert(comp != NULL);
 	assert(comp->cur_id != ROHC_LIST_GEN_ID_NONE);
@@ -567,6 +571,26 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	/* retrieve the number of items in the current list */
 	m = comp->lists[comp->cur_id].items_nr;
 	assert(m <= ROHC_LIST_ITEMS_MAX);
+
+	/* determine whether we should use 4-bit or 8-bit indexes */
+	ps = 0; /* 4-bit indexes by default */
+	for(k = 0; k < m && ps == 0; k++)
+	{
+		const struct rohc_list_item *const item =
+			comp->lists[comp->cur_id].items[k];
+		const int index_table = comp->get_index_table(item->type);
+		if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
+			             "failed to handle unknown IPv6 extension header of "
+			             "type 0x%02x\n", item->type);
+			goto error;
+		}
+		if(index_table > 0x07)
+		{
+			ps = 1; /* 8-bit indexes are required */
+		}
+	}
 
 	/* part 1: ET, GP, PS, CC */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
@@ -590,7 +614,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 	if(ps)
 	{
 		/* each XI item is stored on 8 bits */
-		rc_list_debug(comp, "use 8-bit format for the %d XIs\n", m);
+		rc_list_debug(comp, "use 8-bit format for the %zu XIs\n", m);
 
 		/* write all XIs in packet */
 		for(k = 0; k < m; k++, counter++)
@@ -598,13 +622,8 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header of "
-				             "type 0x%02x\n", item->type);
-				goto error;
-			}
+			assert(index_table >= 0);
+			assert(index_table < ROHC_LIST_MAX_ITEM);
 
 			dest[counter] = 0;
 			/* set the X bit if item is not already known */
@@ -613,29 +632,25 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 				dest[counter] |= 1 << 7;
 			}
 			/* 7-bit Index */
+			assert((index_table & 0x7f) == index_table);
 			dest[counter] |= index_table & 0x7f;
 
-			rc_list_debug(comp, "add 8-bit XI #%d = 0x%x\n", k, dest[counter]);
+			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x\n", k, dest[counter]);
 		}
 	}
 	else
 	{
 		/* each XI item is stored on 4 bits */
-		rc_list_debug(comp, "use 4-bit format for the %d XIs\n", m);
+		rc_list_debug(comp, "use 4-bit format for the %zu XIs\n", m);
 
 		/* write all XIs in packet 2 by 2 */
 		for(k = 0; k < m; k += 2, counter++)
 		{
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
-			const int index_table = comp->get_index_table(item->type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header of "
-				             "type 0x%02x\n", item->type);
-				goto error;
-			}
+			int index_table = comp->get_index_table(item->type);
+			assert(index_table >= 0);
+			assert(index_table < ROHC_LIST_MAX_ITEM);
 
 			dest[counter] = 0;
 
@@ -646,6 +661,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 				dest[counter] |= 1 << 7;
 			}
 			/* 3-bit Index */
+			assert((index_table & 0x07) == index_table);
 			dest[counter] |= (index_table & 0x07) << 4;
 
 			rc_list_debug(comp, "add 4-bit XI #%d in MSB = 0x%x\n", k,
@@ -656,14 +672,9 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 			{
 				const struct rohc_list_item *const item2 =
 					comp->lists[comp->cur_id].items[k + 1];
-				const int index_table2 = comp->get_index_table(item2->type);
-				if(index_table2 < 0 || index_table2 >= ROHC_LIST_MAX_ITEM)
-				{
-					rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-					             "failed to handle unknown IPv6 extension header "
-					             "of type 0x%02x\n", item2->type);
-					goto error;
-				}
+				int index_table2 = comp->get_index_table(item2->type);
+				assert(index_table2 >= 0);
+				assert(index_table2 < ROHC_LIST_MAX_ITEM);
 
 				/* set the X bit if item is not already known */
 				if(!item2->known)
@@ -671,6 +682,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 					dest[counter] |= 1 << 3;
 				}
 				/* 3-bit Index */
+				assert((index_table2 & 0x07) == index_table2);
 				dest[counter] |= (index_table2 & 0x07) << 0;
 
 				rc_list_debug(comp, "add 4-bit XI #%d in LSB = 0x%x\n", k + 1,
@@ -784,13 +796,11 @@ error:
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
 static int rohc_list_encode_type_1(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 {
 	const uint8_t et = 1; /* list encoding type 1 */
 	uint8_t gp;
@@ -799,6 +809,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	size_t m; /* the number of elements in current list = number of XIs */
 	size_t k; /* the index of the current element in current list */
 	size_t ref_k; /* the index of the current element in reference list */
+	size_t ps; /* indicate the size of the indexes */
+	size_t ps_pos; /* the position of the byte that contains the PS bit */
 
 	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
@@ -809,12 +821,12 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	m = comp->lists[comp->cur_id].items_nr;
 	assert(m <= ROHC_LIST_ITEMS_MAX);
 
-	/* part 1: ET, GP, PS, CC */
+	/* part 1: ET, GP (PS will be set later) */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
-	rc_list_debug(comp, "ET = %d, GP = %d, PS = %d\n", et, gp, ps);
+	rc_list_debug(comp, "ET = %d, GP = %d\n", et, gp);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
-	dest[counter] |= (ps & 0x01) << 4;
+	ps_pos = counter; /* remember the position to set the PS bit later */
 	dest[counter] &= 0xf0; /* clear the 4 LSB bits reserved for 1st XI */
 	counter++;
 
@@ -872,6 +884,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 	/* part 4: insertion mask (second optional byte) */
 	if(m > 7)
 	{
+		dest[counter] = 0;
+
 		for(k = 7; k < m && k < 15; k++)
 		{
 			uint8_t bit;
@@ -900,6 +914,28 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		counter++;
 	}
 
+	/* determine whether we should use 4-bit or 8-bit indexes */
+	ps = 0; /* 4-bit indexes by default */
+	for(k = 0; k < m && ps == 0; k++)
+	{
+		const struct rohc_list_item *const item =
+			comp->lists[comp->cur_id].items[k];
+		const int index_table = comp->get_index_table(item->type);
+		if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
+			             "failed to handle unknown IPv6 extension header of "
+			             "type 0x%02x\n", item->type);
+			goto error;
+		}
+		if((mask[k] != 0 || !item->known) && index_table > 0x07)
+		{
+			ps = 1; /* 8-bit indexes are required */
+		}
+	}
+	rc_list_debug(comp, "PS = %d\n", ps);
+	dest[ps_pos] |= (ps & 0x01) << 4;
+
 	/* part 5: k XI (= X + Indexes) */
 	if(ps)
 	{
@@ -913,13 +949,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header "
-				             "of type 0x%02x\n", item->type);
-				goto error;
-			}
+			assert(index_table >= 0);
+			assert(index_table < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -940,6 +971,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 				dest[counter] |= 1 << 7;
 			}
 			/* 7-bit Index */
+			assert((index_table & 0x7f) == index_table);
 			dest[counter] |= index_table & 0x7f;
 
 			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x\n", k, dest[counter]);
@@ -960,13 +992,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header "
-				             "of type 0x%02x\n", item->type);
-				goto error;
-			}
+			assert(index_table >= 0);
+			assert(index_table < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -989,6 +1016,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 					dest[counter - (3 + mask_size)] |= 1 << 3;
 				}
 				/* 3-bit Index */
+				assert((index_table & 0x07) == index_table);
 				dest[counter - (3 + mask_size)] |= index_table & 0x07;
 
 				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x\n", k,
@@ -1010,6 +1038,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 						dest[counter] |= 1 << 7;
 					}
 					/* 3-bit Index */
+					assert((index_table & 0x07) == index_table);
 					dest[counter] |= (index_table & 0x07) << 4;
 
 					rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x\n", k,
@@ -1025,6 +1054,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 						dest[counter] |= 1 << 3;
 					}
 					/* 3-bit Index */
+					assert((index_table & 0x07) == index_table);
 					dest[counter] |= (index_table & 0x07) << 0;
 
 					rc_list_debug(comp, "add 4-bit XI #%zu = 0x%x in LSB\n",
@@ -1129,13 +1159,11 @@ error:
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
 static int rohc_list_encode_type_2(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 {
 	const uint8_t et = 2; /* list encoding type 2 */
 	uint8_t gp;
@@ -1339,13 +1367,11 @@ static int rohc_list_encode_type_2(struct list_comp *const comp,
  * @param comp     The list compressor
  * @param dest     The ROHC packet under build
  * @param counter  The current position in the rohc-packet-under-build buffer
- * @param ps       The size of the index
  * @return         The new position in the rohc-packet-under-build buffer
  */
 static int rohc_list_encode_type_3(struct list_comp *const comp,
                                    unsigned char *const dest,
-                                   int counter,
-                                   const int ps)
+                                   int counter)
 {
 	const uint8_t et = 3; /* list encoding type 3 */
 	uint8_t gp;
@@ -1356,6 +1382,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	size_t k; /* the index of the current element in current list */
 	size_t ref_k; /* the index of the current element in reference list */
 	size_t mask_size = 0; /* the cumulative size of insertion/removal masks */
+	size_t ps; /* indicate the size of the indexes */
+	size_t ps_pos; /* the position of the byte that contains the PS bit */
 
 	assert(comp != NULL);
 	assert(comp->ref_id != ROHC_LIST_GEN_ID_NONE);
@@ -1370,12 +1398,12 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	m = comp->lists[comp->cur_id].items_nr;
 	assert(m <= ROHC_LIST_ITEMS_MAX);
 
-	/* part 1: ET, GP, PS */
+	/* part 1: ET, GP (PS will be set later) */
 	gp = (comp->cur_id != ROHC_LIST_GEN_ID_ANON);
-	rc_list_debug(comp, "ET = %d, GP = %d, PS = %d\n", et, gp, ps);
+	rc_list_debug(comp, "ET = %d, GP = %d\n", et, gp);
 	dest[counter] = (et & 0x03) << 6;
 	dest[counter] |= (gp & 0x01) << 5;
-	dest[counter] |= (ps & 0x01) << 4;
+	ps_pos = counter; /* remember the position to set the PS bit later */
 	dest[counter] &= 0xf0; /* clear the 4 LSB bits reserved for 1st XI */
 	counter++;
 
@@ -1518,6 +1546,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 	/* part 4: insertion mask (second optional byte) */
 	if(m > 7)
 	{
+		dest[counter] = 0;
+
 		for(k = 7; k < m && k < 15; )
 		{
 			uint8_t bit;
@@ -1560,6 +1590,28 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		rc_list_debug(comp, "no second byte of insertion bit mask\n");
 	}
 
+	/* determine whether we should use 4-bit or 8-bit indexes */
+	ps = 0; /* 4-bit indexes by default */
+	for(k = 0; k < m && ps == 0; k++)
+	{
+		const struct rohc_list_item *const item =
+			comp->lists[comp->cur_id].items[k];
+		const int index_table = comp->get_index_table(item->type);
+		if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
+			             "failed to handle unknown IPv6 extension header of "
+			             "type 0x%02x\n", item->type);
+			goto error;
+		}
+		if((ins_mask[k] != 0 || !item->known) && index_table > 0x07)
+		{
+			ps = 1; /* 8-bit indexes are required */
+		}
+	}
+	rc_list_debug(comp, "PS = %d\n", ps);
+	dest[ps_pos] |= (ps & 0x01) << 4;
+
 	/* part 6: k XI (= X + Indexes) */
 	/* next bytes: indexes */
 	if(ps)
@@ -1574,13 +1626,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header "
-				             "of type 0x%02x\n", item->type);
-				goto error;
-			}
+			assert(index_table >= 0);
+			assert(index_table < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -1593,7 +1640,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 
 			xi_index++;
 
-			dest[counter]  = 0;
+			dest[counter] = 0;
 
 			/* set the X bit if item is not already known */
 			if(!item->known)
@@ -1601,6 +1648,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 				dest[counter] |= 1 << 7;
 			}
 			/* 7-bit Index */
+			assert((index_table & 0x7f) == index_table);
 			dest[counter] |= (index_table & 0x7f);
 
 			rc_list_debug(comp, "add 8-bit XI #%zu = 0x%x\n", k, dest[counter]);
@@ -1621,13 +1669,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 			const struct rohc_list_item *const item =
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header "
-				             "of type 0x%02x\n", item->type);
-				goto error;
-			}
+			assert(index_table >= 0);
+			assert(index_table < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -1650,6 +1693,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 					dest[counter - (3 + mask_size)] |= 1 << 3;
 				}
 				/* 3-bit Index */
+				assert((index_table & 0x07) == index_table);
 				dest[counter - (3 + mask_size)] |= index_table & 0x07;
 
 				rc_list_debug(comp, "add 4-bit XI #%zu in part 1 = 0x%x\n", k,
@@ -1671,6 +1715,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 						dest[counter] |= 1 << 7;
 					}
 					/* 3-bit Index */
+					assert((index_table & 0x07) == index_table);
 					dest[counter] |= (index_table & 0x07) << 4;
 
 					rc_list_debug(comp, "add 4-bit XI #%zu in MSB = 0x%x\n", k,
@@ -1686,6 +1731,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 						dest[counter] |= 1 << 3;
 					}
 					/* 3-bit Index */
+					assert((index_table & 0x07) == index_table);
 					dest[counter] |= (index_table & 0x07) << 0;
 
 					rc_list_debug(comp, "add 4-bit XI #%zu in LSB = 0x%x\n",

@@ -177,6 +177,7 @@ static bool c_udp_create(struct c_context *const context,
 	}
 
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp != NULL);
 
 	/* create the UDP part of the profile context */
 	udp_context = malloc(sizeof(struct sc_udp_context));
@@ -308,6 +309,10 @@ bool c_udp_check_profile(const struct rohc_comp *const comp,
 
 	/* retrieve the UDP header */
 	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
+	if(udp_header == NULL)
+	{
+		goto bad_profile;
+	}
 	if(ip_payload_size != rohc_ntoh16(udp_header->len))
 	{
 		goto bad_profile;
@@ -475,6 +480,7 @@ bool c_udp_check_context(const struct c_context *const context,
 
 	/* check UDP ports */
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp != NULL);
 	is_udp_same = udp_context->old_udp.source == udp->source &&
 	              udp_context->old_udp.dest == udp->dest;
 
@@ -550,6 +556,7 @@ static int c_udp_encode(struct c_context *const context,
 		return -1;
 	}
 	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
+	assert(udp != NULL);
 
 	/* check that UDP length is correct (we have to discard all packets with
 	 * wrong UDP length fields, otherwise the ROHC decompressor will compute

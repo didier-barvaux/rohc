@@ -280,7 +280,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		rd_list_debug(decomp, "list with gen_id %u is not present yet in "
 		              "reference lists, add it\n", gen_id);
 		memcpy(decomp->lists[gen_id].items, decomp->pkt_list.items,
-		       ROHC_LIST_ITEMS_MAX);
+		       ROHC_LIST_ITEMS_MAX * sizeof(struct decomp_list *));
 		decomp->lists[gen_id].items_nr = decomp->pkt_list.items_nr;
 		decomp->lists[gen_id].counter = 1;
 		/* TODO: remove all lists with gen_id < ref_id */
@@ -1136,7 +1136,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	if(decomp->lists[ref_id].items_nr == 0)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "list encoding type 2 must not be used with an empty "
+		             "list encoding type 3 must not be used with an empty "
 		             "reference list, discard packet\n");
 		goto error;
 	}
@@ -1201,7 +1201,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		if(item_to_remove)
 		{
 			/* skip item only if reference list is large enough */
-			if(i < decomp->lists[gen_id].items_nr)
+			if(i < decomp->lists[ref_id].items_nr)
 			{
 				rd_list_debug(decomp, "skip item at index %zu of reference "
 				              "list\n", i);
@@ -1214,18 +1214,18 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			              removal_list.items_nr);
 
 			/* check that reference list is large enough */
-			if(i >= decomp->lists[gen_id].items_nr)
+			if(i >= decomp->lists[ref_id].items_nr)
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
 				             "reference list is too short: item at index %zu "
 				             "requested while list contains only %zu items\n",
-				             i, decomp->lists[gen_id].items_nr);
+				             i, decomp->lists[ref_id].items_nr);
 				goto error;
 			}
 
 			/* take the item of the reference list */
-			removal_list.items[decomp->pkt_list.items_nr] =
-				decomp->lists[gen_id].items[i];
+			removal_list.items[removal_list.items_nr] =
+				decomp->lists[ref_id].items[i];
 			removal_list.items_nr++;
 		}
 	}
@@ -1344,7 +1344,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	removal_list_cur_pos = 0;
 	for(i = 0; i < ins_mask_length; i++)
 	{
-		int new_item_to_insert;
+		uint8_t new_item_to_insert;
 
 		/* retrieve the corresponding bit in the insertion mask */
 		if(i < 7)
@@ -1408,8 +1408,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			else
 			{
 				/* ROHC header contains 8-bit XIs */
-				xi_x_value = GET_BIT_3(packet + xi_index);
-				xi_index_value = GET_BIT_0_2(packet + xi_index);
+				xi_x_value = GET_BIT_7(packet + xi_index);
+				xi_index_value = GET_BIT_0_6(packet + xi_index);
 			}
 
 			/* is the XI index valid? */
@@ -1527,28 +1527,28 @@ static uint8_t rohc_get_bit(const unsigned char byte, const size_t pos)
 	switch(pos)
 	{
 		case 0:
-			bit = GET_BIT_0(&byte);
+			bit = GET_REAL(GET_BIT_0(&byte));
 			break;
 		case 1:
-			bit = GET_BIT_1(&byte) >> 1;
+			bit = GET_REAL(GET_BIT_1(&byte));
 			break;
 		case 2:
-			bit = GET_BIT_2(&byte) >> 2;
+			bit = GET_REAL(GET_BIT_2(&byte));
 			break;
 		case 3:
-			bit = GET_BIT_3(&byte) >> 3;
+			bit = GET_REAL(GET_BIT_3(&byte));
 			break;
 		case 4:
-			bit = GET_BIT_4(&byte) >> 4;
+			bit = GET_REAL(GET_BIT_4(&byte));
 			break;
 		case 5:
-			bit = GET_BIT_5(&byte) >> 5;
+			bit = GET_REAL(GET_BIT_5(&byte));
 			break;
 		case 6:
-			bit = GET_BIT_6(&byte) >> 6;
+			bit = GET_REAL(GET_BIT_6(&byte));
 			break;
 		case 7:
-			bit = GET_BIT_7(&byte) >> 7;
+			bit = GET_REAL(GET_BIT_7(&byte));
 			break;
 		default:
 			/* there is no such bit in a byte */

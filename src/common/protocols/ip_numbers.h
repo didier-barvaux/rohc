@@ -32,29 +32,41 @@
 enum
 {
 	/** The IP protocol number for Hop-by-Hop option */
-	ROHC_IPPROTO_HOPOPTS = 0,
+	ROHC_IPPROTO_HOPOPTS   = 0,
 	/** The IP protocol number for IPv4-in-IPv4 tunnels */
-	ROHC_IPPROTO_IPIP    = 4,
+	ROHC_IPPROTO_IPIP      = 4,
 	/** The IP protocol number for Transmission Control Protocol (TCP) */
-	ROHC_IPPROTO_TCP     = 6,
+	ROHC_IPPROTO_TCP       = 6,
 	/** The IP protocol number for the User Datagram Protocol (UDP) */
-	ROHC_IPPROTO_UDP     = 17,
+	ROHC_IPPROTO_UDP       = 17,
 	/** The IP protocol number for IPv6 */
-	ROHC_IPPROTO_IPV6    = 41,
+	ROHC_IPPROTO_IPV6      = 41,
 	/** The IP protocol number for IPv6 routing header */
-	ROHC_IPPROTO_ROUTING = 43,
+	ROHC_IPPROTO_ROUTING   = 43,
+	/** The IP protocol number for IPv6 fragment header */
+	ROHC_IPPROTO_FRAGMENT  = 44,
 	/** The IP protocol number for Generic Routing Encapsulation (GRE) */
-	ROHC_IPPROTO_GRE     = 47,
+	ROHC_IPPROTO_GRE       = 47,
 	/** The IP protocol number for the Encapsulating Security Payload (ESP)  */
-	ROHC_IPPROTO_ESP     = 50,
+	ROHC_IPPROTO_ESP       = 50,
 	/** The IP protocol number for Authentication Header */
-	ROHC_IPPROTO_AH      = 51,
+	ROHC_IPPROTO_AH        = 51,
 	/** The IP protocol number for Minimal Encapsulation within IP (RFC 2004) */
-	ROHC_IPPROTO_MINE    = 55,
+	ROHC_IPPROTO_MINE      = 55,
 	/** The IP protocol number for IPv6 destination option */
-	ROHC_IPPROTO_DSTOPTS = 60,
+	ROHC_IPPROTO_DSTOPTS   = 60,
+	/** The IP protocol number for Mobility Header */
+	ROHC_IPPROTO_MOBILITY  = 135,
 	/** The IP protocol number for UDP-Lite */
-	ROHC_IPPROTO_UDPLITE = 136,
+	ROHC_IPPROTO_UDPLITE   = 136,
+	/** The IP protocol number for the Host Identity Protocol (HIP) */
+	ROHC_IPPROTO_HIP       = 139,
+	/** The IP protocol number for the Shim6 Protocol */
+	ROHC_IPPROTO_SHIM      = 140,
+	/** The IP protocol number reserved for experimentation and testing */
+	ROHC_IPPROTO_RESERVED1 = 253,
+	/** The IP protocol number reserved for experimentation and testing */
+	ROHC_IPPROTO_RESERVED2 = 254,
 };
 
 

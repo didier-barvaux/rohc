@@ -1018,24 +1018,19 @@ static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
 	assert(ip != NULL);
 	assert(type != NULL);
 
-	ip_hdr = (struct ipv6_hdr *)ip;
+	ip_hdr = (struct ipv6_hdr *) ip;
 	*type = ip_hdr->ip6_nxt;
-	switch(*type)
+
+	if(rohc_ip_is_ext(*type))
 	{
-		case ROHC_IPPROTO_HOPOPTS:
-		case ROHC_IPPROTO_DSTOPTS:
-		case ROHC_IPPROTO_ROUTING:
-		case ROHC_IPPROTO_AH:
-			/* known extension header */
-			break;
-		default:
-			goto end;
+		/* known extension header */
+		return (((uint8_t *) ip) + sizeof(struct ipv6_hdr));
 	}
-
-	return (((uint8_t *) ip) + sizeof(struct ipv6_hdr));
-
-end:
-	return NULL;
+	else
+	{
+		/* no known extension header */
+		return NULL;
+	}
 }
 
 
