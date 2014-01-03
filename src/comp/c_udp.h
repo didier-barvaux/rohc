@@ -34,14 +34,11 @@
  */
 
 bool c_udp_check_profile(const struct rohc_comp *const comp,
-                         const struct ip_packet *const outer_ip,
-                         const struct ip_packet *const inner_ip,
-                         const uint8_t protocol,
-                         rohc_ctxt_key_t *const ctxt_key)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+                         const struct net_pkt *const packet)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 bool c_udp_check_context(const struct c_context *context,
-                         const struct ip_packet *ip)
+                         const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 size_t udp_code_uo_remainder(const struct c_context *context,

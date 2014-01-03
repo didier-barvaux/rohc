@@ -62,6 +62,15 @@ typedef enum
 } ip_version;
 
 
+/** A network header */
+struct net_hdr
+{
+	uint8_t proto;  /**< The header protocol */
+	uint8_t *data;  /**< The header data */
+	size_t len;     /**< The header length (in bytes) */
+};
+
+
 /**
  * @brief Defines an IP-agnostic packet that can handle
  *        an IPv4 or IPv6 packet
@@ -85,7 +94,11 @@ struct ip_packet
 
 	/// The length (in bytes) of the whole IP data (header + payload)
 	unsigned int size;
+
+	struct net_hdr nh;  /**< The next header (extension headers included) */
+	struct net_hdr nl;  /**< The next layer (extension headers excluded) */
 };
+
 
 /* AH header */
 struct ip6_ahhdr
@@ -434,9 +447,7 @@ bool ROHC_EXPORT ip_is_fragment(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 ip_version ROHC_EXPORT ip_get_version(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
-unsigned int ROHC_EXPORT ip_get_protocol(const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-unsigned int ROHC_EXPORT ext_get_protocol(const uint8_t *const ext)
+uint8_t ROHC_EXPORT ip_get_protocol(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 unsigned int ROHC_EXPORT ip_get_tos(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1), pure));

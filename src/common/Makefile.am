@@ -21,6 +21,7 @@ sources = \
 	interval.c \
 	sdvl.c \
 	ip.c \
+	net_pkt.c \
 	comp_list.c \
 	rohc_stats.c
 
@@ -48,6 +49,7 @@ private_headers = \
 	interval.h \
 	sdvl.h \
 	ip.h \
+	net_pkt.h \
 	comp_list.h \
 	rohc_stats.h
 

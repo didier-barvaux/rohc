@@ -29,7 +29,7 @@
 #include "rohc_packets.h"
 #include "rohc_comp.h"
 #include "schemes/wlsb.h"
-#include "ip.h"
+#include "net_pkt.h"
 #include "rohc_stats.h"
 
 #ifdef __KERNEL__
@@ -96,10 +96,6 @@ struct c_context;
 /*
  * Definitions of ROHC compression structures
  */
-
-
-/** The key to help identify (not quaranted unique) a compression context */
-typedef uint32_t rohc_ctxt_key_t;
 
 
 /**
@@ -259,7 +255,7 @@ struct c_profile
 	 *        compression context
 	 */
 	bool (*create)(struct c_context *const context,
-	               const struct ip_packet *const packet)
+	               const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
@@ -274,18 +270,15 @@ struct c_profile
 	 *        fits the current profile or not
 	 */
 	bool (*check_profile)(const struct rohc_comp *const comp,
-	                      const struct ip_packet *const outer_ip,
-	                      const struct ip_packet *const inner_ip,
-	                      const uint8_t protocol,
-	                      rohc_ctxt_key_t *const ctxt_key)
-		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	                      const struct net_pkt *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
 	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
 	bool (*check_context)(const struct c_context *const context,
-	                      const struct ip_packet *const packet)
+	                      const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
@@ -302,12 +295,12 @@ struct c_profile
 	 *                           -1 otherwise
 	 */
 	int (*encode)(struct c_context *const context,
-	              const struct ip_packet *packet,
-	              const size_t packet_size,
+	              const struct net_pkt *const uncomp_pkt,
 	              unsigned char *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
 	              rohc_packet_t *const packet_type,
-	              int *const payload_offset);
+	              int *const payload_offset)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 	/**
 	 * @brief The handler used to re-initialize a context

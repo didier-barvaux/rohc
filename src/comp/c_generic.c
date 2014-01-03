@@ -81,34 +81,26 @@ static void change_mode(struct c_context *const context,
                         const rohc_mode_t new_mode)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t decide_packet(const struct c_context *const context,
-                                   const struct ip_packet *const ip,
-                                   const struct ip_packet *const ip2)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+static rohc_packet_t decide_packet(const struct c_context *const context)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static int code_packet(struct c_context *const context,
-                       const struct ip_packet *const ip,
-                       const struct ip_packet *const ip2,
-                       const unsigned char *const next_header,
+                       const struct net_pkt *const uncomp_pkt,
                        unsigned char *const rohc_pkt,
                        const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_packet(struct c_context *const context,
-                          const struct ip_packet *const ip,
-                          const struct ip_packet *const ip2,
-                          const unsigned char *const next_header,
+                          const struct net_pkt *const uncomp_pkt,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_IR_DYN_packet(struct c_context *const context,
-                              const struct ip_packet *const ip,
-                              const struct ip_packet *const ip2,
-                              const unsigned char *const next_header,
+                              const struct net_pkt *const uncomp_pkt,
                               unsigned char *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_generic_static_part(const struct c_context *const context,
                                     struct ip_header_info *const header_info,
@@ -155,36 +147,28 @@ static int code_ipv6_dynamic_part(const struct c_context *const context,
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
 static int code_uo_remainder(struct c_context *const context,
-                             const struct ip_packet *const ip,
-                             const struct ip_packet *const ip2,
-                             const unsigned char *const next_header,
+                             const struct net_pkt *const uncomp_pkt,
                              unsigned char *const dest,
                              int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO0_packet(struct c_context *const context,
-                           const struct ip_packet *const ip,
-                           const struct ip_packet *const ip2,
-                           const unsigned char *const next_header,
+                           const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO1_packet(struct c_context *const context,
-                           const struct ip_packet *const ip,
-                           const struct ip_packet *const ip2,
-                           const unsigned char *const next_header,
+                           const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UO2_packet(struct c_context *const context,
-                           const struct ip_packet *const ip,
-                           const struct ip_packet *const ip2,
-                           const unsigned char *const next_header,
+                           const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int code_UOR2_bytes(const struct c_context *const context,
                            const rohc_ext_t extension,
@@ -230,11 +214,10 @@ static int code_EXT2_packet(const struct c_context *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int code_EXT3_packet(const struct c_context *const context,
-                            const struct ip_packet *const ip,
-                            const struct ip_packet *const ip2,
+                            const struct net_pkt *const uncomp_pkt,
                             unsigned char *const dest,
                             int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_header_flags_and_fields(const struct c_context *const context,
                                        const unsigned short changed_f,
@@ -263,12 +246,25 @@ static int header_fields(const struct c_context *const context,
                          int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
 
+static uint8_t compute_uo_crc(const struct c_generic_context *g_context,
+                              const struct net_pkt *const uncomp_pkt,
+                              const rohc_crc_type_t crc_type,
+                              const uint8_t crc_init,
+                              const unsigned char *const crc_table)
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+
 static void periodic_down_transition(struct c_context *const context)
 	__attribute__((nonnull(1)));
 
+static void update_context(struct c_context *const context,
+                           const struct net_pkt *const uncomp_pkt)
+	__attribute__((nonnull(1, 2)));
+static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
+                                  const struct ip_packet *const ip)
+	__attribute__((nonnull(1, 2)));
+
 static int changed_static_both_hdr(const struct c_context *const context,
-                                   const struct ip_packet *const ip,
-                                   const struct ip_packet *const ip2)
+                                   const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int changed_static_one_hdr(const struct c_context *const context,
@@ -278,8 +274,7 @@ static int changed_static_one_hdr(const struct c_context *const context,
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
 
 static int changed_dynamic_both_hdr(const struct c_context *const context,
-                                    const struct ip_packet *const ip,
-                                    const struct ip_packet *const ip2)
+                                   const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int changed_dynamic_one_hdr(const struct c_context *const context,
@@ -298,8 +293,7 @@ static bool is_field_changed(const unsigned short changed_fields,
 	__attribute__((warn_unused_result, const));
 
 static void detect_ip_id_behaviours(struct c_context *const context,
-                                    const struct ip_packet *const outer_ip,
-                                    const struct ip_packet *const inner_ip)
+                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((nonnull(1, 2)));
 static void detect_ip_id_behaviour(const struct c_context *const context,
                                    struct ip_header_info *const header_info,
@@ -309,9 +303,7 @@ static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
 	__attribute__((warn_unused_result));
 
 static int encode_uncomp_fields(struct c_context *const context,
-                                const struct ip_packet *const ip,
-                                const struct ip_packet *const ip2,
-                                const unsigned char *const next_header)
+                                const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *const context,
@@ -420,7 +412,6 @@ error:
  */
 static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
 {
-	tmp_vars->nr_of_ip_hdr = -1;
 	tmp_vars->changed_fields = -1;
 	tmp_vars->changed_fields2 = -1;
 	tmp_vars->send_static = -1;
@@ -441,34 +432,20 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
  *
  * @param context   The compression context
  * @param sn_shift  The shift parameter (p) to use for encoding SN with W-LSB
- * @param ip        The IP packet given to initialize the new context
+ * @param packet    The packet given to initialize the new context
  * @return          bool if successful, false otherwise
  */
 bool c_generic_create(struct c_context *const context,
                       const rohc_lsb_shift_t sn_shift,
-                      const struct ip_packet *const ip)
+                      const struct net_pkt *const packet)
 {
 	struct c_generic_context *g_context;
-	unsigned int ip_proto;
 
 	assert(context != NULL);
 	assert(context->profile != NULL);
+	assert(packet != NULL);
 
 	rohc_comp_debug(context, "new generic context required for a new stream\n");
-
-	/* check the IP header(s) */
-	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
-	{
-		struct ip_packet ip2;
-
-		if(!ip_get_inner_packet(ip, &ip2))
-		{
-			rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			           "cannot create the inner IP header\n");
-			goto quit;
-		}
-	}
 
 	/* allocate memory for the generic part of the context */
 	g_context =
@@ -514,7 +491,8 @@ bool c_generic_create(struct c_context *const context,
 	g_context->go_back_ir_count = 0;
 
 	/* step 4 */
-	if(!c_init_header_info(&g_context->ip_flags, ip,
+	if(!c_init_header_info(&g_context->outer_ip_flags,
+	                       &packet->outer_ip,
 	                       context->compressor->list_trans_nr,
 	                       context->compressor->wlsb_window_width,
 	                       context->compressor->trace_callback,
@@ -522,14 +500,30 @@ bool c_generic_create(struct c_context *const context,
 	{
 		goto free_sn_window;
 	}
-	g_context->is_ip2_initialized = 0;
+	if(packet->ip_hdr_nr > 1)
+	{
+		if(!c_init_header_info(&g_context->inner_ip_flags,
+		                       &packet->inner_ip,
+		                       context->compressor->list_trans_nr,
+		                       context->compressor->wlsb_window_width,
+		                       context->compressor->trace_callback,
+		                       context->profile->id))
+		{
+			goto reset_header_info;
+		}
+		g_context->ip_hdr_nr = 2;
+	}
+	else
+	{
+		g_context->ip_hdr_nr = 1;
+	}
 
 	/* step 5 */
 	c_init_tmp_variables(&g_context->tmp);
 
 	/* step 6 */
 	g_context->specific = NULL;
-	g_context->next_header_proto = 0;
+	g_context->next_header_proto = packet->transport->proto;
 	g_context->next_header_len = 0;
 	g_context->decide_state = decide_state;
 	g_context->decide_FO_packet = NULL;
@@ -546,6 +540,15 @@ bool c_generic_create(struct c_context *const context,
 
 	return true;
 
+reset_header_info:
+	if(g_context->outer_ip_flags.version == IPV4)
+	{
+		c_destroy_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window);
+	}
+	else
+	{
+		rohc_comp_list_ipv6_free(&g_context->outer_ip_flags.info.v6.ext_comp);
+	}
 free_sn_window:
 	c_destroy_wlsb(g_context->sn_window);
 free_generic_context:
@@ -570,23 +573,24 @@ void c_generic_destroy(struct c_context *const context)
 
 	assert(g_context != NULL);
 
-	if(g_context->ip_flags.version == IPV4)
+	if(g_context->outer_ip_flags.version == IPV4)
 	{
-		c_destroy_wlsb(g_context->ip_flags.info.v4.ip_id_window);
+		c_destroy_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window);
 	}
-	if(g_context->is_ip2_initialized &&
-		g_context->ip2_flags.version == IPV4)
+	else
 	{
-		c_destroy_wlsb(g_context->ip2_flags.info.v4.ip_id_window);
+		rohc_comp_list_ipv6_free(&g_context->outer_ip_flags.info.v6.ext_comp);
 	}
-	if(g_context->ip_flags.version == IPV6)
+	if(g_context->ip_hdr_nr > 1)
 	{
-		rohc_comp_list_ipv6_free(&g_context->ip_flags.info.v6.ext_comp);
-	}
-	if(g_context->is_ip2_initialized &&
-	   g_context->ip2_flags.version == IPV6)
-	{
-		rohc_comp_list_ipv6_free(&g_context->ip2_flags.info.v6.ext_comp);
+		if(g_context->inner_ip_flags.version == IPV4)
+		{
+			c_destroy_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window);
+		}
+		else
+		{
+			rohc_comp_list_ipv6_free(&g_context->inner_ip_flags.info.v6.ext_comp);
+		}
 	}
 	c_destroy_wlsb(g_context->sn_window);
 
@@ -616,37 +620,23 @@ void c_generic_destroy(struct c_context *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param comp      The ROHC compressor
- * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  Two possible cases:
- *                    \li The inner IP header of the IP packet to check if the IP
- *                        packet contains at least 2 IP headers,
- *                    \li NULL if the IP packet to check contains only one IP header
- * @param protocol  The transport protocol carried by the IP packet:
- *                    \li the protocol carried by the outer IP header if there
- *                        is only one IP header,
- *                    \li the protocol carried by the inner IP header if there
- *                        are at least two IP headers.
- * @param ctxt_key  The key to help finding the context associated with packet
- * @return          Whether the IP packet corresponds to the profile:
- *                    \li true if the IP packet corresponds to the profile,
- *                    \li false if the IP packet does not correspond to
- *                        the profile
+ * @param comp    The ROHC compressor
+ * @param packet  The packet to check
+ * @return        Whether the IP packet corresponds to the profile:
+ *                  \li true if the IP packet corresponds to the profile,
+ *                  \li false if the IP packet does not correspond to
+ *                      the profile
  */
 bool c_generic_check_profile(const struct rohc_comp *const comp,
-                             const struct ip_packet *const outer_ip,
-                             const struct ip_packet *const inner_ip,
-                             const uint8_t protocol,
-                             rohc_ctxt_key_t *const ctxt_key)
+                             const struct net_pkt *const packet)
 {
 	ip_version version;
 
 	assert(comp != NULL);
-	assert(outer_ip != NULL);
-	assert(ctxt_key != NULL);
+	assert(packet != NULL);
 
 	/* check the IP version of the outer header */
-	version = ip_get_version(outer_ip);
+	version = ip_get_version(&packet->outer_ip);
 	if(version != IPV4 && version != IPV6)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -657,8 +647,8 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	}
 
 	/* if outer header is IPv4, check the presence of options */
-	if(outer_ip->version == IPV4 &&
-	   ip_get_hdrlen(outer_ip) != sizeof(struct ipv4_hdr))
+	if(version == IPV4 &&
+	   ip_get_hdrlen(&packet->outer_ip) != sizeof(struct ipv4_hdr))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "the outer IPv4 packet is not supported by the profile: "
@@ -667,50 +657,30 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	}
 
 	/* check if the outer header is a fragment */
-	if(ip_is_fragment(outer_ip))
+	if(ip_is_fragment(&packet->outer_ip))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "the outer IP packet is fragmented\n");
 		goto bad_profile;
 	}
 
-	/* complete context key */
-	if(version == IPV4)
-	{
-		*ctxt_key ^= ipv4_get_saddr(outer_ip);
-		*ctxt_key ^= ipv4_get_daddr(outer_ip);
-	}
-	else /* IPV6 */
-	{
-		const struct ipv6_addr *const saddr = ipv6_get_saddr(outer_ip);
-		const struct ipv6_addr *const daddr = ipv6_get_daddr(outer_ip);
-		*ctxt_key ^= saddr->addr.u32[0];
-		*ctxt_key ^= saddr->addr.u32[1];
-		*ctxt_key ^= saddr->addr.u32[2];
-		*ctxt_key ^= saddr->addr.u32[3];
-		*ctxt_key ^= daddr->addr.u32[0];
-		*ctxt_key ^= daddr->addr.u32[1];
-		*ctxt_key ^= daddr->addr.u32[2];
-		*ctxt_key ^= daddr->addr.u32[3];
-	}
-
 	/* check the inner IP header if there is one */
-	if(inner_ip != NULL)
+	if(packet->ip_hdr_nr > 1)
 	{
 		/* check the IP version of the inner header */
-		version = ip_get_version(inner_ip);
+		version = ip_get_version(&packet->inner_ip);
 		if(version != IPV4 && version != IPV6)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IP packet contains a bad version (%d): "
 			           "only IPv%d and IPv%d are supported\n",
-			           (inner_ip->data[0] >> 4) & 0x0f, IPV4, IPV6);
+			           (packet->inner_ip.data[0] >> 4) & 0x0f, IPV4, IPV6);
 			goto bad_profile;
 		}
 
 		/* if inner header is IPv4, check the presence of options */
-		if(inner_ip->version == IPV4 &&
-		   ip_get_hdrlen(inner_ip) != sizeof(struct ipv4_hdr))
+		if(version == IPV4 &&
+		   ip_get_hdrlen(&packet->inner_ip) != sizeof(struct ipv4_hdr))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IPv4 packet is not supported by the profile: "
@@ -719,7 +689,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		}
 
 		/* check if the inner header is a fragment */
-		if(ip_is_fragment(inner_ip))
+		if(ip_is_fragment(&packet->inner_ip))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IP packet is fragmented\n");
@@ -801,8 +771,7 @@ void change_state(struct c_context *const context,
  * framework to work.
  *
  * @param context           The compression context
- * @param ip                The IP packet to encode
- * @param packet_size       The length of the IP packet to encode
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -811,19 +780,13 @@ void change_state(struct c_context *const context,
  *                          -1 otherwise
  */
 int c_generic_encode(struct c_context *const context,
-                     const struct ip_packet *ip,
-                     const size_t packet_size,
+                     const struct net_pkt *const uncomp_pkt,
                      unsigned char *const rohc_pkt,
                      const size_t rohc_pkt_max_len,
                      rohc_packet_t *const packet_type,
                      int *const payload_offset)
 {
 	struct c_generic_context *g_context;
-	struct ip_packet ip2;
-	struct ip_packet *inner_ip;
-	const struct ip_packet *last_ip_header;
-	unsigned char *next_header;
-	unsigned int ip_proto;
 	int size;
 	int ret;
 
@@ -836,27 +799,15 @@ int c_generic_encode(struct c_context *const context,
 
 	/* STEP 1:
 	 *  - check double IP headers
-	 *  - find the next header
 	 *  - compute the payload offset
-	 *  - discard IP fragments
 	 */
-	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
+	if(uncomp_pkt->ip_hdr_nr != g_context->ip_hdr_nr)
 	{
-		/* there are 2 IP headers */
-		if(!ip_get_inner_packet(ip, &ip2))
+		if(uncomp_pkt->ip_hdr_nr > 1)
 		{
-			goto error;
-		}
-
-		g_context->tmp.nr_of_ip_hdr = 2;
-		inner_ip = &ip2;
-		last_ip_header = &ip2;
-
-		/* initialize IPv4 header info if the inner header is IPv4 */
-		if(!g_context->is_ip2_initialized)
-		{
-			if(!c_init_header_info(&g_context->ip2_flags, inner_ip,
+			rohc_comp_debug(context, "packet got one more IP header than context\n");
+			if(!c_init_header_info(&g_context->inner_ip_flags,
+			                       &uncomp_pkt->inner_ip,
 			                       context->compressor->list_trans_nr,
 			                       context->compressor->wlsb_window_width,
 			                       context->compressor->trace_callback,
@@ -864,33 +815,23 @@ int c_generic_encode(struct c_context *const context,
 			{
 				goto error;
 			}
-			g_context->is_ip2_initialized = 1;
 		}
-	}
-	else
-	{
-		/* there is only one IP header */
-		g_context->tmp.nr_of_ip_hdr = 1;
-		inner_ip = NULL;
-		last_ip_header = ip;
-	}
-
-	/* find the next header */
-	next_header = ip_get_next_layer(last_ip_header);
-	if(next_header == NULL)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to detect the header after the IP headers\n");
-		goto error;
+		else
+		{
+			rohc_comp_debug(context, "packet got one less IP header than context\n");
+			if(g_context->inner_ip_flags.version == IPV4)
+			{
+				c_destroy_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window);
+			}
+			else
+			{
+				rohc_comp_list_ipv6_free(&g_context->inner_ip_flags.info.v6.ext_comp);
+			}
+		}
+		g_context->ip_hdr_nr = uncomp_pkt->ip_hdr_nr;
 	}
 
-	/* find the offset of the payload and its size */
-	*payload_offset = ip_get_hdrlen(ip) + ip_get_total_extension_size(ip);
-	if(g_context->tmp.nr_of_ip_hdr > 1)
-	{
-		*payload_offset += ip_get_hdrlen(inner_ip) +
-		                   ip_get_total_extension_size(inner_ip);
-	}
+	*payload_offset = net_pkt_get_payload_offset(uncomp_pkt);
 	*payload_offset += g_context->next_header_len;
 
 	/* STEP 2:
@@ -899,24 +840,26 @@ int c_generic_encode(struct c_context *const context,
 	 *  - get the next the Sequence Number (SN)
 	 *  - find how many static and dynamic IP fields changed
 	 */
-	detect_ip_id_behaviours(context, ip, inner_ip);
+	detect_ip_id_behaviours(context, uncomp_pkt);
 
-	g_context->sn = g_context->get_next_sn(context, ip, inner_ip);
+	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
 	rohc_comp_debug(context, "SN = %u\n", g_context->sn);
 
 	/* find IP fields that changed */
 	g_context->tmp.changed_fields =
-		detect_changed_fields(context, &g_context->ip_flags, ip);
+		detect_changed_fields(context, &g_context->outer_ip_flags,
+		                      &uncomp_pkt->outer_ip);
 	if(g_context->tmp.changed_fields & MOD_ERROR)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "failed to detect changed field in outer IP header\n");
 		goto error;
 	}
-	if(g_context->tmp.nr_of_ip_hdr > 1)
+	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
 		g_context->tmp.changed_fields2 =
-			detect_changed_fields(context, &g_context->ip2_flags, inner_ip);
+			detect_changed_fields(context, &g_context->inner_ip_flags,
+			                      &uncomp_pkt->inner_ip);
 		if(g_context->tmp.changed_fields2  & MOD_ERROR)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -926,10 +869,10 @@ int c_generic_encode(struct c_context *const context,
 	}
 
 	/* how many changed fields are static ones? */
-	g_context->tmp.send_static = changed_static_both_hdr(context, ip, inner_ip);
+	g_context->tmp.send_static = changed_static_both_hdr(context, uncomp_pkt);
 
 	/* how many changed fields are dynamic ones? */
-	g_context->tmp.send_dynamic = changed_dynamic_both_hdr(context, ip, inner_ip);
+	g_context->tmp.send_dynamic = changed_dynamic_both_hdr(context, uncomp_pkt);
 
 	rohc_comp_debug(context, "send_static = %d, send_dynamic = %d\n",
 	                g_context->tmp.send_static, g_context->tmp.send_dynamic);
@@ -940,18 +883,8 @@ int c_generic_encode(struct c_context *const context,
 		g_context->decide_state(context);
 	}
 
-	if(ip_get_version(ip) == IPV4)
-	{
-		rohc_comp_debug(context, "ip_id = 0x%04x, context_sn = %u\n",
-		                rohc_ntoh16(ipv4_get_id(ip)), g_context->sn);
-	}
-	else /* IPV6 */
-	{
-		rohc_comp_debug(context, "context_sn = %d\n", g_context->sn);
-	}
-
 	/* STEP 4: compute how many bits are needed to send header fields */
-	ret = encode_uncomp_fields(context, ip, inner_ip, next_header);
+	ret = encode_uncomp_fields(context, uncomp_pkt);
 	if(ret != ROHC_OK)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -960,63 +893,17 @@ int c_generic_encode(struct c_context *const context,
 	}
 
 	/* STEP 5: decide which packet to send */
-	g_context->tmp.packet_type = decide_packet(context, ip, inner_ip);
+	g_context->tmp.packet_type = decide_packet(context);
 
 	/* STEP 6: code the packet (and the extension if needed) */
-	size = code_packet(context, ip, inner_ip, next_header,
-	                   rohc_pkt, rohc_pkt_max_len);
+	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
 	if(size < 0)
 	{
 		goto error;
 	}
 
 	/* update the context with the new headers */
-	g_context->ip_flags.is_first_header = false;
-	if(ip_get_version(ip) == IPV4)
-	{
-		g_context->ip_flags.info.v4.old_ip = *(ipv4_get_header(ip));
-		g_context->ip_flags.info.v4.old_rnd = g_context->ip_flags.info.v4.rnd;
-		g_context->ip_flags.info.v4.old_nbo = g_context->ip_flags.info.v4.nbo;
-		g_context->ip_flags.info.v4.old_sid = g_context->ip_flags.info.v4.sid;
-	}
-	else /* IPV6 */
-	{
-		g_context->ip_flags.info.v6.old_ip = *(ipv6_get_header(ip));
-		/* replace Next Header by the one of the last extension header */
-		g_context->ip_flags.info.v6.old_ip.ip6_nxt = ip_get_protocol(ip);
-		/* update compression list context */
-		rohc_list_update_context(&g_context->ip_flags.info.v6.ext_comp);
-	}
-
-	if(g_context->tmp.nr_of_ip_hdr > 1)
-	{
-		g_context->ip2_flags.is_first_header = false;
-		if(ip_get_version(inner_ip) == IPV4)
-		{
-			g_context->ip2_flags.info.v4.old_ip = *(ipv4_get_header(inner_ip));
-			g_context->ip2_flags.info.v4.old_rnd = g_context->ip2_flags.info.v4.rnd;
-			g_context->ip2_flags.info.v4.old_nbo = g_context->ip2_flags.info.v4.nbo;
-			g_context->ip2_flags.info.v4.old_sid = g_context->ip2_flags.info.v4.sid;
-		}
-		else /* IPV6 */
-		{
-			g_context->ip2_flags.info.v6.old_ip = *(ipv6_get_header(inner_ip));
-			/* replace Next Header by the one of the last extension header */
-			g_context->ip2_flags.info.v6.old_ip.ip6_nxt = ip_get_protocol(inner_ip);
-			/* update compression list context */
-			rohc_list_update_context(&g_context->ip2_flags.info.v6.ext_comp);
-		}
-	}
-
-	/* update packet counters */
-	if(g_context->tmp.packet_type == ROHC_PACKET_IR)
-	{
-		context->num_sent_ir++;
-	}
-	else if(g_context->tmp.packet_type == ROHC_PACKET_IR_DYN)
-	{
-		context->num_sent_ir_dyn++;
-	}
+	update_context(context, uncomp_pkt);
 
 	/* return the packet type */
 	*packet_type = g_context->tmp.packet_type;
@@ -1084,9 +971,9 @@ void c_generic_feedback(struct c_context *const context,
 			sn = p[0] & 0xff;
 
 			/* ack IP-ID only if IPv4, but always ack SN */
-			if(g_context->ip_flags.version == IPV4)
+			if(g_context->outer_ip_flags.version == IPV4)
 			{
-				c_ack_sn_wlsb(g_context->ip_flags.info.v4.ip_id_window, sn);
+				c_ack_sn_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window, sn);
 			}
 			c_ack_sn_wlsb(g_context->sn_window, sn);
 			break;
@@ -1192,14 +1079,14 @@ void c_generic_feedback(struct c_context *const context,
 					if(sn_not_valid == 0)
 					{
 						/* ack outer/inner IP-ID only if IPv4, but always ack SN */
-						if(g_context->ip_flags.version == IPV4)
+						if(g_context->outer_ip_flags.version == IPV4)
 						{
-							c_ack_sn_wlsb(g_context->ip_flags.info.v4.ip_id_window, sn);
+							c_ack_sn_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window, sn);
 						}
-						if(g_context->is_ip2_initialized &&
-						   g_context->ip2_flags.version == IPV4)
+						if(g_context->ip_hdr_nr > 1 &&
+						   g_context->inner_ip_flags.version == IPV4)
 						{
-							c_ack_sn_wlsb(g_context->ip2_flags.info.v4.ip_id_window, sn);
+							c_ack_sn_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window, sn);
 						}
 						c_ack_sn_wlsb(g_context->sn_window, sn);
 					}
@@ -1348,11 +1235,11 @@ void decide_state(struct c_context *const context)
 			                "go to FO state\n", g_context->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
-		else if((g_context->ip_flags.version == IPV4 &&
-		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
-		        (g_context->tmp.nr_of_ip_hdr > 1 &&
-		         g_context->ip2_flags.version == IPV4 &&
-		         g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		else if((g_context->outer_ip_flags.version == IPV4 &&
+		         g_context->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		        (g_context->ip_hdr_nr > 1 &&
+		         g_context->inner_ip_flags.version == IPV4 &&
+		         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go to FO state\n");
@@ -1382,11 +1269,11 @@ void decide_state(struct c_context *const context)
 			                g_context->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
-		else if((g_context->ip_flags.version == IPV4 &&
-		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
-		        (g_context->tmp.nr_of_ip_hdr > 1 &&
-		         g_context->ip2_flags.version == IPV4 &&
-		         g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		else if((g_context->outer_ip_flags.version == IPV4 &&
+		         g_context->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		        (g_context->ip_hdr_nr > 1 &&
+		         g_context->inner_ip_flags.version == IPV4 &&
+		         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so stay in FO state\n");
@@ -1409,11 +1296,11 @@ void decide_state(struct c_context *const context)
 			                g_context->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
-		else if((g_context->ip_flags.version == IPV4 &&
-		         g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
-		        (g_context->tmp.nr_of_ip_hdr > 1 &&
-		         g_context->ip2_flags.version == IPV4 &&
-		         g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+		else if((g_context->outer_ip_flags.version == IPV4 &&
+		         g_context->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+		        (g_context->ip_hdr_nr > 1 &&
+		         g_context->inner_ip_flags.version == IPV4 &&
+		         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
 			                "last few packets, so go back to FO state\n");
@@ -1449,18 +1336,14 @@ void decide_state(struct c_context *const context)
  * In IR state, IR packets are used. In FO and SO, the profile-specific
  * functions are called if they are defined, otherwise IR packets are used.
  *
- * @param context   The compression context
- * @param ip        The ip packet to compress
- * @param ip2       The inner ip packet
- * @return          \li The packet type among ROHC_PACKET_IR,
- *                      ROHC_PACKET_IR_DYN, ROHC_PACKET_UO_0,
- *                      ROHC_PACKET_UO_1* and ROHC_PACKET_UOR_2*
- *                      in case of success
- *                  \li ROHC_PACKET_UNKNOWN in case of failure
+ * @param context     The compression context
+ * @return            \li The packet type among ROHC_PACKET_IR,
+ *                        ROHC_PACKET_IR_DYN, ROHC_PACKET_UO_0,
+ *                        ROHC_PACKET_UO_1* and ROHC_PACKET_UOR_2*
+ *                        in case of success
+ *                    \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t decide_packet(const struct c_context *const context,
-                                   const struct ip_packet *const ip,
-                                   const struct ip_packet *const ip2)
+static rohc_packet_t decide_packet(const struct c_context *const context)
 {
 	struct c_generic_context *const g_context =
 		(struct c_generic_context *) context->specific;
@@ -1533,7 +1416,7 @@ static rohc_packet_t decide_packet(const struct c_context *const context,
 	/* force IR-DYN packet because some bits shall be sent for the list of IPv6
 	 * extension headers of the inner IP header */
 	else if(packet > ROHC_PACKET_IR_DYN &&
-	        g_context->tmp.nr_of_ip_hdr > 1 &&
+	        g_context->ip_hdr_nr > 1 &&
 	        is_field_changed(g_context->tmp.changed_fields2,
 	                         MOD_IPV6_EXT_LIST_STRUCT | MOD_IPV6_EXT_LIST_CONTENT))
 	{
@@ -1555,29 +1438,23 @@ error:
  * @brief Build the ROHC packet to send.
  *
  * @param context           The compression context
- * @param ip                The outer IP header
- * @param ip2               The inner IP header
- * @param next_header       The next header such as UDP or UDP-Lite
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 int code_packet(struct c_context *const context,
-                const struct ip_packet *const ip,
-                const struct ip_packet *const ip2,
-                const unsigned char *const next_header,
+                const struct net_pkt *const uncomp_pkt,
                 unsigned char *const rohc_pkt,
                 const size_t rohc_pkt_max_len)
 {
 	struct c_generic_context *g_context;
 	int (*code_packet_type)(struct c_context *const context,
-	                        const struct ip_packet *const ip,
-	                        const struct ip_packet *const ip2,
-	                        const unsigned char *const next_header,
+	                        const struct net_pkt *const uncomp_pkt,
 	                        unsigned char *const rohc_pkt,
 	                        const size_t rohc_pkt_max_len)
-		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -1614,8 +1491,7 @@ int code_packet(struct c_context *const context,
 			goto error;
 	}
 
-	return code_packet_type(context, ip, ip2, next_header,
-	                        rohc_pkt, rohc_pkt_max_len);
+	return code_packet_type(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
 
 error:
 	return -1;
@@ -1661,20 +1537,14 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
- * @param ip2               The inner IP header
- * @param next_header       The next header data used to code the static and
- *                          dynamic parts of the next header for some profiles
- *                          such as UDP, UDP-Lite, and so on.
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_IR_packet(struct c_context *const context,
-                          const struct ip_packet *const ip,
-                          const struct ip_packet *const ip2,
-                          const unsigned char *const next_header,
+                          const struct net_pkt *const uncomp_pkt,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
 {
@@ -1692,18 +1562,19 @@ static int code_IR_packet(struct c_context *const context,
 	assert(rohc_pkt != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
-	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
+	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 
-	assert(ip != NULL);
-	assert((nr_of_ip_hdr == 1 && ip2 == NULL) ||
-	       (nr_of_ip_hdr == 2 && ip2 != NULL));
+	assert(uncomp_pkt != NULL);
 	assert(g_context->tmp.nr_sn_bits == 16);
-	assert((ip_get_version(ip) == IPV4 && g_context->tmp.nr_ip_id_bits <= 16) ||
-	       (ip_get_version(ip) != IPV4 && g_context->tmp.nr_ip_id_bits == 0));
+	assert((ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
+	        g_context->tmp.nr_ip_id_bits <= 16) ||
+	       (ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
+	        g_context->tmp.nr_ip_id_bits == 0));
 	assert((nr_of_ip_hdr == 1 && g_context->tmp.nr_ip_id_bits2 == 0) ||
-	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) == IPV4 &&
+	       (nr_of_ip_hdr == 2 &&
+	        ip_get_version(&uncomp_pkt->inner_ip) == IPV4 &&
 	        g_context->tmp.nr_ip_id_bits2 == 16) ||
-	       (nr_of_ip_hdr == 2 && ip_get_version(ip2) != IPV4 &&
+	       (nr_of_ip_hdr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
 	        g_context->tmp.nr_ip_id_bits2 == 0));
 
 	rohc_comp_debug(context, "code IR packet (CID = %zu)\n", context->cid);
@@ -1719,7 +1590,7 @@ static int code_IR_packet(struct c_context *const context,
 	 * or IR-DYN packet */
 	if(g_context->init_at_IR != NULL)
 	{
-		g_context->init_at_IR(context, next_header);
+		g_context->init_at_IR(context, uncomp_pkt->transport->data);
 	}
 
 	/* part 2: type of packet and D flag if dynamic part is included */
@@ -1741,8 +1612,8 @@ static int code_IR_packet(struct c_context *const context,
 	counter++;
 
 	/* part 6: static part */
-	ret = code_generic_static_part(context, &g_context->ip_flags,
-	                               ip, rohc_pkt, counter);
+	ret = code_generic_static_part(context, &g_context->outer_ip_flags,
+	                               &uncomp_pkt->outer_ip, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1751,8 +1622,8 @@ static int code_IR_packet(struct c_context *const context,
 
 	if(nr_of_ip_hdr > 1)
 	{
-		ret = code_generic_static_part(context, &g_context->ip2_flags,
-		                               ip2, rohc_pkt, counter);
+		ret = code_generic_static_part(context, &g_context->inner_ip_flags,
+		                               &uncomp_pkt->inner_ip, rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -1760,17 +1631,17 @@ static int code_IR_packet(struct c_context *const context,
 		counter = ret;
 	}
 
-	if(g_context->code_static_part != NULL && next_header != NULL)
+	if(g_context->code_static_part != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		/* static part of next header */
-		counter = g_context->code_static_part(context, next_header,
+		counter = g_context->code_static_part(context, uncomp_pkt->transport->data,
 		                                      rohc_pkt, counter);
 	}
 
 	/* part 7: if we do not want dynamic part in IR packet, we should not
 	 * send the following */
-	ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->ip_flags,
-	                                ip, rohc_pkt, counter);
+	ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->outer_ip_flags,
+	                                &uncomp_pkt->outer_ip, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
@@ -1780,9 +1651,8 @@ static int code_IR_packet(struct c_context *const context,
 	if(nr_of_ip_hdr > 1)
 	{
 		ip_hdr_pos++;
-		ret = code_generic_dynamic_part(context, ip_hdr_pos,
-		                                &g_context->ip2_flags, ip2, rohc_pkt,
-		                                counter);
+		ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->inner_ip_flags,
+		                                &uncomp_pkt->inner_ip, rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -1790,10 +1660,10 @@ static int code_IR_packet(struct c_context *const context,
 		counter = ret;
 	}
 
-	if(g_context->code_dynamic_part != NULL && next_header != NULL)
+	if(g_context->code_dynamic_part != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		/* dynamic part of next header */
-		counter = g_context->code_dynamic_part(context, next_header,
+		counter = g_context->code_dynamic_part(context, uncomp_pkt->transport->data,
 		                                       rohc_pkt, counter);
 	}
 
@@ -1850,20 +1720,14 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
- * @param ip2               The inner IP header
- * @param next_header       The next header data used to code the dynamic part
- *                          of the next header for some profiles such as UDP,
- *                          UDP-Lite, etc.
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_IR_DYN_packet(struct c_context *const context,
-                              const struct ip_packet *const ip,
-                              const struct ip_packet *const ip2,
-                              const unsigned char *const next_header,
+                              const struct net_pkt *const uncomp_pkt,
                               unsigned char *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
 {
@@ -1876,6 +1740,7 @@ static int code_IR_DYN_packet(struct c_context *const context,
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
+	assert(uncomp_pkt != NULL);
 	assert(rohc_pkt != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
@@ -1893,7 +1758,7 @@ static int code_IR_DYN_packet(struct c_context *const context,
 	 * or IR-DYN packet */
 	if(g_context->init_at_IR != NULL)
 	{
-		g_context->init_at_IR(context, next_header);
+		g_context->init_at_IR(context, uncomp_pkt->transport->data);
 	}
 
 	/* part 2 */
@@ -1911,20 +1776,19 @@ static int code_IR_DYN_packet(struct c_context *const context,
 
 	/* part 6: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
-	ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->ip_flags,
-	                                ip, rohc_pkt, counter);
+	ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->outer_ip_flags,
+	                                &uncomp_pkt->outer_ip, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
 	}
 	counter = ret;
 
-	if(g_context->tmp.nr_of_ip_hdr > 1)
+	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
 		ip_hdr_pos++;
-		ret = code_generic_dynamic_part(context, ip_hdr_pos,
-		                                &g_context->ip2_flags, ip2, rohc_pkt,
-		                                counter);
+		ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->inner_ip_flags,
+		                                &uncomp_pkt->inner_ip, rohc_pkt, counter);
 		if(ret < 0)
 		{
 			goto error;
@@ -1932,11 +1796,11 @@ static int code_IR_DYN_packet(struct c_context *const context,
 		counter = ret;
 	}
 
-	if(g_context->code_dynamic_part != NULL && next_header != NULL)
+	if(g_context->code_dynamic_part != NULL && uncomp_pkt->transport->data != NULL)
 	{
 		/* dynamic part of next header */
-		counter = g_context->code_dynamic_part(context, next_header, rohc_pkt,
-		                                       counter);
+		counter = g_context->code_dynamic_part(context, uncomp_pkt->transport->data,
+		                                       rohc_pkt, counter);
 	}
 
 	/* part 7: IR-DYN remainder header */
@@ -2020,7 +1884,7 @@ static int code_ipv4_static_part(const struct c_context *const context,
                                  unsigned char *const dest,
                                  int counter)
 {
-	unsigned int protocol;
+	uint8_t protocol;
 	uint32_t saddr;
 	uint32_t daddr;
 
@@ -2089,7 +1953,7 @@ static int code_ipv6_static_part(const struct c_context *const context,
                                  int counter)
 {
 	unsigned int flow_label;
-	unsigned int protocol;
+	uint8_t protocol;
 	const struct ipv6_addr *saddr;
 	const struct ipv6_addr *daddr;
 
@@ -2344,7 +2208,6 @@ static int code_ipv6_dynamic_part(const struct c_context *const context,
 			counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest,
 			                           counter,
 			                           header_info->info.v6.ext_comp.pkt_list.items_nr);
-			/* TODO: ps forced to 0, test with 8+ extensions */
 			if(counter < 0)
 			{
 				rohc_warning(context->compressor, ROHC_TRACE_COMP,
@@ -2429,17 +2292,13 @@ error:
  * function. Part 13 is built in profile-specific function.
  *
  * @param context     The compression context
- * @param ip          The outer IP header
- * @param ip2         The inner IP header
- * @param next_header The next header such as UDP or UDP-Lite
+ * @param uncomp_pkt  The uncompressed packet to encode
  * @param dest        The rohc-packet-under-build buffer
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
 static int code_uo_remainder(struct c_context *const context,
-                             const struct ip_packet *const ip,
-                             const struct ip_packet *const ip2,
-                             const unsigned char *const next_header,
+                             const struct net_pkt *const uncomp_pkt,
                              unsigned char *const dest,
                              int counter)
 {
@@ -2449,10 +2308,11 @@ static int code_uo_remainder(struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* parts 6: only IPv4 */
-	if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 1)
+	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
+	   g_context->outer_ip_flags.info.v4.rnd == 1)
 	{
 		/* do not care of Network Byte Order because IP-ID is random */
-		id = ipv4_get_id(ip);
+		id = ipv4_get_id(&uncomp_pkt->outer_ip);
 		memcpy(&dest[counter], &id, 2);
 		rohc_comp_debug(context, "outer IP-ID = 0x%04x\n", id);
 		counter += 2;
@@ -2461,11 +2321,12 @@ static int code_uo_remainder(struct c_context *const context,
 	/* parts 7 and 8 are not supported */
 
 	/* step 9: only IPv4 */
-	if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4 &&
-	   g_context->ip2_flags.info.v4.rnd == 1)
+	if(uncomp_pkt->ip_hdr_nr > 1 &&
+	   ip_get_version(&uncomp_pkt->inner_ip) == IPV4 &&
+	   g_context->inner_ip_flags.info.v4.rnd == 1)
 	{
 		/* do not care of Network Byte Order because IP-ID is random */
-		id = ipv4_get_id(ip2);
+		id = ipv4_get_id(&uncomp_pkt->inner_ip);
 		memcpy(&dest[counter], &id, 2);
 		rohc_comp_debug(context, "inner IP-ID = 0x%04x\n", id);
 		counter += 2;
@@ -2475,10 +2336,11 @@ static int code_uo_remainder(struct c_context *const context,
 
 	/* part 13 */
 	/* add fields related to the next header */
-	if(g_context->code_uo_remainder != NULL && next_header != NULL)
+	if(g_context->code_uo_remainder != NULL &&
+	   uncomp_pkt->transport->data != NULL)
 	{
-		counter = g_context->code_uo_remainder(context, next_header,
-		                                         dest, counter);
+		counter = g_context->code_uo_remainder(context, uncomp_pkt->transport->data,
+		                                       dest, counter);
 	}
 
 	return counter;
@@ -2511,18 +2373,14 @@ static int code_uo_remainder(struct c_context *const context,
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
- * @param ip2               The inner IP header
- * @param next_header       The next header such as UDP or UDP-Lite
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_UO0_packet(struct c_context *const context,
-                           const struct ip_packet *const ip,
-                           const struct ip_packet *const ip2,
-                           const unsigned char *const next_header,
+                           const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 {
@@ -2530,8 +2388,7 @@ static int code_UO0_packet(struct c_context *const context,
 	size_t first_position;
 	unsigned char f_byte;
 	struct c_generic_context *g_context;
-	unsigned int crc;
-	const unsigned char *ip2_hdr;
+	uint8_t crc;
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -2545,9 +2402,9 @@ static int code_UO0_packet(struct c_context *const context,
 	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* build the UO head if necessary */
-	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
+	if(g_context->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
-		counter = g_context->code_UO_packet_head(context, next_header,
+		counter = g_context->code_UO_packet_head(context, uncomp_pkt->transport->data,
 		                                         rohc_pkt, counter, &first_position);
 	}
 
@@ -2555,20 +2412,14 @@ static int code_UO0_packet(struct c_context *const context,
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
 	f_byte = (g_context->sn & 0x0f) << 3;
-	crc = CRC_INIT_3;
-	ip2_hdr = (g_context->tmp.nr_of_ip_hdr > 1) ? ip2->data : NULL;
-	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    ROHC_CRC_TYPE_3, crc,
-	                                    context->compressor->crc_table_3);
-	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     ROHC_CRC_TYPE_3, crc,
-	                                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(g_context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	                     context->compressor->crc_table_3);
 	f_byte |= crc;
 	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
 	rohc_pkt[first_position] = f_byte;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, ip, ip2, next_header, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
 
 	return counter;
 }
@@ -2640,18 +2491,14 @@ static int code_UO0_packet(struct c_context *const context,
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
- * @param ip2               The inner IP header
- * @param next_header       The next header such as UDP or UDP-Lite
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_UO1_packet(struct c_context *const context,
-                           const struct ip_packet *const ip,
-                           const struct ip_packet *const ip2,
-                           const unsigned char *const next_header,
+                           const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 {
@@ -2664,8 +2511,7 @@ static int code_UO1_packet(struct c_context *const context,
 	rohc_ext_t extension;
 	int is_rtp;
 	struct sc_rtp_context *rtp_context;
-	unsigned int crc;
-	const unsigned char *ip2_hdr;
+	uint8_t crc;
 	int ret;
 
 	/* number of IP-ID bits and IP-ID offset to transmit  */
@@ -2688,11 +2534,11 @@ static int code_UO1_packet(struct c_context *const context,
 	 *   While in the transient state in which an RND flag is being
 	 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
 	 *   MUST NOT be used. */
-	assert(g_context->ip_flags.version != IPV4 ||
-	       g_context->ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-	assert(g_context->tmp.nr_of_ip_hdr <= 1 ||
-	       g_context->ip2_flags.version != IPV4 ||
-	       g_context->ip2_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	assert(g_context->outer_ip_flags.version != IPV4 ||
+	       g_context->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+	assert(uncomp_pkt->ip_hdr_nr <= 1 ||
+	       g_context->inner_ip_flags.version != IPV4 ||
+	       g_context->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
 
 	switch(packet_type)
 	{
@@ -2739,9 +2585,9 @@ static int code_UO1_packet(struct c_context *const context,
 	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* build the UO head if necessary */
-	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
+	if(g_context->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
-		counter = g_context->code_UO_packet_head(context, next_header,
+		counter = g_context->code_UO_packet_head(context, uncomp_pkt->transport->data,
 		                                         rohc_pkt, counter, &first_position);
 	}
 
@@ -2829,11 +2675,11 @@ static int code_UO1_packet(struct c_context *const context,
 
 					if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
 					{
-						innermost_ip_id_rnd_count = g_context->ip_flags.info.v4.rnd_count;
+						innermost_ip_id_rnd_count = g_context->outer_ip_flags.info.v4.rnd_count;
 					}
 					else /* ROHC_IP_HDR_SECOND */
 					{
-						innermost_ip_id_rnd_count = g_context->ip2_flags.info.v4.rnd_count;
+						innermost_ip_id_rnd_count = g_context->inner_ip_flags.info.v4.rnd_count;
 					}
 
 					/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
@@ -2907,14 +2753,8 @@ static int code_UO1_packet(struct c_context *const context,
 	/* part 4: (M / X +) SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	crc = CRC_INIT_3;
-	ip2_hdr = (g_context->tmp.nr_of_ip_hdr > 1) ? ip2->data : NULL;
-	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    ROHC_CRC_TYPE_3, crc,
-	                                    context->compressor->crc_table_3);
-	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     ROHC_CRC_TYPE_3, crc,
-	                                     context->compressor->crc_table_3);
+	crc = compute_uo_crc(g_context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
+	                     context->compressor->crc_table_3);
 	s_byte = crc & 0x07;
 	switch(packet_type)
 	{
@@ -3027,7 +2867,7 @@ static int code_UO1_packet(struct c_context *const context,
 			ret = code_EXT2_packet(context, rohc_pkt, counter);
 			break;
 		case ROHC_EXT_3:
-			ret = code_EXT3_packet(context, ip, ip2, rohc_pkt, counter);
+			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
 		default:
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3043,7 +2883,7 @@ static int code_UO1_packet(struct c_context *const context,
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, ip, ip2, next_header, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
 
 	return counter;
 
@@ -3125,18 +2965,14 @@ error:
 \endverbatim
  *
  * @param context           The compression context
- * @param ip                The outer IP header
- * @param ip2               The inner IP header
- * @param next_header       The next header such as UDP or UDP-Lite
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
 static int code_UO2_packet(struct c_context *const context,
-                           const struct ip_packet *const ip,
-                           const struct ip_packet *const ip2,
-                           const unsigned char *const next_header,
+                           const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 {
@@ -3151,10 +2987,6 @@ static int code_UO2_packet(struct c_context *const context,
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
 	int is_rtp;
-	unsigned int crc;
-	unsigned int crc_type;
-	unsigned char *crc_table;
-	const unsigned char *ip2_hdr;
 	int (*code_bytes)(const struct c_context *context,
 	                  const rohc_ext_t extension,
 	                  unsigned char *const f_byte,
@@ -3201,9 +3033,9 @@ static int code_UO2_packet(struct c_context *const context,
 	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* build the UO head if necessary */
-	if(g_context->code_UO_packet_head != NULL && next_header != NULL)
+	if(g_context->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
 	{
-		counter = g_context->code_UO_packet_head(context, next_header,
+		counter = g_context->code_UO_packet_head(context, uncomp_pkt->transport->data,
 		                                         rohc_pkt, counter, &first_position);
 	}
 
@@ -3223,17 +3055,8 @@ static int code_UO2_packet(struct c_context *const context,
 	 *
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
-	crc = CRC_INIT_7;
-	crc_type = ROHC_CRC_TYPE_7;
-	crc_table = context->compressor->crc_table_7;
-	ip2_hdr = (g_context->tmp.nr_of_ip_hdr > 1) ? ip2->data : NULL;
-	/* compute CRC on CRC-STATIC fields */
-	crc = g_context->compute_crc_static(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                    crc_type, crc, crc_table);
-	/* compute CRC on CRC-DYNAMIC fields */
-	crc = g_context->compute_crc_dynamic(ip_get_raw_data(ip), ip2_hdr, next_header,
-	                                     crc_type, crc, crc_table);
-	t_byte = crc;
+	t_byte = compute_uo_crc(g_context, uncomp_pkt, ROHC_CRC_TYPE_7, CRC_INIT_7,
+	                        context->compressor->crc_table_7);
 	t_byte_position = counter;
 	counter++;
 
@@ -3283,7 +3106,7 @@ static int code_UO2_packet(struct c_context *const context,
 			ret = code_EXT2_packet(context, rohc_pkt, counter);
 			break;
 		case ROHC_EXT_3:
-			ret = code_EXT3_packet(context, ip, ip2, rohc_pkt, counter);
+			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
 		default:
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -3299,7 +3122,7 @@ static int code_UO2_packet(struct c_context *const context,
 	counter = ret;
 
 	/* build the UO tail */
-	counter = code_uo_remainder(context, ip, ip2, next_header, rohc_pkt, counter);
+	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
 
 	return counter;
 
@@ -3487,19 +3310,19 @@ static int code_UOR2_RTP_bytes(const struct c_context *const context,
 
 	/* UOR-2-RTP cannot be used if the context contains at least one IPv4
 	 * header with value(RND) = 0. */
-	if(g_context->tmp.nr_of_ip_hdr == 1)
+	if(g_context->ip_hdr_nr == 1)
 	{
 		/* only one IP header: it must not be IPv4 with non-random IP-ID */
-		assert(g_context->ip_flags.version != IPV4 ||
-		       g_context->ip_flags.info.v4.rnd == 1);
+		assert(g_context->outer_ip_flags.version != IPV4 ||
+		       g_context->outer_ip_flags.info.v4.rnd == 1);
 	}
 	else
 	{
 		/* 2 IP headers: none of them must be IPv4 with non-random IP-ID */
-		assert(g_context->ip_flags.version != IPV4 ||
-		       g_context->ip_flags.info.v4.rnd == 1);
-		assert(g_context->ip2_flags.version != IPV4 ||
-		       g_context->ip2_flags.info.v4.rnd == 1);
+		assert(g_context->outer_ip_flags.version != IPV4 ||
+		       g_context->outer_ip_flags.info.v4.rnd == 1);
+		assert(g_context->inner_ip_flags.version != IPV4 ||
+		       g_context->inner_ip_flags.info.v4.rnd == 1);
 	}
 
 	/* which extension to code? */
@@ -3736,20 +3559,20 @@ static int code_UOR2_TS_bytes(const struct c_context *const context,
 
 	/* UOR-2-TS cannot be used if there is no IPv4 header in the context or
 	 * if value(RND) and value(RND2) are both 1. */
-	if(g_context->tmp.nr_of_ip_hdr == 1)
+	if(g_context->ip_hdr_nr == 1)
 	{
 		/* only one IP header: it must be IPv4 with non-random IP-ID */
-		assert(g_context->ip_flags.version == IPV4);
-		assert(g_context->ip_flags.info.v4.rnd == 0);
+		assert(g_context->outer_ip_flags.version == IPV4);
+		assert(g_context->outer_ip_flags.info.v4.rnd == 0);
 	}
 	else
 	{
 		/* 2 IP headers: at least one of them must be IPv4 with non-random
 		 * IP-ID */
-		if(g_context->ip2_flags.version == IPV4)
+		if(g_context->inner_ip_flags.version == IPV4)
 		{
 			/* inner IP header is IPv4 */
-			if(g_context->ip2_flags.info.v4.rnd == 0)
+			if(g_context->inner_ip_flags.info.v4.rnd == 0)
 			{
 				/* inner IPv4 header got a non-random IP-ID, that's fine */
 			}
@@ -3757,16 +3580,16 @@ static int code_UOR2_TS_bytes(const struct c_context *const context,
 			{
 				/* inner IPv4 header got a random IP-ID, outer IP header must
 				 * be IPv4 with non-random IP-ID */
-				assert(g_context->ip_flags.version == IPV4);
-				assert(!g_context->ip_flags.info.v4.rnd);
+				assert(g_context->outer_ip_flags.version == IPV4);
+				assert(!g_context->outer_ip_flags.info.v4.rnd);
 			}
 		}
 		else
 		{
 			/* inner IP header is not IPv4, outer IP header must be IPv4 with
 			 * non-random IP-ID */
-			assert(g_context->ip_flags.version == IPV4);
-			assert(!g_context->ip_flags.info.v4.rnd);
+			assert(g_context->outer_ip_flags.version == IPV4);
+			assert(!g_context->outer_ip_flags.info.v4.rnd);
 		}
 	}
 
@@ -4118,11 +3941,11 @@ static int code_UOR2_ID_bytes(const struct c_context *const context,
 
 			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
 			{
-				innermost_ip_id_rnd_count = g_context->ip_flags.info.v4.rnd_count;
+				innermost_ip_id_rnd_count = g_context->outer_ip_flags.info.v4.rnd_count;
 			}
 			else /* ROHC_IP_HDR_SECOND */
 			{
-				innermost_ip_id_rnd_count = g_context->ip2_flags.info.v4.rnd_count;
+				innermost_ip_id_rnd_count = g_context->inner_ip_flags.info.v4.rnd_count;
 			}
 
 			/* part 2: 5 bits of innermost IP-ID with non-random IP-ID */
@@ -4524,26 +4347,26 @@ static int code_EXT2_packet(const struct c_context *const context,
 		{
 			/* To avoid confusion:
 			 *  - IP-ID2 in the header description is related to the outer IP header
-			 *    and thus to the g_context->ip_flags header info,
+			 *    and thus to the g_context->outer_ip_flags header info,
 			 *  - IP-ID in the header description is related to the inner IP header
-			 *    and thus to the g_context->ip2_flags header info.
+			 *    and thus to the g_context->inner_ip_flags header info.
 			 */
 
 			/* extension 2 for UOR-2 must contain two IPv4 headers with non-random
 			   IP-IDs */
-			assert(g_context->ip_flags.version == IPV4 &&
-			       g_context->ip_flags.info.v4.rnd == 0 &&
-			       g_context->is_ip2_initialized == 1 &&
-			       g_context->ip2_flags.version == IPV4 &&
-			       g_context->ip2_flags.info.v4.rnd == 0);
+			assert(g_context->outer_ip_flags.version == IPV4 &&
+			       g_context->outer_ip_flags.info.v4.rnd == 0 &&
+			       g_context->ip_hdr_nr > 1 &&
+			       g_context->inner_ip_flags.version == IPV4 &&
+			       g_context->inner_ip_flags.info.v4.rnd == 0);
 
-			f_byte |= (g_context->ip_flags.info.v4.id_delta >> 8) & 0x07;
+			f_byte |= (g_context->outer_ip_flags.info.v4.id_delta >> 8) & 0x07;
 			rohc_comp_debug(context, "3 bits of outer IP-ID = 0x%x\n",
 			                f_byte & 0x07);
-			s_byte = g_context->ip_flags.info.v4.id_delta & 0xff;
+			s_byte = g_context->outer_ip_flags.info.v4.id_delta & 0xff;
 			rohc_comp_debug(context, "8 bits of outer IP-ID = 0x%x\n",
 			                s_byte & 0xff);
-			t_byte = g_context->ip2_flags.info.v4.id_delta & 0xff;
+			t_byte = g_context->inner_ip_flags.info.v4.id_delta & 0xff;
 			rohc_comp_debug(context, "8 bits of inner IP-ID = 0x%x\n",
 			                t_byte & 0xff);
 			break;
@@ -4701,17 +4524,15 @@ error:
 
 \endverbatim
  *
- * @param context  The compression context
- * @param ip       The outer IP header
- * @param ip2      The inner IP header
- * @param dest     The rohc-packet-under-build buffer
- * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
- *                 if successful, -1 otherwise
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet to encode
+ * @param dest        The rohc-packet-under-build buffer
+ * @param counter     The current position in the rohc-packet-under-build buffer
+ * @return            The new position in the rohc-packet-under-build buffer
+ *                    if successful, -1 otherwise
  */
 static int code_EXT3_packet(const struct c_context *const context,
-                            const struct ip_packet *const ip,
-                            const struct ip_packet *const ip2,
+                            const struct net_pkt *const uncomp_pkt,
                             unsigned char *const dest,
                             int counter)
 {
@@ -4735,7 +4556,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 	rohc_packet_t packet_type;
 
 	g_context = (struct c_generic_context *) context->specific;
-	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
+	nr_of_ip_hdr = uncomp_pkt->ip_hdr_nr;
 	changed_f = g_context->tmp.changed_fields;
 	changed_f2 = g_context->tmp.changed_fields2;
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
@@ -4843,17 +4664,18 @@ static int code_EXT3_packet(const struct c_context *const context,
 	}
 
 	/* if random bit is set we have the IP-ID field outside this function */
-	if(ip_get_version(ip) == IPV4)
+	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4)
 	{
 		rohc_comp_debug(context, "rnd_count_up = %d\n",
-		                g_context->ip_flags.info.v4.rnd_count);
+		                g_context->outer_ip_flags.info.v4.rnd_count);
 	}
 
 	if(nr_of_ip_hdr == 1)
 	{
 		/* if the innermost IP header is IPv4 with non-random IP-ID, check if
 		 * the I bit must be set */
-		if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 0)
+		if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
+		   g_context->outer_ip_flags.info.v4.rnd == 0)
 		{
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_FIRST;
 
@@ -4869,7 +4691,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 			{
 				I = 1;
 			}
-			else if(g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
+			else if(g_context->outer_ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
 			{
 				I = 1;
 			}
@@ -4888,8 +4710,10 @@ static int code_EXT3_packet(const struct c_context *const context,
 
 		/* ip bit */
 		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
-		if(changed_dynamic_one_hdr(context, changed_f & 0x01FF, &g_context->ip_flags, ip) ||
-		   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
+		if(changed_dynamic_one_hdr(context, changed_f & 0x01FF,
+		                           &g_context->outer_ip_flags, &uncomp_pkt->outer_ip) ||
+		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags,
+		                          &uncomp_pkt->outer_ip))
 		{
 			have_inner = 1;
 			f_byte |= 0x02;
@@ -4899,7 +4723,8 @@ static int code_EXT3_packet(const struct c_context *const context,
 	{
 		/* set the I bit if some bits (depends on packet type) of the innermost
 		 * IPv4 header with non-random IP-ID must be transmitted */
-		if(ip_get_version(ip2) == IPV4 && g_context->ip2_flags.info.v4.rnd == 0)
+		if(ip_get_version(&uncomp_pkt->inner_ip) == IPV4 &&
+		   g_context->inner_ip_flags.info.v4.rnd == 0)
 		{
 			/* inner IP header is IPv4 with non-random IP-ID */
 			innermost_ipv4_non_rnd = ROHC_IP_HDR_SECOND;
@@ -4916,7 +4741,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 			{
 				I = 1;
 			}
-			else if(g_context->ip2_flags.info.v4.rnd_count < MAX_FO_COUNT)
+			else if(g_context->inner_ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
 			{
 				I = 1;
 			}
@@ -4926,16 +4751,17 @@ static int code_EXT3_packet(const struct c_context *const context,
 			}
 
 			/* the innermost IPv4 header with non-random IP-ID is the inner IP
-			 * header, maybe there is a need for a second IP-ID for for the
-			 * outer IP header */
-			if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 0)
+			 * header, maybe there is a need for a second IP-ID for the outer
+			 * IP header */
+			if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
+			   g_context->outer_ip_flags.info.v4.rnd == 0)
 			{
 				/* outer IP header is also IPv4 with non-random IP-ID */
 				if(nr_ip_id_bits > 0)
 				{
 					I2 = 1;
 				}
-				else if(g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
+				else if(g_context->outer_ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
 				{
 					I2 = 1;
 				}
@@ -4945,7 +4771,8 @@ static int code_EXT3_packet(const struct c_context *const context,
 				}
 			}
 		}
-		else if(ip_get_version(ip) == IPV4 && g_context->ip_flags.info.v4.rnd == 0)
+		else if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4 &&
+		        g_context->outer_ip_flags.info.v4.rnd == 0)
 		{
 			/* inner IP header is not 'IPv4 with non-random IP-ID', but outer
 			 * IP header is */
@@ -4963,7 +4790,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 			{
 				I = 1;
 			}
-			else if(g_context->ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
+			else if(g_context->outer_ip_flags.info.v4.rnd_count < MAX_FO_COUNT)
 			{
 				I = 1;
 			}
@@ -4986,11 +4813,13 @@ static int code_EXT3_packet(const struct c_context *const context,
 		f_byte |= (I & 0x01) << 2;
 
 		/* ip2 bit if non-RTP
-		 * (force ip2=1 if I2=1, otherwise I2 is not send) */
+		 * (force ip2=1 if I2=1, otherwise I2 is not sent) */
 		rohc_comp_debug(context, "check for changed fields in the outer IP header\n");
 		if(I2 ||
-		   changed_dynamic_one_hdr(context, changed_f, &g_context->ip_flags, ip) ||
-		   changed_static_one_hdr(context, changed_f, &g_context->ip_flags, ip))
+		   changed_dynamic_one_hdr(context, changed_f, &g_context->outer_ip_flags,
+		                           &uncomp_pkt->outer_ip) ||
+		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags,
+		                          &uncomp_pkt->outer_ip))
 		{
 			have_outer = 1;
 			if(!is_rtp)
@@ -5002,9 +4831,11 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* ip bit
 		 * (force ip=1 if ip2=1 and RTP profile, otherwise ip2 is not send) */
 		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
-		if((is_rtp && ip2) ||
-		   changed_dynamic_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2) ||
-		   changed_static_one_hdr(context, changed_f2, &g_context->ip2_flags, ip2))
+		if((is_rtp && nr_of_ip_hdr > 1) ||
+		   changed_dynamic_one_hdr(context, changed_f2, &g_context->inner_ip_flags,
+		                           &uncomp_pkt->inner_ip) ||
+		   changed_static_one_hdr(context, changed_f2, &g_context->inner_ip_flags,
+		                          &uncomp_pkt->inner_ip))
 		{
 			have_inner = 1;
 			f_byte = f_byte | 0x02;
@@ -5022,8 +4853,9 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 2 */
 		if(have_inner)
 		{
-			counter = header_flags(context, &g_context->ip_flags, changed_f, ip,
-			                       have_outer, nr_ip_id_bits, dest, counter);
+			counter = header_flags(context, &g_context->outer_ip_flags, changed_f,
+			                       &uncomp_pkt->outer_ip, have_outer, nr_ip_id_bits,
+			                       dest, counter);
 		}
 
 		/* part 3: only one IP header */
@@ -5067,8 +4899,9 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* parts */
 		if(have_inner)
 		{
-			counter = header_fields(context, &g_context->ip_flags, changed_f,
-			                        ip, 0, ROHC_IP_HDR_FIRST, dest, counter);
+			counter = header_fields(context, &g_context->outer_ip_flags, changed_f,
+			                        &uncomp_pkt->outer_ip, 0, ROHC_IP_HDR_FIRST,
+			                        dest, counter);
 		}
 
 		/* part 6 */
@@ -5082,7 +4915,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 			assert(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST);
 
 			/* always transmit the IP-ID encoded, in Network Byte Order */
-			id_encoded = rohc_hton16(g_context->ip_flags.info.v4.id_delta);
+			id_encoded = rohc_hton16(g_context->outer_ip_flags.info.v4.id_delta);
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
 			                innermost_ipv4_non_rnd, dest[counter],
@@ -5095,7 +4928,8 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 8 */
 		if(is_rtp && rtp)
 		{
-			counter = rtp_header_flags_and_fields(context, changed_f, ip,
+			counter = rtp_header_flags_and_fields(context, changed_f,
+			                                      &uncomp_pkt->outer_ip,
 			                                      dest, counter);
 			if(counter < 0)
 			{
@@ -5108,15 +4942,17 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 2 */
 		if(have_inner)
 		{
-			counter = header_flags(context, &g_context->ip2_flags, changed_f2, ip2,
-			                       have_outer, nr_ip_id_bits2, dest, counter);
+			counter = header_flags(context, &g_context->inner_ip_flags, changed_f2,
+			                       &uncomp_pkt->inner_ip, have_outer, nr_ip_id_bits2,
+			                       dest, counter);
 		}
 
 		/* part 3 */
 		if(have_outer)
 		{
-			counter = header_flags(context, &g_context->ip_flags, changed_f, ip,
-			                       I2, nr_ip_id_bits, dest, counter);
+			counter = header_flags(context, &g_context->outer_ip_flags, changed_f,
+			                       &uncomp_pkt->outer_ip, I2, nr_ip_id_bits, dest,
+			                       counter);
 		}
 
 		/* part 4 */
@@ -5156,8 +4992,9 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 5 */
 		if(have_inner)
 		{
-			counter = header_fields(context, &g_context->ip2_flags, changed_f2,
-			                        ip2, 0, ROHC_IP_HDR_SECOND, dest, counter);
+			counter = header_fields(context, &g_context->inner_ip_flags, changed_f2,
+			                        &uncomp_pkt->inner_ip, 0, ROHC_IP_HDR_SECOND,
+			                        dest, counter);
 		}
 
 		/* part 6 */
@@ -5173,11 +5010,11 @@ static int code_EXT3_packet(const struct c_context *const context,
 			/* always transmit the IP-ID encoded, in Network Byte Order */
 			if(innermost_ipv4_non_rnd == ROHC_IP_HDR_FIRST)
 			{
-				id_encoded = rohc_hton16(g_context->ip_flags.info.v4.id_delta);
+				id_encoded = rohc_hton16(g_context->outer_ip_flags.info.v4.id_delta);
 			}
 			else
 			{
-				id_encoded = rohc_hton16(g_context->ip2_flags.info.v4.id_delta);
+				id_encoded = rohc_hton16(g_context->inner_ip_flags.info.v4.id_delta);
 			}
 			memcpy(&dest[counter], &id_encoded, 2);
 			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
@@ -5189,14 +5026,16 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 7 */
 		if(have_outer)
 		{
-			counter = header_fields(context, &g_context->ip_flags, changed_f,
-			                        ip, I2, ROHC_IP_HDR_FIRST, dest, counter);
+			counter = header_fields(context, &g_context->outer_ip_flags, changed_f,
+			                        &uncomp_pkt->outer_ip, I2, ROHC_IP_HDR_FIRST,
+			                        dest, counter);
 		}
 
 		/* part 8 */
 		if(is_rtp && rtp)
 		{
-			counter = rtp_header_flags_and_fields(context, changed_f2, ip2,
+			counter = rtp_header_flags_and_fields(context, changed_f2,
+			                                      &uncomp_pkt->inner_ip,
 			                                      dest, counter);
 			if(counter < 0)
 			{
@@ -5530,7 +5369,7 @@ static int header_fields(const struct c_context *const context,
 {
 	unsigned int tos;
 	unsigned int ttl;
-	unsigned int protocol;
+	uint8_t protocol;
 
 	/* part 1 */
 	if(is_field_changed(changed_f, MOD_TOS) ||
@@ -5586,17 +5425,122 @@ static int header_fields(const struct c_context *const context,
 
 
 /**
+ * @brief Compute the CRC for a UO* packet
+ *
+ * @param g_context   The generic compression context
+ * @param uncomp_pkt  The uncompressed packet to encode
+ * @param crc_type    The type of CRC to compute
+ * @param crc_init    The initial value of the CRC
+ * @param crc_table   The table of pre-computed CRC
+ * @return            The computed CRC
+ */
+static uint8_t compute_uo_crc(const struct c_generic_context *g_context,
+                              const struct net_pkt *const uncomp_pkt,
+                              const rohc_crc_type_t crc_type,
+                              const uint8_t crc_init,
+                              const unsigned char *const crc_table)
+{
+	const uint8_t *outer_ip_hdr;
+	const uint8_t *inner_ip_hdr;
+	const uint8_t *next_header;
+	uint8_t crc = crc_init;
+
+	outer_ip_hdr = ip_get_raw_data(&uncomp_pkt->outer_ip);
+	if(uncomp_pkt->ip_hdr_nr > 1)
+	{
+		inner_ip_hdr = ip_get_raw_data(&uncomp_pkt->inner_ip);
+	}
+	else
+	{
+		inner_ip_hdr = NULL;
+	}
+	next_header = uncomp_pkt->transport->data;
+
+	/* compute CRC on CRC-STATIC fields */
+	crc = g_context->compute_crc_static(outer_ip_hdr, inner_ip_hdr, next_header,
+	                                    crc_type, crc, crc_table);
+
+	/* compute CRC on CRC-DYNAMIC fields */
+	crc = g_context->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr, next_header,
+	                                     crc_type, crc, crc_table);
+
+	return crc;
+}
+
+
+/**
+ * @brief Update the compression context with the successfully compressed packet
+ *
+ * @param context     The compression context to update
+ * @param uncomp_pkt  The uncompressed packet that updates the context
+ */
+static void update_context(struct c_context *const context,
+                           const struct net_pkt *const uncomp_pkt)
+{
+	struct c_generic_context *const g_context =
+		(struct c_generic_context *) context->specific;
+
+	/* update the context with the new headers */
+	update_context_ip_hdr(&g_context->outer_ip_flags,
+	                      &uncomp_pkt->outer_ip);
+
+	if(uncomp_pkt->ip_hdr_nr > 1)
+	{
+		update_context_ip_hdr(&g_context->inner_ip_flags,
+		                      &uncomp_pkt->inner_ip);
+	}
+
+	/* update packet counters */
+	if(g_context->tmp.packet_type == ROHC_PACKET_IR)
+	{
+		context->num_sent_ir++;
+	}
+	else if(g_context->tmp.packet_type == ROHC_PACKET_IR_DYN)
+	{
+		context->num_sent_ir_dyn++;
+	}
+}
+
+
+/**
+ * @brief Update the IP information with the IP header
+ *
+ * @param ip_flags  The IP context to update
+ * @param ip        The uncompressed IP header that updates the context
+ */
+static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
+                                  const struct ip_packet *const ip)
+{
+	ip_flags->is_first_header = false;
+
+	if(ip_get_version(ip) == IPV4)
+	{
+		ip_flags->info.v4.old_ip = *(ipv4_get_header(ip));
+		ip_flags->info.v4.old_rnd = ip_flags->info.v4.rnd;
+		ip_flags->info.v4.old_nbo = ip_flags->info.v4.nbo;
+		ip_flags->info.v4.old_sid = ip_flags->info.v4.sid;
+	}
+	else /* IPV6 */
+	{
+		ip_flags->info.v6.old_ip = *(ipv6_get_header(ip));
+		/* replace Next Header by the one of the last extension header */
+		ip_flags->info.v6.old_ip.ip6_nxt = ip_get_protocol(ip);
+		/* update compression list context */
+		rohc_list_update_context(&ip_flags->info.v6.ext_comp);
+	}
+}
+
+
+/**
  * @brief Check if the static parts of the context changed in any of the two
  *        IP headers.
  *
- * @param context The compression context
- * @param ip      The outer IP header
- * @param ip2     The inner IP header
- * @return        The number of fields that changed
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet
+ * @return            The number of static fields that changed
  */
 static int changed_static_both_hdr(const struct c_context *const context,
-                                   const struct ip_packet *const ip,
-                                   const struct ip_packet *const ip2)
+                                   const struct net_pkt *const uncomp_pkt)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	struct c_generic_context *g_context;
@@ -5604,13 +5548,15 @@ static int changed_static_both_hdr(const struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	nb_fields = changed_static_one_hdr(context, g_context->tmp.changed_fields,
-	                                   &g_context->ip_flags, ip);
+	                                   &g_context->outer_ip_flags,
+	                                   &uncomp_pkt->outer_ip);
 
-	if(g_context->tmp.nr_of_ip_hdr > 1)
+	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
 		nb_fields += changed_static_one_hdr(context,
 		                                    g_context->tmp.changed_fields2,
-		                                    &g_context->ip2_flags, ip2);
+		                                    &g_context->inner_ip_flags,
+		                                    &uncomp_pkt->inner_ip);
 	}
 
 	return nb_fields;
@@ -5677,14 +5623,12 @@ static int changed_static_one_hdr(const struct c_context *const context,
  * @brief Check if the dynamic parts of the context changed in any of the two
  *        IP headers.
  *
- * @param context The compression context
- * @param ip      The outer IP header
- * @param ip2     The inner IP header
- * @return        The number of fields that changed
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet
+ * @return            The number of dynamic fields that changed
  */
 static int changed_dynamic_both_hdr(const struct c_context *const context,
-                                    const struct ip_packet *const ip,
-                                    const struct ip_packet *const ip2)
+                                    const struct net_pkt *const uncomp_pkt)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	struct c_generic_context *g_context;
@@ -5693,14 +5637,16 @@ static int changed_dynamic_both_hdr(const struct c_context *const context,
 
 	rohc_comp_debug(context, "check for changed fields in the outer IP header\n");
 	nb_fields = changed_dynamic_one_hdr(context, g_context->tmp.changed_fields,
-	                                    &g_context->ip_flags, ip);
+	                                    &g_context->outer_ip_flags,
+	                                    &uncomp_pkt->outer_ip);
 
-	if(g_context->tmp.nr_of_ip_hdr > 1)
+	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
 		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
 		nb_fields += changed_dynamic_one_hdr(context,
 		                                     g_context->tmp.changed_fields2,
-		                                     &g_context->ip2_flags, ip2);
+		                                     &g_context->inner_ip_flags,
+		                                     &uncomp_pkt->inner_ip);
 	}
 
 	return nb_fields;
@@ -5997,35 +5943,32 @@ error:
  *  - increase in Little Endian,
  *  - randomly.
  *
- * @param context   The compression context
- * @param outer_ip  One of the following IP headers:
- *                   \li the outermost IP header if >= 2 IP headers are present
- *                   \li the innermost IP header if only 1 IP header is present
- * @param inner_ip  One of the following IP headers:
- *                   \li the innermost IP header if >= 2 IP headers are present
- *                   \li NULL if only 1 IP header is present
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet
  */
 static void detect_ip_id_behaviours(struct c_context *const context,
-                                    const struct ip_packet *const outer_ip,
-                                    const struct ip_packet *const inner_ip)
+                                    const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
 
 	assert(context != NULL);
-	assert(outer_ip != NULL);
+	assert(uncomp_pkt != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* detect IP-ID behaviour for the outer IP header if IPv4 */
-	if(ip_get_version(outer_ip) == IPV4)
+	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4)
 	{
-		detect_ip_id_behaviour(context, &g_context->ip_flags, outer_ip);
+		detect_ip_id_behaviour(context, &g_context->outer_ip_flags,
+		                       &uncomp_pkt->outer_ip);
 	}
 
 	/* detect IP-ID behaviour for the inner IP header if present and IPv4 */
-	if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(inner_ip) == IPV4)
+	if(uncomp_pkt->ip_hdr_nr > 1 &&
+	   ip_get_version(&uncomp_pkt->inner_ip) == IPV4)
 	{
-		detect_ip_id_behaviour(context, &g_context->ip2_flags, inner_ip);
+		detect_ip_id_behaviour(context, &g_context->inner_ip_flags,
+		                       &uncomp_pkt->inner_ip);
 	}
 }
 
@@ -6176,16 +6119,12 @@ static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
  * @brief Encode uncompressed fields with the corresponding encoding scheme
  *
  * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header
+ * @param uncomp_pkt   The uncompressed packet to encode
  * @return             ROHC_OK in case of success,
  *                     ROHC_ERROR otherwise
  */
 static int encode_uncomp_fields(struct c_context *const context,
-                                const struct ip_packet *const ip,
-                                const struct ip_packet *const ip2,
-                                const unsigned char *const next_header)
+                                const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
 	bool wlsb_k_ok;
@@ -6193,11 +6132,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 	assert(context != NULL);
 	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
-	assert(ip != NULL);
-	assert(g_context->tmp.nr_of_ip_hdr == 1 ||
-	       g_context->tmp.nr_of_ip_hdr == 2);
-	assert((g_context->tmp.nr_of_ip_hdr == 1 && ip2 == NULL) ||
-	       (g_context->tmp.nr_of_ip_hdr == 2 && ip2 != NULL));
+	assert(uncomp_pkt != NULL);
 
 	rohc_comp_debug(context, "compressor is in state %u\n", context->state);
 
@@ -6235,19 +6170,20 @@ static int encode_uncomp_fields(struct c_context *const context,
 
 	/* update info related to the IP-ID of the outer header
 	 * only if header is IPv4 */
-	if(ip_get_version(ip) == IPV4)
+	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4)
 	{
 		/* compute the new IP-ID / SN delta */
-		g_context->ip_flags.info.v4.id_delta =
-			rohc_ntoh16(ipv4_get_id_nbo(ip, g_context->ip_flags.info.v4.nbo)) -
+		g_context->outer_ip_flags.info.v4.id_delta =
+			rohc_ntoh16(ipv4_get_id_nbo(&uncomp_pkt->outer_ip,
+			                            g_context->outer_ip_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",
-		                g_context->ip_flags.info.v4.id_delta,
-		                g_context->ip_flags.info.v4.id_delta,
-		                g_context->ip_flags.info.v4.nbo,
-		                g_context->ip_flags.info.v4.rnd,
-		                g_context->ip_flags.info.v4.sid);
+		                g_context->outer_ip_flags.info.v4.id_delta,
+		                g_context->outer_ip_flags.info.v4.id_delta,
+		                g_context->outer_ip_flags.info.v4.nbo,
+		                g_context->outer_ip_flags.info.v4.rnd,
+		                g_context->outer_ip_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
 		if(context->state == ROHC_COMP_STATE_IR)
@@ -6257,7 +6193,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
 			                "new outer IP-ID delta\n", g_context->tmp.nr_ip_id_bits);
 		}
-		else if(g_context->ip_flags.info.v4.sid)
+		else if(g_context->outer_ip_flags.info.v4.sid)
 		{
 			/* IP-ID is constant, no IP-ID bit to transmit */
 			g_context->tmp.nr_ip_id_bits = 0;
@@ -6267,8 +6203,8 @@ static int encode_uncomp_fields(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			wlsb_k_ok = wlsb_get_k_16bits(g_context->ip_flags.info.v4.ip_id_window,
-			                              g_context->ip_flags.info.v4.id_delta,
+			wlsb_k_ok = wlsb_get_k_16bits(g_context->outer_ip_flags.info.v4.ip_id_window,
+			                              g_context->outer_ip_flags.info.v4.id_delta,
 			                              &(g_context->tmp.nr_ip_id_bits));
 			if(!wlsb_k_ok)
 			{
@@ -6282,8 +6218,8 @@ static int encode_uncomp_fields(struct c_context *const context,
 		                "IP-ID delta\n", g_context->tmp.nr_ip_id_bits);
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(g_context->ip_flags.info.v4.ip_id_window, g_context->sn,
-		           g_context->ip_flags.info.v4.id_delta);
+		c_add_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window, g_context->sn,
+		           g_context->outer_ip_flags.info.v4.id_delta);
 	}
 	else /* IPV6 */
 	{
@@ -6293,19 +6229,21 @@ static int encode_uncomp_fields(struct c_context *const context,
 
 	/* update info related to the IP-ID of the inner header
 	 * only if header is IPv4 */
-	if(g_context->tmp.nr_of_ip_hdr > 1 && ip_get_version(ip2) == IPV4)
+	if(uncomp_pkt->ip_hdr_nr > 1 &&
+	   ip_get_version(&uncomp_pkt->inner_ip) == IPV4)
 	{
 		/* compute the new IP-ID / SN delta */
-		g_context->ip2_flags.info.v4.id_delta =
-			rohc_ntoh16(ipv4_get_id_nbo(ip2, g_context->ip2_flags.info.v4.nbo)) -
+		g_context->inner_ip_flags.info.v4.id_delta =
+			rohc_ntoh16(ipv4_get_id_nbo(&uncomp_pkt->inner_ip,
+			                            g_context->inner_ip_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
 		                "RND = %d, SID = %d)\n",
-		                g_context->ip2_flags.info.v4.id_delta,
-		                g_context->ip2_flags.info.v4.id_delta,
-		                g_context->ip2_flags.info.v4.nbo,
-		                g_context->ip2_flags.info.v4.rnd,
-		                g_context->ip2_flags.info.v4.sid);
+		                g_context->inner_ip_flags.info.v4.id_delta,
+		                g_context->inner_ip_flags.info.v4.id_delta,
+		                g_context->inner_ip_flags.info.v4.nbo,
+		                g_context->inner_ip_flags.info.v4.rnd,
+		                g_context->inner_ip_flags.info.v4.sid);
 
 		/* how many bits are required to encode the new IP-ID / SN delta ? */
 		if(context->state == ROHC_COMP_STATE_IR)
@@ -6315,7 +6253,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
 			                "new inner IP-ID delta\n", g_context->tmp.nr_ip_id_bits2);
 		}
-		else if(g_context->ip2_flags.info.v4.sid)
+		else if(g_context->inner_ip_flags.info.v4.sid)
 		{
 			/* IP-ID is constant, no IP-ID bit to transmit */
 			g_context->tmp.nr_ip_id_bits2 = 0;
@@ -6325,8 +6263,8 @@ static int encode_uncomp_fields(struct c_context *const context,
 		else
 		{
 			/* send only required bits in FO or SO states */
-			wlsb_k_ok = wlsb_get_k_16bits(g_context->ip2_flags.info.v4.ip_id_window,
-			                              g_context->ip2_flags.info.v4.id_delta,
+			wlsb_k_ok = wlsb_get_k_16bits(g_context->inner_ip_flags.info.v4.ip_id_window,
+			                              g_context->inner_ip_flags.info.v4.id_delta,
 			                              &(g_context->tmp.nr_ip_id_bits2));
 			if(!wlsb_k_ok)
 			{
@@ -6340,10 +6278,10 @@ static int encode_uncomp_fields(struct c_context *const context,
 		                "IP-ID delta\n", g_context->tmp.nr_ip_id_bits2);
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
-		c_add_wlsb(g_context->ip2_flags.info.v4.ip_id_window, g_context->sn,
-		           g_context->ip2_flags.info.v4.id_delta);
+		c_add_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window, g_context->sn,
+		           g_context->inner_ip_flags.info.v4.id_delta);
 	}
-	else if(g_context->tmp.nr_of_ip_hdr > 1) /* IPV6 */
+	else if(uncomp_pkt->ip_hdr_nr > 1) /* IPV6 */
 	{
 		g_context->tmp.nr_ip_id_bits2 = 0;
 	}
@@ -6353,7 +6291,7 @@ static int encode_uncomp_fields(struct c_context *const context,
 	{
 		int ret;
 
-		ret = g_context->encode_uncomp_fields(context, ip, ip2, next_header);
+		ret = g_context->encode_uncomp_fields(context, uncomp_pkt);
 		if(ret != ROHC_OK)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -6426,7 +6364,7 @@ rohc_ext_t decide_extension(const struct c_context *const context)
 			{
 				ext = ROHC_EXT_1;
 			}
-			else if(g_context->tmp.nr_of_ip_hdr > 1 &&
+			else if(g_context->ip_hdr_nr > 1 &&
 			        nr_sn_bits <= 3 &&
 			        nr_innermost_ip_id_bits != 0 && nr_innermost_ip_id_bits <= 8 &&
 			        nr_outermost_ip_id_bits <= 11)
@@ -6665,22 +6603,22 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *const contex
 	assert(nr_bits != NULL);
 	assert(offset != NULL);
 
-	if(g_context->tmp.nr_of_ip_hdr > 1 &&
-	   g_context->ip2_flags.version == IPV4 &&
-	   g_context->ip2_flags.info.v4.rnd == 0)
+	if(g_context->ip_hdr_nr > 1 &&
+	   g_context->inner_ip_flags.version == IPV4 &&
+	   g_context->inner_ip_flags.info.v4.rnd == 0)
 	{
 		/* inner IP header exists and is IPv4 with a non-random IP-ID */
 		*pos = ROHC_IP_HDR_SECOND;
 		*nr_bits = g_context->tmp.nr_ip_id_bits2;
-		*offset = g_context->ip2_flags.info.v4.id_delta;
+		*offset = g_context->inner_ip_flags.info.v4.id_delta;
 	}
-	else if(g_context->ip_flags.version == IPV4 &&
-	        g_context->ip_flags.info.v4.rnd == 0)
+	else if(g_context->outer_ip_flags.version == IPV4 &&
+	        g_context->outer_ip_flags.info.v4.rnd == 0)
 	{
 		/* outer IP header is IPv4 with a non-random IP-ID */
 		*pos = ROHC_IP_HDR_FIRST;
 		*nr_bits = g_context->tmp.nr_ip_id_bits;
-		*offset = g_context->ip_flags.info.v4.id_delta;
+		*offset = g_context->outer_ip_flags.info.v4.id_delta;
 	}
 	else
 	{
@@ -6708,16 +6646,16 @@ void rohc_get_ipid_bits(const struct c_context *const context,
 	struct c_generic_context *g_context =
 		(struct c_generic_context *) context->specific;
 
-	if(g_context->tmp.nr_of_ip_hdr > 1 &&
-	   g_context->ip2_flags.version == IPV4 &&
-	   g_context->ip2_flags.info.v4.rnd == 0)
+	if(g_context->ip_hdr_nr > 1 &&
+	   g_context->inner_ip_flags.version == IPV4 &&
+	   g_context->inner_ip_flags.info.v4.rnd == 0)
 	{
 		/* inner IP header exists and is IPv4 with a non-random IP-ID */
 		*nr_innermost_bits = g_context->tmp.nr_ip_id_bits2;
 
 		/* how many bits for the outer IP-ID? */
-		if(g_context->ip_flags.version == IPV4 &&
-		   g_context->ip_flags.info.v4.rnd == 0)
+		if(g_context->outer_ip_flags.version == IPV4 &&
+		   g_context->outer_ip_flags.info.v4.rnd == 0)
 		{
 			*nr_outermost_bits = g_context->tmp.nr_ip_id_bits;
 		}
@@ -6726,8 +6664,8 @@ void rohc_get_ipid_bits(const struct c_context *const context,
 			*nr_outermost_bits = 0;
 		}
 	}
-	else if(g_context->ip_flags.version == IPV4 &&
-	        g_context->ip_flags.info.v4.rnd == 0)
+	else if(g_context->outer_ip_flags.version == IPV4 &&
+	        g_context->outer_ip_flags.info.v4.rnd == 0)
 	{
 		/* outer IP header is the innermost IPv4 with a non-random IP-ID */
 		*nr_innermost_bits = g_context->tmp.nr_ip_id_bits;

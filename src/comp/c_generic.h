@@ -143,9 +143,6 @@ struct ip_header_info
  */
 struct generic_tmp_vars
 {
-	/// The number of IP headers in the packet to compress (1 or 2 only)
-	int nr_of_ip_hdr;
-
 	/// The number of fields that changed in the outer IP header
 	unsigned short changed_fields;
 	/// The number of fields that changed in the inner IP header
@@ -197,12 +194,12 @@ struct c_generic_context
 	/// @see periodic_down_transition
 	int go_back_ir_count;
 
+	/** The number of IP headers */
+	size_t ip_hdr_nr;
 	/// Information about the outer IP header
-	struct ip_header_info ip_flags;
+	struct ip_header_info outer_ip_flags;
 	/// Information about the inner IP header
-	struct ip_header_info ip2_flags;
-	/// Whether the ip2_flags object is initialized or not
-	int is_ip2_initialized;
+	struct ip_header_info inner_ip_flags;
 
 	/// Temporary variables that are used during one single compression of packet
 	struct generic_tmp_vars tmp;
@@ -217,9 +214,8 @@ struct c_generic_context
 
 	/** The handler for encoding profile-specific uncompressed header fields */
 	int (*encode_uncomp_fields)(struct c_context *const context,
-	                            const struct ip_packet *const ip,
-	                            const struct ip_packet *const ip2,
-	                            const unsigned char *const next_header);
+	                            const struct net_pkt *const uncomp_pkt)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to decide the state that should be used for the
 	///        next packet
@@ -237,8 +233,7 @@ struct c_generic_context
 
 	/** Determine the next SN value */
 	uint32_t (*get_next_sn)(const struct c_context *const context,
-	                        const struct ip_packet *const outer_ip,
-	                        const struct ip_packet *const inner_ip)
+	                        const struct net_pkt *const uncomp_pkt)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add the static part of the next header to the
@@ -310,17 +305,14 @@ struct c_generic_context
 
 bool c_generic_create(struct c_context *const context,
                       const rohc_lsb_shift_t sn_shift,
-                      const struct ip_packet *const ip)
+                      const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
 void c_generic_destroy(struct c_context *const context)
 	__attribute__((nonnull(1)));
 
 bool c_generic_check_profile(const struct rohc_comp *const comp,
-                             const struct ip_packet *const outer_ip,
-                             const struct ip_packet *const inner_ip,
-                             const uint8_t protocol,
-                             rohc_ctxt_key_t *const ctxt_key)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+                             const struct net_pkt *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 void change_state(struct c_context *const context,
                   const rohc_comp_state_t new_state)
@@ -330,12 +322,12 @@ rohc_ext_t decide_extension(const struct c_context *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 int c_generic_encode(struct c_context *const context,
-                     const struct ip_packet *ip,
-                     const size_t packet_size,
+                     const struct net_pkt *const uncomp_pkt,
                      unsigned char *const rohc_pkt,
                      const size_t rohc_pkt_max_len,
                      rohc_packet_t *const packet_type,
-                     int *const payload_offset);
+                     int *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 bool c_generic_reinit_context(struct c_context *const context);
 
