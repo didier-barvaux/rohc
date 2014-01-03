@@ -80,15 +80,23 @@ dist-hook:
 	find $(distdir)/test/non_regression/inputs \
 		-type f -and \
 		-not -name source.pcap -and \
-		-not -name rohc_wlsb4_smallcid.pcap -and \
-		-not -name rohc_wlsb4_largecid.pcap -and \
-		-not -name rohc_wlsb64_smallcid.pcap -and \
-		-not -name rohc_wlsb64_largecid.pcap -and \
+		-not -name rohc_maxcontexts0_wlsb4_smallcid.pcap -and \
+		-not -name rohc_maxcontexts0_wlsb4_largecid.pcap -and \
+		-not -name rohc_maxcontexts0_wlsb64_smallcid.pcap -and \
+		-not -name rohc_maxcontexts0_wlsb64_largecid.pcap -and \
+		-not -name rohc_maxcontexts1_wlsb4_smallcid.pcap -and \
+		-not -name rohc_maxcontexts1_wlsb4_largecid.pcap -and \
+		-not -name rohc_maxcontexts1_wlsb64_smallcid.pcap -and \
+		-not -name rohc_maxcontexts1_wlsb64_largecid.pcap -and \
 		-not -name description -and \
-		-not -name rohc_sizes_wlsb4_smallcid -and \
-		-not -name rohc_sizes_wlsb4_largecid -and \
-		-not -name rohc_sizes_wlsb64_smallcid -and \
-		-not -name rohc_sizes_wlsb64_largecid -and \
+		-not -name rohc_maxcontexts0_wlsb4_smallcid.sizes -and \
+		-not -name rohc_maxcontexts0_wlsb4_largecid.sizes -and \
+		-not -name rohc_maxcontexts0_wlsb64_smallcid.sizes -and \
+		-not -name rohc_maxcontexts0_wlsb64_largecid.sizes -and \
+		-not -name rohc_maxcontexts1_wlsb4_smallcid.sizes -and \
+		-not -name rohc_maxcontexts1_wlsb4_largecid.sizes -and \
+		-not -name rohc_maxcontexts1_wlsb64_smallcid.sizes -and \
+		-not -name rohc_maxcontexts1_wlsb64_largecid.sizes -and \
 		-not -name README \
 		-exec $(RM) \{\} \;
 
