@@ -278,35 +278,32 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
                                   const struct ip_packet *const ip)
 	__attribute__((nonnull(1, 2)));
 
+static bool c_generic_detect_changes(struct c_context *const context,
+                                     const struct net_pkt *const uncomp_pkt)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 static int changed_static_both_hdr(const struct c_context *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 static int changed_static_one_hdr(const struct c_context *const context,
                                   const unsigned short changed_fields,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
-
 static int changed_dynamic_both_hdr(const struct c_context *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-
 static int changed_dynamic_one_hdr(const struct c_context *const context,
                                    const unsigned short changed_fields,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
-
 static unsigned short detect_changed_fields(const struct c_context *const context,
                                             struct ip_header_info *const header_info, /* TODO: add const */
                                             const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-
 static bool is_field_changed(const unsigned short changed_fields,
                              const unsigned short check_field)
 	__attribute__((warn_unused_result, const));
-
 static void detect_ip_id_behaviours(struct c_context *const context,
                                     const struct net_pkt *const uncomp_pkt)
 	__attribute__((nonnull(1, 2)));
@@ -773,13 +770,14 @@ void change_state(struct c_context *const context,
  * @brief Encode an IP packet according to a pattern decided by several
  *        different factors.
  *
- * 1. Check if we have double IP headers.\n
- * 2. Check if the IP-ID fields are random and if they are in NBO.\n
- * 3. Decide in which state to go (IR, FO or SO).\n
- * 4. Decide how many bits are needed to send the IP-ID and SN fields and more
- *    important update the sliding windows.\n
- * 5. Decide which packet type to send.\n
- * 6. Code the packet.\n
+ * 1. parse uncompressed packet (done in \ref rohc_compress3)\n
+ * 2. detect changes between the new uncompressed packet and the context\n
+ * 3. decide new compressor state\n
+ * 4. determine how many bytes are required for every field\n
+ * 5. decide which packet to send\n
+ * 6. code the ROHC header\n
+ * 7. copy the packet payload (done in \ref rohc_compress3)\n
+ * 8. update the context with the new headers\n
  * \n
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
@@ -811,103 +809,40 @@ int c_generic_encode(struct c_context *const context,
 	g_context->tmp.nr_ip_id_bits2 = 0;
 	g_context->tmp.packet_type = ROHC_PACKET_UNKNOWN;
 
-	/* STEP 1:
-	 *  - check double IP headers
-	 *  - compute the payload offset
-	 */
-	if(uncomp_pkt->ip_hdr_nr != g_context->ip_hdr_nr)
-	{
-		if(uncomp_pkt->ip_hdr_nr > 1)
-		{
-			rohc_comp_debug(context, "packet got one more IP header than context\n");
-			if(!ip_header_info_new(&g_context->inner_ip_flags,
-			                       &uncomp_pkt->inner_ip,
-			                       context->compressor->list_trans_nr,
-			                       context->compressor->wlsb_window_width,
-			                       context->compressor->trace_callback,
-			                       context->profile->id))
-			{
-				goto error;
-			}
-		}
-		else
-		{
-			rohc_comp_debug(context, "packet got one less IP header than context\n");
-			ip_header_info_free(&g_context->inner_ip_flags);
-		}
-		g_context->ip_hdr_nr = uncomp_pkt->ip_hdr_nr;
-	}
-
-	*payload_offset = net_pkt_get_payload_offset(uncomp_pkt);
-	*payload_offset += g_context->next_header_len;
-
-	/* STEP 2:
-	 *  - check NBO and RND of the IP-ID of the outer and inner IP headers
-	 *    (IPv4 only, if the current packet is not the first one)
-	 *  - get the next the Sequence Number (SN)
-	 *  - find how many static and dynamic IP fields changed
-	 */
-	detect_ip_id_behaviours(context, uncomp_pkt);
-
-	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
-	rohc_comp_debug(context, "SN = %u\n", g_context->sn);
-
-	/* find IP fields that changed */
-	g_context->tmp.changed_fields =
-		detect_changed_fields(context, &g_context->outer_ip_flags,
-		                      &uncomp_pkt->outer_ip);
-	if(g_context->tmp.changed_fields & MOD_ERROR)
+	/* detect changes between new uncompressed packet and context */
+	if(!c_generic_detect_changes(context, uncomp_pkt))
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to detect changed field in outer IP header\n");
+		             "failed to detect changes in uncompressed packet\n");
 		goto error;
 	}
-	if(uncomp_pkt->ip_hdr_nr > 1)
-	{
-		g_context->tmp.changed_fields2 =
-			detect_changed_fields(context, &g_context->inner_ip_flags,
-			                      &uncomp_pkt->inner_ip);
-		if(g_context->tmp.changed_fields2  & MOD_ERROR)
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to detect changed field in inner IP header\n");
-			goto error;
-		}
-	}
 
-	/* how many changed fields are static ones? */
-	g_context->tmp.send_static = changed_static_both_hdr(context, uncomp_pkt);
+	/* decide in which state to go */
+	assert(g_context->decide_state != NULL);
+	g_context->decide_state(context);
 
-	/* how many changed fields are dynamic ones? */
-	g_context->tmp.send_dynamic = changed_dynamic_both_hdr(context, uncomp_pkt);
-
-	rohc_comp_debug(context, "send_static = %d, send_dynamic = %d\n",
-	                g_context->tmp.send_static, g_context->tmp.send_dynamic);
-
-	/* STEP 3: decide in which state to go */
-	if(g_context->decide_state != NULL)
-	{
-		g_context->decide_state(context);
-	}
-
-	/* STEP 4: compute how many bits are needed to send header fields */
+	/* compute how many bits are needed to send header fields */
 	ret = encode_uncomp_fields(context, uncomp_pkt);
 	if(ret != ROHC_OK)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to update the compression context\n");
+		             "failed to compute how many bits are needed to send "
+		             "header fields\n");
 		goto error;
 	}
 
-	/* STEP 5: decide which packet to send */
+	/* decide which packet to send */
 	g_context->tmp.packet_type = decide_packet(context);
 
-	/* STEP 6: code the packet (and the extension if needed) */
+	/* code the ROHC header (and the extension if needed) */
 	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len);
 	if(size < 0)
 	{
 		goto error;
 	}
+	/* determine the offset of the payload */
+	*payload_offset = net_pkt_get_payload_offset(uncomp_pkt);
+	*payload_offset += g_context->next_header_len;
 
 	/* update the context with the new headers */
 	update_context(context, uncomp_pkt);
@@ -1149,6 +1084,93 @@ void c_generic_feedback(struct c_context *const context,
 bool c_generic_use_udp_port(const struct c_context *const context,
                             const unsigned int port)
 {
+	return false;
+}
+
+
+/**
+ * @brief Detect changes between packet and context
+ *
+ * @param context     The compression context to compare
+ * @param uncomp_pkt  The uncompressed packet to compare
+ * @return            true if changes were successfully detected,
+ *                    false if a problem occurred
+ */
+static bool c_generic_detect_changes(struct c_context *const context,
+                                     const struct net_pkt *const uncomp_pkt)
+{
+	struct c_generic_context *g_context =
+		(struct c_generic_context *) context->specific;
+
+	/* compute or find the new SN */
+	assert(g_context->get_next_sn != NULL);
+	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
+	rohc_comp_debug(context, "SN = %u\n", g_context->sn);
+
+	/* init or free the context of the inner IP header if the number of IP
+	 * headers changed */
+	if(uncomp_pkt->ip_hdr_nr != g_context->ip_hdr_nr)
+	{
+		if(uncomp_pkt->ip_hdr_nr > 1)
+		{
+			rohc_comp_debug(context, "packet got one more IP header than context\n");
+			if(!ip_header_info_new(&g_context->inner_ip_flags,
+			                       &uncomp_pkt->inner_ip,
+			                       context->compressor->list_trans_nr,
+			                       context->compressor->wlsb_window_width,
+			                       context->compressor->trace_callback,
+			                       context->profile->id))
+			{
+				goto error;
+			}
+		}
+		else
+		{
+			rohc_comp_debug(context, "packet got one less IP header than context\n");
+			ip_header_info_free(&g_context->inner_ip_flags);
+		}
+		g_context->ip_hdr_nr = uncomp_pkt->ip_hdr_nr;
+	}
+
+	/* check NBO and RND of the IP-ID of the IP headers (IPv4 only) */
+	detect_ip_id_behaviours(context, uncomp_pkt);
+
+	/* find outer IP fields that changed */
+	g_context->tmp.changed_fields =
+		detect_changed_fields(context, &g_context->outer_ip_flags,
+		                      &uncomp_pkt->outer_ip);
+	if(g_context->tmp.changed_fields & MOD_ERROR)
+	{
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "failed to detect changed field in outer IP header\n");
+		goto error;
+	}
+
+	/* find inner IP fields that changed */
+	if(uncomp_pkt->ip_hdr_nr > 1)
+	{
+		g_context->tmp.changed_fields2 =
+			detect_changed_fields(context, &g_context->inner_ip_flags,
+			                      &uncomp_pkt->inner_ip);
+		if(g_context->tmp.changed_fields2  & MOD_ERROR)
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "failed to detect changed field in inner IP header\n");
+			goto error;
+		}
+	}
+
+	/* how many changed fields are static ones? */
+	g_context->tmp.send_static = changed_static_both_hdr(context, uncomp_pkt);
+
+	/* how many changed fields are dynamic ones? */
+	g_context->tmp.send_dynamic = changed_dynamic_both_hdr(context, uncomp_pkt);
+	rohc_comp_debug(context, "send_static = %d, send_dynamic = %d\n",
+	                g_context->tmp.send_static, g_context->tmp.send_dynamic);
+
+	return true;
+
+error:
 	return false;
 }
 
