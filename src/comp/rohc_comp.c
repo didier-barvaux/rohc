@@ -116,6 +116,11 @@ static struct c_context * c_create_context(struct rohc_comp *const comp,
                                            const struct net_pkt *const packet,
                                            const struct rohc_timestamp arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
+static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
+																				 const struct net_pkt *const packet,
+																				 const int profile_id_hint,
+																				 const struct rohc_timestamp arrival_time)
+	__attribute__((nonnull(1, 2), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *const comp,
                                          const struct c_profile *const profile,
                                          const struct net_pkt *const packet)
@@ -848,7 +853,6 @@ int rohc_compress3(struct rohc_comp *const comp,
                    size_t *const rohc_packet_len)
 {
 	struct net_pkt ip_pkt;
-	const struct c_profile *p;
 	struct c_context *c;
 	rohc_packet_t packet_type;
 
@@ -894,35 +898,15 @@ int rohc_compress3(struct rohc_comp *const comp,
 		goto error;
 	}
 
-	/* find the best profile for the packet */
-	p = c_get_profile_from_packet(comp, &ip_pkt);
-	if(p == NULL)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "no profile found for packet, giving up\n");
-		goto error;
-	}
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "using profile '%s' (0x%04x)\n", rohc_get_profile_descr(p->id),
-	           p->id);
-
-	/* get the context using help from the profiles */
-	c = c_find_context(comp, p, &ip_pkt);
+	/* find the best context for the packet */
+	c = rohc_comp_find_context_from_packet(comp, &ip_pkt, -1, arrival_time);
 	if(c == NULL)
 	{
-		/* context not found, create a new one */
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "no existing context found for packet, create a new one\n");
-		c = c_create_context(comp, p, &ip_pkt, arrival_time);
-		if(c == NULL)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "failed to create a new context\n");
-			goto error;
-		}
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to find a matching context or to create a new "
+		             "context\n");
+		goto error;
 	}
-
-	c->latest_used = arrival_time.sec;
 
 	/* create the ROHC packet: */
 	*rohc_packet_len = 0;
@@ -947,12 +931,13 @@ int rohc_compress3(struct rohc_comp *const comp,
 	/* 2. use profile to compress packet */
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "compress the packet #%d\n", comp->num_packets + 1);
-	rohc_hdr_size = p->encode(c, &ip_pkt,
-	                          rohc_hdr, rohc_packet_max_len - (*rohc_packet_len),
-	                          &packet_type, &payload_offset);
+	rohc_hdr_size =
+		c->profile->encode(c, &ip_pkt,
+		                   rohc_hdr, rohc_packet_max_len - (*rohc_packet_len),
+		                   &packet_type, &payload_offset);
 	if(rohc_hdr_size < 0)
 	{
-		/* error while compressing, use uncompressed */
+		/* error while compressing, use the Uncompressed profile */
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "error while compressing with the profile, "
 		             "using uncompressed profile\n");
@@ -965,31 +950,23 @@ int rohc_compress3(struct rohc_comp *const comp,
 			comp->num_contexts_used--;
 		}
 
-		/* get uncompressed profile */
-		p = c_get_profile_from_id(comp, ROHC_PROFILE_UNCOMPRESSED);
-		if(p == NULL)
+		/* find the best context for the Uncompressed profile */
+		c = rohc_comp_find_context_from_packet(comp, &ip_pkt,
+		                                       ROHC_PROFILE_UNCOMPRESSED,
+		                                       arrival_time);
+		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "uncompressed profile not found, giving up\n");
+			             "failed to find a matching Uncompressed context or to "
+			             "create a new Uncompressed context\n");
 			goto error_unlock_feedbacks;
 		}
 
-		/* find the context or create a new one */
-		c = c_find_context(comp, p, &ip_pkt);
-		if(c == NULL)
-		{
-			c = c_create_context(comp, p, &ip_pkt, arrival_time);
-			if(c == NULL)
-			{
-				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-				             "failed to create an uncompressed context\n");
-				goto error_unlock_feedbacks;
-			}
-		}
-
-		rohc_hdr_size = p->encode(c, &ip_pkt,
-		                          rohc_hdr, rohc_packet_max_len - (*rohc_packet_len),
-		                          &packet_type, &payload_offset);
+		/* use the Uncompressed profile to compress the packet */
+		rohc_hdr_size =
+			c->profile->encode(c, &ip_pkt,
+			                   rohc_hdr, rohc_packet_max_len - (*rohc_packet_len),
+			                   &packet_type, &payload_offset);
 		if(rohc_hdr_size < 0)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -3759,6 +3736,74 @@ static struct c_context * c_create_context(struct rohc_comp *const comp,
 	           "context (CID = %zu) created (num_used = %d)\n",
 	           c->cid, comp->num_contexts_used);
 	return c;
+}
+
+
+/**
+ * @brief Find a compression context given an IP packet
+ *
+ * @param comp             The ROHC compressor
+ * @param packet           The packet to find a compression context for
+ * @param profile_id_hint  If positive, indicate the profile to use
+ * @param arrival_time     The time at which packet was received
+ *                         (0 if unknown, or to disable time-related features
+ *                          in the ROHC protocol)
+ * @return                 The context if found or successfully created,
+ *                         NULL if not found
+ */
+static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
+																				 const struct net_pkt *const packet,
+																				 const int profile_id_hint,
+																				 const struct rohc_timestamp arrival_time)
+{
+	const struct c_profile *profile;
+	struct c_context *context;
+
+	/* use the suggested profile if any, otherwise find the best profile for
+	 * the packet */
+	if(profile_id_hint < 0)
+	{
+		profile = c_get_profile_from_packet(comp, packet);
+	}
+	else
+	{
+		profile = c_get_profile_from_id(comp, profile_id_hint);
+	}
+	if(profile == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "no profile found for packet, giving up\n");
+		goto error;
+	}
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "using profile '%s' (0x%04x)\n",
+	           rohc_get_profile_descr(profile->id), profile->id);
+
+	/* get the context using help from the profile we just found */
+	context = c_find_context(comp, profile, packet);
+	if(context == NULL)
+	{
+		/* context not found, create a new one */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "no existing context found for packet, create a new one\n");
+		context = c_create_context(comp, profile, packet, arrival_time);
+		if(context == NULL)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to create a new context\n");
+			goto error;
+		}
+	}
+	else
+	{
+		/* existing context, update use timestamp */
+		context->latest_used = arrival_time.sec;
+	}
+
+	return context;
+
+error:
+	return NULL;
 }
 
 
