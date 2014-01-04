@@ -102,7 +102,13 @@ static int code_IR_DYN_packet(struct c_context *const context,
                               const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_generic_static_part(const struct c_context *const context,
+static int rohc_code_static_part(const struct c_context *const context,
+                                 const struct net_pkt *const uncomp_pkt,
+                                 unsigned char *const rohc_pkt,
+                                 int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static int rohc_code_static_ip_part(const struct c_context *const context,
                                     struct ip_header_info *const header_info,
                                     const struct ip_packet *const ip,
                                     unsigned char *const dest,
@@ -123,7 +129,13 @@ static int code_ipv6_static_part(const struct c_context *const context,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static int code_generic_dynamic_part(const struct c_context *const context,
+static int rohc_code_dynamic_part(const struct c_context *const context,
+                                  const struct net_pkt *const uncomp_pkt,
+                                  unsigned char *const rohc_pkt,
+                                  int counter)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+
+static int rohc_code_dynamic_ip_part(const struct c_context *const context,
                                      const unsigned int hdr_pos,
                                      struct ip_header_info *const header_info,
                                      const struct ip_packet *const ip,
@@ -1553,7 +1565,6 @@ static int code_IR_packet(struct c_context *const context,
 	unsigned char type;
 	size_t counter;
 	size_t first_position;
-	size_t ip_hdr_pos = 1;
 	int crc_position;
 	int ret;
 
@@ -1612,60 +1623,21 @@ static int code_IR_packet(struct c_context *const context,
 	counter++;
 
 	/* part 6: static part */
-	ret = code_generic_static_part(context, &g_context->outer_ip_flags,
-	                               &uncomp_pkt->outer_ip, rohc_pkt, counter);
+	ret = rohc_code_static_part(context, uncomp_pkt, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
 	}
 	counter = ret;
-
-	if(nr_of_ip_hdr > 1)
-	{
-		ret = code_generic_static_part(context, &g_context->inner_ip_flags,
-		                               &uncomp_pkt->inner_ip, rohc_pkt, counter);
-		if(ret < 0)
-		{
-			goto error;
-		}
-		counter = ret;
-	}
-
-	if(g_context->code_static_part != NULL && uncomp_pkt->transport->data != NULL)
-	{
-		/* static part of next header */
-		counter = g_context->code_static_part(context, uncomp_pkt->transport->data,
-		                                      rohc_pkt, counter);
-	}
 
 	/* part 7: if we do not want dynamic part in IR packet, we should not
 	 * send the following */
-	ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->outer_ip_flags,
-	                                &uncomp_pkt->outer_ip, rohc_pkt, counter);
+	ret = rohc_code_dynamic_part(context, uncomp_pkt, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
 	}
 	counter = ret;
-
-	if(nr_of_ip_hdr > 1)
-	{
-		ip_hdr_pos++;
-		ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->inner_ip_flags,
-		                                &uncomp_pkt->inner_ip, rohc_pkt, counter);
-		if(ret < 0)
-		{
-			goto error;
-		}
-		counter = ret;
-	}
-
-	if(g_context->code_dynamic_part != NULL && uncomp_pkt->transport->data != NULL)
-	{
-		/* dynamic part of next header */
-		counter = g_context->code_dynamic_part(context, uncomp_pkt->transport->data,
-		                                       rohc_pkt, counter);
-	}
 
 	/* part 8: IR remainder header */
 	if(g_context->code_ir_remainder != NULL)
@@ -1734,7 +1706,6 @@ static int code_IR_DYN_packet(struct c_context *const context,
 	struct c_generic_context *g_context;
 	size_t counter;
 	size_t first_position;
-	size_t ip_hdr_pos = 1;
 	int crc_position;
 	int ret;
 
@@ -1776,32 +1747,12 @@ static int code_IR_DYN_packet(struct c_context *const context,
 
 	/* part 6: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
-	ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->outer_ip_flags,
-	                                &uncomp_pkt->outer_ip, rohc_pkt, counter);
+	ret = rohc_code_dynamic_part(context, uncomp_pkt, rohc_pkt, counter);
 	if(ret < 0)
 	{
 		goto error;
 	}
 	counter = ret;
-
-	if(uncomp_pkt->ip_hdr_nr > 1)
-	{
-		ip_hdr_pos++;
-		ret = code_generic_dynamic_part(context, ip_hdr_pos, &g_context->inner_ip_flags,
-		                                &uncomp_pkt->inner_ip, rohc_pkt, counter);
-		if(ret < 0)
-		{
-			goto error;
-		}
-		counter = ret;
-	}
-
-	if(g_context->code_dynamic_part != NULL && uncomp_pkt->transport->data != NULL)
-	{
-		/* dynamic part of next header */
-		counter = g_context->code_dynamic_part(context, uncomp_pkt->transport->data,
-		                                       rohc_pkt, counter);
-	}
 
 	/* part 7: IR-DYN remainder header */
 	if(g_context->code_ir_remainder != NULL)
@@ -1822,7 +1773,66 @@ error:
 
 
 /**
- * @brief Build the static part of the IR and IR-DYN packets.
+ * @brief Build the static part of the IR packet
+ *
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet to encode
+ * @param rohc_pkt    The rohc-packet-under-build buffer
+ * @param counter     The current position in the rohc-packet-under-build buffer
+ * @return            The new position in the rohc-packet-under-build buffer
+ */
+static int rohc_code_static_part(const struct c_context *const context,
+                                 const struct net_pkt *const uncomp_pkt,
+                                 unsigned char *const rohc_pkt,
+                                 int counter)
+{
+	struct c_generic_context *const g_context =
+		(struct c_generic_context *) context->specific;
+	int ret;
+
+	/* static part of the outer IP header */
+	ret = rohc_code_static_ip_part(context, &g_context->outer_ip_flags,
+	                               &uncomp_pkt->outer_ip, rohc_pkt, counter);
+	if(ret < 0)
+	{
+		goto error;
+	}
+	counter = ret;
+
+	/* static part of the inner IP header (if any) */
+	if(uncomp_pkt->ip_hdr_nr > 1)
+	{
+		ret = rohc_code_static_ip_part(context, &g_context->inner_ip_flags,
+		                               &uncomp_pkt->inner_ip, rohc_pkt, counter);
+		if(ret < 0)
+		{
+			goto error;
+		}
+		counter = ret;
+	}
+
+	/* static part of the transport header (if any) */
+	if(g_context->code_static_part != NULL &&
+	   uncomp_pkt->transport->data != NULL)
+	{
+		ret = g_context->code_static_part(context, uncomp_pkt->transport->data,
+		                                  rohc_pkt, counter);
+		if(ret < 0)
+		{
+			goto error;
+		}
+		counter = ret;
+	}
+
+	return counter;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the static part of one IP header for the IR packet
  *
  * @param context     The compression context
  * @param header_info The IP header info stored in the profile
@@ -1831,7 +1841,7 @@ error:
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int code_generic_static_part(const struct c_context *const context,
+static int rohc_code_static_ip_part(const struct c_context *const context,
                                     struct ip_header_info *const header_info,
                                     const struct ip_packet *const ip,
                                     unsigned char *const dest,
@@ -1853,7 +1863,7 @@ static int code_generic_static_part(const struct c_context *const context,
 
 
 /**
- * @brief Build the IPv4 static part of the IR and IR-DYN packets.
+ * @brief Build the IPv4 static part of the IR packet
  *
  * \verbatim
 
@@ -1919,7 +1929,7 @@ static int code_ipv4_static_part(const struct c_context *const context,
 
 
 /**
- * @brief Build the IPv6 static part of the IR and IR-DYN packets.
+ * @brief Build the IPv6 static part of the IR packet
  *
  * \verbatim
 
@@ -1998,7 +2008,72 @@ static int code_ipv6_static_part(const struct c_context *const context,
 
 
 /**
- * @brief Build the dynamic part of the IR and IR-DYN packets.
+ * @brief Build the dynamic part of the IR and IR-DYN packets
+ *
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet to encode
+ * @param rohc_pkt    The rohc-packet-under-build buffer
+ * @param counter     The current position in the rohc-packet-under-build buffer
+ * @return            The new position in the rohc-packet-under-build buffer
+ */
+static int rohc_code_dynamic_part(const struct c_context *const context,
+                                  const struct net_pkt *const uncomp_pkt,
+                                  unsigned char *const rohc_pkt,
+                                  int counter)
+{
+	struct c_generic_context *const g_context =
+		(struct c_generic_context *) context->specific;
+	size_t ip_hdr_pos = 0;
+	int ret;
+
+	/* dynamic part of the outer IP header */
+	ip_hdr_pos++;
+	ret = rohc_code_dynamic_ip_part(context, ip_hdr_pos,
+	                                &g_context->outer_ip_flags,
+	                                &uncomp_pkt->outer_ip, rohc_pkt, counter);
+	if(ret < 0)
+	{
+		goto error;
+	}
+	counter = ret;
+
+	/* dynamic part of the inner IP header (if any) */
+	if(uncomp_pkt->ip_hdr_nr > 1)
+	{
+		ip_hdr_pos++;
+		ret = rohc_code_dynamic_ip_part(context, ip_hdr_pos,
+		                                &g_context->inner_ip_flags,
+		                                &uncomp_pkt->inner_ip, rohc_pkt,
+		                                counter);
+		if(ret < 0)
+		{
+			goto error;
+		}
+		counter = ret;
+	}
+
+	/* static part of the transport header (if any) */
+	if(g_context->code_dynamic_part != NULL &&
+	   uncomp_pkt->transport->data != NULL)
+	{
+		ret = g_context->code_dynamic_part(context, uncomp_pkt->transport->data,
+		                                   rohc_pkt, counter);
+		if(ret < 0)
+		{
+			goto error;
+		}
+		counter = ret;
+	}
+
+	return counter;
+
+error:
+	return -1;
+}
+
+
+/**
+ * @brief Build the dynamic part of one IP header for the IR/IR-DYN packets
  *
  * @param context     The compression context
  * @param hdr_pos     The position of the IP header: 1 for the outer header
@@ -2010,7 +2085,7 @@ static int code_ipv6_static_part(const struct c_context *const context,
  * @return            The new position in the rohc-packet-under-build buffer,
  *                    -1 in case of error
  */
-static int code_generic_dynamic_part(const struct c_context *const context,
+static int rohc_code_dynamic_ip_part(const struct c_context *const context,
                                      const unsigned int hdr_pos,
                                      struct ip_header_info *const header_info,
                                      const struct ip_packet *const ip,
