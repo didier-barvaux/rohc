@@ -5748,17 +5748,9 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	/* determine the initial value and the pre-computed table for the CRC */
 	switch(crc_type)
 	{
-		case ROHC_CRC_TYPE_2:
-			crc_computed = CRC_INIT_2;
-			crc_table = decomp->crc_table_2;
-			break;
 		case ROHC_CRC_TYPE_3:
 			crc_computed = CRC_INIT_3;
 			crc_table = decomp->crc_table_3;
-			break;
-		case ROHC_CRC_TYPE_6:
-			crc_computed = CRC_INIT_6;
-			crc_table = decomp->crc_table_6;
 			break;
 		case ROHC_CRC_TYPE_7:
 			crc_computed = CRC_INIT_7;

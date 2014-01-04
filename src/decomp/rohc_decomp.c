@@ -427,17 +427,7 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	decomp->mrru = 0;
 
 	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(decomp->crc_table_2, ROHC_CRC_TYPE_2);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
 	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_6, ROHC_CRC_TYPE_6);
 	if(is_fine != true)
 	{
 		goto destroy_contexts;
@@ -710,17 +700,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
 	decomp->mrru = 0;
 
 	/* init the tables for fast CRC computation */
-	is_fine = rohc_crc_init_table(decomp->crc_table_2, ROHC_CRC_TYPE_2);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
 	is_fine = rohc_crc_init_table(decomp->crc_table_3, ROHC_CRC_TYPE_3);
-	if(is_fine != true)
-	{
-		goto destroy_contexts;
-	}
-	is_fine = rohc_crc_init_table(decomp->crc_table_6, ROHC_CRC_TYPE_6);
 	if(is_fine != true)
 	{
 		goto destroy_contexts;

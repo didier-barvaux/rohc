@@ -34,12 +34,8 @@
 #	include <stdbool.h>
 #endif
 
-/// The CRC-2 initial value
-#define CRC_INIT_2 0x3
 /// The CRC-3 initial value
 #define CRC_INIT_3 0x7
-/// The CRC-6 initial value
-#define CRC_INIT_6 0x3f
 /// The CRC-7 initial value
 #define CRC_INIT_7 0x7f
 /// The CRC-8 initial value
@@ -54,9 +50,7 @@
 typedef enum
 {
 	ROHC_CRC_TYPE_NONE = 0,  /**< No CRC selected */
-	ROHC_CRC_TYPE_2 = 2,     /**< The CRC-2 type */
 	ROHC_CRC_TYPE_3 = 3,     /**< The CRC-3 type */
-	ROHC_CRC_TYPE_6 = 6,     /**< The CRC-6 type */
 	ROHC_CRC_TYPE_7 = 7,     /**< The CRC-7 type */
 	ROHC_CRC_TYPE_8 = 8,     /**< The CRC-8 type */
 } rohc_crc_type_t;

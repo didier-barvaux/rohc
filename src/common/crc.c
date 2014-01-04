@@ -152,17 +152,7 @@ static inline uint8_t crc_calc_7(const uint8_t *const buf,
                                  const uint8_t init_val,
                                  const uint8_t *const crc_table)
 	__attribute__((nonnull(1, 4), warn_unused_result, pure));
-static inline uint8_t crc_calc_6(const uint8_t *const buf,
-                                 const size_t size,
-                                 const uint8_t init_val,
-                                 const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 4), warn_unused_result, pure));
 static inline uint8_t crc_calc_3(const uint8_t *const buf,
-                                 const size_t size,
-                                 const uint8_t init_val,
-                                 const uint8_t *const crc_table)
-	__attribute__((nonnull(1, 4), warn_unused_result, pure));
-static inline uint8_t crc_calc_2(const uint8_t *const buf,
                                  const size_t size,
                                  const uint8_t init_val,
                                  const uint8_t *const crc_table)
@@ -300,14 +290,8 @@ uint8_t crc_calculate(const rohc_crc_type_t crc_type,
 		case ROHC_CRC_TYPE_7:
 			crc = crc_calc_7(data, length, init_val, crc_table);
 			break;
-		case ROHC_CRC_TYPE_6:
-			crc = crc_calc_6(data, length, init_val, crc_table);
-			break;
 		case ROHC_CRC_TYPE_3:
 			crc = crc_calc_3(data, length, init_val, crc_table);
-			break;
-		case ROHC_CRC_TYPE_2:
-			crc = crc_calc_2(data, length, init_val, crc_table);
 			break;
 		default:
 			/* undefined CRC type, should not happen */
@@ -974,14 +958,8 @@ static bool rohc_crc_get_polynom(const rohc_crc_type_t crc_type,
 	/* determine the polynom for CRC */
 	switch(crc_type)
 	{
-		case ROHC_CRC_TYPE_2:
-			*polynom = 0x3;
-			break;
 		case ROHC_CRC_TYPE_3:
 			*polynom = 0x6;
-			break;
-		case ROHC_CRC_TYPE_6:
-			*polynom = 0x30;
 			break;
 		case ROHC_CRC_TYPE_7:
 			*polynom = 0x79;
@@ -1087,32 +1065,6 @@ static inline uint8_t crc_calc_7(const uint8_t *const buf,
 
 
 /**
- * @brief Optimized CRC-6 calculation using a table
- *
- * @param buf        The data to compute the CRC for
- * @param size       The size of the data
- * @param init_val   The initial CRC value
- * @param crc_table  The pre-computed table for fast CRC computation
- * @return           The CRC byte
- */
-static inline uint8_t crc_calc_6(const uint8_t *const buf,
-                                 const size_t size,
-                                 const uint8_t init_val,
-                                 const uint8_t *const crc_table)
-{
-	uint8_t crc = init_val;
-	int i;
-
-	for(i = 0; i < size; i++)
-	{
-		crc = crc_table[buf[i] ^ (crc & 63)];
-	}
-
-	return crc;
-}
-
-
-/**
  * @brief Optimized CRC-3 calculation using a table
  *
  * @param buf        The data to compute the CRC for
@@ -1132,32 +1084,6 @@ static inline uint8_t crc_calc_3(const uint8_t *const buf,
 	for(i = 0; i < size; i++)
 	{
 		crc = crc_table[buf[i] ^ (crc & 7)];
-	}
-
-	return crc;
-}
-
-
-/**
- * @brief Optimized CRC-2 calculation using a table
- *
- * @param buf        The data to compute the CRC for
- * @param size       The size of the data
- * @param init_val   The initial CRC value
- * @param crc_table  The pre-computed table for fast CRC computation
- * @return           The CRC byte
- */
-static inline uint8_t crc_calc_2(const uint8_t *const buf,
-                                 const size_t size,
-                                 const uint8_t init_val,
-                                 const uint8_t *const crc_table)
-{
-	uint8_t crc = init_val;
-	int i;
-
-	for(i = 0; i < size; i++)
-	{
-		crc = crc_table[buf[i] ^ (crc & 3)];
 	}
 
 	return crc;
