@@ -5588,6 +5588,7 @@ static void update_context(struct c_context *const context,
 		                      &uncomp_pkt->inner_ip);
 	}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* update packet counters */
 	if(g_context->tmp.packet_type == ROHC_PACKET_IR)
 	{
@@ -5597,6 +5598,7 @@ static void update_context(struct c_context *const context,
 	{
 		context->num_sent_ir_dyn++;
 	}
+#endif
 }
 
 

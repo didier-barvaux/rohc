@@ -3030,7 +3030,9 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 		goto clean;
 	}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	c->num_recv_feedbacks++;
+#endif
 
 	/* deliver feedback to profile with the context */
 	c->profile->feedback(c, &feedback);
@@ -3697,9 +3699,11 @@ static struct c_context * c_create_context(struct rohc_comp *const comp,
 	c->header_last_compressed_size = 0;
 
 	c->num_sent_packets = 0;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	c->num_sent_ir = 0;
 	c->num_sent_ir_dyn = 0;
 	c->num_recv_feedbacks = 0;
+#endif
 
 	c->cid = cid_to_use;
 	c->profile = profile;

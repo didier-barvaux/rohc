@@ -376,12 +376,14 @@ struct c_context
 
 	/** The number of sent packets */
 	int num_sent_packets;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/** The number of sent IR packets */
 	int num_sent_ir;
 	/** The number of sent IR-DYN packets */
 	int num_sent_ir_dyn;
 	/** The number of received feedbacks */
 	int num_recv_feedbacks;
+#endif
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/** The size of the last 16 uncompressed packets */
