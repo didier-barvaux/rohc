@@ -26,6 +26,8 @@
 #include "ip.h"
 #include "rohc_traces.h"
 
+#include "dllexport.h"
+
 
 /** The key to help identify (not quaranted unique) a compression context */
 typedef uint32_t rohc_ctxt_key_t;
@@ -50,14 +52,14 @@ struct net_pkt
 };
 
 
-bool net_pkt_parse(struct net_pkt *const packet,
-                   const uint8_t *const data,
-                   const size_t data_len,
-                   rohc_trace_callback_t trace_callback,
-                   rohc_trace_entity_t trace_entity)
+bool ROHC_EXPORT net_pkt_parse(struct net_pkt *const packet,
+                               const uint8_t *const data,
+                               const size_t data_len,
+                               rohc_trace_callback_t trace_callback,
+                               rohc_trace_entity_t trace_entity)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-size_t net_pkt_get_payload_offset(const struct net_pkt *const packet)
+size_t ROHC_EXPORT net_pkt_get_payload_offset(const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1)));
 
 #endif
