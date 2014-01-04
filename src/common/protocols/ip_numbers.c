@@ -24,8 +24,12 @@ bool rohc_is_tunneling(const uint8_t protocol)
 /**
  * @brief Whether the given protocol is an IPv6 option
  *
- * Handle Hop-by-Hop, routing, GRE, Authentication, MINE, and destination
- * options.
+ * Handle GRE, Authentication (AH), MINE, and all IPv6 extension headers.
+ *
+ * The list of IPv6 extension headers was retrieved from the registry
+ * maintained by IANA at:
+ *   http://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml
+ * Remember to update \ref get_index_ipv6_table if you update the list.
  *
  * @param protocol  The protocol number to check for
  * @return          true if the protocol is an IPv6 option,
@@ -35,9 +39,24 @@ bool rohc_is_ipv6_opt(const uint8_t protocol)
 {
 	return (protocol == ROHC_IPPROTO_HOPOPTS ||
 	        protocol == ROHC_IPPROTO_ROUTING ||
+	        protocol == ROHC_IPPROTO_FRAGMENT ||
+#if 0 /* TODO: add support for GRE header */
 	        protocol == ROHC_IPPROTO_GRE ||
+#endif
+#if 0 /* TODO: add support for null ESP header */
+	        protocol == ROHC_IPPROTO_ESP ||
+#endif
+#if 0 /* TODO: add support for AH header */
 	        protocol == ROHC_IPPROTO_AH ||
+#endif
+#if 0 /* TODO: add support for MINE header */
 	        protocol == ROHC_IPPROTO_MINE ||
-	        protocol == ROHC_IPPROTO_DSTOPTS);
+#endif
+	        protocol == ROHC_IPPROTO_DSTOPTS ||
+	        protocol == ROHC_IPPROTO_MOBILITY ||
+	        protocol == ROHC_IPPROTO_HIP ||
+	        protocol == ROHC_IPPROTO_SHIM ||
+	        protocol == ROHC_IPPROTO_RESERVED1 ||
+	        protocol == ROHC_IPPROTO_RESERVED2);
 }
 

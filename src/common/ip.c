@@ -199,34 +199,6 @@ const unsigned char * ip_get_raw_data(const struct ip_packet *const ip)
 
 
 /**
- * @brief Whether the given IP protocol type is a IP extension header type
- *
- * List retrieved from the registry maintained by IANA at:
- *   http://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml
- * Remember to update \ref get_index_ipv6_table if you update the list.
- *
- * @param next_header_type  The next header type to check
- * @return                  true if the next header is a IP extension header
- */
-bool rohc_ip_is_ext(const uint8_t next_header_type)
-{
-	return (next_header_type == ROHC_IPPROTO_HOPOPTS ||
-	        next_header_type == ROHC_IPPROTO_ROUTING ||
-	        next_header_type == ROHC_IPPROTO_FRAGMENT ||
-#if 0 /* IP/ESP profile is preferred */
-	        next_header_type == ROHC_IPPROTO_ESP ||
-#endif
-	        next_header_type == ROHC_IPPROTO_AH ||
-	        next_header_type == ROHC_IPPROTO_DSTOPTS ||
-	        next_header_type == ROHC_IPPROTO_MOBILITY ||
-	        next_header_type == ROHC_IPPROTO_HIP ||
-	        next_header_type == ROHC_IPPROTO_SHIM ||
-	        next_header_type == ROHC_IPPROTO_RESERVED1 ||
-	        next_header_type == ROHC_IPPROTO_RESERVED2);
-}
-
-
-/**
  * @brief Get the inner IP packet (IP in IP)
  *
  * The function does not handle \ref ip_packet whose \ref ip_packet::version
@@ -323,7 +295,7 @@ unsigned char * ip_get_next_ext_from_ip(const struct ip_packet *const ip,
 	/* get the next header data in the IP packet */
 	next_header = ip_get_next_header(ip, type);
 
-	if(rohc_ip_is_ext(*type))
+	if(rohc_is_ipv6_opt(*type))
 	{
 		/* known extension headers */
 		return next_header;
@@ -353,7 +325,7 @@ unsigned char * ip_get_next_ext_from_ext(const unsigned char *const ext,
 
 	*type = ext[0];
 
-	if(rohc_ip_is_ext(*type))
+	if(rohc_is_ipv6_opt(*type))
 	{
 		/* known extension headers */
 		length = ext[1];
@@ -1158,7 +1130,7 @@ static bool ext_get_next_layer(const struct net_hdr *const nh,
 	nl->data = nh->data;
 	nl->len = nh->len;
 
-	while(rohc_ip_is_ext(nl->proto))
+	while(rohc_is_ipv6_opt(nl->proto))
 	{
 		if(!ext_get_next_header(nl->data, remain_len, nl))
 		{

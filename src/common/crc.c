@@ -1021,7 +1021,7 @@ static uint8_t * ipv6_get_first_extension(const uint8_t *const ip,
 	ip_hdr = (struct ipv6_hdr *) ip;
 	*type = ip_hdr->ip6_nxt;
 
-	if(rohc_ip_is_ext(*type))
+	if(rohc_is_ipv6_opt(*type))
 	{
 		/* known extension header */
 		return (((uint8_t *) ip) + sizeof(struct ipv6_hdr));

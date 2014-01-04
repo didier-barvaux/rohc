@@ -795,8 +795,7 @@ static bool parse_ir(const struct rohc_decomp *const decomp,
 
 	/* check for the presence of a second IP header */
 	assert(bits->outer_ip.proto_nr == 8);
-	if(bits->outer_ip.proto == ROHC_IPPROTO_IPIP ||
-	   bits->outer_ip.proto == ROHC_IPPROTO_IPV6)
+	if(rohc_is_tunneling(bits->outer_ip.proto))
 	{
 		rohc_decomp_debug(context, "second IP header detected\n");
 

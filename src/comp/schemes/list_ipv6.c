@@ -97,9 +97,12 @@ void rohc_comp_list_ipv6_free(struct list_comp *const comp)
 /**
  * @brief Get the index for the given IPv6 extension type
  *
- * List retrieved from the registry maintained by IANA at:
+ * Handle GRE, Authentication (AH), MINE, and all IPv6 extension headers.
+ *
+ * The list of IPv6 extension headers was retrieved from the registry
+ * maintained by IANA at:
  *   http://www.iana.org/assignments/ipv6-parameters/ipv6-parameters.xhtml
- * Remember to update \ref rohc_ip_is_ext if you update the list.
+ * Remember to update \ref get_index_ipv6_table if you update the list.
  *
  * @param next_header_type  The Next Header type to get an index for
  * @return                  The based table index
@@ -119,13 +122,15 @@ static int get_index_ipv6_table(const uint8_t next_header_type)
 		case ROHC_IPPROTO_ROUTING:
 			index_table = 2;
 			break;
+#if 0 /* TODO: add support for AH header */
 		case ROHC_IPPROTO_AH:
 			index_table = 3;
 			break;
+#endif
 		case ROHC_IPPROTO_FRAGMENT:
 			index_table = 4;
 			break;
-#if 0 /* IP/ESP profile is preferred */
+#if 0 /* TODO: add support for null ESP header */
 		case ROHC_IPPROTO_ESP:
 			index_table = 5;
 			break;
@@ -145,6 +150,16 @@ static int get_index_ipv6_table(const uint8_t next_header_type)
 		case ROHC_IPPROTO_RESERVED2:
 			index_table = 10;
 			break;
+#if 0 /* TODO: add support for GRE header */
+		case ROHC_IPPROTO_GRE:
+			index_table = 11;
+			break;
+#endif
+#if 0 /* TODO: add support for MINE header */
+		case ROHC_IPPROTO_MINE:
+			index_table = 12;
+			break;
+#endif
 		default:
 			/* unknown extension */
 			index_table = -1;

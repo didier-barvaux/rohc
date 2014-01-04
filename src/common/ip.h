@@ -405,8 +405,6 @@ bool ROHC_EXPORT ip_get_inner_packet(const struct ip_packet *const outer,
 
 const uint8_t * ROHC_EXPORT ip_get_raw_data(const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1)));
-bool ROHC_EXPORT rohc_ip_is_ext(const uint8_t next_header_type)
-	__attribute__((warn_unused_result, const));
 uint8_t * ROHC_EXPORT ip_get_next_header(const struct ip_packet *const ip,
                                                uint8_t *const type)
 	__attribute__((warn_unused_result, nonnull(1, 2)));

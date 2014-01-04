@@ -101,8 +101,7 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	packet->transport = &packet->outer_ip.nl;
 
 	/* is there any inner IP header? */
-	if(packet->transport->proto == ROHC_IPPROTO_IPIP ||
-	   packet->transport->proto == ROHC_IPPROTO_IPV6)
+	if(rohc_is_tunneling(packet->transport->proto))
 	{
 		/* create the second IP header */
 		if(!ip_get_inner_packet(&packet->outer_ip, &packet->inner_ip))
