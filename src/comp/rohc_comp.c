@@ -99,11 +99,9 @@ struct c_profile *c_profiles[C_NUM_PROFILES] =
 static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
                                                       const int profile_id);
 
-static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
-                                                          const struct ip_packet *outer_ip,
-                                                          const struct ip_packet *inner_ip,
-                                                          const int protocol,
-                                                          rohc_ctxt_key_t *const pkt_key);
+static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *const comp,
+																			 const struct net_pkt *const packet)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
 /*
@@ -113,16 +111,15 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 static bool c_create_contexts(struct rohc_comp *const comp);
 static void c_destroy_contexts(struct rohc_comp *const comp);
 
-static struct c_context * c_create_context(struct rohc_comp *comp,
-                                           const struct c_profile *profile,
-                                           const struct ip_packet *ip,
-                                           const rohc_ctxt_key_t key,
+static struct c_context * c_create_context(struct rohc_comp *const comp,
+                                           const struct c_profile *const profile,
+                                           const struct net_pkt *const packet,
                                            const struct rohc_timestamp arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
-static struct c_context * c_find_context(const struct rohc_comp *comp,
-                                         const struct c_profile *profile,
-                                         const struct ip_packet *ip,
-                                         const rohc_ctxt_key_t pkt_key);
+static struct c_context * c_find_context(const struct rohc_comp *const comp,
+                                         const struct c_profile *const profile,
+                                         const struct net_pkt *const packet)
+	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_get_context(struct rohc_comp *const comp,
                                         const rohc_cid_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
@@ -850,16 +847,10 @@ int rohc_compress3(struct rohc_comp *const comp,
                    const size_t rohc_packet_max_len,
                    size_t *const rohc_packet_len)
 {
-	rohc_ctxt_key_t pkt_key;
-	struct ip_packet ip;
-	struct ip_packet ip2;
-	int proto;
-	const struct ip_packet *outer_ip;
-	const struct ip_packet *inner_ip;
+	struct net_pkt ip_pkt;
 	const struct c_profile *p;
 	struct c_context *c;
 	rohc_packet_t packet_type;
-	const unsigned char *ip_raw_data;
 
 	/* ROHC feedbacks */
 	size_t feedbacks_size;
@@ -894,48 +885,17 @@ int rohc_compress3(struct rohc_comp *const comp,
 	                 uncomp_packet, rohc_min(uncomp_packet_len, 100));
 #endif
 
-	/* create the IP packet from raw data */
-	if(!ip_create(&ip, uncomp_packet, uncomp_packet_len))
+	/* parse the uncompressed packet */
+	if(!net_pkt_parse(&ip_pkt, uncomp_packet, uncomp_packet_len,
+	                  comp->trace_callback, ROHC_TRACE_COMP))
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "cannot create the outer IP header\n");
+		             "failed to parse uncompressed packet\n");
 		goto error;
 	}
-	outer_ip = &ip;
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "size of uncompressed packet = %zd bytes\n", uncomp_packet_len);
-
-	/* get the transport protocol in the IP packet (skip the second IP header
-	 * if present) */
-	proto = ip_get_protocol(outer_ip);
-	if(proto == ROHC_IPPROTO_IPIP || proto == ROHC_IPPROTO_IPV6)
-	{
-		/* create the second IP header */
-		if(!ip_get_inner_packet(outer_ip, &ip2))
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "cannot create the outer IP header\n");
-			goto error;
-		}
-
-		/* there are two IP headers, the inner IP header is the second one */
-		inner_ip = &ip2;
-
-		/* get the transport protocol */
-		proto = ip_get_protocol(inner_ip);
-	}
-	else
-	{
-		/* there is only one IP header, there is no inner IP header */
-		inner_ip = NULL;
-	}
-	ip_raw_data = ip_get_raw_data(outer_ip);
 
 	/* find the best profile for the packet */
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "try to find the best profile for packet with transport "
-	           "protocol %u\n", proto);
-	p = c_get_profile_from_packet(comp, outer_ip, inner_ip, proto, &pkt_key);
+	p = c_get_profile_from_packet(comp, &ip_pkt);
 	if(p == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -947,13 +907,13 @@ int rohc_compress3(struct rohc_comp *const comp,
 	           p->id);
 
 	/* get the context using help from the profiles */
-	c = c_find_context(comp, p, outer_ip, pkt_key);
+	c = c_find_context(comp, p, &ip_pkt);
 	if(c == NULL)
 	{
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "no existing context found for packet, create a new one\n");
-		c = c_create_context(comp, p, outer_ip, pkt_key, arrival_time);
+		c = c_create_context(comp, p, &ip_pkt, arrival_time);
 		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -987,8 +947,8 @@ int rohc_compress3(struct rohc_comp *const comp,
 	/* 2. use profile to compress packet */
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "compress the packet #%d\n", comp->num_packets + 1);
-	rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
-	                          rohc_packet_max_len - (*rohc_packet_len),
+	rohc_hdr_size = p->encode(c, &ip_pkt,
+	                          rohc_hdr, rohc_packet_max_len - (*rohc_packet_len),
 	                          &packet_type, &payload_offset);
 	if(rohc_hdr_size < 0)
 	{
@@ -1015,10 +975,10 @@ int rohc_compress3(struct rohc_comp *const comp,
 		}
 
 		/* find the context or create a new one */
-		c = c_find_context(comp, p, outer_ip, pkt_key);
+		c = c_find_context(comp, p, &ip_pkt);
 		if(c == NULL)
 		{
-			c = c_create_context(comp, p, outer_ip, pkt_key, arrival_time);
+			c = c_create_context(comp, p, &ip_pkt, arrival_time);
 			if(c == NULL)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1027,8 +987,8 @@ int rohc_compress3(struct rohc_comp *const comp,
 			}
 		}
 
-		rohc_hdr_size = p->encode(c, outer_ip, uncomp_packet_len, rohc_hdr,
-		                          rohc_packet_max_len - (*rohc_packet_len),
+		rohc_hdr_size = p->encode(c, &ip_pkt,
+		                          rohc_hdr, rohc_packet_max_len - (*rohc_packet_len),
 		                          &packet_type, &payload_offset);
 		if(rohc_hdr_size < 0)
 		{
@@ -1042,7 +1002,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 	/* the payload starts after the header */
 	rohc_payload = rohc_hdr + rohc_hdr_size;
 	*rohc_packet_len += rohc_hdr_size;
-	payload_size = ip_get_totlen(outer_ip) - payload_offset;
+	payload_size = ip_pkt.len - payload_offset;
 
 	/* is packet too large for output buffer? */
 	if(((*rohc_packet_len) + payload_size) > rohc_packet_max_len)
@@ -1094,7 +1054,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 		comp->rru_len += rohc_hdr_size;
 		/* ROHC payload */
 		memcpy(comp->rru + comp->rru_off + comp->rru_len,
-		       ip_raw_data + payload_offset, payload_size);
+		       ip_pkt.data + payload_offset, payload_size);
 		comp->rru_len += payload_size;
 		/* compute FCS-32 CRC over header and payload (optional feedbacks and
 		   the CRC field itself are excluded) */
@@ -1124,7 +1084,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 		/* copy full payload after ROHC header */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "copy full %zd-byte payload\n", payload_size);
-		memcpy(rohc_payload, ip_raw_data + payload_offset, payload_size);
+		memcpy(rohc_payload, ip_pkt.data + payload_offset, payload_size);
 		rohc_payload += payload_size;
 		*rohc_packet_len += payload_size;
 
@@ -3632,25 +3592,18 @@ static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *co
 /**
  * @brief Find out a ROHC profile given an IP protocol ID
  *
- * @param comp          The ROHC compressor
- * @param outer_ip      The outer IP header of the network packet that will
- *                      help choosing the best profile
- * @param inner_ip      One the following 2 values:
- *                      \li The inner IP header of the network packet that
- *                          will help choosing the best profile if any
- *                      \li NULL if there is no inner IP header in the packet
- * @param protocol      The transport protocol of the network packet
- * @param[out] pkt_key  The key to help finding the context associated with
- *                      the given packet
- * @return              The ROHC profile if found, NULL otherwise
+ * @param comp    The ROHC compressor
+ * @param packet  The packet to find a compression profile for
+ * @return        The ROHC profile if found, NULL otherwise
  */
-static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *comp,
-                                                          const struct ip_packet *outer_ip,
-                                                          const struct ip_packet *inner_ip,
-                                                          const int protocol,
-																			 rohc_ctxt_key_t *const pkt_key)
+static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *const comp,
+																			 const struct net_pkt *const packet)
 {
 	int i;
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "try to find the best profile for packet with transport "
+	           "protocol %u\n", packet->transport->proto);
 
 	/* test all compression profiles */
 	for(i = 0; i < C_NUM_PROFILES; i++)
@@ -3667,12 +3620,8 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 			continue;
 		}
 
-		/* reset the context key */
-		*pkt_key = 0;
-
 		/* does the profile accept the packet? */
-		check_profile = c_profiles[i]->check_profile(comp, outer_ip, inner_ip,
-		                                             protocol, pkt_key);
+		check_profile = c_profiles[i]->check_profile(comp, packet);
 		if(!check_profile)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -3695,17 +3644,14 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
  *
  * @param comp          The ROHC compressor
  * @param profile       The profile to associate the context with
- * @param ip            The IP packet to initialize the context
- * @param key           The key to help finding the context associated with a
- *                      packet
+ * @param packet        The packet to create a compression context for
  * @param arrival_time  The time at which packet was received (0 if unknown,
  *                      or to disable time-related features in ROHC protocol)
  * @return              The compression context if successful, NULL otherwise
  */
-static struct c_context * c_create_context(struct rohc_comp *comp,
-                                           const struct c_profile *profile,
-                                           const struct ip_packet *ip,
-                                           const rohc_ctxt_key_t key,
+static struct c_context * c_create_context(struct rohc_comp *const comp,
+                                           const struct c_profile *const profile,
+                                           const struct net_pkt *const packet,
                                            const struct rohc_timestamp arrival_time)
 {
 	struct c_context *c;
@@ -3713,7 +3659,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 
 	assert(comp != NULL);
 	assert(profile != NULL);
-	assert(ip != NULL);
+	assert(packet != NULL);
 
 	cid_to_use = 0;
 
@@ -3790,7 +3736,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 
 	c->cid = cid_to_use;
 	c->profile = profile;
-	c->key = key;
+	c->key = packet->key;
 
 	c->mode = ROHC_U_MODE;
 	c->state = ROHC_COMP_STATE_IR;
@@ -3798,7 +3744,7 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
 	c->compressor = comp;
 
 	/* create profile-specific context */
-	if(!profile->create(c, ip))
+	if(!profile->create(c, packet))
 	{
 		return NULL;
 	}
@@ -3821,15 +3767,13 @@ static struct c_context * c_create_context(struct rohc_comp *comp,
  *
  * @param comp     The ROHC compressor
  * @param profile  The profile the context must be associated with
- * @param ip       The IP packet that must be accepted by the context
- * @param pkt_key  The key to help finding the context associated with packet
+ * @param packet   The packet to find a compression context for
  * @return         The compression context if found,
  *                 NULL if not found
  */
-static struct c_context * c_find_context(const struct rohc_comp *comp,
-                                         const struct c_profile *profile,
-                                         const struct ip_packet *ip,
-                                         const rohc_ctxt_key_t pkt_key)
+static struct c_context * c_find_context(const struct rohc_comp *const comp,
+                                         const struct c_profile *const profile,
+                                         const struct net_pkt *const packet)
 {
 	struct c_context *c = NULL;
 	size_t num_used_ctxt_seen = 0;
@@ -3855,13 +3799,13 @@ static struct c_context * c_find_context(const struct rohc_comp *comp,
 		}
 
 		/* don't look at contexts with the wrong key */
-		if(pkt_key != c->key)
+		if(packet->key != c->key)
 		{
 			continue;
 		}
 
 		/* ask the profile whether the packet matches the context */
-		context_match = c->profile->check_context(c, ip);
+		context_match = c->profile->check_context(c, packet);
 		if(context_match)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

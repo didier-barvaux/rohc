@@ -47,33 +47,30 @@
  */
 
 static bool c_rtp_create(struct c_context *const context,
-                         const struct ip_packet *const ip)
+                         const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void c_rtp_destroy(struct c_context *const context)
 	__attribute__((nonnull(1)));
 
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
-                                const struct ip_packet *const outer_ip,
-                                const struct ip_packet *const inner_ip,
-                                const uint8_t protocol,
-                                rohc_ctxt_key_t *const ctxt_key)
-		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+                                const struct net_pkt *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
                                     const uint16_t port);
 static bool c_rtp_use_udp_port(const struct c_context *const context,
                                const unsigned int port);
 
 static bool c_rtp_check_context(const struct c_context *const context,
-                                const struct ip_packet *const ip)
+                                const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_rtp_encode(struct c_context *const context,
-                        const struct ip_packet *ip,
-                        const size_t packet_size,
+                        const struct net_pkt *const uncomp_pkt,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
-                        int *const payload_offset);
+                        int *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 static void rtp_decide_state(struct c_context *const context);
 
@@ -82,14 +79,12 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context);
 static rohc_ext_t c_rtp_decide_extension(const struct c_context *context);
 
 static uint32_t c_rtp_get_next_sn(const struct c_context *const context,
-                                  const struct ip_packet *const outer_ip,
-                                  const struct ip_packet *const inner_ip)
+                                  const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rtp_encode_uncomp_fields(struct c_context *const context,
-                                    const struct ip_packet *const ip,
-                                    const struct ip_packet *const ip2,
-                                    const unsigned char *const next_header);
+                                    const struct net_pkt *const uncomp_pkt)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static size_t rtp_code_static_rtp_part(const struct c_context *const context,
                                        const unsigned char *const next_header,
@@ -103,8 +98,10 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
                                         const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rtp_changed_rtp_dynamic(const struct c_context *context,
-                                   const struct udphdr *udp);
+static int rtp_changed_rtp_dynamic(const struct c_context *const context,
+                                   const struct udphdr *const udp,
+                                   const struct rtphdr *const rtp)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 
 /**
@@ -114,26 +111,23 @@ static int rtp_changed_rtp_dynamic(const struct c_context *context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
- * @param ip      The IP/UDP/RTP packet given to initialize the new context
- * @return        true if successful, false otherwise
+ * @param context  The compression context
+ * @param packet   The IP/UDP/RTP packet given to initialize the new context
+ * @return         true if successful, false otherwise
  */
 static bool c_rtp_create(struct c_context *const context,
-                         const struct ip_packet *const ip)
+                         const struct net_pkt *const packet)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-	struct ip_packet ip2;
-	const struct ip_packet *last_ip_header;
 	const struct udphdr *udp;
 	const struct rtphdr *rtp;
-	unsigned int ip_proto;
 
 	assert(context != NULL);
 	assert(context->profile != NULL);
 
 	/* create and initialize the generic part of the profile context */
-	if(!c_generic_create(context, ROHC_LSB_SHIFT_RTP_SN, ip))
+	if(!c_generic_create(context, ROHC_LSB_SHIFT_RTP_SN, packet))
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "generic context creation failed\n");
@@ -141,39 +135,10 @@ static bool c_rtp_create(struct c_context *const context,
 	}
 	g_context = (struct c_generic_context *) context->specific;
 
-	/* check if packet is IP/UDP/RTP or IP/IP/UDP/RTP */
-	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
-	{
-		/* get the last IP header */
-		if(!ip_get_inner_packet(ip, &ip2))
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id,
-			             "cannot create the inner IP header\n");
-			goto clean;
-		}
-		last_ip_header = &ip2;
-
-		/* get the transport protocol */
-		ip_proto = ip_get_protocol(last_ip_header);
-	}
-	else
-	{
-		/* only one single IP header, the last IP header is the first one */
-		last_ip_header = ip;
-	}
-
-	if(ip_proto != ROHC_IPPROTO_UDP)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "next header is not UDP (%d), cannot use this profile\n",
-		             ip_proto);
-		goto clean;
-	}
-
-	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
-	assert(udp != NULL);
+	/* check that transport protocol is UDP, and application protocol is RTP */
+	assert(packet->transport->proto == ROHC_IPPROTO_UDP);
+	assert(packet->transport->data != NULL);
+	udp = (struct udphdr *) packet->transport->data;
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* initialize SN with the SN found in the RTP header */
@@ -220,7 +185,6 @@ static bool c_rtp_create(struct c_context *const context,
 	rtp_context->tmp.extension_bit_changed = false;
 
 	/* init the RTP-specific variables and functions */
-	g_context->next_header_proto = ROHC_IPPROTO_UDP;
 	g_context->next_header_len = sizeof(struct udphdr) + sizeof(struct rtphdr);
 	g_context->encode_uncomp_fields = rtp_encode_uncomp_fields;
 	g_context->decide_state = rtp_decide_state;
@@ -292,33 +256,19 @@ static void c_rtp_destroy(struct c_context *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param comp      The ROHC compressor
- * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  One of the following 2 values:
- *                  \li The inner IP header of the IP packet to check if the IP
- *                      packet contains at least 2 IP headers,
- *                  \li NULL if the IP packet to check contains only one IP header
- * @param protocol  The transport protocol carried by the IP packet:
- *                    \li the protocol carried by the outer IP header if there
- *                        is only one IP header,
- *                    \li the protocol carried by the inner IP header if there
- *                        are at least two IP headers.
- * @param ctxt_key  The key to help finding the context associated with packet
- * @return          Whether the IP packet corresponds to the profile:
- *                    \li true if the IP packet corresponds to the profile,
- *                    \li false if the IP packet does not correspond to
- *                        the profile
+ * @param comp    The ROHC compressor
+ * @param packet  The packet to check
+ * @return        Whether the IP packet corresponds to the profile:
+ *                  \li true if the IP packet corresponds to the profile,
+ *                  \li false if the IP packet does not correspond to
+ *                      the profile
  */
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
-                                const struct ip_packet *const outer_ip,
-                                const struct ip_packet *const inner_ip,
-                                const uint8_t protocol,
-                                rohc_ctxt_key_t *const ctxt_key)
+                                const struct net_pkt *const packet)
 {
-	const struct ip_packet *last_ip_header;
+	const struct udphdr *udp_header;
 	const unsigned char *udp_payload;
 	unsigned int udp_payload_size;
-	const struct udphdr *udp_header;
 	bool udp_check;
 
 	/* check that:
@@ -328,33 +278,18 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 	 *  - the IP payload is at least 8-byte long for UDP header,
 	 *  - the UDP Length field and the UDP payload match.
 	 */
-	udp_check = c_udp_check_profile(comp, outer_ip, inner_ip, protocol,
-	                                ctxt_key);
+	udp_check = c_udp_check_profile(comp, packet);
 	if(!udp_check)
 	{
 		goto bad_profile;
 	}
 
-	/* determine the last IP header */
-	if(inner_ip != NULL)
-	{
-		/* two IP headers, the last IP header is the inner IP header */
-		last_ip_header = inner_ip;
-	}
-	else
-	{
-		/* only one IP header, last IP header is the outer IP header */
-		last_ip_header = outer_ip;
-	}
-
 	/* retrieve the UDP header and the UDP payload */
-	udp_header = (const struct udphdr *) ip_get_next_layer(last_ip_header);
-	if(udp_header == NULL)
-	{
-		goto bad_profile;
-	}
+	assert(packet->transport->proto == ROHC_IPPROTO_UDP);
+	assert(packet->transport->data != NULL);
+	udp_header = (const struct udphdr *) packet->transport->data;
 	udp_payload = (unsigned char *) (udp_header + 1);
-	udp_payload_size = ip_get_plen(last_ip_header) - sizeof(struct udphdr);
+	udp_payload_size = packet->transport->len - sizeof(struct udphdr);
 
 	/* UDP payload shall be large enough for RTP header  */
 	if(udp_payload_size < sizeof(struct rtphdr))
@@ -369,9 +304,20 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		   dedicated to RTP stream detection: if the RTP callback returns 1,
 		   consider that the packet matches the RTP profile */
 
+		const struct ip_packet *innermost_ip_hdr;
 		bool is_rtp_packet;
 
-		is_rtp_packet = comp->rtp_callback(last_ip_header->data,
+		/* retrieve the innermost IP header */
+		if(packet->ip_hdr_nr == 1)
+		{
+			innermost_ip_hdr = &packet->outer_ip;
+		}
+		else
+		{
+			innermost_ip_hdr = &packet->inner_ip;
+		}
+
+		is_rtp_packet = comp->rtp_callback(innermost_ip_hdr->data,
 		                                   (unsigned char *) udp_header,
 		                                   udp_payload, udp_payload_size,
 		                                   comp->rtp_private);
@@ -412,9 +358,6 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		   be compressed with another profile (the IP/UDP one probably) */
 		goto bad_profile;
 	}
-
-	/* add SSRC to the context key */
-	*ctxt_key ^= ((struct rtphdr *) udp_payload)->ssrc;
 
 	return true;
 
@@ -480,63 +423,43 @@ static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
- * @param ip      The IP/UDP/RTP packet to check
- * @return        true if the IP/UDP/RTP packet belongs to the context
- *                false if it does not belong to the context
+ * @param context  The compression context
+ * @param packet   The IP/UDP/RTP packet to check
+ * @return         true if the IP/UDP/RTP packet belongs to the context
+ *                 false if it does not belong to the context
  *
  * @see c_udp_check_context
  */
 static bool c_rtp_check_context(const struct c_context *const context,
-                                const struct ip_packet *const ip)
+                                const struct net_pkt *const packet)
 {
 	const struct c_generic_context *g_context;
 	const struct sc_rtp_context *rtp_context;
-	struct ip_packet ip2;
-	const struct ip_packet *last_ip_header;
 	const struct udphdr *udp;
 	const struct rtphdr *rtp;
-	unsigned int ip_proto;
 	bool udp_check;
-	bool is_rtp_same;
 
 	/* check IP and UDP headers */
-	udp_check = c_udp_check_context(context, ip);
+	udp_check = c_udp_check_context(context, packet);
 	if(!udp_check)
 	{
 		goto bad_context;
 	}
 
-	/* get the last IP header */
-	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
-	{
-		/* second IP header is last IP header */
-		if(!ip_get_inner_packet(ip, &ip2))
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "cannot create the inner IP header\n");
-			goto bad_context;
-		}
-		last_ip_header = &ip2;
-	}
-	else
-	{
-		/* first IP header is last IP header */
-		last_ip_header = ip;
-	}
-
 	/* get UDP and RTP headers */
-	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
-	assert(udp != NULL);
+	assert(packet->transport->data != NULL);
+	udp = (struct udphdr *) packet->transport->data;
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* check the RTP SSRC field */
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	is_rtp_same = (rtp_context->old_rtp.ssrc == rtp->ssrc);
+	if(rtp_context->old_rtp.ssrc != rtp->ssrc)
+	{
+		goto bad_context;
+	}
 
-	return is_rtp_same;
+	return true;
 
 bad_context:
 	return false;
@@ -568,15 +491,15 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
+	nr_of_ip_hdr = g_context->ip_hdr_nr;
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
 	nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 
-	if((g_context->ip_flags.version == IPV4 &&
-	    g_context->ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
-	   (g_context->tmp.nr_of_ip_hdr > 1 &&
-	    g_context->ip2_flags.version == IPV4 &&
-	   	g_context->ip2_flags.info.v4.sid_count < MAX_FO_COUNT))
+	if((g_context->outer_ip_flags.version == IPV4 &&
+	    g_context->outer_ip_flags.info.v4.sid_count < MAX_FO_COUNT) ||
+	   (nr_of_ip_hdr > 1 &&
+	    g_context->inner_ip_flags.version == IPV4 &&
+	   	g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 	{
 		packet = ROHC_PACKET_IR_DYN;
 		rohc_comp_debug(context, "choose packet IR-DYN because at least one "
@@ -609,8 +532,8 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 		 * in base header + 8 bits in extension 3): determine which UOR-2*
 		 * packet to choose */
 
-		const int is_ip_v4 = (g_context->ip_flags.version == IPV4);
-		const int is_rnd = g_context->ip_flags.info.v4.rnd;
+		const int is_ip_v4 = (g_context->outer_ip_flags.version == IPV4);
+		const int is_rnd = g_context->outer_ip_flags.info.v4.rnd;
 		const size_t nr_ip_id_bits = g_context->tmp.nr_ip_id_bits;
 		const bool is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
 		size_t nr_ipv4_non_rnd;
@@ -632,8 +555,8 @@ static rohc_packet_t c_rtp_decide_FO_packet(const struct c_context *context)
 		}
 		if(nr_of_ip_hdr >= 1)
 		{
-			const int is_ip2_v4 = g_context->ip2_flags.version == IPV4;
-			const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+			const int is_ip2_v4 = g_context->inner_ip_flags.version == IPV4;
+			const int is_rnd2 = g_context->inner_ip_flags.info.v4.rnd;
 			const size_t nr_ip_id_bits2 = g_context->tmp.nr_ip_id_bits2;
 			const bool is_inner_ipv4_non_rnd = (is_ip2_v4 && !is_rnd2);
 
@@ -728,12 +651,12 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	nr_of_ip_hdr = g_context->tmp.nr_of_ip_hdr;
+	nr_of_ip_hdr = g_context->ip_hdr_nr;
 	nr_sn_bits = g_context->tmp.nr_sn_bits;
 	nr_ts_bits = rtp_context->tmp.nr_ts_bits;
 	nr_ip_id_bits = g_context->tmp.nr_ip_id_bits;
-	is_rnd = g_context->ip_flags.info.v4.rnd;
-	is_ip_v4 = (g_context->ip_flags.version == IPV4);
+	is_rnd = g_context->outer_ip_flags.info.v4.rnd;
+	is_ip_v4 = (g_context->outer_ip_flags.version == IPV4);
 	is_outer_ipv4_non_rnd = (is_ip_v4 && !is_rnd);
 
 	is_ts_deducible = rohc_ts_sc_is_deducible(&rtp_context->ts_sc);
@@ -747,17 +670,17 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	                nr_of_ip_hdr, is_rnd);
 
 	/* sanity check */
-	if(g_context->ip_flags.version == IPV4)
+	if(g_context->outer_ip_flags.version == IPV4)
 	{
-		assert(g_context->ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
-		assert(g_context->ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-		assert(g_context->ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+		assert(g_context->outer_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+		assert(g_context->outer_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+		assert(g_context->outer_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 	}
-	if(g_context->tmp.nr_of_ip_hdr > 1 && g_context->ip2_flags.version == IPV4)
+	if(nr_of_ip_hdr > 1 && g_context->inner_ip_flags.version == IPV4)
 	{
-		assert(g_context->ip2_flags.info.v4.sid_count >= MAX_FO_COUNT);
-		assert(g_context->ip2_flags.info.v4.rnd_count >= MAX_FO_COUNT);
-		assert(g_context->ip2_flags.info.v4.nbo_count >= MAX_FO_COUNT);
+		assert(g_context->inner_ip_flags.info.v4.sid_count >= MAX_FO_COUNT);
+		assert(g_context->inner_ip_flags.info.v4.rnd_count >= MAX_FO_COUNT);
+		assert(g_context->inner_ip_flags.info.v4.nbo_count >= MAX_FO_COUNT);
 	}
 	assert(g_context->tmp.send_static == 0);
 	assert(g_context->tmp.send_dynamic == 0);
@@ -780,8 +703,8 @@ static rohc_packet_t c_rtp_decide_SO_packet(const struct c_context *context)
 	}
 	if(nr_of_ip_hdr >= 1)
 	{
-		const int is_ip2_v4 = (g_context->ip2_flags.version == IPV4);
-		const int is_rnd2 = g_context->ip2_flags.info.v4.rnd;
+		const int is_ip2_v4 = (g_context->inner_ip_flags.version == IPV4);
+		const int is_rnd2 = g_context->inner_ip_flags.info.v4.rnd;
 		const size_t nr_ip_id_bits2 = g_context->tmp.nr_ip_id_bits2;
 		const bool is_inner_ipv4_non_rnd = (is_ip2_v4 && !is_rnd2);
 
@@ -962,19 +885,17 @@ static rohc_ext_t c_rtp_decide_extension(const struct c_context *context)
  * @brief Encode an IP/UDP/RTP packet according to a pattern decided by several
  *        different factors.
  *
- * @param context            The compression context
- * @param ip                 The IP packet to encode
- * @param packet_size        The length of the IP packet to encode
- * @param rohc_pkt           OUT: The ROHC packet
- * @param rohc_pkt_max_len   The maximum length of the ROHC packet
- * @param packet_type        OUT: The type of ROHC packet that is created
- * @param payload_offset     OUT: The offset for the payload in the IP packet
- * @return                   The length of the ROHC packet if successful,
- *                           -1 otherwise
+ * @param context           The compression context
+ * @param uncomp_pkt        The uncompressed packet to encode
+ * @param rohc_pkt          OUT: The ROHC packet
+ * @param rohc_pkt_max_len  The maximum length of the ROHC packet
+ * @param packet_type       OUT: The type of ROHC packet that is created
+ * @param payload_offset    OUT: The offset for the payload in the IP packet
+ * @return                  The length of the ROHC packet if successful,
+ *                          -1 otherwise
  */
 static int c_rtp_encode(struct c_context *const context,
-                        const struct ip_packet *ip,
-                        const size_t packet_size,
+                        const struct net_pkt *const uncomp_pkt,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
@@ -982,66 +903,26 @@ static int c_rtp_encode(struct c_context *const context,
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-	struct ip_packet ip2;
-	const struct ip_packet *last_ip_header;
 	const struct udphdr *udp;
 	const struct rtphdr *rtp;
-	unsigned int ip_proto;
 	int size;
 
+	assert(context != NULL);
+	assert(context->specific != NULL);
 	g_context = (struct c_generic_context *) context->specific;
-	if(g_context == NULL)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "generic context not valid\n");
-		return -1;
-	}
-
+	assert(g_context->specific != NULL);
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-	if(rtp_context == NULL)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "RTP context not valid\n");
-		return -1;
-	}
 
-	ip_proto = ip_get_protocol(ip);
-	if(ip_proto == ROHC_IPPROTO_IPIP || ip_proto == ROHC_IPPROTO_IPV6)
-	{
-		/* get the last IP header */
-		if(!ip_get_inner_packet(ip, &ip2))
-		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "cannot create the inner IP header\n");
-			return -1;
-		}
-		last_ip_header = &ip2;
-
-		/* get the transport protocol */
-		ip_proto = ip_get_protocol(last_ip_header);
-	}
-	else
-	{
-		/* only one single IP header, the last IP header is the first one */
-		last_ip_header = ip;
-	}
-
-	if(ip_proto != ROHC_IPPROTO_UDP)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "packet is not an UDP packet\n");
-		return -1;
-	}
-	udp = (struct udphdr *) ip_get_next_layer(last_ip_header);
-	assert(udp != NULL);
+	/* retrieve the UDP and RTP headers */
+	assert(uncomp_pkt->transport->data != NULL);
+	udp = (struct udphdr *) uncomp_pkt->transport->data;
 	rtp = (struct rtphdr *) (udp + 1);
 
 	/* how many UDP/RTP fields changed? */
-	rtp_context->tmp.send_rtp_dynamic = rtp_changed_rtp_dynamic(context, udp);
+	rtp_context->tmp.send_rtp_dynamic = rtp_changed_rtp_dynamic(context, udp, rtp);
 
 	/* encode the IP packet */
-	size = c_generic_encode(context, ip, packet_size,
-	                        rohc_pkt, rohc_pkt_max_len,
+	size = c_generic_encode(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
 	                        packet_type, payload_offset);
 	if(size < 0)
 	{
@@ -1136,32 +1017,17 @@ static void rtp_decide_state(struct c_context *const context)
  *
  * Profile SN is the 16-bit RTP SN.
  *
- * @param context   The compression context
- * @param outer_ip  The outer IP header
- * @param inner_ip  The inner IP header if it exists, NULL otherwise
- * @return          The SN
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet to encode
+ * @return            The SN
  */
 static uint32_t c_rtp_get_next_sn(const struct c_context *const context,
-                                  const struct ip_packet *const outer_ip,
-                                  const struct ip_packet *const inner_ip)
+                                  const struct net_pkt *const uncomp_pkt)
 {
-	const struct c_generic_context *g_context;
-	const struct udphdr *udp;
-	const struct rtphdr *rtp;
+	const struct udphdr *const udp =
+		(struct udphdr *) uncomp_pkt->transport->data;
+	const struct rtphdr *const rtp = (struct rtphdr *) (udp + 1);
 	uint32_t next_sn;
-
-	g_context = (struct c_generic_context *) context->specific;
-
-	/* get UDP and RTP headers */
-	if(g_context->tmp.nr_of_ip_hdr > 1)
-	{
-		udp = (struct udphdr *) ip_get_next_layer(inner_ip);
-	}
-	else
-	{
-		udp = (struct udphdr *) ip_get_next_layer(outer_ip);
-	}
-	rtp = (struct rtphdr *) (udp + 1);
 
 	next_sn = (uint32_t) rohc_ntoh16(rtp->sn);
 
@@ -1175,17 +1041,13 @@ static uint32_t c_rtp_get_next_sn(const struct c_context *const context,
  *
  * Handle the RTP TS field.
  *
- * @param context      The compression context
- * @param ip           The outer IP header
- * @param ip2          The inner IP header
- * @param next_header  The next header
- * @return             ROHC_OK in case of success,
- *                     ROHC_ERROR otherwise
+ * @param context     The compression context
+ * @param uncomp_pkt  The uncompressed packet to encode
+ * @return            ROHC_OK in case of success,
+ *                    ROHC_ERROR otherwise
  */
 static int rtp_encode_uncomp_fields(struct c_context *const context,
-                                    const struct ip_packet *const ip,
-                                    const struct ip_packet *const ip2,
-                                    const unsigned char *const next_header)
+                                    const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
@@ -1197,10 +1059,10 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 	assert(g_context->specific != NULL);
 	rtp_context = g_context->specific;
-	assert(next_header != NULL);
-	udp = (struct udphdr *)  next_header;
+	assert(uncomp_pkt != NULL);
+	assert(uncomp_pkt->transport->data != NULL);
+	udp = (struct udphdr *) uncomp_pkt->transport->data;
 	rtp = (struct rtphdr *) (udp + 1);
-	assert(ip != NULL);
 
 	/* add new TS value to context */
 	assert(g_context->sn <= 0xffff);
@@ -1533,21 +1395,20 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
  * @brief Check if the dynamic part of the UDP/RTP headers changed.
  *
  * @param context The compression context
- * @param udp     The UDP/RTP headers
+ * @param udp     The UDP header
+ * @param rtp     The RTP header
  * @return        The number of UDP/RTP fields that changed
  */
-static int rtp_changed_rtp_dynamic(const struct c_context *context,
-                                   const struct udphdr *udp)
+static int rtp_changed_rtp_dynamic(const struct c_context *const context,
+                                   const struct udphdr *const udp,
+                                   const struct rtphdr *const rtp)
 {
 	struct c_generic_context *g_context;
 	struct sc_rtp_context *rtp_context;
-	struct rtphdr *rtp;
 	int fields = 0;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
-
-	rtp = (struct rtphdr *) (udp + 1);
 
 	rohc_comp_debug(context, "find changes in RTP dynamic fields\n");
 

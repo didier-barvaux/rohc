@@ -6530,6 +6530,7 @@ static void update_context(const struct d_context *const context,
 		{
 			ipv6_set_flow_label(&g_context->inner_ip_changes->ip, decoded.inner_ip.flowid);
 		}
+		g_context->inner_ip_changes->ip.nl.proto = decoded.inner_ip.proto;
 	}
 
 	/* update arrival time */

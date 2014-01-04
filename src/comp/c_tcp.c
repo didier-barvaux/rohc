@@ -380,30 +380,27 @@ int tcp_options_index[16] =
  */
 
 static bool c_tcp_create(struct c_context *const context,
-                         const struct ip_packet *const ip)
+                         const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static void c_tcp_destroy(struct c_context *const context)
 	__attribute__((nonnull(1)));
 
 static bool c_tcp_check_profile(const struct rohc_comp *const comp,
-                                const struct ip_packet *const outer_ip,
-                                const struct ip_packet *const inner_ip,
-                                const uint8_t protocol,
-                                rohc_ctxt_key_t *const ctxt_key)
-	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+                                const struct net_pkt *const packet)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static bool c_tcp_check_context(const struct c_context *const context,
-                                const struct ip_packet *const ip)
+                                const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int c_tcp_encode(struct c_context *const context,
-                        const struct ip_packet *ip,
-                        const size_t packet_size,
+                        const struct net_pkt *const uncomp_pkt,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
-                        int *const payload_offset);
+                        int *const payload_offset)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 #ifdef TODO
 static void tcp_decide_state(struct c_context *const context);
@@ -641,12 +638,12 @@ static char * tcp_opt_get_descr(const uint8_t opt_type)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
- * @param ip      The IP/TCP packet given to initialize the new context
- * @return        true if successful, false otherwise
+ * @param context  The compression context
+ * @param packet   The IP/TCP packet given to initialize the new context
+ * @return         true if successful, false otherwise
  */
 static bool c_tcp_create(struct c_context *const context,
-                         const struct ip_packet *const ip)
+                         const struct net_pkt *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
 	struct c_generic_context *g_context;
@@ -654,14 +651,14 @@ static bool c_tcp_create(struct c_context *const context,
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;   // Source
 	const tcphdr_t *tcp;
-	uint8_t protocol;
+	uint8_t proto;
 	int size_context;
 	int size_option;
 	size_t i;
 	int size;
 
 	/* create and initialize the generic part of the profile context */
-	if(!c_generic_create(context, ROHC_LSB_SHIFT_VAR, ip))
+	if(!c_generic_create(context, ROHC_LSB_SHIFT_VAR, packet))
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "generic context creation failed\n");
@@ -670,7 +667,7 @@ static bool c_tcp_create(struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	// Init pointer to the initial packet
-	base_header.ipvx = (base_header_ip_vx_t *)ip->data;
+	base_header.ipvx = (base_header_ip_vx_t *) packet->outer_ip.data;
 
 	size = 0;
 	size_context = 0;
@@ -694,19 +691,19 @@ static bool c_tcp_create(struct c_context *const context,
 					goto free_context;
 				}
 				/* get the transport protocol */
-				protocol = base_header.ipv4->protocol;
+				proto = base_header.ipv4->protocol;
 				size += sizeof(base_header_ip_v4_t);
 				size_context += sizeof(ipv4_context_t);
 				++base_header.ipv4;
 				break;
 			case IPV6:
-				protocol = base_header.ipv6->next_header;
+				proto = base_header.ipv6->next_header;
 				size += sizeof(base_header_ip_v6_t);
 				size_context += sizeof(ipv6_context_t);
 				++base_header.ipv6;
-				while(rohc_is_ipv6_opt(protocol))
+				while(rohc_is_ipv6_opt(proto))
 				{
-					switch(protocol)
+					switch(proto)
 					{
 						case ROHC_IPPROTO_HOPOPTS: // IPv6 Hop-by-Hop options
 							size_option = ( base_header.ipv6_opt->length + 1 ) << 3;
@@ -740,7 +737,7 @@ static bool c_tcp_create(struct c_context *const context,
 						default:
 							goto free_context;
 					}
-					protocol = base_header.ipv6_opt->next_header;
+					proto = base_header.ipv6_opt->next_header;
 					size += size_option;
 					base_header.uint8 += size_option;
 				}
@@ -750,9 +747,9 @@ static bool c_tcp_create(struct c_context *const context,
 		}
 
 	}
-	while(rohc_is_tunneling(protocol) && size < ip->size);
+	while(rohc_is_tunneling(proto) && size < packet->outer_ip.size);
 
-	if(size >= ip->size)
+	if(size >= packet->outer_ip.size)
 	{
 		goto free_context;
 	}
@@ -773,7 +770,7 @@ static bool c_tcp_create(struct c_context *const context,
 	memset(tcp_context->ip_context,0,size_context);
 
 	// Init pointer to the initial packet
-	base_header.ipvx = (base_header_ip_vx_t *)ip->data;
+	base_header.ipvx = (base_header_ip_vx_t *) packet->outer_ip.data;
 	ip_context.uint8 = tcp_context->ip_context;
 
 	do
@@ -792,8 +789,8 @@ static bool c_tcp_create(struct c_context *const context,
 				rohc_comp_debug(context, "IP-ID 0x%04x\n", ip_context.v4->last_ip_id);
 				ip_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_UNKNOWN;
 				/* get the transport protocol */
-				protocol = base_header.ipv4->protocol;
-				ip_context.v4->protocol = protocol;
+				proto = base_header.ipv4->protocol;
+				ip_context.v4->protocol = proto;
 				ip_context.v4->dscp = base_header.ipv4->dscp;
 				ip_context.v4->df = base_header.ipv4->df;
 				ip_context.v4->ttl_hopl = base_header.ipv4->ttl_hopl;
@@ -805,8 +802,8 @@ static bool c_tcp_create(struct c_context *const context,
 			case IPV6:
 				ip_context.v6->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
 				/* get the transport protocol */
-				protocol = base_header.ipv6->next_header;
-				ip_context.v6->next_header = protocol;
+				proto = base_header.ipv6->next_header;
+				ip_context.v6->next_header = proto;
 				ip_context.v6->dscp = DSCP_V6(base_header.ipv6);
 				ip_context.v6->ttl_hopl = base_header.ipv6->ttl_hopl;
 				ip_context.v6->flow_label1 = base_header.ipv6->flow_label1;
@@ -814,9 +811,9 @@ static bool c_tcp_create(struct c_context *const context,
 				memcpy(ip_context.v6->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 				++base_header.ipv6;
 				++ip_context.v6;
-				while(rohc_is_ipv6_opt(protocol))
+				while(rohc_is_ipv6_opt(proto))
 				{
-					switch(protocol)
+					switch(proto)
 					{
 						case ROHC_IPPROTO_HOPOPTS:  // IPv6 Hop-by-Hop options
 						case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
@@ -866,7 +863,7 @@ static bool c_tcp_create(struct c_context *const context,
 		}
 
 	}
-	while(rohc_is_tunneling(protocol));
+	while(rohc_is_tunneling(proto));
 
 	// Last in chain
 	ip_context.vx->version = 0;
@@ -940,7 +937,6 @@ static bool c_tcp_create(struct c_context *const context,
 	}
 
 	/* init the TCP-specific variables and functions */
-	g_context->next_header_proto = ROHC_IPPROTO_TCP;
 	g_context->next_header_len = sizeof(tcphdr_t); // + options ???
 #ifdef TODO
 	g_context->decide_state = tcp_decide_state;
@@ -1014,84 +1010,49 @@ static void c_tcp_destroy(struct c_context *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param comp      The ROHC compressor
- * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  One of the following 2 values:
- *                  \li The inner IP header of the IP packet to check if the IP
- *                      packet contains at least 2 IP headers,
- *                  \li NULL if the IP packet to check contains only one IP header
- * @param protocol  The transport protocol carried by the IP packet:
- *                    \li the protocol carried by the outer IP header if there
- *                        is only one IP header,
- *                    \li the protocol carried by the inner IP header if there
- *                        are at least two IP headers.
- * @param ctxt_key  The key to help finding the context associated with packet
- * @return          Whether the IP packet corresponds to the profile:
- *                    \li true if the IP packet corresponds to the profile,
- *                    \li false if the IP packet does not correspond to
- *                        the profile
+ * @param comp    The ROHC compressor
+ * @param packet  The packet to check
+ * @return        Whether the IP packet corresponds to the profile:
+ *                  \li true if the IP packet corresponds to the profile,
+ *                  \li false if the IP packet does not correspond to
+ *                      the profile
  */
 static bool c_tcp_check_profile(const struct rohc_comp *const comp,
-                                const struct ip_packet *const outer_ip,
-                                const struct ip_packet *const inner_ip,
-                                const uint8_t protocol,
-                                rohc_ctxt_key_t *const ctxt_key)
+                                const struct net_pkt *const packet)
 {
-	const struct ip_packet *last_ip_header;
 	const struct tcphdr *tcp_header;
-	unsigned int ip_payload_size;
 	bool ip_check;
 
 	assert(comp != NULL);
-	assert(outer_ip != NULL);
-	assert(ctxt_key != NULL);
-
-	/* check that the transport protocol is TCP */
-	if(protocol != ROHC_IPPROTO_TCP)
-	{
-		goto bad_profile;
-	}
+	assert(packet != NULL);
 
 	/* check that the the versions of outer and inner IP headers are 4 or 6
 	   and that outer and inner IP headers are not IP fragments */
-	ip_check = c_generic_check_profile(comp, outer_ip, inner_ip, protocol,
-	                                   ctxt_key);
+	ip_check = c_generic_check_profile(comp, packet);
 	if(!ip_check)
 	{
 		goto bad_profile;
 	}
-
-	/* determine the last IP header */
-	if(inner_ip != NULL)
+	
+	/* IP payload shall be large enough for TCP header */
+	if(packet->transport->len < sizeof(struct tcphdr))
 	{
-		/* two IP headers, the last IP header is the inner IP header */
-		last_ip_header = inner_ip;
-	}
-	else
-	{
-		/* only one IP header, last IP header is the outer IP header */
-		last_ip_header = outer_ip;
+		goto bad_profile;
 	}
 
-	/* IP payload shall be large enough for UDP header */
-	ip_payload_size = ip_get_plen(last_ip_header);
-	if(ip_payload_size < sizeof(struct tcphdr))
+	/* check that the transport protocol is TCP */
+	if(packet->transport->data == NULL ||
+	   packet->transport->proto != ROHC_IPPROTO_TCP)
 	{
 		goto bad_profile;
 	}
 
 	/* retrieve the TCP header */
-	tcp_header = (const struct tcphdr *) ip_get_next_layer(last_ip_header);
-	if(tcp_header == NULL)
+	tcp_header = (const struct tcphdr *) packet->transport->data;
+	if(packet->transport->len < (tcp_header->data_offset * 4))
 	{
 		goto bad_profile;
 	}
-	if(ip_payload_size < (tcp_header->data_offset * 4))
-	{
-		goto bad_profile;
-	}
-	*ctxt_key ^= tcp_header->src_port;
-	*ctxt_key ^= tcp_header->dst_port;
 
 	return true;
 
@@ -1118,32 +1079,30 @@ bad_profile:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
- * @param ip      The IP/TCP packet to check
- * @return        true if the IP/TCP packet belongs to the context
- *                false if it does not belong to the context
+ * @param context  The compression context
+ * @param packet   The IP/TCP packet to check
+ * @return         true if the IP/TCP packet belongs to the context
+ *                 false if it does not belong to the context
  */
 static bool c_tcp_check_context(const struct c_context *const context,
-                                const struct ip_packet *const ip)
+                                const struct net_pkt *const packet)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
 	ip_context_ptr_t ip_context;
 	base_header_ip_t base_header;   // Source
-	uint8_t protocol;
+	uint8_t proto;
 	tcphdr_t *tcp;
 	bool is_tcp_same;
 	int size;
-
-	rohc_comp_debug(context, "context %p ip %p\n", context, ip);
 
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
 	// Init pointer to the initial packet
-	base_header.ipvx = (base_header_ip_vx_t *)ip->data;
+	base_header.ipvx = (base_header_ip_vx_t *) packet->outer_ip.data;
 	ip_context.uint8 = tcp_context->ip_context;
-	size = ip->size;
+	size = packet->outer_ip.size;
 
 	do
 	{
@@ -1177,13 +1136,13 @@ static bool c_tcp_check_context(const struct c_context *const context,
 				}
 				rohc_comp_debug(context, "  same IPv4 addresses\n");
 				/* get the transport protocol */
-				protocol = base_header.ipv4->protocol;
+				proto = base_header.ipv4->protocol;
 				if(base_header.ipv4->protocol != ip_context.v4->protocol)
 				{
 					rohc_comp_debug(context, "  IPv4 not same protocol\n");
 					goto bad_context;
 				}
-				rohc_comp_debug(context, "  IPv4 same protocol %d\n", protocol);
+				rohc_comp_debug(context, "  IPv4 same protocol %d\n", proto);
 				++base_header.ipv4;
 				++ip_context.v4;
 				size -= sizeof(base_header_ip_v4_t);
@@ -1202,26 +1161,26 @@ static bool c_tcp_check_context(const struct c_context *const context,
 					rohc_comp_debug(context, "  not same IPv6 flow label\n");
 					goto bad_context;
 				}
-				protocol = base_header.ipv6->next_header;
-				if(protocol != ip_context.v6->next_header)
+				proto = base_header.ipv6->next_header;
+				if(proto != ip_context.v6->next_header)
 				{
-					rohc_comp_debug(context, "  IPv6 not same protocol %d\n",protocol);
+					rohc_comp_debug(context, "  IPv6 not same protocol %d\n", proto);
 					goto bad_context;
 				}
 				++base_header.ipv6;
 				++ip_context.v6;
 				size -= sizeof(base_header_ip_v6_t);
-				while(rohc_is_ipv6_opt(protocol) && size < ip->size)
+				while(rohc_is_ipv6_opt(proto) && size < packet->outer_ip.size)
 				{
-					protocol = base_header.ipv6_opt->next_header;
-					if(protocol != ip_context.v6_option->next_header)
+					proto = base_header.ipv6_opt->next_header;
+					if(proto != ip_context.v6_option->next_header)
 					{
 						rohc_comp_debug(context, "  not same IPv6 option "
-						                "(%d != %d)\n", protocol,
+						                "(%d != %d)\n", proto,
 						                ip_context.v6_option->next_header);
 						goto bad_context;
 					}
-					rohc_comp_debug(context, "  same IPv6 option %d\n", protocol);
+					rohc_comp_debug(context, "  same IPv6 option %d\n", proto);
 					base_header.uint8 += ip_context.v6_option->option_length;
 					ip_context.uint8 += ip_context.v6_option->context_length;
 				}
@@ -1232,7 +1191,7 @@ static bool c_tcp_check_context(const struct c_context *const context,
 		}
 
 	}
-	while(rohc_is_tunneling(protocol) && size >= sizeof(tcphdr_t));
+	while(rohc_is_tunneling(proto) && size >= sizeof(tcphdr_t));
 
 	tcp = base_header.tcphdr;
 	is_tcp_same = tcp_context->old_tcphdr.src_port == tcp->src_port &&
@@ -1259,8 +1218,7 @@ bad_context:
  * 6. Code the packet.\n
  *
  * @param context           The compression context
- * @param ip                The IP packet to encode
- * @param packet_size       The length of the IP packet to encode
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -1269,8 +1227,7 @@ bad_context:
  *                          -1 otherwise
  */
 static int c_tcp_encode(struct c_context *const context,
-                        const struct ip_packet *ip,
-                        const size_t packet_size,
+                        const struct net_pkt *const uncomp_pkt,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
@@ -1301,29 +1258,13 @@ static int c_tcp_encode(struct c_context *const context,
 
 	assert(context != NULL);
 	assert(rohc_pkt != NULL);
-
-	rohc_comp_debug(context, "context = %p, ip = %p, packet_size = %zu, "
-	                "rohc_pkt = %p, rohc_pkt_max_len = %zu, packet_type = %p, "
-	                "payload_offset = %p\n", context, ip, packet_size,
-	                rohc_pkt, rohc_pkt_max_len, packet_type, payload_offset);
+	assert(context != NULL);
+	assert(context->specific != NULL);
+	g_context = (struct c_generic_context *) context->specific;
+	assert(g_context->specific != NULL);
+	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
 	*packet_type = ROHC_PACKET_UNKNOWN;
-
-	g_context = (struct c_generic_context *) context->specific;
-	if(g_context == NULL)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "generic context not valid\n");
-		return -1;
-	}
-
-	tcp_context = (struct sc_tcp_context *) g_context->specific;
-	if(tcp_context == NULL)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "TCP context not valid\n");
-		return -1;
-	}
 
 	/* at the beginning, no item transmitted for the compressed list of TCP options */
 	for(i = 0; i < 16; i++)
@@ -1340,7 +1281,7 @@ static int c_tcp_encode(struct c_context *const context,
 	 */
 
 	// Init pointer to the initial packet
-	base_header.ipvx = (base_header_ip_vx_t *)ip->data;
+	base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->outer_ip.data;
 	ip_context.uint8 = tcp_context->ip_context;
 	size = 0;
 	ecn_used = 0;
@@ -1458,7 +1399,7 @@ static int c_tcp_encode(struct c_context *const context,
 		}
 
 	}
-	while(protocol != ROHC_IPPROTO_TCP && size < ip->size);
+	while(protocol != ROHC_IPPROTO_TCP && size < uncomp_pkt->outer_ip.size);
 
 	/* find the next header */
 	tcp = base_header.tcphdr;
@@ -1466,7 +1407,7 @@ static int c_tcp_encode(struct c_context *const context,
 	tcp_context->ecn_used = ecn_used;
 	rohc_comp_debug(context, "ecn_used %d\n", tcp_context->ecn_used);
 	// Reinit source pointer
-	base_header.uint8 = (uint8_t*) ip->data;
+	base_header.uint8 = (uint8_t *) uncomp_pkt->outer_ip.data;
 
 
 	/* STEP 2:
@@ -1710,12 +1651,12 @@ static int c_tcp_encode(struct c_context *const context,
 		}
 
 		/* find the offset of the payload and its size */
-		assert(packet_size >= (size + sizeof(tcphdr_t) + opts_len));
-		payload_len = packet_size - size - sizeof(tcphdr_t) - opts_len;
+		assert(uncomp_pkt->len >= (size + sizeof(tcphdr_t) + opts_len));
+		payload_len = uncomp_pkt->len - size - sizeof(tcphdr_t) - opts_len;
 		rohc_comp_debug(context, "payload length = %zu bytes\n", payload_len);
 	}
 
-	g_context->sn = g_context->get_next_sn(context, ip, NULL);
+	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
 	rohc_comp_debug(context, "MSN = 0x%x\n", g_context->sn);
 
 	/* how many TCP fields changed? */
@@ -2012,9 +1953,9 @@ static int c_tcp_encode(struct c_context *const context,
 	rohc_comp_debug(context, "state %d\n", context->state);
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
-		counter = code_CO_packet(context, ip, packet_size, base_header.uint8,
-		                         rohc_pkt, rohc_pkt_max_len, packet_type,
-		                         payload_offset);
+		counter = code_CO_packet(context, &uncomp_pkt->outer_ip, uncomp_pkt->len,
+		                         base_header.uint8, rohc_pkt, rohc_pkt_max_len,
+		                         packet_type, payload_offset);
 		if(counter < 0)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -2072,7 +2013,7 @@ static int c_tcp_encode(struct c_context *const context,
 			/* part 6 : static chain */
 
 			// Init pointer to the initial packet
-			base_header.ipvx = (base_header_ip_vx_t *)ip->data;
+			base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->outer_ip.data;
 			ip_context.uint8 = tcp_context->ip_context;
 
 			do
@@ -2085,7 +2026,7 @@ static int c_tcp_encode(struct c_context *const context,
 					case IPV4:
 						mptr.uint8 =
 						   tcp_code_static_ip_part(context, ip_context, base_header,
-						                           packet_size, mptr);
+						                           uncomp_pkt->len, mptr);
 						/* get the transport protocol */
 						protocol = base_header.ipv4->protocol;
 						++base_header.ipv4;
@@ -2094,7 +2035,7 @@ static int c_tcp_encode(struct c_context *const context,
 					case IPV6:
 						mptr.uint8 =
 						   tcp_code_static_ip_part(context, ip_context, base_header,
-						                           packet_size, mptr);
+						                           uncomp_pkt->len, mptr);
 						protocol = base_header.ipv6->next_header;
 						++base_header.ipv6;
 						++ip_context.v6;
@@ -2106,7 +2047,7 @@ static int c_tcp_encode(struct c_context *const context,
 							   tcp_code_static_ipv6_option_part(context, ip_context,
 							                                    mptr, protocol,
 							                                    base_header,
-							                                    packet_size);
+							                                    uncomp_pkt->len);
 							if(mptr.uint8 == NULL)
 							{
 								rohc_warning(context->compressor, ROHC_TRACE_COMP,
@@ -2143,7 +2084,7 @@ static int c_tcp_encode(struct c_context *const context,
 		/* Packet IP or IR-DYN : add dynamic chain */
 
 		// Init pointer to the initial packet
-		base_header.ipvx = (base_header_ip_vx_t *)ip->data;
+		base_header.ipvx = (base_header_ip_vx_t *) uncomp_pkt->outer_ip.data;
 		ip_context.uint8 = tcp_context->ip_context;
 
 		do
@@ -2151,7 +2092,8 @@ static int c_tcp_encode(struct c_context *const context,
 			rohc_comp_debug(context, "base_header = %p, IP version = %d\n",
 			                base_header.uint8, base_header.ipvx->version);
 
-			mptr.uint8 = tcp_code_dynamic_ip_part(context,ip_context,base_header,packet_size,mptr,
+			mptr.uint8 = tcp_code_dynamic_ip_part(context, ip_context, base_header,
+			                                      uncomp_pkt->len, mptr,
 			                                      base_header.uint8 == base_header_inner.uint8);
 
 			switch(base_header.ipvx->version)
@@ -2174,7 +2116,7 @@ static int c_tcp_encode(struct c_context *const context,
 						   tcp_code_dynamic_ipv6_option_part(context, ip_context,
 						                                     mptr, protocol,
 						                                     base_header,
-						                                     packet_size);
+						                                     uncomp_pkt->len);
 						if(mptr.uint8 == NULL)
 						{
 							rohc_warning(context->compressor, ROHC_TRACE_COMP,
@@ -2230,7 +2172,7 @@ static int c_tcp_encode(struct c_context *const context,
 		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
 		*packet_type = ROHC_PACKET_IR;
-		*payload_offset = base_header.uint8 - (uint8_t*) ip->data;
+		*payload_offset = base_header.uint8 - (uint8_t *) uncomp_pkt->outer_ip.data;
 	}
 
 	rohc_comp_debug(context, "payload_offset = %d\n", *payload_offset);

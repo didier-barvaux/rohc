@@ -56,48 +56,48 @@ struct sc_uncompressed_context
 
 /* create/destroy context */
 static bool c_uncompressed_create(struct c_context *const context,
-                                  const struct ip_packet *const ip)
+                                  const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void c_uncompressed_destroy(struct c_context *const context)
 	__attribute__((nonnull(1)));
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
-                                         const struct ip_packet *const outer_ip,
-                                         const struct ip_packet *const inner_ip,
-                                         const uint8_t protocol,
-                                         rohc_ctxt_key_t *const ctxt_key)
-		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
+                                         const struct net_pkt *const packet)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 bool c_uncompressed_use_udp_port(const struct c_context *const context,
                                  const unsigned int port);
 
 /* check whether a packet belongs to a context */
 static bool c_uncompressed_check_context(const struct c_context *const context,
-                                         const struct ip_packet *const ip)
+                                         const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* encode uncompressed packets */
 static int c_uncompressed_encode(struct c_context *const context,
-                                 const struct ip_packet *ip,
-                                 const size_t packet_size,
+                                 const struct net_pkt *const uncomp_pkt,
                                  unsigned char *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
-                                 int *const payload_offset);
-static int uncompressed_code_packet(const struct c_context *context,
-                                    const struct ip_packet *ip,
+                                 int *const payload_offset)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+static int uncompressed_code_packet(const struct c_context *const context,
+                                    const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
-                                    int *const payload_offset);
-static int uncompressed_code_IR_packet(const struct c_context *context,
-                                       const struct ip_packet *ip,
+                                    int *const payload_offset)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
+static int uncompressed_code_IR_packet(const struct c_context *const context,
+                                       const struct net_pkt *const uncomp_pkt,
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
-                                       int *const payload_offset);
-static int uncompressed_code_normal_packet(const struct c_context *context,
-                                           const struct ip_packet *ip,
+                                       int *const payload_offset)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
+static int uncompressed_code_normal_packet(const struct c_context *const context,
+                                           const struct net_pkt *const uncomp_pkt,
                                            unsigned char *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
-                                           int *const payload_offset);
+                                           int *const payload_offset)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* re-initialize a context */
 static bool c_uncompressed_reinit_context(struct c_context *const context);
@@ -128,18 +128,19 @@ static void uncompressed_change_state(struct c_context *const context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
- * @param ip      The IP packet given to initialize the new context
- * @return        true if successful, false otherwise
+ * @param context  The compression context
+ * @param packet   The packet given to initialize the new context
+ * @return         true if successful, false otherwise
  */
 static bool c_uncompressed_create(struct c_context *const context,
-                                  const struct ip_packet *const ip)
+                                  const struct net_pkt *const packet)
 {
 	struct sc_uncompressed_context *uncomp_context;
 	bool success = false;
 
 	assert(context != NULL);
 	assert(context->profile != NULL);
+	assert(packet != NULL);
 
 	uncomp_context = malloc(sizeof(struct sc_uncompressed_context));
 	if(uncomp_context == NULL)
@@ -187,29 +188,16 @@ static void c_uncompressed_destroy(struct c_context *const context)
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param comp      The ROHC compressor
- * @param outer_ip  The outer IP header of the IP packet to check
- * @param inner_ip  One of the following 2 values:
- *                  \li The inner IP header of the IP packet to check if the IP
- *                      packet contains at least 2 IP headers,
- *                  \li NULL if the IP packet to check contains only one IP header
- * @param protocol  The transport protocol carried by the IP packet:
- *                    \li the protocol carried by the outer IP header if there
- *                        is only one IP header,
- *                    \li the protocol carried by the inner IP header if there
- *                        are at least two IP headers.
- * @param ctxt_key  The key to help finding the context associated with packet
- * @return          Whether the IP packet corresponds to the profile:
- *                    \li true if the IP packet corresponds to the profile,
- *                    \li false if the IP packet does not correspond to
- *                        the profile
+ * @param comp    The ROHC compressor
+ * @param packet  The packet to check
+ * @return        Whether the packet corresponds to the profile:
+ *                  \li true if the packet corresponds to the profile,
+ *                  \li false if the packet does not correspond to
+ *                      the profile
 
  */
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
-                                         const struct ip_packet *const outer_ip,
-                                         const struct ip_packet *const inner_ip,
-                                         const uint8_t protocol,
-                                         rohc_ctxt_key_t *const ctxt_key)
+                                         const struct net_pkt *const packet)
 {
 	return true;
 }
@@ -221,13 +209,13 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context The compression context
- * @param ip      The IP packet to check
- * @return        Always return true to tell that the IP packet belongs
- *                to the context
+ * @param context  The compression context
+ * @param packet   The packet to check
+ * @return         Always return true to tell that the packet belongs
+ *                 to the context
  */
 static bool c_uncompressed_check_context(const struct c_context *const context,
-                                         const struct ip_packet *const ip)
+                                         const struct net_pkt *const packet)
 {
 	return true;
 }
@@ -244,8 +232,7 @@ static bool c_uncompressed_check_context(const struct c_context *const context,
  * framework to work.
  *
  * @param context           The compression context
- * @param ip                The IP packet to encode
- * @param packet_size       The length of the IP packet to encode
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -254,8 +241,7 @@ static bool c_uncompressed_check_context(const struct c_context *const context,
  *                          -1 otherwise
  */
 static int c_uncompressed_encode(struct c_context *const context,
-                                 const struct ip_packet *ip,
-                                 const size_t packet_size,
+                                 const struct net_pkt *const uncomp_pkt,
                                  unsigned char *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
@@ -267,7 +253,8 @@ static int c_uncompressed_encode(struct c_context *const context,
 	uncompressed_decide_state(context);
 
 	/* STEP 2: Code packet */
-	size = uncompressed_code_packet(context, ip, rohc_pkt, rohc_pkt_max_len,
+	size = uncompressed_code_packet(context, uncomp_pkt,
+	                                rohc_pkt, rohc_pkt_max_len,
 	                                packet_type, payload_offset);
 
 	return size;
@@ -527,7 +514,7 @@ static void uncompressed_change_state(struct c_context *const context,
  * @brief Build the ROHC packet to send.
  *
  * @param context           The compression context
- * @param ip                The IP header
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param packet_type       OUT: The type of ROHC packet that is created
@@ -536,17 +523,18 @@ static void uncompressed_change_state(struct c_context *const context,
  *                         -1 otherwise
  */
 static int uncompressed_code_packet(const struct c_context *context,
-                                    const struct ip_packet *ip,
+                                    const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
                                     int *const payload_offset)
 {
-	int (*code_packet)(const struct c_context *context,
-	                   const struct ip_packet *ip,
+	int (*code_packet)(const struct c_context *const context,
+	                   const struct net_pkt *const uncomp_pkt,
 	                   unsigned char *const rohc_pkt,
 	                   const size_t rohc_pkt_max_len,
-	                   int *const payload_offset);
+	                   int *const payload_offset)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
 	int size;
@@ -561,7 +549,8 @@ static int uncompressed_code_packet(const struct c_context *context,
 		/* non-IPv4/6 packets cannot be compressed with Normal packets
 		 * because the first byte could be mis-interpreted as ROHC packet
 		 * types (see note at the end of §5.10.2 in RFC 3095) */
-		if(ip_get_version(ip) != IPV4 && ip_get_version(ip) != IPV6)
+		if(ip_get_version(&uncomp_pkt->outer_ip) != IPV4 &&
+		   ip_get_version(&uncomp_pkt->outer_ip) != IPV6)
 		{
 			rohc_comp_debug(context, "force IR packet to avoid conflict between "
 			                "first payload byte and ROHC packet types\n");
@@ -595,7 +584,8 @@ static int uncompressed_code_packet(const struct c_context *context,
 	}
 
 	/* code packet according to the selected type */
-	size = code_packet(context, ip, rohc_pkt, rohc_pkt_max_len, payload_offset);
+	size = code_packet(context, uncomp_pkt, rohc_pkt, rohc_pkt_max_len,
+	                   payload_offset);
 
 	return size;
 
@@ -635,7 +625,7 @@ error:
  * Part 6 is not managed by this function.
  *
  * @param context           The compression context
- * @param ip                The IP header
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param payload_offset    OUT: the offset of the payload in the buffer
@@ -643,7 +633,7 @@ error:
  *                          -1 otherwise
  */
 static int uncompressed_code_IR_packet(const struct c_context *context,
-                                       const struct ip_packet *ip,
+                                       const struct net_pkt *const uncomp_pkt,
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        int *const payload_offset)
@@ -711,7 +701,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
  * Part 4 is not managed by this function.
  *
  * @param context           The compression context
- * @param ip                The IP header
+ * @param uncomp_pkt        The uncompressed packet to encode
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
  * @param payload_offset    OUT: the offset of the payload in the buffer
@@ -719,7 +709,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
  *                          -1 otherwise
  */
 static int uncompressed_code_normal_packet(const struct c_context *context,
-                                           const struct ip_packet *ip,
+                                           const struct net_pkt *const uncomp_pkt,
                                            unsigned char *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
                                            int *const payload_offset)
@@ -737,10 +727,10 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
 	                          rohc_pkt, rohc_pkt_max_len, &first_position);
 
 	/* part 2 */
-	rohc_pkt[first_position] = (ip_get_raw_data(ip))[0];
+	rohc_pkt[first_position] = uncomp_pkt->data[0];
 
-	rohc_comp_debug(context, "header length = %zu, payload length = %u\n",
-	                counter - 1, ip_get_totlen(ip));
+	rohc_comp_debug(context, "header length = %zu, payload length = %zu\n",
+	                counter - 1, uncomp_pkt->len);
 
 	*payload_offset = 1;
 	return counter;
