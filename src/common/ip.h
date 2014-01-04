@@ -100,23 +100,6 @@ struct ip_packet
 };
 
 
-/* AH header */
-struct ip6_ahhdr
-{
-	/// The next header
-	uint8_t ip6ah_nxt;
-	/// AH payload length
-	uint8_t ip6ah_len;
-	/// reserved field
-	uint16_t ip6ah_reserved;
-	/// Security Parameters Index (SPI)
-	uint32_t ip6ah_secur;
-	/// Sequence Number Field
-	uint32_t ip6ah_sn;
-	/* followed by Authentication Data */
-};
-
-
 /*
  * Generic IP macros:
  */
