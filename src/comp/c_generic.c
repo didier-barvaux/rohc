@@ -68,12 +68,15 @@
  * Prototypes of main private functions
  */
 
-static int c_init_header_info(struct ip_header_info *const header_info,
-                              const struct ip_packet *const ip,
-                              const size_t list_trans_nr,
-                              const size_t wlsb_window_width,
-                              rohc_trace_callback_t trace_callback,
-                              const int profile_id);
+static bool ip_header_info_new(struct ip_header_info *const header_info,
+                               const struct ip_packet *const ip,
+                               const size_t list_trans_nr,
+                               const size_t wlsb_window_width,
+                               rohc_trace_callback_t trace_callback,
+                               const int profile_id)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static void ip_header_info_free(struct ip_header_info *const header_info)
+	__attribute__((nonnull(1)));
 
 static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars);
 
@@ -349,24 +352,24 @@ static bool is_field_changed(const unsigned short changed_fields,
 
 
 /**
- * @brief Initialize the inner or outer IP header info stored in the context.
+ * @brief Initialize the IP header info stored in the context
  *
- * @param header_info        The inner or outer IP header info to initialize
- * @param ip                 The inner or outer IP header
+ * @param header_info        The IP header info to initialize
+ * @param ip                 The IP header
  * @param list_trans_nr      The number of uncompressed transmissions for
  *                           list compression (L)
  * @param wlsb_window_width  The width of the W-LSB sliding window for IPv4
  *                           IP-ID (must be > 0)
  * @param trace_callback     The function to call for printing traces
  * @param profile_id         The ID of the associated compression profile
- * @return                   1 if successful, 0 otherwise
+ * @return                   true if successful, false otherwise
  */
-static int c_init_header_info(struct ip_header_info *const header_info,
-                              const struct ip_packet *const ip,
-                              const size_t list_trans_nr,
-                              const size_t wlsb_window_width,
-                              rohc_trace_callback_t trace_callback,
-                              const int profile_id)
+static bool ip_header_info_new(struct ip_header_info *const header_info,
+                               const struct ip_packet *const ip,
+                               const size_t list_trans_nr,
+                               const size_t wlsb_window_width,
+                               rohc_trace_callback_t trace_callback,
+                               const int profile_id)
 {
 	assert(header_info != NULL);
 	assert(ip != NULL);
@@ -410,10 +413,30 @@ static int c_init_header_info(struct ip_header_info *const header_info,
 		                        trace_callback, profile_id);
 	}
 
-	return 1;
+	return true;
 
 error:
-	return 0;
+	return false;
+}
+
+
+/**
+ * @brief Reset the given IP header info
+ *
+ * @param header_info  The IP header info to reset
+ */
+static void ip_header_info_free(struct ip_header_info *const header_info)
+{
+	if(header_info->version == IPV4)
+	{
+		/* IPv4: destroy the W-LSB context for the IP-ID offset */
+		c_destroy_wlsb(header_info->info.v4.ip_id_window);
+	}
+	else
+	{
+		/* IPv6: destroy the list of IPv6 extension headers */
+		rohc_comp_list_ipv6_free(&header_info->info.v6.ext_comp);
+	}
 }
 
 
@@ -503,7 +526,7 @@ bool c_generic_create(struct c_context *const context,
 	g_context->go_back_ir_count = 0;
 
 	/* step 4 */
-	if(!c_init_header_info(&g_context->outer_ip_flags,
+	if(!ip_header_info_new(&g_context->outer_ip_flags,
 	                       &packet->outer_ip,
 	                       context->compressor->list_trans_nr,
 	                       context->compressor->wlsb_window_width,
@@ -514,14 +537,14 @@ bool c_generic_create(struct c_context *const context,
 	}
 	if(packet->ip_hdr_nr > 1)
 	{
-		if(!c_init_header_info(&g_context->inner_ip_flags,
+		if(!ip_header_info_new(&g_context->inner_ip_flags,
 		                       &packet->inner_ip,
 		                       context->compressor->list_trans_nr,
 		                       context->compressor->wlsb_window_width,
 		                       context->compressor->trace_callback,
 		                       context->profile->id))
 		{
-			goto reset_header_info;
+			goto free_header_info;
 		}
 		g_context->ip_hdr_nr = 2;
 	}
@@ -552,15 +575,8 @@ bool c_generic_create(struct c_context *const context,
 
 	return true;
 
-reset_header_info:
-	if(g_context->outer_ip_flags.version == IPV4)
-	{
-		c_destroy_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window);
-	}
-	else
-	{
-		rohc_comp_list_ipv6_free(&g_context->outer_ip_flags.info.v6.ext_comp);
-	}
+free_header_info:
+	ip_header_info_free(&g_context->outer_ip_flags);
 free_sn_window:
 	c_destroy_wlsb(g_context->sn_window);
 free_generic_context:
@@ -585,24 +601,10 @@ void c_generic_destroy(struct c_context *const context)
 
 	assert(g_context != NULL);
 
-	if(g_context->outer_ip_flags.version == IPV4)
-	{
-		c_destroy_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window);
-	}
-	else
-	{
-		rohc_comp_list_ipv6_free(&g_context->outer_ip_flags.info.v6.ext_comp);
-	}
+	ip_header_info_free(&g_context->outer_ip_flags);
 	if(g_context->ip_hdr_nr > 1)
 	{
-		if(g_context->inner_ip_flags.version == IPV4)
-		{
-			c_destroy_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window);
-		}
-		else
-		{
-			rohc_comp_list_ipv6_free(&g_context->inner_ip_flags.info.v6.ext_comp);
-		}
+		ip_header_info_free(&g_context->inner_ip_flags);
 	}
 	c_destroy_wlsb(g_context->sn_window);
 
@@ -818,7 +820,7 @@ int c_generic_encode(struct c_context *const context,
 		if(uncomp_pkt->ip_hdr_nr > 1)
 		{
 			rohc_comp_debug(context, "packet got one more IP header than context\n");
-			if(!c_init_header_info(&g_context->inner_ip_flags,
+			if(!ip_header_info_new(&g_context->inner_ip_flags,
 			                       &uncomp_pkt->inner_ip,
 			                       context->compressor->list_trans_nr,
 			                       context->compressor->wlsb_window_width,
@@ -831,14 +833,7 @@ int c_generic_encode(struct c_context *const context,
 		else
 		{
 			rohc_comp_debug(context, "packet got one less IP header than context\n");
-			if(g_context->inner_ip_flags.version == IPV4)
-			{
-				c_destroy_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window);
-			}
-			else
-			{
-				rohc_comp_list_ipv6_free(&g_context->inner_ip_flags.info.v6.ext_comp);
-			}
+			ip_header_info_free(&g_context->inner_ip_flags);
 		}
 		g_context->ip_hdr_nr = uncomp_pkt->ip_hdr_nr;
 	}
