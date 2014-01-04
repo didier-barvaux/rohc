@@ -1027,9 +1027,9 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	struct rohc_decomp *decomp1;
 	struct rohc_decomp *decomp2;
 
-#define NB_RTP_PORTS 5
+#define NB_RTP_PORTS 6
 	const unsigned int rtp_ports[NB_RTP_PORTS] =
-		{ 1234, 36780, 33238, 5020, 5002 };
+		{ 1234, 36780, 33238, 5020, 5002, 5006 };
 	int i;
 
 	int ret;

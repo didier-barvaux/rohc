@@ -4619,7 +4619,13 @@ static int code_EXT3_packet(const struct c_context *const context,
 					                "base header contains no TS bit\n");
 					assert(rtp_context->tmp.nr_ts_bits_ext3 == 0);
 					rts = 1;
-					rtp_context->tmp.nr_ts_bits_ext3 = 1;
+					/* as field is SDVL-encoded, send as many bits as possible
+					 * in one byte */
+					rtp_context->tmp.nr_ts_bits_ext3 = ROHC_SDVL_MAX_BITS_IN_1_BYTE;
+					/* retrieve unscaled TS because we lost it when the UO* base
+					 * header was built */
+					rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
+					rtp_context->tmp.ts_send &= (1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
 				}
 				break;
 			default:
