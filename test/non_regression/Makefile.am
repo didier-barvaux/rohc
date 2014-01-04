@@ -1059,7 +1059,6 @@ test_non_regression_kernel_LDADD = \
 
 EXTRA_DIST = \
 	test_non_regression.sh \
-	$(TESTS_SMALLCID) \
-	$(TESTS_LARGECID) \
+	$(TESTS) \
 	inputs
 
