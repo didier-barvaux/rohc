@@ -115,7 +115,7 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 	__attribute__((nonnull(1), warn_unused_result));
 
 static int d_decode_header(struct rohc_decomp *decomp,
-                           const struct rohc_timestamp arrival_time,
+                           const struct rohc_ts arrival_time,
                            const unsigned char *ibuf,
                            int isize,
                            unsigned char *obuf,
@@ -131,7 +131,7 @@ static const struct d_profile *
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const rohc_cid_t cid,
                                          const struct d_profile *const profile,
-                                         const struct rohc_timestamp arrival_time);
+                                         const struct rohc_ts arrival_time);
 static struct d_context * find_context(const struct rohc_decomp *const decomp,
                                        const size_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
@@ -230,7 +230,7 @@ static struct d_context * find_context(const struct rohc_decomp *const decomp,
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const rohc_cid_t cid,
                                          const struct d_profile *const profile,
-                                         const struct rohc_timestamp arrival_time)
+                                         const struct rohc_ts arrival_time)
 {
 	struct d_context *context;
 
@@ -841,7 +841,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
                     unsigned char *obuf,
                     int osize)
 {
-	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	size_t uncomp_len;
 	int code;
 
@@ -927,7 +927,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
  * @see rohc_decomp_set_mrru
  */
 int rohc_decompress2(struct rohc_decomp *decomp,
-                     const struct rohc_timestamp arrival_time,
+                     const struct rohc_ts arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_packet_len,
                      unsigned char *const uncomp_packet,
@@ -1137,7 +1137,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
                          unsigned char *obuf, int osize,
                          int large)
 {
-	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	size_t uncomp_len;
 	bool is_ok;
 	int code;
@@ -1180,7 +1180,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
  * @return              The size of the decompressed packet
  */
 static int d_decode_header(struct rohc_decomp *decomp,
-                           const struct rohc_timestamp arrival_time,
+                           const struct rohc_ts arrival_time,
                            const unsigned char *ibuf,
                            int isize,
                            unsigned char *obuf,

@@ -280,7 +280,7 @@ typedef enum
  *
  * Could be easily created from \e struct \e timespec on UNIX:
  * \code
-   struct rohc_timestamp rohc_ts;
+   struct rohc_ts rohc_ts;
    struct timespec unix_ts;
    ...
    rohc_ts.sec = unix_ts.tv_sec;
@@ -290,7 +290,7 @@ typedef enum
  *
  * @ingroup rohc
  */
-struct rohc_timestamp
+struct rohc_ts
 {
 	uint64_t sec;   /**< The seconds part of the timestamp */
 	uint64_t nsec;  /**< The nanoseconds part of the timestamp */

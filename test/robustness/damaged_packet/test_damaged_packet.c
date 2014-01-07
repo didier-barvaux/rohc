@@ -252,7 +252,7 @@ static int test_comp_and_decomp(const char *const filename,
                                 const rohc_packet_t expected_packet,
                                 const bool do_repair)
 {
-	struct rohc_timestamp arrival_time = { .sec = 4242, .nsec = 4242 };
+	struct rohc_ts arrival_time = { .sec = 4242, .nsec = 4242 };
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	int link_layer_type;

@@ -247,7 +247,7 @@ static int test_comp_and_decomp(const char *const filename,
                                 const unsigned int last_packet_to_lose,
                                 const unsigned int last_packet_in_error)
 {
-	struct rohc_timestamp arrival_time = { .sec = 4242, .nsec = 4242 };
+	struct rohc_ts arrival_time = { .sec = 4242, .nsec = 4242 };
 
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;

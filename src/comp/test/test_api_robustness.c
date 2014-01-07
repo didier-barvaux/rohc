@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 
 	/* rohc_compress3() */
 	{
-		const struct rohc_timestamp ts = { .sec = 0, .nsec = 0 };
+		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
 		unsigned char buf1[1];
 		unsigned char buf2[100];
 		unsigned char buf[] =

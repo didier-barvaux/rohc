@@ -31,8 +31,8 @@
 #endif
 
 
-static inline uint64_t rohc_time_interval(const struct rohc_timestamp begin,
-                                          const struct rohc_timestamp end)
+static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
+                                          const struct rohc_ts end)
 	__attribute__((warn_unused_result, const));
 
 
@@ -78,8 +78,8 @@ static inline uint64_t rohc_get_seconds(void)
  * @param end    The end timestamp (in seconds and nanoseconds)
  * @return       The interval of time in microseconds
  */
-static inline uint64_t rohc_time_interval(const struct rohc_timestamp begin,
-                                          const struct rohc_timestamp end)
+static inline uint64_t rohc_time_interval(const struct rohc_ts begin,
+                                          const struct rohc_ts end)
 {
 	uint64_t interval;
 

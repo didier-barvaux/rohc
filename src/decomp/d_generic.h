@@ -449,13 +449,13 @@ struct d_generic_context
 /** The number of last packets to record arrival times for */
 #define ROHC_MAX_ARRIVAL_TIMES  10U
 	/** The arrival times for the last packets */
-	struct rohc_timestamp arrival_times[ROHC_MAX_ARRIVAL_TIMES];
+	struct rohc_ts arrival_times[ROHC_MAX_ARRIVAL_TIMES];
 	/** The number of arrival times in arrival_times */
 	size_t arrival_times_nr;
 	/** The index for the arrival time of the next packet */
 	size_t arrival_times_index;
 	/** The arrival time of the current packet */
-	struct rohc_timestamp cur_arrival_time;
+	struct rohc_ts cur_arrival_time;
 };
 
 
@@ -473,7 +473,7 @@ void d_generic_destroy(void *const context)
 
 int d_generic_decode(struct rohc_decomp *const decomp,
                      struct d_context *const context,
-                     const struct rohc_timestamp arrival_time,
+                     const struct rohc_ts arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_length,
                      const size_t add_cid_len,

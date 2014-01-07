@@ -278,7 +278,7 @@ int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
 #endif
 
 int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *decomp,
-                                 const struct rohc_timestamp arrival_time,
+                                 const struct rohc_ts arrival_time,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_packet_len,
                                  unsigned char *const uncomp_packet,

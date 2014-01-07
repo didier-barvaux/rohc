@@ -372,7 +372,7 @@ int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 int ROHC_EXPORT rohc_compress3(struct rohc_comp *const comp,
-                               const struct rohc_timestamp arrival_time,
+                               const struct rohc_ts arrival_time,
                                const unsigned char *const uncomp_packet,
                                const size_t uncomp_packet_len,
                                unsigned char *const rohc_packet,

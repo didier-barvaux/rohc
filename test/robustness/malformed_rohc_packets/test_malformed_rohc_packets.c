@@ -218,7 +218,7 @@ static int test_decomp(const char *const filename,
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
+		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 		unsigned char *rohc_packet;
 		int rohc_size;
 		static unsigned char ip_packet[MAX_ROHC_SIZE];

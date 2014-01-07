@@ -419,7 +419,7 @@ static bool build_stream(const char *const filename,
 	/* build the stream, and save it in the PCAP dump */
 	for(counter = 1; counter <= max_packets; counter++)
 	{
-		const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
+		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 		const size_t payload_len = 20;
 		const size_t packet_len = sizeof(struct ipv4_hdr) +
 		                          sizeof(struct udphdr) +

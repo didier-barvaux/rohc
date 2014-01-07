@@ -413,7 +413,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned char *packet,
                                    const int link_len)
 {
-	const struct rohc_timestamp arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	const unsigned char *ip_packet;
 	size_t ip_size;
 	static unsigned char rohc_packet[MAX_ROHC_SIZE];
