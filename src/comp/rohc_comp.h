@@ -338,7 +338,7 @@ struct rohc_comp * ROHC_EXPORT rohc_comp_new(const rohc_cid_type_t cid_type,
                                              const rohc_cid_t max_cid)
 	__attribute__((warn_unused_result));
 
-void ROHC_EXPORT rohc_comp_free(struct rohc_comp *comp);
+void ROHC_EXPORT rohc_comp_free(struct rohc_comp *const comp);
 
 bool ROHC_EXPORT rohc_comp_set_traces_cb(struct rohc_comp *const comp,
                                          rohc_trace_callback_t callback)

@@ -508,7 +508,7 @@ error:
  *
  * @see rohc_comp_new
  */
-void rohc_comp_free(struct rohc_comp *comp)
+void rohc_comp_free(struct rohc_comp *const comp)
 {
 	if(comp != NULL)
 	{
@@ -522,7 +522,7 @@ void rohc_comp_free(struct rohc_comp *comp)
 		rohc_feedback_destroy(comp);
 
 		/* free the compressor */
-		zfree(comp);
+		free(comp);
 	}
 }
 

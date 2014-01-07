@@ -763,7 +763,7 @@ error:
  *
  * @see rohc_decomp_new
  */
-void rohc_decomp_free(struct rohc_decomp *decomp)
+void rohc_decomp_free(struct rohc_decomp *const decomp)
 {
 	rohc_cid_t i;
 
@@ -926,7 +926,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
  *
  * @see rohc_decomp_set_mrru
  */
-int rohc_decompress2(struct rohc_decomp *decomp,
+int rohc_decompress2(struct rohc_decomp *const decomp,
                      const struct rohc_ts arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_packet_len,

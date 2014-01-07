@@ -265,7 +265,7 @@ struct rohc_decomp * ROHC_EXPORT rohc_decomp_new(const rohc_cid_type_t cid_type,
                                                  const rohc_mode_t mode,
                                                  struct rohc_comp *const comp)
 	__attribute__((warn_unused_result));
-void ROHC_EXPORT rohc_decomp_free(struct rohc_decomp *decomp);
+void ROHC_EXPORT rohc_decomp_free(struct rohc_decomp *const decomp);
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
@@ -277,7 +277,7 @@ int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
 	                "rohc_decompress2() instead");
 #endif
 
-int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *decomp,
+int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *const decomp,
                                  const struct rohc_ts arrival_time,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_packet_len,
