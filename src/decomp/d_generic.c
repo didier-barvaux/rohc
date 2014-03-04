@@ -473,7 +473,8 @@ void * d_generic_create(const struct d_context *const context,
 	g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_NONE;
 	g_context->correction_counter = 0;
 	/* arrival times for correction upon CRC failure */
-	memset(g_context->arrival_times, 0, sizeof(struct rohc_ts) * 10);
+	memset(g_context->arrival_times, 0,
+	       sizeof(struct rohc_ts) * ROHC_MAX_ARRIVAL_TIMES);
 	g_context->arrival_times_nr = 0;
 	g_context->arrival_times_index = 0;
 	g_context->cur_arrival_time.sec = 0;
