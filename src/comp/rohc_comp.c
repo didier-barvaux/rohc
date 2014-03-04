@@ -96,8 +96,9 @@ struct c_profile *c_profiles[C_NUM_PROFILES] =
  * Prototypes of private functions related to ROHC compression profiles
  */
 
-static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
-                                                      const int profile_id);
+static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp *comp,
+																			const rohc_profile_t profile_id)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *const comp,
 																			 const struct net_pkt *const packet)
@@ -3539,8 +3540,8 @@ error:
  * @param profile_id The ID of the ROHC profile to find out
  * @return           The ROHC profile if found, NULL otherwise
  */
-static const struct c_profile * c_get_profile_from_id(const struct rohc_comp *comp,
-                                                      const int profile_id)
+static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp *comp,
+																			const rohc_profile_t profile_id)
 {
 	int i;
 
@@ -3761,7 +3762,7 @@ static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *c
 	}
 	else
 	{
-		profile = c_get_profile_from_id(comp, profile_id_hint);
+		profile = rohc_get_profile_from_id(comp, profile_id_hint);
 	}
 	if(profile == NULL)
 	{
