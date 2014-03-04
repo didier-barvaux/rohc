@@ -143,6 +143,15 @@ static int compress_decompress(struct rohc_comp *comp,
                                int link_len_cmp,
                                FILE *size_output_file);
 
+static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
+                                            const size_t wlsb_width,
+                                            const size_t max_contexts)
+	__attribute__((warn_unused_result));
+static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
+                                                const size_t max_contexts,
+                                                struct rohc_comp *const comp)
+	__attribute__((warn_unused_result, nonnull(3)));
+
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
@@ -929,11 +938,6 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	struct rohc_decomp *decomp1;
 	struct rohc_decomp *decomp2;
 
-#define NB_RTP_PORTS 6
-	const unsigned int rtp_ports[NB_RTP_PORTS] =
-		{ 1234, 36780, 33238, 5020, 5002, 5006 };
-	int i;
-
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
 	int status = 1;
@@ -1057,165 +1061,35 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 1 */
-	comp1 = rohc_comp_new(cid_type, max_contexts - 1);
+	comp1 = create_compressor(cid_type, wlsb_width, max_contexts);
 	if(comp1 == NULL)
 	{
 		printf("failed to create the compressor 1\n");
 		goto close_output_size;
 	}
 
-	/* set the callback for traces on compressor 1 */
-	if(!rohc_comp_set_traces_cb(comp1, print_rohc_traces))
-	{
-		printf("failed to set the callback for traces on compressor 1\n");
-		goto destroy_comp1;
-	}
-
-	/* enable profiles */
-	if(!rohc_comp_enable_profiles(comp1, ROHC_PROFILE_UNCOMPRESSED,
-	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
-	{
-		printf("failed to enable the compression profiles for compressor 1\n");
-		goto destroy_comp1;
-	}
-
-	/* set the callback for random numbers on compressor 1 */
-	if(!rohc_comp_set_random_cb(comp1, gen_false_random_num, NULL))
-	{
-		printf("failed to set the callback for random numbers on compressor 1\n");
-		goto destroy_comp1;
-	}
-
-	/* set the WLSB window width on compressor 1 */
-	if(!rohc_comp_set_wlsb_window_width(comp1, wlsb_width))
-	{
-		printf("failed to set the WLSB window width on compressor 1\n");
-		goto destroy_comp1;
-	}
-
-	/* reset list of RTP ports for compressor 1 */
-	if(!rohc_comp_reset_rtp_ports(comp1))
-	{
-		printf("failed to reset list of RTP ports for compressor 1\n");
-		goto destroy_comp1;
-	}
-
-	/* add some ports to the list of RTP ports */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		if(!rohc_comp_add_rtp_port(comp1, rtp_ports[i]))
-		{
-			printf("failed to enable RTP port %u for compressor 1\n", rtp_ports[i]);
-			goto destroy_comp1;
-		}
-	}
-
 	/* create the compressor 2 */
-	comp2 = rohc_comp_new(cid_type, max_contexts - 1);
+	comp2 = create_compressor(cid_type, wlsb_width, max_contexts);
 	if(comp2 == NULL)
 	{
 		printf("failed to create the compressor 2\n");
 		goto destroy_comp1;
 	}
 
-	/* set the callback for traces on compressor 2 */
-	if(!rohc_comp_set_traces_cb(comp2, print_rohc_traces))
-	{
-		printf("failed to set the callback for traces on compressor 2\n");
-		goto destroy_comp2;
-	}
-
-	/* enable profiles */
-	if(!rohc_comp_enable_profiles(comp2, ROHC_PROFILE_UNCOMPRESSED,
-	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
-	{
-		printf("failed to enable the compression profiles for compressor 2\n");
-		goto destroy_comp2;
-	}
-
-	/* set the callback for random numbers on compressor 2 */
-	if(!rohc_comp_set_random_cb(comp2, gen_false_random_num, NULL))
-	{
-		printf("failed to set the callback for random numbers on compressor 2\n");
-		goto destroy_comp2;
-	}
-
-	/* set the WLSB window width on compressor 2 */
-	if(!rohc_comp_set_wlsb_window_width(comp2, wlsb_width))
-	{
-		printf("failed to set the WLSB window width on compressor 2\n");
-		goto destroy_comp2;
-	}
-
-	/* reset list of RTP ports for compressor 2 */
-	if(!rohc_comp_reset_rtp_ports(comp2))
-	{
-		printf("failed to reset list of RTP ports for compressor 2\n");
-		goto destroy_comp2;
-	}
-
-	/* add some ports to the list of RTP ports */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		if(!rohc_comp_add_rtp_port(comp2, rtp_ports[i]))
-		{
-			printf("failed to enable RTP port %u for compressor 2\n", rtp_ports[i]);
-			goto destroy_comp2;
-		}
-	}
-
 	/* create the decompressor 1 */
-	decomp1 = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp2);
+	decomp1 = create_decompressor(cid_type, max_contexts, comp2);
 	if(decomp1 == NULL)
 	{
 		printf("failed to create the decompressor 1\n");
 		goto destroy_comp2;
 	}
 
-	/* set the callback for traces on decompressor 1 */
-	if(!rohc_decomp_set_traces_cb(decomp1, print_rohc_traces))
-	{
-		printf("failed to set trace callback for decompressor 1\n");
-		goto destroy_decomp1;
-	}
-
-	/* enable decompression profiles on decompressor 1 */
-	if(!rohc_decomp_enable_profiles(decomp1, ROHC_PROFILE_UNCOMPRESSED,
-	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
-	{
-		printf("failed to enable the profiles on decompressor 1\n");
-		goto destroy_decomp1;
-	}
-
 	/* create the decompressor 2 */
-	decomp2 = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp1);
+	decomp2 = create_decompressor(cid_type, max_contexts, comp1);
 	if(decomp2 == NULL)
 	{
 		printf("failed to create the decompressor 2\n");
 		goto destroy_decomp1;
-	}
-
-	/* set the callback for traces on decompressor 2 */
-	if(!rohc_decomp_set_traces_cb(decomp2, print_rohc_traces))
-	{
-		printf("failed to set trace callback for decompressor 2\n");
-		goto destroy_decomp2;
-	}
-
-	/* enable decompression profiles on decompressor 2 */
-	if(!rohc_decomp_enable_profiles(decomp2, ROHC_PROFILE_UNCOMPRESSED,
-	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
-	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
-	{
-		printf("failed to enable the profiles on decompressor 2\n");
-		goto destroy_decomp2;
 	}
 
 	printf("\n");
@@ -1327,7 +1201,6 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		status = 0;
 	}
 
-destroy_decomp2:
 	rohc_decomp_free(decomp2);
 destroy_decomp1:
 	rohc_decomp_free(decomp1);
@@ -1354,6 +1227,137 @@ close_input:
 	pcap_close(handle);
 error:
 	return status;
+}
+
+
+/**
+ * @brief Create and configure a ROHC compressor
+ *
+ * @param cid_type      The type of CIDs the compressor shall use
+ * @param max_contexts  The maximum number of ROHC contexts to use
+ * @param wlsb_width    The width of the WLSB window to use
+ * @return              The new ROHC compressor
+ */
+static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
+                                            const size_t wlsb_width,
+                                            const size_t max_contexts)
+{
+	const unsigned int rtp_ports[] =
+		{ 1234, 36780, 33238, 5020, 5002, 5006 };
+	const size_t nr_rtp_ports = sizeof(rtp_ports) / sizeof(unsigned int);
+	struct rohc_comp *comp;
+	size_t i;
+
+	/* create the compressor */
+	comp = rohc_comp_new(cid_type, max_contexts - 1);
+	if(comp == NULL)
+	{
+		printf("failed to create compressor\n");
+		goto error;
+	}
+
+	/* set the callback for traces */
+	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	{
+		printf("failed to set the callback for traces\n");
+		goto destroy_comp;
+	}
+
+	/* enable profiles */
+	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
+	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		printf("failed to enable the compression profiles\n");
+		goto destroy_comp;
+	}
+
+	/* set the callback for random numbers */
+	if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
+	{
+		printf("failed to set the callback for random numbers\n");
+		goto destroy_comp;
+	}
+
+	/* set the WLSB window width */
+	if(!rohc_comp_set_wlsb_window_width(comp, wlsb_width))
+	{
+		printf("failed to set the WLSB window width\n");
+		goto destroy_comp;
+	}
+
+	/* reset list of RTP ports */
+	if(!rohc_comp_reset_rtp_ports(comp))
+	{
+		printf("failed to reset list of RTP ports for compressor 1\n");
+		goto destroy_comp;
+	}
+
+	/* add some ports to the list of RTP ports */
+	for(i = 0; i < nr_rtp_ports; i++)
+	{
+		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
+		{
+			printf("failed to enable RTP port %u\n", rtp_ports[i]);
+			goto destroy_comp;
+		}
+	}
+
+	return comp;
+
+destroy_comp:
+	rohc_comp_free(comp);
+error:
+	return NULL;
+}
+
+
+/**
+ * @brief Create and configure a ROHC decompressor
+ *
+ * @param cid_type      The type of CIDs the compressor shall use
+ * @param max_contexts  The maximum number of ROHC contexts to use
+ * @param comp          The ROHC compressor to associate to the decompressor
+ * @return              The new ROHC decompressor
+ */
+static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
+                                                const size_t max_contexts,
+                                                struct rohc_comp *const comp)
+{
+	struct rohc_decomp *decomp;
+
+	/* create the decompressor */
+	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp);
+	if(decomp == NULL)
+	{
+		printf("failed to create decompressor\n");
+		goto error;
+	}
+
+	/* set the callback for traces */
+	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	{
+		printf("failed to set trace callback\n");
+		goto destroy_decomp;
+	}
+
+	/* enable decompression profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	{
+		printf("failed to enable the profiles\n");
+		goto destroy_decomp;
+	}
+
+	return decomp;
+
+destroy_decomp:
+	rohc_decomp_free(decomp);
+error:
+	return NULL;
 }
 
 
