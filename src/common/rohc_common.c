@@ -24,6 +24,8 @@
 #include "rohc.h"
 #include "config.h" /* for VERSION definition */
 
+#include <assert.h>
+
 
 /**
  * @defgroup rohc  The ROHC compressor/decompressor common API
@@ -78,7 +80,10 @@ const char * rohc_get_mode_descr(const rohc_mode_t mode)
 		case ROHC_R_MODE:
 			return "R-mode";
 		default:
+			assert(0);
+#ifdef __KERNEL__
 			return "no description";
+#endif
 	}
 }
 
@@ -117,7 +122,10 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 		case ROHC_PROFILE_UDPLITE:
 			return "IP/UDP-Lite";
 		default:
+			assert(0);
+#ifdef __KERNEL__
 			return "no description";
+#endif
 	}
 }
 

@@ -22,6 +22,8 @@
 
 #include "rohc_packets.h"
 
+#include <assert.h>
+
 
 /**
  * @brief Give a description for the given type of ROHC packet
@@ -112,11 +114,11 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 		case ROHC_PACKET_TCP_SEQ_8:
 			return "TCP/seq_8";
 
-		case ROHC_PACKET_UNKNOWN:
-			return "unknown";
-
 		default:
+			assert(0);
+#ifdef __KERNEL__
 			return "no description";
+#endif
 	}
 }
 
@@ -150,10 +152,11 @@ const char * rohc_get_ext_descr(const rohc_ext_t ext_type)
 			return "EXT-3";
 		case ROHC_EXT_NONE:
 			return "none";
-		case ROHC_EXT_UNKNOWN:
-			return "unknown";
 		default:
+			assert(0);
+#ifdef __KERNEL__
 			return "no description";
+#endif
 	}
 }
 

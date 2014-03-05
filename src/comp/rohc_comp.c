@@ -3410,7 +3410,10 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 		case ROHC_COMP_STATE_SO:
 			return "SO";
 		default:
+			assert(0);
+#ifdef __KERNEL__
 			return "no description";
+#endif
 	}
 }
 

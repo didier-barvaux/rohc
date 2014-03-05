@@ -103,26 +103,10 @@ int main(int argc, char *argv[])
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
-	if(argc <= 0)
+	if(argc != 1)
 	{
 		usage();
 		goto error;
-	}
-
-	for(argc--, argv++; argc > 0; argc--, argv++)
-	{
-		if(!strcmp(*argv, "-h"))
-		{
-			/* print help */
-			usage();
-			goto error;
-		}
-		else
-		{
-			/* unknown argument */
-			usage();
-			goto error;
-		}
 	}
 
 	/* test ROHC feedback handling */

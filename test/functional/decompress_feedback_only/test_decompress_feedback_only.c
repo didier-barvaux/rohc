@@ -66,8 +66,6 @@ static int gen_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char *argv[])
 {
-	int args_read = 1;
-
 	/* a ROHC feedback-only packet */
 	const unsigned char rohc_feedback[] = { 0xf4, 0x20, 0x00, 0x11, 0xe9 };
 	const size_t rohc_feedback_len = 5;
@@ -75,26 +73,10 @@ int main(int argc, char *argv[])
 	int status = 1;
 
 	/* parse program arguments, print the help message in case of failure */
-	if(argc <= 0)
+	if(argc != 1)
 	{
 		usage();
 		goto error;
-	}
-
-	for(argc--, argv++; argc > 0; argc -= args_read, argv += args_read)
-	{
-		if(!strcmp(*argv, "-h"))
-		{
-			/* print help */
-			usage();
-			goto error;
-		}
-		else
-		{
-			/* do not accept more than two arguments without option name */
-			usage();
-			goto error;
-		}
 	}
 
 	/* test ROHC feedback-only decompression */
