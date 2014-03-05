@@ -1234,7 +1234,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		remain_len--;
 
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "ROHC packet is a %d-byte %s segment\n", remain_len,
+		           "ROHC packet is a %zu-byte %s segment\n", remain_len,
 		           is_final ? "final" : "non-final");
 
 		/* store all the remaining ROHC data in RRU */

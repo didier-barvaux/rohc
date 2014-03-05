@@ -4377,7 +4377,7 @@ static int code_CO_packet(struct c_context *const context,
 	                "next_header = %p, rohc_pkt = %p\n", context, ip,
 	                packet_size, next_header, rohc_pkt);
 
-	rohc_comp_debug(context, "parse the %u-byte IP packet\n", ip->size);
+	rohc_comp_debug(context, "parse the %zu-byte IP packet\n", ip->size);
 	base_header.ipvx = (base_header_ip_vx_t*) ip->data;
 	remain_data_len = ip->size;
 

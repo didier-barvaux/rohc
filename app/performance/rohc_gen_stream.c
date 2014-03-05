@@ -433,7 +433,7 @@ static bool build_stream(const char *const filename,
 		uint8_t *const rohc_packet = output + ETHER_HDR_LEN;
 		size_t rohc_len;
 
-		struct pcap_pkthdr header = { .ts = { 0 } };
+		struct pcap_pkthdr header = { .ts = { .tv_sec = 0, .tv_usec = 0 } };
 		struct ipv4_hdr *ipv4;
 		struct udphdr *udp;
 		struct rtphdr *rtp;

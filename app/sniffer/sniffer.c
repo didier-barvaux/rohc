@@ -859,7 +859,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	pcap_dumper_t *dumpers[max_contexts];
 
 	int ret;
-	size_t i;
+	unsigned int i;
 
 	/* statistics */
 	unsigned int nb_ok = 0;
@@ -1088,7 +1088,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	{
 		if(dumpers[i] != NULL)
 		{
-			SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %d", i);
+			SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %u", i);
 			pcap_dump_close(dumpers[i]);
 		}
 	}
