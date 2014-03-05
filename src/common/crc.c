@@ -178,7 +178,7 @@ static inline uint8_t crc_calc_3(const uint8_t *const buf,
  *
  * @ingroup rohc
  */
-int crc_get_polynom(int type)
+int crc_get_polynom(int type __attribute__((unused)))
 {
 	/* nothing to do here: CRC tables are initialized in compressors and
 	 * decompressors */
@@ -197,7 +197,8 @@ int crc_get_polynom(int type)
  *
  * @ingroup rohc
  */
-void crc_init_table(unsigned char *table, unsigned char poly)
+void crc_init_table(unsigned char *table __attribute__((unused)),
+                    unsigned char poly __attribute__((unused)))
 {
 	/* nothing to do here: CRC tables are initialized in compressors and
 	 * decompressors */
@@ -351,7 +352,7 @@ uint32_t crc_calc_fcs32(const uint8_t *const data,
  */
 uint8_t compute_crc_static(const uint8_t *const ip,
                            const uint8_t *const ip2,
-                           const uint8_t *const next_header,
+                           const uint8_t *const next_header __attribute__((unused)),
                            const rohc_crc_type_t crc_type,
                            const uint8_t init_val,
                            const uint8_t *const crc_table)
@@ -449,7 +450,7 @@ uint8_t compute_crc_static(const uint8_t *const ip,
  */
 uint8_t compute_crc_dynamic(const uint8_t *const ip,
                             const uint8_t *const ip2,
-                            const uint8_t *const next_header,
+                            const uint8_t *const next_header __attribute__((unused)),
                             const rohc_crc_type_t crc_type,
                             const uint8_t init_val,
                             const uint8_t *const crc_table)
@@ -1027,7 +1028,7 @@ static inline uint8_t crc_calc_8(const uint8_t *const buf,
                                  const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
-	int i;
+	size_t i;
 
 	for(i = 0; i < size; i++)
 	{
@@ -1053,7 +1054,7 @@ static inline uint8_t crc_calc_7(const uint8_t *const buf,
                                  const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
-	int i;
+	size_t i;
 
 	for(i = 0; i < size; i++)
 	{
@@ -1079,7 +1080,7 @@ static inline uint8_t crc_calc_3(const uint8_t *const buf,
                                  const uint8_t *const crc_table)
 {
 	uint8_t crc = init_val;
-	int i;
+	size_t i;
 
 	for(i = 0; i < size; i++)
 	{

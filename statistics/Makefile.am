@@ -13,7 +13,9 @@ check_PROGRAMS = \
 
 
 generate_statistics_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 generate_statistics_CPPFLAGS = \
 	-I$(top_srcdir)/test \

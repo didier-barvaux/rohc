@@ -188,11 +188,11 @@ struct c_generic_context
 	/// @brief The number of packet sent while in SO state, used for the periodic
 	///        refreshes of the context
 	/// @see periodic_down_transition
-	int go_back_fo_count;
+	size_t go_back_fo_count;
 	/// @brief The number of packet sent while in FO or SO state, used for the
 	///        periodic refreshes of the context
 	/// @see periodic_down_transition
-	int go_back_ir_count;
+	size_t go_back_ir_count;
 
 	/** The number of IP headers */
 	size_t ip_hdr_nr;

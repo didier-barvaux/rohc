@@ -179,7 +179,9 @@ check_PROGRAMS = \
 
 
 test_rtp_uo_disambiguation_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_rtp_uo_disambiguation_CPPFLAGS = \
 	-I$(top_srcdir)/test \

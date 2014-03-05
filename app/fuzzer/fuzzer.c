@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 		unsigned char ip_packet[PACKET_MAX_SIZE];
 		size_t ip_size;
 		int ret __attribute__((unused));
-		int i;
+		size_t i;
 
 		/* print progress from time to time */
 		if(cur_iter == 1 || (cur_iter % 10000) == 0)

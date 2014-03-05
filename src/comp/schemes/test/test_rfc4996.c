@@ -116,7 +116,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	{
 		uint32_t uncomp_value;
 		size_t expected_len;
-		unsigned int expected_indicator;
+		int expected_indicator;
 	}
 	inputs[] = {
 		{ htonl(0),          0, 0 },
@@ -154,8 +154,8 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		/* check that returned indicator is as expected */
 		if(indicator != inputs[i].expected_indicator)
 		{
-			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) returned %u "
-			        "as indicator while %u expected\n", inputs[i].uncomp_value,
+			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) returned %d "
+			        "as indicator while %d expected\n", inputs[i].uncomp_value,
 			        indicator, inputs[i].expected_indicator);
 			goto error;
 		}

@@ -68,7 +68,7 @@ unsigned int lsb_xor_masks[] =
  */
 uint32_t d_lsb(const struct d_context *const context,
                int num_lsbs_param,
-               int offset_param,
+               int offset_param __attribute__((unused)),
                unsigned int context_value,
                unsigned int value)
 {

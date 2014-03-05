@@ -40,13 +40,13 @@
 struct sc_uncompressed_context
 {
 	/// The number of IR packets sent by the compressor
-	int ir_count;
+	size_t ir_count;
 	/// The number of Normal packets sent by the compressor
-	int normal_count;
+	size_t normal_count;
 	/// @brief The number of packet sent while in non-IR states, used for the
 	///        periodic refreshes of the context
 	/// @see uncompressed_periodic_down_transition
-	int go_back_ir_count;
+	size_t go_back_ir_count;
 };
 
 
@@ -196,8 +196,8 @@ static void c_uncompressed_destroy(struct c_context *const context)
  *                      the profile
 
  */
-static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
-                                         const struct net_pkt *const packet)
+static bool c_uncompressed_check_profile(const struct rohc_comp *const comp __attribute__((unused)),
+                                         const struct net_pkt *const packet __attribute__((unused)))
 {
 	return true;
 }
@@ -214,8 +214,8 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
  * @return         Always return true to tell that the packet belongs
  *                 to the context
  */
-static bool c_uncompressed_check_context(const struct c_context *const context,
-                                         const struct net_pkt *const packet)
+static bool c_uncompressed_check_context(const struct c_context *const context __attribute__((unused)),
+                                         const struct net_pkt *const packet __attribute__((unused)))
 {
 	return true;
 }
@@ -633,7 +633,7 @@ error:
  *                          -1 otherwise
  */
 static int uncompressed_code_IR_packet(const struct c_context *context,
-                                       const struct net_pkt *const uncomp_pkt,
+                                       const struct net_pkt *const uncomp_pkt __attribute__((unused)),
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        int *const payload_offset)
@@ -748,8 +748,8 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
  * @return        Always return false because the Uncompressed profile does not
  *                use UDP port
  */
-bool c_uncompressed_use_udp_port(const struct c_context *const context,
-                                 const unsigned int port)
+bool c_uncompressed_use_udp_port(const struct c_context *const context __attribute__((unused)),
+                                 const unsigned int port __attribute__((unused)))
 {
 	return false;
 }

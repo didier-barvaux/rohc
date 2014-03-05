@@ -434,7 +434,7 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
  * @return            The SN
  */
 uint32_t c_ip_get_next_sn(const struct c_context *const context,
-                          const struct net_pkt *const uncomp_pkt)
+                          const struct net_pkt *const uncomp_pkt __attribute__((unused)))
 {
 	struct c_generic_context *g_context;
 	uint32_t next_sn;

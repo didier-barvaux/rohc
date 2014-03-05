@@ -561,10 +561,10 @@ int main(int argc, char *argv[])
 	}
 
 	/* get the error model and its parameters if present */
-	if(argc > arg_count && strcmp(argv[arg_count], "error") == 0)
+	if(((size_t) argc) > arg_count && strcmp(argv[arg_count], "error") == 0)
 	{
 		arg_count++;
-		if(argc <= arg_count)
+		if(((size_t) argc) <= arg_count)
 		{
 			fprintf(stderr, "the error keyword requires an argument: "
 			        "none, uniform or burst\n");
@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
 			arg_count++;
 
 			/* check if parameters are present */
-			if(argc <= arg_count)
+			if(((size_t) argc) <= arg_count)
 			{
 				usage();
 				goto quit;
@@ -611,7 +611,7 @@ int main(int argc, char *argv[])
 			arg_count++;
 
 			/* check if parameters are present */
-			if(argc < arg_count + 2)
+			if(((size_t) argc) < (arg_count + 2))
 			{
 				usage();
 				goto quit;
@@ -652,10 +652,10 @@ int main(int argc, char *argv[])
 	}
 
 	/* get the direction mode if present */
-	if(argc > arg_count && strcmp(argv[arg_count], "dir") == 0)
+	if(((size_t) argc) > arg_count && strcmp(argv[arg_count], "dir") == 0)
 	{
 		arg_count++;
-		if(argc <= arg_count)
+		if(((size_t) argc) <= arg_count)
 		{
 			fprintf(stderr, "the dir keyword requires an argument: "
 			        "unidirectional or bidirectional\n");
@@ -981,7 +981,7 @@ int read_from_tun(int fd, unsigned char *packet, unsigned int *length)
 
 	ret = read(fd, packet, *length);
 
-	if(ret < 0 || ret > *length)
+	if(ret < 0 || ((unsigned int) ret) > (*length))
 	{
 		fprintf(stderr, "read failed: %s (%d)\n", strerror(errno), errno);
 		goto error;
@@ -1117,7 +1117,7 @@ int read_from_udp(int sock, unsigned char *buffer, unsigned int *length)
 	ret = recvfrom(sock, buffer, *length, 0, (struct sockaddr *) &addr,
 	               &addr_len);
 
-	if(ret < 0 || ret > *length)
+	if(ret < 0 || ((unsigned int) ret) > (*length))
 	{
 		fprintf(stderr, "recvfrom failed: %s (%d)\n", strerror(errno), errno);
 		goto error;
@@ -1267,7 +1267,7 @@ static int read_from_raw(const int sock,
 	/* read data from the UDP socket */
 	ret = recvfrom(sock, buffer, *length, 0, (struct sockaddr *) &addr,
 	               &addr_len);
-	if(ret < 0 || ret > *length)
+	if(ret < 0 || ((unsigned int) ret) > (*length))
 	{
 		fprintf(stderr, "recvfrom failed: %s (%d)\n", strerror(errno), errno);
 		goto error;
@@ -1736,7 +1736,7 @@ int wan2tun(struct rohc_decomp *const decomp,
 	                       &decomp_packet[4], MAX_ROHC_SIZE, &decomp_size);
 	if(ret != ROHC_OK)
 	{
-		if(decomp_size == ROHC_FEEDBACK_ONLY)
+		if(ret == ROHC_FEEDBACK_ONLY)
 		{
 			/* no stats for feedback-only packets */
 			goto quit;
@@ -1999,9 +1999,9 @@ int is_timeout(struct timeval first,
  *                 the trace is related to
  * @param format   The format string of the trace
  */
-static void print_rohc_traces(const rohc_trace_level_t level,
-                              const rohc_trace_entity_t entity,
-                              const int profile,
+static void print_rohc_traces(const rohc_trace_level_t level __attribute__((unused)),
+                              const rohc_trace_entity_t entity __attribute__((unused)),
+                              const int profile __attribute__((unused)),
                               const char *const format,
                               ...)
 {

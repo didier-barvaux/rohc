@@ -323,7 +323,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
 	struct rohc_comp *comp;
 	bool is_fine;
-	int i;
+	size_t i;
 
 	/* check input parameters */
 	if(cid_type == ROHC_SMALL_CID)
@@ -593,9 +593,9 @@ error:
  * @param format   The format string for the trace message
  * @param ...      The arguments related to the format string
  */
-static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
-                                          const rohc_trace_entity_t entity,
-                                          const int profile,
+static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attribute__((unused)),
+                                          const rohc_trace_entity_t entity __attribute__((unused)),
+                                          const int profile __attribute__((unused)),
                                           const char *const format,
                                           ...)
 {
@@ -938,6 +938,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 		{
 			c->profile->destroy(c);
 			c->used = 0;
+			assert(comp->num_contexts_used > 0);
 			comp->num_contexts_used--;
 		}
 
@@ -1111,6 +1112,7 @@ error_free_new_context:
 	{
 		c->profile->destroy(c);
 		c->used = 0;
+		assert(comp->num_contexts_used > 0);
 		comp->num_contexts_used--;
 	}
 error_unlock_feedbacks:
@@ -1285,7 +1287,7 @@ bool rohc_comp_force_contexts_reinit(struct rohc_comp *const comp)
 	}
 
 	rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	          "force re-initialization for all %d contexts\n",
+	          "force re-initialization for all %zu contexts\n",
 	          comp->num_contexts_used);
 
 	for(i = 0; i <= comp->medium.max_cid; i++)
@@ -1599,7 +1601,7 @@ error:
  */
 void rohc_activate_profile(struct rohc_comp *comp, int profile)
 {
-	int i;
+	size_t i;
 
 	if(comp == NULL)
 	{
@@ -1608,7 +1610,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		if(c_profiles[i]->id == profile)
+		if(((int) c_profiles[i]->id) == profile)
 		{
 			/* mark the profile as activated */
 			comp->enabled_profiles[i] = true;
@@ -1917,7 +1919,8 @@ int rohc_c_using_small_cid(struct rohc_comp *comp)
  *
  * @ingroup rohc_comp
  */
-void rohc_c_set_header(struct rohc_comp *comp, int header)
+void rohc_c_set_header(struct rohc_comp *comp __attribute__((unused)),
+                       int header __attribute__((unused)))
 {
 	/* nothing to do */
 }
@@ -2388,6 +2391,7 @@ bool rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
 				           "RTP ports\n", i, port);
 				comp->contexts[i].profile->destroy(&comp->contexts[i]);
 				comp->contexts[i].used = 0;
+				assert(comp->num_contexts_used > 0);
 				comp->num_contexts_used--;
 			}
 		}
@@ -2522,7 +2526,7 @@ int rohc_c_is_enabled(struct rohc_comp *comp)
 int rohc_c_info(char *buffer)
 {
 	char *save;
-	int i;
+	size_t i;
 
 	save = buffer;
 	buffer += strlen(buffer);
@@ -2564,7 +2568,8 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	struct c_profile *p;
 	char *prefix;
 	char *save;
-	int i,v;
+	size_t i;
+	int v;
 
 	/* compute the indent prefix */
 	prefix = malloc((indent + 1) * sizeof(char));
@@ -2585,7 +2590,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 	        PACKAGE_NAME " (" PACKAGE_URL ")");
 	buffer += sprintf(buffer, "%s\t<version>%s</version>\n", prefix, PACKAGE_VERSION);
 	buffer += sprintf(buffer, "%s\t<status>%s</status>\n", prefix, comp->enabled ? "enabled" : "disabled");
-	buffer += sprintf(buffer, "%s\t<flows>%d</flows>\n", prefix, comp->num_contexts_used);
+	buffer += sprintf(buffer, "%s\t<flows>%zu</flows>\n", prefix, comp->num_contexts_used);
 	buffer += sprintf(buffer, "%s\t<packets>%d</packets>\n", prefix, comp->num_packets);
 
 	if(comp->total_uncompressed_size != 0)
@@ -2691,7 +2696,7 @@ static int __rohc_c_context(struct rohc_comp *comp,
 		return -1;
 	}
 
-	if(cid > comp->medium.max_cid)
+	if(cid > ((int) comp->medium.max_cid))
 	{
 		return -2;
 	}
@@ -2856,9 +2861,7 @@ bool rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "try to add %zd "
 	           "byte(s) of feedback to the next outgoing ROHC packet\n", size);
-	assert(comp->feedbacks_next >= 0);
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first >= 0);
 	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
 
 	/* If first and next feedbacks are equals, the ring is either empty or full.
@@ -3444,9 +3447,7 @@ bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
 		goto error;
 	}
 
-	assert(comp->feedbacks_first >= 0);
 	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first_unlocked >= 0);
 	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
 
 	while(comp->feedbacks[comp->feedbacks_first].is_locked)
@@ -3504,11 +3505,8 @@ bool rohc_feedback_unlock(struct rohc_comp *const comp)
 		goto error;
 	}
 
-	assert(comp->feedbacks_first >= 0);
 	assert(comp->feedbacks_first < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_first_unlocked >= 0);
 	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_next >= 0);
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
 
 	/* unlock all the ring locations between first unlocked one (excluded)
@@ -3543,7 +3541,7 @@ error:
 static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp *comp,
 																			const rohc_profile_t profile_id)
 {
-	int i;
+	size_t i;
 
 	/* test all compression profiles */
 	for(i = 0; i < C_NUM_PROFILES; i++)
@@ -3569,7 +3567,7 @@ static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp 
 static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *const comp,
 																			 const struct net_pkt *const packet)
 {
-	int i;
+	size_t i;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "try to find the best profile for packet with transport "
@@ -3663,6 +3661,7 @@ static struct c_context * c_create_context(struct rohc_comp *const comp,
 		comp->contexts[cid_to_use].profile->destroy(&comp->contexts[cid_to_use]);
 		comp->contexts[cid_to_use].key = 0; /* reset context key */
 		comp->contexts[cid_to_use].used = 0;
+		assert(comp->num_contexts_used > 0);
 		comp->num_contexts_used--;
 	}
 	else
@@ -3725,10 +3724,11 @@ static struct c_context * c_create_context(struct rohc_comp *const comp,
 	c->used = 1;
 	c->first_used = arrival_time.sec;
 	c->latest_used = arrival_time.sec;
+	assert(comp->num_contexts_used <= comp->medium.max_cid);
 	comp->num_contexts_used++;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "context (CID = %zu) created (num_used = %d)\n",
+	           "context (CID = %zu) created (num_used = %zu)\n",
 	           c->cid, comp->num_contexts_used);
 	return c;
 }
@@ -3978,6 +3978,7 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 		if(comp->contexts[i].used)
 		{
 			comp->contexts[i].used = 0;
+			assert(comp->num_contexts_used > 0);
 			comp->num_contexts_used--;
 		}
 	}
@@ -4011,9 +4012,7 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	size_t feedback_length;
 	size_t pos = 0;
 
-	assert(comp->feedbacks_first_unlocked >= 0);
 	assert(comp->feedbacks_first_unlocked < FEEDBACK_RING_SIZE);
-	assert(comp->feedbacks_next >= 0);
 	assert(comp->feedbacks_next < FEEDBACK_RING_SIZE);
 
 	/* are there some feedback data to send with the next outgoing packet? */
@@ -4120,7 +4119,7 @@ full:
  */
 static void rohc_feedback_destroy(struct rohc_comp *const comp)
 {
-	int i;
+	size_t i;
 
 	for(i = 0; i < FEEDBACK_RING_SIZE; i++)
 	{
@@ -4171,7 +4170,7 @@ static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 		}
 	}
 
-	if(value != comp->medium.max_cid)
+	if(((size_t) value) != comp->medium.max_cid)
 	{
 		/* free memory used by contexts */
 		c_destroy_contexts(comp);

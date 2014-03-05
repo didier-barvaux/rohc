@@ -47,7 +47,6 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 {
 	assert(descr != NULL);
 	assert(packet != NULL);
-	assert(length >= 0);
 
 	if(length == 0)
 	{

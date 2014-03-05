@@ -425,6 +425,7 @@ static bool build_stream(const char *const filename,
 		                          sizeof(struct udphdr) +
 		                          sizeof(struct rtphdr) +
 		                          payload_len;
+		size_t packet_offset = 0;
 		uint8_t packet[ETHER_HDR_LEN + packet_len];
 
 		const size_t rohc_max_len = packet_len * 2;
@@ -438,7 +439,8 @@ static bool build_stream(const char *const filename,
 		struct rtphdr *rtp;
 
 		/* build IPv4 header */
-		ipv4 = (struct ipv4_hdr *) (packet + ETHER_HDR_LEN);
+		packet_offset += ETHER_HDR_LEN;
+		ipv4 = (struct ipv4_hdr *) (packet + packet_offset);
 		ipv4->version = 4;
 		ipv4->ihl = 5;
 		ipv4->tos = 0;
@@ -453,17 +455,16 @@ static bool build_stream(const char *const filename,
 		ipv4->check = ip_fast_csum((uint8_t *) ipv4, ipv4->ihl);
 
 		/* build UDP header */
-		udp = (struct udphdr *) (packet + ETHER_HDR_LEN +
-		                         sizeof(struct ipv4_hdr));
+		packet_offset += sizeof(struct ipv4_hdr);
+		udp = (struct udphdr *) (packet + packet_offset);
 		udp->source = htons(1234);
 		udp->dest = htons(1234);
 		udp->len = htons(packet_len - sizeof(struct ipv4_hdr));
 		udp->check = 0; /* UDP checksum disabled */
 
 		/* build RTP header */
-		rtp = (struct rtphdr *) (packet + ETHER_HDR_LEN +
-		                         sizeof(struct ipv4_hdr) +
-		                         sizeof(struct udphdr));
+		packet_offset += sizeof(struct udphdr);
+		rtp = (struct rtphdr *) (packet + packet_offset);
 		rtp->version = 2;
 		rtp->padding = 0;
 		rtp->extension = 0;
@@ -474,9 +475,11 @@ static bool build_stream(const char *const filename,
 		rtp->timestamp = htonl(500000 + counter * 160);
 		rtp->ssrc = htonl(0x42424242);
 
-		for(int i = 0; i < payload_len; i++)
+		/* build RTP payload */
+		packet_offset += sizeof(struct rtphdr);
+		for(size_t i = 0; i < payload_len; i++)
 		{
-			packet[ETHER_HDR_LEN + sizeof(struct ipv4_hdr) + sizeof(struct udphdr) + sizeof(struct rtphdr) + i] = i % 0xff;
+			packet[packet_offset + i] = i % 0xff;
 		}
 
 		if(strcmp(stream_type, "comp") == 0)
@@ -543,8 +546,8 @@ error:
  * @param format   The format string of the trace
  */
 static void print_rohc_traces(const rohc_trace_level_t level,
-                              const rohc_trace_entity_t entity,
-                              const int profile,
+                              const rohc_trace_entity_t entity __attribute__((unused)),
+                              const int profile __attribute__((unused)),
                               const char *const format,
                               ...)
 {

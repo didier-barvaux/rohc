@@ -1021,7 +1021,7 @@ static void rtp_decide_state(struct c_context *const context)
  * @param uncomp_pkt  The uncompressed packet to encode
  * @return            The SN
  */
-static uint32_t c_rtp_get_next_sn(const struct c_context *const context,
+static uint32_t c_rtp_get_next_sn(const struct c_context *const context __attribute__((unused)),
                                   const struct net_pkt *const uncomp_pkt)
 {
 	const struct udphdr *const udp =

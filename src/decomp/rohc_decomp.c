@@ -117,9 +117,9 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 static int d_decode_header(struct rohc_decomp *decomp,
                            const struct rohc_ts arrival_time,
                            const unsigned char *ibuf,
-                           int isize,
+                           const size_t isize,
                            unsigned char *obuf,
-                           int osize,
+                           const size_t osize,
                            struct d_decode_data *ddata,
                            rohc_packet_t *const packet_type);
 
@@ -173,14 +173,12 @@ static int d_decode_feedback(struct rohc_decomp *const decomp,
 static void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                       int rohc_status,
                                       const uint16_t cid,
-                                      int addcidUsed,
                                       const rohc_cid_type_t cid_type,
                                       int mode,
                                       struct d_context *context);
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   int rohc_status,
                                   const rohc_cid_t cid,
-                                  int addcidUsed,
                                   const rohc_cid_type_t cid_type,
                                   struct d_context *context);
 
@@ -212,7 +210,7 @@ static struct d_context * find_context(const struct rohc_decomp *const decomp,
                                        const rohc_cid_t cid)
 {
 	/* CID must be valid wrt MAX_CID */
-	assert(cid >= 0 && cid <= decomp->medium.max_cid);
+	assert(cid <= decomp->medium.max_cid);
 	return decomp->contexts[cid];
 }
 
@@ -1012,14 +1010,12 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 			             "packet decompression failed with code "
 			             "ROHC_ERROR_PACKET_FAILED or ROHC_ERROR\n");
 			ddata.active->curval += decomp->errval;
-			if(ddata.active->curval >= decomp->maxval)
+			if(((unsigned int) ddata.active->curval) >= decomp->maxval)
 			{
 				ddata.active->curval = 0;
 				d_operation_mode_feedback(decomp, ROHC_ERROR_PACKET_FAILED,
-				                          ddata.cid, ddata.addcidUsed,
-				                          decomp->medium.cid_type,
-				                          ddata.active->mode,
-				                          ddata.active);
+				                          ddata.cid, decomp->medium.cid_type,
+				                          ddata.active->mode, ddata.active);
 			}
 			break;
 
@@ -1028,12 +1024,11 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "no context found for packet decompression\n");
 			decomp->curval += decomp->errval;
-			if(decomp->curval >= decomp->maxval)
+			if(((unsigned int) decomp->curval) >= decomp->maxval)
 			{
 				decomp->curval = 0;
-				d_operation_mode_feedback(decomp, ROHC_ERROR_NO_CONTEXT, ddata.cid,
-				                          ddata.addcidUsed,
-				                          decomp->medium.cid_type,
+				d_operation_mode_feedback(decomp, ROHC_ERROR_NO_CONTEXT,
+				                          ddata.cid, decomp->medium.cid_type,
 				                          ROHC_O_MODE, NULL);
 			}
 			break;
@@ -1063,11 +1058,10 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 			           "feedback curr %d\n", ddata.active->curval);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			          "feedback max %d\n", decomp->maxval);
-			if(ddata.active->curval >= decomp->maxval)
+			if(((unsigned int) ddata.active->curval) >= decomp->maxval)
 			{
 				ddata.active->curval = 0;
 				d_operation_mode_feedback(decomp, ROHC_ERROR_CRC, ddata.cid,
-				                          ddata.addcidUsed,
 				                          decomp->medium.cid_type,
 				                          ddata.active->mode, ddata.active);
 			}
@@ -1098,10 +1092,8 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 				/* switch active context to O-mode */
 				ddata.active->mode = ROHC_O_MODE;
 				d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
-				                          ddata.addcidUsed,
 				                          decomp->medium.cid_type,
-				                          ddata.active->mode,
-				                          ddata.active);
+				                          ddata.active->mode, ddata.active);
 			}
 			break;
 		default:
@@ -1182,15 +1174,16 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 static int d_decode_header(struct rohc_decomp *decomp,
                            const struct rohc_ts arrival_time,
                            const unsigned char *ibuf,
-                           int isize,
+                           const size_t isize,
                            unsigned char *obuf,
-                           int osize,
+                           const size_t osize,
                            struct d_decode_data *ddata,
                            rohc_packet_t *const packet_type)
 {
 	bool is_new_context = false;
 	const struct d_profile *profile;
 	const unsigned char *walk = ibuf;
+	size_t remain_len = isize;
 	unsigned int feedback_size;
 	int status;
 
@@ -1201,28 +1194,28 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	assert(ddata != NULL);
 	assert(packet_type != NULL);
 
-	if(isize < 1)
+	if(remain_len < 1)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "ROHC packet too small (len = %d, at least 1 byte "
-		             "required)\n", isize);
+		             "ROHC packet too small (len = %zu, at least 1 byte "
+		             "required)\n", remain_len);
 		goto error_malformed;
 	}
 
 	/* decode feedback if present */
-	status = d_decode_feedback_first(decomp, walk, isize, &feedback_size);
+	status = d_decode_feedback_first(decomp, walk, remain_len, &feedback_size);
 	if(status != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "failed to decode feedback at the beginning of the packet\n");
 		goto error;
 	}
-	assert(feedback_size <= isize);
+	assert(feedback_size <= remain_len);
 	walk += feedback_size;
-	isize -= feedback_size;
+	remain_len -= feedback_size;
 
 	/* is there some data after feedback? */
-	if(isize == 0)
+	if(remain_len == 0)
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "feedback-only packet, stop decompression\n");
@@ -1238,19 +1231,19 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 		/* skip the segment type byte */
 		walk++;
-		isize--;
+		remain_len--;
 
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "ROHC packet is a %d-byte %s segment\n", isize,
+		           "ROHC packet is a %d-byte %s segment\n", remain_len,
 		           is_final ? "final" : "non-final");
 
 		/* store all the remaining ROHC data in RRU */
-		if((decomp->rru_len + isize) > decomp->mrru)
+		if((decomp->rru_len + remain_len) > decomp->mrru)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "invalid RRU: received segment is too large for MRRU "
-			             "(%zd bytes already received, %d bytes received, "
-			             "MRRU = %zd bytes\n", decomp->rru_len, isize,
+			             "(%zu bytes already received, %zu bytes received, "
+			             "MRRU = %zu bytes\n", decomp->rru_len, remain_len,
 			             decomp->mrru);
 			/* dicard RRU */
 			decomp->rru_len = 0;
@@ -1259,8 +1252,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "append new segment to the %zd bytes we already received\n",
 		           decomp->rru_len);
-		memcpy(decomp->rru + decomp->rru_len, walk, isize);
-		decomp->rru_len += isize;
+		memcpy(decomp->rru + decomp->rru_len, walk, remain_len);
+		decomp->rru_len += remain_len;
 
 		/* stop decoding here is not final segment */
 		if(!is_final)
@@ -1306,14 +1299,14 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		           "final segment received, decode the %zd-byte RRU\n",
 		           decomp->rru_len);
 		walk = decomp->rru;
-		isize = decomp->rru_len;
+		remain_len = decomp->rru_len;
 
 		/* reset context for next RRU */
 		decomp->rru_len = 0;
 	}
 
 	/* decode small or large CID */
-	status = rohc_decomp_decode_cid(decomp, walk, isize, ddata);
+	status = rohc_decomp_decode_cid(decomp, walk, remain_len, ddata);
 	if(status != ROHC_OK)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -1334,20 +1327,20 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	if(ddata->addcidUsed)
 	{
 		walk++;
-		isize--;
+		remain_len--;
 	}
 
 	/* we need at least 1 byte for packet type */
-	if(isize < 1)
+	if(remain_len < 1)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet too small to read the first byte that "
-		             "contains the packet type (len = %d)\n", isize);
+		             "contains the packet type (len = %zu)\n", remain_len);
 		goto error_malformed;
 	}
 
 	/* is the ROHC packet an IR packet? */
-	if(rohc_decomp_packet_is_ir(walk, isize))
+	if(rohc_decomp_packet_is_ir(walk, remain_len))
 	{
 		uint8_t profile_id;
 
@@ -1355,11 +1348,11 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		           "ROHC packet is an IR packet\n");
 
 		/* we need at least 1 byte after the large CID bytes for profile ID */
-		if(isize <= (ddata->large_cid_size + 1))
+		if(remain_len <= (ddata->large_cid_size + 1))
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "ROHC packet too small to read the profile ID byte "
-			             "(len = %d)\n", isize);
+			             "(len = %zu)\n", remain_len);
 			goto error_malformed;
 		}
 
@@ -1430,7 +1423,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		           "context with CID %zu found\n", ddata->cid);
 
 		/* is the ROHC packet an IR-DYN packet? */
-		if(rohc_decomp_packet_is_irdyn(walk, isize))
+		if(rohc_decomp_packet_is_irdyn(walk, remain_len))
 		{
 			uint8_t profile_id;
 
@@ -1438,11 +1431,11 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			           "ROHC packet is an IR-DYN packet\n");
 
 			/* we need at least 1 byte after the large CID for profile ID */
-			if(isize <= (ddata->large_cid_size + 1))
+			if(remain_len <= (ddata->large_cid_size + 1))
 			{
 				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 				             "ROHC packet too small to read the profile ID "
-				             "byte (len = %d)\n", isize);
+				             "byte (len = %zu)\n", remain_len);
 				goto error_malformed;
 			}
 
@@ -1477,7 +1470,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
  	/* detect the type of the ROHC packet */
 	*packet_type = profile->detect_packet_type(decomp, ddata->active,
-	                                           walk, isize,
+	                                           walk, remain_len,
 	                                           ddata->large_cid_size);
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
@@ -1515,9 +1508,9 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	assert((*packet_type) == ROHC_PACKET_IR || !is_new_context);
 
 	/* decode the packet thanks to the profile-specific routines */
-	status = profile->decode(decomp, ddata->active, arrival_time, walk, isize,
-	                         ddata->addcidUsed, ddata->large_cid_size, obuf,
-	                         packet_type);
+	status = profile->decode(decomp, ddata->active, arrival_time, walk,
+	                         remain_len, ddata->addcidUsed,
+	                         ddata->large_cid_size, obuf, packet_type);
 	if(status < 0)
 	{
 		/* decompression failed, free ressources if necessary */
@@ -1568,14 +1561,12 @@ error_no_context:
  * @param rohc_status  The type of feedback to send: 0 = OK (ack),
  *                     -1 = ContextInvalid (S-nack), -2 = PackageFailed (Nack)
  * @param cid          The Context ID (CID) to which the feedback is related
- * @param addcidUsed   Whether add-CID is used or not
  * @param cid_type     The type of CID used for the feedback
  * @param context      The context to which the feedback is related
  */
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   int rohc_status,
                                   const rohc_cid_t cid,
-                                  int addcidUsed,
                                   const rohc_cid_type_t cid_type,
                                   struct d_context *context)
 {
@@ -1844,7 +1835,6 @@ skip:
  * @param rohc_status  The type of feedback to send: 0 = OK (ack),
  *                     -1 = ContextInvalid (S-nack), -2 = PackageFailed (Nack)
  * @param cid          The Context ID (CID) to which the feedback is related
- * @param addcidUsed   Whether add-CID is used or not
  * @param cid_type     The type of CID used for the feedback
  * @param mode         The mode in which the ROHC decompressor operates:
  *                     ROHC_U_MODE, ROHC_O_MODE or ROHC_R_MODE
@@ -1853,7 +1843,6 @@ skip:
 void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                int rohc_status,
                                const uint16_t cid,
-                               int addcidUsed,
                                const rohc_cid_type_t cid_type,
                                int mode,
                                struct d_context *context)
@@ -1865,8 +1854,7 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
 			//break;
 
 		case ROHC_O_MODE:
-			d_optimistic_feedback(decomp, rohc_status, cid, addcidUsed,
-			                      cid_type, context);
+			d_optimistic_feedback(decomp, rohc_status, cid, cid_type, context);
 			break;
 
 		case ROHC_R_MODE:
@@ -3400,9 +3388,9 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
  * @param format   The format string for the trace message
  * @param ...      The arguments related to the format string
  */
-static void rohc_decomp_print_trace_default(const rohc_trace_level_t level,
-                                            const rohc_trace_entity_t entity,
-                                            const int profile,
+static void rohc_decomp_print_trace_default(const rohc_trace_level_t level __attribute__((unused)),
+                                            const rohc_trace_entity_t entity __attribute__((unused)),
+                                            const int profile __attribute__((unused)),
                                             const char *const format,
                                             ...)
 {
@@ -3506,7 +3494,7 @@ error:
 static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
                                       const size_t max_cid)
 {
-	int max_possible_cid;
+	size_t max_possible_cid;
 
 	/* decompressor must be valid */
 	if(decomp == NULL)
@@ -3529,7 +3517,7 @@ static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 	if(max_cid > max_possible_cid)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "unexpected MAX_CID value: must be in range [0, %d]\n",
+		             "unexpected MAX_CID value: must be in range [0, %zu]\n",
 		             max_possible_cid);
 		goto error;
 	}

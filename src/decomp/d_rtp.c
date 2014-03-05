@@ -74,18 +74,16 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
                                             const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+static rohc_packet_t rtp_choose_uo1_variant(const struct d_context *const context,
                                             const uint8_t *const packet,
                                             const size_t rohc_length)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const decomp,
-                                             const struct d_context *const context,
+static rohc_packet_t rtp_choose_uor2_variant(const struct d_context *const context,
                                              const uint8_t *const packet,
                                              const size_t rohc_length,
                                              const size_t large_cid_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rtp_parse_static_rtp(const struct d_context *const context,
                                 const unsigned char *packet,
@@ -334,13 +332,13 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 	else if(rohc_decomp_packet_is_uo1(rohc_packet, rohc_length))
 	{
 		/* choose between the UO-1-RTP, UO-1-ID, and UO-1-TS variants */
-		type = rtp_choose_uo1_variant(decomp, context, rohc_packet, rohc_length);
+		type = rtp_choose_uo1_variant(context, rohc_packet, rohc_length);
 	}
 	else if(rohc_decomp_packet_is_uor2(rohc_packet, rohc_length))
 	{
 		/* choose between the UOR-2-RTP, UOR-2-ID, and UOR-2-TS variants */
-		type = rtp_choose_uor2_variant(decomp, context, rohc_packet,
-		                               rohc_length, large_cid_len);
+		type = rtp_choose_uor2_variant(context, rohc_packet, rohc_length,
+		                               large_cid_len);
 	}
 	else if(rohc_decomp_packet_is_irdyn(rohc_packet, rohc_length))
 	{
@@ -374,14 +372,12 @@ error:
  * This function is useful to choose which packet type to try to parse in the
  * UO-1* families.
  *
- * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param packet         The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @return               The packet type
  */
-static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+static rohc_packet_t rtp_choose_uo1_variant(const struct d_context *const context,
                                             const uint8_t *const packet,
                                             const size_t rohc_length)
 {
@@ -476,15 +472,13 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp *const deco
  * This function is useful to choose which packet type to try to decode (may
  * change later, causing a packet reparse) in the UOR-2* family.
  *
- * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param packet         The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp *const decomp,
-                                             const struct d_context *const context,
+static rohc_packet_t rtp_choose_uor2_variant(const struct d_context *const context,
                                              const uint8_t *const packet,
                                              const size_t rohc_length,
                                              const size_t large_cid_len)
@@ -907,8 +901,9 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	struct d_generic_context *g_context;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
-	int S, rts, I, ip, rtp, ip2;
+	uint8_t S, rts, I, ip, rtp, ip2;
 	uint16_t I_bits;
+	size_t inner_outer_flags_len;
 	int size;
 
 	/* remaining ROHC data */
@@ -970,15 +965,16 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	{
 		ip2 = 0;
 	}
-	rohc_decomp_debug(context, "S = %d, R-TS = %d, Tsc = %d, I = %d, ip = %d, "
-	                  "rtp = %d, ip2 = %d\n", S, rts, bits->is_ts_scaled, I,
+	rohc_decomp_debug(context, "S = %u, R-TS = %u, Tsc = %u, I = %u, ip = %u, "
+	                  "rtp = %u, ip2 = %u\n", S, rts, bits->is_ts_scaled, I,
 	                  ip, rtp, ip2);
+	inner_outer_flags_len = ip + ip2 + S;
 	rohc_remain_data++;
 	rohc_remain_len--;
 
 	/* check the minimal length to decode the inner & outer IP header flags
 	 * and the SN */
-	if(rohc_remain_len < (ip + ip2 + S))
+	if(rohc_remain_len < inner_outer_flags_len)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
@@ -1274,8 +1270,9 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	/* decode RTP header flags & fields if present */
 	if(rtp)
 	{
-		int rpt, csrc, tss, tis;
+		uint8_t rpt, csrc, tss, tis;
 		uint8_t rtp_m_ext; /* the RTP Marker (M) flag in extension header */
+		size_t rtp_hdr_fields_len;
 
 		/* check the minimal length to decode RTP header flags */
 		if(rohc_remain_len < 1)
@@ -1323,11 +1320,12 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		csrc = GET_REAL(GET_BIT_2(rohc_remain_data));
 		tss = GET_REAL(GET_BIT_1(rohc_remain_data));
 		tis = GET_REAL(GET_BIT_0(rohc_remain_data));
+		rtp_hdr_fields_len = rpt + csrc + tss + tis;
 		rohc_remain_data++;
 		rohc_remain_len--;
 
 		/* check the minimal length to decode RTP header fields */
-		if(rohc_remain_len < (rpt + csrc + tss + tis))
+		if(rohc_remain_len < rtp_hdr_fields_len)
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 			            "ROHC packet too small (len = %zd)\n", rohc_remain_len);

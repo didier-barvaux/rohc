@@ -347,7 +347,6 @@ static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
                               struct d_context *context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
-                              const size_t add_cid_len,
                               const size_t large_cid_len,
                               unsigned char *dest);
 static int d_tcp_decode_CO(struct rohc_decomp *decomp,
@@ -592,7 +591,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp *const deco
                                             const struct d_context *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
-                                            const size_t large_cid_len)
+                                            const size_t large_cid_len __attribute__((unused)))
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
@@ -737,7 +736,7 @@ error:
  */
 static int d_tcp_decode(struct rohc_decomp *const decomp,
                         struct d_context *const context,
-                        const struct rohc_ts arrival_time,
+                        const struct rohc_ts arrival_time __attribute__((unused)),
                         const unsigned char *const rohc_packet,
                         const size_t rohc_length,
                         const size_t add_cid_len,
@@ -757,7 +756,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	tcp_context = g_context->specific;
 	assert(rohc_packet != NULL);
 	assert(add_cid_len == 0 || add_cid_len == 1);
-	assert(large_cid_len >= 0 && large_cid_len <= 2);
+	assert(large_cid_len <= 2);
 	assert(dest != NULL);
 
 	rohc_decomp_debug(context, "decomp = %p, context = %p, rohc_packet = %p, "
@@ -785,7 +784,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	{
 		/* decode IR-DYN packet */
 		ret = d_tcp_decode_irdyn(decomp, context, rohc_packet, rohc_length,
-		                         add_cid_len, large_cid_len, dest);
+		                         large_cid_len, dest);
 	}
 	else
 	{
@@ -885,7 +884,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		}
 		rohc_decomp_debug(context, "IPv%d static part is %d-byte length\n",
 								base_header.ipvx->version, read);
-		assert(remain_len >= read);
+		assert(remain_len >= ((size_t) read));
 		remain_data += read;
 		remain_len -= read;
 
@@ -915,7 +914,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 				}
 				rohc_decomp_debug(context, "IPv6 static option part is %d-byte "
 										"length\n", read);
-				assert(remain_len >= read);
+				assert(remain_len >= ((size_t) read));
 				remain_data += read;
 				remain_len -= read;
 
@@ -948,7 +947,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		goto error;
 	}
 	rohc_decomp_debug(context, "TCP static part is %d-byte length\n", read);
-	assert(remain_len >= read);
+	assert(remain_len >= ((size_t) read));
 	remain_data += read;
 	remain_len -= read;
 
@@ -971,7 +970,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		}
 		rohc_decomp_debug(context, "IPv%d dynamic part is %d-byte length\n",
 								base_header.ipvx->version, read);
-		assert(remain_len >= read);
+		assert(remain_len >= ((size_t) read));
 		remain_data += read;
 		remain_len -= read;
 
@@ -999,7 +998,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 				}
 				rohc_decomp_debug(context, "IPv6 dynamic option part is %d-byte "
 										"length\n", read);
-				assert(remain_len >= read);
+				assert(remain_len >= ((size_t) read));
 				remain_data += read;
 				remain_len -= read;
 
@@ -1029,7 +1028,7 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		goto error;
 	}
 	rohc_decomp_debug(context, "TCP dynamic part is %d-byte length\n", read);
-	assert(remain_len >= read);
+	assert(remain_len >= ((size_t) read));
 	remain_data += read;
 	remain_len -= read;
 
@@ -1146,7 +1145,6 @@ error:
  * @param context         The decompression context
  * @param rohc_packet     The ROHC packet to decode
  * @param rohc_length     The length of the ROHC packet to decode
- * @param add_cid_len     The length of the optional Add-CID field
  * @param large_cid_len   The length of the optional large CID field
  * @param dest            The decoded IP packet
  * @return                The length of the uncompressed IP packet
@@ -1157,7 +1155,6 @@ static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
                               struct d_context *context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
-                              const size_t add_cid_len,
                               const size_t large_cid_len,
                               unsigned char *dest)
 {
@@ -1394,7 +1391,7 @@ static int tcp_decode_static_ipv6_option(struct d_context *const context,
                                          base_header_ip_t base_header)
 {
 	const ip_opt_static_t *ip_opt_static;
-	int size;
+	size_t size;
 	int ret;
 
 	assert(context != NULL);
@@ -1725,7 +1722,7 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
                                           base_header_ip_t base_header)
 {
 	size_t remain_len = rohc_length;
-	int size = 0;
+	size_t size = 0;
 	int ret;
 
 	assert(context != NULL);
@@ -1743,7 +1740,7 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 			{
 				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 				             context->profile->id, "malformed IPv6 option: "
-				             "malformed option %u: %zu bytes available while %d "
+				             "malformed option %u: %zu bytes available while %zu "
 				             "bytes required\n", protocol, remain_len, size);
 				goto error;
 			}
@@ -1802,7 +1799,7 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 			{
 				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 				             context->profile->id, "malformed IPv6 option: "
-				             "malformed option AH: %zu bytes available while %d "
+				             "malformed option AH: %zu bytes available while %zu "
 				             "bytes required\n", remain_len, size);
 				goto error;
 			}
@@ -2731,7 +2728,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					remain_len--;
 
 					/* enough data for the remaining option data? */
-					if(remain_len < (opt_len - 2))
+					if(remain_len < ((size_t) (opt_len - 2)))
 					{
 						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 						             context->profile->id, "malformed TCP dynamic "
@@ -3795,13 +3792,11 @@ error:
  *
  * See RFC4996 page 67
  *
- * @param tcp_context  The specific TCP context
  * @param ptr          Pointer to the compressed TCP option
  * @param pOptions     Pointer to the uncompressed TCP option
  * @return             Pointer to the next compressed value
  */
-static const uint8_t * d_tcp_opt_generic(struct d_tcp_context *tcp_context,
-                                         const uint8_t *ptr,
+static const uint8_t * d_tcp_opt_generic(const uint8_t *ptr,
                                          uint8_t **pOptions)
 {
 	uint8_t *options;
@@ -3835,14 +3830,14 @@ static const uint8_t * d_tcp_opt_generic(struct d_tcp_context *tcp_context,
  * @param uncomp_len   The length (in bytes) of the uncompressed TCP option
  * @return             The number of ROHC bytes parsed
  */
-static int d_tcp_size_opt_generic(struct d_tcp_context *tcp_context,
-                                  const uint8_t *const rohc_data,
-                                  const size_t rohc_length,
-                                  uint16_t *const uncomp_len)
+static int d_tcp_size_opt_generic(struct d_tcp_context *tcp_context __attribute__((unused)),
+                                  const uint8_t *const rohc_data __attribute__((unused)),
+                                  const size_t rohc_length __attribute__((unused)),
+                                  uint16_t *const uncomp_len __attribute__((unused)))
 {
 	size_t size = 0;
 
-	/* to be completed */
+	/* TODO: to be completed */
 
 	return size;
 }
@@ -4078,7 +4073,7 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 					// TODO
 					opt_type = 0xff;
 					compressed_options =
-						d_tcp_opt_generic(tcp_context, compressed_options, &options);
+						d_tcp_opt_generic(compressed_options, &options);
 					tcp_context->tcp_opts_list_item_uncomp_length[i] = (options - start_opt);
 					break;
 				}
@@ -4541,7 +4536,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	tcp_context = g_context->specific;
 	assert(rohc_packet != NULL);
 	assert(add_cid_len == 0 || add_cid_len == 1);
-	assert(large_cid_len >= 0 && large_cid_len <= 2);
+	assert(large_cid_len <= 2);
 	assert(dest != NULL);
 
 	ip_context.uint8 = tcp_context->ip_context;

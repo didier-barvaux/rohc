@@ -25,7 +25,9 @@ test_rtp_ports_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 test_rtp_ports_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 test_rtp_ports_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src \
@@ -47,7 +49,9 @@ test_rtp_callback_LDADD = \
 	-lrohc_common
 	$(additional_platform_libs)
 test_rtp_callback_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 test_rtp_callback_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src \

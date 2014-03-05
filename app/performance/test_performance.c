@@ -180,7 +180,6 @@ int main(int argc, char *argv[])
 	unsigned long long time_elapsed = 0;
 	int ret;
 	unsigned long average;
-	int i;
 	int status = 1;
 
 	/* set to quiet mode by default */
@@ -341,6 +340,8 @@ int main(int argc, char *argv[])
 	        packet_count);
 	if(packet_count != 0)
 	{
+		unsigned long i;
+
 		average = time_elapsed / packet_count;
 		for(i = 0; i < overflows; i++)
 		{
@@ -986,9 +987,9 @@ error:
  *                 the trace is related to
  * @param format   The format string of the trace
  */
-static void print_rohc_traces(const rohc_trace_level_t level,
-                              const rohc_trace_entity_t entity,
-                              const int profile,
+static void print_rohc_traces(const rohc_trace_level_t level __attribute__((unused)),
+                              const rohc_trace_entity_t entity __attribute__((unused)),
+                              const int profile __attribute__((unused)),
                               const char *const format,
                               ...)
 {

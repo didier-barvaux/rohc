@@ -126,7 +126,7 @@ rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
                                     const struct d_context *const context,
                                     const uint8_t *const rohc_packet,
                                     const size_t rohc_length,
-                                    const size_t large_cid_len)
+                                    const size_t large_cid_len __attribute__((unused)))
 {
 	rohc_packet_t type;
 
@@ -274,7 +274,7 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 	struct d_generic_context *g_context;
 	const unsigned char *ip_flags_pos = NULL;
 	const unsigned char *ip2_flags_pos = NULL;
-	int S, I, ip, ip2;
+	uint8_t S, I, ip, ip2;
 	uint16_t I_bits;
 	int size;
 
@@ -287,6 +287,7 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	assert(context->specific != NULL);
 	assert(rohc_data != NULL);
+	assert(packet_type == ROHC_PACKET_UOR_2);
 	assert(bits != NULL);
 
 	g_context = context->specific;
@@ -311,14 +312,14 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 	I = GET_REAL(GET_BIT_2(rohc_remain_data));
 	ip = GET_REAL(GET_BIT_1(rohc_remain_data));
 	ip2 = GET_REAL(GET_BIT_0(rohc_remain_data));
-	rohc_decomp_debug(context, "S = %d, mode = 0x%x, I = %d, ip = %d, "
-	                  "ip2 = %d\n", S, bits->mode, I, ip, ip2);
+	rohc_decomp_debug(context, "S = %u, mode = 0x%x, I = %u, ip = %u, "
+	                  "ip2 = %u\n", S, bits->mode, I, ip, ip2);
 	rohc_remain_data++;
 	rohc_remain_len--;
 
 	/* check the minimal length to decode the inner & outer IP header flags
 	 * and the SN */
-	if(rohc_remain_len < (ip + ip2 + S))
+	if(rohc_remain_len < ((size_t) (ip + ip2 + S)))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
@@ -529,8 +530,8 @@ int parse_inner_header_flags(const struct rohc_decomp *const decomp,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 {
-	int is_tos, is_ttl, is_pr, is_ipx;
-	int df, nbo, rnd;
+	uint8_t is_tos, is_ttl, is_pr, is_ipx;
+	uint8_t df, nbo, rnd;
 	int read = 0;
 
 	assert(context != NULL);
@@ -547,8 +548,8 @@ int parse_inner_header_flags(const struct rohc_decomp *const decomp,
 	is_ipx = GET_REAL(GET_BIT_3(flags));
 	nbo = GET_REAL(GET_BIT_2(flags));
 	rnd = GET_REAL(GET_BIT_1(flags));
-	rohc_decomp_debug(context, "header flags: TOS = %d, TTL = %d, PR = %d, "
-	                  "IPX = %d, NBO = %d, RND = %d\n", is_tos, is_ttl, is_pr,
+	rohc_decomp_debug(context, "header flags: TOS = %u, TTL = %u, PR = %u, "
+	                  "IPX = %u, NBO = %u, RND = %u\n", is_tos, is_ttl, is_pr,
 	                  is_ipx, nbo, rnd);
 
 	/* force the NBO flag to 1 if RND is detected */
@@ -558,7 +559,7 @@ int parse_inner_header_flags(const struct rohc_decomp *const decomp,
 	}
 
 	/* check the minimal length to decode the header fields */
-	if(length < is_tos + is_ttl + is_pr + is_ipx)
+	if(length < ((size_t) (is_tos + is_ttl + is_pr + is_ipx)))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %zu)\n", length);
@@ -701,7 +702,8 @@ int parse_outer_header_flags(const struct rohc_decomp *const decomp,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
 {
-	int is_I2;
+	size_t inner_header_flags;
+	uint8_t is_I2;
 	int read;
 
 	/* decode some outer IP header flags and fields that are identical
@@ -712,13 +714,14 @@ int parse_outer_header_flags(const struct rohc_decomp *const decomp,
 	{
 		goto error;
 	}
+	inner_header_flags = read;
 
 	/* get other outer IP header flags */
 	is_I2 = GET_REAL(GET_BIT_0(flags));
-	rohc_decomp_debug(context, "header flags: I2 = %d\n", is_I2);
+	rohc_decomp_debug(context, "header flags: I2 = %u\n", is_I2);
 
 	/* check the minimal length to decode the outer header fields */
-	if((length - read) < is_I2 * 2)
+	if((length - inner_header_flags) < (is_I2 * 2))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "ROHC packet too small (len = %zu)\n", length - read);

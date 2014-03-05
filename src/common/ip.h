@@ -93,7 +93,7 @@ struct ip_packet
 	const uint8_t *data;
 
 	/// The length (in bytes) of the whole IP data (header + payload)
-	unsigned int size;
+	size_t size;
 
 	struct net_hdr nh;  /**< The next header (extension headers included) */
 	struct net_hdr nl;  /**< The next layer (extension headers excluded) */

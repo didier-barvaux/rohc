@@ -121,6 +121,8 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
               const uint32_t ts,
               const uint16_t sn)
 {
+	uint16_t sn_delta;
+
 	assert(ts_sc != NULL);
 
 	ts_debug(ts_sc, "Timestamp = %u\n", ts);
@@ -144,6 +146,18 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		ts_sc->are_old_val_init = true;
 		return;
 	}
+
+	/* compute the absolute delta between new and old SN */
+	/* abs() on unsigned 16-bit values seems to be a problem sometimes */
+	if(ts_sc->sn >= ts_sc->old_sn)
+	{
+		sn_delta = ts_sc->sn - ts_sc->old_sn;
+	}
+	else
+	{
+		sn_delta = ts_sc->old_sn - ts_sc->sn;
+	}
+	ts_debug(ts_sc, "SN delta = %u\n", sn_delta);
 
 	/* compute the absolute delta between new and old TS */
 	/* abs() on unsigned 32-bit values seems to be a problem sometimes */
@@ -238,7 +252,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 				ts_debug(ts_sc, "state -> INIT_STRIDE\n");
 				ts_sc->ts_stride = ts_sc->ts_delta;
 			}
-			else if((ts_sc->ts_delta / ts_sc->ts_stride) != (ts_sc->sn - ts_sc->old_sn))
+			else if((ts_sc->ts_delta / ts_sc->ts_stride) != sn_delta)
 			{
 				/* TS delta changed but is a multiple of previous TS_STRIDE:
 				 * do not change TS_STRIDE, but transmit all TS bits several
@@ -274,8 +288,43 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		         ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
 
 		/* could TS_SCALED be deduced from SN? */
-		if(ts_sc->state == SEND_SCALED &&
-		   (ts_sc->ts_scaled - old_scaled) == (ts_sc->sn - ts_sc->old_sn))
+		if(ts_sc->state != SEND_SCALED)
+		{
+			ts_sc->is_deducible = 0;
+		}
+		else
+		{
+			uint32_t ts_scaled_delta;
+
+			/* be cautious with positive and negative deltas */
+			if(ts_sc->ts_scaled >= old_scaled)
+			{
+				ts_scaled_delta = ts_sc->ts_scaled - old_scaled;
+
+				if(ts_sc->sn >= ts_sc->old_sn)
+				{
+					ts_sc->is_deducible = (ts_scaled_delta == sn_delta);
+				}
+				else
+				{
+					ts_sc->is_deducible = 0;
+				}
+			}
+			else
+			{
+				ts_scaled_delta = old_scaled - ts_sc->ts_scaled;
+
+				if(ts_sc->old_sn >= ts_sc->sn)
+				{
+					ts_sc->is_deducible = (ts_scaled_delta == sn_delta);
+				}
+				else
+				{
+					ts_sc->is_deducible = 0;
+				}
+			}
+		}
+		if(ts_sc->is_deducible)
 		{
 			ts_debug(ts_sc, "TS can be deducted from SN (old TS_SCALED = %u, "
 			         "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",

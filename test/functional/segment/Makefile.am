@@ -17,7 +17,8 @@ check_PROGRAMS = \
 test_segment_SOURCES = test_segment.c
 
 test_segment_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter
 
 test_segment_CPPFLAGS = \
 	-I$(top_srcdir)/test \

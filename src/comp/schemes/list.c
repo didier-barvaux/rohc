@@ -98,7 +98,7 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 
 			/* find the best item to encode the extension in translation table */
 			index_table = comp->get_index_table(ext_type);
-			if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+			if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 			{
 				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
 				             "failed to handle unknown IPv6 extension header of "
@@ -579,7 +579,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		const struct rohc_list_item *const item =
 			comp->lists[comp->cur_id].items[k];
 		const int index_table = comp->get_index_table(item->type);
-		if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
 			             "failed to handle unknown IPv6 extension header of "
@@ -623,7 +623,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
 			assert(index_table >= 0);
-			assert(index_table < ROHC_LIST_MAX_ITEM);
+			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 			dest[counter] = 0;
 			/* set the X bit if item is not already known */
@@ -650,7 +650,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 				comp->lists[comp->cur_id].items[k];
 			int index_table = comp->get_index_table(item->type);
 			assert(index_table >= 0);
-			assert(index_table < ROHC_LIST_MAX_ITEM);
+			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 			dest[counter] = 0;
 
@@ -674,7 +674,7 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 					comp->lists[comp->cur_id].items[k + 1];
 				int index_table2 = comp->get_index_table(item2->type);
 				assert(index_table2 >= 0);
-				assert(index_table2 < ROHC_LIST_MAX_ITEM);
+				assert(((size_t) index_table2) < ROHC_LIST_MAX_ITEM);
 
 				/* set the X bit if item is not already known */
 				if(!item2->known)
@@ -921,7 +921,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		const struct rohc_list_item *const item =
 			comp->lists[comp->cur_id].items[k];
 		const int index_table = comp->get_index_table(item->type);
-		if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
 			             "failed to handle unknown IPv6 extension header of "
@@ -950,7 +950,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
 			assert(index_table >= 0);
-			assert(index_table < ROHC_LIST_MAX_ITEM);
+			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -993,7 +993,7 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
 			assert(index_table >= 0);
-			assert(index_table < ROHC_LIST_MAX_ITEM);
+			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -1597,7 +1597,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		const struct rohc_list_item *const item =
 			comp->lists[comp->cur_id].items[k];
 		const int index_table = comp->get_index_table(item->type);
-		if(index_table < 0 || index_table >= ROHC_LIST_MAX_ITEM)
+		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
 			             "failed to handle unknown IPv6 extension header of "
@@ -1627,7 +1627,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
 			assert(index_table >= 0);
-			assert(index_table < ROHC_LIST_MAX_ITEM);
+			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */
@@ -1670,7 +1670,7 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 				comp->lists[comp->cur_id].items[k];
 			const int index_table = comp->get_index_table(item->type);
 			assert(index_table >= 0);
-			assert(index_table < ROHC_LIST_MAX_ITEM);
+			assert(((size_t) index_table) < ROHC_LIST_MAX_ITEM);
 
 			/* skip element if it present in the reference list and compressor
 			 * is confident that item is known by decompressor */

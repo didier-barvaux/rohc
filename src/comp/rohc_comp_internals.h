@@ -47,7 +47,7 @@
 #define C_NUM_PROFILES 7U
 
 /** The maximal number of outgoing feedbacks that can be queued */
-#define FEEDBACK_RING_SIZE 1000
+#define FEEDBACK_RING_SIZE 1000U
 
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */
@@ -132,7 +132,7 @@ struct rohc_comp
 	/** The array of compression contexts that use the compressor */
 	struct c_context *contexts;
 	/** The number of compression contexts in use in the array */
-	int num_contexts_used;
+	size_t num_contexts_used;
 
 	/** Which profiles are enabled and with one are not? */
 	bool enabled_profiles[C_NUM_PROFILES];
@@ -176,7 +176,7 @@ struct rohc_comp
 	/* variables related to RTP detection */
 
 /** The maximal number of RTP ports (shall be > 2) */
-#define MAX_RTP_PORTS 15
+#define MAX_RTP_PORTS 15U
 	/** The RTP ports table */
 	unsigned int rtp_ports[MAX_RTP_PORTS];
 

@@ -22,7 +22,9 @@ check_PROGRAMS = \
 
 
 test_empty_payload_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_empty_payload_CPPFLAGS = \
 	-I$(top_srcdir)/test \

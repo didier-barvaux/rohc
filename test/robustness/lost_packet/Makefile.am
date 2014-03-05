@@ -15,7 +15,9 @@ check_PROGRAMS = \
 	test_lost_packet
 
 test_lost_packet_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_lost_packet_CPPFLAGS = \
 	-I$(top_srcdir)/test \

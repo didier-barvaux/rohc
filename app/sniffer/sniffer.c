@@ -154,10 +154,10 @@ static void sniffer_interrupt(int signal);
 static void sniffer_print_stats(int signal);
 
 static bool sniff(const rohc_cid_type_t cid_type,
-                  const unsigned int max_contexts,
+                  const size_t max_contexts,
                   const int enabled_profiles[],
                   const char *const device_name)
-	__attribute__((nonnull(4)));
+	__attribute__((warn_unused_result, nonnull(4)));
 static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_decomp *decomp,
                                struct pcap_pkthdr header,
@@ -677,7 +677,7 @@ static unsigned long long percent(const unsigned long value,
  *
  * @param signal  The received signal
  */
-static void sniffer_print_stats(int signal)
+static void sniffer_print_stats(int signal __attribute__((unused)))
 {
 	unsigned long total;
 	int i;
@@ -842,7 +842,7 @@ static void sniffer_print_stats(int signal)
  * @return                  Whether the sniffer setup was OK
  */
 static bool sniff(const rohc_cid_type_t cid_type,
-                  const unsigned int max_contexts,
+                  const size_t max_contexts,
                   const int enabled_profiles[],
                   const char *const device_name)
 {
@@ -859,7 +859,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	pcap_dumper_t *dumpers[max_contexts];
 
 	int ret;
-	int i;
+	size_t i;
 
 	/* statistics */
 	unsigned int nb_ok = 0;
@@ -1437,7 +1437,7 @@ static int compare_packets(const unsigned char *const pkt1,
 {
 	int valid = 1;
 	size_t min_size;
-	int i, j, k;
+	size_t i, j, k;
 	char str1[4][7], str2[4][7];
 	char sep1, sep2;
 	size_t tcp_padding_bytes;
@@ -1646,8 +1646,8 @@ too_short:
  * @param format   The format string of the trace
  */
 static void print_rohc_traces(const rohc_trace_level_t level,
-                              const rohc_trace_entity_t entity,
-                              const int profile,
+                              const rohc_trace_entity_t entity __attribute__((unused)),
+                              const int profile __attribute__((unused)),
                               const char *format, ...)
 {
 	const char *level_descrs[] =

@@ -15,7 +15,8 @@ check_PROGRAMS = \
 
 
 test_decompress_feedback_only_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter
 
 test_decompress_feedback_only_CPPFLAGS = \
 	-I$(top_srcdir)/test \

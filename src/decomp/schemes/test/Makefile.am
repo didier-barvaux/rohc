@@ -20,6 +20,7 @@ test_wlsb_LDFLAGS = \
 	-Wl,--wrap=rohc_f_32bits
 test_wlsb_CFLAGS = \
 	$(configure_cflags) \
+	-Wno-unused-parameter \
 	$(CMOCKA_CFLAGS)
 test_wlsb_CPPFLAGS = \
 	-I$(top_srcdir)/src \

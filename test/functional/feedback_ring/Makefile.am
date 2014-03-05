@@ -13,7 +13,8 @@ check_PROGRAMS = \
 test_feedback_ring_SOURCES = test_feedback_ring.c
 
 test_feedback_ring_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter
 
 test_feedback_ring_CPPFLAGS = \
 	-I$(top_srcdir)/test \

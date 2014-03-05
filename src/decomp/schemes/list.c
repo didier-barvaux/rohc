@@ -45,7 +45,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
                                    const size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
-                                   const int m)
+                                   const uint8_t m)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int rohc_list_decode_type_1(struct list_decomp *const decomp,
@@ -236,13 +236,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		             "failed to decode compressed list type %d\n", et);
 		goto error;
 	}
-	if(ret > packet_len)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "too many bytes read: %d bytes read in a %zd-byte "
-		             "packet\n", ret, packet_len);
-		goto error;
-	}
+	assert(((size_t) ret) <= packet_len);
 	packet += ret;
 	read_length += ret;
 	packet_len -= ret;
@@ -387,7 +381,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
                                    size_t packet_len,
                                    const unsigned int gen_id,
                                    const int ps,
-                                   const int m)
+                                   const uint8_t m)
 {
 	size_t packet_read_len = 0;
 	size_t xi_len; /* the length (in bytes) of the XI list */

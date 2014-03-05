@@ -17,7 +17,9 @@ check_PROGRAMS = \
 
 
 test_malformed_rohc_packets_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_malformed_rohc_packets_CPPFLAGS = \
 	-I$(top_srcdir)/test \

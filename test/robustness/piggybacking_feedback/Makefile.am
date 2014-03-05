@@ -15,7 +15,9 @@ check_PROGRAMS = \
 
 
 test_piggybacking_feedback_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_piggybacking_feedback_CPPFLAGS = \
 	-I$(top_srcdir)/test \

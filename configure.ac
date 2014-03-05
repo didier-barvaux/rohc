@@ -89,7 +89,7 @@ LT_PREREQ([2.2.0])
 LT_INIT([disable-static win32-dll])
 
 # CFLAGS/LDFLAGS default values, more will be added on purpose
-configure_cflags="-g -Wall -Wstrict-prototypes"
+configure_cflags="-g -Wall -Wstrict-prototypes -Wextra"
 configure_ldflags=""
 
 # Checks for programs.

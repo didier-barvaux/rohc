@@ -235,21 +235,19 @@ static int code_EXT3_packet(const struct c_context *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int rtp_header_flags_and_fields(const struct c_context *const context,
-                                       const unsigned short changed_f,
                                        const struct ip_packet *const ip,
                                        unsigned char *const dest,
                                        int counter)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int header_flags(const struct c_context *const context,
                         struct ip_header_info *const header_info,
                         const unsigned short changed_f,
                         const struct ip_packet *const ip,
                         const int ip2_or_I2,
-                        const size_t nr_ip_id_bits,
                         unsigned char *const dest,
                         int counter)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4, 7)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
 static int header_fields(const struct c_context *const context,
                          struct ip_header_info *const header_info,
@@ -286,9 +284,8 @@ static int changed_static_both_hdr(const struct c_context *const context,
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 static int changed_static_one_hdr(const struct c_context *const context,
                                   const unsigned short changed_fields,
-                                  struct ip_header_info *const header_info,
-                                  const struct ip_packet *const ip)
-	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
+                                  struct ip_header_info *const header_info)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
 static int changed_dynamic_both_hdr(const struct c_context *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
@@ -1081,8 +1078,8 @@ void c_generic_feedback(struct c_context *const context,
  * @param port     The UDP port number to check
  * @return         always return true, it is used by non-RTP profiles
  */
-bool c_generic_use_udp_port(const struct c_context *const context,
-                            const unsigned int port)
+bool c_generic_use_udp_port(const struct c_context *const context __attribute__((unused)),
+                            const unsigned int port __attribute__((unused)))
 {
 	return false;
 }
@@ -1187,8 +1184,8 @@ static void periodic_down_transition(struct c_context *const context)
 		(struct c_generic_context *) context->specific;
 
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-	           "CID %zu: timeouts for periodic refreshes: FO = %d / %zd, "
-	           "IR = %d / %zd\n", context->cid, g_context->go_back_fo_count,
+	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
+	           "IR = %zu / %zu\n", context->cid, g_context->go_back_fo_count,
 	           context->compressor->periodic_refreshes_fo_timeout,
 	           g_context->go_back_ir_count,
 	           context->compressor->periodic_refreshes_ir_timeout);
@@ -3254,7 +3251,7 @@ error:
 static int code_UOR2_bytes(const struct c_context *const context,
                            const rohc_ext_t extension,
                            unsigned char *const f_byte,
-                           unsigned char *const s_byte,
+                           unsigned char *const s_byte __attribute__((unused)),
                            unsigned char *const t_byte)
 {
 	struct c_generic_context *g_context;
@@ -4810,8 +4807,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
 		if(changed_dynamic_one_hdr(context, changed_f & 0x01FF,
 		                           &g_context->outer_ip_flags, &uncomp_pkt->outer_ip) ||
-		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags,
-		                          &uncomp_pkt->outer_ip))
+		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags))
 		{
 			have_inner = 1;
 			f_byte |= 0x02;
@@ -4916,8 +4912,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 		if(I2 ||
 		   changed_dynamic_one_hdr(context, changed_f, &g_context->outer_ip_flags,
 		                           &uncomp_pkt->outer_ip) ||
-		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags,
-		                          &uncomp_pkt->outer_ip))
+		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags))
 		{
 			have_outer = 1;
 			if(!is_rtp)
@@ -4932,8 +4927,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 		if((is_rtp && nr_of_ip_hdr > 1) ||
 		   changed_dynamic_one_hdr(context, changed_f2, &g_context->inner_ip_flags,
 		                           &uncomp_pkt->inner_ip) ||
-		   changed_static_one_hdr(context, changed_f2, &g_context->inner_ip_flags,
-		                          &uncomp_pkt->inner_ip))
+		   changed_static_one_hdr(context, changed_f2, &g_context->inner_ip_flags))
 		{
 			have_inner = 1;
 			f_byte = f_byte | 0x02;
@@ -4951,8 +4945,8 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 2 */
 		if(have_inner)
 		{
-			counter = header_flags(context, &g_context->outer_ip_flags, changed_f,
-			                       &uncomp_pkt->outer_ip, have_outer, nr_ip_id_bits,
+			counter = header_flags(context, &g_context->outer_ip_flags,
+			                       changed_f, &uncomp_pkt->outer_ip, have_outer,
 			                       dest, counter);
 		}
 
@@ -5026,8 +5020,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 8 */
 		if(is_rtp && rtp)
 		{
-			counter = rtp_header_flags_and_fields(context, changed_f,
-			                                      &uncomp_pkt->outer_ip,
+			counter = rtp_header_flags_and_fields(context, &uncomp_pkt->outer_ip,
 			                                      dest, counter);
 			if(counter < 0)
 			{
@@ -5040,17 +5033,17 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 2 */
 		if(have_inner)
 		{
-			counter = header_flags(context, &g_context->inner_ip_flags, changed_f2,
-			                       &uncomp_pkt->inner_ip, have_outer, nr_ip_id_bits2,
+			counter = header_flags(context, &g_context->inner_ip_flags,
+			                       changed_f2, &uncomp_pkt->inner_ip, have_outer,
 			                       dest, counter);
 		}
 
 		/* part 3 */
 		if(have_outer)
 		{
-			counter = header_flags(context, &g_context->outer_ip_flags, changed_f,
-			                       &uncomp_pkt->outer_ip, I2, nr_ip_id_bits, dest,
-			                       counter);
+			counter = header_flags(context, &g_context->outer_ip_flags,
+			                       changed_f, &uncomp_pkt->outer_ip, I2,
+			                       dest, counter);
 		}
 
 		/* part 4 */
@@ -5132,8 +5125,7 @@ static int code_EXT3_packet(const struct c_context *const context,
 		/* part 8 */
 		if(is_rtp && rtp)
 		{
-			counter = rtp_header_flags_and_fields(context, changed_f2,
-			                                      &uncomp_pkt->inner_ip,
+			counter = rtp_header_flags_and_fields(context, &uncomp_pkt->inner_ip,
 			                                      dest, counter);
 			if(counter < 0)
 			{
@@ -5186,8 +5178,6 @@ error:
 \endverbatim
  *
  * @param context    The compression context
- * @param changed_f  The fields that changed, created by the function
- *                   changed_fields
  * @param ip         One inner or outer IP header
  * @param dest       The rohc-packet-under-build buffer
  * @param counter    The current position in the rohc-packet-under-build buffer
@@ -5197,7 +5187,6 @@ error:
  * @see changed_fields
  */
 static int rtp_header_flags_and_fields(const struct c_context *const context,
-                                       const unsigned short changed_f,
                                        const struct ip_packet *const ip,
                                        unsigned char *const dest,
                                        int counter)
@@ -5340,7 +5329,6 @@ error:
  * @param ip             One inner or outer IP header
  * @param ip2_or_I2      Whether the ip2 (inner, RTP only) or I2 (outer) flag
  *                       is set or not
- * @param nr_ip_id_bits  The number of bits needed to transmit the IP-ID field
  * @param dest           The rohc-packet-under-build buffer
  * @param counter        The current position in the rohc-packet-under-build
  *                       buffer
@@ -5353,7 +5341,6 @@ static int header_flags(const struct c_context *const context,
                         const unsigned short changed_f,
                         const struct ip_packet *const ip,
                         const int ip2_or_I2,
-                        const size_t nr_ip_id_bits,
                         unsigned char *const dest,
                         int counter)
 {
@@ -5648,15 +5635,13 @@ static int changed_static_both_hdr(const struct c_context *const context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	nb_fields = changed_static_one_hdr(context, g_context->tmp.changed_fields,
-	                                   &g_context->outer_ip_flags,
-	                                   &uncomp_pkt->outer_ip);
+	                                   &g_context->outer_ip_flags);
 
 	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
 		nb_fields += changed_static_one_hdr(context,
 		                                    g_context->tmp.changed_fields2,
-		                                    &g_context->inner_ip_flags,
-		                                    &uncomp_pkt->inner_ip);
+		                                    &g_context->inner_ip_flags);
 	}
 
 	return nb_fields;
@@ -5687,13 +5672,11 @@ static int changed_static_both_hdr(const struct c_context *const context,
  * @param changed_fields The fields that changed, created by the function
  *                       changed_fields
  * @param header_info    The header info stored in the profile
- * @param ip             The header of the new IP packet
  * @return               The number of fields that changed
  */
 static int changed_static_one_hdr(const struct c_context *const context,
                                   const unsigned short changed_fields,
-                                  struct ip_header_info *const header_info,
-                                  const struct ip_packet *const ip)
+                                  struct ip_header_info *const header_info)
 {
 	int nb_fields = 0; /* number of fields that changed */
 	struct c_generic_context *g_context;

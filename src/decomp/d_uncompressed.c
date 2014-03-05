@@ -87,7 +87,7 @@ static uint32_t uncompressed_get_sn(const struct d_context *const context)
  *
  * @return The newly-created generic decompression context
  */
-void * uncompressed_allocate_decode_data(const struct d_context *const context)
+void * uncompressed_allocate_decode_data(const struct d_context *const context __attribute__((unused)))
 {
 	return (void *) 1;
 }
@@ -102,7 +102,7 @@ void * uncompressed_allocate_decode_data(const struct d_context *const context)
  *
  * @param context The compression context
  */
-void uncompressed_free_decode_data(void *context)
+void uncompressed_free_decode_data(void *context __attribute__((unused)))
 {
 }
 
@@ -117,11 +117,11 @@ void uncompressed_free_decode_data(void *context)
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                               const struct d_context *const context,
+static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const decomp __attribute__((unused)),
+                                               const struct d_context *const context __attribute__((unused)),
                                                const uint8_t *const rohc_packet,
                                                const size_t rohc_length,
-                                               const size_t large_cid_len)
+                                               const size_t large_cid_len __attribute__((unused)))
 {
 	rohc_packet_t type;
 
@@ -161,7 +161,7 @@ static rohc_packet_t uncomp_detect_packet_type(const struct rohc_decomp *const d
  */
 static int uncompressed_decode(struct rohc_decomp *const decomp,
                                struct d_context *const context,
-                               const struct rohc_ts arrival_time,
+                               const struct rohc_ts arrival_time __attribute__((unused)),
                                const unsigned char *const rohc_packet,
                                const size_t rohc_length,
                                const size_t add_cid_len,
@@ -306,7 +306,7 @@ int uncompressed_decode_normal(struct rohc_decomp *decomp,
                                struct d_context *context,
                                const unsigned char *const rohc_packet,
                                const unsigned int rohc_length,
-                               const size_t add_cid_len,
+                               const size_t add_cid_len __attribute__((unused)),
                                const size_t large_cid_len,
                                unsigned char *dest)
 {
@@ -365,7 +365,7 @@ error:
  * @param context The decompression context
  * @return        The reference SN value
  */
-static uint32_t uncompressed_get_sn(const struct d_context *const context)
+static uint32_t uncompressed_get_sn(const struct d_context *const context __attribute__((unused)))
 {
 	return 0;
 }

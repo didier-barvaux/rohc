@@ -1020,7 +1020,9 @@ endif
 
 
 test_non_regression_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_non_regression_CPPFLAGS = \
 	-I$(top_srcdir)/test \
@@ -1047,7 +1049,9 @@ test_non_regression_LDADD = \
 
 
 test_non_regression_kernel_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_non_regression_kernel_CPPFLAGS = \
 	-I$(top_srcdir)/test \

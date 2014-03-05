@@ -24,7 +24,9 @@ check_PROGRAMS = \
 
 
 test_damaged_packet_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_damaged_packet_CPPFLAGS = \
 	-I$(top_srcdir)/test \

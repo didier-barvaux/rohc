@@ -18,7 +18,8 @@ noinst_PROGRAMS = \
 
 
 simple_rohc_program_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter
 simple_rohc_program_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
@@ -35,7 +36,8 @@ simple_rohc_program_LDADD = \
 
 
 print_rohc_version_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter
 print_rohc_version_CPPFLAGS = \
 	-I$(top_srcdir)/src/common
 print_rohc_version_LDFLAGS = \
@@ -49,7 +51,8 @@ print_rohc_version_LDADD = \
 
 
 example_rohc_decomp_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter
 example_rohc_decomp_CPPFLAGS = \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \

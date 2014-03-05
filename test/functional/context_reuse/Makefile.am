@@ -77,7 +77,9 @@ check_PROGRAMS = \
 test_context_reuse_SOURCES = test_context_reuse.c
 
 test_context_reuse_CFLAGS = \
-	$(configure_cflags)
+	$(configure_cflags) \
+	-Wno-unused-parameter \
+	-Wno-sign-compare
 
 test_context_reuse_CPPFLAGS = \
 	-I$(top_srcdir)/test \

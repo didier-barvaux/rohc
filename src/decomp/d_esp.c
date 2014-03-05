@@ -394,7 +394,7 @@ static bool esp_decode_values_from_bits(const struct d_context *context,
 static int esp_build_uncomp_esp(const struct d_context *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
-                                const unsigned int payload_len)
+                                const unsigned int payload_len __attribute__((unused)))
 {
 	const size_t spi_length = sizeof(uint32_t);
 	struct esphdr *const esp = (struct esphdr *) dest;

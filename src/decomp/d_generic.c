@@ -733,6 +733,8 @@ static bool parse_ir(const struct rohc_decomp *const decomp,
 
 	assert(g_context != NULL);
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_IR);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -1805,6 +1807,8 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 
 	assert(g_context != NULL);
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UO_0);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -1983,6 +1987,8 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UO_1);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -2217,6 +2223,8 @@ static bool parse_uo1rtp(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UO_1_RTP);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -2421,6 +2429,8 @@ static bool parse_uo1id(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UO_1_ID);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -2752,6 +2762,8 @@ static bool parse_uo1ts(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UO_1_TS);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -2948,6 +2960,8 @@ static bool parse_uor2(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UOR_2);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -3205,14 +3219,9 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 
 	int parsing;
 
-	/* check packet usage */
-	if(context->profile->id != ROHC_PROFILE_RTP)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "UOR-2-RTP packet cannot be used with non-RTP profiles\n");
-		assert(0);
-		goto error;
-	}
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UOR_2_RTP);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
@@ -3423,6 +3432,8 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type == ROHC_PACKET_UOR_2_RTP);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -3676,14 +3687,9 @@ static bool parse_uor2id(const struct rohc_decomp *const decomp,
 
 	int parsing;
 
-	/* check packet usage */
-	if(context->profile->id != ROHC_PROFILE_RTP)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "UOR-2-ID packet cannot be used with non-RTP profiles\n");
-		assert(0);
-		goto error;
-	}
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UOR_2_ID);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
@@ -3886,6 +3892,8 @@ static int parse_uor2id_once(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type == ROHC_PACKET_UOR_2_ID);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -4152,14 +4160,9 @@ static bool parse_uor2ts(const struct rohc_decomp *const decomp,
 
 	int parsing;
 
-	/* check packet usage */
-	if(context->profile->id != ROHC_PROFILE_RTP)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "UOR-2-TS packet cannot be used with non-RTP profiles\n");
-		assert(0);
-		goto error;
-	}
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_UOR_2_TS);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 
 	/* for the first parsing, use the context values for the outer/inner RND
 	 * flags, force them for reparse later if required */
@@ -4362,6 +4365,8 @@ static int parse_uor2ts_once(const struct rohc_decomp *const decomp,
 	assert(context != NULL);
 	g_context = context->specific;
 	assert(rohc_packet != NULL);
+	assert(packet_type == ROHC_PACKET_UOR_2_TS);
+	assert(context->profile->id == ROHC_PROFILE_RTP);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
@@ -4864,6 +4869,8 @@ static bool parse_irdyn(const struct rohc_decomp *const decomp,
 
 	assert(g_context != NULL);
 	assert(rohc_packet != NULL);
+	assert(packet_type != NULL);
+	assert((*packet_type) == ROHC_PACKET_IR_DYN);
 	assert(bits != NULL);
 	assert(rohc_hdr_len != NULL);
 
