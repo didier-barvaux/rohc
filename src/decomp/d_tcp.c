@@ -3987,8 +3987,10 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 					// Length
 					*(options++) = TCP_OLEN_WINDOW;
 					// Window scale
-					tcp_context->tcp_option_window =
-					   *(options++) = *(compressed_options++);
+					options[0] = compressed_options[0];
+					options++;
+					tcp_context->tcp_option_window = compressed_options[0];
+					compressed_options++;
 					tcp_context->tcp_opts_list_item_uncomp_length[i] = 3;
 					break;
 				case TCP_INDEX_TIMESTAMP:  // TIMESTAMP
