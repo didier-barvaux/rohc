@@ -2462,6 +2462,58 @@ error:
 }
 
 
+/**
+ * @brief Enable/disable features for ROHC compressor
+ *
+ * Enable/disable features for ROHC compressor. Features control whether
+ * mechanisms defined as optional by RFCs are enabled or not.
+ *
+ * Available features are listed by \ref rohc_comp_features_t. They may be
+ * combined by XOR'ing them together.
+ *
+ * @warning Changing the feature set while library is used is not supported
+ *
+ * @param comp      The ROHC compressor
+ * @param features  The feature set to enable/disable
+ * @return          true if the feature set was successfully enabled/disabled,
+ *                  false if a problem occurred
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_comp_features_t
+ */
+bool rohc_comp_set_features(struct rohc_comp *const comp,
+                            const rohc_comp_features_t features)
+{
+	const rohc_comp_features_t all_features =
+		ROHC_COMP_FEATURE_COMPAT_1_6_x;
+
+	/* compressor must be valid */
+	if(comp == NULL)
+	{
+		/* cannot print a trace without a valid compressor */
+		goto error;
+	}
+
+	/* reject unsupported features */
+	if((features & all_features) != features)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "feature set 0x%x is not supported (supported features "
+		             "set is 0x%x)\n", features, all_features);
+		goto error;
+	}
+
+	/* record new feature set */
+	comp->features = features;
+
+	return true;
+
+error:
+	return false;
+}
+
+
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**

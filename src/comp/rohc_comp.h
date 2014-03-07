@@ -264,6 +264,27 @@ typedef struct
 
 
 /**
+ * @brief The different features of the ROHC compressor
+ *
+ * Features for the ROHC compressor control whether mechanisms defined as
+ * optional by RFCs are enabled or not. They can be set or unset with the
+ * function \ref rohc_comp_set_features.
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_comp_set_features
+ */
+typedef enum
+{
+	/** No feature at all */
+	ROHC_COMP_FEATURE_NONE         = 0,
+	/** Be compatible with 1.6.x versions */
+	ROHC_COMP_FEATURE_COMPAT_1_6_x = (1 << 0),
+
+} rohc_comp_features_t;
+
+
+/**
  * @brief The prototype of the RTP detection callback
  *
  * User-defined function that is called by the ROHC library for every UDP
@@ -483,6 +504,11 @@ bool ROHC_EXPORT rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,
                                                 rohc_rtp_detection_callback_t callback,
                                                 void *const rtp_private)
 	__attribute__((warn_unused_result));
+
+bool ROHC_EXPORT rohc_comp_set_features(struct rohc_comp *const comp,
+                                        const rohc_comp_features_t features)
+	__attribute__((warn_unused_result));
+
 
 
 /*

@@ -1072,36 +1072,45 @@ static int rtp_encode_uncomp_fields(struct c_context *const context,
 	if(rtp_context->ts_sc.state == INIT_TS ||
 	   rtp_context->ts_sc.state == INIT_STRIDE)
 	{
-		/* state INIT_TS: TS_STRIDE cannot be computed yet (first packet or TS
-		 *                is constant), so send TS only
-		 * state INIT_STRIDE: TS and TS_STRIDE will be send
-		 */
-		rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
-		if(!nb_bits_unscaled(&rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
+		if((context->compressor->features & ROHC_COMP_FEATURE_COMPAT_1_6_x) != 0)
 		{
-			const uint32_t ts_send = rtp_context->tmp.ts_send;
-			size_t nr_bits;
-			uint32_t mask;
-
-			/* this is the first LSB bits of unscaled TS to be sent, we cannot
-			 * compute them with W-LSB and we must find its size (in bits) */
-			for(nr_bits = 1, mask = 1;
-			    nr_bits <= 32 && (ts_send & mask) != ts_send;
-			    nr_bits++, mask |= (1 << (nr_bits - 1)))
-			{
-			}
-			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            (ts_send & mask) == ts_send, error, "size of unscaled TS "
-			            "(0x%x) not found, this should never happen!", ts_send);
-
-			rohc_comp_debug(context, "first unscaled TS to be sent: ts_send = %u, "
-			                "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
-			rtp_context->tmp.nr_ts_bits = nr_bits;
+			/* keep compatibility with previous versions */
+			rtp_context->tmp.ts_send = rohc_ntoh32(rtp->timestamp);
+			rtp_context->tmp.nr_ts_bits = 32;
 		}
+		else
+		{
+			/* state INIT_TS: TS_STRIDE cannot be computed yet (first packet or TS
+			 *                is constant), so send TS only
+			 * state INIT_STRIDE: TS and TS_STRIDE will be send
+			 */
+			rtp_context->tmp.ts_send = get_ts_unscaled(&rtp_context->ts_sc);
+			if(!nb_bits_unscaled(&rtp_context->ts_sc, &(rtp_context->tmp.nr_ts_bits)))
+			{
+				const uint32_t ts_send = rtp_context->tmp.ts_send;
+				size_t nr_bits;
+				uint32_t mask;
 
-		/* save the new unscaled value */
-		assert(g_context->sn <= 0xffff);
-		add_unscaled(&rtp_context->ts_sc, g_context->sn);
+				/* this is the first LSB bits of unscaled TS to be sent, we cannot
+				 * compute them with W-LSB and we must find its size (in bits) */
+				for(nr_bits = 1, mask = 1;
+				    nr_bits <= 32 && (ts_send & mask) != ts_send;
+				    nr_bits++, mask |= (1 << (nr_bits - 1)))
+				{
+				}
+				rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+				            (ts_send & mask) == ts_send, error, "size of unscaled TS "
+				            "(0x%x) not found, this should never happen!", ts_send);
+
+				rohc_comp_debug(context, "first unscaled TS to be sent: ts_send = %u, "
+				                "mask = 0x%x, nr_bits = %zd\n", ts_send, mask, nr_bits);
+				rtp_context->tmp.nr_ts_bits = nr_bits;
+			}
+
+			/* save the new unscaled value */
+			assert(g_context->sn <= 0xffff);
+			add_unscaled(&rtp_context->ts_sc, g_context->sn);
+		}
 		rohc_comp_debug(context, "unscaled TS = %u on %zd bits\n",
 		                rtp_context->tmp.ts_send, rtp_context->tmp.nr_ts_bits);
 	}

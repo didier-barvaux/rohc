@@ -129,6 +129,9 @@ struct rohc_comp
 	/** The medium associated with the decompressor */
 	struct rohc_medium medium;
 
+	/** Enabled/disabled features for the compressor */
+	rohc_comp_features_t features;
+
 	/** The array of compression contexts that use the compressor */
 	struct c_context *contexts;
 	/** The number of compression contexts in use in the array */

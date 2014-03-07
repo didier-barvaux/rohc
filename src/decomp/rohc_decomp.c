@@ -2666,7 +2666,8 @@ bool rohc_decomp_set_features(struct rohc_decomp *const decomp,
                               const rohc_decomp_features_t features)
 {
 	const rohc_decomp_features_t all_features =
-		ROHC_DECOMP_FEATURE_CRC_REPAIR;
+		ROHC_DECOMP_FEATURE_CRC_REPAIR | \
+		ROHC_DECOMP_FEATURE_COMPAT_1_6_x;
 
 	/* decompressor must be valid */
 	if(decomp == NULL)

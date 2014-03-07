@@ -1684,6 +1684,8 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 	{
 		/* some LSB bits of the unscaled TS were transmitted */
 
+		const bool compat_1_6_x = ((context->decompressor->features &
+		                            ROHC_DECOMP_FEATURE_COMPAT_1_6_x) != 0);
 		bool ts_decode_ok;
 
 		if(bits.ts_nr == 32)
@@ -1707,7 +1709,7 @@ static bool rtp_decode_values_from_bits(const struct d_context *context,
 
 		ts_decode_ok = ts_decode_unscaled_bits(rtp_context->ts_scaled_ctxt,
 		                                       bits.ts, bits.ts_nr,
-		                                       &decoded->ts);
+		                                       &decoded->ts, compat_1_6_x);
 		if(!ts_decode_ok)
 		{
 			rohc_decomp_debug(context, "failed to decode %zd-bit unscaled TS "

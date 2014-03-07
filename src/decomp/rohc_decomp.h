@@ -239,9 +239,11 @@ typedef struct
 typedef enum
 {
 	/** No feature at all */
-	ROHC_DECOMP_FEATURE_NONE       = 0,
+	ROHC_DECOMP_FEATURE_NONE         = 0,
 	/** Attempt packet repair in case of CRC failure */
-	ROHC_DECOMP_FEATURE_CRC_REPAIR = (1 << 0),
+	ROHC_DECOMP_FEATURE_CRC_REPAIR   = (1 << 0),
+	/** Be compatible with 1.6.x versions */
+	ROHC_DECOMP_FEATURE_COMPAT_1_6_x = (1 << 1),
 
 } rohc_decomp_features_t;
 
