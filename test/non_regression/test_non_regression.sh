@@ -77,7 +77,7 @@ fi
 
 # determine the maximum number of contexts if MAX_CONTEXTS == 0
 if [ ${MAX_CONTEXTS} -eq 0 ] ; then
-	if [ "${CID_TYPE}" == "smallcid" ] ; then
+	if [ "${CID_TYPE}" = "smallcid" ] ; then
 		MAX_CONTEXTS=16
 	else
 		MAX_CONTEXTS=16384
