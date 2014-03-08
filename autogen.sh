@@ -42,6 +42,13 @@ run automake --add-missing
 
 cd ${OLD_PWD} &>/dev/null
 
+# autodetect some dev options
+add_opts=""
+doxy2man="$( which doxy2man )"
+if [ "x${doxy2man}" != "x" ] && [ -x "${doxy2man}" ] ; then
+	add_opts="${add_opts} --enable-doc-man"
+fi
+
 # run configure with failure on compiler warnings enabled since autogen.sh
 # is for developpers not users, also enable tests, stats, doc and examples.
 chmod +x $( dirname $0 )/configure
@@ -58,5 +65,6 @@ $( dirname $0 )/configure \
 	--enable-doc \
 	--enable-examples \
 	--enable-linux-kernel-module \
+	${add_opts} \
 	$@
 
