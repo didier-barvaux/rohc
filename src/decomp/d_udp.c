@@ -149,8 +149,7 @@ void * d_udp_create(const struct d_context *const context)
 
 	/* create the UDP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->outer_ip_changes->next_header =
-		(unsigned char *) malloc(sizeof(struct udphdr));
+	g_context->outer_ip_changes->next_header = malloc(sizeof(struct udphdr));
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -161,8 +160,7 @@ void * d_udp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
 
 	g_context->inner_ip_changes->next_header_len = sizeof(struct udphdr);
-	g_context->inner_ip_changes->next_header =
-		(unsigned char *) malloc(sizeof(struct udphdr));
+	g_context->inner_ip_changes->next_header = malloc(sizeof(struct udphdr));
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -269,7 +267,9 @@ int udp_parse_static_udp(const struct d_context *const context,
 	bits->udp_dst_nr = 16;
 	rohc_decomp_debug(context, "UDP destination port = 0x%04x (%u)\n",
 	                  rohc_ntoh16(bits->udp_dst), rohc_ntoh16(bits->udp_dst));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += 2;
+#endif
 	read += 2;
 
 	/* is context re-used? */
@@ -350,7 +350,9 @@ static int udp_parse_dynamic_udp(const struct d_context *const context,
 	{
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += ret;
+#endif
 	read += ret;
 
 	return read;
@@ -419,7 +421,9 @@ static int udp_parse_uo_remainder(const struct d_context *const context,
 		bits->udp_check_nr = 16;
 		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
 		                  rohc_ntoh16(bits->udp_check));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		packet += 2;
+#endif
 		read += 2;
 	}
 

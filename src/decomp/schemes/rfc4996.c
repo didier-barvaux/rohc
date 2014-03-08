@@ -205,7 +205,9 @@ int variable_length_32_dec(const struct d_context *const context,
 			break;
 		case 3:
 			memcpy(&value, rohc_data, sizeof(uint32_t));
+#ifndef __clang_analyzer__ /* silent warning about dead decrement */
 			rohc_data += sizeof(uint32_t);
+#endif
 			length += sizeof(uint32_t);
 			break;
 		default:

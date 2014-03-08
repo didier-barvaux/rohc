@@ -154,8 +154,7 @@ static void * d_esp_create(const struct d_context *const context)
 
 	/* create the ESP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = sizeof(struct esphdr);
-	g_context->outer_ip_changes->next_header =
-		(unsigned char *) malloc(sizeof(struct esphdr));
+	g_context->outer_ip_changes->next_header = malloc(sizeof(struct esphdr));
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -166,8 +165,7 @@ static void * d_esp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct esphdr));
 
 	g_context->inner_ip_changes->next_header_len = sizeof(struct esphdr);
-	g_context->inner_ip_changes->next_header =
-		(unsigned char *) malloc(sizeof(struct esphdr));
+	g_context->inner_ip_changes->next_header = malloc(sizeof(struct esphdr));
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -267,7 +265,9 @@ static int esp_parse_static_esp(const struct d_context *const context,
 	bits->esp_spi_nr = spi_length * 8;
 	rohc_decomp_debug(context, "ESP SPI = 0x%08x\n",
 	                  rohc_ntoh32(bits->esp_spi));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += spi_length;
+#endif
 	read += spi_length;
 
 	/* is context re-used? */
@@ -321,7 +321,9 @@ static int esp_parse_dynamic_esp(const struct d_context *const context,
 
 	/* retrieve the ESP sequence number from the ROHC packet */
 	memcpy(&sn, packet, sn_length);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += sn_length;
+#endif
 	read += sn_length;
 	bits->sn = rohc_ntoh32(sn);
 	bits->sn_nr = sn_length * 8;

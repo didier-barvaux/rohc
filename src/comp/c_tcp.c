@@ -4084,7 +4084,6 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 				case TCP_INDEX_WINDOW:
 				case TCP_INDEX_TIMESTAMP:
 				case TCP_INDEX_SACK:
-					item_needed = true;
 				default:
 				{
 					item_needed = true;
@@ -4770,8 +4769,6 @@ static int co_baseheader(struct c_context *const context,
 */
 
 	/* Try to determine the best base compressed header */
-
-	ecn_used = ( tcp_context->ecn_used == 0 ) ? 0 : 1;
 
 	ip_ttl_changed = (ttl_irregular_chain_flag != 0);
 	if(base_header.ipvx->version == IPV4)

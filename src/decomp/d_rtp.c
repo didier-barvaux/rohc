@@ -208,8 +208,7 @@ void * d_rtp_create(const struct d_context *const context)
 
 	/* create the UDP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = nh_len;
-	g_context->outer_ip_changes->next_header =
-		(unsigned char *) malloc(nh_len);
+	g_context->outer_ip_changes->next_header = malloc(nh_len);
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -220,8 +219,7 @@ void * d_rtp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, nh_len);
 
 	g_context->inner_ip_changes->next_header_len = nh_len;
-	g_context->inner_ip_changes->next_header =
-		(unsigned char *) malloc(nh_len);
+	g_context->inner_ip_changes->next_header = malloc(nh_len);
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -622,7 +620,9 @@ static int rtp_parse_static_rtp(const struct d_context *const context,
 	memcpy(&(bits->rtp_ssrc), packet, sizeof(uint32_t));
 	bits->rtp_ssrc_nr = 32;
 	rohc_decomp_debug(context, "SSRC = 0x%08x\n", bits->rtp_ssrc);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += sizeof(uint32_t);
+#endif
 	read += sizeof(uint32_t);
 
 	/* is context re-used? */
@@ -807,7 +807,9 @@ static int rtp_parse_dynamic_rtp(const struct d_context *const context,
 			                  ts_stride, ts_stride);
 
 			/* skip the SDVL-encoded TS_STRIDE field in packet */
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			packet += ts_stride_sdvl_len;
+#endif
 			remain_len -= ts_stride_sdvl_len;
 
 			/* temporarily store the decoded TS_STRIDE in context */
@@ -1376,7 +1378,9 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 			rohc_decomp_debug(context, "decoded TS_STRIDE = %u / 0x%x\n",
 			                  ts_stride, ts_stride);
 
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			rohc_remain_data += ts_stride_size;
+#endif
 			rohc_remain_len -= ts_stride_size;
 
 			/* temporarily store the decoded TS_STRIDE in context */
@@ -1486,7 +1490,9 @@ static int rtp_parse_uo_remainder(const struct d_context *const context,
 		bits->udp_check_nr = 16;
 		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
 		                  rohc_ntoh16(bits->udp_check));
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 		packet += 2;
+#endif
 		read += 2;
 	}
 

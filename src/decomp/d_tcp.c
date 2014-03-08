@@ -482,8 +482,7 @@ static void * d_tcp_create(const struct d_context *const context)
 
 	/* create the TCP-specific part of the header changes */
 	g_context->outer_ip_changes->next_header_len = sizeof(tcphdr_t);
-	g_context->outer_ip_changes->next_header =
-		(unsigned char *) malloc(sizeof(tcphdr_t));
+	g_context->outer_ip_changes->next_header = malloc(sizeof(tcphdr_t));
 	if(g_context->outer_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -494,8 +493,7 @@ static void * d_tcp_create(const struct d_context *const context)
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(tcphdr_t));
 
 	g_context->inner_ip_changes->next_header_len = sizeof(tcphdr_t);
-	g_context->inner_ip_changes->next_header =
-		(unsigned char *) malloc(sizeof(tcphdr_t));
+	g_context->inner_ip_changes->next_header = malloc(sizeof(tcphdr_t));
 	if(g_context->inner_ip_changes->next_header == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
@@ -1746,7 +1744,9 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 			}
 			memcpy(ip_context.v6_option->value, rohc_packet, size);
 			memcpy(base_header.ipv6_opt->value, ip_context.v6_option->value, size);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			remain_len -= size;
+#endif
 			break;
 		}
 		case ROHC_IPPROTO_ROUTING:  // IPv6 routing header
@@ -1782,7 +1782,9 @@ static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
 				goto error;
 			}
 			size += ret;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 			remain_len -= ret;
+#endif
 			break;
 		}
 		case ROHC_IPPROTO_MINE:
@@ -3700,8 +3702,10 @@ static int d_sack_block_size(const struct d_context *const context,
 		             "block_end\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	remain_data += ret;
 	remain_len -= ret;
+#endif
 	size += ret;
 
 	return size;
@@ -4542,7 +4546,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	assert(dest != NULL);
 
 	ip_context.uint8 = tcp_context->ip_context;
+#ifndef __clang_analyzer__ /* silent warning about value never read */
 	rohc_remain_data = (unsigned char *) rohc_packet;
+#endif
 	rohc_remain_len = rohc_length;
 
 	rohc_decomp_debug(context, "context = %p, g_context = %p, "
@@ -5052,7 +5058,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	                  "options (%zu bytes) = %zu bytes\n", rohc_header_len,
 	                  rohc_opts_len, rohc_header_len + rohc_opts_len);
 	rohc_remain_data += rohc_opts_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_len -= rohc_opts_len;
+#endif
 	rohc_header_len += rohc_opts_len;
 
 	switch(crc_type)

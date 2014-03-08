@@ -5993,7 +5993,6 @@ static unsigned short detect_changed_fields(const struct c_context *const contex
 		if(!detect_ipv6_ext_changes(&header_info->info.v6.ext_comp, ip,
 		                            &list_struct_changed, &list_content_changed))
 		{
-			ret_value |= MOD_ERROR;
 			goto error;
 		}
 		if(list_struct_changed)

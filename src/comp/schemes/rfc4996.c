@@ -502,8 +502,12 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
 			break;
 		default:
 			/* should not happen */
+#ifdef NDEBUG
 			ip_id_offset = 0;
+#else
 			assert(0);
+#endif
+			break;
 	}
 	return ip_id_offset;
 }

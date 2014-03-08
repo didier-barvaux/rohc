@@ -914,8 +914,10 @@ static bool parse_ir(const struct rohc_decomp *const decomp,
 				             "cannot parse the next header dynamic part\n");
 				goto error;
 			}
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 			rohc_remain_data += size;
 			rohc_remain_len -= size;
+#endif
 			*rohc_hdr_len += size;
 		}
 	}
@@ -1055,7 +1057,9 @@ static int parse_static_part_ipv4(const struct d_context *const context,
 	bits->daddr_nr = 32;
 	rohc_decomp_debug(context, "Destination Address = " IPV4_ADDR_FORMAT "\n",
 	                  IPV4_ADDR_RAW(bits->daddr));
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += 4;
+#endif
 	read += 4;
 
 	return read;
@@ -1128,7 +1132,9 @@ static int parse_static_part_ipv6(const struct d_context *const context,
 	bits->daddr_nr = 128;
 	rohc_decomp_debug(context, "Destination Address = " IPV6_ADDR_FORMAT "\n",
 	                  IPV6_ADDR_RAW(bits->daddr));
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 	packet += 16;
+#endif
 	read += 16;
 
 	return read;
@@ -1343,7 +1349,9 @@ static int parse_dynamic_part_ipv6(const struct d_context *const context,
 		goto error;
 	}
 	rohc_decomp_debug(context, "IPv6 extensions list = %d bytes\n", size_ext);
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 	packet += size_ext;
+#endif
 	read += size_ext;
 
 	return read;
@@ -1867,8 +1875,10 @@ static bool parse_uo0(const struct rohc_decomp *const decomp,
 		             "failed to parse UO* remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -2100,8 +2110,10 @@ static bool parse_uo1(const struct rohc_decomp *const decomp,
 		             "failed to parse UO-1 remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -2300,8 +2312,10 @@ static bool parse_uo1rtp(const struct rohc_decomp *const decomp,
 		             "failed to parse UO-1-RTP remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -2642,8 +2656,10 @@ static bool parse_uo1id(const struct rohc_decomp *const decomp,
 		             "failed to parse UO-1-ID remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -2840,8 +2856,10 @@ static bool parse_uo1ts(const struct rohc_decomp *const decomp,
 		             "failed to parse UO-1-TS remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -3170,8 +3188,10 @@ static bool parse_uor2(const struct rohc_decomp *const decomp,
 		             "failed to parse UO* remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -3636,8 +3656,10 @@ static int parse_uor2rtp_once(const struct rohc_decomp *const decomp,
 		             "failed to parse UOR-2-RTP remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -4109,8 +4131,10 @@ static int parse_uor2id_once(const struct rohc_decomp *const decomp,
 		             "failed to parse UOR-2-ID remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -4582,8 +4606,10 @@ static int parse_uor2ts_once(const struct rohc_decomp *const decomp,
 		             "failed to parse UOR-2-TS remainder\n");
 		goto error;
 	}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	rohc_remain_data += rohc_remainder_len;
 	rohc_remain_len -= rohc_remainder_len;
+#endif
 	*rohc_hdr_len += rohc_remainder_len;
 
 	/* sanity checks */
@@ -4787,8 +4813,10 @@ static bool parse_uo_remainder(const struct rohc_decomp *const decomp,
 			             "cannot decode the remainder of UO* packet\n");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
+#endif
 		*rohc_hdr_len += size;
 	}
 
@@ -4945,8 +4973,10 @@ static bool parse_irdyn(const struct rohc_decomp *const decomp,
 			             "cannot decode the next header dynamic part\n");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
+#endif
 		*rohc_hdr_len += size;
 	}
 
@@ -5460,7 +5490,9 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 	{
 		size = g_context->build_next_header(context, decoded,
 		                                    uncomp_hdrs, payload_len);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		uncomp_hdrs += size;
+#endif
 		*uncomp_hdrs_len += size;
 	}
 

@@ -214,7 +214,9 @@ int ip_parse_dynamic_ip(const struct d_context *const context,
 	bits->sn_nr = 16;
 	bits->is_sn_enc = false;
 	rohc_decomp_debug(context, "SN = %u (0x%04x)\n", bits->sn, bits->sn);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += 2;
+#endif
 	read += 2;
 
 	return read;
@@ -425,7 +427,9 @@ int ip_parse_extension3(const struct rohc_decomp *const decomp,
 			             "cannot decode the outer IP header flags & fields\n");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead increment */
 		rohc_remain_data += size;
+#endif
 		rohc_remain_len -= size;
 	}
 
@@ -762,7 +766,9 @@ int parse_outer_header_flags(const struct rohc_decomp *const decomp,
 		rohc_decomp_debug(context, "%zd bits of outer IP-ID in EXT3 = 0x%x\n",
 		                  bits->id_nr, bits->id);
 
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		fields += 2;
+#endif
 		read += 2;
 	}
 

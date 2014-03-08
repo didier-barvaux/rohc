@@ -1054,7 +1054,9 @@ int rohc_compress3(struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "copy full %zd-byte payload\n", payload_size);
 		memcpy(rohc_payload, ip_pkt.data + payload_offset, payload_size);
+#ifndef __clang_analyzer__ /* silent warning about dead decrement */
 		rohc_payload += payload_size;
+#endif
 		*rohc_packet_len += payload_size;
 
 		/* remove locked feedbacks since compression is successful */

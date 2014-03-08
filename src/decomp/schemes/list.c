@@ -128,9 +128,11 @@ int rohc_list_decode_maybe(struct list_decomp *decomp,
 			             "failed to decode the compressed list\n");
 			goto error;
 		}
+#ifndef __clang_analyzer__ /* silent warning about dead decrement */
 		packet += ret;
-		read_length += ret;
 		packet_len -= ret;
+#endif
+		read_length += ret;
 	}
 
 	return read_length;
@@ -237,9 +239,11 @@ static int rohc_list_decode(struct list_decomp *decomp,
 		goto error;
 	}
 	assert(((size_t) ret) <= packet_len);
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += ret;
-	read_length += ret;
 	packet_len -= ret;
+#endif
+	read_length += ret;
 
 	/* RFC3095, section 5.8.2.1 reads:
 	 *   When the decompressor receives a compressed list, it retrieves the
@@ -534,7 +538,9 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 
 	/* skip the XI list and the item list */
 	packet_read_len += xi_len + item_read_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet_len -= xi_len + item_read_len;
+#endif
 
 	return packet_read_len;
 
@@ -875,7 +881,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 
 	/* skip the XI list and the item list */
 	packet_read_len += xi_len + item_read_len;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet_len -= xi_len + item_read_len;
+#endif
 
 	return packet_read_len;
 
@@ -970,7 +978,9 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 
 		/* skip the removal mask */
 		packet_read_len += 2;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		packet_len -= 2;
+#endif
 	}
 	else
 	{
@@ -980,7 +990,9 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 
 		/* skip the removal mask */
 		packet_read_len++;
+#ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		packet_len--;
+#endif
 	}
 
 	/* copy the items from the reference list into the current list but skip
@@ -1482,7 +1494,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 
 	/* skip the XI list and the item list */
 	packet_read_len += xi_len + item_read_len;
+#ifndef __clang_analyzer__ /* silent warning about dead decrement */
 	packet_len -= xi_len + item_read_len;
+#endif
 
 	return packet_read_len;
 

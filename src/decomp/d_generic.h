@@ -305,7 +305,7 @@ struct d_generic_changes
 	int sid;
 
 	/// The next header located after the IP header(s)
-	unsigned char *next_header;
+	void *next_header;
 	/// The length of the next header
 	unsigned int next_header_len;
 };
