@@ -4914,7 +4914,6 @@ static bool parse_irdyn(const struct rohc_decomp *const decomp,
 		             "cannot decode the outer IP dynamic part\n");
 		goto error;
 	}
-rohc_decomp_debug(context, "outer dyn part = %d\n", size);
 	rohc_remain_data += size;
 	rohc_remain_len -= size;
 	*rohc_hdr_len += size;
@@ -4930,7 +4929,6 @@ rohc_decomp_debug(context, "outer dyn part = %d\n", size);
 			             "cannot decode the inner IP dynamic part\n");
 			goto error;
 		}
-rohc_decomp_debug(context, "inner dyn part = %d\n", size);
 		rohc_remain_data += size;
 		rohc_remain_len -= size;
 		*rohc_hdr_len += size;
