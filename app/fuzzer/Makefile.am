@@ -38,7 +38,7 @@ rohc_fuzzer_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 
-rohc_fuzzer.1: $(rohc_fuzzer_SOURCES)
+rohc_fuzzer.1: $(rohc_fuzzer_SOURCES) rohc_fuzzer
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The ROHC fuzzing tool" \
@@ -69,7 +69,7 @@ rohc_rtp_fuzzer_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 
-rohc_rtp_fuzzer.1: $(rohc_rtp_fuzzer_SOURCES)
+rohc_rtp_fuzzer.1: $(rohc_rtp_fuzzer_SOURCES) rohc_rtp_fuzzer
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The ROHC fuzzing tool for RTP traffic" \
