@@ -59,13 +59,13 @@ rohc_gen_stream_LDADD = \
 	$(additional_platform_libs)
 
 
-rohc_test_performance.1: $(rohc_test_performance_SOURCES) rohc_test_performance
+rohc_test_performance.1: $(rohc_test_performance_SOURCES) $(builddir)/rohc_test_performance
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The ROHC performance application" \
 		$(builddir)/rohc_test_performance
 
-rohc_gen_stream.1: $(rohc_gen_stream_SOURCES) rohc_gen_stream
+rohc_gen_stream.1: $(rohc_gen_stream_SOURCES) $(builddir)/rohc_gen_stream
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The generator of compressed/uncompressed RTP streams" \

@@ -35,7 +35,7 @@ rohctunnel_LDADD = \
 	-lrohc_common
 
 
-rohctunnel.1: $(rohctunnel_SOURCES) rohctunnel
+rohctunnel.1: $(rohctunnel_SOURCES) $(builddir)/rohctunnel
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		--help-option=help --version-option=version \

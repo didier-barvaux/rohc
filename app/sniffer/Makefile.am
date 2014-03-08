@@ -39,7 +39,7 @@ rohc_sniffer_LDADD = \
 	$(additional_platform_libs)
 
 
-rohc_sniffer.1: $(rohc_sniffer_SOURCES) rohc_sniffer
+rohc_sniffer.1: $(rohc_sniffer_SOURCES) $(builddir)/rohc_sniffer
 	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
 		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
 		-n "The ROHC sniffer" \
