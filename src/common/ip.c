@@ -408,11 +408,10 @@ bool ip_is_fragment(const struct ip_packet *const ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(__KERNEL__)
 		is_fragment = false;
-#else
-		assert(0);
 #endif
+		assert(0);
 	}
 
 	return is_fragment;
@@ -473,11 +472,10 @@ unsigned int ip_get_hdrlen(const struct ip_packet *const ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(__KERNEL__)
 		len = 0;
-#else
-		assert(0);
 #endif
+		assert(0);
 	}
 
 	return len;
@@ -508,11 +506,10 @@ unsigned int ip_get_plen(const struct ip_packet *const ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(__KERNEL__)
 		len = 0;
-#else
-		assert(0);
 #endif
+		assert(0);
 	}
 
 	return len;
@@ -619,11 +616,10 @@ unsigned int ip_get_tos(const struct ip_packet *const ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(__KERNEL__)
 		tos = 0;
-#else
-		assert(0);
 #endif
+		assert(0);
 	}
 
 	return tos;
@@ -683,11 +679,10 @@ unsigned int ip_get_ttl(const struct ip_packet *const ip)
 	else
 	{
 		/* function does not handle non-IPv4/IPv6 packets */
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(__KERNEL__)
 		ttl = 0;
-#else
-		assert(0);
 #endif
+		assert(0);
 	}
 
 	return ttl;
