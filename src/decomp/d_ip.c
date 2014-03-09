@@ -725,10 +725,11 @@ int parse_outer_header_flags(const struct rohc_decomp *const decomp,
 	rohc_decomp_debug(context, "header flags: I2 = %u\n", is_I2);
 
 	/* check the minimal length to decode the outer header fields */
-	if((length - inner_header_flags) < (is_I2 * 2))
+	if(length < (inner_header_flags + is_I2 * 2))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length - read);
+		             "ROHC packet too small (len = %zu)\n",
+		             length - inner_header_flags);
 		goto error;
 	}
 
