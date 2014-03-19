@@ -1266,15 +1266,15 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
 	const struct rtphdr *rtp = (struct rtphdr *) (udp + 1);
 	unsigned char byte;
 	unsigned int rx_byte = 0;
-	size_t nr_written = 0;
+	size_t nr_written;
 
 	g_context = (struct c_generic_context *) context->specific;
 	rtp_context = (struct sc_rtp_context *) g_context->specific;
 
 	/* part 1 */
 	rohc_comp_debug(context, "UDP checksum = 0x%04x\n", udp->check);
-	memcpy(&dest[counter + nr_written], &udp->check, 2);
-	nr_written += 2;
+	memcpy(&dest[counter], &udp->check, 2);
+	nr_written = 2;
 	rtp_context->udp_checksum_change_count++;
 
 	/* part 2 */
@@ -1341,7 +1341,9 @@ static size_t rtp_code_dynamic_rtp_part(const struct c_context *const context,
 		byte = 0;
 		byte |= (rtp->extension & 0x01) << 4;
 		byte |= (context->mode & 0x03) << 2;
+#if 0 /* TODO: handle TIS */
 		byte |= (tis & 0x01) << 1;
+#endif
 		byte |= tss & 0x01;
 		dest[counter + nr_written] = byte;
 		rohc_comp_debug(context, "(X = %u, Mode = %u, TIS = %u, TSS = %u) = 0x%02x\n",

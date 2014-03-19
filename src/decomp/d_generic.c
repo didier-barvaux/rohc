@@ -3276,22 +3276,12 @@ static bool parse_uor2rtp(const struct rohc_decomp *const decomp,
 			assert(bits->inner_ip.rnd_nr == 1);
 			inner_rnd = bits->inner_ip.rnd;
 		}
-		else
-		{
-			/* inner RND flag did not change */
-			inner_rnd = g_context->inner_ip_changes->rnd;
-		}
 		if(bits->outer_ip.rnd_nr > 0 &&
 		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits->outer_ip.rnd_nr == 1);
 			outer_rnd = bits->outer_ip.rnd;
-		}
-		else
-		{
-			/* inner RND flag did not change */
-			outer_rnd = g_context->outer_ip_changes->rnd;
 		}
 
 		/* change packet type UOR-2-RTP -> UOR-2-ID/TS, then try parsing UOR-2*
@@ -3746,22 +3736,12 @@ static bool parse_uor2id(const struct rohc_decomp *const decomp,
 			assert(bits->inner_ip.rnd_nr == 1);
 			inner_rnd = bits->inner_ip.rnd;
 		}
-		else
-		{
-			/* inner RND flag did not change */
-			inner_rnd = g_context->inner_ip_changes->rnd;
-		}
 		if(bits->outer_ip.rnd_nr > 0 &&
 		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits->outer_ip.rnd_nr == 1);
 			outer_rnd = bits->outer_ip.rnd;
-		}
-		else
-		{
-			/* inner RND flag did not change */
-			outer_rnd = g_context->outer_ip_changes->rnd;
 		}
 
 		/* change packet type UOR-2-ID -> UOR-2-RTP, then try parsing UOR-2*
@@ -4221,22 +4201,12 @@ static bool parse_uor2ts(const struct rohc_decomp *const decomp,
 			assert(bits->inner_ip.rnd_nr == 1);
 			inner_rnd = bits->inner_ip.rnd;
 		}
-		else
-		{
-			/* inner RND flag did not change */
-			inner_rnd = g_context->inner_ip_changes->rnd;
-		}
 		if(bits->outer_ip.rnd_nr > 0 &&
 		   bits->outer_ip.rnd != g_context->outer_ip_changes->rnd)
 		{
 			/* outer RND flag changed */
 			assert(bits->outer_ip.rnd_nr == 1);
 			outer_rnd = bits->outer_ip.rnd;
-		}
-		else
-		{
-			/* inner RND flag did not change */
-			outer_rnd = g_context->outer_ip_changes->rnd;
 		}
 
 		/* change packet type UOR-2-ID -> UOR-2-RTP, then try parsing UOR-2*
