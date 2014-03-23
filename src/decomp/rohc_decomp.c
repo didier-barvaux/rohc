@@ -2388,8 +2388,12 @@ skip:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Update feedback interval by the user.
+ *
+ * @deprecated please do not use this function anymore
  *
  * @param decomp          The ROHC decompressor
  * @param feedback_maxval The feedback interval given by user
@@ -2401,8 +2405,6 @@ void user_interactions(struct rohc_decomp *decomp, int feedback_maxval)
 	decomp->maxval = feedback_maxval * 100;
 }
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Set the type of CID to use for the given decompressor

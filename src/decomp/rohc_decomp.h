@@ -331,8 +331,11 @@ bool ROHC_EXPORT rohc_decomp_get_last_packet_info(const struct rohc_decomp *cons
  * Functions related to user parameters
  */
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 void ROHC_EXPORT user_interactions(struct rohc_decomp *decomp,
-                                   int feedback_maxval);
+                                   int feedback_maxval)
+	ROHC_DEPRECATED("please do not use this function anymore");
+#endif
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 bool ROHC_EXPORT rohc_decomp_set_cid_type(struct rohc_decomp *const decomp,
