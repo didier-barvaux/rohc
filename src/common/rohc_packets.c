@@ -53,29 +53,29 @@ const char * rohc_get_packet_descr(const rohc_packet_t packet_type)
 			return "UO-0";
 
 		case ROHC_PACKET_UO_1:
-			return "UO-1 (non-RTP)";
+			return "UO-1";
 		case ROHC_PACKET_UO_1_ID:
-			return "UO-1-ID";
+			return "RTP/UO-1-ID";
 		case ROHC_PACKET_UO_1_TS:
-			return "UO-1-TS";
+			return "RTP/UO-1-TS";
 		case ROHC_PACKET_UO_1_RTP:
-			return "UO-1 (RTP)";
+			return "RTP/UO-1";
 
 		case ROHC_PACKET_UOR_2:
-			return "UOR-2 (non-RTP)";
+			return "UOR-2";
 		case ROHC_PACKET_UOR_2_RTP:
-			return "UOR-2 (RTP)";
+			return "RTP/UOR-2";
 		case ROHC_PACKET_UOR_2_ID:
 			return "UOR-2-ID";
 		case ROHC_PACKET_UOR_2_TS:
 			return "UOR-2-TS";
 
 		case ROHC_PACKET_CCE:
-			return "CCE";
+			return "UDP-Lite/CCE";
 		case ROHC_PACKET_CCE_OFF:
-			return "CCE(OFF)";
+			return "UDP-Lite/CCE(OFF)";
 		case ROHC_PACKET_NORMAL:
-			return "Normal";
+			return "Uncomp/Normal";
 
 		case ROHC_PACKET_TCP_CO_COMMON:
 			return "TCP/co_common";
