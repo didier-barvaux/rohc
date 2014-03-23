@@ -128,6 +128,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const size_t max_contexts,
                                 const bool compat_1_6_x,
+                                const bool no_comparison,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -140,6 +141,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *packet,
                                int link_len_src,
                                const bool compat_1_6_x,
+                               const bool no_comparison,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -211,6 +213,7 @@ int main(int argc, char *argv[])
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
 	int wlsb_width = 4;
 	bool compat_1_6_x = false;
+	bool no_comparison = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
 	int args_used;
@@ -275,6 +278,11 @@ int main(int argc, char *argv[])
 			}
 			cmp_filename = argv[1];
 			args_used++;
+		}
+		else if(!strcmp(*argv, "--no-comparison"))
+		{
+			/* do not exit with error code if comparison is not possible */
+			no_comparison = true;
 		}
 		else if(!strcmp(*argv, "--rohc-size-output"))
 		{
@@ -388,7 +396,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* test ROHC compression/decompression with the packets from the file */
-	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts, compat_1_6_x,
+	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
+	                              compat_1_6_x, no_comparison,
 	                              src_filename, ofilename, cmp_filename,
 	                              rohc_size_ofilename);
 
@@ -426,6 +435,7 @@ static void usage(void)
 	        "                          simultaneously use during the test\n"
 	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
 	        "  --compat-1-6-x          Mimic the behavior of the 1.6.x versions\n"
+	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --verbose               Run the test in verbose mode\n");
 }
 
@@ -687,6 +697,8 @@ static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
  * @param header           The PCAP header for the packet
  * @param packet           The packet to compress/decompress (link layer included)
  * @param link_len_src     The length of the link layer header before IP data
+ * @param compat_1_6_x     Whether to be compatible with 1.6.x versions or not
+ * @param no_comparison    Whether to be handle comparison as fatal for test or not
  * @param dumper           The PCAP output dump file
  * @param cmp_packet       The ROHC packet for comparison purpose
  * @param cmp_size         The size of the ROHC packet used for comparison
@@ -709,6 +721,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *packet,
                                int link_len_src,
                                const bool compat_1_6_x,
+                               const bool no_comparison,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -853,7 +866,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	else
 	{
 		printf("=== ROHC comparison: no reference available (run with the -c option)\n");
-		if(!compat_1_6_x)
+		if(!compat_1_6_x && !no_comparison)
 		{
 			status = 0;
 		}
@@ -910,8 +923,10 @@ exit:
  *        two compressor/decompressor pairs
  *
  * @param cid_type             The type of CIDs the compressor shall use
- * @param max_contexts         The maximum number of ROHC contexts to use
  * @param wlsb_width           The width of the WLSB window to use
+ * @param max_contexts         The maximum number of ROHC contexts to use
+ * @param compat_1_6_x         Whether to be compatible with 1.6.x versions or not
+ * @param no_comparison        Whether to be handle comparison as fatal for test or not
  * @param src_filename         The name of the PCAP file that contains the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
@@ -928,6 +943,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t wlsb_width,
                                 const size_t max_contexts,
                                 const bool compat_1_6_x,
+                                const bool no_comparison,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -1130,8 +1146,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
 		ret = compress_decompress(comp1, decomp1, 1, counter, header, packet,
-		                          link_len_src, compat_1_6_x, dumper, cmp_packet,
-		                          cmp_header.caplen, link_len_cmp,
+		                          link_len_src, compat_1_6_x, no_comparison, dumper,
+		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file);
 		if(ret == -1)
 		{
@@ -1169,8 +1185,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 		/* compress & decompress from compressor 2 to decompressor 2 */
 		ret = compress_decompress(comp2, decomp2, 2, counter, header, packet,
-		                          link_len_src, compat_1_6_x, dumper, cmp_packet,
-		                          cmp_header.caplen, link_len_cmp,
+		                          link_len_src, compat_1_6_x, no_comparison, dumper,
+		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file);
 		if(ret == -1)
 		{
