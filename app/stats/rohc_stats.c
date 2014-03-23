@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
 	char *source_filename = NULL;
 	int status = 1;
 	int max_contexts = ROHC_SMALL_CID_MAX + 1;
+	size_t max_possible_contexts;
 	rohc_cid_type_t cid_type;
 	int args_used;
 
@@ -143,6 +144,24 @@ int main(int argc, char *argv[])
 		{
 			/* get the type of CID to use within the ROHC library */
 			cid_type_name = argv[0];
+
+			if(!strcmp(cid_type_name, "smallcid"))
+			{
+				cid_type = ROHC_SMALL_CID;
+				max_possible_contexts = ROHC_SMALL_CID_MAX + 1;
+			}
+			else if(!strcmp(cid_type_name, "largecid"))
+			{
+				cid_type = ROHC_LARGE_CID;
+				max_possible_contexts = ROHC_LARGE_CID_MAX + 1;
+			}
+			else
+			{
+				fprintf(stderr, "invalid CID type '%s', only 'smallcid' and "
+				        "'largecid' expected\n", cid_type_name);
+				usage();
+				goto error;
+			}
 		}
 		else if(source_filename == NULL)
 		{
@@ -164,36 +183,12 @@ int main(int argc, char *argv[])
 		usage();
 		goto error;
 	}
-	else if(!strcmp(cid_type_name, "smallcid"))
-	{
-		cid_type = ROHC_SMALL_CID;
 
-		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || max_contexts > (ROHC_SMALL_CID_MAX + 1))
-		{
-			fprintf(stderr, "the maximum number of ROHC contexts should be "
-			        "between 1 and %u\n\n", ROHC_SMALL_CID_MAX + 1);
-			usage();
-			goto error;
-		}
-	}
-	else if(!strcmp(cid_type_name, "largecid"))
+	/* the maximum number of ROHC contexts should be valid wrt CID type */
+	if(max_contexts < 1 || max_contexts > max_possible_contexts)
 	{
-		cid_type = ROHC_LARGE_CID;
-
-		/* the maximum number of ROHC contexts should be valid */
-		if(max_contexts < 1 || max_contexts > (ROHC_LARGE_CID_MAX + 1))
-		{
-			fprintf(stderr, "the maximum number of ROHC contexts should be "
-			        "between 1 and %u\n\n", ROHC_LARGE_CID_MAX + 1);
-			usage();
-			goto error;
-		}
-	}
-	else
-	{
-		fprintf(stderr, "invalid CID type '%s', only 'smallcid' and 'largecid' "
-		        "expected\n", cid_type_name);
+		fprintf(stderr, "the maximum number of ROHC contexts should be "
+		        "between 1 and %zu\n\n", max_possible_contexts);
 		usage();
 		goto error;
 	}
@@ -465,19 +460,18 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
 	{
-		int version;
-		int tot_len;
+		uint8_t version;
+		uint16_t tot_len;
 
 		version = (ip_packet[0] >> 4) & 0x0f;
-
 		if(version == 4)
 		{
-			struct ipv4_hdr *ip = (struct ipv4_hdr *) ip_packet;
+			const struct ipv4_hdr *const ip = (struct ipv4_hdr *) ip_packet;
 			tot_len = ntohs(ip->tot_len);
 		}
 		else
 		{
-			struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
+			const struct ipv6_hdr *const ip = (struct ipv6_hdr *) ip_packet;
 			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 		}
 
