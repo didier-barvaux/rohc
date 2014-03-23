@@ -31,6 +31,7 @@ librohc_decomp_la_LIBADD = \
 
 librohc_decomp_la_LDFLAGS = \
 	$(configure_ldflags) \
+	-export-symbols $(srcdir)/librohc_decomp.symbols \
 	-no-undefined \
 	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE) \
 	-L$(top_builddir)/src/common/.libs \
@@ -43,6 +44,9 @@ librohc_decomp_la_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp
+
+librohc_decomp_la_DEPENDENCIES = \
+	$(srcdir)/librohc_decomp.symbols
 
 # fake public headers installed in $includedir to point
 # to the real public headers in $includedir/$packagename

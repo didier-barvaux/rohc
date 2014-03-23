@@ -59,12 +59,15 @@ librohc_common_la_LIBADD = \
 	$(additional_platform_libs)
 librohc_common_la_LDFLAGS = \
 	$(configure_ldflags) \
+	-export-symbols $(srcdir)/librohc_common.symbols \
 	-no-undefined \
 	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE)
 librohc_common_la_CFLAGS = \
 	$(configure_cflags)
 librohc_common_la_CPPFLAGS = \
 	-I$(top_srcdir)/src
+librohc_common_la_DEPENDENCIES = \
+	$(srcdir)/librohc_common.symbols
 
 include_HEADERS = $(public_compat_headers)
 pkginclude_HEADERS = $(public_headers)
