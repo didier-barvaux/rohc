@@ -33,7 +33,6 @@
 
 struct c_context;
 
-extern unsigned int ROHC_EXPORT lsb_masks[];
 extern unsigned int ROHC_EXPORT lsb_xor_masks[];
 
 

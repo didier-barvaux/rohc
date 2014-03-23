@@ -30,7 +30,6 @@
 
 struct d_context;
 
-extern unsigned int lsb_masks[];
 extern unsigned int lsb_xor_masks[];
 
 

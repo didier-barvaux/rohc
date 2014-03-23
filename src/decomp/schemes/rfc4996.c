@@ -40,6 +40,21 @@
 #include <assert.h>
 
 
+/* TODO: to be removed once c_lsb and d_c_lsb are removed */
+/**
+ * @brief Table of the mask for lsb()
+ */
+static unsigned int lsb_masks[] =
+{
+	0x00000,
+	0x00001, 0x00003, 0x00007, 0x0000F,
+	0x0001F, 0x0003F, 0x0007F, 0x000FF,
+	0x001FF, 0x003FF, 0x007FF, 0x00FFF,
+	0x01FFF, 0x03FFF, 0x07FFF, 0x0FFFF,
+	0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF
+};
+
+
 /**
  * @brief Table of the mask for lsb()
  */

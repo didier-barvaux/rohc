@@ -39,7 +39,7 @@
 /**
  * @brief Table of the mask for lsb()
  */
-unsigned int lsb_masks[] =
+static unsigned int lsb_masks[] =
 {
 	0x00000,
 	0x00001, 0x00003, 0x00007, 0x0000F,
