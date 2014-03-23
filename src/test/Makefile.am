@@ -10,6 +10,9 @@ TESTS = \
 	test_wlsb_packet_loss.sh \
 	test_rtp_ts_wraparound.sh
 
+XFAIL_TESTS = \
+	test_wlsb_wraparound.sh
+
 check_PROGRAMS = \
 	test_wlsb_wraparound \
 	test_wlsb_packet_loss \
