@@ -385,6 +385,19 @@ AC_ARG_ENABLE(app_tunnel,
               enable_app_tunnel=no)
 AM_CONDITIONAL([APP_TUNNEL], [test x$enable_app_tunnel = xyes])
 
+# ROHC over UDP tunnel is now deprecated
+if test "x$enable_app_tunnel" = "xyes" ; then
+	echo
+	echo "WARNING: --enable-app-tunnel is now deprecated"
+	echo
+	echo "The ROHC over UDP tunnel is deprecated. This program was created"
+	echo "for testing purposes. The sniffer and fuzzer tools replace it for"
+	echo "testing. The IP/ROHC tunnel replaces it as tunneling solution"
+	echo "(better efficiency, designed for production)."
+	echo
+	echo "The ROHC over UDP tunnel will be removed in version 2.0.0."
+	echo
+fi
 
 # TUN interfaces are not supported on non-Linux platforms yet, so the ROHC
 # over UDP tunnel application cannot be enabled there

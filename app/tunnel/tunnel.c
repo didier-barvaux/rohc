@@ -25,6 +25,10 @@
  * Description
  * -----------
  *
+ * THIS PROGRAM IS DEPRECATED. IT WAS CREATED FOR TESTING PURPOSES. THE SNIFFER
+ * AND FUZZER TOOLS REPLACE IT FOR TESTING. THE IP/ROHC TUNNEL REPLACES IT AS
+ * TUNNELING SOLUTION THAT MAY BE USED IN PRODUCTION.
+ *
  * The program creates a ROHC tunnel over UDP (resp. Ethernet). A ROHC tunnel
  * compresses the IP packets it receives from a virtual network interface and
  * decompresses the ROHC packets it receives from one UDP (resp. Ethernet)
@@ -288,6 +292,10 @@ tunnel\n\
 You need to be root (or to have POSIX capability CAP_NET_ADMIN) to create\n\
 ROHC tunnels.\n\
 \n\
+THIS PROGRAM IS DEPRECATED. IT WAS CREATED FOR TESTING PURPOSES. THE SNIFFER\n\
+AND FUZZER TOOLS REPLACE IT FOR TESTING. THE IP/ROHC TUNNEL REPLACES IT AS\n\
+TUNNELING SOLUTION THAT MAY BE USED IN PRODUCTION.\n\
+\n\
 Usage: rohctunnel version\n\
    or: rohctunnel help\n\
    or: rohctunnel TUNNEL [ERROR] [DIR]\n\
@@ -402,6 +410,11 @@ int main(int argc, char *argv[])
 	/*
 	 * Parse arguments:
 	 */
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "=== The ROHC over UDP tunnel is deprecated.\n");
+	fprintf(stderr, "=== Run with --help or see man page for more details.\n");
+	fprintf(stderr, "\n");
 
 	/* check the number of arguments:
 	 *   rohctunnel version            -> 2 arguments
