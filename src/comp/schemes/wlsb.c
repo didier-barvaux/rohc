@@ -201,8 +201,6 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
                        size_t *const bits_nr)
 {
 	size_t entry;
-	uint16_t min;
-	uint16_t max;
 	size_t i;
 
 	/* cannot do anything if the window contains no value */
@@ -211,40 +209,20 @@ bool wlsb_get_k_16bits(const struct c_wlsb *const wlsb,
 		goto error;
 	}
 
-	min = 0xffff;
-	max = 0;
+	*bits_nr = 0;
 
-	/* find out the interval in which all the values from the window stand */
+	/* find the minimal number of bits of the value required to be able
+	 * to recreate it thanks to ANY value in the window */
 	for(i = wlsb->count, entry = wlsb->oldest;
 	    i > 0;
 	    i--, entry = (entry + 1) & wlsb->window_mask)
 	{
-		/* change the minimal and maximal values if appropriate */
-		if(wlsb->window[entry].value < min)
+		const size_t k =
+			rohc_g_16bits(wlsb->window[entry].value, value, wlsb->p, wlsb->bits);
+		if(k > (*bits_nr))
 		{
-			min = wlsb->window[entry].value;
+			*bits_nr = k;
 		}
-		if(wlsb->window[entry].value > max)
-		{
-			max = wlsb->window[entry].value;
-		}
-	}
-
-	/* find the minimal number of bits of the value required to be able
-	 * to recreate it thanks to the window */
-	if(min == max)
-	{
-		/* find the minimal number of bits for the lower/upper limit of the interval */
-		*bits_nr = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
-	}
-	else
-	{
-		/* find the minimal number of bits for the lower limit of the interval */
-		const size_t k1 = rohc_g_16bits(min, value, wlsb->p, wlsb->bits);
-		/* find the minimal number of bits for the upper limit of the interval */
-		const size_t k2 = rohc_g_16bits(max, value, wlsb->p, wlsb->bits);
-		/* keep the greatest one */
-		*bits_nr = (k1 > k2) ? k1 : k2;
 	}
 
 	assert((*bits_nr) <= 16);
@@ -299,8 +277,6 @@ bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
 
 {
 	size_t entry;
-	uint32_t min;
-	uint32_t max;
 	size_t i;
 
 	assert(wlsb != NULL);
@@ -314,40 +290,20 @@ bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
 		goto error;
 	}
 
-	min = 0xffffffff;
-	max = 0;
+	*bits_nr = 0;
 
-	/* find out the interval in which all the values from the window stand */
+	/* find the minimal number of bits of the value required to be able
+	 * to recreate it thanks to ANY value in the window */
 	for(i = wlsb->count, entry = wlsb->oldest;
 	    i > 0;
 	    i--, entry = (entry + 1) & wlsb->window_mask)
 	{
-		/* change the minimal and maximal values if appropriate */
-		if(wlsb->window[entry].value < min)
+		const size_t k =
+			rohc_g_32bits(wlsb->window[entry].value, value, p, wlsb->bits);
+		if(k > (*bits_nr))
 		{
-			min = wlsb->window[entry].value;
+			*bits_nr = k;
 		}
-		if(wlsb->window[entry].value > max)
-		{
-			max = wlsb->window[entry].value;
-		}
-	}
-
-	/* find the minimal number of bits of the value required to be able
-	 * to recreate it thanks to the window */
-	if(min == max)
-	{
-		/* find the minimal number of bits for the lower/upper limit of the interval */
-		*bits_nr = rohc_g_32bits(min, value, p, wlsb->bits);
-	}
-	else
-	{
-		/* find the minimal number of bits for the lower limit of the interval */
-		const size_t k1 = rohc_g_32bits(min, value, p, wlsb->bits);
-		/* find the minimal number of bits for the upper limit of the interval */
-		const size_t k2 = rohc_g_32bits(max, value, p, wlsb->bits);
-		/* keep the greatest one */
-		*bits_nr = (k1 > k2) ? k1 : k2;
 	}
 
 	assert((*bits_nr) <= 32);
