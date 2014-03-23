@@ -28,9 +28,16 @@ else
 APP_FUZZER_DIR =
 endif
 
+if APP_STATS
+APP_STATS_DIR = stats
+else
+APP_STATS_DIR =
+endif
+
 SUBDIRS = \
 	$(APP_PERF_DIR) \
 	$(APP_TUNNEL_DIR) \
 	$(APP_SNIFFER_DIR) \
-	$(APP_FUZZER_DIR)
+	$(APP_FUZZER_DIR) \
+	$(APP_STATS_DIR)
 

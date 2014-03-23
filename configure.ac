@@ -318,14 +318,21 @@ AC_ARG_ENABLE(rohc_tests_valgrind,
 AM_CONDITIONAL([ROHC_TESTS_VALGRIND], [test x$enable_rohc_tests_valgrind = xyes])
 
 
-# check if ROHC statistics application is enabled
+# abort is --enable-rohc-stats is used as it is deprecated
 AC_ARG_ENABLE(rohc_stats,
               AS_HELP_STRING([--enable-rohc-stats],
                              [enable ROHC statistics application [[default=no]]]),
               enable_rohc_stats=$enableval,
-              enable_rohc_stats=no)
-AM_CONDITIONAL([ROHC_STATS], [test x$enable_rohc_stats = xyes])
-
+              enable_rohc_stats="undefined")
+if test "x$enable_rohc_stats" != "xundefined" ; then
+	echo
+	echo "ERROR: --enable-rohc-stats and --disable-rohc-stats are "
+	echo "       deprecated, do not use them any more."
+	echo
+	echo "Please use option --enable-app-stats instead."
+	echo
+	exit 1
+fi
 
 # abort is --enable-rohc-apps is used as it is deprecated
 AC_ARG_ENABLE(rohc_apps,
@@ -343,6 +350,7 @@ if test "x$enable_rohc_apps" != "xundefined" ; then
 	echo "  --enable-app-performance"
 	echo "  --enable-app-sniffer"
 	echo "  --enable-app-tunnel"
+	echo "  --enable-app-stats"
 	echo
 	exit 1
 fi
@@ -413,20 +421,30 @@ if test "x$enable_app_tunnel" = "xyes" && \
 fi
 
 
-# if ROHC tests or statistics are enabled:
-#  - build but do not run tests/stats if cross-compiling except if an emulator
+# check if ROHC stats tool (located in the app/stats/ subdir)
+# is enabled
+AC_ARG_ENABLE(app_stats,
+              AS_HELP_STRING([--enable-app-stats],
+                             [enable ROHC stats [default=no]]),
+              enable_app_stats=$enableval,
+              enable_app_stats=no)
+AM_CONDITIONAL([APP_STATS], [test x$enable_app_stats = xyes])
+
+
+# if ROHC tests are enabled:
+#  - build but do not run tests if cross-compiling except if an emulator
 #    is available
 #  - sed is mandatory
-if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; then
+if test "x$enable_rohc_tests" = "xyes" ; then
 
-	# cross-compiling is not fully compatible with tests and stats yet
+	# cross-compiling is not fully compatible with tests yet
 	if test "x$cross_compiling" = "xyes" ; then
 
 		# some cross-compiled binaries may be run:
-		#  - mingw cross-compilation may run the tests/stats if wine is installed,
-		#  - ARM cross-compilation may run the tests/stats if qemu-arm is installed
+		#  - mingw cross-compilation may run the tests if wine is installed,
+		#  - ARM cross-compilation may run the tests if qemu-arm is installed
 		#    and static libraries only are used,
-		#  - PPC cross-compilation may run the tests/stats if qemu-ppc is installed
+		#  - PPC cross-compilation may run the tests if qemu-ppc is installed
 		#    and static libraries only are used.
 		cross_compiling_emulator_name=""
 		cross_compiling_emulator_cmd=""
@@ -514,11 +532,11 @@ if test "x$enable_rohc_tests" = "xyes" || test "x$enable_rohc_stats" = "xyes"; t
 fi
 
 
-# if ROHC tests, statistics, or apps are enabled: libpcap is mandatory
+# if ROHC tests or apps are enabled: libpcap is mandatory
 if test "x$enable_rohc_tests" = "xyes" || \
-   test "x$enable_rohc_stats" = "xyes" || \
    test "x$enable_app_perf" = "xyes" || \
-   test "x$enable_app_sniffer" = "xyes" ; then
+   test "x$enable_app_sniffer" = "xyes" || \
+   test "x$enable_app_stats" = "xyes" ; then
 
 	# use winpcap for mingw and cygwin, libpcap for other platforms
 	if test "x$host_os" = "xmingw32" || \
@@ -722,7 +740,7 @@ fi
 
 
 # gnuplot, grep, sort, and tr are mandatory if ROHC statistics are enabled
-if test "x$enable_rohc_stats" = "xyes" ; then
+if test "x$enable_app_stats" = "xyes" ; then
 
 	# check for the gnuplot binary and abort if it is not found
 	AC_CHECK_PROG(is_gnuplot_found, gnuplot, "yes", "no")
@@ -1007,7 +1025,6 @@ AC_CONFIG_FILES([ \
 	test/robustness/piggybacking_feedback/Makefile \
 	test/robustness/malformed_rohc_packets/Makefile \
 	test/non_regression/Makefile \
-	statistics/Makefile \
 	examples/Makefile \
 	linux/Makefile \
 	app/Makefile \
@@ -1015,6 +1032,7 @@ AC_CONFIG_FILES([ \
 	app/tunnel/Makefile \
 	app/sniffer/Makefile \
 	app/fuzzer/Makefile \
+	app/stats/Makefile \
 	doc/Makefile \
 	doc/doxygen.conf \
 	doc/rohc.7 \

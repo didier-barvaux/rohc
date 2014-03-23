@@ -102,11 +102,6 @@ test_*.sh.trs
 ./linux/kmod/modules.order
 ./linux/kmod/*.ko
 ./linux/kmod/*.mod.c
-./statistics/generate_statistics
-./statistics/generate_statistics.exe
-./statistics/generate_statistics.sh.log
-./statistics/generate_statistics.sh.trs
-./statistics/html
 ./app/performance/rohc_test_performance
 ./app/performance/rohc_test_performance.exe
 ./app/performance/rohc_test_performance.1
@@ -125,6 +120,9 @@ test_*.sh.trs
 ./app/fuzzer/rohc_rtp_fuzzer
 ./app/fuzzer/rohc_rtp_fuzzer.exe
 ./app/fuzzer/rohc_rtp_fuzzer.1
+./app/stats/rohc_stats
+./app/stats/rohc_stats.exe
+./app/stats/rohc_stats.1
 ./examples/simple_rohc_program
 ./examples/simple_rohc_program.exe
 ./examples/print_rohc_version

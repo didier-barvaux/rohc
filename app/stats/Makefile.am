@@ -4,44 +4,49 @@
 #	Description: create the ROHC statistics program
 ################################################################################
 
-TESTS = \
-	./generate_statistics.sh
+bin_PROGRAMS = \
+	rohc_stats
+
+if BUILD_DOC_MAN
+man_MANS = \
+	rohc_stats.1
+endif
 
 
-check_PROGRAMS = \
-	generate_statistics
-
-
-generate_statistics_CFLAGS = \
+rohc_stats_CFLAGS = \
 	$(configure_cflags) \
 	-Wno-unused-parameter \
 	-Wno-sign-compare
 
-generate_statistics_CPPFLAGS = \
+rohc_stats_CPPFLAGS = \
 	-I$(top_srcdir)/test \
 	-I$(top_srcdir)/src/common \
 	-I$(top_srcdir)/src/comp \
 	$(libpcap_includes)
 
-generate_statistics_LDFLAGS = \
+rohc_stats_LDFLAGS = \
 	$(configure_ldflags) \
 	-L$(top_builddir)/src/common/.libs \
 	-L$(top_builddir)/src/comp/.libs
 
-generate_statistics_SOURCES = \
-	generate_statistics.c
+rohc_stats_SOURCES = \
+	rohc_stats.c
 
-generate_statistics_LDADD = \
+rohc_stats_LDADD = \
 	-l$(pcap_lib_name) \
 	-lrohc_comp \
 	-lrohc_common \
 	$(additional_platform_libs)
 
 
-distclean-am: clean-am distclean-compile distclean-generic distclean-tags
-	$(RM) -r ./html
+rohc_stats.1: $(rohc_stats_SOURCES) $(builddir)/rohc_stats
+	$(AM_V_GEN)help2man --output=$@ -s 1 --no-info \
+		-m "$(PACKAGE_NAME)'s tools" -S "$(PACKAGE_NAME)" \
+		-n "The ROHC statistics tool" \
+		$(builddir)/rohc_stats
 
+
+# extra files for releases
 EXTRA_DIST = \
-	generate_statistics.sh \
-	inputs
+	rohc_stats.sh
 

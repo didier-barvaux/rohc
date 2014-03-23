@@ -60,8 +60,8 @@ $( dirname $0 )/configure \
 	--enable-app-performance \
 	--enable-app-sniffer \
 	--enable-app-tunnel \
+	--enable-app-stats \
 	--enable-rohc-tests \
-	--enable-rohc-stats \
 	--enable-doc \
 	--enable-examples \
 	--enable-linux-kernel-module \

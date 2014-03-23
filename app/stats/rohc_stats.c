@@ -15,7 +15,7 @@
  */
 
 /**
- * @file   generate_statistics.c
+ * @file   rohc_stats.c
  * @brief  ROHC statistics program
  * @author Didier Barvaux <didier@barvaux.org>
  *
@@ -121,10 +121,16 @@ int main(int argc, char *argv[])
 	{
 		args_used = 1;
 
-		if(!strcmp(*argv, "-h"))
+		if(!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
 		{
 			/* print help */
 			usage();
+			goto error;
+		}
+		else if(!strcmp(*argv, "-v") || !strcmp(*argv, "--version"))
+		{
+			/* print version */
+			printf("rohc_stats version %s\n", rohc_version());
 			goto error;
 		}
 		else if(!strcmp(*argv, "--max-contexts"))
@@ -213,22 +219,45 @@ error:
  */
 static void usage(void)
 {
-	fprintf(stderr,
-	        "ROHC statistics tool: generate ROHC compression statistics\n"
-	        "with a flow of IP packets\n"
-	        "\n"
-	        "usage: generate_statistics [OPTIONS] CID_TYPE FLOW\n"
-	        "\n"
-	        "with:\n"
-	        "  CID_TYPE                The type of CID to use among 'smallcid'\n"
-	        "                          and 'largecid'\n"
-	        "  FLOW                    The flow of Ethernet frames to compress\n"
-	        "                          (in PCAP format)\n"
-	        "\n"
-	        "options:\n"
-	        "  -h                      Print this usage and exit\n"
-	        "  --max-contexts NUM      The maximum number of ROHC contexts to\n"
-	        "                          simultaneously use during the test\n");
+	printf("The ROHC stats tool generates statistics about ROHC compression\n"
+	       "\n"
+	       "The rohc_stats tool outputs statistics in CSV format with the\n"
+	       "following tab-separated fields:\n\n"
+	       "  * keyword 'STAT'\n\n"
+	       "  * packet number\n\n"
+	       "  * context mode (numeric ID)\n\n"
+	       "  * context mode (string, no whitespace)\n\n"
+	       "  * context state (numeric ID)\n\n"
+	       "  * context state (string, no whitespace)\n\n"
+	       "  * packet type (numeric ID)\n\n"
+	       "  * packet type (string, no whitespace)\n\n"
+	       "  * uncompressed packet size (bytes)\n\n"
+	       "  * uncompressed header size (bytes)\n\n"
+	       "  * compressed packet size (bytes)\n\n"
+	       "  * compressed header size (bytes)\n\n"
+	       "\n"
+	       "The shell script rohc_stats.sh could be used to generate a HTML\n"
+	       "report.\n"
+	       "\n"
+	       "Usage: rohc_stats [OPTIONS] CID_TYPE FLOW\n"
+	       "\n"
+	       "Options:\n"
+	       "  -v, --version           Print version information and exit\n"
+	       "  -h, --help              Print this usage and exit\n"
+	       "      --max-contexts NUM  The maximum number of ROHC contexts to\n"
+	       "                          simultaneously use during the test\n"
+	       "\n"
+	       "With:\n"
+	       "  CID_TYPE                The type of CID to use among 'smallcid'\n"
+	       "                          and 'largecid'\n"
+	       "  FLOW                    The flow of Ethernet frames to compress\n"
+	       "                          (in PCAP format)\n"
+	       "\n"
+	       "Examples:\n"
+	       "  rohc_stats smallcid /tmp/rtp.pcap   Generate statistics\n"
+	       "  rohc_stats largecid ~/lan.pcap      Generate statistics\n"
+	       "\n"
+	       "Report bugs to <" PACKAGE_BUGREPORT ">.\n");
 }
 
 

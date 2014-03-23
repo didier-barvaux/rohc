@@ -113,11 +113,11 @@ rohc_all_sources = \
 	$(top_srcdir)/src/decomp/schemes/*.h \
 	$(top_srcdir)/src/decomp/schemes/test/*.c \
 	$(top_srcdir)/examples/*.c \
-	$(top_srcdir)/statistics/*.c \
 	$(top_srcdir)/app/fuzzer/*.c \
 	$(top_srcdir)/app/performance/*.c \
 	$(top_srcdir)/app/sniffer/*.c \
 	$(top_srcdir)/app/tunnel/*.c \
+	$(top_srcdir)/app/stats/*.c \
 	$(top_srcdir)/linux/include/*.h \
 	$(top_srcdir)/linux/*.c \
 	$(top_srcdir)/test/*.h \

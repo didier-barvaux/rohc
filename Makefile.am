@@ -16,12 +16,6 @@ else
 LINUX_MODULE_DIR =
 endif
 
-if ROHC_STATS
-STATS_DIR = statistics
-else
-STATS_DIR = 
-endif
-
 if BUILD_DOC
 DOC_DIR = doc
 else
@@ -38,7 +32,6 @@ SUBDIRS = \
 	src \
 	$(TESTS_DIR) \
 	$(LINUX_MODULE_DIR) \
-	$(STATS_DIR) \
 	app \
 	$(DOC_DIR) \
 	$(EXAMPLES_DIR) \
