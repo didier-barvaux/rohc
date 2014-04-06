@@ -549,6 +549,26 @@ void rohc_comp_free(struct rohc_comp *const comp)
  * @return         true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet rtp_detection.c define compression traces callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c set compression traces callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
  */
 bool rohc_comp_set_traces_cb(struct rohc_comp *const comp,
                              rohc_trace_callback_t callback)
@@ -638,6 +658,29 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attri
  *                      be used as a context by user
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet rtp_detection.c define random callback 2
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c define random callback 1
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c set random callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_random_cb_t
  */
@@ -1511,6 +1554,25 @@ bool rohc_comp_set_list_trans_nr(struct rohc_comp *const comp,
  *
  * @ingroup rohc_comp
  *
+ * \par Example:
+ * \snippet rtp_detection.c define RTP detection callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c set RTP detection callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
  * @see rohc_rtp_detection_callback_t
  * @see rohc_comp_add_rtp_port
  * @see rohc_comp_remove_rtp_port
@@ -2222,6 +2284,23 @@ error:
  *
  * @ingroup rohc_comp
  *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c reset RTP ports
+ * \snippet rtp_detection.c add RTP port
+ * \snippet rtp_detection.c remove RTP port
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
  * @see rohc_comp_remove_rtp_port
  * @see rohc_comp_reset_rtp_ports
  * @see rohc_comp_set_rtp_detection_cb
@@ -2318,6 +2397,23 @@ error:
  * @return      true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c reset RTP ports
+ * \snippet rtp_detection.c add RTP port
+ * \snippet rtp_detection.c remove RTP port
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_add_rtp_port
  * @see rohc_comp_reset_rtp_ports
@@ -2434,6 +2530,23 @@ error:
  * @return      true on success, false otherwise
  *
  * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c reset RTP ports
+ * \snippet rtp_detection.c add RTP port
+ * \snippet rtp_detection.c remove RTP port
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_add_rtp_port
  * @see rohc_comp_remove_rtp_port

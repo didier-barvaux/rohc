@@ -9,12 +9,14 @@ examplesdir = $(docdir)/examples
 examples_DATA = \
 	simple_rohc_program.c \
 	print_rohc_version.c \
-	example_rohc_decomp.c
+	example_rohc_decomp.c \
+	rtp_detection.c
 
 noinst_PROGRAMS = \
 	simple_rohc_program \
 	print_rohc_version \
-	example_rohc_decomp
+	example_rohc_decomp \
+	rtp_detection
 
 
 simple_rohc_program_CFLAGS = \
@@ -70,4 +72,21 @@ example_rohc_decomp_LDADD = \
 	-lrohc_common \
 	$(additional_platform_libs)
 
+
+rtp_detection_CFLAGS = \
+	$(configure_cflags) \
+	-Wno-unused-parameter
+rtp_detection_CPPFLAGS = \
+	-I$(top_srcdir)/src/common \
+	-I$(top_srcdir)/src/comp
+rtp_detection_LDFLAGS = \
+	$(configure_ldflags) \
+	-L$(top_builddir)/src/common/.libs \
+	-L$(top_builddir)/src/comp/.libs
+rtp_detection_SOURCES = \
+	rtp_detection.c
+rtp_detection_LDADD = \
+	-lrohc_comp \
+	-lrohc_common \
+	$(additional_platform_libs)
 

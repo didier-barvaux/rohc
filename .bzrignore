@@ -129,4 +129,6 @@ test_*.sh.trs
 ./examples/print_rohc_version.exe
 ./examples/example_rohc_decomp
 ./examples/example_rohc_decomp.exe
+./examples/rtp_detection
+./examples/rtp_detection.exe
 contrib/rohc.spec
