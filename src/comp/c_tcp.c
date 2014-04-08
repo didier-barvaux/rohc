@@ -1426,112 +1426,117 @@ static int c_tcp_encode(struct c_context *const context,
 		                "ip_id = 0x%x\n", ip_inner_context.v4->ip_id_behavior,
 		                ip_inner_context.v4->last_ip_id, ip_id);
 
-		switch(ip_inner_context.v4->ip_id_behavior)
+		if(context->num_sent_packets == 0)
 		{
-			case IP_ID_BEHAVIOR_SEQUENTIAL:
-				if((ip_inner_context.v4->last_ip_id + 1) != ip_id)
-				{
-					// Problem
-					rohc_comp_debug(context, "ip_id_behavior not SEQUENTIAL: "
-					                "0x%04x + 1 != 0x%04x\n",
-					                ip_inner_context.v4->last_ip_id, ip_id);
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+			/* first packet, be optimistic: choose sequential behavior */
+			ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
+		}
+		else
+		{
+			switch(ip_inner_context.v4->ip_id_behavior)
+			{
+				case IP_ID_BEHAVIOR_SEQUENTIAL:
+					if((ip_inner_context.v4->last_ip_id + 1) != ip_id)
+					{
+						// Problem
+						rohc_comp_debug(context, "ip_id_behavior not SEQUENTIAL: "
+						                "0x%04x + 1 != 0x%04x\n",
+						                ip_inner_context.v4->last_ip_id, ip_id);
+						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+					}
 					break;
-				}
-				break;
-			case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
-				swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
-				rohc_comp_debug(context, " swapped_ip_id = 0x%04x + 1 = 0x%04x, "
-				                "ip_id = 0x%04x\n", swapped_ip_id,
-				                swapped_ip_id + 1, ip_id);
-				swapped_ip_id++;
-				if(swapped_ip_id != swab16(ip_id))
-				{
-					// Problem
-					rohc_comp_debug(context, "ip_id_behavior not "
-					                "SEQUENTIAL_SWAPPED: 0x%04x + 1 != 0x%04x\n",
-					                ip_inner_context.v4->last_ip_id, swapped_ip_id);
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+				case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+					swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
+					rohc_comp_debug(context, " swapped_ip_id = 0x%04x + 1 = 0x%04x, "
+					                "ip_id = 0x%04x\n", swapped_ip_id,
+					                swapped_ip_id + 1, ip_id);
+					swapped_ip_id++;
+					if(swapped_ip_id != swab16(ip_id))
+					{
+						// Problem
+						rohc_comp_debug(context, "ip_id_behavior not "
+						                "SEQUENTIAL_SWAPPED: 0x%04x + 1 != 0x%04x\n",
+						                ip_inner_context.v4->last_ip_id, swapped_ip_id);
+						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+					}
 					break;
-				}
-				break;
-			case IP_ID_BEHAVIOR_RANDOM:
-				if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
-				{
-					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-					break;
-				}
-				swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
-				rohc_comp_debug(context, "swapped_ip_id: 0x%04x + 1 = 0x%04x, "
-				                "ip_id = 0x%04x\n", swapped_ip_id,
-				                swapped_ip_id + 1, ip_id);
-				swapped_ip_id++;
-				if(swapped_ip_id == swab16(ip_id))
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
-					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
-					break;
-				}
-				if(ip_id == 0)
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
-					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL ZERO\n");
-					break;
-				}
-				break;
-			case IP_ID_BEHAVIOR_ZERO:
-				if(ip_id != 0)
-				{
-					if(ip_id == 0x0001)
+				case IP_ID_BEHAVIOR_RANDOM:
+					if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
 					{
 						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
 						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-						break;
 					}
-					if(swab16(ip_id) == 0x0001)
+					else
+					{
+						swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
+						rohc_comp_debug(context, "swapped_ip_id: 0x%04x + 1 = 0x%04x, "
+						                "ip_id = 0x%04x\n", swapped_ip_id,
+						                swapped_ip_id + 1, ip_id);
+						swapped_ip_id++;
+						if(swapped_ip_id == swab16(ip_id))
+						{
+							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
+							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
+						}
+						else if(ip_id == 0)
+						{
+							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
+							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL ZERO\n");
+						}
+					}
+					break;
+				case IP_ID_BEHAVIOR_ZERO:
+					if(ip_id != 0)
+					{
+						if(ip_id == 0x0001)
+						{
+							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
+							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
+						}
+						else if(swab16(ip_id) == 0x0001)
+						{
+							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
+							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
+						}
+						else
+						{
+							rohc_comp_debug(context, "ip_id_behavior not ZERO: "
+							                "0x%04x != 0\n", ip_id);
+							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+						}
+					}
+					break;
+				case IP_ID_BEHAVIOR_UNKNOWN:
+					if(ip_id == 0)
+					{
+						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
+						rohc_comp_debug(context, "ip_id_behavior ZERO\n");
+					}
+					else if(ip_inner_context.v4->last_ip_id == ip_id)
+					{
+						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+						rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
+					}
+					else if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
+					{
+						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
+						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
+					}
+					else if((ip_inner_context.v4->last_ip_id + 1) == swab16(ip_id))
 					{
 						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
-						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
-						break;
+						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL_SWAPPED\n");
 					}
-					// Problem
-					rohc_comp_debug(context, "ip_id_behavior not ZERO: "
-					                "0x%04x != 0\n", ip_id);
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+					else
+					{
+						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+						rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
+					}
 					break;
-				}
-				break;
-			case IP_ID_BEHAVIOR_UNKNOWN:
-				if(ip_id == 0)
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
-					rohc_comp_debug(context, "ip_id_behavior ZERO\n");
-				}
-				else if(ip_inner_context.v4->last_ip_id == ip_id)
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-					rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
-				}
-				else if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
-				}
-				else if((ip_inner_context.v4->last_ip_id + 1) == swab16(ip_id))
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
-					rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL_SWAPPED\n");
-				}
-				else
-				{
-					ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-					rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
-				}
-				break;
-			default:
-				assert(0); /* should never happen */
-				break;
+				default:
+					assert(0); /* should never happen */
+					break;
+			}
 		}
 	}
 
