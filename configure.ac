@@ -1025,6 +1025,7 @@ AC_CONFIG_FILES([ \
 	test/robustness/piggybacking_feedback/Makefile \
 	test/robustness/malformed_rohc_packets/Makefile \
 	test/non_regression/Makefile \
+	test/interop/Makefile \
 	examples/Makefile \
 	linux/Makefile \
 	app/Makefile \

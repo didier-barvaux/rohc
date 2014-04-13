@@ -94,6 +94,8 @@ test_*.sh.trs
 ./test/non_regression/test_non_regression
 ./test/non_regression/test_non_regression.exe
 ./test/non_regression/test_non_regression_kernel
+./test/interop/test_interop
+./test/interop/test_interop.exe
 !./linux/kmod/Makefile
 ./linux/.tmp_versions/
 ./linux/kmod/*.ko.cmd
