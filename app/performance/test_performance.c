@@ -54,8 +54,6 @@
  * number of (de)compressed packets and the average elapsed time per packet.
  */
 
-#include "test.h"
-
 #include "config.h" /* for HAVE_*_H and SCHED_SETSCHEDULER_PARAMS */
 
 /* system includes */
@@ -106,10 +104,14 @@ for ./configure ? If yes, check configure output and config.log"
 #define MAX_ROHC_SIZE  (5 * 1024)
 
 /** The length of the Linux Cooked Sockets header */
-#define LINUX_COOKED_HDR_LEN  16
+#define LINUX_COOKED_HDR_LEN  16U
+
+/** The length (in bytes) of the Ethernet header */
+#define ETHER_HDR_LEN  14U
 
 /** The minimum Ethernet length (in bytes) */
-#define ETHER_FRAME_MIN_LEN  60
+#define ETHER_FRAME_MIN_LEN  60U
+
 
 /** Whether the application runs in verbose mode or not */
 static int is_verbose;

@@ -41,8 +41,6 @@
  *   thus available to reproduce and fix the discovered problems.
  */
 
-#include "test.h"
-
 #include "config.h" /* for HAVE_*_H and PACKAGE_BUGREPORT */
 
 /* system includes */
@@ -87,16 +85,19 @@ for ./configure ? If yes, check configure output and config.log"
 #define max(x, y)  (((x) > (y)) ? (x) : (y))
 
 /** The device MTU (TODO: should not be hardcoded) */
-#define DEV_MTU 1518
+#define DEV_MTU 1518U
 
 /** The maximal size for the ROHC packets */
 #define MAX_ROHC_SIZE  (5 * 1024)
 
 /** The length of the Linux Cooked Sockets header */
-#define LINUX_COOKED_HDR_LEN  16
+#define LINUX_COOKED_HDR_LEN  16U
+
+/** The length (in bytes) of the Ethernet header */
+#define ETHER_HDR_LEN  14U
 
 /** The minimum Ethernet length (in bytes) */
-#define ETHER_FRAME_MIN_LEN  60
+#define ETHER_FRAME_MIN_LEN  60U
 
 
 /** Some statistics collected by the sniffer */
