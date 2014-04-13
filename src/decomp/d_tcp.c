@@ -2547,8 +2547,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 	/* If TCP option list compression present */
 	if((remain_data[0] & 0x0f) != 0)
 	{
-		const uint8_t *pBeginOptions;
-		const uint8_t *pBeginList;
+		const uint8_t *tcp_opts_indexes;
 		uint8_t reserved;
 		uint8_t PS;
 		uint8_t present;
@@ -2559,6 +2558,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		size_t opt_padding_len;
 		size_t opts_full_len;
 		size_t indexes_len;
+		uint8_t opt_type;
+		uint8_t opt_len;
 
 		/* read number of XI item(s) in the compressed list */
 		reserved = remain_data[0] & 0xe0;
@@ -2606,12 +2607,11 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			             indexes_len);
 			goto error;
 		}
-		pBeginList = remain_data;
+		tcp_opts_indexes = remain_data;
 		remain_data += indexes_len;
 		remain_len -= indexes_len;
 
-		/* save the begin of the item(s) */
-		pBeginOptions = remain_data;
+		tcp_options = ((uint8_t *) tcp) + sizeof(tcphdr_t);
 
 		/* for all item(s) in the list */
 		for(i = 0, opts_full_len = 0; i < m; ++i)
@@ -2619,23 +2619,23 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			/* if PS=1 indicating 8-bit XI field */
 			if(PS != 0)
 			{
-				present = (*pBeginList) & 0x80;
-				opt_idx = (*pBeginList) & 0x0F;
-				++pBeginList;
+				present = tcp_opts_indexes[0] & 0x80;
+				opt_idx = tcp_opts_indexes[0] & 0x0F;
+				tcp_opts_indexes++;
 			}
 			else
 			{
 				/* if odd position */
 				if(i & 1)
 				{
-					present = (*pBeginList) & 0x08;
-					opt_idx = (*pBeginList) & 0x07;
-					++pBeginList;
+					present = tcp_opts_indexes[0] & 0x08;
+					opt_idx = tcp_opts_indexes[0] & 0x07;
+					tcp_opts_indexes++;
 				}
 				else
 				{
-					present = (*pBeginList) & 0x80;
-					opt_idx = ((*pBeginList) & 0x70) >> 4;
+					present = tcp_opts_indexes[0] & 0x80;
+					opt_idx = (tcp_opts_indexes[0] & 0x70) >> 4;
 				}
 			}
 			rohc_decomp_debug(context, "TCP options list: XI #%u: item for "
@@ -2651,56 +2651,165 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			}
 			tcp_context->is_tcp_opts_list_item_present[i] = true;
 
-			/* if known index (see RFC4996 page 27) */
-			if(opt_idx <= TCP_INDEX_SACK)
+			rohc_decomp_debug(context, "TCP options list: XI #%u: item for "
+			                  "index %u is a known index\n", i, opt_idx);
+
+			/* determine option type */ /* TODO: dedicated function */
+			switch(opt_idx)
 			{
-				uint8_t opt_type;
-
-				rohc_decomp_debug(context, "TCP options list: XI #%u: item for "
-				                  "index %u is a known index\n", i, opt_idx);
-
-				/* enough data for first byte of option? */
-				if(remain_len < 1)
+				case TCP_INDEX_NOP:
 				{
-					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "malformed TCP dynamic "
-					             "part: malformed TCP option items: only %zu "
-					             "bytes available while at least 1 byte "
-					             "required for next option\n", remain_len);
-					goto error;
-				}
-
-				/* retrieve option type */
-				opt_type = remain_data[0];
-				rohc_decomp_debug(context, "TCP option type 0x%02x (%u)\n",
-				                  opt_type, opt_type);
-				tcp_context->tcp_opts_list_struct[i] = opt_type;
-				opts_full_len++;
-				remain_data++;
-				remain_len--;
-
-				/* save TCP option for this index */
-				tcp_context->tcp_options_list[opt_idx] = opt_type;
-
-				if(opt_type == TCP_OPT_EOL)
-				{
-					/* 1-byte EOL option */
-					rohc_decomp_debug(context, "TCP option EOL\n");
-					tcp_context->tcp_opts_list_item_uncomp_length[i] = 1;
-				}
-				else if(opt_type == TCP_OPT_NOP)
-				{
-					/* 1-byte NOP option */
 					rohc_decomp_debug(context, "TCP option NOP\n");
-					tcp_context->tcp_opts_list_item_uncomp_length[i] = 1;
+					opt_type = TCP_OPT_NOP;
+					opt_len = 1;
+					break;
 				}
-				else
+				case TCP_INDEX_EOL:
 				{
-					/* option with type + length + data */
+					rohc_decomp_debug(context, "TCP option EOL\n");
+					opt_type = TCP_OPT_EOL;
+					opt_len = remain_data[0] + 1;
+					if(remain_len < 1)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "malformed TCP dynamic "
+						             "part: malformed TCP option items: only %zu "
+						             "bytes available while at least %zu bytes "
+						             "required for next option\n", remain_len,
+						             sizeof(uint8_t));
+						goto error;
+					}
+					memset(tcp_options + opts_full_len + 1, TCP_OPT_EOL,
+					       remain_data[0]);
+					remain_data++;
+					remain_len--;
+					break;
+				}
+				case TCP_INDEX_MAXSEG:
+				{
+					opt_type = TCP_OPT_MAXSEG;
+					opt_len = TCP_OLEN_MAXSEG;
+					if(remain_len < sizeof(uint16_t))
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "malformed TCP dynamic "
+						             "part: malformed TCP option items: only %zu "
+						             "bytes available while at least %zu bytes "
+						             "required for next option\n", remain_len,
+						             sizeof(uint16_t));
+						goto error;
+					}
+					memcpy(&tcp_context->tcp_option_maxseg, remain_data,
+					       sizeof(uint16_t));
+					memcpy(tcp_options + opts_full_len + 2, remain_data,
+					       sizeof(uint16_t));
+					remain_data += sizeof(uint16_t);
+					remain_len -= sizeof(uint16_t);
+					rohc_decomp_debug(context, "TCP option MAXSEG = %u (0x%x)\n",
+					                  rohc_ntoh16(tcp_context->tcp_option_maxseg),
+					                  rohc_ntoh16(tcp_context->tcp_option_maxseg));
+					break;
+				}
+				case TCP_INDEX_WINDOW:
+				{
+					opt_type = TCP_OPT_WINDOW;
+					opt_len = TCP_OLEN_WINDOW;
+					if(remain_len < sizeof(uint8_t))
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "malformed TCP dynamic "
+						             "part: malformed TCP option items: only %zu "
+						             "bytes available while at least %zu bytes "
+						             "required for next option\n", remain_len,
+						             sizeof(uint8_t));
+						goto error;
+					}
+					tcp_context->tcp_option_window = remain_data[0];
+					tcp_options[opts_full_len + 2] = remain_data[0];
+					remain_data++;
+					remain_len--;
+					rohc_decomp_debug(context, "TCP option WINDOW = %d\n",
+					                  tcp_context->tcp_option_window);
+					break;
+				}
+				case TCP_INDEX_TIMESTAMP:
+				{
+					const struct tcp_option_timestamp *const opt_ts =
+						(struct tcp_option_timestamp *) remain_data;
 
-					uint8_t opt_len;
+					rohc_decomp_debug(context, "TCP option SACK PERMITTED\n");
+					opt_type = TCP_OPT_TIMESTAMP;
+					opt_len = TCP_OLEN_TIMESTAMP;
 
-					/* enough data for the Length field? */
+					if(remain_len < (sizeof(uint32_t) * 2))
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "malformed TCP dynamic "
+						             "part: malformed TCP option items: only %zu "
+						             "bytes available while at least %zu bytes "
+						             "required for next option\n", remain_len,
+						             sizeof(uint32_t) * 2);
+						goto error;
+					}
+					rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
+					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
+					tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
+					rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
+					                 rohc_ntoh32(opt_ts->ts), false);
+					rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
+					                 rohc_ntoh32(opt_ts->ts_reply), false);
+					memcpy(tcp_options + opts_full_len + 2, remain_data, sizeof(uint32_t) * 2);
+					remain_data += sizeof(uint32_t) * 2;
+					remain_len -= sizeof(uint32_t) * 2;
+					break;
+				}
+				case TCP_INDEX_SACK_PERMITTED:
+				{
+					rohc_decomp_debug(context, "TCP option SACK permitted\n");
+					opt_type = TCP_OPT_SACK_PERMITTED;
+					opt_len = TCP_OLEN_SACK_PERMITTED;
+					break;
+				}
+				case TCP_INDEX_SACK:
+				{
+					const uint8_t *comp_sack_opt = remain_data;
+					uint8_t *uncomp_sack_opt = tcp_options + opts_full_len;
+
+					remain_data = d_tcp_opt_sack(context, remain_data,
+					                             &uncomp_sack_opt,
+					                             rohc_ntoh32(tcp->ack_number));
+					if(remain_data == NULL)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "failed to decompress "
+						             "TCP SACK option\n");
+						goto error;
+					}
+					remain_len -= remain_data - comp_sack_opt;
+
+					opt_type = TCP_OPT_SACK;
+					opt_len = uncomp_sack_opt - (tcp_options + opts_full_len);
+
+					tcp_context->tcp_option_sack_length = opt_len - 2;
+					rohc_decomp_debug(context, "TCP option SACK Length = 2 + %u\n",
+					                  tcp_context->tcp_option_sack_length);
+					if(tcp_context->tcp_option_sack_length > (8 * 4))
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "TCP dynamic part: "
+						             "unexpected large %u-byte SACK option\n",
+						             tcp_context->tcp_option_sack_length);
+						goto error;
+					}
+					memcpy(tcp_context->tcp_option_sackblocks, uncomp_sack_opt,
+					       tcp_context->tcp_option_sack_length);
+					break;
+				}
+				default: /* generic options */
+				{
+					uint8_t *save_opt;
+
+					/* option type */
 					if(remain_len < 1)
 					{
 						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
@@ -2710,276 +2819,142 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 						             "required for next option\n", remain_len);
 						goto error;
 					}
+					opt_type = remain_data[0];
+					remain_data++;
+					remain_len--;
 
-					/* retrieve option length */
-					opt_len = remain_data[0];
-					rohc_decomp_debug(context, "TCP option is %u-byte long (type "
-					                  "and length fields included)\n", opt_len);
+					/* option length */
+					if(remain_len < 1)
+					{
+						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "malformed TCP dynamic "
+						             "part: malformed TCP option items: only %zu "
+						             "bytes available while at least 1 byte "
+						             "required for next option\n", remain_len);
+						goto error;
+					}
+					opt_len = remain_data[0] & 0x7f;
+					remain_data++;
+					remain_len--;
 					if(opt_len < 2)
 					{
 						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 						             context->profile->id, "malformed TCP dynamic "
-						             "part: malformed TCP option items: option "
-						             "length should be at least 2 bytes, but is "
-						             "only %u byte(s)\n", opt_len);
-						goto error;
-					}
-					tcp_context->tcp_opts_list_item_uncomp_length[i] = opt_len;
-					opts_full_len++;
-					remain_data++;
-					remain_len--;
-
-					/* enough data for the remaining option data? */
-					if(remain_len < ((size_t) (opt_len - 2)))
-					{
-						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "malformed TCP dynamic "
-						             "part: malformed TCP option items: only %zu "
-						             "bytes available while at least %u bytes "
-						             "required for next option\n", remain_len,
-						             opt_len - 2);
+						             "part: malformed TCP option items: option length "
+						             "should be at least 2 bytes, but is only %u "
+						             "byte(s)\n", opt_len);
 						goto error;
 					}
 
-					switch(opt_type)
+					/* was index already used? */
+					if(tcp_context->tcp_options_list[opt_idx] == 0xff)
 					{
-						case TCP_OPT_MAXSEG:
-							if(opt_len != TCP_OLEN_MAXSEG)
-							{
-								rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-								             context->profile->id, "malformed TCP "
-								             "dynamic part: malformed TCP option "
-								             "items: TCP option MAXSEG is %u-byte "
-								             "long instead of %u-byte long\n",
-								             opt_len, TCP_OLEN_MAXSEG);
-								goto error;
-							}
-							memcpy(&tcp_context->tcp_option_maxseg, remain_data, 2);
-							rohc_decomp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
-							                  rohc_ntoh16(tcp_context->tcp_option_maxseg),
-							                  rohc_ntoh16(tcp_context->tcp_option_maxseg));
-							break;
-						case TCP_OPT_WINDOW:
-							if(opt_len != TCP_OLEN_WINDOW)
-							{
-								rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-								             context->profile->id, "malformed TCP "
-								             "dynamic part: malformed TCP option "
-								             "items: TCP option WINDOW is %u-byte "
-								             "long instead of %u-byte long\n",
-								             opt_len, TCP_OLEN_WINDOW);
-								goto error;
-							}
-							tcp_context->tcp_option_window = remain_data[0];
-							rohc_decomp_debug(context, "TCP option WINDOW = %d\n",
-							                  tcp_context->tcp_option_window);
-							break;
-						case TCP_OPT_SACK_PERMITTED:
-							if(opt_len != TCP_OLEN_SACK_PERMITTED)
-							{
-								rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-								             context->profile->id, "malformed TCP "
-								             "dynamic part: malformed TCP option "
-								             "items: TCP option SACK PERMITTED is "
-								             "%u-byte long instead of %u-byte long\n",
-								             opt_len, TCP_OLEN_SACK_PERMITTED);
-								goto error;
-							}
-							rohc_decomp_debug(context, "TCP option SACK PERMITTED\n");
-							break;
-						case TCP_OPT_SACK:
-							tcp_context->tcp_option_sack_length = opt_len - 2;
-							rohc_decomp_debug(context, "TCP option SACK Length = 2 + %d\n",
-							                  tcp_context->tcp_option_sack_length);
-							if(tcp_context->tcp_option_sack_length > (8 * 4))
-							{
-								rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-								             context->profile->id, "TCP dynamic "
-								             "part: unexpected large %u-byte SACK "
-								             "option\n",
-								             tcp_context->tcp_option_sack_length);
-								goto error;
-							}
-							memcpy(tcp_context->tcp_option_sackblocks, remain_data,
-							       tcp_context->tcp_option_sack_length);
-							break;
-						case TCP_OPT_TIMESTAMP:
+						/* index was never used before */
+						tcp_context->tcp_options_offset[opt_idx] =
+							tcp_context->tcp_options_free_offset;
+						save_opt = tcp_context->tcp_options_values +
+						           tcp_context->tcp_options_free_offset;
+						/* save length (without option_static) */
+						save_opt[0] = opt_len - 2;
+						rohc_decomp_debug(context, "%d-byte TCP option of type %d\n",
+						                  save_opt[0], opt_type);
+						/* enough data for last bytes of option? */
+						if(remain_len < save_opt[0])
 						{
-							const struct tcp_option_timestamp *const opt_ts =
-								(struct tcp_option_timestamp *) remain_data;
-
-							if(opt_len != TCP_OLEN_TIMESTAMP)
-							{
-								rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-								             context->profile->id, "malformed TCP "
-								             "dynamic part: malformed TCP option "
-								             "items: TCP option TIMESTAMP is %u-byte "
-								             "long instead of %u-byte long\n",
-								             opt_len, TCP_OLEN_TIMESTAMP);
-								goto error;
-							}
-							rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
-							tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
-							tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
-							rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
-							                 rohc_ntoh32(opt_ts->ts), false);
-							rohc_lsb_set_ref(tcp_context->opt_ts_reply_lsb_ctxt,
-							                 rohc_ntoh32(opt_ts->ts_reply), false);
-							break;
-						}
-						default:
 							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-							             context->profile->id, "TCP options list: "
-							             "ignore unknown %u-byte option type 0x%02x "
-							             "(%u)\n", opt_len, opt_type, opt_type);
-							break;
+							             context->profile->id, "malformed TCP dynamic "
+							             "part: malformed TCP option items: only %zu "
+							             "bytes available while at least %u bytes "
+							             "required for next option\n", remain_len,
+							             save_opt[0]);
+							goto error;
+						}
+						/* save value */
+						memcpy(save_opt + 1, remain_data, save_opt[0]);
+						memcpy(tcp_options + opts_full_len + 2, remain_data, save_opt[0]);
+						remain_data += save_opt[0];
+						remain_len -= save_opt[0];
+						/* update first free offset */
+						tcp_context->tcp_options_free_offset += 1 + save_opt[0];
+						if(tcp_context->tcp_options_free_offset >= MAX_TCP_OPT_SIZE)
+						{
+							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+							             context->profile->id, "TCP options too large: "
+							             "%u bytes while only %u are accepted\n",
+							             tcp_context->tcp_options_free_offset,
+							             MAX_TCP_OPT_SIZE);
+							goto error;
+						}
 					}
-
-					/* skip the remaining option data */
-					opts_full_len += opt_len - 2;
-					remain_data += opt_len - 2;
-					remain_len -= opt_len - 2;
+					else /* index already used */
+					{
+						/* verify the value with the recorded one */
+						rohc_decomp_debug(context, "tcp_options_list[%u] = %d <=> %d\n",
+						                  opt_idx, tcp_context->tcp_options_list[opt_idx],
+						                  opt_type);
+						if(tcp_context->tcp_options_list[opt_idx] != opt_type)
+						{
+							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+							             context->profile->id, "unexpected TCP option "
+							             "at index %u: 0x%02x received while 0x%02x "
+							             "expected\n", opt_idx, opt_type,
+							             tcp_context->tcp_options_list[opt_idx]);
+							goto error;
+						}
+						save_opt = tcp_context->tcp_options_values +
+						           tcp_context->tcp_options_offset[opt_idx];
+						if((opt_len - 2) != save_opt[0])
+						{
+							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+							             context->profile->id, "malformed TCP dynamic "
+							             "part: unexpected TCP option with index %u: "
+							             "option length in packet (%u) does not match "
+							             "option length in context (%u)\n", opt_idx,
+							             opt_len, save_opt[0] + 2);
+							goto error;
+						}
+						if(memcmp(save_opt + 1, remain_data, save_opt[0]) != 0)
+						{
+							rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+							             context->profile->id, "malformed TCP dynamic "
+							             "part: unexpected TCP option with index %u: "
+							             "option data in packet does not match option "
+							             "option data in context\n", opt_idx);
+							goto error;
+						}
+						memcpy(tcp_options + opts_full_len + 2, remain_data, save_opt[0]);
+						remain_data += save_opt[0];
+						remain_len -= save_opt[0];
+					}
+					break;
 				}
 			}
-			else /* unknown index */
-			{
-				uint8_t opt_type;
-				uint8_t opt_len_lsb;
-				uint8_t *pValue;
+			rohc_decomp_debug(context, "TCP option type 0x%02x (%u)\n",
+			                  opt_type, opt_type);
+			tcp_options[opts_full_len] = opt_type;
+			rohc_decomp_debug(context, "TCP option is %u-byte long (type "
+			                  "and length fields included)\n", opt_len);
+			tcp_options[opts_full_len + 1] = opt_len;
+			opts_full_len += opt_len;
 
-				rohc_decomp_debug(context, "TCP options list: XI #%u: item for "
-				                  "index %u is an unknown index\n", i, opt_idx);
-
-				/* enough data for first 2 bytes of option? */
-				if(remain_len < 2)
-				{
-					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "malformed TCP dynamic "
-					             "part: malformed TCP option items: only %zu "
-					             "bytes available while at least 2 bytes required "
-					             "for next option\n", remain_len);
-					goto error;
-				}
-
-				/* retrieve option type */
-				opt_type = remain_data[0];
-				tcp_context->tcp_opts_list_struct[i] = opt_type;
-				remain_data++;
-				remain_len--;
-
-				/* retrieve option length */
-				opt_len_lsb = remain_data[0] & 0x7f;
-				if(opt_len_lsb < 2)
-				{
-					rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "malformed TCP dynamic "
-					             "part: malformed TCP option items: option length "
-					             "should be at least 2 bytes, but is only %u "
-					             "byte(s)\n", opt_len_lsb);
-					goto error;
-				}
-				tcp_context->tcp_opts_list_item_uncomp_length[i] = opt_len_lsb;
-				remain_data++;
-				remain_len--;
-
-				/* was index already used? */
-				if(tcp_context->tcp_options_list[opt_idx] == 0xff)
-				{
-
-					/* index was never used before */
-					/* save TCP option for this index */
-					tcp_context->tcp_options_list[opt_idx] = opt_type;
-					tcp_context->tcp_options_offset[opt_idx] =
-						tcp_context->tcp_options_free_offset;
-					pValue = tcp_context->tcp_options_values +
-					         tcp_context->tcp_options_free_offset;
-					/* save length (without option_static) */
-					*pValue = opt_len_lsb - 2;
-					rohc_decomp_debug(context, "%d-byte TCP option of type %d\n",
-					                  *pValue, tcp_context->tcp_options_list[opt_idx]);
-					/* enough data for last bytes of option? */
-					if(remain_len < (*pValue))
-					{
-						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "malformed TCP dynamic "
-						             "part: malformed TCP option items: only %zu "
-						             "bytes available while at least %u bytes "
-						             "required for next option\n", remain_len,
-						             (*pValue));
-						goto error;
-					}
-					/* save value */
-					memcpy(pValue + 1, remain_data, *pValue);
-					remain_data += *pValue;
-					remain_len -= *pValue;
-					/* update first free offset */
-					tcp_context->tcp_options_free_offset += 1 + (*pValue);
-					if(tcp_context->tcp_options_free_offset >= MAX_TCP_OPT_SIZE)
-					{
-						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "TCP options too large: "
-						             "%u bytes while only %u are accepted\n",
-						             tcp_context->tcp_options_free_offset,
-						             MAX_TCP_OPT_SIZE);
-						goto error;
-					}
-				}
-				else /* index already used */
-				{
-					/* verify the value with the recorded one */
-					rohc_decomp_debug(context, "tcp_options_list[%u] = %d <=> %d\n",
-					                  opt_idx,
-					                  tcp_context->tcp_options_list[opt_idx],
-					                  opt_type);
-					if(tcp_context->tcp_options_list[opt_idx] != opt_type)
-					{
-						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "unexpected TCP option "
-						             "at index %u: 0x%02x received while 0x%02x "
-						             "expected\n", opt_idx, opt_type,
-						             tcp_context->tcp_options_list[opt_idx]);
-						goto error;
-					}
-					pValue = tcp_context->tcp_options_values +
-					         tcp_context->tcp_options_offset[opt_idx];
-					if((opt_len_lsb - 2) != (*pValue))
-					{
-						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "malformed TCP dynamic "
-						             "part: unexpected TCP option with index %u: "
-						             "option length in packet (%u) does not match "
-						             "option length in context (%u)\n", opt_idx,
-						             opt_len_lsb, (*pValue) + 2);
-						goto error;
-					}
-					if(memcmp(pValue + 1, remain_data, *pValue) != 0)
-					{
-						rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "malformed TCP dynamic "
-						             "part: unexpected TCP option with index %u: "
-						             "option data in packet does not match option "
-						             "option data in context\n", opt_idx);
-						goto error;
-					}
-					remain_data += *pValue;
-					remain_len -= *pValue;
-				}
-			}
+			/* save TCP option for this index */
+			tcp_context->tcp_opts_list_struct[i] = opt_type;
+			tcp_context->tcp_options_list[opt_idx] = opt_type;
+			tcp_context->tcp_opts_list_item_uncomp_length[i] = opt_len;
 		}
 		memset(tcp_context->tcp_opts_list_struct + m, 0xff, 16 - m);
 
-		/* copy TCP options from the ROHC packet after the TCP base header */
-		rohc_decomp_debug(context, "append %zu bytes of TCP options to the TCP "
+		rohc_decomp_debug(context, "%zu bytes of TCP options appended to the TCP "
 		                  "base header\n", opts_full_len);
-		tcp_options = ((uint8_t *) tcp) + sizeof(tcphdr_t);
-		memcpy(tcp_options, pBeginOptions, opts_full_len);
 
 		/* add padding after TCP options (they must be aligned on 32-bit words) */
 		opt_padding_len = sizeof(uint32_t) - (opts_full_len % sizeof(uint32_t));
 		opt_padding_len %= sizeof(uint32_t);
 		for(i = 0; i < opt_padding_len; i++)
 		{
-			rohc_decomp_debug(context, "add TCP EOL option for padding\n");
+			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+			             context->profile->id, "add missing TCP EOL option for "
+			             "padding\n");
 			tcp_options[opts_full_len + i] = TCP_OPT_EOL;
 		}
 		opts_full_len += opt_padding_len;
