@@ -6047,27 +6047,12 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	while(protocol != ROHC_IPPROTO_TCP);
 
-	if(ip_context.vx->version == IPV4)
-	{
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "current IPv6 + TCP packet", dest,
-		                 sizeof(base_header_ip_v4_t) + sizeof(tcphdr_t));
-	}
-	else
-	{
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "current IPv4 + TCP packet", dest,
-		                 sizeof(base_header_ip_v6_t) + sizeof(tcphdr_t));
-	}
+	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	                 ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
+	                 uncomp_header_len);
 
 	size = tcp->data_offset << 2;
 	rohc_decomp_debug(context, "TCP header size = %d (0x%x)\n", size, size);
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest,
-	                 (((unsigned char *) tcp) - dest) + size);
-
-	rohc_decomp_debug(context, "uncomp_header_len = %zu\n",
-	                  uncomp_header_len);
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
