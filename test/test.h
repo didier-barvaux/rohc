@@ -30,19 +30,19 @@
 #define MAX_ROHC_SIZE  (5 * 1024)
 
 /// The length of the Linux Cooked Sockets header
-#define LINUX_COOKED_HDR_LEN  16
+#define LINUX_COOKED_HDR_LEN  16U
 
 /// The length of the BSD loopback encapsulation
-#define BSD_LOOPBACK_HDR_LEN  4
+#define BSD_LOOPBACK_HDR_LEN  4U
 
 /// The minimum Ethernet length (in bytes)
-#define ETHER_FRAME_MIN_LEN  60
+#define ETHER_FRAME_MIN_LEN  60U
 
 /** The length (in bytes) of the Ethernet address */
-#define ETH_ALEN  6
+#define ETH_ALEN  6U
 
 /** The length (in bytes) of the Ethernet header */
-#define ETHER_HDR_LEN  14
+#define ETHER_HDR_LEN  14U
 
 /** The 10Mb/s ethernet header */
 struct ether_header
