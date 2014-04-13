@@ -6060,8 +6060,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		                 sizeof(base_header_ip_v6_t) + sizeof(tcphdr_t));
 	}
 
-	memcpy(&tcp_context->old_tcphdr,tcp,sizeof(tcphdr_t));
-
 	size = tcp->data_offset << 2;
 	rohc_decomp_debug(context, "TCP header size = %d (0x%x)\n", size, size);
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
@@ -6102,7 +6100,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new reference\n",
 		                  tcp_context->seq_number_scaled);
 	}
-	memcpy(&tcp_context->old_tcphdr,tcp,sizeof(tcphdr_t));
+	/* store the decompressed TCP header in context */
+	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
 	rohc_decomp_debug(context, "tcp = %p, save seq_number = 0x%x, "
 	                  "save ack_number = 0x%x\n", tcp,
 	                  rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
