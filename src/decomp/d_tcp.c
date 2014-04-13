@@ -6019,9 +6019,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8,
 				             base_header.ipv4->header_length);
-			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d bytes\n",
+			rohc_decomp_debug(context, "IPv4 checksum = 0x%04x for %u bytes\n",
 			                  rohc_ntoh16(base_header.ipv4->checksum),
-			                  base_header.ipv4->header_length);
+			                  base_header.ipv4->header_length * sizeof(uint32_t));
 			protocol = ip_context.v4->protocol;
 			size -= sizeof(base_header_ip_v4_t);
 			++base_header.ipv4;
@@ -6031,7 +6031,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		{
 			// A REVOIR ->payload_length
 			base_header.ipv6->payload_length = rohc_hton16( ( tcp->data_offset << 2 ) + payload_len );
-			rohc_decomp_debug(context, "payload_length = %d\n",
+			rohc_decomp_debug(context, "payload_length = %u\n",
 			                  rohc_ntoh16(base_header.ipv6->payload_length));
 			/*
 			base_header.ipv6->payload_length = rohc_hton16( length - sizeof(base_header_ip_v6_t) );
