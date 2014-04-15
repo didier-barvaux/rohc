@@ -514,7 +514,7 @@ static int code_CO_packet(struct c_context *const context,
                           const unsigned char *next_header,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
-                          rohc_packet_t *const packet_type,
+                          const rohc_packet_t packet_type,
                           int *const payload_offset);
 static int co_baseheader(struct c_context *const context,
                          struct sc_tcp_context *const tcp_context,
@@ -522,10 +522,11 @@ static int co_baseheader(struct c_context *const context,
                          base_header_ip_t base_header,
                          unsigned char *const rohc_pkt,
                          const size_t rohc_pkt_max_len,
-                         rohc_packet_t *const packet_type,
+                         const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
-                         int size_payload)
-	__attribute__((nonnull(1, 2, 5, 7, 8), warn_unused_result));
+                         int size_payload,
+								 const uint8_t crc)
+	__attribute__((nonnull(1, 2, 5, 8), warn_unused_result));
 
 
 /*
@@ -535,53 +536,61 @@ static int co_baseheader(struct c_context *const context,
 static size_t c_tcp_build_rnd_1(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_1_t *const rnd1)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static size_t c_tcp_build_rnd_2(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_2_t *const rnd2)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static size_t c_tcp_build_rnd_3(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_3_t *const rnd3)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static size_t c_tcp_build_rnd_4(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_4_t *const rnd4)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static size_t c_tcp_build_rnd_5(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_5_t *const rnd5)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static size_t c_tcp_build_rnd_6(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_6_t *const rnd6)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static size_t c_tcp_build_rnd_7(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_7_t *const rnd7)
-	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
+	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
 static bool c_tcp_build_rnd_8(struct c_context *const context,
 										const ip_context_ptr_t ip_context,
 										struct sc_tcp_context *const tcp_context,
 										const base_header_ip_t ip,
 										const tcphdr_t *const tcp,
+										const uint8_t crc,
 										rnd_8_t *const rnd8,
 										size_t *const rnd8_len)
-	__attribute__((nonnull(1, 3, 5, 6, 7), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7, 8), warn_unused_result));
 
 
 /*
@@ -593,65 +602,73 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_1_t *const seq1)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static size_t c_tcp_build_seq_2(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_2_t *const seq2)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static size_t c_tcp_build_seq_3(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_3_t *const seq3)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static size_t c_tcp_build_seq_4(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_4_t *const seq4)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static size_t c_tcp_build_seq_5(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_5_t *const seq5)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static size_t c_tcp_build_seq_6(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_6_t *const seq6)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static size_t c_tcp_build_seq_7(struct c_context *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_7_t *const seq7)
-	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
 static bool c_tcp_build_seq_8(struct c_context *const context,
 										const ip_context_ptr_t ip_context,
 										struct sc_tcp_context *const tcp_context,
 										const base_header_ip_t ip,
 										const tcphdr_t *const tcp,
+										const uint8_t crc,
 										seq_8_t *const seq8,
 										size_t *const seq8_len)
-	__attribute__((nonnull(1, 3, 5, 6, 7), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 7, 8), warn_unused_result));
 
 
 /*
@@ -1747,7 +1764,7 @@ static int c_tcp_encode(struct c_context *const context,
 		/* co_common, seq_X, or rnd_X */
 		counter = code_CO_packet(context, &uncomp_pkt->outer_ip, uncomp_pkt->len,
 		                         base_header.uint8, rohc_pkt, rohc_pkt_max_len,
-		                         packet_type, payload_offset);
+		                         *packet_type, payload_offset);
 		if(counter < 0)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4219,7 +4236,7 @@ error:
  *                          such as UDP, UDP-Lite, and so on.
  * @param rohc_pkt          OUT: The ROHC packet
  * @param rohc_pkt_max_len  The maximum length of the ROHC packet
- * @param packet_type       OUT: The type of ROHC packet that is created
+ * @param packet_type       The type of ROHC packet to create
  * @param payload_offset    OUT: The offset for the payload in the IP packet
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
@@ -4230,7 +4247,7 @@ static int code_CO_packet(struct c_context *const context,
                           const unsigned char *next_header,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
-                          rohc_packet_t *const packet_type,
+                          const rohc_packet_t packet_type,
                           int *const payload_offset)
 {
 	struct c_generic_context *g_context;
@@ -4251,16 +4268,14 @@ static int code_CO_packet(struct c_context *const context,
 	uint8_t *puchar;
 #endif
 	uint8_t protocol;
+	uint8_t crc_computed;
 	int i;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
-	assert(packet_type != NULL);
 
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
-
-	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	rohc_comp_debug(context, "code CO packet (CID = %zu)\n", context->cid);
 
@@ -4356,6 +4371,21 @@ static int code_CO_packet(struct c_context *const context,
 	*payload_offset = ( (uint8_t*) tcp ) + ( tcp->data_offset << 2 ) - ip->data;
 	rohc_comp_debug(context, "payload_offset = %d\n", *payload_offset);
 
+	/* we have just identified the IP and TCP headers (options included), so
+	 * let's compute the CRC on uncompressed headers */
+	if(packet_type == ROHC_PACKET_TCP_SEQ_8 ||
+	   packet_type == ROHC_PACKET_TCP_RND_8 ||
+	   packet_type == ROHC_PACKET_TCP_CO_COMMON)
+	{
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_7, ip->data, *payload_offset,
+		                             CRC_INIT_7, context->compressor->crc_table_7);
+	}
+	else
+	{
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_3, ip->data, *payload_offset,
+		                             CRC_INIT_3, context->compressor->crc_table_3);
+	}
+
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
@@ -4389,7 +4419,7 @@ static int code_CO_packet(struct c_context *const context,
 	i = co_baseheader(context, tcp_context, ip_inner_context,
 	                  base_header_inner,
 	                  &rohc_pkt[counter - 1], rohc_pkt_max_len,
-	                  packet_type, tcp, payload_size);
+	                  packet_type, tcp, payload_size, crc_computed);
 	if(i < 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4511,9 +4541,10 @@ static int co_baseheader(struct c_context *const context,
 								 base_header_ip_t base_header,
 								 unsigned char *const rohc_pkt,
 								 const size_t rohc_pkt_max_len __attribute__((unused)), /* TODO */
-                         rohc_packet_t *const packet_type,
+                         const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
-								 int payload_size)
+								 int payload_size,
+								 const uint8_t crc)
 {
 	struct c_generic_context *g_context = context->specific;
 	multi_ptr_t c_base_header; // compressed
@@ -4521,9 +4552,6 @@ static int co_baseheader(struct c_context *const context,
 	multi_ptr_t mptr;
 	uint8_t *puchar;
 	bool is_ok;
-
-	assert(packet_type != NULL);
-	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
 	                "base_header_ip = %p, rohc_pkt = %p, payload_size = %d\n",
@@ -4538,34 +4566,34 @@ static int co_baseheader(struct c_context *const context,
 
 	mptr.uint8 = c_base_header.uint8;
 
-	switch(*packet_type)
+	switch(packet_type)
 	{
 		case ROHC_PACKET_TCP_RND_1:
-			mptr.uint8 += c_tcp_build_rnd_1(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_1(context, tcp_context, tcp, crc,
 													  c_base_header.rnd1);
 			break;
 		case ROHC_PACKET_TCP_RND_2:
-			mptr.uint8 += c_tcp_build_rnd_2(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_2(context, tcp_context, tcp, crc,
 													  c_base_header.rnd2);
 			break;
 		case ROHC_PACKET_TCP_RND_3:
-			mptr.uint8 += c_tcp_build_rnd_3(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_3(context, tcp_context, tcp, crc,
 													  c_base_header.rnd3);
 			break;
 		case ROHC_PACKET_TCP_RND_4:
-			mptr.uint8 += c_tcp_build_rnd_4(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_4(context, tcp_context, tcp, crc,
 													  c_base_header.rnd4);
 			break;
 		case ROHC_PACKET_TCP_RND_5:
-			mptr.uint8 += c_tcp_build_rnd_5(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_5(context, tcp_context, tcp, crc,
 													  c_base_header.rnd5);
 			break;
 		case ROHC_PACKET_TCP_RND_6:
-			mptr.uint8 += c_tcp_build_rnd_6(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_6(context, tcp_context, tcp, crc,
 													  c_base_header.rnd6);
 			break;
 		case ROHC_PACKET_TCP_RND_7:
-			mptr.uint8 += c_tcp_build_rnd_7(context, tcp_context, tcp,
+			mptr.uint8 += c_tcp_build_rnd_7(context, tcp_context, tcp, crc,
 													  c_base_header.rnd7);
 			break;
 		case ROHC_PACKET_TCP_RND_8:
@@ -4573,7 +4601,7 @@ static int co_baseheader(struct c_context *const context,
 			size_t rnd8_len;
 
 			is_ok = c_tcp_build_rnd_8(context, ip_context, tcp_context,
-											  base_header, tcp, c_base_header.rnd8,
+											  base_header, tcp, crc, c_base_header.rnd8,
 											  &rnd8_len);
 			if(!is_ok)
 			{
@@ -4587,38 +4615,45 @@ static int co_baseheader(struct c_context *const context,
 		}
 		case ROHC_PACKET_TCP_SEQ_1:
 			mptr.uint8 += c_tcp_build_seq_1(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq1);
+													  base_header, tcp, crc,
+													  c_base_header.seq1);
 			break;
 		case ROHC_PACKET_TCP_SEQ_2:
 			mptr.uint8 += c_tcp_build_seq_2(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq2);
+													  base_header, tcp, crc,
+													  c_base_header.seq2);
 			break;
 		case ROHC_PACKET_TCP_SEQ_3:
 			mptr.uint8 += c_tcp_build_seq_3(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq3);
+													  base_header, tcp, crc,
+													  c_base_header.seq3);
 			break;
 		case ROHC_PACKET_TCP_SEQ_4:
 			mptr.uint8 += c_tcp_build_seq_4(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq4);
+													  base_header, tcp, crc,
+													  c_base_header.seq4);
 			break;
 		case ROHC_PACKET_TCP_SEQ_5:
 			mptr.uint8 += c_tcp_build_seq_5(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq5);
+													  base_header, tcp, crc,
+													  c_base_header.seq5);
 			break;
 		case ROHC_PACKET_TCP_SEQ_6:
 			mptr.uint8 += c_tcp_build_seq_6(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq6);
+													  base_header, tcp, crc,
+													  c_base_header.seq6);
 			break;
 		case ROHC_PACKET_TCP_SEQ_7:
 			mptr.uint8 += c_tcp_build_seq_7(context, ip_context, tcp_context,
-													  base_header, tcp, c_base_header.seq7);
+													  base_header, tcp, crc,
+													  c_base_header.seq7);
 			break;
 		case ROHC_PACKET_TCP_SEQ_8:
 		{
 			size_t seq8_len;
 
 			is_ok = c_tcp_build_seq_8(context, ip_context, tcp_context,
-											  base_header, tcp, c_base_header.seq8,
+											  base_header, tcp, crc, c_base_header.seq8,
 											  &seq8_len);
 			if(!is_ok)
 			{
@@ -4887,19 +4922,13 @@ static int co_baseheader(struct c_context *const context,
 	                c_base_header.co_common->list_present,
 	                c_base_header.co_common->df);
 	// =:= crc7(THIS.UVALUE,THIS.ULENGTH) [ 7 ];
-	c_base_header.co_common->header_crc = 0;
-	c_base_header.co_common->header_crc =
-	   crc_calculate(ROHC_CRC_TYPE_7,  c_base_header.uint8,
-	                 mptr.uint8 - c_base_header.uint8, CRC_INIT_7,
-	                 context->compressor->crc_table_7);
-	rohc_comp_debug(context, "CRC (header length = %d, CRC = 0x%x)\n",
-	                (int) (mptr.uint8 - c_base_header.uint8),
+	c_base_header.co_common->header_crc = crc;
+	rohc_comp_debug(context, "CRC = 0x%x\n",
 	                c_base_header.co_common->header_crc);
 			break;
 		}
 		default:
-			rohc_comp_debug(context, "unexpected packet type %d\n",
-								 *packet_type);
+			rohc_comp_debug(context, "unexpected packet type %d\n", packet_type);
 			assert(0);
 			break;
 	}
@@ -4941,6 +4970,7 @@ error:
 static size_t c_tcp_build_rnd_1(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_1_t *const rnd1)
 {
 	struct c_generic_context *g_context;
@@ -4961,10 +4991,7 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
 	rnd1->seq_number2 = rohc_hton16(seq_number & 0xffff);
 	rnd1->msn = g_context->sn & 0xf;
 	rnd1->psh_flag = tcp->psh_flag;
-	rnd1->header_crc = 0; /* for CRC computation */
-	rnd1->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd1,
-	                                 sizeof(rnd_1_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd1->header_crc = crc;
 
 	return sizeof(rnd_1_t);
 }
@@ -4985,6 +5012,7 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
 static size_t c_tcp_build_rnd_2(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_2_t *const rnd2)
 {
 	struct c_generic_context *g_context;
@@ -5001,10 +5029,7 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
 	rnd2->discriminator = 0x0c; /* '1100' */
 	rnd2->seq_number_scaled = tcp_context->seq_number_scaled & 0xf;
 	rnd2->msn = g_context->sn & 0xf;
-	rnd2->header_crc = 0; /* for CRC computation */
-	rnd2->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd2,
-	                                 sizeof(rnd_2_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd2->header_crc = crc;
 
 	return sizeof(rnd_2_t);
 }
@@ -5025,6 +5050,7 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
 static size_t c_tcp_build_rnd_3(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_3_t *const rnd3)
 {
 	struct c_generic_context *g_context;
@@ -5048,10 +5074,7 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
 	                ack_number, rnd3->ack_number1, rnd3->ack_number2);
 	rnd3->msn = g_context->sn & 0xf;
 	rnd3->psh_flag = tcp->psh_flag;
-	rnd3->header_crc = 0; /* for CRC computation */
-	rnd3->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd3,
-	                                 sizeof(rnd_3_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd3->header_crc = crc;
 
 	return sizeof(rnd_3_t);
 }
@@ -5072,6 +5095,7 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
 static size_t c_tcp_build_rnd_4(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_4_t *const rnd4)
 {
 	struct c_generic_context *g_context;
@@ -5092,10 +5116,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
 	                                tcp_context->ack_number_scaled);
 	rnd4->msn = g_context->sn & 0xf;
 	rnd4->psh_flag = tcp->psh_flag;
-	rnd4->header_crc = 0; /* for CRC computation */
-	rnd4->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd4,
-	                                 sizeof(rnd_4_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd4->header_crc = crc;
 
 	return sizeof(rnd_4_t);
 }
@@ -5116,6 +5137,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
 static size_t c_tcp_build_rnd_5(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_5_t *const rnd5)
 {
 	struct c_generic_context *g_context;
@@ -5151,10 +5173,7 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
 	rnd5->ack_number2 = ack_number & 0xff;
 	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)\n",
 	                ack_number, rnd5->ack_number1, rnd5->ack_number2);
-	rnd5->header_crc = 0; /* for CRC computation */
-	rnd5->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd5,
-	                                 sizeof(rnd_5_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd5->header_crc = crc;
 
 	return sizeof(rnd_5_t);
 }
@@ -5175,6 +5194,7 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
 static size_t c_tcp_build_rnd_6(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_6_t *const rnd6)
 {
 	struct c_generic_context *g_context;
@@ -5195,9 +5215,7 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
 	                               rohc_ntoh32(tcp->ack_number)));
 	rnd6->msn = g_context->sn & 0xf;
 	rnd6->seq_number_scaled = tcp_context->seq_number_scaled & 0xf;
-	rnd6->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd6,
-	                                 sizeof(rnd_6_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd6->header_crc = crc;
 
 	return sizeof(rnd_6_t);
 }
@@ -5218,6 +5236,7 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
 static size_t c_tcp_build_rnd_7(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 rnd_7_t *const rnd7)
 {
 	struct c_generic_context *g_context;
@@ -5241,9 +5260,7 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
 	rnd7->msn = g_context->sn & 0xf;
 	rnd7->psh_flag = tcp->psh_flag;
 	rnd7->header_crc = 0; /* for CRC computation */
-	rnd7->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) rnd7,
-	                                 sizeof(rnd_7_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	rnd7->header_crc = crc;
 
 	return sizeof(rnd_7_t);
 }
@@ -5269,6 +5286,7 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 										struct sc_tcp_context *const tcp_context,
 										const base_header_ip_t ip,
 										const tcphdr_t *const tcp,
+										const uint8_t crc,
 										rnd_8_t *const rnd8,
 										size_t *const rnd8_len)
 {
@@ -5349,11 +5367,8 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
 	}
 
 	/* CRC */
-	rnd8->header_crc = crc_calculate(ROHC_CRC_TYPE_7, (unsigned char *) rnd8,
-	                                 sizeof(rnd_8_t) + comp_opts_len, CRC_INIT_7,
-	                                 context->compressor->crc_table_7);
-	rohc_comp_debug(context, "CRC (header length = %zd, CRC = 0x%x)\n",
-	                sizeof(rnd_8_t) + comp_opts_len, rnd8->header_crc);
+	rnd8->header_crc = crc;
+	rohc_comp_debug(context, "CRC 0x%x\n", rnd8->header_crc);
 
 	*rnd8_len = sizeof(rnd_8_t) + comp_opts_len;
 
@@ -5383,6 +5398,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_1_t *const seq1)
 {
 	struct c_generic_context *g_context;
@@ -5408,10 +5424,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
 	seq1->seq_number = rohc_hton16(seq_number);
 	seq1->msn = g_context->sn & 0xf;
 	seq1->psh_flag = tcp->psh_flag;
-	seq1->header_crc = 0; /* for CRC computation */
-	seq1->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq1,
-	                                 sizeof(seq_1_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq1->header_crc = crc;
 
 	return sizeof(seq_1_t);
 }
@@ -5436,6 +5449,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_2_t *const seq2)
 {
 	struct c_generic_context *g_context;
@@ -5462,10 +5476,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
 	seq2->seq_number_scaled = tcp_context->seq_number_scaled & 0xf;
 	seq2->msn = g_context->sn & 0xf;
 	seq2->psh_flag = tcp->psh_flag;
-	seq2->header_crc = 0; /* for CRC computation */
-	seq2->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq2,
-	                                 sizeof(seq_2_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq2->header_crc = crc;
 
 	return sizeof(seq_2_t);
 }
@@ -5490,6 +5501,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_3_t *const seq3)
 {
 	struct c_generic_context *g_context;
@@ -5515,9 +5527,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
 	seq3->msn = g_context->sn & 0xf;
 	seq3->psh_flag = tcp->psh_flag;
 	seq3->header_crc = 0; /* for CRC computation */
-	seq3->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq3,
-	                                 sizeof(seq_3_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq3->header_crc = crc;
 
 	return sizeof(seq_3_t);
 }
@@ -5542,6 +5552,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_4_t *const seq4)
 {
 	struct c_generic_context *g_context;
@@ -5569,9 +5580,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
 	seq4->msn = g_context->sn & 0xf;
 	seq4->psh_flag = tcp->psh_flag;
 	seq4->header_crc = 0; /* for CRC computation */
-	seq4->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq4,
-	                                 sizeof(seq_4_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq4->header_crc = crc;
 
 	return sizeof(seq_4_t);
 }
@@ -5596,6 +5605,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_5_t *const seq5)
 {
 	struct c_generic_context *g_context;
@@ -5623,10 +5633,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
 	seq5->seq_number = rohc_hton16(seq_number);
 	seq5->msn = g_context->sn & 0xf;
 	seq5->psh_flag = tcp->psh_flag;
-	seq5->header_crc = 0; /* for CRC computation */
-	seq5->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq5,
-	                                 sizeof(seq_5_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq5->header_crc = crc;
 
 	return sizeof(seq_5_t);
 }
@@ -5650,6 +5657,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_6_t *const seq6)
 {
 	struct c_generic_context *g_context;
@@ -5682,10 +5690,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq6->msn = g_context->sn & 0xf;
 	seq6->psh_flag = tcp->psh_flag;
-	seq6->header_crc = 0; /* for CRC computation */
-	seq6->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq6,
-	                                 sizeof(seq_6_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq6->header_crc = crc;
 
 	return sizeof(seq_6_t);
 }
@@ -5710,6 +5715,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
                                 const tcphdr_t *const tcp,
+                                const uint8_t crc,
                                 seq_7_t *const seq7)
 {
 	struct c_generic_context *g_context;
@@ -5744,10 +5750,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
 	                               rohc_ntoh32(tcp->ack_number)));
 	seq7->msn = g_context->sn & 0xf;
 	seq7->psh_flag = tcp->psh_flag;
-	seq7->header_crc = 0; /* for CRC computation */
-	seq7->header_crc = crc_calculate(ROHC_CRC_TYPE_3, (unsigned char *) seq7,
-	                                 sizeof(seq_7_t), CRC_INIT_3,
-	                                 context->compressor->crc_table_3);
+	seq7->header_crc = crc;
 
 	return sizeof(seq_7_t);
 }
@@ -5769,12 +5772,13 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
  * @return              true if the packet is successfully built, false otherwise
  */
 static bool c_tcp_build_seq_8(struct c_context *const context,
-                                const ip_context_ptr_t ip_context,
-                                struct sc_tcp_context *const tcp_context,
-                                const base_header_ip_t ip,
-                                const tcphdr_t *const tcp,
-                                seq_8_t *const seq8,
-										  size_t *const seq8_len)
+                              const ip_context_ptr_t ip_context,
+                              struct sc_tcp_context *const tcp_context,
+                              const base_header_ip_t ip,
+                              const tcphdr_t *const tcp,
+                              const uint8_t crc,
+                              seq_8_t *const seq8,
+                              size_t *const seq8_len)
 {
 	struct c_generic_context *g_context;
 	size_t comp_opts_len;
@@ -5853,11 +5857,8 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
 	}
 
 	/* CRC */
-	seq8->header_crc = crc_calculate(ROHC_CRC_TYPE_7, (unsigned char *) seq8,
-	                                 sizeof(seq_8_t) + comp_opts_len, CRC_INIT_7,
-	                                 context->compressor->crc_table_7);
-	rohc_comp_debug(context, "CRC (header length = %zd, CRC = 0x%x)\n",
-	                sizeof(seq_8_t) + comp_opts_len, seq8->header_crc);
+	seq8->header_crc = crc;
+	rohc_comp_debug(context, "CRC = 0x%x\n", seq8->header_crc);
 
 	*seq8_len = sizeof(seq_8_t) + comp_opts_len;
 
