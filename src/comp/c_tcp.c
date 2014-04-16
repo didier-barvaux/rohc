@@ -4545,6 +4545,7 @@ error:
  * @param packet_type               OUT: The type of ROHC packet that is created
  * @param tcp                       The TCP header to compress
  * @param payload_size              The size of the payload
+ * @param crc                       The CRC on the uncompressed headers
  * @return                          The position in the rohc-packet-under-build buffer
  *                                  -1 in case of problem
  */
@@ -4985,6 +4986,7 @@ error:
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd1          IN/OUT: The rnd_1 packet to build
  * @return              The length (in bytes) of the rnd_1 packet
  */
@@ -5027,6 +5029,7 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd2          IN/OUT: The rnd_2 packet to build
  * @return              The length (in bytes) of the rnd_2 packet
  */
@@ -5065,6 +5068,7 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd3          IN/OUT: The rnd_3 packet to build
  * @return              The length (in bytes) of the rnd_3 packet
  */
@@ -5110,6 +5114,7 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd4          IN/OUT: The rnd_4 packet to build
  * @return              The length (in bytes) of the rnd_4 packet
  */
@@ -5152,6 +5157,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd5          IN/OUT: The rnd_5 packet to build
  * @return              The length (in bytes) of the rnd_5 packet
  */
@@ -5209,6 +5215,7 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd6          IN/OUT: The rnd_6 packet to build
  * @return              The length (in bytes) of the rnd_6 packet
  */
@@ -5251,6 +5258,7 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
  * @param context       The compression context
  * @param tcp_context   The specific TCP context
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd7          IN/OUT: The rnd_7 packet to build
  * @return              The length (in bytes) of the rnd_7 packet
  */
@@ -5298,6 +5306,7 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param rnd8          IN/OUT: The rnd_8 packet to build
  * @param rnd8_len      OUT: The length (in bytes) of the rnd_8 packet
  * @return              true if the packet is successfully built, false otherwise
@@ -5411,6 +5420,7 @@ error:
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq1          IN/OUT: The seq_1 packet to build
  * @return              The length (in bytes) of the seq_1 packet
  */
@@ -5462,6 +5472,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq2          IN/OUT: The seq_2 packet to build
  * @return              The length (in bytes) of the seq_2 packet
  */
@@ -5514,6 +5525,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq3          IN/OUT: The seq_3 packet to build
  * @return              The length (in bytes) of the seq_3 packet
  */
@@ -5565,6 +5577,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq4          IN/OUT: The seq_4 packet to build
  * @return              The length (in bytes) of the seq_4 packet
  */
@@ -5618,6 +5631,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq5          IN/OUT: The seq_5 packet to build
  * @return              The length (in bytes) of the seq_5 packet
  */
@@ -5670,6 +5684,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq6          IN/OUT: The seq_6 packet to build
  * @return              The length (in bytes) of the seq_6 packet
  */
@@ -5728,6 +5743,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq7          IN/OUT: The seq_7 packet to build
  * @return              The length (in bytes) of the seq_7 packet
  */
@@ -5788,6 +5804,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
  * @param tcp_context   The specific TCP context
  * @param ip            The IPv4 or IPv6 header to compress
  * @param tcp           The TCP header to compress
+ * @param crc           The CRC on the uncompressed headers
  * @param seq8          IN/OUT: The seq_8 packet to build
  * @param seq8_len      OUT: The length (in bytes) of the seq_8 packet
  * @return              true if the packet is successfully built, false otherwise
