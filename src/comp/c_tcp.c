@@ -348,6 +348,7 @@ struct sc_tcp_context
 	struct c_wlsb *seq_wlsb;
 	struct c_wlsb *seq_scaled_wlsb;
 
+	struct c_wlsb *ack_wlsb;
 	uint32_t ack_number;
 
 	uint32_t seq_number_scaled;
@@ -961,7 +962,16 @@ static bool c_tcp_create(struct c_context *const context,
 		goto free_wlsb_seq;
 	}
 
+	/* TCP acknowledgment (ACK) number */
 	tcp_context->ack_number = rohc_ntoh32(tcp->ack_number);
+	tcp_context->ack_wlsb =
+		c_create_wlsb(32, comp->wlsb_window_width, ROHC_LSB_SHIFT_VAR);
+	if(tcp_context->ack_wlsb == NULL)
+	{
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "failed to create W-LSB context for TCP ACK number\n");
+		goto free_wlsb_seq_scaled;
+	}
 
 	/* init the TCP-specific temporary variables DBX */
 #ifdef TODO
@@ -992,7 +1002,7 @@ static bool c_tcp_create(struct c_context *const context,
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP option Timestamp "
 		           "request\n");
-		goto free_wlsb_seq_scaled;
+		goto free_wlsb_ack;
 	}
 	/* TCP option Timestamp (reply) */
 	tcp_context->opt_ts_reply_wlsb =
@@ -1027,6 +1037,8 @@ static bool c_tcp_create(struct c_context *const context,
 
 free_wlsb_opt_ts_req:
 	c_destroy_wlsb(tcp_context->opt_ts_req_wlsb);
+free_wlsb_ack:
+	c_destroy_wlsb(tcp_context->ack_wlsb);
 free_wlsb_seq_scaled:
 	c_destroy_wlsb(tcp_context->seq_scaled_wlsb);
 free_wlsb_seq:
@@ -1056,6 +1068,7 @@ static void c_tcp_destroy(struct c_context *const context)
 
 	c_destroy_wlsb(tcp_context->opt_ts_reply_wlsb);
 	c_destroy_wlsb(tcp_context->opt_ts_req_wlsb);
+	c_destroy_wlsb(tcp_context->ack_wlsb);
 	c_destroy_wlsb(tcp_context->seq_scaled_wlsb);
 	c_destroy_wlsb(tcp_context->seq_wlsb);
 	c_generic_destroy(context);
@@ -4695,13 +4708,17 @@ static int co_baseheader(struct c_context *const context,
 	puchar = mptr.uint8;
 
 	/* seq_number */
-	ret = variable_length_32_enc(tcp->seq_number, mptr.uint8, &indicator);
+	ret = variable_length_32_enc(tcp_context->seq_wlsb,
+	                             rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
+	                             rohc_ntoh32(tcp->seq_number),
+	                             mptr.uint8, &indicator);
 	if(ret < 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "failed to variable_length_32_enc(seq_number)\n");
 		goto error;
 	}
+	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn, tcp->seq_number);
 	c_base_header.co_common->seq_indicator = indicator;
 	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, seq_indicator = %d, seq_number = 0x%x\n",
@@ -4710,13 +4727,17 @@ static int co_baseheader(struct c_context *const context,
 	                rohc_ntoh32(tcp->seq_number));
 
 	/* ack_number */
-	ret = variable_length_32_enc(tcp->ack_number, mptr.uint8, &indicator);
+	ret = variable_length_32_enc(tcp_context->ack_wlsb,
+	                             rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+	                             rohc_ntoh32(tcp->ack_number),
+	                             mptr.uint8, &indicator);
 	if(ret < 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "failed to variable_length_32_enc(ack_number)\n");
 		goto error;
 	}
+	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn, tcp->ack_number);
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, ack_indicator = %d, ack_number = 0x%x\n",

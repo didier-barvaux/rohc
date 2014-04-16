@@ -40,6 +40,9 @@
 
 
 
+/** The width of the W-LSB sliding window */
+#define ROHC_WLSB_WINDOW_WIDTH  4U
+
 /** Print trace on stdout only in verbose mode */
 #define trace(is_verbose, format, ...) \
 	do { \
@@ -109,6 +112,9 @@ error:
 static bool run_test_variable_length_32_enc(const bool be_verbose)
 {
 	uint8_t compressed_data[sizeof(uint32_t)];
+	struct c_wlsb *wlsb;
+	uint32_t old_value;
+	bool is_success = false;
 	size_t i;
 	int ret;
 
@@ -118,21 +124,60 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		size_t expected_len;
 		int expected_indicator;
 	}
-	inputs[] = {
-		{ htonl(0),          0, 0 },
-		{ htonl(1),          1, 1 },
-		{ htonl(0xff),       1, 1 },
-		{ htonl(0xff + 1),   2, 2 },
-		{ htonl(0xffff),     2, 2 },
-		{ htonl(0xffff + 1), 4, 3 },
-		{ htonl(0xfffff),    4, 3 },
-		{ htonl(0xffffff),   4, 3 },
-		{ htonl(0xfffffff),  4, 3 },
-		{ htonl(0xffffffff), 4, 3 },
-		{ 0,                 0, 4 }  /* stopper */
+	inputs[] = { /* works with width = 4 */
+		{ 0,              0, 0 },
+		{ 1,              1, 1 },
+		{ 2,              1, 1 },
+		{ 3,              1, 1 },
+		{ 4,              1, 1 },
+		{ 0xff,           2, 2 },
+		{ 0xff + 1,       2, 2 },
+		{ 0xff + 2,       2, 2 },
+		{ 0xff + 3,       2, 2 },
+		{ 0xff + 4,       1, 1 },
+		{ 0xffff,         4, 3 },
+		{ 0xffff + 1,     4, 3 },
+		{ 0xffff + 2,     4, 3 },
+		{ 0xffff + 3,     4, 3 },
+		{ 0xffff + 4,     1, 1 },
+		{ 0xfffff,        4, 3 },
+		{ 0xfffff + 1,    4, 3 },
+		{ 0xfffff + 2,    4, 3 },
+		{ 0xfffff + 3,    4, 3 },
+		{ 0xfffff + 4,    1, 1 },
+		{ 0xffffff,       4, 3 },
+		{ 0xffffff + 1,   4, 3 },
+		{ 0xffffff + 2,   4, 3 },
+		{ 0xffffff + 3,   4, 3 },
+		{ 0xffffff + 4,   1, 1 },
+		{ 0xfffffff,      4, 3 },
+		{ 0xfffffff + 1,  4, 3 },
+		{ 0xfffffff + 2,  4, 3 },
+		{ 0xfffffff + 3,  4, 3 },
+		{ 0xfffffff + 4,  1, 1 },
+		{ 0xffffffff,     4, 3 },
+		{ 0xffffffff + 1, 4, 3 },
+		{ 0xffffffff + 2, 4, 3 },
+		{ 0xffffffff + 3, 4, 3 },
+		{ 0xffffffff + 4, 1, 1 },
+		{ 0,              0, 4 }  /* stopper */
 	};
 
+	/* create the W-LSB context */
+	wlsb = c_create_wlsb(32, ROHC_WLSB_WINDOW_WIDTH, ROHC_LSB_SHIFT_VAR);
+	if(wlsb == NULL)
+	{
+		trace(be_verbose, "failed to create W-LSB context\n");
+		goto error;
+	}
+	/* init the W-LSB context with several values */
+	c_add_wlsb(wlsb, 0, 0);
+	c_add_wlsb(wlsb, 1, 0);
+	c_add_wlsb(wlsb, 2, 0);
+	c_add_wlsb(wlsb, 3, 0);
+
 	i = 0;
+	old_value = 0;
 	while(inputs[i].expected_indicator <= 3)
 	{
 		int indicator;
@@ -141,15 +186,17 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
 		      inputs[i].uncomp_value);
-		ret = variable_length_32_enc(inputs[i].uncomp_value, compressed_data,
-		                             &indicator);
+		ret = variable_length_32_enc(wlsb, old_value, inputs[i].uncomp_value,
+		                             compressed_data, &indicator);
 		if(ret < 0)
 		{
 			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) failed\n",
 			        inputs[i].uncomp_value);
-			goto error;
+			goto free_wlsb;
 		}
 		comp_len = ret;
+		printf("\t\tindicator %d\n", indicator);
+		printf("\t\tencoded length %zu\n", comp_len);
 
 		/* check that returned indicator is as expected */
 		if(indicator != inputs[i].expected_indicator)
@@ -157,7 +204,7 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) returned %d "
 			        "as indicator while %d expected\n", inputs[i].uncomp_value,
 			        indicator, inputs[i].expected_indicator);
-			goto error;
+			goto free_wlsb;
 		}
 
 		/* check that written data is as expected */
@@ -167,15 +214,20 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 			        "%zd-byte compressed value while one %zd-byte value was "
 			        "expected\n", inputs[i].uncomp_value, comp_len,
 			        inputs[i].expected_len);
-			goto error;
+			goto free_wlsb;
 		}
+
+		c_add_wlsb(wlsb, i + 4, inputs[i].uncomp_value);
+		old_value = inputs[i].uncomp_value;
 
 		i++;
 	}
 
-	return true;
+	is_success = true;
 
+free_wlsb:
+	c_destroy_wlsb(wlsb);
 error:
-	return false;
+	return is_success;
 }
 

@@ -245,6 +245,7 @@ struct d_tcp_context
 	uint16_t ack_stride;
 	uint32_t ack_number_scaled;
 	uint32_t ack_number_residue;
+	struct rohc_lsb_decode *ack_lsb_ctxt;
 
 	// Table of TCP options
 	uint8_t tcp_options_list[16];      // see RFC4996 page 27
@@ -439,6 +440,16 @@ static void * d_tcp_create(const struct d_context *const context)
 		goto free_lsb_seq;
 	}
 
+	/* create the LSB decoding context for the ACK number */
+	tcp_context->ack_lsb_ctxt = rohc_lsb_new(ROHC_LSB_SHIFT_VAR, 32);
+	if(tcp_context->ack_lsb_ctxt == NULL)
+	{
+		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
+		           "failed to create the LSB decoding context for the ACK "
+		           "number\n");
+		goto free_lsb_scaled_seq;
+	}
+
 	/* the TCP source and destination ports will be initialized
 	 * with the IR packets */
 	tcp_context->tcp_src_port = 0xFFFF;
@@ -455,7 +466,7 @@ static void * d_tcp_create(const struct d_context *const context)
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "failed to create the LSB decoding context for the TCP "
 		           "option Timestamp echo request\n");
-		goto free_lsb_scaled_seq;
+		goto free_lsb_ack;
 	}
 
 	/* create the LSB decoding context for the TCP option Timestamp echo
@@ -514,6 +525,8 @@ free_lsb_ts_opt_reply:
 	rohc_lsb_free(tcp_context->opt_ts_reply_lsb_ctxt);
 free_lsb_ts_opt_req:
 	rohc_lsb_free(tcp_context->opt_ts_req_lsb_ctxt);
+free_lsb_ack:
+	rohc_lsb_free(tcp_context->ack_lsb_ctxt);
 free_lsb_scaled_seq:
 	rohc_lsb_free(tcp_context->seq_scaled_lsb_ctxt);
 free_lsb_seq:
@@ -559,6 +572,8 @@ static void d_tcp_destroy(void *const context)
 	/* destroy the LSB decoding context for the TCP option Timestamp echo
 	 * reply */
 	rohc_lsb_free(tcp_context->opt_ts_reply_lsb_ctxt);
+	/* destroy the LSB decoding context for the ACK number */
+	rohc_lsb_free(tcp_context->ack_lsb_ctxt);
 	/* destroy the LSB decoding context for the scaled sequence number */
 	rohc_lsb_free(tcp_context->seq_scaled_lsb_ctxt);
 	/* destroy the LSB decoding context for the sequence number */
@@ -1124,6 +1139,10 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new reference\n",
 		                  tcp_context->seq_number_scaled);
 	}
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_number),
+	                 false);
+	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference\n",
+	                  rohc_ntoh32(tcp->ack_number));
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
@@ -1361,6 +1380,10 @@ static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new reference\n",
 		                  tcp_context->seq_number_scaled);
 	}
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_number),
+	                 false);
+	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference\n",
+	                  rohc_ntoh32(tcp->ack_number));
 
 	return size;
 
@@ -5149,8 +5172,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		                  tcp->rsf_flags);
 
 		/* sequence number */
-		ret = variable_length_32_dec(context, rohc_opts_data,
-		                             co_common->seq_indicator, &tcp->seq_number);
+		ret = variable_length_32_dec(tcp_context->seq_lsb_ctxt, context,
+		                             rohc_opts_data, co_common->seq_indicator,
+		                             &tcp->seq_number);
 		if(ret < 0)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
@@ -5163,8 +5187,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_opts_data += ret;
 
 		/* ACK number */
-		ret = variable_length_32_dec(context, rohc_opts_data,
-		                             co_common->ack_indicator, &tcp->ack_number);
+		ret = variable_length_32_dec(tcp_context->ack_lsb_ctxt, context,
+		                             rohc_opts_data, co_common->ack_indicator,
+		                             &tcp->ack_number);
 		if(ret < 0)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
@@ -6071,6 +6096,10 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new reference\n",
 		                  tcp_context->seq_number_scaled);
 	}
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_number),
+	                 false);
+	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference\n",
+	                  rohc_ntoh32(tcp->ack_number));
 	/* store the decompressed TCP header in context */
 	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
 	rohc_decomp_debug(context, "tcp = %p, save seq_number = 0x%x, "
@@ -6121,6 +6150,7 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
 	}
 	rohc_decomp_debug(context, "decoded sequence number = 0x%08x (%zu bits "
 	                  "0x%x with p = %d)\n", *seq, seq_bits_nr, seq_bits, p);
+
 	return true;
 }
 

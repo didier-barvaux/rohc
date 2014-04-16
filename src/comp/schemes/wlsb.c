@@ -274,7 +274,6 @@ bool wlsb_get_kp_32bits(const struct c_wlsb *const wlsb,
                         const uint32_t value,
                         const rohc_lsb_shift_t p,
                         size_t *const bits_nr)
-
 {
 	size_t entry;
 	size_t i;

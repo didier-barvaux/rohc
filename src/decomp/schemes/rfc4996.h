@@ -25,6 +25,7 @@
 #define ROHC_DECOMP_SCHEMES_RFC4996_H
 
 #include "protocols/tcp.h"
+#include "schemes/wlsb.h"
 
 #include <stdint.h>
 
@@ -55,7 +56,8 @@ int d_static_or_irreg16(const uint8_t *rohc_data,
 // RFC4996 page 46
 extern unsigned int variable_length_32_size[];
 
-int variable_length_32_dec(const struct d_context *const context,
+int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
+                           const struct d_context *const context,
                            const uint8_t *rohc_data,
                            const int indicator,
                            uint32_t *const decoded_value);

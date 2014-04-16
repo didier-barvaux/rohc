@@ -10,8 +10,6 @@ TESTS = \
 	test_interop_Aeroflex-TM500-1.sh \
 	test_interop_Aeroflex-TM500-2.sh
 
-XFAIL_TESTS = \
-	test_interop_Aeroflex-TM500-2.sh
 
 check_PROGRAMS = \
 	test_interop

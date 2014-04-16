@@ -25,6 +25,7 @@
 #define ROHC_COMP_SCHEMES_RFC4996_H
 
 #include "protocols/tcp.h"
+#include "schemes/wlsb.h"
 
 #include <stdint.h>
 
@@ -126,10 +127,12 @@ int c_zero_or_irreg32(const uint32_t packet_value,
 	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 /* variable_length_32_enc encoding method */
-int ROHC_EXPORT variable_length_32_enc(const uint32_t value,
+int ROHC_EXPORT variable_length_32_enc(const struct c_wlsb *const wlsb,
+                                       const uint32_t old_value,
+                                       const uint32_t new_value,
                                        uint8_t *const rohc_data,
                                        int *const indicator)
-	__attribute__((nonnull(2, 3), warn_unused_result));
+	__attribute__((nonnull(1, 4, 5), warn_unused_result));
 
 /* optional32 encoding method */
 int c_optional32(const int indicator,

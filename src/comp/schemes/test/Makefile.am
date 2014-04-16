@@ -14,6 +14,7 @@ check_PROGRAMS = \
 
 
 test_rfc4996_SOURCES = \
+	$(srcdir)/../wlsb.c \
 	$(srcdir)/../rfc4996.c \
 	test_rfc4996.c
 test_rfc4996_LDADD = \

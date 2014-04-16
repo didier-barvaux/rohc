@@ -177,20 +177,23 @@ unsigned int variable_length_32_size[4] =
  *
  * See RFC4996 page 46
  *
+ * @param lsb                 The WLSB decoding context
  * @param context             The decompression context
  * @param rohc_data           The compressed value
  * @param indicator           The indicator of compression
- * @param[out] decoded_value  The decoded value
+ * @param[out] decoded_value  The decoded value (in NBO)
  * @return                    The length (in bytes) of the compressed value,
  *                            -1 if ROHC data is malformed
  */
-int variable_length_32_dec(const struct d_context *const context,
+int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
+                           const struct d_context *const context,
                            const uint8_t *rohc_data,
                            const int indicator,
                            uint32_t *const decoded_value)
 {
 	uint32_t value;
 	size_t length = 0;
+	bool decode_ok;
 
 	assert(context != NULL);
 	assert(rohc_data != NULL);
@@ -200,13 +203,20 @@ int variable_length_32_dec(const struct d_context *const context,
 	switch(indicator)
 	{
 		case 0:
-			value = 0;
+			value = rohc_lsb_get_ref(lsb, ROHC_LSB_REF_0);
+			*decoded_value = rohc_hton32(value);
 			break;
 		case 1:
 			value = rohc_data[0] & 0xff;
 			rohc_data++;
 			length++;
-			value = rohc_hton32(value);
+			decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value,
+			                            8, 63, decoded_value);
+			if(!decode_ok)
+			{
+				goto error;
+			}
+			*decoded_value = rohc_hton32(*decoded_value);
 			break;
 		case 2:
 			value = 0;
@@ -216,7 +226,15 @@ int variable_length_32_dec(const struct d_context *const context,
 			value |= rohc_data[0] & 0xff;
 			rohc_data++;
 			length++;
-			value = rohc_hton32(value);
+			decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value,
+			                            16, 16383, decoded_value);
+			if(!decode_ok)
+			{
+				goto error;
+			}
+			rohc_decomp_debug(context, "AAAAAA (0x%x)\n", *decoded_value);
+			*decoded_value = rohc_hton32(*decoded_value);
+			rohc_decomp_debug(context, "AAAAAA (0x%x)\n", *decoded_value);
 			break;
 		case 3:
 			memcpy(&value, rohc_data, sizeof(uint32_t));
@@ -224,6 +242,7 @@ int variable_length_32_dec(const struct d_context *const context,
 			rohc_data += sizeof(uint32_t);
 #endif
 			length += sizeof(uint32_t);
+			*decoded_value = value;
 			break;
 		default:
 			/* should not happen */
@@ -233,10 +252,12 @@ int variable_length_32_dec(const struct d_context *const context,
 	}
 
 	rohc_decomp_debug(context, "indicator = %d, return value = %u (0x%x)\n",
-	                  indicator, value, value);
-	*decoded_value = value;
+	                  indicator, *decoded_value, *decoded_value);
 
 	return length;
+
+error:
+	return -1;
 }
 
 
