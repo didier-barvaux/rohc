@@ -5996,15 +5996,17 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	{
 		if(ip_context.vx->version == IPV4)
 		{
+			const size_t ipv4_hdr_len =
+				base_header.ipv4->header_length * sizeof(uint32_t);
+
 			base_header.ipv4->df = ip_context.v4->df;
 			base_header.ipv4->length = rohc_hton16(size);
 			base_header.ipv4->checksum = 0;
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8,
 				             base_header.ipv4->header_length);
-			rohc_decomp_debug(context, "IPv4 checksum = 0x%04x for %u bytes\n",
-			                  rohc_ntoh16(base_header.ipv4->checksum),
-			                  base_header.ipv4->header_length * sizeof(uint32_t));
+			rohc_decomp_debug(context, "IPv4 checksum = 0x%04x for %zu bytes\n",
+			                  rohc_ntoh16(base_header.ipv4->checksum), ipv4_hdr_len);
 			protocol = ip_context.v4->protocol;
 			size -= sizeof(base_header_ip_v4_t);
 			++base_header.ipv4;

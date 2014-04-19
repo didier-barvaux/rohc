@@ -25,7 +25,7 @@
 #define ROHC_DECOMP_SCHEMES_RFC4996_H
 
 #include "protocols/tcp.h"
-#include "schemes/wlsb.h"
+#include "wlsb.h"
 
 #include <stdint.h>
 
@@ -60,7 +60,8 @@ int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
                            const struct d_context *const context,
                            const uint8_t *rohc_data,
                            const int indicator,
-                           uint32_t *const decoded_value);
+                           uint32_t *const decoded_value)
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 int d_optional32(const int flag,
                  const uint8_t *const data,

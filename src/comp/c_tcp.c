@@ -6488,7 +6488,9 @@ static rohc_packet_t tcp_decide_packet(const struct c_context *const context,
 			packet_type = tcp_decide_SO_packet(context, ip_inner_context, tcp);
 			break;
 		default:
+#if defined(NDEBUG) || defined(__KERNEL__)
 			packet_type = ROHC_PACKET_UNKNOWN;
+#endif
 			assert(0); /* should not happen */
 			break;
 	}

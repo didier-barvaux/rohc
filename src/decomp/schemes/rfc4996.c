@@ -21,16 +21,16 @@
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
+#include "rfc4996.h"
+
 #include "rohc_bit_ops.h"
 #include "rohc_traces_internal.h"
 #include "rohc_decomp_internals.h"
 #include "rohc_time.h"
 #include "rohc_debug.h"
 #include "rohc_utils.h"
-#include "wlsb.h"
 #include "crc.h"
 #include "protocols/tcp.h"
-#include "rfc4996.h"
 #include "rohc_packets.h"
 #include "rohc_decomp.h"
 
@@ -232,9 +232,7 @@ int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
 			{
 				goto error;
 			}
-			rohc_decomp_debug(context, "AAAAAA (0x%x)\n", *decoded_value);
 			*decoded_value = rohc_hton32(*decoded_value);
-			rohc_decomp_debug(context, "AAAAAA (0x%x)\n", *decoded_value);
 			break;
 		case 3:
 			memcpy(&value, rohc_data, sizeof(uint32_t));
@@ -244,9 +242,10 @@ int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
 			length += sizeof(uint32_t);
 			*decoded_value = value;
 			break;
-		default:
-			/* should not happen */
+		default: /* should not happen */
+#if defined(NDEBUG) || defined(__KERNEL__)
 			value = 0;
+#endif
 			assert(0);
 			break;
 	}
