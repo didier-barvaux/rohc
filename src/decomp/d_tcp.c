@@ -2955,9 +2955,24 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			rohc_decomp_debug(context, "TCP option type 0x%02x (%u)\n",
 			                  opt_type, opt_type);
 			tcp_options[opts_full_len] = opt_type;
-			rohc_decomp_debug(context, "TCP option is %u-byte long (type "
-			                  "and length fields included)\n", opt_len);
-			tcp_options[opts_full_len + 1] = opt_len;
+			if(opt_type == TCP_OPT_EOL)
+			{
+				assert(opt_len >= 1);
+				rohc_decomp_debug(context, "TCP option is %u-byte long (type and "
+				                  "padding fields included)\n", opt_len);
+			}
+			else if(opt_type == TCP_OPT_NOP)
+			{
+				assert(opt_len == 1);
+				rohc_decomp_debug(context, "TCP option is 1-byte long\n");
+			}
+			else
+			{
+				assert(opt_len >= 2);
+				rohc_decomp_debug(context, "TCP option is %u-byte long (type "
+				                  "and length fields included)\n", opt_len);
+				tcp_options[opts_full_len + 1] = opt_len;
+			}
 			opts_full_len += opt_len;
 
 			/* save TCP option for this index */
