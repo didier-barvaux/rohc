@@ -329,7 +329,7 @@ if test "x$enable_rohc_stats" != "xundefined" ; then
 	echo "ERROR: --enable-rohc-stats and --disable-rohc-stats are "
 	echo "       deprecated, do not use them any more."
 	echo
-	echo "Please use option --enable-app-stats instead."
+	echo "Please use option --enable-app-stats or --disable-app-stats instead."
 	echo
 	exit 1
 fi
@@ -346,11 +346,11 @@ if test "x$enable_rohc_apps" != "xundefined" ; then
 	echo "       deprecated, do not use them any more."
 	echo
 	echo "Please use a combination of the following options instead:"
-	echo "  --enable-app-fuzzer"
-	echo "  --enable-app-performance"
-	echo "  --enable-app-sniffer"
-	echo "  --enable-app-tunnel"
-	echo "  --enable-app-stats"
+	echo "  --enable-app-fuzzer / --disable-app-fuzzer"
+	echo "  --enable-app-performance / --disable-app-performance"
+	echo "  --enable-app-sniffer / --disable-app-sniffer"
+	echo "  --enable-app-tunnel / --disable-app-tunnel"
+	echo "  --enable-app-stats / --disable-app-stats"
 	echo
 	exit 1
 fi
