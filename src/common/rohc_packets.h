@@ -47,46 +47,46 @@ typedef enum
 {
 	/* IR and IR-DYN packets */
 	ROHC_PACKET_IR        =  0, /**< ROHC IR packet */
-#define PACKET_IR ROHC_PACKET_IR
+#define PACKET_IR ROHC_PACKET_IR /**< deprecated, for compat only */
 	ROHC_PACKET_IR_DYN    =  1, /**< ROHC IR-DYN packet */
-#define PACKET_IR_DYN ROHC_PACKET_IR_DYN
+#define PACKET_IR_DYN ROHC_PACKET_IR_DYN /**< deprecated, for compat only */
 
 	/* UO-0 packets */
 	ROHC_PACKET_UO_0      =  2, /**< ROHC UO-0 packet */
-#define PACKET_UO_0 ROHC_PACKET_UO_0
+#define PACKET_UO_0 ROHC_PACKET_UO_0 /**< deprecated, for compat only */
 
 	/* UO-1 packets */
 	ROHC_PACKET_UO_1      =  3, /**< ROHC UO-1 packet (for all non-RTP profiles) */
-#define PACKET_UO_1 ROHC_PACKET_UO_1
+#define PACKET_UO_1 ROHC_PACKET_UO_1 /**< deprecated, for compat only */
 	ROHC_PACKET_UO_1_ID   =  4, /**< ROHC UO-1-ID packet (RTP profile only) */
-#define PACKET_UO_1_ID ROHC_PACKET_UO_1_ID
+#define PACKET_UO_1_ID ROHC_PACKET_UO_1_ID /**< deprecated, for compat only */
 	ROHC_PACKET_UO_1_TS   =  5, /**< ROHC UO-1-TS packet (RTP profile only) */
-#define PACKET_UO_1_TS ROHC_PACKET_UO_1_TS
+#define PACKET_UO_1_TS ROHC_PACKET_UO_1_TS /**< deprecated, for compat only */
 	ROHC_PACKET_UO_1_RTP  =  6, /**< ROHC UO-1-RTP packet (RTP profile only) */
-#define PACKET_UO_1_RTP ROHC_PACKET_UO_1_RTP
+#define PACKET_UO_1_RTP ROHC_PACKET_UO_1_RTP /**< deprecated, for compat only */
 
 	/* UOR-2 packets */
 	ROHC_PACKET_UOR_2     =  7, /**< ROHC UOR-2 packet (for all non-RTP profiles) */
-#define PACKET_UOR_2 ROHC_PACKET_UOR_2
+#define PACKET_UOR_2 ROHC_PACKET_UOR_2 /**< deprecated, for compat only */
 	ROHC_PACKET_UOR_2_RTP =  8, /**< ROHC UO-2 packet (RTP profile only) */
-#define PACKET_UOR_2_RTP ROHC_PACKET_UOR_2_RTP
+#define PACKET_UOR_2_RTP ROHC_PACKET_UOR_2_RTP /**< deprecated, for compat only */
 	ROHC_PACKET_UOR_2_ID  =  9, /**< ROHC UO-2-ID packet (RTP profile only) */
-#define PACKET_UOR_2_ID ROHC_PACKET_UOR_2_ID
+#define PACKET_UOR_2_ID ROHC_PACKET_UOR_2_ID /**< deprecated, for compat only */
 	ROHC_PACKET_UOR_2_TS  = 10, /**< ROHC UO-2-TS packet (RTP profile only) */
-#define PACKET_UOR_2_TS ROHC_PACKET_UOR_2_TS
+#define PACKET_UOR_2_TS ROHC_PACKET_UOR_2_TS /**< deprecated, for compat only */
 
 	/* CCE packets (UDP-Lite profile only) */
 	ROHC_PACKET_CCE       = 11, /**< ROHC CCE packet (UDP-Lite profile only) */
-#define PACKET_CCE ROHC_PACKET_CCE
+#define PACKET_CCE ROHC_PACKET_CCE /**< deprecated, for compat only */
 	ROHC_PACKET_CCE_OFF   = 12, /**< ROHC CCE(OFF) packet (UDP-Lite profile only) */
-#define PACKET_CCE_OFF ROHC_PACKET_CCE_OFF
+#define PACKET_CCE_OFF ROHC_PACKET_CCE_OFF /**< deprecated, for compat only */
 
 	/* Normal packet (Uncompressed profile only) */
 	ROHC_PACKET_NORMAL    = 13, /**< ROHC Normal packet (Uncompressed profile only) */
-#define PACKET_NORMAL ROHC_PACKET_NORMAL
+#define PACKET_NORMAL ROHC_PACKET_NORMAL /**< deprecated, for compat only */
 
 	ROHC_PACKET_UNKNOWN   = 14, /**< Unknown packet type */
-#define PACKET_UNKNOWN ROHC_PACKET_UNKNOWN
+#define PACKET_UNKNOWN ROHC_PACKET_UNKNOWN /**< deprecated, for compat only */
 
 	/* packets for TCP profile */
 	ROHC_PACKET_TCP_CO_COMMON = 15, /**< TCP co_common packet */
@@ -119,17 +119,17 @@ typedef enum
 typedef enum
 {
 	ROHC_EXT_0       = 0,  /**< The EXT-0 extension for UO-1-ID/UOR-2* packets */
-#define PACKET_EXT_0 ROHC_EXT_0
+#define PACKET_EXT_0 ROHC_EXT_0 /**< deprecated, for compat only */
 	ROHC_EXT_1       = 1,  /**< The EXT-1 extension for UO-1-ID/UOR-2* packets */
-#define PACKET_EXT_1 ROHC_EXT_1
+#define PACKET_EXT_1 ROHC_EXT_1 /**< deprecated, for compat only */
 	ROHC_EXT_2       = 2,  /**< The EXT-2 extension for UO-1-ID/UOR-2* packets */
-#define PACKET_EXT_2 ROHC_EXT_2
+#define PACKET_EXT_2 ROHC_EXT_2 /**< deprecated, for compat only */
 	ROHC_EXT_3       = 3,  /**< The EXT-3 extension for UO-1-ID/UOR-2* packets */
-#define PACKET_EXT_3 ROHC_EXT_3
+#define PACKET_EXT_3 ROHC_EXT_3 /**< deprecated, for compat only */
 	ROHC_EXT_NONE    = 4,  /**< No extension for UO-1-ID/UOR-2* packets */
-#define PACKET_NOEXT ROHC_EXT_NONE
+#define PACKET_NOEXT ROHC_EXT_NONE /**< deprecated, for compat only */
 	ROHC_EXT_UNKNOWN = 5,  /**< Unknown packet extension type */
-#define PACKET_EXT_UNKNOWN ROHC_EXT_UNKNOWN
+#define PACKET_EXT_UNKNOWN ROHC_EXT_UNKNOWN /**< deprecated, for compat only */
 } rohc_ext_t;
 
 
