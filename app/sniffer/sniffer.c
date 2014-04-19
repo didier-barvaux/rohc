@@ -819,7 +819,8 @@ static void sniffer_print_stats(int signal __attribute__((unused)))
 	}
 	for(i = ROHC_PACKET_IR; i <= ROHC_PACKET_TCP_SEQ_8; i++)
 	{
-		if(strcmp(rohc_get_packet_descr(i), "no description") != 0)
+		if(i != ROHC_PACKET_UNKNOWN &&
+		   strcmp(rohc_get_packet_descr(i), "no description") != 0)
 		{
 			SNIFFER_LOG(LOG_INFO, "  packet type %s: %lu packets (%llu%%)",
 			            rohc_get_packet_descr(i),
