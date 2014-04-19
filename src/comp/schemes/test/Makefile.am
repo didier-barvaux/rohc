@@ -19,7 +19,8 @@ test_rfc4996_SOURCES = \
 	test_rfc4996.c
 test_rfc4996_LDADD = \
 	-lrohc_common
-test_rfc4996_LDFLAGS =
+test_rfc4996_LDFLAGS = \
+	-L$(top_builddir)/src/common/
 test_rfc4996_CFLAGS = \
 	$(configure_cflags)
 test_rfc4996_CPPFLAGS = \
