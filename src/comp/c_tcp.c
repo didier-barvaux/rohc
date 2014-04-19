@@ -3145,6 +3145,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 #endif
 
 		/* encode items */
+		rohc_comp_debug(context, "list items:\n");
 		options = ( (unsigned char *) tcp ) + sizeof(tcphdr_t);
 		options_length = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 		for(i = options_length; i > 0; )
@@ -3194,6 +3195,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					 *   pad_len =:= compressed_value(8, nbits-8) [ 8 ];
 					 * }
 					 */
+					rohc_comp_debug(context, "  item EOL: %d padding bytes\n", i - 1);
 					*(mptr.uint8) = i - 1;
 					mptr.uint8++;
 					/* skip option */
@@ -3204,6 +3206,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					/* COMPRESSED nop_list_item {
 					 * }
 					 */
+					rohc_comp_debug(context, "  item NOP: empty\n");
 					/* skip option */
 					--i;
 					++options;
@@ -3213,6 +3216,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					 *   mss =:= irregular(16) [ 16 ];
 					 * }
 					 */
+					rohc_comp_debug(context, "  item MSS\n");
 					memcpy(mptr.uint8, options + 2, sizeof(uint16_t));
 					mptr.uint8 += sizeof(uint16_t);
 					/* skip option */
@@ -3224,6 +3228,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					 *   wscale =:= irregular(8) [ 8 ];
 					 * }
 					 */
+					rohc_comp_debug(context, "  item WSCALE\n");
 					*(mptr.uint8) = options[2];
 					mptr.uint8++;
 					/* skip option */
@@ -3236,6 +3241,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					 *   tsecho =:= irregular(32) [ 32 ];
 					 * }
 					 */
+					rohc_comp_debug(context, "  item Timestamp\n");
 					memcpy(mptr.uint8, options + 2, sizeof(uint32_t) * 2);
 					mptr.uint8 += sizeof(uint32_t) * 2;
 					/* skip option */
@@ -3243,6 +3249,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					options += TCP_OLEN_TIMESTAMP;
 					break;
 				case TCP_OPT_SACK:
+					rohc_comp_debug(context, "  item SACK\n");
 					mptr.uint8 = c_tcp_opt_sack(context, mptr.uint8,
 					                            rohc_ntoh32(tcp->ack_number), opt_len,
 					                            (sack_block_t *) (options + 2));
@@ -3254,6 +3261,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					/* COMPRESSED sack_permitted_list_item {
 					 * }
 					 */
+					rohc_comp_debug(context, "  item SACK permitted: empty\n");
 					/* skip option */
 					i -= TCP_OLEN_SACK_PERMITTED;
 					options += TCP_OLEN_SACK_PERMITTED;
