@@ -44,8 +44,8 @@ cd ${OLD_PWD} &>/dev/null
 
 # autodetect some dev options
 add_opts=""
-doxy2man="$( which doxy2man )"
-if [ "x${doxy2man}" != "x" ] && [ -x "${doxy2man}" ] ; then
+doxy2man="$( which doxy2man 2>/dev/null )"
+if [ $? -eq 0 ] && [ "x${doxy2man}" != "x" ] && [ -x "${doxy2man}" ] ; then
 	add_opts="${add_opts} --enable-doc-man"
 fi
 
