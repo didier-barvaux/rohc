@@ -857,6 +857,7 @@ static bool c_tcp_create(struct c_context *const context,
 			case IPV4:
 				ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 				rohc_comp_debug(context, "IP-ID 0x%04x\n", ip_context.v4->last_ip_id);
+				ip_context.v4->last_ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
 				ip_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_UNKNOWN;
 				/* get the transport protocol */
 				proto = base_header.ipv4->protocol;
@@ -5988,8 +5989,10 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		(struct sc_tcp_context *) g_context->specific;
 
 	base_header_ip_t base_header;
+	base_header_ip_t inner_ip_hdr;
 	size_t remain_data_len;
 	ip_context_ptr_t ip_context;
+	ip_context_ptr_t inner_ip_ctxt;
 	uint8_t protocol;
 	tcphdr_t *tcp;
 
@@ -6062,9 +6065,11 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 				/* skip IPv4 header */
 				rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
 				                "Protocol 0x%02x\n", ipv4_hdr_len, protocol);
+				inner_ip_hdr.uint8 = base_header.uint8;
 				remain_data_len -= ipv4_hdr_len;
 				base_header.uint8 += ipv4_hdr_len;
-				++ip_context.v4;
+				inner_ip_ctxt.v4 = ip_context.v4;
+				ip_context.v4++;
 				break;
 			}
 			case IPV6:
@@ -6091,9 +6096,11 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 				rohc_comp_debug(context, "skip %zd-byte IPv6 header with Next "
 				                "Header 0x%02x\n", sizeof(base_header_ip_v6_t),
 				                protocol);
+				inner_ip_hdr.uint8 = base_header.uint8;
 				remain_data_len -= sizeof(base_header_ip_v6_t);
 				++base_header.ipv6;
-				++ip_context.v6;
+				inner_ip_ctxt.v6 = ip_context.v6;
+				ip_context.v6++;
 
 				/* parse IPv6 extension headers */
 				while(rohc_is_ipv6_opt(protocol))
@@ -6116,35 +6123,34 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 	tcp_context->tmp.ip_ttl_changed =
 		(tcp_context->tmp.ttl_irregular_chain_flag != 0);
 
-	if(base_header.ipvx->version == IPV4)
+	if(inner_ip_hdr.ipvx->version == IPV4)
 	{
-		tcp_context->tmp.ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
-		tcp_context->tmp.ttl_hopl = base_header.ipv4->ttl_hopl;
-		tcp = (tcphdr_t *) (base_header.ipv4 + 1);
+		tcp_context->tmp.ip_id = rohc_ntoh16(inner_ip_hdr.ipv4->ip_id);
+		tcp_context->tmp.ttl_hopl = inner_ip_hdr.ipv4->ttl_hopl;
 
 		tcp_context->tmp.ip_id_behavior_changed =
-			(ip_context.v4->last_ip_id_behavior != ip_context.v4->ip_id_behavior);
-		if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
+			(inner_ip_ctxt.v4->last_ip_id_behavior != inner_ip_ctxt.v4->ip_id_behavior);
+		if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
 		{
 			tcp_context->tmp.ip_id_hi9_changed =
-				((ip_context.v4->last_ip_id & 0xFF80) != (tcp_context->tmp.ip_id & 0xFF80));
+				((inner_ip_ctxt.v4->last_ip_id & 0xFF80) != (tcp_context->tmp.ip_id & 0xFF80));
 			tcp_context->tmp.ip_id_hi11_changed =
-				((ip_context.v4->last_ip_id & 0xFFE0) != (tcp_context->tmp.ip_id & 0xFFE0));
+				((inner_ip_ctxt.v4->last_ip_id & 0xFFE0) != (tcp_context->tmp.ip_id & 0xFFE0));
 			tcp_context->tmp.ip_id_hi12_changed =
-				((ip_context.v4->last_ip_id & 0xFFF0) != (tcp_context->tmp.ip_id & 0xFFF0));
+				((inner_ip_ctxt.v4->last_ip_id & 0xFFF0) != (tcp_context->tmp.ip_id & 0xFFF0));
 			tcp_context->tmp.ip_id_hi13_changed =
-				((ip_context.v4->last_ip_id & 0xFFF8) != (tcp_context->tmp.ip_id & 0xFFF8));
+				((inner_ip_ctxt.v4->last_ip_id & 0xFFF8) != (tcp_context->tmp.ip_id & 0xFFF8));
 		}
-		else if(ip_context.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+		else if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
 		{
 			tcp_context->tmp.ip_id_hi9_changed =
-				((ip_context.v4->last_ip_id & 0x80FF) != (tcp_context->tmp.ip_id & 0x80FF));
+				((inner_ip_ctxt.v4->last_ip_id & 0x80FF) != (tcp_context->tmp.ip_id & 0x80FF));
 			tcp_context->tmp.ip_id_hi11_changed =
-				((ip_context.v4->last_ip_id & 0xE0FF) != (tcp_context->tmp.ip_id & 0xE0FF));
+				((inner_ip_ctxt.v4->last_ip_id & 0xE0FF) != (tcp_context->tmp.ip_id & 0xE0FF));
 			tcp_context->tmp.ip_id_hi12_changed =
-				((ip_context.v4->last_ip_id & 0xF0FF) != (tcp_context->tmp.ip_id & 0xF0FF));
+				((inner_ip_ctxt.v4->last_ip_id & 0xF0FF) != (tcp_context->tmp.ip_id & 0xF0FF));
 			tcp_context->tmp.ip_id_hi13_changed =
-				((ip_context.v4->last_ip_id & 0xF8FF) != (tcp_context->tmp.ip_id & 0xF8FF));
+				((inner_ip_ctxt.v4->last_ip_id & 0xF8FF) != (tcp_context->tmp.ip_id & 0xF8FF));
 		}
 		else
 		{
@@ -6155,9 +6161,11 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		}
 
 		tcp_context->tmp.ip_df_changed =
-			(base_header.ipv4->df != ip_context.v4->df);
+			(inner_ip_hdr.ipv4->df != inner_ip_ctxt.v4->df);
 		tcp_context->tmp.dscp_changed =
-			(base_header.ipv4->dscp != ip_context.v4->dscp);
+			(inner_ip_hdr.ipv4->dscp != inner_ip_ctxt.v4->dscp);
+
+		tcp = (tcphdr_t *) (inner_ip_hdr.ipv4 + 1);
 	}
 	else
 	{
@@ -6169,11 +6177,10 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		tcp_context->tmp.ip_id_hi13_changed = false;
 		tcp_context->tmp.ip_df_changed = false;
 		tcp_context->tmp.dscp_changed =
-			(DSCP_V6(base_header.ipv6) != ip_context.v6->dscp);
+			(DSCP_V6(inner_ip_hdr.ipv6) != inner_ip_ctxt.v6->dscp);
+		tcp_context->tmp.ttl_hopl = inner_ip_hdr.ipv6->ttl_hopl;
 
-		tcp_context->tmp.ttl_hopl = base_header.ipv6->ttl_hopl;
-
-		tcp = (tcphdr_t *) (base_header.ipv6 + 1);
+		tcp = (tcphdr_t *) (inner_ip_hdr.ipv6 + 1);
 	}
 	rohc_comp_debug(context, "IP-ID: high 9 = %u, high 11 = %u, high 12 = %u, "
 	                "high 13 = %u\n", tcp_context->tmp.ip_id_hi9_changed,
@@ -6181,9 +6188,9 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 	                tcp_context->tmp.ip_id_hi12_changed,
 	                tcp_context->tmp.ip_id_hi13_changed);
 
-	rohc_comp_debug(context, "new TCP seq = 0x%04x, ack_seq = 0x%04x\n",
+	rohc_comp_debug(context, "new TCP seq = 0x%08x, ack_seq = 0x%08x\n",
 	                rohc_ntoh32(tcp->seq_number), rohc_ntoh32(tcp->ack_number));
-	rohc_comp_debug(context, "old TCP seq = 0x%04x, ack_seq = 0x%04x\n",
+	rohc_comp_debug(context, "old TCP seq = 0x%08x, ack_seq = 0x%08x\n",
 	                rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
 						 rohc_ntoh32(tcp_context->old_tcphdr.ack_number));
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
