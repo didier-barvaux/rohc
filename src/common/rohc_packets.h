@@ -89,39 +89,39 @@ typedef enum
 #define PACKET_UNKNOWN ROHC_PACKET_UNKNOWN
 
 	/* packets for TCP profile */
-	ROHC_PACKET_TCP_CO_COMMON = 100, /**< TCP co_common packet */
+	ROHC_PACKET_TCP_CO_COMMON = 15, /**< TCP co_common packet */
 #define PACKET_TCP_CO_COMMON ROHC_PACKET_TCP_CO_COMMON
-	ROHC_PACKET_TCP_RND_1     = 111, /**< TCP rnd_1 packet */
+	ROHC_PACKET_TCP_RND_1     = 16, /**< TCP rnd_1 packet */
 #define PACKET_TCP_RND_1 ROHC_PACKET_TCP_RND_1
-	ROHC_PACKET_TCP_RND_2     = 112, /**< TCP rnd_2 packet */
+	ROHC_PACKET_TCP_RND_2     = 17, /**< TCP rnd_2 packet */
 #define PACKET_TCP_RND_2 ROHC_PACKET_TCP_RND_2
-	ROHC_PACKET_TCP_RND_3     = 113, /**< TCP rnd_3 packet */
+	ROHC_PACKET_TCP_RND_3     = 18, /**< TCP rnd_3 packet */
 #define PACKET_TCP_RND_3 ROHC_PACKET_TCP_RND_3
-	ROHC_PACKET_TCP_RND_4     = 114, /**< TCP rnd_4 packet */
+	ROHC_PACKET_TCP_RND_4     = 19, /**< TCP rnd_4 packet */
 #define PACKET_TCP_RND_4 ROHC_PACKET_TCP_RND_4
-	ROHC_PACKET_TCP_RND_5     = 115, /**< TCP rnd_5 packet */
+	ROHC_PACKET_TCP_RND_5     = 20, /**< TCP rnd_5 packet */
 #define PACKET_TCP_RND_5 ROHC_PACKET_TCP_RND_5
-	ROHC_PACKET_TCP_RND_6     = 116, /**< TCP rnd_6 packet */
+	ROHC_PACKET_TCP_RND_6     = 21, /**< TCP rnd_6 packet */
 #define PACKET_TCP_RND_6 ROHC_PACKET_TCP_RND_6
-	ROHC_PACKET_TCP_RND_7     = 117, /**< TCP rnd_7 packet */
+	ROHC_PACKET_TCP_RND_7     = 22, /**< TCP rnd_7 packet */
 #define PACKET_TCP_RND_7 ROHC_PACKET_TCP_RND_7
-	ROHC_PACKET_TCP_RND_8     = 118, /**< TCP rnd_8 packet */
+	ROHC_PACKET_TCP_RND_8     = 23, /**< TCP rnd_8 packet */
 #define PACKET_TCP_RND_8 ROHC_PACKET_TCP_RND_8
-	ROHC_PACKET_TCP_SEQ_1     = 121, /**< TCP seq_1 packet */
+	ROHC_PACKET_TCP_SEQ_1     = 24, /**< TCP seq_1 packet */
 #define PACKET_TCP_SEQ_1 ROHC_PACKET_TCP_SEQ_1
-	ROHC_PACKET_TCP_SEQ_2     = 122, /**< TCP seq_2 packet */
+	ROHC_PACKET_TCP_SEQ_2     = 25, /**< TCP seq_2 packet */
 #define PACKET_TCP_SEQ_2 ROHC_PACKET_TCP_SEQ_2
-	ROHC_PACKET_TCP_SEQ_3     = 123, /**< TCP seq_3 packet */
+	ROHC_PACKET_TCP_SEQ_3     = 26, /**< TCP seq_3 packet */
 #define PACKET_TCP_SEQ_3 ROHC_PACKET_TCP_SEQ_3
-	ROHC_PACKET_TCP_SEQ_4     = 124, /**< TCP seq_4 packet */
+	ROHC_PACKET_TCP_SEQ_4     = 27, /**< TCP seq_4 packet */
 #define PACKET_TCP_SEQ_4 ROHC_PACKET_TCP_SEQ_4
-	ROHC_PACKET_TCP_SEQ_5     = 125, /**< TCP seq_5 packet */
+	ROHC_PACKET_TCP_SEQ_5     = 28, /**< TCP seq_5 packet */
 #define PACKET_TCP_SEQ_5 ROHC_PACKET_TCP_SEQ_5
-	ROHC_PACKET_TCP_SEQ_6     = 126, /**< TCP seq_6 packet */
+	ROHC_PACKET_TCP_SEQ_6     = 29, /**< TCP seq_6 packet */
 #define PACKET_TCP_SEQ_6 ROHC_PACKET_TCP_SEQ_6
-	ROHC_PACKET_TCP_SEQ_7     = 127, /**< TCP seq_7 packet */
+	ROHC_PACKET_TCP_SEQ_7     = 30, /**< TCP seq_7 packet */
 #define PACKET_TCP_SEQ_7 ROHC_PACKET_TCP_SEQ_7
-	ROHC_PACKET_TCP_SEQ_8     = 128, /**< TCP seq_8 packet */
+	ROHC_PACKET_TCP_SEQ_8     = 31, /**< TCP seq_8 packet */
 #define PACKET_TCP_SEQ_8 ROHC_PACKET_TCP_SEQ_8
 
 } rohc_packet_t;
