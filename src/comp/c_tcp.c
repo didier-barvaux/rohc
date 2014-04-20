@@ -5885,7 +5885,7 @@ static void tcp_decide_state(struct c_context *const context)
 			}
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
-			if(g_context->ir_count < MAX_FO_COUNT)
+			if(g_context->fo_count < MAX_FO_COUNT)
 			{
 				rohc_comp_debug(context, "no enough packets transmitted in FO "
 				                "state for the moment (%d/%d), so stay in FO "
