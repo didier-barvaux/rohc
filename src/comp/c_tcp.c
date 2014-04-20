@@ -700,6 +700,16 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 																		const uint16_t new_ip_id)
 	__attribute__((warn_unused_result, const));
 
+static void tcp_field_descr_change(const struct c_context *const context,
+                                   const char *const name,
+                                   const bool changed)
+	__attribute__((nonnull(1, 2)));
+
+static void tcp_field_descr_present(const struct c_context *const context,
+                                    const char *const name,
+                                    const bool present)
+	__attribute__((nonnull(1, 2)));
+
 static char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
 	__attribute__((warn_unused_result, const));
 
@@ -6034,6 +6044,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 
 	tcp_context->tmp.ip_ttl_changed =
 		(tcp_context->tmp.ttl_irregular_chain_flag != 0);
+	tcp_field_descr_change(context, "TTL", tcp_context->tmp.ip_ttl_changed);
 
 	if(inner_ip_hdr.ipvx->version == IPV4)
 	{
@@ -6042,6 +6053,8 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 
 		tcp_context->tmp.ip_id_behavior_changed =
 			(inner_ip_ctxt.v4->last_ip_id_behavior != inner_ip_ctxt.v4->ip_id_behavior);
+		tcp_field_descr_change(context, "IP-ID behavior",
+		                       tcp_context->tmp.ip_id_behavior_changed);
 		if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQ)
 		{
 			tcp_context->tmp.ip_id_hi9_changed =
@@ -6074,8 +6087,11 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 
 		tcp_context->tmp.ip_df_changed =
 			(inner_ip_hdr.ipv4->df != inner_ip_ctxt.v4->df);
+		tcp_field_descr_change(context, "DF", tcp_context->tmp.ip_df_changed);
+
 		tcp_context->tmp.dscp_changed =
 			(inner_ip_hdr.ipv4->dscp != inner_ip_ctxt.v4->dscp);
+		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed);
 
 		tcp = (tcphdr_t *) (inner_ip_hdr.ipv4 + 1);
 	}
@@ -6088,8 +6104,11 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		tcp_context->tmp.ip_id_hi12_changed = false;
 		tcp_context->tmp.ip_id_hi13_changed = false;
 		tcp_context->tmp.ip_df_changed = false;
+
 		tcp_context->tmp.dscp_changed =
 			(DSCP_V6(inner_ip_hdr.ipv6) != inner_ip_ctxt.v6->dscp);
+		tcp_field_descr_change(context, "DSCP", tcp_context->tmp.dscp_changed);
+
 		tcp_context->tmp.ttl_hopl = inner_ip_hdr.ipv6->ttl_hopl;
 
 		tcp = (tcphdr_t *) (inner_ip_hdr.ipv6 + 1);
@@ -6119,13 +6138,25 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 
 	tcp_context->tmp.tcp_ack_flag_changed =
 		(tcp->ack_flag != tcp_context->old_tcphdr.ack_flag);
+	tcp_field_descr_change(context, "ACK flag",
+	                       tcp_context->tmp.tcp_ack_flag_changed);
 	tcp_context->tmp.tcp_urg_flag_present = (tcp->urg_flag != 0);
+	tcp_field_descr_present(context, "URG flag",
+	                        tcp_context->tmp.tcp_urg_flag_present);
 	tcp_context->tmp.tcp_urg_flag_changed =
 		(tcp->urg_flag != tcp_context->old_tcphdr.urg_flag);
+	tcp_field_descr_change(context, "URG flag",
+	                       tcp_context->tmp.tcp_urg_flag_changed);
+	tcp_context->tmp.ecn_used = (tcp_context->ecn_used != 0);
+	tcp_field_descr_present(context, "ECN flag", tcp_context->tmp.ecn_used);
 	tcp_context->tmp.tcp_ecn_flag_changed =
 		(tcp->ecn_flags != tcp_context->old_tcphdr.ecn_flags);
+	tcp_field_descr_change(context, "ECN flag",
+	                       tcp_context->tmp.tcp_ecn_flag_changed);
 	tcp_context->tmp.tcp_rsf_flag_changed =
 		(tcp->rsf_flags != tcp_context->old_tcphdr.rsf_flags);
+	tcp_field_descr_change(context, "RSF flag",
+	                       tcp_context->tmp.tcp_rsf_flag_changed);
 	if(tcp->ack_flag != 0)
 	{
 		tcp_context->tmp.tcp_ack_number_changed =
@@ -6156,10 +6187,8 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 
 	tcp_context->tmp.tcp_window_changed =
 		(tcp->window != tcp_context->old_tcphdr.window);
-	rohc_comp_debug(context, "TCP window changed = %d\n",
-	                tcp_context->tmp.tcp_window_changed);
-
-	tcp_context->tmp.ecn_used = (tcp_context->ecn_used != 0);
+	tcp_field_descr_change(context, "window",
+	                       tcp_context->tmp.tcp_window_changed);
 
 	/* compute new scaled TCP sequence and acknowledgment numbers */
 	c_field_scaling(&(tcp_context->seq_number_scaled),
@@ -6819,6 +6848,36 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 	}
 
 	return behavior;
+}
+
+
+/**
+ * @brief Print a debug trace for the field change
+ *
+ * @param context  The compression context
+ * @param name     The name of the field
+ * @param changed  Whether the field changed or not
+ */
+static void tcp_field_descr_change(const struct c_context *const context,
+                                   const char *const name,
+                                   const bool changed)
+{
+	rohc_comp_debug(context, "%s did%s change\n", name, changed ? "" : " not");
+}
+
+
+/**
+ * @brief Print a debug trace for the field presence
+ *
+ * @param context  The compression context
+ * @param name     The name of the field
+ * @param present  Whether the field is present or not
+ */
+static void tcp_field_descr_present(const struct c_context *const context,
+                                    const char *const name,
+                                    const bool present)
+{
+	rohc_comp_debug(context, "%s is%s present\n", name, present ? "" : " not");
 }
 
 
