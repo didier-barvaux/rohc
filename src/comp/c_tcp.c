@@ -6798,11 +6798,15 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 	}
 	else
 	{
-		rohc_comp_debug(context, "unexpected IP-ID behavior (%d)\n",
-		                ip_inner_context->vx->ip_id_behavior);
+		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		             "unexpected IP-ID behavior (%d)\n",
+		             ip_inner_context->vx->ip_id_behavior);
 		assert(0);
 		goto error;
 	}
+
+	rohc_comp_debug(context, "code %s packet\n",
+	                rohc_get_packet_descr(packet_type));
 
 	return packet_type;
 
