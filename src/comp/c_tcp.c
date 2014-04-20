@@ -696,6 +696,13 @@ static uint8_t * c_tcp_opt_sack(const struct c_context *const context,
                                 const sack_block_t *const sack_block)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
+static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
+																		const uint16_t new_ip_id)
+	__attribute__((warn_unused_result, const));
+
+static char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t ip_id_behavior)
+	__attribute__((warn_unused_result, const));
+
 static char * tcp_opt_get_descr(const uint8_t opt_type)
 	__attribute__((warn_unused_result, const));
 
@@ -857,8 +864,8 @@ static bool c_tcp_create(struct c_context *const context,
 			case IPV4:
 				ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 				rohc_comp_debug(context, "IP-ID 0x%04x\n", ip_context.v4->last_ip_id);
-				ip_context.v4->last_ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-				ip_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_UNKNOWN;
+				ip_context.v4->last_ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
+				ip_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
 				/* get the transport protocol */
 				proto = base_header.ipv4->protocol;
 				ip_context.v4->protocol = proto;
@@ -871,7 +878,7 @@ static bool c_tcp_create(struct c_context *const context,
 				++ip_context.v4;
 				break;
 			case IPV6:
-				ip_context.v6->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+				ip_context.v6->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
 				/* get the transport protocol */
 				proto = base_header.ipv6->next_header;
 				ip_context.v6->next_header = proto;
@@ -1491,131 +1498,28 @@ static int c_tcp_encode(struct c_context *const context,
 	base_header.uint8 = (uint8_t *) uncomp_pkt->outer_ip.data;
 
 
-	/* detect the behaviors of the IP-ID fields for IPv4 headers */
-	/* TODO: could be simplified! */
+	/* determine the IP-ID behavior of the innermost IPv4 header */
 	if(base_header_inner.ipvx->version == IPV4)
 	{
-		uint16_t swapped_ip_id;
-		uint16_t ip_id;
+		const uint16_t ip_id = rohc_ntoh16(base_header_inner.ipv4->ip_id);
 
-		/* Try to determine the IP_ID behavior of the innermost header */
-		ip_id = rohc_ntoh16(base_header_inner.ipv4->ip_id);
-		rohc_comp_debug(context, "ip_id_behavior = %d, last_ip_id = 0x%x, "
-		                "ip_id = 0x%x\n", ip_inner_context.v4->ip_id_behavior,
+		rohc_comp_debug(context, "IP-ID behaved as %s\n",
+		                tcp_ip_id_behavior_get_descr(ip_inner_context.v4->ip_id_behavior));
+		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x\n",
 		                ip_inner_context.v4->last_ip_id, ip_id);
 
 		if(context->num_sent_packets == 0)
 		{
 			/* first packet, be optimistic: choose sequential behavior */
-			ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
+			ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
 		}
 		else
 		{
-			switch(ip_inner_context.v4->ip_id_behavior)
-			{
-				case IP_ID_BEHAVIOR_SEQUENTIAL:
-					if((ip_inner_context.v4->last_ip_id + 1) != ip_id)
-					{
-						// Problem
-						rohc_comp_debug(context, "ip_id_behavior not SEQUENTIAL: "
-						                "0x%04x + 1 != 0x%04x\n",
-						                ip_inner_context.v4->last_ip_id, ip_id);
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-					}
-					break;
-				case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
-					swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
-					rohc_comp_debug(context, " swapped_ip_id = 0x%04x + 1 = 0x%04x, "
-					                "ip_id = 0x%04x\n", swapped_ip_id,
-					                swapped_ip_id + 1, ip_id);
-					swapped_ip_id++;
-					if(swapped_ip_id != swab16(ip_id))
-					{
-						// Problem
-						rohc_comp_debug(context, "ip_id_behavior not "
-						                "SEQUENTIAL_SWAPPED: 0x%04x + 1 != 0x%04x\n",
-						                ip_inner_context.v4->last_ip_id, swapped_ip_id);
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-					}
-					break;
-				case IP_ID_BEHAVIOR_RANDOM:
-					if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
-					{
-						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-					}
-					else
-					{
-						swapped_ip_id = swab16(ip_inner_context.v4->last_ip_id);
-						rohc_comp_debug(context, "swapped_ip_id: 0x%04x + 1 = 0x%04x, "
-						                "ip_id = 0x%04x\n", swapped_ip_id,
-						                swapped_ip_id + 1, ip_id);
-						swapped_ip_id++;
-						if(swapped_ip_id == swab16(ip_id))
-						{
-							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
-							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
-						}
-						else if(ip_id == 0)
-						{
-							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
-							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL ZERO\n");
-						}
-					}
-					break;
-				case IP_ID_BEHAVIOR_ZERO:
-					if(ip_id != 0)
-					{
-						if(ip_id == 0x0001)
-						{
-							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
-							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-						}
-						else if(swab16(ip_id) == 0x0001)
-						{
-							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
-							rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL SWAPPED\n");
-						}
-						else
-						{
-							rohc_comp_debug(context, "ip_id_behavior not ZERO: "
-							                "0x%04x != 0\n", ip_id);
-							ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-						}
-					}
-					break;
-				case IP_ID_BEHAVIOR_UNKNOWN:
-					if(ip_id == 0)
-					{
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
-						rohc_comp_debug(context, "ip_id_behavior ZERO\n");
-					}
-					else if(ip_inner_context.v4->last_ip_id == ip_id)
-					{
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-						rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
-					}
-					else if((ip_inner_context.v4->last_ip_id + 1) == ip_id)
-					{
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL;
-						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL\n");
-					}
-					else if((ip_inner_context.v4->last_ip_id + 1) == swab16(ip_id))
-					{
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED;
-						rohc_comp_debug(context, "ip_id_behavior SEQUENTIAL_SWAPPED\n");
-					}
-					else
-					{
-						ip_inner_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
-						rohc_comp_debug(context, "ip_id_behavior RANDOM\n");
-					}
-					break;
-				default:
-					assert(0); /* should never happen */
-					break;
-			}
+			ip_inner_context.v4->ip_id_behavior =
+				tcp_detect_ip_id_behavior(ip_inner_context.v4->last_ip_id, ip_id);
 		}
+		rohc_comp_debug(context, "IP-ID now behaves as %s\n",
+		                tcp_ip_id_behavior_get_descr(ip_inner_context.v4->ip_id_behavior));
 	}
 
 	/* parse TCP options */
@@ -2440,14 +2344,14 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 		}
 		else
 		{
-			// Only IP_ID_BEHAVIOR_RANDOM or IP_ID_BEHAVIOR_ZERO
+			// Only IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO
 			if(base_header.ipv4->ip_id == 0)
 			{
 				mptr.ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_ZERO;
 			}
 			else
 			{
-				mptr.ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+				mptr.ipv4_dynamic1->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
 			}
 			ip_context.v4->ip_id_behavior = mptr.ipv4_dynamic1->ip_id_behavior;
 		}
@@ -2464,7 +2368,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
 		}
 		else
 		{
-			if(mptr.ipv4_dynamic1->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+			if(mptr.ipv4_dynamic1->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				mptr.ipv4_dynamic2->ip_id = swab16(base_header.ipv4->ip_id);
 			}
@@ -2549,7 +2453,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
 	{
 
 		// ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE )
-		if(ip_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_RANDOM)
+		if(ip_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_RAND)
 		{
 			memcpy(rohc_data, &base_header.ipv4->ip_id, sizeof(uint16_t));
 			rohc_data += sizeof(uint16_t);
@@ -4849,7 +4753,7 @@ static int co_baseheader(struct c_context *const context,
 		// =:= irregular(1) [ 1 ];
 		c_base_header.co_common->ip_id_indicator = 0;
 		// =:= ip_id_behavior_choice(true) [ 2 ];
-		c_base_header.co_common->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+		c_base_header.co_common->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
 		rohc_comp_debug(context, "size = %u, ip_id_indicator = %d, "
 		                "ip_id_behavior = %d\n",
 		                (unsigned int) (mptr.uint8 - puchar),
@@ -6138,7 +6042,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 
 		tcp_context->tmp.ip_id_behavior_changed =
 			(inner_ip_ctxt.v4->last_ip_id_behavior != inner_ip_ctxt.v4->ip_id_behavior);
-		if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL)
+		if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQ)
 		{
 			tcp_context->tmp.ip_id_hi9_changed =
 				((inner_ip_ctxt.v4->last_ip_id & 0xFF80) != (tcp_context->tmp.ip_id & 0xFF80));
@@ -6149,7 +6053,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 			tcp_context->tmp.ip_id_hi13_changed =
 				((inner_ip_ctxt.v4->last_ip_id & 0xFFF8) != (tcp_context->tmp.ip_id & 0xFFF8));
 		}
-		else if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+		else if(inner_ip_ctxt.vx->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 		{
 			tcp_context->tmp.ip_id_hi9_changed =
 				((inner_ip_ctxt.v4->last_ip_id & 0x80FF) != (tcp_context->tmp.ip_id & 0x80FF));
@@ -6563,11 +6467,11 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 		/* use compressed header with a 7-bit CRC (rnd_8, seq_8 or common):
 		 *  - use common if too many LSB of sequence number are required
 		 *  - use common if window changed */
-		if(ip_inner_context->vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED &&
+		if(ip_inner_context->vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP &&
 		   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
 		   !tcp_context->tmp.tcp_window_changed)
 		{
-			/* IP_ID_BEHAVIOR_SEQUENTIAL or IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED */
+			/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP */
 			TRACE_GOTO_CHOICE;
 			packet_type = ROHC_PACKET_TCP_SEQ_8;
 		}
@@ -6583,9 +6487,9 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 			packet_type = ROHC_PACKET_TCP_CO_COMMON;
 		}
 	}
-	else if(ip_inner_context->vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+	else if(ip_inner_context->vx->ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP)
 	{
-		/* IP_ID_BEHAVIOR_SEQUENTIAL or IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+		/* IP_ID_BEHAVIOR_SEQ or IP_ID_BEHAVIOR_SEQ_SWAP:
 		 * co_common or seq_X packet types */
 
 		if(tcp_context->tmp.tcp_rsf_flag_changed ||
@@ -6731,10 +6635,10 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 		       (packet_type >= ROHC_PACKET_TCP_SEQ_1 &&
 		        packet_type <= ROHC_PACKET_TCP_SEQ_8));
 	}
-	else if(ip_inner_context->vx->ip_id_behavior == IP_ID_BEHAVIOR_RANDOM ||
+	else if(ip_inner_context->vx->ip_id_behavior == IP_ID_BEHAVIOR_RAND ||
 	        ip_inner_context->vx->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
 	{
-		/* IP_ID_BEHAVIOR_RANDOM or IP_ID_BEHAVIOR_ZERO:
+		/* IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO:
 		 * co_common or rnd_X packet types */
 
 		if(tcp->data_offset > 5)
@@ -6875,6 +6779,73 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 
 error:
 	return ROHC_PACKET_UNKNOWN;
+}
+
+
+/**
+ * @brief Detect the behavior of the IPv4 Identification field
+ *
+ * @param last_ip_id  The IP-ID value of the previous packet (in HBO)
+ * @param new_ip_id   The IP-ID value of the current packet (in HBO)
+ * @return            The IP-ID behavior among: IP_ID_BEHAVIOR_SEQ,
+ *                    IP_ID_BEHAVIOR_SEQ_SWAP, IP_ID_BEHAVIOR_ZERO, or
+ *                    IP_ID_BEHAVIOR_RAND
+ */
+static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
+																		const uint16_t new_ip_id)
+{
+	tcp_ip_id_behavior_t behavior;
+
+	if((last_ip_id + 1) == new_ip_id)
+	{
+		behavior = IP_ID_BEHAVIOR_SEQ;
+	}
+	else
+	{
+		const uint16_t swapped_ip_id = swab16(last_ip_id);
+
+		if((swapped_ip_id + 1) == swab16(new_ip_id))
+		{
+			behavior = IP_ID_BEHAVIOR_SEQ_SWAP;
+		}
+		else if(new_ip_id == 0)
+		{
+			behavior = IP_ID_BEHAVIOR_ZERO;
+		}
+		else
+		{
+			behavior = IP_ID_BEHAVIOR_RAND;
+		}
+	}
+
+	return behavior;
+}
+
+
+/**
+ * @brief Get a string that describes the given IP-ID behavior
+ *
+ * @param behavior  The type of the option to get a description for
+ * @return          The description of the option
+ */
+static char * tcp_ip_id_behavior_get_descr(const tcp_ip_id_behavior_t behavior)
+{
+	switch(behavior)
+	{
+		case IP_ID_BEHAVIOR_SEQ:
+			return "sequential";
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
+			return "sequential swapped";
+		case IP_ID_BEHAVIOR_RAND:
+			return "random";
+		case IP_ID_BEHAVIOR_ZERO:
+			return "constant zero";
+		default:
+			assert(0);
+#if defined(NDEBUG) || defined(__KERNEL__)
+			return "unknown";
+#endif
+	}
 }
 
 

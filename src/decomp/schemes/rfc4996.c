@@ -426,7 +426,7 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
 
 	switch(behavior)
 	{
-		case IP_ID_BEHAVIOR_SEQUENTIAL:
+		case IP_ID_BEHAVIOR_SEQ:
 			ip_id = context_ip_id + 1;
 			ip_id_offset = ip_id - msn;
 			ip_id_offset = d_c_lsb(context, k, p, context_ip_id - msn,
@@ -436,7 +436,7 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
 			                  value);
 			assert(ip_id_offset == value); /* TODO: should not assert */
 			return ip_id;
-		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
 			ip_id = swab16(context_ip_id);
 			ip_id++;
 			ip_id_offset = ip_id - msn;
@@ -485,7 +485,7 @@ int d_optional_ip_id_lsb(const struct d_context *const context,
 
 	switch(behavior)
 	{
-		case IP_ID_BEHAVIOR_SEQUENTIAL:
+		case IP_ID_BEHAVIOR_SEQ:
 			if(indicator == 0)
 			{
 				*ip_id = (context_ip_id & 0xff00) |
@@ -503,7 +503,7 @@ int d_optional_ip_id_lsb(const struct d_context *const context,
 				rohc_decomp_debug(context, "read ip_id = 0x%04x\n", *ip_id);
 			}
 			break;
-		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
 		{
 			const uint16_t swapped_context_ip_id = swab16(context_ip_id);
 			if(indicator == 0)
@@ -524,7 +524,7 @@ int d_optional_ip_id_lsb(const struct d_context *const context,
 			}
 			break;
 		}
-		case IP_ID_BEHAVIOR_RANDOM:
+		case IP_ID_BEHAVIOR_RAND:
 			break;
 		case IP_ID_BEHAVIOR_ZERO:
 			*ip_id = 0;

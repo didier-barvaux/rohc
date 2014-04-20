@@ -622,7 +622,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp *const deco
 	assert(rohc_packet != NULL);
 
 	is_ip_id_seq =
-		(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED);
+		(ip_context.v4->ip_id_behavior <= IP_ID_BEHAVIOR_SEQ_SWAP);
 
 	if(rohc_length < 1)
 	{
@@ -2115,7 +2115,7 @@ static int tcp_decode_dynamic_ip(struct d_context *const context,
 				goto error;
 			}
 
-			if(ipv4_dynamic2->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+			if(ipv4_dynamic2->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				base_header.ipv4->ip_id = swab16(ipv4_dynamic2->ip_id);
 			}
@@ -2152,7 +2152,7 @@ static int tcp_decode_dynamic_ip(struct d_context *const context,
 		ip_context.v6->dscp = ipv6_dynamic->dscp;
 		ip_context.v6->ip_ecn_flags = ipv6_dynamic->ip_ecn_flags;
 		ip_context.v6->ttl_hopl = ipv6_dynamic->ttl_hopl;
-		ip_context.v6->ip_id_behavior = IP_ID_BEHAVIOR_RANDOM;
+		ip_context.v6->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
 		size = sizeof(ipv6_dynamic_t);
 	}
 
@@ -2206,7 +2206,7 @@ static int tcp_decode_irregular_ip(struct d_context *const context,
 	if(ip_context.vx->version == IPV4)
 	{
 		// ip_id =:= ip_id_enc_irreg( ip_id_behavior.UVALUE )
-		if(ip_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_RANDOM)
+		if(ip_context.v4->ip_id_behavior == IP_ID_BEHAVIOR_RAND)
 		{
 			memcpy(&base_header.ipv4->ip_id, remain_data, sizeof(uint16_t));
 			remain_data += sizeof(uint16_t);
@@ -4974,8 +4974,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			rohc_decomp_debug(context, "window_indicator = %d => %zu bytes of "
 			                  "options\n", co_common->window_indicator,
 			                  co_common_opt_len);
-			if(co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
-			   co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED)
+			if(co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ ||
+			   co_common->ip_id_behavior == IP_ID_BEHAVIOR_SEQ_SWAP)
 			{
 				co_common_opt_len += co_common->ip_id_indicator + 1;
 			}
@@ -5886,7 +5886,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 		switch(ip_inner_context.v4->ip_id_behavior)
 		{
-			case IP_ID_BEHAVIOR_SEQUENTIAL:
+			case IP_ID_BEHAVIOR_SEQ:
 			{
 				rohc_decomp_debug(context, "IP-ID follows a sequential behavior\n");
 				if(packet_type >= ROHC_PACKET_TCP_RND_1 && packet_type <= ROHC_PACKET_TCP_RND_8)
@@ -5901,7 +5901,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ip_inner_context.v4->last_ip_id = ip_id;
 				break;
 			}
-			case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+			case IP_ID_BEHAVIOR_SEQ_SWAP:
 			{
 				const uint16_t swapped_ip_id = swab16(ip_id);
 
@@ -5921,7 +5921,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ip_inner_context.v4->last_ip_id = swapped_ip_id;
 				break;
 			}
-			case IP_ID_BEHAVIOR_RANDOM:
+			case IP_ID_BEHAVIOR_RAND:
 			{
 				rohc_decomp_debug(context, "IP-ID follows a random behavior\n");
 				/* already done by tcp_decode_irregular_ip() */

@@ -491,8 +491,8 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
 	uint16_t swapped_context_ip_id;
 
 	assert(context != NULL);
-	assert( behavior == IP_ID_BEHAVIOR_SEQUENTIAL ||
-	        behavior == IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED );
+	assert(behavior == IP_ID_BEHAVIOR_SEQ ||
+	       behavior == IP_ID_BEHAVIOR_SEQ_SWAP );
 
 	rohc_comp_debug(context, "behavior = %d, context_ip_id = 0x%04x, "
 	                "ip_id = 0x%04x, msn = 0x%04x\n", behavior,
@@ -500,7 +500,7 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
 
 	switch(behavior)
 	{
-		case IP_ID_BEHAVIOR_SEQUENTIAL:
+		case IP_ID_BEHAVIOR_SEQ:
 			ip_id_offset = ip_id - msn;
 			rohc_comp_debug(context, "ip_id_offset = 0x%04x - 0x%04x = 0x%04x\n",
 			                ip_id, msn, ip_id_offset);
@@ -508,7 +508,7 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
 			                     ip_id_offset);
 			rohc_comp_debug(context, "ip_id_offset = 0x%04x\n", ip_id_offset);
 			break;
-		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
 			ip_id_nbo = swab16(ip_id);
 			rohc_comp_debug(context, "ip_id_nbo = 0x%04x\n", ip_id_nbo);
 			ip_id_offset = ip_id_nbo - msn;
@@ -563,7 +563,7 @@ int c_optional_ip_id_lsb(const struct c_context *const context,
 
 	switch(behavior)
 	{
-		case IP_ID_BEHAVIOR_SEQUENTIAL:
+		case IP_ID_BEHAVIOR_SEQ:
 			if((context_ip_id & 0xff00) == (ip_id & 0xff00))
 			{
 				rohc_data[0] = c_ip_id_lsb(context, behavior, 8, 3,
@@ -581,7 +581,7 @@ int c_optional_ip_id_lsb(const struct c_context *const context,
 				rohc_comp_debug(context, "write ip_id = 0x%04x\n", ip_id);
 			}
 			break;
-		case IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED:
+		case IP_ID_BEHAVIOR_SEQ_SWAP:
 			if((context_ip_id & 0x00ff) == (ip_id & 0x00ff))
 			{
 				rohc_data[0] = c_ip_id_lsb(context, behavior, 8, 3,
@@ -601,7 +601,7 @@ int c_optional_ip_id_lsb(const struct c_context *const context,
 				                swapped_ip_id_nbo);
 			}
 			break;
-		case IP_ID_BEHAVIOR_RANDOM:
+		case IP_ID_BEHAVIOR_RAND:
 		case IP_ID_BEHAVIOR_ZERO:
 			*indicator = 0;
 			length = 0;

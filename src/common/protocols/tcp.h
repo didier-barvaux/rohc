@@ -401,12 +401,16 @@ typedef struct __attribute__((packed)) ipv4_static
 	uint32_t dst_addr;
 } ipv4_static_t;
 
-#define IP_ID_BEHAVIOR_SEQUENTIAL          0
-#define IP_ID_BEHAVIOR_SEQUENTIAL_SWAPPED  1
-#define IP_ID_BEHAVIOR_RANDOM              2
-#define IP_ID_BEHAVIOR_ZERO                3
 
-#define IP_ID_BEHAVIOR_UNKNOWN             0xFE
+/** The different IP-ID behaviors */
+typedef enum
+{
+	IP_ID_BEHAVIOR_SEQ       = 0, /**< IP-ID increases */
+	IP_ID_BEHAVIOR_SEQ_SWAP  = 1, /**< IP-ID increases in little endian */
+	IP_ID_BEHAVIOR_RAND      = 2, /**< IP-ID is random */
+	IP_ID_BEHAVIOR_ZERO      = 3, /**< IP-ID is constant zero */
+} tcp_ip_id_behavior_t;
+
 
 /**
  * @brief Define the IP v4 dynamic part without ip_id.
