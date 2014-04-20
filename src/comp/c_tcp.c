@@ -6670,7 +6670,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 		/* IP_ID_BEHAVIOR_RAND or IP_ID_BEHAVIOR_ZERO:
 		 * co_common or rnd_X packet types */
 
-		if(tcp->data_offset > 5)
+		if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
 		{
 			if(!tcp_context->tmp.tcp_window_changed &&
 			   tcp_context->tmp.nr_seq_bits_65535 <= 16)
@@ -6684,7 +6684,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
 		}
-		else /* no TCP option */
+		else /* unchanged structure of the list of TCP options */
 		{
 			if(tcp_context->tmp.tcp_rsf_flag_changed)
 			{
