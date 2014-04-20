@@ -5873,13 +5873,25 @@ static void tcp_decide_state(struct c_context *const context)
 	switch(context->state)
 	{
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
-			if(g_context->ir_count >= MAX_IR_COUNT)
+			if(g_context->ir_count < MAX_IR_COUNT)
+			{
+				rohc_comp_debug(context, "no enough packets transmitted in IR "
+				                "state for the moment (%d/%d), so stay in IR "
+				                "state\n", g_context->ir_count, MAX_IR_COUNT);
+			}
+			else
 			{
 				change_state(context, ROHC_COMP_STATE_FO);
 			}
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
-			if(g_context->ir_count >= MAX_FO_COUNT)
+			if(g_context->ir_count < MAX_FO_COUNT)
+			{
+				rohc_comp_debug(context, "no enough packets transmitted in FO "
+				                "state for the moment (%d/%d), so stay in FO "
+				                "state\n", g_context->fo_count, MAX_FO_COUNT);
+			}
+			else
 			{
 				change_state(context, ROHC_COMP_STATE_SO);
 			}
