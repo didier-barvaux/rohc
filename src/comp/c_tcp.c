@@ -4312,11 +4312,15 @@ static int code_CO_packet(struct c_context *const context,
 	{
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_7, ip->data, *payload_offset,
 		                             CRC_INIT_7, context->compressor->crc_table_7);
+		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = "
+		                "0x%x\n", *payload_offset, crc_computed);
 	}
 	else
 	{
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_3, ip->data, *payload_offset,
 		                             CRC_INIT_3, context->compressor->crc_table_3);
+		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = "
+		                "0x%x\n", *payload_offset, crc_computed);
 	}
 
 	/* parts 1 and 3:
