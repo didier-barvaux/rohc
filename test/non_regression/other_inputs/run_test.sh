@@ -95,19 +95,17 @@ for capture in ${captures} ; do
 		continue
 	fi
 
-	${curdir}/../test_non_regression ${options} smallcid "${capture}" 2>&1 | \
-		tail -n 100000 &> "${curdir}/logs/$( basename "${capture}" ).log"
+	${curdir}/../test_non_regression ${options} smallcid "${capture}" \
+		>/dev/null 2>&1
 	ret=$?
 	if [ ${ret} -eq 0 ] ; then
 		print_green "PASS"
 		nr_pass=$(( ${nr_pass} + 1 ))
-		rm -f "${curdir}/logs/$( basename "${capture}" ).log"
 	elif [ ${ret} -eq 77 ] ; then
 		print_yellow "SKIP"
 		nr_skip=$(( ${nr_skip} + 1 ))
-		rm -f "${curdir}/logs/$( basename "${capture}" ).log"
 	else
-		print_red "FAIL   (${curdir}/logs/$( basename "${capture}" ).log)"
+		print_red "FAIL"
 		nr_fail=$(( ${nr_fail} + 1 ))
 	fi
 done
