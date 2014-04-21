@@ -4,7 +4,7 @@
 #	Description: create the ROHC fuzzer application
 ################################################################################
 
-sbin_PROGRAMS = \
+bin_PROGRAMS = \
 	rohc_fuzzer \
 	rohc_rtp_fuzzer
 
