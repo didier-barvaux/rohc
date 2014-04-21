@@ -129,6 +129,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t max_contexts,
                                 const bool compat_1_6_x,
                                 const bool no_comparison,
+                                const bool ignore_malformed,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -142,6 +143,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                int link_len_src,
                                const bool compat_1_6_x,
                                const bool no_comparison,
+                               const bool ignore_malformed,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -214,6 +216,7 @@ int main(int argc, char *argv[])
 	int wlsb_width = 4;
 	bool compat_1_6_x = false;
 	bool no_comparison = false;
+	bool ignore_malformed = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
 	int args_used;
@@ -283,6 +286,11 @@ int main(int argc, char *argv[])
 		{
 			/* do not exit with error code if comparison is not possible */
 			no_comparison = true;
+		}
+		else if(!strcmp(*argv, "--ignore-malformed"))
+		{
+			/* do not exit with error code if malformed packets are found */
+			ignore_malformed = true;
 		}
 		else if(!strcmp(*argv, "--rohc-size-output"))
 		{
@@ -397,7 +405,7 @@ int main(int argc, char *argv[])
 
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
-	                              compat_1_6_x, no_comparison,
+	                              compat_1_6_x, no_comparison, ignore_malformed,
 	                              src_filename, ofilename, cmp_filename,
 	                              rohc_size_ofilename);
 
@@ -436,6 +444,7 @@ static void usage(void)
 	        "  --wlsb-width NUM        The width of the WLSB window to use\n"
 	        "  --compat-1-6-x          Mimic the behavior of the 1.6.x versions\n"
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
+	        "  --ignore-malformed      Ignore malformed packets for test\n"
 	        "  --verbose               Run the test in verbose mode\n");
 }
 
@@ -698,7 +707,8 @@ static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
  * @param packet           The packet to compress/decompress (link layer included)
  * @param link_len_src     The length of the link layer header before IP data
  * @param compat_1_6_x     Whether to be compatible with 1.6.x versions or not
- * @param no_comparison    Whether to be handle comparison as fatal for test or not
+ * @param no_comparison    Whether to handle comparison as fatal for test or not
+ * @param ignore_malformed Whether to handle malformed packets as fatal for test
  * @param dumper           The PCAP output dump file
  * @param cmp_packet       The ROHC packet for comparison purpose
  * @param cmp_size         The size of the ROHC packet used for comparison
@@ -722,6 +732,7 @@ static int compress_decompress(struct rohc_comp *comp,
                                int link_len_src,
                                const bool compat_1_6_x,
                                const bool no_comparison,
+                               const bool ignore_malformed,
                                pcap_dumper_t *dumper,
                                unsigned char *cmp_packet,
                                int cmp_size,
@@ -745,8 +756,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	/* check Ethernet frame length */
 	if(header.len <= link_len_src || header.len != header.caplen)
 	{
-		fprintf(stderr, "bad PCAP packet (len = %d, caplen = %d)\n", header.len,
-		        header.caplen);
+		printf("bad PCAP packet (len = %d, caplen = %d)\n", header.len,
+		       header.caplen);
 		status = -3;
 		goto exit;
 	}
@@ -789,7 +800,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	   ip_size >= sizeof(struct ipv4_hdr) &&
 	   ip_packet[10] == 0xff && ip_packet[11] == 0xff)
 	{
-		fprintf(stderr, "fix IPv4 packet with 0xffff IP checksum\n");
+		printf("fix IPv4 packet with 0xffff IP checksum\n");
 		ip_packet[10] = 0x00;
 		ip_packet[11] = 0x00;
 	}
@@ -838,7 +849,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		last_packet_info.version_minor = 0;
 		if(!rohc_comp_get_last_packet_info2(comp, &last_packet_info))
 		{
-			fprintf(stderr, "failed to get statistics\n");
+			printf("failed to get statistics\n");
 			status = -1;
 			goto exit;
 		}
@@ -926,7 +937,8 @@ exit:
  * @param wlsb_width           The width of the WLSB window to use
  * @param max_contexts         The maximum number of ROHC contexts to use
  * @param compat_1_6_x         Whether to be compatible with 1.6.x versions or not
- * @param no_comparison        Whether to be handle comparison as fatal for test or not
+ * @param no_comparison        Whether to handle comparison as fatal for test or not
+ * @param ignore_malformed     Whether to handle malformed packets as fatal for test
  * @param src_filename         The name of the PCAP file that contains the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
@@ -944,6 +956,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const size_t max_contexts,
                                 const bool compat_1_6_x,
                                 const bool no_comparison,
+                                const bool ignore_malformed,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -1146,7 +1159,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
 		ret = compress_decompress(comp1, decomp1, 1, counter, header, packet,
-		                          link_len_src, compat_1_6_x, no_comparison, dumper,
+		                          link_len_src, compat_1_6_x, no_comparison,
+		                          ignore_malformed, dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file);
 		if(ret == -1)
@@ -1185,7 +1199,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 		/* compress & decompress from compressor 2 to decompressor 2 */
 		ret = compress_decompress(comp2, decomp2, 2, counter, header, packet,
-		                          link_len_src, compat_1_6_x, no_comparison, dumper,
+		                          link_len_src, compat_1_6_x, no_comparison,
+		                          ignore_malformed, dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
 		                          rohc_size_output_file);
 		if(ret == -1)
@@ -1214,8 +1229,9 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 	/* show the compression/decompression results */
 	printf("=== summary:\n");
-	printf("===\tpackets_processed:    %d\n", 2 * counter);
-	printf("===\tcompression_failed:   %d\n",  nb_bad + err_comp);
+	printf("===\tprocessed:            %d\n", 2 * counter);
+	printf("===\tmalformed:            %d\n", nb_bad);
+	printf("===\tcompression_failed:   %d\n", err_comp);
 	printf("===\tdecompression_failed: %d\n", err_decomp);
 	printf("===\tmatches:              %d\n", nb_ok);
 	printf("\n");
@@ -1227,8 +1243,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	/* destroy the compressors and decompressors */
 	printf("=== shutdown:\n");
 	if(err_comp == 0 && err_decomp == 0 &&
-	   nb_bad == 0 && nb_ref == 0 &&
-	   nb_ok == (counter * 2))
+	   (ignore_malformed || nb_bad == 0) && nb_ref == 0 &&
+	   (nb_ok + nb_bad) == (counter * 2))
 	{
 		/* test is successful */
 		status = 0;
