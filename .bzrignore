@@ -94,6 +94,11 @@ test_*.sh.trs
 ./test/non_regression/test_non_regression
 ./test/non_regression/test_non_regression.exe
 ./test/non_regression/test_non_regression_kernel
+!./test/non_regression/other_inputs/Makefile
+./test/non_regression/other_inputs/download/*
+./test/non_regression/other_inputs/external_inputs/*
+./test/non_regression/other_inputs/personal_inputs/*
+./test/non_regression/other_inputs/logs/*
 ./test/interop/test_interop
 ./test/interop/test_interop.exe
 !./linux/kmod/Makefile
