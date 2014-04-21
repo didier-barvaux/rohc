@@ -46,6 +46,7 @@ librohc_decomp_la_CPPFLAGS = \
 	-I$(top_srcdir)/src/comp
 
 librohc_decomp_la_DEPENDENCIES = \
+	$(builddir)/schemes/librohc_decomp_schemes.la \
 	$(srcdir)/librohc_decomp.symbols
 
 # fake public headers installed in $includedir to point

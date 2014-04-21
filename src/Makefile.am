@@ -15,19 +15,20 @@ lib_LTLIBRARIES = librohc.la
 
 librohc_la_SOURCES =
 librohc_la_LIBADD = \
-	-lrohc_common \
-	-lrohc_comp \
-	-lrohc_decomp \
+	$(builddir)/common/librohc_common.la \
+	$(builddir)/comp/librohc_comp.la \
+	$(builddir)/decomp/librohc_decomp.la \
 	$(additional_platform_libs)
 librohc_la_LDFLAGS = \
 	$(configure_ldflags) \
 	-no-undefined \
-	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE) \
-	-L$(top_builddir)/src/common/.libs \
-	-L$(top_builddir)/src/comp/.libs \
-	-L$(top_builddir)/src/decomp/.libs
+	-version-info $(ROHC_API_CURRENT):$(ROHC_API_REVISION):$(ROHC_API_AGE)
 librohc_la_CFLAGS =
 librohc_la_CPPFLAGS =
+librohc_la_DEPENDENCIES = \
+	$(builddir)/common/librohc_common.la \
+	$(builddir)/comp/librohc_comp.la \
+	$(builddir)/decomp/librohc_decomp.la
 
 EXTRA_DIST = \
 	dllexport.h
