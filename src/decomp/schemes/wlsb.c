@@ -24,6 +24,9 @@
 #include "wlsb.h"
 #include "interval.h" /* for the rohc_f_32bits() function */
 
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 #include <assert.h>
 
 
@@ -215,6 +218,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
                               uint32_t *const decoded)
 {
 	struct rohc_interval32 interval;
+	uint32_t decoded_value;
 	uint32_t try;
 	uint32_t mask;
 	bool is_found = false;
@@ -250,7 +254,7 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 		{
 			/* value is in the interval: corresponding value found */
 			is_found = true;
-			*decoded = try;
+			decoded_value = try;
 		}
 	}
 	else
@@ -269,11 +273,13 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 		{
 			/* value is in the interval: corresponding value found */
 			is_found = true;
-			*decoded = try;
+			decoded_value = try;
 		}
 	}
 
-	assert(!is_found || ((*decoded) & mask) == m);
+	assert(!is_found || (decoded_value & mask) == m);
+
+	memcpy(decoded, &decoded_value, sizeof(uint32_t));
 
 	return is_found;
 }

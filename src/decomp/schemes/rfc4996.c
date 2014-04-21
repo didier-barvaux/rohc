@@ -191,7 +191,9 @@ int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
                            const int indicator,
                            uint32_t *const decoded_value)
 {
-	uint32_t value;
+	uint32_t decoded_hbo;
+	uint32_t decoded_nbo;
+	uint32_t bits;
 	size_t length = 0;
 	bool decode_ok;
 
@@ -203,55 +205,52 @@ int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
 	switch(indicator)
 	{
 		case 0:
-			value = rohc_lsb_get_ref(lsb, ROHC_LSB_REF_0);
-			*decoded_value = rohc_hton32(value);
+			decoded_hbo = rohc_lsb_get_ref(lsb, ROHC_LSB_REF_0);
+			decoded_nbo = rohc_hton32(decoded_hbo);
 			break;
 		case 1:
-			value = rohc_data[0] & 0xff;
+			bits = rohc_data[0] & 0xff;
 			rohc_data++;
 			length++;
-			decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value,
-			                            8, 63, decoded_value);
+			decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, bits, 8, 63,
+												 &decoded_hbo);
 			if(!decode_ok)
 			{
 				goto error;
 			}
-			*decoded_value = rohc_hton32(*decoded_value);
+			decoded_nbo = rohc_hton32(decoded_hbo);
 			break;
 		case 2:
-			value = 0;
-			value |= (rohc_data[0] << 8) & 0xff00;
+			bits = 0;
+			bits |= (rohc_data[0] << 8) & 0xff00;
 			rohc_data++;
 			length++;
-			value |= rohc_data[0] & 0xff;
+			bits |= rohc_data[0] & 0xff;
 			rohc_data++;
 			length++;
-			decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, value,
-			                            16, 16383, decoded_value);
+			decode_ok = rohc_lsb_decode(lsb, ROHC_LSB_REF_0, 0, bits, 16, 16383,
+												 &decoded_hbo);
 			if(!decode_ok)
 			{
 				goto error;
 			}
-			*decoded_value = rohc_hton32(*decoded_value);
+			decoded_nbo = rohc_hton32(decoded_hbo);
 			break;
 		case 3:
-			memcpy(&value, rohc_data, sizeof(uint32_t));
+			memcpy(&decoded_nbo, rohc_data, sizeof(uint32_t));
 #ifndef __clang_analyzer__ /* silent warning about dead decrement */
 			rohc_data += sizeof(uint32_t);
 #endif
 			length += sizeof(uint32_t);
-			*decoded_value = value;
 			break;
 		default: /* should not happen */
-#if defined(NDEBUG) || defined(__KERNEL__)
-			value = 0;
-#endif
 			assert(0);
-			break;
+			goto error;
 	}
 
 	rohc_decomp_debug(context, "indicator = %d, return value = %u (0x%x)\n",
-	                  indicator, *decoded_value, *decoded_value);
+	                  indicator, decoded_nbo, decoded_nbo);
+	memcpy(decoded_value, &decoded_nbo, sizeof(uint32_t));
 
 	return length;
 
