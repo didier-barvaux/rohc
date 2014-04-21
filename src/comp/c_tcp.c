@@ -353,6 +353,8 @@ struct sc_tcp_context
 
 	uint32_t seq_number_scaled;
 	uint32_t seq_number_residue;
+	size_t seq_number_factor;
+	size_t seq_number_scaling_nr;
 
 	uint16_t ack_stride;
 	uint32_t ack_number_scaled;
@@ -1915,6 +1917,17 @@ static int c_tcp_encode(struct c_context *const context,
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(tcphdr_t));
 	tcp_context->seq_number = rohc_ntoh32(tcp->seq_number);
 	tcp_context->ack_number = rohc_ntoh32(tcp->ack_number);
+
+	/* sequence number sent once more, count the number of transmissions to
+	 * know when scaled sequence number is possible */
+	if(tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	{
+		tcp_context->seq_number_scaling_nr++;
+		rohc_comp_debug(context, "unscaled sequence number was transmitted "
+		                "%zu / %u times since the scaling factor or residue "
+		                "changed\n", tcp_context->seq_number_scaling_nr,
+		                ROHC_INIT_TS_STRIDE_MIN);
+	}
 
 	return counter;
 
@@ -6196,16 +6209,38 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 	tcp_field_descr_change(context, "window",
 	                       tcp_context->tmp.tcp_window_changed);
 
-	/* compute new scaled TCP sequence and acknowledgment numbers */
-	c_field_scaling(&(tcp_context->seq_number_scaled),
-	                &(tcp_context->seq_number_residue),
-	                tcp_context->tmp.payload_len,
-	                rohc_ntoh32(tcp->seq_number));
-	rohc_comp_debug(context, "seq_number = 0x%x, scaled = 0x%x, factor = %zu, "
-	                "residue = 0x%x\n", rohc_ntoh32(tcp->seq_number),
-	                tcp_context->seq_number_scaled,
-	                tcp_context->tmp.payload_len,
-	                tcp_context->seq_number_residue);
+	/* compute new scaled TCP sequence number */
+	{
+		const size_t seq_number_factor = tcp_context->tmp.payload_len;
+		uint32_t seq_number_scaled;
+		uint32_t seq_number_residue;
+
+		c_field_scaling(&seq_number_scaled, &seq_number_residue,
+		                seq_number_factor, rohc_ntoh32(tcp->seq_number));
+		rohc_comp_debug(context, "seq_number = 0x%x, scaled = 0x%x, "
+		                "factor = %zu, residue = 0x%x\n",
+		                rohc_ntoh32(tcp->seq_number), seq_number_scaled,
+		                seq_number_factor, seq_number_residue);
+
+		if(seq_number_factor != tcp_context->seq_number_factor ||
+		   seq_number_residue != tcp_context->seq_number_residue)
+		{
+			/* sequence number is not scalable with same parameters any more */
+			tcp_context->seq_number_scaling_nr = 0;
+		}
+		rohc_comp_debug(context, "unscaled sequence number was transmitted at "
+		                "least %zu / %u times since the scaling factor or "
+		                "residue changed\n", tcp_context->seq_number_scaling_nr,
+		                ROHC_INIT_TS_STRIDE_MIN);
+
+		/* TODO: should update context at the very end only */
+		tcp_context->seq_number_scaled = seq_number_scaled;
+		tcp_context->seq_number_residue = seq_number_residue;
+		tcp_context->seq_number_factor = seq_number_factor;
+	}
+
+	/* compute new scaled TCP acknowledgment number */
+	/* TODO: handle transmission count the same way as sequence number */
 	c_field_scaling(&(tcp_context->ack_number_scaled),
 	                &(tcp_context->ack_number_residue),
 	                tcp_context->ack_stride, rohc_ntoh32(tcp->ack_number));
@@ -6271,25 +6306,36 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		                "number 0x%08x with p = 8191\n",
 		                tcp_context->tmp.nr_seq_bits_8191,
 		                rohc_ntoh32(tcp->seq_number));
-		if(!wlsb_get_k_32bits(tcp_context->seq_scaled_wlsb,
-		                      tcp_context->seq_number_scaled,
-		                      &tcp_context->tmp.nr_seq_scaled_bits))
+
+		if(tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for scaled sequence number "
-			             "0x%08x\n", tcp_context->seq_number_scaled);
-			goto error;
+			tcp_context->tmp.nr_seq_scaled_bits = 32;
 		}
-		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-		                "sequence number 0x%08x\n",
-		                tcp_context->tmp.nr_seq_scaled_bits,
-		                tcp_context->seq_number_scaled);
+		else
+		{
+			if(!wlsb_get_k_32bits(tcp_context->seq_scaled_wlsb,
+			                      tcp_context->seq_number_scaled,
+			                      &tcp_context->tmp.nr_seq_scaled_bits))
+			{
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "failed to find the minimal "
+				             "number of bits required for scaled sequence number "
+				             "0x%08x\n", tcp_context->seq_number_scaled);
+				goto error;
+			}
+			rohc_comp_debug(context, "%zu bits are required to encode new "
+			                "scaled sequence number 0x%08x\n",
+			                tcp_context->tmp.nr_seq_scaled_bits,
+			                tcp_context->seq_number_scaled);
+		}
 	}
 	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn,
 	           rohc_ntoh32(tcp->seq_number));
-	c_add_wlsb(tcp_context->seq_scaled_wlsb, g_context->sn,
-	           tcp_context->seq_number_scaled);
+	if(tcp_context->seq_number_factor != 0)
+	{
+		c_add_wlsb(tcp_context->seq_scaled_wlsb, g_context->sn,
+		           tcp_context->seq_number_scaled);
+	}
 
 	/* how many bits are required to encode the new timestamp echo request and
 	 * timestamp echo reply? */
@@ -6588,12 +6634,13 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 				packet_type = ROHC_PACKET_TCP_SEQ_1;
 			}
 			else if(!tcp_context->tmp.ip_id_hi9_changed && /* TODO: WLSB */
+			        tcp_context->seq_number_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
 			        tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
-			        true /* TODO: no more than 4 bits of SN */ &&
-			        tcp_context->tmp.payload_len != 0)
+			        true /* TODO: no more than 4 bits of SN */)
 			{
 				/* seq_2 is possible */
 				TRACE_GOTO_CHOICE;
+				assert(tcp_context->tmp.payload_len > 0);
 				packet_type = ROHC_PACKET_TCP_SEQ_2;
 			}
 			else
@@ -6640,12 +6687,13 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 				packet_type = ROHC_PACKET_TCP_SEQ_5;
 			}
 			else if(!tcp_context->tmp.ip_id_hi9_changed && /* TODO: WLSB */
-			        tcp_context->tmp.payload_len != 0 &&
+			        tcp_context->seq_number_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
 			        tcp_context->tmp.nr_seq_scaled_bits <= 4 &&
 			        !tcp_context->tmp.tcp_ack_number_hi16_changed && /* TODO: WLSB */
 			        true /* TODO: no more than 4 bits of SN */)
 			{
 				TRACE_GOTO_CHOICE;
+				assert(tcp_context->tmp.payload_len > 0);
 				packet_type = ROHC_PACKET_TCP_SEQ_6;
 			}
 			else if(!tcp_context->tmp.ip_id_hi12_changed && /* TODO: WLSB */
@@ -6755,11 +6803,12 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 				}
 			}
 			else if(tcp->ack_flag != 0 &&
-			        tcp_context->tmp.nr_seq_bits_65535 == 0 &&
-			        tcp_context->tmp.payload_len > 0)
+			        tcp_context->seq_number_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
+			        tcp_context->tmp.nr_seq_scaled_bits <= 4)
 			{
 				/* ACK number present */
 				/* rnd_6 is possible */
+				assert(tcp_context->tmp.payload_len > 0);
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_RND_6;
 			}
@@ -6775,9 +6824,11 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 			{
 				/* ACK number absent */
 				if(tcp_context->tmp.payload_len > 0 &&
-				   tcp_context->tmp.nr_seq_bits_65535 == 0)
+				   tcp_context->seq_number_scaling_nr >= ROHC_INIT_TS_STRIDE_MIN &&
+				   tcp_context->tmp.nr_seq_scaled_bits <= 4)
 				{
 					/* rnd_2 is possible */
+					assert(tcp_context->tmp.payload_len > 0);
 					TRACE_GOTO_CHOICE;
 					packet_type = ROHC_PACKET_TCP_RND_2;
 				}
