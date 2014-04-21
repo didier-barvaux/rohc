@@ -525,7 +525,6 @@ static int co_baseheader(struct c_context *const context,
                          const size_t rohc_pkt_max_len,
                          const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
-                         int size_payload,
 								 const uint8_t crc)
 	__attribute__((nonnull(1, 2, 5, 8), warn_unused_result));
 
@@ -4294,18 +4293,16 @@ static int code_CO_packet(struct c_context *const context,
 	}
 	while(rohc_is_tunneling(protocol));
 
-	rohc_comp_debug(context, "payload_size = %d\n", payload_size);
-
 	if(remain_data_len < sizeof(tcphdr_t) )
 	{
 		rohc_comp_debug(context, "insufficient size for TCP header\n");
 		return -1;
 	}
-
 	tcp = base_header.tcphdr;
-
-	*payload_offset = ( (uint8_t*) tcp ) + ( tcp->data_offset << 2 ) - ip->data;
-	rohc_comp_debug(context, "payload_offset = %d\n", *payload_offset);
+	payload_size -= tcp->data_offset << 2;
+	*payload_offset = ((uint8_t *) tcp) + (tcp->data_offset << 2) - ip->data;
+	rohc_comp_debug(context, "payload offset = %d\n", *payload_offset);
+	rohc_comp_debug(context, "payload size = %d\n", payload_size);
 
 	/* we have just identified the IP and TCP headers (options included), so
 	 * let's compute the CRC on uncompressed headers */
@@ -4355,7 +4352,7 @@ static int code_CO_packet(struct c_context *const context,
 	i = co_baseheader(context, tcp_context, ip_inner_context,
 	                  base_header_inner,
 	                  &rohc_pkt[counter - 1], rohc_pkt_max_len,
-	                  packet_type, tcp, payload_size, crc_computed);
+	                  packet_type, tcp, crc_computed);
 	if(i < 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
@@ -4467,7 +4464,6 @@ error:
  * @param rohc_pkt_max_len          The maximum length of the ROHC packet
  * @param packet_type               OUT: The type of ROHC packet that is created
  * @param tcp                       The TCP header to compress
- * @param payload_size              The size of the payload
  * @param crc                       The CRC on the uncompressed headers
  * @return                          The position in the rohc-packet-under-build buffer
  *                                  -1 in case of problem
@@ -4480,7 +4476,6 @@ static int co_baseheader(struct c_context *const context,
 								 const size_t rohc_pkt_max_len __attribute__((unused)), /* TODO */
                          const rohc_packet_t packet_type,
                          const tcphdr_t *const tcp,
-								 int payload_size,
 								 const uint8_t crc)
 {
 	struct c_generic_context *g_context = context->specific;
@@ -4491,16 +4486,11 @@ static int co_baseheader(struct c_context *const context,
 	bool is_ok;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "base_header_ip = %p, rohc_pkt = %p, payload_size = %d\n",
-	                tcp_context, ip_context.uint8, base_header.uint8, rohc_pkt,
-	                payload_size);
+	                "base_header_ip = %p, rohc_pkt = %p\n", tcp_context,
+	                ip_context.uint8, base_header.uint8, rohc_pkt);
 
 	// Init pointer on rohc compressed buffer
 	c_base_header.uint8 = rohc_pkt;
-
-	payload_size -= tcp->data_offset << 2;
-	rohc_comp_debug(context, "payload_size = %d\n", payload_size);
-
 	mptr.uint8 = c_base_header.uint8;
 
 	switch(packet_type)
