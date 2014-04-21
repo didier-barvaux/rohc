@@ -130,6 +130,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const bool compat_1_6_x,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
+                                const bool no_tcp,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -153,13 +154,15 @@ static int compress_decompress(struct rohc_comp *comp,
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
                                             const size_t wlsb_width,
                                             const size_t max_contexts,
-                                            const bool compat_1_6_x)
+                                            const bool compat_1_6_x,
+                                            const bool no_tcp)
 	__attribute__((warn_unused_result));
 static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
                                                 const size_t max_contexts,
                                                 const bool compat_1_6_x,
+                                                const bool no_tcp,
                                                 struct rohc_comp *const comp)
-	__attribute__((warn_unused_result, nonnull(4)));
+	__attribute__((warn_unused_result, nonnull(5)));
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -217,6 +220,7 @@ int main(int argc, char *argv[])
 	bool compat_1_6_x = false;
 	bool no_comparison = false;
 	bool ignore_malformed = false;
+	bool no_tcp = false;
 	int status = 1;
 	rohc_cid_type_t cid_type;
 	int args_used;
@@ -291,6 +295,11 @@ int main(int argc, char *argv[])
 		{
 			/* do not exit with error code if malformed packets are found */
 			ignore_malformed = true;
+		}
+		else if(!strcmp(*argv, "--no-tcp"))
+		{
+			/* disable the TCP profile */
+			no_tcp = true;
 		}
 		else if(!strcmp(*argv, "--rohc-size-output"))
 		{
@@ -405,7 +414,8 @@ int main(int argc, char *argv[])
 
 	/* test ROHC compression/decompression with the packets from the file */
 	status = test_comp_and_decomp(cid_type, wlsb_width, max_contexts,
-	                              compat_1_6_x, no_comparison, ignore_malformed,
+	                              compat_1_6_x, no_comparison,
+	                              ignore_malformed, no_tcp,
 	                              src_filename, ofilename, cmp_filename,
 	                              rohc_size_ofilename);
 
@@ -445,6 +455,7 @@ static void usage(void)
 	        "  --compat-1-6-x          Mimic the behavior of the 1.6.x versions\n"
 	        "  --no-comparison         Is comparison with ROHC reference optional for test\n"
 	        "  --ignore-malformed      Ignore malformed packets for test\n"
+	        "  --no-tcp                Disable the TCP profile\n"
 	        "  --verbose               Run the test in verbose mode\n");
 }
 
@@ -939,6 +950,7 @@ exit:
  * @param compat_1_6_x         Whether to be compatible with 1.6.x versions or not
  * @param no_comparison        Whether to handle comparison as fatal for test or not
  * @param ignore_malformed     Whether to handle malformed packets as fatal for test
+ * @param no_tcp               Whether to disable the TCP profile or not
  * @param src_filename         The name of the PCAP file that contains the
  *                             IP packets
  * @param ofilename            The name of the PCAP file to output the ROHC
@@ -957,6 +969,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const bool compat_1_6_x,
                                 const bool no_comparison,
                                 const bool ignore_malformed,
+                                const bool no_tcp,
                                 char *src_filename,
                                 char *ofilename,
                                 char *cmp_filename,
@@ -1107,7 +1120,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 1 */
-	comp1 = create_compressor(cid_type, wlsb_width, max_contexts, compat_1_6_x);
+	comp1 = create_compressor(cid_type, wlsb_width, max_contexts,
+	                          compat_1_6_x, no_tcp);
 	if(comp1 == NULL)
 	{
 		printf("failed to create the compressor 1\n");
@@ -1115,7 +1129,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the compressor 2 */
-	comp2 = create_compressor(cid_type, wlsb_width, max_contexts, compat_1_6_x);
+	comp2 = create_compressor(cid_type, wlsb_width, max_contexts,
+	                          compat_1_6_x, no_tcp);
 	if(comp2 == NULL)
 	{
 		printf("failed to create the compressor 2\n");
@@ -1123,7 +1138,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 1 */
-	decomp1 = create_decompressor(cid_type, max_contexts, compat_1_6_x, comp2);
+	decomp1 = create_decompressor(cid_type, max_contexts, compat_1_6_x, no_tcp,
+	                              comp2);
 	if(decomp1 == NULL)
 	{
 		printf("failed to create the decompressor 1\n");
@@ -1131,7 +1147,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 2 */
-	decomp2 = create_decompressor(cid_type, max_contexts, compat_1_6_x, comp1);
+	decomp2 = create_decompressor(cid_type, max_contexts, compat_1_6_x, no_tcp,
+	                              comp1);
 	if(decomp2 == NULL)
 	{
 		printf("failed to create the decompressor 2\n");
@@ -1287,12 +1304,14 @@ error:
  * @param wlsb_width    The width of the WLSB window to use
  * @param compat_1_6_x  Whether the ROHC compressor shall be compatible with
  *                      older 1.6.x versions or not
+ * @param no_tcp        Whether to disable the TCP profile or not
  * @return              The new ROHC compressor
  */
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
                                             const size_t wlsb_width,
                                             const size_t max_contexts,
-                                            const bool compat_1_6_x)
+                                            const bool compat_1_6_x,
+                                            const bool no_tcp)
 {
 	const unsigned int rtp_ports[] =
 		{ 1234, 36780, 33238, 5020, 5002, 5006 };
@@ -1319,9 +1338,14 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 	if(!rohc_comp_enable_profiles(comp, ROHC_PROFILE_UNCOMPRESSED,
 	                              ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                              ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                              ROHC_PROFILE_ESP, -1))
 	{
 		printf("failed to enable the compression profiles\n");
+		goto destroy_comp;
+	}
+	if(!no_tcp && !rohc_comp_enable_profile(comp, ROHC_PROFILE_TCP))
+	{
+		printf("failed to enable the TCP compression profile\n");
 		goto destroy_comp;
 	}
 
@@ -1379,12 +1403,14 @@ error:
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param compat_1_6_x  Whether the ROHC decompressor shall be compatible with
  *                      older 1.6.x versions or not
+ * @param no_tcp        Whether to disable the TCP profile or not
  * @param comp          The ROHC compressor to associate to the decompressor
  * @return              The new ROHC decompressor
  */
 static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
                                                 const size_t max_contexts,
                                                 const bool compat_1_6_x,
+                                                const bool no_tcp,
                                                 struct rohc_comp *const comp)
 {
 	struct rohc_decomp *decomp;
@@ -1408,9 +1434,14 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
 	                                ROHC_PROFILE_UDP, ROHC_PROFILE_IP,
 	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
-	                                ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
+	                                ROHC_PROFILE_ESP, -1))
 	{
-		printf("failed to enable the profiles\n");
+		printf("failed to enable the decompression profiles\n");
+		goto destroy_decomp;
+	}
+	if(!no_tcp && !rohc_decomp_enable_profile(decomp, ROHC_PROFILE_TCP))
+	{
+		printf("failed to enable the TCP decompression profile\n");
 		goto destroy_decomp;
 	}
 
