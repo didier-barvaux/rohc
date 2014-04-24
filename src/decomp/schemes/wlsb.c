@@ -277,9 +277,11 @@ static bool rohc_lsb_decode32(const struct rohc_lsb_decode *const lsb,
 		}
 	}
 
-	assert(!is_found || (decoded_value & mask) == m);
-
-	memcpy(decoded, &decoded_value, sizeof(uint32_t));
+	if(is_found)
+	{
+		assert((decoded_value & mask) == m);
+		memcpy(decoded, &decoded_value, sizeof(uint32_t));
+	}
 
 	return is_found;
 }
