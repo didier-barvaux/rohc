@@ -901,7 +901,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 	/* ROHC payload */
 	unsigned char *rohc_payload;
 	size_t payload_size;
-	int payload_offset;
+	size_t payload_offset;
 
 	int status = ROHC_ERROR; /* error status by default */
 

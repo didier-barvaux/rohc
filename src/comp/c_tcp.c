@@ -444,7 +444,7 @@ static int c_tcp_encode(struct c_context *const context,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
-                        int *const payload_offset)
+                        size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 static bool tcp_detect_changes(struct c_context *const context,
@@ -518,7 +518,7 @@ static int code_CO_packet(struct c_context *const context,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
-                          int *const payload_offset);
+                          size_t *const payload_offset);
 static int co_baseheader(struct c_context *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_ptr_t ip_inner_context,
@@ -1334,7 +1334,7 @@ static int c_tcp_encode(struct c_context *const context,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
                         rohc_packet_t *const packet_type,
-                        int *const payload_offset)
+                        size_t *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -1911,7 +1911,7 @@ static int c_tcp_encode(struct c_context *const context,
 		*payload_offset = base_header.uint8 - (uint8_t *) uncomp_pkt->outer_ip.data;
 	}
 
-	rohc_comp_debug(context, "payload_offset = %d\n", *payload_offset);
+	rohc_comp_debug(context, "payload_offset = %zu\n", *payload_offset);
 
 	/* update the context with the new TCP header */
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(tcphdr_t));
@@ -4196,7 +4196,7 @@ static int code_CO_packet(struct c_context *const context,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
-                          int *const payload_offset)
+                          size_t *const payload_offset)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -4210,7 +4210,7 @@ static int code_CO_packet(struct c_context *const context,
 	size_t first_position;
 	multi_ptr_t mptr;
 	uint8_t save_first_byte;
-	uint16_t payload_size;
+	size_t payload_size;
 	int ip_inner_ecn;
 #if ROHC_EXTRA_DEBUG == 1
 	uint8_t *puchar;
@@ -4312,10 +4312,17 @@ static int code_CO_packet(struct c_context *const context,
 		return -1;
 	}
 	tcp = base_header.tcphdr;
-	payload_size -= tcp->data_offset << 2;
-	*payload_offset = ((uint8_t *) tcp) + (tcp->data_offset << 2) - ip->data;
-	rohc_comp_debug(context, "payload offset = %d\n", *payload_offset);
-	rohc_comp_debug(context, "payload size = %d\n", payload_size);
+	{
+		const size_t tcp_data_offset = tcp->data_offset << 2;
+
+		assert(payload_size >= tcp_data_offset);
+		payload_size -= tcp_data_offset;
+
+		assert(((uint8_t *) tcp) >= ip->data);
+		*payload_offset = ((uint8_t *) tcp) + tcp_data_offset - ip->data;
+		rohc_comp_debug(context, "payload offset = %zu\n", *payload_offset);
+		rohc_comp_debug(context, "payload size = %zu\n", payload_size);
+	}
 
 	/* we have just identified the IP and TCP headers (options included), so
 	 * let's compute the CRC on uncompressed headers */

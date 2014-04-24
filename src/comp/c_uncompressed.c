@@ -77,26 +77,26 @@ static int c_uncompressed_encode(struct c_context *const context,
                                  unsigned char *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
-                                 int *const payload_offset)
+                                 size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 static int uncompressed_code_packet(const struct c_context *const context,
                                     const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
-                                    int *const payload_offset)
+                                    size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 static int uncompressed_code_IR_packet(const struct c_context *const context,
                                        const struct net_pkt *const uncomp_pkt,
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
-                                       int *const payload_offset)
+                                       size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 static int uncompressed_code_normal_packet(const struct c_context *const context,
                                            const struct net_pkt *const uncomp_pkt,
                                            unsigned char *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
-                                           int *const payload_offset)
+                                           size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* re-initialize a context */
@@ -245,7 +245,7 @@ static int c_uncompressed_encode(struct c_context *const context,
                                  unsigned char *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
-                                 int *const payload_offset)
+                                 size_t *const payload_offset)
 {
 	int size;
 
@@ -527,13 +527,13 @@ static int uncompressed_code_packet(const struct c_context *context,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
-                                    int *const payload_offset)
+                                    size_t *const payload_offset)
 {
 	int (*code_packet)(const struct c_context *const context,
 	                   const struct net_pkt *const uncomp_pkt,
 	                   unsigned char *const rohc_pkt,
 	                   const size_t rohc_pkt_max_len,
-	                   int *const payload_offset)
+	                   size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -636,7 +636,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
                                        const struct net_pkt *const uncomp_pkt __attribute__((unused)),
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
-                                       int *const payload_offset)
+                                       size_t *const payload_offset)
 {
 	size_t counter;
 	size_t first_position;
@@ -712,7 +712,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
                                            const struct net_pkt *const uncomp_pkt,
                                            unsigned char *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
-                                           int *const payload_offset)
+                                           size_t *const payload_offset)
 {
 	size_t counter;
 	size_t first_position;

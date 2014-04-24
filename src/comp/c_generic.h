@@ -326,7 +326,7 @@ int c_generic_encode(struct c_context *const context,
                      unsigned char *const rohc_pkt,
                      const size_t rohc_pkt_max_len,
                      rohc_packet_t *const packet_type,
-                     int *const payload_offset)
+                     size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
 bool c_generic_reinit_context(struct c_context *const context);
