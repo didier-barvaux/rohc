@@ -135,11 +135,5 @@ int ROHC_EXPORT rohc_list_item_update_if_changed(rohc_list_item_cmp cmp_item,
                                                  const size_t item_len)
 	__attribute__((warn_unused_result, nonnull(2, 4)));
 
-bool ROHC_EXPORT rohc_list_item_update(struct rohc_list_item *const list_item,
-                                       const uint8_t item_type,
-                                       const uint8_t *const item_data,
-                                       const size_t item_len)
-	__attribute__((warn_unused_result, nonnull(1, 3)));
-
 #endif
 

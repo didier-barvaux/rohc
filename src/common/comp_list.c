@@ -29,6 +29,13 @@
 #include <assert.h>
 
 
+static bool rohc_list_item_update(struct rohc_list_item *const list_item,
+                                  const uint8_t item_type,
+                                  const uint8_t *const item_data,
+                                  const size_t item_len)
+	__attribute__((warn_unused_result, nonnull(1, 3)));
+
+
 /**
  * @brief Reset the state of the given compressed list
  *
@@ -174,10 +181,10 @@ int rohc_list_item_update_if_changed(rohc_list_item_cmp cmp_item,
  * @param item_len   The data length (in bytes)
  * @return           true if the update was successful, false otherwise
  */
-bool rohc_list_item_update(struct rohc_list_item *const list_item,
-                           const uint8_t item_type,
-                           const uint8_t *const item_data,
-                           const size_t item_len)
+static bool rohc_list_item_update(struct rohc_list_item *const list_item,
+                                  const uint8_t item_type,
+                                  const uint8_t *const item_data,
+                                  const size_t item_len)
 {
 	assert(list_item != NULL);
 
