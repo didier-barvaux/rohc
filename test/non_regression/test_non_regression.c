@@ -195,7 +195,10 @@ static int compare_packets(unsigned char *pkt1, int pkt1_size,
 
 
 /** Whether the application runs in verbose mode or not */
-static int is_verbose;
+static int is_verbose = 0;
+
+/** The number of warnings emitted by the ROHC library */
+static size_t nr_rohc_warnings = 0;
 
 
 /**
@@ -227,6 +230,8 @@ int main(int argc, char *argv[])
 
 	/* set to quiet mode by default */
 	is_verbose = 0;
+	/* no ROHC warning at the beginning */
+	nr_rohc_warnings = 0;
 
 	/* parse program arguments, print the help message in case of failure */
 	if(argc <= 1)
@@ -419,6 +424,14 @@ int main(int argc, char *argv[])
 	                              src_filename, ofilename, cmp_filename,
 	                              rohc_size_ofilename);
 
+	printf("=== number of warnings/errors emitted by the library: %zu\n",
+	       nr_rohc_warnings);
+	if(nr_rohc_warnings > 0)
+	{
+		status = 1;
+	}
+
+	printf("=== exit test with code %d\n", status);
 error:
 	return status;
 }
@@ -1493,6 +1506,11 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 		va_start(args, format);
 		vfprintf(stdout, format, args);
 		va_end(args);
+
+		if(level >= ROHC_TRACE_WARNING)
+		{
+			nr_rohc_warnings++;
+		}
 	}
 }
 
