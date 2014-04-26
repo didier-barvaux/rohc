@@ -211,6 +211,9 @@ static bool is_daemon;
 /** Whether the application runs in verbose mode or not */
 static bool is_verbose;
 
+/** The PCAP dumpers */
+static pcap_dumper_t *dumpers[ROHC_LARGE_CID_MAX + 1] = { 0 };
+
 /** The maximum number of traces to keep */
 #define MAX_LAST_TRACES  5000
 /** The maximum length of a trace */
@@ -588,7 +591,7 @@ static void sniffer_interrupt(int signal)
 	SNIFFER_LOG(LOG_NOTICE, "signal %d catched", signal);
 	stop_program = true;
 
-	/* for SIGSEGV/SIGABRT, print the last debug traces,
+	/* for SIGSEGV/SIGABRT, close the PCAP dumps, print the last debug traces,
 	 * then kill the program */
 	if(signal == SIGSEGV || signal == SIGABRT)
 	{
@@ -605,6 +608,17 @@ static void sniffer_interrupt(int signal)
 			            stats.total_packets);
 		}
 
+		/* close PCAP dumpers */
+		for(i = 0; i <= ROHC_LARGE_CID_MAX; i++)
+		{
+			if(dumpers[i] != NULL)
+			{
+				SNIFFER_LOG(LOG_INFO, "close dump file for context with ID %u", i);
+				pcap_dump_close(dumpers[i]);
+			}
+		}
+
+		/* print last debug traces */
 		if(last_traces_first == -1 || last_traces_last == -1)
 		{
 			SNIFFER_LOG(LOG_NOTICE, "no trace to print");
@@ -857,8 +871,6 @@ static bool sniff(const rohc_cid_type_t cid_type,
 
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
-
-	pcap_dumper_t *dumpers[max_contexts];
 
 	int ret;
 	unsigned int i;
