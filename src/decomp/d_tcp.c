@@ -367,6 +367,14 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
                                        uint32_t *const seq)
 	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 
+static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
+                                       const struct d_context *const context,
+                                       const uint32_t ack_bits,
+                                       const size_t ack_bits_nr,
+                                       const rohc_lsb_shift_t p,
+                                       uint32_t *const ack)
+	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
+
 static uint32_t d_tcp_get_msn(const struct d_context *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
@@ -5376,6 +5384,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	else
 	{
+		uint32_t ack_number_bits;
+		uint32_t ack_number_bits_nr = 0;
+		uint32_t ack_number_p;
 		uint32_t ack_number_scaled;
 		uint8_t ttl_hopl;
 
@@ -5430,15 +5441,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			case ROHC_PACKET_TCP_RND_3:
 			{
 				const rnd_3_t *const rnd_3 = (rnd_3_t *) packed_rohc_packet;
-				uint16_t enc_ack_num;
 
 				rohc_decomp_debug(context, "decode rnd_3 packet\n");
 
-				enc_ack_num = (rnd_3->ack_number1 << 1) | rnd_3->ack_number2;
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 15, 8191,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     enc_ack_num));
+				/* retrieve ACK number bits */
+				ack_number_bits = (rnd_3->ack_number1 << 1) | rnd_3->ack_number2;
+				ack_number_bits_nr = 15;
+				ack_number_p = 8191;
+
 				tcp->psh_flag = rnd_3->psh_flag;
 				break;
 			}
@@ -5475,7 +5485,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				const rnd_5_t *const rnd_5 = (rnd_5_t *) packed_rohc_packet;
 				uint32_t decoded_seq_number;
 				uint16_t enc_seq_num;
-				uint16_t enc_ack_num;
 
 				rohc_decomp_debug(context, "decode rnd_5 packet\n");
 
@@ -5492,15 +5501,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				}
 				tcp->seq_number = rohc_hton32(decoded_seq_number);
 
-				/* decode ack number from packet bits and context */
-				enc_ack_num = (rnd_5->ack_number1 << 8) | rnd_5->ack_number2;
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 15, 8191,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     enc_ack_num));
-				rohc_decomp_debug(context, "ack_number = 0x%04x (encoded = "
-				                  "0x%04x)\n", rohc_ntoh32(tcp->ack_number),
-				                  enc_ack_num);
+				/* retrieve ACK number bits */
+				ack_number_bits = (rnd_5->ack_number1 << 8) | rnd_5->ack_number2;
+				ack_number_bits_nr = 15;
+				ack_number_p = 8191;
+
 				break;
 			}
 			case ROHC_PACKET_TCP_RND_6:
@@ -5510,10 +5515,12 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				rohc_decomp_debug(context, "decode rnd_6 packet\n");
 
 				tcp->psh_flag = rnd_6->psh_flag;
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 16, 16383,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     rohc_ntoh16(rnd_6->ack_number)) );
+
+				/* retrieve ACK number bits */
+				ack_number_bits = rohc_ntoh16(rnd_6->ack_number);
+				ack_number_bits_nr = 16;
+				ack_number_p = 16383;
+
 				seq_number_scaled_bits = rnd_6->seq_number_scaled;
 				seq_number_scaled_nr = 4;
 				rohc_decomp_debug(context, "rnd_6: %zu bits of scaled sequence number "
@@ -5523,14 +5530,15 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			case ROHC_PACKET_TCP_RND_7:
 			{
 				const rnd_7_t *const rnd_7 = (rnd_7_t *) packed_rohc_packet;
-				uint32_t ack_number;
 
 				rohc_decomp_debug(context, "decode rnd_7 packet\n");
 
-				ack_number = (rnd_7->ack_number1 << 16 ) |
-				             rohc_ntoh16(rnd_7->ack_number2);
-				tcp->ack_number =
-				   rohc_hton32( d_lsb(context, 18,65535,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),ack_number) );
+				/* retrieve ACK number bits */
+				ack_number_bits = (rnd_7->ack_number1 << 16) |
+				                  rohc_ntoh16(rnd_7->ack_number2);
+				ack_number_bits_nr = 18;
+				ack_number_p = 65535;
+
 				tcp->window = rnd_7->window;
 				tcp->psh_flag = rnd_7->psh_flag;
 				break;
@@ -5575,9 +5583,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				}
 				tcp->seq_number = rohc_hton32(decoded_seq_number);
 
-				tcp->ack_number =
-				   rohc_hton32( d_lsb(context, 16,16383,rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                rohc_ntoh16(rnd_8->ack_number)) );
+				/* retrieve ACK number bits */
+				ack_number_bits = rohc_ntoh16(rnd_8->ack_number);
+				ack_number_bits_nr = 16;
+				ack_number_p = 16383;
+
 				if(rnd_8->list_present)
 				{
 					// options
@@ -5642,10 +5652,12 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
 				                    4, 3, ip_inner_context.v4->last_ip_id,
 				                    seq_3->ip_id, msn);
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 16, 16383,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     rohc_ntoh16(seq_3->ack_number)) );
+
+				/* retrieve ACK number bits */
+				ack_number_bits = rohc_ntoh16(seq_3->ack_number);
+				ack_number_bits_nr = 16;
+				ack_number_p = 16383;
+
 				tcp->psh_flag = seq_3->psh_flag;
 				break;
 			}
@@ -5690,10 +5702,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
 				                    4, 3, ip_inner_context.v4->last_ip_id,
 				                    seq_5->ip_id, msn);
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 16, 16383,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     rohc_ntoh16(seq_5->ack_number)) );
+
+				/* retrieve ACK number bits */
+				ack_number_bits = rohc_ntoh16(seq_5->ack_number);
+				ack_number_bits_nr = 16;
+				ack_number_p = 16383;
 
 				/* decode sequence number from packet bits and context */
 				encoded_seq_number = rohc_ntoh16(seq_5->seq_number);
@@ -5721,10 +5734,12 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
 				                    7, 3, ip_inner_context.v4->last_ip_id,
 				                    seq_6->ip_id, msn);
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 16, 16383,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     rohc_ntoh16(seq_6->ack_number)) );
+
+				/* retrieve ACK number bits */
+				ack_number_bits = rohc_ntoh16(seq_6->ack_number);
+				ack_number_bits_nr = 16;
+				ack_number_p = 16383;
+
 				tcp->psh_flag = seq_6->psh_flag;
 				break;
 			}
@@ -5741,10 +5756,12 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
 				                    5, 3, ip_inner_context.v4->last_ip_id,
 				                    seq_7->ip_id, msn);
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 16, 32767,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     rohc_ntoh16(seq_7->ack_number)) );
+
+				/* retrieve ACK number bits */
+				ack_number_bits = rohc_ntoh16(seq_7->ack_number);
+				ack_number_bits_nr = 16;
+				ack_number_p = 32767;
+
 				tcp->psh_flag = seq_7->psh_flag;
 				break;
 			}
@@ -5754,7 +5771,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				const uint8_t *const rohc_opts_data =
 					packed_rohc_packet + sizeof(seq_8_t);
 				uint32_t decoded_seq_number;
-				uint16_t enc_ack_num;
 				uint16_t enc_seq_num;
 
 				rohc_decomp_debug(context, "decode seq_8 packet\n");
@@ -5781,15 +5797,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				rohc_decomp_debug(context, "ecn_used = %d\n", seq_8->ecn_used);
 				tcp_context->ecn_used = seq_8->ecn_used;
 
-				/* decode ack number from packet bits and context */
-				enc_ack_num = (seq_8->ack_number1 << 8) | seq_8->ack_number2;
-				tcp->ack_number =
-				   rohc_hton32(d_lsb(context, 15, 8191,
-				                     rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                     enc_ack_num));
-				rohc_decomp_debug(context, "ack_number = 0x%04x (encoded = "
-				                  "0x%04x)\n", rohc_ntoh32(tcp->ack_number),
-				                  enc_ack_num);
+				/* retrieve ACK number bits */
+				ack_number_bits = (seq_8->ack_number1 << 8) | seq_8->ack_number2;
+				ack_number_bits_nr = 15;
+				ack_number_p = 8191;
+
 				tcp->rsf_flags = rsf_index_dec(seq_8->rsf_flags);
 
 				/* decode sequence number from packet bits and context */
@@ -5821,6 +5833,21 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				goto error;
 			}
 		}
+
+		/* decode the transmitted ACK bits if any */
+		if(ack_number_bits_nr > 0)
+		{
+			uint32_t decoded_ack_number;
+
+			if(!rohc_decomp_tcp_decode_ack(decomp, context, ack_number_bits,
+			                               ack_number_bits_nr, ack_number_p,
+			                               &decoded_ack_number))
+			{
+				goto error;
+			}
+			tcp->ack_number = rohc_hton32(decoded_ack_number);
+		}
+
 	}
 
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
@@ -6142,7 +6169,7 @@ error:
 
 
 /**
- * @brief Decode the TCP sequence number from packet and context information
+ * @brief decode the tcp sequence number from packet and context information
  *
  */
 static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
@@ -6167,6 +6194,37 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
 	}
 	rohc_decomp_debug(context, "decoded sequence number = 0x%08x (%zu bits "
 	                  "0x%x with p = %d)\n", *seq, seq_bits_nr, seq_bits, p);
+
+	return true;
+}
+
+
+/**
+ * @brief Decode the TCP ACK number from packet and context information
+ *
+ */
+static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
+                                       const struct d_context *const context,
+                                       const uint32_t ack_bits,
+                                       const size_t ack_bits_nr,
+                                       const rohc_lsb_shift_t p,
+                                       uint32_t *const ack)
+{
+	const struct d_generic_context *const g_context = context->specific;
+	const struct d_tcp_context *const tcp_context = g_context->specific;
+	bool decode_ok;
+
+	decode_ok = rohc_lsb_decode(tcp_context->ack_lsb_ctxt, ROHC_LSB_REF_0, 0,
+	                            ack_bits, ack_bits_nr, p, ack);
+	if(!decode_ok)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
+		             "failed to decode %zu ACK number bits 0x%x with p = %u\n",
+		             ack_bits_nr, ack_bits, p);
+		return false;
+	}
+	rohc_decomp_debug(context, "decoded ACK number = 0x%08x (%zu bits 0x%x "
+	                  "with p = %d)\n", *ack, ack_bits_nr, ack_bits, p);
 
 	return true;
 }
