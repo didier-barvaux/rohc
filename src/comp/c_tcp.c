@@ -6213,7 +6213,8 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		                rohc_ntoh32(tcp->seq_number), seq_number_scaled,
 		                seq_number_factor, seq_number_residue);
 
-		if(seq_number_factor != tcp_context->seq_number_factor ||
+		if(context->num_sent_packets == 0 ||
+		   seq_number_factor != tcp_context->seq_number_factor ||
 		   seq_number_residue != tcp_context->seq_number_residue)
 		{
 			/* sequence number is not scalable with same parameters any more */
