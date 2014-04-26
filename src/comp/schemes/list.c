@@ -113,7 +113,8 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 			if(ret < 0)
 			{
 				rc_list_debug(comp, "failed to update entry #%d in translation "
-				              "table\n", index_table);
+				              "table with %u-byte extension\n", index_table,
+				              comp->get_size(ext));
 				goto error;
 			}
 			else if(ret == 1)

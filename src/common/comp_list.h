@@ -86,8 +86,13 @@ struct rohc_list_item
 	/** How many times the item was transmitted? */
 	size_t counter;
 
-/** The maximum length (in bytes) of item data */
-#define ROHC_LIST_ITEM_DATA_MAX 100U
+/**
+ * @brief The maximum length (in bytes) of item data
+ *
+ * Sized for IPv6 extension headers that may reach:
+ *   (0xff + 1) * 8 = 2048 bytes
+ */
+#define ROHC_LIST_ITEM_DATA_MAX 2048U
 
 	/** The length of the item data (in bytes) */
 	size_t length;
