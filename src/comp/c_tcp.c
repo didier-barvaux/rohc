@@ -107,7 +107,8 @@ struct tcp_tmp_variables
 	 * number */
 	size_t nr_ack_scaled_bits;
 
-	/** Whether the structure of the list of TCP options changed */
+	/** Whether the structure of the list of TCP options changed in the
+	 * current packet */
 	bool is_tcp_opts_list_struct_changed;
 	/** Whether the content of every TCP options was transmitted or not */
 	bool is_tcp_opts_list_item_present[ROHC_TCP_OPTS_MAX];
@@ -382,6 +383,9 @@ struct sc_tcp_context
 	uint32_t ack_number_scaled;
 	uint32_t ack_number_residue;
 
+	/** The number of times the structure of the list of TCP options was
+	 * transmitted since it last changed */
+	size_t tcp_opts_list_struct_nr_trans;
 	uint8_t tcp_opts_list_struct[ROHC_TCP_OPTS_MAX];
 	struct tcp_opt_context tcp_options_list[ROHC_TCP_OPTS_MAX];
 	uint16_t tcp_option_maxseg;
@@ -1034,6 +1038,7 @@ static bool c_tcp_create(struct c_context *const context,
 	tcp_context->ack_stride = 0;
 
 	/* init the last list of TCP options */
+	tcp_context->tcp_opts_list_struct_nr_trans = 0;
 	memset(tcp_context->tcp_opts_list_struct, 0xff, ROHC_TCP_OPTS_MAX);
 	// Initialize TCP options list index used
 	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
@@ -1801,9 +1806,21 @@ static int c_tcp_encode(struct c_context *const context,
 
 		if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
 		{
+			/* the new structure has never been transmitted yet */
 			rohc_comp_debug(context, "structure of TCP options list changed, "
 			                "compressed list must be transmitted in the compressed "
 			                "base header\n");
+			tcp_context->tcp_opts_list_struct_nr_trans = 0;
+		}
+		else if(tcp_context->tcp_opts_list_struct_nr_trans <
+		        context->compressor->list_trans_nr)
+		{
+			/* the structure was transmitted but not enough times */
+			rohc_comp_debug(context, "structure of TCP options list changed in "
+			                "the last few packets, compressed list must be "
+			                "transmitted in the compressed base header\n");
+			tcp_context->tmp.is_tcp_opts_list_struct_changed = true;
+			tcp_context->tcp_opts_list_struct_nr_trans++;
 		}
 		else
 		{
