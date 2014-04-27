@@ -44,8 +44,6 @@
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
 
 
-#define MAX_TCP_OPTION_INDEX 8 // TODO
-
 #if ROHC_EXTRA_DEBUG == 1
 #define TRACE_GOTO_CHOICE \
 	rohc_comp_debug(context, "Compressed format choice LINE %d\n", __LINE__ )
@@ -116,7 +114,7 @@ struct tcp_tmp_variables
 	/** Whether the structure of the list of TCP options changed */
 	bool is_tcp_opts_list_struct_changed;
 	/** Whether the content of every TCP options was transmitted or not */
-	bool is_tcp_opts_list_item_present[16];
+	bool is_tcp_opts_list_item_present[ROHC_TCP_OPTS_MAX];
 
 	/** Whether the TCP option timestamp echo request is present in packet */
 	bool opt_ts_present;
@@ -160,6 +158,9 @@ struct tcp_tmp_variables
 	bool tcp_window_changed;
 
 	bool ecn_used;
+
+	uint8_t tcp_opts_list_indexes[ROHC_TCP_OPTS_MAX];
+	uint8_t tcp_opts_idx_max;
 };
 
 #define MAX_IPV6_OPTION_LENGTH        6   // FOR Destination/Hop-by-Hop/Routing/ah
@@ -339,6 +340,8 @@ struct tcp_opt_context
 {
 	/** The type of the TCP option */
 	uint8_t type;
+	/** The number of times the TCP option was transmitted */
+	size_t nr_trans;
 /** The maximum size (in bytes) of one TCP option */
 #define MAX_TCP_OPT_SIZE 40U
 	/** The value of the TCP option */
@@ -383,8 +386,8 @@ struct sc_tcp_context
 	uint32_t ack_number_scaled;
 	uint32_t ack_number_residue;
 
-	uint8_t tcp_opts_list_struct[16];
-	struct tcp_opt_context tcp_options_list[16];
+	uint8_t tcp_opts_list_struct[ROHC_TCP_OPTS_MAX];
+	struct tcp_opt_context tcp_options_list[ROHC_TCP_OPTS_MAX];
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
 
@@ -422,7 +425,7 @@ struct sc_tcp_context
  * See RFC4996 6.3.4
  * Return item index of TCP option
  */
-int tcp_options_index[TCP_LIST_ITEM_MAP_LEN] =
+static int tcp_options_index[TCP_LIST_ITEM_MAP_LEN] =
 {
 	TCP_INDEX_EOL,             // TCP_OPT_EOL             0
 	TCP_INDEX_NOP,             // TCP_OPT_NOP             1
@@ -1035,11 +1038,12 @@ static bool c_tcp_create(struct c_context *const context,
 	tcp_context->ack_stride = 0;
 
 	/* init the last list of TCP options */
-	memset(tcp_context->tcp_opts_list_struct, 0xff, 16);
+	memset(tcp_context->tcp_opts_list_struct, 0xff, ROHC_TCP_OPTS_MAX);
 	// Initialize TCP options list index used
-	for(i = 0; i < 16; i++)
+	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 	{
 		tcp_context->tcp_options_list[i].type = 0xff;
+		tcp_context->tcp_options_list[i].nr_trans = 0;
 	}
 
 	/* no TCP option Timestamp received yet */
@@ -1187,6 +1191,67 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	if(packet->transport->len < (tcp_header->data_offset * 4U))
 	{
 		goto bad_profile;
+	}
+
+	/* the TCP profile doesn't handle TCP packets with more than 15 options */
+	{
+		const size_t opts_len =
+			tcp_header->data_offset * 4U - sizeof(struct tcphdr);
+		size_t opts_offset;
+		size_t opt_pos;
+		size_t opt_len;
+
+		for(opt_pos = 0, opts_offset = 0;
+		    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
+		    opt_pos++, opts_offset += opt_len)
+		{
+			const uint8_t opt_type = tcp_header->options[opts_offset];
+
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "TCP option %u found\n", opt_type);
+
+			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
+			{
+				/* 1-byte TCP options: EOL or NOP */
+				opt_len = 1;
+			}
+			else
+			{
+				/* multi-byte TCP options */
+				if((opts_offset + 1) >= opts_len)
+				{
+					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					             "malformed TCP header: not enough room for the "
+					             "length field of option %u\n", opt_type);
+					goto bad_profile;
+				}
+				opt_len = tcp_header->options[opts_offset + 1];
+				if(opt_len < 2)
+				{
+					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					             "malformed TCP header: option %u got length "
+					             "field %zu\n", opt_type, opt_len);
+					goto bad_profile;
+				}
+				if((opts_offset + opt_len) > opts_len)
+				{
+					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+					             "malformed TCP header: not enough room for "
+					             "option %u (%zu bytes required but only %zu "
+					             "available)\n", opt_type, opt_len,
+					             opts_len - opts_offset);
+					goto bad_profile;
+				}
+			}
+		}
+		if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "unexpected TCP header: too many TCP options: %zu "
+			           "options found in packet but only %u options possible\n",
+			           opt_pos, ROHC_TCP_OPTS_MAX);
+			goto bad_profile;
+		}
 	}
 
 	return true;
@@ -1387,7 +1452,7 @@ static int c_tcp_encode(struct c_context *const context,
 #ifdef TODO
 	uint8_t new_context_state;
 #endif
-	int i;
+	size_t i;
 
 	assert(context != NULL);
 	assert(rohc_pkt != NULL);
@@ -1400,7 +1465,7 @@ static int c_tcp_encode(struct c_context *const context,
 	*packet_type = ROHC_PACKET_UNKNOWN;
 
 	/* at the beginning, no item transmitted for the compressed list of TCP options */
-	for(i = 0; i < 16; i++)
+	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 	{
 		tcp_context->tmp.is_tcp_opts_list_item_present[i] = false;
 	}
@@ -1571,23 +1636,28 @@ static int c_tcp_encode(struct c_context *const context,
 	{
 		uint8_t *opts;
 		size_t opts_len;
-		size_t opt_idx;
+		size_t opt_pos;
 		size_t opt_len;
 		size_t opts_offset;
 
 		tcp_context->tmp.is_tcp_opts_list_struct_changed = false;
 		tcp_context->tmp.opt_ts_present = false;
+		memset(tcp_context->tmp.tcp_opts_list_indexes, 0xff, ROHC_TCP_OPTS_MAX);
+		tcp_context->tmp.tcp_opts_idx_max = 0;
 
 		opts = ((uint8_t *) tcp) + sizeof(tcphdr_t);
 		opts_len = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 
-		for(opt_idx = 0, opts_offset = 0;
-		    opt_idx < 16 && opts_offset < opts_len;
-		    opt_idx++, opts_offset += opt_len)
+		rohc_comp_debug(context, "parse %zu-byte TCP options\n", opts_len);
+
+		for(opt_pos = 0, opts_offset = 0;
+		    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
+		    opt_pos++, opts_offset += opt_len)
 		{
 			const uint8_t opt_type = opts[opts_offset];
+			uint8_t opt_idx;
 
-			rohc_comp_debug(context, "TCP option %u found\n", opt_type);
+			rohc_comp_debug(context, "  TCP option %u found\n", opt_type);
 
 			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
 			{
@@ -1635,38 +1705,102 @@ static int c_tcp_encode(struct c_context *const context,
 				}
 			}
 
+			/* determine the index of the TCP option */
+			if(opt_type < TCP_LIST_ITEM_MAP_LEN &&
+			   tcp_options_index[opt_type] >= 0)
+			{
+				/* TCP option got a reserved index */
+				opt_idx = tcp_options_index[opt_type];
+				rohc_comp_debug(context, "    option '%s' (%u) will use reserved "
+				                "index %u\n", tcp_opt_get_descr(opt_type),
+				                opt_type, opt_idx);
+			}
+			else /* TCP option doesn't have a reserved index */
+			{
+				bool opt_idx_found = false;
+				int opt_idx_free = -1;
+
+				/* find the index that was used for the same option in previous
+				 * packets, or the first unused one */
+				for(opt_idx = TCP_INDEX_SACK + 1;
+				    !opt_idx_found && opt_idx_free < 0 &&
+				    opt_idx <= MAX_TCP_OPTION_INDEX; opt_idx++)
+				{
+					if(tcp_context->tcp_options_list[opt_idx].type == opt_type)
+					{
+						opt_idx_found = true;
+					}
+					else if(tcp_context->tcp_options_list[opt_idx].type == 0xff)
+					{
+						opt_idx_free = opt_idx;
+					}
+				}
+				if(opt_idx_found)
+				{
+					rohc_comp_debug(context, "    option '%s' (%u) will use same "
+					                "index %u as in previous packet\n",
+					                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
+				}
+				else if(opt_idx_free < 0)
+				{
+					rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
+					             context->profile->id, "failed to find a free "
+					             "index for option '%s' (%u)\n",
+					             tcp_opt_get_descr(opt_type), opt_type);
+					goto error;
+				}
+				else
+				{
+					/* now index used by this option */
+					opt_idx = opt_idx_free;
+					tcp_context->tcp_options_list[opt_idx].type = opt_type;
+					tcp_context->tcp_options_list[opt_idx].nr_trans++;
+					rohc_comp_debug(context, "    option '%s' (%u) will use new "
+					                "index %u\n", tcp_opt_get_descr(opt_type),
+					                opt_type, opt_idx);
+				}
+			}
+			tcp_context->tmp.tcp_opts_list_indexes[opt_pos] = opt_idx;
+			if(opt_idx > tcp_context->tmp.tcp_opts_idx_max)
+			{
+				tcp_context->tmp.tcp_opts_idx_max = opt_idx;
+			}
+
 			/* was the TCP option present at the very same location in previous
 			 * packet? */
-			if(tcp_context->tcp_opts_list_struct[opt_idx] != opt_type)
+			if(tcp_context->tcp_opts_list_struct[opt_pos] != opt_type)
 			{
-				rohc_comp_debug(context, "TCP option %d was not present at the "
-				                "very same location in previous packet\n", opt_type);
+				rohc_comp_debug(context, "    option was not present at the very "
+				                "same location in previous packet\n");
 				tcp_context->tmp.is_tcp_opts_list_struct_changed = true;
 			}
 			else
 			{
-				rohc_comp_debug(context, "TCP option %d was at the very same "
-				                "location in previous packet\n", opt_type);
+				rohc_comp_debug(context, "    option was at the very same "
+				                "location in previous packet\n");
 			}
 
 			/* record the structure of the current list TCP options in context */
-			tcp_context->tcp_opts_list_struct[opt_idx] = opt_type;
+			tcp_context->tcp_opts_list_struct[opt_pos] = opt_type;
 		}
-		if(opt_idx > 16)
+		if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
 		{
 			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unexpected TCP header: too many TCP options\n");
+			             "unexpected TCP header: too many TCP options: %zu "
+			             "options found in packet but only %u options "
+			             "possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
 			goto error;
 		}
 
 		/* fewer options than in previous packet? */
-		while(opt_idx < 16 && tcp_context->tcp_opts_list_struct[opt_idx] != 0xff)
+		while(opt_pos < ROHC_TCP_OPTS_MAX &&
+		      tcp_context->tcp_opts_list_struct[opt_pos] != 0xff)
 		{
-			rohc_comp_debug(context, "TCP option %d is not present anymore\n",
-			                tcp_context->tcp_opts_list_struct[opt_idx]);
+			rohc_comp_debug(context, "  TCP option %d is not present anymore\n",
+			                tcp_context->tcp_opts_list_struct[opt_pos]);
 			tcp_context->tmp.is_tcp_opts_list_struct_changed = true;
-			tcp_context->tcp_opts_list_struct[opt_idx] = 0xff;
-			opt_idx++;
+			tcp_context->tcp_opts_list_struct[opt_pos] = 0xff;
+			opt_pos++;
 		}
 
 		if(tcp_context->tmp.is_tcp_opts_list_struct_changed)
@@ -1681,6 +1815,21 @@ static int c_tcp_encode(struct c_context *const context,
 			                "compressed list may be omitted from the compressed "
 			                "base header, any content changes may be transmitted "
 			                "in the irregular chain\n");
+		}
+
+		/* use 4-bit XI or 8-bit XI ? */
+		if(tcp_context->tmp.tcp_opts_idx_max <= 7)
+		{
+			rohc_comp_debug(context, "compressed TCP options list will be able "
+			                "to use 4-bit XI since the largest index is %u\n",
+			                tcp_context->tmp.tcp_opts_idx_max);
+		}
+		else
+		{
+			assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
+			rohc_comp_debug(context, "compressed TCP options list will use "
+			                "8-bit XI since the largest index is %u\n",
+			                tcp_context->tmp.tcp_opts_idx_max);
 		}
 
 		/* find the offset of the payload and its size */
@@ -2653,9 +2802,6 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 	unsigned char *options;
 	int options_length;
 	unsigned char *urgent_datas;
-#if ROHC_EXTRA_DEBUG == 1
-	uint8_t *debug_ptr;
-#endif
 	int indicator;
 	int ret;
 
@@ -2779,7 +2925,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		                      // TODO: put if/else in a function
 	{
 		uint8_t *pBeginList;
-		uint8_t opt_idx;
+		uint8_t opt_pos;
 		int i;
 
 		/* init pointer to TCP options */
@@ -2788,19 +2934,19 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 ROHC_TRACE_DEBUG, "TCP options", options,
 		                 options_length);
-#if ROHC_EXTRA_DEBUG == 1
-		debug_ptr = mptr.uint8;
-#endif
 
 		/* Save the begin of the list */
 		pBeginList = mptr.uint8++;
 		/* List is empty */
 		*pBeginList = 0;
 
-		for(i = options_length; i > 0; )
+		for(i = options_length, opt_pos = 0;
+		    i > 0 && opt_pos < ROHC_TCP_OPTS_MAX;
+		    opt_pos++)
 		{
 			uint8_t opt_type;
 			uint8_t opt_len;
+			uint8_t opt_idx;
 
 			/* option type */
 			if(i < 1)
@@ -2813,7 +2959,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 			opt_type = options[0];
 
 			/* determine the index of the TCP option */
-			opt_idx = tcp_options_index[opt_type];
+			opt_idx = tcp_context->tmp.tcp_opts_list_indexes[opt_pos];
 
 			/* option length */
 			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
@@ -2840,186 +2986,77 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 				}
 			}
 
-			/* if index never used before */
-			if(opt_idx <= TCP_INDEX_SACK /* *options == TCP_OPT_TIMESTAMP*/ ||
-			   tcp_context->tcp_options_list[opt_idx].type == 0xFF)
+			/* save the value of the TCP option in context */
+			switch(opt_type)
 			{
-				rohc_comp_debug(context, "TCP index = %d never used for option "
-				                "%d!\n", opt_idx, opt_type);
-
-				// Now index used with this option
-				tcp_context->tcp_options_list[opt_idx].type = opt_type;
-
-				// Save the value of the TCP option
-				switch(*options)
+				case TCP_OPT_EOL: // End Of List
+					rohc_comp_debug(context, "TCP option EOL\n");
+					break;
+				case TCP_OPT_NOP: // No Operation
+					rohc_comp_debug(context, "TCP option NOP\n");
+					break;
+				case TCP_OPT_MAXSEG: // Max Segment Size
+					memcpy(&tcp_context->tcp_option_maxseg,options + 2,2);
+					rohc_comp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
+					                rohc_ntoh16(tcp_context->tcp_option_maxseg),
+					                rohc_ntoh16(tcp_context->tcp_option_maxseg));
+					break;
+				case TCP_OPT_WINDOW: // Window
+					rohc_comp_debug(context, "TCP option WINDOW = %d\n",
+					                *(options + 2));
+					tcp_context->tcp_option_window = *(options + 2);
+					break;
+				case TCP_OPT_SACK_PERMITTED: // see RFC2018
+					rohc_comp_debug(context, "TCP option SACK PERMITTED\n");
+					break;
+				case TCP_OPT_SACK:
+					rohc_comp_debug(context, "TCP option SACK Length = %d\n", opt_len);
+					assert(opt_len >= 2);
+					tcp_context->tcp_option_sack_length = opt_len - 2;
+					if(tcp_context->tcp_option_sack_length > (sizeof(sack_block_t) * 4))
+					{
+						rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
+						             context->profile->id, "malformed TCP options: "
+						             "SACK option too long: %u bytes while less "
+						             "than %zu bytes expected\n",
+						             tcp_context->tcp_option_sack_length,
+						             sizeof(sack_block_t) * 4);
+						goto error;
+					}
+					memcpy(tcp_context->tcp_option_sackblocks,options + 1,
+					       tcp_context->tcp_option_sack_length);
+					break;
+				case TCP_OPT_TIMESTAMP:
 				{
-					case TCP_OPT_EOL: // End Of List
-						rohc_comp_debug(context, "TCP option EOL\n");
-						break;
-					case TCP_OPT_NOP: // No Operation
-						rohc_comp_debug(context, "TCP option NOP\n");
-						break;
-					case TCP_OPT_MAXSEG: // Max Segment Size
-						memcpy(&tcp_context->tcp_option_maxseg,options + 2,2);
-						rohc_comp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
-						                rohc_ntoh16(tcp_context->tcp_option_maxseg),
-						                rohc_ntoh16(tcp_context->tcp_option_maxseg));
-						break;
-					case TCP_OPT_WINDOW: // Window
-						rohc_comp_debug(context, "TCP option WINDOW = %d\n",
-						                *(options + 2));
-						tcp_context->tcp_option_window = *(options + 2);
-						break;
-					case TCP_OPT_SACK_PERMITTED: // see RFC2018
-						rohc_comp_debug(context, "TCP option SACK PERMITTED\n");
-						break;
-					case TCP_OPT_SACK:
-						rohc_comp_debug(context, "TCP option SACK Length = %d\n", opt_len);
-						assert(opt_len >= 2);
-						tcp_context->tcp_option_sack_length = opt_len - 2;
-						if(tcp_context->tcp_option_sack_length > (sizeof(sack_block_t) * 4))
-						{
-							rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-							             context->profile->id, "malformed TCP options: "
-							             "SACK option too long: %u bytes while less "
-							             "than %zu bytes expected\n",
-							             tcp_context->tcp_option_sack_length,
-							             sizeof(sack_block_t) * 4);
-							goto error;
-						}
-						memcpy(tcp_context->tcp_option_sackblocks,options + 1,
-						       tcp_context->tcp_option_sack_length);
-						break;
-					case TCP_OPT_TIMESTAMP:
-					{
-						const struct tcp_option_timestamp *const opt_ts =
-							(struct tcp_option_timestamp *) (options + 2);
+					const struct tcp_option_timestamp *const opt_ts =
+						(struct tcp_option_timestamp *) (options + 2);
 
-						rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-						                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
+					rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
+					                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
 
-						tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
-						tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
-						tcp_context->tcp_option_timestamp_init = true;
-						c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
-						           rohc_ntoh32(opt_ts->ts));
-						c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
-						           rohc_ntoh32(opt_ts->ts_reply));
-						break;
-					}
-					default:
-					{
-						/* TODO: check max length */
-						// Save length
-						assert(opt_len >= 2);
-						tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
-						// Save value
-						memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
-						       tcp_context->tcp_options_list[opt_idx].value[0]);
-						break;
-					}
+					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
+					tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
+					tcp_context->tcp_option_timestamp_init = true;
+					c_add_wlsb(tcp_context->opt_ts_req_wlsb, g_context->sn,
+					           rohc_ntoh32(opt_ts->ts));
+					c_add_wlsb(tcp_context->opt_ts_reply_wlsb, g_context->sn,
+					           rohc_ntoh32(opt_ts->ts_reply));
+					break;
+				}
+				default:
+				{
+					/* TODO: check max length */
+					// Save length
+					assert(opt_len >= 2);
+					tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
+					// Save value
+					memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
+					       tcp_context->tcp_options_list[opt_idx].value[0]);
+					break;
 				}
 			}
-			else
-			{
-				int compare_value;
+			tcp_context->tcp_options_list[opt_idx].nr_trans++;
 
-				// Verify if used with same value
-				switch(*options)
-				{
-					case TCP_OPT_EOL: // End Of List
-						rohc_comp_debug(context, "TCP option EOL\n");
-						compare_value = 0;
-						break;
-					case TCP_OPT_NOP: // No Operation
-						rohc_comp_debug(context, "TCP option NOP\n");
-						compare_value = 0;
-						break;
-					case TCP_OPT_MAXSEG: // Max Segment Size
-						rohc_comp_debug(context, "TCP option MAXSEG = 0x%x\n",
-						                (((*(options + 2)) << 8) +
-						                 (*(options + 3))));
-						compare_value = memcmp(&tcp_context->tcp_option_maxseg,options + 2,2);
-						break;
-					case TCP_OPT_WINDOW: // Window
-						rohc_comp_debug(context, "TCP option WINDOW = %d\n",
-						                *(options + 2));
-						compare_value = tcp_context->tcp_option_window - *(options + 2);
-						break;
-					case TCP_OPT_SACK_PERMITTED: // see RFC2018
-						rohc_comp_debug(context, "TCP option SACK PERMITTED\n");
-						compare_value = 0;
-						break;
-					case TCP_OPT_SACK:
-						rohc_comp_debug(context, "TCP option SACK Length = %d\n", opt_len);
-						assert(opt_len >= 2);
-						compare_value = tcp_context->tcp_option_sack_length - opt_len;
-						compare_value += memcmp(tcp_context->tcp_option_sackblocks,options + 2,
-						                        tcp_context->tcp_option_sack_length);
-						break;
-					case TCP_OPT_TIMESTAMP:
-					{
-						const struct tcp_option_timestamp *const opt_ts =
-							(struct tcp_option_timestamp *) (options + 2);
-
-						rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
-						                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
-						compare_value = (tcp_context->tcp_option_timestamp.ts != opt_ts->ts);
-						compare_value += (tcp_context->tcp_option_timestamp.ts_reply != opt_ts->ts_reply);
-						break;
-					}
-					default:
-					{
-						compare_value =
-							(((tcp_context->tcp_options_list[opt_idx].value[0] + 2) - opt_len) == 0);
-						if(compare_value)
-						{
-							compare_value = memcmp(tcp_context->tcp_options_list[opt_idx].value + 1,
-							                       options + 2,
-							                       tcp_context->tcp_options_list[opt_idx].value[0]);
-						}
-						break;
-					}
-				}
-				// If same value
-				if(compare_value == 0)
-				{
-					// Use same index
-					rohc_comp_debug(context, "TCP index = %u already used with "
-					                "same value!\n", opt_idx);
-				}
-				else
-				{
-					rohc_comp_debug(context, "TCP index = %u already used with "
-					                "different value!\n", opt_idx);
-
-					// Try to find a new free index
-					for(opt_idx = TCP_INDEX_SACK + 1;
-					    opt_idx < MAX_TCP_OPTION_INDEX; opt_idx++)
-					{
-						if(tcp_context->tcp_options_list[opt_idx].type == 0xFF)
-						{
-							break;
-						}
-					}
-					if(opt_idx == MAX_TCP_OPTION_INDEX)
-					{
-						// Index not found !
-						rohc_comp_debug(context, "cannot find a new free index!\n");
-					}
-					else
-					{
-						// Index used now
-						tcp_context->tcp_options_list[opt_idx].type = *options;
-						// Save length
-						assert(opt_len >= 2);
-						tcp_context->tcp_options_list[opt_idx].value[0] = opt_len - 2;
-						// Save value
-						memcpy(tcp_context->tcp_options_list[opt_idx].value + 1, options + 2,
-						       tcp_context->tcp_options_list[opt_idx].value[0]);
-					}
-				}
-			}
 			// Update length
 			switch(*options)
 			{
@@ -3060,49 +3097,69 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 				*/
 				default:
 					rohc_comp_debug(context, "TCP option unknown = 0x%x\n", *options);
-					if(*options > 15)
-					{
-						rohc_comp_debug(context, "TCP invalid option = %d (0x%x)\n",
-						                *options, *options);
-						break;
-					}
 					i -= opt_len;
 					options += opt_len;
 					break;
 			}
-#if MAX_TCP_OPTION_INDEX == 16 /* TODO: should be dynamic: use 4-bit XI if all indexes are <= 7 */
-			*(mptr.uint8++) = 0x80 | opt_idx;
-#else
-			// Use 4-bit XI fields
-			// If number of item is odd
-			if( (*pBeginList) & 1)
+
+			/* TODO: do not include item if value is unchanged for more
+			 * than N packets */
+			if(tcp_context->tmp.tcp_opts_idx_max <= 7)
 			{
-				*mptr.uint8 |= 0x08 | opt_idx;
-				++mptr.uint8;
+				/* use 4-bit XI fields */
+				assert(opt_idx <= 7);
+				if((*pBeginList) & 1) /* number is odd */
+				{
+					*mptr.uint8 |= 0x08 | opt_idx;
+					rohc_comp_debug(context, "  add 4-bit  odd XI field 0x%x\n",
+					                (*mptr.uint8) & 0xf);
+					mptr.uint8++;
+				}
+				else
+				{
+					*mptr.uint8 = (0x08 | opt_idx) << 4;
+					rohc_comp_debug(context, "  add 4-bit even XI field 0x%x\n",
+					                ((*mptr.uint8) >> 4) & 0xf);
+				}
 			}
 			else
 			{
-				*mptr.uint8 = (0x08 | opt_idx) << 4;
+				/* 8-bit XI field */
+				assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
+				assert(opt_idx <= MAX_TCP_OPTION_INDEX);
+				*mptr.uint8 = 0x80 | opt_idx;
+				rohc_comp_debug(context, "  add 8-bit XI field 0x%02x\n",
+				                *mptr.uint8);
+				mptr.uint8++;
 			}
-#endif
 			// One item more
 			++(*pBeginList);
 		}
-#if MAX_TCP_OPTION_INDEX == 16 /* TODO: should be dynamic: use 4-bit XI if all indexes are <= 7 */
-		// 8-bit XI field
-		*pBeginList |= 0x10;
-#else
-		// If number of item is odd
-		if( (*pBeginList) & 1)
+		if(opt_pos >= ROHC_TCP_OPTS_MAX && i != 0)
 		{
-			// update pointer (padding)
-			++mptr.uint8;
+			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+			             "unexpected TCP header: too many TCP options: %zu "
+			             "options found in packet but only %u options "
+			             "possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
+			goto error;
 		}
-#endif
-#if ROHC_EXTRA_DEBUG == 1
-		rohc_comp_debug(context, "TCP %d item(s) in list at %p\n",
-		                (*pBeginList) & 0x0f, debug_ptr);
-#endif
+
+		if(tcp_context->tmp.tcp_opts_idx_max <= 7)
+		{
+			/* 4-bit XI field */
+			if((*pBeginList) & 1) /* number of items is odd */
+			{
+				/* update pointer (padding) */
+				++mptr.uint8;
+			}
+		}
+		else
+		{
+			/* 8-bit XI field */
+			*pBeginList |= 0x10;
+		}
+		rohc_comp_debug(context, "TCP %d item(s) in list\n",
+		                (*pBeginList) & 0x0f);
 
 		/* encode items */
 		rohc_comp_debug(context, "list items:\n");
@@ -3227,13 +3284,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					options += TCP_OLEN_SACK_PERMITTED;
 					break;
 				default:
-					rohc_comp_debug(context, "TCP option unknown = 0x%x\n", *options);
-					if(opt_type > 15)
-					{
-						rohc_comp_debug(context, "TCP invalid option = %d (0x%x)\n",
-						                *options, *options);
-						goto error;
-					}
+					rohc_comp_debug(context, "  item option 0x%x\n", opt_type);
 					/* COMPRESSED generic_list_item {
 					 *   type          =:= irregular(8)      [ 8 ];
 					 *   option_static =:= one_bit_choice    [ 1 ];
@@ -3251,11 +3302,6 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 					break;
 			}
 		}
-#if ROHC_EXTRA_DEBUG == 1
-		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
-		                 ROHC_TRACE_DEBUG, "debug_ptr", debug_ptr,
-		                 mptr.uint8 - debug_ptr);
-#endif
 	}
 	else
 	{
@@ -3336,7 +3382,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
 		opts_len = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 
 		for(opt_idx = 0, opts_offset = 0;
-		    opt_idx < 16 && opts_offset < opts_len;
+		    opt_idx < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
 		    opt_idx++, opts_offset += opt_len)
 		{
 			const uint8_t opt_type = opts[opts_offset];
@@ -3423,7 +3469,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
 				}
 			}
 		}
-		assert(opt_idx <= 16);
+		assert(opt_idx <= ROHC_TCP_OPTS_MAX);
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
@@ -3717,7 +3763,6 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 	uint8_t *ptr_compressed_options;
 	uint8_t *options;
 	int options_length;
-	uint8_t opt_idx;
 	uint8_t m;
 	bool is_ok;
 	int i;
@@ -3737,25 +3782,20 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "TCP options", options, options_length);
 
-	/* number of XI fields */
+	/* number and type of XI fields: will be set after list processing */
 	*comp_opts_len = 0;
-#if MAX_TCP_OPTION_INDEX == 16 /* TODO: should be dynamic: use 4-bit XI if all indexes are <= 7 */
-	/* 8-bit XI */
-	comp_opts[*comp_opts_len] = 0x10;
-#else
-	/* 4-bit XI */
 	comp_opts[*comp_opts_len] = 0;
-#endif
 	(*comp_opts_len)++;
 
 	ptr_compressed_options = compressed_options;
 
 	// see RFC4996 page 25-26
-	for(m = 0, i = options_length; m < 16 && i > 0; m++)
+	for(m = 0, i = options_length; m < ROHC_TCP_OPTS_MAX && i > 0; m++)
 	{
 		bool item_needed;
 		uint8_t opt_type;
 		uint8_t opt_len;
+		uint8_t opt_idx;
 
 		/* option type */
 		if(i < 1)
@@ -3766,6 +3806,9 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 			goto error;
 		}
 		opt_type = options[0];
+
+		/* determine the index of the TCP option */
+		opt_idx = tcp_context->tmp.tcp_opts_list_indexes[m];
 
 		/* option length */
 		if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
@@ -3794,60 +3837,9 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 		rohc_comp_debug(context, "TCP options list: compress option '%s' (%u)\n",
 		                tcp_opt_get_descr(opt_type), opt_type);
 
-		/* determine the index of the TCP option */
-		if(opt_type < TCP_LIST_ITEM_MAP_LEN && tcp_options_index[opt_type] >= 0)
-		{
-			/* TCP option got a reserved index */
-			opt_idx = tcp_options_index[opt_type];
-			rohc_comp_debug(context, "TCP options list: option '%s' (%u) uses "
-			                "reserved index %u\n", tcp_opt_get_descr(opt_type),
-			                opt_type, opt_idx);
-		}
-		else /* TCP option don't have a reserved index */
-		{
-			bool opt_idx_found = false;
-			int opt_idx_free = -1;
-
-			/* find the index that was used for the same option in previous
-			 * packets, or the first unused one */
-			for(opt_idx = TCP_INDEX_SACK + 1;
-			    !opt_idx_found && opt_idx < MAX_TCP_OPTION_INDEX; opt_idx++)
-			{
-				if(tcp_context->tcp_options_list[opt_idx].type == opt_type)
-				{
-					opt_idx_found = true;
-				}
-				else if(tcp_context->tcp_options_list[opt_idx].type == 0xff)
-				{
-					opt_idx_free = opt_idx;
-				}
-			}
-			if(opt_idx_found)
-			{
-				rohc_comp_debug(context, "TCP options list: option '%s' (%u) uses "
-				                "same index %u as in previous packet\n",
-				                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
-			}
-			else
-			{
-				if(opt_idx_free < 0)
-				{
-					rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "TCP options list: failed to "
-					             "find a free index for option '%s' (%u)\n",
-					             tcp_opt_get_descr(opt_type), opt_type);
-					goto error;
-				}
-
-				opt_idx = opt_idx_free;
-				rohc_comp_debug(context, "TCP options list: option '%s' (%u) uses "
-				                "new index %u\n", tcp_opt_get_descr(opt_type),
-				                opt_type, opt_idx);
-			}
-		}
-
 		// If option already used
-		if(tcp_context->tcp_options_list[opt_idx].type == opt_type)
+		if(tcp_context->tcp_options_list[opt_idx].type == opt_type &&
+		   tcp_context->tcp_options_list[opt_idx].nr_trans > 0)
 		{
 			rohc_comp_debug(context, "TCP options list: option '%s' (%u) was "
 			                "already used with index %u in previous packets\n",
@@ -3959,18 +3951,15 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 				case TCP_INDEX_NOP: // No Operation
 					--i;
 					++options;
-					tcp_context->tcp_options_list[opt_idx].type = opt_type;
 					item_needed = false;
 					break;
 				case TCP_INDEX_EOL: // End Of List
 					i = 0;
-					tcp_context->tcp_options_list[opt_idx].type = opt_type;
 					item_needed = false;
 					break;
 				case TCP_INDEX_SACK_PERMITTED: // see RFC2018
 					i -= TCP_OLEN_SACK_PERMITTED;
 					options += TCP_OLEN_SACK_PERMITTED;
-					tcp_context->tcp_options_list[opt_idx].type = opt_type;
 					item_needed = false;
 					break;
 				case TCP_INDEX_MAXSEG: // Max Segment Size
@@ -3980,9 +3969,6 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 				default:
 				{
 					item_needed = true;
-
-					// Save option for this index
-					tcp_context->tcp_options_list[opt_idx].type = opt_type;
 					// Save length
 					assert(opt_type >= 2);
 					tcp_context->tcp_options_list[opt_idx].value[0] = opt_type - 2;
@@ -3993,38 +3979,47 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 				}
 			}
 		}
+		tcp_context->tcp_options_list[opt_idx].nr_trans++;
 
 		/* write index */
-#if MAX_TCP_OPTION_INDEX == 16 /* TODO: should be dynamic: use 4-bit XI if all indexes are <= 7 */
-		rohc_comp_debug(context, "TCP options list: 8-bit XI field #%u: item "
-		                "with index %u is present\n", m, opt_idx);
-		comp_opts[(*comp_opts_len)] = opt_idx;
-		if(item_needed)
+		if(tcp_context->tmp.tcp_opts_idx_max <= 7)
 		{
-			comp_opts[(*comp_opts_len)] |= 0x80;
-		}
-		(*comp_opts_len)++;
-#else
-		rohc_comp_debug(context, "TCP options list: 4-bit XI field #%u: item "
-		                "with index %u is present\n", m, opt_idx);
-		if(m & 1)
-		{
-			comp_opts[*comp_opts_len] |= opt_idx;
-			if(item_needed)
+			/* use 4-bit XI fields */
+			assert(opt_idx <= 7);
+			rohc_comp_debug(context, "TCP options list: 4-bit XI field #%u: "
+			                "item with index %u is present\n", m, opt_idx);
+			if(m & 1)
 			{
-				comp_opts[*comp_opts_len] |= 0x08;
+				comp_opts[*comp_opts_len] |= opt_idx;
+				if(item_needed)
+				{
+					comp_opts[*comp_opts_len] |= 0x08;
+				}
+				(*comp_opts_len)++;
 			}
-			(*comp_opts_len)++;
+			else
+			{
+				comp_opts[(*comp_opts_len)] = opt_idx << 4;
+				if(item_needed)
+				{
+					comp_opts[(*comp_opts_len)] |= 0x08 << 4;
+				}
+			}
 		}
 		else
 		{
-			comp_opts[(*comp_opts_len)] = opt_idx << 4;
+			/* use 8-bit XI fields */
+			assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
+			assert(opt_idx <= MAX_TCP_OPTION_INDEX);
+			rohc_comp_debug(context, "TCP options list: 8-bit XI field #%u: "
+			                "item with index %u is present\n", m, opt_idx);
+			comp_opts[(*comp_opts_len)] = opt_idx;
 			if(item_needed)
 			{
-				comp_opts[(*comp_opts_len)] |= 0x08 << 4;
+				comp_opts[(*comp_opts_len)] |= 0x80;
 			}
+			(*comp_opts_len)++;
 		}
-#endif
 
 		if(item_needed)
 		{
@@ -4120,13 +4115,6 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 				default:
 				{
 					uint8_t *const opt_start = ptr_compressed_options;
-					assert(tcp_options_index[opt_type] > TCP_INDEX_SACK);
-					if(opt_type > 15)
-					{
-						rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-						             "TCP invalid option %d (0x%x)\n", opt_type, opt_type);
-						goto error;
-					}
 					// see RFC4996 page 69
 					ptr_compressed_options =
 						c_tcp_opt_generic(tcp_context, ptr_compressed_options, options);
@@ -4142,7 +4130,7 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 			                opt_type, comp_opt_len);
 		}
 	}
-	if(m > 16)
+	if(m >= ROHC_TCP_OPTS_MAX && i != 0)
 	{
 		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		             "compressed list of TCP options: too many options\n");
@@ -4153,10 +4141,16 @@ static bool tcp_compress_tcp_options(struct c_context *const context,
 	comp_opts[0] |= m & 0x0f;
 
 	/* add padding if odd number 4-bit XI fields */
-#if MAX_TCP_OPTION_INDEX == 16 /* TODO: should be dynamic: use 4-bit XI if all indexes are <= 7 */
-#else
-	(*comp_opts_len) += m & 1;
-#endif
+	if(tcp_context->tmp.tcp_opts_idx_max <= 7)
+	{
+		/* 4-bit XI field: add padding if odd number of items */
+		(*comp_opts_len) += m & 1;
+	}
+	else
+	{
+		/* 8-bit XI field: set the length of XI fields to 8 bits */
+		comp_opts[0] |= 0x10;
+	}
 
 	// If compressed value present
 	if(ptr_compressed_options > compressed_options)

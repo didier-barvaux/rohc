@@ -248,16 +248,16 @@ struct d_tcp_context
 	struct rohc_lsb_decode *ack_lsb_ctxt;
 
 	// Table of TCP options
-	uint8_t tcp_options_list[16];      // see RFC4996 page 27
-	uint8_t tcp_options_offset[16];
+	uint8_t tcp_options_list[ROHC_TCP_OPTS_MAX];   // see RFC4996 page 27
+	uint8_t tcp_options_offset[ROHC_TCP_OPTS_MAX];
 	uint16_t tcp_option_maxseg;
 	uint8_t tcp_option_window;
 	/** The structure of the list of TCP options */
-	uint8_t tcp_opts_list_struct[16];
+	uint8_t tcp_opts_list_struct[ROHC_TCP_OPTS_MAX];
 	/** Whether the content of every TCP options was transmitted or not */
-	bool is_tcp_opts_list_item_present[16]; /* TODO: should be in tmp part */
+	bool is_tcp_opts_list_item_present[ROHC_TCP_OPTS_MAX]; /* TODO: should be in tmp part */
 	/** TODO */
-	size_t tcp_opts_list_item_uncomp_length[16]; /* TODO: should be in tmp part */
+	size_t tcp_opts_list_item_uncomp_length[ROHC_TCP_OPTS_MAX]; /* TODO: should be in tmp part */
 
 	struct tcp_option_timestamp tcp_option_timestamp;
 	struct rohc_lsb_decode *opt_ts_req_lsb_ctxt;
@@ -463,8 +463,8 @@ static void * d_tcp_create(const struct d_context *const context)
 	tcp_context->tcp_src_port = 0xFFFF;
 	tcp_context->tcp_dst_port = 0xFFFF;
 
-	memset(tcp_context->tcp_options_list,0xFF,16);
-	memset(tcp_context->tcp_opts_list_struct, 0xff, 16);
+	memset(tcp_context->tcp_options_list, 0xff, ROHC_TCP_OPTS_MAX);
+	memset(tcp_context->tcp_opts_list_struct, 0xff, ROHC_TCP_OPTS_MAX);
 
 	/* create the LSB decoding context for the TCP option Timestamp echo
 	 * request */
@@ -768,7 +768,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
 	int ret;
-	int i;
+	size_t i;
 
 	assert(decomp != NULL);
 	assert(context != NULL);
@@ -789,7 +789,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	rohc_decomp_debug(context, "parse packet type '%s' (%d)\n",
 	                  rohc_get_packet_descr(*packet_type), *packet_type);
 
-	for(i = 0; i < 16; i++)
+	for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 	{
 		tcp_context->is_tcp_opts_list_item_present[i] = false;
 		tcp_context->tcp_opts_list_item_uncomp_length[i] = 0;
@@ -1101,9 +1101,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 			base_header.ipv4->checksum =
 				ip_fast_csum(base_header.uint8,
 				             base_header.ipv4->header_length);
-			rohc_decomp_debug(context, "IP checksum = 0x%04x for %d\n",
+			rohc_decomp_debug(context, "IP checksum = 0x%04x on %zu bytes\n",
 			                  rohc_ntoh16(base_header.ipv4->checksum),
-			                  base_header.ipv4->header_length);
+			                  base_header.ipv4->header_length * sizeof(uint32_t));
 			++base_header.ipv4;
 			++ip_context.v4;
 			uncomp_len -= sizeof(base_header_ip_v4_t);
@@ -2607,7 +2607,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		}
 		remain_data++;
 		remain_len--;
-		if(m > 16)
+		if(m >= MAX_TCP_OPTION_INDEX)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 			             context->profile->id, "TCP dynamic part: compressed "
@@ -2669,8 +2669,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					opt_idx = (tcp_opts_indexes[0] & 0x70) >> 4;
 				}
 			}
-			rohc_decomp_debug(context, "TCP options list: XI #%u: item for "
-			                  "index %u is %s\n", i, opt_idx,
+			rohc_decomp_debug(context, "  TCP options list: XI #%u:\n", i);
+			rohc_decomp_debug(context, "    item for index %u is %s\n", opt_idx,
 			                  (present ? "present" : "absent"));
 			// item must present in dynamic part
 			if(present == 0)
@@ -2682,22 +2682,21 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			}
 			tcp_context->is_tcp_opts_list_item_present[i] = true;
 
-			rohc_decomp_debug(context, "TCP options list: XI #%u: item for "
-			                  "index %u is a known index\n", i, opt_idx);
+			rohc_decomp_debug(context, "    index %u is a known index\n", opt_idx);
 
 			/* determine option type */ /* TODO: dedicated function */
 			switch(opt_idx)
 			{
 				case TCP_INDEX_NOP:
 				{
-					rohc_decomp_debug(context, "TCP option NOP\n");
+					rohc_decomp_debug(context, "    TCP option NOP\n");
 					opt_type = TCP_OPT_NOP;
 					opt_len = 1;
 					break;
 				}
 				case TCP_INDEX_EOL:
 				{
-					rohc_decomp_debug(context, "TCP option EOL\n");
+					rohc_decomp_debug(context, "    TCP option EOL\n");
 					opt_type = TCP_OPT_EOL;
 					opt_len = remain_data[0] + 1;
 					if(remain_len < 1)
@@ -2736,7 +2735,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					       sizeof(uint16_t));
 					remain_data += sizeof(uint16_t);
 					remain_len -= sizeof(uint16_t);
-					rohc_decomp_debug(context, "TCP option MAXSEG = %u (0x%x)\n",
+					rohc_decomp_debug(context, "    TCP option MAXSEG = %u (0x%x)\n",
 					                  rohc_ntoh16(tcp_context->tcp_option_maxseg),
 					                  rohc_ntoh16(tcp_context->tcp_option_maxseg));
 					break;
@@ -2759,7 +2758,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					tcp_options[opts_full_len + 2] = remain_data[0];
 					remain_data++;
 					remain_len--;
-					rohc_decomp_debug(context, "TCP option WINDOW = %d\n",
+					rohc_decomp_debug(context, "    TCP option WINDOW = %d\n",
 					                  tcp_context->tcp_option_window);
 					break;
 				}
@@ -2768,7 +2767,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					const struct tcp_option_timestamp *const opt_ts =
 						(struct tcp_option_timestamp *) remain_data;
 
-					rohc_decomp_debug(context, "TCP option SACK PERMITTED\n");
+					rohc_decomp_debug(context, "    TCP option TIMESTAMP\n");
 					opt_type = TCP_OPT_TIMESTAMP;
 					opt_len = TCP_OLEN_TIMESTAMP;
 
@@ -2782,7 +2781,6 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 						             sizeof(uint32_t) * 2);
 						goto error;
 					}
-					rohc_decomp_debug(context, "TCP option TIMESTAMP\n");
 					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
 					tcp_context->tcp_option_timestamp.ts_reply = opt_ts->ts_reply;
 					rohc_lsb_set_ref(tcp_context->opt_ts_req_lsb_ctxt,
@@ -2796,7 +2794,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 				}
 				case TCP_INDEX_SACK_PERMITTED:
 				{
-					rohc_decomp_debug(context, "TCP option SACK permitted\n");
+					rohc_decomp_debug(context, "    TCP option SACK permitted\n");
 					opt_type = TCP_OPT_SACK_PERMITTED;
 					opt_len = TCP_OLEN_SACK_PERMITTED;
 					break;
@@ -2822,7 +2820,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					opt_len = uncomp_sack_opt - (tcp_options + opts_full_len);
 
 					tcp_context->tcp_option_sack_length = opt_len - 2;
-					rohc_decomp_debug(context, "TCP option SACK Length = 2 + %u\n",
+					rohc_decomp_debug(context, "    TCP option SACK Length = 2 + %u\n",
 					                  tcp_context->tcp_option_sack_length);
 					if(tcp_context->tcp_option_sack_length > (8 * 4))
 					{
@@ -2887,7 +2885,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 						           tcp_context->tcp_options_free_offset;
 						/* save length (without option_static) */
 						save_opt[0] = opt_len - 2;
-						rohc_decomp_debug(context, "%d-byte TCP option of type %d\n",
+						rohc_decomp_debug(context, "    %d-byte TCP option of type %d\n",
 						                  save_opt[0], opt_type);
 						/* enough data for last bytes of option? */
 						if(remain_len < save_opt[0])
@@ -2960,24 +2958,24 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 					break;
 				}
 			}
-			rohc_decomp_debug(context, "TCP option type 0x%02x (%u)\n",
+			rohc_decomp_debug(context, "    TCP option type 0x%02x (%u)\n",
 			                  opt_type, opt_type);
 			tcp_options[opts_full_len] = opt_type;
 			if(opt_type == TCP_OPT_EOL)
 			{
 				assert(opt_len >= 1);
-				rohc_decomp_debug(context, "TCP option is %u-byte long (type and "
-				                  "padding fields included)\n", opt_len);
+				rohc_decomp_debug(context, "    TCP option is %u-byte long (type "
+				                  "and padding fields included)\n", opt_len);
 			}
 			else if(opt_type == TCP_OPT_NOP)
 			{
 				assert(opt_len == 1);
-				rohc_decomp_debug(context, "TCP option is 1-byte long\n");
+				rohc_decomp_debug(context, "    TCP option is 1-byte long\n");
 			}
 			else
 			{
 				assert(opt_len >= 2);
-				rohc_decomp_debug(context, "TCP option is %u-byte long (type "
+				rohc_decomp_debug(context, "    TCP option is %u-byte long (type "
 				                  "and length fields included)\n", opt_len);
 				tcp_options[opts_full_len + 1] = opt_len;
 			}
@@ -2988,10 +2986,11 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 			tcp_context->tcp_options_list[opt_idx] = opt_type;
 			tcp_context->tcp_opts_list_item_uncomp_length[i] = opt_len;
 		}
-		memset(tcp_context->tcp_opts_list_struct + m, 0xff, 16 - m);
+		memset(tcp_context->tcp_opts_list_struct + m, 0xff,
+		       ROHC_TCP_OPTS_MAX - m);
 
-		rohc_decomp_debug(context, "%zu bytes of TCP options appended to the TCP "
-		                  "base header\n", opts_full_len);
+		rohc_decomp_debug(context, "  %zu bytes of TCP options appended to the "
+		                  "TCP base header\n", opts_full_len);
 
 		/* add padding after TCP options (they must be aligned on 32-bit words) */
 		opt_padding_len = sizeof(uint32_t) - (opts_full_len % sizeof(uint32_t));
@@ -2999,8 +2998,8 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		for(i = 0; i < opt_padding_len; i++)
 		{
 			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-			             context->profile->id, "add missing TCP EOL option for "
-			             "padding\n");
+			             context->profile->id, "  add missing TCP EOL option "
+			             "for padding\n");
 			tcp_options[opts_full_len + i] = TCP_OPT_EOL;
 		}
 		opts_full_len += opt_padding_len;
@@ -3030,7 +3029,7 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		                 ROHC_TRACE_DEBUG, "TCP header, no options",
 		                 (unsigned char *) tcp, sizeof(tcphdr_t));
 
-		memset(tcp_context->tcp_opts_list_struct, 0xff, 16);
+		memset(tcp_context->tcp_opts_list_struct, 0xff, ROHC_TCP_OPTS_MAX);
 	}
 
 	assert(remain_len <= rohc_length);
@@ -3067,7 +3066,7 @@ static int tcp_decode_irregular_tcp(struct d_context *const context,
 	const uint8_t *remain_data;
 	uint8_t *tcp_options = (uint8_t *) (tcp + 1);
 	size_t tcp_opts_len;
-	int i;
+	size_t i;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -3128,7 +3127,9 @@ static int tcp_decode_irregular_tcp(struct d_context *const context,
 
 	/* complete TCP options with the irregular part */
 	tcp_opts_len = 0;
-	for(i = 0; i < 16 && tcp_context->tcp_opts_list_struct[i] != 0xff; i++)
+	for(i = 0;
+	    i < ROHC_TCP_OPTS_MAX && tcp_context->tcp_opts_list_struct[i] != 0xff;
+	    i++)
 	{
 		if(tcp_context->is_tcp_opts_list_item_present[i])
 		{
@@ -3245,7 +3246,7 @@ static int tcp_decode_irregular_tcp(struct d_context *const context,
 			}
 		}
 	}
-	assert(i <= 16);
+	assert(i <= ROHC_TCP_OPTS_MAX);
 
 	/* update TCP data offset */
 	tcp->data_offset = ((sizeof(tcphdr_t) + tcp_opts_len) >> 2);
@@ -3892,8 +3893,8 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 	uint8_t PS;
 	uint8_t opt_idx;
 	size_t xi_len;
-	int m;
-	int i;
+	uint8_t m;
+	size_t i;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -3915,7 +3916,7 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 	PS = *data & 0x10;
 	m = *data & 0x0f;
 	data++;
-	if(m > 16)
+	if(m > MAX_TCP_OPTION_INDEX)
 	{
 		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
 		             context->profile->id, "compressed list of TCP options: too "
@@ -3961,7 +3962,7 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 			}
 			present = opt_idx & 0x08;
 			opt_idx &= 0x07;
-			rohc_decomp_debug(context, "TCP options list: 4-bit XI field #%d: "
+			rohc_decomp_debug(context, "TCP options list: 4-bit XI field #%zu: "
 			                  "item with index %u is %s\n", i, opt_idx,
 			                  present ? "present" : "not present");
 		}
@@ -3970,7 +3971,7 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 			/* 8-bit XI fields */
 			present = (*data) & 0x80;
 			opt_idx = *(data++) & 0x0F;
-			rohc_decomp_debug(context, "TCP options list: 8-bit XI field #%d: "
+			rohc_decomp_debug(context, "TCP options list: 8-bit XI field #%zu: "
 			                  "item with index %u is %s\n", i, opt_idx,
 			                  present ? "present" : "not present");
 		}
@@ -4190,10 +4191,10 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 			tcp_context->tcp_opts_list_struct[i] = opt_type;
 		}
 	}
-	memset(tcp_context->tcp_opts_list_struct + m, 0xff, 16 - m);
+	memset(tcp_context->tcp_opts_list_struct + m, 0xff, ROHC_TCP_OPTS_MAX - m);
 
 	// Pad with nul
-	for(i = options - ( (uint8_t*) tcp ); i & 0x03; ++i)
+	for(i = options - ( (uint8_t*) tcp ); i & 0x03; i++)
 	{
 		rohc_decomp_debug(context, "add TCP EOL option for padding\n");
 		*(options++) = TCP_OPT_EOL;
@@ -5048,11 +5049,11 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	else
 	{
-		int i;
+		size_t i;
 		rohc_decomp_debug(context, "no compressed list of TCP options found "
 		                  "after the %zu-byte ROHC base header\n",
 		                  rohc_header_len);
-		for(i = 0; i < 16; i++)
+		for(i = 0; i < ROHC_TCP_OPTS_MAX; i++)
 		{
 			tcp_context->is_tcp_opts_list_item_present[i] = false;
 		}
