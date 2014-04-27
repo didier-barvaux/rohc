@@ -3901,6 +3901,8 @@ static const uint8_t * tcp_decompress_tcp_options(struct d_context *const contex
 	g_context = context->specific;
 	assert(g_context->specific != NULL);
 	tcp_context = g_context->specific;
+	assert(data != NULL);
+	assert(tcp != NULL);
 
 	/* init pointer to destination TCP options */
 	options = (uint8_t*) ( tcp + 1 );
@@ -4539,6 +4541,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 
 	size_t crc_type;
 
+	const uint8_t *rohc_opts_data = NULL;
 	bool is_list_present = false;
 
 	/* lengths of ROHC and uncompressed headers to be computed during parsing */
@@ -5177,8 +5180,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	{
 		const co_common_t *const co_common =
 			(co_common_t *) packed_rohc_packet;
-		const uint8_t *rohc_opts_data =
-			packed_rohc_packet + sizeof(co_common_t);
 
 		rohc_decomp_debug(context, "decode co_common packet\n");
 
@@ -5194,6 +5195,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "ack_flag = %d, psh_flag = %d, "
 		                  "rsf_flags = %d\n", tcp->ack_flag, tcp->psh_flag,
 		                  tcp->rsf_flags);
+
+		/* beginning of the variable part */
+		rohc_opts_data = packed_rohc_packet + sizeof(co_common_t);
 
 		/* sequence number */
 		ret = variable_length_32_dec(tcp_context->seq_lsb_ctxt, context,
@@ -5370,18 +5374,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			ip_inner_context.v6->ttl_hopl = base_header_inner.ipv6->ttl_hopl;
 			rohc_opts_data += ret;
 		}
-
-		/* if TCP options list present */
-		if(co_common->list_present)
-		{
-			// options
-			tcp_decompress_tcp_options(context, rohc_opts_data,
-			                           1500 /* TODO: real length */, tcp);
-		}
-		else
-		{
-			tcp->data_offset = sizeof(tcphdr_t) >> 2;
-		}
 	}
 	else
 	{
@@ -5547,8 +5539,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			case ROHC_PACKET_TCP_RND_8:
 			{
 				const rnd_8_t *const rnd_8 = (rnd_8_t *) packed_rohc_packet;
-				const uint8_t *const rohc_opts_data =
-					packed_rohc_packet + sizeof(rnd_8_t);
 				uint32_t encoded_seq_number;
 				uint32_t decoded_seq_number;
 
@@ -5589,17 +5579,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				ack_number_bits_nr = 16;
 				ack_number_p = 16383;
 
-				if(rnd_8->list_present)
-				{
-					// options
-					tcp_decompress_tcp_options(context, rohc_opts_data,
-					                           1500 /* TODO: real length */, tcp);
-				}
-				else
-				{
-					rohc_decomp_debug(context, "no compressed TCP options\n");
-					tcp->data_offset = sizeof(tcphdr_t) >> 2;
-				}
+				/* beginning of the compressed list of TCP options */
+				rohc_opts_data = packed_rohc_packet + sizeof(rnd_8_t);
+
 				break;
 			}
 			case ROHC_PACKET_TCP_SEQ_1:
@@ -5769,8 +5751,6 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			case ROHC_PACKET_TCP_SEQ_8:
 			{
 				const seq_8_t *const seq_8 = (seq_8_t *) packed_rohc_packet;
-				const uint8_t *const rohc_opts_data =
-					packed_rohc_packet + sizeof(seq_8_t);
 				uint32_t decoded_seq_number;
 				uint16_t enc_seq_num;
 
@@ -5814,16 +5794,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				}
 				tcp->seq_number = rohc_hton32(decoded_seq_number);
 
-				if(seq_8->list_present)
-				{
-					// options
-					tcp_decompress_tcp_options(context, rohc_opts_data,
-					                           1500 /* TODO: real length */, tcp);
-				}
-				else
-				{
-					tcp->data_offset = sizeof(tcphdr_t) >> 2;
-				}
+				/* beginning of the compressed list of TCP options */
+				rohc_opts_data = packed_rohc_packet + sizeof(seq_8_t);
+
 				break;
 			}
 			default:
@@ -5848,7 +5821,17 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			}
 			tcp->ack_number = rohc_hton32(decoded_ack_number);
 		}
+	}
 
+	/* decode the TCP options list if present */
+	if(is_list_present)
+	{
+		tcp_decompress_tcp_options(context, rohc_opts_data,
+		                           1500 /* TODO: real length */, tcp);
+	}
+	else
+	{
+		tcp->data_offset = sizeof(tcphdr_t) >> 2;
 	}
 
 	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
