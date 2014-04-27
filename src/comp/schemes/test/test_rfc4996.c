@@ -116,7 +116,6 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	uint32_t old_value;
 	bool is_success = false;
 	size_t i;
-	int ret;
 
 	const struct
 	{
@@ -182,19 +181,33 @@ static bool run_test_variable_length_32_enc(const bool be_verbose)
 	{
 		int indicator;
 		size_t comp_len;
+		size_t nr_bits_16383;
+		size_t nr_bits_63;
+
+		/* detect how many bits are required for the value */
+		if(!wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 16383,
+		                       &nr_bits_16383))
+		{
+			trace(be_verbose, "failed to find the minimal number of bits "
+			      "required for value 0x%08x and p = 16383\n",
+			      inputs[i].uncomp_value);
+			goto free_wlsb;
+		}
+		if(!wlsb_get_kp_32bits(wlsb, inputs[i].uncomp_value, 63,
+		                       &nr_bits_63))
+		{
+			trace(be_verbose, "failed to find the minimal number of bits "
+			      "required for value 0x%08x and p = 63\n",
+			      inputs[i].uncomp_value);
+			goto free_wlsb;
+		}
 
 		/* compress the value */
 		trace(be_verbose, "\tvariable_length_32_enc(value = 0x%08x)\n",
 		      inputs[i].uncomp_value);
-		ret = variable_length_32_enc(wlsb, old_value, inputs[i].uncomp_value,
-		                             compressed_data, &indicator);
-		if(ret < 0)
-		{
-			fprintf(stderr, "variable_length_32_enc(value = 0x%08x) failed\n",
-			        inputs[i].uncomp_value);
-			goto free_wlsb;
-		}
-		comp_len = ret;
+		comp_len = variable_length_32_enc(old_value, inputs[i].uncomp_value,
+		                                  nr_bits_63, nr_bits_16383,
+		                                  compressed_data, &indicator);
 		printf("\t\tindicator %d\n", indicator);
 		printf("\t\tencoded length %zu\n", comp_len);
 

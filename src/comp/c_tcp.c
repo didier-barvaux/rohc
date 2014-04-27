@@ -80,8 +80,14 @@ struct tcp_tmp_variables
 	 *  with p = 32767 */
 	size_t nr_seq_bits_32767;
 	/** The minimal number of bits required to encode the TCP sequence number
+	 *  with p = 16383 */
+	size_t nr_seq_bits_16383;
+	/** The minimal number of bits required to encode the TCP sequence number
 	 *  with p = 8191 */
 	size_t nr_seq_bits_8191;
+	/** The minimal number of bits required to encode the TCP sequence number
+	 *  with p = 63 */
+	size_t nr_seq_bits_63;
 	/** The minimal number of bits required to encode the TCP scaled sequence
 	 *  number */
 	size_t nr_seq_scaled_bits;
@@ -100,6 +106,9 @@ struct tcp_tmp_variables
 	/** The minimal number of bits required to encode the TCP ACK number
 	 *  with p = 8191 */
 	size_t nr_ack_bits_8191;
+	/** The minimal number of bits required to encode the TCP ACK number
+	 *  with p = 63 */
+	size_t nr_ack_bits_63;
 	/** The minimal number of bits required to encode the TCP scaled ACK
 	 * number */
 	size_t nr_ack_scaled_bits;
@@ -4643,6 +4652,8 @@ static int co_baseheader(struct c_context *const context,
 		}
 		case ROHC_PACKET_TCP_CO_COMMON:
 		{
+	size_t encoded_seq_len;
+	size_t encoded_ack_len;
 	int ret;
 	int indicator;
 
@@ -4671,42 +4682,34 @@ static int co_baseheader(struct c_context *const context,
 	puchar = mptr.uint8;
 
 	/* seq_number */
-	ret = variable_length_32_enc(tcp_context->seq_wlsb,
-	                             rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
-	                             rohc_ntoh32(tcp->seq_number),
-	                             mptr.uint8, &indicator);
-	if(ret < 0)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to variable_length_32_enc(seq_number)\n");
-		goto error;
-	}
+	encoded_seq_len =
+		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.seq_number),
+		                       rohc_ntoh32(tcp->seq_number),
+		                       tcp_context->tmp.nr_seq_bits_63,
+		                       tcp_context->tmp.nr_seq_bits_16383,
+		                       mptr.uint8, &indicator);
 	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn,
 	           rohc_ntoh32(tcp->seq_number));
 	c_base_header.co_common->seq_indicator = indicator;
-	mptr.uint8 += ret;
-	rohc_comp_debug(context, "encode ACK number 0x%08x on %d bytes with "
-	                "indicator %d\n", rohc_ntoh32(tcp->ack_number), ret,
-	                c_base_header.co_common->ack_indicator);
+	mptr.uint8 += encoded_seq_len;
+	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
+	                "indicator %d\n", rohc_ntoh32(tcp->ack_number),
+	                encoded_seq_len, c_base_header.co_common->ack_indicator);
 
 	/* ack_number */
-	ret = variable_length_32_enc(tcp_context->ack_wlsb,
-	                             rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-	                             rohc_ntoh32(tcp->ack_number),
-	                             mptr.uint8, &indicator);
-	if(ret < 0)
-	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to variable_length_32_enc(ack_number)\n");
-		goto error;
-	}
+	encoded_ack_len =
+		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+		                       rohc_ntoh32(tcp->ack_number),
+		                       tcp_context->tmp.nr_ack_bits_63,
+		                       tcp_context->tmp.nr_ack_bits_16383,
+		                       mptr.uint8, &indicator);
 	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn,
 	           rohc_ntoh32(tcp->ack_number));
 	c_base_header.co_common->ack_indicator = indicator;
-	mptr.uint8 += ret;
+	mptr.uint8 += encoded_ack_len;
 	rohc_comp_debug(context, "encode ACK number 0x%08x on %d bytes with "
-	                "indicator %d\n", rohc_ntoh32(tcp->ack_number), ret,
-	                c_base_header.co_common->ack_indicator);
+	                "indicator %d\n", rohc_ntoh32(tcp->ack_number),
+	                encoded_ack_len, c_base_header.co_common->ack_indicator);
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
 	ret = c_static_or_irreg16(tcp_context->ack_stride,
@@ -6248,7 +6251,9 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		/* send all bits in IR state */
 		tcp_context->tmp.nr_seq_bits_65535 = 32;
 		tcp_context->tmp.nr_seq_bits_32767 = 32;
+		tcp_context->tmp.nr_seq_bits_16383 = 32;
 		tcp_context->tmp.nr_seq_bits_8191 = 32;
+		tcp_context->tmp.nr_seq_bits_63 = 32;
 		tcp_context->tmp.nr_seq_scaled_bits = 32;
 		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
 		                "new sequence number\n");
@@ -6285,6 +6290,20 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		                tcp_context->tmp.nr_seq_bits_32767,
 		                rohc_ntoh32(tcp->seq_number));
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb,
+		                       rohc_ntoh32(tcp->seq_number), 16383,
+		                       &tcp_context->tmp.nr_seq_bits_16383))
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP,
+			             context->profile->id, "failed to find the minimal "
+			             "number of bits required for sequence number 0x%08x"
+			             "and p = 16383\n", rohc_ntoh32(tcp->seq_number));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+		                "number 0x%08x with p = 16383\n",
+		                tcp_context->tmp.nr_seq_bits_16383,
+		                rohc_ntoh32(tcp->seq_number));
+		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb,
 		                       rohc_ntoh32(tcp->seq_number), 8191,
 		                       &tcp_context->tmp.nr_seq_bits_8191))
 		{
@@ -6297,6 +6316,20 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
 		                "number 0x%08x with p = 8191\n",
 		                tcp_context->tmp.nr_seq_bits_8191,
+		                rohc_ntoh32(tcp->seq_number));
+		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb,
+		                       rohc_ntoh32(tcp->seq_number), 63,
+		                       &tcp_context->tmp.nr_seq_bits_63))
+		{
+			rohc_warning(context->compressor, ROHC_TRACE_COMP,
+			             context->profile->id, "failed to find the minimal "
+			             "number of bits required for sequence number 0x%08x"
+			             "and p = 63\n", rohc_ntoh32(tcp->seq_number));
+			goto error;
+		}
+		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
+		                "number 0x%08x with p = 63\n",
+		                tcp_context->tmp.nr_seq_bits_63,
 		                rohc_ntoh32(tcp->seq_number));
 
 		if(tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
@@ -6338,6 +6371,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		tcp_context->tmp.nr_ack_bits_32767 = 0;
 		tcp_context->tmp.nr_ack_bits_16383 = 0;
 		tcp_context->tmp.nr_ack_bits_8191 = 0;
+		tcp_context->tmp.nr_ack_bits_63 = 0;
 		tcp_context->tmp.nr_ack_scaled_bits = 0;
 		rohc_comp_debug(context, "no bit required to encode new ACK number "
 		                "since the ACK flag is not set\n");
@@ -6354,6 +6388,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 			tcp_context->tmp.nr_ack_bits_32767 = 32;
 			tcp_context->tmp.nr_ack_bits_16383 = 32;
 			tcp_context->tmp.nr_ack_bits_8191 = 32;
+			tcp_context->tmp.nr_ack_bits_63 = 0;
 			tcp_context->tmp.nr_ack_scaled_bits = 32;
 			rohc_comp_debug(context, "IR state: force using 32 bits to encode "
 			                "new ACK number\n");
@@ -6416,6 +6451,20 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
 			                "number 0x%08x with p = 8191\n",
 			                tcp_context->tmp.nr_ack_bits_8191,
+			                rohc_ntoh32(tcp->ack_number));
+			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb,
+			                       rohc_ntoh32(tcp->ack_number), 63,
+			                       &tcp_context->tmp.nr_ack_bits_63))
+			{
+				rohc_warning(context->compressor, ROHC_TRACE_COMP,
+				             context->profile->id, "failed to find the minimal "
+				             "number of bits required for ACK number 0x%08x"
+				             "and p = 63\n", rohc_ntoh32(tcp->ack_number));
+				goto error;
+			}
+			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+			                "number 0x%08x with p = 63\n",
+			                tcp_context->tmp.nr_ack_bits_63,
 			                rohc_ntoh32(tcp->ack_number));
 			if(!wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb,
 			                      tcp_context->ack_number_scaled,

@@ -259,21 +259,27 @@ int c_zero_or_irreg32(const uint32_t packet_value,
  *
  * See variable_length_32_enc in RFC4996 page 46.
  *
- * @param wlsb            The W-LSB context for compression
  * @param old_value       The previous 32-bit value
  * @param new_value       The 32-bit value to compress
+ * @param nr_bits_63      The number of bits required for W-LSB encoding
+ *                        with p = 63
+ * @param nr_bits_16383   The number of bits required for W-LSB encoding
+ *                        with p = 16383
  * @param[out] rohc_data  The compressed value
  * @param[out] indicator  The indicator for the compressed value
- * @return                The number of ROHC bytes written,
- *                        -1 if a problem occurs
+ * @return                The number of ROHC bytes written
  */
-int variable_length_32_enc(const struct c_wlsb *const wlsb,
-                           const uint32_t old_value,
-                           const uint32_t new_value,
-                           uint8_t *const rohc_data,
-                           int *const indicator)
+size_t variable_length_32_enc(const uint32_t old_value,
+                              const uint32_t new_value,
+                              const size_t nr_bits_63,
+                              const size_t nr_bits_16383,
+                              uint8_t *const rohc_data,
+                              int *const indicator)
 {
 	size_t encoded_len;
+
+	assert(nr_bits_63 <= 32);
+	assert(nr_bits_16383 <= 32);
 
 	if(new_value == old_value)
 	{
@@ -281,57 +287,36 @@ int variable_length_32_enc(const struct c_wlsb *const wlsb,
 		encoded_len = 0;
 		*indicator = 0;
 	}
+	else if(nr_bits_63 <= 8)
+	{
+		/* 1-byte value */
+		encoded_len = 1;
+		*indicator = 1;
+		rohc_data[0] = new_value & 0xff;
+	}
+	else if(nr_bits_16383 <= 16)
+	{
+		/* 2-byte value */
+		encoded_len = 2;
+		*indicator = 2;
+		rohc_data[0] = (new_value >> 8) & 0xff;
+		rohc_data[1] = new_value & 0xff;
+	}
 	else
 	{
-		size_t nr_bits_63;
-		size_t nr_bits_16383;
-
-		/* determine how many bits are required with p = 63 */
-		if(!wlsb_get_kp_32bits(wlsb, new_value, 63, &nr_bits_63))
-		{
-			goto error;
-		}
-
-		/* determine how many bits are required with p = 16383 */
-		if(!wlsb_get_kp_32bits(wlsb, new_value, 16383, &nr_bits_16383))
-		{
-			goto error;
-		}
-
-		/* determine the number of bytes needed for the value */
-		if(nr_bits_63 <= 8)
-		{
-			/* 1-byte value */
-			encoded_len = 1;
-			*indicator = 1;
-			rohc_data[0] = new_value & 0xff;
-		}
-		else if(nr_bits_16383 <= 16)
-		{
-			/* 2-byte value */
-			encoded_len = 2;
-			*indicator = 2;
-			rohc_data[0] = (new_value >> 8) & 0xff;
-			rohc_data[1] = new_value & 0xff;
-		}
-		else
-		{
-			/* 4-byte value */
-			encoded_len = 4;
-			*indicator = 3;
-			rohc_data[0] = (new_value >> 24) & 0xff;
-			rohc_data[1] = (new_value >> 16) & 0xff;
-			rohc_data[2] = (new_value >> 8) & 0xff;
-			rohc_data[3] = new_value & 0xff;
-		}
+		/* 4-byte value */
+		encoded_len = 4;
+		*indicator = 3;
+		rohc_data[0] = (new_value >> 24) & 0xff;
+		rohc_data[1] = (new_value >> 16) & 0xff;
+		rohc_data[2] = (new_value >> 8) & 0xff;
+		rohc_data[3] = new_value & 0xff;
 	}
+
 	assert(encoded_len <= sizeof(uint32_t));
 	assert((*indicator) >= 0 && (*indicator) <= 3);
 
 	return encoded_len;
-
-error:
-	return -1;
 }
 
 
