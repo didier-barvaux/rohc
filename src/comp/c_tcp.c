@@ -2116,7 +2116,8 @@ static int c_tcp_encode(struct c_context *const context,
 
 	/* sequence number sent once more, count the number of transmissions to
 	 * know when scaled sequence number is possible */
-	if(tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+	if(tcp_context->seq_number_factor != 0 &&
+	   tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
 	{
 		tcp_context->seq_number_scaling_nr++;
 		rohc_comp_debug(context, "unscaled sequence number was transmitted "
@@ -6224,6 +6225,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		                seq_number_factor, seq_number_residue);
 
 		if(context->num_sent_packets == 0 ||
+		   seq_number_factor == 0 ||
 		   seq_number_factor != tcp_context->seq_number_factor ||
 		   seq_number_residue != tcp_context->seq_number_residue)
 		{
@@ -6339,7 +6341,8 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		                tcp_context->tmp.nr_seq_bits_63,
 		                rohc_ntoh32(tcp->seq_number));
 
-		if(tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
+		if(tcp_context->seq_number_factor == 0 ||
+		   tcp_context->seq_number_scaling_nr < ROHC_INIT_TS_STRIDE_MIN)
 		{
 			tcp_context->tmp.nr_seq_scaled_bits = 32;
 		}
