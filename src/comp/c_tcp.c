@@ -44,12 +44,8 @@
 #include "config.h" /* for WORDS_BIGENDIAN and ROHC_EXTRA_DEBUG */
 
 
-#if ROHC_EXTRA_DEBUG == 1
 #define TRACE_GOTO_CHOICE \
 	rohc_comp_debug(context, "Compressed format choice LINE %d\n", __LINE__ )
-#else
-#define TRACE_GOTO_CHOICE
-#endif
 
 
 /**
