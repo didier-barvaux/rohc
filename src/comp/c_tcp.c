@@ -2925,7 +2925,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
 		                      // TODO: put if/else in a function
 	{
 		uint8_t *pBeginList;
-		uint8_t opt_pos;
+		size_t opt_pos;
 		int i;
 
 		/* init pointer to TCP options */
@@ -4701,7 +4701,7 @@ static int co_baseheader(struct c_context *const context,
 	           rohc_ntoh32(tcp->ack_number));
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += encoded_ack_len;
-	rohc_comp_debug(context, "encode ACK number 0x%08x on %d bytes with "
+	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
 	                "indicator %d\n", rohc_ntoh32(tcp->ack_number),
 	                encoded_ack_len, c_base_header.co_common->ack_indicator);
 
