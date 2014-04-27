@@ -4681,13 +4681,13 @@ static int co_baseheader(struct c_context *const context,
 		             "failed to variable_length_32_enc(seq_number)\n");
 		goto error;
 	}
-	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn, tcp->seq_number);
+	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn,
+	           rohc_ntoh32(tcp->seq_number));
 	c_base_header.co_common->seq_indicator = indicator;
 	mptr.uint8 += ret;
-	rohc_comp_debug(context, "size = %d, seq_indicator = %d, seq_number = 0x%x\n",
-	                (unsigned)(mptr.uint8 - puchar),
-	                c_base_header.co_common->seq_indicator,
-	                rohc_ntoh32(tcp->seq_number));
+	rohc_comp_debug(context, "encode ACK number 0x%08x on %d bytes with "
+	                "indicator %d\n", rohc_ntoh32(tcp->ack_number), ret,
+	                c_base_header.co_common->ack_indicator);
 
 	/* ack_number */
 	ret = variable_length_32_enc(tcp_context->ack_wlsb,
@@ -4700,13 +4700,13 @@ static int co_baseheader(struct c_context *const context,
 		             "failed to variable_length_32_enc(ack_number)\n");
 		goto error;
 	}
-	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn, tcp->ack_number);
+	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn,
+	           rohc_ntoh32(tcp->ack_number));
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += ret;
-	rohc_comp_debug(context, "size = %d, ack_indicator = %d, ack_number = 0x%x\n",
-	                (unsigned)(mptr.uint8 - puchar),
-	                c_base_header.co_common->seq_indicator,
-	                rohc_ntoh32(tcp->ack_number));
+	rohc_comp_debug(context, "encode ACK number 0x%08x on %d bytes with "
+	                "indicator %d\n", rohc_ntoh32(tcp->ack_number), ret,
+	                c_base_header.co_common->ack_indicator);
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
 	ret = c_static_or_irreg16(tcp_context->ack_stride,
