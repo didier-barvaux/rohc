@@ -6111,7 +6111,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "CRC computed on the %zu-byte decompressed "
 		                  "header (0x%02x) doesn't match header CRC (0x%02x)\n",
 		                  uncomp_header_len, crc_computed, header_crc);
-		goto error;
+		goto error_crc;
 	}
 	rohc_decomp_debug(context, "the %zu-byte decompressed header matches the "
 	                  "CRC 0x%02x\n", uncomp_header_len, header_crc);
@@ -6172,6 +6172,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 error:
 	free(packed_rohc_packet);
 	return ROHC_ERROR;
+error_crc:
+	free(packed_rohc_packet);
+	return ROHC_ERROR_CRC;
 }
 
 
