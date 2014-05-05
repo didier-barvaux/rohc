@@ -64,6 +64,8 @@ raw TODO list for improving TCP profile.
  - d_sack_block(): move in d_rohc_lib.[ch] ?
  - d_tcp_opt_sack(): move in d_rohc_lib.[ch] ?
 
+ - check IR and IR-DYN CRC !
+
 => src/decomp/d_tcp.h
 
  - almost all the structs and functions should not be public
