@@ -6398,11 +6398,11 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 		if(context->state == ROHC_COMP_STATE_IR)
 		{
 			/* send all bits in IR state */
-			tcp_context->tmp.nr_ack_bits_65535 = 0;
+			tcp_context->tmp.nr_ack_bits_65535 = 32;
 			tcp_context->tmp.nr_ack_bits_32767 = 32;
 			tcp_context->tmp.nr_ack_bits_16383 = 32;
 			tcp_context->tmp.nr_ack_bits_8191 = 32;
-			tcp_context->tmp.nr_ack_bits_63 = 0;
+			tcp_context->tmp.nr_ack_bits_63 = 32;
 			tcp_context->tmp.nr_ack_scaled_bits = 32;
 			rohc_comp_debug(context, "IR state: force using 32 bits to encode "
 			                "new ACK number\n");
