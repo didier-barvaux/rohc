@@ -4700,19 +4700,27 @@ static int co_baseheader(struct c_context *const context,
 	           rohc_ntoh32(tcp->seq_number));
 	c_base_header.co_common->seq_indicator = indicator;
 	mptr.uint8 += encoded_seq_len;
-	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
-	                "indicator %d\n", rohc_ntoh32(tcp->ack_number),
-	                encoded_seq_len, c_base_header.co_common->ack_indicator);
+	rohc_comp_debug(context, "encode sequence number 0x%08x on %zu bytes with "
+	                "indicator %d\n", rohc_ntoh32(tcp->seq_number),
+	                encoded_seq_len, c_base_header.co_common->seq_indicator);
 
 	/* ack_number */
-	encoded_ack_len =
-		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-		                       rohc_ntoh32(tcp->ack_number),
-		                       tcp_context->tmp.nr_ack_bits_63,
-		                       tcp_context->tmp.nr_ack_bits_16383,
-		                       mptr.uint8, &indicator);
-	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn,
-	           rohc_ntoh32(tcp->ack_number));
+	if(tcp->ack_flag == 0 && tcp->ack_number == 0)
+	{
+		encoded_ack_len = 0;
+		indicator = 0;
+	}
+	else
+	{
+		encoded_ack_len =
+			variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
+			                       rohc_ntoh32(tcp->ack_number),
+			                       tcp_context->tmp.nr_ack_bits_63,
+			                       tcp_context->tmp.nr_ack_bits_16383,
+			                       mptr.uint8, &indicator);
+		c_add_wlsb(tcp_context->ack_wlsb, g_context->sn,
+		           rohc_ntoh32(tcp->ack_number));
+	}
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += encoded_ack_len;
 	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
@@ -6373,7 +6381,7 @@ static bool tcp_encode_uncomp_fields(struct c_context *const context,
 	}
 
 	/* how many bits are required to encode the new ACK number? */
-	if(tcp->ack_flag == 0)
+	if(tcp->ack_flag == 0 && tcp->ack_number == 0)
 	{
 		/* send no bit if ACK flag is not set */
 		tcp_context->tmp.tcp_ack_number_changed = false;

@@ -369,11 +369,12 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
 
 static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
                                        const struct d_context *const context,
+                                       const uint8_t ack_flag,
                                        const uint32_t ack_bits,
                                        const size_t ack_bits_nr,
                                        const rohc_lsb_shift_t p,
                                        uint32_t *const ack)
-	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 7)));
 
 static uint32_t d_tcp_get_msn(const struct d_context *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
@@ -2475,6 +2476,12 @@ static int tcp_decode_dynamic_tcp(struct d_context *const context,
 		memcpy(&tcp->ack_number, remain_data, sizeof(uint32_t));
 		remain_data += sizeof(uint32_t);
 		remain_len -= sizeof(uint32_t);
+
+		if(tcp->ack_flag == 0)
+		{
+			rohc_decomp_debug(context, "ACK flag not set, but ACK number was "
+			                  "transmitted anyway\n");
+		}
 	}
 	rohc_decomp_debug(context, "tcp = %p, seq_number = 0x%x, "
 	                  "ack_number = 0x%x\n", tcp, rohc_ntoh32(tcp->seq_number),
@@ -5215,15 +5222,31 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_opts_data += ret;
 
 		/* ACK number */
-		ret = variable_length_32_dec(tcp_context->ack_lsb_ctxt, context,
-		                             rohc_opts_data, co_common->ack_indicator,
-		                             &tcp->ack_number);
-		if(ret < 0)
+		if(tcp->ack_flag == 0 && co_common->ack_indicator == 0)
 		{
-			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-			             context->profile->id, "failed to decode "
-			             "variable_length_32(ack_number)\n");
-			goto error;
+			tcp->ack_number = 0;
+			ret = 0;
+		}
+		else
+		{
+			if(co_common->ack_indicator != 0)
+			{
+				rohc_decomp_debug(context, "ACK flag not set, but indicator for "
+				                  "ACK number is %u instead of 0\n",
+				                  co_common->ack_indicator);
+			}
+
+			ret = variable_length_32_dec(tcp_context->ack_lsb_ctxt, context,
+			                             rohc_opts_data,
+			                             co_common->ack_indicator,
+			                             &tcp->ack_number);
+			if(ret < 0)
+			{
+				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
+				             context->profile->id, "failed to decode "
+				             "variable_length_32(ack_number)\n");
+				goto error;
+			}
 		}
 		rohc_decomp_debug(context, "ack_number = 0x%x (%d bytes in packet)\n",
 		                  rohc_ntoh32(tcp->ack_number), ret);
@@ -5813,9 +5836,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		{
 			uint32_t decoded_ack_number;
 
-			if(!rohc_decomp_tcp_decode_ack(decomp, context, ack_number_bits,
-			                               ack_number_bits_nr, ack_number_p,
-			                               &decoded_ack_number))
+			if(!rohc_decomp_tcp_decode_ack(decomp, context, tcp->ack_flag,
+			                               ack_number_bits, ack_number_bits_nr,
+			                               ack_number_p, &decoded_ack_number))
 			{
 				goto error;
 			}
@@ -6189,6 +6212,7 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
  */
 static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
                                        const struct d_context *const context,
+                                       const uint8_t ack_flag,
                                        const uint32_t ack_bits,
                                        const size_t ack_bits_nr,
                                        const rohc_lsb_shift_t p,
@@ -6205,12 +6229,21 @@ static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 		             "failed to decode %zu ACK number bits 0x%x with p = %u\n",
 		             ack_bits_nr, ack_bits, p);
-		return false;
+		goto error;
 	}
 	rohc_decomp_debug(context, "decoded ACK number = 0x%08x (%zu bits 0x%x "
 	                  "with p = %d)\n", *ack, ack_bits_nr, ack_bits, p);
 
+	if(ack_flag == 0)
+	{
+		rohc_decomp_debug(context, "ACK flag not set, but %zu bits 0x%x were "
+		                  "transmitted for ACK number\n", ack_bits_nr, ack_bits);
+	}
+
 	return true;
+
+error:
+	return false;
 }
 
 
