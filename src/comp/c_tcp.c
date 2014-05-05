@@ -4696,8 +4696,6 @@ static int co_baseheader(struct c_context *const context,
 		                       tcp_context->tmp.nr_seq_bits_63,
 		                       tcp_context->tmp.nr_seq_bits_16383,
 		                       mptr.uint8, &indicator);
-	c_add_wlsb(tcp_context->seq_wlsb, g_context->sn,
-	           rohc_ntoh32(tcp->seq_number));
 	c_base_header.co_common->seq_indicator = indicator;
 	mptr.uint8 += encoded_seq_len;
 	rohc_comp_debug(context, "encode sequence number 0x%08x on %zu bytes with "
@@ -4718,8 +4716,6 @@ static int co_baseheader(struct c_context *const context,
 			                       tcp_context->tmp.nr_ack_bits_63,
 			                       tcp_context->tmp.nr_ack_bits_16383,
 			                       mptr.uint8, &indicator);
-		c_add_wlsb(tcp_context->ack_wlsb, g_context->sn,
-		           rohc_ntoh32(tcp->ack_number));
 	}
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += encoded_ack_len;
