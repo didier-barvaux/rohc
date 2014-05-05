@@ -6928,12 +6928,21 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 				TRACE_GOTO_CHOICE;
 				packet_type = ROHC_PACKET_TCP_CO_COMMON;
 			}
-			else if(tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
-			        tcp_context->tmp.tcp_window_changed)
+			else if(tcp_context->tmp.tcp_window_changed)
 			{
-				/* rnd_7 is possible */
-				TRACE_GOTO_CHOICE;
-				packet_type = ROHC_PACKET_TCP_RND_7;
+				if(tcp_context->tmp.nr_ack_bits_65535 <= 18 &&
+				   true /* TODO: no more than 4 bits of SN */)
+				{
+					/* rnd_7 is possible */
+					TRACE_GOTO_CHOICE;
+					packet_type = ROHC_PACKET_TCP_RND_7;
+				}
+				else
+				{
+					/* rnd_7 is not possible, fallback on co_common */
+					TRACE_GOTO_CHOICE;
+					packet_type = ROHC_PACKET_TCP_CO_COMMON;
+				}
 			}
 			else if(tcp->ack_flag != 0 &&
 			        !tcp_context->tmp.tcp_ack_number_changed)
