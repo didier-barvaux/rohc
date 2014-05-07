@@ -6746,7 +6746,7 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 			 * seq_8 can be used if:
 			 *  - TCP window didn't change,
 			 *  - at most 14 LSB of the TCP sequence number are required,
-			 *  - the 17 MSBs of ACK number didn't change,
+			 *  - at most 15 LSB of the TCP ACK number are required,
 			 *  - at most 4 LSBs of IP-ID must be transmitted
 			 * otherwise use co_common packet */
 			if(!tcp_context->tmp.tcp_window_changed &&
@@ -6754,8 +6754,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
 			   true /* TODO: list changed */ &&
 			   true /* TODO: no more than 4 bits of SN */ &&
 			   true /* TODO: no more than 3 bits of TTL */ &&
-			   tcp_context->tmp.nr_ack_scaled_bits <= 15 &&
-			   tcp_context->tmp.nr_seq_bits_8191 <= 14)
+			   tcp_context->tmp.nr_seq_bits_8191 <= 14 &&
+			   tcp_context->tmp.nr_ack_bits_8191 <= 15)
 			{
 				/* seq_8 is possible */
 				TRACE_GOTO_CHOICE;
