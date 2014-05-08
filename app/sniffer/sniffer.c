@@ -1213,24 +1213,14 @@ static int compress_decompress(struct rohc_comp *comp,
 		}
 	}
 
-	/* discard IPv4 packets with wrong checksums and fix IPv4 packets with
-	 * non-standard-compliant 0xffff checksums instead of 0x0000 (Windows
-	 * Vista seems to be faulty for the latter), to avoid false comparison
-	 * failures after decompression) */
-	if(((ip_packet[0] >> 4) & 0x0f) == 4 && ip_size >= 20)
+	/* fix IPv4 packets with non-standard-compliant 0xffff checksums instead
+	 * of 0x0000 (Windows Vista seems to be faulty for the latter), to avoid
+	 * false comparison failures after decompression */
+	if(((ip_packet[0] >> 4) & 0x0f) == 4 && ip_size >= 20 &&
+	   ip_packet[10] == 0xff && ip_packet[11] == 0xff)
 	{
-		if(ip_fast_csum(ip_packet, (ip_packet[0] & 0x0f)) != 0)
-		{
-			SNIFFER_LOG(LOG_NOTICE, "discard IPv4 packet with bad IP "
-			            "checksum");
-			goto ignore;
-		}
-
-		if(ip_packet[10] == 0xff && ip_packet[11] == 0xff)
-		{
-			ip_packet[10] = 0x00;
-			ip_packet[11] = 0x00;
-		}
+		ip_packet[10] = 0x00;
+		ip_packet[11] = 0x00;
 	}
 
 	/* compress the IP packet */
@@ -1432,9 +1422,6 @@ static int compress_decompress(struct rohc_comp *comp,
 
 error:
 	return ret;
-
-ignore:
-	return 1;
 }
 
 

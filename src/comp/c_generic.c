@@ -676,6 +676,17 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		goto bad_profile;
 	}
 
+	/* check if the checksum of the outer IP header is correct */
+	if(packet->outer_ip.version == IPV4 &&
+	   (comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
+	   ip_fast_csum(packet->outer_ip.data,
+	                sizeof(struct ipv4_hdr) / sizeof(uint32_t)) != 0)
+	{
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "the outer IP packet is not correct (bad checksum)\n");
+		goto bad_profile;
+	}
+
 	/* check the inner IP header if there is one */
 	if(packet->ip_hdr_nr > 1)
 	{
@@ -705,6 +716,17 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IP packet is fragmented\n");
+			goto bad_profile;
+		}
+
+		/* check if the checksum of the inner IP header is correct */
+		if(packet->inner_ip.version == IPV4 &&
+		   (comp->features & ROHC_COMP_FEATURE_NO_IP_CHECKSUMS) == 0 &&
+		   ip_fast_csum(packet->inner_ip.data,
+		                sizeof(struct ipv4_hdr) / sizeof(uint32_t)) != 0)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "the inner IP packet is not correct (bad checksum)\n");
 			goto bad_profile;
 		}
 	}

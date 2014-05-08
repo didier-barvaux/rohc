@@ -328,6 +328,14 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 	}
 
+	/* disable the verification of IP checksums at compressor */
+	if(!rohc_comp_set_features(comp, ROHC_COMP_FEATURE_NO_IP_CHECKSUMS))
+	{
+		fprintf(stderr, "failed to disable the verification of IP checksums "
+		        "for compressor\n");
+		goto destroy_comp;
+	}
+
 	/* create the ROHC decompressor in unidirectional mode */
 	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
 	                         ROHC_U_MODE, NULL);

@@ -2613,7 +2613,8 @@ bool rohc_comp_set_features(struct rohc_comp *const comp,
                             const rohc_comp_features_t features)
 {
 	const rohc_comp_features_t all_features =
-		ROHC_COMP_FEATURE_COMPAT_1_6_x;
+		ROHC_COMP_FEATURE_COMPAT_1_6_x |
+		ROHC_COMP_FEATURE_NO_IP_CHECKSUMS;
 
 	/* compressor must be valid */
 	if(comp == NULL)

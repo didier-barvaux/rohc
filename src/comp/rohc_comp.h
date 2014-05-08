@@ -282,9 +282,11 @@ typedef struct
 typedef enum
 {
 	/** No feature at all */
-	ROHC_COMP_FEATURE_NONE         = 0,
+	ROHC_COMP_FEATURE_NONE            = 0,
 	/** Be compatible with 1.6.x versions */
-	ROHC_COMP_FEATURE_COMPAT_1_6_x = (1 << 0),
+	ROHC_COMP_FEATURE_COMPAT_1_6_x    = (1 << 0),
+	/** Do not check IP checksums at compressor */
+	ROHC_COMP_FEATURE_NO_IP_CHECKSUMS = (1 << 2),
 
 } rohc_comp_features_t;
 
