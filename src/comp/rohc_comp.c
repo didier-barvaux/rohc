@@ -128,16 +128,11 @@ static struct rohc_comp_ctxt *
 	                 const struct rohc_ts arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
-	rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
-	                                   const struct net_pkt *const packet,
-	                                   const int profile_id_hint,
-	                                   const struct rohc_ts arrival_time)
+	rohc_comp_find_ctxt(struct rohc_comp *const comp,
+	                    const struct net_pkt *const packet,
+	                    const int profile_id_hint,
+	                    const struct rohc_ts arrival_time)
 	__attribute__((nonnull(1, 2), warn_unused_result));
-static struct rohc_comp_ctxt *
-	c_find_context(const struct rohc_comp *const comp,
-	               const struct rohc_comp_profile *const profile,
-	               const struct net_pkt *const packet)
-	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct rohc_comp_ctxt *
 	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
@@ -945,7 +940,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 	}
 
 	/* find the best context for the packet */
-	c = rohc_comp_find_context_from_packet(comp, &ip_pkt, -1, arrival_time);
+	c = rohc_comp_find_ctxt(comp, &ip_pkt, -1, arrival_time);
 	if(c == NULL)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -998,9 +993,8 @@ int rohc_compress3(struct rohc_comp *const comp,
 		}
 
 		/* find the best context for the Uncompressed profile */
-		c = rohc_comp_find_context_from_packet(comp, &ip_pkt,
-		                                       ROHC_PROFILE_UNCOMPRESSED,
-		                                       arrival_time);
+		c = rohc_comp_find_ctxt(comp, &ip_pkt, ROHC_PROFILE_UNCOMPRESSED,
+		                        arrival_time);
 		if(c == NULL)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -3933,13 +3927,15 @@ static struct rohc_comp_ctxt *
  *                         NULL if not found
  */
 static struct rohc_comp_ctxt *
-	rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
-	                                   const struct net_pkt *const packet,
-	                                   const int profile_id_hint,
-	                                   const struct rohc_ts arrival_time)
+	rohc_comp_find_ctxt(struct rohc_comp *const comp,
+	                    const struct net_pkt *const packet,
+	                    const int profile_id_hint,
+	                    const struct rohc_ts arrival_time)
 {
 	const struct rohc_comp_profile *profile;
 	struct rohc_comp_ctxt *context;
+	size_t num_used_ctxt_seen = 0;
+	rohc_cid_t i;
 
 	/* use the suggested profile if any, otherwise find the best profile for
 	 * the packet */
@@ -3955,15 +3951,54 @@ static struct rohc_comp_ctxt *
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "no profile found for packet, giving up\n");
-		goto error;
+		goto not_found;
 	}
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "using profile '%s' (0x%04x)\n",
 	           rohc_get_profile_descr(profile->id), profile->id);
 
 	/* get the context using help from the profile we just found */
-	context = c_find_context(comp, profile, packet);
-	if(context == NULL)
+	for(i = 0; i <= comp->medium.max_cid; i++)
+	{
+		context = &comp->contexts[i];
+
+		/* don't even look at unused contexts */
+		if(!context->used)
+		{
+			continue;
+		}
+		num_used_ctxt_seen++;
+
+		/* don't look at contexts with the wrong profile */
+		if(context->profile->id != profile->id)
+		{
+			continue;
+		}
+
+		/* don't look at contexts with the wrong key */
+		if(packet->key != context->key)
+		{
+			continue;
+		}
+
+		/* ask the profile whether the packet matches the context */
+		if(context->profile->check_context(context, packet))
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "using context CID = %zu\n", context->cid);
+			break;
+		}
+
+		/* if all used contexts were checked, no need go search further */
+		if(num_used_ctxt_seen >= comp->num_contexts_used)
+		{
+			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			           "no context was found\n");
+			context = NULL;
+			break;
+		}
+	}
+	if(context == NULL || i > comp->medium.max_cid)
 	{
 		/* context not found, create a new one */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -3973,90 +4008,19 @@ static struct rohc_comp_ctxt *
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to create a new context\n");
-			goto error;
+			goto not_found;
 		}
 	}
 	else
 	{
-		/* existing context, update use timestamp */
+		/* matching context found, update use timestamp */
 		context->latest_used = arrival_time.sec;
 	}
 
 	return context;
 
-error:
+not_found:
 	return NULL;
-}
-
-
-/**
- * @brief Find a compression context given a profile and an IP packet
- *
- * @param comp     The ROHC compressor
- * @param profile  The profile the context must be associated with
- * @param packet   The packet to find a compression context for
- * @return         The compression context if found,
- *                 NULL if not found
- */
-static struct rohc_comp_ctxt *
-	c_find_context(const struct rohc_comp *const comp,
-	               const struct rohc_comp_profile *const profile,
-	               const struct net_pkt *const packet)
-{
-	struct rohc_comp_ctxt *c = NULL;
-	size_t num_used_ctxt_seen = 0;
-	rohc_cid_t i;
-
-	for(i = 0; i <= comp->medium.max_cid; i++)
-	{
-		bool context_match;
-
-		c = &comp->contexts[i];
-
-		/* don't even look at unused contexts */
-		if(!c->used)
-		{
-			continue;
-		}
-		num_used_ctxt_seen++;
-
-		/* don't look at contexts with the wrong profile */
-		if(c->profile->id != profile->id)
-		{
-			continue;
-		}
-
-		/* don't look at contexts with the wrong key */
-		if(packet->key != c->key)
-		{
-			continue;
-		}
-
-		/* ask the profile whether the packet matches the context */
-		context_match = c->profile->check_context(c, packet);
-		if(context_match)
-		{
-			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "using context CID = %zu\n", c->cid);
-			break;
-		}
-
-		/* if all used contexts were checked, no need go search further */
-		if(num_used_ctxt_seen >= comp->num_contexts_used)
-		{
-			c = NULL;
-			break;
-		}
-	}
-
-	if(c == NULL || i > comp->medium.max_cid)
-	{
-		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "no context was found\n");
-		c = NULL;
-	}
-
-	return c;
 }
 
 
