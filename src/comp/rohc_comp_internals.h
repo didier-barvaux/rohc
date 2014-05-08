@@ -241,7 +241,7 @@ struct rohc_comp
  * The object defines a ROHC profile. Each field must be filled in
  * for each new profile.
  */
-struct c_profile
+struct rohc_comp_profile
 {
 	/** The profile ID as reserved by IANA */
 	const rohc_profile_t id;
@@ -347,7 +347,7 @@ struct c_context
 	struct rohc_comp *compressor;
 
 	/** The associated profile */
-	const struct c_profile *profile;
+	const struct rohc_comp_profile *profile;
 	/** Profile-specific data, defined by the profiles */
 	void *specific;
 

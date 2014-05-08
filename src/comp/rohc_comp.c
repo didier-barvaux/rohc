@@ -72,13 +72,13 @@
 #include <stdarg.h>
 
 
-extern struct c_profile c_rtp_profile,
-                        c_udp_profile,
-                        c_udp_lite_profile,
-                        c_esp_profile,
-                        c_tcp_profile,
-                        c_ip_profile,
-                        c_uncompressed_profile;
+extern const struct rohc_comp_profile c_rtp_profile,
+                                      c_udp_profile,
+                                      c_udp_lite_profile,
+                                      c_esp_profile,
+                                      c_tcp_profile,
+                                      c_ip_profile,
+                                      c_uncompressed_profile;
 
 /**
  * @brief The compression parts of the ROHC profiles.
@@ -86,7 +86,8 @@ extern struct c_profile c_rtp_profile,
  * The order of profiles declaration is important: they are evaluated in that
  * order. The RTP profile shall be declared before the UDP one for example.
  */
-struct c_profile *c_profiles[C_NUM_PROFILES] =
+static const struct rohc_comp_profile *const
+	rohc_comp_profiles[C_NUM_PROFILES] =
 {
 	&c_rtp_profile,
 	&c_udp_profile,  /* must be declared after RTP profile */
@@ -102,12 +103,14 @@ struct c_profile *c_profiles[C_NUM_PROFILES] =
  * Prototypes of private functions related to ROHC compression profiles
  */
 
-static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp *comp,
-																			const rohc_profile_t profile_id)
+static const struct rohc_comp_profile *
+	rohc_get_profile_from_id(const struct rohc_comp *comp,
+	                         const rohc_profile_t profile_id)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *const comp,
-																			 const struct net_pkt *const packet)
+static const struct rohc_comp_profile *
+	c_get_profile_from_packet(const struct rohc_comp *const comp,
+	                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 
@@ -119,7 +122,7 @@ static bool c_create_contexts(struct rohc_comp *const comp);
 static void c_destroy_contexts(struct rohc_comp *const comp);
 
 static struct c_context * c_create_context(struct rohc_comp *const comp,
-                                           const struct c_profile *const profile,
+                                           const struct rohc_comp_profile *const profile,
                                            const struct net_pkt *const packet,
                                            const struct rohc_ts arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
@@ -129,7 +132,7 @@ static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *c
 																				 const struct rohc_ts arrival_time)
 	__attribute__((nonnull(1, 2), warn_unused_result));
 static struct c_context * c_find_context(const struct rohc_comp *const comp,
-                                         const struct c_profile *const profile,
+                                         const struct rohc_comp_profile *const profile,
                                          const struct net_pkt *const packet)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 static struct c_context * c_get_context(struct rohc_comp *const comp,
@@ -1634,7 +1637,7 @@ bool rohc_comp_profile_enabled(const struct rohc_comp *const comp,
 	/* search the profile location */
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		if(c_profiles[i]->id == profile)
+		if(rohc_comp_profiles[i]->id == profile)
 		{
 			/* found */
 			break;
@@ -1680,7 +1683,7 @@ void rohc_activate_profile(struct rohc_comp *comp, int profile)
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		if(((int) c_profiles[i]->id) == profile)
+		if(((int) rohc_comp_profiles[i]->id) == profile)
 		{
 			/* mark the profile as activated */
 			comp->enabled_profiles[i] = true;
@@ -1744,7 +1747,7 @@ bool rohc_comp_enable_profile(struct rohc_comp *const comp,
 	/* search the profile location */
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		if(c_profiles[i]->id == profile)
+		if(rohc_comp_profiles[i]->id == profile)
 		{
 			/* found */
 			break;
@@ -1806,7 +1809,7 @@ bool rohc_comp_disable_profile(struct rohc_comp *const comp,
 	/* search the profile location */
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		if(c_profiles[i]->id == profile)
+		if(rohc_comp_profiles[i]->id == profile)
 		{
 			/* found */
 			break;
@@ -2708,9 +2711,10 @@ int rohc_c_info(char *buffer)
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		buffer += sprintf(buffer, "\t<profile id=\"%d\" ", c_profiles[i]->id);
+		buffer += sprintf(buffer, "\t<profile id=\"%d\" ",
+		                  rohc_comp_profiles[i]->id);
 		buffer += sprintf(buffer, "name=\"%s\" ",
-		                  rohc_get_profile_descr(c_profiles[i]->id));
+		                  rohc_get_profile_descr(rohc_comp_profiles[i]->id));
 		buffer += sprintf(buffer, "/>\n");
 	}
 
@@ -2738,7 +2742,6 @@ int rohc_c_info(char *buffer)
  */
 int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 {
-	struct c_profile *p;
 	char *prefix;
 	char *save;
 	size_t i;
@@ -2787,7 +2790,7 @@ int rohc_c_statistics(struct rohc_comp *comp, unsigned int indent, char *buffer)
 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
-		p = c_profiles[i];
+		const struct rohc_comp_profile *const p = rohc_comp_profiles[i];
 
 		buffer += sprintf(buffer, "%s\t\t<profile id=\"%d\" ", prefix, p->id);
 		buffer += sprintf(buffer, "name=\"%s\" ",
@@ -3714,8 +3717,9 @@ error:
  * @param profile_id The ID of the ROHC profile to find out
  * @return           The ROHC profile if found, NULL otherwise
  */
-static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp *comp,
-																			const rohc_profile_t profile_id)
+static const struct rohc_comp_profile *
+	rohc_get_profile_from_id(const struct rohc_comp *comp,
+	                         const rohc_profile_t profile_id)
 {
 	size_t i;
 
@@ -3723,9 +3727,9 @@ static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp 
 	for(i = 0; i < C_NUM_PROFILES; i++)
 	{
 		/* if the profile IDs match and the profile is enabled */
-		if(c_profiles[i]->id == profile_id && comp->enabled_profiles[i])
+		if(rohc_comp_profiles[i]->id == profile_id && comp->enabled_profiles[i])
 		{
-			return c_profiles[i];
+			return rohc_comp_profiles[i];
 		}
 	}
 
@@ -3740,8 +3744,9 @@ static const struct c_profile * rohc_get_profile_from_id(const struct rohc_comp 
  * @param packet  The packet to find a compression profile for
  * @return        The ROHC profile if found, NULL otherwise
  */
-static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp *const comp,
-																			 const struct net_pkt *const packet)
+static const struct rohc_comp_profile *
+	c_get_profile_from_packet(const struct rohc_comp *const comp,
+	                          const struct net_pkt *const packet)
 {
 	size_t i;
 
@@ -3759,24 +3764,24 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "skip disabled profile '%s' (0x%04x)\n",
-			           rohc_get_profile_descr(c_profiles[i]->id),
-			           c_profiles[i]->id);
+			           rohc_get_profile_descr(rohc_comp_profiles[i]->id),
+			           rohc_comp_profiles[i]->id);
 			continue;
 		}
 
 		/* does the profile accept the packet? */
-		check_profile = c_profiles[i]->check_profile(comp, packet);
+		check_profile = rohc_comp_profiles[i]->check_profile(comp, packet);
 		if(!check_profile)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "skip profile '%s' (0x%04x) because it does not match "
-			           "packet\n",rohc_get_profile_descr(c_profiles[i]->id),
-			           c_profiles[i]->id);
+			           "packet\n",rohc_get_profile_descr(rohc_comp_profiles[i]->id),
+			           rohc_comp_profiles[i]->id);
 			continue;
 		}
 
 		/* the packet is compatible with the profile, let's go with it! */
-		return c_profiles[i];
+		return rohc_comp_profiles[i];
 	}
 
 	return NULL;
@@ -3794,7 +3799,7 @@ static const struct c_profile * c_get_profile_from_packet(const struct rohc_comp
  * @return              The compression context if successful, NULL otherwise
  */
 static struct c_context * c_create_context(struct rohc_comp *const comp,
-                                           const struct c_profile *const profile,
+                                           const struct rohc_comp_profile *const profile,
                                            const struct net_pkt *const packet,
                                            const struct rohc_ts arrival_time)
 {
@@ -3927,7 +3932,7 @@ static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *c
 																				 const int profile_id_hint,
 																				 const struct rohc_ts arrival_time)
 {
-	const struct c_profile *profile;
+	const struct rohc_comp_profile *profile;
 	struct c_context *context;
 
 	/* use the suggested profile if any, otherwise find the best profile for
@@ -3988,7 +3993,7 @@ error:
  *                 NULL if not found
  */
 static struct c_context * c_find_context(const struct rohc_comp *const comp,
-                                         const struct c_profile *const profile,
+                                         const struct rohc_comp_profile *const profile,
                                          const struct net_pkt *const packet)
 {
 	struct c_context *c = NULL;

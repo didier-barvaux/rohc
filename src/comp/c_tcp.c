@@ -7193,7 +7193,7 @@ static char * tcp_opt_get_descr(const uint8_t opt_type)
  * @brief Define the compression part of the TCP profile as described
  *        in the RFC 3095.
  */
-struct c_profile c_tcp_profile =
+const struct rohc_comp_profile c_tcp_profile =
 {
 	.id             = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC 3095) */
 	.protocol       = ROHC_IPPROTO_TCP, /* IP protocol */

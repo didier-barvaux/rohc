@@ -1595,7 +1595,7 @@ static bool c_rtp_use_udp_port(const struct c_context *const context,
  * @brief Define the compression part of the RTP profile as described
  *        in the RFC 3095.
  */
-struct c_profile c_rtp_profile =
+const struct rohc_comp_profile c_rtp_profile =
 {
 	.id             = ROHC_PROFILE_RTP, /* profile ID */
 	.protocol       = ROHC_IPPROTO_UDP, /* IP protocol */

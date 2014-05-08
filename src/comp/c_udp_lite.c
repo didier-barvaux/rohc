@@ -834,7 +834,7 @@ static bool udp_lite_send_cce_packet(const struct c_context *const context,
  * @brief Define the compression part of the UDP-Lite profile as described
  *        in the RFC 4019.
  */
-struct c_profile c_udp_lite_profile =
+const struct rohc_comp_profile c_udp_lite_profile =
 {
 	.id             = ROHC_PROFILE_UDPLITE, /* profile ID (see 7 in RFC4019) */
 	.protocol       = ROHC_IPPROTO_UDPLITE, /* IP protocol */

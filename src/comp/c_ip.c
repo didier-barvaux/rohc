@@ -506,7 +506,7 @@ size_t c_ip_code_ir_remainder(const struct c_context *const context,
  * @brief Define the compression part of the IP-only profile as described
  *        in the RFC 3843.
  */
-struct c_profile c_ip_profile =
+const struct rohc_comp_profile c_ip_profile =
 {
 	.id             = ROHC_PROFILE_IP,     /* profile ID (see 5 in RFC 3843) */
 	.protocol       = 0,                   /* IP protocol */

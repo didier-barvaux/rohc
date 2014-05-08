@@ -584,7 +584,7 @@ static int udp_changed_udp_dynamic(const struct c_context *context,
  * @brief Define the compression part of the UDP profile as described
  *        in the RFC 3095.
  */
-struct c_profile c_udp_profile =
+const struct rohc_comp_profile c_udp_profile =
 {
 	.id             = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC 3095) */
 	.protocol       = ROHC_IPPROTO_UDP, /* IP protocol */

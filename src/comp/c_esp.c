@@ -462,7 +462,7 @@ static size_t esp_code_dynamic_esp_part(const struct c_context *const context,
  * @brief Define the compression part of the ESP profile as described
  *        in the RFC 3095.
  */
-struct c_profile c_esp_profile =
+const struct rohc_comp_profile c_esp_profile =
 {
 	.id             = ROHC_PROFILE_ESP, /* profile ID (see 8 in RFC 3095) */
 	.protocol       = ROHC_IPPROTO_ESP, /* IP protocol */
