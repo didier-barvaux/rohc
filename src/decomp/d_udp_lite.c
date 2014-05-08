@@ -735,11 +735,11 @@ static int udp_lite_build_uncomp_udp(const struct d_context *const context,
  */
 struct d_profile d_udplite_profile =
 {
-	ROHC_PROFILE_UDPLITE,        /* profile ID (see 7 in RFC 4019) */
-	.detect_packet_type = udp_lite_detect_packet_type,
-	d_udp_lite_decode,
-	d_udp_lite_create,
-	d_udp_lite_destroy,
-	d_generic_get_sn,
+	.id              = ROHC_PROFILE_UDPLITE, /* profile ID (RFC 4019, §7) */
+	.new_context     = d_udp_lite_create,
+	.free_context    = d_udp_lite_destroy,
+	.decode          = d_udp_lite_decode,
+	.detect_pkt_type = udp_lite_detect_packet_type,
+	.get_sn          = d_generic_get_sn,
 };
 

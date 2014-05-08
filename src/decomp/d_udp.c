@@ -609,11 +609,11 @@ void udp_update_context(const struct d_context *context,
  */
 struct d_profile d_udp_profile =
 {
-	ROHC_PROFILE_UDP,       /* profile ID (see 8 in RFC 3095) */
-	.detect_packet_type = ip_detect_packet_type,
-	d_generic_decode,
-	d_udp_create,
-	d_udp_destroy,
-	d_generic_get_sn,
+	.id              = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC3095) */
+	.new_context     = d_udp_create,
+	.free_context    = d_udp_destroy,
+	.decode          = d_generic_decode,
+	.detect_pkt_type = ip_detect_packet_type,
+	.get_sn          = d_generic_get_sn,
 };
 

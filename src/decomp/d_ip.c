@@ -790,11 +790,11 @@ error:
  */
 struct d_profile d_ip_profile =
 {
-	ROHC_PROFILE_IP,              /* profile ID (see 5 in RFC 3843) */
-	.detect_packet_type = ip_detect_packet_type,
-	d_generic_decode,
-	d_ip_create,
-	d_ip_destroy,
-	d_generic_get_sn,
+	.id              = ROHC_PROFILE_IP, /* profile ID (see 5 in RFC 3843) */
+	.new_context     = d_ip_create,
+	.free_context    = d_ip_destroy,
+	.decode          = d_generic_decode,
+	.detect_pkt_type = ip_detect_packet_type,
+	.get_sn          = d_generic_get_sn,
 };
 

@@ -293,7 +293,7 @@ static struct d_context * context_create(struct rohc_decomp *decomp,
 
 	/* profile-specific data (created at the every end so that everything
 	   is initialized in context first) */
-	context->specific = profile->allocate_decode_data(context);
+	context->specific = profile->new_context(context);
 	if(context->specific == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
@@ -332,7 +332,7 @@ static void context_free(struct d_context *const context)
 	           "free context with CID %zu\n", context->cid);
 
 	/* destroy the profile-specific data */
-	context->profile->free_decode_data(context->specific);
+	context->profile->free_context(context->specific);
 
 	/* decompressor got one more context */
 	assert(context->decompressor->num_contexts_used > 0);
@@ -1473,9 +1473,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	decomp->last_context = ddata->active;
 
  	/* detect the type of the ROHC packet */
-	*packet_type = profile->detect_packet_type(decomp, ddata->active,
-	                                           walk, remain_len,
-	                                           ddata->large_cid_size);
+	*packet_type = profile->detect_pkt_type(decomp, ddata->active, walk,
+	                                        remain_len, ddata->large_cid_size);
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,

@@ -240,13 +240,13 @@ struct d_profile
 	/* The profile ID as reserved by IANA */
 	const rohc_profile_t id;
 
-	/** The handler used to detect the type of the ROHC packet */
-	rohc_packet_t (*detect_packet_type)(const struct rohc_decomp *const decomp,
-	                                    const struct d_context *const context,
-	                                    const uint8_t *const rohc_packet,
-	                                    const size_t rohc_length,
-	                                    const size_t large_cid_len)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	/* @brief The handler used to create the profile-specific part of the
+	 *        decompression context */
+	void * (*new_context)(const struct d_context *const context);
+
+	/* @brief The handler used to destroy the profile-specific part of the
+	 *        decompression context */
+	void (*free_context)(void *const context);
 
 	/* The handler used to decode a ROHC packet */
 	int (*decode)(struct rohc_decomp *const decomp,
@@ -259,13 +259,13 @@ struct d_profile
 	              unsigned char *const dest,
 	              rohc_packet_t *const packet_type);
 
-	/* @brief The handler used to create the profile-specific part of the
-	 *        decompression context */
-	void * (*allocate_decode_data)(const struct d_context *const context);
-
-	/* @brief The handler used to destroy the profile-specific part of the
-	 *        decompression context */
-	void (*free_decode_data)(void *const context);
+	/** The handler used to detect the type of the ROHC packet */
+	rohc_packet_t (*detect_pkt_type)(const struct rohc_decomp *const decomp,
+	                                 const struct d_context *const context,
+	                                 const uint8_t *const rohc_packet,
+	                                 const size_t rohc_length,
+	                                 const size_t large_cid_len)
+		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/* The handler used to retrieve the Sequence Number (SN) */
 	uint32_t (*get_sn)(const struct d_context *const context);

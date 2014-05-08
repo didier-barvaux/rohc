@@ -6281,11 +6281,11 @@ static uint32_t d_tcp_get_msn(const struct d_context *const context)
  */
 struct d_profile d_tcp_profile =
 {
-	ROHC_PROFILE_TCP,       /* profile ID (see 8 in RFC 3095) */
-	.detect_packet_type = tcp_detect_packet_type,
-	d_tcp_decode,
-	d_tcp_create,
-	d_tcp_destroy,
-	d_tcp_get_msn
+	.id              = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC3095) */
+	.new_context     = d_tcp_create,
+	.free_context    = d_tcp_destroy,
+	.decode          = d_tcp_decode,
+	.detect_pkt_type = tcp_detect_packet_type,
+	.get_sn          = d_tcp_get_msn
 };
 

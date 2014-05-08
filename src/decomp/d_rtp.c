@@ -1934,11 +1934,11 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const 
  */
 struct d_profile d_rtp_profile =
 {
-	ROHC_PROFILE_RTP,       /* profile ID (see 8 in RFC 3095) */
-	.detect_packet_type = rtp_detect_packet_type,
-	d_generic_decode,
-	d_rtp_create,
-	d_rtp_destroy,
-	d_generic_get_sn,
+	.id              = ROHC_PROFILE_RTP, /* profile ID (see 8 in RFC3095) */
+	.new_context     = d_rtp_create,
+	.free_context    = d_rtp_destroy,
+	.decode          = d_generic_decode,
+	.detect_pkt_type = rtp_detect_packet_type,
+	.get_sn          = d_generic_get_sn,
 };
 
