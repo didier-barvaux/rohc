@@ -54,6 +54,10 @@
 #include <rohc_decomp.h>
 
 
+/** The max size */
+#define TEST_MAX_ROHC_SIZE  (5U * 1024U)
+
+
 /* prototypes of private functions */
 static void usage(void);
 static int test_comp_and_decomp(const size_t ip_packet_len,
@@ -95,7 +99,7 @@ int main(int argc, char *argv[])
 
 	/* test ROHC segments with small packet (wrt output buffer) and large MRRU
 	 * => no segmentation needed */
-	status = test_comp_and_decomp(100, MAX_ROHC_SIZE * 2, true, 0);
+	status = test_comp_and_decomp(100, TEST_MAX_ROHC_SIZE * 2, true, 0);
 	if(status != 0)
 	{
 		goto error;
@@ -103,7 +107,8 @@ int main(int argc, char *argv[])
 
 	/* test ROHC segments with large packet (wrt output buffer) and large MRRU,
 	 * => segmentation needed */
-	status |= test_comp_and_decomp(MAX_ROHC_SIZE, MAX_ROHC_SIZE * 2, true, 2);
+	status |= test_comp_and_decomp(TEST_MAX_ROHC_SIZE,
+	                               TEST_MAX_ROHC_SIZE * 2, true, 2);
 	if(status != 0)
 	{
 		goto error;
@@ -111,7 +116,7 @@ int main(int argc, char *argv[])
 
 	/* test ROHC segments with large packet (wrt output buffer) and MRRU = 0,
 	 * ie. segments disabled => segmentation needed but impossible */
-	status |= test_comp_and_decomp(MAX_ROHC_SIZE, 0, false, 0);
+	status |= test_comp_and_decomp(TEST_MAX_ROHC_SIZE, 0, false, 0);
 	if(status != 0)
 	{
 		goto error;
@@ -119,7 +124,8 @@ int main(int argc, char *argv[])
 
 	/* test ROHC segments with very large packet (wrt output buffer) and large
 	 * MRRU => segmentation needed, more than 2 segments expected */
-	status |= test_comp_and_decomp(MAX_ROHC_SIZE * 2, MAX_ROHC_SIZE * 3, true, 3);
+	status |= test_comp_and_decomp(TEST_MAX_ROHC_SIZE * 2,
+	                               TEST_MAX_ROHC_SIZE * 3, true, 3);
 	if(status != 0)
 	{
 		goto error;
@@ -127,7 +133,8 @@ int main(int argc, char *argv[])
 
 	/* test ROHC segments with very large packet (wrt output buffer) and large
 	 * MRRU (but not large enough) => segmentation needed, but MRRU forbids it */
-	status |= test_comp_and_decomp(MAX_ROHC_SIZE * 2, MAX_ROHC_SIZE, false, 0);
+	status |= test_comp_and_decomp(TEST_MAX_ROHC_SIZE * 2, TEST_MAX_ROHC_SIZE,
+	                               false, 0);
 	if(status != 0)
 	{
 		goto error;
@@ -182,12 +189,12 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 //! [define ROHC decompressor]
 
 	struct ipv4_hdr *ip_header;
-	unsigned char ip_packet[MAX_ROHC_SIZE * 3];
+	unsigned char ip_packet[TEST_MAX_ROHC_SIZE * 3];
 
-	unsigned char rohc_packet[MAX_ROHC_SIZE];
+	unsigned char rohc_packet[TEST_MAX_ROHC_SIZE];
 	size_t rohc_packet_len;
 
-	unsigned char uncomp_packet[MAX_ROHC_SIZE * 3];
+	unsigned char uncomp_packet[TEST_MAX_ROHC_SIZE * 3];
 	size_t uncomp_packet_len;
 
 	size_t segments_nr;
@@ -200,7 +207,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	        "MMRU = %zd bytes\n", ip_packet_len, mrru);
 
 	/* check that buffer for IP packet is large enough */
-	if(ip_packet_len > MAX_ROHC_SIZE * 3)
+	if(ip_packet_len > TEST_MAX_ROHC_SIZE * 3)
 	{
 		fprintf(stderr, "size requested for IP packet is too large\n");
 		goto error;
@@ -304,11 +311,11 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	{
 		ip_header->check = htons(0xa901);
 	}
-	else if(ip_packet_len == MAX_ROHC_SIZE)
+	else if(ip_packet_len == TEST_MAX_ROHC_SIZE)
 	{
 		ip_header->check = htons(0x9565);
 	}
-	else if(ip_packet_len == MAX_ROHC_SIZE * 2)
+	else if(ip_packet_len == TEST_MAX_ROHC_SIZE * 2)
 	{
 		ip_header->check = htons(0x8165);
 	}
@@ -326,7 +333,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	segments_nr = 0;
 //! [segment ROHC packet #1]
 	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_packet_len,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_packet_len);
+	                     rohc_packet, TEST_MAX_ROHC_SIZE, &rohc_packet_len);
 	if(ret == ROHC_NEED_SEGMENT)
 	{
 		/* ROHC segmentation is required to compress the IP packet */
@@ -336,7 +343,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 
 //! [segment ROHC packet #2]
 		/* get the segments */
-		while((ret = rohc_comp_get_segment(comp, rohc_packet, MAX_ROHC_SIZE,
+		while((ret = rohc_comp_get_segment(comp, rohc_packet, TEST_MAX_ROHC_SIZE,
 		                                   &rohc_packet_len)) == ROHC_NEED_SEGMENT)
 		{
 			/* new ROHC segment retrieved */
@@ -348,7 +355,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 			/* decompress segment */
 			ret = rohc_decompress2(decomp, arrival_time,
 			                       rohc_packet, rohc_packet_len,
-			                       uncomp_packet, MAX_ROHC_SIZE * 3,
+			                       uncomp_packet, TEST_MAX_ROHC_SIZE * 3,
 			                       &uncomp_packet_len);
 			if(ret != ROHC_NON_FINAL_SEGMENT)
 			{
@@ -371,7 +378,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		/* decompress last segment */
 		ret = rohc_decompress2(decomp, arrival_time,
 		                       rohc_packet, rohc_packet_len,
-		                       uncomp_packet, MAX_ROHC_SIZE * 3,
+		                       uncomp_packet, TEST_MAX_ROHC_SIZE * 3,
 		                       &uncomp_packet_len);
 		if(ret != ROHC_OK)
 		{
@@ -403,7 +410,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		/* decompress ROHC packet */
 		ret = rohc_decompress2(decomp, arrival_time,
 		                       rohc_packet, rohc_packet_len,
-		                       uncomp_packet, MAX_ROHC_SIZE * 3,
+		                       uncomp_packet, TEST_MAX_ROHC_SIZE * 3,
 		                       &uncomp_packet_len);
 		if(ret != ROHC_OK)
 		{
