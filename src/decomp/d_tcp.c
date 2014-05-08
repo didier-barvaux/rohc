@@ -283,40 +283,40 @@ struct d_tcp_context
  * Private function prototypes.
  */
 
-static void * d_tcp_create(const struct d_context *const context);
+static void * d_tcp_create(const struct rohc_decomp_ctxt *const context);
 static void d_tcp_destroy(void *const context);
 
-static int tcp_decode_static_ipv6_option(struct d_context *const context,
+static int tcp_decode_static_ipv6_option(struct rohc_decomp_ctxt *const context,
                                          ip_context_ptr_t ip_context,
                                          uint8_t protocol,
                                          const unsigned char *const rohc_packet,
                                          const size_t rohc_length,
                                          base_header_ip_t base_header);
-static unsigned int tcp_copy_static_ipv6_option(const struct d_context *const context,
+static unsigned int tcp_copy_static_ipv6_option(const struct rohc_decomp_ctxt *const context,
                                                 uint8_t protocol,
                                                 ip_context_ptr_t ip_context,
                                                 base_header_ip_t base_header);
-static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
+static int tcp_decode_dynamic_ipv6_option(struct rohc_decomp_ctxt *const context,
                                           ip_context_ptr_t ip_context,
                                           uint8_t protocol,
                                           const unsigned char *const rohc_packet,
                                           const size_t rohc_length,
                                           base_header_ip_t base_header);
 
-static int tcp_decode_static_ip(struct d_context *const context,
+static int tcp_decode_static_ip(struct rohc_decomp_ctxt *const context,
                                 ip_context_ptr_t ip_context,
                                 const unsigned char *const rohc_packet,
                                 const size_t rohc_length,
                                 unsigned char *dest);
-static unsigned int tcp_copy_static_ip(const struct d_context *const context,
+static unsigned int tcp_copy_static_ip(const struct rohc_decomp_ctxt *const context,
                                        ip_context_ptr_t ip_context,
                                        base_header_ip_t base_header);
-static int tcp_decode_dynamic_ip(struct d_context *const context,
+static int tcp_decode_dynamic_ip(struct rohc_decomp_ctxt *const context,
                                  ip_context_ptr_t ip_context,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_length,
                                  unsigned char *dest);
-static int tcp_decode_irregular_ip(struct d_context *const context,
+static int tcp_decode_irregular_ip(struct rohc_decomp_ctxt *const context,
                                    ip_context_ptr_t ip_context,
                                    base_header_ip_t base_header,
                                    const uint8_t *rohc_data,
@@ -324,38 +324,38 @@ static int tcp_decode_irregular_ip(struct d_context *const context,
                                    int ttl_irregular_chain_flag,
                                    int ip_inner_ecn)
 	__attribute__((warn_unused_result));
-static int tcp_decode_static_tcp(struct d_context *const context,
+static int tcp_decode_static_tcp(struct rohc_decomp_ctxt *const context,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_length,
                                  tcphdr_t *tcp);
-static unsigned int tcp_copy_static_tcp(struct d_context *const context,
+static unsigned int tcp_copy_static_tcp(struct rohc_decomp_ctxt *const context,
                                         tcphdr_t *tcp);
-static int tcp_decode_dynamic_tcp(struct d_context *const context,
+static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
                                   const unsigned char *const rohc_packet,
                                   const size_t rohc_length,
                                   tcphdr_t *tcp);
 
 static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+                                            const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len);
 
 static int d_tcp_decode_ir(struct rohc_decomp *decomp,
-                           struct d_context *context,
+                           struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
                            const size_t large_cid_len,
                            unsigned char *dest);
 static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
-                              struct d_context *context,
+                              struct rohc_decomp_ctxt *context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
                               unsigned char *dest);
 static int d_tcp_decode_CO(struct rohc_decomp *decomp,
-                           struct d_context *context,
+                           struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
@@ -364,7 +364,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
                            unsigned char *dest);
 
 static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
-                                       const struct d_context *const context,
+                                       const struct rohc_decomp_ctxt *const context,
                                        const uint32_t seq_bits,
                                        const size_t seq_bits_nr,
                                        const rohc_lsb_shift_t p,
@@ -372,7 +372,7 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
 	__attribute__((warn_unused_result, nonnull(1, 2, 6)));
 
 static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
-                                       const struct d_context *const context,
+                                       const struct rohc_decomp_ctxt *const context,
                                        const uint8_t ack_flag,
                                        const uint32_t ack_bits,
                                        const size_t ack_bits_nr,
@@ -380,16 +380,16 @@ static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
                                        uint32_t *const ack)
 	__attribute__((warn_unused_result, nonnull(1, 2, 7)));
 
-static uint32_t d_tcp_get_msn(const struct d_context *const context)
+static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
-static const uint8_t * d_ts_lsb(const struct d_context *const context,
+static const uint8_t * d_ts_lsb(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_lsb_decode *const lsb,
                                 const uint8_t *ptr,
                                 uint32_t *const timestamp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static const uint8_t * d_tcp_opt_sack(const struct d_context *const context,
+static const uint8_t * d_tcp_opt_sack(const struct rohc_decomp_ctxt *const context,
                                       const uint8_t *ptr,
                                       uint8_t **pOptions,
                                       uint32_t ack_value)
@@ -406,7 +406,7 @@ static const uint8_t * d_tcp_opt_sack(const struct d_context *const context,
  * @param context  The decompression context
  * @return         The newly-created TCP decompression context
  */
-static void * d_tcp_create(const struct d_context *const context)
+static void * d_tcp_create(const struct rohc_decomp_ctxt *const context)
 {
 	struct d_generic_context *g_context;
 	struct d_tcp_context *tcp_context;
@@ -614,7 +614,7 @@ static void d_tcp_destroy(void *const context)
  * @return               The packet type
  */
 static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+                                            const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len __attribute__((unused)))
@@ -761,7 +761,7 @@ error:
  *                       or ROHC_ERROR_CRC if a CRC error occurs
  */
 static int d_tcp_decode(struct rohc_decomp *const decomp,
-                        struct d_context *const context,
+                        struct rohc_decomp_ctxt *const context,
                         const struct rohc_ts arrival_time __attribute__((unused)),
                         const unsigned char *const rohc_packet,
                         const size_t rohc_length,
@@ -839,7 +839,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
  *                        or ROHC_ERROR if an error occurs
  */
 static int d_tcp_decode_ir(struct rohc_decomp *decomp,
-                           struct d_context *context,
+                           struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
@@ -1182,7 +1182,7 @@ error:
  *                        or ROHC_ERROR if an error occurs
  */
 static int d_tcp_decode_irdyn(struct rohc_decomp *decomp,
-                              struct d_context *context,
+                              struct rohc_decomp_ctxt *context,
                               const unsigned char *const rohc_packet,
                               const size_t rohc_length,
                               const size_t large_cid_len,
@@ -1417,7 +1417,7 @@ error:
  * @return               The length of static IP header in case of success,
  *                       -1 if an error occurs
  */
-static int tcp_decode_static_ipv6_option(struct d_context *const context,
+static int tcp_decode_static_ipv6_option(struct rohc_decomp_ctxt *const context,
                                          ip_context_ptr_t ip_context,
                                          uint8_t protocol,
                                          const unsigned char *const rohc_packet,
@@ -1649,7 +1649,7 @@ error:
  * @param base_header    The IP header
  * @return               The size of the static part
  */
-static unsigned int tcp_copy_static_ipv6_option(const struct d_context *const context,
+static unsigned int tcp_copy_static_ipv6_option(const struct rohc_decomp_ctxt *const context,
                                                 uint8_t protocol,
                                                 ip_context_ptr_t ip_context,
                                                 base_header_ip_t base_header)
@@ -1748,7 +1748,7 @@ static unsigned int tcp_copy_static_ipv6_option(const struct d_context *const co
  * @return               The length of dynamic IP header
  *                       0 if an error occurs
  */
-static int tcp_decode_dynamic_ipv6_option(struct d_context *const context,
+static int tcp_decode_dynamic_ipv6_option(struct rohc_decomp_ctxt *const context,
                                           ip_context_ptr_t ip_context,
                                           uint8_t protocol,
                                           const unsigned char *const rohc_packet,
@@ -1877,7 +1877,7 @@ error:
  * @return               The length of static IP header in case of success,
  *                       -1 if an error occurs
  */
-static int tcp_decode_static_ip(struct d_context *const context,
+static int tcp_decode_static_ip(struct rohc_decomp_ctxt *const context,
                                 ip_context_ptr_t ip_context,
                                 const unsigned char *const rohc_packet,
                                 const size_t rohc_length,
@@ -2010,7 +2010,7 @@ error:
  * @param base_header   The IP header
  * @return              The size of the static part
  */
-static unsigned int tcp_copy_static_ip(const struct d_context *const context,
+static unsigned int tcp_copy_static_ip(const struct rohc_decomp_ctxt *const context,
                                        ip_context_ptr_t ip_context,
                                        base_header_ip_t base_header)
 {
@@ -2051,7 +2051,7 @@ static unsigned int tcp_copy_static_ip(const struct d_context *const context,
  * @return               The length of dynamic IP header in case of success,
  *                       -1 if an error occurs
  */
-static int tcp_decode_dynamic_ip(struct d_context *const context,
+static int tcp_decode_dynamic_ip(struct rohc_decomp_ctxt *const context,
                                  ip_context_ptr_t ip_context,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_length,
@@ -2192,7 +2192,7 @@ error:
  * @return                          The number of ROHC bytes parsed,
  *                                  -1 if packet is malformed
  */
-static int tcp_decode_irregular_ip(struct d_context *const context,
+static int tcp_decode_irregular_ip(struct rohc_decomp_ctxt *const context,
                                    ip_context_ptr_t ip_context,
                                    base_header_ip_t base_header,
                                    const uint8_t *rohc_data,
@@ -2313,7 +2313,7 @@ static int tcp_decode_irregular_ip(struct d_context *const context,
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int tcp_decode_static_tcp(struct d_context *const context,
+static int tcp_decode_static_tcp(struct rohc_decomp_ctxt *const context,
                                  const unsigned char *const rohc_packet,
                                  const size_t rohc_length,
                                  tcphdr_t *tcp)
@@ -2369,7 +2369,7 @@ error:
  * @param tcp      The decoded TCP header
  * @return         The number of bytes copied to the TCP header
  */
-static unsigned int tcp_copy_static_tcp(struct d_context *const context,
+static unsigned int tcp_copy_static_tcp(struct rohc_decomp_ctxt *const context,
                                         tcphdr_t *tcp)
 {
 	struct d_generic_context *g_context;
@@ -2405,7 +2405,7 @@ static unsigned int tcp_copy_static_tcp(struct d_context *const context,
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int tcp_decode_dynamic_tcp(struct d_context *const context,
+static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
                                   const unsigned char *const rohc_packet,
                                   const size_t rohc_length,
                                   tcphdr_t *tcp)
@@ -3067,7 +3067,7 @@ error:
  * @return                   The number of ROHC bytes parsed,
  *                           -1 if packet is malformed
  */
-static int tcp_decode_irregular_tcp(struct d_context *const context,
+static int tcp_decode_irregular_tcp(struct rohc_decomp_ctxt *const context,
                                     base_header_ip_t base_header_inner,
                                     tcphdr_t *tcp,
                                     const uint8_t *const rohc_data)
@@ -3284,7 +3284,7 @@ error:
  * @param timestamp  Pointer to the uncompressed value
  * @return           Pointer to the next compressed value
  */
-static const uint8_t * d_ts_lsb(const struct d_context *const context,
+static const uint8_t * d_ts_lsb(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_lsb_decode *const lsb,
                                 const uint8_t *ptr,
                                 uint32_t *const timestamp)
@@ -3369,7 +3369,7 @@ error:
  * @return             The length (in bytes) of the compressed TCP option,
  *                     -1 in case of problem
  */
-static int d_size_ts_lsb(const struct d_context *const context,
+static int d_size_ts_lsb(const struct rohc_decomp_ctxt *const context,
                          const uint8_t *const rohc_data,
                          const size_t rohc_length)
 {
@@ -3557,7 +3557,7 @@ error:
  * @param ack_value  The ack value
  * @return           Pointer to the next compressed value
  */
-static const uint8_t * d_tcp_opt_sack(const struct d_context *const context,
+static const uint8_t * d_tcp_opt_sack(const struct rohc_decomp_ctxt *const context,
                                       const uint8_t *ptr,
                                       uint8_t **pOptions,
                                       uint32_t ack_value)
@@ -3631,7 +3631,7 @@ error:
  * @return             The size (in bytes) of the compressed value,
  *                     -1 in case of problem
  */
-static int d_sack_var_length_size_dec(const struct d_context *const context,
+static int d_sack_var_length_size_dec(const struct rohc_decomp_ctxt *const context,
                                       const uint8_t *const rohc_data,
                                       const size_t rohc_length)
 {
@@ -3704,7 +3704,7 @@ error:
  * @return             The size (in bytes) of the compressed value,
  *                     -1 in case of problem
  */
-static int d_sack_block_size(const struct d_context *const context,
+static int d_sack_block_size(const struct rohc_decomp_ctxt *const context,
                              const uint8_t *const rohc_data,
                              const size_t rohc_length)
 {
@@ -3761,7 +3761,7 @@ error:
  * @return             The size (in bytes) of the compressed value,
  *                     -1 in case of problem
  */
-static int d_tcp_size_opt_sack(const struct d_context *const context,
+static int d_tcp_size_opt_sack(const struct rohc_decomp_ctxt *const context,
                                const uint8_t *const rohc_data,
                                const size_t rohc_length,
                                uint16_t *const uncomp_len)
@@ -3890,7 +3890,7 @@ static int d_tcp_size_opt_generic(struct d_tcp_context *tcp_context __attribute_
  * @return             Pointer on data after the compressed TCP options,
  *                     NULL in case of malformed data
  */
-static const uint8_t * tcp_decompress_tcp_options(struct d_context *const context,
+static const uint8_t * tcp_decompress_tcp_options(struct rohc_decomp_ctxt *const context,
 																  const uint8_t *data,
 																  const size_t data_len,
 																  tcphdr_t *const tcp)
@@ -4244,7 +4244,7 @@ error:
  * @return                 The length of compressed TCP options,
  *                         -1 in case of malformed data
  */
-static int tcp_size_decompress_tcp_options(struct d_context *const context,
+static int tcp_size_decompress_tcp_options(struct rohc_decomp_ctxt *const context,
                                            const uint8_t *data,
                                            const size_t data_len,
                                            uint16_t *uncomp_len)
@@ -4523,7 +4523,7 @@ error:
  *                       or ROHC_ERROR_CRC if a CRC error occurs
  */
 static int d_tcp_decode_CO(struct rohc_decomp *decomp,
-                           struct d_context *context,
+                           struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
@@ -6187,7 +6187,7 @@ error_crc:
  *
  */
 static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
-                                       const struct d_context *const context,
+                                       const struct rohc_decomp_ctxt *const context,
                                        const uint32_t seq_bits,
                                        const size_t seq_bits_nr,
                                        const rohc_lsb_shift_t p,
@@ -6218,7 +6218,7 @@ static bool rohc_decomp_tcp_decode_seq(const struct rohc_decomp *const decomp,
  *
  */
 static bool rohc_decomp_tcp_decode_ack(const struct rohc_decomp *const decomp,
-                                       const struct d_context *const context,
+                                       const struct rohc_decomp_ctxt *const context,
                                        const uint8_t ack_flag,
                                        const uint32_t ack_bits,
                                        const size_t ack_bits_nr,
@@ -6263,7 +6263,7 @@ error:
  * @param context The decompression context
  * @return        The reference MSN value
  */
-static uint32_t d_tcp_get_msn(const struct d_context *const context)
+static uint32_t d_tcp_get_msn(const struct rohc_decomp_ctxt *const context)
 {
 	const struct d_generic_context *const g_context = context->specific;
 	const struct d_tcp_context *const tcp_context = g_context->specific;

@@ -107,7 +107,7 @@ struct d_decode_data
 	/// The size (in bytes) of the large CID field
 	unsigned int large_cid_size;
 	/// The context to which the packet is related
-	struct d_context *active;
+	struct rohc_decomp_ctxt *active;
 };
 
 
@@ -133,14 +133,14 @@ static const struct rohc_decomp_profile *
 	             const rohc_profile_t profile_id)
 	__attribute__((warn_unused_result));
 
-static struct d_context * context_create(struct rohc_decomp *decomp,
-                                         const rohc_cid_t cid,
-                                         const struct rohc_decomp_profile *const profile,
-                                         const struct rohc_ts arrival_time);
-static struct d_context * find_context(const struct rohc_decomp *const decomp,
-                                       const size_t cid)
+static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
+                                                const rohc_cid_t cid,
+                                                const struct rohc_decomp_profile *const profile,
+                                                const struct rohc_ts arrival_time);
+static struct rohc_decomp_ctxt *
+	find_context(const struct rohc_decomp *const decomp, const size_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
-static void context_free(struct d_context *const context);
+static void context_free(struct rohc_decomp_ctxt *const context);
 
 static int rohc_decomp_decode_cid(struct rohc_decomp *decomp,
                                   const unsigned char *packet,
@@ -180,12 +180,12 @@ static void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                       const uint16_t cid,
                                       const rohc_cid_type_t cid_type,
                                       int mode,
-                                      struct d_context *context);
+                                      struct rohc_decomp_ctxt *context);
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   int rohc_status,
                                   const rohc_cid_t cid,
                                   const rohc_cid_type_t cid_type,
-                                  struct d_context *context);
+                                  struct rohc_decomp_ctxt *context);
 
 /* statistics-related functions */
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
@@ -211,8 +211,8 @@ static int rohc_d_context(struct rohc_decomp *decomp,
  * @param cid    The CID of the context to find out
  * @return       The context if found, NULL otherwise
  */
-static struct d_context * find_context(const struct rohc_decomp *const decomp,
-                                       const rohc_cid_t cid)
+static struct rohc_decomp_ctxt *
+	find_context(const struct rohc_decomp *const decomp, const rohc_cid_t cid)
 {
 	/* CID must be valid wrt MAX_CID */
 	assert(cid <= decomp->medium.max_cid);
@@ -230,19 +230,19 @@ static struct d_context * find_context(const struct rohc_decomp *const decomp,
  *                      or to disable time-related features in ROHC protocol)
  * @return              The new context if successful, NULL otherwise
  */
-static struct d_context * context_create(struct rohc_decomp *decomp,
-                                         const rohc_cid_t cid,
-                                         const struct rohc_decomp_profile *const profile,
-                                         const struct rohc_ts arrival_time)
+static struct rohc_decomp_ctxt * context_create(struct rohc_decomp *decomp,
+                                                const rohc_cid_t cid,
+                                                const struct rohc_decomp_profile *const profile,
+                                                const struct rohc_ts arrival_time)
 {
-	struct d_context *context;
+	struct rohc_decomp_ctxt *context;
 
 	assert(decomp != NULL);
 	assert(cid <= ROHC_LARGE_CID_MAX);
 	assert(profile != NULL);
 
 	/* allocate memory for the decompression context */
-	context = (struct d_context *) malloc(sizeof(struct d_context));
+	context = (struct rohc_decomp_ctxt *) malloc(sizeof(struct rohc_decomp_ctxt));
 	if(context == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
@@ -322,7 +322,7 @@ error:
  *
  * @param context  The context to destroy
  */
-static void context_free(struct d_context *const context)
+static void context_free(struct rohc_decomp_ctxt *const context)
 {
 	assert(context != NULL);
 	assert(context->decompressor != NULL);
@@ -1572,7 +1572,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   int rohc_status,
                                   const rohc_cid_t cid,
                                   const rohc_cid_type_t cid_type,
-                                  struct d_context *context)
+                                  struct rohc_decomp_ctxt *context)
 {
 	struct d_feedback sfeedback;
 	uint8_t *feedback;
@@ -1849,7 +1849,7 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                const uint16_t cid,
                                const rohc_cid_type_t cid_type,
                                int mode,
-                               struct d_context *context)
+                               struct rohc_decomp_ctxt *context)
 {
 	switch(mode)
 	{
@@ -1999,7 +1999,7 @@ static int rohc_d_context(struct rohc_decomp *decomp,
                           unsigned int indent,
                           char *buffer)
 {
-	struct d_context *c;
+	struct rohc_decomp_ctxt *c;
 	char *prefix;
 	char *save;
 	int v;
@@ -2324,7 +2324,7 @@ error:
  * @param context The decompression context
  */
 void d_change_mode_feedback(const struct rohc_decomp *const decomp,
-                            const struct d_context *const context)
+                            const struct rohc_decomp_ctxt *const context)
 {
 	struct d_feedback sfeedback;
 	rohc_cid_t cid;
@@ -3340,13 +3340,13 @@ error:
 static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
                                         const rohc_cid_t max_cid)
 {
-	struct d_context **new_contexts;
+	struct rohc_decomp_ctxt **new_contexts;
 
 	assert(decomp != NULL);
 	assert(max_cid <= ROHC_LARGE_CID_MAX);
 
 	/* allocate memory for the new context array */
-	new_contexts = calloc(max_cid + 1, sizeof(struct d_context *));
+	new_contexts = calloc(max_cid + 1, sizeof(struct rohc_decomp_ctxt *));
 	if(new_contexts == NULL)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -3362,7 +3362,7 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 		/* move existing contexts in range [0, new MAX_CID] */
 		memcpy(new_contexts, decomp->contexts,
 		       (rohc_min(decomp->medium.max_cid, max_cid) + 1) *
-		       sizeof(struct d_context *));
+		       sizeof(struct rohc_decomp_ctxt *));
 
 		/* free existing contexts in range ]new MAX_CID, old MAX_CID] */
 		for(i = max_cid + 1; i <= decomp->medium.max_cid; i++)

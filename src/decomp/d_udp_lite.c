@@ -96,27 +96,27 @@ static void d_udp_lite_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
 static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
-                                                 const struct d_context *const context,
+                                                 const struct rohc_decomp_ctxt *const context,
                                                  const uint8_t *const rohc_packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
+static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                       const uint8_t *packet,
                                       const size_t length,
                                       struct rohc_extr_bits *const bits);
 
-static int udp_lite_parse_uo_remainder(const struct d_context *const context,
+static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                        const unsigned char *packet,
                                        unsigned int length,
                                        struct rohc_extr_bits *const bits);
 
-static bool udp_lite_decode_values_from_bits(const struct d_context *context,
+static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                              const struct rohc_extr_bits bits,
                                              struct rohc_decoded_values *const decoded);
 
-static int udp_lite_build_uncomp_udp(const struct d_context *const context,
+static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                      const struct rohc_decoded_values decoded,
                                      unsigned char *dest,
                                      const unsigned int payload_len);
@@ -135,7 +135,7 @@ static int udp_lite_build_uncomp_udp(const struct d_context *const context,
  * @param context  The decompression context
  * @return         The newly-created UDP-Lite decompression context
  */
-void * d_udp_lite_create(const struct d_context *const context)
+void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 {
 	struct d_generic_context *g_context;
 	struct d_udp_lite_context *udp_lite_context;
@@ -277,7 +277,7 @@ static void d_udp_lite_destroy(void *const context)
  * @return               The packet type
  */
 static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
-                                                 const struct d_context *const context,
+                                                 const struct rohc_decomp_ctxt *const context,
                                                  const uint8_t *const rohc_packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
@@ -366,7 +366,7 @@ error:
  *                       or ROHC_ERROR if an error occurs
  */
 int d_udp_lite_decode(struct rohc_decomp *const decomp,
-                      struct d_context *const context,
+                      struct rohc_decomp_ctxt *const context,
                       const struct rohc_ts arrival_time,
                       const unsigned char *const rohc_packet,
                       const size_t rohc_length,
@@ -425,7 +425,7 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int udp_lite_parse_dynamic_udp(const struct d_context *const context,
+static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                       const uint8_t *packet,
                                       const size_t length,
                                       struct rohc_extr_bits *const bits)
@@ -516,7 +516,7 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int udp_lite_parse_uo_remainder(const struct d_context *const context,
+static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                        const unsigned char *packet,
                                        unsigned int length,
                                        struct rohc_extr_bits *const bits)
@@ -605,7 +605,7 @@ error:
  * @param decoded  OUT: The corresponding decoded values
  * @return         true if decoding is successful, false otherwise
  */
-static bool udp_lite_decode_values_from_bits(const struct d_context *context,
+static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                              const struct rohc_extr_bits bits,
                                              struct rohc_decoded_values *const decoded)
 {
@@ -685,7 +685,7 @@ static bool udp_lite_decode_values_from_bits(const struct d_context *context,
  * @return             The length of the next header (ie. the UDP-Lite header),
  *                     -1 in case of error
  */
-static int udp_lite_build_uncomp_udp(const struct d_context *const context,
+static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                      const struct rohc_decoded_values decoded,
                                      unsigned char *dest,
                                      const unsigned int payload_len)

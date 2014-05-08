@@ -84,7 +84,7 @@ unsigned int lsb_xor_masks[] =
  * @param value            The compressed value
  * @return                 The uncompressed value
  */
-uint32_t d_lsb(const struct d_context *const context,
+uint32_t d_lsb(const struct rohc_decomp_ctxt *const context,
                int num_lsbs_param,
                int offset_param __attribute__((unused)),
                unsigned int context_value,
@@ -189,7 +189,7 @@ unsigned int variable_length_32_size[4] =
  *                            -1 if ROHC data is malformed
  */
 int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
-                           const struct d_context *const context,
+                           const struct rohc_decomp_ctxt *const context,
                            const uint8_t *rohc_data,
                            const int indicator,
                            uint32_t *const decoded_value)
@@ -364,7 +364,7 @@ unsigned int rsf_index_dec( unsigned int rsf_index )
  *
  * @todo TODO: duplicated code from rfc4996_encoding.c
  */
-static uint32_t d_c_lsb(const struct d_context *const context,
+static uint32_t d_c_lsb(const struct rohc_decomp_ctxt *const context,
                         int num_lsbs_param,
                         unsigned int offset_param,
                         unsigned int context_value,
@@ -409,7 +409,7 @@ static uint32_t d_c_lsb(const struct d_context *const context,
  * @param msn            The Master Sequence Number
  * @return               The IP-ID
  */
-uint16_t d_ip_id_lsb(const struct d_context *const context,
+uint16_t d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                      const int behavior,
                      const unsigned int k,
                      const unsigned int p,
@@ -469,7 +469,7 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
  * @return               The length (in bytes) of the compressed value,
  *                       -1 if ROHC data is malformed
  */
-int d_optional_ip_id_lsb(const struct d_context *const context,
+int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                          const uint8_t *const rohc_data,
                          const int behavior,
                          const int indicator,

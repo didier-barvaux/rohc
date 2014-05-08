@@ -32,13 +32,13 @@
 
 #include <stdint.h>
 
-struct d_context;
+struct rohc_decomp_ctxt;
 
 extern unsigned int lsb_xor_masks[];
 
 
 // RFC4997 page 27
-uint32_t d_lsb(const struct d_context *const context,
+uint32_t d_lsb(const struct rohc_decomp_ctxt *const context,
                int num_lsbs_param,
                int offset_param,
                unsigned int context_value,
@@ -60,7 +60,7 @@ int d_static_or_irreg16(const uint8_t *rohc_data,
 extern unsigned int variable_length_32_size[];
 
 int variable_length_32_dec(const struct rohc_lsb_decode *const lsb,
-                           const struct d_context *const context,
+                           const struct rohc_decomp_ctxt *const context,
                            const uint8_t *rohc_data,
                            const int indicator,
                            uint32_t *const decoded_value)
@@ -83,7 +83,7 @@ uint32_t d_field_scaling(const uint32_t stride_value,
 unsigned int rsf_index_dec( unsigned int rsf_index );
 
 // RFC4996 page 75
-uint16_t d_ip_id_lsb(const struct d_context *const context,
+uint16_t d_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                      const int behavior,
                      const unsigned int k,
                      const unsigned int p,
@@ -93,7 +93,7 @@ uint16_t d_ip_id_lsb(const struct d_context *const context,
 	__attribute__((warn_unused_result, nonnull(1)));
 
 // RFC4996 page 76
-int d_optional_ip_id_lsb(const struct d_context *const context,
+int d_optional_ip_id_lsb(const struct rohc_decomp_ctxt *const context,
                          const uint8_t *const rohc_data,
                          const int behavior,
                          const int indicator,

@@ -73,36 +73,36 @@ static void d_rtp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
 static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+                                            const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static rohc_packet_t rtp_choose_uo1_variant(const struct d_context *const context,
+static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const packet,
                                             const size_t rohc_length)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static rohc_packet_t rtp_choose_uor2_variant(const struct d_context *const context,
+static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp_ctxt *const context,
                                              const uint8_t *const packet,
                                              const size_t rohc_length,
                                              const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int rtp_parse_static_rtp(const struct d_context *const context,
+static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-static int rtp_parse_dynamic_rtp(const struct d_context *const context,
+static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits);
 
 static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
-                                const struct d_context *const context,
+                                const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_data,
                                 const size_t rohc_data_len,
                                 const rohc_packet_t packet_type,
@@ -113,21 +113,21 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
                                             const int are_all_ipv4_rnd)
 	__attribute__((warn_unused_result, const));
 
-static int rtp_parse_uo_remainder(const struct d_context *const context,
+static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const unsigned char *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits);
 
-static bool rtp_decode_values_from_bits(const struct d_context *context,
+static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded);
 
-static int rtp_build_uncomp_rtp(const struct d_context *const context,
+static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
-static void rtp_update_context(const struct d_context *context,
+static void rtp_update_context(const struct rohc_decomp_ctxt *context,
                                const struct rohc_decoded_values decoded)
 	__attribute__((nonnull(1)));
 
@@ -154,7 +154,7 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const 
  *
  * @return The newly-created RTP decompression context
  */
-void * d_rtp_create(const struct d_context *const context)
+void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
 {
 	struct d_generic_context *g_context;
 	struct d_rtp_context *rtp_context;
@@ -312,7 +312,7 @@ static void d_rtp_destroy(void *const context)
  * @return               The packet type
  */
 static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+                                            const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
@@ -380,7 +380,7 @@ error:
  * @param rohc_length    The length of the ROHC packet
  * @return               The packet type
  */
-static rohc_packet_t rtp_choose_uo1_variant(const struct d_context *const context,
+static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const packet,
                                             const size_t rohc_length)
 {
@@ -481,7 +481,7 @@ static rohc_packet_t rtp_choose_uo1_variant(const struct d_context *const contex
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t rtp_choose_uor2_variant(const struct d_context *const context,
+static rohc_packet_t rtp_choose_uor2_variant(const struct rohc_decomp_ctxt *const context,
                                              const uint8_t *const packet,
                                              const size_t rohc_length,
                                              const size_t large_cid_len)
@@ -587,7 +587,7 @@ static rohc_packet_t rtp_choose_uor2_variant(const struct d_context *const conte
  * @return        The number of bytes read in the ROHC packet,
  *                -1 in case of failure
  */
-static int rtp_parse_static_rtp(const struct d_context *const context,
+static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
@@ -658,7 +658,7 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int rtp_parse_dynamic_rtp(const struct d_context *const context,
+static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
@@ -899,7 +899,7 @@ error:
  *                          -1 in case of error
  */
 static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
-                                const struct d_context *const context,
+                                const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_data,
                                 const size_t rohc_data_len,
                                 const rohc_packet_t packet_type,
@@ -1446,7 +1446,7 @@ static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int rtp_parse_uo_remainder(const struct d_context *const context,
+static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const unsigned char *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
@@ -1526,7 +1526,7 @@ error:
  * @param decoded  OUT: The corresponding decoded values
  * @return         true if decoding is successful, false otherwise
  */
-static bool rtp_decode_values_from_bits(const struct d_context *context,
+static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded)
 {
@@ -1788,7 +1788,7 @@ error:
  * @return             The length of the next header (ie. the UDP/RTP header),
  *                     -1 in case of error
  */
-static int rtp_build_uncomp_rtp(const struct d_context *const context,
+static int rtp_build_uncomp_rtp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len)
@@ -1842,7 +1842,7 @@ static int rtp_build_uncomp_rtp(const struct d_context *const context,
  * @param context  The decompression context
  * @param decoded  The decoded values to update in the context
  */
-static void rtp_update_context(const struct d_context *context,
+static void rtp_update_context(const struct rohc_decomp_ctxt *context,
                                const struct rohc_decoded_values decoded)
 {
 	struct d_generic_context *g_context;

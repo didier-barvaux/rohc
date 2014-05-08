@@ -367,14 +367,14 @@ struct d_generic_context
 
 	/// @brief The handler used to parse the static part of the next header
 	///        in the ROHC packet
-	int (*parse_static_next_hdr)(const struct d_context *const context,
+	int (*parse_static_next_hdr)(const struct rohc_decomp_ctxt *const context,
 	                             const unsigned char *packet,
 	                             size_t length,
 	                             struct rohc_extr_bits *const bits);
 
 	/// @brief The handler used to parse the dynamic part of the next header
 	///        in the ROHC packet
-	int (*parse_dyn_next_hdr)(const struct d_context *const context,
+	int (*parse_dyn_next_hdr)(const struct rohc_decomp_ctxt *const context,
 	                          const uint8_t *packet,
 	                          const size_t length,
 	                          struct rohc_extr_bits *const bits);
@@ -394,7 +394,7 @@ struct d_generic_context
 	 *                          -1 in case of error
 	 */
 	int (*parse_extension3)(const struct rohc_decomp *const decomp,
-	                        const struct d_context *const context,
+	                        const struct rohc_decomp_ctxt *const context,
 	                        const unsigned char *const rohc_data,
 	                        const size_t rohc_data_len,
 	                        const rohc_packet_t packet_type,
@@ -402,18 +402,18 @@ struct d_generic_context
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
 
 	/// The handler used to parse the tail of the UO* ROHC packet
-	int (*parse_uo_remainder)(const struct d_context *const context,
+	int (*parse_uo_remainder)(const struct rohc_decomp_ctxt *const context,
 	                          const unsigned char *packet,
 	                          unsigned int length,
 	                          struct rohc_extr_bits *const bits);
 
 	/** The handler used to decode extracted for next header */
-	bool (*decode_values_from_bits)(const struct d_context *context,
+	bool (*decode_values_from_bits)(const struct rohc_decomp_ctxt *context,
 	                                const struct rohc_extr_bits bits,
 	                                struct rohc_decoded_values *const decoded);
 
 	/** The handler used to build the uncompressed next header */
-	int (*build_next_header)(const struct d_context *const context,
+	int (*build_next_header)(const struct rohc_decomp_ctxt *const context,
 	                         const struct rohc_decoded_values decoded,
 	                         unsigned char *dest,
 	                         const unsigned int payload_len);
@@ -435,7 +435,7 @@ struct d_generic_context
 	                               const uint8_t *const crc_table);
 
 	/** The handler used to update context with decoded next header fields */
-	void (*update_context)(const struct d_context *context,
+	void (*update_context)(const struct rohc_decomp_ctxt *context,
 	                       const struct rohc_decoded_values decoded);
 
 	/// Profile-specific data
@@ -467,7 +467,7 @@ struct d_generic_context
  * Public function prototypes.
  */
 
-void * d_generic_create(const struct d_context *const context,
+void * d_generic_create(const struct rohc_decomp_ctxt *const context,
                         rohc_trace_callback_t trace_callback,
                         const int profile_id)
 	__attribute__((nonnull(1, 2), warn_unused_result));
@@ -476,7 +476,7 @@ void d_generic_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
 int d_generic_decode(struct rohc_decomp *const decomp,
-                     struct d_context *const context,
+                     struct rohc_decomp_ctxt *const context,
                      const struct rohc_ts arrival_time,
                      const unsigned char *const rohc_packet,
                      const size_t rohc_length,
@@ -485,7 +485,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
                      unsigned char *uncomp_packet,
                      rohc_packet_t *const packet_type);
 
-uint32_t d_generic_get_sn(const struct d_context *const context);
+uint32_t d_generic_get_sn(const struct rohc_decomp_ctxt *const context);
 
 
 

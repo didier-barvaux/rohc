@@ -61,31 +61,31 @@ struct d_esp_context
  * Private function prototypes.
  */
 
-static void * d_esp_create(const struct d_context *const context);
+static void * d_esp_create(const struct rohc_decomp_ctxt *const context);
 static void d_esp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-static int esp_parse_static_esp(const struct d_context *const context,
+static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-static int esp_parse_dynamic_esp(const struct d_context *const context,
+static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits);
 
-static bool esp_decode_values_from_bits(const struct d_context *context,
+static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded);
 
-static int esp_build_uncomp_esp(const struct d_context *const context,
+static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
 
-static void esp_update_context(const struct d_context *context,
+static void esp_update_context(const struct rohc_decomp_ctxt *context,
                                const struct rohc_decoded_values decoded)
 	__attribute__((nonnull(1)));
 
@@ -103,7 +103,7 @@ static void esp_update_context(const struct d_context *context,
  * @param context  The decompression context
  * @return         The newly-created ESP decompression context
  */
-static void * d_esp_create(const struct d_context *const context)
+static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 {
 	struct d_generic_context *g_context;
 	struct d_esp_context *esp_context;
@@ -238,7 +238,7 @@ static void d_esp_destroy(void *const context)
  * @return        The number of bytes read in the ROHC packet,
  *                -1 in case of failure
  */
-static int esp_parse_static_esp(const struct d_context *const context,
+static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *packet,
                                 size_t length,
                                 struct rohc_extr_bits *const bits)
@@ -302,7 +302,7 @@ error:
  * @return         The number of bytes read in the ROHC packet,
  *                 -1 in case of failure
  */
-static int esp_parse_dynamic_esp(const struct d_context *const context,
+static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
@@ -352,7 +352,7 @@ error:
  * @param decoded  OUT: The corresponding decoded values
  * @return         true if decoding is successful, false otherwise
  */
-static bool esp_decode_values_from_bits(const struct d_context *context,
+static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded)
 {
@@ -397,7 +397,7 @@ static bool esp_decode_values_from_bits(const struct d_context *context,
  * @return             The length of the next header (ie. the ESP header),
  *                     -1 in case of error
  */
-static int esp_build_uncomp_esp(const struct d_context *const context,
+static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len __attribute__((unused)))
@@ -426,7 +426,7 @@ static int esp_build_uncomp_esp(const struct d_context *const context,
  * @param context  The decompression context
  * @param decoded  The decoded values to update in the context
  */
-static void esp_update_context(const struct d_context *context,
+static void esp_update_context(const struct rohc_decomp_ctxt *context,
                                const struct rohc_decoded_values decoded)
 {
 	struct d_generic_context *g_context;

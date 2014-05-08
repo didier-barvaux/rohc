@@ -94,11 +94,11 @@ struct rohc_decomp
 	bool enabled_profiles[D_NUM_PROFILES];
 
 	/** The array of decompression contexts that use the decompressor */
-	struct d_context **contexts;
+	struct rohc_decomp_ctxt **contexts;
 	/** The number of decompression contexts in use */
 	size_t num_contexts_used;
 	/** The last decompression context used by the decompressor */
-	struct d_context *last_context;
+	struct rohc_decomp_ctxt *last_context;
 
 	/**
 	 * @brief The feedback interval limits
@@ -150,7 +150,7 @@ struct rohc_decomp
 /**
  * @brief The ROHC decompression context
  */
-struct d_context
+struct rohc_decomp_ctxt
 {
 	/** The Context IDentifier (CID) */
 	rohc_cid_t cid;
@@ -242,7 +242,7 @@ struct rohc_decomp_profile
 
 	/* @brief The handler used to create the profile-specific part of the
 	 *        decompression context */
-	void * (*new_context)(const struct d_context *const context);
+	void * (*new_context)(const struct rohc_decomp_ctxt *const context);
 
 	/* @brief The handler used to destroy the profile-specific part of the
 	 *        decompression context */
@@ -250,7 +250,7 @@ struct rohc_decomp_profile
 
 	/* The handler used to decode a ROHC packet */
 	int (*decode)(struct rohc_decomp *const decomp,
-	              struct d_context *const context,
+	              struct rohc_decomp_ctxt *const context,
 	              const struct rohc_ts arrival_time,
 	              const unsigned char *const rohc_packet,
 	              const size_t rohc_length,
@@ -261,14 +261,14 @@ struct rohc_decomp_profile
 
 	/** The handler used to detect the type of the ROHC packet */
 	rohc_packet_t (*detect_pkt_type)(const struct rohc_decomp *const decomp,
-	                                 const struct d_context *const context,
+	                                 const struct rohc_decomp_ctxt *const context,
 	                                 const uint8_t *const rohc_packet,
 	                                 const size_t rohc_length,
 	                                 const size_t large_cid_len)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 	/* The handler used to retrieve the Sequence Number (SN) */
-	uint32_t (*get_sn)(const struct d_context *const context);
+	uint32_t (*get_sn)(const struct rohc_decomp_ctxt *const context);
 };
 
 
@@ -278,7 +278,7 @@ struct rohc_decomp_profile
  */
 
 void d_change_mode_feedback(const struct rohc_decomp *const decomp,
-                            const struct d_context *const context);
+                            const struct rohc_decomp_ctxt *const context);
 
 
 #endif

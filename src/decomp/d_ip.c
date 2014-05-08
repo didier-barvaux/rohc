@@ -53,7 +53,7 @@ static void d_ip_destroy(void *const context)
  * @param context  The decompression context
  * @return         The newly-created IP decompression context
  */
-void * d_ip_create(const struct d_context *const context)
+void * d_ip_create(const struct rohc_decomp_ctxt *const context)
 {
 	struct d_generic_context *g_context;
 
@@ -127,7 +127,7 @@ void d_ip_destroy(void *const context)
  * @return               The packet type
  */
 rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
-                                    const struct d_context *const context,
+                                    const struct rohc_decomp_ctxt *const context,
                                     const uint8_t *const rohc_packet,
                                     const size_t rohc_length,
                                     const size_t large_cid_len __attribute__((unused)))
@@ -193,7 +193,7 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-int ip_parse_dynamic_ip(const struct d_context *const context,
+int ip_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
                         const uint8_t *packet,
                         const size_t length,
                         struct rohc_extr_bits *const bits)
@@ -271,7 +271,7 @@ error:
  *                          -1 in case of error
  */
 int ip_parse_extension3(const struct rohc_decomp *const decomp,
-                        const struct d_context *const context,
+                        const struct rohc_decomp_ctxt *const context,
                         const unsigned char *const rohc_data,
                         const size_t rohc_data_len,
                         const rohc_packet_t packet_type,
@@ -532,7 +532,7 @@ error:
  *                    -1 in case of error
  */
 int parse_inner_header_flags(const struct rohc_decomp *const decomp,
-                             const struct d_context *const context,
+                             const struct rohc_decomp_ctxt *const context,
                              const unsigned char *const flags,
                              const unsigned char *fields,
                              const size_t length,
@@ -704,7 +704,7 @@ error:
  *                            -1 in case of error
  */
 int parse_outer_header_flags(const struct rohc_decomp *const decomp,
-                             const struct d_context *const context,
+                             const struct rohc_decomp_ctxt *const context,
                              const unsigned char *const flags,
                              const unsigned char *fields,
                              const size_t length,

@@ -41,14 +41,14 @@
  */
 
 static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp *const decomp,
-                                            const struct d_context *const context,
+                                            const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
 static int uncomp_decode(struct rohc_decomp *const decomp,
-                         struct d_context *const context,
+                         struct rohc_decomp_ctxt *const context,
                          const struct rohc_ts arrival_time,
                          const unsigned char *const rohc_packet,
                          const size_t rohc_length,
@@ -58,7 +58,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
                          rohc_packet_t *const packet_type);
 
 static int uncomp_decode_ir(struct rohc_decomp *decomp,
-                            struct d_context *context,
+                            struct rohc_decomp_ctxt *context,
                             const unsigned char *const rohc_packet,
                             const unsigned int rohc_length,
                             const size_t add_cid_len,
@@ -66,14 +66,14 @@ static int uncomp_decode_ir(struct rohc_decomp *decomp,
                             unsigned char *dest);
 
 static int uncomp_decode_normal(struct rohc_decomp *decomp,
-                                struct d_context *context,
+                                struct rohc_decomp_ctxt *context,
                                 const unsigned char *const rohc_packet,
                                 const unsigned int rohc_length,
                                 const size_t add_cid_len,
                                 const size_t large_cid_len,
                                 unsigned char *dest);
 
-static uint32_t uncomp_get_sn(const struct d_context *const context)
+static uint32_t uncomp_get_sn(const struct rohc_decomp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
 
@@ -90,7 +90,7 @@ static uint32_t uncomp_get_sn(const struct d_context *const context)
  *
  * @return The newly-created generic decompression context
  */
-static void * uncomp_new_context(const struct d_context *const context __attribute__((unused)))
+static void * uncomp_new_context(const struct rohc_decomp_ctxt *const context __attribute__((unused)))
 {
 	return (void *) 1;
 }
@@ -121,7 +121,7 @@ static void uncomp_free_context(void *context __attribute__((unused)))
  * @return               The packet type
  */
 static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp *const decomp __attribute__((unused)),
-                                            const struct d_context *const context __attribute__((unused)),
+                                            const struct rohc_decomp_ctxt *const context __attribute__((unused)),
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len __attribute__((unused)))
@@ -163,7 +163,7 @@ static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp *const deco
  *                       or ROHC_ERROR if an error occurs
  */
 static int uncomp_decode(struct rohc_decomp *const decomp,
-                         struct d_context *const context,
+                         struct rohc_decomp_ctxt *const context,
                          const struct rohc_ts arrival_time __attribute__((unused)),
                          const unsigned char *const rohc_packet,
                          const size_t rohc_length,
@@ -210,7 +210,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
  *                       or ROHC_ERROR if an error occurs
  */
 static int uncomp_decode_ir(struct rohc_decomp *decomp,
-                            struct d_context *context,
+                            struct rohc_decomp_ctxt *context,
                             const unsigned char *const rohc_packet,
                             const unsigned int rohc_length,
                             const size_t add_cid_len,
@@ -304,7 +304,7 @@ error:
  *                       or ROHC_ERROR if an error occurs
  */
 static int uncomp_decode_normal(struct rohc_decomp *decomp,
-                                struct d_context *context,
+                                struct rohc_decomp_ctxt *context,
                                 const unsigned char *const rohc_packet,
                                 const unsigned int rohc_length,
                                 const size_t add_cid_len __attribute__((unused)),
@@ -366,7 +366,7 @@ error:
  * @param context The decompression context
  * @return        The reference SN value
  */
-static uint32_t uncomp_get_sn(const struct d_context *const context __attribute__((unused)))
+static uint32_t uncomp_get_sn(const struct rohc_decomp_ctxt *const context __attribute__((unused)))
 {
 	return 0;
 }

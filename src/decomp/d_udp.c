@@ -66,21 +66,21 @@ struct d_udp_context
 static void d_udp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-static int udp_parse_dynamic_udp(const struct d_context *const context,
+static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits);
 
-static int udp_parse_uo_remainder(const struct d_context *const context,
+static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const unsigned char *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits);
 
-static bool udp_decode_values_from_bits(const struct d_context *context,
+static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded);
 
-static int udp_build_uncomp_udp(const struct d_context *const context,
+static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len);
@@ -95,7 +95,7 @@ static int udp_build_uncomp_udp(const struct d_context *const context,
  * @param context  The decompression context
  * @return         The newly-created UDP decompression context
  */
-void * d_udp_create(const struct d_context *const context)
+void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 {
 	struct d_generic_context *g_context;
 	struct d_udp_context *udp_context;
@@ -233,7 +233,7 @@ static void d_udp_destroy(void *const context)
  * @return        The number of bytes read in the ROHC packet,
  *                -1 in case of failure
  */
-int udp_parse_static_udp(const struct d_context *const context,
+int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
                          const unsigned char *packet,
                          size_t length,
                          struct rohc_extr_bits *const bits)
@@ -313,7 +313,7 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int udp_parse_dynamic_udp(const struct d_context *const context,
+static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                  const uint8_t *packet,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits)
@@ -376,7 +376,7 @@ error:
  * @return             The number of bytes read in the ROHC packet,
  *                     -1 in case of failure
  */
-static int udp_parse_uo_remainder(const struct d_context *const context,
+static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
                                   const unsigned char *packet,
                                   unsigned int length,
                                   struct rohc_extr_bits *const bits)
@@ -451,7 +451,7 @@ error:
  * @param decoded  OUT: The corresponding decoded values
  * @return         true if decoding is successful, false otherwise
  */
-static bool udp_decode_values_from_bits(const struct d_context *context,
+static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
                                         const struct rohc_extr_bits bits,
                                         struct rohc_decoded_values *const decoded)
 {
@@ -546,7 +546,7 @@ error:
  * @return             The length of the next header (ie. the UDP header),
  *                     -1 in case of error
  */
-static int udp_build_uncomp_udp(const struct d_context *const context,
+static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
                                 const struct rohc_decoded_values decoded,
                                 unsigned char *dest,
                                 const unsigned int payload_len)
@@ -585,7 +585,7 @@ static int udp_build_uncomp_udp(const struct d_context *const context,
  * @param context  The decompression context
  * @param decoded  The decoded values to update in the context
  */
-void udp_update_context(const struct d_context *context,
+void udp_update_context(const struct rohc_decomp_ctxt *context,
                         const struct rohc_decoded_values decoded)
 {
 	struct d_generic_context *g_context;
