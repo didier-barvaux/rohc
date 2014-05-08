@@ -1,4 +1,9 @@
 /*
+ * Copyright 2013 Didier Barvaux
+ * Copyright 2013,2014 Mikhail Gruzdev
+ * Copyright 2009,2010 Thales Communications
+ * Copyright 2013,2014 Viveris Technologies
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -31,7 +36,7 @@
 
 MODULE_VERSION(PACKAGE_VERSION);
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Mikhail Gruzdev, Viveris Technologies");
+MODULE_AUTHOR("Didier Barvaux, Mikhail Gruzdev, Thales Communications, Viveris Technologies");
 MODULE_DESCRIPTION(PACKAGE_NAME ", version " PACKAGE_VERSION " (" PACKAGE_URL ")");
 
 

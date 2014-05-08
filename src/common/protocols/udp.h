@@ -1,4 +1,6 @@
 /* Copyright (C) 1991-1993,1995-1997,2004,2009 Free Software Foundation, Inc.
+ * Copyright 2012 Didier Barvaux
+ *
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or

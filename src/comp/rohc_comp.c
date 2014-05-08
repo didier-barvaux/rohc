@@ -1,4 +1,10 @@
 /*
+ * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
+ * Copyright 2013 Friedrich
+ * Copyright 2009,2010 Thales Communications
+ * Copyright 2007,2009,2010,2012,2013,2014 Viveris Technologies
+ * Copyright 2012 WBX
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or

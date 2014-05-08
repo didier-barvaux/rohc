@@ -1,4 +1,8 @@
 /*
+ * Copyright 2013,2014 Didier Barvaux
+ * Copyright 2009,2010 Thales Communications
+ * Copyright 2013 Viveris Technologies
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -1007,7 +1011,7 @@ void __exit rohc_test_exit(void)
 
 MODULE_VERSION("0.0.1");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Thales Communications, Viveris Technologies");
+MODULE_AUTHOR("Didier Barvaux, Thales Communications, Viveris Technologies");
 MODULE_DESCRIPTION("Module for testing " PACKAGE_NAME " " PACKAGE_VERSION " (" PACKAGE_URL ")");
 
 module_init(rohc_test_init);
