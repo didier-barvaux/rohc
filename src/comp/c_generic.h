@@ -335,8 +335,9 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 
 bool c_generic_reinit_context(struct rohc_comp_ctxt *const context);
 
-void c_generic_feedback(struct rohc_comp_ctxt *const context,
-                        const struct c_feedback *feedback);
+bool c_generic_feedback(struct rohc_comp_ctxt *const context,
+                        const struct c_feedback *const feedback)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 bool c_generic_use_udp_port(const struct rohc_comp_ctxt *const context,
                             const unsigned int port);

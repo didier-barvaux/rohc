@@ -382,12 +382,16 @@ int main(int argc, char *argv[])
 
 	/* rohc_comp_deliver_feedback() */
 	{
-		const unsigned char buf[] = { 0x00, 0x01, 0x02, 0x03 };
+		const unsigned char buf[] = { 0x20, 0x01, 0x11, 0x39 };
 
 		CHECK(rohc_comp_deliver_feedback(NULL, buf, 4) == true);
 		CHECK(rohc_comp_deliver_feedback(comp, NULL, 4) == false);
 		CHECK(rohc_comp_deliver_feedback(comp, buf, -1) == false);
-		CHECK(rohc_comp_deliver_feedback(comp, buf, 4) == true);
+		CHECK(rohc_comp_deliver_feedback(comp, buf, 0) == false);
+		CHECK(rohc_comp_deliver_feedback(comp, buf, 1) == true); /* valid FEEDBACK-1 */
+		CHECK(rohc_comp_deliver_feedback(comp, buf, 2) == true); /* valid FEEDBACK-1 without option */
+		CHECK(rohc_comp_deliver_feedback(comp, buf, 3) == false);
+		CHECK(rohc_comp_deliver_feedback(comp, buf, 4) == true);  /* valid FEEDBACK-2 with CRC option */
 	}
 
 	/* rohc_comp_free() */

@@ -106,8 +106,12 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const co
 static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context);
 
 /* deliver feedbacks */
-static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
-                                    const struct c_feedback *feedback);
+static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
+                            const struct c_feedback *const feedback)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
+                              const struct c_feedback *const feedback)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* mode and state transitions */
 static void uncompressed_decide_state(struct rohc_comp_ctxt *const context);
@@ -286,130 +290,196 @@ static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
 
 
 /**
- * @brief Update the profile when feedback arrives.
+ * @brief Update the profile when feedback is received
  *
- * This function is one of the functions that must exist in one profile for the
- * framework to work.
+ * This function is one of the functions that must exist in one profile for
+ * the framework to work.
  *
  * @param context  The compression context
- * @param feedback The feedback information including the whole feedback packet
+ * @param feedback The feedback information
+ * @return         true if the feedback was successfully handled,
+ *                 false if the feedback could not be taken into account
  */
-static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
-                                    const struct c_feedback *feedback)
+static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
+                            const struct c_feedback *const feedback)
 {
-	unsigned char *p = feedback->data + feedback->specific_offset;
+	uint8_t *remain_data;
+	size_t remain_len;
 
-	if(feedback->type == 1) /* ACK */
+	assert(context->specific != NULL);
+	assert(context->used == 1);
+	assert(feedback->cid == context->cid);
+	assert(feedback->data != NULL);
+
+	remain_data = feedback->data + feedback->specific_offset;
+	remain_len = feedback->specific_size;
+
+	switch(feedback->type)
 	{
-		rohc_comp_debug(context, "FEEDBACK-1 received\n");
+		case 1: /* FEEDBACK-1 ACK */
+			rohc_comp_debug(context, "FEEDBACK-1 received\n");
+			assert(remain_len == 1);
+			if(remain_data[0] != 0x00)
+			{
+				rohc_comp_warn(context, "profile-specific byte in FEEDBACK-1 "
+				               "should be zero for Uncompressed profile but it "
+				               "is 0x%02x\n", remain_data[0]);
+			}
+			break;
+		case 2: /* FEEDBACK-2 */
+			rohc_comp_debug(context, "FEEDBACK-2 received\n");
+			assert(remain_len >= 2);
+			if(!uncomp_feedback_2(context, feedback))
+			{
+				rohc_comp_warn(context, "failed to handle FEEDBACK-2\n");
+				goto error;
+			}
+			break;
+		default: /* not FEEDBACK-1 nor FEEDBACK-2 */
+			rohc_comp_warn(context, "feedback type not implemented (%d)\n",
+			               feedback->type);
+			goto error;
 	}
-	else if(feedback->type == 2) /* FEEDBACK-2 */
+
+	return true;
+
+error:
+	return false;
+}
+
+
+/**
+ * @brief Update the profile when a FEEDBACK-2 is received
+ *
+ * @param context  The compression context
+ * @param feedback The feedback information
+ * @return         true if the feedback was successfully handled,
+ *                 false if the feedback could not be taken into account
+ */
+static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
+                              const struct c_feedback *const feedback)
+{
+	uint8_t *remain_data = feedback->data + feedback->specific_offset;
+	size_t remain_len = feedback->specific_size;
+	uint8_t crc_in_packet = 0; /* initialized to avoid a GCC warning */
+	bool is_crc_used = false;
+	uint8_t mode;
+
+	assert(remain_len >= 2);
+	mode = (remain_data[0] >> 4) & 3;
+	remain_data += 2;
+	remain_len -= 2;
+
+	/* parse FEEDBACK-2 options */
+	while(remain_len > 0)
 	{
-		unsigned int crc_in_packet = 0; /* initialized to avoid a GCC warning */
-		bool is_crc_used = false;
-		unsigned char mode = (p[0] >> 4) & 3;
-		int remaining = feedback->specific_size - 2;
-		p += 2;
+		const uint8_t opt = (remain_data[0] >> 4) & 0x0f;
+		const uint8_t optlen = (remain_data[0] & 0x0f) + 1;
 
-		rohc_comp_debug(context, "FEEDBACK-2 received\n");
-
-		/* parse options */
-		while(remaining > 0)
+		/* check min length */
+		if(remain_len < optlen)
 		{
-			int opt = p[0] >> 4;
-			int optlen = p[0] & 0x0f;
-
-			switch(opt)
-			{
-				case 1: /* CRC */
-					crc_in_packet = p[1];
-					is_crc_used = true;
-					p[1] = 0; /* set to zero for crc computation */
-					break;
-//				case 2: /* Reject */
-//					break;
-				case 3: /* SN-Not-Valid */
-					/* ignore the option */
-					break;
-				case 4: /* SN */
-					/* ignore the option */
-					break;
-//				case 7: /* Loss */
-//					break;
-				default:
-					rohc_comp_warn(context, "unknown feedback option %d\n", opt);
-					break;
-			}
-
-			remaining -= 1 + optlen;
-			p += 1 + optlen;
+			rohc_comp_warn(context, "%zu-byte FEEDBACK-2 is too short for "
+			               "%u-byte option %u\n", remain_len, optlen, opt);
+			goto error;
 		}
 
-		/* check CRC if present in feedback */
-		if(is_crc_used == true)
+		switch(opt)
 		{
-			unsigned int crc_computed;
-
-			/* compute the CRC of the feedback packet */
-			crc_computed = crc_calculate(ROHC_CRC_TYPE_8,
-			                             feedback->data, feedback->size,
-			                             CRC_INIT_8, context->compressor->crc_table_8);
-
-			/* ignore feedback in case of bad CRC */
-			if(crc_in_packet != crc_computed)
-			{
-				rohc_comp_warn(context, "CRC check failed (size = %zu)\n",
-				               feedback->size);
-				return;
-			}
-		}
-
-		/* change mode if present in feedback */
-		if(mode != 0 && mode != context->mode)
-		{
-			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "mode change (%d -> %d) requested by feedback for CID %d\n",
-			          context->mode, mode, context->profile->id);
-
-			/* mode can be changed only if feedback is protected by a CRC */
-			if(is_crc_used == true)
-			{
-				uncompressed_change_mode(context, mode);
-			}
-			else
-			{
-				rohc_comp_warn(context, "mode change requested without CRC\n");
-			}
-		}
-
-		switch(feedback->acktype)
-		{
-			case ACK:
-				rohc_info(context->compressor, ROHC_TRACE_COMP,
-				          context->profile->id, "ACK received\n");
+			case 1: /* CRC */
+				crc_in_packet = remain_data[1];
+				is_crc_used = true;
+				remain_data[1] = 0; /* set to zero for crc computation */
 				break;
-			case NACK:
-				rohc_comp_warn(context, "NACK received\n");
+			case 2: /* Reject */
+				/* ignore the option */
+				rohc_comp_warn(context, "ignore FEEDBACK-2 Reject option\n");
 				break;
-			case STATIC_NACK:
-				rohc_comp_warn(context, "STATIC-NACK received\n");
-				uncompressed_change_state(context, ROHC_COMP_STATE_IR);
+			case 3: /* SN-Not-Valid */
+				/* ignore the option */
+				rohc_comp_warn(context, "ignore FEEDBACK-2 SN-Not-Valid option\n");
 				break;
-			case RESERVED:
-				rohc_comp_warn(context, "reserved field used\n");
+			case 4: /* SN */
+				/* ignore the option */
+				rohc_comp_warn(context, "ignore FEEDBACK-2 SN option\n");
+				break;
+			case 7: /* Loss */
+				/* ignore the option */
+				rohc_comp_warn(context, "ignore FEEDBACK-2 Loss option\n");
 				break;
 			default:
-				/* impossible value */
-				rohc_comp_warn(context, "unknown ACK type (%d)\n",
-				               feedback->acktype);
+				rohc_comp_warn(context, "unknown feedback option %u\n", opt);
+				break;
 		}
 
+		remain_data += optlen;
+		remain_len -= optlen;
 	}
-	else
+
+	/* check CRC if present in feedback */
+	if(is_crc_used)
 	{
-		rohc_comp_warn(context, "feedback type not implemented (%d)\n",
-		               feedback->type);
+		uint8_t crc_computed;
+
+		/* compute the CRC of the feedback packet */
+		crc_computed = crc_calculate(ROHC_CRC_TYPE_8, feedback->data,
+		                             feedback->size, CRC_INIT_8,
+		                             context->compressor->crc_table_8);
+
+		/* ignore feedback in case of bad CRC */
+		if(crc_in_packet != crc_computed)
+		{
+			rohc_comp_warn(context, "CRC check failed (size = %zu)\n",
+			               feedback->size);
+			goto error;
+		}
 	}
+
+	/* change mode if present in feedback */
+	if(mode != 0 && mode != context->mode)
+	{
+		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		          "mode change (%d -> %d) requested by feedback for CID %d\n",
+		          context->mode, mode, context->profile->id);
+
+		/* mode can be changed only if feedback is protected by a CRC */
+		if(is_crc_used)
+		{
+			uncompressed_change_mode(context, mode);
+		}
+		else
+		{
+			rohc_comp_warn(context, "mode change requested without CRC\n");
+		}
+	}
+
+	switch(feedback->acktype)
+	{
+		case ACK:
+			rohc_info(context->compressor, ROHC_TRACE_COMP,
+			          context->profile->id, "ACK received\n");
+			break;
+		case NACK:
+			rohc_comp_warn(context, "NACK received\n");
+			break;
+		case STATIC_NACK:
+			rohc_comp_warn(context, "STATIC-NACK received\n");
+			uncompressed_change_state(context, ROHC_COMP_STATE_IR);
+			break;
+		case RESERVED:
+			rohc_comp_warn(context, "reserved field used\n");
+			break;
+		default:
+			/* impossible value */
+			rohc_comp_warn(context, "unknown ACK type (%d)\n",
+			               feedback->acktype);
+			goto error;
+	}
+
+	return true;
+
+error:
+	return false;
 }
 
 
@@ -762,7 +832,7 @@ const struct rohc_comp_profile c_uncompressed_profile =
 	.check_context  = c_uncompressed_check_context,
 	.encode         = c_uncompressed_encode,
 	.reinit_context = c_uncompressed_reinit_context,
-	.feedback       = c_uncompressed_feedback,
+	.feedback       = uncomp_feedback,
 	.use_udp_port   = c_uncompressed_use_udp_port,
 };
 

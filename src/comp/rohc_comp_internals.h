@@ -321,8 +321,9 @@ struct rohc_comp_profile
 	 * @brief The handler used to warn the profile-specific part of the
 	 *        context about the arrival of feedback data
 	 */
-	void (*feedback)(struct rohc_comp_ctxt *const context,
-	                 const struct c_feedback *feedback);
+	bool (*feedback)(struct rohc_comp_ctxt *const context,
+	                 const struct c_feedback *const feedback)
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/**
 	 * @brief The handler used to detect if a UDP port is used by the profile

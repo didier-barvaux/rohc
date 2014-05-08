@@ -3117,7 +3117,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 {
 	struct rohc_comp_ctxt *c;
 	struct c_feedback feedback;
-	const uint8_t *p = packet;
+	const uint8_t *p;
 	bool is_success = false;
 
 	/* sanity check */
@@ -3125,6 +3125,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	{
 		goto error;
 	}
+	p = packet;
 
 	/* if decompressor is not associated with a compressor, we cannot deliver
 	 * feedback */
@@ -3184,7 +3185,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	else
 	{
 		feedback.type = 2; /* FEEDBACK-2 */
-		feedback.acktype = p[0] >> 6;
+		feedback.acktype = (p[0] >> 6) & 0x3;
 	}
 
 	feedback.specific_offset = p - packet;
@@ -3195,7 +3196,6 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 		           "no memory for feedback data\n");
 		goto error;
 	}
-
 	memcpy(feedback.data, packet, feedback.size);
 
 	/* find context */
@@ -3203,8 +3203,8 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	if(c == NULL)
 	{
 		/* context was not found */
-		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "context not found (CID = %zu)\n", feedback.cid);
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "context not found (CID = %zu)\n", feedback.cid);
 		goto clean;
 	}
 
@@ -3213,10 +3213,18 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 #endif
 
 	/* deliver feedback to profile with the context */
-	c->profile->feedback(c, &feedback);
-
-	/* everything went fine */
-	is_success = true;
+	if(!c->profile->feedback(c, &feedback))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to handle FEEDBACK-%d data\n", feedback.type);
+	}
+	else
+	{
+		/* everything went fine */
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "FEEDBACK-%d data successfully handled\n", feedback.type);
+		is_success = true;
+	}
 
 clean:
 	zfree(feedback.data);
