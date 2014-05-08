@@ -80,6 +80,13 @@
  */
 #define ROHC_LIST_DEFAULT_L  5U
 
+
+/** Print a warning trace for the given compression context */
+#define rohc_comp_warn(context, format, ...) \
+	rohc_warning((context)->compressor, ROHC_TRACE_COMP, \
+	             (context)->profile->id, \
+	             format, ##__VA_ARGS__)
+
 /** Print a debug trace for the given compression context */
 #define rohc_comp_debug(context, format, ...) \
 	rohc_debug((context)->compressor, ROHC_TRACE_COMP, \

@@ -337,9 +337,7 @@ static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
 //				case 7: /* Loss */
 //					break;
 				default:
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id,
-					             "unknown feedback option %d\n", opt);
+					rohc_comp_warn(context, "unknown feedback option %d\n", opt);
 					break;
 			}
 
@@ -360,9 +358,8 @@ static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
 			/* ignore feedback in case of bad CRC */
 			if(crc_in_packet != crc_computed)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id,
-				             "CRC check failed (size = %zu)\n", feedback->size);
+				rohc_comp_warn(context, "CRC check failed (size = %zu)\n",
+				               feedback->size);
 				return;
 			}
 		}
@@ -381,9 +378,7 @@ static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
 			}
 			else
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id,
-				             "mode change requested but no CRC was given\n");
+				rohc_comp_warn(context, "mode change requested without CRC\n");
 			}
 		}
 
@@ -394,30 +389,26 @@ static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
 				          context->profile->id, "ACK received\n");
 				break;
 			case NACK:
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "NACK received\n");
+				rohc_comp_warn(context, "NACK received\n");
 				break;
 			case STATIC_NACK:
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "STATIC-NACK received\n");
+				rohc_comp_warn(context, "STATIC-NACK received\n");
 				uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 				break;
 			case RESERVED:
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "reserved field used\n");
+				rohc_comp_warn(context, "reserved field used\n");
 				break;
 			default:
 				/* impossible value */
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "unknown ACK type (%d)\n",
-				             feedback->acktype);
+				rohc_comp_warn(context, "unknown ACK type (%d)\n",
+				               feedback->acktype);
 		}
 
 	}
 	else
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "feedback type not implemented (%d)\n", feedback->type);
+		rohc_comp_warn(context, "feedback type not implemented (%d)\n",
+		               feedback->type);
 	}
 }
 
@@ -566,8 +557,7 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
 	}
 	else
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "unknown state, cannot build packet\n");
+		rohc_comp_warn(context, "unknown state, cannot build packet\n");
 		*packet_type = ROHC_PACKET_UNKNOWN;
 		assert(0); /* should not happen */
 		goto error;

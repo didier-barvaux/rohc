@@ -71,8 +71,7 @@ static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
 	/* call the generic function for all IP-based profiles */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, packet))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed\n");
 		goto error;
 	}
 	g_context = (struct c_generic_context *) context->specific;

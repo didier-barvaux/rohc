@@ -30,6 +30,13 @@
 #endif
 
 
+/** Print a warning trace for the given list compression context */
+#define rohc_comp_list_warn(list_ctxt, format, ...) \
+	rohc_warning(list_ctxt, ROHC_TRACE_COMP, (list_ctxt)->profile_id, \
+	             format, ##__VA_ARGS__)
+
+
+
 static int rohc_list_decide_type(struct list_comp *const comp)
 	__attribute__((warn_unused_result, nonnull(1)));
 
@@ -103,9 +110,8 @@ bool detect_ipv6_ext_changes(struct list_comp *const comp,
 			index_table = comp->get_index_table(ext_type);
 			if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 			{
-				rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-				             "failed to handle unknown IPv6 extension header of "
-				             "type 0x%02x\n", ext_type);
+				rohc_comp_list_warn(comp, "failed to handle unknown IPv6 "
+				                    "extension header of type 0x%02x\n", ext_type);
 				goto error;
 			}
 
@@ -309,8 +315,7 @@ int rohc_list_encode(struct list_comp *const comp,
 	}
 	if(counter < 0)
 	{
-		rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-		             "failed to encode list type %d\n", encoding_type);
+		rohc_comp_list_warn(comp, "failed to encode list type %d\n", encoding_type);
 		goto error;
 	}
 
@@ -585,9 +590,8 @@ static int rohc_list_encode_type_0(struct list_comp *const comp,
 		const int index_table = comp->get_index_table(item->type);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
-			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-			             "failed to handle unknown IPv6 extension header of "
-			             "type 0x%02x\n", item->type);
+			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
+			                    "header of type 0x%02x\n", item->type);
 			goto error;
 		}
 		if(index_table > 0x07)
@@ -927,9 +931,8 @@ static int rohc_list_encode_type_1(struct list_comp *const comp,
 		const int index_table = comp->get_index_table(item->type);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
-			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-			             "failed to handle unknown IPv6 extension header of "
-			             "type 0x%02x\n", item->type);
+			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
+			                    "header of type 0x%02x\n", item->type);
 			goto error;
 		}
 		if((mask[k] != 0 || !item->known) && index_table > 0x07)
@@ -1603,9 +1606,8 @@ static int rohc_list_encode_type_3(struct list_comp *const comp,
 		const int index_table = comp->get_index_table(item->type);
 		if(index_table < 0 || ((size_t) index_table) >= ROHC_LIST_MAX_ITEM)
 		{
-			rohc_warning(comp, ROHC_TRACE_COMP, comp->profile_id,
-			             "failed to handle unknown IPv6 extension header of "
-			             "type 0x%02x\n", item->type);
+			rohc_comp_list_warn(comp, "failed to handle unknown IPv6 extension "
+			                    "header of type 0x%02x\n", item->type);
 			goto error;
 		}
 		if((ins_mask[k] != 0 || !item->known) && index_table > 0x07)

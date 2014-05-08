@@ -134,8 +134,7 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, packet))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed\n");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -154,8 +153,8 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	udp_context = malloc(sizeof(struct sc_udp_context));
 	if(udp_context == NULL)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "no memory for the UDP part of the profile context\n");
+		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
+		           "no memory for the UDP part of the profile context\n");
 		goto clean;
 	}
 	g_context->specific = udp_context;
@@ -357,10 +356,9 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	 * a different UDP length on its side) */
 	if(rohc_ntoh16(udp->len) != uncomp_pkt->transport->len)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "wrong UDP Length field in UDP header: %u found while "
-		             "%zd expected\n", rohc_ntoh16(udp->len),
-		             uncomp_pkt->transport->len);
+		rohc_comp_warn(context, "wrong UDP Length field in UDP header: %u "
+		               "found while %zu expected\n", rohc_ntoh16(udp->len),
+		               uncomp_pkt->transport->len);
 		return -1;
 	}
 

@@ -835,8 +835,7 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 	/* detect changes between new uncompressed packet and context */
 	if(!c_generic_detect_changes(context, uncomp_pkt))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to detect changes in uncompressed packet\n");
+		rohc_comp_warn(context, "failed to detect changes in uncompressed packet\n");
 		goto error;
 	}
 
@@ -848,9 +847,8 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 	ret = encode_uncomp_fields(context, uncomp_pkt);
 	if(ret != ROHC_OK)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to compute how many bits are needed to send "
-		             "header fields\n");
+		rohc_comp_warn(context, "failed to compute how many bits are needed "
+		               "to send header fields\n");
 		goto error;
 	}
 
@@ -976,10 +974,8 @@ void c_generic_feedback(struct rohc_comp_ctxt *const context,
 					case 4: /* SN */
 						if((sn & 0xff000000) != 0)
 						{
-							rohc_warning(context->compressor, ROHC_TRACE_COMP,
-							             context->profile->id, "more than 32 bits "
-							             "used for feedback SN, this is not "
-							             "expected, truncate value\n");
+							rohc_comp_warn(context, "more than 32 bits used for "
+							               "feedback SN, truncate unexpected value\n");
 							sn &= 0x00ffffff;
 						}
 						sn = (sn << 8) + (p[1] & 0xff);
@@ -1029,9 +1025,7 @@ void c_generic_feedback(struct rohc_comp_ctxt *const context,
 				}
 				else
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id,
-					             "mode change requested but no CRC was given\n");
+					rohc_comp_warn(context, "mode change requested without CRC\n");
 				}
 			}
 
@@ -1075,21 +1069,22 @@ void c_generic_feedback(struct rohc_comp_ctxt *const context,
 					break;
 
 				case RESERVED:
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id, "reserved field used\n");
+					rohc_comp_warn(context, "reserved field used\n");
 					break;
 
 				default:
 					/* impossible value */
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id, "unknown ack type\n");
+					rohc_comp_warn(context, "unknown ACK type %d\n",
+					               feedback->acktype);
+					break;
 			}
 		}
 		break;
 
 		default: /* not FEEDBACK-1 nor FEEDBACK-2 */
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "feedback type not implemented (%d)\n", feedback->type);
+			rohc_comp_warn(context, "feedback type not implemented (%d)\n",
+			               feedback->type);
+			break;
 	}
 }
 
@@ -1164,8 +1159,8 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 		                      &uncomp_pkt->outer_ip);
 	if(g_context->tmp.changed_fields & MOD_ERROR)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to detect changed field in outer IP header\n");
+		rohc_comp_warn(context, "failed to detect changed field in outer IP "
+		               "header\n");
 		goto error;
 	}
 
@@ -1177,8 +1172,8 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 			                      &uncomp_pkt->inner_ip);
 		if(g_context->tmp.changed_fields2  & MOD_ERROR)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to detect changed field in inner IP header\n");
+			rohc_comp_warn(context, "failed to detect changed field in inner IP "
+			               "header\n");
 			goto error;
 		}
 	}
@@ -1367,8 +1362,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 	}
 	else
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "unexpected compressor state %d\n", curr_state);
+		rohc_comp_warn(context, "unexpected compressor state %d\n", curr_state);
 		assert(0);
 		return;
 	}
@@ -2325,8 +2319,7 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 			                           header_info->info.v6.ext_comp.pkt_list.items_nr);
 			if(counter < 0)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to encode list\n");
+				rohc_comp_warn(context, "failed to encode list\n");
 				goto error;
 			}
 		}
@@ -2712,8 +2705,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 		extension = g_context->decide_extension(context);
 		if(extension == ROHC_EXT_UNKNOWN)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to determine the extension to code\n");
+			rohc_comp_warn(context, "failed to determine the extension to code\n");
 			goto error;
 		}
 		rohc_comp_debug(context, "extension '%s' chosen\n",
@@ -2985,14 +2977,12 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
 		default:
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unknown extension (%d)\n", extension);
+			rohc_comp_warn(context, "unknown extension (%d)\n", extension);
 			goto error;
 	}
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "cannot build extension\n");
+		rohc_comp_warn(context, "cannot build extension\n");
 		goto error;
 	}
 	counter = ret;
@@ -3179,8 +3169,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	extension = g_context->decide_extension(context);
 	if(extension == ROHC_EXT_UNKNOWN)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to determine the extension to code\n");
+		rohc_comp_warn(context, "failed to determine the extension to code\n");
 		goto error;
 	}
 	rohc_comp_debug(context, "extension '%s' chosen\n",
@@ -3190,8 +3179,7 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	 * in packet */
 	if(!code_bytes(context, extension, &f_byte, &s_byte, &t_byte))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "cannot code some UOR-2-* fields\n");
+		rohc_comp_warn(context, "cannot code some UOR-2-* fields\n");
 		goto error;
 	}
 
@@ -3224,14 +3212,12 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
 		default:
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unknown extension (%d)\n", extension);
+			rohc_comp_warn(context, "unknown extension (%d)\n", extension);
 			goto error;
 	}
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "cannot build extension\n");
+		rohc_comp_warn(context, "cannot build extension\n");
 		goto error;
 	}
 	counter = ret;
@@ -3365,8 +3351,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 
 		default:
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unknown extension (%d)\n", extension);
+			rohc_comp_warn(context, "unknown extension (%d)\n", extension);
 			goto error;
 		}
 	}
@@ -5003,9 +4988,8 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			if(!sdvl_encode(dest + counter, 4U /* TODO */, &sdvl_size,
 			                ts_send, nr_ts_bits_ext3))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "TS length greater than 29 (value = %u, "
-				             "length = %zd)\n", ts_send, nr_ts_bits_ext3);
+				rohc_comp_warn(context, "TS length greater than 29 (value = %u, "
+				               "length = %zd)\n", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
 			counter += sdvl_size;
@@ -5095,9 +5079,8 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			if(!sdvl_encode(dest + counter, 4U /* TODO */, &sdvl_size,
 			                ts_send, nr_ts_bits_ext3))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "TS length greater than 29 (value = %u, "
-				             "length = %zd)\n", ts_send, nr_ts_bits_ext3);
+				rohc_comp_warn(context, "TS length greater than 29 (value = %u, "
+				               "length = %zd)\n", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
 			counter += sdvl_size;
@@ -5279,8 +5262,8 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		                           ts_stride);
 		if(!success)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "TS stride length greater than 29 (%u)\n", ts_stride);
+			rohc_comp_warn(context, "TS stride length greater than 29 (%u)\n",
+			               ts_stride);
 			goto error;
 		}
 		counter += sdvl_size;
@@ -6316,9 +6299,8 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                              &(g_context->tmp.nr_ip_id_bits));
 			if(!wlsb_k_ok)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "failed to find the minimal number of bits required "
-				             "for new outer IP-ID delta\n");
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for new outer IP-ID delta\n");
 				goto error;
 			}
 		}
@@ -6376,9 +6358,8 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                              &(g_context->tmp.nr_ip_id_bits2));
 			if(!wlsb_k_ok)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "failed to find the minimal number of bits required "
-				             "for new inner IP-ID delta\n");
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for new inner IP-ID delta\n");
 				goto error;
 			}
 		}
@@ -6402,8 +6383,8 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		ret = g_context->encode_uncomp_fields(context, uncomp_pkt);
 		if(ret != ROHC_OK)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to encode uncompressed next header fields\n");
+			rohc_comp_warn(context, "failed to encode uncompressed next header "
+			               "fields\n");
 			goto error;
 		}
 	}

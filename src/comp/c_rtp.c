@@ -134,8 +134,7 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_RTP_SN, packet))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed\n");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -173,8 +172,7 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	                context->compressor->wlsb_window_width,
 	                context->compressor->trace_callback))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "cannot create scaled RTP Timestamp encoding\n");
+		rohc_comp_warn(context, "cannot create scaled RTP Timestamp encoding\n");
 		goto clean;
 	}
 
@@ -1370,8 +1368,8 @@ static size_t rtp_code_dynamic_rtp_part(const struct rohc_comp_ctxt *const conte
 			if(!sdvl_encode_full(dest + counter + nr_written, 4U /* TODO */,
 			                     &ts_stride_sdvl_len, ts_stride))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				             "failed to SDVL-encode TS_STRIDE %u\n", ts_stride);
+				rohc_comp_warn(context, "failed to SDVL-encode TS_STRIDE %u\n",
+				               ts_stride);
 				/* TODO: should handle error gracefully */
 				assert(0);
 			}

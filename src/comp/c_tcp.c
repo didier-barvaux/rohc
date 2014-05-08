@@ -778,8 +778,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_VAR, packet))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed\n");
 		goto error;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -1177,7 +1176,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 	{
 		goto bad_profile;
 	}
-	
+
 	/* IP payload shall be large enough for TCP header */
 	if(packet->transport->len < sizeof(struct tcphdr))
 	{
@@ -1673,28 +1672,24 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			{
 				if((opts_offset + 1) >= opts_len)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id, "malformed TCP header: not "
-					             "enough room for the length field of option %u\n",
-					             opt_type);
+					rohc_comp_warn(context, "malformed TCP header: not enough "
+					               "room for the length field of option %u\n",
+					               opt_type);
 					goto error;
 				}
 				opt_len = opts[opts_offset + 1];
 				if(opt_len < 2)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id, "malformed TCP header: "
-					             "option %u got length field %zu\n", opt_type,
-					             opt_len);
+					rohc_comp_warn(context, "malformed TCP header: option %u got "
+					               "length field %zu\n", opt_type, opt_len);
 					goto error;
 				}
 				if((opts_offset + opt_len) > opts_len)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id, "malformed TCP header: not "
-					             "enough room for option %u (%zu bytes required "
-					             "but only %zu available)\n", opt_type, opt_len,
-					             opts_len - opts_offset);
+					rohc_comp_warn(context, "malformed TCP header: not enough "
+					               "room for option %u (%zu bytes required but "
+					               "only %zu available)\n", opt_type, opt_len,
+					               opts_len - opts_offset);
 					goto error;
 				}
 
@@ -1748,10 +1743,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 				}
 				else if(opt_idx_free < 0)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "failed to find a free "
-					             "index for option '%s' (%u)\n",
-					             tcp_opt_get_descr(opt_type), opt_type);
+					rohc_comp_warn(context, "no free index found for option '%s' "
+					               "(%u)\n", tcp_opt_get_descr(opt_type), opt_type);
 					goto error;
 				}
 				else
@@ -1790,10 +1783,9 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		}
 		if(opt_pos >= ROHC_TCP_OPTS_MAX && opts_offset != opts_len)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unexpected TCP header: too many TCP options: %zu "
-			             "options found in packet but only %u options "
-			             "possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
+			rohc_comp_warn(context, "unexpected TCP header: too many TCP "
+			               "options: %zu options found in packet but only %u "
+			               "options possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
 			goto error;
 		}
 
@@ -1860,8 +1852,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* detect changes between new uncompressed packet and context */
 	if(!tcp_detect_changes(context, uncomp_pkt))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to detect changes in uncompressed packet\n");
+		rohc_comp_warn(context, "failed to detect changes in uncompressed "
+		               "packet\n");
 		goto error;
 	}
 
@@ -1871,9 +1863,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* compute how many bits are needed to send header fields */
 	if(!tcp_encode_uncomp_fields(context, uncomp_pkt))
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to compute how many bits are needed to send "
-		             "header fields\n");
+		rohc_comp_warn(context, "failed to compute how many bits are needed to "
+		               "transmit all changes in header fields\n");
 		goto error;
 	}
 
@@ -1883,8 +1874,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* code the chosen packet */
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to find the packet type to encode\n");
+		rohc_comp_warn(context, "failed to find the packet type to encode\n");
 		goto error;
 	}
 	else if((*packet_type) != ROHC_PACKET_IR &&
@@ -1896,8 +1886,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                         *packet_type, payload_offset);
 		if(counter < 0)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to build CO packet\n");
+			rohc_comp_warn(context, "failed to build CO packet\n");
 			goto error;
 		}
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
@@ -1987,10 +1976,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							                                    base_header);
 							if(mptr.uint8 == NULL)
 							{
-								rohc_warning(context->compressor, ROHC_TRACE_COMP,
-								             context->profile->id, "failed to code "
-								             "the IPv6 extension part of the static "
-								             "chain\n");
+								rohc_comp_warn(context, "failed to code the IPv6 "
+								               "extension part of the static chain\n");
 								goto error;
 							}
 							protocol = base_header.ipv6_opt->next_header;
@@ -1999,9 +1986,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 						}
 						break;
 					default:
-						rohc_warning(context->compressor, ROHC_TRACE_COMP,
-						             context->profile->id, "unexpected IP version "
-						             "%u\n", base_header.ipvx->version);
+						rohc_comp_warn(context, "unexpected IP version %u\n",
+						               base_header.ipvx->version);
 						assert(0);
 						goto error;
 				}
@@ -2055,9 +2041,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 						                                     base_header);
 						if(mptr.uint8 == NULL)
 						{
-							rohc_warning(context->compressor, ROHC_TRACE_COMP,
-							             context->profile->id, "failed to code the "
-							             "IPv6 extension part of the dynamic chain\n");
+							rohc_comp_warn(context, "failed to code the IPv6 "
+							               "extension part of the dynamic chain\n");
 							goto error;
 						}
 						protocol = base_header.ipv6_opt->next_header;
@@ -2066,9 +2051,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 					}
 					break;
 				default:
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id, "unexpected IP version "
-					             "%u\n", base_header.ipvx->version);
+					rohc_comp_warn(context, "unexpected IP version %u\n",
+					               base_header.ipvx->version);
 					assert(0);
 					goto error;
 			}
@@ -2079,8 +2063,8 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		mptr.uint8 = tcp_code_dynamic_tcp_part(context,base_header.uint8,mptr);
 		if(mptr.uint8 == NULL)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to code the TCP part of the dynamic chain\n");
+			rohc_comp_warn(context, "failed to code the TCP part of the dynamic "
+			               "chain\n");
 			goto error;
 		}
 
@@ -2204,9 +2188,7 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
 			                   mptr.ip_gre_opt_static->options);
 			if(ret < 0)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id,
-				             "failed to encode optional32(key)\n");
+				rohc_comp_warn(context, "failed to encode optional32(key)\n");
 				goto error;
 			}
 			size += sizeof(uint32_t);
@@ -2309,9 +2291,7 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
 			                   mptr.uint8);
 			if(ret < 0)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to encode "
-				             "optional32(sequence_number)\n");
+				rohc_comp_warn(context, "optional32(seq_number) failed\n");
 				goto error;
 			}
 			mptr.uint8 += ret;
@@ -2405,9 +2385,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 				                    sequence_number, mptr.uint8);
 				if(ret < 0)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_COMP,
-					             context->profile->id,
-					             "failed to code lsb_7_or_31(sequence_number)\n");
+					rohc_comp_warn(context, "lsb_7_or_31(seq_number)\n");
 					goto error;
 				}
 				mptr.uint8 += ret;
@@ -2421,9 +2399,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 			                    sequence_number, mptr.uint8);
 			if(ret < 0)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id,
-				             "failed to code lsb_7_or_31(sequence_number)\n");
+				rohc_comp_warn(context, "lsb_7_or_31(seq_number) failed\n");
 				goto error;
 			}
 			mptr.uint8 += ret;
@@ -2884,8 +2860,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	ret = c_zero_or_irreg32(tcp->ack_number, mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to encode zero_or_irreg(ack_number)\n");
+		rohc_comp_warn(context, "failed to encode zero_or_irreg(ack_number)\n");
 		goto error;
 	}
 	tcp_dynamic->ack_zero = indicator;
@@ -2908,8 +2883,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	ret = c_zero_or_irreg16(tcp->urg_ptr, mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to encode zero_or_irreg(urg_ptr)\n");
+		rohc_comp_warn(context, "failed to encode zero_or_irreg(urg_ptr)\n");
 		goto error;
 	}
 	tcp_dynamic->urp_zero = indicator;
@@ -2923,8 +2897,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to encode static_or_irreg(ack_stride)\n");
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)\n");
 		goto error;
 	}
 	tcp_dynamic->ack_stride_flag = indicator;
@@ -2969,9 +2942,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			/* option type */
 			if(i < 1)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-				             context->profile->id, "malformed TCP options: not "
-				             "enough remaining bytes for option type\n");
+				rohc_comp_warn(context, "malformed TCP option #%zu: not enough "
+				               "remaining bytes for option type\n", opt_pos + 1);
 				goto error;
 			}
 			opt_type = options[0];
@@ -2986,9 +2958,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			}
 			else if(i < 2)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-				             context->profile->id, "malformed TCP options: not "
-				             "enough remaining bytes for option length\n");
+				rohc_comp_warn(context, "malformed TCP option #%zu: not enough "
+				               "remaining bytes for option length\n", opt_pos + 1);
 				goto error;
 			}
 			else
@@ -2996,10 +2967,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				opt_len = options[1];
 				if(opt_len < 2)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "malformed TCP options: option "
-					             "should be at least 2 bytes but length field is %u\n",
-					             opt_len);
+					rohc_comp_warn(context, "malformed TCP option #%zu: option "
+					               "should be at least 2 bytes but length field "
+					               "is %u\n", opt_pos + 1, opt_len);
 					goto error;
 				}
 			}
@@ -3033,12 +3003,11 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					tcp_context->tcp_option_sack_length = opt_len - 2;
 					if(tcp_context->tcp_option_sack_length > (sizeof(sack_block_t) * 4))
 					{
-						rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-						             context->profile->id, "malformed TCP options: "
-						             "SACK option too long: %u bytes while less "
-						             "than %zu bytes expected\n",
-						             tcp_context->tcp_option_sack_length,
-						             sizeof(sack_block_t) * 4);
+						rohc_comp_warn(context, "malformed TCP option #%zu: SACK "
+						               "option too long: %u bytes while less than "
+						               "%zu bytes expected\n", opt_pos + 1,
+						               tcp_context->tcp_option_sack_length,
+						               sizeof(sack_block_t) * 4);
 						goto error;
 					}
 					memcpy(tcp_context->tcp_option_sackblocks,options + 1,
@@ -3155,10 +3124,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 		}
 		if(opt_pos >= ROHC_TCP_OPTS_MAX && i != 0)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "unexpected TCP header: too many TCP options: %zu "
-			             "options found in packet but only %u options "
-			             "possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
+			rohc_comp_warn(context, "unexpected TCP header: too many TCP "
+			               "options: %zu options found in packet but only %u "
+			               "options possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
 			goto error;
 		}
 
@@ -3191,9 +3159,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			/* option type */
 			if(i < 1)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-				             context->profile->id, "malformed TCP options: not "
-				             "enough remaining bytes for option type\n");
+				rohc_comp_warn(context, "malformed TCP options: not enough "
+				               "remaining bytes for option type\n");
 				goto error;
 			}
 			opt_type = options[0];
@@ -3205,9 +3172,8 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			}
 			else if(i < 2)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-				             context->profile->id, "malformed TCP options: not "
-				             "enough remaining bytes for option length\n");
+				rohc_comp_warn(context, "malformed TCP options: not enough "
+				               "remaining bytes for option length\n");
 				goto error;
 			}
 			else
@@ -3215,10 +3181,9 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				opt_len = options[1];
 				if(opt_len < 2)
 				{
-					rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-					             context->profile->id, "malformed TCP options: option "
-					             "should be at least 2 bytes but length field is %u\n",
-					             opt_len);
+					rohc_comp_warn(context, "malformed TCP options: option should "
+					               "be at least 2 bytes but length field is %u\n",
+					               opt_len);
 					goto error;
 				}
 			}
@@ -3449,10 +3414,8 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 					                 tcp_context->tmp.nr_opt_ts_req_bits_0x40000);
 					if(!is_ok)
 					{
-						rohc_warning(context->compressor, ROHC_TRACE_COMP,
-						             context->profile->id,
-						             "irregular chain: failed to compress the timestamp "
-						             "value of the TCP Timestamp option\n");
+						rohc_comp_warn(context, "irregular chain: failed to encode "
+						               "echo request of TCP Timestamp option\n");
 						goto error;
 					}
 
@@ -3463,10 +3426,8 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 					                 tcp_context->tmp.nr_opt_ts_reply_bits_0x40000);
 					if(!is_ok)
 					{
-						rohc_warning(context->compressor, ROHC_TRACE_COMP,
-						             context->profile->id,
-						             "irregular chain: failed to compress the timestamp "
-						             "echo reply of the TCP Timestamp option\n");
+						rohc_comp_warn(context, "irregular chain: failed to encode "
+						               "echo reply of TCP Timestamp option\n");
 						goto error;
 					}
 
@@ -3567,9 +3528,8 @@ static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
 	}
 	else
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to compress timestamp 0x%08x: more than 29 bits "
-		             "required\n", timestamp);
+		rohc_comp_warn(context, "failed to compress timestamp 0x%08x: more "
+		               "than 29 bits required\n", timestamp);
 		goto error;
 	}
 
@@ -3818,9 +3778,8 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		/* option type */
 		if(i < 1)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-			             context->profile->id, "malformed TCP options: not "
-			             "enough remaining bytes for option type\n");
+			rohc_comp_warn(context, "malformed TCP option #%u: not enough "
+			               "remaining bytes for option type\n", m + 1);
 			goto error;
 		}
 		opt_type = options[0];
@@ -3835,9 +3794,8 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		}
 		else if(i < 2)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-			             context->profile->id, "malformed TCP options: not "
-			             "enough remaining bytes for option length\n");
+			rohc_comp_warn(context, "malformed TCP option #%u: not enough "
+			               "remaining bytes for option length\n", m + 1);
 			goto error;
 		}
 		else
@@ -3845,10 +3803,9 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 			opt_len = options[1];
 			if(opt_len < 2)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_DECOMP,
-				             context->profile->id, "malformed TCP options: option "
-				             "should be at least 2 bytes but length field is %u\n",
-				             opt_len);
+				rohc_comp_warn(context, "malformed TCP option #%u: option should "
+				               "be at least 2 bytes but length field is %u\n",
+				               m + 1, opt_len);
 				goto error;
 			}
 		}
@@ -4094,10 +4051,8 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					                 tcp_context->tmp.nr_opt_ts_req_bits_0x40000);
 					if(!is_ok)
 					{
-						rohc_warning(context->compressor, ROHC_TRACE_COMP,
-										 context->profile->id,
-										 "failed to compress the timestamp value of the "
-										 "TCP Timestamp option\n");
+						rohc_comp_warn(context, "failed to encode echo request of "
+						               "TCP Timestamp option\n");
 						goto error;
 					}
 					comp_opt_len += ptr_compressed_options - opt_start;
@@ -4109,10 +4064,8 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					                 tcp_context->tmp.nr_opt_ts_reply_bits_0x40000);
 					if(!is_ok)
 					{
-						rohc_warning(context->compressor, ROHC_TRACE_COMP,
-						             context->profile->id,
-						             "failed to compress the timestamp echo reply "
-						             "of the TCP Timestamp option\n");
+						rohc_comp_warn(context, "failed to encode echo reply of "
+						               "TCP Timestamp option\n");
 						goto error;
 					}
 					comp_opt_len += ptr_compressed_options - opt_start;
@@ -4150,8 +4103,8 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 	}
 	if(m >= ROHC_TCP_OPTS_MAX && i != 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "compressed list of TCP options: too many options\n");
+		rohc_comp_warn(context, "compressed list of TCP options: too many "
+		               "options\n");
 		goto error;
 	}
 
@@ -4425,8 +4378,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	                  packet_type, tcp, crc_computed);
 	if(i < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to build co_baseheader\n");
+		rohc_comp_warn(context, "failed to build co_baseheader\n");
 		goto error;
 	}
 
@@ -4472,9 +4424,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 					                                       base_header);
 					if(mptr.uint8 == NULL)
 					{
-						rohc_warning(context->compressor, ROHC_TRACE_COMP,
-						             context->profile->id, "failed to encode the "
-						             "IPv6 extension part of the irregular chain\n");
+						rohc_comp_warn(context, "failed to encode the IPv6 "
+						               "extension part of the irregular chain\n");
 						goto error;
 					}
 					protocol = base_header.ipv6_opt->next_header;
@@ -4494,8 +4445,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	                                         ip_inner_ecn);
 	if(mptr.uint8 == NULL)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to encode the TCP part of the irregular chain\n");
+		rohc_comp_warn(context, "failed to encode the TCP part of the "
+		               "irregular chain\n");
 		goto error;
 	}
 
@@ -4602,9 +4553,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 											  &rnd8_len);
 			if(!is_ok)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-								 context->profile->id,
-								 "failed to build rnd_8 packet\n");
+				rohc_comp_warn(context, "failed to build rnd_8 packet\n");
 				goto error;
 			}
 			mptr.uint8 += rnd8_len;
@@ -4654,9 +4603,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 											  &seq8_len);
 			if(!is_ok)
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-								 context->profile->id,
-								 "failed to build seq_8 packet\n");
+				rohc_comp_warn(context, "failed to build seq_8 packet\n");
 				goto error;
 			}
 			mptr.uint8 += seq8_len;
@@ -4733,8 +4680,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to encode static_or_irreg(ack_stride)\n");
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)\n");
 		goto error;
 	}
 	c_base_header.co_common->ack_stride_indicator = indicator;
@@ -4749,8 +4695,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "failed to encode static_or_irreg(window)\n");
+		rohc_comp_warn(context, "failed to encode static_or_irreg(window)\n");
 		goto error;
 	}
 	c_base_header.co_common->window_indicator = indicator;
@@ -4770,8 +4715,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                           g_context->sn, mptr.uint8, &indicator);
 		if(ret < 0)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to encode optional_ip_id_lsb(ip_id)\n");
+			rohc_comp_warn(context, "failed to encode optional_ip_id_lsb(ip_id)\n");
 			goto error;
 		}
 		c_base_header.co_common->ip_id_indicator = indicator;
@@ -4800,8 +4744,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                         &indicator);
 		if(ret < 0)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to encode static_or_irreg(ttl_hopl)\n");
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)\n");
 			goto error;
 		}
 		c_base_header.co_common->ttl_hopl_present = indicator;
@@ -4844,8 +4787,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                         &indicator);
 		if(ret < 0)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to encode static_or_irreg(ttl_hopl)\n");
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)\n");
 			goto error;
 		}
 		c_base_header.co_common->ttl_hopl_present = indicator;
@@ -4880,8 +4822,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                          mptr.uint8, &indicator);
 		if(ret < 0)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to encode static_or_irreg(urg_ptr)\n");
+			rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)\n");
 			goto error;
 		}
 		c_base_header.co_common->urg_ptr_present = indicator;
@@ -4908,8 +4849,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		is_ok = tcp_compress_tcp_options(context, tcp, mptr.uint8, &comp_opts_len);
 		if(!is_ok)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-							 "failed to compress TCP options\n");
+			rohc_comp_warn(context, "failed to compress TCP options\n");
 			goto error;
 		}
 		mptr.uint8 += comp_opts_len;
@@ -5357,8 +5297,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 													&comp_opts_len);
 		if(!is_ok)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-							 "failed to compress TCP options\n");
+			rohc_comp_warn(context, "failed to compress TCP options\n");
 			goto error;
 		}
 	}
@@ -5848,8 +5787,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 													&comp_opts_len);
 		if(!is_ok)
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-							 "failed to compress TCP options\n");
+			rohc_comp_warn(context, "failed to compress TCP options\n");
 			goto error;
 		}
 	}
@@ -5988,9 +5926,8 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		if(!wlsb_get_k_32bits(g_context->sn_window, g_context->sn,
 		                      &g_context->tmp.nr_sn_bits))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for SN\n");
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for SN\n");
 			goto error;
 		}
 	}
@@ -6282,10 +6219,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       rohc_ntoh32(tcp->seq_number), 65535,
 		                       &tcp_context->tmp.nr_seq_bits_65535))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number 0x%08x "
-			             "and p = 65535\n", rohc_ntoh32(tcp->seq_number));
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for sequence number 0x%08x and p = 65535\n",
+			               rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
@@ -6296,10 +6232,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       rohc_ntoh32(tcp->seq_number), 32767,
 		                       &tcp_context->tmp.nr_seq_bits_32767))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number 0x%08x "
-			             "and p = 32767\n", rohc_ntoh32(tcp->seq_number));
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for sequence number 0x%08x and p = 32767\n",
+			               rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
@@ -6310,10 +6245,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       rohc_ntoh32(tcp->seq_number), 16383,
 		                       &tcp_context->tmp.nr_seq_bits_16383))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number 0x%08x"
-			             "and p = 16383\n", rohc_ntoh32(tcp->seq_number));
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for sequence number 0x%08x and p = 16383\n",
+			               rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
@@ -6324,10 +6258,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       rohc_ntoh32(tcp->seq_number), 8191,
 		                       &tcp_context->tmp.nr_seq_bits_8191))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number 0x%08x"
-			             "and p = 8191\n", rohc_ntoh32(tcp->seq_number));
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for sequence number 0x%08x and p = 8191\n",
+			               rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
@@ -6338,10 +6271,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       rohc_ntoh32(tcp->seq_number), 63,
 		                       &tcp_context->tmp.nr_seq_bits_63))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP,
-			             context->profile->id, "failed to find the minimal "
-			             "number of bits required for sequence number 0x%08x"
-			             "and p = 63\n", rohc_ntoh32(tcp->seq_number));
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for sequence number 0x%08x and p = 63\n",
+			               rohc_ntoh32(tcp->seq_number));
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
@@ -6360,10 +6292,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                      tcp_context->seq_number_scaled,
 			                      &tcp_context->tmp.nr_seq_scaled_bits))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for scaled sequence number "
-				             "0x%08x\n", tcp_context->seq_number_scaled);
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for scaled sequence number 0x%08x\n",
+				               tcp_context->seq_number_scaled);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zu bits are required to encode new "
@@ -6418,10 +6349,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                       rohc_ntoh32(tcp->ack_number), 65535,
 			                       &tcp_context->tmp.nr_ack_bits_65535))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for ACK number 0x%08x "
-				             "and p = 65535\n", rohc_ntoh32(tcp->ack_number));
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for ACK number 0x%08x and p = 65535\n",
+				               rohc_ntoh32(tcp->ack_number));
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
@@ -6432,10 +6362,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                       rohc_ntoh32(tcp->ack_number), 32767,
 			                       &tcp_context->tmp.nr_ack_bits_32767))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for ACK number 0x%08x "
-				             "and p = 32767\n", rohc_ntoh32(tcp->ack_number));
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for ACK number 0x%08x and p = 32767\n",
+				               rohc_ntoh32(tcp->ack_number));
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
@@ -6446,10 +6375,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                       rohc_ntoh32(tcp->ack_number), 16383,
 			                       &tcp_context->tmp.nr_ack_bits_16383))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for ACK number 0x%08x "
-				             "and p = 16383\n", rohc_ntoh32(tcp->ack_number));
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for ACK number 0x%08x and p = 16383\n",
+				               rohc_ntoh32(tcp->ack_number));
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
@@ -6460,10 +6388,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                       rohc_ntoh32(tcp->ack_number), 8191,
 			                       &tcp_context->tmp.nr_ack_bits_8191))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for ACK number 0x%08x"
-				             "and p = 8191\n", rohc_ntoh32(tcp->ack_number));
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for ACK number 0x%08x and p = 8191\n",
+				               rohc_ntoh32(tcp->ack_number));
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
@@ -6474,10 +6401,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                       rohc_ntoh32(tcp->ack_number), 63,
 			                       &tcp_context->tmp.nr_ack_bits_63))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for ACK number 0x%08x"
-				             "and p = 63\n", rohc_ntoh32(tcp->ack_number));
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for ACK number 0x%08x and p = 63\n",
+				               rohc_ntoh32(tcp->ack_number));
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
@@ -6488,10 +6414,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                      tcp_context->ack_number_scaled,
 			                      &tcp_context->tmp.nr_ack_scaled_bits))
 			{
-				rohc_warning(context->compressor, ROHC_TRACE_COMP,
-				             context->profile->id, "failed to find the minimal "
-				             "number of bits required for scaled ACK number "
-				             "0x%08x\n", tcp_context->ack_number_scaled);
+				rohc_comp_warn(context, "failed to find the minimal number of "
+				               "bits required for scaled ACK number 0x%08x\n",
+				               tcp_context->ack_number_scaled);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zu bits are required to encode new scaled "
@@ -6548,10 +6473,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       tcp_context->tmp.ts_req, -1,
 		                       &tcp_context->tmp.nr_opt_ts_req_bits_minus_1))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to find the minimal number of bits required "
-			             "for timestamp echo request 0x%08x and p = -1\n",
-			             tcp_context->tmp.ts_req);
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for timestamp echo request 0x%08x and "
+			               "p = -1\n", tcp_context->tmp.ts_req);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
@@ -6565,10 +6489,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       tcp_context->tmp.ts_req, 0x40000,
 		                       &tcp_context->tmp.nr_opt_ts_req_bits_0x40000))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to find the minimal number of bits required "
-			             "for timestamp echo request 0x%08x and p = 0x40000\n",
-			             tcp_context->tmp.ts_req);
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for timestamp echo request 0x%08x and "
+			               "p = 0x40000\n", tcp_context->tmp.ts_req);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
@@ -6582,10 +6505,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       tcp_context->tmp.ts_reply, -1,
 		                       &tcp_context->tmp.nr_opt_ts_reply_bits_minus_1))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to find the minimal number of bits required "
-			             "for timestamp echo reply 0x%08x and p = -1\n",
-			             tcp_context->tmp.ts_reply);
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for timestamp echo reply 0x%08x and p = -1\n",
+			               tcp_context->tmp.ts_reply);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
@@ -6599,10 +6521,9 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       tcp_context->tmp.ts_reply, 0x40000,
 		                       &tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
 		{
-			rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			             "failed to find the minimal number of bits required "
-			             "for timestamp echo reply 0x%08x and p = 0x40000\n",
-			             tcp_context->tmp.ts_reply);
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for timestamp echo reply 0x%08x and "
+			               "p = 0x40000\n", tcp_context->tmp.ts_reply);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
@@ -7045,9 +6966,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 	}
 	else
 	{
-		rohc_warning(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		             "unexpected IP-ID behavior (%d)\n",
-		             ip_inner_context->vx->ip_id_behavior);
+		rohc_comp_warn(context, "unexpected IP-ID behavior (%d)\n",
+		               ip_inner_context->vx->ip_id_behavior);
 		assert(0);
 		goto error;
 	}
