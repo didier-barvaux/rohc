@@ -836,15 +836,15 @@ static bool udp_lite_send_cce_packet(const struct c_context *const context,
  */
 struct c_profile c_udp_lite_profile =
 {
-	ROHC_IPPROTO_UDPLITE,     /* IP protocol */
-	ROHC_PROFILE_UDPLITE,     /* profile ID (see 7 in RFC 4019) */
-	c_udp_lite_create,        /* profile handlers */
-	c_generic_destroy,
-	c_udp_lite_check_profile,
-	c_udp_lite_check_context,
-	c_udp_lite_encode,
-	c_generic_reinit_context,
-	c_generic_feedback,
-	c_generic_use_udp_port,
+	.id             = ROHC_PROFILE_UDPLITE, /* profile ID (see 7 in RFC4019) */
+	.protocol       = ROHC_IPPROTO_UDPLITE, /* IP protocol */
+	.create         = c_udp_lite_create,    /* profile handlers */
+	.destroy        = c_generic_destroy,
+	.check_profile  = c_udp_lite_check_profile,
+	.check_context  = c_udp_lite_check_context,
+	.encode         = c_udp_lite_encode,
+	.reinit_context = c_generic_reinit_context,
+	.feedback       = c_generic_feedback,
+	.use_udp_port   = c_generic_use_udp_port,
 };
 

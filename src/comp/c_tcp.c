@@ -7195,15 +7195,15 @@ static char * tcp_opt_get_descr(const uint8_t opt_type)
  */
 struct c_profile c_tcp_profile =
 {
-	ROHC_IPPROTO_TCP,    /* IP protocol */
-	ROHC_PROFILE_TCP,    /* profile ID (see 8 in RFC 3095) */
-	c_tcp_create,        /* profile handlers */
-	c_tcp_destroy,
-	c_tcp_check_profile,
-	c_tcp_check_context,
-	c_tcp_encode,
-	c_generic_reinit_context,
-	c_generic_feedback,
-	c_generic_use_udp_port,
+	.id             = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC 3095) */
+	.protocol       = ROHC_IPPROTO_TCP, /* IP protocol */
+	.create         = c_tcp_create,     /* profile handlers */
+	.destroy        = c_tcp_destroy,
+	.check_profile  = c_tcp_check_profile,
+	.check_context  = c_tcp_check_context,
+	.encode         = c_tcp_encode,
+	.reinit_context = c_generic_reinit_context,
+	.feedback       = c_generic_feedback,
+	.use_udp_port   = c_generic_use_udp_port,
 };
 

@@ -586,15 +586,15 @@ static int udp_changed_udp_dynamic(const struct c_context *context,
  */
 struct c_profile c_udp_profile =
 {
-	ROHC_IPPROTO_UDP,    /* IP protocol */
-	ROHC_PROFILE_UDP,    /* profile ID (see 8 in RFC 3095) */
-	c_udp_create,        /* profile handlers */
-	c_generic_destroy,
-	c_udp_check_profile,
-	c_udp_check_context,
-	c_udp_encode,
-	c_generic_reinit_context,
-	c_generic_feedback,
-	c_generic_use_udp_port,
+	.id             = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC 3095) */
+	.protocol       = ROHC_IPPROTO_UDP, /* IP protocol */
+	.create         = c_udp_create,     /* profile handlers */
+	.destroy        = c_generic_destroy,
+	.check_profile  = c_udp_check_profile,
+	.check_context  = c_udp_check_context,
+	.encode         = c_udp_encode,
+	.reinit_context = c_generic_reinit_context,
+	.feedback       = c_generic_feedback,
+	.use_udp_port   = c_generic_use_udp_port,
 };
 

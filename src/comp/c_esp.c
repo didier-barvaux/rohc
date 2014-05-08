@@ -464,15 +464,15 @@ static size_t esp_code_dynamic_esp_part(const struct c_context *const context,
  */
 struct c_profile c_esp_profile =
 {
-	ROHC_IPPROTO_ESP,    /* IP protocol */
-	ROHC_PROFILE_ESP,    /* profile ID (see 8 in RFC 3095) */
-	c_esp_create,        /* profile handlers */
-	c_generic_destroy,
-	c_esp_check_profile,
-	c_esp_check_context,
-	c_esp_encode,
-	c_generic_reinit_context,
-	c_generic_feedback,
-	c_generic_use_udp_port,
+	.id             = ROHC_PROFILE_ESP, /* profile ID (see 8 in RFC 3095) */
+	.protocol       = ROHC_IPPROTO_ESP, /* IP protocol */
+	.create         = c_esp_create,     /* profile handlers */
+	.destroy        = c_generic_destroy,
+	.check_profile  = c_esp_check_profile,
+	.check_context  = c_esp_check_context,
+	.encode         = c_esp_encode,
+	.reinit_context = c_generic_reinit_context,
+	.feedback       = c_generic_feedback,
+	.use_udp_port   = c_generic_use_udp_port,
 };
 

@@ -764,15 +764,15 @@ bool c_uncompressed_use_udp_port(const struct c_context *const context __attribu
  */
 struct c_profile c_uncompressed_profile =
 {
-	0,                            /* IP protocol */
-	ROHC_PROFILE_UNCOMPRESSED,    /* profile ID (see 8 in RFC 3095) */
-	c_uncompressed_create,        /* profile handlers */
-	c_uncompressed_destroy,
-	c_uncompressed_check_profile,
-	c_uncompressed_check_context,
-	c_uncompressed_encode,
-	c_uncompressed_reinit_context,
-	c_uncompressed_feedback,
-	c_uncompressed_use_udp_port,
+	.id             = ROHC_PROFILE_UNCOMPRESSED, /* profile ID (RFC3095, §8) */
+	.protocol       = 0,                         /* IP protocol */
+	.create         = c_uncompressed_create,     /* profile handlers */
+	.destroy        = c_uncompressed_destroy,
+	.check_profile  = c_uncompressed_check_profile,
+	.check_context  = c_uncompressed_check_context,
+	.encode         = c_uncompressed_encode,
+	.reinit_context = c_uncompressed_reinit_context,
+	.feedback       = c_uncompressed_feedback,
+	.use_udp_port   = c_uncompressed_use_udp_port,
 };
 

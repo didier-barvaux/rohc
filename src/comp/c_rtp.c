@@ -1597,15 +1597,15 @@ static bool c_rtp_use_udp_port(const struct c_context *const context,
  */
 struct c_profile c_rtp_profile =
 {
-	ROHC_IPPROTO_UDP,    /* IP protocol */
-	ROHC_PROFILE_RTP,    /* profile ID */
-	c_rtp_create,        /* profile handlers */
-	c_rtp_destroy,
-	c_rtp_check_profile,
-	c_rtp_check_context,
-	c_rtp_encode,
-	c_generic_reinit_context,
-	c_generic_feedback,
-	c_rtp_use_udp_port,
+	.id             = ROHC_PROFILE_RTP, /* profile ID */
+	.protocol       = ROHC_IPPROTO_UDP, /* IP protocol */
+	.create         = c_rtp_create,     /* profile handlers */
+	.destroy        = c_rtp_destroy,
+	.check_profile  = c_rtp_check_profile,
+	.check_context  = c_rtp_check_context,
+	.encode         = c_rtp_encode,
+	.reinit_context = c_generic_reinit_context,
+	.feedback       = c_generic_feedback,
+	.use_udp_port   = c_rtp_use_udp_port,
 };
 

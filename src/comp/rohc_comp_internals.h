@@ -243,14 +243,14 @@ struct rohc_comp
  */
 struct c_profile
 {
+	/** The profile ID as reserved by IANA */
+	const rohc_profile_t id;
+
 	/**
 	 * @brief The IP protocol ID used to find out which profile is able to
 	 *        compress an IP packet
 	 */
 	const unsigned short protocol;
-
-	/** The profile ID as reserved by IANA */
-	const rohc_profile_t id;
 
 	/**
 	 * @brief The handler used to create the profile-specific part of the
