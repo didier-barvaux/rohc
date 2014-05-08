@@ -159,7 +159,7 @@ struct d_context
 	struct rohc_decomp *decompressor;
 
 	/** The associated profile */
-	const struct d_profile *profile;
+	const struct rohc_decomp_profile *profile;
 	/** Profile-specific data, defined by the profiles */
 	void *specific;
 
@@ -235,7 +235,7 @@ struct d_context
  * The object defines a ROHC profile. Each field must be filled in
  * for each new profile.
  */
-struct d_profile
+struct rohc_decomp_profile
 {
 	/* The profile ID as reserved by IANA */
 	const rohc_profile_t id;

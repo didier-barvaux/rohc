@@ -1932,7 +1932,7 @@ static inline bool is_inner_ipv4_rnd_ctxt(const struct d_generic_context *const 
  * @brief Define the decompression part of the RTP profile as described
  *        in the RFC 3095.
  */
-struct d_profile d_rtp_profile =
+const struct rohc_decomp_profile d_rtp_profile =
 {
 	.id              = ROHC_PROFILE_RTP, /* profile ID (see 8 in RFC3095) */
 	.new_context     = d_rtp_create,

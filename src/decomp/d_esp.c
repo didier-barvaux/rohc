@@ -445,7 +445,7 @@ static void esp_update_context(const struct d_context *context,
  * @brief Define the decompression part of the ESP profile as described
  *        in the RFC 3095.
  */
-struct d_profile d_esp_profile =
+const struct rohc_decomp_profile d_esp_profile =
 {
 	.id              = ROHC_PROFILE_ESP, /* profile ID (RFC 3095, §8) */
 	.new_context     = d_esp_create,

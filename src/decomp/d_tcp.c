@@ -6279,7 +6279,7 @@ static uint32_t d_tcp_get_msn(const struct d_context *const context)
  * @brief Define the decompression part of the TCP profile as described
  *        in the RFC 3095.
  */
-struct d_profile d_tcp_profile =
+const struct rohc_decomp_profile d_tcp_profile =
 {
 	.id              = ROHC_PROFILE_TCP, /* profile ID (see 8 in RFC3095) */
 	.new_context     = d_tcp_create,

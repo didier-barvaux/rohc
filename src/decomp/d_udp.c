@@ -607,7 +607,7 @@ void udp_update_context(const struct d_context *context,
  * @brief Define the decompression part of the UDP profile as described
  *        in the RFC 3095.
  */
-struct d_profile d_udp_profile =
+const struct rohc_decomp_profile d_udp_profile =
 {
 	.id              = ROHC_PROFILE_UDP, /* profile ID (see 8 in RFC3095) */
 	.new_context     = d_udp_create,

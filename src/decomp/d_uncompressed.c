@@ -376,7 +376,7 @@ static uint32_t uncomp_get_sn(const struct d_context *const context __attribute_
  * @brief Define the decompression part of the Uncompressed profile as
  *        described in the RFC 3095.
  */
-struct d_profile d_uncomp_profile =
+const struct rohc_decomp_profile d_uncomp_profile =
 {
 	.id              = ROHC_PROFILE_UNCOMPRESSED, /* profile ID (RFC3095 §8) */
 	.new_context     = uncomp_new_context,

@@ -62,19 +62,20 @@
 #include <assert.h>
 
 
-extern struct d_profile d_uncomp_profile,
-                        d_udp_profile,
-                        d_ip_profile,
-                        d_udplite_profile,
-                        d_esp_profile,
-                        d_rtp_profile,
-                        d_tcp_profile;
+extern const struct rohc_decomp_profile d_uncomp_profile,
+                                        d_udp_profile,
+                                        d_ip_profile,
+                                        d_udplite_profile,
+                                        d_esp_profile,
+                                        d_rtp_profile,
+                                        d_tcp_profile;
 
 
 /**
  * @brief The decompression parts of the ROHC profiles.
  */
-static struct d_profile *d_profiles[D_NUM_PROFILES] =
+static const struct rohc_decomp_profile *const
+	rohc_decomp_profiles[D_NUM_PROFILES] =
 {
 	&d_uncomp_profile,
 	&d_rtp_profile,
@@ -127,14 +128,14 @@ static int d_decode_header(struct rohc_decomp *decomp,
                            struct d_decode_data *ddata,
                            rohc_packet_t *const packet_type);
 
-static const struct d_profile *
+static const struct rohc_decomp_profile *
 	find_profile(const struct rohc_decomp *const decomp,
 	             const rohc_profile_t profile_id)
 	__attribute__((warn_unused_result));
 
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const rohc_cid_t cid,
-                                         const struct d_profile *const profile,
+                                         const struct rohc_decomp_profile *const profile,
                                          const struct rohc_ts arrival_time);
 static struct d_context * find_context(const struct rohc_decomp *const decomp,
                                        const size_t cid)
@@ -231,7 +232,7 @@ static struct d_context * find_context(const struct rohc_decomp *const decomp,
  */
 static struct d_context * context_create(struct rohc_decomp *decomp,
                                          const rohc_cid_t cid,
-                                         const struct d_profile *const profile,
+                                         const struct rohc_decomp_profile *const profile,
                                          const struct rohc_ts arrival_time)
 {
 	struct d_context *context;
@@ -1185,7 +1186,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
                            rohc_packet_t *const packet_type)
 {
 	bool is_new_context = false;
-	const struct d_profile *profile;
+	const struct rohc_decomp_profile *profile;
 	const unsigned char *walk = ibuf;
 	size_t remain_len = isize;
 	unsigned int feedback_size;
@@ -1928,7 +1929,7 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
                       unsigned int indent,
                       char *buffer)
 {
-	struct d_profile *p;
+	const struct rohc_decomp_profile *p;
 	char *prefix;
 	char *save;
 	size_t i;
@@ -1954,7 +1955,7 @@ int rohc_d_statistics(struct rohc_decomp *decomp,
 
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
-		p = d_profiles[i];
+		p = rohc_decomp_profiles[i];
 
 		buffer += sprintf(buffer, "%s\t\t<profile ", prefix);
 		buffer += sprintf(buffer, "id=\"%d\" ", p->id);
@@ -2732,7 +2733,7 @@ bool rohc_decomp_profile_enabled(const struct rohc_decomp *const decomp,
 	/* search the profile location */
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
-		if(d_profiles[i]->id == profile)
+		if(rohc_decomp_profiles[i]->id == profile)
 		{
 			/* found */
 			break;
@@ -2800,7 +2801,7 @@ bool rohc_decomp_enable_profile(struct rohc_decomp *const decomp,
 	/* search the profile location */
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
-		if(d_profiles[i]->id == profile)
+		if(rohc_decomp_profiles[i]->id == profile)
 		{
 			/* found */
 			break;
@@ -2862,7 +2863,7 @@ bool rohc_decomp_disable_profile(struct rohc_decomp *const decomp,
 	/* search the profile location */
 	for(i = 0; i < D_NUM_PROFILES; i++)
 	{
-		if(d_profiles[i]->id == profile)
+		if(rohc_decomp_profiles[i]->id == profile)
 		{
 			/* found */
 			break;
@@ -3077,7 +3078,7 @@ error:
  * @return            The matching ROHC profile if found and enabled,
  *                    NULL if not found or disabled
  */
-static const struct d_profile *
+static const struct rohc_decomp_profile *
 	find_profile(const struct rohc_decomp *const decomp,
 	             const rohc_profile_t profile_id)
 {
@@ -3086,7 +3087,9 @@ static const struct d_profile *
 	assert(decomp != NULL);
 
 	/* search for the profile within the enabled profiles */
-	for(i = 0; i < D_NUM_PROFILES && d_profiles[i]->id != profile_id; i++)
+	for(i = 0;
+	    i < D_NUM_PROFILES && rohc_decomp_profiles[i]->id != profile_id;
+	    i++)
 	{
 	}
 
@@ -3106,7 +3109,7 @@ static const struct d_profile *
 		return NULL;
 	}
 
-	return d_profiles[i];
+	return rohc_decomp_profiles[i];
 }
 
 

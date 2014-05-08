@@ -788,7 +788,7 @@ error:
  * @brief Define the decompression part of the IP-only profile as described
  *        in the RFC 3843.
  */
-struct d_profile d_ip_profile =
+const struct rohc_decomp_profile d_ip_profile =
 {
 	.id              = ROHC_PROFILE_IP, /* profile ID (see 5 in RFC 3843) */
 	.new_context     = d_ip_create,

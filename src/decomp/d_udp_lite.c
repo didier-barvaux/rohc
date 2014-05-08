@@ -733,7 +733,7 @@ static int udp_lite_build_uncomp_udp(const struct d_context *const context,
  * @brief Define the decompression part of the UDP-Lite profile as described
  *        in the RFC 4019.
  */
-struct d_profile d_udplite_profile =
+const struct rohc_decomp_profile d_udplite_profile =
 {
 	.id              = ROHC_PROFILE_UDPLITE, /* profile ID (RFC 4019, §7) */
 	.new_context     = d_udp_lite_create,
