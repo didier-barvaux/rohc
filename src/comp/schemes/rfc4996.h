@@ -35,7 +35,7 @@
 #include "dllexport.h"
 
 
-struct c_context;
+struct rohc_comp_ctxt;
 
 extern unsigned int ROHC_EXPORT lsb_xor_masks[];
 
@@ -97,7 +97,7 @@ typedef union
 
 
 // RFC4997 page 27
-uint32_t ROHC_EXPORT c_lsb(const struct c_context *const context,
+uint32_t ROHC_EXPORT c_lsb(const struct rohc_comp_ctxt *const context,
                            int num_lsbs_param,
                            unsigned int offset_param,
                            unsigned int context_value,
@@ -158,10 +158,10 @@ void c_field_scaling(uint32_t *const scaled_value,
 	__attribute__((nonnull(1, 2)));
 
 // RFC4996 page 71
-unsigned int rsf_index_enc(const struct c_context *const context,
+unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
                            unsigned int rsf_flags);
 // RFC4996 page 75
-uint16_t c_ip_id_lsb(const struct c_context *const context,
+uint16_t c_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                      const int behavior,
                      const unsigned int k,
                      const unsigned int p,
@@ -171,7 +171,7 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
 	__attribute__((warn_unused_result, nonnull(1)));
 
 /* optional_ip_id_lsb encoding method */
-int c_optional_ip_id_lsb(const struct c_context *const context,
+int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                          const int behavior,
                          const uint16_t context_ip_id,
                          const uint16_t ip_id,

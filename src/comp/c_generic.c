@@ -84,65 +84,65 @@ static void ip_header_info_free(struct ip_header_info *const header_info)
 
 static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars);
 
-static void change_mode(struct c_context *const context,
+static void change_mode(struct rohc_comp_ctxt *const context,
                         const rohc_mode_t new_mode)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t decide_packet(const struct c_context *const context)
+static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-static int code_packet(struct c_context *const context,
+static int code_packet(struct rohc_comp_ctxt *const context,
                        const struct net_pkt *const uncomp_pkt,
                        unsigned char *const rohc_pkt,
                        const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_IR_packet(struct c_context *const context,
+static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_IR_DYN_packet(struct c_context *const context,
+static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               unsigned char *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_code_static_part(const struct c_context *const context,
+static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
                                  unsigned char *const rohc_pkt,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_code_static_ip_part(const struct c_context *const context,
+static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
                                     struct ip_header_info *const header_info,
                                     const struct ip_packet *const ip,
                                     unsigned char *const dest,
                                     int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static int code_ipv4_static_part(const struct c_context *const context,
+static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
                                  unsigned char *const dest,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static int code_ipv6_static_part(const struct c_context *const context,
+static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
                                  unsigned char *const dest,
                                  int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static int rohc_code_dynamic_part(const struct c_context *const context,
+static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
                                   unsigned char *const rohc_pkt,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rohc_code_dynamic_ip_part(const struct c_context *const context,
+static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      const unsigned int hdr_pos,
                                      struct ip_header_info *const header_info,
                                      const struct ip_packet *const ip,
@@ -150,14 +150,14 @@ static int rohc_code_dynamic_ip_part(const struct c_context *const context,
                                      int counter)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
-static int code_ipv4_dynamic_part(const struct c_context *const context,
+static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
                                   unsigned char *const dest,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4)));
 
-static int code_ipv6_dynamic_part(const struct c_context *const context,
+static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const unsigned int hdr_pos,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
@@ -165,86 +165,86 @@ static int code_ipv6_dynamic_part(const struct c_context *const context,
                                   int counter)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
-static int code_uo_remainder(struct c_context *const context,
+static int code_uo_remainder(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
                              unsigned char *const dest,
                              int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_UO0_packet(struct c_context *const context,
+static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_UO1_packet(struct c_context *const context,
+static int code_UO1_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_UO2_packet(struct c_context *const context,
+static int code_UO2_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int code_UOR2_bytes(const struct c_context *const context,
+static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
                            const rohc_ext_t extension,
                            unsigned char *const f_byte,
                            unsigned char *const s_byte,
                            unsigned char *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
-static int code_UOR2_RTP_bytes(const struct c_context *const context,
+static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
                                const rohc_ext_t extension,
                                unsigned char *const f_byte,
                                unsigned char *const s_byte,
                                unsigned char *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
-static int code_UOR2_TS_bytes(const struct c_context *const context,
+static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
                               unsigned char *const f_byte,
                               unsigned char *const s_byte,
                               unsigned char *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
-static int code_UOR2_ID_bytes(const struct c_context *const context,
+static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
                               unsigned char *const f_byte,
                               unsigned char *const s_byte,
                               unsigned char *const t_byte)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4, 5)));
 
-static int code_EXT0_packet(const struct c_context *const context,
+static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
                             unsigned char *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int code_EXT1_packet(const struct c_context *const context,
+static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
                             unsigned char *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int code_EXT2_packet(const struct c_context *const context,
+static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
                             unsigned char *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int code_EXT3_packet(const struct c_context *const context,
+static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
                             unsigned char *const dest,
                             int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int rtp_header_flags_and_fields(const struct c_context *const context,
+static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
                                        const struct ip_packet *const ip,
                                        unsigned char *const dest,
                                        int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static int header_flags(const struct c_context *const context,
+static int header_flags(const struct rohc_comp_ctxt *const context,
                         struct ip_header_info *const header_info,
                         const unsigned short changed_f,
                         const struct ip_packet *const ip,
@@ -253,7 +253,7 @@ static int header_flags(const struct c_context *const context,
                         int counter)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4, 6)));
 
-static int header_fields(const struct c_context *const context,
+static int header_fields(const struct rohc_comp_ctxt *const context,
                          struct ip_header_info *const header_info,
                          const unsigned short changed_f,
                          const struct ip_packet *ip,
@@ -270,56 +270,56 @@ static uint8_t compute_uo_crc(const struct c_generic_context *g_context,
                               const unsigned char *const crc_table)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
-static void periodic_down_transition(struct c_context *const context)
+static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-static void update_context(struct c_context *const context,
+static void update_context(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt)
 	__attribute__((nonnull(1, 2)));
 static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
                                   const struct ip_packet *const ip)
 	__attribute__((nonnull(1, 2)));
 
-static bool c_generic_detect_changes(struct c_context *const context,
+static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_static_both_hdr(const struct c_context *const context,
+static int changed_static_both_hdr(const struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_static_one_hdr(const struct c_context *const context,
+static int changed_static_one_hdr(const struct rohc_comp_ctxt *const context,
                                   const unsigned short changed_fields,
                                   struct ip_header_info *const header_info)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
-static int changed_dynamic_both_hdr(const struct c_context *const context,
+static int changed_dynamic_both_hdr(const struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static int changed_dynamic_one_hdr(const struct c_context *const context,
+static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
                                    const unsigned short changed_fields,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1, 3, 4)));
-static unsigned short detect_changed_fields(const struct c_context *const context,
+static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const context,
                                             struct ip_header_info *const header_info, /* TODO: add const */
                                             const struct ip_packet *const ip)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 static bool is_field_changed(const unsigned short changed_fields,
                              const unsigned short check_field)
 	__attribute__((warn_unused_result, const));
-static void detect_ip_id_behaviours(struct c_context *const context,
+static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt)
 	__attribute__((nonnull(1, 2)));
-static void detect_ip_id_behaviour(const struct c_context *const context,
+static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 	__attribute__((nonnull(1, 2, 3)));
 static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
 	__attribute__((warn_unused_result));
 
-static int encode_uncomp_fields(struct c_context *const context,
+static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *const context,
+static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
                                             ip_header_pos_t *const pos,
                                             size_t *const nr_bits,
                                             uint16_t *const offset)
@@ -468,7 +468,7 @@ static void c_init_tmp_variables(struct generic_tmp_vars *const tmp_vars)
  * @param packet    The packet given to initialize the new context
  * @return          bool if successful, false otherwise
  */
-bool c_generic_create(struct c_context *const context,
+bool c_generic_create(struct rohc_comp_ctxt *const context,
                       const rohc_lsb_shift_t sn_shift,
                       const struct net_pkt *const packet)
 {
@@ -592,7 +592,7 @@ quit:
  *
  * @param context The compression context
  */
-void c_generic_destroy(struct c_context *const context)
+void c_generic_destroy(struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *g_context =
 		(struct c_generic_context *) context->specific;
@@ -722,7 +722,7 @@ bad_profile:
  * @param context  The compression context
  * @param new_mode The new mode the context must enter in
  */
-static void change_mode(struct c_context *const context,
+static void change_mode(struct rohc_comp_ctxt *const context,
                         const rohc_mode_t new_mode)
 {
 	if(context->mode != new_mode)
@@ -743,7 +743,7 @@ static void change_mode(struct c_context *const context,
  * @param context   The compression context
  * @param new_state The new state the context must enter in
  */
-void change_state(struct c_context *const context,
+void change_state(struct rohc_comp_ctxt *const context,
                   const rohc_comp_state_t new_state)
 {
 	struct c_generic_context *g_context;
@@ -792,7 +792,7 @@ void change_state(struct c_context *const context,
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-int c_generic_encode(struct c_context *const context,
+int c_generic_encode(struct rohc_comp_ctxt *const context,
                      const struct net_pkt *const uncomp_pkt,
                      unsigned char *const rohc_pkt,
                      const size_t rohc_pkt_max_len,
@@ -868,7 +868,7 @@ error:
  * @param context  The compression context to re-initialize
  * @return         true in case of success, false otherwise
  */
-bool c_generic_reinit_context(struct c_context *const context)
+bool c_generic_reinit_context(struct rohc_comp_ctxt *const context)
 {
 	assert(context != NULL);
 
@@ -889,7 +889,7 @@ bool c_generic_reinit_context(struct c_context *const context)
  * @param context  The compression context
  * @param feedback The feedback information including the whole feedback packet
  */
-void c_generic_feedback(struct c_context *const context,
+void c_generic_feedback(struct rohc_comp_ctxt *const context,
                         const struct c_feedback *feedback)
 {
 	struct c_generic_context *g_context;
@@ -1082,7 +1082,7 @@ void c_generic_feedback(struct c_context *const context,
  * @param port     The UDP port number to check
  * @return         always return true, it is used by non-RTP profiles
  */
-bool c_generic_use_udp_port(const struct c_context *const context __attribute__((unused)),
+bool c_generic_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
                             const unsigned int port __attribute__((unused)))
 {
 	return false;
@@ -1097,7 +1097,7 @@ bool c_generic_use_udp_port(const struct c_context *const context __attribute__(
  * @return            true if changes were successfully detected,
  *                    false if a problem occurred
  */
-static bool c_generic_detect_changes(struct c_context *const context,
+static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context =
@@ -1182,7 +1182,7 @@ error:
  *
  * @param context The compression context
  */
-static void periodic_down_transition(struct c_context *const context)
+static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *const g_context =
 		(struct c_generic_context *) context->specific;
@@ -1233,7 +1233,7 @@ static void periodic_down_transition(struct c_context *const context)
  *
  * @param context The compression context
  */
-void decide_state(struct c_context *const context)
+void decide_state(struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *g_context;
 	rohc_comp_state_t curr_state;
@@ -1373,7 +1373,7 @@ void decide_state(struct c_context *const context)
  *                        in case of success
  *                    \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t decide_packet(const struct c_context *const context)
+static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *const g_context =
 		(struct c_generic_context *) context->specific;
@@ -1474,13 +1474,13 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-int code_packet(struct c_context *const context,
+int code_packet(struct rohc_comp_ctxt *const context,
                 const struct net_pkt *const uncomp_pkt,
                 unsigned char *const rohc_pkt,
                 const size_t rohc_pkt_max_len)
 {
 	struct c_generic_context *g_context;
-	int (*code_packet_type)(struct c_context *const context,
+	int (*code_packet_type)(struct rohc_comp_ctxt *const context,
 	                        const struct net_pkt *const uncomp_pkt,
 	                        unsigned char *const rohc_pkt,
 	                        const size_t rohc_pkt_max_len)
@@ -1573,7 +1573,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_IR_packet(struct c_context *const context,
+static int code_IR_packet(struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt,
                           unsigned char *const rohc_pkt,
                           const size_t rohc_pkt_max_len)
@@ -1716,7 +1716,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_IR_DYN_packet(struct c_context *const context,
+static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
                               const struct net_pkt *const uncomp_pkt,
                               unsigned char *const rohc_pkt,
                               const size_t rohc_pkt_max_len)
@@ -1799,7 +1799,7 @@ error:
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int rohc_code_static_part(const struct c_context *const context,
+static int rohc_code_static_part(const struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
                                  unsigned char *const rohc_pkt,
                                  int counter)
@@ -1859,7 +1859,7 @@ error:
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int rohc_code_static_ip_part(const struct c_context *const context,
+static int rohc_code_static_ip_part(const struct rohc_comp_ctxt *const context,
                                     struct ip_header_info *const header_info,
                                     const struct ip_packet *const ip,
                                     unsigned char *const dest,
@@ -1906,7 +1906,7 @@ static int rohc_code_static_ip_part(const struct c_context *const context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int code_ipv4_static_part(const struct c_context *const context,
+static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
                                  unsigned char *const dest,
@@ -1974,7 +1974,7 @@ static int code_ipv4_static_part(const struct c_context *const context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int code_ipv6_static_part(const struct c_context *const context,
+static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
                                  struct ip_header_info *const header_info,
                                  const struct ip_packet *const ip,
                                  unsigned char *const dest,
@@ -2034,7 +2034,7 @@ static int code_ipv6_static_part(const struct c_context *const context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int rohc_code_dynamic_part(const struct c_context *const context,
+static int rohc_code_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const uncomp_pkt,
                                   unsigned char *const rohc_pkt,
                                   int counter)
@@ -2103,7 +2103,7 @@ error:
  * @return            The new position in the rohc-packet-under-build buffer,
  *                    -1 in case of error
  */
-static int rohc_code_dynamic_ip_part(const struct c_context *const context,
+static int rohc_code_dynamic_ip_part(const struct rohc_comp_ctxt *const context,
                                      const unsigned int hdr_pos,
                                      struct ip_header_info *const header_info,
                                      const struct ip_packet *const ip,
@@ -2153,7 +2153,7 @@ static int rohc_code_dynamic_ip_part(const struct c_context *const context,
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int code_ipv4_dynamic_part(const struct c_context *const context,
+static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
                                   unsigned char *const dest,
@@ -2252,7 +2252,7 @@ static int code_ipv4_dynamic_part(const struct c_context *const context,
  * @return            The new position in the rohc-packet-under-build buffer,
  *                    -1 in case of error
  */
-static int code_ipv6_dynamic_part(const struct c_context *const context,
+static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
                                   const unsigned int hdr_pos,
                                   struct ip_header_info *const header_info,
                                   const struct ip_packet *const ip,
@@ -2390,7 +2390,7 @@ error:
  * @param counter     The current position in the rohc-packet-under-build buffer
  * @return            The new position in the rohc-packet-under-build buffer
  */
-static int code_uo_remainder(struct c_context *const context,
+static int code_uo_remainder(struct rohc_comp_ctxt *const context,
                              const struct net_pkt *const uncomp_pkt,
                              unsigned char *const dest,
                              int counter)
@@ -2472,7 +2472,7 @@ static int code_uo_remainder(struct c_context *const context,
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_UO0_packet(struct c_context *const context,
+static int code_UO0_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
@@ -2590,7 +2590,7 @@ static int code_UO0_packet(struct c_context *const context,
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_UO1_packet(struct c_context *const context,
+static int code_UO1_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
@@ -3064,7 +3064,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_UO2_packet(struct c_context *const context,
+static int code_UO2_packet(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt,
                            unsigned char *const rohc_pkt,
                            const size_t rohc_pkt_max_len)
@@ -3080,7 +3080,7 @@ static int code_UO2_packet(struct c_context *const context,
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
 	int is_rtp;
-	int (*code_bytes)(const struct c_context *context,
+	int (*code_bytes)(const struct rohc_comp_ctxt *context,
 	                  const rohc_ext_t extension,
 	                  unsigned char *const f_byte,
 	                  unsigned char *const s_byte,
@@ -3252,7 +3252,7 @@ error:
  * @param t_byte       IN/OUT: The second byte of the UOR-2 packet
  * @return             1 if successful, 0 otherwise
  */
-static int code_UOR2_bytes(const struct c_context *const context,
+static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
                            const rohc_ext_t extension,
                            unsigned char *const f_byte,
                            unsigned char *const s_byte __attribute__((unused)),
@@ -3386,7 +3386,7 @@ error:
  * @param t_byte     IN/OUT: The third byte of the UOR-2-RTP packet
  * @return           1 if successful, 0 otherwise
  */
-static int code_UOR2_RTP_bytes(const struct c_context *const context,
+static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
                                const rohc_ext_t extension,
                                unsigned char *const f_byte,
                                unsigned char *const s_byte,
@@ -3636,7 +3636,7 @@ error:
  * @param t_byte     IN/OUT: The third byte of the UOR-2-TS packet
  * @return           1 if successful, 0 otherwise
  */
-static int code_UOR2_TS_bytes(const struct c_context *const context,
+static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
                               unsigned char *const f_byte,
                               unsigned char *const s_byte,
@@ -3897,7 +3897,7 @@ error:
  * @param t_byte     IN/OUT: The third byte of the UOR-2-ID packet
  * @return           1 if successful, 0 otherwise
  */
-static int code_UOR2_ID_bytes(const struct c_context *const context,
+static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
                               const rohc_ext_t extension,
                               unsigned char *const f_byte,
                               unsigned char *const s_byte,
@@ -4154,7 +4154,7 @@ error:
  * @return         The new position in the rohc-packet-under-build buffer
  *                 if successful, -1 otherwise
  */
-static int code_EXT0_packet(const struct c_context *const context,
+static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
                             unsigned char *const dest,
                             int counter)
 {
@@ -4255,7 +4255,7 @@ error:
  * @return         The new position in the rohc-packet-under-build buffer
  *                 if successful, -1 otherwise
  */
-static int code_EXT1_packet(const struct c_context *const context,
+static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
                             unsigned char *const dest,
                             int counter)
 {
@@ -4415,7 +4415,7 @@ error:
  * @return         The new position in the rohc-packet-under-build buffer
  *                 if successful, -1 otherwise
  */
-static int code_EXT2_packet(const struct c_context *const context,
+static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
                             unsigned char *const dest,
                             int counter)
 {
@@ -4624,7 +4624,7 @@ error:
  * @return            The new position in the rohc-packet-under-build buffer
  *                    if successful, -1 otherwise
  */
-static int code_EXT3_packet(const struct c_context *const context,
+static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
                             const struct net_pkt *const uncomp_pkt,
                             unsigned char *const dest,
                             int counter)
@@ -5190,7 +5190,7 @@ error:
  *
  * @see changed_fields
  */
-static int rtp_header_flags_and_fields(const struct c_context *const context,
+static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const context,
                                        const struct ip_packet *const ip,
                                        unsigned char *const dest,
                                        int counter)
@@ -5340,7 +5340,7 @@ error:
  *
  * @see changed_fields
  */
-static int header_flags(const struct c_context *const context,
+static int header_flags(const struct rohc_comp_ctxt *const context,
                         struct ip_header_info *const header_info,
                         const unsigned short changed_f,
                         const struct ip_packet *const ip,
@@ -5447,7 +5447,7 @@ static int header_flags(const struct c_context *const context,
  *
  * @see changed_fields
  */
-static int header_fields(const struct c_context *const context,
+static int header_fields(const struct rohc_comp_ctxt *const context,
                          struct ip_header_info *const header_info,
                          const unsigned short changed_f,
                          const struct ip_packet *const ip,
@@ -5563,7 +5563,7 @@ static uint8_t compute_uo_crc(const struct c_generic_context *g_context,
  * @param context     The compression context to update
  * @param uncomp_pkt  The uncompressed packet that updates the context
  */
-static void update_context(struct c_context *const context,
+static void update_context(struct rohc_comp_ctxt *const context,
                            const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *const g_context =
@@ -5630,7 +5630,7 @@ static void update_context_ip_hdr(struct ip_header_info *const ip_flags,
  * @param uncomp_pkt  The uncompressed packet
  * @return            The number of static fields that changed
  */
-static int changed_static_both_hdr(const struct c_context *const context,
+static int changed_static_both_hdr(const struct rohc_comp_ctxt *const context,
                                    const struct net_pkt *const uncomp_pkt)
 {
 	int nb_fields = 0; /* number of fields that changed */
@@ -5678,7 +5678,7 @@ static int changed_static_both_hdr(const struct c_context *const context,
  * @param header_info    The header info stored in the profile
  * @return               The number of fields that changed
  */
-static int changed_static_one_hdr(const struct c_context *const context,
+static int changed_static_one_hdr(const struct rohc_comp_ctxt *const context,
                                   const unsigned short changed_fields,
                                   struct ip_header_info *const header_info)
 {
@@ -5714,7 +5714,7 @@ static int changed_static_one_hdr(const struct c_context *const context,
  * @param uncomp_pkt  The uncompressed packet
  * @return            The number of dynamic fields that changed
  */
-static int changed_dynamic_both_hdr(const struct c_context *const context,
+static int changed_dynamic_both_hdr(const struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt)
 {
 	int nb_fields = 0; /* number of fields that changed */
@@ -5766,7 +5766,7 @@ static int changed_dynamic_both_hdr(const struct c_context *const context,
  * @param ip             The header of the new IP packet
  * @return               The number of fields that changed
  */
-static int changed_dynamic_one_hdr(const struct c_context *const context,
+static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
                                    const unsigned short changed_fields,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
@@ -5929,7 +5929,7 @@ static int changed_dynamic_one_hdr(const struct c_context *const context,
  * @param ip             The header of the new IP packet
  * @return               The bitpattern that indicates which field changed
  */
-static unsigned short detect_changed_fields(const struct c_context *const context,
+static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const context,
                                             struct ip_header_info *const header_info, /* TODO: add const */
                                             const struct ip_packet *const ip)
 {
@@ -6032,7 +6032,7 @@ error:
  * @param context     The compression context
  * @param uncomp_pkt  The uncompressed packet
  */
-static void detect_ip_id_behaviours(struct c_context *const context,
+static void detect_ip_id_behaviours(struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
@@ -6072,7 +6072,7 @@ static void detect_ip_id_behaviours(struct c_context *const context,
  * @param header_info  The header info stored in the profile
  * @param ip           One IPv4 header
  */
-static void detect_ip_id_behaviour(const struct c_context *const context,
+static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
                                    struct ip_header_info *const header_info,
                                    const struct ip_packet *const ip)
 {
@@ -6209,7 +6209,7 @@ static bool is_ip_id_increasing(const uint16_t old_id, const uint16_t new_id)
  * @return             ROHC_OK in case of success,
  *                     ROHC_ERROR otherwise
  */
-static int encode_uncomp_fields(struct c_context *const context,
+static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context;
@@ -6403,7 +6403,7 @@ error:
  *                ROHC_EXT_1 and ROHC_EXT_3 if successful,
  *                ROHC_EXT_UNKNOWN otherwise
  */
-rohc_ext_t decide_extension(const struct c_context *const context)
+rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *g_context;
 	size_t nr_innermost_ip_id_bits;
@@ -6674,7 +6674,7 @@ error:
  * @param nr_bits  OUT: the number of IP-ID bits of the found header
  * @param offset   OUT: the IP-ID offset of the found header
  */
-static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *const context,
+static void rohc_get_innermost_ipv4_non_rnd(const struct rohc_comp_ctxt *const context,
                                             ip_header_pos_t *const pos,
                                             size_t *const nr_bits,
                                             uint16_t *const offset)
@@ -6725,7 +6725,7 @@ static void rohc_get_innermost_ipv4_non_rnd(const struct c_context *const contex
  * @param nr_outermost_bits  OUT: the maximum number of IP-ID bits
  *                                for the outermost IP header
  */
-void rohc_get_ipid_bits(const struct c_context *const context,
+void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
                         size_t *const nr_innermost_bits,
                         size_t *const nr_outermost_bits)
 {

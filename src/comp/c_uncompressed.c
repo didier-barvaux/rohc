@@ -58,44 +58,44 @@ struct sc_uncompressed_context
  */
 
 /* create/destroy context */
-static bool c_uncompressed_create(struct c_context *const context,
+static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
-static void c_uncompressed_destroy(struct c_context *const context)
+static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 static bool c_uncompressed_check_profile(const struct rohc_comp *const comp,
                                          const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
-bool c_uncompressed_use_udp_port(const struct c_context *const context,
+bool c_uncompressed_use_udp_port(const struct rohc_comp_ctxt *const context,
                                  const unsigned int port);
 
 /* check whether a packet belongs to a context */
-static bool c_uncompressed_check_context(const struct c_context *const context,
+static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context,
                                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 /* encode uncompressed packets */
-static int c_uncompressed_encode(struct c_context *const context,
+static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
                                  unsigned char *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
                                  rohc_packet_t *const packet_type,
                                  size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
-static int uncompressed_code_packet(const struct c_context *const context,
+static int uncompressed_code_packet(const struct rohc_comp_ctxt *const context,
                                     const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
                                     size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
-static int uncompressed_code_IR_packet(const struct c_context *const context,
+static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *const context,
                                        const struct net_pkt *const uncomp_pkt,
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
                                        size_t *const payload_offset)
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
-static int uncompressed_code_normal_packet(const struct c_context *const context,
+static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *const context,
                                            const struct net_pkt *const uncomp_pkt,
                                            unsigned char *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
@@ -103,18 +103,18 @@ static int uncompressed_code_normal_packet(const struct c_context *const context
 		__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 /* re-initialize a context */
-static bool c_uncompressed_reinit_context(struct c_context *const context);
+static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context);
 
 /* deliver feedbacks */
-static void c_uncompressed_feedback(struct c_context *const context,
+static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
                                     const struct c_feedback *feedback);
 
 /* mode and state transitions */
-static void uncompressed_decide_state(struct c_context *const context);
-static void uncompressed_periodic_down_transition(struct c_context *const context);
-static void uncompressed_change_mode(struct c_context *const context,
+static void uncompressed_decide_state(struct rohc_comp_ctxt *const context);
+static void uncompressed_periodic_down_transition(struct rohc_comp_ctxt *const context);
+static void uncompressed_change_mode(struct rohc_comp_ctxt *const context,
                                      const rohc_mode_t new_mode);
-static void uncompressed_change_state(struct c_context *const context,
+static void uncompressed_change_state(struct rohc_comp_ctxt *const context,
                                       const rohc_comp_state_t new_state);
 
 
@@ -135,7 +135,7 @@ static void uncompressed_change_state(struct c_context *const context,
  * @param packet   The packet given to initialize the new context
  * @return         true if successful, false otherwise
  */
-static bool c_uncompressed_create(struct c_context *const context,
+static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
                                   const struct net_pkt *const packet)
 {
 	struct sc_uncompressed_context *uncomp_context;
@@ -173,7 +173,7 @@ quit:
  *
  * @param context The compression context
  */
-static void c_uncompressed_destroy(struct c_context *const context)
+static void c_uncompressed_destroy(struct rohc_comp_ctxt *const context)
 {
 	if(context->specific != NULL)
 	{
@@ -217,7 +217,7 @@ static bool c_uncompressed_check_profile(const struct rohc_comp *const comp __at
  * @return         Always return true to tell that the packet belongs
  *                 to the context
  */
-static bool c_uncompressed_check_context(const struct c_context *const context __attribute__((unused)),
+static bool c_uncompressed_check_context(const struct rohc_comp_ctxt *const context __attribute__((unused)),
                                          const struct net_pkt *const packet __attribute__((unused)))
 {
 	return true;
@@ -243,7 +243,7 @@ static bool c_uncompressed_check_context(const struct c_context *const context _
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int c_uncompressed_encode(struct c_context *const context,
+static int c_uncompressed_encode(struct rohc_comp_ctxt *const context,
                                  const struct net_pkt *const uncomp_pkt,
                                  unsigned char *const rohc_pkt,
                                  const size_t rohc_pkt_max_len,
@@ -273,7 +273,7 @@ static int c_uncompressed_encode(struct c_context *const context,
  * @param context  The compression context
  * @return         true in case of success, false otherwise
  */
-static bool c_uncompressed_reinit_context(struct c_context *const context)
+static bool c_uncompressed_reinit_context(struct rohc_comp_ctxt *const context)
 {
 	assert(context != NULL);
 
@@ -294,7 +294,7 @@ static bool c_uncompressed_reinit_context(struct c_context *const context)
  * @param context  The compression context
  * @param feedback The feedback information including the whole feedback packet
  */
-static void c_uncompressed_feedback(struct c_context *const context,
+static void c_uncompressed_feedback(struct rohc_comp_ctxt *const context,
                                     const struct c_feedback *feedback)
 {
 	unsigned char *p = feedback->data + feedback->specific_offset;
@@ -427,7 +427,7 @@ static void c_uncompressed_feedback(struct c_context *const context,
  *
  * @param context The compression context
  */
-static void uncompressed_decide_state(struct c_context *const context)
+static void uncompressed_decide_state(struct rohc_comp_ctxt *const context)
 {
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -451,7 +451,7 @@ static void uncompressed_decide_state(struct c_context *const context)
  *
  * @param context The compression context
  */
-static void uncompressed_periodic_down_transition(struct c_context *const context)
+static void uncompressed_periodic_down_transition(struct rohc_comp_ctxt *const context)
 {
 	struct sc_uncompressed_context *uncomp_context =
 		(struct sc_uncompressed_context *) context->specific;
@@ -477,7 +477,7 @@ static void uncompressed_periodic_down_transition(struct c_context *const contex
  * @param context  The compression context
  * @param new_mode The new mode the context must enter in
  */
-static void uncompressed_change_mode(struct c_context *const context,
+static void uncompressed_change_mode(struct rohc_comp_ctxt *const context,
                                      const rohc_mode_t new_mode)
 {
 	if(context->mode != new_mode)
@@ -494,7 +494,7 @@ static void uncompressed_change_mode(struct c_context *const context,
  * @param context   The compression context
  * @param new_state The new state the context must enter in
  */
-static void uncompressed_change_state(struct c_context *const context,
+static void uncompressed_change_state(struct rohc_comp_ctxt *const context,
                                       const rohc_comp_state_t new_state)
 {
 	struct sc_uncompressed_context *uncomp_context =
@@ -525,14 +525,14 @@ static void uncompressed_change_state(struct c_context *const context,
  * @return                  The length of the ROHC packet if successful,
  *                         -1 otherwise
  */
-static int uncompressed_code_packet(const struct c_context *context,
+static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
                                     const struct net_pkt *const uncomp_pkt,
                                     unsigned char *const rohc_pkt,
                                     const size_t rohc_pkt_max_len,
                                     rohc_packet_t *const packet_type,
                                     size_t *const payload_offset)
 {
-	int (*code_packet)(const struct c_context *const context,
+	int (*code_packet)(const struct rohc_comp_ctxt *const context,
 	                   const struct net_pkt *const uncomp_pkt,
 	                   unsigned char *const rohc_pkt,
 	                   const size_t rohc_pkt_max_len,
@@ -635,7 +635,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int uncompressed_code_IR_packet(const struct c_context *context,
+static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
                                        const struct net_pkt *const uncomp_pkt __attribute__((unused)),
                                        unsigned char *const rohc_pkt,
                                        const size_t rohc_pkt_max_len,
@@ -711,7 +711,7 @@ static int uncompressed_code_IR_packet(const struct c_context *context,
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int uncompressed_code_normal_packet(const struct c_context *context,
+static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
                                            const struct net_pkt *const uncomp_pkt,
                                            unsigned char *const rohc_pkt,
                                            const size_t rohc_pkt_max_len,
@@ -751,7 +751,7 @@ static int uncompressed_code_normal_packet(const struct c_context *context,
  * @return        Always return false because the Uncompressed profile does not
  *                use UDP port
  */
-bool c_uncompressed_use_udp_port(const struct c_context *const context __attribute__((unused)),
+bool c_uncompressed_use_udp_port(const struct rohc_comp_ctxt *const context __attribute__((unused)),
                                  const unsigned int port __attribute__((unused)))
 {
 	return false;

@@ -93,7 +93,7 @@
  */
 
 struct c_feedback;
-struct c_context;
+struct rohc_comp_ctxt;
 
 
 /*
@@ -136,7 +136,7 @@ struct rohc_comp
 	rohc_comp_features_t features;
 
 	/** The array of compression contexts that use the compressor */
-	struct c_context *contexts;
+	struct rohc_comp_ctxt *contexts;
 	/** The number of compression contexts in use in the array */
 	size_t num_contexts_used;
 
@@ -202,7 +202,7 @@ struct rohc_comp
 	int total_compressed_size;
 
 	/** The last context used by the compressor */
-	struct c_context *last_context;
+	struct rohc_comp_ctxt *last_context;
 
 
 	/* random callback */
@@ -256,7 +256,7 @@ struct rohc_comp_profile
 	 * @brief The handler used to create the profile-specific part of the
 	 *        compression context
 	 */
-	bool (*create)(struct c_context *const context,
+	bool (*create)(struct rohc_comp_ctxt *const context,
 	               const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
@@ -264,7 +264,7 @@ struct rohc_comp_profile
 	 * @brief The handler used to destroy the profile-specific part of the
 	 *        compression context
 	 */
-	void (*destroy)(struct c_context *const context)
+	void (*destroy)(struct rohc_comp_ctxt *const context)
 		__attribute__((nonnull(1)));
 
 	/**
@@ -279,7 +279,7 @@ struct rohc_comp_profile
 	 * @brief The handler used to check whether an uncompressed IP packet
 	 *        belongs to a context or not
 	 */
-	bool (*check_context)(const struct c_context *const context,
+	bool (*check_context)(const struct rohc_comp_ctxt *const context,
 	                      const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
@@ -296,7 +296,7 @@ struct rohc_comp_profile
 	 * @return                   The length of the ROHC packet if successful,
 	 *                           -1 otherwise
 	 */
-	int (*encode)(struct c_context *const context,
+	int (*encode)(struct rohc_comp_ctxt *const context,
 	              const struct net_pkt *const uncomp_pkt,
 	              unsigned char *const rohc_pkt,
 	              const size_t rohc_pkt_max_len,
@@ -307,20 +307,20 @@ struct rohc_comp_profile
 	/**
 	 * @brief The handler used to re-initialize a context
 	 */
-	bool (*reinit_context)(struct c_context *const context)
+	bool (*reinit_context)(struct rohc_comp_ctxt *const context)
 		__attribute__((nonnull(1), warn_unused_result));
 
 	/**
 	 * @brief The handler used to warn the profile-specific part of the
 	 *        context about the arrival of feedback data
 	 */
-	void (*feedback)(struct c_context *const context,
+	void (*feedback)(struct rohc_comp_ctxt *const context,
 	                 const struct c_feedback *feedback);
 
 	/**
 	 * @brief The handler used to detect if a UDP port is used by the profile
 	 */
-	bool (*use_udp_port)(const struct c_context *const context,
+	bool (*use_udp_port)(const struct rohc_comp_ctxt *const context,
 	                     const unsigned int port);
 };
 
@@ -328,7 +328,7 @@ struct rohc_comp_profile
 /**
  * @brief The ROHC compression context
  */
-struct c_context
+struct rohc_comp_ctxt
 {
 	/** Whether the context is in use or not */
 	int used;

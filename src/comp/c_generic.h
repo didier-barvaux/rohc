@@ -217,32 +217,32 @@ struct c_generic_context
 	unsigned int next_header_len;
 
 	/** The handler for encoding profile-specific uncompressed header fields */
-	int (*encode_uncomp_fields)(struct c_context *const context,
+	int (*encode_uncomp_fields)(struct rohc_comp_ctxt *const context,
 	                            const struct net_pkt *const uncomp_pkt)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to decide the state that should be used for the
 	///        next packet
-	void (*decide_state)(struct c_context *const context);
+	void (*decide_state)(struct rohc_comp_ctxt *const context);
 	/** @brief The handler used to decide which packet to send in FO state */
-	rohc_packet_t (*decide_FO_packet)(const struct c_context *context);
+	rohc_packet_t (*decide_FO_packet)(const struct rohc_comp_ctxt *context);
 	/** @brief The handler used to decide which packet to send in SO state */
-	rohc_packet_t (*decide_SO_packet)(const struct c_context *context);
+	rohc_packet_t (*decide_SO_packet)(const struct rohc_comp_ctxt *context);
 	/** The handler used to decide which extension to send */
-	rohc_ext_t (*decide_extension)(const struct c_context *context);
+	rohc_ext_t (*decide_extension)(const struct rohc_comp_ctxt *context);
 
 	/// The handler used to initialize some data just before the IR packet build
-	void (*init_at_IR)(const struct c_context *context,
+	void (*init_at_IR)(const struct rohc_comp_ctxt *context,
 	                   const unsigned char *next_header);
 
 	/** Determine the next SN value */
-	uint32_t (*get_next_sn)(const struct c_context *const context,
+	uint32_t (*get_next_sn)(const struct rohc_comp_ctxt *const context,
 	                        const struct net_pkt *const uncomp_pkt)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add the static part of the next header to the
 	///        ROHC packet
-	size_t (*code_static_part)(const struct c_context *const context,
+	size_t (*code_static_part)(const struct rohc_comp_ctxt *const context,
 	                           const unsigned char *const next_header,
 	                           unsigned char *const dest,
 	                           const size_t counter)
@@ -250,7 +250,7 @@ struct c_generic_context
 
 	/// @brief The handler used to add the dynamic part of the next header to the
 	///        ROHC pachet
-	size_t (*code_dynamic_part)(const struct c_context *const context,
+	size_t (*code_dynamic_part)(const struct rohc_comp_ctxt *const context,
 	                            const unsigned char *const next_header,
 	                            unsigned char *const dest,
 	                            const size_t counter)
@@ -258,14 +258,14 @@ struct c_generic_context
 
 	/// @brief The handler used to add the IR/IR-DYN remainder header to the
 	///        ROHC pachet
-	size_t (*code_ir_remainder)(const struct c_context *const context,
+	size_t (*code_ir_remainder)(const struct rohc_comp_ctxt *const context,
 	                            unsigned char *const dest,
 	                            const size_t counter)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add an additional header in the head of the
 	///        UO-0, UO-1 and UO-2 packets
-	size_t (*code_UO_packet_head)(const struct c_context *const context,
+	size_t (*code_UO_packet_head)(const struct rohc_comp_ctxt *const context,
 	                              const unsigned char *const next_header,
 	                              unsigned char *const dest,
 	                              const size_t counter,
@@ -274,7 +274,7 @@ struct c_generic_context
 
 	/// @brief The handler used to add an additional header in the tail of the
 	///        UO-0, UO-1 and UO-2 packets
-	size_t (*code_uo_remainder)(const struct c_context *const context,
+	size_t (*code_uo_remainder)(const struct rohc_comp_ctxt *const context,
 	                            const unsigned char *const next_header,
 	                            unsigned char *const dest,
 	                            const size_t counter)
@@ -307,25 +307,25 @@ struct c_generic_context
  * Function prototypes.
  */
 
-bool c_generic_create(struct c_context *const context,
+bool c_generic_create(struct rohc_comp_ctxt *const context,
                       const rohc_lsb_shift_t sn_shift,
                       const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 3)));
-void c_generic_destroy(struct c_context *const context)
+void c_generic_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 bool c_generic_check_profile(const struct rohc_comp *const comp,
                              const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
-void change_state(struct c_context *const context,
+void change_state(struct rohc_comp_ctxt *const context,
                   const rohc_comp_state_t new_state)
 	__attribute__((nonnull(1)));
 
-rohc_ext_t decide_extension(const struct c_context *const context)
+rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 	__attribute__((warn_unused_result, nonnull(1)));
 
-int c_generic_encode(struct c_context *const context,
+int c_generic_encode(struct rohc_comp_ctxt *const context,
                      const struct net_pkt *const uncomp_pkt,
                      unsigned char *const rohc_pkt,
                      const size_t rohc_pkt_max_len,
@@ -333,17 +333,17 @@ int c_generic_encode(struct c_context *const context,
                      size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
-bool c_generic_reinit_context(struct c_context *const context);
+bool c_generic_reinit_context(struct rohc_comp_ctxt *const context);
 
-void c_generic_feedback(struct c_context *const context,
+void c_generic_feedback(struct rohc_comp_ctxt *const context,
                         const struct c_feedback *feedback);
 
-bool c_generic_use_udp_port(const struct c_context *const context,
+bool c_generic_use_udp_port(const struct rohc_comp_ctxt *const context,
                             const unsigned int port);
 
-void decide_state(struct c_context *const context);
+void decide_state(struct rohc_comp_ctxt *const context);
 
-void rohc_get_ipid_bits(const struct c_context *const context,
+void rohc_get_ipid_bits(const struct rohc_comp_ctxt *const context,
                         size_t *const nr_innermost_bits,
                         size_t *const nr_outermost_bits)
 	__attribute__((nonnull(1, 2, 3)));

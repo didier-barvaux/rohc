@@ -454,22 +454,22 @@ static int tcp_options_index[TCP_LIST_ITEM_MAP_LEN] =
  * Private function prototypes.
  */
 
-static bool c_tcp_create(struct c_context *const context,
+static bool c_tcp_create(struct rohc_comp_ctxt *const context,
                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static void c_tcp_destroy(struct c_context *const context)
+static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
 static bool c_tcp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static bool c_tcp_check_context(const struct c_context *const context,
+static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int c_tcp_encode(struct c_context *const context,
+static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
@@ -477,51 +477,51 @@ static int c_tcp_encode(struct c_context *const context,
                         size_t *const payload_offset)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5, 6)));
 
-static bool tcp_detect_changes(struct c_context *const context,
+static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
                                const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static void tcp_decide_state(struct c_context *const context)
+static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 	__attribute__((nonnull(1)));
 
-static bool tcp_encode_uncomp_fields(struct c_context *const context,
+static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static rohc_packet_t tcp_decide_packet(const struct c_context *const context,
+static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const context,
                                        const ip_context_ptr_t *const ip_inner_context,
                                        const tcphdr_t *const tcp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
-static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
+static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const context,
                                           const ip_context_ptr_t *const ip_inner_context,
                                           const tcphdr_t *const tcp)
 	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
 
-static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const context,
+static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const context,
 																  ip_context_ptr_t ip_context,
 																  multi_ptr_t mptr,
 																  uint8_t protocol,
 																  base_header_ip_t base_header);
-static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const context,
+static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const context,
 																	ip_context_ptr_t ip_context,
 																	multi_ptr_t mptr,
 																	uint8_t protocol,
 																	base_header_ip_t base_header);
-static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const context,
+static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *const context,
 																	  ip_context_ptr_t ip_context,
 																	  multi_ptr_t mptr,
 																	  uint8_t protocol,
 																	  base_header_ip_t base_header);
-static uint8_t * tcp_code_static_ip_part(struct c_context *const context,
+static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
                                          ip_context_ptr_t ip_context,
                                          base_header_ip_t base_header,
                                          multi_ptr_t mptr);
-static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
                                           ip_context_ptr_t ip_context,
                                           base_header_ip_t base_header,
                                           multi_ptr_t mptr,
                                           int is_innermost);
-static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
+static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context,
                                             ip_context_ptr_t ip_context,
                                             base_header_ip_t base_header,
                                             uint8_t *rohc_data,
@@ -530,18 +530,18 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
                                             int ttl_irregular_chain_flag,
                                             int ip_inner_ecn);
 
-static uint8_t * tcp_code_static_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
                                            const tcphdr_t *tcp,
                                            multi_ptr_t mptr);
-static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
                                             const unsigned char *next_header,
                                             multi_ptr_t mptr);
-static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
+static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const context,
                                              tcphdr_t *tcp,
                                              uint8_t *const rohc_data,
                                              int ip_inner_ecn);
 
-static int code_CO_packet(struct c_context *const context,
+static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
                           const int packet_size,
                           const unsigned char *next_header,
@@ -549,7 +549,7 @@ static int code_CO_packet(struct c_context *const context,
                           const size_t rohc_pkt_max_len,
                           const rohc_packet_t packet_type,
                           size_t *const payload_offset);
-static int co_baseheader(struct c_context *const context,
+static int co_baseheader(struct rohc_comp_ctxt *const context,
                          struct sc_tcp_context *const tcp_context,
                          ip_context_ptr_t ip_inner_context,
                          base_header_ip_t base_header,
@@ -565,56 +565,56 @@ static int co_baseheader(struct c_context *const context,
  * Functions that build the rnd_X packets
  */
 
-static size_t c_tcp_build_rnd_1(struct c_context *const context,
+static size_t c_tcp_build_rnd_1(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_1_t *const rnd1)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static size_t c_tcp_build_rnd_2(struct c_context *const context,
+static size_t c_tcp_build_rnd_2(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_2_t *const rnd2)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static size_t c_tcp_build_rnd_3(struct c_context *const context,
+static size_t c_tcp_build_rnd_3(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_3_t *const rnd3)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static size_t c_tcp_build_rnd_4(struct c_context *const context,
+static size_t c_tcp_build_rnd_4(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_4_t *const rnd4)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static size_t c_tcp_build_rnd_5(struct c_context *const context,
+static size_t c_tcp_build_rnd_5(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_5_t *const rnd5)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static size_t c_tcp_build_rnd_6(struct c_context *const context,
+static size_t c_tcp_build_rnd_6(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_6_t *const rnd6)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static size_t c_tcp_build_rnd_7(struct c_context *const context,
+static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
                                 rnd_7_t *const rnd7)
 	__attribute__((nonnull(1, 2, 3, 5), warn_unused_result));
 
-static bool c_tcp_build_rnd_8(struct c_context *const context,
+static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 										const ip_context_ptr_t ip_context,
 										struct sc_tcp_context *const tcp_context,
 										const base_header_ip_t ip,
@@ -629,7 +629,7 @@ static bool c_tcp_build_rnd_8(struct c_context *const context,
  * Functions that build the seq_X packets
  */
 
-static size_t c_tcp_build_seq_1(struct c_context *const context,
+static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -638,7 +638,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
                                 seq_1_t *const seq1)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static size_t c_tcp_build_seq_2(struct c_context *const context,
+static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -647,7 +647,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
                                 seq_2_t *const seq2)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static size_t c_tcp_build_seq_3(struct c_context *const context,
+static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -656,7 +656,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
                                 seq_3_t *const seq3)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static size_t c_tcp_build_seq_4(struct c_context *const context,
+static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -665,7 +665,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
                                 seq_4_t *const seq4)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static size_t c_tcp_build_seq_5(struct c_context *const context,
+static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -674,7 +674,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
                                 seq_5_t *const seq5)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static size_t c_tcp_build_seq_6(struct c_context *const context,
+static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -683,7 +683,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
                                 seq_6_t *const seq6)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static size_t c_tcp_build_seq_7(struct c_context *const context,
+static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -692,7 +692,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
                                 seq_7_t *const seq7)
 	__attribute__((nonnull(1, 3, 5, 7), warn_unused_result));
 
-static bool c_tcp_build_seq_8(struct c_context *const context,
+static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 										const ip_context_ptr_t ip_context,
 										struct sc_tcp_context *const tcp_context,
 										const base_header_ip_t ip,
@@ -707,20 +707,20 @@ static bool c_tcp_build_seq_8(struct c_context *const context,
  * Misc functions
  */
 
-static bool tcp_compress_tcp_options(struct c_context *const context,
+static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 												 const tcphdr_t *const tcp,
 												 uint8_t *const comp_opts,
 												 size_t *const comp_opts_len)
 	__attribute__((nonnull(1, 2, 3, 4), warn_unused_result));
 
-static bool c_ts_lsb(const struct c_context *const context,
+static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
                      uint8_t **dest,
                      const uint32_t timestamp,
                      const size_t nr_bits_minus_1,
                      const size_t nr_bits_0x40000)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static uint8_t * c_tcp_opt_sack(const struct c_context *const context,
+static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
                                 uint8_t *ptr,
                                 uint32_t ack_value,
                                 uint8_t length,
@@ -731,12 +731,12 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
 																		const uint16_t new_ip_id)
 	__attribute__((warn_unused_result, const));
 
-static void tcp_field_descr_change(const struct c_context *const context,
+static void tcp_field_descr_change(const struct rohc_comp_ctxt *const context,
                                    const char *const name,
                                    const bool changed)
 	__attribute__((nonnull(1, 2)));
 
-static void tcp_field_descr_present(const struct c_context *const context,
+static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const char *const name,
                                     const bool present)
 	__attribute__((nonnull(1, 2)));
@@ -760,7 +760,7 @@ static char * tcp_opt_get_descr(const uint8_t opt_type)
  * @param packet   The IP/TCP packet given to initialize the new context
  * @return         true if successful, false otherwise
  */
-static bool c_tcp_create(struct c_context *const context,
+static bool c_tcp_create(struct rohc_comp_ctxt *const context,
                          const struct net_pkt *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
@@ -1116,7 +1116,7 @@ error:
  *
  * @param context  The TCP compression context to destroy
  */
-static void c_tcp_destroy(struct c_context *const context)
+static void c_tcp_destroy(struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *g_context;
 	struct sc_tcp_context *tcp_context;
@@ -1289,7 +1289,7 @@ bad_profile:
  * @return         true if the IP/TCP packet belongs to the context
  *                 false if it does not belong to the context
  */
-static bool c_tcp_check_context(const struct c_context *const context,
+static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 {
 	struct c_generic_context *g_context;
@@ -1433,7 +1433,7 @@ bad_context:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int c_tcp_encode(struct c_context *const context,
+static int c_tcp_encode(struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const uncomp_pkt,
                         unsigned char *const rohc_pkt,
                         const size_t rohc_pkt_max_len,
@@ -2148,7 +2148,7 @@ error:
  * @return               The new pointer in the rohc-packet-under-build buffer,
  *                       NULL if a problem occurs
  */
-static uint8_t * tcp_code_static_ipv6_option_part(struct c_context *const context,
+static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const context,
 																  ip_context_ptr_t ip_context,
 																  multi_ptr_t mptr,
 																  uint8_t protocol,
@@ -2261,7 +2261,7 @@ error:
  * @return               The new pointer in the rohc-packet-under-build buffer,
  *                       NULL if a problem occurs
  */
-static uint8_t * tcp_code_dynamic_ipv6_option_part(struct c_context *const context,
+static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const context,
 																	ip_context_ptr_t ip_context,
 																	multi_ptr_t mptr,
 																	uint8_t protocol,
@@ -2362,7 +2362,7 @@ error:
  * @return               The new pointer in the rohc-packet-under-build buffer,
  *                       NULL if a problem occurs
  */
-static uint8_t * tcp_code_irregular_ipv6_option_part(struct c_context *const context,
+static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *const context,
 																	  ip_context_ptr_t ip_context,
 																	  multi_ptr_t mptr,
 																	  uint8_t protocol,
@@ -2458,7 +2458,7 @@ error:
  * @param mptr           The current pointer in the rohc-packet-under-build buffer
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * tcp_code_static_ip_part(struct c_context *const context,
+static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
                                          ip_context_ptr_t ip_context,
                                          base_header_ip_t base_header,
                                          multi_ptr_t mptr)
@@ -2533,7 +2533,7 @@ static uint8_t * tcp_code_static_ip_part(struct c_context *const context,
  * @param is_innermost   True if the IP header is the innermost of the packet
  * @return               The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
                                            ip_context_ptr_t ip_context,
                                            base_header_ip_t base_header,
                                            multi_ptr_t mptr,
@@ -2648,7 +2648,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct c_context *context,
  * @param ip_inner_ecn              The ECN flags of the IP innermost header
  * @return                          The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
+static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context,
                                             ip_context_ptr_t ip_context,
                                             base_header_ip_t base_header,
                                             uint8_t *rohc_data,
@@ -2769,7 +2769,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct c_context *const context,
  * @param mptr        The current pointer in the rohc-packet-under-build buffer
  * @return            The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * tcp_code_static_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
                                            const tcphdr_t *tcp,
                                            multi_ptr_t mptr)
 {
@@ -2809,7 +2809,7 @@ TODO
  * @param mptr        The current pointer in the rohc-packet-under-build buffer
  * @return            The new pointer in the rohc-packet-under-build buffer
  */
-static uint8_t * tcp_code_dynamic_tcp_part(const struct c_context *context,
+static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
                                             const unsigned char *next_header,
                                             multi_ptr_t mptr)
 {
@@ -3351,7 +3351,7 @@ error:
  * @return              The new pointer in the rohc-packet-under-build buffer,
  *                      NULL in case of problem
  */
-static uint8_t * tcp_code_irregular_tcp_part(struct c_context *const context,
+static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const context,
                                              tcphdr_t *tcp,
                                              uint8_t *const rohc_data,
                                              int ip_inner_ecn)
@@ -3515,7 +3515,7 @@ error:
  * @param nr_bits_0x40000  The minimal number of required bits for p = 0x40000
  * @return                 true if compression was successful, false otherwise
  */
-static bool c_ts_lsb(const struct c_context *const context,
+static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
                      uint8_t **dest,
                      const uint32_t timestamp,
                      const size_t nr_bits_minus_1,
@@ -3594,7 +3594,7 @@ error:
  * @param field     The value to compress
  * @return          Pointer after the compressed value
  */
-static uint8_t * c_sack_pure_lsb(const struct c_context *const context,
+static uint8_t * c_sack_pure_lsb(const struct rohc_comp_ctxt *const context,
                                  uint8_t *ptr,
                                  uint32_t base,
                                  uint32_t field)
@@ -3663,7 +3663,7 @@ static uint8_t * c_sack_pure_lsb(const struct c_context *const context,
  * @param sack_block  Pointer to the SACK block to compress
  * @return            Pointer after the compressed value
  */
-static uint8_t * c_sack_block(const struct c_context *const context,
+static uint8_t * c_sack_block(const struct rohc_comp_ctxt *const context,
                               uint8_t *ptr,
                               uint32_t reference,
                               const sack_block_t *const sack_block)
@@ -3699,7 +3699,7 @@ static uint8_t * c_sack_block(const struct c_context *const context,
  * @param sack_block  Pointer to the first SACK block to compress
  * @return            Pointer after the compressed value
  */
-static uint8_t * c_tcp_opt_sack(const struct c_context *const context,
+static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
                                 uint8_t *ptr,
                                 uint32_t ack_value,
                                 uint8_t length,
@@ -3770,7 +3770,7 @@ static uint8_t * c_tcp_opt_generic(struct sc_tcp_context *tcp_context __attribut
  * @return               true if the TCP options were successfully compressed,
  *                       false otherwise
  */
-static bool tcp_compress_tcp_options(struct c_context *const context,
+static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 												 const tcphdr_t *const tcp,
 												 uint8_t *const comp_opts,
 												 size_t *const comp_opts_len)
@@ -4235,7 +4235,7 @@ error:
  * @return                  The length of the ROHC packet if successful,
  *                          -1 otherwise
  */
-static int code_CO_packet(struct c_context *const context,
+static int code_CO_packet(struct rohc_comp_ctxt *const context,
                           const struct ip_packet *ip,
                           const int packet_size,
                           const unsigned char *next_header,
@@ -4538,7 +4538,7 @@ error:
  * @return                          The position in the rohc-packet-under-build buffer
  *                                  -1 in case of problem
  */
-static int co_baseheader(struct c_context *const context,
+static int co_baseheader(struct rohc_comp_ctxt *const context,
 								 struct sc_tcp_context *const tcp_context,
 								 ip_context_ptr_t ip_context,
 								 base_header_ip_t base_header,
@@ -4971,7 +4971,7 @@ error:
  * @param rnd1          IN/OUT: The rnd_1 packet to build
  * @return              The length (in bytes) of the rnd_1 packet
  */
-static size_t c_tcp_build_rnd_1(struct c_context *const context,
+static size_t c_tcp_build_rnd_1(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5014,7 +5014,7 @@ static size_t c_tcp_build_rnd_1(struct c_context *const context,
  * @param rnd2          IN/OUT: The rnd_2 packet to build
  * @return              The length (in bytes) of the rnd_2 packet
  */
-static size_t c_tcp_build_rnd_2(struct c_context *const context,
+static size_t c_tcp_build_rnd_2(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5053,7 +5053,7 @@ static size_t c_tcp_build_rnd_2(struct c_context *const context,
  * @param rnd3          IN/OUT: The rnd_3 packet to build
  * @return              The length (in bytes) of the rnd_3 packet
  */
-static size_t c_tcp_build_rnd_3(struct c_context *const context,
+static size_t c_tcp_build_rnd_3(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5098,7 +5098,7 @@ static size_t c_tcp_build_rnd_3(struct c_context *const context,
  * @param rnd4          IN/OUT: The rnd_4 packet to build
  * @return              The length (in bytes) of the rnd_4 packet
  */
-static size_t c_tcp_build_rnd_4(struct c_context *const context,
+static size_t c_tcp_build_rnd_4(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5139,7 +5139,7 @@ static size_t c_tcp_build_rnd_4(struct c_context *const context,
  * @param rnd5          IN/OUT: The rnd_5 packet to build
  * @return              The length (in bytes) of the rnd_5 packet
  */
-static size_t c_tcp_build_rnd_5(struct c_context *const context,
+static size_t c_tcp_build_rnd_5(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5196,7 +5196,7 @@ static size_t c_tcp_build_rnd_5(struct c_context *const context,
  * @param rnd6          IN/OUT: The rnd_6 packet to build
  * @return              The length (in bytes) of the rnd_6 packet
  */
-static size_t c_tcp_build_rnd_6(struct c_context *const context,
+static size_t c_tcp_build_rnd_6(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5238,7 +5238,7 @@ static size_t c_tcp_build_rnd_6(struct c_context *const context,
  * @param rnd7          IN/OUT: The rnd_7 packet to build
  * @return              The length (in bytes) of the rnd_7 packet
  */
-static size_t c_tcp_build_rnd_7(struct c_context *const context,
+static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
                                 struct sc_tcp_context *const tcp_context,
                                 const tcphdr_t *const tcp,
                                 const uint8_t crc,
@@ -5286,7 +5286,7 @@ static size_t c_tcp_build_rnd_7(struct c_context *const context,
  * @param rnd8_len      OUT: The length (in bytes) of the rnd_8 packet
  * @return              true if the packet is successfully built, false otherwise
  */
-static bool c_tcp_build_rnd_8(struct c_context *const context,
+static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 										const ip_context_ptr_t ip_context,
 										struct sc_tcp_context *const tcp_context,
 										const base_header_ip_t ip,
@@ -5398,7 +5398,7 @@ error:
  * @param seq1          IN/OUT: The seq_1 packet to build
  * @return              The length (in bytes) of the seq_1 packet
  */
-static size_t c_tcp_build_seq_1(struct c_context *const context,
+static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5450,7 +5450,7 @@ static size_t c_tcp_build_seq_1(struct c_context *const context,
  * @param seq2          IN/OUT: The seq_2 packet to build
  * @return              The length (in bytes) of the seq_2 packet
  */
-static size_t c_tcp_build_seq_2(struct c_context *const context,
+static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5503,7 +5503,7 @@ static size_t c_tcp_build_seq_2(struct c_context *const context,
  * @param seq3          IN/OUT: The seq_3 packet to build
  * @return              The length (in bytes) of the seq_3 packet
  */
-static size_t c_tcp_build_seq_3(struct c_context *const context,
+static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5554,7 +5554,7 @@ static size_t c_tcp_build_seq_3(struct c_context *const context,
  * @param seq4          IN/OUT: The seq_4 packet to build
  * @return              The length (in bytes) of the seq_4 packet
  */
-static size_t c_tcp_build_seq_4(struct c_context *const context,
+static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5606,7 +5606,7 @@ static size_t c_tcp_build_seq_4(struct c_context *const context,
  * @param seq5          IN/OUT: The seq_5 packet to build
  * @return              The length (in bytes) of the seq_5 packet
  */
-static size_t c_tcp_build_seq_5(struct c_context *const context,
+static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5658,7 +5658,7 @@ static size_t c_tcp_build_seq_5(struct c_context *const context,
  * @param seq6          IN/OUT: The seq_6 packet to build
  * @return              The length (in bytes) of the seq_6 packet
  */
-static size_t c_tcp_build_seq_6(struct c_context *const context,
+static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5716,7 +5716,7 @@ static size_t c_tcp_build_seq_6(struct c_context *const context,
  * @param seq7          IN/OUT: The seq_7 packet to build
  * @return              The length (in bytes) of the seq_7 packet
  */
-static size_t c_tcp_build_seq_7(struct c_context *const context,
+static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
                                 const ip_context_ptr_t ip_context,
                                 struct sc_tcp_context *const tcp_context,
                                 const base_header_ip_t ip,
@@ -5777,7 +5777,7 @@ static size_t c_tcp_build_seq_7(struct c_context *const context,
  * @param seq8_len      OUT: The length (in bytes) of the seq_8 packet
  * @return              true if the packet is successfully built, false otherwise
  */
-static bool c_tcp_build_seq_8(struct c_context *const context,
+static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
                               const ip_context_ptr_t ip_context,
                               struct sc_tcp_context *const tcp_context,
                               const base_header_ip_t ip,
@@ -5882,7 +5882,7 @@ error:
  * @return            true if changes were successfully detected,
  *                    false if a problem occurred
  */
-static bool tcp_detect_changes(struct c_context *const context,
+static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
                                const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context =
@@ -5907,7 +5907,7 @@ static bool tcp_detect_changes(struct c_context *const context,
  *
  * @param context The compression context
  */
-static void tcp_decide_state(struct c_context *const context)
+static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 {
 	struct c_generic_context *g_context =
 		(struct c_generic_context *) context->specific;
@@ -5958,7 +5958,7 @@ static void tcp_decide_state(struct c_context *const context)
  * @return             true in case of success,
  *                     false otherwise
  */
-static bool tcp_encode_uncomp_fields(struct c_context *const context,
+static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
                                      const struct net_pkt *const uncomp_pkt)
 {
 	struct c_generic_context *g_context =
@@ -6630,7 +6630,7 @@ error:
  *                              ROHC_PACKET_TCP_CO_COMMON in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t tcp_decide_packet(const struct c_context *const context,
+static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const context,
                                        const ip_context_ptr_t *const ip_inner_context,
                                        const tcphdr_t *const tcp)
 {
@@ -6679,7 +6679,7 @@ static rohc_packet_t tcp_decide_packet(const struct c_context *const context,
  *                              ROHC_PACKET_TCP_CO_COMMON in case of success
  *                          \li ROHC_PACKET_UNKNOWN in case of failure
  */
-static rohc_packet_t tcp_decide_SO_packet(const struct c_context *const context,
+static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const context,
                                           const ip_context_ptr_t *const ip_inner_context,
                                           const tcphdr_t *const tcp)
 {
@@ -7109,7 +7109,7 @@ static tcp_ip_id_behavior_t tcp_detect_ip_id_behavior(const uint16_t last_ip_id,
  * @param name     The name of the field
  * @param changed  Whether the field changed or not
  */
-static void tcp_field_descr_change(const struct c_context *const context,
+static void tcp_field_descr_change(const struct rohc_comp_ctxt *const context,
                                    const char *const name,
                                    const bool changed)
 {
@@ -7124,7 +7124,7 @@ static void tcp_field_descr_change(const struct c_context *const context,
  * @param name     The name of the field
  * @param present  Whether the field is present or not
  */
-static void tcp_field_descr_present(const struct c_context *const context,
+static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const char *const name,
                                     const bool present)
 {

@@ -121,22 +121,25 @@ static const struct rohc_comp_profile *
 static bool c_create_contexts(struct rohc_comp *const comp);
 static void c_destroy_contexts(struct rohc_comp *const comp);
 
-static struct c_context * c_create_context(struct rohc_comp *const comp,
-                                           const struct rohc_comp_profile *const profile,
-                                           const struct net_pkt *const packet,
-                                           const struct rohc_ts arrival_time)
+static struct rohc_comp_ctxt *
+	c_create_context(struct rohc_comp *const comp,
+	                 const struct rohc_comp_profile *const profile,
+	                 const struct net_pkt *const packet,
+	                 const struct rohc_ts arrival_time)
     __attribute__((nonnull(1, 2, 3), warn_unused_result));
-static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
-																				 const struct net_pkt *const packet,
-																				 const int profile_id_hint,
-																				 const struct rohc_ts arrival_time)
+static struct rohc_comp_ctxt *
+	rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
+	                                   const struct net_pkt *const packet,
+	                                   const int profile_id_hint,
+	                                   const struct rohc_ts arrival_time)
 	__attribute__((nonnull(1, 2), warn_unused_result));
-static struct c_context * c_find_context(const struct rohc_comp *const comp,
-                                         const struct rohc_comp_profile *const profile,
-                                         const struct net_pkt *const packet)
+static struct rohc_comp_ctxt *
+	c_find_context(const struct rohc_comp *const comp,
+	               const struct rohc_comp_profile *const profile,
+	               const struct net_pkt *const packet)
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
-static struct c_context * c_get_context(struct rohc_comp *const comp,
-                                        const rohc_cid_t cid)
+static struct rohc_comp_ctxt *
+	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
 	__attribute__((nonnull(1), warn_unused_result));
 
 
@@ -896,7 +899,7 @@ int rohc_compress3(struct rohc_comp *const comp,
                    size_t *const rohc_packet_len)
 {
 	struct net_pkt ip_pkt;
-	struct c_context *c;
+	struct rohc_comp_ctxt *c;
 	rohc_packet_t packet_type;
 
 	/* ROHC feedbacks */
@@ -2862,7 +2865,7 @@ static int __rohc_c_context(struct rohc_comp *comp,
                             unsigned int indent,
                             char *buffer)
 {
-	struct c_context *c;
+	struct rohc_comp_ctxt *c;
 	char *prefix;
 	char *save;
 	int v;
@@ -3117,7 +3120,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
                                 const size_t size)
 
 {
-	struct c_context *c;
+	struct rohc_comp_ctxt *c;
 	struct c_feedback feedback;
 	const uint8_t *p = packet;
 	bool is_success = false;
@@ -3798,12 +3801,13 @@ static const struct rohc_comp_profile *
  *                      or to disable time-related features in ROHC protocol)
  * @return              The compression context if successful, NULL otherwise
  */
-static struct c_context * c_create_context(struct rohc_comp *const comp,
-                                           const struct rohc_comp_profile *const profile,
-                                           const struct net_pkt *const packet,
-                                           const struct rohc_ts arrival_time)
+static struct rohc_comp_ctxt *
+	c_create_context(struct rohc_comp *const comp,
+	                 const struct rohc_comp_profile *const profile,
+	                 const struct net_pkt *const packet,
+	                 const struct rohc_ts arrival_time)
 {
-	struct c_context *c;
+	struct rohc_comp_ctxt *c;
 	rohc_cid_t cid_to_use;
 
 	assert(comp != NULL);
@@ -3927,13 +3931,14 @@ static struct c_context * c_create_context(struct rohc_comp *const comp,
  * @return                 The context if found or successfully created,
  *                         NULL if not found
  */
-static struct c_context * rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
-																				 const struct net_pkt *const packet,
-																				 const int profile_id_hint,
-																				 const struct rohc_ts arrival_time)
+static struct rohc_comp_ctxt *
+	rohc_comp_find_context_from_packet(struct rohc_comp *const comp,
+	                                   const struct net_pkt *const packet,
+	                                   const int profile_id_hint,
+	                                   const struct rohc_ts arrival_time)
 {
 	const struct rohc_comp_profile *profile;
-	struct c_context *context;
+	struct rohc_comp_ctxt *context;
 
 	/* use the suggested profile if any, otherwise find the best profile for
 	 * the packet */
@@ -3992,11 +3997,12 @@ error:
  * @return         The compression context if found,
  *                 NULL if not found
  */
-static struct c_context * c_find_context(const struct rohc_comp *const comp,
-                                         const struct rohc_comp_profile *const profile,
-                                         const struct net_pkt *const packet)
+static struct rohc_comp_ctxt *
+	c_find_context(const struct rohc_comp *const comp,
+	               const struct rohc_comp_profile *const profile,
+	               const struct net_pkt *const packet)
 {
-	struct c_context *c = NULL;
+	struct rohc_comp_ctxt *c = NULL;
 	size_t num_used_ctxt_seen = 0;
 	rohc_cid_t i;
 
@@ -4060,8 +4066,8 @@ static struct c_context * c_find_context(const struct rohc_comp *const comp,
  * @param cid  The CID of the context to find
  * @return     The context with the given CID if found, NULL otherwise
  */
-static struct c_context * c_get_context(struct rohc_comp *const comp,
-                                        const rohc_cid_t cid)
+static struct rohc_comp_ctxt *
+	c_get_context(struct rohc_comp *const comp, const rohc_cid_t cid)
 {
 	/* the CID must not be larger than the context array */
 	if(cid > comp->medium.max_cid)
@@ -4104,7 +4110,7 @@ static bool c_create_contexts(struct rohc_comp *const comp)
 	          comp->medium.max_cid + 1, comp->medium.max_cid);
 
 	comp->contexts = calloc(comp->medium.max_cid + 1,
-	                        sizeof(struct c_context));
+	                        sizeof(struct rohc_comp_ctxt));
 	if(comp->contexts == NULL)
 	{
 		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,

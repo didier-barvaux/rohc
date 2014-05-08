@@ -39,7 +39,7 @@
  * Prototypes of private functions
  */
 
-static bool rohc_ip_ctxt_create(struct c_context *const context,
+static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
@@ -58,7 +58,7 @@ static bool rohc_ip_ctxt_create(struct c_context *const context,
  * @param packet   The IP packet given to initialize the new context
  * @return         true if successful, false otherwise
  */
-static bool rohc_ip_ctxt_create(struct c_context *const context,
+static bool rohc_ip_ctxt_create(struct rohc_comp_ctxt *const context,
                                 const struct net_pkt *const packet)
 {
 	const struct rohc_comp *const comp = context->compressor;
@@ -117,7 +117,7 @@ error:
  * @return         true if the IP packet belongs to the context
  *                 false if it does not belong to the context
  */
-bool c_ip_check_context(const struct c_context *const context,
+bool c_ip_check_context(const struct rohc_comp_ctxt *const context,
                         const struct net_pkt *const packet)
 {
 	struct c_generic_context *g_context;
@@ -241,7 +241,7 @@ bad_context:
  * @param context The compression context
  * @return        The packet type among ROHC_PACKET_IR_DYN and ROHC_PACKET_UOR_2
  */
-rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
+rohc_packet_t c_ip_decide_FO_packet(const struct rohc_comp_ctxt *context)
 {
 	struct c_generic_context *g_context;
 	rohc_packet_t packet;
@@ -310,7 +310,7 @@ rohc_packet_t c_ip_decide_FO_packet(const struct c_context *context)
  * @return        The packet type among ROHC_PACKET_UO_0, ROHC_PACKET_UO_1 and
  *                ROHC_PACKET_UOR_2
  */
-rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
+rohc_packet_t c_ip_decide_SO_packet(const struct rohc_comp_ctxt *context)
 {
 	struct c_generic_context *g_context;
 	int nr_of_ip_hdr;
@@ -437,7 +437,7 @@ rohc_packet_t c_ip_decide_SO_packet(const struct c_context *context)
  * @param uncomp_pkt  The uncompressed packet to encode
  * @return            The SN
  */
-uint32_t c_ip_get_next_sn(const struct c_context *const context,
+uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt __attribute__((unused)))
 {
 	struct c_generic_context *g_context;
@@ -478,7 +478,7 @@ uint32_t c_ip_get_next_sn(const struct c_context *const context,
  * @param counter  The current position in the rohc-packet-under-build buffer
  * @return         The new position in the rohc-packet-under-build buffer
  */
-size_t c_ip_code_ir_remainder(const struct c_context *const context,
+size_t c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
 	                           unsigned char *const dest,
 	                           const size_t counter)
 {

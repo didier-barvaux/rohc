@@ -65,7 +65,7 @@ static unsigned int lsb_masks[] =
  * @param original_value   The value to compress
  * @return                 The compressed value with num_lsbs_param bits
  */
-uint32_t c_lsb(const struct c_context *const context,
+uint32_t c_lsb(const struct rohc_comp_ctxt *const context,
                int num_lsbs_param,
                unsigned int offset_param,
                unsigned int context_value,
@@ -430,7 +430,7 @@ void c_field_scaling(uint32_t *const scaled_value,
  * @param rsf_flags  The RSF flags
  * @return           The rsf index
  */
-unsigned int rsf_index_enc(const struct c_context *const context,
+unsigned int rsf_index_enc(const struct rohc_comp_ctxt *const context,
                            unsigned int rsf_flags)
 {
 	assert(context != NULL);
@@ -466,7 +466,7 @@ unsigned int rsf_index_enc(const struct c_context *const context,
  * @param msn              The Master Sequence Number
  * @return                 The lsb of offset between IP-ID and MSN
  */
-uint16_t c_ip_id_lsb(const struct c_context *const context,
+uint16_t c_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                      const int behavior,
                      const unsigned int k,
                      const unsigned int p,
@@ -533,7 +533,7 @@ uint16_t c_ip_id_lsb(const struct c_context *const context,
  * @return                 The number of ROHC bytes written,
  *                         -1 if a problem occurs
  */
-int c_optional_ip_id_lsb(const struct c_context *const context,
+int c_optional_ip_id_lsb(const struct rohc_comp_ctxt *const context,
                          const int behavior,
                          const uint16_t context_ip_id,
                          const uint16_t ip_id,
