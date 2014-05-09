@@ -341,8 +341,7 @@ static rohc_packet_t tcp_detect_packet_type(const struct rohc_decomp_ctxt *const
                                             const size_t large_cid_len)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-static int d_tcp_decode_ir(struct rohc_decomp *decomp,
-                           struct rohc_decomp_ctxt *context,
+static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
@@ -778,11 +777,9 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	assert(large_cid_len <= 2);
 	assert(dest != NULL);
 
-	rohc_decomp_debug(context, "decomp = %p, context = %p, rohc_packet = %p, "
-	                  "rohc_length = %zu, add_cid_len = %zu, "
-	                  "large_cid_len = %zu, dest = %p", decomp, context,
-	                  rohc_packet, rohc_length, add_cid_len, large_cid_len,
-	                  dest);
+	rohc_decomp_debug(context, "rohc_length = %zu, add_cid_len = %zu, "
+	                  "large_cid_len = %zu", rohc_length, add_cid_len,
+	                  large_cid_len);
 
 	rohc_decomp_debug(context, "parse packet type '%s' (%d)",
 	                  rohc_get_packet_descr(*packet_type), *packet_type);
@@ -796,8 +793,8 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
 		/* decode IR packet */
-		ret = d_tcp_decode_ir(decomp, context, rohc_packet, rohc_length,
-		                      add_cid_len, large_cid_len, dest);
+		ret = d_tcp_decode_ir(context, rohc_packet, rohc_length, add_cid_len,
+		                      large_cid_len, dest);
 	}
 	else if((*packet_type) == ROHC_PACKET_IR_DYN)
 	{
@@ -820,7 +817,6 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
 /**
  * @brief Decode one IR packet for the TCP profile.
  *
- * @param decomp          The ROHC decompressor
  * @param context         The decompression context
  * @param rohc_packet     The ROHC packet to decode
  * @param rohc_length     The length of the ROHC packet to decode
@@ -831,8 +827,7 @@ static int d_tcp_decode(struct rohc_decomp *const decomp,
  *                        or ROHC_OK_NO_DATA if packet is feedback only
  *                        or ROHC_ERROR if an error occurs
  */
-static int d_tcp_decode_ir(struct rohc_decomp *decomp,
-                           struct rohc_decomp_ctxt *context,
+static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
                            const unsigned char *const rohc_packet,
                            const size_t rohc_length,
                            const size_t add_cid_len,
@@ -855,11 +850,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 	remain_data = rohc_packet;
 	remain_len = rohc_length;
 
-	rohc_decomp_debug(context, "decomp = %p, context = %p, rohc_packet = %p, "
-	                  "rohc_length = %zu, add_cid_len = %zu, "
-	                  "large_cid_len = %zd, dest = %p", decomp, context,
-	                  rohc_packet, rohc_length, add_cid_len, large_cid_len,
-	                  dest);
+	rohc_decomp_debug(context, "rohc_length = %zu, add_cid_len = %zu, "
+	                  "large_cid_len = %zu", rohc_length, add_cid_len,
+	                  large_cid_len);
 
 	/* skip:
 	 * - the first byte of the ROHC packet (field 2)
@@ -1622,10 +1615,6 @@ static unsigned int tcp_copy_static_ipv6_option(const struct rohc_decomp_ctxt *c
 
 	assert(context != NULL);
 
-	rohc_decomp_debug(context, "protocol = %d, ip_context = %p, "
-	                  "base_header = %p", protocol, ip_context.uint8,
-	                  base_header.ipvx);
-
 	base_header.ipv6_opt->next_header = ip_context.v6_option->next_header;
 
 	switch(protocol)
@@ -1968,9 +1957,6 @@ static unsigned int tcp_copy_static_ip(const struct rohc_decomp_ctxt *const cont
                                        base_header_ip_t base_header)
 {
 	assert(context != NULL);
-
-	rohc_decomp_debug(context, "ip_context = %p, base_header = %p",
-	                  ip_context.uint8, base_header.ipvx);
 
 	if(ip_context.vx->version == IPV4)
 	{
@@ -2331,8 +2317,6 @@ static unsigned int tcp_copy_static_tcp(struct rohc_decomp_ctxt *const context,
 	assert(g_context->specific != NULL);
 	tcp_context = g_context->specific;
 
-	rohc_decomp_debug(context, "tcp_context = %p, tcp = %p", tcp_context, tcp);
-
 	tcp->src_port = tcp_context->tcp_src_port;
 	rohc_decomp_debug(context, "source port = %d (0x%04x)",
 	                  rohc_ntoh16(tcp->src_port), rohc_ntoh16(tcp->src_port));
@@ -2434,8 +2418,8 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 			                  "transmitted anyway");
 		}
 	}
-	rohc_decomp_debug(context, "tcp = %p, seq_number = 0x%x, ack_number = 0x%x",
-	                  tcp, rohc_ntoh32(tcp->seq_num), rohc_ntoh32(tcp->ack_num));
+	rohc_decomp_debug(context, "seq_number = 0x%x, ack_number = 0x%x",
+	                  rohc_ntoh32(tcp->seq_num), rohc_ntoh32(tcp->ack_num));
 
 	/* window */
 	if(remain_len < sizeof(uint16_t))
@@ -4470,11 +4454,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 #endif
 	rohc_remain_len = rohc_length;
 
-	rohc_decomp_debug(context, "context = %p, g_context = %p, "
-	                  "tcp_context = %p, add_cid_len = %zd, "
-	                  "large_cid_len = %zd, rohc_packet = %p, "
-	                  "rohc_length = %zu", context, g_context, tcp_context,
-	                  add_cid_len, large_cid_len, rohc_packet, rohc_length);
+	rohc_decomp_debug(context, "add_cid_len = %zu, large_cid_len = %zu, "
+	                  "rohc_length = %zu", add_cid_len, large_cid_len,
+	                  rohc_length);
 
 	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len <= (1 + large_cid_len))
@@ -5987,8 +5969,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	                  rohc_ntoh32(tcp->ack_num));
 	/* store the decompressed TCP header in context */
 	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
-	rohc_decomp_debug(context, "tcp = %p, save seq_number = 0x%x, "
-	                  "save ack_number = 0x%x", tcp,
+	rohc_decomp_debug(context, "save seq_number = 0x%x and ack_number = 0x%x",
 	                  rohc_ntoh32(tcp_context->old_tcphdr.seq_num),
 	                  rohc_ntoh32(tcp_context->old_tcphdr.ack_num));
 
