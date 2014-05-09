@@ -643,7 +643,7 @@ typedef struct __attribute__((packed)) tcphdr
 	uint16_t src_port;
 	uint16_t dst_port;
 	uint32_t seq_num;
-	uint32_t ack_number;
+	uint32_t ack_num;
 #if WORDS_BIGENDIAN != 1
 	uint8_t res_flags : 4;
 	uint8_t data_offset : 4;
@@ -753,7 +753,7 @@ typedef struct __attribute__((packed)) tcp_dynamic
 
 	uint16_t msn;                 // =:= irregular(16)                               [ 16 ];
 	uint32_t seq_num;             // =:= irregular(32)                               [ 32 ];
-//	uint32_t	ack_number;          // =:= zero_or_irreg(ack_zero.CVALUE, 32)          [ 0, 32 ];
+//	uint32_t	ack_num;             // =:= zero_or_irreg(ack_zero.CVALUE, 32)          [ 0, 32 ];
 //	uint16_t	window;              // =:= irregular(16)                               [ 16 ];
 //	uint16_t	checksum;            // =:= irregular(16)                               [ 16 ];
 //	uint16_t	urg_ptr;             // =:= zero_or_irreg(urp_zero.CVALUE, 16)          [ 0, 16 ];
@@ -811,7 +811,7 @@ typedef struct __attribute__((packed)) tcp_replicate
 //	uint16_t	dst_port;            // =:= port_replicate(dst_port_presence)           [ 0, 8, 16 ];
 //	uint16_t	window;              // =:= static_or_irreg(window_presence, 16)        [ 0, 16 ];
 //	uint16_t	urg_point;           // =:= static_or_irreg(urp_presence, 16)           [ 0, 16 ];
-//	uint32_t	ack_number;          // =:= static_or_irreg(ack_presence, 32)           [ 0, 32 ];
+//	uint32_t	ack_num;             // =:= static_or_irreg(ack_presence, 32)           [ 0, 32 ];
 //	uint8_t		ecn_padding:2;       // =:= optional_2bit_padding(ecn_used.CVALUE)      [ 0, 2 ];
 //	uint8_t		tcp_res_flags:4;     // =:= static_or_irreg(ecn_used.CVALUE, 4)         [ 0, 4 ];
 //	uint8_t		tcp_ecn_flags:2;     // =:= static_or_irreg(ecn_used.CVALUE, 2)         [ 0, 2 ];
@@ -917,7 +917,7 @@ typedef struct __attribute__((packed)) co_common
 #endif
 
 //  u_intXX_t	seq_num:X;              // =:= variable_length_32_enc(seq_indicator.CVALUE)                     [ 0, 8, 16, 32 ];
-//  u_intXX_t	ack_number:X;           // =:= variable_length_32_enc(ack_indicator.CVALUE)                     [ 0, 8, 16, 32 ];
+//  u_intXX_t	ack_num:X;              // =:= variable_length_32_enc(ack_indicator.CVALUE)                     [ 0, 8, 16, 32 ];
 //  u_intXX_t	ack_stride:X;           // =:= static_or_irreg(ack_stride_indicator.CVALUE, 16)                 [ 0, 16 ];
 //  u_intXX_t  window:X;               // =:= static_or_irreg(window_indicator.CVALUE, 16)                     [ 0, 16 ];
 //  u_intXX_t  ip_id:X;                // =:= optional_ip_id_lsb(ip_id_behavior.UVALUE,ip_id_indicator.CVALUE) [ 0, 8, 16 ];
@@ -988,16 +988,16 @@ typedef struct __attribute__((packed)) rnd_2
 typedef struct __attribute__((packed)) rnd_3
 {
 #if WORDS_BIGENDIAN != 1
-	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num1:7;         // =:= lsb(15, 8191)               [ 15 ];
 	uint8_t discriminator : 1;         // =:= '0'                                            [ 4 ];
-	uint8_t ack_number2 : 8;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num2:8;         // =:= lsb(15, 8191)               [ 15 ];
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #else
 	uint16_t discriminator : 1;        // =:= '0'                                            [ 4 ];
-	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
-	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num1:7;        // =:= lsb(15, 8191)                [ 15 ];
+	uint8_t ack_num2;          // =:= lsb(15, 8191)                [ 15 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
@@ -1014,7 +1014,7 @@ typedef struct __attribute__((packed)) rnd_3
 typedef struct __attribute__((packed)) rnd_4
 {
 #if WORDS_BIGENDIAN != 1
-	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t ack_num_scaled:4;   // =:= lsb(4, 3)                [ 4 ];
 	uint8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
 
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
@@ -1022,7 +1022,7 @@ typedef struct __attribute__((packed)) rnd_4
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #else
 	uint8_t discriminator : 4;         // =:= '1101'                                         [ 4 ];
-	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t ack_num_scaled:4;   // =:= lsb(4, 3)                [ 4 ];
 
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
@@ -1046,13 +1046,10 @@ typedef struct __attribute__((packed)) rnd_5
 
 	uint8_t seq_num1:5;          // =:= lsb(15, 8191)           [ 15 ];
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
-
 	uint8_t seq_num2;            // =:= lsb(15, 8191)           [ 15 ];
-
-	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
-	uint8_t seq_num3 : 1;        // =:= lsb(15, 8191)           [ 15 ];
-
-	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num1:7;          // =:= lsb(15, 8191)           [ 15 ];
+	uint8_t seq_num3:1;          // =:= lsb(15, 8191)           [ 15 ];
+	uint8_t ack_num2;            // =:= lsb(15, 8191)           [ 15 ];
 #else
 	uint8_t discriminator : 3;         // =:= '100'                                          [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
@@ -1062,8 +1059,8 @@ typedef struct __attribute__((packed)) rnd_5
 	uint32_t seq_num1:5;        // =:= lsb(14, 8191)            [ 14 ];
 	uint32_t seq_num2:8;        // =:= lsb(14, 8191)            [ 14 ];
 	uint32_t seq_num3:1;        // =:= lsb(14, 8191)            [ 14 ];
-	uint32_t ack_number1 : 7;          // =:= lsb(15, 8191)                                  [ 15 ];
-	uint32_t ack_number2 : 8;          // =:= lsb(15, 8191)                                  [ 15 ];
+	uint32_t ack_num1:7;        // =:= lsb(15, 8191)            [ 15 ];
+	uint32_t ack_num2:8;        // =:= lsb(15, 8191)            [ 15 ];
 #endif
 } rnd_5_t;
 
@@ -1085,7 +1082,7 @@ typedef struct __attribute__((packed)) rnd_6
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 #endif
-	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_num;            // =:= lsb(16, 16383)        [ 16 ];
 #if WORDS_BIGENDIAN != 1
 	uint8_t seq_num_scaled:4;    // =:= lsb(4, 7)             [ 4 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
@@ -1105,13 +1102,13 @@ typedef struct __attribute__((packed)) rnd_6
 typedef struct __attribute__((packed)) rnd_7
 {
 #if WORDS_BIGENDIAN != 1
-	uint8_t ack_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t ack_num1:2;         // =:= lsb(18, 65535)            [ 18 ];
 	uint8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
-	uint16_t ack_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
+	uint16_t ack_num2;          // =:= lsb(18, 65535)            [ 18 ];
 #else
 	uint8_t discriminator : 6;         // =:= '101111'                                       [ 6 ];
-	uint8_t ack_number1 : 2;           // =:= lsb(18, 65535)                                 [ 18 ];
-	uint16_t ack_number2;              // =:= lsb(18, 65535)                                 [ 18 ];
+	uint8_t ack_num1:2;         // =:= lsb(18, 65535)            [ 18 ];
+	uint16_t ack_num2;          // =:= lsb(18, 65535)            [ 18 ];
 #endif
 	uint16_t window;                   // =:= irregular(16)                                  [ 16 ];
 #if WORDS_BIGENDIAN != 1
@@ -1156,7 +1153,7 @@ typedef struct __attribute__((packed)) rnd_8
 	uint16_t ecn_used : 1;             // =:= one_bit_choice                                 [ 1 ];
 #endif
 	uint16_t seq_num;           // =:= lsb(16, 65535)             [ 16 ];
-	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_num;           // =:= lsb(16, 16383)             [ 16 ];
 	uint8_t options[0];                // =:= tcp_list_presence_enc(list_present.CVALUE)     [ VARIABLE ];
 } rnd_8_t;
 
@@ -1232,7 +1229,7 @@ typedef struct __attribute__((packed)) seq_3
 	uint8_t discriminator : 4;         // =:= '1001'                                         [ 4 ];
 	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
 #endif
-	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_num;          // =:= lsb(16, 16383)               [ 16 ];
 #if WORDS_BIGENDIAN != 1
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
@@ -1255,14 +1252,14 @@ typedef struct __attribute__((packed)) seq_4
 {
 #if WORDS_BIGENDIAN != 1
 	uint8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
-	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t ack_num_scaled:4;  // =:= lsb(4, 3)                 [ 4 ];
 	uint8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 #else
 	uint8_t discriminator : 1;         // =:= '0'                                            [ 1 ];
-	uint8_t ack_number_scaled : 4;     // =:= lsb(4, 3)                                      [ 4 ];
+	uint8_t ack_num_scaled:4;  // =:= lsb(4, 3)                 [ 4 ];
 	uint8_t ip_id : 3;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 3, 1)         [ 3 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
@@ -1286,7 +1283,7 @@ typedef struct __attribute__((packed)) seq_5
 	uint8_t discriminator : 4;         // =:= '1000'                                         [ 4 ];
 	uint8_t ip_id : 4;                 // =:= ip_id_lsb(ip_id_behavior.UVALUE, 4, 3)         [ 4 ];
 #endif
-	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_num;          // =:= lsb(16, 16383)              [ 16 ];
 	uint16_t seq_num;          // =:= lsb(16, 32767)              [ 16 ];
 #if WORDS_BIGENDIAN != 1
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
@@ -1319,7 +1316,7 @@ typedef struct __attribute__((packed)) seq_6
 	uint16_t seq_num_scaled2:1;  // =:= lsb(4, 7)                  [ 4 ];
 	uint16_t ip_id : 7;                // =:= ip_id_lsb(ip_id_behavior.UVALUE, 7, 3)         [ 7 ];
 #endif
-	uint16_t ack_number;               // =:= lsb(16, 16383)                                 [ 16 ];
+	uint16_t ack_num;            // =:= lsb(16, 16383)             [ 16 ];
 #if WORDS_BIGENDIAN != 1
 	uint8_t header_crc : 3;            // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
@@ -1349,7 +1346,7 @@ typedef struct __attribute__((packed)) seq_7
 	uint8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
 	uint8_t window3 : 3;
 
-	uint16_t ack_number;      // =:= lsb(16, 32767)                                 [ 16 ];
+	uint16_t ack_num;      // =:= lsb(16, 32767)                [ 16 ];
 
 	uint8_t header_crc : 3;      // =:= crc3(THIS.UVALUE, THIS.ULENGTH)                [ 3 ];
 	uint8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
@@ -1363,7 +1360,7 @@ typedef struct __attribute__((packed)) seq_7
 	uint8_t window3 : 3;
 	uint8_t ip_id : 5;     // =:= ip_id_lsb(ip_id_behavior.UVALUE, 5, 3)         [ 5 ];
 
-	uint16_t ack_number;      // =:= lsb(16, 32767)                                 [ 16 ];
+	uint16_t ack_num;      // =:= lsb(16, 32767)                [ 16 ];
 
 	uint8_t msn : 4;          // =:= lsb(4, 4)                                      [ 4 ];
 	uint8_t psh_flag : 1;     // =:= irregular(1)                                   [ 1 ];
@@ -1388,9 +1385,9 @@ typedef struct __attribute__((packed)) seq_8
 	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t msn : 4;                   // =:= lsb(4, 4)                                      [ 4 ];
-	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num1:7;       // =:= lsb(15, 8191)               [ 15 ];
 	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num2;         // =:= lsb(15, 8191)               [ 15 ];
 	uint8_t seq_num1:6;       // =:= lsb(14, 8191)               [ 14 ];
 	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
 	uint8_t seq_num2:8;       // =:= lsb(14, 8191)               [ 14 ];
@@ -1403,8 +1400,8 @@ typedef struct __attribute__((packed)) seq_8
 	uint8_t psh_flag : 1;              // =:= irregular(1)                                   [ 1 ];
 	uint8_t ttl_hopl : 3;              // =:= lsb(3, 3)                                      [ 3 ];
 	uint8_t ecn_used : 1;              // =:= one_bit_choice                                 [ 1 ];
-	uint8_t ack_number1 : 7;           // =:= lsb(15, 8191)                                  [ 15 ];
-	uint8_t ack_number2;               // =:= lsb(15, 8191)                                  [ 15 ];
+	uint8_t ack_num1:7;      // =:= lsb(15, 8191)                [ 15 ];
+	uint8_t ack_num2;        // =:= lsb(15, 8191)                [ 15 ];
 	uint8_t rsf_flags : 2;             // =:= rsf_index_enc                                  [ 2 ];
 	uint8_t seq_num1 : 6;    // =:= lsb(14, 8191)                [ 14 ];
 	uint8_t seq_num2;        // =:= lsb(14, 8191)                [ 14 ];

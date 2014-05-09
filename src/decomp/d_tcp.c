@@ -247,8 +247,8 @@ struct d_tcp_context
 	struct rohc_lsb_decode *seq_scaled_lsb_ctxt;
 
 	uint16_t ack_stride;
-	uint32_t ack_number_scaled;
-	uint32_t ack_number_residue;
+	uint32_t ack_num_scaled;
+	uint32_t ack_num_residue;
 	struct rohc_lsb_decode *ack_lsb_ctxt;
 
 	// Table of TCP options
@@ -1138,10 +1138,9 @@ static int d_tcp_decode_ir(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
 		                  "reference\n", tcp_context->seq_num_scaled);
 	}
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_number),
-	                 false);
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_num), false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference\n",
-	                  rohc_ntoh32(tcp->ack_number));
+	                  rohc_ntoh32(tcp->ack_num));
 
 	// TODO: to be reworked
 	context->state = ROHC_DECOMP_STATE_FC;
@@ -1363,8 +1362,7 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	rohc_decomp_debug(context, "Total length = %d\n", size);
 
 	/* update context (to be completed) */
-	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp->seq_num),
-	                 false);
+	rohc_lsb_set_ref(tcp_context->seq_lsb_ctxt, rohc_ntoh32(tcp->seq_num), false);
 	rohc_decomp_debug(context, "sequence number 0x%08x is the new reference\n",
 	                  rohc_ntoh32(tcp->seq_num));
 	if(payload_size != 0)
@@ -1374,10 +1372,9 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
 		                  "reference\n", tcp_context->seq_num_scaled);
 	}
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_number),
-	                 false);
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_num), false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference\n",
-	                  rohc_ntoh32(tcp->ack_number));
+	                  rohc_ntoh32(tcp->ack_num));
 
 	return size;
 
@@ -2416,7 +2413,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	/* optional ACK number */
 	if(tcp_dynamic->ack_zero == 1)
 	{
-		tcp->ack_number = 0;
+		tcp->ack_num = 0;
 	}
 	else
 	{
@@ -2427,7 +2424,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 			                 "for the ACK number\n", remain_len, sizeof(uint32_t));
 			goto error;
 		}
-		memcpy(&tcp->ack_number, remain_data, sizeof(uint32_t));
+		memcpy(&tcp->ack_num, remain_data, sizeof(uint32_t));
 		remain_data += sizeof(uint32_t);
 		remain_len -= sizeof(uint32_t);
 
@@ -2438,7 +2435,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		}
 	}
 	rohc_decomp_debug(context, "tcp = %p, seq_number = 0x%x, ack_number = 0x%x\n",
-	                  tcp, rohc_ntoh32(tcp->seq_num), rohc_ntoh32(tcp->ack_number));
+	                  tcp, rohc_ntoh32(tcp->seq_num), rohc_ntoh32(tcp->ack_num));
 
 	/* window */
 	if(remain_len < sizeof(uint16_t))
@@ -2511,12 +2508,12 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 	if(tcp_context->ack_stride != 0)
 	{
 		// Calculate the Ack Number residue
-		tcp_context->ack_number_residue =
-			rohc_ntoh32(tcp->ack_number) % tcp_context->ack_stride;
+		tcp_context->ack_num_residue =
+			rohc_ntoh32(tcp->ack_num) % tcp_context->ack_stride;
 	}
 	rohc_decomp_debug(context, "TCP ack_stride = 0x%04x, ack_number_residue = "
 	                  "0x%04x\n", tcp_context->ack_stride,
-	                  tcp_context->ack_number_residue);
+	                  tcp_context->ack_num_residue);
 
 	/* we need at least one byte to check whether TCP options are present or
 	 * not */
@@ -2751,7 +2748,7 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 
 					remain_data = d_tcp_opt_sack(context, remain_data,
 					                             &uncomp_sack_opt,
-					                             rohc_ntoh32(tcp->ack_number));
+					                             rohc_ntoh32(tcp->ack_num));
 					if(remain_data == NULL)
 					{
 						rohc_decomp_warn(context, "failed to decompress TCP SACK "
@@ -3162,7 +3159,7 @@ static int tcp_decode_irregular_tcp(struct rohc_decomp_ctxt *const context,
 					tcp_opts_len--;
 					sack_opt = tcp_options;
 					remain_data = d_tcp_opt_sack(context, remain_data, &tcp_options,
-					                             rohc_ntoh32(tcp->ack_number));
+					                             rohc_ntoh32(tcp->ack_num));
 					if(remain_data == NULL)
 					{
 						rohc_decomp_warn(context, "failed to decompress TCP SACK "
@@ -3991,9 +3988,9 @@ static const uint8_t * tcp_decompress_tcp_options(struct rohc_decomp_ctxt *const
 				{
 					const uint8_t *const start_opt = options;
 					opt_type = TCP_OPT_SACK;
-					compressed_options = d_tcp_opt_sack(context, compressed_options,
-					                                    &options,
-					                                    rohc_ntoh32(tcp->ack_number));
+					compressed_options =
+						d_tcp_opt_sack(context, compressed_options, &options,
+						               rohc_ntoh32(tcp->ack_num));
 					if(compressed_options == NULL)
 					{
 						rohc_decomp_warn(context, "failed to decompress TCP SACK "
@@ -5094,7 +5091,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		/* ACK number */
 		if(tcp->ack_flag == 0 && co_common->ack_indicator == 0)
 		{
-			tcp->ack_number = 0;
+			tcp->ack_num = 0;
 			ret = 0;
 		}
 		else
@@ -5107,9 +5104,8 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			}
 
 			ret = variable_length_32_dec(tcp_context->ack_lsb_ctxt, context,
-			                             rohc_opts_data,
-			                             co_common->ack_indicator,
-			                             &tcp->ack_number);
+			                             rohc_opts_data, co_common->ack_indicator,
+			                             &tcp->ack_num);
 			if(ret < 0)
 			{
 				rohc_decomp_warn(context, "variable_length_32(ack_number) failed\n");
@@ -5117,7 +5113,7 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			}
 		}
 		rohc_decomp_debug(context, "ack_number = 0x%x (%d bytes in packet)\n",
-		                  rohc_ntoh32(tcp->ack_number), ret);
+		                  rohc_ntoh32(tcp->ack_num), ret);
 		rohc_opts_data += ret;
 
 		/* ACK stride */
@@ -5252,14 +5248,14 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	else
 	{
-		uint32_t ack_number_bits;
-		uint32_t ack_number_bits_nr = 0;
-		uint32_t ack_number_p;
-		uint32_t ack_number_scaled;
+		uint32_t ack_num_bits;
+		uint32_t ack_num_bits_nr = 0;
+		uint32_t ack_num_p;
+		uint32_t ack_num_scaled;
 		uint8_t ttl_hopl;
 
 		tcp->seq_num = tcp_context->old_tcphdr.seq_num;
-		tcp->ack_number = tcp_context->old_tcphdr.ack_number;
+		tcp->ack_num = tcp_context->old_tcphdr.ack_num;
 		tcp->data_offset = sizeof(tcphdr_t) >> 2;
 		tcp->res_flags = tcp_context->old_tcphdr.res_flags;
 		tcp->ecn_flags = tcp_context->old_tcphdr.ecn_flags;
@@ -5314,9 +5310,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				rohc_decomp_debug(context, "decode rnd_3 packet\n");
 
 				/* retrieve ACK number bits */
-				ack_number_bits = (rnd_3->ack_number1 << 1) | rnd_3->ack_number2;
-				ack_number_bits_nr = 15;
-				ack_number_p = 8191;
+				ack_num_bits = (rnd_3->ack_num1 << 1) | rnd_3->ack_num2;
+				ack_num_bits_nr = 15;
+				ack_num_p = 8191;
 
 				tcp->psh_flag = rnd_3->psh_flag;
 				break;
@@ -5333,18 +5329,18 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					                 "ack_stride.UVALUE == 0");
 					goto error;
 				}
-				ack_number_scaled = d_lsb(context, 4, 3,
-				                          rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-				                          rnd_4->ack_number_scaled);
+				ack_num_scaled = d_lsb(context, 4, 3,
+				                       rohc_ntoh32(tcp_context->old_tcphdr.ack_num),
+				                       rnd_4->ack_num_scaled);
 				assert( tcp_context->ack_stride != 0 );
-				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,
-				                                  ack_number_scaled,
-				                                  tcp_context->ack_number_residue);
+				tcp->ack_num =
+					d_field_scaling(tcp_context->ack_stride, ack_num_scaled,
+					                tcp_context->ack_num_residue);
 				rohc_decomp_debug(context, "ack_number_scaled = 0x%x, "
 				                  "ack_number_residue = 0x%x -> ack_number = "
-				                  "0x%x\n", ack_number_scaled,
-				                  tcp_context->ack_number_residue,
-				                  rohc_ntoh32(tcp->ack_number));
+				                  "0x%x\n", ack_num_scaled,
+				                  tcp_context->ack_num_residue,
+				                  rohc_ntoh32(tcp->ack_num));
 				tcp->psh_flag = rnd_4->psh_flag;
 				break;
 			}
@@ -5370,9 +5366,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				tcp->seq_num = rohc_hton32(decoded_seq_num);
 
 				/* retrieve ACK number bits */
-				ack_number_bits = (rnd_5->ack_number1 << 8) | rnd_5->ack_number2;
-				ack_number_bits_nr = 15;
-				ack_number_p = 8191;
+				ack_num_bits = (rnd_5->ack_num1 << 8) | rnd_5->ack_num2;
+				ack_num_bits_nr = 15;
+				ack_num_p = 8191;
 
 				break;
 			}
@@ -5385,9 +5381,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				tcp->psh_flag = rnd_6->psh_flag;
 
 				/* retrieve ACK number bits */
-				ack_number_bits = rohc_ntoh16(rnd_6->ack_number);
-				ack_number_bits_nr = 16;
-				ack_number_p = 16383;
+				ack_num_bits = rohc_ntoh16(rnd_6->ack_num);
+				ack_num_bits_nr = 16;
+				ack_num_p = 16383;
 
 				seq_num_scaled_bits = rnd_6->seq_num_scaled;
 				seq_num_scaled_nr = 4;
@@ -5403,10 +5399,10 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				rohc_decomp_debug(context, "decode rnd_7 packet\n");
 
 				/* retrieve ACK number bits */
-				ack_number_bits = (rnd_7->ack_number1 << 16) |
-				                  rohc_ntoh16(rnd_7->ack_number2);
-				ack_number_bits_nr = 18;
-				ack_number_p = 65535;
+				ack_num_bits = (rnd_7->ack_num1 << 16) |
+				                rohc_ntoh16(rnd_7->ack_num2);
+				ack_num_bits_nr = 18;
+				ack_num_p = 65535;
 
 				tcp->window = rnd_7->window;
 				tcp->psh_flag = rnd_7->psh_flag;
@@ -5451,9 +5447,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				tcp->seq_num = rohc_hton32(decoded_seq_num);
 
 				/* retrieve ACK number bits */
-				ack_number_bits = rohc_ntoh16(rnd_8->ack_number);
-				ack_number_bits_nr = 16;
-				ack_number_p = 16383;
+				ack_num_bits = rohc_ntoh16(rnd_8->ack_num);
+				ack_num_bits_nr = 16;
+				ack_num_p = 16383;
 
 				/* beginning of the compressed list of TCP options */
 				rohc_opts_data = packed_rohc_packet + sizeof(rnd_8_t);
@@ -5514,9 +5510,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				                    seq_3->ip_id, msn);
 
 				/* retrieve ACK number bits */
-				ack_number_bits = rohc_ntoh16(seq_3->ack_number);
-				ack_number_bits_nr = 16;
-				ack_number_p = 16383;
+				ack_num_bits = rohc_ntoh16(seq_3->ack_num);
+				ack_num_bits_nr = 16;
+				ack_num_p = 16383;
 
 				tcp->psh_flag = seq_3->psh_flag;
 				break;
@@ -5533,18 +5529,18 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 					                 "ack_stride.UVALUE == 0");
 					goto error;
 				}
-				ack_number_scaled =
+				ack_num_scaled =
 					d_lsb(context, 4, 3,
-					      rohc_ntoh32(tcp_context->old_tcphdr.ack_number),
-					      seq_4->ack_number_scaled);
-				tcp->ack_number = d_field_scaling(tcp_context->ack_stride,
-				                                  ack_number_scaled,
-				                                  tcp_context->ack_number_residue);
+					      rohc_ntoh32(tcp_context->old_tcphdr.ack_num),
+					      seq_4->ack_num_scaled);
+				tcp->ack_num =
+					d_field_scaling(tcp_context->ack_stride, ack_num_scaled,
+					                tcp_context->ack_num_residue);
 				rohc_decomp_debug(context, "ack_number_scaled = 0x%x, "
 				                  "ack_number_residue = 0x%x -> ack_number = "
-				                  "0x%x\n", ack_number_scaled,
-				                  tcp_context->ack_number_residue,
-				                  rohc_ntoh32(tcp->ack_number));
+				                  "0x%x\n", ack_num_scaled,
+				                  tcp_context->ack_num_residue,
+				                  rohc_ntoh32(tcp->ack_num));
 				ip_id = d_ip_id_lsb(context, ip_inner_context.v4->ip_id_behavior,
 				                    3, 1, ip_inner_context.v4->last_ip_id,
 				                    seq_4->ip_id, msn);
@@ -5563,9 +5559,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				                    seq_5->ip_id, msn);
 
 				/* retrieve ACK number bits */
-				ack_number_bits = rohc_ntoh16(seq_5->ack_number);
-				ack_number_bits_nr = 16;
-				ack_number_p = 16383;
+				ack_num_bits = rohc_ntoh16(seq_5->ack_num);
+				ack_num_bits_nr = 16;
+				ack_num_p = 16383;
 
 				/* decode sequence number from packet bits and context */
 				encoded_seq_num = rohc_ntoh16(seq_5->seq_num);
@@ -5596,9 +5592,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				                    seq_6->ip_id, msn);
 
 				/* retrieve ACK number bits */
-				ack_number_bits = rohc_ntoh16(seq_6->ack_number);
-				ack_number_bits_nr = 16;
-				ack_number_p = 16383;
+				ack_num_bits = rohc_ntoh16(seq_6->ack_num);
+				ack_num_bits_nr = 16;
+				ack_num_p = 16383;
 
 				tcp->psh_flag = seq_6->psh_flag;
 				break;
@@ -5618,9 +5614,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				                    seq_7->ip_id, msn);
 
 				/* retrieve ACK number bits */
-				ack_number_bits = rohc_ntoh16(seq_7->ack_number);
-				ack_number_bits_nr = 16;
-				ack_number_p = 32767;
+				ack_num_bits = rohc_ntoh16(seq_7->ack_num);
+				ack_num_bits_nr = 16;
+				ack_num_p = 32767;
 
 				tcp->psh_flag = seq_7->psh_flag;
 				break;
@@ -5656,9 +5652,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 				tcp_context->ecn_used = seq_8->ecn_used;
 
 				/* retrieve ACK number bits */
-				ack_number_bits = (seq_8->ack_number1 << 8) | seq_8->ack_number2;
-				ack_number_bits_nr = 15;
-				ack_number_p = 8191;
+				ack_num_bits = (seq_8->ack_num1 << 8) | seq_8->ack_num2;
+				ack_num_bits_nr = 15;
+				ack_num_p = 8191;
 
 				tcp->rsf_flags = rsf_index_dec(seq_8->rsf_flags);
 
@@ -5685,17 +5681,17 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		}
 
 		/* decode the transmitted ACK bits if any */
-		if(ack_number_bits_nr > 0)
+		if(ack_num_bits_nr > 0)
 		{
-			uint32_t decoded_ack_number;
+			uint32_t decoded_ack_num;
 
-			if(!rohc_decomp_tcp_decode_ack(context, tcp->ack_flag,
-			                               ack_number_bits, ack_number_bits_nr,
-			                               ack_number_p, &decoded_ack_number))
+			if(!rohc_decomp_tcp_decode_ack(context, tcp->ack_flag, ack_num_bits,
+			                               ack_num_bits_nr, ack_num_p,
+			                               &decoded_ack_num))
 			{
 				goto error;
 			}
-			tcp->ack_number = rohc_hton32(decoded_ack_number);
+			tcp->ack_num = rohc_hton32(decoded_ack_num);
 		}
 	}
 
@@ -5992,16 +5988,15 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_decomp_debug(context, "scaled sequence number 0x%08x is the new "
 		                  "reference\n", tcp_context->seq_num_scaled);
 	}
-	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_number),
-	                 false);
+	rohc_lsb_set_ref(tcp_context->ack_lsb_ctxt, rohc_ntoh32(tcp->ack_num), false);
 	rohc_decomp_debug(context, "ACK number 0x%08x is the new reference\n",
-	                  rohc_ntoh32(tcp->ack_number));
+	                  rohc_ntoh32(tcp->ack_num));
 	/* store the decompressed TCP header in context */
 	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
 	rohc_decomp_debug(context, "tcp = %p, save seq_number = 0x%x, "
 	                  "save ack_number = 0x%x\n", tcp,
 	                  rohc_ntoh32(tcp_context->old_tcphdr.seq_num),
-	                  rohc_ntoh32(tcp_context->old_tcphdr.ack_number));
+	                  rohc_ntoh32(tcp_context->old_tcphdr.ack_num));
 
 	/* statistics */
 	context->header_compressed_size += rohc_header_len;
