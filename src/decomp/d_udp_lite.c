@@ -150,7 +150,7 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	if(g_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the generic decompression context\n");
+		           "failed to create the generic decompression context");
 		goto quit;
 	}
 
@@ -159,7 +159,7 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	if(udp_lite_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "cannot allocate memory for the UDP-Lite-specific context\n");
+		           "cannot allocate memory for the UDP-Lite-specific context");
 		goto destroy_context;
 	}
 	memset(udp_lite_context, 0, sizeof(struct d_udp_lite_context));
@@ -170,7 +170,7 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for SN\n");
+		           "failed to create the LSB decoding context for SN");
 		goto free_udp_context;
 	}
 
@@ -198,7 +198,7 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-Lite-specific part "
-		           "of the outer IP header changes\n");
+		           "of the outer IP header changes");
 		goto free_lsb_sn;
 	}
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
@@ -209,7 +209,7 @@ void * d_udp_lite_create(const struct rohc_decomp_ctxt *const context)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-Lite-specific part "
-		           "of the inner IP header changes\n");
+		           "of the inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
 	memset(g_context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
@@ -291,7 +291,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *
 	if(rohc_remain_len < (1 + large_cid_len))
 	{
 		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
-		                 "type (len = %zu)\n", rohc_remain_len);
+		                 "type (len = %zu)", rohc_remain_len);
 		goto error;
 	}
 
@@ -299,7 +299,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *
 	switch(rohc_remain_data[0])
 	{
 		case 0xf9: /* CCE() */
-			rohc_decomp_debug(context, "CCE()\n");
+			rohc_decomp_debug(context, "CCE()");
 			udp_lite_context->cce_packet = ROHC_PACKET_CCE;
 			/* skip CCE byte (and optional large CID field) */
 			rohc_remain_data += 1 + large_cid_len;
@@ -307,7 +307,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *
 			new_large_cid_len = 0;
 			break;
 		case 0xfa: /* CEC(ON) */
-			rohc_decomp_debug(context, "CCE(ON)\n");
+			rohc_decomp_debug(context, "CCE(ON)");
 			udp_lite_context->cfp = 1;
 			udp_lite_context->cce_packet = ROHC_PACKET_CCE;
 			/* skip CCE byte (and optional large CID field) */
@@ -316,14 +316,14 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *
 			new_large_cid_len = 0;
 			break;
 		case 0xfb: /* CCE(OFF) */
-			rohc_decomp_debug(context, "CCE(OFF)\n");
+			rohc_decomp_debug(context, "CCE(OFF)");
 			udp_lite_context->cfp = 0;
 			udp_lite_context->cce_packet = ROHC_PACKET_CCE_OFF;
 			/* no CCE byte to skip */
 			new_large_cid_len = large_cid_len;
 			break;
 		default:
-			rohc_decomp_debug(context, "CCE not present\n");
+			rohc_decomp_debug(context, "CCE not present");
 			udp_lite_context->cce_packet = 0;
 			/* no CCE byte to skip */
 			new_large_cid_len = large_cid_len;
@@ -381,7 +381,7 @@ int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	/* check if the ROHC packet is large enough to read the first byte */
 	if(rohc_remain_len < (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -443,7 +443,7 @@ static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const conte
 	/* check the minimal length to decode the UDP-Lite dynamic part */
 	if(length < udplite_dyn_length)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
@@ -455,7 +455,7 @@ static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const conte
 	/* retrieve the checksum coverage field from the ROHC packet */
 	bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
 	bits->udp_lite_cc_nr = 16;
-	rohc_decomp_debug(context, "checksum coverage = 0x%04x\n",
+	rohc_decomp_debug(context, "checksum coverage = 0x%04x",
 	                  rohc_ntoh16(bits->udp_lite_cc));
 	read += 2;
 	packet += 2;
@@ -463,21 +463,21 @@ static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const conte
 	/* init the Coverage Field Present (CFP) (see 5.2.2 in RFC 4019) */
 	udp_lite_context->cfp =
 		(udp_lite_length != rohc_ntoh16(bits->udp_lite_cc));
-	rohc_decomp_debug(context, "init CFP to %d (length = %zd, CC = %d)\n",
+	rohc_decomp_debug(context, "init CFP to %d (length = %zd, CC = %d)",
 	                  udp_lite_context->cfp, udp_lite_length,
 	                  rohc_ntoh16(bits->udp_lite_cc));
 
 	/* init Coverage Field Inferred (CFI) (see 5.2.2 in RFC 4019) */
 	udp_lite_context->cfi =
 		(udp_lite_length == rohc_ntoh16(bits->udp_lite_cc));
-	rohc_decomp_debug(context, "init CFI to %d (length = %zd, CC = %d)\n",
+	rohc_decomp_debug(context, "init CFI to %d (length = %zd, CC = %d)",
 	                  udp_lite_context->cfi, udp_lite_length,
 	                  rohc_ntoh16(bits->udp_lite_cc));
 
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "checksum = 0x%04x\n",
+	rohc_decomp_debug(context, "checksum = 0x%04x",
 	                  rohc_ntoh16(bits->udp_check));
 	packet += 2;
 	read += 2;
@@ -528,7 +528,7 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 	assert(packet != NULL);
 	assert(bits != NULL);
 
-	rohc_decomp_debug(context, "CFP = %d, CFI = %d, cce_packet = %d\n",
+	rohc_decomp_debug(context, "CFP = %d, CFI = %d, cce_packet = %d",
 	                  udp_lite_context->cfp, udp_lite_context->cfi,
 	                  udp_lite_context->cce_packet);
 
@@ -537,7 +537,7 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 	/* check the minimal length to decode the tail of UO* packet */
 	if(length < remainder_length)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)", length);
 		goto error;
 	}
 
@@ -547,7 +547,7 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 		/* retrieve the checksum coverage field from the ROHC packet */
 		bits->udp_lite_cc = GET_NEXT_16_BITS(packet);
 		bits->udp_lite_cc_nr = 16;
-		rohc_decomp_debug(context, "checksum coverage = 0x%04x\n",
+		rohc_decomp_debug(context, "checksum coverage = 0x%04x",
 		                  rohc_ntoh16(bits->udp_lite_cc));
 		read += 2;
 		packet += 2;
@@ -555,7 +555,7 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 	else if(udp_lite_context->cfp < 0)
 	{
 		rohc_decomp_warn(context, "cfp not initialized and packet is not one "
-		                 "IR packet\n");
+		                 "IR packet");
 		goto error;
 	}
 
@@ -563,14 +563,14 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 	if(udp_lite_context->cfi < 0)
 	{
 		rohc_decomp_warn(context, "cfi not initialized and packet is not one "
-		                 "IR packet\n");
+		                 "IR packet");
 		goto error;
 	}
 
 	/* retrieve the checksum field from the ROHC packet */
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "checksum = 0x%04x\n",
+	rohc_decomp_debug(context, "checksum = 0x%04x",
 	                  rohc_ntoh16(bits->udp_check));
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += 2;
@@ -625,7 +625,7 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
 		/* keep context value */
 		decoded->udp_src = udp_lite->source;
 	}
-	rohc_decomp_debug(context, "decoded UDP-Lite source port = 0x%04x\n",
+	rohc_decomp_debug(context, "decoded UDP-Lite source port = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP-Lite destination port */
@@ -640,13 +640,13 @@ static bool udp_lite_decode_values_from_bits(const struct rohc_decomp_ctxt *cont
 		/* keep context value */
 		decoded->udp_dst = udp_lite->dest;
 	}
-	rohc_decomp_debug(context, "decoded UDP-Lite destination port = 0x%04x\n",
+	rohc_decomp_debug(context, "decoded UDP-Lite destination port = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* decode UDP-Lite checksum */
 	assert(bits.udp_check_nr == 16);
 	decoded->udp_check = bits.udp_check;
-	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x\n",
+	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_check));
 
 	/* decode UDP-Lite Checksum Coverage (CC) */
@@ -701,20 +701,20 @@ static int udp_lite_build_uncomp_udp(const struct rohc_decomp_ctxt *const contex
 
 	/* changing fields */
 	udp_lite->check = decoded.udp_check;
-	rohc_decomp_debug(context, "checksum = 0x%04x\n",
+	rohc_decomp_debug(context, "checksum = 0x%04x",
 	                  rohc_ntoh16(udp_lite->check));
 
 	/* set checksum coverage if inferred, get from packet otherwise */
 	if(udp_lite_context->cfi > 0)
 	{
 		udp_lite->len = rohc_hton16(payload_len + sizeof(struct udphdr));
-		rohc_decomp_debug(context, "checksum coverage (0x%04x) is inferred\n",
+		rohc_decomp_debug(context, "checksum coverage (0x%04x) is inferred",
 		                  udp_lite->len);
 	}
 	else
 	{
 		udp_lite->len = decoded.udp_lite_cc;
-		rohc_decomp_debug(context, "checksum coverage (0x%04x) is not inferred\n",
+		rohc_decomp_debug(context, "checksum coverage (0x%04x) is not inferred",
 		                  udp_lite->len);
 	}
 

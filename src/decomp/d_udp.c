@@ -111,7 +111,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	if(g_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the generic decompression context\n");
+		           "failed to create the generic decompression context");
 		goto quit;
 	}
 
@@ -120,7 +120,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	if(udp_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "cannot allocate memory for the UDP-specific context\n");
+		           "cannot allocate memory for the UDP-specific context");
 		goto destroy_context;
 	}
 	memset(udp_context, 0, sizeof(struct d_udp_context));
@@ -131,7 +131,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for SN\n");
+		           "failed to create the LSB decoding context for SN");
 		goto free_udp_context;
 	}
 
@@ -158,7 +158,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-specific part of the "
-		           "outer IP header changes\n");
+		           "outer IP header changes");
 		goto free_lsb_sn;
 	}
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct udphdr));
@@ -169,7 +169,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the UDP-specific part of the "
-		           "inner IP header changes\n");
+		           "inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
 	memset(g_context->inner_ip_changes->next_header, 0, sizeof(struct udphdr));
@@ -253,14 +253,14 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the UDP static part */
 	if(length < 4)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
 	/* UDP source port */
 	bits->udp_src = GET_NEXT_16_BITS(packet);
 	bits->udp_src_nr = 16;
-	rohc_decomp_debug(context, "UDP source port = 0x%04x (%u)\n",
+	rohc_decomp_debug(context, "UDP source port = 0x%04x (%u)",
 	                  rohc_ntoh16(bits->udp_src), rohc_ntoh16(bits->udp_src));
 	packet += 2;
 	read += 2;
@@ -268,7 +268,7 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	/* UDP destination port */
 	bits->udp_dst = GET_NEXT_16_BITS(packet);
 	bits->udp_dst_nr = 16;
-	rohc_decomp_debug(context, "UDP destination port = 0x%04x (%u)\n",
+	rohc_decomp_debug(context, "UDP destination port = 0x%04x (%u)",
 	                  rohc_ntoh16(bits->udp_dst), rohc_ntoh16(bits->udp_dst));
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += 2;
@@ -280,7 +280,7 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	   bits->udp_src != rohc_hton16(udp_context->sport))
 	{
 		rohc_decomp_debug(context, "UDP source port mismatch (packet = %u, "
-		                  "context = %u) -> context is being reused\n",
+		                  "context = %u) -> context is being reused",
 		                  rohc_ntoh16(bits->udp_src), udp_context->sport);
 		bits->is_context_reused = true;
 	}
@@ -289,7 +289,7 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	   bits->udp_dst != rohc_hton16(udp_context->dport))
 	{
 		rohc_decomp_debug(context, "UDP destination port mismatch (packet = %u, "
-		                  "context = %u) -> context is being reused\n",
+		                  "context = %u) -> context is being reused",
 		                  rohc_ntoh16(bits->udp_dst), udp_context->dport);
 		bits->is_context_reused = true;
 	}
@@ -333,12 +333,12 @@ static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
 	/* UDP checksum */
 	if(length < 2)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
 	bits->udp_check_nr = 16;
-	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x",
 	                  rohc_ntoh16(bits->udp_check));
 	packet += 2;
 	read += 2;
@@ -398,20 +398,20 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	if(udp_context->udp_checksum_present < 0)
 	{
 		rohc_decomp_warn(context, "udp_checksum_present not initialized and "
-		                 "packet is not one IR packet\n");
+		                 "packet is not one IR packet");
 		goto error;
 	}
 	else if(udp_context->udp_checksum_present == 0)
 	{
 		bits->udp_check_nr = 0;
-		rohc_decomp_debug(context, "UDP checksum not present\n");
+		rohc_decomp_debug(context, "UDP checksum not present");
 	}
 	else
 	{
 		/* check the minimal length to decode the UDP checksum */
 		if(length < 2)
 		{
-			rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+			rohc_decomp_warn(context, "ROHC packet too small (len = %u)",
 			                 length);
 			goto error;
 		}
@@ -419,7 +419,7 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		/* retrieve the UDP checksum from the ROHC packet */
 		bits->udp_check = GET_NEXT_16_BITS(packet);
 		bits->udp_check_nr = 16;
-		rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
+		rohc_decomp_debug(context, "UDP checksum = 0x%04x",
 		                  rohc_ntoh16(bits->udp_check));
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 		packet += 2;
@@ -478,7 +478,7 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		/* keep context value */
 		decoded->udp_src = udp->source;
 	}
-	rohc_decomp_debug(context, "decoded UDP source port = 0x%04x\n",
+	rohc_decomp_debug(context, "decoded UDP source port = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_src));
 
 	/* decode UDP destination port */
@@ -493,7 +493,7 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		/* keep context value */
 		decoded->udp_dst = udp->dest;
 	}
-	rohc_decomp_debug(context, "decoded UDP destination port = 0x%04x\n",
+	rohc_decomp_debug(context, "decoded UDP destination port = 0x%04x",
 	                  rohc_ntoh16(decoded->udp_dst));
 
 	/* UDP checksum:
@@ -505,7 +505,7 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	 *    ie. udp_checksum_present = 0  */
 	if(udp_context->udp_checksum_present < 0)
 	{
-		rohc_decomp_warn(context, "udp_checksum_present not initialized\n");
+		rohc_decomp_warn(context, "udp_checksum_present not initialized");
 		goto error;
 	}
 	else if(udp_context->udp_checksum_present > 0)
@@ -520,7 +520,7 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		decoded->udp_check = 0;
 	}
 	rohc_decomp_debug(context, "decoded UDP checksum = 0x%04x (checksum "
-	                  "present = %d)\n", rohc_ntoh16(decoded->udp_check),
+	                  "present = %d)", rohc_ntoh16(decoded->udp_check),
 	                  udp_context->udp_checksum_present);
 
 	return true;
@@ -558,13 +558,11 @@ static int udp_build_uncomp_udp(const struct rohc_decomp_ctxt *const context,
 
 	/* changing fields */
 	udp->check = decoded.udp_check;
-	rohc_decomp_debug(context, "UDP checksum = 0x%04x\n",
-	                  rohc_ntoh16(udp->check));
+	rohc_decomp_debug(context, "UDP checksum = 0x%04x", rohc_ntoh16(udp->check));
 
 	/* interfered fields */
 	udp->len = rohc_hton16(payload_len + sizeof(struct udphdr));
-	rohc_decomp_debug(context, "UDP length = 0x%04x\n",
-	                  rohc_ntoh16(udp->len));
+	rohc_decomp_debug(context, "UDP length = 0x%04x", rohc_ntoh16(udp->len));
 
 	return sizeof(struct udphdr);
 }

@@ -117,7 +117,7 @@
 		const size_t _max = (max); \
 		/* print a description of what we do */ \
 		rohc_decomp_debug(context, \
-		                  "%zd bits of " #field_descr " found in %s = 0x%x\n", \
+		                  "%zd bits of " #field_descr " found in %s = 0x%x", \
 		                  (_bits_nr), rohc_get_ext_descr(ext_no), (_bits)); \
 		/* is there enough room for all existing and new bits? */ \
 		if(((field_nr) + (_bits_nr)) <= (_max)) \
@@ -138,11 +138,11 @@
 			_mask = (1 << ((_max) - (_bits_nr))) - 1; \
 			if((field & _mask) != field) \
 			{ \
-				rohc_info(context->decompressor, ROHC_TRACE_DECOMP, \
-				          context->profile->id, \
-				          "too many bits for " #field_descr ": %zd bits " \
-				          "found in %s, and %zd bits already found before " \
-				          "for a %zd-bit field\n", (_bits_nr), \
+				rohc_info((context)->decompressor, ROHC_TRACE_DECOMP, \
+				          (context)->profile->id, \
+				          "too many bits for " #field_descr ": %zu bits found " \
+				          "in %s, and %zu bits already found before for a " \
+				          "%zu-bit field", (_bits_nr), \
 				          rohc_get_ext_descr(ext_no), (field_nr), (_max)); \
 			} \
 			field &= _mask; \

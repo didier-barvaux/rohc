@@ -153,7 +153,7 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 	if(uncomp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the uncompressed context\n");
+		           "no memory for the uncompressed context");
 		goto quit;
 	}
 	context->specific = uncomp_context;
@@ -317,26 +317,26 @@ static bool uncomp_feedback(struct rohc_comp_ctxt *const context,
 	switch(feedback->type)
 	{
 		case 1: /* FEEDBACK-1 ACK */
-			rohc_comp_debug(context, "FEEDBACK-1 received\n");
+			rohc_comp_debug(context, "FEEDBACK-1 received");
 			assert(remain_len == 1);
 			if(remain_data[0] != 0x00)
 			{
 				rohc_comp_warn(context, "profile-specific byte in FEEDBACK-1 "
 				               "should be zero for Uncompressed profile but it "
-				               "is 0x%02x\n", remain_data[0]);
+				               "is 0x%02x", remain_data[0]);
 			}
 			break;
 		case 2: /* FEEDBACK-2 */
-			rohc_comp_debug(context, "FEEDBACK-2 received\n");
+			rohc_comp_debug(context, "FEEDBACK-2 received");
 			assert(remain_len >= 2);
 			if(!uncomp_feedback_2(context, feedback))
 			{
-				rohc_comp_warn(context, "failed to handle FEEDBACK-2\n");
+				rohc_comp_warn(context, "failed to handle FEEDBACK-2");
 				goto error;
 			}
 			break;
 		default: /* not FEEDBACK-1 nor FEEDBACK-2 */
-			rohc_comp_warn(context, "feedback type not implemented (%d)\n",
+			rohc_comp_warn(context, "feedback type not implemented (%d)",
 			               feedback->type);
 			goto error;
 	}
@@ -380,7 +380,7 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 		if(remain_len < optlen)
 		{
 			rohc_comp_warn(context, "%zu-byte FEEDBACK-2 is too short for "
-			               "%u-byte option %u\n", remain_len, optlen, opt);
+			               "%u-byte option %u", remain_len, optlen, opt);
 			goto error;
 		}
 
@@ -393,22 +393,22 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 				break;
 			case 2: /* Reject */
 				/* ignore the option */
-				rohc_comp_warn(context, "ignore FEEDBACK-2 Reject option\n");
+				rohc_comp_warn(context, "ignore FEEDBACK-2 Reject option");
 				break;
 			case 3: /* SN-Not-Valid */
 				/* ignore the option */
-				rohc_comp_warn(context, "ignore FEEDBACK-2 SN-Not-Valid option\n");
+				rohc_comp_warn(context, "ignore FEEDBACK-2 SN-Not-Valid option");
 				break;
 			case 4: /* SN */
 				/* ignore the option */
-				rohc_comp_warn(context, "ignore FEEDBACK-2 SN option\n");
+				rohc_comp_warn(context, "ignore FEEDBACK-2 SN option");
 				break;
 			case 7: /* Loss */
 				/* ignore the option */
-				rohc_comp_warn(context, "ignore FEEDBACK-2 Loss option\n");
+				rohc_comp_warn(context, "ignore FEEDBACK-2 Loss option");
 				break;
 			default:
-				rohc_comp_warn(context, "unknown feedback option %u\n", opt);
+				rohc_comp_warn(context, "unknown feedback option %u", opt);
 				break;
 		}
 
@@ -429,8 +429,7 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 		/* ignore feedback in case of bad CRC */
 		if(crc_in_packet != crc_computed)
 		{
-			rohc_comp_warn(context, "CRC check failed (size = %zu)\n",
-			               feedback->size);
+			rohc_comp_warn(context, "CRC check failed (size = %zu)", feedback->size);
 			goto error;
 		}
 	}
@@ -439,7 +438,7 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 	if(mode != 0 && mode != context->mode)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "mode change (%d -> %d) requested by feedback for CID %d\n",
+		          "mode change (%d -> %d) requested by feedback for CID %d",
 		          context->mode, mode, context->profile->id);
 
 		/* mode can be changed only if feedback is protected by a CRC */
@@ -449,7 +448,7 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_warn(context, "mode change requested without CRC\n");
+			rohc_comp_warn(context, "mode change requested without CRC");
 		}
 	}
 
@@ -457,21 +456,21 @@ static bool uncomp_feedback_2(struct rohc_comp_ctxt *const context,
 	{
 		case ACK:
 			rohc_info(context->compressor, ROHC_TRACE_COMP,
-			          context->profile->id, "ACK received\n");
+			          context->profile->id, "ACK received");
 			break;
 		case NACK:
-			rohc_comp_warn(context, "NACK received\n");
+			rohc_comp_warn(context, "NACK received");
 			break;
 		case STATIC_NACK:
-			rohc_comp_warn(context, "STATIC-NACK received\n");
+			rohc_comp_warn(context, "STATIC-NACK received");
 			uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 			break;
 		case RESERVED:
-			rohc_comp_warn(context, "reserved field used\n");
+			rohc_comp_warn(context, "reserved field used");
 			break;
 		default:
 			/* impossible value */
-			rohc_comp_warn(context, "unknown ACK type (%d)\n",
+			rohc_comp_warn(context, "unknown ACK type (%d)",
 			               feedback->acktype);
 			goto error;
 	}
@@ -520,7 +519,7 @@ static void uncompressed_periodic_down_transition(struct rohc_comp_ctxt *const c
 	if(uncomp_context->go_back_ir_count >=
 	   context->compressor->periodic_refreshes_ir_timeout)
 	{
-		rohc_comp_debug(context, "periodic change to IR state\n");
+		rohc_comp_debug(context, "periodic change to IR state");
 		uncomp_context->go_back_ir_count = 0;
 		uncompressed_change_state(context, ROHC_COMP_STATE_IR);
 	}
@@ -617,7 +616,7 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
 		   ip_get_version(&uncomp_pkt->outer_ip) != IPV6)
 		{
 			rohc_comp_debug(context, "force IR packet to avoid conflict between "
-			                "first payload byte and ROHC packet types\n");
+			                "first payload byte and ROHC packet types");
 			*packet_type = ROHC_PACKET_IR;
 		}
 		else
@@ -627,7 +626,7 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
 	}
 	else
 	{
-		rohc_comp_warn(context, "unknown state, cannot build packet\n");
+		rohc_comp_warn(context, "unknown state, cannot build packet");
 		*packet_type = ROHC_PACKET_UNKNOWN;
 		assert(0); /* should not happen */
 		goto error;
@@ -635,13 +634,13 @@ static int uncompressed_code_packet(const struct rohc_comp_ctxt *context,
 
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
-		rohc_comp_debug(context, "build IR packet\n");
+		rohc_comp_debug(context, "build IR packet");
 		uncomp_context->ir_count++;
 		code_packet = uncompressed_code_IR_packet;
 	}
 	else /* ROHC_PACKET_NORMAL */
 	{
-		rohc_comp_debug(context, "build normal packet\n");
+		rohc_comp_debug(context, "build normal packet");
 		uncomp_context->normal_count++;
 		code_packet = uncompressed_code_normal_packet;
 	}
@@ -704,7 +703,7 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 	size_t counter;
 	size_t first_position;
 
-	rohc_comp_debug(context, "code IR packet (CID = %zu)\n", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %zu)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -715,11 +714,11 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 
 	/* part 2 */
 	rohc_pkt[first_position] = 0xfc;
-	rohc_comp_debug(context, "first byte = 0x%02x\n", rohc_pkt[first_position]);
+	rohc_comp_debug(context, "first byte = 0x%02x", rohc_pkt[first_position]);
 
 	/* part 4 */
 	rohc_pkt[counter] = ROHC_PROFILE_UNCOMPRESSED;
-	rohc_comp_debug(context, "Profile ID = 0x%02x\n", rohc_pkt[counter]);
+	rohc_comp_debug(context, "Profile ID = 0x%02x", rohc_pkt[counter]);
 	counter++;
 
 	/* part 5 */
@@ -727,7 +726,7 @@ static int uncompressed_code_IR_packet(const struct rohc_comp_ctxt *context,
 	rohc_pkt[counter] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
 	                                  CRC_INIT_8,
 	                                  context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC on %zu bytes = 0x%02x\n", counter,
+	rohc_comp_debug(context, "CRC on %zu bytes = 0x%02x", counter,
 	                rohc_pkt[counter]);
 	counter++;
 
@@ -780,7 +779,7 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
 	size_t counter;
 	size_t first_position;
 
-	rohc_comp_debug(context, "code normal packet (CID = %zu)\n", context->cid);
+	rohc_comp_debug(context, "code normal packet (CID = %zu)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -792,7 +791,7 @@ static int uncompressed_code_normal_packet(const struct rohc_comp_ctxt *context,
 	/* part 2 */
 	rohc_pkt[first_position] = uncomp_pkt->data[0];
 
-	rohc_comp_debug(context, "header length = %zu, payload length = %zu\n",
+	rohc_comp_debug(context, "header length = %zu, payload length = %zu",
 	                counter - 1, uncomp_pkt->len);
 
 	*payload_offset = 1;

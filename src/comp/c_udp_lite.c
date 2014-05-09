@@ -182,14 +182,14 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, packet))
 	{
-		rohc_comp_warn(context, "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
 	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_comp_debug(context, "initialize context(SN) = random() = %u\n",
+	rohc_comp_debug(context, "initialize context(SN) = random() = %u",
 	                g_context->sn);
 
 	/* check that transport protocol is UDP-Lite */
@@ -202,7 +202,7 @@ static bool c_udp_lite_create(struct rohc_comp_ctxt *const context,
 	if(udp_lite_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the UDP-Lite part of the profile context\n");
+		           "no memory for the UDP-Lite part of the profile context");
 		goto clean;
 	}
 	g_context->specific = udp_lite_context;
@@ -478,7 +478,7 @@ static size_t udp_lite_build_cce_packet(const struct rohc_comp_ctxt *const conte
 	send_cce_packet = udp_lite_send_cce_packet(context, udp_lite);
 	if(send_cce_packet)
 	{
-		rohc_comp_debug(context, "adding CCE\n");
+		rohc_comp_debug(context, "adding CCE");
 
 		/* part 2 */
 		dest[*first_position] = (0xf8 | udp_lite_context->FK);
@@ -490,7 +490,7 @@ static size_t udp_lite_build_cce_packet(const struct rohc_comp_ctxt *const conte
 	}
 	else
 	{
-		rohc_comp_debug(context, "CCE not needed\n");
+		rohc_comp_debug(context, "CCE not needed");
 	}
 
 	return counter + nr_written;
@@ -537,14 +537,14 @@ static size_t udp_lite_code_uo_remainder(const struct rohc_comp_ctxt *const cont
 	if(udp_lite_context->cfp == 1 ||
 	   udp_lite_send_cce_packet(context, udp_lite))
 	{
-		rohc_comp_debug(context, "UDP-Lite checksum coverage = 0x%04x\n",
+		rohc_comp_debug(context, "UDP-Lite checksum coverage = 0x%04x",
 		                rohc_ntoh16(udp_lite->len));
 		memcpy(&dest[counter + nr_written], &udp_lite->len, 2);
 		nr_written += 2;
 	}
 
 	/* part 2 */
-	rohc_comp_debug(context, "UDP-Lite checksum = 0x%04x\n",
+	rohc_comp_debug(context, "UDP-Lite checksum = 0x%04x",
 	                rohc_ntoh16(udp_lite->check));
 	memcpy(&dest[counter + nr_written], &udp_lite->check, 2);
 	nr_written += 2;
@@ -583,13 +583,13 @@ static size_t udp_lite_code_dynamic_udplite_part(const struct rohc_comp_ctxt *co
 	size_t nr_written = 0;
 
 	/* part 1 */
-	rohc_comp_debug(context, "UDP-Lite checksum coverage = 0x%04x\n",
+	rohc_comp_debug(context, "UDP-Lite checksum coverage = 0x%04x",
 	                rohc_ntoh16(udp_lite->len));
 	memcpy(&dest[counter + nr_written], &udp_lite->len, 2);
 	nr_written += 2;
 
 	/* part 2 */
-	rohc_comp_debug(context, "UDP-Lite checksum = 0x%04x\n",
+	rohc_comp_debug(context, "UDP-Lite checksum = 0x%04x",
 	                rohc_ntoh16(udp_lite->check));
 	memcpy(&dest[counter + nr_written], &udp_lite->check, 2);
 	nr_written += 2;
@@ -625,7 +625,7 @@ static void udp_lite_init_cc(const struct rohc_comp_ctxt *context,
 		udp_lite_context->cfi = 1;
 	}
 
-	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %d)\n",
+	rohc_comp_debug(context, "CFP = %d, CFI = %d (ir_count = %d)",
 	                udp_lite_context->cfp, udp_lite_context->cfi,
 	                g_context->ir_count);
 
@@ -634,10 +634,10 @@ static void udp_lite_init_cc(const struct rohc_comp_ctxt *context,
 	udp_lite_context->cfi =
 		(rohc_ntoh16(udp_lite->len) == packet_length) && udp_lite_context->cfi;
 
-	rohc_comp_debug(context, "packet_length = %d\n", packet_length);
-	rohc_comp_debug(context, "udp_lite length = %d\n",
+	rohc_comp_debug(context, "packet_length = %d", packet_length);
+	rohc_comp_debug(context, "udp_lite length = %d",
 	                rohc_ntoh16(udp_lite->len));
-	rohc_comp_debug(context, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
+	rohc_comp_debug(context, "CFP = %d, CFI = %d", udp_lite_context->cfp,
 	                udp_lite_context->cfi);
 
 	udp_lite_context->tmp_coverage = udp_lite->len;
@@ -669,7 +669,7 @@ static bool udp_lite_send_cce_packet(const struct rohc_comp_ctxt *const context,
 	assert(g_context->specific != NULL);
 	udp_lite_context = (struct sc_udp_lite_context *) g_context->specific;
 
-	rohc_comp_debug(context, "CFP = %d, CFI = %d\n", udp_lite_context->cfp,
+	rohc_comp_debug(context, "CFP = %d, CFI = %d", udp_lite_context->cfp,
 	                udp_lite_context->cfi);
 
 	/* may the checksum coverage be inferred from UDP-Lite length ? */

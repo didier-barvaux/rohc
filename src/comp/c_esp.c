@@ -132,7 +132,7 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_ESP_SN, packet))
 	{
-		rohc_comp_warn(context, "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -145,14 +145,14 @@ static bool c_esp_create(struct rohc_comp_ctxt *const context,
 	/* initialize SN with the SN found in the ESP header */
 	g_context->sn = rohc_ntoh32(esp->sn);
 	rohc_comp_debug(context, "initialize context(SN) = hdr(SN) of first "
-	                "packet = %u\n", g_context->sn);
+	                "packet = %u", g_context->sn);
 
 	/* create the ESP part of the profile context */
 	esp_context = malloc(sizeof(struct sc_esp_context));
 	if(esp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the ESP part of the profile context\n");
+		           "no memory for the ESP part of the profile context");
 		goto clean;
 	}
 	g_context->specific = esp_context;
@@ -413,7 +413,7 @@ static size_t esp_code_static_esp_part(const struct rohc_comp_ctxt *const contex
 	size_t nr_written = 0;
 
 	/* part 1 */
-	rohc_comp_debug(context, "ESP SPI = 0x%08x\n", rohc_ntoh32(esp->spi));
+	rohc_comp_debug(context, "ESP SPI = 0x%08x", rohc_ntoh32(esp->spi));
 	memcpy(&dest[counter + nr_written], &esp->spi, sizeof(uint32_t));
 	nr_written += sizeof(uint32_t);
 
@@ -449,7 +449,7 @@ static size_t esp_code_dynamic_esp_part(const struct rohc_comp_ctxt *const conte
 	size_t nr_written = 0;
 
 	/* part 1 */
-	rohc_comp_debug(context, "ESP SN = 0x%08x\n", rohc_ntoh32(esp->sn));
+	rohc_comp_debug(context, "ESP SN = 0x%08x", rohc_ntoh32(esp->sn));
 	memcpy(&dest[counter + nr_written], &esp->sn, sizeof(uint32_t));
 	nr_written += sizeof(uint32_t);
 

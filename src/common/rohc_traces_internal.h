@@ -42,7 +42,7 @@
 #define __rohc_print(trace_cb, level, entity, profile, format, ...) \
 	do { \
 		if(trace_cb != NULL) { \
-			trace_cb(level, entity, profile, "[%s:%d %s()] " format, \
+			trace_cb(level, entity, profile, "[%s:%d %s()] " format "\n", \
 			         __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
 		} \
 	} while(0)

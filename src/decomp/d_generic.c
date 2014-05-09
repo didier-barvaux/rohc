@@ -396,7 +396,7 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 	if(g_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "no memory for the generic decompression context\n");
+		           "no memory for the generic decompression context");
 		goto quit;
 	}
 	memset(g_context, 0, sizeof(struct d_generic_context));
@@ -406,8 +406,8 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 	if(g_context->outer_ip_id_offset_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the Offset IP-ID decoding context "
-		           "for outer IP header\n");
+		           "failed to create the Offset IP-ID decoding context for "
+		           "outer IP header");
 		goto free_context;
 	}
 
@@ -416,8 +416,8 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 	if(g_context->inner_ip_id_offset_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the Offset IP-ID decoding context "
-		           "for inner IP header\n");
+		           "failed to create the Offset IP-ID decoding context for "
+		           "inner IP header");
 		goto free_outer_ip_id_offset_ctxt;
 	}
 
@@ -425,7 +425,7 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 	if(g_context->outer_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "cannot allocate memory for the outer IP header changes\n");
+		           "cannot allocate memory for the outer IP header changes");
 		goto free_inner_ip_id_offset_ctxt;
 	}
 	memset(g_context->outer_ip_changes, 0, sizeof(struct d_generic_changes));
@@ -434,7 +434,7 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 	if(g_context->inner_ip_changes == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "cannot allocate memory for the inner IP header changes\n");
+		           "cannot allocate memory for the inner IP header changes");
 		goto free_outer_ip_changes;
 	}
 	memset(g_context->inner_ip_changes, 0, sizeof(struct d_generic_changes));
@@ -631,7 +631,7 @@ static bool parse_packet(const struct rohc_decomp *const decomp,
 		}
 		default:
 		{
-			rohc_decomp_warn(context, "unknown packet type (%d)\n", *packet_type);
+			rohc_decomp_warn(context, "unknown packet type (%d)", *packet_type);
 			goto error;
 		}
 	}
@@ -731,7 +731,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	 * IR type + (large CID + ) Profile ID + CRC */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -747,7 +747,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	/* parse CRC */
 	bits->crc = GET_BIT_0_7(rohc_remain_data);
 	bits->crc_nr = 8;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -758,7 +758,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	                            &bits->outer_ip);
 	if(size == -1)
 	{
-		rohc_decomp_warn(context, "cannot parse the outer IP static part\n");
+		rohc_decomp_warn(context, "cannot parse the outer IP static part");
 		goto error;
 	}
 	rohc_remain_data += size;
@@ -770,7 +770,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	   bits->outer_ip.version != ip_get_version(&g_context->outer_ip_changes->ip))
 	{
 		rohc_decomp_debug(context, "outer IP version mismatch (packet = %d, "
-		                  "context = %d) -> context is being reused\n",
+		                  "context = %d) -> context is being reused",
 		                  bits->outer_ip.version,
 		                  ip_get_version(&g_context->outer_ip_changes->ip));
 		bits->is_context_reused = true;
@@ -780,13 +780,13 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 	assert(bits->outer_ip.proto_nr == 8);
 	if(rohc_is_tunneling(bits->outer_ip.proto))
 	{
-		rohc_decomp_debug(context, "second IP header detected\n");
+		rohc_decomp_debug(context, "second IP header detected");
 
 		/* check for 1 to 2 IP headers switch during context re-use */
 		if(context->num_recv_packets > 1 && !g_context->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
-			                  "= 2, context = 1) -> context is being reused\n");
+			                  "= 2, context = 1) -> context is being reused");
 			bits->is_context_reused = true;
 		}
 
@@ -799,7 +799,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		if(context->num_recv_packets > 1 && g_context->multiple_ip)
 		{
 			rohc_decomp_debug(context, "number of IP headers mismatch (packet "
-			                  "= 1, context = 2) -> context is being reused\n");
+			                  "= 1, context = 2) -> context is being reused");
 			bits->is_context_reused = true;
 		}
 
@@ -815,7 +815,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		                            &bits->inner_ip);
 		if(size == -1)
 		{
-			rohc_decomp_warn(context, "cannot parse inner IP static part\n");
+			rohc_decomp_warn(context, "cannot parse inner IP static part");
 			goto error;
 		}
 		rohc_remain_data += size;
@@ -827,7 +827,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		   bits->inner_ip.version != ip_get_version(&g_context->inner_ip_changes->ip))
 		{
 			rohc_decomp_debug(context, "inner IP version mismatch (packet = %d, "
-			                  "context = %d) -> context is being reused\n",
+			                  "context = %d) -> context is being reused",
 			                  bits->inner_ip.version,
 			                  ip_get_version(&g_context->inner_ip_changes->ip));
 			bits->is_context_reused = true;
@@ -841,7 +841,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		                                        rohc_remain_len, bits);
 		if(size == -1)
 		{
-			rohc_decomp_warn(context, "cannot parse next header static part\n");
+			rohc_decomp_warn(context, "cannot parse next header static part");
 			goto error;
 		}
 		rohc_remain_data += size;
@@ -857,7 +857,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		                             &bits->outer_ip, &g_context->list_decomp1);
 		if(size == -1)
 		{
-			rohc_decomp_warn(context, "cannot parse outer IP dynamic part\n");
+			rohc_decomp_warn(context, "cannot parse outer IP dynamic part");
 			goto error;
 		}
 		rohc_remain_data += size;
@@ -871,7 +871,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 			                             &bits->inner_ip, &g_context->list_decomp2);
 			if(size == -1)
 			{
-				rohc_decomp_warn(context, "cannot parse inner IP dynamic part\n");
+				rohc_decomp_warn(context, "cannot parse inner IP dynamic part");
 				goto error;
 			}
 			rohc_remain_data += size;
@@ -886,7 +886,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 			                                     rohc_remain_len, bits);
 			if(size == -1)
 			{
-				rohc_decomp_warn(context, "cannot parse next header dynamic part\n");
+				rohc_decomp_warn(context, "cannot parse next header dynamic part");
 				goto error;
 			}
 #ifndef __clang_analyzer__ /* silent warning about dead increment */
@@ -901,7 +901,7 @@ static bool parse_ir(const struct rohc_decomp_ctxt *const context,
 		/* in 'Static Context' or 'No Context' state and the packet does not
 		 * contain a dynamic part */
 		rohc_decomp_warn(context, "receive IR packet without a dynamic part, "
-		                 "but not in Full Context state\n");
+		                 "but not in Full Context state");
 		goto error;
 	}
 
@@ -942,7 +942,7 @@ static int parse_static_part_ip(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the IP version */
 	if(length < 1)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
@@ -952,7 +952,7 @@ static int parse_static_part_ip(const struct rohc_decomp_ctxt *const context,
 	/* reject non IPv4/IPv6 packets */
 	if(bits->version != IPV4 && bits->version != IPV6)
 	{
-		rohc_decomp_warn(context, "unsupported IP version (%d)\n", bits->version);
+		rohc_decomp_warn(context, "unsupported IP version (%d)", bits->version);
 		goto error;
 	}
 
@@ -999,26 +999,26 @@ static int parse_static_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the IPv4 static part */
 	if(length < 10)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
 	/* IP version already read by \ref parse_static_part_ip */
-	rohc_decomp_debug(context, "IP Version = %d\n", bits->version);
+	rohc_decomp_debug(context, "IP Version = %d", bits->version);
 	packet++;
 	read++;
 
 	/* read the protocol number */
 	bits->proto = GET_BIT_0_7(packet);
 	bits->proto_nr = 8;
-	rohc_decomp_debug(context, "Protocol = 0x%02x\n", bits->proto);
+	rohc_decomp_debug(context, "Protocol = 0x%02x", bits->proto);
 	packet++;
 	read++;
 
 	/* read the source IP address */
 	memcpy(bits->saddr, packet, 4);
 	bits->saddr_nr = 32;
-	rohc_decomp_debug(context, "Source Address = " IPV4_ADDR_FORMAT "\n",
+	rohc_decomp_debug(context, "Source Address = " IPV4_ADDR_FORMAT,
 	                  IPV4_ADDR_RAW(bits->saddr));
 	packet += 4;
 	read += 4;
@@ -1026,7 +1026,7 @@ static int parse_static_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	/* read the destination IP address */
 	memcpy(bits->daddr, packet, 4);
 	bits->daddr_nr = 32;
-	rohc_decomp_debug(context, "Destination Address = " IPV4_ADDR_FORMAT "\n",
+	rohc_decomp_debug(context, "Destination Address = " IPV4_ADDR_FORMAT,
 	                  IPV4_ADDR_RAW(bits->daddr));
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += 4;
@@ -1066,33 +1066,33 @@ static int parse_static_part_ipv6(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the IPv6 static part */
 	if(length < 36)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
 	/* IP version already read by \ref parse_static_part_ip */
-	rohc_decomp_debug(context, "IP Version = %d\n", bits->version);
+	rohc_decomp_debug(context, "IP Version = %d", bits->version);
 
 	/* read the flow label */
 	bits->flowid = (GET_BIT_0_3(packet) << 16) |
 	               (GET_BIT_0_7(packet + 1) << 8) |
 	               GET_BIT_0_7(packet + 2);
 	bits->flowid_nr = 20;
-	rohc_decomp_debug(context, "Flow Label = 0x%05x\n", bits->flowid);
+	rohc_decomp_debug(context, "Flow Label = 0x%05x", bits->flowid);
 	packet += 3;
 	read += 3;
 
 	/* read the next header value */
 	bits->proto = GET_BIT_0_7(packet);
 	bits->proto_nr = 8;
-	rohc_decomp_debug(context, "Next Header = 0x%02x\n", bits->proto);
+	rohc_decomp_debug(context, "Next Header = 0x%02x", bits->proto);
 	packet++;
 	read++;
 
 	/* read the source IP address */
 	memcpy(bits->saddr, packet, 16);
 	bits->saddr_nr = 128;
-	rohc_decomp_debug(context, "Source Address = " IPV6_ADDR_FORMAT "\n",
+	rohc_decomp_debug(context, "Source Address = " IPV6_ADDR_FORMAT,
 	                  IPV6_ADDR_RAW(bits->saddr));
 	packet += 16;
 	read += 16;
@@ -1100,7 +1100,7 @@ static int parse_static_part_ipv6(const struct rohc_decomp_ctxt *const context,
 	/* read the destination IP address */
 	memcpy(bits->daddr, packet, 16);
 	bits->daddr_nr = 128;
-	rohc_decomp_debug(context, "Destination Address = " IPV6_ADDR_FORMAT "\n",
+	rohc_decomp_debug(context, "Destination Address = " IPV6_ADDR_FORMAT,
 	                  IPV6_ADDR_RAW(bits->daddr));
 #ifndef __clang_analyzer__ /* silent warning about dead increment */
 	packet += 16;
@@ -1199,21 +1199,21 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the IPv4 dynamic part */
 	if(length < ipv4_dyn_size)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
 	/* read the TOS field */
 	bits->tos = GET_BIT_0_7(packet);
 	bits->tos_nr = 8;
-	rohc_decomp_debug(context, "TOS = 0x%02x\n", bits->tos);
+	rohc_decomp_debug(context, "TOS = 0x%02x", bits->tos);
 	packet++;
 	read++;
 
 	/* read the TTL field */
 	bits->ttl = GET_BIT_0_7(packet);
 	bits->ttl_nr = 8;
-	rohc_decomp_debug(context, "TTL = 0x%02x\n", bits->ttl);
+	rohc_decomp_debug(context, "TTL = 0x%02x", bits->ttl);
 	packet++;
 	read++;
 
@@ -1221,7 +1221,7 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	bits->id = GET_NEXT_16_BITS(packet);
 	bits->id_nr = 16;
 	bits->is_id_enc = false;
-	rohc_decomp_debug(context, "IP-ID = 0x%04x\n", bits->id);
+	rohc_decomp_debug(context, "IP-ID = 0x%04x", bits->id);
 	packet += 2;
 	read += 2;
 
@@ -1241,7 +1241,7 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	bits->sid = GET_REAL(GET_BIT_4(packet));
 	bits->sid_nr = 1;
 
-	rohc_decomp_debug(context, "DF = %d, RND = %d, NBO = %d, SID = %d\n",
+	rohc_decomp_debug(context, "DF = %d, RND = %d, NBO = %d, SID = %d",
 	                  bits->df, bits->rnd, bits->nbo, bits->sid);
 	packet++;
 	read++;
@@ -1251,7 +1251,7 @@ static int parse_dynamic_part_ipv4(const struct rohc_decomp_ctxt *const context,
 	if(GET_BIT_0_7(packet) != 0x00)
 	{
 		rohc_decomp_warn(context, "generic extension header list not supported "
-		                 "yet\n");
+		                 "yet");
 		goto error;
 	}
 	packet++;
@@ -1290,21 +1290,21 @@ static int parse_dynamic_part_ipv6(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the IPv6 dynamic part */
 	if(length < 2)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
 	/* read the TC field */
 	bits->tos = GET_BIT_0_7(packet);
 	bits->tos_nr = 8;
-	rohc_decomp_debug(context, "TC = 0x%02x\n", bits->tos);
+	rohc_decomp_debug(context, "TC = 0x%02x", bits->tos);
 	packet++;
 	read++;
 
 	/* read the HL field */
 	bits->ttl = GET_BIT_0_7(packet);
 	bits->ttl_nr = 8;
-	rohc_decomp_debug(context, "HL = 0x%02x\n", bits->ttl);
+	rohc_decomp_debug(context, "HL = 0x%02x", bits->ttl);
 	packet++;
 	read++;
 
@@ -1312,10 +1312,10 @@ static int parse_dynamic_part_ipv6(const struct rohc_decomp_ctxt *const context,
 	size_ext = rohc_list_decode_maybe(list_decomp, packet, length - read);
 	if(size_ext < 0)
 	{
-		rohc_decomp_warn(context, "failed to decode IPv6 extensions list\n");
+		rohc_decomp_warn(context, "failed to decode IPv6 extensions list");
 		goto error;
 	}
-	rohc_decomp_debug(context, "IPv6 extensions list = %d bytes\n", size_ext);
+	rohc_decomp_debug(context, "IPv6 extensions list = %d bytes", size_ext);
 #ifndef __clang_analyzer__ /* silent warning about dead increment */
 	packet += size_ext;
 #endif
@@ -1409,7 +1409,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	                          packet_type, &bits, &rohc_header_len);
 	if(!parsing_ok)
 	{
-		rohc_decomp_warn(context, "failed to parse the %s header\n",
+		rohc_decomp_warn(context, "failed to parse the %s header",
 		                 rohc_get_packet_descr(*packet_type));
 		goto error;
 	}
@@ -1419,7 +1419,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	payload_data = rohc_packet + rohc_header_len;
 	payload_len = rohc_length - rohc_header_len;
 	rohc_decomp_debug(context, "ROHC payload (length = %zd bytes) starts at "
-	                  "offset %zd\n", payload_len, rohc_header_len);
+	                  "offset %zd", payload_len, rohc_header_len);
 
 
 	/*
@@ -1438,7 +1438,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
-			                 "IR packet\n");
+			                 "IR packet");
 #if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 ROHC_TRACE_WARNING, "IR headers",
@@ -1459,7 +1459,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		if(try_decoding_again)
 		{
 			rohc_decomp_warn(context, "CID %zu: CRC repair: try decoding packet "
-			                 "again with new assumptions\n", context->cid);
+			                 "again with new assumptions", context->cid);
 		}
 
 
@@ -1472,7 +1472,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode values from bits "
-			                 "extracted from ROHC header\n");
+			                 "extracted from ROHC header");
 			goto error;
 		}
 
@@ -1497,11 +1497,11 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 			if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
 			{
-				rohc_decomp_debug(context, "CRC is correct\n");
+				rohc_decomp_debug(context, "CRC is correct");
 			}
 			else
 			{
-				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct\n",
+				rohc_decomp_debug(context, "CID %zu: CRC repair: CRC is correct",
 				                  context->cid);
 				try_decoding_again = false;
 			}
@@ -1510,7 +1510,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		{
 			/* uncompressed headers cannot be built, stop decoding */
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers\n", context->cid);
+			                 "headers", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			                 ROHC_TRACE_WARNING, "compressed headers",
@@ -1528,7 +1528,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			assert((*packet_type) != ROHC_PACKET_IR_DYN);
 
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-			                 "headers (CRC failure)\n", context->cid);
+			                 "headers (CRC failure)", context->cid);
 
 			/* attempt a context/packet repair */
 			try_decoding_again = attempt_repair(decomp, context, &bits);
@@ -1539,7 +1539,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				/* uncompressed headers successfully built, CRC is incorrect, repair
 				 * was disabled or attempted without any success, so give up */
 				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-				                 "headers CRC failure)\n", context->cid);
+				                 "headers CRC failure)", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
 				rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
 				                 ROHC_TRACE_WARNING, "compressed headers",
@@ -1563,7 +1563,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 			g_context->correction_counter--;
 			rohc_decomp_warn(context, "CID %zu: CRC repair: throw away packet, "
-			                 "still %zu CRC-valid packets required\n",
+			                 "still %zu CRC-valid packets required",
 			                 context->cid, g_context->correction_counter);
 
 			goto error_crc;
@@ -1571,7 +1571,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		else if(g_context->correction_counter == 1)
 		{
 			rohc_decomp_warn(context, "CID %zu: CRC repair: correction is "
-			                 "successful, keep packet\n", context->cid);
+			                 "successful, keep packet", context->cid);
 			context->corrected_crc_failures++;
 			switch(g_context->crc_corr)
 			{
@@ -1585,7 +1585,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				default:
 					rohc_error(decomp, ROHC_TRACE_DECOMP, context->profile->id,
 					           "CID %zu: CRC repair: unsupported repair algorithm "
-					           "%d\n", context->cid, g_context->crc_corr);
+					           "%d", context->cid, g_context->crc_corr);
 					assert(0);
 					goto error;
 			}
@@ -1601,7 +1601,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	{
 		rohc_decomp_warn(context, "ROHC %s header (%zu bytes) and payload "
 		                 "(%zu bytes) do not match the full ROHC packet "
-		                 "(%zu bytes)\n", rohc_get_packet_descr(*packet_type),
+		                 "(%zu bytes)", rohc_get_packet_descr(*packet_type),
 		                 rohc_header_len, payload_len, rohc_length);
 		goto error;
 	}
@@ -1609,7 +1609,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	{
 		memcpy(uncomp_packet, payload_data, payload_len);
 	}
-	rohc_decomp_debug(context, "uncompressed packet length = %zu bytes\n",
+	rohc_decomp_debug(context, "uncompressed packet length = %zu bytes",
 	                  uncomp_header_len + payload_len);
 
 
@@ -1625,7 +1625,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	 * through it */
 	if(context->state != ROHC_DECOMP_STATE_FC)
 	{
-		rohc_decomp_debug(context, "change from state %d to state %d\n",
+		rohc_decomp_debug(context, "change from state %d to state %d",
 		                  context->state, ROHC_DECOMP_STATE_FC);
 		context->state = ROHC_DECOMP_STATE_FC;
 	}
@@ -1635,7 +1635,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	if(bits.mode_nr > 0 && bits.mode != context->mode)
 	{
 		rohc_decomp_debug(context, "mode different in compressor (%d) and "
-		                  "decompressor (%d)\n", bits.mode, context->mode);
+		                  "decompressor (%d)", bits.mode, context->mode);
 		d_change_mode_feedback(decomp, context);
 	}
 
@@ -1787,14 +1787,14 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_decomp_warn(context, "UO-0 packets cannot be received in Static "
-		                 "Context state\n");
+		                 "Context state");
 		goto error;
 	}
 
 	/* check if the ROHC packet is large enough to parse parts 2 and 3 */
 	if(rohc_remain_len < (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -1804,11 +1804,11 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	bits->sn = GET_BIT_3_6(rohc_remain_data);
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	bits->crc_type = ROHC_CRC_TYPE_3;
 	bits->crc = GET_BIT_0_2(rohc_remain_data);
 	bits->crc_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -1826,7 +1826,7 @@ static bool parse_uo0(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UO* remainder\n");
+		rohc_decomp_warn(context, "failed to parse UO* remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead increment */
@@ -1983,26 +1983,26 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_decomp_warn(context, "UO-1 packet cannot be received in Static "
-		                 "Context state\n");
+		                 "Context state");
 		goto error;
 	}
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
-		rohc_decomp_warn(context, "UO-1 packet cannot be used with RTP profile\n");
+		rohc_decomp_warn(context, "UO-1 packet cannot be used with RTP profile");
 		assert(0);
 		goto error;
 	}
 	if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 	{
 		rohc_decomp_warn(context, "cannot use the UO-1 packet with no 'IPv4 "
-		                 "header with non-random IP-ID'\n");
+		                 "header with non-random IP-ID'");
 		goto error;
 	}
 
 	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len <= (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -2014,7 +2014,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 		bits->outer_ip.id = GET_BIT_0_5(rohc_remain_data);
 		bits->outer_ip.id_nr = 6;
 		bits->outer_ip.is_id_enc = true;
-		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x",
 		                  bits->outer_ip.id_nr, innermost_ipv4_non_rnd,
 		                  bits->outer_ip.id);
 	}
@@ -2023,7 +2023,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 		bits->inner_ip.id = GET_BIT_0_5(rohc_remain_data);
 		bits->inner_ip.id_nr = 6;
 		bits->inner_ip.is_id_enc = true;
-		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x",
 		                  bits->inner_ip.id_nr, innermost_ipv4_non_rnd,
 		                  bits->inner_ip.id);
 	}
@@ -2040,11 +2040,11 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	bits->sn = GET_BIT_3_7(rohc_remain_data);
 	bits->sn_nr = 5;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	bits->crc_type = ROHC_CRC_TYPE_3;
 	bits->crc = GET_BIT_0_2(rohc_remain_data);
 	bits->crc_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -2056,7 +2056,7 @@ static bool parse_uo1(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UO-1 remainder\n");
+		rohc_decomp_warn(context, "failed to parse UO-1 remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -2198,13 +2198,13 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_decomp_warn(context, "UO-1-RTP packet cannot be received in "
-		                 "Static Context state\n");
+		                 "Static Context state");
 		goto error;
 	}
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1-RTP packet cannot be used with non-RTP "
-		                 "profiles\n");
+		                 "profiles");
 		assert(0);
 		goto error;
 	}
@@ -2212,7 +2212,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len <= (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -2221,7 +2221,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	assert(GET_BIT_6_7(rohc_remain_data) == 0x02);
 	bits->ts = GET_BIT_0_5(rohc_remain_data);
 	bits->ts_nr = 6;
-	rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
+	rohc_decomp_debug(context, "%zd TS bits = 0x%x", bits->ts_nr, bits->ts);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2234,15 +2234,15 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 	bits->rtp_m = GET_REAL(GET_BIT_7(rohc_remain_data));
 	bits->rtp_m_nr = 1;
-	rohc_decomp_debug(context, "1-bit RTP Marker (M) = %u\n", bits->rtp_m);
+	rohc_decomp_debug(context, "1-bit RTP Marker (M) = %u", bits->rtp_m);
 	bits->sn = GET_BIT_3_6(rohc_remain_data);
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	bits->crc_type = ROHC_CRC_TYPE_3;
 	bits->crc = GET_BIT_0_2(rohc_remain_data);
 	bits->crc_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -2254,7 +2254,7 @@ static bool parse_uo1rtp(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UO-1-RTP remainder\n");
+		rohc_decomp_warn(context, "failed to parse UO-1-RTP remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -2420,27 +2420,27 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_decomp_warn(context, "UO-1-ID packet cannot be received in Static "
-		                 "Context state\n");
+		                 "Context state");
 		goto error;
 	}
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1-ID packet cannot be used with non-RTP "
-		                 "profiles\n");
+		                 "profiles");
 		assert(0);
 		goto error;
 	}
 	if(innermost_ipv4_non_rnd == ROHC_IP_HDR_NONE)
 	{
 		rohc_decomp_warn(context, "cannot use the UO-1-ID packet with no 'IPv4 "
-		                 "header with non-random IP-ID'\n");
+		                 "header with non-random IP-ID'");
 		goto error;
 	}
 
 	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len <= (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -2453,7 +2453,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 		bits->outer_ip.id = GET_BIT_0_4(rohc_remain_data);
 		bits->outer_ip.id_nr = 5;
 		bits->outer_ip.is_id_enc = true;
-		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x",
 		                  bits->outer_ip.id_nr, innermost_ipv4_non_rnd,
 		                  bits->outer_ip.id);
 	}
@@ -2462,11 +2462,11 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 		bits->inner_ip.id = GET_BIT_0_4(rohc_remain_data);
 		bits->inner_ip.id_nr = 5;
 		bits->inner_ip.is_id_enc = true;
-		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x",
 		                  bits->inner_ip.id_nr, innermost_ipv4_non_rnd,
 		                  bits->inner_ip.id);
 	}
-	rohc_decomp_debug(context, "%zd outer IP-ID bits = 0x%x\n",
+	rohc_decomp_debug(context, "%zd outer IP-ID bits = 0x%x",
 	                  bits->outer_ip.id_nr, bits->outer_ip.id);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -2479,15 +2479,15 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 
 	/* part 4: 1-bit X + 4-bit SN + 3-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "1-bit extension (X) = %u\n", bits->ext_flag);
+	rohc_decomp_debug(context, "1-bit extension (X) = %u", bits->ext_flag);
 	bits->sn = GET_BIT_3_6(rohc_remain_data);
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	bits->crc_type = ROHC_CRC_TYPE_3;
 	bits->crc = GET_BIT_0_2(rohc_remain_data);
 	bits->crc_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -2497,7 +2497,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	if(bits->ext_flag == 0)
 	{
 		/* no extension */
-		rohc_decomp_debug(context, "no extension in UO-1-ID packet\n");
+		rohc_decomp_debug(context, "no extension in UO-1-ID packet");
 	}
 	else
 	{
@@ -2508,12 +2508,12 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 1)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for extension "
-			                 "(len = %zu)\n", rohc_remain_len);
+			                 "(len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
 		/* determine extension type */
-		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x",
 		                  GET_BIT_0_7(rohc_remain_data));
 		ext_type = parse_extension_type(rohc_remain_data);
 
@@ -2562,7 +2562,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 
 			default:
 			{
-				rohc_decomp_warn(context, "unknown extension (0x%x)\n", ext_type);
+				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
 				goto error;
 			}
 		}
@@ -2572,7 +2572,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 		{
 			assert(ext_size != -2); /* no need for reparse with UO-1-ID packet */
 			rohc_decomp_warn(context, "cannot decode extension %u of the "
-			                 "UO-1-ID packet\n", ext_type);
+			                 "UO-1-ID packet", ext_type);
 			goto error;
 		}
 
@@ -2586,7 +2586,7 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UO-1-ID remainder\n");
+		rohc_decomp_warn(context, "failed to parse UO-1-ID remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead increment */
@@ -2725,13 +2725,13 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	if(context->state == ROHC_DECOMP_STATE_SC)
 	{
 		rohc_decomp_warn(context, "UO-1-TS packet cannot be received in Static "
-		                 "Context state\n");
+		                 "Context state");
 		goto error;
 	}
 	if(context->profile->id != ROHC_PROFILE_RTP)
 	{
 		rohc_decomp_warn(context, "UO-1-TS packet cannot be used with non-RTP "
-		                 "profiles\n");
+		                 "profiles");
 		assert(0);
 		goto error;
 	}
@@ -2739,7 +2739,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	/* check if the rohc packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len <= (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -2749,7 +2749,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	assert(GET_BIT_5(rohc_remain_data) != 0);
 	bits->ts = GET_BIT_0_4(rohc_remain_data);
 	bits->ts_nr = 5;
-	rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
+	rohc_decomp_debug(context, "%zd TS bits = 0x%x", bits->ts_nr, bits->ts);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2762,15 +2762,15 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	/* part 4: 1-bit M + 4-bit SN + 3-bit CRC */
 	bits->rtp_m = GET_REAL(GET_BIT_7(rohc_remain_data));
 	bits->rtp_m_nr = 1;
-	rohc_decomp_debug(context, "1-bit RTP Marker (M) = %u\n", bits->rtp_m);
+	rohc_decomp_debug(context, "1-bit RTP Marker (M) = %u", bits->rtp_m);
 	bits->sn = GET_BIT_3_6(rohc_remain_data);
 	bits->sn_nr = 4;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	bits->crc_type = ROHC_CRC_TYPE_3;
 	bits->crc = GET_BIT_0_2(rohc_remain_data);
 	bits->crc_nr = 3;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -2782,7 +2782,7 @@ static bool parse_uo1ts(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UO-1-TS remainder\n");
+		rohc_decomp_warn(context, "failed to parse UO-1-TS remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -2938,7 +2938,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	/* check packet usage */
 	if(context->profile->id == ROHC_PROFILE_RTP)
 	{
-		rohc_decomp_warn(context, "UOR-2 packet cannot be used with RTP profile\n");
+		rohc_decomp_warn(context, "UOR-2 packet cannot be used with RTP profile");
 		assert(0);
 		goto error;
 	}
@@ -2946,7 +2946,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	/* check if the ROHC packet is large enough to parse parts 2, 3 and 4 */
 	if(rohc_remain_len < (1 + large_cid_len + 1))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -2956,7 +2956,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	bits->sn = GET_BIT_0_4(rohc_remain_data);
 	bits->sn_nr = 5;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -2968,11 +2968,11 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
+	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -2982,7 +2982,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	if(bits->ext_flag == 0)
 	{
 		/* no extension */
-		rohc_decomp_debug(context, "no extension to decode in UOR-2 packet\n");
+		rohc_decomp_debug(context, "no extension to decode in UOR-2 packet");
 	}
 	else
 	{
@@ -2993,12 +2993,12 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 1)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for extension "
-			                 "(len = %zu)\n", rohc_remain_len);
+			                 "(len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
 		/* decode extension */
-		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x",
 		                  GET_BIT_0_7(rohc_remain_data));
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
@@ -3010,7 +3010,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 				{
 					rohc_decomp_warn(context, "cannot use extension 0 for UOR-2 "
 					                 "packet with no IPv4 header that got a "
-					                 "non-random IP-ID\n");
+					                 "non-random IP-ID");
 					goto error;
 				}
 
@@ -3029,7 +3029,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 				{
 					rohc_decomp_warn(context, "cannot use extension 1 for UOR-2 "
 					                 "packet with no IPv4 header that got a "
-					                 "non-random IP-ID\n");
+					                 "non-random IP-ID");
 					goto error;
 				}
 
@@ -3050,13 +3050,13 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 				{
 					rohc_decomp_warn(context, "cannot use extension 2 for UOR-2 "
 					                 "packet with 0 or 1 IPv4 header that got "
-					                 "non-random IP-ID\n");
+					                 "non-random IP-ID");
 					goto error;
 				}
 				if(innermost_ipv4_non_rnd != ROHC_IP_HDR_NONE)
 				{
 					rohc_decomp_debug(context, "IP header #%d is the innermost "
-					                  "IPv4 header with a non-random IP-ID\n",
+					                  "IPv4 header with a non-random IP-ID",
 					                  innermost_ipv4_non_rnd);
 				}
 
@@ -3079,7 +3079,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 
 			default:
 			{
-				rohc_decomp_warn(context, "unknown extension (0x%x)\n", ext_type);
+				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
 				goto error;
 			}
 		}
@@ -3089,7 +3089,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 		{
 			assert(ext_size != -2); /* no need for reparse with UOR-2 packet */
 			rohc_decomp_warn(context, "cannot decode extension %u of the UOR-2 "
-			                 "packet\n", ext_type);
+			                 "packet", ext_type);
 			goto error;
 		}
 
@@ -3103,7 +3103,7 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UO* remainder\n");
+		rohc_decomp_warn(context, "failed to parse UO* remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -3172,7 +3172,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 	{
 		if(parsing != ROHC_NEED_REPARSE)
 		{
-			rohc_decomp_warn(context, "failed to parse the UOR-2-RTP header\n");
+			rohc_decomp_warn(context, "failed to parse the UOR-2-RTP header");
 			goto error;
 		}
 
@@ -3180,7 +3180,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 		 * assumptions is required */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
-		          "for packet type\n");
+		          "for packet type");
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -3205,7 +3205,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 		                                 large_cid_len))
 		{
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-			          "change for packet UOR-2-TS (T = 1)\n");
+			          "change for packet UOR-2-TS (T = 1)");
 			*packet_type = ROHC_PACKET_UOR_2_TS;
 			parsing = parse_uor2ts_once(context, rohc_packet, rohc_length,
 			                            large_cid_len, *packet_type,
@@ -3214,7 +3214,7 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 		else
 		{
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-			          "change for packet UOR-2-ID (T = 0)\n");
+			          "change for packet UOR-2-ID (T = 0)");
 			*packet_type = ROHC_PACKET_UOR_2_ID;
 			parsing = parse_uor2id_once(context, rohc_packet, rohc_length,
 			                            large_cid_len, *packet_type,
@@ -3223,13 +3223,13 @@ static bool parse_uor2rtp(const struct rohc_decomp_ctxt *const context,
 		if(parsing == ROHC_NEED_REPARSE)
 		{
 			rohc_decomp_warn(context, "reparse required by the reparse, there "
-			                 "is an internal problem\n");
+			                 "is an internal problem");
 			assert(0);
 			goto error;
 		}
 		else if(parsing != ROHC_OK)
 		{
-			rohc_decomp_warn(context, "failed to reparse the UOR-2 header\n");
+			rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
 			goto error;
 		}
 	}
@@ -3398,7 +3398,7 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	/* check if the ROHC packet is large enough to parse parts 2, 3, 4, 4a */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -3419,25 +3419,25 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	/* part 4a: 1-bit TS + 1-bit M flag + 6-bit SN */
 	bits->ts |= GET_REAL(GET_BIT_7(rohc_remain_data));
 	bits->ts_nr += 1;
-	rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
+	rohc_decomp_debug(context, "%zd TS bits = 0x%x", bits->ts_nr, bits->ts);
 	bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
 	bits->rtp_m_nr = 1;
-	rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
+	rohc_decomp_debug(context, "M flag = %u", bits->rtp_m);
 	bits->sn = GET_BIT_0_5(rohc_remain_data);
 	bits->sn_nr = 6;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
 
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
+	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -3447,7 +3447,7 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	if(bits->ext_flag == 0)
 	{
 		/* no extension */
-		rohc_decomp_debug(context, "no extension to decode in UOR-2-RTP packet\n");
+		rohc_decomp_debug(context, "no extension to decode in UOR-2-RTP packet");
 	}
 	else
 	{
@@ -3458,12 +3458,12 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 1)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for extension "
-			                 "(len = %zu)\n", rohc_remain_len);
+			                 "(len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
 		/* decode extension */
-		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x",
 		                  GET_BIT_0_7(rohc_remain_data));
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
@@ -3493,7 +3493,7 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 				if(innermost_ipv4_non_rnd != ROHC_IP_HDR_NONE)
 				{
 					rohc_decomp_debug(context, "IP header #%d is the innermost "
-					                  "IPv4 header with a non-random IP-ID\n",
+					                  "IPv4 header with a non-random IP-ID",
 					                  innermost_ipv4_non_rnd);
 				}
 
@@ -3515,7 +3515,7 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 
 			default:
 			{
-				rohc_decomp_warn(context, "unknown extension (0x%x)\n", ext_type);
+				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
 				goto error;
 			}
 		}
@@ -3526,13 +3526,13 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 			assert(ext_type == ROHC_EXT_3);
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 			          "packet needs to be reparsed because RND changed "
-			          "in extension 3\n");
+			          "in extension 3");
 			goto reparse;
 		}
 		else if(ext_size < 0)
 		{
 			rohc_decomp_warn(context, "cannot decode extension %u of the "
-			                 "UOR-2-RTP packet\n", ext_type);
+			                 "UOR-2-RTP packet", ext_type);
 			goto error;
 		}
 
@@ -3546,7 +3546,7 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UOR-2-RTP remainder\n");
+		rohc_decomp_warn(context, "failed to parse UOR-2-RTP remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead increment */
@@ -3617,7 +3617,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 	{
 		if(parsing != ROHC_NEED_REPARSE)
 		{
-			rohc_decomp_warn(context, "failed to parse the UOR-2-ID header\n");
+			rohc_decomp_warn(context, "failed to parse the UOR-2-ID header");
 			goto error;
 		}
 
@@ -3625,7 +3625,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 		 * assumptions is required */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
-		          "for packet type\n");
+		          "for packet type");
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -3647,7 +3647,7 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 		/* change packet type UOR-2-ID -> UOR-2-RTP, then try parsing UOR-2*
 		 * packet with information from packet */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		          "change for packet UOR-2-RTP\n");
+		          "change for packet UOR-2-RTP");
 		*packet_type = ROHC_PACKET_UOR_2_RTP;
 		parsing = parse_uor2rtp_once(context, rohc_packet, rohc_length,
 		                             large_cid_len, *packet_type,
@@ -3655,13 +3655,13 @@ static bool parse_uor2id(const struct rohc_decomp_ctxt *const context,
 		if(parsing == ROHC_NEED_REPARSE)
 		{
 			rohc_decomp_warn(context, "reparse required by the reparse, there "
-			                 "is an internal problem\n");
+			                 "is an internal problem");
 			assert(0);
 			goto error;
 		}
 		else if(parsing != ROHC_OK)
 		{
-			rohc_decomp_warn(context, "failed to reparse the UOR-2 header\n");
+			rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
 			goto error;
 		}
 	}
@@ -3830,14 +3830,14 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	{
 		/* no IPv4 header with non-random IP-ID */
 		rohc_decomp_warn(context, "cannot use the UOR-2-ID packet with no "
-		                 "'IPv4 header with non-random IP-ID'\n");
+		                 "'IPv4 header with non-random IP-ID'");
 		goto error;
 	}
 
 	/* check if the ROHC packet is large enough to parse parts 2, 3, 4, 4a */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -3849,7 +3849,7 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 		bits->outer_ip.id = GET_BIT_0_4(rohc_remain_data);
 		bits->outer_ip.id_nr = 5;
 		bits->outer_ip.is_id_enc = true;
-		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x",
 		                  bits->outer_ip.id_nr, innermost_ipv4_non_rnd,
 		                  bits->outer_ip.id);
 	}
@@ -3858,7 +3858,7 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 		bits->inner_ip.id = GET_BIT_0_4(rohc_remain_data);
 		bits->inner_ip.id_nr = 5;
 		bits->inner_ip.is_id_enc = true;
-		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x\n",
+		rohc_decomp_debug(context, "%zd IP-ID bits for IP header #%u = 0x%x",
 		                  bits->inner_ip.id_nr, innermost_ipv4_non_rnd,
 		                  bits->inner_ip.id);
 	}
@@ -3874,22 +3874,22 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 	bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
 	bits->rtp_m_nr = 1;
-	rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
+	rohc_decomp_debug(context, "M flag = %u", bits->rtp_m);
 	bits->sn = GET_BIT_0_5(rohc_remain_data);
 	bits->sn_nr = 6;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
 
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
+	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -3899,7 +3899,7 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	if(bits->ext_flag == 0)
 	{
 		/* no extension */
-		rohc_decomp_debug(context, "no extension to decode in UOR-2* packet\n");
+		rohc_decomp_debug(context, "no extension to decode in UOR-2* packet");
 	}
 	else
 	{
@@ -3910,12 +3910,12 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 1)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for extension "
-			                 "(len = %zu)\n", rohc_remain_len);
+			                 "(len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
 		/* decode extension */
-		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x",
 		                  GET_BIT_0_7(rohc_remain_data));
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
@@ -3941,7 +3941,7 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_2:
 			{
 				rohc_decomp_debug(context, "IP header #%d is the innermost "
-				                  "IPv4 header with a non-random IP-ID\n",
+				                  "IPv4 header with a non-random IP-ID",
 				                  innermost_ipv4_non_rnd);
 
 				/* decode extension 2 */
@@ -3964,7 +3964,7 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 
 			default:
 			{
-				rohc_decomp_warn(context, "unknown extension (0x%x)\n", ext_type);
+				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
 				goto error;
 			}
 		}
@@ -3975,13 +3975,13 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 			assert(ext_type == ROHC_EXT_3);
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 			          "packet needs to be reparsed because RND changed "
-			          "in extension 3\n");
+			          "in extension 3");
 			goto reparse;
 		}
 		else if(ext_size < 0)
 		{
 			rohc_decomp_warn(context, "cannot decode extension %u of the "
-			                 "UOR-2-ID packet\n", ext_type);
+			                 "UOR-2-ID packet", ext_type);
 			goto error;
 		}
 
@@ -3995,7 +3995,7 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UOR-2-ID remainder\n");
+		rohc_decomp_warn(context, "failed to parse UOR-2-ID remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -4066,7 +4066,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 	{
 		if(parsing != ROHC_NEED_REPARSE)
 		{
-			rohc_decomp_warn(context, "failed to parse the UOR-2-TS header\n");
+			rohc_decomp_warn(context, "failed to parse the UOR-2-TS header");
 			goto error;
 		}
 
@@ -4074,7 +4074,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 		 * assumptions is required */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		          "packet needs to be reparsed with different assumptions "
-		          "for packet type\n");
+		          "for packet type");
 
 		/* determine the new RND values for outer and inner IP headers */
 		if(g_context->multiple_ip &&
@@ -4096,7 +4096,7 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 		/* change packet type UOR-2-ID -> UOR-2-RTP, then try parsing UOR-2*
 		 * packet with information from packet */
 		rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		          "change for packet UOR-2-RTP\n");
+		          "change for packet UOR-2-RTP");
 		*packet_type = ROHC_PACKET_UOR_2_RTP;
 		parsing = parse_uor2rtp_once(context, rohc_packet, rohc_length,
 		                             large_cid_len, *packet_type,
@@ -4104,13 +4104,13 @@ static bool parse_uor2ts(const struct rohc_decomp_ctxt *const context,
 		if(parsing == ROHC_NEED_REPARSE)
 		{
 			rohc_decomp_warn(context, "reparse required by the reparse, there "
-			                 "is an internal problem\n");
+			                 "is an internal problem");
 			assert(0);
 			goto error;
 		}
 		else if(parsing != ROHC_OK)
 		{
-			rohc_decomp_warn(context, "failed to reparse the UOR-2 header\n");
+			rohc_decomp_warn(context, "failed to reparse the UOR-2 header");
 			goto error;
 		}
 	}
@@ -4284,7 +4284,7 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	/* check if the ROHC packet is large enough to parse parts 2, 3, 4, 4a */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -4293,7 +4293,7 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	assert(GET_BIT_5_7(rohc_remain_data) == 0x06);
 	bits->ts = GET_BIT_0_4(rohc_remain_data);
 	bits->ts_nr = 5;
-	rohc_decomp_debug(context, "%zd TS bits = 0x%x\n", bits->ts_nr, bits->ts);
+	rohc_decomp_debug(context, "%zd TS bits = 0x%x", bits->ts_nr, bits->ts);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
@@ -4306,22 +4306,22 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	/* part 4a: 1-bit T flag (ignored) + 1-bit M flag + 6-bit SN */
 	bits->rtp_m = GET_REAL(GET_BIT_6(rohc_remain_data));
 	bits->rtp_m_nr = 1;
-	rohc_decomp_debug(context, "M flag = %u\n", bits->rtp_m);
+	rohc_decomp_debug(context, "M flag = %u", bits->rtp_m);
 	bits->sn = GET_BIT_0_5(rohc_remain_data);
 	bits->sn_nr = 6;
 	bits->is_sn_enc = true;
-	rohc_decomp_debug(context, "%zd SN bits = 0x%x\n", bits->sn_nr, bits->sn);
+	rohc_decomp_debug(context, "%zd SN bits = 0x%x", bits->sn_nr, bits->sn);
 	rohc_remain_data++;
 	rohc_remain_len--;
 	(*rohc_hdr_len)++;
 
 	/* part 4: 1-bit X (extension) flag + 7-bit CRC */
 	bits->ext_flag = GET_REAL(GET_BIT_7(rohc_remain_data));
-	rohc_decomp_debug(context, "extension is present = %u\n", bits->ext_flag);
+	rohc_decomp_debug(context, "extension is present = %u", bits->ext_flag);
 	bits->crc_type = ROHC_CRC_TYPE_7;
 	bits->crc = GET_BIT_0_6(rohc_remain_data);
 	bits->crc_nr = 7;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -4331,7 +4331,7 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	if(bits->ext_flag == 0)
 	{
 		/* no extension */
-		rohc_decomp_debug(context, "no extension to decode in UOR-2* packet\n");
+		rohc_decomp_debug(context, "no extension to decode in UOR-2* packet");
 	}
 	else
 	{
@@ -4342,12 +4342,12 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 1)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for extension "
-			                 "(len = %zu)\n", rohc_remain_len);
+			                 "(len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
 		/* decode extension */
-		rohc_decomp_debug(context, "first byte of extension = 0x%02x\n",
+		rohc_decomp_debug(context, "first byte of extension = 0x%02x",
 		                  GET_BIT_0_7(rohc_remain_data));
 		ext_type = parse_extension_type(rohc_remain_data);
 		switch(ext_type)
@@ -4368,7 +4368,7 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 				{
 					rohc_decomp_warn(context, "cannot use extension 1 for the "
 					                 "UOR-2-TS packet with no IPv4 header that "
-					                 "got non-random IP-ID\n");
+					                 "got non-random IP-ID");
 					goto error;
 				}
 
@@ -4386,13 +4386,13 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 				{
 					rohc_decomp_warn(context, "cannot use extension 2 for the "
 					                 "UOR-2-TS packet with no IPv4 header that "
-					                 "got non-random IP-ID\n");
+					                 "got non-random IP-ID");
 					goto error;
 				}
 				else
 				{
 					rohc_decomp_debug(context, "IP header #%d is the innermost "
-					                  "IPv4 header with a non-random IP-ID\n",
+					                  "IPv4 header with a non-random IP-ID",
 					                  innermost_ipv4_non_rnd);
 				}
 
@@ -4414,7 +4414,7 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 
 			default:
 			{
-				rohc_decomp_warn(context, "unknown extension (0x%x)\n", ext_type);
+				rohc_decomp_warn(context, "unknown extension (0x%x)", ext_type);
 				goto error;
 			}
 		}
@@ -4425,13 +4425,13 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 			assert(ext_type == ROHC_EXT_3);
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 			          "packet needs to be reparsed because RND changed "
-			          "in extension 3\n");
+			          "in extension 3");
 			goto reparse;
 		}
 		else if(ext_size < 0)
 		{
 			rohc_decomp_warn(context, "cannot decode extension %u of the "
-			                 "UOR-2-TS packet\n", ext_type);
+			                 "UOR-2-TS packet", ext_type);
 			goto error;
 		}
 
@@ -4445,7 +4445,7 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 	if(!parse_uo_remainder(context, rohc_remain_data, rohc_remain_len, bits,
 	                       &rohc_remainder_len))
 	{
-		rohc_decomp_warn(context, "failed to parse UOR-2-TS remainder\n");
+		rohc_decomp_warn(context, "failed to parse UOR-2-TS remainder");
 		goto error;
 	}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -4568,7 +4568,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 2)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for random outer "
-			                 "IP-ID bits (len = %zu)\n", rohc_remain_len);
+			                 "IP-ID bits (len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
@@ -4577,7 +4577,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		{
 			rohc_decomp_warn(context, "bad packet format: outer IP-ID bits from "
 			                 "the base ROHC header shall be filled with zeroes "
-			                 "but 0x%x was found\n", bits->outer_ip.id);
+			                 "but 0x%x was found", bits->outer_ip.id);
 		}
 
 		/* retrieve the full outer IP-ID value */
@@ -4587,7 +4587,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 
 		rohc_decomp_debug(context, "replace any existing outer IP-ID bits with "
 		                  "with the ones found at the end of the UO* packet "
-		                  "(0x%x on %zd bits)\n", bits->outer_ip.id,
+		                  "(0x%x on %zd bits)", bits->outer_ip.id,
 		                  bits->outer_ip.id_nr);
 
 		rohc_remain_data += 2;
@@ -4607,7 +4607,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		if(rohc_remain_len < 2)
 		{
 			rohc_decomp_warn(context, "ROHC packet too small for random inner "
-			                 "IP-ID bits (len = %zu)\n", rohc_remain_len);
+			                 "IP-ID bits (len = %zu)", rohc_remain_len);
 			goto error;
 		}
 
@@ -4616,7 +4616,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		{
 			rohc_decomp_warn(context, "bad packet format: inner IP-ID bits from "
 			                 "the base ROHC header shall be filled with zeroes "
-			                 "but 0x%x was found\n", bits->inner_ip.id);
+			                 "but 0x%x was found", bits->inner_ip.id);
 		}
 
 		/* retrieve the full inner IP-ID value */
@@ -4626,7 +4626,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 
 		rohc_decomp_debug(context, "replace any existing inner IP-ID bits "
 		                  "with the ones found at the end of the UO* packet "
-		                  "(0x%x on %zd bits)\n", bits->inner_ip.id,
+		                  "(0x%x on %zd bits)", bits->inner_ip.id,
 		                  bits->inner_ip.id_nr);
 
 		rohc_remain_data += 2;
@@ -4645,7 +4645,7 @@ static bool parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		                                     rohc_remain_len, bits);
 		if(size < 0)
 		{
-			rohc_decomp_warn(context, "cannot decode the remainder of UO* packet\n");
+			rohc_decomp_warn(context, "cannot decode the remainder of UO* packet");
 			goto error;
 		}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -4747,7 +4747,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	 * IR-DYN type + (large CID + ) Profile ID + CRC */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -4760,7 +4760,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	/* parse CRC */
 	bits->crc = GET_BIT_0_7(rohc_remain_data);
 	bits->crc_nr = 8;
-	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x\n",
+	rohc_decomp_debug(context, "CRC-%zd found in packet = 0x%02x",
 	                  bits->crc_nr, bits->crc);
 	rohc_remain_data++;
 	rohc_remain_len--;
@@ -4771,7 +4771,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 	                             &bits->outer_ip, &g_context->list_decomp1);
 	if(size == -1)
 	{
-		rohc_decomp_warn(context, "cannot decode the outer IP dynamic part\n");
+		rohc_decomp_warn(context, "cannot decode the outer IP dynamic part");
 		goto error;
 	}
 	rohc_remain_data += size;
@@ -4785,7 +4785,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 		                             &bits->inner_ip, &g_context->list_decomp2);
 		if(size == -1)
 		{
-			rohc_decomp_warn(context, "cannot decode the inner IP dynamic part\n");
+			rohc_decomp_warn(context, "cannot decode the inner IP dynamic part");
 			goto error;
 		}
 		rohc_remain_data += size;
@@ -4800,7 +4800,7 @@ static bool parse_irdyn(const struct rohc_decomp_ctxt *const context,
 		                                     rohc_remain_len, bits);
 		if(size == -1)
 		{
-			rohc_decomp_warn(context, "cannot decode the next header dynamic part\n");
+			rohc_decomp_warn(context, "cannot decode the next header dynamic part");
 			goto error;
 		}
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
@@ -4850,13 +4850,13 @@ static int parse_extension0(const struct rohc_decomp_ctxt *const context,
 	assert(rohc_data != NULL);
 	assert(bits != NULL);
 
-	rohc_decomp_debug(context, "decode %s extension 0\n",
+	rohc_decomp_debug(context, "decode %s extension 0",
 	                  rohc_get_packet_descr(packet_type));
 
 	/* check the minimal length to decode the extension 0 */
 	if(rohc_data_len < 1)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_data_len);
 		goto error;
 	}
@@ -4898,7 +4898,7 @@ static int parse_extension0(const struct rohc_decomp_ctxt *const context,
 
 		default:
 		{
-			rohc_decomp_warn(context, "bad packet type (%d)\n", packet_type);
+			rohc_decomp_warn(context, "bad packet type (%d)", packet_type);
 			goto error;
 		}
 	}
@@ -4940,13 +4940,13 @@ static int parse_extension1(const struct rohc_decomp_ctxt *const context,
 {
 	const size_t rohc_ext1_len = 2;
 
-	rohc_decomp_debug(context, "decode %s extension 1\n",
+	rohc_decomp_debug(context, "decode %s extension 1",
 	                  rohc_get_packet_descr(packet_type));
 
 	/* check the minimal length to decode the extension 1 */
 	if(rohc_data_len < 2)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_data_len);
 		goto error;
 	}
@@ -5032,7 +5032,7 @@ static int parse_extension1(const struct rohc_decomp_ctxt *const context,
 
 		default:
 		{
-			rohc_decomp_warn(context, "bad packet type (%d)\n", packet_type);
+			rohc_decomp_warn(context, "bad packet type (%d)", packet_type);
 			goto error;
 		}
 	}
@@ -5077,13 +5077,13 @@ static int parse_extension2(const struct rohc_decomp_ctxt *const context,
 	assert(rohc_data != NULL);
 	assert(bits != NULL);
 
-	rohc_decomp_debug(context, "decode %s extension 2\n",
+	rohc_decomp_debug(context, "decode %s extension 2",
 	                  rohc_get_packet_descr(packet_type));
 
 	/* check the minimal length to decode the extension 2 */
 	if(rohc_data_len < 3)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)",
 		                 rohc_data_len);
 		goto error;
 	}
@@ -5165,7 +5165,7 @@ static int parse_extension2(const struct rohc_decomp_ctxt *const context,
 
 		default:
 		{
-			rohc_decomp_warn(context, "bad packet type (%d)\n", packet_type);
+			rohc_decomp_warn(context, "bad packet type (%d)", packet_type);
 			goto error;
 		}
 	}
@@ -5252,7 +5252,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		{
 			inner_ip_hdr_len = sizeof(struct ipv6_hdr);
 		}
-		rohc_decomp_debug(context, "length of inner IP header = %zd bytes\n",
+		rohc_decomp_debug(context, "length of inner IP header = %zd bytes",
 		                  inner_ip_hdr_len);
 
 		/* determine the length of extension headers of the inner IP header */
@@ -5268,9 +5268,9 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 			}
 		}
 		rohc_decomp_debug(context, "length of extension headers for inner IP "
-		                  "header = %zd bytes\n", inner_ip_ext_hdrs_len);
+		                  "header = %zd bytes", inner_ip_ext_hdrs_len);
 
-		rohc_decomp_debug(context, "length of transport header = %u bytes\n",
+		rohc_decomp_debug(context, "length of transport header = %u bytes",
 		                  g_context->outer_ip_changes->next_header_len);
 
 		/* build the outer IP header */
@@ -5292,7 +5292,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 	}
 	else
 	{
-		rohc_decomp_debug(context, "length of transport header = %u bytes\n",
+		rohc_decomp_debug(context, "length of transport header = %u bytes",
 		                  g_context->outer_ip_changes->next_header_len);
 
 		/* build the single IP header */
@@ -5328,7 +5328,7 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 		if(!crc_ok)
 		{
 			rohc_decomp_warn(context, "CRC detected a decompression failure for "
-			                 "packet of type %s in state %s and mode %s\n",
+			                 "packet of type %s in state %s and mode %s",
 			                 rohc_get_packet_descr(packet_type),
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
@@ -5424,11 +5424,11 @@ static size_t build_uncomp_ipv4(const struct rohc_decomp_ctxt *const context,
 
 	/* inferred fields */
 	ip->tot_len = rohc_hton16(payload_size + ip->ihl * 4);
-	rohc_decomp_debug(context, "Total Length = 0x%04x (IHL * 4 + %zu)\n",
+	rohc_decomp_debug(context, "Total Length = 0x%04x (IHL * 4 + %zu)",
 	                  rohc_ntoh16(ip->tot_len), payload_size);
 	ip->check = 0;
 	ip->check = ip_fast_csum(dest, ip->ihl);
-	rohc_decomp_debug(context, "IP checksum = 0x%04x\n",
+	rohc_decomp_debug(context, "IP checksum = 0x%04x",
 	                  rohc_ntoh16(ip->check));
 
 	return sizeof(struct ipv4_hdr);
@@ -5469,7 +5469,7 @@ static size_t build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
 	{
 		ip->ip6_nxt = (uint8_t) list_decomp->pkt_list.items[0]->type;
 		rohc_decomp_debug(context, "set Next Header in IPv6 base header to "
-		                  "0x%02x because of IPv6 extension header\n",
+		                  "0x%02x because of IPv6 extension header",
 		                  ip->ip6_nxt);
 	}
 
@@ -5492,7 +5492,7 @@ static size_t build_uncomp_ipv6(const struct rohc_decomp_ctxt *const context,
 	/* inferred fields */
 	ip->ip6_plen = rohc_hton16(payload_size + ext_size);
 	rohc_decomp_debug(context, "Payload Length = 0x%04x (extensions = %zu "
-	                  "bytes, payload = %zu bytes)\n",
+	                  "bytes, payload = %zu bytes)",
 	                  rohc_ntoh16(ip->ip6_plen), ext_size, payload_size);
 
 	return sizeof(struct ipv6_hdr) + ext_size;
@@ -5549,13 +5549,13 @@ static bool check_ir_crc(const struct rohc_decomp *const decomp,
 	                         crc_comp, crc_table);
 
 	rohc_decomp_debug(context, "CRC-%d on compressed %zu-byte ROHC header = "
-	                  "0x%x\n", crc_type, rohc_hdr_len, crc_comp);
+	                  "0x%x", crc_type, rohc_hdr_len, crc_comp);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_comp != crc_packet)
 	{
 		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)\n", crc_comp, crc_packet);
+		                 "0x%02x)", crc_comp, crc_packet);
 		goto error;
 	}
 
@@ -5618,7 +5618,7 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 			crc_table = decomp->crc_table_8;
 			break;
 		default:
-			rohc_decomp_warn(context, "unknown CRC type %d\n", crc_type);
+			rohc_decomp_warn(context, "unknown CRC type %d", crc_type);
 			assert(0);
 			goto error;
 	}
@@ -5630,14 +5630,14 @@ static bool check_uncomp_crc(const struct rohc_decomp *const decomp,
 	crc_computed = g_context->compute_crc_dynamic(outer_ip_hdr, inner_ip_hdr,
 	                                              next_header, crc_type,
 	                                              crc_computed, crc_table);
-	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x\n",
+	rohc_decomp_debug(context, "CRC-%d on uncompressed header = 0x%x",
 	                  crc_type, crc_computed);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_computed != crc_packet)
 	{
 		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)\n", crc_computed, crc_packet);
+		                 "0x%02x)", crc_computed, crc_packet);
 		goto error;
 	}
 
@@ -5671,7 +5671,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	/* do not try to repair packet/context if feature is disabled */
 	if((decomp->features & ROHC_DECOMP_FEATURE_CRC_REPAIR) == 0)
 	{
-		rohc_decomp_warn(context, "CID %zu: CRC repair: feature disabled\n",
+		rohc_decomp_warn(context, "CID %zu: CRC repair: feature disabled",
 		                 context->cid);
 		goto skip;
 	}
@@ -5686,7 +5686,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	assert(g_context->correction_counter == 0);
 
 	/* try to guess the correct SN value in case of failure */
-	rohc_decomp_warn(context, "CID %zu: CRC repair: attempt to correct SN\n",
+	rohc_decomp_warn(context, "CID %zu: CRC repair: attempt to correct SN",
 	                 context->cid);
 
 	/* step b of RFC3095, §5.3.2.2.4. Correction of SN LSB wraparound:
@@ -5704,7 +5704,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 	                    lsb_get_p(g_context->sn_lsb_ctxt)))
 	{
 		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
-		                 "be caused by a sequence number LSB wraparound\n",
+		                 "be caused by a sequence number LSB wraparound",
 		                 context->cid);
 
 		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_WRAP;
@@ -5714,13 +5714,13 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 		 *   packet using the new reference SN */
 		bits->sn_ref_offset = (1 << bits->sn_nr);
 		rohc_decomp_warn(context, "CID %zu: CRC repair: try adding 2^k = 2^%zu "
-		                 "= %u to reference SN (ref 0 = %u)\n", context->cid,
+		                 "= %u to reference SN (ref 0 = %u)", context->cid,
 		                 bits->sn_nr, bits->sn_ref_offset, sn_ref_0);
 	}
 	else if(sn_ref_0 != sn_ref_minus_1)
 	{
 		rohc_decomp_warn(context, "CID %zu: CRC repair: CRC failure seems to "
-		                 "be caused by an incorrect SN update\n", context->cid);
+		                 "be caused by an incorrect SN update", context->cid);
 
 		g_context->crc_corr = ROHC_DECOMP_CRC_CORR_SN_UPDATES;
 
@@ -5731,7 +5731,7 @@ static bool attempt_repair(const struct rohc_decomp *const decomp,
 		 *   performed based on SN curr2 as the decompressed SN. */
 		bits->sn_ref_type = ROHC_LSB_REF_MINUS_1;
 		rohc_decomp_warn(context, "CID %zu: CRC repair: try using ref -1 (%u) "
-		                 "as reference SN instead of ref 0 (%u)\n",
+		                 "as reference SN instead of ref 0 (%u)",
 		                 context->cid, sn_ref_minus_1, sn_ref_0);
 	}
 	else
@@ -5874,13 +5874,13 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 		                            &decoded->sn);
 		if(!decode_ok)
 		{
-			rohc_decomp_warn(context, "failed to decode %zu SN bits 0x%x\n",
+			rohc_decomp_warn(context, "failed to decode %zu SN bits 0x%x",
 			                 bits.sn_nr, bits.sn);
 			goto error;
 		}
 	}
 	rohc_decomp_debug(context, "decoded SN = %u / 0x%x (nr bits = %zd, "
-	                  "bits = %u / 0x%x)\n", decoded->sn, decoded->sn,
+	                  "bits = %u / 0x%x)", decoded->sn, decoded->sn,
 	                  bits.sn_nr, bits.sn, bits.sn);
 
 	/* warn if value(SN) is not context(SN) + 1 */
@@ -5923,7 +5923,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 		{
 			/* same SN: duplicated packet detected! */
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-			          "packet seems to be a duplicated packet (SN = 0x%x)\n",
+			          "packet seems to be a duplicated packet (SN = 0x%x)",
 			          sn_context);
 			context->nr_lost_packets = 0;
 			context->nr_misordered_packets = 0;
@@ -5934,7 +5934,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 			/* bigger SN: some packets were lost or failed to be decompressed */
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 			          "%u packets seem to have been lost, damaged, or failed "
-			          "to be decompressed (SN jumped from 0x%x to 0x%x)\n",
+			          "to be decompressed (SN jumped from 0x%x to 0x%x)",
 			          decoded->sn - expected_next_sn, sn_context, decoded->sn);
 			context->nr_lost_packets = decoded->sn - expected_next_sn;
 			context->nr_misordered_packets = 0;
@@ -5945,7 +5945,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 			/* smaller SN: order was changed on the network channel */
 			rohc_info(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 			          "packet seems to come late (SN jumped back from 0x%x "
-			          "to 0x%x)\n", sn_context, decoded->sn);
+			          "to 0x%x)", sn_context, decoded->sn);
 			context->nr_lost_packets = 0;
 			context->nr_misordered_packets = expected_next_sn - decoded->sn;
 			context->is_duplicated = false;
@@ -5974,7 +5974,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 	if(!decode_ok)
 	{
 		rohc_decomp_warn(context, "failed to decode bits extracted for outer "
-		                 "IP header\n");
+		                 "IP header");
 		goto error;
 	}
 
@@ -5989,7 +5989,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 		if(!decode_ok)
 		{
 			rohc_decomp_warn(context, "failed to decode bits extracted for "
-			                 "inner IP header\n");
+			                 "inner IP header");
 			goto error;
 		}
 	}
@@ -6000,7 +6000,7 @@ static bool decode_values_from_bits(struct rohc_decomp_ctxt *const context,
 		decode_ok = g_context->decode_values_from_bits(context, bits, decoded);
 		if(!decode_ok)
 		{
-			rohc_decomp_warn(context, "failed to decode fields of the next header\n");
+			rohc_decomp_warn(context, "failed to decode fields of the next header");
 			goto error;
 		}
 	}
@@ -6051,7 +6051,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		/* keep context value */
 		decoded->tos = ip_get_tos(&ctxt->ip);
 	}
-	rohc_decomp_debug(context, "decoded %s TOS/TC = %d\n", descr, decoded->tos);
+	rohc_decomp_debug(context, "decoded %s TOS/TC = %d", descr, decoded->tos);
 
 	/* TTL/HL */
 	if(bits.ttl_nr > 0)
@@ -6064,7 +6064,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		/* keep context value */
 		decoded->ttl = ip_get_ttl(&ctxt->ip);
 	}
-	rohc_decomp_debug(context, "decoded %s TTL/HL = %d\n", descr, decoded->ttl);
+	rohc_decomp_debug(context, "decoded %s TTL/HL = %d", descr, decoded->ttl);
 
 	/* protocol/NH */
 	if(bits.proto_nr > 0)
@@ -6077,7 +6077,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 		/* keep context value */
 		decoded->proto = ip_get_protocol(&ctxt->ip);
 	}
-	rohc_decomp_debug(context, "decoded %s protocol/NH = %d\n", descr,
+	rohc_decomp_debug(context, "decoded %s protocol/NH = %d", descr,
 	                  decoded->proto);
 
 	/* version specific fields */
@@ -6094,7 +6094,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* keep context value */
 			decoded->nbo = ctxt->nbo;
 		}
-		rohc_decomp_debug(context, "decoded %s NBO = %d\n", descr, decoded->nbo);
+		rohc_decomp_debug(context, "decoded %s NBO = %d", descr, decoded->nbo);
 
 		/* RND flag */
 		if(bits.rnd_nr > 0)
@@ -6107,7 +6107,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* keep context value */
 			decoded->rnd = ctxt->rnd;
 		}
-		rohc_decomp_debug(context, "decoded %s RND = %d\n", descr, decoded->rnd);
+		rohc_decomp_debug(context, "decoded %s RND = %d", descr, decoded->rnd);
 
 		/* SID flag */
 		if(bits.sid_nr > 0)
@@ -6120,7 +6120,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* keep context value */
 			decoded->sid = ctxt->sid;
 		}
-		rohc_decomp_debug(context, "decoded %s SID = %d\n", descr, decoded->sid);
+		rohc_decomp_debug(context, "decoded %s SID = %d", descr, decoded->sid);
 
 		/* IP-ID */
 		if(!bits.is_id_enc)
@@ -6150,7 +6150,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 
 			if(decoded->sid)
 			{
-				rohc_decomp_warn(context, "%s IP-ID got both RND and SID flags!\n",
+				rohc_decomp_warn(context, "%s IP-ID got both RND and SID flags!",
 				                 descr);
 				goto error;
 			}
@@ -6172,12 +6172,12 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			if(ret != 1)
 			{
 				rohc_decomp_warn(context, "failed to decode %zu %s IP-ID bits "
-				                 "0x%x\n", bits.id_nr, descr, bits.id);
+				                 "0x%x", bits.id_nr, descr, bits.id);
 				goto error;
 			}
 		}
 		rohc_decomp_debug(context, "decoded %s IP-ID = 0x%04x (rnd = %d, "
-		                  "nbo = %d, sid = %d, nr bits = %zd, bits = 0x%x)\n",
+		                  "nbo = %d, sid = %d, nr bits = %zd, bits = 0x%x)",
 		                  descr, decoded->id, decoded->rnd, decoded->nbo,
 		                  decoded->sid, bits.id_nr, bits.id);
 
@@ -6192,7 +6192,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* keep context value */
 			decoded->df = ipv4_get_df(&ctxt->ip);
 		}
-		rohc_decomp_debug(context, "decoded %s DF = %d\n", descr, decoded->df);
+		rohc_decomp_debug(context, "decoded %s DF = %d", descr, decoded->df);
 
 		/* source address */
 		if(bits.saddr_nr > 0)
@@ -6207,8 +6207,8 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			const uint32_t saddr_ctxt = ipv4_get_saddr(&ctxt->ip);
 			memcpy(decoded->saddr, &saddr_ctxt, 4);
 		}
-		rohc_decomp_debug(context, "decoded %s src address = " IPV4_ADDR_FORMAT
-		                  "\n", descr, IPV4_ADDR_RAW(decoded->saddr));
+		rohc_decomp_debug(context, "decoded %s src address = " IPV4_ADDR_FORMAT,
+		                  descr, IPV4_ADDR_RAW(decoded->saddr));
 
 		/* destination address */
 		if(bits.daddr_nr > 0)
@@ -6223,8 +6223,8 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			const uint32_t daddr_ctxt = ipv4_get_daddr(&ctxt->ip);
 			memcpy(decoded->daddr, &daddr_ctxt, 4);
 		}
-		rohc_decomp_debug(context, "decoded %s dst address = " IPV4_ADDR_FORMAT
-		                  "\n", descr, IPV4_ADDR_RAW(decoded->daddr));
+		rohc_decomp_debug(context, "decoded %s dst address = " IPV4_ADDR_FORMAT,
+		                  descr, IPV4_ADDR_RAW(decoded->daddr));
 	}
 	else /* IPV6 */
 	{
@@ -6240,7 +6240,7 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			/* keep context value */
 			decoded->flowid = ipv6_get_flow_label(&ctxt->ip);
 		}
-		rohc_decomp_debug(context, "decoded %s flow label = 0x%05x\n", descr,
+		rohc_decomp_debug(context, "decoded %s flow label = 0x%05x", descr,
 		                  decoded->flowid);
 
 		/* source address */
@@ -6256,8 +6256,8 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			const struct ipv6_addr *saddr_ctxt = ipv6_get_saddr(&ctxt->ip);
 			memcpy(decoded->saddr, saddr_ctxt, 16);
 		}
-		rohc_decomp_debug(context, "decoded %s src address = " IPV6_ADDR_FORMAT
-		                  "\n", descr, IPV6_ADDR_RAW(decoded->saddr));
+		rohc_decomp_debug(context, "decoded %s src address = " IPV6_ADDR_FORMAT,
+		                  descr, IPV6_ADDR_RAW(decoded->saddr));
 
 		/* destination address */
 		if(bits.daddr_nr > 0)
@@ -6272,8 +6272,8 @@ static bool decode_ip_values_from_bits(const struct rohc_decomp_ctxt *const cont
 			const struct ipv6_addr *daddr_ctxt = ipv6_get_daddr(&ctxt->ip);
 			memcpy(decoded->daddr, daddr_ctxt, 16);
 		}
-		rohc_decomp_debug(context, "decoded %s dst address = " IPV6_ADDR_FORMAT
-		                  "\n", descr, IPV6_ADDR_RAW(decoded->daddr));
+		rohc_decomp_debug(context, "decoded %s dst address = " IPV6_ADDR_FORMAT,
+		                  descr, IPV6_ADDR_RAW(decoded->daddr));
 	}
 
 	return true;

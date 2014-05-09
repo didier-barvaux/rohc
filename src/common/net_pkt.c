@@ -59,23 +59,23 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	if(!ip_create(&packet->outer_ip, data, data_len))
 	{
 		rohc_warning(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		             "cannot create the outer IP header\n");
+		             "cannot create the outer IP header");
 		goto error;
 	}
 	packet->ip_hdr_nr++;
 	rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-	           "outer IP header: %u bytes\n", ip_get_totlen(&packet->outer_ip));
+	           "outer IP header: %u bytes", ip_get_totlen(&packet->outer_ip));
 	rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-	           "outer IP header: version %d\n", ip_get_version(&packet->outer_ip));
+	           "outer IP header: version %d", ip_get_version(&packet->outer_ip));
 	if(packet->outer_ip.nh.data != NULL)
 	{
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		           "outer IP header: next header is of type %d\n",
+		           "outer IP header: next header is of type %d",
 		           packet->outer_ip.nh.proto);
 		if(packet->outer_ip.nl.data != NULL)
 		{
 			rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-			           "outer IP header: next layer is of type %d\n",
+			           "outer IP header: next layer is of type %d",
 			           packet->outer_ip.nl.proto);
 		}
 	}
@@ -110,23 +110,23 @@ bool net_pkt_parse(struct net_pkt *const packet,
 		if(!ip_get_inner_packet(&packet->outer_ip, &packet->inner_ip))
 		{
 			rohc_warning(packet, trace_entity, ROHC_PROFILE_GENERAL,
-			             "cannot create the inner IP header\n");
+			             "cannot create the inner IP header");
 			goto error;
 		}
 		packet->ip_hdr_nr++;
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		           "inner IP header: %u bytes\n", ip_get_totlen(&packet->inner_ip));
+		           "inner IP header: %u bytes", ip_get_totlen(&packet->inner_ip));
 		rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-		           "inner IP header: version %d\n", ip_get_version(&packet->inner_ip));
+		           "inner IP header: version %d", ip_get_version(&packet->inner_ip));
 		if(packet->inner_ip.nh.data != NULL)
 		{
 			rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-			           "inner IP header: next header is of type %d\n",
+			           "inner IP header: next header is of type %d",
 			           packet->inner_ip.nh.proto);
 			if(packet->inner_ip.nl.data != NULL)
 			{
 				rohc_debug(packet, trace_entity, ROHC_PROFILE_GENERAL,
-				           "inner IP header: next layer is of type %d\n",
+				           "inner IP header: next layer is of type %d",
 				           packet->inner_ip.nl.proto);
 			}
 		}

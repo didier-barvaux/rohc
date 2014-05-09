@@ -182,8 +182,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
 	}
 	else
 	{
-		rohc_decomp_warn(context, "unsupported ROHC packet type %u\n",
-		                 *packet_type);
+		rohc_decomp_warn(context, "unsupported ROHC packet type %u", *packet_type);
 		status = ROHC_ERROR;
 	}
 
@@ -229,7 +228,7 @@ static int uncomp_decode_ir(struct rohc_decomp *const decomp,
 	 * IR type + (large CID + ) Profile ID + CRC */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)",
 		                 rohc_remain_len);
 		goto error;
 	}
@@ -244,7 +243,7 @@ static int uncomp_decode_ir(struct rohc_decomp *const decomp,
 	/* parse CRC */
 	crc_packet = GET_BIT_0_7(rohc_remain_data);
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "CRC-8 found in packet = 0x%02x\n", crc_packet);
+	           "CRC-8 found in packet = 0x%02x", crc_packet);
 	rohc_remain_data++;
 	rohc_remain_len--;
 
@@ -259,13 +258,13 @@ static int uncomp_decode_ir(struct rohc_decomp *const decomp,
 	                             add_cid_len + large_cid_len + 2, CRC_INIT_8,
 	                             decomp->crc_table_8);
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "CRC-8 on compressed ROHC header = 0x%x\n", crc_computed);
+	           "CRC-8 on compressed ROHC header = 0x%x", crc_computed);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_computed != crc_packet)
 	{
 		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
-		                 "0x%02x)\n", crc_computed, crc_packet);
+		                 "0x%02x)", crc_computed, crc_packet);
 		goto error_crc;
 	}
 
@@ -308,13 +307,13 @@ static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
 	unsigned int rohc_remain_len = rohc_length;
 
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-	           "decode Normal packet\n");
+	           "decode Normal packet");
 
 	/* state must not be No Context */
 	if(context->state == ROHC_DECOMP_STATE_NC)
 	{
 		rohc_decomp_warn(context, "cannot receive Normal packets in No Context "
-		                 "state\n");
+		                 "state");
 		goto error;
 	}
 
@@ -322,8 +321,7 @@ static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
 	 * optional large CID field, and at least one more byte of data */
 	if(rohc_remain_len < (1 + large_cid_len + 1))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
-		                 rohc_length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)", rohc_length);
 		goto error;
 	}
 

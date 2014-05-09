@@ -134,14 +134,14 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_SN, packet))
 	{
-		rohc_comp_warn(context, "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed");
 		goto quit;
 	}
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* initialize SN to a random value (RFC 3095, 5.11.1) */
 	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_comp_debug(context, "initialize context(SN) = random() = %u\n",
+	rohc_comp_debug(context, "initialize context(SN) = random() = %u",
 	                g_context->sn);
 
 	/* check that transport protocol is UDP */
@@ -154,7 +154,7 @@ static bool c_udp_create(struct rohc_comp_ctxt *const context,
 	if(udp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the UDP part of the profile context\n");
+		           "no memory for the UDP part of the profile context");
 		goto clean;
 	}
 	g_context->specific = udp_context;
@@ -357,7 +357,7 @@ static int c_udp_encode(struct rohc_comp_ctxt *const context,
 	if(rohc_ntoh16(udp->len) != uncomp_pkt->transport->len)
 	{
 		rohc_comp_warn(context, "wrong UDP Length field in UDP header: %u "
-		               "found while %zu expected\n", rohc_ntoh16(udp->len),
+		               "found while %zu expected", rohc_ntoh16(udp->len),
 		               uncomp_pkt->transport->len);
 		return -1;
 	}
@@ -407,7 +407,7 @@ static void udp_decide_state(struct rohc_comp_ctxt *const context)
 	if(udp_context->tmp.send_udp_dynamic)
 	{
 		rohc_comp_debug(context, "go back to IR state because UDP checksum "
-		                "behaviour changed in the last few packets\n");
+		                "behaviour changed in the last few packets");
 		change_state(context, ROHC_COMP_STATE_IR);
 	}
 	else
@@ -448,7 +448,7 @@ size_t udp_code_uo_remainder(const struct rohc_comp_ctxt *const context,
 	/* part 13 */
 	if(udp->check != 0)
 	{
-		rohc_comp_debug(context, "UDP checksum = 0x%x\n", udp->check);
+		rohc_comp_debug(context, "UDP checksum = 0x%x", udp->check);
 		memcpy(&dest[counter], &udp->check, 2);
 		nr_written += 2;
 	}
@@ -487,12 +487,12 @@ size_t udp_code_static_udp_part(const struct rohc_comp_ctxt *const context,
 	size_t nr_written = 0;
 
 	/* part 1 */
-	rohc_comp_debug(context, "UDP source port = 0x%x\n", udp->source);
+	rohc_comp_debug(context, "UDP source port = 0x%x", udp->source);
 	memcpy(&dest[counter + nr_written], &udp->source, 2);
 	nr_written += 2;
 
 	/* part 2 */
-	rohc_comp_debug(context, "UDP dest port = 0x%x\n", udp->dest);
+	rohc_comp_debug(context, "UDP dest port = 0x%x", udp->dest);
 	memcpy(&dest[counter + nr_written], &udp->dest, 2);
 	nr_written += 2;
 
@@ -535,7 +535,7 @@ static size_t udp_code_dynamic_udp_part(const struct rohc_comp_ctxt *const conte
 	udp = (struct udphdr *) next_header;
 
 	/* part 1 */
-	rohc_comp_debug(context, "UDP checksum = 0x%x\n", udp->check);
+	rohc_comp_debug(context, "UDP checksum = 0x%x", udp->check);
 	memcpy(&dest[counter + nr_written], &udp->check, 2);
 	nr_written += 2;
 	udp_context->udp_checksum_change_count++;

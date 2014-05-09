@@ -119,7 +119,7 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	if(g_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the generic decompression context\n");
+		           "failed to create the generic decompression context");
 		goto quit;
 	}
 	g_context->specific = NULL;
@@ -129,7 +129,7 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	if(esp_context == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "cannot allocate memory for the ESP-specific context\n");
+		           "cannot allocate memory for the ESP-specific context");
 		goto destroy_context;
 	}
 	memset(esp_context, 0, sizeof(struct d_esp_context));
@@ -140,7 +140,7 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	if(g_context->sn_lsb_ctxt == NULL)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		           "failed to create the LSB decoding context for SN\n");
+		           "failed to create the LSB decoding context for SN");
 		goto free_esp_context;
 	}
 
@@ -163,7 +163,7 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the ESP-specific part of the "
-		           "outer IP header changes\n");
+		           "outer IP header changes");
 		goto free_lsb_sn;
 	}
 	memset(g_context->outer_ip_changes->next_header, 0, sizeof(struct esphdr));
@@ -174,7 +174,7 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	{
 		rohc_error(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 		           "cannot allocate memory for the ESP-specific part of the "
-		           "inner IP header changes\n");
+		           "inner IP header changes");
 		goto free_outer_ip_changes_next_header;
 	}
 	memset(g_context->inner_ip_changes->next_header, 0, sizeof(struct esphdr));
@@ -259,15 +259,14 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to parse the ESP static part */
 	if(length < spi_length)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
 	/* SPI */
 	memcpy(&bits->esp_spi, packet, spi_length);
 	bits->esp_spi_nr = spi_length * 8;
-	rohc_decomp_debug(context, "ESP SPI = 0x%08x\n",
-	                  rohc_ntoh32(bits->esp_spi));
+	rohc_decomp_debug(context, "ESP SPI = 0x%08x", rohc_ntoh32(bits->esp_spi));
 #ifndef __clang_analyzer__ /* silent warning about dead in/decrement */
 	packet += spi_length;
 #endif
@@ -278,7 +277,7 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 	   memcmp(&bits->esp_spi, &esp_context->spi, spi_length) != 0)
 	{
 		rohc_decomp_debug(context, "ESP SPI mismatch (packet = 0x%08x, "
-		                  "context = 0x%08x) -> context is being reused\n",
+		                  "context = 0x%08x) -> context is being reused",
 		                  bits->esp_spi, esp_context->spi);
 		bits->is_context_reused = true;
 	}
@@ -317,7 +316,7 @@ static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to parse the ESP dynamic part */
 	if(length < sn_length)
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)", length);
 		goto error;
 	}
 
@@ -330,7 +329,7 @@ static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
 	bits->sn = rohc_ntoh32(sn);
 	bits->sn_nr = sn_length * 8;
 	bits->is_sn_enc = false;
-	rohc_decomp_debug(context, "ESP SN = 0x%08x\n", bits->sn);
+	rohc_decomp_debug(context, "ESP SN = 0x%08x", bits->sn);
 
 	return read;
 
@@ -377,7 +376,7 @@ static bool esp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 		/* keep context value */
 		memcpy(&decoded->esp_spi, &esp->spi, spi_length);
 	}
-	rohc_decomp_debug(context, "decoded SPI = 0x%08x\n",
+	rohc_decomp_debug(context, "decoded SPI = 0x%08x",
 	                  rohc_ntoh32(decoded->esp_spi));
 
 	return true;
@@ -405,11 +404,11 @@ static int esp_build_uncomp_esp(const struct rohc_decomp_ctxt *const context,
 
 	/* static SPI field */
 	memcpy(&esp->spi, &decoded.esp_spi, spi_length);
-	rohc_decomp_debug(context, "SPI = 0x%08x\n", rohc_ntoh32(esp->spi));
+	rohc_decomp_debug(context, "SPI = 0x%08x", rohc_ntoh32(esp->spi));
 
 	/* dynamic SN field */
 	esp->sn = rohc_hton32(decoded.sn);
-	rohc_decomp_debug(context, "SN = 0x%08x\n", rohc_ntoh32(esp->sn));
+	rohc_decomp_debug(context, "SN = 0x%08x", rohc_ntoh32(esp->sn));
 
 	return sizeof(struct esphdr);
 }

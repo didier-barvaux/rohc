@@ -394,7 +394,7 @@ static bool ip_header_info_new(struct ip_header_info *const header_info,
 		{
 			__rohc_print(trace_callback, ROHC_TRACE_ERROR, ROHC_TRACE_COMP,
 			             profile_id, "no memory to allocate W-LSB encoding "
-			             "for IP-ID\n");
+			             "for IP-ID");
 			goto error;
 		}
 
@@ -482,7 +482,7 @@ bool c_generic_create(struct rohc_comp_ctxt *const context,
 	assert(context->profile != NULL);
 	assert(packet != NULL);
 
-	rohc_comp_debug(context, "new generic context required for a new stream\n");
+	rohc_comp_debug(context, "new generic context required for a new stream");
 
 	/* allocate memory for the generic part of the context */
 	g_context =
@@ -490,7 +490,7 @@ bool c_generic_create(struct rohc_comp_ctxt *const context,
 	if(g_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for generic part of the profile context\n");
+		           "no memory for generic part of the profile context");
 		goto quit;
 	}
 	memset(g_context, 0, sizeof(struct c_generic_context));
@@ -507,14 +507,14 @@ bool c_generic_create(struct rohc_comp_ctxt *const context,
 	 */
 
 	/* step 1 */
-	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of SN\n",
+	rohc_comp_debug(context, "use shift parameter %d for LSB-encoding of SN",
 	                sn_shift);
 	g_context->sn_window =
 		c_create_wlsb(16, context->compressor->wlsb_window_width, sn_shift);
 	if(g_context->sn_window == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory to allocate W-LSB encoding for SN\n");
+		           "no memory to allocate W-LSB encoding for SN");
 		goto free_generic_context;
 	}
 
@@ -657,7 +657,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "the outer IP packet (type = %d) is not supported by the "
-		           "profile: only IPv%d and IPv%d are supported\n",
+		           "profile: only IPv%d and IPv%d are supported",
 		           version, IPV4, IPV6);
 		goto bad_profile;
 	}
@@ -668,7 +668,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "the outer IPv4 packet is not supported by the profile: "
-		           "IP options are not accepted\n");
+		           "IP options are not accepted");
 		goto bad_profile;
 	}
 
@@ -676,7 +676,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	if(ip_is_fragment(&packet->outer_ip))
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet is fragmented\n");
+		           "the outer IP packet is fragmented");
 		goto bad_profile;
 	}
 
@@ -687,7 +687,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 	                sizeof(struct ipv4_hdr) / sizeof(uint32_t)) != 0)
 	{
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "the outer IP packet is not correct (bad checksum)\n");
+		           "the outer IP packet is not correct (bad checksum)");
 		goto bad_profile;
 	}
 
@@ -700,7 +700,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IP packet contains a bad version (%d): "
-			           "only IPv%d and IPv%d are supported\n",
+			           "only IPv%d and IPv%d are supported",
 			           (packet->inner_ip.data[0] >> 4) & 0x0f, IPV4, IPV6);
 			goto bad_profile;
 		}
@@ -711,7 +711,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "the inner IPv4 packet is not supported by the profile: "
-			           "IP options are not accepted\n");
+			           "IP options are not accepted");
 			goto bad_profile;
 		}
 
@@ -719,7 +719,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		if(ip_is_fragment(&packet->inner_ip))
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "the inner IP packet is fragmented\n");
+			           "the inner IP packet is fragmented");
 			goto bad_profile;
 		}
 
@@ -730,7 +730,7 @@ bool c_generic_check_profile(const struct rohc_comp *const comp,
 		                sizeof(struct ipv4_hdr) / sizeof(uint32_t)) != 0)
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "the inner IP packet is not correct (bad checksum)\n");
+			           "the inner IP packet is not correct (bad checksum)");
 			goto bad_profile;
 		}
 	}
@@ -755,7 +755,7 @@ static void change_mode(struct rohc_comp_ctxt *const context,
 	{
 		/* change mode and go back to IR state */
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from mode %d to mode %d\n",
+		          "CID %zu: change from mode %d to mode %d",
 		          context->cid, context->mode, new_mode);
 		context->mode = new_mode;
 		change_state(context, ROHC_COMP_STATE_IR);
@@ -779,7 +779,7 @@ void change_state(struct rohc_comp_ctxt *const context,
 	if(new_state != context->state)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: change from state %d to state %d\n",
+		          "CID %zu: change from state %d to state %d",
 		          context->cid, context->state, new_state);
 
 		/* reset counters */
@@ -839,7 +839,7 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 	/* detect changes between new uncompressed packet and context */
 	if(!c_generic_detect_changes(context, uncomp_pkt))
 	{
-		rohc_comp_warn(context, "failed to detect changes in uncompressed packet\n");
+		rohc_comp_warn(context, "failed to detect changes in uncompressed packet");
 		goto error;
 	}
 
@@ -852,7 +852,7 @@ int c_generic_encode(struct rohc_comp_ctxt *const context,
 	if(ret != ROHC_OK)
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed "
-		               "to send header fields\n");
+		               "to send header fields");
 		goto error;
 	}
 
@@ -936,7 +936,7 @@ bool c_generic_feedback(struct rohc_comp_ctxt *const context,
 	switch(feedback->type)
 	{
 		case 1: /* FEEDBACK-1 */
-			rohc_comp_debug(context, "FEEDBACK-1 received\n");
+			rohc_comp_debug(context, "FEEDBACK-1 received");
 			assert(remain_len == 1);
 			sn = remain_data[0] & 0xff;
 
@@ -949,17 +949,17 @@ bool c_generic_feedback(struct rohc_comp_ctxt *const context,
 			break;
 
 		case 2: /* FEEDBACK-2 */
-			rohc_comp_debug(context, "FEEDBACK-2 received\n");
+			rohc_comp_debug(context, "FEEDBACK-2 received");
 			assert(remain_len >= 2);
 			if(!c_generic_feedback_2(context, feedback))
 			{
-				rohc_comp_warn(context, "failed to handle FEEDBACK-2\n");
+				rohc_comp_warn(context, "failed to handle FEEDBACK-2");
 				goto error;
 			}
 			break;
 
 		default: /* not FEEDBACK-1 nor FEEDBACK-2 */
-			rohc_comp_warn(context, "feedback type not implemented (%d)\n",
+			rohc_comp_warn(context, "feedback type not implemented (%d)",
 			               feedback->type);
 			goto error;
 	}
@@ -1020,7 +1020,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 		if(remain_len < optlen)
 		{
 			rohc_comp_warn(context, "%zu-byte FEEDBACK-2 is too short for "
-			               "%u-byte option %u\n", remain_len, optlen, opt);
+			               "%u-byte option %u", remain_len, optlen, opt);
 			goto error;
 		}
 
@@ -1038,7 +1038,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 				if((sn & 0xff000000) != 0)
 				{
 					rohc_comp_warn(context, "more than 32 bits used for feedback "
-					               "SN, truncate unexpected value\n");
+					               "SN, truncate unexpected value");
 					sn &= 0x00ffffff;
 				}
 				sn = (sn << 8) + (remain_data[1] & 0xff);
@@ -1046,7 +1046,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 			case 2: /* Reject */
 			case 7: /* Loss */
 			default:
-				rohc_comp_warn(context, "unknown feedback option %u\n", opt);
+				rohc_comp_warn(context, "unknown feedback option %u", opt);
 				break;
 		}
 
@@ -1067,7 +1067,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 		/* ignore feedback in case of bad CRC */
 		if(crc_in_packet != crc_computed)
 		{
-			rohc_comp_debug(context, "CRC check failed (size = %zu)\n",
+			rohc_comp_debug(context, "CRC check failed (size = %zu)",
 			                feedback->size);
 			goto error;
 		}
@@ -1077,7 +1077,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 	if(mode != 0 && mode != context->mode)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "mode change (%d -> %d) requested by feedback for CID %zu\n",
+		          "mode change (%d -> %d) requested by feedback for CID %zu",
 		          context->mode, mode, context->cid);
 
 		/* mode can be changed only if feedback is protected by a CRC */
@@ -1087,7 +1087,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_warn(context, "mode change requested without CRC\n");
+			rohc_comp_warn(context, "mode change requested without CRC");
 		}
 	}
 
@@ -1097,7 +1097,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 		case ACK:
 		{
 			rohc_comp_debug(context, "ACK received (CID = %zu, SN = 0x%08x, "
-			                "SN-not-valid = %d)\n", feedback->cid, sn,
+			                "SN-not-valid = %d)", feedback->cid, sn,
 			                sn_not_valid ? 1 : 0);
 			/* acknowledge IP-ID and SN only if SN is considered as valid */
 			if(!sn_not_valid)
@@ -1120,7 +1120,7 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 		case NACK:
 		{
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "NACK received for CID %zu\n", feedback->cid);
+			          "NACK received for CID %zu", feedback->cid);
 			if(context->state == ROHC_COMP_STATE_SO)
 			{
 				change_state(context, ROHC_COMP_STATE_FO);
@@ -1131,21 +1131,21 @@ static bool c_generic_feedback_2(struct rohc_comp_ctxt *const context,
 		case STATIC_NACK:
 		{
 			rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			          "STATIC-NACK received for CID %zu\n", feedback->cid);
+			          "STATIC-NACK received for CID %zu", feedback->cid);
 			change_state(context, ROHC_COMP_STATE_IR);
 			break;
 		}
 
 		case RESERVED:
 		{
-			rohc_comp_warn(context, "reserved field used\n");
+			rohc_comp_warn(context, "reserved field used");
 			goto error;
 		}
 
 		default:
 		{
 			/* impossible value */
-			rohc_comp_warn(context, "unknown ACK type %d\n", feedback->acktype);
+			rohc_comp_warn(context, "unknown ACK type %d", feedback->acktype);
 			goto error;
 		}
 	}
@@ -1191,7 +1191,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 	/* compute or find the new SN */
 	assert(g_context->get_next_sn != NULL);
 	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
-	rohc_comp_debug(context, "SN = %u\n", g_context->sn);
+	rohc_comp_debug(context, "SN = %u", g_context->sn);
 
 	/* init or free the context of the inner IP header if the number of IP
 	 * headers changed */
@@ -1199,7 +1199,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 	{
 		if(uncomp_pkt->ip_hdr_nr > 1)
 		{
-			rohc_comp_debug(context, "packet got one more IP header than context\n");
+			rohc_comp_debug(context, "packet got one more IP header than context");
 			if(!ip_header_info_new(&g_context->inner_ip_flags,
 			                       &uncomp_pkt->inner_ip,
 			                       context->compressor->list_trans_nr,
@@ -1212,7 +1212,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 		}
 		else
 		{
-			rohc_comp_debug(context, "packet got one less IP header than context\n");
+			rohc_comp_debug(context, "packet got one less IP header than context");
 			ip_header_info_free(&g_context->inner_ip_flags);
 		}
 		g_context->ip_hdr_nr = uncomp_pkt->ip_hdr_nr;
@@ -1228,7 +1228,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 	if(g_context->tmp.changed_fields & MOD_ERROR)
 	{
 		rohc_comp_warn(context, "failed to detect changed field in outer IP "
-		               "header\n");
+		               "header");
 		goto error;
 	}
 
@@ -1241,7 +1241,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 		if(g_context->tmp.changed_fields2  & MOD_ERROR)
 		{
 			rohc_comp_warn(context, "failed to detect changed field in inner IP "
-			               "header\n");
+			               "header");
 			goto error;
 		}
 	}
@@ -1251,7 +1251,7 @@ static bool c_generic_detect_changes(struct rohc_comp_ctxt *const context,
 
 	/* how many changed fields are dynamic ones? */
 	g_context->tmp.send_dynamic = changed_dynamic_both_hdr(context, uncomp_pkt);
-	rohc_comp_debug(context, "send_static = %d, send_dynamic = %d\n",
+	rohc_comp_debug(context, "send_static = %d, send_dynamic = %d",
 	                g_context->tmp.send_static, g_context->tmp.send_dynamic);
 
 	return true;
@@ -1274,7 +1274,7 @@ static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 
 	rohc_debug(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	           "CID %zu: timeouts for periodic refreshes: FO = %zu / %zu, "
-	           "IR = %zu / %zu\n", context->cid, g_context->go_back_fo_count,
+	           "IR = %zu / %zu", context->cid, g_context->go_back_fo_count,
 	           context->compressor->periodic_refreshes_fo_timeout,
 	           g_context->go_back_ir_count,
 	           context->compressor->periodic_refreshes_ir_timeout);
@@ -1283,7 +1283,7 @@ static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 	   context->compressor->periodic_refreshes_fo_timeout)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to FO state\n", context->cid);
+		          "CID %zu: periodic change to FO state", context->cid);
 		g_context->go_back_fo_count = 0;
 		change_state(context, ROHC_COMP_STATE_FO);
 	}
@@ -1291,7 +1291,7 @@ static void periodic_down_transition(struct rohc_comp_ctxt *const context)
 	        context->compressor->periodic_refreshes_ir_timeout)
 	{
 		rohc_info(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		          "CID %zu: periodic change to IR state\n", context->cid);
+		          "CID %zu: periodic change to IR state", context->cid);
 		g_context->go_back_ir_count = 0;
 		change_state(context, ROHC_COMP_STATE_IR);
 	}
@@ -1332,14 +1332,14 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		if(g_context->ir_count < MAX_IR_COUNT)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in IR state "
-			                "for the moment (%d/%d), so stay in IR state\n",
+			                "for the moment (%d/%d), so stay in IR state",
 			                g_context->ir_count, MAX_IR_COUNT);
 			next_state = ROHC_COMP_STATE_IR;
 		}
 		else if(g_context->tmp.send_static)
 		{
 			rohc_comp_debug(context, "%d STATIC fields changed now or in the "
-			                "last few packets, so stay in IR state\n",
+			                "last few packets, so stay in IR state",
 			                g_context->tmp.send_static);
 			next_state = ROHC_COMP_STATE_IR;
 		}
@@ -1347,7 +1347,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		{
 			rohc_comp_debug(context, "no STATIC field changed, but %d DYNAMIC "
 			                "fields changed now or in the last few packets, so "
-			                "go to FO state\n", g_context->tmp.send_dynamic);
+			                "go to FO state", g_context->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else if((g_context->outer_ip_flags.version == IPV4 &&
@@ -1357,13 +1357,13 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
 			rohc_comp_debug(context, "at least one SID flag changed now or in the "
-			                "last few packets, so go to FO state\n");
+			                "last few packets, so go to FO state");
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so go to SO state\n");
+			                "the last few packets, so go to SO state");
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
@@ -1372,7 +1372,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		if(g_context->fo_count < MAX_FO_COUNT)
 		{
 			rohc_comp_debug(context, "no enough packets transmitted in FO state "
-			                "for the moment (%d/%d), so stay in FO state\n",
+			                "for the moment (%d/%d), so stay in FO state",
 			                g_context->fo_count, MAX_FO_COUNT);
 			next_state = ROHC_COMP_STATE_FO;
 		}
@@ -1380,7 +1380,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		{
 			rohc_comp_debug(context, "%d STATIC and %d DYNAMIC fields changed "
 			                "now or in the last few packets, so stay in FO "
-			                "state\n", g_context->tmp.send_static,
+			                "state", g_context->tmp.send_static,
 			                g_context->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
@@ -1390,14 +1390,14 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		         g_context->inner_ip_flags.version == IPV4 &&
 		         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
-			rohc_comp_debug(context, "at least one SID flag changed now or in the "
-			                "last few packets, so stay in FO state\n");
+			rohc_comp_debug(context, "at least one SID flag changed now or in "
+			                "the last few packets, so stay in FO state");
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so go to SO state\n");
+			                "the last few packets, so go to SO state");
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
@@ -1407,7 +1407,7 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		{
 			rohc_comp_debug(context, "%d STATIC and %d DYNAMIC fields changed "
 			                "now or in the last few packets, so go back to FO "
-			                "state\n", g_context->tmp.send_static,
+			                "state", g_context->tmp.send_static,
 			                g_context->tmp.send_dynamic);
 			next_state = ROHC_COMP_STATE_FO;
 		}
@@ -1417,20 +1417,20 @@ void decide_state(struct rohc_comp_ctxt *const context)
 		         g_context->inner_ip_flags.version == IPV4 &&
 		         g_context->inner_ip_flags.info.v4.sid_count < MAX_FO_COUNT))
 		{
-			rohc_comp_debug(context, "at least one SID flag changed now or in the "
-			                "last few packets, so go back to FO state\n");
+			rohc_comp_debug(context, "at least one SID flag changed now or in "
+			                "the last few packets, so go back to FO state");
 			next_state = ROHC_COMP_STATE_FO;
 		}
 		else
 		{
 			rohc_comp_debug(context, "no STATIC nor DYNAMIC field changed in "
-			                "the last few packets, so stay in SO state\n");
+			                "the last few packets, so stay in SO state");
 			next_state = ROHC_COMP_STATE_SO;
 		}
 	}
 	else
 	{
-		rohc_comp_warn(context, "unexpected compressor state %d\n", curr_state);
+		rohc_comp_warn(context, "unexpected compressor state %d", curr_state);
 		assert(0);
 		return;
 	}
@@ -1467,7 +1467,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 	{
 		case ROHC_COMP_STATE_IR:
 		{
-			rohc_comp_debug(context, "decide packet in IR state\n");
+			rohc_comp_debug(context, "decide packet in IR state");
 			g_context->ir_count++;
 			packet = ROHC_PACKET_IR;
 			break;
@@ -1475,7 +1475,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 
 		case ROHC_COMP_STATE_FO:
 		{
-			rohc_comp_debug(context, "decide packet in FO state\n");
+			rohc_comp_debug(context, "decide packet in FO state");
 			g_context->fo_count++;
 			if(g_context->decide_FO_packet != NULL)
 			{
@@ -1490,7 +1490,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 
 		case ROHC_COMP_STATE_SO:
 		{
-			rohc_comp_debug(context, "decide packet in SO state\n");
+			rohc_comp_debug(context, "decide packet in SO state");
 			g_context->so_count++;
 			if(g_context->decide_SO_packet != NULL)
 			{
@@ -1508,12 +1508,11 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 			/* impossible value */
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            false, error,
-			            "unknown state (%d), cannot determine packet type\n",
+			            "unknown state (%d), cannot determine packet type",
 			            context->state);
 		}
 	}
-	rohc_comp_debug(context, "packet '%s' chosen\n",
-	                rohc_get_packet_descr(packet));
+	rohc_comp_debug(context, "packet '%s' chosen", rohc_get_packet_descr(packet));
 
 	/* force IR-DYN packet because some bits shall be sent for the list of IPv6
 	 * extension headers of the outer IP header */
@@ -1523,7 +1522,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 	{
 		rohc_comp_debug(context, "force IR-DYN packet because some bits shall "
 		                "be sent for the extension header list of the outer "
-		                "IPv6 header\n");
+		                "IPv6 header");
 		/* TODO: could be UOR-2 with extension 3 and IPX=1 */
 		packet = ROHC_PACKET_IR_DYN;
 	}
@@ -1536,7 +1535,7 @@ static rohc_packet_t decide_packet(const struct rohc_comp_ctxt *const context)
 	{
 		rohc_comp_debug(context, "force IR-DYN packet because some bits shall "
 		                "be sent for the extension header list of the inner "
-		                "IPv6 header\n");
+		                "IPv6 header");
 		/* TODO: could be UOR-2 with extension 3 and IPX2=1 */
 		packet = ROHC_PACKET_IR_DYN;
 	}
@@ -1601,7 +1600,7 @@ int code_packet(struct rohc_comp_ctxt *const context,
 			break;
 
 		default:
-			rohc_comp_debug(context, "unknown packet, failure\n");
+			rohc_comp_debug(context, "unknown packet, failure");
 			goto error;
 	}
 
@@ -1690,7 +1689,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	       (nr_of_ip_hdr == 2 && ip_get_version(&uncomp_pkt->inner_ip) != IPV4 &&
 	        g_context->tmp.nr_ip_id_bits2 == 0));
 
-	rohc_comp_debug(context, "code IR packet (CID = %zu)\n", context->cid);
+	rohc_comp_debug(context, "code IR packet (CID = %zu)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -1709,17 +1708,17 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	/* part 2: type of packet and D flag if dynamic part is included */
 	type = 0xfc;
 	type |= 1; /* D flag */
-	rohc_comp_debug(context, "type of packet + D flag = 0x%02x\n", type);
+	rohc_comp_debug(context, "type of packet + D flag = 0x%02x", type);
 	rohc_pkt[first_position] = type;
 
 	/* part 4 */
-	rohc_comp_debug(context, "profile ID = 0x%02x\n", context->profile->id);
+	rohc_comp_debug(context, "profile ID = 0x%02x", context->profile->id);
 	rohc_pkt[counter] = context->profile->id;
 	counter++;
 
 	/* part 5: the CRC is computed later since it must be computed
 	 * over the whole packet with an empty CRC field */
-	rohc_comp_debug(context, "CRC = 0x00 for CRC calculation\n");
+	rohc_comp_debug(context, "CRC = 0x00 for CRC calculation");
 	crc_position = counter;
 	rohc_pkt[counter] = 0;
 	counter++;
@@ -1751,7 +1750,7 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
 	                                       CRC_INIT_8,
 	                                       context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)\n",
+	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
 error:
@@ -1818,7 +1817,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	rohc_comp_debug(context, "code IR-DYN packet (CID = %zu)\n", context->cid);
+	rohc_comp_debug(context, "code IR-DYN packet (CID = %zu)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -1866,7 +1865,7 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt, counter,
 	                                       CRC_INIT_8,
 	                                       context->compressor->crc_table_8);
-	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)\n",
+	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
 error:
@@ -2002,12 +2001,12 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
 
 	/* part 1 */
 	dest[counter] = 0x40;
-	rohc_comp_debug(context, "version = 0x40\n");
+	rohc_comp_debug(context, "version = 0x40");
 	counter++;
 
 	/* part 2 */
 	protocol = ip_get_protocol(ip);
-	rohc_comp_debug(context, "protocol = 0x%02x\n", protocol);
+	rohc_comp_debug(context, "protocol = 0x%02x", protocol);
 	dest[counter] = protocol;
 	counter++;
 	header_info->protocol_count++;
@@ -2015,14 +2014,14 @@ static int code_ipv4_static_part(const struct rohc_comp_ctxt *const context,
 	/* part 3 */
 	saddr = ipv4_get_saddr(ip);
 	memcpy(&dest[counter], &saddr, 4);
-	rohc_comp_debug(context, "src addr = " IPV4_ADDR_FORMAT "\n",
+	rohc_comp_debug(context, "src addr = " IPV4_ADDR_FORMAT,
 	                IPV4_ADDR_RAW(dest + counter));
 	counter += 4;
 
 	/* part 4 */
 	daddr = ipv4_get_daddr(ip);
 	memcpy(&dest[counter], &daddr, 4);
-	rohc_comp_debug(context, "dst addr = " IPV4_ADDR_FORMAT "\n",
+	rohc_comp_debug(context, "dst addr = " IPV4_ADDR_FORMAT,
 	                IPV4_ADDR_RAW(dest + counter));
 	counter += 4;
 
@@ -2072,7 +2071,7 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
 	/* part 1 */
 	flow_label = ipv6_get_flow_label(ip);
 	dest[counter] = ((6 << 4) & 0xf0) | ((flow_label >> 16) & 0x0f);
-	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x\n",
+	rohc_comp_debug(context, "version + flow label (msb) = 0x%02x",
 	                dest[counter]);
 	counter++;
 
@@ -2081,12 +2080,12 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
 	counter++;
 	dest[counter] = flow_label & 0xff;
 	counter++;
-	rohc_comp_debug(context, "flow label (lsb) = 0x%02x%02x\n",
+	rohc_comp_debug(context, "flow label (lsb) = 0x%02x%02x",
 	                dest[counter - 2], dest[counter - 1]);
 
 	/* part 3 */
 	protocol = ip_get_protocol(ip);
-	rohc_comp_debug(context, "next header = 0x%02x\n", protocol);
+	rohc_comp_debug(context, "next header = 0x%02x", protocol);
 	dest[counter] = protocol;
 	counter++;
 	header_info->protocol_count++;
@@ -2094,14 +2093,14 @@ static int code_ipv6_static_part(const struct rohc_comp_ctxt *const context,
 	/* part 4 */
 	saddr = ipv6_get_saddr(ip);
 	memcpy(&dest[counter], saddr, 16);
-	rohc_comp_debug(context, "src addr = " IPV6_ADDR_FORMAT "\n",
+	rohc_comp_debug(context, "src addr = " IPV6_ADDR_FORMAT,
 	                IPV6_ADDR_IN6(saddr));
 	counter += 16;
 
 	/* part 5 */
 	daddr = ipv6_get_daddr(ip);
 	memcpy(&dest[counter], daddr, 16);
-	rohc_comp_debug(context, "dst addr = " IPV6_ADDR_FORMAT "\n",
+	rohc_comp_debug(context, "dst addr = " IPV6_ADDR_FORMAT,
 	                IPV6_ADDR_IN6(daddr));
 	counter += 16;
 
@@ -2252,14 +2251,14 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 	/* part 1 */
 	tos = ip_get_tos(ip);
 	dest[counter] = tos;
-	rohc_comp_debug(context, "TOS = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "TOS = 0x%02x", dest[counter]);
 	counter++;
 	header_info->tos_count++;
 
 	/* part 2 */
 	ttl = ip_get_ttl(ip);
 	dest[counter] = ttl;
-	rohc_comp_debug(context, "TTL = 0x%02x\n", dest[counter]);
+	rohc_comp_debug(context, "TTL = 0x%02x", dest[counter]);
 	counter++;
 	header_info->ttl_count++;
 
@@ -2268,8 +2267,8 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 	 * http://www.ietf.org/mail-archive/web/rohc/current/msg01675.html */
 	id = ipv4_get_id(ip);
 	memcpy(&dest[counter], &id, 2);
-	rohc_comp_debug(context, "IP-ID = 0x%02x 0x%02x\n",
-	                dest[counter], dest[counter + 1]);
+	rohc_comp_debug(context, "IP-ID = 0x%02x 0x%02x", dest[counter],
+	                dest[counter + 1]);
 	counter += 2;
 
 	/* part 4 */
@@ -2288,7 +2287,7 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 		df_rnd_nbo_sid |= 0x10;
 	}
 	dest[counter] = df_rnd_nbo_sid;
-	rohc_comp_debug(context, "(DF = %u, RND = %u, NBO = %u, SID = %u) = 0x%02x\n",
+	rohc_comp_debug(context, "(DF = %u, RND = %u, NBO = %u, SID = %u) = 0x%02x",
 	                df & 0x01, header_info->info.v4.rnd, header_info->info.v4.nbo,
 	                header_info->info.v4.sid, dest[counter]);
 	counter++;
@@ -2301,7 +2300,7 @@ static int code_ipv4_dynamic_part(const struct rohc_comp_ctxt *const context,
 	/* part 5 is not supported for the moment, but the field is mandatory,
 	   so add a zero byte */
 	dest[counter] = 0x00;
-	rohc_comp_debug(context, "Generic extension header list = 0x%02x\n",
+	rohc_comp_debug(context, "Generic extension header list = 0x%02x",
 	                dest[counter]);
 	counter++;
 
@@ -2351,14 +2350,14 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 	dest[counter] = tos;
 	counter++;
 	header_info->tos_count++;
-	rohc_comp_debug(context, "TC = 0x%02x\n", tos);
+	rohc_comp_debug(context, "TC = 0x%02x", tos);
 
 	/* part 2 */
 	ttl = ip_get_ttl(ip);
 	dest[counter] = ttl;
 	counter++;
 	header_info->ttl_count++;
-	rohc_comp_debug(context, "HL = 0x%02x\n", ttl);
+	rohc_comp_debug(context, "HL = 0x%02x", ttl);
 
 	/* part 3: Generic extension header list */
 	{
@@ -2381,20 +2380,20 @@ static int code_ipv6_dynamic_part(const struct rohc_comp_ctxt *const context,
 
 		if(do_send_ipv6_ext)
 		{
-			rohc_comp_debug(context, "extension header list: send some bits\n");
+			rohc_comp_debug(context, "extension header list: send some bits");
 			counter = rohc_list_encode(&header_info->info.v6.ext_comp, dest,
 			                           counter,
 			                           header_info->info.v6.ext_comp.pkt_list.items_nr);
 			if(counter < 0)
 			{
-				rohc_comp_warn(context, "failed to encode list\n");
+				rohc_comp_warn(context, "failed to encode list");
 				goto error;
 			}
 		}
 		else
 		{
 			/* no need to send any extension bit, write a zero byte in packet */
-			rohc_comp_debug(context, "extension header list: no bit to send\n");
+			rohc_comp_debug(context, "extension header list: no bit to send");
 			dest[counter] = 0x00;
 			counter++;
 		}
@@ -2490,7 +2489,7 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 		/* do not care of Network Byte Order because IP-ID is random */
 		id = ipv4_get_id(&uncomp_pkt->outer_ip);
 		memcpy(&dest[counter], &id, 2);
-		rohc_comp_debug(context, "outer IP-ID = 0x%04x\n", id);
+		rohc_comp_debug(context, "outer IP-ID = 0x%04x", id);
 		counter += 2;
 	}
 
@@ -2504,7 +2503,7 @@ static int code_uo_remainder(struct rohc_comp_ctxt *const context,
 		/* do not care of Network Byte Order because IP-ID is random */
 		id = ipv4_get_id(&uncomp_pkt->inner_ip);
 		memcpy(&dest[counter], &id, 2);
-		rohc_comp_debug(context, "inner IP-ID = 0x%04x\n", id);
+		rohc_comp_debug(context, "inner IP-ID = 0x%04x", id);
 		counter += 2;
 	}
 
@@ -2568,7 +2567,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	rohc_comp_debug(context, "code UO-0 packet (CID = %zu)\n", context->cid);
+	rohc_comp_debug(context, "code UO-0 packet (CID = %zu)", context->cid);
 
 	/* parts 1 and 3:
 	 *  - part 2 will be placed at 'first_position'
@@ -2591,7 +2590,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	crc = compute_uo_crc(g_context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	f_byte |= crc;
-	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)\n", f_byte, crc);
+	rohc_comp_debug(context, "first byte = 0x%02x (CRC = 0x%x)", f_byte, crc);
 	rohc_pkt[first_position] = f_byte;
 
 	/* build the UO tail */
@@ -2719,37 +2718,37 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 	switch(packet_type)
 	{
 		case ROHC_PACKET_UO_1:
-			rohc_comp_debug(context, "code UO-1 packet (CID = %zu)\n", context->cid);
+			rohc_comp_debug(context, "code UO-1 packet (CID = %zu)", context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
-			            "UO-1 packet is for IPv4 only\n");
+			            "UO-1 packet is for IPv4 only");
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            !is_rtp, error, "UO-1 packet is for non-RTP profiles\n");
+			            !is_rtp, error, "UO-1 packet is for non-RTP profiles");
 			break;
 		case ROHC_PACKET_UO_1_RTP:
-			rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UO-1-RTP packet (CID = %zu)",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_rtp, error, "UO-1-RTP packet is for RTP profile only\n");
+			            is_rtp, error, "UO-1-RTP packet is for RTP profile only");
 			break;
 		case ROHC_PACKET_UO_1_ID:
-			rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UO-1-ID packet (CID = %zu)",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 			            innermost_ip_hdr != ROHC_IP_HDR_NONE, error,
-			            "UO-1-ID packet is for IPv4 only\n");
+			            "UO-1-ID packet is for IPv4 only");
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_rtp, error, "UO-1-ID packet is for RTP profile only\n");
+			            is_rtp, error, "UO-1-ID packet is for RTP profile only");
 			break;
 		case ROHC_PACKET_UO_1_TS:
-			rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UO-1-TS packet (CID = %zu)",
 			                context->cid);
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            is_rtp, error, "UO-1-TS packet is for RTP profile only\n");
+			            is_rtp, error, "UO-1-TS packet is for RTP profile only");
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 			goto error;
 	}
 
@@ -2773,10 +2772,10 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 		extension = g_context->decide_extension(context);
 		if(extension == ROHC_EXT_UNKNOWN)
 		{
-			rohc_comp_warn(context, "failed to determine the extension to code\n");
+			rohc_comp_warn(context, "failed to determine the extension to code");
 			goto error;
 		}
-		rohc_comp_debug(context, "extension '%s' chosen\n",
+		rohc_comp_debug(context, "extension '%s' chosen",
 		                rohc_get_ext_descr(extension));
 
 		/* UO-1-ID packet without extension or with extension 0, 1 or 2
@@ -2785,7 +2784,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 		            (extension == ROHC_EXT_3 ||
 		             !rtp_context->tmp.is_marker_bit_set), error,
 		            "UO-1-ID packet without extension 3 does not contain room "
-		            "for the RTP Marker (M) flag\n");
+		            "for the RTP Marker (M) flag");
 
 	}
 	else
@@ -2812,7 +2811,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					 *         IP-ID */
 					f_byte = innermost_ip_id_delta & 0x1f;
 					rohc_comp_debug(context, "5 bits of 5-bit innermost "
-					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
 					break;
 				}
 				case ROHC_EXT_0:
@@ -2821,7 +2820,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					 *         IP-ID */
 					f_byte = (innermost_ip_id_delta >> 3) & 0x1f;
 					rohc_comp_debug(context, "5 bits of 8-bit innermost "
-					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
 					break;
 				}
 				case ROHC_EXT_1:
@@ -2830,7 +2829,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					 *         IP-ID */
 					f_byte = (innermost_ip_id_delta >> 3) & 0x1f;
 					rohc_comp_debug(context, "5 bits of 8-bit innermost "
-					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
 					break;
 				}
 				case ROHC_EXT_2:
@@ -2839,14 +2838,14 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					 *         IP-ID */
 					f_byte = (innermost_ip_id_delta >> 11) & 0x1f;
 					rohc_comp_debug(context, "5 bits of 16-bit innermost "
-					                "non-random IP-ID = 0x%x\n", f_byte & 0x1f);
+					                "non-random IP-ID = 0x%x", f_byte & 0x1f);
 					break;
 				}
 				case ROHC_EXT_3:
 				{
 					size_t innermost_ip_id_rnd_count;
 
-					rohc_comp_debug(context, "code UO-1-ID packet with extension 3\n");
+					rohc_comp_debug(context, "code UO-1-ID packet with extension 3");
 
 					if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
 					{
@@ -2865,8 +2864,8 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 						 * UO-1-ID with zeroes */
 						f_byte = 0;
 						rohc_comp_debug(context, "5 zero bits of innermost "
-						                "non-random IP-ID with changed RND = "
-						                "0x%x\n", f_byte & 0x1f);
+						                "non-random IP-ID with changed RND = 0x%x",
+						                f_byte & 0x1f);
 					}
 					else if(nr_innermost_ip_id_bits <= 5)
 					{
@@ -2875,7 +2874,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 						 * EXT3 header */
 						f_byte = innermost_ip_id_delta & 0x1f;
 						rohc_comp_debug(context, "5 bits of less-than-5-bit "
-						                "innermost non-random IP-ID = 0x%x\n",
+						                "innermost non-random IP-ID = 0x%x",
 						                f_byte & 0x1f);
 					}
 					else
@@ -2888,7 +2887,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 						 * with zeroes */
 						f_byte = 0;
 						rohc_comp_debug(context, "5 zero bits of more-than-5-bit "
-						                "innermost non-random IP-ID = 0x%x\n",
+						                "innermost non-random IP-ID = 0x%x",
 						                f_byte & 0x1f);
 					}
 
@@ -2899,7 +2898,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					rtp_context->tmp.ts_send &=
 						(1 << rtp_context->tmp.nr_ts_bits_ext3) - 1;
 					rohc_comp_debug(context, "%zu bits of TS (0 in header, "
-					                "%zu in EXT3)\n", rtp_context->tmp.nr_ts_bits,
+					                "%zu in EXT3)", rtp_context->tmp.nr_ts_bits,
 					                rtp_context->tmp.nr_ts_bits_ext3);
 
 					break;
@@ -2908,7 +2907,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 				{
 					rohc_assert(context->compressor, ROHC_TRACE_COMP,
 					            context->profile->id, false, error,
-					            "unknown extension (%d)\n", extension);
+					            "unknown extension (%d)", extension);
 				}
 			}
 			break;
@@ -2919,11 +2918,11 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 	}
 	f_byte |= 0x80;
 	rohc_pkt[first_position] = f_byte;
-	rohc_comp_debug(context, "1 0 + T + TS/IP-ID = 0x%02x\n", f_byte);
+	rohc_comp_debug(context, "1 0 + T + TS/IP-ID = 0x%02x", f_byte);
 
 	/* part 4: (M / X +) SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
@@ -2936,7 +2935,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 		case ROHC_PACKET_UO_1:
 			/* SN + CRC (CRC was added before) */
 			s_byte |= (g_context->sn & 0x1f) << 3;
-			rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x\n",
+			rohc_comp_debug(context, "SN (%d) + CRC (%x) = 0x%02x",
 			                g_context->sn, crc, s_byte);
 			break;
 		case ROHC_PACKET_UO_1_RTP:
@@ -2944,7 +2943,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 			/* M + SN + CRC (CRC was added before) */
 			s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 7;
 			s_byte |= (g_context->sn & 0x0f) << 3;
-			rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x\n",
+			rohc_comp_debug(context, "M (%d) + SN (%d) + CRC (%x) = 0x%02x",
 			                !!rtp_context->tmp.is_marker_bit_set,
 			                g_context->sn & 0x0f, crc, s_byte);
 			break;
@@ -2958,7 +2957,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					s_byte &= ~0x80;
 					assert(g_context->tmp.nr_sn_bits <= 4);
 					s_byte |= (g_context->sn & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x\n",
+					rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
@@ -2967,7 +2966,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					s_byte |= 0x80;
 					assert(g_context->tmp.nr_sn_bits <= 7);
 					s_byte |= ((g_context->sn >> 3) & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x\n",
+					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
@@ -2976,7 +2975,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					s_byte |= 0x80;
 					assert(g_context->tmp.nr_sn_bits <= 7);
 					s_byte |= ((g_context->sn >> 3) & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x\n",
+					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
@@ -2985,7 +2984,7 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					s_byte |= 0x80;
 					assert(g_context->tmp.nr_sn_bits <= 7);
 					s_byte |= ((g_context->sn >> 3) & 0x0f) << 3;
-					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x\n",
+					rohc_comp_debug(context, "4 bits of 7-bit SN = 0x%x",
 					                (s_byte >> 3) & 0x0f);
 					break;
 				}
@@ -2995,14 +2994,14 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 					if(g_context->tmp.nr_sn_bits <= 4)
 					{
 						s_byte |= (g_context->sn & 0x0f) << 3;
-						rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x\n",
+						rohc_comp_debug(context, "4 bits of 4-bit SN = 0x%x",
 						                (s_byte >> 3) & 0x0f);
 					}
 					else
 					{
 						assert(g_context->tmp.nr_sn_bits <= (4 + 8));
 						s_byte |= ((g_context->sn >> 8) & 0x0f) << 3;
-						rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x\n",
+						rohc_comp_debug(context, "4 bits of 12-bit SN = 0x%x",
 						                (s_byte >> 3) & 0x0f);
 					}
 					break;
@@ -3011,17 +3010,17 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 				{
 					rohc_assert(context->compressor, ROHC_TRACE_COMP,
 					            context->profile->id, false, error,
-					            "unknown extension (%d)\n", extension);
+					            "unknown extension (%d)", extension);
 				}
 			}
 			rohc_comp_debug(context, "X (%u) + SN (%u) + CRC (0x%x) = "
-			                "0x%02x\n", !!(extension != ROHC_EXT_NONE),
+			                "0x%02x", !!(extension != ROHC_EXT_NONE),
 			                (s_byte >> 3) & 0x0f, crc, s_byte);
 			break;
 		}
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 	}
 	rohc_pkt[counter] = s_byte;
 	counter++;
@@ -3045,12 +3044,12 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
 		default:
-			rohc_comp_warn(context, "unknown extension (%d)\n", extension);
+			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
 	}
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "cannot build extension\n");
+		rohc_comp_warn(context, "cannot build extension");
 		goto error;
 	}
 	counter = ret;
@@ -3174,28 +3173,28 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	switch(packet_type)
 	{
 		case ROHC_PACKET_UOR_2:
-			rohc_comp_debug(context, "code UOR-2 packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UOR-2 packet (CID = %zu)",
 			                context->cid);
 			code_bytes = code_UOR2_bytes;
 			break;
 		case ROHC_PACKET_UOR_2_RTP:
-			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UOR-2-RTP packet (CID = %zu)",
 			                context->cid);
 			code_bytes = code_UOR2_RTP_bytes;
 			break;
 		case ROHC_PACKET_UOR_2_ID:
-			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UOR-2-ID packet (CID = %zu)",
 			                context->cid);
 			code_bytes = code_UOR2_ID_bytes;
 			break;
 		case ROHC_PACKET_UOR_2_TS:
-			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %zu)\n",
+			rohc_comp_debug(context, "code UOR-2-TS packet (CID = %zu)",
 			                context->cid);
 			code_bytes = code_UOR2_TS_bytes;
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 	}
 
 	/* parts 1 and 3:
@@ -3237,29 +3236,29 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	extension = g_context->decide_extension(context);
 	if(extension == ROHC_EXT_UNKNOWN)
 	{
-		rohc_comp_warn(context, "failed to determine the extension to code\n");
+		rohc_comp_warn(context, "failed to determine the extension to code");
 		goto error;
 	}
-	rohc_comp_debug(context, "extension '%s' chosen\n",
+	rohc_comp_debug(context, "extension '%s' chosen",
 	                rohc_get_ext_descr(extension));
 
 	/* parts 2, 4, 5: complete the three packet-specific bytes and copy them
 	 * in packet */
 	if(!code_bytes(context, extension, &f_byte, &s_byte, &t_byte))
 	{
-		rohc_comp_warn(context, "cannot code some UOR-2-* fields\n");
+		rohc_comp_warn(context, "cannot code some UOR-2-* fields");
 		goto error;
 	}
 
 	rohc_pkt[first_position] = f_byte;
-	rohc_comp_debug(context, "f_byte = 0x%02x\n", f_byte);
+	rohc_comp_debug(context, "f_byte = 0x%02x", f_byte);
 	if(is_rtp)
 	{
 		rohc_pkt[s_byte_position] = s_byte;
-		rohc_comp_debug(context, "s_byte = 0x%02x\n", s_byte);
+		rohc_comp_debug(context, "s_byte = 0x%02x", s_byte);
 	}
 	rohc_pkt[t_byte_position] = t_byte;
-	rohc_comp_debug(context, "t_byte = 0x%02x\n", t_byte);
+	rohc_comp_debug(context, "t_byte = 0x%02x", t_byte);
 
 	/* part 6: code extension */
 	switch(extension)
@@ -3280,12 +3279,12 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 			ret = code_EXT3_packet(context, uncomp_pkt, rohc_pkt, counter);
 			break;
 		default:
-			rohc_comp_warn(context, "unknown extension (%d)\n", extension);
+			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
 	}
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "cannot build extension\n");
+		rohc_comp_warn(context, "cannot build extension");
 		goto error;
 	}
 	counter = ret;
@@ -3342,7 +3341,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 	{
 		case ROHC_EXT_NONE:
 		{
-			rohc_comp_debug(context, "code UOR-2 packet with no extension\n");
+			rohc_comp_debug(context, "code UOR-2 packet with no extension");
 
 			/* part 2: SN bits */
 			assert(g_context->tmp.nr_sn_bits <= 5);
@@ -3356,7 +3355,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_0:
 		{
-			rohc_comp_debug(context, "code UOR-2 packet with extension 0\n");
+			rohc_comp_debug(context, "code UOR-2 packet with extension 0");
 
 			/* part 2 */
 			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
@@ -3370,7 +3369,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_1:
 		{
-			rohc_comp_debug(context, "code UOR-2 packet with extension 1\n");
+			rohc_comp_debug(context, "code UOR-2 packet with extension 1");
 
 			/* part 2 */
 			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
@@ -3384,7 +3383,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_2:
 		{
-			rohc_comp_debug(context, "code UOR-2 packet with extension 2\n");
+			rohc_comp_debug(context, "code UOR-2 packet with extension 2");
 
 			/* part 2 */
 			assert(g_context->tmp.nr_sn_bits <= (5 + 3));
@@ -3398,7 +3397,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_3:
 		{
-			rohc_comp_debug(context, "code UOR-2 packet with extension 3\n");
+			rohc_comp_debug(context, "code UOR-2 packet with extension 3");
 
 			/* part 2: check if the s-field needs to be used */
 			if(g_context->tmp.nr_sn_bits <= 5)
@@ -3419,7 +3418,7 @@ static int code_UOR2_bytes(const struct rohc_comp_ctxt *const context,
 
 		default:
 		{
-			rohc_comp_warn(context, "unknown extension (%d)\n", extension);
+			rohc_comp_warn(context, "unknown extension (%d)", extension);
 			goto error;
 		}
 	}
@@ -3498,25 +3497,25 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 	{
 		case ROHC_EXT_NONE:
 		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with no extension\n");
+			rohc_comp_debug(context, "code UOR-2-RTP packet with no extension");
 
 			/* part 2: 5 bits of 6-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & (((uint32_t) (1 << (32 - 1))) - 1);
 			*f_byte |= (ts_send >> 1) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 6-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 6-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: last TS bit + M flag + 6 bits of 6-bit SN */
 			*s_byte |= (ts_send & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 6-bit TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "1 bit of 6-bit TS in 2nd byte = 0x%x",
 			                ((*s_byte) >> 7) & 0x01);
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
-			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 0 */
@@ -3526,25 +3525,25 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_0:
 		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 0\n");
+			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 0");
 
 			/* part 2: 5 bits of 9-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & ((1 << (32 - 3 - 1)) - 1);
 			*f_byte |= (ts_send >> 4) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 9-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 9-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 3) & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 9-bit TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "1 bit of 9-bit TS in 2nd byte = 0x%x",
 			                ((*s_byte) >> 7) & 0x01);
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
@@ -3554,25 +3553,25 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_1:
 		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 1\n");
+			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 1");
 
 			/* part 2: 5 bits of 17-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & ((1 << (32 - 12 - 1)) - 1);
 			*f_byte |= (ts_send >> 12) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 17-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 17-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 11) & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 17-bit TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "1 bit of 17-bit TS in 2nd byte = 0x%x",
 			                ((*s_byte) >> 7) & 0x01);
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
@@ -3582,25 +3581,25 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_2:
 		{
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 2\n");
+			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 2");
 
 			/* part 2: 5 bits of 25-bit TS */
 			/* (be sure not to send bad TS bits because of the shift) */
 			ts_mask = 0x1f & ((1 << (32 - 19 - 1)) - 1);
 			*f_byte |= (ts_send >> 20) & ts_mask;
-			rohc_comp_debug(context, "5 bits of 25-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 25-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of 9-bit SN */
 			*s_byte |= ((ts_send >> 19) & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of 25-bit TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "1 bit of 25-bit TS in 2nd byte = 0x%x",
 			                ((*s_byte) >> 7) & 0x01);
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
@@ -3614,13 +3613,13 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			size_t nr_ts_bits_ext3; /* number of bits to send in EXT 3 */
 			uint8_t ts_bits_for_f_byte;
 
-			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 3\n");
+			rohc_comp_debug(context, "code UOR-2-RTP packet with extension 3");
 
 			/* part 2: 5 bits of TS */
-			rohc_comp_debug(context, "TS to send = 0x%x\n", ts_send);
+			rohc_comp_debug(context, "TS to send = 0x%x", ts_send);
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 6);
 			rohc_comp_debug(context, "%zd bits of TS (%zd in header, %zd in "
-			                "EXT3)\n", nr_ts_bits,
+			                "EXT3)", nr_ts_bits,
 			                (nr_ts_bits_ext3 <= nr_ts_bits ?
 			                 nr_ts_bits - nr_ts_bits_ext3 : 0),
 			                rohc_min(nr_ts_bits_ext3, nr_ts_bits));
@@ -3632,27 +3631,27 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 			ts_bits_for_f_byte = (ts_send >> (nr_ts_bits_ext3 + 1)) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
 			rohc_comp_debug(context, "5 bits of %zd-bit TS in 1st byte = 0x%x "
-			                "(mask = 0x%x)\n", 6 + nr_ts_bits_ext3,
+			                "(mask = 0x%x)", 6 + nr_ts_bits_ext3,
 			                ts_bits_for_f_byte, ts_mask);
 
 			/* part 4: 1 more bit of TS + M flag + 6 bits of SN */
 			*s_byte |= (ts_send >> nr_ts_bits_ext3 & 0x01) << 7;
-			rohc_comp_debug(context, "1 bit of %zd-bit TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "1 bit of %zd-bit TS in 2nd byte = 0x%x",
 			                6 + nr_ts_bits_ext3, (*s_byte >> 7) & 0x01);
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
-				rohc_comp_debug(context, "6 bits of %zd-bit SN = 0x%x\n",
+				rohc_comp_debug(context, "6 bits of %zd-bit SN = 0x%x",
 				                g_context->tmp.nr_sn_bits, (*s_byte) & 0x3f);
 			}
 			else
 			{
 				assert(g_context->tmp.nr_sn_bits <= (6 + 8));
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
-				rohc_comp_debug(context, "6 bits of %zd-bit SN = 0x%x\n",
+				rohc_comp_debug(context, "6 bits of %zd-bit SN = 0x%x",
 				                g_context->tmp.nr_sn_bits, (*s_byte) & 0x3f);
 			}
 
@@ -3670,7 +3669,7 @@ static int code_UOR2_RTP_bytes(const struct rohc_comp_ctxt *const context,
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "unknown extension (%d)\n", extension);
+			            false, error, "unknown extension (%d)", extension);
 		}
 	}
 
@@ -3766,21 +3765,21 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 	{
 		case ROHC_EXT_NONE:
 		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with no extension\n");
+			rohc_comp_debug(context, "code UOR-2-TS packet with no extension");
 
 			/* part 2: 5 bits of 5-bit TS */
 			*f_byte |= ts_send & 0x1f;
-			rohc_comp_debug(context, "5 bits of 5-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 5-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: T = 1 + M flag + 6 bits of 6-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
-			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 0 */
@@ -3790,21 +3789,21 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_0:
 		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 0\n");
+			rohc_comp_debug(context, "code UOR-2-TS packet with extension 0");
 
 			/* part 2: 5 bits of 8-bit TS */
 			*f_byte |= (ts_send >> 3) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 8-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 8-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
@@ -3814,21 +3813,21 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_1:
 		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 1\n");
+			rohc_comp_debug(context, "code UOR-2-TS packet with extension 1");
 
 			/* part 2: 5 bits of 8-bit TS */
 			*f_byte |= (ts_send >> 3) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 8-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 8-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
@@ -3838,21 +3837,21 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_2:
 		{
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 2\n");
+			rohc_comp_debug(context, "code UOR-2-TS packet with extension 2");
 
 			/* part 2: 5 bits of 16-bit TS */
 			*f_byte |= (ts_send >> 11) & 0x1f;
-			rohc_comp_debug(context, "5 bits of 16-bit TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "5 bits of 16-bit TS in 1st byte = 0x%x",
 			                (*f_byte) & 0x1f);
 
 			/* part 4: T = 1 + M flag + 6 bits of 9-bit SN */
 			*s_byte |= 0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x",
 			                (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
@@ -3867,13 +3866,13 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			uint32_t ts_mask;
 			uint8_t ts_bits_for_f_byte;
 
-			rohc_comp_debug(context, "code UOR-2-TS packet with extension 3\n");
+			rohc_comp_debug(context, "code UOR-2-TS packet with extension 3");
 
 			/* part 2: 5 bits of TS */
-			rohc_comp_debug(context, "TS to send = 0x%x\n", ts_send);
+			rohc_comp_debug(context, "TS to send = 0x%x", ts_send);
 			nr_ts_bits_ext3 = sdvl_get_min_len(nr_ts_bits, 5);
 			rohc_comp_debug(context, "%zd bits of TS (%zd in header, %zd in "
-			                "EXT3)\n", nr_ts_bits,
+			                "EXT3)", nr_ts_bits,
 			                (nr_ts_bits_ext3 <= nr_ts_bits ?
 			                 nr_ts_bits - nr_ts_bits_ext3 : 0),
 			                rohc_min(nr_ts_bits_ext3, nr_ts_bits));
@@ -3895,25 +3894,25 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 			ts_bits_for_f_byte = (ts_send >> nr_ts_bits_ext3) & ts_mask;
 			*f_byte |= ts_bits_for_f_byte;
 			rohc_comp_debug(context, "bits of TS in 1st byte = 0x%x "
-			                "(mask = 0x%x)\n", ts_bits_for_f_byte, ts_mask);
+			                "(mask = 0x%x)", ts_bits_for_f_byte, ts_mask);
 
 			/* part 4: T = 1 + M flag + 6 bits of SN */
 			*s_byte |= 0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
-			rohc_comp_debug(context, "SN to send = 0x%x\n", g_context->sn);
+			rohc_comp_debug(context, "SN to send = 0x%x", g_context->sn);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
-				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
+				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
 			}
 			else
 			{
 				assert(g_context->tmp.nr_sn_bits <= (6 + 8));
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
-				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x\n",
+				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
 			}
 
@@ -3931,7 +3930,7 @@ static int code_UOR2_TS_bytes(const struct rohc_comp_ctxt *const context,
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "unknown extension (%d)\n", extension);
+			            false, error, "unknown extension (%d)", extension);
 		}
 	}
 
@@ -4004,22 +4003,21 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 	{
 		case ROHC_EXT_NONE:
 		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with no extension\n");
+			rohc_comp_debug(context, "code UOR-2-ID packet with no extension");
 
 			/* part 2: 5 bits of 5-bit innermost IP-ID with non-random IP-ID */
 			*f_byte |= innermost_ip_id_delta & 0x1f;
 			rohc_comp_debug(context, "5 bits of 5-bit innermost non-random "
-			                "IP-ID = 0x%x\n", (*f_byte) & 0x1f);
+			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 6-bit SN */
 			*s_byte &= ~0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= 6);
 			*s_byte |= g_context->sn & 0x3f;
-			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
-			                (*s_byte) & 0x3f);
+			rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 0 */
 			*t_byte &= ~0x80;
@@ -4028,22 +4026,21 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_0:
 		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 0\n");
+			rohc_comp_debug(context, "code UOR-2-ID packet with extension 0");
 
 			/* part 2: 5 bits of 8-bit innermost IP-ID with non-random IP-ID */
 			*f_byte |= (innermost_ip_id_delta >> 3) & 0x1f;
 			rohc_comp_debug(context, "5 bits of 8-bit innermost non-random "
-			                "IP-ID = 0x%x\n", (*f_byte) & 0x1f);
+			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
-			                (*s_byte) & 0x3f);
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -4052,22 +4049,21 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_1:
 		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 1\n");
+			rohc_comp_debug(context, "code UOR-2-ID packet with extension 1");
 
 			/* part 2: 5 bits of 8-bit innermost IP-ID with non-random IP-ID */
 			*f_byte |= (innermost_ip_id_delta >> 3) & 0x1f;
 			rohc_comp_debug(context, "5 bits of 8-bit innermost non-random "
-			                "IP-ID = 0x%x\n", (*f_byte) & 0x1f);
+			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
-			                (*s_byte) & 0x3f);
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -4076,22 +4072,21 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 
 		case ROHC_EXT_2:
 		{
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 2\n");
+			rohc_comp_debug(context, "code UOR-2-ID packet with extension 2");
 
 			/* part 2: 5 bits of 16-bit innermost IP-ID with non-random IP-ID */
 			*f_byte |= (innermost_ip_id_delta >> 11) & 0x1f;
 			rohc_comp_debug(context, "5 bits of 16-bit innermost non-random "
-			                "IP-ID = 0x%x\n", (*f_byte) & 0x1f);
+			                "IP-ID = 0x%x", (*f_byte) & 0x1f);
 
 			/* part 4: T = 0 + M flag + 6 bits of 9-bit SN */
 			*s_byte &= ~0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			assert(g_context->tmp.nr_sn_bits <= (6 + 3));
 			*s_byte |= (g_context->sn >> 3) & 0x3f;
-			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x\n",
-			                (*s_byte) & 0x3f);
+			rohc_comp_debug(context, "6 bits of 9-bit SN = 0x%x", (*s_byte) & 0x3f);
 
 			/* part 5: set the X bit to 1 */
 			*t_byte |= 0x80;
@@ -4105,7 +4100,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			size_t nr_ts_bits_ext3;
 			size_t innermost_ip_id_rnd_count;
 
-			rohc_comp_debug(context, "code UOR-2-ID packet with extension 3\n");
+			rohc_comp_debug(context, "code UOR-2-ID packet with extension 3");
 
 			if(innermost_ip_hdr == ROHC_IP_HDR_FIRST)
 			{
@@ -4124,8 +4119,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 				 * zeroes */
 				*f_byte &= ~0x1f;
 				rohc_comp_debug(context, "5 zero bits of innermost non-random "
-				                "IP-ID with changed RND = 0x%x\n",
-				                (*f_byte) & 0x1f);
+				                "IP-ID with changed RND = 0x%x", (*f_byte) & 0x1f);
 			}
 			else if(nr_innermost_ip_id_bits <= 5)
 			{
@@ -4134,7 +4128,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 				 * header */
 				*f_byte |= innermost_ip_id_delta & 0x1f;
 				rohc_comp_debug(context, "5 bits of less-than-5-bit innermost "
-				                "non-random IP-ID = 0x%x\n", (*f_byte) & 0x1f);
+				                "non-random IP-ID = 0x%x", (*f_byte) & 0x1f);
 			}
 			else
 			{
@@ -4145,26 +4139,26 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 				   header and fill the 5-bit field of UOR-2-ID with zeroes */
 				*f_byte &= ~0x1f;
 				rohc_comp_debug(context, "5 zero bits of more-than-5-bit "
-				                "innermost non-random IP-ID = 0x%x\n",
+				                "innermost non-random IP-ID = 0x%x",
 				                (*f_byte) & 0x1f);
 			}
 
 			/* part 4: T = 0 + M flag + 6 bits of SN */
 			*s_byte &= ~0x80;
 			*s_byte |= ((!!rtp_context->tmp.is_marker_bit_set) & 0x01) << 6;
-			rohc_comp_debug(context, "1-bit M flag = %u\n",
+			rohc_comp_debug(context, "1-bit M flag = %u",
 			                !!rtp_context->tmp.is_marker_bit_set);
 			if(g_context->tmp.nr_sn_bits <= 6)
 			{
 				*s_byte |= g_context->sn & 0x3f;
-				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x\n",
+				rohc_comp_debug(context, "6 bits of 6-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
 			}
 			else
 			{
 				assert(g_context->tmp.nr_sn_bits <= (6 + 8));
 				*s_byte |= (g_context->sn >> 8) & 0x3f;
-				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x\n",
+				rohc_comp_debug(context, "6 bits of 14-bit SN = 0x%x",
 				                (*s_byte) & 0x3f);
 			}
 
@@ -4176,7 +4170,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 			assert(nr_ts_bits_ext3 < 32);
 			rtp_context->tmp.ts_send &= (1 << nr_ts_bits_ext3) - 1;
 			rtp_context->tmp.nr_ts_bits_ext3 = nr_ts_bits_ext3;
-			rohc_comp_debug(context, "will put %zd bits of TS = 0x%x in EXT3\n",
+			rohc_comp_debug(context, "will put %zd bits of TS = 0x%x in EXT3",
 			                nr_ts_bits_ext3, rtp_context->tmp.ts_send);
 
 			break;
@@ -4185,7 +4179,7 @@ static int code_UOR2_ID_bytes(const struct rohc_comp_ctxt *const context,
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "unknown extension (%d)\n", extension);
+			            false, error, "unknown extension (%d)", extension);
 		}
 	}
 
@@ -4278,7 +4272,7 @@ static int code_EXT0_packet(const struct rohc_comp_ctxt *const context,
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 		}
 	}
 
@@ -4372,10 +4366,10 @@ static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
 		{
 			const struct sc_rtp_context *const rtp_context = g_context->specific;
 			f_byte |= (rtp_context->tmp.ts_send >> 8) & 0x07;
-			rohc_comp_debug(context, "3 bits of TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "3 bits of TS in 1st byte = 0x%x",
 			                f_byte & 0x07);
 			s_byte = rtp_context->tmp.ts_send & 0xff;
-			rohc_comp_debug(context, "8 bits of TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "8 bits of TS in 2nd byte = 0x%x",
 			                s_byte & 0xff);
 			break;
 		}
@@ -4396,7 +4390,7 @@ static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
 			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= rtp_context->tmp.ts_send & 0x07;
-			rohc_comp_debug(context, "3 bits of TS in 1st byte = 0x%x\n",
+			rohc_comp_debug(context, "3 bits of TS in 1st byte = 0x%x",
 			                f_byte & 0x07);
 			s_byte = innermost_ip_id_delta & 0xff;
 			break;
@@ -4420,9 +4414,9 @@ static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
 
 			f_byte |= innermost_ip_id_delta & 0x07;
 			rohc_comp_debug(context, "3 bits of inner IP-ID in 1st byte = "
-			                "0x%x\n", f_byte & 0x07);
+			                "0x%x", f_byte & 0x07);
 			s_byte = rtp_context->tmp.ts_send & 0xff;
-			rohc_comp_debug(context, "8 bits of TS in 2nd byte = 0x%x\n",
+			rohc_comp_debug(context, "8 bits of TS in 2nd byte = 0x%x",
 			                s_byte & 0xff);
 			break;
 		}
@@ -4430,7 +4424,7 @@ static int code_EXT1_packet(const struct rohc_comp_ctxt *const context,
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 		}
 	}
 
@@ -4506,7 +4500,7 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 	/* part 1: extension type + SN */
 	f_byte = (g_context->sn & 0x07) << 3;
 	f_byte |= 0x80;
-	rohc_comp_debug(context, "3 bits of SN = 0x%x\n", g_context->sn & 0x07);
+	rohc_comp_debug(context, "3 bits of SN = 0x%x", g_context->sn & 0x07);
 
 	/* parts 1, 2 & 3: IP-ID or TS ? */
 	switch(packet_type)
@@ -4529,13 +4523,13 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 			       g_context->inner_ip_flags.info.v4.rnd == 0);
 
 			f_byte |= (g_context->outer_ip_flags.info.v4.id_delta >> 8) & 0x07;
-			rohc_comp_debug(context, "3 bits of outer IP-ID = 0x%x\n",
+			rohc_comp_debug(context, "3 bits of outer IP-ID = 0x%x",
 			                f_byte & 0x07);
 			s_byte = g_context->outer_ip_flags.info.v4.id_delta & 0xff;
-			rohc_comp_debug(context, "8 bits of outer IP-ID = 0x%x\n",
+			rohc_comp_debug(context, "8 bits of outer IP-ID = 0x%x",
 			                s_byte & 0xff);
 			t_byte = g_context->inner_ip_flags.info.v4.id_delta & 0xff;
-			rohc_comp_debug(context, "8 bits of inner IP-ID = 0x%x\n",
+			rohc_comp_debug(context, "8 bits of inner IP-ID = 0x%x",
 			                t_byte & 0xff);
 			break;
 		}
@@ -4546,11 +4540,11 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 			const uint32_t ts_send = rtp_context->tmp.ts_send;
 
 			f_byte |= (ts_send >> 16) & 0x07;
-			rohc_comp_debug(context, "3 bits of TS = 0x%x\n", f_byte & 0x07);
+			rohc_comp_debug(context, "3 bits of TS = 0x%x", f_byte & 0x07);
 			s_byte = (ts_send >> 8) & 0xff;
-			rohc_comp_debug(context, "8 bits of TS = 0x%x\n", s_byte & 0xff);
+			rohc_comp_debug(context, "8 bits of TS = 0x%x", s_byte & 0xff);
 			t_byte = ts_send & 0xff;
-			rohc_comp_debug(context, "8 bits of TS = 0x%x\n", t_byte & 0xff);
+			rohc_comp_debug(context, "8 bits of TS = 0x%x", t_byte & 0xff);
 			break;
 		}
 
@@ -4571,12 +4565,12 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 			assert(innermost_ip_hdr != ROHC_IP_HDR_NONE);
 
 			f_byte |= (ts_send >> 8) & 0x07;
-			rohc_comp_debug(context, "3 bits of TS = 0x%x\n", f_byte & 0x07);
+			rohc_comp_debug(context, "3 bits of TS = 0x%x", f_byte & 0x07);
 			s_byte = ts_send & 0xff;
-			rohc_comp_debug(context, "8 bits of TS = 0x%x\n", s_byte & 0xff);
+			rohc_comp_debug(context, "8 bits of TS = 0x%x", s_byte & 0xff);
 			t_byte = innermost_ip_id_delta & 0xff;
 			rohc_comp_debug(context, "8 bits of innermost non-random "
-			                "IP-ID = 0x%x\n", t_byte & 0xff);
+			                "IP-ID = 0x%x", t_byte & 0xff);
 			break;
 		}
 
@@ -4598,19 +4592,19 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 
 			f_byte |= (innermost_ip_id_delta >> 8) & 0x07;
 			rohc_comp_debug(context, "3 bits of innermost non-random IP-ID "
-			                "= 0x%x\n", f_byte & 0x07);
+			                "= 0x%x", f_byte & 0x07);
 			s_byte = innermost_ip_id_delta & 0xff;
 			rohc_comp_debug(context, "8 bits of innermost non-random IP-ID "
-			                "= 0x%x\n", s_byte & 0xff);
+			                "= 0x%x", s_byte & 0xff);
 			t_byte = rtp_context->tmp.ts_send & 0xff;
-			rohc_comp_debug(context, "8 bits of TS = 0x%x\n", t_byte & 0xff);
+			rohc_comp_debug(context, "8 bits of TS = 0x%x", t_byte & 0xff);
 			break;
 		}
 
 		default:
 		{
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 		}
 	}
 
@@ -4621,7 +4615,7 @@ static int code_EXT2_packet(const struct rohc_comp_ctxt *const context,
 	counter++;
 	dest[counter] = t_byte;
 	counter++;
-	rohc_comp_debug(context, "extension 2: 0x%02x 0x%02x 0x%02x\n", f_byte,
+	rohc_comp_debug(context, "extension 2: 0x%02x 0x%02x 0x%02x", f_byte,
 	                s_byte, t_byte);
 
 	return counter;
@@ -4752,7 +4746,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			break;
 		default:
 			rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-			            false, error, "bad packet type (%d)\n", packet_type);
+			            false, error, "bad packet type (%d)", packet_type);
 	}
 	f_byte |= (S << 5) & 0x20;
 
@@ -4784,7 +4778,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 				if(!rts && rtp_context->ts_sc.state != SEND_SCALED)
 				{
 					rohc_comp_debug(context, "force R-TS = 1 because Tsc = 0 and "
-					                "base header contains no TS bit\n");
+					                "base header contains no TS bit");
 					assert(rtp_context->tmp.nr_ts_bits_ext3 == 0);
 					rts = 1;
 					/* as field is SDVL-encoded, send as many bits as possible
@@ -4798,7 +4792,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 				break;
 			default:
 				rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-				            false, error, "bad packet type (%d)\n", packet_type);
+				            false, error, "bad packet type (%d)", packet_type);
 		}
 		f_byte |= (rts & 0x01) << 4;
 
@@ -4827,20 +4821,20 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 		       (rtp_context->ts_sc.state == INIT_STRIDE));
 		f_byte |= rtp & 0x01;
 
-		rohc_comp_debug(context, "S = %d, R-TS = %d, Tsc = %u, rtp = %d\n",
+		rohc_comp_debug(context, "S = %d, R-TS = %d, Tsc = %u, rtp = %d",
 		                S, rts, tsc, rtp);
 	}
 	else /* non-RTP profiles */
 	{
 		f_byte |= (context->mode & 0x3) << 3;
 
-		rohc_comp_debug(context, "S = %d, Mode = %d\n", S, context->mode & 0x3);
+		rohc_comp_debug(context, "S = %d, Mode = %d", S, context->mode & 0x3);
 	}
 
 	/* if random bit is set we have the IP-ID field outside this function */
 	if(ip_get_version(&uncomp_pkt->outer_ip) == IPV4)
 	{
-		rohc_comp_debug(context, "rnd_count_up = %d\n",
+		rohc_comp_debug(context, "rnd_count_up = %d",
 		                g_context->outer_ip_flags.info.v4.rnd_count);
 	}
 
@@ -4883,7 +4877,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 		f_byte |= (I & 0x01) << 2;
 
 		/* ip bit */
-		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
+		rohc_comp_debug(context, "check for changed fields in the inner IP header");
 		if(changed_dynamic_one_hdr(context, changed_f & 0x01FF,
 		                           &g_context->outer_ip_flags, &uncomp_pkt->outer_ip) ||
 		   changed_static_one_hdr(context, changed_f, &g_context->outer_ip_flags))
@@ -4987,7 +4981,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 
 		/* ip2 bit if non-RTP
 		 * (force ip2=1 if I2=1, otherwise I2 is not sent) */
-		rohc_comp_debug(context, "check for changed fields in the outer IP header\n");
+		rohc_comp_debug(context, "check for changed fields in the outer IP header");
 		if(I2 ||
 		   changed_dynamic_one_hdr(context, changed_f, &g_context->outer_ip_flags,
 		                           &uncomp_pkt->outer_ip) ||
@@ -5002,7 +4996,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 
 		/* ip bit
 		 * (force ip=1 if ip2=1 and RTP profile, otherwise ip2 is not send) */
-		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
+		rohc_comp_debug(context, "check for changed fields in the inner IP header");
 		if((is_rtp && nr_of_ip_hdr > 1) ||
 		   changed_dynamic_one_hdr(context, changed_f2, &g_context->inner_ip_flags,
 		                           &uncomp_pkt->inner_ip) ||
@@ -5012,10 +5006,10 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			f_byte = f_byte | 0x02;
 		}
 	}
-	rohc_comp_debug(context, "I = %d, ip = %d, I2 = %d, ip2 = %d\n",
+	rohc_comp_debug(context, "I = %d, ip = %d, I2 = %d, ip2 = %d",
 	                I, have_inner, I2, have_outer);
 
-	rohc_comp_debug(context, "part 1 = 0x%02x\n", f_byte);
+	rohc_comp_debug(context, "part 1 = 0x%02x", f_byte);
 	dest[counter] = f_byte;
 	counter++;
 
@@ -5035,7 +5029,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 		if(S)
 		{
 			dest[counter] = g_context->sn & 0xff;
-			rohc_comp_debug(context, "8 bits of %zd-bit SN = 0x%02x\n",
+			rohc_comp_debug(context, "8 bits of %zd-bit SN = 0x%02x",
 			                g_context->tmp.nr_sn_bits, dest[counter]);
 			counter++;
 		}
@@ -5057,12 +5051,12 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			                ts_send, nr_ts_bits_ext3))
 			{
 				rohc_comp_warn(context, "TS length greater than 29 (value = %u, "
-				               "length = %zd)\n", ts_send, nr_ts_bits_ext3);
+				               "length = %zd)", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
 			counter += sdvl_size;
 			rohc_comp_debug(context, "ts_send = %u (0x%x) needs %zu bits in "
-			                "EXT3, so SDVL-code it on %zu bytes\n", ts_send,
+			                "EXT3, so SDVL-code it on %zu bytes", ts_send,
 			                ts_send, nr_ts_bits_ext3, sdvl_size);
 		}
 
@@ -5087,7 +5081,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			/* always transmit the IP-ID encoded, in Network Byte Order */
 			id_encoded = rohc_hton16(g_context->outer_ip_flags.info.v4.id_delta);
 			memcpy(&dest[counter], &id_encoded, 2);
-			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
+			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x",
 			                innermost_ipv4_non_rnd, dest[counter],
 			                dest[counter + 1]);
 			counter += 2;
@@ -5148,12 +5142,12 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 			                ts_send, nr_ts_bits_ext3))
 			{
 				rohc_comp_warn(context, "TS length greater than 29 (value = %u, "
-				               "length = %zd)\n", ts_send, nr_ts_bits_ext3);
+				               "length = %zd)", ts_send, nr_ts_bits_ext3);
 				goto error;
 			}
 			counter += sdvl_size;
 			rohc_comp_debug(context, "ts_send = %u (0x%x) needs %zu bits in "
-			                "EXT3, so SDVL-code it on %zu bytes\n", ts_send,
+			                "EXT3, so SDVL-code it on %zu bytes", ts_send,
 			                ts_send, nr_ts_bits_ext3, sdvl_size);
 		}
 
@@ -5185,7 +5179,7 @@ static int code_EXT3_packet(const struct rohc_comp_ctxt *const context,
 				id_encoded = rohc_hton16(g_context->inner_ip_flags.info.v4.id_delta);
 			}
 			memcpy(&dest[counter], &id_encoded, 2);
-			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
+			rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x",
 			                innermost_ipv4_non_rnd, dest[counter],
 			                dest[counter + 1]);
 			counter += 2;
@@ -5295,7 +5289,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 	byte |= (rtp->m & 0x01) << 4;
 	byte |= (rtp->extension & 0x01) << 3;
 	byte |= (tss & 0x01) << 1;
-	rohc_comp_debug(context, "RTP flags = 0x%x\n", byte);
+	rohc_comp_debug(context, "RTP flags = 0x%x", byte);
 	dest[counter] = byte;
 	counter++;
 	rtp_context->rtp_extension_change_count++;
@@ -5306,7 +5300,7 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		byte = 0;
 		byte |= (rtp->padding & 0x01) << 7;
 		byte |= rtp->pt & 0x7f;
-		rohc_comp_debug(context, "part 2 = 0x%x\n", byte);
+		rohc_comp_debug(context, "part 2 = 0x%x", byte);
 		dest[counter] = byte;
 		counter++;
 		rtp_context->rtp_padding_change_count++;
@@ -5330,14 +5324,14 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 		                           ts_stride);
 		if(!success)
 		{
-			rohc_comp_warn(context, "TS stride length greater than 29 (%u)\n",
+			rohc_comp_warn(context, "TS stride length greater than 29 (%u)",
 			               ts_stride);
 			goto error;
 		}
 		counter += sdvl_size;
 
 		rohc_comp_debug(context, "TS_STRIDE %u (0x%x) is SDVL-encoded on %zd "
-		                "bit(s)\n", ts_stride, ts_stride, sdvl_size);
+		                "bit(s)", ts_stride, ts_stride, sdvl_size);
 
 		/* do we transmit the scaled RTP Timestamp (TS) in the next packet ? */
 		if(rtp_context->ts_sc.state == INIT_STRIDE)
@@ -5347,14 +5341,14 @@ static int rtp_header_flags_and_fields(const struct rohc_comp_ctxt *const contex
 			{
 				rohc_comp_debug(context, "TS_STRIDE transmitted at least %u "
 				                "times, so change from state INIT_STRIDE to "
-				                "SEND_SCALED\n", ROHC_INIT_TS_STRIDE_MIN);
+				                "SEND_SCALED", ROHC_INIT_TS_STRIDE_MIN);
 				rtp_context->ts_sc.state = SEND_SCALED;
 			}
 			else
 			{
 				rohc_comp_debug(context, "TS_STRIDE transmitted only %zd times, "
 				                "so stay in state INIT_STRIDE (at least %u times "
-				                "are required to change to state SEND_SCALED)\n",
+				                "are required to change to state SEND_SCALED)",
 				                rtp_context->ts_sc.nr_init_stride_packets,
 				                ROHC_INIT_TS_STRIDE_MIN);
 			}
@@ -5463,7 +5457,7 @@ static int header_flags(const struct rohc_comp_ctxt *const context,
 
 	rohc_comp_debug(context, "IPv%d header flags: TOS = %d, TTL = %d, "
 	                "DF = %d, PR = %d, IPX = %d, NBO = %d, RND = %d, "
-	                "ip2/I2 = %d\n", header_info->version, (flags >> 7) & 0x1,
+	                "ip2/I2 = %d", header_info->version, (flags >> 7) & 0x1,
 	                (flags >> 6) & 0x1, (flags >> 5) & 0x1, (flags >> 4) & 0x1,
 	                (flags >> 3) & 0x1, (flags >> 2) & 0x1, (flags >> 1) & 0x1,
 	                flags & 0x1);
@@ -5538,7 +5532,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	   header_info->tos_count < MAX_FO_COUNT)
 	{
 		tos = ip_get_tos(ip);
-		rohc_comp_debug(context, "IP TOS/TC of IP header #%u = 0x%02x\n",
+		rohc_comp_debug(context, "IP TOS/TC of IP header #%u = 0x%02x",
 		                ip_hdr_pos, tos);
 		header_info->tos_count++;
 		dest[counter] = tos;
@@ -5550,7 +5544,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	   header_info->ttl_count < MAX_FO_COUNT)
 	{
 		ttl = ip_get_ttl(ip);
-		rohc_comp_debug(context, "IP TTL/HL of IP header #%u = 0x%02x\n",
+		rohc_comp_debug(context, "IP TTL/HL of IP header #%u = 0x%02x",
 		                ip_hdr_pos, ttl);
 		header_info->ttl_count++;
 		dest[counter] = ttl;
@@ -5563,7 +5557,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 	{
 		protocol = ip_get_protocol(ip);
 		rohc_comp_debug(context, "IP Protocol/Next Header of IP header #%u "
-		                "= 0x%02x\n", ip_hdr_pos, protocol);
+		                "= 0x%02x", ip_hdr_pos, protocol);
 		header_info->protocol_count++;
 		dest[counter] = protocol;
 		counter++;
@@ -5577,7 +5571,7 @@ static int header_fields(const struct rohc_comp_ctxt *const context,
 		/* always transmit the IP-ID encoded, in Network Byte Order */
 		id_encoded = rohc_hton16(header_info->info.v4.id_delta);
 		memcpy(&dest[counter], &id_encoded, 2);
-		rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x\n",
+		rohc_comp_debug(context, "IP ID of IP header #%u = 0x%02x 0x%02x",
 		                ip_hdr_pos, dest[counter], dest[counter + 1]);
 		counter += 2;
 	}
@@ -5764,8 +5758,7 @@ static int changed_static_one_hdr(const struct rohc_comp_ctxt *const context,
 	if(is_field_changed(changed_fields, MOD_PROTOCOL) ||
 	   header_info->protocol_count < MAX_FO_COUNT)
 	{
-		rohc_comp_debug(context, "protocol_count %d\n",
-		                header_info->protocol_count);
+		rohc_comp_debug(context, "protocol_count %d", header_info->protocol_count);
 
 		if(is_field_changed(changed_fields, MOD_PROTOCOL))
 		{
@@ -5795,14 +5788,14 @@ static int changed_dynamic_both_hdr(const struct rohc_comp_ctxt *const context,
 
 	g_context = (struct c_generic_context *) context->specific;
 
-	rohc_comp_debug(context, "check for changed fields in the outer IP header\n");
+	rohc_comp_debug(context, "check for changed fields in the outer IP header");
 	nb_fields = changed_dynamic_one_hdr(context, g_context->tmp.changed_fields,
 	                                    &g_context->outer_ip_flags,
 	                                    &uncomp_pkt->outer_ip);
 
 	if(uncomp_pkt->ip_hdr_nr > 1)
 	{
-		rohc_comp_debug(context, "check for changed fields in the inner IP header\n");
+		rohc_comp_debug(context, "check for changed fields in the inner IP header");
 		nb_fields += changed_dynamic_one_hdr(context,
 		                                     g_context->tmp.changed_fields2,
 		                                     &g_context->inner_ip_flags,
@@ -5856,13 +5849,13 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 	{
 		if(is_field_changed(changed_fields, MOD_TOS))
 		{
-			rohc_comp_debug(context, "TOS/TC changed in the current packet\n");
+			rohc_comp_debug(context, "TOS/TC changed in the current packet");
 			header_info->tos_count = 0;
 			g_context->fo_count = 0;
 		}
 		else
 		{
-			rohc_comp_debug(context, "TOS/TC changed in the last few packets\n");
+			rohc_comp_debug(context, "TOS/TC changed in the last few packets");
 		}
 		nb_fields += 1;
 	}
@@ -5873,13 +5866,13 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 	{
 		if(is_field_changed(changed_fields, MOD_TTL))
 		{
-			rohc_comp_debug(context, "TTL/HL changed in the current packet\n");
+			rohc_comp_debug(context, "TTL/HL changed in the current packet");
 			header_info->ttl_count = 0;
 			g_context->fo_count = 0;
 		}
 		else
 		{
-			rohc_comp_debug(context, "TTL/HL changed in the last few packets\n");
+			rohc_comp_debug(context, "TTL/HL changed in the last few packets");
 		}
 		nb_fields += 1;
 	}
@@ -5896,13 +5889,13 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 		{
 			if(df != old_df)
 			{
-				rohc_comp_debug(context, "DF changed in the current packet\n");
+				rohc_comp_debug(context, "DF changed in the current packet");
 				header_info->info.v4.df_count = 0;
 				g_context->fo_count = 0;
 			}
 			else
 			{
-				rohc_comp_debug(context, "DF changed in the last few packets\n");
+				rohc_comp_debug(context, "DF changed in the last few packets");
 			}
 			nb_fields += 1;
 		}
@@ -5914,14 +5907,14 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 			if(header_info->info.v4.rnd != header_info->info.v4.old_rnd)
 			{
 				rohc_comp_debug(context, "RND changed (0x%x -> 0x%x) in the "
-				                "current packet\n", header_info->info.v4.old_rnd,
+				                "current packet", header_info->info.v4.old_rnd,
 				                header_info->info.v4.rnd);
 				header_info->info.v4.rnd_count = 0;
 				g_context->fo_count = 0;
 			}
 			else
 			{
-				rohc_comp_debug(context, "RND changed in the last few packets\n");
+				rohc_comp_debug(context, "RND changed in the last few packets");
 			}
 			nb_flags += 1;
 		}
@@ -5933,14 +5926,14 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 			if(header_info->info.v4.nbo != header_info->info.v4.old_nbo)
 			{
 				rohc_comp_debug(context, "NBO changed (0x%x -> 0x%x) in the "
-				                "current packet\n", header_info->info.v4.old_nbo,
+				                "current packet", header_info->info.v4.old_nbo,
 				                header_info->info.v4.nbo);
 				header_info->info.v4.nbo_count = 0;
 				g_context->fo_count = 0;
 			}
 			else
 			{
-				rohc_comp_debug(context, "NBO changed in the last few packets\n");
+				rohc_comp_debug(context, "NBO changed in the last few packets");
 			}
 			nb_flags += 1;
 		}
@@ -5957,14 +5950,14 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 			if(header_info->info.v4.sid != header_info->info.v4.old_sid)
 			{
 				rohc_comp_debug(context, "SID changed (0x%x -> 0x%x) in the "
-				                "current packet\n", header_info->info.v4.old_sid,
+				                "current packet", header_info->info.v4.old_sid,
 				                header_info->info.v4.sid);
 				header_info->info.v4.sid_count = 0;
 				g_context->fo_count = 0;
 			}
 			else
 			{
-				rohc_comp_debug(context, "SID changed in the last few packets\n");
+				rohc_comp_debug(context, "SID changed in the last few packets");
 			}
 		}
 	}
@@ -5974,13 +5967,13 @@ static int changed_dynamic_one_hdr(const struct rohc_comp_ctxt *const context,
 		if(is_field_changed(changed_fields, MOD_IPV6_EXT_LIST_STRUCT))
 		{
 			rohc_comp_debug(context, "the structure of the list of IPv6 "
-			                "extension headers changed\n");
+			                "extension headers changed");
 			nb_fields += 1;
 		}
 		else if(is_field_changed(changed_fields, MOD_IPV6_EXT_LIST_CONTENT))
 		{
 			rohc_comp_debug(context, "the content of the list of IPv6 "
-			                "extension headers changed\n");
+			                "extension headers changed");
 			nb_fields += 1;
 		}
 	}
@@ -6040,7 +6033,7 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 	new_tos = ip_get_tos(ip);
 	if(old_tos != new_tos)
 	{
-		rohc_comp_debug(context, "TOS/TC changed from 0x%02x to 0x%02x\n",
+		rohc_comp_debug(context, "TOS/TC changed from 0x%02x to 0x%02x",
 		                old_tos, new_tos);
 		ret_value |= MOD_TOS;
 	}
@@ -6048,7 +6041,7 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 	new_ttl = ip_get_ttl(ip);
 	if(old_ttl != new_ttl)
 	{
-		rohc_comp_debug(context, "TTL/HL changed from 0x%02x to 0x%02x\n",
+		rohc_comp_debug(context, "TTL/HL changed from 0x%02x to 0x%02x",
 		                old_ttl, new_ttl);
 		ret_value |= MOD_TTL;
 	}
@@ -6056,7 +6049,7 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 	new_protocol = ip_get_protocol(ip);
 	if(old_protocol != new_protocol)
 	{
-		rohc_comp_debug(context, "Protocol/NH changed from 0x%02x to 0x%02x\n",
+		rohc_comp_debug(context, "Protocol/NH changed from 0x%02x to 0x%02x",
 		                old_protocol, new_protocol);
 		ret_value |= MOD_PROTOCOL;
 	}
@@ -6074,14 +6067,12 @@ static unsigned short detect_changed_fields(const struct rohc_comp_ctxt *const c
 		}
 		if(list_struct_changed)
 		{
-			rohc_comp_debug(context, "IPv6 extension headers changed of "
-			                "structure\n");
+			rohc_comp_debug(context, "IPv6 extension headers changed of structure");
 			ret_value |= MOD_IPV6_EXT_LIST_STRUCT;
 		}
 		if(list_content_changed)
 		{
-			rohc_comp_debug(context, "IPv6 extension headers changed of "
-			                "content\n");
+			rohc_comp_debug(context, "IPv6 extension headers changed of content");
 			ret_value |= MOD_IPV6_EXT_LIST_CONTENT;
 		}
 	}
@@ -6151,14 +6142,14 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 {
 	rohc_assert(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 	            ip_get_version(ip) == IPV4, error,
-	            "cannot check IP-ID behaviour with IPv6\n");
+	            "cannot check IP-ID behaviour with IPv6");
 
 	if(header_info->is_first_header)
 	{
 		/* IP-ID behaviour cannot be detected for the first header (2 headers are
 		 * needed), so consider that IP-ID is not random/static and in NBO. */
 		rohc_comp_debug(context, "no previous IP-ID, consider non-random/static "
-		                "and NBO\n");
+		                "and NBO");
 		header_info->info.v4.rnd = 0;
 		header_info->info.v4.nbo = 1;
 		header_info->info.v4.sid = 0;
@@ -6174,13 +6165,13 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		old_id = rohc_ntoh16(header_info->info.v4.old_ip.id);
 		new_id = rohc_ntoh16(ipv4_get_id(ip));
 
-		rohc_comp_debug(context, "1) old_id = 0x%04x new_id = 0x%04x\n",
+		rohc_comp_debug(context, "1) old_id = 0x%04x new_id = 0x%04x",
 		                old_id, new_id);
 
 		if(new_id == old_id)
 		{
 			/* previous and current IP-ID values are equal: IP-ID is constant */
-			rohc_comp_debug(context, "IP-ID is constant (SID detected)\n");
+			rohc_comp_debug(context, "IP-ID is constant (SID detected)");
 			header_info->info.v4.rnd = 0;
 			header_info->info.v4.nbo = 1;
 			header_info->info.v4.sid = 1;
@@ -6188,7 +6179,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		else if(is_ip_id_increasing(old_id, new_id))
 		{
 			/* IP-ID is increasing in NBO */
-			rohc_comp_debug(context, "IP-ID is increasing in NBO\n");
+			rohc_comp_debug(context, "IP-ID is increasing in NBO");
 			header_info->info.v4.rnd = 0;
 			header_info->info.v4.nbo = 1;
 			header_info->info.v4.sid = 0;
@@ -6199,20 +6190,20 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 			old_id = swab16(old_id);
 			new_id = swab16(new_id);
 
-			rohc_comp_debug(context, "2) old_id = 0x%04x new_id = 0x%04x\n",
+			rohc_comp_debug(context, "2) old_id = 0x%04x new_id = 0x%04x",
 			                old_id, new_id);
 
 			if(is_ip_id_increasing(old_id, new_id))
 			{
 				/* IP-ID is increasing in Little Endian */
-				rohc_comp_debug(context, "IP-ID is increasing in Little Endian\n");
+				rohc_comp_debug(context, "IP-ID is increasing in Little Endian");
 				header_info->info.v4.rnd = 0;
 				header_info->info.v4.nbo = 0;
 				header_info->info.v4.sid = 0;
 			}
 			else
 			{
-				rohc_comp_debug(context, "IP-ID is random (RND detected)\n");
+				rohc_comp_debug(context, "IP-ID is random (RND detected)");
 				header_info->info.v4.rnd = 1;
 				header_info->info.v4.nbo = 1; /* do not change bit order if RND */
 				header_info->info.v4.sid = 0;
@@ -6220,7 +6211,7 @@ static void detect_ip_id_behaviour(const struct rohc_comp_ctxt *const context,
 		}
 	}
 
-	rohc_comp_debug(context, "NBO = %d, RND = %d, SID = %d\n",
+	rohc_comp_debug(context, "NBO = %d, RND = %d, SID = %d",
 	                header_info->info.v4.nbo, header_info->info.v4.rnd,
 	                header_info->info.v4.sid);
 
@@ -6293,11 +6284,11 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	g_context = (struct c_generic_context *) context->specific;
 	assert(uncomp_pkt != NULL);
 
-	rohc_comp_debug(context, "compressor is in state %u\n", context->state);
+	rohc_comp_debug(context, "compressor is in state %u", context->state);
 
 	/* always update the info related to the SN */
 	{
-		rohc_comp_debug(context, "new SN = %u / 0x%x\n", g_context->sn,
+		rohc_comp_debug(context, "new SN = %u / 0x%x", g_context->sn,
 		                g_context->sn);
 
 		/* how many bits are required to encode the new SN ? */
@@ -6306,7 +6297,7 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			/* send all bits in IR state */
 			g_context->tmp.nr_sn_bits = 16;
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-			                "new SN\n", g_context->tmp.nr_sn_bits);
+			                "new SN", g_context->tmp.nr_sn_bits);
 		}
 		else
 		{
@@ -6316,11 +6307,11 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			if(!wlsb_k_ok)
 			{
 				rohc_comp_debug(context, "failed to find the minimal number "
-				                "of bits required for SN\n");
+				                "of bits required for SN");
 				goto error;
 			}
 		}
-		rohc_comp_debug(context, "%zd bits are required to encode new SN\n",
+		rohc_comp_debug(context, "%zd bits are required to encode new SN",
 		                g_context->tmp.nr_sn_bits);
 
 		/* add the new SN to the W-LSB encoding object */
@@ -6337,7 +6328,7 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                            g_context->outer_ip_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new outer IP-ID delta = 0x%x / %u (NBO = %d, "
-		                "RND = %d, SID = %d)\n",
+		                "RND = %d, SID = %d)",
 		                g_context->outer_ip_flags.info.v4.id_delta,
 		                g_context->outer_ip_flags.info.v4.id_delta,
 		                g_context->outer_ip_flags.info.v4.nbo,
@@ -6350,14 +6341,14 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			/* send all bits in IR state */
 			g_context->tmp.nr_ip_id_bits = 16;
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-			                "new outer IP-ID delta\n", g_context->tmp.nr_ip_id_bits);
+			                "new outer IP-ID delta", g_context->tmp.nr_ip_id_bits);
 		}
 		else if(g_context->outer_ip_flags.info.v4.sid)
 		{
 			/* IP-ID is constant, no IP-ID bit to transmit */
 			g_context->tmp.nr_ip_id_bits = 0;
 			rohc_comp_debug(context, "outer IP-ID is constant, no IP-ID bit to "
-			                "transmit\n");
+			                "transmit");
 		}
 		else
 		{
@@ -6368,12 +6359,12 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			if(!wlsb_k_ok)
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for new outer IP-ID delta\n");
+				               "bits required for new outer IP-ID delta");
 				goto error;
 			}
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new outer "
-		                "IP-ID delta\n", g_context->tmp.nr_ip_id_bits);
+		                "IP-ID delta", g_context->tmp.nr_ip_id_bits);
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		c_add_wlsb(g_context->outer_ip_flags.info.v4.ip_id_window, g_context->sn,
@@ -6396,7 +6387,7 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                            g_context->inner_ip_flags.info.v4.nbo)) -
 			g_context->sn;
 		rohc_comp_debug(context, "new inner IP-ID delta = 0x%x / %u (NBO = %d, "
-		                "RND = %d, SID = %d)\n",
+		                "RND = %d, SID = %d)",
 		                g_context->inner_ip_flags.info.v4.id_delta,
 		                g_context->inner_ip_flags.info.v4.id_delta,
 		                g_context->inner_ip_flags.info.v4.nbo,
@@ -6409,14 +6400,14 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			/* send all bits in IR state */
 			g_context->tmp.nr_ip_id_bits2 = 16;
 			rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-			                "new inner IP-ID delta\n", g_context->tmp.nr_ip_id_bits2);
+			                "new inner IP-ID delta", g_context->tmp.nr_ip_id_bits2);
 		}
 		else if(g_context->inner_ip_flags.info.v4.sid)
 		{
 			/* IP-ID is constant, no IP-ID bit to transmit */
 			g_context->tmp.nr_ip_id_bits2 = 0;
 			rohc_comp_debug(context, "inner IP-ID is constant, no IP-ID bit to "
-			                "transmit\n");
+			                "transmit");
 		}
 		else
 		{
@@ -6427,12 +6418,12 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			if(!wlsb_k_ok)
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for new inner IP-ID delta\n");
+				               "bits required for new inner IP-ID delta");
 				goto error;
 			}
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new inner "
-		                "IP-ID delta\n", g_context->tmp.nr_ip_id_bits2);
+		                "IP-ID delta", g_context->tmp.nr_ip_id_bits2);
 
 		/* add the new IP-ID / SN delta to the W-LSB encoding object */
 		c_add_wlsb(g_context->inner_ip_flags.info.v4.ip_id_window, g_context->sn,
@@ -6452,7 +6443,7 @@ static int encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		if(ret != ROHC_OK)
 		{
 			rohc_comp_warn(context, "failed to encode uncompressed next header "
-			               "fields\n");
+			               "fields");
 			goto error;
 		}
 	}
@@ -6489,7 +6480,7 @@ rohc_ext_t decide_extension(const struct rohc_comp_ctxt *const context)
 	if(g_context->tmp.send_static > 0 || g_context->tmp.send_dynamic > 0)
 	{
 		rohc_comp_debug(context, "force EXT-3 because at least one static or "
-		                "dynamic field changed\n");
+		                "dynamic field changed");
 		ext = ROHC_EXT_3;
 		goto skip;
 	}

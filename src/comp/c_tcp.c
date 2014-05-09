@@ -49,7 +49,7 @@
 
 
 #define TRACE_GOTO_CHOICE \
-	rohc_comp_debug(context, "Compressed format choice LINE %d\n", __LINE__ )
+	rohc_comp_debug(context, "Compressed format choice LINE %d", __LINE__ )
 
 
 /**
@@ -778,7 +778,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	/* create and initialize the generic part of the profile context */
 	if(!c_generic_create(context, ROHC_LSB_SHIFT_VAR, packet))
 	{
-		rohc_comp_warn(context, "generic context creation failed\n");
+		rohc_comp_warn(context, "generic context creation failed");
 		goto error;
 	}
 	g_context = (struct c_generic_context *) context->specific;
@@ -791,7 +791,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 	do
 	{
-		rohc_comp_debug(context, "base_header %p IP version %d\n",
+		rohc_comp_debug(context, "base_header %p IP version %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		switch(base_header.ipvx->version)
@@ -878,7 +878,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	if(tcp_context == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "no memory for the TCP part of the profile context\n");
+		           "no memory for the TCP part of the profile context");
 		goto free_context;
 	}
 	g_context->specific = tcp_context;
@@ -892,18 +892,18 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 	do
 	{
-		rohc_comp_debug(context, "base_header %p IP version %d\n",
+		rohc_comp_debug(context, "base_header %p IP version %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		ip_context.vx->version = base_header.ipvx->version;
-		rohc_comp_debug(context, "ip_context %p version %d\n",
+		rohc_comp_debug(context, "ip_context %p version %d",
 		                ip_context.vx, ip_context.vx->version);
 
 		switch(base_header.ipvx->version)
 		{
 			case IPV4:
 				ip_context.v4->last_ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
-				rohc_comp_debug(context, "IP-ID 0x%04x\n", ip_context.v4->last_ip_id);
+				rohc_comp_debug(context, "IP-ID 0x%04x", ip_context.v4->last_ip_id);
 				ip_context.v4->last_ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
 				ip_context.v4->ip_id_behavior = IP_ID_BEHAVIOR_SEQ;
 				/* get the transport protocol */
@@ -998,7 +998,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	if(tcp_context->seq_wlsb == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "failed to create W-LSB context for TCP sequence number\n");
+		           "failed to create W-LSB context for TCP sequence number");
 		goto free_context;
 	}
 	tcp_context->seq_scaled_wlsb = c_create_wlsb(32, 4, 7);
@@ -1006,7 +1006,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP scaled sequence "
-		           "number\n");
+		           "number");
 		goto free_wlsb_seq;
 	}
 
@@ -1017,15 +1017,14 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	if(tcp_context->ack_wlsb == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "failed to create W-LSB context for TCP ACK number\n");
+		           "failed to create W-LSB context for TCP ACK number");
 		goto free_wlsb_seq_scaled;
 	}
 	tcp_context->ack_scaled_wlsb = c_create_wlsb(32, 4, 3);
 	if(tcp_context->ack_scaled_wlsb == NULL)
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
-		           "failed to create W-LSB context for TCP scaled ACK "
-		           "number\n");
+		           "failed to create W-LSB context for TCP scaled ACK number");
 		goto free_wlsb_ack;
 	}
 
@@ -1036,7 +1035,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 
 	/* init the Master Sequence Number to a random value */
 	g_context->sn = comp->random_cb(comp, comp->random_cb_ctxt) & 0xffff;
-	rohc_comp_debug(context, "MSN = 0x%04x\n", g_context->sn);
+	rohc_comp_debug(context, "MSN = 0x%04x", g_context->sn);
 
 	tcp_context->ack_stride = 0;
 
@@ -1059,7 +1058,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP option Timestamp "
-		           "request\n");
+		           "request");
 		goto free_wlsb_ack_scaled;
 	}
 	/* TCP option Timestamp (reply) */
@@ -1069,7 +1068,7 @@ static bool c_tcp_create(struct rohc_comp_ctxt *const context,
 	{
 		rohc_error(context->compressor, ROHC_TRACE_COMP, context->profile->id,
 		           "failed to create W-LSB context for TCP option Timestamp "
-		           "reply\n");
+		           "reply");
 		goto free_wlsb_opt_ts_req;
 	}
 
@@ -1212,7 +1211,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 			const uint8_t opt_type = tcp_header->options[opts_offset];
 
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			           "TCP option %u found\n", opt_type);
+			           "TCP option %u found", opt_type);
 
 			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
 			{
@@ -1226,7 +1225,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				{
 					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 					             "malformed TCP header: not enough room for the "
-					             "length field of option %u\n", opt_type);
+					             "length field of option %u", opt_type);
 					goto bad_profile;
 				}
 				opt_len = tcp_header->options[opts_offset + 1];
@@ -1234,7 +1233,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 				{
 					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 					             "malformed TCP header: option %u got length "
-					             "field %zu\n", opt_type, opt_len);
+					             "field %zu", opt_type, opt_len);
 					goto bad_profile;
 				}
 				if((opts_offset + opt_len) > opts_len)
@@ -1242,7 +1241,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 					rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 					             "malformed TCP header: not enough room for "
 					             "option %u (%zu bytes required but only %zu "
-					             "available)\n", opt_type, opt_len,
+					             "available)", opt_type, opt_len,
 					             opts_len - opts_offset);
 					goto bad_profile;
 				}
@@ -1252,7 +1251,7 @@ static bool c_tcp_check_profile(const struct rohc_comp *const comp,
 		{
 			rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			           "unexpected TCP header: too many TCP options: %zu "
-			           "options found in packet but only %u options possible\n",
+			           "options found in packet but only %u options possible",
 			           opt_pos, ROHC_TCP_OPTS_MAX);
 			goto bad_profile;
 		}
@@ -1310,12 +1309,12 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 
 	do
 	{
-		rohc_comp_debug(context, "base_header %p IP version %d\n",
+		rohc_comp_debug(context, "base_header %p IP version %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		if(base_header.ipvx->version != ip_context.vx->version)
 		{
-			rohc_comp_debug(context, "  not same IP version\n");
+			rohc_comp_debug(context, "  not same IP version");
 			goto bad_context;
 		}
 
@@ -1335,18 +1334,18 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 				if(base_header.ipv4->src_addr != ip_context.v4->src_addr ||
 				   base_header.ipv4->dest_addr != ip_context.v4->dst_addr)
 				{
-					rohc_comp_debug(context, "  not same IPv4 addresses\n");
+					rohc_comp_debug(context, "  not same IPv4 addresses");
 					goto bad_context;
 				}
-				rohc_comp_debug(context, "  same IPv4 addresses\n");
+				rohc_comp_debug(context, "  same IPv4 addresses");
 				/* get the transport protocol */
 				proto = base_header.ipv4->protocol;
 				if(base_header.ipv4->protocol != ip_context.v4->protocol)
 				{
-					rohc_comp_debug(context, "  IPv4 not same protocol\n");
+					rohc_comp_debug(context, "  IPv4 not same protocol");
 					goto bad_context;
 				}
-				rohc_comp_debug(context, "  IPv4 same protocol %d\n", proto);
+				rohc_comp_debug(context, "  IPv4 same protocol %d", proto);
 				++base_header.ipv4;
 				++ip_context.v4;
 				assert(size >= sizeof(base_header_ip_v4_t));
@@ -1356,20 +1355,20 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 				if(memcmp(base_header.ipv6->src_addr, ip_context.v6->src_addr, sizeof(uint32_t) * 4) != 0 ||
 				   memcmp(base_header.ipv6->dest_addr, ip_context.v6->dest_addr, sizeof(uint32_t) * 4) != 0)
 				{
-					rohc_comp_debug(context, "  not same IPv6 addresses\n");
+					rohc_comp_debug(context, "  not same IPv6 addresses");
 					goto bad_context;
 				}
-				rohc_comp_debug(context, "  same IPv6 addresses\n");
+				rohc_comp_debug(context, "  same IPv6 addresses");
 				if(base_header.ipv6->flow_label1 != ip_context.v6->flow_label1 ||
 				   base_header.ipv6->flow_label2 != ip_context.v6->flow_label2)
 				{
-					rohc_comp_debug(context, "  not same IPv6 flow label\n");
+					rohc_comp_debug(context, "  not same IPv6 flow label");
 					goto bad_context;
 				}
 				proto = base_header.ipv6->next_header;
 				if(proto != ip_context.v6->next_header)
 				{
-					rohc_comp_debug(context, "  IPv6 not same protocol %d\n", proto);
+					rohc_comp_debug(context, "  IPv6 not same protocol %d", proto);
 					goto bad_context;
 				}
 				++base_header.ipv6;
@@ -1381,12 +1380,11 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 					proto = base_header.ipv6_opt->next_header;
 					if(proto != ip_context.v6_option->next_header)
 					{
-						rohc_comp_debug(context, "  not same IPv6 option "
-						                "(%d != %d)\n", proto,
-						                ip_context.v6_option->next_header);
+						rohc_comp_debug(context, "  not same IPv6 option (%d != %d)",
+						                proto, ip_context.v6_option->next_header);
 						goto bad_context;
 					}
-					rohc_comp_debug(context, "  same IPv6 option %d\n", proto);
+					rohc_comp_debug(context, "  same IPv6 option %d", proto);
 					base_header.uint8 += ip_context.v6_option->option_length;
 					ip_context.uint8 += ip_context.v6_option->context_length;
 				}
@@ -1402,7 +1400,7 @@ static bool c_tcp_check_context(const struct rohc_comp_ctxt *const context,
 	tcp = base_header.tcphdr;
 	is_tcp_same = tcp_context->old_tcphdr.src_port == tcp->src_port &&
 	              tcp_context->old_tcphdr.dst_port == tcp->dst_port;
-	rohc_comp_debug(context, "  TCP %ssame Source and Destination ports\n",
+	rohc_comp_debug(context, "  TCP %ssame Source and Destination ports",
 	                is_tcp_same ? "" : "not ");
 	return is_tcp_same;
 
@@ -1489,7 +1487,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	ecn_used = 0;
 	do
 	{
-		rohc_comp_debug(context, "base_header %p IP version %d\n",
+		rohc_comp_debug(context, "base_header %p IP version %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		base_header_inner.ipvx = base_header.ipvx;
@@ -1522,7 +1520,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							if(base_header.ipv6_opt->length != ip_context.v6_option->length)
 							{
 								rohc_comp_debug(context, "IPv6 option %d length "
-								                "changed (%d -> %d)\n", protocol,
+								                "changed (%d -> %d)", protocol,
 								                ip_context.v6_option->length,
 								                base_header.ipv6_opt->length);
 								assert( base_header.ipv6_opt->length < MAX_IPV6_OPTION_LENGTH );
@@ -1540,7 +1538,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							          ip_context.v6_option->option_length - 2) != 0)
 							{
 								rohc_comp_debug(context, "IPv6 option %d value "
-								                "changed (%d -> %d)\n", protocol,
+								                "changed (%d -> %d)", protocol,
 								                ip_context.v6_option->length,
 								                base_header.ipv6_opt->length);
 								memcpy(ip_context.v6_option->value,base_header.ipv6_opt->value,
@@ -1555,7 +1553,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							if(base_header.ip_gre_opt->c_flag != ip_context.v6_gre_option->c_flag)
 							{
 								rohc_comp_debug(context, "IPv6 option %d c_flag "
-								                "changed (%d -> %d)\n", protocol,
+								                "changed (%d -> %d)", protocol,
 								                ip_context.v6_gre_option->c_flag,
 								                base_header.ip_gre_opt->c_flag);
 #ifdef TODO
@@ -1568,7 +1566,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							if(base_header.ip_mime_opt->s_bit != ip_context.v6_mime_option->s_bit)
 							{
 								rohc_comp_debug(context, "IPv6 option %d s_bit "
-								                "changed (0x%x -> 0x%x)\n", protocol,
+								                "changed (0x%x -> 0x%x)", protocol,
 								                ip_context.v6_mime_option->s_bit,
 								                base_header.ip_mime_opt->s_bit);
 								ip_context.v6_option->option_length =
@@ -1581,7 +1579,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							if(base_header.ip_mime_opt->checksum != ip_context.v6_mime_option->checksum)
 							{
 								rohc_comp_debug(context, "IPv6 option %d checksum "
-								                "changed (0x%x -> 0x%x)\n", protocol,
+								                "changed (0x%x -> 0x%x)", protocol,
 								                ip_context.v6_mime_option->checksum,
 								                base_header.ip_mime_opt->checksum);
 #ifdef TODO
@@ -1607,7 +1605,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	tcp = base_header.tcphdr;
 	ecn_used |= tcp->ecn_flags;
 	tcp_context->ecn_used = ecn_used;
-	rohc_comp_debug(context, "ecn_used %d\n", tcp_context->ecn_used);
+	rohc_comp_debug(context, "ecn_used %d", tcp_context->ecn_used);
 	// Reinit source pointer
 	base_header.uint8 = (uint8_t *) uncomp_pkt->outer_ip.data;
 
@@ -1617,9 +1615,9 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	{
 		const uint16_t ip_id = rohc_ntoh16(base_header_inner.ipv4->ip_id);
 
-		rohc_comp_debug(context, "IP-ID behaved as %s\n",
+		rohc_comp_debug(context, "IP-ID behaved as %s",
 		                tcp_ip_id_behavior_get_descr(ip_inner_context.v4->ip_id_behavior));
-		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x\n",
+		rohc_comp_debug(context, "IP-ID = 0x%04x -> 0x%04x",
 		                ip_inner_context.v4->last_ip_id, ip_id);
 
 		if(context->num_sent_packets == 0)
@@ -1632,7 +1630,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			ip_inner_context.v4->ip_id_behavior =
 				tcp_detect_ip_id_behavior(ip_inner_context.v4->last_ip_id, ip_id);
 		}
-		rohc_comp_debug(context, "IP-ID now behaves as %s\n",
+		rohc_comp_debug(context, "IP-ID now behaves as %s",
 		                tcp_ip_id_behavior_get_descr(ip_inner_context.v4->ip_id_behavior));
 	}
 
@@ -1652,7 +1650,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		opts = ((uint8_t *) tcp) + sizeof(tcphdr_t);
 		opts_len = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 
-		rohc_comp_debug(context, "parse %zu-byte TCP options\n", opts_len);
+		rohc_comp_debug(context, "parse %zu-byte TCP options", opts_len);
 
 		for(opt_pos = 0, opts_offset = 0;
 		    opt_pos < ROHC_TCP_OPTS_MAX && opts_offset < opts_len;
@@ -1661,7 +1659,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			const uint8_t opt_type = opts[opts_offset];
 			uint8_t opt_idx;
 
-			rohc_comp_debug(context, "  TCP option %u found\n", opt_type);
+			rohc_comp_debug(context, "  TCP option %u found", opt_type);
 
 			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
 			{
@@ -1673,22 +1671,21 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 				if((opts_offset + 1) >= opts_len)
 				{
 					rohc_comp_warn(context, "malformed TCP header: not enough "
-					               "room for the length field of option %u\n",
-					               opt_type);
+					               "room for length field of option %u", opt_type);
 					goto error;
 				}
 				opt_len = opts[opts_offset + 1];
 				if(opt_len < 2)
 				{
 					rohc_comp_warn(context, "malformed TCP header: option %u got "
-					               "length field %zu\n", opt_type, opt_len);
+					               "length field %zu", opt_type, opt_len);
 					goto error;
 				}
 				if((opts_offset + opt_len) > opts_len)
 				{
 					rohc_comp_warn(context, "malformed TCP header: not enough "
 					               "room for option %u (%zu bytes required but "
-					               "only %zu available)\n", opt_type, opt_len,
+					               "only %zu available)", opt_type, opt_len,
 					               opts_len - opts_offset);
 					goto error;
 				}
@@ -1712,7 +1709,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 				/* TCP option got a reserved index */
 				opt_idx = tcp_options_index[opt_type];
 				rohc_comp_debug(context, "    option '%s' (%u) will use reserved "
-				                "index %u\n", tcp_opt_get_descr(opt_type),
+				                "index %u", tcp_opt_get_descr(opt_type),
 				                opt_type, opt_idx);
 			}
 			else /* TCP option doesn't have a reserved index */
@@ -1738,13 +1735,13 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 				if(opt_idx_found)
 				{
 					rohc_comp_debug(context, "    option '%s' (%u) will use same "
-					                "index %u as in previous packet\n",
+					                "index %u as in previous packet",
 					                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 				}
 				else if(opt_idx_free < 0)
 				{
 					rohc_comp_warn(context, "no free index found for option '%s' "
-					               "(%u)\n", tcp_opt_get_descr(opt_type), opt_type);
+					               "(%u)", tcp_opt_get_descr(opt_type), opt_type);
 					goto error;
 				}
 				else
@@ -1754,7 +1751,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 					tcp_context->tcp_options_list[opt_idx].type = opt_type;
 					tcp_context->tcp_options_list[opt_idx].nr_trans++;
 					rohc_comp_debug(context, "    option '%s' (%u) will use new "
-					                "index %u\n", tcp_opt_get_descr(opt_type),
+					                "index %u", tcp_opt_get_descr(opt_type),
 					                opt_type, opt_idx);
 				}
 			}
@@ -1769,13 +1766,13 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			if(tcp_context->tcp_opts_list_struct[opt_pos] != opt_type)
 			{
 				rohc_comp_debug(context, "    option was not present at the very "
-				                "same location in previous packet\n");
+				                "same location in previous packet");
 				tcp_context->tmp.is_tcp_opts_list_struct_changed = true;
 			}
 			else
 			{
 				rohc_comp_debug(context, "    option was at the very same "
-				                "location in previous packet\n");
+				                "location in previous packet");
 			}
 
 			/* record the structure of the current list TCP options in context */
@@ -1785,7 +1782,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_warn(context, "unexpected TCP header: too many TCP "
 			               "options: %zu options found in packet but only %u "
-			               "options possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
+			               "options possible", opt_pos, ROHC_TCP_OPTS_MAX);
 			goto error;
 		}
 
@@ -1793,7 +1790,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		while(opt_pos < ROHC_TCP_OPTS_MAX &&
 		      tcp_context->tcp_opts_list_struct[opt_pos] != 0xff)
 		{
-			rohc_comp_debug(context, "  TCP option %d is not present anymore\n",
+			rohc_comp_debug(context, "  TCP option %d is not present anymore",
 			                tcp_context->tcp_opts_list_struct[opt_pos]);
 			tcp_context->tmp.is_tcp_opts_list_struct_changed = true;
 			tcp_context->tcp_opts_list_struct[opt_pos] = 0xff;
@@ -1805,7 +1802,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			/* the new structure has never been transmitted yet */
 			rohc_comp_debug(context, "structure of TCP options list changed, "
 			                "compressed list must be transmitted in the compressed "
-			                "base header\n");
+			                "base header");
 			tcp_context->tcp_opts_list_struct_nr_trans = 0;
 		}
 		else if(tcp_context->tcp_opts_list_struct_nr_trans <
@@ -1814,7 +1811,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			/* the structure was transmitted but not enough times */
 			rohc_comp_debug(context, "structure of TCP options list changed in "
 			                "the last few packets, compressed list must be "
-			                "transmitted in the compressed base header\n");
+			                "transmitted in the compressed base header");
 			tcp_context->tmp.is_tcp_opts_list_struct_changed = true;
 			tcp_context->tcp_opts_list_struct_nr_trans++;
 		}
@@ -1823,21 +1820,21 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			rohc_comp_debug(context, "structure of TCP options list is unchanged, "
 			                "compressed list may be omitted from the compressed "
 			                "base header, any content changes may be transmitted "
-			                "in the irregular chain\n");
+			                "in the irregular chain");
 		}
 
 		/* use 4-bit XI or 8-bit XI ? */
 		if(tcp_context->tmp.tcp_opts_idx_max <= 7)
 		{
 			rohc_comp_debug(context, "compressed TCP options list will be able "
-			                "to use 4-bit XI since the largest index is %u\n",
+			                "to use 4-bit XI since the largest index is %u",
 			                tcp_context->tmp.tcp_opts_idx_max);
 		}
 		else
 		{
 			assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
 			rohc_comp_debug(context, "compressed TCP options list will use "
-			                "8-bit XI since the largest index is %u\n",
+			                "8-bit XI since the largest index is %u",
 			                tcp_context->tmp.tcp_opts_idx_max);
 		}
 
@@ -1845,7 +1842,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		assert(uncomp_pkt->len >= (size + sizeof(tcphdr_t) + opts_len));
 		tcp_context->tmp.payload_len =
 			uncomp_pkt->len - size - sizeof(tcphdr_t) - opts_len;
-		rohc_comp_debug(context, "payload length = %zu bytes\n",
+		rohc_comp_debug(context, "payload length = %zu bytes",
 		                tcp_context->tmp.payload_len);
 	}
 
@@ -1853,7 +1850,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	if(!tcp_detect_changes(context, uncomp_pkt))
 	{
 		rohc_comp_warn(context, "failed to detect changes in uncompressed "
-		               "packet\n");
+		               "packet");
 		goto error;
 	}
 
@@ -1864,7 +1861,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	if(!tcp_encode_uncomp_fields(context, uncomp_pkt))
 	{
 		rohc_comp_warn(context, "failed to compute how many bits are needed to "
-		               "transmit all changes in header fields\n");
+		               "transmit all changes in header fields");
 		goto error;
 	}
 
@@ -1874,7 +1871,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	/* code the chosen packet */
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
-		rohc_comp_warn(context, "failed to find the packet type to encode\n");
+		rohc_comp_warn(context, "failed to find the packet type to encode");
 		goto error;
 	}
 	else if((*packet_type) != ROHC_PACKET_IR &&
@@ -1886,7 +1883,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                         *packet_type, payload_offset);
 		if(counter < 0)
 		{
-			rohc_comp_warn(context, "failed to build CO packet\n");
+			rohc_comp_warn(context, "failed to build CO packet");
 			goto error;
 		}
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
@@ -1906,7 +1903,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		                          context->cid, rohc_pkt, rohc_pkt_max_len,
 		                          &first_position);
 		rohc_comp_debug(context, "counter = %d, first_position = %zu, "
-		                "rohc_pkt[0] = 0x%02x, rohc_pkt[1] = 0x%02x\n", counter,
+		                "rohc_pkt[0] = 0x%02x, rohc_pkt[1] = 0x%02x", counter,
 		                first_position, rohc_pkt[0], rohc_pkt[1]);
 
 		/* part 2: type of packet */
@@ -1918,17 +1915,16 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		{
 			rohc_pkt[first_position] = ROHC_PACKET_TYPE_IR_DYN;
 		}
-		rohc_comp_debug(context, "packet type = 0x%02x\n",
-		                rohc_pkt[first_position]);
+		rohc_comp_debug(context, "packet type = 0x%02x", rohc_pkt[first_position]);
 
 		/* part 4 */
-		rohc_comp_debug(context, "profile ID = 0x%02x\n", context->profile->id);
+		rohc_comp_debug(context, "profile ID = 0x%02x", context->profile->id);
 		rohc_pkt[counter] = context->profile->id;
 		counter++;
 
 		/* part 5: the CRC is computed later since it must be computed
 		 * over the whole packet with an empty CRC field */
-		rohc_comp_debug(context, "CRC = 0x00 for CRC calculation\n");
+		rohc_comp_debug(context, "CRC = 0x00 for CRC calculation");
 		crc_position = counter;
 		rohc_pkt[counter] = 0;
 		counter++;
@@ -1945,7 +1941,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 			do
 			{
-				rohc_comp_debug(context, "base_header = %p, IP version = %d\n",
+				rohc_comp_debug(context, "base_header = %p, IP version = %d",
 				                base_header.uint8, base_header.ipvx->version);
 
 				switch(base_header.ipvx->version)
@@ -1968,7 +1964,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 						++ip_context.v6;
 						while(rohc_is_ipv6_opt(protocol))
 						{
-							rohc_comp_debug(context, "IPv6 option %d at %p\n",
+							rohc_comp_debug(context, "IPv6 option %d at %p",
 							                protocol, base_header.uint8);
 							mptr.uint8 =
 							   tcp_code_static_ipv6_option_part(context, ip_context,
@@ -1977,7 +1973,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 							if(mptr.uint8 == NULL)
 							{
 								rohc_comp_warn(context, "failed to code the IPv6 "
-								               "extension part of the static chain\n");
+								               "extension part of the static chain");
 								goto error;
 							}
 							protocol = base_header.ipv6_opt->next_header;
@@ -1986,12 +1982,12 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 						}
 						break;
 					default:
-						rohc_comp_warn(context, "unexpected IP version %u\n",
+						rohc_comp_warn(context, "unexpected IP version %u",
 						               base_header.ipvx->version);
 						assert(0);
 						goto error;
 				}
-				rohc_comp_debug(context, "counter = %d, protocol = %d\n",
+				rohc_comp_debug(context, "counter = %d, protocol = %d",
 				                (int)(mptr.uint8 - &rohc_pkt[counter]), protocol);
 
 			}
@@ -2012,7 +2008,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 
 		do
 		{
-			rohc_comp_debug(context, "base_header = %p, IP version = %d\n",
+			rohc_comp_debug(context, "base_header = %p, IP version = %d",
 			                base_header.uint8, base_header.ipvx->version);
 
 			mptr.uint8 = tcp_code_dynamic_ip_part(context, ip_context, base_header,
@@ -2033,7 +2029,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 					++ip_context.v6;
 					while(rohc_is_ipv6_opt(protocol))
 					{
-						rohc_comp_debug(context, "IPv6 option %d at %p\n",
+						rohc_comp_debug(context, "IPv6 option %d at %p",
 						                protocol, base_header.uint8);
 						mptr.uint8 =
 						   tcp_code_dynamic_ipv6_option_part(context, ip_context,
@@ -2042,7 +2038,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 						if(mptr.uint8 == NULL)
 						{
 							rohc_comp_warn(context, "failed to code the IPv6 "
-							               "extension part of the dynamic chain\n");
+							               "extension part of the dynamic chain");
 							goto error;
 						}
 						protocol = base_header.ipv6_opt->next_header;
@@ -2051,7 +2047,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 					}
 					break;
 				default:
-					rohc_comp_warn(context, "unexpected IP version %u\n",
+					rohc_comp_warn(context, "unexpected IP version %u",
 					               base_header.ipvx->version);
 					assert(0);
 					goto error;
@@ -2064,7 +2060,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		if(mptr.uint8 == NULL)
 		{
 			rohc_comp_warn(context, "failed to code the TCP part of the dynamic "
-			               "chain\n");
+			               "chain");
 			goto error;
 		}
 
@@ -2072,7 +2068,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
-		rohc_comp_debug(context, "base_header %p\n", base_header.uint8);
+		rohc_comp_debug(context, "base_header %p", base_header.uint8);
 
 		/* last part : payload */
 		base_header.uint8 += (base_header.tcphdr->data_offset << 2);
@@ -2084,10 +2080,10 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		rohc_pkt[crc_position] = crc_calculate(ROHC_CRC_TYPE_8, rohc_pkt,
 		                                       counter, CRC_INIT_8,
 		                                       context->compressor->crc_table_8);
-		rohc_comp_debug(context, "CRC (header length = %d, crc = 0x%x)\n",
+		rohc_comp_debug(context, "CRC (header length = %d, crc = 0x%x)",
 		                counter, rohc_pkt[crc_position]);
 
-		rohc_comp_debug(context, "IR packet, length %d\n",counter);
+		rohc_comp_debug(context, "IR packet, length %d",counter);
 		rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 		                 ROHC_TRACE_DEBUG, "current ROHC packet", rohc_pkt, counter);
 
@@ -2095,7 +2091,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		*payload_offset = base_header.uint8 - (uint8_t *) uncomp_pkt->outer_ip.data;
 	}
 
-	rohc_comp_debug(context, "payload_offset = %zu\n", *payload_offset);
+	rohc_comp_debug(context, "payload_offset = %zu", *payload_offset);
 
 	/* update the context with the new TCP header */
 	memcpy(&(tcp_context->old_tcphdr), tcp, sizeof(tcphdr_t));
@@ -2110,7 +2106,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		tcp_context->seq_num_scaling_nr++;
 		rohc_comp_debug(context, "unscaled sequence number was transmitted "
 		                "%zu / %u times since the scaling factor or residue "
-		                "changed\n", tcp_context->seq_num_scaling_nr,
+		                "changed", tcp_context->seq_num_scaling_nr,
 		                ROHC_INIT_TS_STRIDE_MIN);
 	}
 
@@ -2150,7 +2146,7 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "protocol = %d, base_header_ip = %p\n", tcp_context,
+	                "protocol = %d, base_header_ip = %p", tcp_context,
 	                ip_context.uint8, protocol, base_header.uint8);
 
 	// Common to all options
@@ -2188,7 +2184,7 @@ static uint8_t * tcp_code_static_ipv6_option_part(struct rohc_comp_ctxt *const c
 			                   mptr.ip_gre_opt_static->options);
 			if(ret < 0)
 			{
-				rohc_comp_warn(context, "failed to encode optional32(key)\n");
+				rohc_comp_warn(context, "failed to encode optional32(key)");
 				goto error;
 			}
 			size += sizeof(uint32_t);
@@ -2261,7 +2257,7 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "protocol = %d, base_header = %p\n", tcp_context,
+	                "protocol = %d, base_header = %p", tcp_context,
 	                ip_context.uint8, protocol, base_header.uint8);
 
 	switch(protocol)
@@ -2291,7 +2287,7 @@ static uint8_t * tcp_code_dynamic_ipv6_option_part(struct rohc_comp_ctxt *const 
 			                   mptr.uint8);
 			if(ret < 0)
 			{
-				rohc_comp_warn(context, "optional32(seq_number) failed\n");
+				rohc_comp_warn(context, "optional32(seq_number) failed");
 				goto error;
 			}
 			mptr.uint8 += ret;
@@ -2364,7 +2360,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "protocol = %d, base_header_ip = %p\n", tcp_context,
+	                "protocol = %d, base_header_ip = %p", tcp_context,
 	                ip_context.uint8, protocol, base_header.uint8);
 
 	switch(protocol)
@@ -2385,7 +2381,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 				                    sequence_number, mptr.uint8);
 				if(ret < 0)
 				{
-					rohc_comp_warn(context, "lsb_7_or_31(seq_number)\n");
+					rohc_comp_warn(context, "lsb_7_or_31(seq_number)");
 					goto error;
 				}
 				mptr.uint8 += ret;
@@ -2399,7 +2395,7 @@ static uint8_t * tcp_code_irregular_ipv6_option_part(struct rohc_comp_ctxt *cons
 			                    sequence_number, mptr.uint8);
 			if(ret < 0)
 			{
-				rohc_comp_warn(context, "lsb_7_or_31(seq_number) failed\n");
+				rohc_comp_warn(context, "lsb_7_or_31(seq_number) failed");
 				goto error;
 			}
 			mptr.uint8 += ret;
@@ -2450,7 +2446,7 @@ static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "base_header_ip = %p\n", tcp_context, ip_context.uint8,
+	                "base_header_ip = %p", tcp_context, ip_context.uint8,
 	                base_header.uint8);
 
 	if(base_header.ipvx->version == IPV4)
@@ -2458,7 +2454,7 @@ static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
 		mptr.ipv4_static->version_flag = 0;
 		mptr.ipv4_static->reserved = 0;
 		mptr.ipv4_static->protocol = base_header.ipv4->protocol;
-		rohc_comp_debug(context, "protocol = %d\n", mptr.ipv4_static->protocol);
+		rohc_comp_debug(context, "protocol = %d", mptr.ipv4_static->protocol);
 		mptr.ipv4_static->src_addr = base_header.ipv4->src_addr;
 		mptr.ipv4_static->dst_addr = base_header.ipv4->dest_addr;
 		size = sizeof(ipv4_static_t);
@@ -2486,7 +2482,7 @@ static uint8_t * tcp_code_static_ip_part(struct rohc_comp_ctxt *const context,
 			memcpy(mptr.ipv6_static2->src_addr,base_header.ipv6->src_addr,sizeof(uint32_t) * 4 * 2);
 			size = sizeof(ipv6_static2_t);
 		}
-		rohc_comp_debug(context, "next_header = %d\n",
+		rohc_comp_debug(context, "next_header = %d",
 		                base_header.ipv6->next_header);
 	}
 
@@ -2518,7 +2514,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
 	int size;
 
 	rohc_comp_debug(context, "context = %p, ip_context = %p, "
-	                "base_header_ip = %p, is_innermost = %d\n", context,
+	                "base_header_ip = %p, is_innermost = %d", context,
 	                ip_context.uint8, base_header.uint8, is_innermost);
 
 	if(base_header.ipvx->version == IPV4)
@@ -2530,7 +2526,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
 		/* Read the IP_ID */
 		ip_id = rohc_ntoh16(base_header.ipv4->ip_id);
 		rohc_comp_debug(context, "ip_id_behavior = %d, last IP-ID = 0x%04x, "
-		                "IP-ID = 0x%04x\n", ip_context.v4->ip_id_behavior,
+		                "IP-ID = 0x%04x", ip_context.v4->ip_id_behavior,
 		                ip_context.v4->last_ip_id, ip_id);
 
 		mptr.ipv4_dynamic1->reserved = 0;
@@ -2561,7 +2557,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
 		// cf RFC4996 page 60/61 ip_id_enc_dyn()
 		if(mptr.ipv4_dynamic1->ip_id_behavior == IP_ID_BEHAVIOR_ZERO)
 		{
-			rohc_comp_debug(context, "ip_id_behavior = %d\n",
+			rohc_comp_debug(context, "ip_id_behavior = %d",
 			                mptr.ipv4_dynamic1->ip_id_behavior);
 			size = sizeof(ipv4_dynamic1_t);
 		}
@@ -2575,7 +2571,7 @@ static uint8_t * tcp_code_dynamic_ip_part(const struct rohc_comp_ctxt *context,
 			{
 				mptr.ipv4_dynamic2->ip_id = base_header.ipv4->ip_id;
 			}
-			rohc_comp_debug(context, "ip_id_behavior = %d, IP-ID = 0x%04x\n",
+			rohc_comp_debug(context, "ip_id_behavior = %d, IP-ID = 0x%04x",
 			                mptr.ipv4_dynamic1->ip_id_behavior,
 			                rohc_ntoh16(base_header.ipv4->ip_id));
 			size = sizeof(ipv4_dynamic2_t);
@@ -2639,13 +2635,13 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
 
 	assert(context != NULL);
 
-	rohc_comp_debug(context, "ip_context = %p, base_header_ip = %p\n",
+	rohc_comp_debug(context, "ip_context = %p, base_header_ip = %p",
 	                ip_context.uint8, base_header.uint8);
 	rohc_comp_debug(context, "ecn_used = %d, is_innermost = %d, "
-	                "ttl_irregular_chain_flag = %d, ip_inner_ecn = %d\n",
+	                "ttl_irregular_chain_flag = %d, ip_inner_ecn = %d",
 	                ecn_used,is_innermost, ttl_irregular_chain_flag,
 	                ip_inner_ecn);
-	rohc_comp_debug(context, "IP version = %d, ip_id_behavior = %d\n",
+	rohc_comp_debug(context, "IP version = %d, ip_id_behavior = %d",
 	                base_header.ipvx->version, ip_context.v4->ip_id_behavior);
 
 	if(base_header.ipvx->version == IPV4)
@@ -2656,7 +2652,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
 		{
 			memcpy(rohc_data, &base_header.ipv4->ip_id, sizeof(uint16_t));
 			rohc_data += sizeof(uint16_t);
-			rohc_comp_debug(context, "add ip_id 0x%04x\n",
+			rohc_comp_debug(context, "add ip_id 0x%04x",
 			                rohc_ntoh16(base_header.ipv4->ip_id));
 		}
 
@@ -2669,7 +2665,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
 			{
 				rohc_data[0] = (base_header.ipv4->dscp << 2) |
 				               base_header.ipv4->ip_ecn_flags;
-				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x\n",
+				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x",
 				                rohc_data[0]);
 				rohc_data++;
 			}
@@ -2678,7 +2674,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
 				// ipv4_outer_with_ttl_irregular
 				// ttl_hopl =:= irregular(8)
 				rohc_data[0] = base_header.ipv4->ttl_hopl;
-				rohc_comp_debug(context, "add ttl_hopl = 0x%02x\n", rohc_data[0]);
+				rohc_comp_debug(context, "add ttl_hopl = 0x%02x", rohc_data[0]);
 				rohc_data++;
 			}
 			/* else: ipv4_outer_without_ttl_irregular */
@@ -2698,7 +2694,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
 				uint8_t dscp = (base_header.ipv6->dscp1 << 2) |
 				               base_header.ipv6->dscp2;
 				rohc_data[0] = (dscp << 2) | base_header.ipv4->ip_ecn_flags;
-				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x\n",
+				rohc_comp_debug(context, "add DSCP and ip_ecn_flags = 0x%02x",
 				                rohc_data[0]);
 				rohc_data++;
 			}
@@ -2707,7 +2703,7 @@ static uint8_t * tcp_code_irregular_ip_part(struct rohc_comp_ctxt *const context
 				// ipv6_outer_with_ttl_irregular
 				// ttl_hopl =:= irregular(8)
 				rohc_data[0] = base_header.ipv6->ttl_hopl;
-				rohc_comp_debug(context, "add ttl_hopl = 0x%02x\n", rohc_data[0]);
+				rohc_comp_debug(context, "add ttl_hopl = 0x%02x", rohc_data[0]);
 				rohc_data++;
 			}
 			/* else: ipv6_outer_without_ttl_irregular */
@@ -2754,11 +2750,11 @@ static uint8_t * tcp_code_static_tcp_part(const struct rohc_comp_ctxt *context,
 	                 sizeof(tcphdr_t));
 
 	mptr.tcp_static->src_port = tcp->src_port;
-	rohc_comp_debug(context, "TCP source port = %d (0x%04x)\n",
+	rohc_comp_debug(context, "TCP source port = %d (0x%04x)",
 	                rohc_ntoh16(tcp->src_port), rohc_ntoh16(tcp->src_port));
 
 	mptr.tcp_static->dst_port = tcp->dst_port;
-	rohc_comp_debug(context, "TCP destination port = %d (0x%04x)\n",
+	rohc_comp_debug(context, "TCP destination port = %d (0x%04x)",
 	                rohc_ntoh16(tcp->dst_port), rohc_ntoh16(tcp->dst_port));
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
@@ -2802,22 +2798,22 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
-	rohc_comp_debug(context, "TCP dynamic part (minimal length = %zd)\n",
+	rohc_comp_debug(context, "TCP dynamic part (minimal length = %zd)",
 	                sizeof(tcp_dynamic_t));
 
 	tcp = (tcphdr_t *) next_header;
 
-	rohc_comp_debug(context, "TCP seq = 0x%04x, ack_seq = 0x%04x\n",
+	rohc_comp_debug(context, "TCP seq = 0x%04x, ack_seq = 0x%04x",
 	                rohc_ntoh32(tcp->seq_num), rohc_ntoh32(tcp->ack_num));
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
-	                "URG = %d, ACK = %d, PSH = %d\n",
+	                "URG = %d, ACK = %d, PSH = %d",
 	                *(uint16_t*)(((unsigned char*)tcp) + 12),
 	                tcp->res_flags, tcp->data_offset, tcp->rsf_flags,
 	                tcp->ecn_flags, tcp->urg_flag, tcp->ack_flag,
 	                tcp->psh_flag);
 	rohc_comp_debug(context, "TCP window = 0x%04x, check = 0x%x, "
-	                "urg_ptr = %d\n", rohc_ntoh16(tcp->window),
+	                "urg_ptr = %d", rohc_ntoh16(tcp->window),
 	                rohc_ntoh16(tcp->checksum), rohc_ntoh16(tcp->urg_ptr));
 
 	/* If urgent datas present */
@@ -2832,7 +2828,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	tcp_dynamic = mptr.tcp_dynamic;
 	++mptr.tcp_dynamic;
 	rohc_comp_debug(context, "TCP sizeof(tcp_dynamic_t) = %zd, "
-	                "tcp_dynamic = %p, mptr.tcp_dynamic + 1 = %p\n",
+	                "tcp_dynamic = %p, mptr.tcp_dynamic + 1 = %p",
 	                sizeof(tcp_dynamic_t), tcp_dynamic, mptr.tcp_dynamic);
 
 	tcp_dynamic->ecn_used = tcp_context->ecn_used;
@@ -2860,12 +2856,12 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	ret = c_zero_or_irreg32(tcp->ack_num, mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode zero_or_irreg(ack_number)\n");
+		rohc_comp_warn(context, "failed to encode zero_or_irreg(ack_number)");
 		goto error;
 	}
 	tcp_dynamic->ack_zero = indicator;
 	mptr.uint8 += ret;
-	rohc_comp_debug(context, "TCP ack_number %spresent\n",
+	rohc_comp_debug(context, "TCP ack_number %spresent",
 	                tcp_dynamic->ack_zero ? "not " : "");
 
 	/* window */
@@ -2883,12 +2879,12 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	ret = c_zero_or_irreg16(tcp->urg_ptr, mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode zero_or_irreg(urg_ptr)\n");
+		rohc_comp_warn(context, "failed to encode zero_or_irreg(urg_ptr)");
 		goto error;
 	}
 	tcp_dynamic->urp_zero = indicator;
 	mptr.uint8 += ret;
-	rohc_comp_debug(context, "TCP urg_ptr %spresent\n",
+	rohc_comp_debug(context, "TCP urg_ptr %spresent",
 	                tcp_dynamic->urp_zero ? "not " : "");
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
@@ -2897,12 +2893,12 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)\n");
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
 		goto error;
 	}
 	tcp_dynamic->ack_stride_flag = indicator;
 	mptr.uint8 += ret;
-	rohc_comp_debug(context, "TCP ack_stride %spresent\n",
+	rohc_comp_debug(context, "TCP ack_stride %spresent",
 	                tcp_dynamic->ack_stride_flag ? "" : "not ");
 
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
@@ -2943,7 +2939,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			if(i < 1)
 			{
 				rohc_comp_warn(context, "malformed TCP option #%zu: not enough "
-				               "remaining bytes for option type\n", opt_pos + 1);
+				               "remaining bytes for option type", opt_pos + 1);
 				goto error;
 			}
 			opt_type = options[0];
@@ -2959,7 +2955,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			else if(i < 2)
 			{
 				rohc_comp_warn(context, "malformed TCP option #%zu: not enough "
-				               "remaining bytes for option length\n", opt_pos + 1);
+				               "remaining bytes for option length", opt_pos + 1);
 				goto error;
 			}
 			else
@@ -2969,7 +2965,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				{
 					rohc_comp_warn(context, "malformed TCP option #%zu: option "
 					               "should be at least 2 bytes but length field "
-					               "is %u\n", opt_pos + 1, opt_len);
+					               "is %u", opt_pos + 1, opt_len);
 					goto error;
 				}
 			}
@@ -2978,34 +2974,34 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			switch(opt_type)
 			{
 				case TCP_OPT_EOL: // End Of List
-					rohc_comp_debug(context, "TCP option EOL\n");
+					rohc_comp_debug(context, "TCP option EOL");
 					break;
 				case TCP_OPT_NOP: // No Operation
-					rohc_comp_debug(context, "TCP option NOP\n");
+					rohc_comp_debug(context, "TCP option NOP");
 					break;
 				case TCP_OPT_MAXSEG: // Max Segment Size
 					memcpy(&tcp_context->tcp_option_maxseg,options + 2,2);
-					rohc_comp_debug(context, "TCP option MAXSEG = %d (0x%x)\n",
+					rohc_comp_debug(context, "TCP option MAXSEG = %d (0x%x)",
 					                rohc_ntoh16(tcp_context->tcp_option_maxseg),
 					                rohc_ntoh16(tcp_context->tcp_option_maxseg));
 					break;
 				case TCP_OPT_WINDOW: // Window
-					rohc_comp_debug(context, "TCP option WINDOW = %d\n",
+					rohc_comp_debug(context, "TCP option WINDOW = %d",
 					                *(options + 2));
 					tcp_context->tcp_option_window = *(options + 2);
 					break;
 				case TCP_OPT_SACK_PERMITTED: // see RFC2018
-					rohc_comp_debug(context, "TCP option SACK PERMITTED\n");
+					rohc_comp_debug(context, "TCP option SACK PERMITTED");
 					break;
 				case TCP_OPT_SACK:
-					rohc_comp_debug(context, "TCP option SACK Length = %d\n", opt_len);
+					rohc_comp_debug(context, "TCP option SACK Length = %d", opt_len);
 					assert(opt_len >= 2);
 					tcp_context->tcp_option_sack_length = opt_len - 2;
 					if(tcp_context->tcp_option_sack_length > (sizeof(sack_block_t) * 4))
 					{
 						rohc_comp_warn(context, "malformed TCP option #%zu: SACK "
 						               "option too long: %u bytes while less than "
-						               "%zu bytes expected\n", opt_pos + 1,
+						               "%zu bytes expected", opt_pos + 1,
 						               tcp_context->tcp_option_sack_length,
 						               sizeof(sack_block_t) * 4);
 						goto error;
@@ -3018,7 +3014,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					const struct tcp_option_timestamp *const opt_ts =
 						(struct tcp_option_timestamp *) (options + 2);
 
-					rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
+					rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x",
 					                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
 
 					tcp_context->tcp_option_timestamp.ts = opt_ts->ts;
@@ -3078,12 +3074,12 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					break;
 				/*
 				case TCP_OPT_TSTAMP_HDR:
-					rohc_comp_debug(context, "TCP option TIMESTAMP HDR\n");
+					rohc_comp_debug(context, "TCP option TIMESTAMP HDR");
 					i = 0;
 					break;
 				*/
 				default:
-					rohc_comp_debug(context, "TCP option unknown = 0x%x\n", *options);
+					rohc_comp_debug(context, "TCP option unknown = 0x%x", *options);
 					i -= opt_len;
 					options += opt_len;
 					break;
@@ -3098,14 +3094,14 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				if((*pBeginList) & 1) /* number is odd */
 				{
 					*mptr.uint8 |= 0x08 | opt_idx;
-					rohc_comp_debug(context, "  add 4-bit  odd XI field 0x%x\n",
+					rohc_comp_debug(context, "  add 4-bit  odd XI field 0x%x",
 					                (*mptr.uint8) & 0xf);
 					mptr.uint8++;
 				}
 				else
 				{
 					*mptr.uint8 = (0x08 | opt_idx) << 4;
-					rohc_comp_debug(context, "  add 4-bit even XI field 0x%x\n",
+					rohc_comp_debug(context, "  add 4-bit even XI field 0x%x",
 					                ((*mptr.uint8) >> 4) & 0xf);
 				}
 			}
@@ -3115,7 +3111,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
 				assert(opt_idx <= MAX_TCP_OPTION_INDEX);
 				*mptr.uint8 = 0x80 | opt_idx;
-				rohc_comp_debug(context, "  add 8-bit XI field 0x%02x\n",
+				rohc_comp_debug(context, "  add 8-bit XI field 0x%02x",
 				                *mptr.uint8);
 				mptr.uint8++;
 			}
@@ -3126,7 +3122,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 		{
 			rohc_comp_warn(context, "unexpected TCP header: too many TCP "
 			               "options: %zu options found in packet but only %u "
-			               "options possible\n", opt_pos, ROHC_TCP_OPTS_MAX);
+			               "options possible", opt_pos, ROHC_TCP_OPTS_MAX);
 			goto error;
 		}
 
@@ -3144,11 +3140,10 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			/* 8-bit XI field */
 			*pBeginList |= 0x10;
 		}
-		rohc_comp_debug(context, "TCP %d item(s) in list\n",
-		                (*pBeginList) & 0x0f);
+		rohc_comp_debug(context, "TCP %d item(s) in list", (*pBeginList) & 0x0f);
 
 		/* encode items */
-		rohc_comp_debug(context, "list items:\n");
+		rohc_comp_debug(context, "list items:");
 		options = ( (unsigned char *) tcp ) + sizeof(tcphdr_t);
 		options_length = (tcp->data_offset << 2) - sizeof(tcphdr_t);
 		for(i = options_length; i > 0; )
@@ -3160,7 +3155,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			if(i < 1)
 			{
 				rohc_comp_warn(context, "malformed TCP options: not enough "
-				               "remaining bytes for option type\n");
+				               "remaining bytes for option type");
 				goto error;
 			}
 			opt_type = options[0];
@@ -3173,7 +3168,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 			else if(i < 2)
 			{
 				rohc_comp_warn(context, "malformed TCP options: not enough "
-				               "remaining bytes for option length\n");
+				               "remaining bytes for option length");
 				goto error;
 			}
 			else
@@ -3182,7 +3177,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 				if(opt_len < 2)
 				{
 					rohc_comp_warn(context, "malformed TCP options: option should "
-					               "be at least 2 bytes but length field is %u\n",
+					               "be at least 2 bytes but length field is %u",
 					               opt_len);
 					goto error;
 				}
@@ -3195,7 +3190,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					 *   pad_len =:= compressed_value(8, nbits-8) [ 8 ];
 					 * }
 					 */
-					rohc_comp_debug(context, "  item EOL: %d padding bytes\n", i - 1);
+					rohc_comp_debug(context, "  item EOL: %d padding bytes", i - 1);
 					*(mptr.uint8) = i - 1;
 					mptr.uint8++;
 					/* skip option */
@@ -3206,7 +3201,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					/* COMPRESSED nop_list_item {
 					 * }
 					 */
-					rohc_comp_debug(context, "  item NOP: empty\n");
+					rohc_comp_debug(context, "  item NOP: empty");
 					/* skip option */
 					--i;
 					++options;
@@ -3216,7 +3211,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					 *   mss =:= irregular(16) [ 16 ];
 					 * }
 					 */
-					rohc_comp_debug(context, "  item MSS\n");
+					rohc_comp_debug(context, "  item MSS");
 					memcpy(mptr.uint8, options + 2, sizeof(uint16_t));
 					mptr.uint8 += sizeof(uint16_t);
 					/* skip option */
@@ -3228,7 +3223,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					 *   wscale =:= irregular(8) [ 8 ];
 					 * }
 					 */
-					rohc_comp_debug(context, "  item WSCALE\n");
+					rohc_comp_debug(context, "  item WSCALE");
 					*(mptr.uint8) = options[2];
 					mptr.uint8++;
 					/* skip option */
@@ -3241,7 +3236,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					 *   tsecho =:= irregular(32) [ 32 ];
 					 * }
 					 */
-					rohc_comp_debug(context, "  item Timestamp\n");
+					rohc_comp_debug(context, "  item Timestamp");
 					memcpy(mptr.uint8, options + 2, sizeof(uint32_t) * 2);
 					mptr.uint8 += sizeof(uint32_t) * 2;
 					/* skip option */
@@ -3249,7 +3244,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					options += TCP_OLEN_TIMESTAMP;
 					break;
 				case TCP_OPT_SACK:
-					rohc_comp_debug(context, "  item SACK\n");
+					rohc_comp_debug(context, "  item SACK");
 					mptr.uint8 = c_tcp_opt_sack(context, mptr.uint8,
 					                            rohc_ntoh32(tcp->ack_num), opt_len,
 					                            (sack_block_t *) (options + 2));
@@ -3261,13 +3256,13 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 					/* COMPRESSED sack_permitted_list_item {
 					 * }
 					 */
-					rohc_comp_debug(context, "  item SACK permitted: empty\n");
+					rohc_comp_debug(context, "  item SACK permitted: empty");
 					/* skip option */
 					i -= TCP_OLEN_SACK_PERMITTED;
 					options += TCP_OLEN_SACK_PERMITTED;
 					break;
 				default:
-					rohc_comp_debug(context, "  item option 0x%x\n", opt_type);
+					rohc_comp_debug(context, "  item option 0x%x", opt_type);
 					/* COMPRESSED generic_list_item {
 					 *   type          =:= irregular(8)      [ 8 ];
 					 *   option_static =:= one_bit_choice    [ 1 ];
@@ -3288,7 +3283,7 @@ static uint8_t * tcp_code_dynamic_tcp_part(const struct rohc_comp_ctxt *context,
 	}
 	else
 	{
-		rohc_comp_debug(context, "TCP no options!\n");
+		rohc_comp_debug(context, "TCP no options!");
 		// See RFC4996, 6.3.3 : no XI items
 		// PS=0 m=0
 		*(mptr.uint8++) = 0;
@@ -3339,7 +3334,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 	{
 		remain_data[0] =
 			(((ip_inner_ecn << 2) | tcp->ecn_flags) << 4) | tcp->res_flags;
-		rohc_comp_debug(context, "add TCP ecn_flags res_flags = 0x%02x\n",
+		rohc_comp_debug(context, "add TCP ecn_flags res_flags = 0x%02x",
 		                remain_data[0]);
 		remain_data++;
 	}
@@ -3347,7 +3342,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 	// checksum =:= irregular(16)
 	memcpy(remain_data, &tcp->checksum, sizeof(uint16_t));
 	remain_data += sizeof(uint16_t);
-	rohc_comp_debug(context, "add TCP checksum = 0x%04x\n",
+	rohc_comp_debug(context, "add TCP checksum = 0x%04x",
 	                rohc_ntoh16(tcp->checksum));
 
 	/* irregular parts for TCP options */
@@ -3359,7 +3354,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 		size_t opt_idx;
 
 		rohc_comp_debug(context, "irregular chain: encode irregular content "
-		                "for all TCP options\n");
+		                "for all TCP options");
 
 		opts = ((uint8_t *) tcp) + sizeof(tcphdr_t);
 		opts_len = (tcp->data_offset << 2) - sizeof(tcphdr_t);
@@ -3375,13 +3370,13 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 			{
 				rohc_comp_debug(context, "irregular chain: do not encode irregular "
 				                "content for TCP option %u because it is already "
-				                "transmitted in the compressed list of TCP options\n",
+				                "transmitted in the compressed list of TCP options",
 				                opt_type);
 			}
 			else
 			{
 				rohc_comp_debug(context, "irregular chain: encode irregular content "
-				                "for TCP option %u\n", opt_type);
+				                "for TCP option %u", opt_type);
 			}
 
 			if(opt_type == TCP_OPT_EOL || opt_type == TCP_OPT_NOP)
@@ -3415,7 +3410,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 					if(!is_ok)
 					{
 						rohc_comp_warn(context, "irregular chain: failed to encode "
-						               "echo request of TCP Timestamp option\n");
+						               "echo request of TCP Timestamp option");
 						goto error;
 					}
 
@@ -3427,7 +3422,7 @@ static uint8_t * tcp_code_irregular_tcp_part(struct rohc_comp_ctxt *const contex
 					if(!is_ok)
 					{
 						rohc_comp_warn(context, "irregular chain: failed to encode "
-						               "echo reply of TCP Timestamp option\n");
+						               "echo reply of TCP Timestamp option");
 						goto error;
 					}
 
@@ -3491,7 +3486,7 @@ static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
 	{
 		/* discriminator '0' */
 		ptr[0] = timestamp & 0x7F;
-		rohc_comp_debug(context, "encode timestamp = 0x%04x on 1 byte: 0x%02x\n",
+		rohc_comp_debug(context, "encode timestamp = 0x%04x on 1 byte: 0x%02x",
 		                timestamp, ptr[0]);
 		ptr++;
 	}
@@ -3501,7 +3496,7 @@ static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
 		ptr[0] = 0x80 | ((timestamp >> 8) & 0x3F);
 		ptr[1] = timestamp;
 		rohc_comp_debug(context, "encode timestamp = 0x%04x on 2 bytes: 0x%02x "
-		                "0x%02x\n", timestamp, ptr[0], ptr[1]);
+		                "0x%02x", timestamp, ptr[0], ptr[1]);
 		ptr += 2;
 	}
 	else if(nr_bits_0x40000 <= 21)
@@ -3511,7 +3506,7 @@ static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
 		ptr[1] = timestamp >> 8;
 		ptr[2] = timestamp;
 		rohc_comp_debug(context, "encode timestamp = 0x%04x on 3 bytes: 0x%02x "
-		                "0x%02x 0x%02x\n", timestamp, ptr[0], ptr[1], ptr[2]);
+		                "0x%02x 0x%02x", timestamp, ptr[0], ptr[1], ptr[2]);
 		ptr += 3;
 	}
 	else if(nr_bits_0x40000 <= 29)
@@ -3522,14 +3517,14 @@ static bool c_ts_lsb(const struct rohc_comp_ctxt *const context,
 		ptr[2] = timestamp >> 8;
 		ptr[3] = timestamp;
 		rohc_comp_debug(context, "encode timestamp = 0x%04x on 4 bytes: 0x%02x "
-		                "0x%02x 0x%02x 0x%02x\n", timestamp, ptr[0], ptr[1],
+		                "0x%02x 0x%02x 0x%02x", timestamp, ptr[0], ptr[1],
 		                ptr[2], ptr[3]);
 		ptr += 4;
 	}
 	else
 	{
 		rohc_comp_warn(context, "failed to compress timestamp 0x%08x: more "
-		               "than 29 bits required\n", timestamp);
+		               "than 29 bits required", timestamp);
 		goto error;
 	}
 
@@ -3604,7 +3599,7 @@ static uint8_t * c_sack_pure_lsb(const struct rohc_comp_ctxt *const context,
 	}
 
 	rohc_comp_debug(context, "sack_field = 0x%x (0x%x - 0x%x) encoded on %zd "
-	                "bytes (discriminator included)\n", sack_field, field,
+	                "bytes (discriminator included)", sack_field, field,
 	                base, len);
 
 	return ptr;
@@ -3630,9 +3625,8 @@ static uint8_t * c_sack_block(const struct rohc_comp_ctxt *const context,
 {
 	assert(context != NULL);
 
-	rohc_comp_debug(context, "reference = 0x%x, block_start = 0x%x, "
-	                "block_end = 0x%x\n", reference,
-	                rohc_ntoh32(sack_block->block_start),
+	rohc_comp_debug(context, "reference = 0x%x, block_start = 0x%x, block_end "
+	                "= 0x%x", reference, rohc_ntoh32(sack_block->block_start),
 	                rohc_ntoh32(sack_block->block_end));
 
 	// block_start =:= sack_var_length_enc(reference)
@@ -3670,8 +3664,7 @@ static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
 
 	assert(context != NULL);
 
-	rohc_comp_debug(context, "TCP option SACK (reference ACK = 0x%08x)\n",
-	                ack_value);
+	rohc_comp_debug(context, "TCP option SACK (reference ACK = 0x%08x)", ack_value);
 	rohc_dump_packet(context->compressor->trace_callback, ROHC_TRACE_COMP,
 	                 ROHC_TRACE_DEBUG, "TCP option SACK",
 	                 (unsigned char *) sack_block, length - 2);
@@ -3685,7 +3678,7 @@ static uint8_t * c_tcp_opt_sack(const struct rohc_comp_ctxt *const context,
 	while(i-- != 0)
 	{
 		rohc_comp_debug(context, "block of SACK option: start = 0x%08x, "
-		                "end = 0x%08x\n", rohc_ntoh32(block->block_start),
+		                "end = 0x%08x", rohc_ntoh32(block->block_start),
 		                rohc_ntoh32(block->block_end));
 		ptr = c_sack_block(context, ptr, ack_value, block);
 		block++;
@@ -3779,7 +3772,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		if(i < 1)
 		{
 			rohc_comp_warn(context, "malformed TCP option #%u: not enough "
-			               "remaining bytes for option type\n", m + 1);
+			               "remaining bytes for option type", m + 1);
 			goto error;
 		}
 		opt_type = options[0];
@@ -3795,7 +3788,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		else if(i < 2)
 		{
 			rohc_comp_warn(context, "malformed TCP option #%u: not enough "
-			               "remaining bytes for option length\n", m + 1);
+			               "remaining bytes for option length", m + 1);
 			goto error;
 		}
 		else
@@ -3804,12 +3797,12 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 			if(opt_len < 2)
 			{
 				rohc_comp_warn(context, "malformed TCP option #%u: option should "
-				               "be at least 2 bytes but length field is %u\n",
+				               "be at least 2 bytes but length field is %u",
 				               m + 1, opt_len);
 				goto error;
 			}
 		}
-		rohc_comp_debug(context, "TCP options list: compress option '%s' (%u)\n",
+		rohc_comp_debug(context, "TCP options list: compress option '%s' (%u)",
 		                tcp_opt_get_descr(opt_type), opt_type);
 
 		// If option already used
@@ -3817,7 +3810,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		   tcp_context->tcp_options_list[opt_idx].nr_trans > 0)
 		{
 			rohc_comp_debug(context, "TCP options list: option '%s' (%u) was "
-			                "already used with index %u in previous packets\n",
+			                "already used with index %u in previous packets",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 
 			// Verify if used with same value
@@ -3917,7 +3910,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 		else
 		{
 			rohc_comp_debug(context, "TCP options list: option '%s' (%u) was "
-			                "never used with index %u in previous packets\n",
+			                "never used with index %u in previous packets",
 			                tcp_opt_get_descr(opt_type), opt_type, opt_idx);
 
 			// Some TCP option are compressed without item
@@ -3962,7 +3955,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 			/* use 4-bit XI fields */
 			assert(opt_idx <= 7);
 			rohc_comp_debug(context, "TCP options list: 4-bit XI field #%u: "
-			                "item with index %u is present\n", m, opt_idx);
+			                "item with index %u is present", m, opt_idx);
 			if(m & 1)
 			{
 				comp_opts[*comp_opts_len] |= opt_idx;
@@ -3987,7 +3980,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 			assert(tcp_context->tmp.tcp_opts_idx_max <= MAX_TCP_OPTION_INDEX);
 			assert(opt_idx <= MAX_TCP_OPTION_INDEX);
 			rohc_comp_debug(context, "TCP options list: 8-bit XI field #%u: "
-			                "item with index %u is present\n", m, opt_idx);
+			                "item with index %u is present", m, opt_idx);
 			comp_opts[(*comp_opts_len)] = opt_idx;
 			if(item_needed)
 			{
@@ -4040,7 +4033,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 						(struct tcp_option_timestamp *) (options + 2);
 					uint8_t *opt_start;
 
-					rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x\n",
+					rohc_comp_debug(context, "TCP option TIMESTAMP = 0x%04x 0x%04x",
 					                rohc_ntoh32(opt_ts->ts), rohc_ntoh32(opt_ts->ts_reply));
 
 					// see RFC4996 page65
@@ -4052,7 +4045,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					if(!is_ok)
 					{
 						rohc_comp_warn(context, "failed to encode echo request of "
-						               "TCP Timestamp option\n");
+						               "TCP Timestamp option");
 						goto error;
 					}
 					comp_opt_len += ptr_compressed_options - opt_start;
@@ -4065,7 +4058,7 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 					if(!is_ok)
 					{
 						rohc_comp_warn(context, "failed to encode echo reply of "
-						               "TCP Timestamp option\n");
+						               "TCP Timestamp option");
 						goto error;
 					}
 					comp_opt_len += ptr_compressed_options - opt_start;
@@ -4097,14 +4090,14 @@ static bool tcp_compress_tcp_options(struct rohc_comp_ctxt *const context,
 				}
 			}
 			rohc_comp_debug(context, "TCP options list: option '%s' (%u) added "
-			                "%zu bytes of item\n", tcp_opt_get_descr(opt_type),
+			                "%zu bytes of item", tcp_opt_get_descr(opt_type),
 			                opt_type, comp_opt_len);
 		}
 	}
 	if(m >= ROHC_TCP_OPTS_MAX && i != 0)
 	{
 		rohc_comp_warn(context, "compressed list of TCP options: too many "
-		               "options\n");
+		               "options");
 		goto error;
 	}
 
@@ -4224,19 +4217,19 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	g_context = (struct c_generic_context *) context->specific;
 	tcp_context = (struct sc_tcp_context *) g_context->specific;
 
-	rohc_comp_debug(context, "code CO packet (CID = %zu)\n", context->cid);
+	rohc_comp_debug(context, "code CO packet (CID = %zu)", context->cid);
 
 	rohc_comp_debug(context, "context = %p, ip = %p, packet_size = %d, "
-	                "next_header = %p, rohc_pkt = %p\n", context, ip,
+	                "next_header = %p, rohc_pkt = %p", context, ip,
 	                packet_size, next_header, rohc_pkt);
 
-	rohc_comp_debug(context, "parse the %zu-byte IP packet\n", ip->size);
+	rohc_comp_debug(context, "parse the %zu-byte IP packet", ip->size);
 	base_header.ipvx = (base_header_ip_vx_t *) ip->data;
 	remain_data_len = ip->size;
 	ip_context.uint8 = tcp_context->ip_context;
 	do
 	{
-		rohc_comp_debug(context, "base_header_ip = %p, IP version = %d\n",
+		rohc_comp_debug(context, "base_header_ip = %p, IP version = %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		base_header_inner.ipvx = base_header.ipvx;
@@ -4263,7 +4256,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 				/* skip IPv4 header */
 				rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
-				                "Protocol 0x%02x\n", ipv4_hdr_len, protocol);
+				                "Protocol 0x%02x", ipv4_hdr_len, protocol);
 				remain_data_len -= ipv4_hdr_len;
 				base_header.uint8 += ipv4_hdr_len;
 				++ip_context.v4;
@@ -4281,7 +4274,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 				/* skip IPv6 header */
 				rohc_comp_debug(context, "skip %zd-byte IPv6 header with Next "
-				                "Header 0x%02x\n", sizeof(base_header_ip_v6_t),
+				                "Header 0x%02x", sizeof(base_header_ip_v6_t),
 				                protocol);
 				remain_data_len -= sizeof(base_header_ip_v6_t);
 				++base_header.ipv6;
@@ -4291,7 +4284,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 				while(rohc_is_ipv6_opt(protocol))
 				{
 					rohc_comp_debug(context, "skip %d-byte IPv6 extension header "
-					                "with Next Header 0x%02x\n",
+					                "with Next Header 0x%02x",
 					                ip_context.v6_option->option_length,
 					                protocol);
 					protocol = base_header.ipv6_opt->next_header;
@@ -4307,7 +4300,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 	if(remain_data_len < sizeof(tcphdr_t) )
 	{
-		rohc_comp_debug(context, "insufficient size for TCP header\n");
+		rohc_comp_debug(context, "insufficient size for TCP header");
 		return -1;
 	}
 	tcp = base_header.tcphdr;
@@ -4319,8 +4312,8 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 
 		assert(((uint8_t *) tcp) >= ip->data);
 		*payload_offset = ((uint8_t *) tcp) + tcp_data_offset - ip->data;
-		rohc_comp_debug(context, "payload offset = %zu\n", *payload_offset);
-		rohc_comp_debug(context, "payload size = %zu\n", payload_size);
+		rohc_comp_debug(context, "payload offset = %zu", *payload_offset);
+		rohc_comp_debug(context, "payload size = %zu", payload_size);
 	}
 
 	/* we have just identified the IP and TCP headers (options included), so
@@ -4331,15 +4324,15 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	{
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_7, ip->data, *payload_offset,
 		                             CRC_INIT_7, context->compressor->crc_table_7);
-		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = "
-		                "0x%x\n", *payload_offset, crc_computed);
+		rohc_comp_debug(context, "CRC-7 on %zu-byte uncompressed header = 0x%x",
+		                *payload_offset, crc_computed);
 	}
 	else
 	{
 		crc_computed = crc_calculate(ROHC_CRC_TYPE_3, ip->data, *payload_offset,
 		                             CRC_INIT_3, context->compressor->crc_table_3);
-		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = "
-		                "0x%x\n", *payload_offset, crc_computed);
+		rohc_comp_debug(context, "CRC-3 on %zu-byte uncompressed header = 0x%x",
+		                *payload_offset, crc_computed);
 	}
 
 	/* parts 1 and 3:
@@ -4349,10 +4342,9 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	counter = code_cid_values(context->compressor->medium.cid_type,
 	                          context->cid, rohc_pkt, rohc_pkt_max_len,
 	                          &first_position);
-	rohc_comp_debug(context, "rohc_pkt = %p, counter = %d, "
-	                "first_position = %zu, rohc_pkt[0] = 0x%02x, "
-	                "rohc_pkt[1] = 0x%02x\n", rohc_pkt, counter,
-	                first_position, rohc_pkt[0], rohc_pkt[1]);
+	rohc_comp_debug(context, "rohc_pkt = %p, counter = %d, first_position = "
+	                "%zu, rohc_pkt[0] = 0x%02x, rohc_pkt[1] = 0x%02x",
+	                rohc_pkt, counter, first_position, rohc_pkt[0], rohc_pkt[1]);
 
 	/* part 4: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
@@ -4378,7 +4370,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	                  packet_type, tcp, crc_computed);
 	if(i < 0)
 	{
-		rohc_comp_warn(context, "failed to build co_baseheader\n");
+		rohc_comp_warn(context, "failed to build co_baseheader");
 		goto error;
 	}
 
@@ -4393,7 +4385,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	do
 	{
 
-		rohc_comp_debug(context, "base_header_ip = %p, IP version = %d\n",
+		rohc_comp_debug(context, "base_header_ip = %p, IP version = %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		mptr.uint8 = tcp_code_irregular_ip_part(context, ip_context,
@@ -4425,7 +4417,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 					if(mptr.uint8 == NULL)
 					{
 						rohc_comp_warn(context, "failed to encode the IPv6 "
-						               "extension part of the irregular chain\n");
+						               "extension part of the irregular chain");
 						goto error;
 					}
 					protocol = base_header.ipv6_opt->next_header;
@@ -4446,14 +4438,14 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	if(mptr.uint8 == NULL)
 	{
 		rohc_comp_warn(context, "failed to encode the TCP part of the "
-		               "irregular chain\n");
+		               "irregular chain");
 		goto error;
 	}
 
 	if(context->compressor->medium.cid_type != ROHC_SMALL_CID)
 	{
 		rohc_comp_debug(context, "counter = %d, rohc_pkt[counter-1] = 0x%02x, "
-		                "save_first_byte = 0x%02x\n", counter,
+		                "save_first_byte = 0x%02x", counter,
 		                rohc_pkt[counter - 1], save_first_byte);
 		// Restore byte saved
 		rohc_pkt[first_position] = rohc_pkt[counter - 1];
@@ -4507,7 +4499,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	bool is_ok;
 
 	rohc_comp_debug(context, "tcp_context = %p, ip_context = %p, "
-	                "base_header_ip = %p, rohc_pkt = %p\n", tcp_context,
+	                "base_header_ip = %p, rohc_pkt = %p", tcp_context,
 	                ip_context.uint8, base_header.uint8, rohc_pkt);
 
 	// Init pointer on rohc compressed buffer
@@ -4553,7 +4545,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 											  &rnd8_len);
 			if(!is_ok)
 			{
-				rohc_comp_warn(context, "failed to build rnd_8 packet\n");
+				rohc_comp_warn(context, "failed to build rnd_8 packet");
 				goto error;
 			}
 			mptr.uint8 += rnd8_len;
@@ -4603,7 +4595,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 											  &seq8_len);
 			if(!is_ok)
 			{
-				rohc_comp_warn(context, "failed to build seq_8 packet\n");
+				rohc_comp_warn(context, "failed to build seq_8 packet");
 				goto error;
 			}
 			mptr.uint8 += seq8_len;
@@ -4616,9 +4608,9 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	int ret;
 	int indicator;
 
-	rohc_comp_debug(context, "code common packet\n");
+	rohc_comp_debug(context, "code common packet");
 	// See RFC4996 page 80:
-	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d\n",
+	rohc_comp_debug(context, "ttl_irregular_chain_flag = %d",
 	                tcp_context->tmp.ttl_irregular_chain_flag);
 	mptr.uint8 = (uint8_t*)(c_base_header.co_common + 1);
 
@@ -4626,7 +4618,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	c_base_header.co_common->ttl_hopl_outer_flag =
 		tcp_context->tmp.ttl_irregular_chain_flag;
 
-	rohc_comp_debug(context, "TCP ack_flag = %d, psh_flag = %d, rsf_flags = %d\n",
+	rohc_comp_debug(context, "TCP ack_flag = %d, psh_flag = %d, rsf_flags = %d",
 	                tcp->ack_flag, tcp->psh_flag, tcp->rsf_flags);
 	// =:= irregular(1) [ 1 ];
 	c_base_header.co_common->ack_flag = tcp->ack_flag;
@@ -4648,7 +4640,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	c_base_header.co_common->seq_indicator = indicator;
 	mptr.uint8 += encoded_seq_len;
 	rohc_comp_debug(context, "encode sequence number 0x%08x on %zu bytes with "
-	                "indicator %d\n", rohc_ntoh32(tcp->seq_num),
+	                "indicator %d", rohc_ntoh32(tcp->seq_num),
 	                encoded_seq_len, c_base_header.co_common->seq_indicator);
 
 	/* ack_number */
@@ -4669,7 +4661,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += encoded_ack_len;
 	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
-	                "indicator %d\n", rohc_ntoh32(tcp->ack_num),
+	                "indicator %d", rohc_ntoh32(tcp->ack_num),
 	                encoded_ack_len, c_base_header.co_common->ack_indicator);
 
 	/* ack_stride */ /* TODO: comparison with new computed ack_stride? */
@@ -4678,13 +4670,13 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)\n");
+		rohc_comp_warn(context, "failed to encode static_or_irreg(ack_stride)");
 		goto error;
 	}
 	c_base_header.co_common->ack_stride_indicator = indicator;
 	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, ack_stride_indicator = %d, "
-	                "ack_stride 0x%x\n", (unsigned)(mptr.uint8 - puchar),
+	                "ack_stride 0x%x", (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->ack_stride_indicator,
 	                tcp_context->ack_stride);
 
@@ -4693,13 +4685,13 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                          mptr.uint8, &indicator);
 	if(ret < 0)
 	{
-		rohc_comp_warn(context, "failed to encode static_or_irreg(window)\n");
+		rohc_comp_warn(context, "failed to encode static_or_irreg(window)");
 		goto error;
 	}
 	c_base_header.co_common->window_indicator = indicator;
 	mptr.uint8 += ret;
 	rohc_comp_debug(context, "size = %d, window_indicator = %d, "
-	                "old_window = 0x%x, window = 0x%x\n",
+	                "old_window = 0x%x, window = 0x%x",
 	                (unsigned)(mptr.uint8 - puchar),
 	                c_base_header.co_common->window_indicator,
 	                rohc_ntoh16(tcp_context->old_tcphdr.window),
@@ -4713,7 +4705,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                           g_context->sn, mptr.uint8, &indicator);
 		if(ret < 0)
 		{
-			rohc_comp_warn(context, "failed to encode optional_ip_id_lsb(ip_id)\n");
+			rohc_comp_warn(context, "failed to encode optional_ip_id_lsb(ip_id)");
 			goto error;
 		}
 		c_base_header.co_common->ip_id_indicator = indicator;
@@ -4721,7 +4713,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = ip_context.v4->ip_id_behavior;
 		rohc_comp_debug(context, "size = %u, ip_id_indicator = %d, "
-		                "ip_id_behavior = %d\n",
+		                "ip_id_behavior = %d",
 		                (unsigned int) (mptr.uint8 - puchar),
 		                c_base_header.co_common->ip_id_indicator,
 		                c_base_header.co_common->ip_id_behavior);
@@ -4730,7 +4722,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		c_base_header.co_common->dscp_present =
 			dscp_encode(&mptr, ip_context.vx->dscp, base_header.ipv4->dscp);
 		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
-		                "value = 0x%02x) => length = %u bytes\n",
+		                "value = 0x%02x) => length = %u bytes",
 		                c_base_header.co_common->dscp_present,
 		                ip_context.vx->dscp, base_header.ipv4->dscp,
 		                (unsigned int) (mptr.uint8 - puchar));
@@ -4742,7 +4734,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                         &indicator);
 		if(ret < 0)
 		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)\n");
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
 			goto error;
 		}
 		c_base_header.co_common->ttl_hopl_present = indicator;
@@ -4752,7 +4744,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		c_base_header.co_common->df = base_header.ipv4->df;
 		ip_context.v4->df = base_header.ipv4->df;
 		rohc_comp_debug(context, "size = %u, dscp_present = %d, "
-		                "ttl_hopl_present = %d\n",
+		                "ttl_hopl_present = %d",
 		                (unsigned int) (mptr.uint8 - puchar),
 		                c_base_header.co_common->dscp_present,
 		                c_base_header.co_common->ttl_hopl_present);
@@ -4764,7 +4756,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		// =:= ip_id_behavior_choice(true) [ 2 ];
 		c_base_header.co_common->ip_id_behavior = IP_ID_BEHAVIOR_RAND;
 		rohc_comp_debug(context, "size = %u, ip_id_indicator = %d, "
-		                "ip_id_behavior = %d\n",
+		                "ip_id_behavior = %d",
 		                (unsigned int) (mptr.uint8 - puchar),
 		                c_base_header.co_common->ip_id_indicator,
 		                c_base_header.co_common->ip_id_behavior);
@@ -4773,7 +4765,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		c_base_header.co_common->dscp_present =
 			dscp_encode(&mptr, ip_context.vx->dscp, DSCP_V6(base_header.ipv6));
 		rohc_comp_debug(context, "dscp_present = %d (context = 0x%02x, "
-		                "value = 0x%02x) => length = %u bytes\n",
+		                "value = 0x%02x) => length = %u bytes",
 		                c_base_header.co_common->dscp_present,
 		                ip_context.vx->dscp, DSCP_V6(base_header.ipv6),
 		                (unsigned int) (mptr.uint8 - puchar));
@@ -4785,7 +4777,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                         &indicator);
 		if(ret < 0)
 		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)\n");
+			rohc_comp_warn(context, "failed to encode static_or_irreg(ttl_hopl)");
 			goto error;
 		}
 		c_base_header.co_common->ttl_hopl_present = indicator;
@@ -4794,7 +4786,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		// =:= dont_fragment(version.UVALUE) [ 1 ];
 		c_base_header.co_common->df = 0;
 		rohc_comp_debug(context, "size = %u, dscp_present = %d, "
-		                "ttl_hopl_present %d\n",
+		                "ttl_hopl_present %d",
 		                (unsigned int) (mptr.uint8 - puchar),
 		                c_base_header.co_common->dscp_present,
 		                c_base_header.co_common->ttl_hopl_present);
@@ -4810,8 +4802,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		// =:= one_bit_choice [ 1 ];
 		c_base_header.co_common->ecn_used = 1;
 	}
-	rohc_comp_debug(context, "ecn_used = %d\n",
-	                c_base_header.co_common->ecn_used);
+	rohc_comp_debug(context, "ecn_used = %d", c_base_header.co_common->ecn_used);
 	// =:= irregular(1) [ 1 ];
 	if( (c_base_header.co_common->urg_flag = tcp->urg_flag) != 0) // TODO: check that!
 	{
@@ -4820,12 +4811,12 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		                          mptr.uint8, &indicator);
 		if(ret < 0)
 		{
-			rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)\n");
+			rohc_comp_warn(context, "failed to encode static_or_irreg(urg_ptr)");
 			goto error;
 		}
 		c_base_header.co_common->urg_ptr_present = indicator;
 		mptr.uint8 += ret;
-		rohc_comp_debug(context, "urg_flag = %d, urg_ptr_present = %d\n",
+		rohc_comp_debug(context, "urg_flag = %d, urg_ptr_present = %d",
 		                c_base_header.co_common->urg_flag,
 		                c_base_header.co_common->urg_ptr_present);
 	}
@@ -4847,7 +4838,7 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 		is_ok = tcp_compress_tcp_options(context, tcp, mptr.uint8, &comp_opts_len);
 		if(!is_ok)
 		{
-			rohc_comp_warn(context, "failed to compress TCP options\n");
+			rohc_comp_warn(context, "failed to compress TCP options");
 			goto error;
 		}
 		mptr.uint8 += comp_opts_len;
@@ -4855,21 +4846,21 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	else
 	{
 		/* the structure of the list of TCP options didn't change */
-		rohc_comp_debug(context, "compressed list of TCP options: list not present\n");
+		rohc_comp_debug(context, "compressed list of TCP options: list not present");
 		c_base_header.co_common->list_present = 0;
 	}
-	rohc_comp_debug(context, "size = %u, list_present = %d, DF = %d\n",
+	rohc_comp_debug(context, "size = %u, list_present = %d, DF = %d",
 	                (unsigned int) (mptr.uint8 - puchar),
 	                c_base_header.co_common->list_present,
 	                c_base_header.co_common->df);
 	// =:= crc7(THIS.UVALUE,THIS.ULENGTH) [ 7 ];
 	c_base_header.co_common->header_crc = crc;
-	rohc_comp_debug(context, "CRC = 0x%x\n",
+	rohc_comp_debug(context, "CRC = 0x%x",
 	                c_base_header.co_common->header_crc);
 			break;
 		}
 		default:
-			rohc_comp_debug(context, "unexpected packet type %d\n", packet_type);
+			rohc_comp_debug(context, "unexpected packet type %d", packet_type);
 			assert(0);
 			break;
 	}
@@ -4925,7 +4916,7 @@ static size_t c_tcp_build_rnd_1(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd1 != NULL);
 
-	rohc_comp_debug(context, "code rnd_1 packet\n");
+	rohc_comp_debug(context, "code rnd_1 packet");
 
 	rnd1->discriminator = 0x2e; /* '101110' */
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0x3ffff;
@@ -4967,7 +4958,7 @@ static size_t c_tcp_build_rnd_2(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd2 != NULL);
 
-	rohc_comp_debug(context, "code rnd_2 packet\n");
+	rohc_comp_debug(context, "code rnd_2 packet");
 
 	rnd2->discriminator = 0x0c; /* '1100' */
 	rnd2->seq_num_scaled = tcp_context->seq_num_scaled & 0xf;
@@ -5007,13 +4998,13 @@ static size_t c_tcp_build_rnd_3(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd3 != NULL);
 
-	rohc_comp_debug(context, "code rnd_3 packet\n");
+	rohc_comp_debug(context, "code rnd_3 packet");
 
 	rnd3->discriminator = 0x0; /* '0' */
 	ack_num = rohc_ntoh32(tcp->ack_num) & 0x7fff;
 	rnd3->ack_num1 = (ack_num >> 8) & 0x7f;
 	rnd3->ack_num2 = ack_num & 0xff;
-	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)\n",
+	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)",
 	                ack_num, rnd3->ack_num1, rnd3->ack_num2);
 	rnd3->msn = g_context->sn & 0xf;
 	rnd3->psh_flag = tcp->psh_flag;
@@ -5052,7 +5043,7 @@ static size_t c_tcp_build_rnd_4(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd4 != NULL);
 
-	rohc_comp_debug(context, "code rnd_4 packet\n");
+	rohc_comp_debug(context, "code rnd_4 packet");
 
 	rnd4->discriminator = 0x0d; /* '1101' */
 	rnd4->ack_num_scaled = tcp_context->ack_num_scaled & 0xf;
@@ -5094,7 +5085,7 @@ static size_t c_tcp_build_rnd_5(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd5 != NULL);
 
-	rohc_comp_debug(context, "code rnd_5 packet\n");
+	rohc_comp_debug(context, "code rnd_5 packet");
 
 	rnd5->discriminator = 0x04; /* '100' */
 	rnd5->psh_flag = tcp->psh_flag;
@@ -5105,14 +5096,14 @@ static size_t c_tcp_build_rnd_5(struct rohc_comp_ctxt *const context,
 	rnd5->seq_num1 = (seq_num >> 9) & 0x1f;
 	rnd5->seq_num2 = (seq_num >> 1) & 0xff;
 	rnd5->seq_num3 = seq_num & 0x01;
-	rohc_comp_debug(context, "seq_number = 0x%04x (0x%02x 0x%02x 0x%02x)\n",
+	rohc_comp_debug(context, "seq_number = 0x%04x (0x%02x 0x%02x 0x%02x)",
 	                seq_num, rnd5->seq_num1, rnd5->seq_num2, rnd5->seq_num3);
 
 	/* ACK number */
 	ack_num = rohc_ntoh32(tcp->ack_num) & 0x7fff;
 	rnd5->ack_num1 = (ack_num >> 8) & 0x7f;
 	rnd5->ack_num2 = ack_num & 0xff;
-	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)\n",
+	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)",
 	                ack_num, rnd5->ack_num1, rnd5->ack_num2);
 	rnd5->header_crc = crc;
 
@@ -5148,7 +5139,7 @@ static size_t c_tcp_build_rnd_6(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd6 != NULL);
 
-	rohc_comp_debug(context, "code rnd_6 packet\n");
+	rohc_comp_debug(context, "code rnd_6 packet");
 
 	rnd6->discriminator = 0x0a; /* '1010' */
 	rnd6->header_crc = 0; /* for CRC computation */
@@ -5191,7 +5182,7 @@ static size_t c_tcp_build_rnd_7(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(rnd7 != NULL);
 
-	rohc_comp_debug(context, "code rnd_7 packet\n");
+	rohc_comp_debug(context, "code rnd_7 packet");
 
 	rnd7->discriminator = 0x2f; /* '101111' */
 	ack_num = rohc_ntoh32(tcp->ack_num) & 0x3ffff;
@@ -5247,7 +5238,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	assert(rnd8 != NULL);
 	assert(rnd8_len != NULL);
 
-	rohc_comp_debug(context, "code rnd_8 packet\n");
+	rohc_comp_debug(context, "code rnd_8 packet");
 
 	rnd8->discriminator = 0x16; /* '10110' */
 	rnd8->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
@@ -5279,7 +5270,7 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 	/* sequence number */
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0xffff;
 	rnd8->seq_num = rohc_hton16(seq_num);
-	rohc_comp_debug(context, "16 bits of sequence number = 0x%04x\n", seq_num);
+	rohc_comp_debug(context, "16 bits of sequence number = 0x%04x", seq_num);
 
 	/* ACK number */
 	rnd8->ack_num = rohc_hton16(rohc_ntoh32(tcp->ack_num) & 0xffff);
@@ -5293,21 +5284,21 @@ static bool c_tcp_build_rnd_8(struct rohc_comp_ctxt *const context,
 													&comp_opts_len);
 		if(!is_ok)
 		{
-			rohc_comp_warn(context, "failed to compress TCP options\n");
+			rohc_comp_warn(context, "failed to compress TCP options");
 			goto error;
 		}
 	}
 	else
 	{
 		/* the structure of the list of TCP options didn't change */
-		rohc_comp_debug(context, "compressed list of TCP options: list not present\n");
+		rohc_comp_debug(context, "compressed list of TCP options: list not present");
 		rnd8->list_present = 0;
 		comp_opts_len = 0;
 	}
 
 	/* CRC */
 	rnd8->header_crc = crc;
-	rohc_comp_debug(context, "CRC 0x%x\n", rnd8->header_crc);
+	rohc_comp_debug(context, "CRC 0x%x", rnd8->header_crc);
 
 	*rnd8_len = sizeof(rnd_8_t) + comp_opts_len;
 
@@ -5354,7 +5345,7 @@ static size_t c_tcp_build_seq_1(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq1 != NULL);
 
-	rohc_comp_debug(context, "code seq_1 packet\n");
+	rohc_comp_debug(context, "code seq_1 packet");
 
 	seq1->discriminator = 0x0a; /* '1010' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -5406,7 +5397,7 @@ static size_t c_tcp_build_seq_2(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq2 != NULL);
 
-	rohc_comp_debug(context, "code seq_2 packet\n");
+	rohc_comp_debug(context, "code seq_2 packet");
 
 	seq2->discriminator = 0x1a; /* '11010' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -5458,7 +5449,7 @@ static size_t c_tcp_build_seq_3(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq3 != NULL);
 
-	rohc_comp_debug(context, "code seq_3 packet\n");
+	rohc_comp_debug(context, "code seq_3 packet");
 
 	seq3->discriminator = 0x09; /* '1001' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -5510,7 +5501,7 @@ static size_t c_tcp_build_seq_4(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq4 != NULL);
 
-	rohc_comp_debug(context, "code seq_4 packet\n");
+	rohc_comp_debug(context, "code seq_4 packet");
 
 	seq4->discriminator = 0x00; /* '0' */
 	seq4->ack_num_scaled = tcp_context->ack_num_scaled & 0xf;
@@ -5562,7 +5553,7 @@ static size_t c_tcp_build_seq_5(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq5 != NULL);
 
-	rohc_comp_debug(context, "code seq_5 packet\n");
+	rohc_comp_debug(context, "code seq_5 packet");
 
 	seq5->discriminator = 0x08; /* '1000' */
 	ip_id = rohc_ntoh16(ip.ipv4->ip_id);
@@ -5614,7 +5605,7 @@ static size_t c_tcp_build_seq_6(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq6 != NULL);
 
-	rohc_comp_debug(context, "code seq_6 packet\n");
+	rohc_comp_debug(context, "code seq_6 packet");
 
 	seq6->discriminator = 0x1b; /* '11011' */
 
@@ -5672,7 +5663,7 @@ static size_t c_tcp_build_seq_7(struct rohc_comp_ctxt *const context,
 	assert(tcp != NULL);
 	assert(seq7 != NULL);
 
-	rohc_comp_debug(context, "code seq_7 packet\n");
+	rohc_comp_debug(context, "code seq_7 packet");
 
 	seq7->discriminator = 0x0c; /* '1100' */
 
@@ -5738,7 +5729,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	assert(seq8 != NULL);
 	assert(seq8_len != NULL);
 
-	rohc_comp_debug(context, "code seq_8 packet\n");
+	rohc_comp_debug(context, "code seq_8 packet");
 
 	seq8->discriminator = 0x0b; /* '1011' */
 
@@ -5762,7 +5753,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	ack_num = rohc_ntoh32(tcp->ack_num) & 0x7fff;
 	seq8->ack_num1 = (ack_num >> 8) & 0x7f;
 	seq8->ack_num2 = ack_num & 0xff;
-	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)\n",
+	rohc_comp_debug(context, "ack_number = 0x%04x (0x%02x 0x%02x)",
 	                ack_num, seq8->ack_num1, seq8->ack_num2);
 
 	seq8->rsf_flags = rsf_index_enc(context, tcp->rsf_flags);
@@ -5771,7 +5762,7 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 	seq_num = rohc_ntoh32(tcp->seq_num) & 0x3fff;
 	seq8->seq_num1 = (seq_num >> 8) & 0x3f;
 	seq8->seq_num2 = seq_num & 0xff;
-	rohc_comp_debug(context, "seq_number = 0x%04x (0x%02x 0x%02x)\n",
+	rohc_comp_debug(context, "seq_number = 0x%04x (0x%02x 0x%02x)",
 	                seq_num, seq8->seq_num1, seq8->seq_num2);
 
 	/* include the list of TCP options if the structure of the list changed */
@@ -5783,21 +5774,21 @@ static bool c_tcp_build_seq_8(struct rohc_comp_ctxt *const context,
 													&comp_opts_len);
 		if(!is_ok)
 		{
-			rohc_comp_warn(context, "failed to compress TCP options\n");
+			rohc_comp_warn(context, "failed to compress TCP options");
 			goto error;
 		}
 	}
 	else
 	{
 		/* the structure of the list of TCP options didn't change */
-		rohc_comp_debug(context, "compressed list of TCP options: list not present\n");
+		rohc_comp_debug(context, "compressed list of TCP options: list not present");
 		seq8->list_present = 0;
 		comp_opts_len = 0;
 	}
 
 	/* CRC */
 	seq8->header_crc = crc;
-	rohc_comp_debug(context, "CRC = 0x%x\n", seq8->header_crc);
+	rohc_comp_debug(context, "CRC = 0x%x", seq8->header_crc);
 
 	*seq8_len = sizeof(seq_8_t) + comp_opts_len;
 
@@ -5825,7 +5816,7 @@ static bool tcp_detect_changes(struct rohc_comp_ctxt *const context,
 	/* compute or find the new SN */
 	assert(g_context->get_next_sn != NULL);
 	g_context->sn = g_context->get_next_sn(context, uncomp_pkt);
-	rohc_comp_debug(context, "SN = %u\n", g_context->sn);
+	rohc_comp_debug(context, "SN = %u", g_context->sn);
 
 	return true;
 }
@@ -5855,7 +5846,7 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 			{
 				rohc_comp_debug(context, "no enough packets transmitted in IR "
 				                "state for the moment (%d/%d), so stay in IR "
-				                "state\n", g_context->ir_count, MAX_IR_COUNT);
+				                "state", g_context->ir_count, MAX_IR_COUNT);
 			}
 			else
 			{
@@ -5867,7 +5858,7 @@ static void tcp_decide_state(struct rohc_comp_ctxt *const context)
 			{
 				rohc_comp_debug(context, "no enough packets transmitted in FO "
 				                "state for the moment (%d/%d), so stay in FO "
-				                "state\n", g_context->fo_count, MAX_FO_COUNT);
+				                "state", g_context->fo_count, MAX_FO_COUNT);
 			}
 			else
 			{
@@ -5916,7 +5907,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		/* send all bits in IR state */
 		g_context->tmp.nr_sn_bits = 16;
 		rohc_comp_debug(context, "IR state: force using %zd bits to encode "
-		                "new SN\n", g_context->tmp.nr_sn_bits);
+		                "new SN", g_context->tmp.nr_sn_bits);
 	}
 	else
 	{
@@ -5925,11 +5916,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                      &g_context->tmp.nr_sn_bits))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for SN\n");
+			               "required for SN");
 			goto error;
 		}
 	}
-	rohc_comp_debug(context, "%zd bits are required to encode new SN\n",
+	rohc_comp_debug(context, "%zd bits are required to encode new SN",
 	                g_context->tmp.nr_sn_bits);
 	c_add_wlsb(g_context->sn_window, g_context->sn, g_context->sn);
 
@@ -5942,7 +5933,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	{
 		uint8_t ttl_hopl;
 
-		rohc_comp_debug(context, "base_header_ip = %p, IP version = %d\n",
+		rohc_comp_debug(context, "base_header_ip = %p, IP version = %d",
 		                base_header.uint8, base_header.ipvx->version);
 
 		switch(base_header.ipvx->version)
@@ -5968,16 +5959,15 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 				if(ttl_hopl != ip_context.v4->ttl_hopl)
 				{
 					tcp_context->tmp.ttl_irregular_chain_flag |= 1;
-					rohc_comp_debug(context, "last ttl_hopl = 0x%02x, "
-					                "ttl_hopl = 0x%02x, "
-					                "ttl_irregular_chain_flag = %d\n",
+					rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
+					                "0x%02x, ttl_irregular_chain_flag = %d",
 					                ip_context.v4->ttl_hopl, ttl_hopl,
 					                tcp_context->tmp.ttl_irregular_chain_flag);
 				}
 
 				/* skip IPv4 header */
 				rohc_comp_debug(context, "skip %zu-byte IPv4 header with "
-				                "Protocol 0x%02x\n", ipv4_hdr_len, protocol);
+				                "Protocol 0x%02x", ipv4_hdr_len, protocol);
 				inner_ip_hdr.uint8 = base_header.uint8;
 				remain_data_len -= ipv4_hdr_len;
 				base_header.uint8 += ipv4_hdr_len;
@@ -5998,16 +5988,15 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 				if(ttl_hopl != ip_context.v6->ttl_hopl)
 				{
 					tcp_context->tmp.ttl_irregular_chain_flag |= 1;
-					rohc_comp_debug(context, "last ttl_hopl = 0x%02x, "
-					                "ttl_hopl = 0x%02x, "
-					                "ttl_irregular_chain_flag = %d\n",
+					rohc_comp_debug(context, "last ttl_hopl = 0x%02x, ttl_hopl = "
+					                "0x%02x, ttl_irregular_chain_flag = %d",
 					                ip_context.v6->ttl_hopl, ttl_hopl,
 					                tcp_context->tmp.ttl_irregular_chain_flag);
 				}
 
 				/* skip IPv6 header */
 				rohc_comp_debug(context, "skip %zd-byte IPv6 header with Next "
-				                "Header 0x%02x\n", sizeof(base_header_ip_v6_t),
+				                "Header 0x%02x", sizeof(base_header_ip_v6_t),
 				                protocol);
 				inner_ip_hdr.uint8 = base_header.uint8;
 				remain_data_len -= sizeof(base_header_ip_v6_t);
@@ -6019,7 +6008,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 				while(rohc_is_ipv6_opt(protocol))
 				{
 					rohc_comp_debug(context, "skip %d-byte IPv6 extension header "
-					                "with Next Header 0x%02x\n",
+					                "with Next Header 0x%02x",
 					                ip_context.v6_option->option_length,
 					                protocol);
 					protocol = base_header.ipv6_opt->next_header;
@@ -6105,27 +6094,27 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp = (tcphdr_t *) (inner_ip_hdr.ipv6 + 1);
 	}
 	rohc_comp_debug(context, "IP-ID: high 9 = %u, high 11 = %u, high 12 = %u, "
-	                "high 13 = %u\n", tcp_context->tmp.ip_id_hi9_changed,
+	                "high 13 = %u", tcp_context->tmp.ip_id_hi9_changed,
 	                tcp_context->tmp.ip_id_hi11_changed,
 	                tcp_context->tmp.ip_id_hi12_changed,
 	                tcp_context->tmp.ip_id_hi13_changed);
 
 	seq_num_hbo = rohc_ntoh32(tcp->seq_num);
 	ack_num_hbo = rohc_ntoh32(tcp->ack_num);
-	rohc_comp_debug(context, "new TCP seq = 0x%08x, ack_seq = 0x%08x\n",
+	rohc_comp_debug(context, "new TCP seq = 0x%08x, ack_seq = 0x%08x",
 	                seq_num_hbo, ack_num_hbo);
-	rohc_comp_debug(context, "old TCP seq = 0x%08x, ack_seq = 0x%08x\n",
+	rohc_comp_debug(context, "old TCP seq = 0x%08x, ack_seq = 0x%08x",
 	                rohc_ntoh32(tcp_context->old_tcphdr.seq_num),
 						 rohc_ntoh32(tcp_context->old_tcphdr.ack_num));
 	rohc_comp_debug(context, "TCP begin = 0x%04x, res_flags = %d, "
 	                "data offset = %d, rsf_flags = %d, ecn_flags = %d, "
-	                "URG = %d, ACK = %d, PSH = %d\n",
+	                "URG = %d, ACK = %d, PSH = %d",
 	                *(uint16_t *)(((unsigned char *) tcp) + 12),
 	                tcp->res_flags, tcp->data_offset, tcp->rsf_flags,
 	                tcp->ecn_flags, tcp->urg_flag, tcp->ack_flag,
 	                tcp->psh_flag);
 	rohc_comp_debug(context, "TCP window = %d (0x%04x), check = 0x%x, "
-	                "urg_ptr = %d\n", rohc_ntoh16(tcp->window),
+	                "urg_ptr = %d", rohc_ntoh16(tcp->window),
 	                rohc_ntoh16(tcp->window), rohc_ntoh16(tcp->checksum),
 	                rohc_ntoh16(tcp->urg_ptr));
 
@@ -6165,7 +6154,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		c_field_scaling(&seq_num_scaled, &seq_num_residue, seq_num_factor,
 		                seq_num_hbo);
 		rohc_comp_debug(context, "seq_num = 0x%x, scaled = 0x%x, factor = %zu, "
-		                "residue = 0x%x\n", seq_num_hbo, seq_num_scaled,
+		                "residue = 0x%x", seq_num_hbo, seq_num_scaled,
 		                seq_num_factor, seq_num_residue);
 
 		if(context->num_sent_packets == 0 ||
@@ -6178,7 +6167,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		}
 		rohc_comp_debug(context, "unscaled sequence number was transmitted at "
 		                "least %zu / %u times since the scaling factor or "
-		                "residue changed\n", tcp_context->seq_num_scaling_nr,
+		                "residue changed", tcp_context->seq_num_scaling_nr,
 		                ROHC_INIT_TS_STRIDE_MIN);
 
 		/* TODO: should update context at the very end only */
@@ -6193,7 +6182,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	                &(tcp_context->ack_num_residue),
 	                tcp_context->ack_stride, ack_num_hbo);
 	rohc_comp_debug(context, "ack_number = 0x%x, scaled = 0x%x, factor = %zu, "
-	                "residue = 0x%x\n", ack_num_hbo, tcp_context->ack_num_scaled,
+	                "residue = 0x%x", ack_num_hbo, tcp_context->ack_num_scaled,
 	                tcp_context->tmp.payload_len, tcp_context->ack_num_residue);
 
 	/* how many bits are required to encode the new sequence number? */
@@ -6207,7 +6196,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_seq_bits_63 = 32;
 		tcp_context->tmp.nr_seq_scaled_bits = 32;
 		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
-		                "new sequence number\n");
+		                "new sequence number");
 	}
 	else
 	{
@@ -6216,56 +6205,56 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       &tcp_context->tmp.nr_seq_bits_65535))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 65535\n",
+			               "required for sequence number 0x%08x and p = 65535",
 			               seq_num_hbo);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 65535\n",
+		                "number 0x%08x with p = 65535",
 		                tcp_context->tmp.nr_seq_bits_65535, seq_num_hbo);
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 32767,
 		                       &tcp_context->tmp.nr_seq_bits_32767))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 32767\n",
+			               "required for sequence number 0x%08x and p = 32767",
 			               seq_num_hbo);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 32767\n",
+		                "number 0x%08x with p = 32767",
 		                tcp_context->tmp.nr_seq_bits_32767, seq_num_hbo);
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 16383,
 		                       &tcp_context->tmp.nr_seq_bits_16383))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 16383\n",
+			               "required for sequence number 0x%08x and p = 16383",
 			               seq_num_hbo);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 16383\n",
+		                "number 0x%08x with p = 16383",
 		                tcp_context->tmp.nr_seq_bits_16383, seq_num_hbo);
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 8191,
 		                       &tcp_context->tmp.nr_seq_bits_8191))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 8191\n",
+			               "required for sequence number 0x%08x and p = 8191",
 			               seq_num_hbo);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 8191\n",
+		                "number 0x%08x with p = 8191",
 		                tcp_context->tmp.nr_seq_bits_8191, seq_num_hbo);
 		if(!wlsb_get_kp_32bits(tcp_context->seq_wlsb, seq_num_hbo, 63,
 		                       &tcp_context->tmp.nr_seq_bits_63))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for sequence number 0x%08x and p = 63\n",
+			               "required for sequence number 0x%08x and p = 63",
 			               seq_num_hbo);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zd bits are required to encode new sequence "
-		                "number 0x%08x with p = 63\n",
+		                "number 0x%08x with p = 63",
 		                tcp_context->tmp.nr_seq_bits_63, seq_num_hbo);
 
 		if(tcp_context->seq_num_factor == 0 ||
@@ -6280,12 +6269,12 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                      &tcp_context->tmp.nr_seq_scaled_bits))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for scaled sequence number 0x%08x\n",
+				               "bits required for scaled sequence number 0x%08x",
 				               tcp_context->seq_num_scaled);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zu bits are required to encode new "
-			                "scaled sequence number 0x%08x\n",
+			                "scaled sequence number 0x%08x",
 			                tcp_context->tmp.nr_seq_scaled_bits,
 			                tcp_context->seq_num_scaled);
 		}
@@ -6309,7 +6298,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_ack_bits_63 = 0;
 		tcp_context->tmp.nr_ack_scaled_bits = 0;
 		rohc_comp_debug(context, "no bit required to encode new ACK number "
-		                "since the ACK flag is not set\n");
+		                "since the ACK flag is not set");
 	}
 	else
 	{
@@ -6326,7 +6315,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			tcp_context->tmp.nr_ack_bits_63 = 32;
 			tcp_context->tmp.nr_ack_scaled_bits = 32;
 			rohc_comp_debug(context, "IR state: force using 32 bits to encode "
-			                "new ACK number\n");
+			                "new ACK number");
 		}
 		else
 		{
@@ -6335,68 +6324,68 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 			                       &tcp_context->tmp.nr_ack_bits_65535))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 65535\n",
+				               "bits required for ACK number 0x%08x and p = 65535",
 				               ack_num_hbo);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 65535\n",
+			                "number 0x%08x with p = 65535",
 			                tcp_context->tmp.nr_ack_bits_65535, ack_num_hbo);
 			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 32767,
 			                       &tcp_context->tmp.nr_ack_bits_32767))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 32767\n",
+				               "bits required for ACK number 0x%08x and p = 32767",
 				               ack_num_hbo);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 32767\n",
+			                "number 0x%08x with p = 32767",
 			                tcp_context->tmp.nr_ack_bits_32767, ack_num_hbo);
 			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 16383,
 			                       &tcp_context->tmp.nr_ack_bits_16383))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 16383\n",
+				               "bits required for ACK number 0x%08x and p = 16383",
 				               ack_num_hbo);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 16383\n",
+			                "number 0x%08x with p = 16383",
 			                tcp_context->tmp.nr_ack_bits_16383, ack_num_hbo);
 			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 8191,
 			                       &tcp_context->tmp.nr_ack_bits_8191))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 8191\n",
+				               "bits required for ACK number 0x%08x and p = 8191",
 				               ack_num_hbo);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 8191\n",
+			                "number 0x%08x with p = 8191",
 			                tcp_context->tmp.nr_ack_bits_8191, ack_num_hbo);
 			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 63,
 			                       &tcp_context->tmp.nr_ack_bits_63))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 63\n",
+				               "bits required for ACK number 0x%08x and p = 63",
 				               ack_num_hbo);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 63\n",
+			                "number 0x%08x with p = 63",
 			                tcp_context->tmp.nr_ack_bits_63, ack_num_hbo);
 			if(!wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb,
 			                      tcp_context->ack_num_scaled,
 			                      &tcp_context->tmp.nr_ack_scaled_bits))
 			{
 				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for scaled ACK number 0x%08x\n",
+				               "bits required for scaled ACK number 0x%08x",
 				               tcp_context->ack_num_scaled);
 				goto error;
 			}
 			rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-			                "ACK number 0x%08x\n",
+			                "ACK number 0x%08x",
 			                tcp_context->tmp.nr_ack_scaled_bits,
 			                tcp_context->ack_num_scaled);
 		}
@@ -6415,7 +6404,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 0;
 		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 0;
 		rohc_comp_debug(context, "no TS option: O bit required to encode the "
-		                "new timestamp echo request/reply numbers\n");
+		                "new timestamp echo request/reply numbers");
 	}
 	else if(context->state == ROHC_COMP_STATE_IR)
 	{
@@ -6425,7 +6414,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_opt_ts_reply_bits_minus_1 = 32;
 		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 32;
 		rohc_comp_debug(context, "IR state: force using 32 bits to encode "
-		                "new timestamp echo request/reply numbers\n");
+		                "new timestamp echo request/reply numbers");
 	}
 	else if(!tcp_context->tcp_option_timestamp_init)
 	{
@@ -6436,7 +6425,7 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		tcp_context->tmp.nr_opt_ts_reply_bits_0x40000 = 32;
 		rohc_comp_debug(context, "first occurrence of TCP TS option: force "
 							 "using 32 bits to encode new timestamp echo "
-							 "request/reply numbers\n");
+							 "request/reply numbers");
 	}
 	else
 	{
@@ -6450,11 +6439,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
 			               "required for timestamp echo request 0x%08x and "
-			               "p = -1\n", tcp_context->tmp.ts_req);
+			               "p = -1", tcp_context->tmp.ts_req);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo request 0x%08x with p = -1\n",
+		                "timestamp echo request 0x%08x with p = -1",
 		                tcp_context->tmp.nr_opt_ts_req_bits_minus_1,
 		                tcp_context->tmp.ts_req);
 
@@ -6466,11 +6455,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
 			               "required for timestamp echo request 0x%08x and "
-			               "p = 0x40000\n", tcp_context->tmp.ts_req);
+			               "p = 0x40000", tcp_context->tmp.ts_req);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo request 0x%08x with p = 0x40000\n",
+		                "timestamp echo request 0x%08x with p = 0x40000",
 		                tcp_context->tmp.nr_opt_ts_req_bits_0x40000,
 		                tcp_context->tmp.ts_req);
 
@@ -6481,12 +6470,12 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		                       &tcp_context->tmp.nr_opt_ts_reply_bits_minus_1))
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
-			               "required for timestamp echo reply 0x%08x and p = -1\n",
+			               "required for timestamp echo reply 0x%08x and p = -1",
 			               tcp_context->tmp.ts_reply);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo reply 0x%08x with p = -1\n",
+		                "timestamp echo reply 0x%08x with p = -1",
 		                tcp_context->tmp.nr_opt_ts_reply_bits_minus_1,
 		                tcp_context->tmp.ts_reply);
 
@@ -6498,11 +6487,11 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 		{
 			rohc_comp_warn(context, "failed to find the minimal number of bits "
 			               "required for timestamp echo reply 0x%08x and "
-			               "p = 0x40000\n", tcp_context->tmp.ts_reply);
+			               "p = 0x40000", tcp_context->tmp.ts_reply);
 			goto error;
 		}
 		rohc_comp_debug(context, "%zu bits are required to encode new "
-		                "timestamp echo reply 0x%08x with p = 0x40000\n",
+		                "timestamp echo reply 0x%08x with p = 0x40000",
 		                tcp_context->tmp.nr_opt_ts_reply_bits_0x40000,
 		                tcp_context->tmp.ts_reply);
 	}
@@ -6538,12 +6527,12 @@ static rohc_packet_t tcp_decide_packet(const struct rohc_comp_ctxt *const contex
 	switch(context->state)
 	{
 		case ROHC_COMP_STATE_IR: /* The Initialization and Refresh (IR) state */
-			rohc_comp_debug(context, "code IR packet\n");
+			rohc_comp_debug(context, "code IR packet");
 			packet_type = ROHC_PACKET_IR;
 			g_context->ir_count++;
 			break;
 		case ROHC_COMP_STATE_FO: /* The First Order (FO) state */
-			rohc_comp_debug(context, "code IR-DYN packet\n");
+			rohc_comp_debug(context, "code IR-DYN packet");
 			packet_type = ROHC_PACKET_IR_DYN;
 			g_context->fo_count++;
 			break;
@@ -6590,8 +6579,8 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 	   !sdvl_can_length_be_encoded(tcp_context->tmp.nr_opt_ts_reply_bits_0x40000))
 	{
 		rohc_comp_debug(context, "force packet IR-DYN because the TCP "
-		                "option changed too much\n");
-		rohc_comp_debug(context, "code IR-DYN packet\n");
+		                "option changed too much");
+		rohc_comp_debug(context, "code IR-DYN packet");
 		packet_type = ROHC_PACKET_IR_DYN;
 	}
 	else if(tcp_context->tmp.ip_ttl_changed ||
@@ -6940,13 +6929,13 @@ static rohc_packet_t tcp_decide_SO_packet(const struct rohc_comp_ctxt *const con
 	}
 	else
 	{
-		rohc_comp_warn(context, "unexpected IP-ID behavior (%d)\n",
+		rohc_comp_warn(context, "unexpected IP-ID behavior (%d)",
 		               ip_inner_context->vx->ip_id_behavior);
 		assert(0);
 		goto error;
 	}
 
-	rohc_comp_debug(context, "code %s packet\n",
+	rohc_comp_debug(context, "code %s packet",
 	                rohc_get_packet_descr(packet_type));
 
 	return packet_type;
@@ -7007,7 +6996,7 @@ static void tcp_field_descr_change(const struct rohc_comp_ctxt *const context,
                                    const char *const name,
                                    const bool changed)
 {
-	rohc_comp_debug(context, "%s did%s change\n", name, changed ? "" : " not");
+	rohc_comp_debug(context, "%s did%s change", name, changed ? "" : " not");
 }
 
 
@@ -7022,7 +7011,7 @@ static void tcp_field_descr_present(const struct rohc_comp_ctxt *const context,
                                     const char *const name,
                                     const bool present)
 {
-	rohc_comp_debug(context, "%s is%s present\n", name, present ? "" : " not");
+	rohc_comp_debug(context, "%s is%s present", name, present ? "" : " not");
 }
 
 

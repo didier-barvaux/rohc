@@ -55,7 +55,7 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 	if(length == 0)
 	{
 		__rohc_print(trace_cb, ROHC_TRACE_DEBUG, trace_entity,
-		             ROHC_PROFILE_GENERAL, "%s (0 byte)\n", descr);
+		             ROHC_PROFILE_GENERAL, "%s (0 byte)", descr);
 	}
 	else
 	{
@@ -68,7 +68,7 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 		size_t i;
 
 		__rohc_print(trace_cb, trace_level, trace_entity, ROHC_PROFILE_GENERAL,
-		             "%s (%zd bytes):\n", descr, length);
+		             "%s (%zd bytes):", descr, length);
 		line_index = 0;
 		for(i = 0; i < length; i++)
 		{
@@ -77,7 +77,7 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 				assert(line_index <= line_max);
 				line[line_index] = '\0';
 				__rohc_print(trace_cb, trace_level, trace_entity,
-				             ROHC_PROFILE_GENERAL, "%s\n", line);
+				             ROHC_PROFILE_GENERAL, "%s", line);
 				line_index = 0;
 			}
 			else if(i > 0 && (i % 8) == 0)
@@ -97,7 +97,7 @@ void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
 			assert(line_index <= line_max);
 			line[line_index] = '\0';
 			__rohc_print(trace_cb, trace_level, trace_entity, ROHC_PROFILE_GENERAL,
-			             "%s\n", line);
+			             "%s", line);
 		}
 	}
 }
