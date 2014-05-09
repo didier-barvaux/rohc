@@ -198,10 +198,6 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 	__attribute__((nonnull(1, 2, 3), warn_unused_result));
 
 
-static inline uint16_t from32to16(uint32_t x);
-static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl);
-
-
 /** Whether the application shall stop or not */
 static bool stop_program;
 
@@ -1812,92 +1808,4 @@ static bool rtp_detect_cb(const unsigned char *const ip,
 not_rtp:
 	return is_rtp;
 }
-
-
-static inline uint16_t from32to16(uint32_t x)
-{
-	/* add up 16-bit and 16-bit for 16+c bit */
-	x = (x & 0xffff) + (x >> 16);
-	/* add up carry.. */
-	x = (x & 0xffff) + (x >> 16);
-	return x;
-}
-
-/**
- *  This is a version of ip_compute_csum() optimized for IP headers,
- *  which always checksum on 4 octet boundaries.
- */
-static inline uint16_t ip_fast_csum(unsigned char *iph, size_t ihl)
-{
-	const unsigned char *buff = iph;
-	size_t len = ihl * 4;
-	bool odd;
-	size_t count;
-	uint32_t result = 0;
-
-	if(len <= 0)
-	{
-		goto out;
-	}
-	odd = 1 & (uintptr_t) buff;
-	if(odd)
-	{
-#ifdef __LITTLE_ENDIAN
-		result = *buff;
-#else
-		result += (*buff << 8);
-#endif
-		len--;
-		buff++;
-	}
-	count = len >> 1; /* nr of 16-bit words.. */
-	if(count)
-	{
-		if(2 & (uintptr_t) buff)
-		{
-			result += *(uint16_t *) buff;
-			count--;
-			len -= 2;
-			buff += 2;
-		}
-		count >>= 1; /* nr of 32-bit words.. */
-		if(count)
-		{
-			uint32_t carry = 0;
-			do
-			{
-				uint32_t word = *(uint32_t *) buff;
-				count--;
-				buff += sizeof(uint32_t);
-				result += carry;
-				result += word;
-				carry = (word > result);
-			}
-			while(count);
-			result += carry;
-			result = (result & 0xffff) + (result >> 16);
-		}
-		if(len & 2)
-		{
-			result += *(uint16_t *) buff;
-			buff += 2;
-		}
-	}
-	if(len & 1)
-	{
-#ifdef __LITTLE_ENDIAN
-		result += *buff;
-#else
-		result += (*buff << 8);
-#endif
-	}
-	result = from32to16(result);
-	if(odd)
-	{
-		result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
-	}
-out:
-	return ~result;
-}
-
 
