@@ -863,7 +863,7 @@ uint8_t tcp_compute_crc_dynamic(const uint8_t *const ip,
 	tcp = (struct tcphdr *) next_header;
 
 	/* bytes 5-20 + TCP options */
-	crc = crc_calculate(crc_type, (uint8_t *)(&tcp->seq_number),
+	crc = crc_calculate(crc_type, (uint8_t *)(&tcp->seq_num),
 	                    sizeof(struct tcphdr) - 4 + (tcp->data_offset << 2) -
 	                    sizeof(struct tcphdr), crc, crc_table);
 
