@@ -259,8 +259,7 @@ static int esp_parse_static_esp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to parse the ESP static part */
 	if(length < spi_length)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -318,8 +317,7 @@ static int esp_parse_dynamic_esp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to parse the ESP dynamic part */
 	if(length < sn_length)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 

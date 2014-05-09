@@ -138,7 +138,8 @@
 			_mask = (1 << ((_max) - (_bits_nr))) - 1; \
 			if((field & _mask) != field) \
 			{ \
-				rohc_info(decomp, ROHC_TRACE_DECOMP, context->profile->id, \
+				rohc_info(context->decompressor, ROHC_TRACE_DECOMP, \
+				          context->profile->id, \
 				          "too many bits for " #field_descr ": %zd bits " \
 				          "found in %s, and %zd bits already found before " \
 				          "for a %zd-bit field\n", (_bits_nr), \

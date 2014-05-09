@@ -40,12 +40,11 @@
  * Prototypes of private functions
  */
 
-static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp *const decomp,
-                                            const struct rohc_decomp_ctxt *const context,
+static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int uncomp_decode(struct rohc_decomp *const decomp,
                          struct rohc_decomp_ctxt *const context,
@@ -57,7 +56,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
                          unsigned char *const dest,
                          rohc_packet_t *const packet_type);
 
-static int uncomp_decode_ir(struct rohc_decomp *decomp,
+static int uncomp_decode_ir(struct rohc_decomp *const decomp,
                             struct rohc_decomp_ctxt *context,
                             const unsigned char *const rohc_packet,
                             const unsigned int rohc_length,
@@ -65,8 +64,7 @@ static int uncomp_decode_ir(struct rohc_decomp *decomp,
                             const size_t large_cid_len,
                             unsigned char *dest);
 
-static int uncomp_decode_normal(struct rohc_decomp *decomp,
-                                struct rohc_decomp_ctxt *context,
+static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
                                 const unsigned char *const rohc_packet,
                                 const unsigned int rohc_length,
                                 const size_t add_cid_len,
@@ -113,15 +111,13 @@ static void uncomp_free_context(void *context __attribute__((unused)))
 /**
  * @brief Detect the type of ROHC packet for the Uncompressed profile
  *
- * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param rohc_packet    The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp *const decomp __attribute__((unused)),
-                                            const struct rohc_decomp_ctxt *const context __attribute__((unused)),
+static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp_ctxt *const context __attribute__((unused)),
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len __attribute__((unused)))
@@ -181,13 +177,13 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
 	}
 	else if((*packet_type) == ROHC_PACKET_NORMAL)
 	{
-		status = uncomp_decode_normal(decomp, context, rohc_packet, rohc_length,
+		status = uncomp_decode_normal(context, rohc_packet, rohc_length,
 		                              add_cid_len, large_cid_len, dest);
 	}
 	else
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "unsupported ROHC packet type %u\n", *packet_type);
+		rohc_decomp_warn(context, "unsupported ROHC packet type %u\n",
+		                 *packet_type);
 		status = ROHC_ERROR;
 	}
 
@@ -209,7 +205,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
  *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
  *                       or ROHC_ERROR if an error occurs
  */
-static int uncomp_decode_ir(struct rohc_decomp *decomp,
+static int uncomp_decode_ir(struct rohc_decomp *const decomp,
                             struct rohc_decomp_ctxt *context,
                             const unsigned char *const rohc_packet,
                             const unsigned int rohc_length,
@@ -233,8 +229,8 @@ static int uncomp_decode_ir(struct rohc_decomp *decomp,
 	 * IR type + (large CID + ) Profile ID + CRC */
 	if(rohc_remain_len < (1 + large_cid_len + 2))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+		                 rohc_remain_len);
 		goto error;
 	}
 
@@ -259,19 +255,17 @@ static int uncomp_decode_ir(struct rohc_decomp *decomp,
 	/* compute header CRC: the CRC covers the first octet of the IR packet
 	 * through the Profile octet of the IR packet, i.e. it does not cover the
 	 * CRC itself or the IP packet */
-	crc_computed = crc_calculate(ROHC_CRC_TYPE_8,
-	                             rohc_packet - add_cid_len,
-	                             add_cid_len + large_cid_len + 2,
-	                             CRC_INIT_8, decomp->crc_table_8);
+	crc_computed = crc_calculate(ROHC_CRC_TYPE_8, rohc_packet - add_cid_len,
+	                             add_cid_len + large_cid_len + 2, CRC_INIT_8,
+	                             decomp->crc_table_8);
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 	           "CRC-8 on compressed ROHC header = 0x%x\n", crc_computed);
 
 	/* does the computed CRC match the one in packet? */
 	if(crc_computed != crc_packet)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "CRC failure (computed = 0x%02x, packet = 0x%02x)\n",
-		             crc_computed, crc_packet);
+		rohc_decomp_warn(context, "CRC failure (computed = 0x%02x, packet = "
+		                 "0x%02x)\n", crc_computed, crc_packet);
 		goto error_crc;
 	}
 
@@ -293,7 +287,6 @@ error:
 /**
  * @brief Decode one Normal packet for the Uncompressed profile.
  *
- * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param rohc_packet    The ROHC packet to decode
  * @param rohc_length    The length of the ROHC packet
@@ -303,8 +296,7 @@ error:
  * @return               The length of the uncompressed packet
  *                       or ROHC_ERROR if an error occurs
  */
-static int uncomp_decode_normal(struct rohc_decomp *decomp,
-                                struct rohc_decomp_ctxt *context,
+static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
                                 const unsigned char *const rohc_packet,
                                 const unsigned int rohc_length,
                                 const size_t add_cid_len __attribute__((unused)),
@@ -321,8 +313,8 @@ static int uncomp_decode_normal(struct rohc_decomp *decomp,
 	/* state must not be No Context */
 	if(context->state == ROHC_DECOMP_STATE_NC)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "cannot receive Normal packets in No Context state\n");
+		rohc_decomp_warn(context, "cannot receive Normal packets in No Context "
+		                 "state\n");
 		goto error;
 	}
 
@@ -330,8 +322,8 @@ static int uncomp_decode_normal(struct rohc_decomp *decomp,
 	 * optional large CID field, and at least one more byte of data */
 	if(rohc_remain_len < (1 + large_cid_len + 1))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", rohc_length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+		                 rohc_length);
 		goto error;
 	}
 

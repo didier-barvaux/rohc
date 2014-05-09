@@ -107,9 +107,8 @@ int rohc_list_decode_maybe(struct list_decomp *decomp,
 	/* check for minimal size (1 byte) */
 	if(packet_len < 1)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for compressed list (only %zd bytes "
-		             "while at least 1 byte is required)\n", packet_len);
+		rd_list_warn(decomp, "packet too small for compressed list (only %zu "
+		             "bytes while at least 1 byte is required)\n", packet_len);
 		goto error;
 	}
 
@@ -127,8 +126,7 @@ int rohc_list_decode_maybe(struct list_decomp *decomp,
 		ret = rohc_list_decode(decomp, packet, packet_len);
 		if(ret < 0)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "failed to decode the compressed list\n");
+			rd_list_warn(decomp, "failed to decode the compressed list\n");
 			goto error;
 		}
 #ifndef __clang_analyzer__ /* silent warning about dead decrement */
@@ -175,9 +173,8 @@ static int rohc_list_decode(struct list_decomp *decomp,
 	 * fields? */
 	if(packet_len < 2)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for compressed list (only %zd bytes "
-		             "while at least 2 bytes are required)\n", packet_len);
+		rd_list_warn(decomp, "packet too small for compressed list (only %zu "
+		             "bytes while at least 2 bytes are required)\n", packet_len);
 		goto error;
 	}
 
@@ -237,8 +234,7 @@ static int rohc_list_decode(struct list_decomp *decomp,
 	}
 	if(ret < 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "failed to decode compressed list type %d\n", et);
+		rd_list_warn(decomp, "failed to decode compressed list type %d\n", et);
 		goto error;
 	}
 	assert(((size_t) ret) <= packet_len);
@@ -322,10 +318,9 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	/* is there enough room in packet for at least one byte of the item? */
 	if(rohc_max_len <= 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for at least 1 byte of item for XI #%u "
-		             "(only %zd bytes available while at least 1 byte is "
-		             "required)\n", xi_index, rohc_max_len);
+		rd_list_warn(decomp, "packet too small for at least 1 byte of item for "
+		             "XI #%u (only %zu bytes available while at least 1 byte "
+		             "is required)\n", xi_index, rohc_max_len);
 		goto error;
 	}
 
@@ -333,9 +328,8 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	ret = decomp->get_item_size(rohc_packet, rohc_max_len);
 	if(ret < 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "failed to determine the length of list item referenced "
-		             "by XI #%d\n", xi_index);
+		rd_list_warn(decomp, "failed to determine the length of list item "
+		             "referenced by XI #%d\n", xi_index);
 		goto error;
 	}
 	*item_length = ret;
@@ -343,10 +337,9 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	/* is there enough room in packet for the full item? */
 	if(rohc_max_len < (*item_length))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for the full item of XI #%u (only %zu "
-		             "bytes available while at least %zu bytes are required)\n",
-		             xi_index, rohc_max_len, *item_length);
+		rd_list_warn(decomp, "packet too small for the full item of XI #%u "
+		             "(only %zu bytes available while at least %zu bytes are "
+		             "required)\n", xi_index, rohc_max_len, *item_length);
 		goto error;
 	}
 
@@ -357,8 +350,7 @@ bool rohc_decomp_list_create_item(struct list_decomp *const decomp,
 	                                 decomp);
 	if(!is_created)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "failed to create new list item\n");
+		rd_list_warn(decomp, "failed to create new list item\n");
 		goto error;
 	}
 
@@ -425,10 +417,9 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 	/* is there enough room in packet for all the XI list ? */
 	if(packet_len < xi_len)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for m = %d XI items (only %zd bytes "
-		             "while at least %zd bytes are required)\n", m, packet_len,
-		             xi_len);
+		rd_list_warn(decomp, "packet too small for m = %d XI items (only %zu "
+		             "bytes while at least %zu bytes are required)\n", m,
+		             packet_len, xi_len);
 		goto error;
 	}
 
@@ -470,8 +461,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		/* is the XI index valid? */
 		if(!decomp->check_item(decomp, xi_index_value))
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "XI #%u got invalid index %u\n", xi_index,
+			rd_list_warn(decomp, "XI #%u got invalid index %u\n", xi_index,
 			             xi_index_value);
 			goto error;
 		}
@@ -490,8 +480,7 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			if(!rohc_decomp_list_create_item(decomp, xi_index, xi_index_value,
 			                                 xi_item, xi_item_max_len, &item_len))
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-				             "failed to create XI item #%u from packet\n",
+				rd_list_warn(decomp, "failed to create XI item #%u from packet\n",
 				             xi_index);
 				goto error;
 			}
@@ -505,9 +494,8 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 			 * it must already be known by decompressor */
 			if(!decomp->trans_table[xi_index_value].known)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-				             "list item with index #%u referenced by XI #%d is "
-				             "not known yet\n", xi_index_value, xi_index);
+				rd_list_warn(decomp, "list item with index #%u referenced by XI "
+				             "#%d is not known yet\n", xi_index_value, xi_index);
 				goto error;
 			}
 		}
@@ -529,10 +517,10 @@ static int rohc_list_decode_type_0(struct list_decomp *const decomp,
 		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_len - 1);
 		if(xi_padding != 0)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "sender does not conform to ROHC standards: when an "
-			             "odd number of 4-bit XIs is used, the last 4 bits of the "
-			             "XI list should be set to 0\n, not 0x%x\n", xi_padding);
+			rd_list_warn(decomp, "sender does not conform to ROHC standards: "
+			             "when an odd number of 4-bit XIs is used, the last 4 "
+			             "bits of the XI list should be set to 0, not 0x%x\n",
+			             xi_padding);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 			goto error;
 #endif
@@ -598,10 +586,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
 	if(ps && xi_1 != 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "sender does not conform to ROHC standards: when 8-bit "
-		             "XIs are used, the 4-bit XI 1 field should be set to 0, "
-		             "not 0x%x\n", xi_1);
+		rd_list_warn(decomp, "sender does not conform to ROHC standards: when "
+		             "8-bit XIs are used, the 4-bit XI 1 field should be set "
+		             "to 0, not 0x%x\n", xi_1);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 		goto error;
 #endif
@@ -611,10 +598,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	   bit mask fields ? */
 	if(packet_len < 2)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for ref_id and minimal insertion bit "
-		             "mask fields (only %zd bytes while at least 2 bytes are "
-		             "required)\n", packet_len);
+		rd_list_warn(decomp, "packet too small for ref_id and minimal "
+		             "insertion bit mask fields (only %zu bytes while at least "
+		             "2 bytes are required)\n", packet_len);
 		goto error;
 	}
 
@@ -627,16 +613,15 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "unknown ID 0x%02x given for reference list\n", ref_id);
+		rd_list_warn(decomp, "unknown ID 0x%02x given for reference list\n",
+		             ref_id);
 		goto error;
 	}
 	/* reference list must not be empty (RFC 4815, §5.7) */
 	if(decomp->lists[ref_id].items_nr == 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "list encoding type 1 must not be used with an empty "
-		             "reference list, discard packet\n");
+		rd_list_warn(decomp, "list encoding type 1 must not be used with an "
+		             "empty reference list, discard packet\n");
 		goto error;
 	}
 
@@ -657,9 +642,8 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		/* 15-bit mask */
 		if(packet_len < 2)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "packet too small for a 2-byte insertion bit mask "
-			             "(only %zd bytes available)\n", packet_len);
+			rd_list_warn(decomp, "packet too small for a 2-byte insertion bit "
+			             "mask (only %zu bytes available)\n", packet_len);
 			goto error;
 		}
 		mask_length = 15;
@@ -716,21 +700,19 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 	/* is there enough room in packet for all the XI list ? */
 	if(packet_len < xi_len)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for k = %zd XI items (only %zd bytes "
-		             "while at least %zd bytes are required)\n",
-		             k, packet_len, xi_len);
+		rd_list_warn(decomp, "packet too small for k = %zu XI items (only %zu "
+		             "bytes while at least %zu bytes are required)\n", k,
+		             packet_len, xi_len);
 		goto error;
 	}
 
 	/* will the decompressed list contain too many items? */
 	if((decomp->pkt_list.items_nr + k) > ROHC_LIST_ITEMS_MAX)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "failed to decompress list with ID %u based on reference "
-		             "list %u with %zu items and %zu additional new items: too "
-		             "many items for list (%u items max)\n", gen_id, ref_id,
-		             decomp->pkt_list.items_nr, k, ROHC_LIST_ITEMS_MAX);
+		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+		             "reference list %u with %zu items and %zu additional new "
+		             "items: too many items for list (%u items max)\n", gen_id,
+		             ref_id, decomp->pkt_list.items_nr, k, ROHC_LIST_ITEMS_MAX);
 		goto error;
 	}
 
@@ -811,8 +793,7 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 			/* is the XI index valid? */
 			if(!decomp->check_item(decomp, xi_index_value))
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-				             "XI #%u got invalid index %u\n", xi_index,
+				rd_list_warn(decomp, "XI #%u got invalid index %u\n", xi_index,
 				             xi_index_value);
 				goto error;
 			}
@@ -832,9 +813,8 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				                                 xi_item, xi_item_max_len,
 				                                 &item_len))
 				{
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-					             "failed to create XI item #%u from packet\n",
-					             xi_index);
+					rd_list_warn(decomp, "failed to create XI item #%u from "
+					             "packet\n", xi_index);
 					goto error;
 				}
 
@@ -847,9 +827,9 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 				 * it must already be known by decompressor */
 				if(!decomp->trans_table[xi_index_value].known)
 				{
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-					             "list item with index #%u referenced by XI #%d "
-					             "is not known yet\n", xi_index_value, xi_index);
+					rd_list_warn(decomp, "list item with index #%u referenced by "
+					             "XI #%d is not known yet\n", xi_index_value,
+					             xi_index);
 					goto error;
 				}
 			}
@@ -872,10 +852,10 @@ static int rohc_list_decode_type_1(struct list_decomp *const decomp,
 		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_len - 1);
 		if(xi_padding != 0)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "sender does not conform to ROHC standards: when an "
-			             "even number of 4-bit XIs is used, the last 4 bits of the "
-			             "XI list should be set to 0\n, not 0x%x\n", xi_padding);
+			rd_list_warn(decomp, "sender does not conform to ROHC standards: "
+			             "when an even number of 4-bit XIs is used, the last 4 "
+			             "bits of the XI list should be set to 0, not 0x%x\n",
+			             xi_padding);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 			goto error;
 #endif
@@ -931,10 +911,9 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	   bit mask fields ? */
 	if(packet_len < 2)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for ref_id and minimal removal bit "
-		             "mask fields (only %zd bytes while at least 2 bytes are "
-		             "required)\n", packet_len);
+		rd_list_warn(decomp, "packet too small for ref_id and minimal removal "
+		             "bit mask fields (only %zu bytes while at least 2 bytes "
+		             "are required)\n", packet_len);
 		goto error;
 	}
 
@@ -947,16 +926,15 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "unknown ID 0x%02x given for reference list\n", ref_id);
+		rd_list_warn(decomp, "unknown ID 0x%02x given for reference list\n",
+		             ref_id);
 		goto error;
 	}
 	/* reference list must not be empty (RFC 4815, §5.7) */
 	if(decomp->lists[ref_id].items_nr == 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "list encoding type 2 must not be used with an empty "
-		             "reference list, discard packet\n");
+		rd_list_warn(decomp, "list encoding type 2 must not be used with an "
+		             "empty reference list, discard packet\n");
 		goto error;
 	}
 
@@ -969,9 +947,8 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 		/* 15-bit mask */
 		if(packet_len < 2)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "packet too small for a 2-byte removal bit mask "
-			             "(only %zd bytes available)\n", packet_len);
+			rd_list_warn(decomp, "packet too small for a 2-byte removal bit "
+			             "mask (only %zu bytes available)\n", packet_len);
 			goto error;
 		}
 		mask_length = 15;
@@ -1035,9 +1012,8 @@ static int rohc_list_decode_type_2(struct list_decomp *const decomp,
 			/* check that reference list is large enough */
 			if(i >= decomp->lists[ref_id].items_nr)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-				             "reference list is too short: item at index %zu "
-				             "requested while list contains only %zu items\n",
+				rd_list_warn(decomp, "reference list is too short: item at index "
+				             "%zu requested while list contains only %zu items\n",
 				             i, decomp->lists[ref_id].items_nr);
 				goto error;
 			}
@@ -1108,10 +1084,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	/* in case of 8-bit XI, the XI 1 field should be set to 0 */
 	if(ps && xi_1 != 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "sender does not conform to ROHC standards: when 8-bit "
-		             "XIs are used, the 4-bit XI 1 field should be set to 0, "
-		             "not 0x%x\n", xi_1);
+		rd_list_warn(decomp, "sender does not conform to ROHC standards: when "
+		             "8-bit XIs are used, the 4-bit XI 1 field should be set "
+		             "to 0, not 0x%x\n", xi_1);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 		goto error;
 #endif
@@ -1121,10 +1096,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	   bit mask fields ? */
 	if(packet_len < 2)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for ref_id and minimal removal bit "
-		             "mask fields (only %zd bytes while at least 1 bytes are "
-		             "required)\n", packet_len);
+		rd_list_warn(decomp, "packet too small for ref_id and minimal removal "
+		             "bit mask fields (only %zu bytes while at least 1 bytes "
+		             "are required)\n", packet_len);
 		goto error;
 	}
 
@@ -1137,16 +1111,15 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	/* reference list must be known */
 	if(!rohc_list_is_gen_id_known(decomp, ref_id))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "unknown ID 0x%02x given for reference list\n", ref_id);
+		rd_list_warn(decomp, "unknown ID 0x%02x given for reference list\n",
+		             ref_id);
 		goto error;
 	}
 	/* reference list must not be empty (RFC 4815, §5.7) */
 	if(decomp->lists[ref_id].items_nr == 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "list encoding type 3 must not be used with an empty "
-		             "reference list, discard packet\n");
+		rd_list_warn(decomp, "list encoding type 3 must not be used with an "
+		             "empty reference list, discard packet\n");
 		goto error;
 	}
 
@@ -1163,9 +1136,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		/* 15-bit mask */
 		if(packet_len < 2)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "packet too small for a 2-byte removal bit mask "
-			             "(only %zd bytes available)\n", packet_len);
+			rd_list_warn(decomp, "packet too small for a 2-byte removal bit "
+			             "mask (only %zu bytes available)\n", packet_len);
 			goto error;
 		}
 		rem_mask_length = 15;
@@ -1225,9 +1197,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			/* check that reference list is large enough */
 			if(i >= decomp->lists[ref_id].items_nr)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-				             "reference list is too short: item at index %zu "
-				             "requested while list contains only %zu items\n",
+				rd_list_warn(decomp, "reference list is too short: item at index "
+				             "%zu requested while list contains only %zu items\n",
 				             i, decomp->lists[ref_id].items_nr);
 				goto error;
 			}
@@ -1246,9 +1217,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	/* is there enough data in packet for minimal insertion bit mask field ? */
 	if(packet_len < 1)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for minimal insertion bit mask field "
-		             "(only %zd bytes while at least 1 byte is required)\n", packet_len);
+		rd_list_warn(decomp, "packet too small for minimal insertion bit mask "
+		             "field (only %zu bytes while at least 1 byte is "
+		             "required)\n", packet_len);
 		goto error;
 	}
 
@@ -1269,9 +1240,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		/* 15-bit mask */
 		if(packet_len < 2)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "packet too small for a 2-byte insertion bit mask "
-			             "(only %zd bytes available)\n", packet_len);
+			rd_list_warn(decomp, "packet too small for a 2-byte insertion bit "
+			             "mask (only %zu bytes available)\n", packet_len);
 			goto error;
 		}
 		ins_mask_length = 15;
@@ -1329,21 +1299,19 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 	/* is there enough room in packet for all the XI list ? */
 	if(packet_len < xi_len)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for k = %zd XI items (only %zd bytes "
-		             "while at least %zd bytes are required)\n", k, packet_len,
-		             xi_len);
+		rd_list_warn(decomp, "packet too small for k = %zu XI items (only %zu "
+		             "bytes while at least %zu bytes are required)\n", k,
+		             packet_len, xi_len);
 		goto error;
 	}
 
 	/* will the decompressed list contain too many items? */
 	if((removal_list.items_nr + k) > ROHC_LIST_ITEMS_MAX)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "failed to decompress list with ID %u based on reference "
-		             "list %u with %zu items and %zu additional new items: too "
-		             "many items for list (%u items max)\n", gen_id, ref_id,
-		             removal_list.items_nr, k, ROHC_LIST_ITEMS_MAX);
+		rd_list_warn(decomp, "failed to decompress list with ID %u based on "
+		             "reference list %u with %zu items and %zu additional new "
+		             "items: too many items for list (%u items max)\n", gen_id,
+		             ref_id, removal_list.items_nr, k, ROHC_LIST_ITEMS_MAX);
 		goto error;
 	}
 
@@ -1424,8 +1392,7 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 			/* is the XI index valid? */
 			if(!decomp->check_item(decomp, xi_index_value))
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-				             "XI #%u got invalid index %u\n", xi_index,
+				rd_list_warn(decomp, "XI #%u got invalid index %u\n", xi_index,
 				             xi_index_value);
 				goto error;
 			}
@@ -1445,9 +1412,8 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				                                 xi_item, xi_item_max_len,
 				                                 &item_len))
 				{
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-					             "failed to create XI item #%u from packet\n",
-					             xi_index);
+					rd_list_warn(decomp, "failed to create XI item #%u from "
+					             "packet\n", xi_index);
 					goto error;
 				}
 
@@ -1460,9 +1426,9 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 				 * it must already be known by decompressor */
 				if(!decomp->trans_table[xi_index_value].known)
 				{
-					rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-					             "list item with index #%u referenced by XI #%d "
-					             "is not known yet\n", xi_index_value, xi_index);
+					rd_list_warn(decomp, "list item with index #%u referenced by "
+					             "XI #%d is not known yet\n", xi_index_value,
+					             xi_index);
 					goto error;
 				}
 			}
@@ -1485,10 +1451,10 @@ static int rohc_list_decode_type_3(struct list_decomp *const decomp,
 		const uint8_t xi_padding = GET_BIT_0_3(packet + xi_len - 1);
 		if(xi_padding != 0)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-			             "sender does not conform to ROHC standards: when an "
-			             "even number of 4-bit XIs is used, the last 4 bits of the "
-			             "XI list should be set to 0\n, not 0x%x\n", xi_padding);
+			rd_list_warn(decomp, "sender does not conform to ROHC standards: "
+			             "when an even number of 4-bit XIs is used, the last 4 "
+			             "bits of the XI list should be set to 0, not 0x%x\n",
+			             xi_padding);
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 			goto error;
 #endif

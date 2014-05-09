@@ -72,12 +72,11 @@ struct d_rtp_context
 static void d_rtp_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                            const struct rohc_decomp_ctxt *const context,
+static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static rohc_packet_t rtp_choose_uo1_variant(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const packet,
@@ -101,13 +100,12 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits);
 
-static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
-                                const struct rohc_decomp_ctxt *const context,
+static int rtp_parse_extension3(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_data,
                                 const size_t rohc_data_len,
                                 const rohc_packet_t packet_type,
                                 struct rohc_extr_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
                                             const int are_all_ipv4_rnd)
@@ -304,15 +302,13 @@ static void d_rtp_destroy(void *const context)
 /**
  * @brief Detect the type of ROHC packet for RTP profile
  *
- * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param rohc_packet    The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const decomp,
-                                            const struct rohc_decomp_ctxt *const context,
+static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                             const uint8_t *const rohc_packet,
                                             const size_t rohc_length,
                                             const size_t large_cid_len)
@@ -321,9 +317,8 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 
 	if(rohc_length < 1)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small to read the first byte that "
-		             "contains the packet type (len = %zd)\n", rohc_length);
+		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
+		                 "type (len = %zu)\n", rohc_length);
 		goto error;
 	}
 
@@ -356,9 +351,8 @@ static rohc_packet_t rtp_detect_packet_type(const struct rohc_decomp *const deco
 	else
 	{
 		/* unknown packet */
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to recognize the packet type in byte 0x%02x\n",
-		             rohc_packet[0]);
+		rohc_decomp_warn(context, "failed to recognize the packet type in byte "
+		                 "0x%02x\n", rohc_packet[0]);
 		type = ROHC_PACKET_UNKNOWN;
 	}
 
@@ -616,8 +610,7 @@ static int rtp_parse_static_rtp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the RTP static part */
 	if(length < sizeof(uint32_t))
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -690,8 +683,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	/* part 1: UDP checksum */
 	if(remain_len < sizeof(uint16_t))
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", remain_len);
 		goto error;
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
@@ -708,8 +700,7 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	   dynamic part (parts 2-6) */
 	if(remain_len < rtp_dyn_size)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", remain_len);
 		goto error;
 	}
 
@@ -758,9 +749,9 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 	/* part 6 is not supported yet, ignore the byte which should be set to 0 */
 	if(GET_BIT_0_7(packet) != 0x00)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "generic CSRC list not supported yet, but first CSRC "
-		             "byte was set to 0x%02x\n", GET_BIT_0_7(packet));
+		rohc_decomp_warn(context, "generic CSRC list not supported yet, but "
+		                 "first CSRC byte was set to 0x%02x\n",
+		                 GET_BIT_0_7(packet));
 		goto error;
 	}
 	packet++;
@@ -775,9 +766,8 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 		   if RX flag is set */
 		if(remain_len < 1)
 		{
-			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-			             context->profile->id,
-			             "ROHC packet too small (len = %zu)\n", remain_len);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+			                 remain_len);
 			goto error;
 		}
 
@@ -803,9 +793,8 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 			                                 &ts_stride, &ts_stride_bits_nr);
 			if(ts_stride_sdvl_len <= 0)
 			{
-				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-				             context->profile->id,
-				             "failed to decode SDVL-encoded TS_STRIDE field\n");
+				rohc_decomp_warn(context, "failed to decode SDVL-encoded "
+				                 "TS_STRIDE field\n");
 				goto error;
 			}
 			rohc_decomp_debug(context, "TS_STRIDE read = %u / 0x%x\n",
@@ -827,10 +816,9 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
 			/* check the minimal length to decode the SDVL-encoded TIME_STRIDE */
 			if(remain_len < 1)
 			{
-				rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-				             context->profile->id,
-				             "ROHC packet too small (len = %zu) for 1st byte "
-				             "of SDVL-encoded TIME_STRIDE\n", remain_len);
+				rohc_decomp_warn(context, "ROHC packet too small (len = %zu) for "
+				                 "1st byte of SDVL-encoded TIME_STRIDE\n",
+				                 remain_len);
 				goto error;
 			}
 
@@ -887,7 +875,6 @@ error:
 
 \endverbatim
  *
- * @param decomp            The ROHC decompressor
  * @param context           The decompression context
  * @param rohc_data         The ROHC data to parse
  * @param rohc_data_len     The length of the ROHC data to parse
@@ -898,8 +885,7 @@ error:
  *                          -2 in case packet must be reparsed,
  *                          -1 in case of error
  */
-static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
-                                const struct rohc_decomp_ctxt *const context,
+static int rtp_parse_extension3(const struct rohc_decomp_ctxt *const context,
                                 const unsigned char *const rohc_data,
                                 const size_t rohc_data_len,
                                 const rohc_packet_t packet_type,
@@ -926,7 +912,6 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	bool rnd_changed = false;
 
 	/* sanity checks */
-	assert(decomp != NULL);
 	assert(context != NULL);
 	assert(context->specific != NULL);
 	assert(rohc_data != NULL);
@@ -942,8 +927,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	/* check the minimal length to decode the flags */
 	if(rohc_remain_len < 1)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		                 rohc_remain_len);
 		goto error;
 	}
 
@@ -961,8 +946,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		/* check the minimal length to decode the ip2 flag */
 		if(rohc_remain_len < 1)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+			                 rohc_remain_len);
 			goto error;
 		}
 
@@ -983,8 +968,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	 * and the SN */
 	if(rohc_remain_len < inner_outer_flags_len)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+		                 rohc_remain_len);
 		goto error;
 	}
 
@@ -1035,8 +1020,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		                           &ts_ext, &ts_ext_nr);
 		if(ts_sdvl_size <= 0)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "failed to decode SDVL-encoded TS field\n");
+			rohc_decomp_warn(context, "failed to decode SDVL-encoded TS field\n");
 			goto error;
 		}
 		APPEND_TS_BITS(ROHC_EXT_3, bits, ts_ext, ts_ext_nr);
@@ -1051,7 +1035,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	{
 		if(g_context->multiple_ip)
 		{
-			size = parse_inner_header_flags(decomp, context, ip2_flags_pos,
+			size = parse_inner_header_flags(context, ip2_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
 			                                &bits->inner_ip);
 
@@ -1074,7 +1058,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		}
 		else
 		{
-			size = parse_inner_header_flags(decomp, context, ip_flags_pos,
+			size = parse_inner_header_flags(context, ip_flags_pos,
 			                                rohc_remain_data, rohc_remain_len,
 			                                &bits->outer_ip);
 
@@ -1097,8 +1081,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		}
 		if(size < 0)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "cannot decode the inner IP header flags & fields\n");
+			rohc_decomp_warn(context, "cannot decode the inner IP header flags "
+			                 "& fields\n");
 			goto error;
 		}
 
@@ -1134,8 +1118,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		/* check the minimal length to decode the IP-ID field */
 		if(rohc_remain_len < 2)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+			                 rohc_remain_len);
 			goto error;
 		}
 
@@ -1153,13 +1137,12 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 	 * flags if present */
 	if(ip2)
 	{
-		size = parse_outer_header_flags(decomp, context, ip_flags_pos,
-		                                rohc_remain_data, rohc_remain_len,
-		                                &bits->outer_ip);
+		size = parse_outer_header_flags(context, ip_flags_pos, rohc_remain_data,
+		                                rohc_remain_len, &bits->outer_ip);
 		if(size == -1)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "cannot decode the outer IP header flags & fields\n");
+			rohc_decomp_warn(context, "cannot decode the outer IP header flags "
+			                 "& fields\n");
 			goto error;
 		}
 
@@ -1206,9 +1189,9 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		 *   While in the transient state in which an RND flag is being
 		 *   established, the packet types R-1-ID, R-1-TS, UO-1-ID, and UO-1-TS
 		 *   MUST NOT be used. */
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "at least one RND changed while parsing UO-1-ID, "
-		             "compressor does not conform to RFC, discard packet\n");
+		rohc_decomp_warn(context, "at least one RND changed while parsing "
+		                 "UO-1-ID, compressor does not conform to RFC, discard "
+		                 "packet\n");
 		goto error;
 	}
 	else if(is_uor2_reparse_required(packet_type, are_all_ipv4_rnd))
@@ -1235,9 +1218,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 			/* inner IP header is IPv4 with non-random IP-ID */
 			if(bits->inner_ip.id_nr > 0 && bits->inner_ip.id != 0)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "IP-ID field present (I = 1) but inner IP-ID "
-				             "already updated\n");
+				rohc_decomp_warn(context, "IP-ID field present (I = 1) but inner "
+				                 "IP-ID already updated\n");
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 				goto error;
 #endif
@@ -1253,9 +1235,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 			 * IP header is */
 			if(bits->outer_ip.id_nr > 0 && bits->outer_ip.id != 0)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "IP-ID field present (I = 1) but outer IP-ID "
-				             "already updated\n");
+				rohc_decomp_warn(context, "IP-ID field present (I = 1) but outer "
+				                 "IP-ID already updated\n");
 #ifdef ROHC_RFC_STRICT_DECOMPRESSOR
 				goto error;
 #endif
@@ -1267,9 +1248,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		}
 		else
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "extension 3 cannot contain IP-ID bits because "
-			             "no IP header is IPv4 with non-random IP-ID\n");
+			rohc_decomp_warn(context, "extension 3 cannot contain IP-ID bits "
+			                 "because no IP header is IPv4 with non-random IP-ID\n");
 			goto error;
 		}
 	}
@@ -1284,8 +1264,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		/* check the minimal length to decode RTP header flags */
 		if(rohc_remain_len < 1)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+			                 rohc_remain_len);
 			goto error;
 		}
 
@@ -1307,9 +1287,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		if(bits->rtp_m_nr > 0 && bits->rtp_m != rtp_m_ext)
 		{
 			assert(bits->rtp_m_nr == 1);
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "RTP Marker flag mismatch (base header = %u, "
-			             "extension 3 = %u)\n", bits->rtp_m, rtp_m_ext);
+			rohc_decomp_warn(context, "RTP Marker flag mismatch (base header = "
+			                 "%u, extension 3 = %u)\n", bits->rtp_m, rtp_m_ext);
 			goto error;
 		}
 		else
@@ -1334,8 +1313,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		/* check the minimal length to decode RTP header fields */
 		if(rohc_remain_len < rtp_hdr_fields_len)
 		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			            "ROHC packet too small (len = %zd)\n", rohc_remain_len);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n",
+			                 rohc_remain_len);
 			goto error;
 		}
 
@@ -1357,8 +1336,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		if(csrc)
 		{
 			/* TODO: Compressed CSRC list */
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "Compressed CSRC list not supported yet\n");
+			rohc_decomp_warn(context, "compressed CSRC list not supported yet\n");
 			goto error;
 		}
 
@@ -1376,8 +1354,8 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 			                             &ts_stride, &ts_stride_bits_nr);
 			if(ts_stride_size <= 0)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to decode SDVL-encoded TS_STRIDE field\n");
+				rohc_decomp_warn(context, "failed to decode SDVL-encoded "
+				                 "TS_STRIDE field\n");
 				goto error;
 			}
 			rohc_decomp_debug(context, "decoded TS_STRIDE = %u / 0x%x\n",
@@ -1395,8 +1373,7 @@ static int rtp_parse_extension3(const struct rohc_decomp *const decomp,
 		if(tis)
 		{
 			/* TODO: TIME_STRIDE */
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-			             "TIME_STRIDE not supported yet\n");
+			rohc_decomp_warn(context, "TIME_STRIDE not supported yet\n");
 			goto error;
 		}
 	}
@@ -1469,9 +1446,8 @@ static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	 *  udp_checksum_present > 0 <=> UDP checksum field present */
 	if(rtp_context->udp_checksum_present < 0)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "udp_checksum_present not initialized and packet is not "
-		             "one IR packet\n");
+		rohc_decomp_warn(context, "udp_checksum_present not initialized and "
+		                 "packet is not one IR packet\n");
 		goto error;
 	}
 	else if(rtp_context->udp_checksum_present == 0)
@@ -1484,9 +1460,7 @@ static int rtp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		/* check the minimal length to decode the UDP checksum */
 		if(length < 2)
 		{
-			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-			             context->profile->id,
-			             "ROHC packet too small (len = %d)\n", length);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n", length);
 			goto error;
 		}
 
@@ -1584,8 +1558,7 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	 *    ie. udp_checksum_present = 0  */
 	if(rtp_context->udp_checksum_present < 0)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "udp_checksum_present not initialized\n");
+		rohc_decomp_warn(context, "udp_checksum_present not initialized\n");
 		goto error;
 	}
 	else if(rtp_context->udp_checksum_present > 0)
@@ -1712,9 +1685,8 @@ static bool rtp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 			/* RFC 4815, §4.2 says:
 			 *   If a packet with no TS bits is received with Tsc = 0, the
 			 *   decompressor MUST discard the packet. */
-			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-			             "TS not scaled (Tsc = %d) and no TS bit received, "
-			             "discard the packet\n", bits.is_ts_scaled);
+			rohc_decomp_warn(context, "TS not scaled (Tsc = %d) and no TS bit "
+			                 "received, discard the packet\n", bits.is_ts_scaled);
 			goto error;
 		}
 

@@ -95,12 +95,11 @@ struct d_udp_lite_context
 static void d_udp_lite_destroy(void *const context)
 	__attribute__((nonnull(1)));
 
-static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
-                                                 const struct rohc_decomp_ctxt *const context,
+static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                                  const uint8_t *const rohc_packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
                                       const uint8_t *packet,
@@ -269,15 +268,13 @@ static void d_udp_lite_destroy(void *const context)
  *
  * Parse optional CCE packet type, then normal packet type.
  *
- * @param decomp         The ROHC decompressor
  * @param context        The decompression context
  * @param rohc_packet    The ROHC packet
  * @param rohc_length    The length of the ROHC packet
  * @param large_cid_len  The length of the optional large CID field
  * @return               The packet type
  */
-static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const decomp,
-                                                 const struct rohc_decomp_ctxt *const context,
+static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                                  const uint8_t *const rohc_packet,
                                                  const size_t rohc_length,
                                                  const size_t large_cid_len)
@@ -293,9 +290,8 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 	/* check if the ROHC packet is large enough to read the first byte */
 	if(rohc_remain_len < (1 + large_cid_len))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small to read the first byte that "
-		             "contains the packet type (len = %zd)\n", rohc_remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small to read the packet "
+		                 "type (len = %zu)\n", rohc_remain_len);
 		goto error;
 	}
 
@@ -336,8 +332,7 @@ static rohc_packet_t udp_lite_detect_packet_type(const struct rohc_decomp *const
 
 	/* CCE is now parsed, fallback on same detection scheme as other IP-based
 	 * non-RTP profiles */
-	return ip_detect_packet_type(decomp, context,
-	                             rohc_remain_data, rohc_remain_len,
+	return ip_detect_packet_type(context, rohc_remain_data, rohc_remain_len,
 	                             new_large_cid_len);
 
 error:
@@ -386,8 +381,8 @@ int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	/* check if the ROHC packet is large enough to read the first byte */
 	if(rohc_remain_len < (1 + large_cid_len))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %u)\n", rohc_remain_len);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+		                 rohc_remain_len);
 		goto error;
 	}
 
@@ -448,8 +443,7 @@ static int udp_lite_parse_dynamic_udp(const struct rohc_decomp_ctxt *const conte
 	/* check the minimal length to decode the UDP-Lite dynamic part */
 	if(length < udplite_dyn_length)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -543,8 +537,7 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 	/* check the minimal length to decode the tail of UO* packet */
 	if(length < remainder_length)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %d)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n", length);
 		goto error;
 	}
 
@@ -561,16 +554,16 @@ static int udp_lite_parse_uo_remainder(const struct rohc_decomp_ctxt *const cont
 	}
 	else if(udp_lite_context->cfp < 0)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "cfp not initialized and packet is not one IR packet\n");
+		rohc_decomp_warn(context, "cfp not initialized and packet is not one "
+		                 "IR packet\n");
 		goto error;
 	}
 
 	/* check if Coverage Field Inferred (CFI) is uninitialized */
 	if(udp_lite_context->cfi < 0)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "cfi not initialized and packet is not one IR packet\n");
+		rohc_decomp_warn(context, "cfi not initialized and packet is not one "
+		                 "IR packet\n");
 		goto error;
 	}
 

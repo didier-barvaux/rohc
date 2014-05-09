@@ -35,12 +35,11 @@
  * Public function prototypes.
  */
 
-rohc_packet_t ip_detect_packet_type(const struct rohc_decomp *const decomp,
-                                    const struct rohc_decomp_ctxt *const context,
+rohc_packet_t ip_detect_packet_type(const struct rohc_decomp_ctxt *const context,
                                     const uint8_t *const rohc_packet,
                                     const size_t rohc_length,
                                     const size_t large_cid_len)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 int ip_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
                         const uint8_t *packet,
@@ -48,29 +47,26 @@ int ip_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-int ip_parse_extension3(const struct rohc_decomp *const decomp,
-                        const struct rohc_decomp_ctxt *const context,
+int ip_parse_extension3(const struct rohc_decomp_ctxt *const context,
                         const unsigned char *const rohc_data,
                         const size_t rohc_data_len,
                         const rohc_packet_t packet_type,
                         struct rohc_extr_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
-int parse_outer_header_flags(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
+int parse_outer_header_flags(const struct rohc_decomp_ctxt *const context,
                              const unsigned char *const flags,
                              const unsigned char *fields,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
-int parse_inner_header_flags(const struct rohc_decomp *const decomp,
-                             const struct rohc_decomp_ctxt *const context,
+int parse_inner_header_flags(const struct rohc_decomp_ctxt *const context,
                              const unsigned char *const flags,
                              const unsigned char *fields,
                              const size_t length,
                              struct rohc_extr_ip_bits *const bits)
-	__attribute__((warn_unused_result, nonnull(1, 2, 3, 4, 6)));
+	__attribute__((warn_unused_result, nonnull(1, 2, 3, 5)));
 
 #endif
 

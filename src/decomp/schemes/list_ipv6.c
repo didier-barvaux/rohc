@@ -192,10 +192,9 @@ static bool create_ip6_item(const unsigned char *const data,
 	/* check minimal length for Next Header and Length fields */
 	if(length < 2)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "packet too small for Next Header and Length fields: "
-		             "only %zd bytes available while at least 2 bytes are "
-		             "required\n", length);
+		rd_list_warn(decomp, "packet too small for Next Header and Length "
+		             "fields: only %zu bytes available while at least 2 bytes "
+		             "are required\n", length);
 		goto error;
 	}
 	item_type = data[0];
@@ -205,9 +204,8 @@ static bool create_ip6_item(const unsigned char *const data,
 	                                       item_type, data, length);
 	if(ret < 0)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, decomp->profile_id,
-		             "failed to update the list item #%zu in translation "
-		             "table\n", index_table);
+		rd_list_warn(decomp, "failed to update the list item #%zu in "
+		             "translation table\n", index_table);
 		goto error;
 	}
 

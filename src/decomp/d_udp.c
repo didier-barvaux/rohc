@@ -253,8 +253,7 @@ int udp_parse_static_udp(const struct rohc_decomp_ctxt *const context,
 	/* check the minimal length to decode the UDP static part */
 	if(length < 4)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 
@@ -334,8 +333,7 @@ static int udp_parse_dynamic_udp(const struct rohc_decomp_ctxt *const context,
 	/* UDP checksum */
 	if(length < 2)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "ROHC packet too small (len = %zu)\n", length);
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu)\n", length);
 		goto error;
 	}
 	bits->udp_check = GET_NEXT_16_BITS(packet);
@@ -399,9 +397,8 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 	 *  udp_checksum_present > 0 <=> UDP checksum field present */
 	if(udp_context->udp_checksum_present < 0)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "udp_checksum_present not initialized and packet is not "
-		             "one IR packet\n");
+		rohc_decomp_warn(context, "udp_checksum_present not initialized and "
+		                 "packet is not one IR packet\n");
 		goto error;
 	}
 	else if(udp_context->udp_checksum_present == 0)
@@ -414,9 +411,8 @@ static int udp_parse_uo_remainder(const struct rohc_decomp_ctxt *const context,
 		/* check the minimal length to decode the UDP checksum */
 		if(length < 2)
 		{
-			rohc_warning(context->decompressor, ROHC_TRACE_DECOMP,
-			             context->profile->id,
-			             "ROHC packet too small (len = %d)\n", length);
+			rohc_decomp_warn(context, "ROHC packet too small (len = %u)\n",
+			                 length);
 			goto error;
 		}
 
@@ -509,8 +505,7 @@ static bool udp_decode_values_from_bits(const struct rohc_decomp_ctxt *context,
 	 *    ie. udp_checksum_present = 0  */
 	if(udp_context->udp_checksum_present < 0)
 	{
-		rohc_warning(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
-		             "udp_checksum_present not initialized\n");
+		rohc_decomp_warn(context, "udp_checksum_present not initialized\n");
 		goto error;
 	}
 	else if(udp_context->udp_checksum_present > 0)

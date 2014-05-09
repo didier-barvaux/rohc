@@ -41,6 +41,13 @@
 /** The number of ROHC profiles ready to be used */
 #define D_NUM_PROFILES 7U
 
+
+/** Print a warning trace for the given decompression context */
+#define rohc_decomp_warn(context, format, ...) \
+	rohc_warning((context)->decompressor, ROHC_TRACE_DECOMP, \
+	             (context)->profile->id, \
+	             format, ##__VA_ARGS__)
+
 /** Print a debug trace for the given decompression context */
 #define rohc_decomp_debug(context, format, ...) \
 	rohc_debug((context)->decompressor, ROHC_TRACE_DECOMP, \
@@ -260,12 +267,11 @@ struct rohc_decomp_profile
 	              rohc_packet_t *const packet_type);
 
 	/** The handler used to detect the type of the ROHC packet */
-	rohc_packet_t (*detect_pkt_type)(const struct rohc_decomp *const decomp,
-	                                 const struct rohc_decomp_ctxt *const context,
+	rohc_packet_t (*detect_pkt_type)(const struct rohc_decomp_ctxt *const context,
 	                                 const uint8_t *const rohc_packet,
 	                                 const size_t rohc_length,
 	                                 const size_t large_cid_len)
-		__attribute__((warn_unused_result, nonnull(1, 2, 3)));
+		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/* The handler used to retrieve the Sequence Number (SN) */
 	uint32_t (*get_sn)(const struct rohc_decomp_ctxt *const context);

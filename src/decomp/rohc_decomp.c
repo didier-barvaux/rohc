@@ -1474,8 +1474,8 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	decomp->last_context = ddata->active;
 
  	/* detect the type of the ROHC packet */
-	*packet_type = profile->detect_pkt_type(decomp, ddata->active, walk,
-	                                        remain_len, ddata->large_cid_size);
+	*packet_type = profile->detect_pkt_type(ddata->active, walk, remain_len,
+	                                        ddata->large_cid_size);
 	if((*packet_type) == ROHC_PACKET_UNKNOWN)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
@@ -1646,8 +1646,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			                  context->profile->get_sn(context), &sfeedback);
 			if(ret != ROHC_OK)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to build the ACK feedback\n");
+				rohc_decomp_warn(context, "failed to build the ACK feedback\n");
 				return;
 			}
 			feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
@@ -1655,8 +1654,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			                           decomp->crc_table_8, &feedbacksize);
 			if(feedback == NULL)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to wrap the ACK feedback\n");
+				rohc_decomp_warn(context, "failed to wrap the ACK feedback\n");
 				return;
 			}
 
@@ -1666,8 +1664,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			if(!rohc_comp_piggyback_feedback(decomp->compressor,
 			                                 feedback, feedbacksize))
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to piggyback the ACK feedback\n");
+				rohc_decomp_warn(context, "failed to piggyback the ACK feedback\n");
 				return;
 			}
 
@@ -1701,8 +1698,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			                           decomp->crc_table_8, &feedbacksize);
 			if(feedback == NULL)
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to wrap the STATIC-NACK feedback\n");
+				rohc_decomp_warn(context, "failed to wrap the STATIC-NACK feedback\n");
 				return;
 			}
 
@@ -1712,8 +1708,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			if(!rohc_comp_piggyback_feedback(decomp->compressor,
 			                                 feedback, feedbacksize))
 			{
-				rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-				             "failed to piggyback the STATIC-NACK feedback\n");
+				rohc_decomp_warn(context, "failed to piggyback the STATIC-NACK "
+				                 "feedback\n");
 				return;
 			}
 
@@ -1734,8 +1730,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					                  context->profile->get_sn(context), &sfeedback);
 					if(ret != ROHC_OK)
 					{
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to build the STATIC-NACK feedback\n");
+						rohc_decomp_warn(context, "failed to build the STATIC-NACK "
+						                 "feedback\n");
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
@@ -1743,8 +1739,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					                           decomp->crc_table_8, &feedbacksize);
 					if(feedback == NULL)
 					{
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to create a STATIC-NACK feedback\n");
+						rohc_decomp_warn(context, "failed to create a STATIC-NACK "
+						                 "feedback\n");
 						return;
 					}
 
@@ -1753,8 +1749,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					if(!rohc_comp_piggyback_feedback(decomp->compressor,
 					                                 feedback, feedbacksize))
 					{
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to piggyback the STATIC-NACK feedback\n");
+						rohc_decomp_warn(context, "failed to piggyback the "
+						                 "STATIC-NACK feedback\n");
 						return;
 					}
 
@@ -1772,8 +1768,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					                  &sfeedback);
 					if(ret != ROHC_OK)
 					{
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to build the NACK feedback\n");
+						rohc_decomp_warn(context, "failed to build the NACK "
+						                 "feedback\n");
 						return;
 					}
 					feedback = f_wrap_feedback(&sfeedback, cid, cid_type,
@@ -1781,8 +1777,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					                           decomp->crc_table_8, &feedbacksize);
 					if(feedback == NULL)
 					{
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to create the NACK feedback\n");
+						rohc_decomp_warn(context, "failed to create the NACK "
+						                 "feedback\n");
 						return;
 					}
 
@@ -1791,8 +1787,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 					if(!rohc_comp_piggyback_feedback(decomp->compressor,
 					                                 feedback, feedbacksize))
 					{
-						rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-						             "failed to piggyback the NACK feedback\n");
+						rohc_decomp_warn(context, "failed to piggyback the NACK "
+						                 "feedback\n");
 						return;
 					}
 
@@ -2350,9 +2346,8 @@ void d_change_mode_feedback(const struct rohc_decomp *const decomp,
 	}
 	if(cid > decomp->medium.max_cid)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to find CID for decompression context %p, "
-		             "shall not happen\n", context);
+		rohc_decomp_warn(context, "failed to find CID for decompression "
+		                 "context %p, shall not happen\n", context);
 		assert(0);
 		return;
 	}
@@ -2362,8 +2357,7 @@ void d_change_mode_feedback(const struct rohc_decomp *const decomp,
 	                    context->profile->get_sn(context), &sfeedback);
 	if(!is_ok)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to create an ACK feedback\n");
+		rohc_decomp_warn(context, "failed to create an ACK feedback\n");
 		return;
 	}
 	feedback = f_wrap_feedback(&sfeedback, cid, decomp->medium.cid_type,
@@ -2371,16 +2365,14 @@ void d_change_mode_feedback(const struct rohc_decomp *const decomp,
 	                           &feedbacksize);
 	if(feedback == NULL)
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to wrap the ACK feedback\n");
+		rohc_decomp_warn(context, "failed to wrap the ACK feedback\n");
 		return;
 	}
 
 	/* deliver feedback via the compressor associated with the decompressor */
 	if(!rohc_comp_piggyback_feedback(decomp->compressor, feedback, feedbacksize))
 	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, context->profile->id,
-		             "failed to piggyback the ACK feedback\n");
+		rohc_decomp_warn(context, "failed to piggyback the ACK feedback\n");
 		return;
 	}
 
