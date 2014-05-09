@@ -100,11 +100,11 @@ static int rtp_parse_dynamic_rtp(const struct rohc_decomp_ctxt *const context,
                                  const size_t length,
                                  struct rohc_extr_bits *const bits);
 
-static int rtp_parse_extension3(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const rohc_data,
-                                const size_t rohc_data_len,
-                                const rohc_packet_t packet_type,
-                                struct rohc_extr_bits *const bits)
+static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
+                          const unsigned char *const rohc_data,
+                          const size_t rohc_data_len,
+                          const rohc_packet_t packet_type,
+                          struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 static inline bool is_uor2_reparse_required(const rohc_packet_t packet_type,
@@ -201,7 +201,7 @@ void * d_rtp_create(const struct rohc_decomp_ctxt *const context)
 	g_context->next_header_len = nh_len;
 	g_context->parse_static_next_hdr = rtp_parse_static_rtp;
 	g_context->parse_dyn_next_hdr = rtp_parse_dynamic_rtp;
-	g_context->parse_extension3 = rtp_parse_extension3;
+	g_context->parse_ext3 = rtp_parse_ext3;
 	g_context->parse_uo_remainder = rtp_parse_uo_remainder;
 	g_context->decode_values_from_bits = rtp_decode_values_from_bits;
 	g_context->build_next_header = rtp_build_uncomp_rtp;
@@ -885,11 +885,11 @@ error:
  *                          -2 in case packet must be reparsed,
  *                          -1 in case of error
  */
-static int rtp_parse_extension3(const struct rohc_decomp_ctxt *const context,
-                                const unsigned char *const rohc_data,
-                                const size_t rohc_data_len,
-                                const rohc_packet_t packet_type,
-                                struct rohc_extr_bits *const bits)
+static int rtp_parse_ext3(const struct rohc_decomp_ctxt *const context,
+                          const unsigned char *const rohc_data,
+                          const size_t rohc_data_len,
+                          const rohc_packet_t packet_type,
+                          struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
 	const unsigned char *ip_flags_pos = NULL;

@@ -85,7 +85,7 @@ void * d_ip_create(const struct rohc_decomp_ctxt *const context)
 
 	/* some IP-specific values and functions */
 	g_context->parse_dyn_next_hdr = ip_parse_dynamic_ip;
-	g_context->parse_extension3 = ip_parse_extension3;
+	g_context->parse_ext3 = ip_parse_ext3;
 
 	return g_context;
 
@@ -263,11 +263,11 @@ error:
  * @return                  The data length read from the ROHC packet,
  *                          -1 in case of error
  */
-int ip_parse_extension3(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_data,
-                        const size_t rohc_data_len,
-                        const rohc_packet_t packet_type,
-                        struct rohc_extr_bits *const bits)
+int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
+                  const unsigned char *const rohc_data,
+                  const size_t rohc_data_len,
+                  const rohc_packet_t packet_type,
+                  struct rohc_extr_bits *const bits)
 {
 	struct d_generic_context *g_context;
 	const unsigned char *ip_flags_pos = NULL;

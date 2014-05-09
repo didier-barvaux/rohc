@@ -2553,9 +2553,9 @@ static bool parse_uo1id(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_extension3(context, rohc_remain_data,
-				                                       rohc_remain_len,
-				                                       *packet_type, bits);
+				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				                                 rohc_remain_len, *packet_type,
+				                                 bits);
 
 				break;
 			}
@@ -3071,9 +3071,9 @@ static bool parse_uor2(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_extension3(context, rohc_remain_data,
-				                                       rohc_remain_len,
-				                                       *packet_type, bits);
+				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				                                 rohc_remain_len, *packet_type,
+				                                 bits);
 				break;
 			}
 
@@ -3507,9 +3507,9 @@ static int parse_uor2rtp_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_extension3(context, rohc_remain_data,
-				                                       rohc_remain_len,
-				                                       packet_type, bits);
+				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				                                 rohc_remain_len, packet_type,
+				                                 bits);
 				break;
 			}
 
@@ -3955,9 +3955,9 @@ static int parse_uor2id_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_extension3(context, rohc_remain_data,
-				                                       rohc_remain_len,
-				                                       packet_type, bits);
+				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				                                 rohc_remain_len, packet_type,
+				                                 bits);
 
 				break;
 			}
@@ -4406,9 +4406,9 @@ static int parse_uor2ts_once(const struct rohc_decomp_ctxt *const context,
 			case ROHC_EXT_3:
 			{
 				/* decode the extension */
-				ext_size = g_context->parse_extension3(context, rohc_remain_data,
-				                                       rohc_remain_len,
-				                                       packet_type, bits);
+				ext_size = g_context->parse_ext3(context, rohc_remain_data,
+				                                 rohc_remain_len, packet_type,
+				                                 bits);
 				break;
 			}
 
@@ -6452,7 +6452,7 @@ static void reset_extr_bits(const struct d_generic_context *const g_context,
 	 *   indicate that the TS field is not scaled.
 	 *
 	 * So init the is_ts_scaled variable to true by default.
-	 * \ref parse_extension3 will reset it to false if needed.
+	 * \ref parse_ext3 will reset it to false if needed.
 	 */
 	bits->is_ts_scaled = true;
 }

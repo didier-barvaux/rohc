@@ -148,7 +148,7 @@ static void * d_esp_create(const struct rohc_decomp_ctxt *const context)
 	g_context->next_header_len = sizeof(struct esphdr);
 	g_context->parse_static_next_hdr = esp_parse_static_esp;
 	g_context->parse_dyn_next_hdr = esp_parse_dynamic_esp;
-	g_context->parse_extension3 = ip_parse_extension3;
+	g_context->parse_ext3 = ip_parse_ext3;
 	g_context->parse_uo_remainder = NULL;
 	g_context->decode_values_from_bits = esp_decode_values_from_bits;
 	g_context->build_next_header = esp_build_uncomp_esp;

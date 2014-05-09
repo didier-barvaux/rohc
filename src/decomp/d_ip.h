@@ -47,11 +47,11 @@ int ip_parse_dynamic_ip(const struct rohc_decomp_ctxt *const context,
                         struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
 
-int ip_parse_extension3(const struct rohc_decomp_ctxt *const context,
-                        const unsigned char *const rohc_data,
-                        const size_t rohc_data_len,
-                        const rohc_packet_t packet_type,
-                        struct rohc_extr_bits *const bits)
+int ip_parse_ext3(const struct rohc_decomp_ctxt *const context,
+                  const unsigned char *const rohc_data,
+                  const size_t rohc_data_len,
+                  const rohc_packet_t packet_type,
+                  struct rohc_extr_bits *const bits)
 	__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 int parse_outer_header_flags(const struct rohc_decomp_ctxt *const context,

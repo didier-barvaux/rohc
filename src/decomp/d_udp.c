@@ -143,7 +143,7 @@ void * d_udp_create(const struct rohc_decomp_ctxt *const context)
 	g_context->next_header_len = sizeof(struct udphdr);
 	g_context->parse_static_next_hdr = udp_parse_static_udp;
 	g_context->parse_dyn_next_hdr = udp_parse_dynamic_udp;
-	g_context->parse_extension3 = ip_parse_extension3;
+	g_context->parse_ext3 = ip_parse_ext3;
 	g_context->parse_uo_remainder = udp_parse_uo_remainder;
 	g_context->decode_values_from_bits = udp_decode_values_from_bits;
 	g_context->build_next_header = udp_build_uncomp_udp;

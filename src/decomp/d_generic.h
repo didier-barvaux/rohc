@@ -392,11 +392,11 @@ struct d_generic_context
 	 *                          -2 in case packet must be reparsed,
 	 *                          -1 in case of error
 	 */
-	int (*parse_extension3)(const struct rohc_decomp_ctxt *const context,
-	                        const unsigned char *const rohc_data,
-	                        const size_t rohc_data_len,
-	                        const rohc_packet_t packet_type,
-	                        struct rohc_extr_bits *const bits)
+	int (*parse_ext3)(const struct rohc_decomp_ctxt *const context,
+	                  const unsigned char *const rohc_data,
+	                  const size_t rohc_data_len,
+	                  const rohc_packet_t packet_type,
+	                  struct rohc_extr_bits *const bits)
 		__attribute__((warn_unused_result, nonnull(1, 2, 5)));
 
 	/// The handler used to parse the tail of the UO* ROHC packet
