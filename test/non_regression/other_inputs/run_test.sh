@@ -45,7 +45,7 @@ nr_skip=0
 nr_malformed=0
 nr_fail=0
 
-options="--no-comparison"
+options="--no-comparison --ignore-malformed"
 if [ "$1" = "personal" ] ; then
 	test_dir="${curdir}/personal_inputs/"
 elif [ "$1" == "external" ] ; then
