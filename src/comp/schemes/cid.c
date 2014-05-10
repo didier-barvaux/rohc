@@ -54,12 +54,13 @@ static uint8_t c_add_cid(const int cid)
  * @param first_position OUT: The position of the first byte to be completed
  *                       by other functions
  * @return               The position in the rohc-packet-under-build buffer
+ *                       in case of success, -1 in case of error
  */
-size_t code_cid_values(const rohc_cid_type_t cid_type,
-                       const int cid,
-                       unsigned char *const dest,
-                       const size_t dest_size,
-                       size_t *const first_position)
+int code_cid_values(const rohc_cid_type_t cid_type,
+                    const int cid,
+                    unsigned char *const dest,
+                    const size_t dest_size,
+                    size_t *const first_position)
 {
 	size_t counter = 0;
 
@@ -69,7 +70,10 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		if(cid > 0)
 		{
 			/* Add-CID */
-			assert(dest_size >= 2);
+			if(dest_size < 2)
+			{
+				goto error;
+			}
 			dest[counter] = c_add_cid(cid);
 			*first_position = 1;
 			counter = 2;
@@ -77,7 +81,10 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		else
 		{
 			/* no Add-CID */
-			assert(dest_size >= 1);
+			if(dest_size < 1)
+			{
+				goto error;
+			}
 			*first_position = 0;
 			counter = 1;
 		}
@@ -93,12 +100,20 @@ size_t code_cid_values(const rohc_cid_type_t cid_type,
 		if(!sdvl_encode_full(dest + counter, dest_size, &sdvl_len, cid))
 		{
 			/* failed to SDVL-encode the large CID */
-			assert(0); /* TODO: should handle the error */
+			goto error;
+		}
+		else if(sdvl_len != 1 && sdvl_len != 2)
+		{
+			/* SDVL-encoded large CID shall be 1 or 2 byte long */
+			goto error;
 		}
 		counter += sdvl_len;
 	}
 
 	return counter;
+
+error:
+	return -1;
 }
 
 

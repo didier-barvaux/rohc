@@ -1695,8 +1695,20 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          rohc_pkt, rohc_pkt_max_len, &first_position);
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
 
 	/* initialize some profile-specific things when building an IR
 	 * or IR-DYN packet */
@@ -1710,6 +1722,14 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	type |= 1; /* D flag */
 	rohc_comp_debug(context, "type of packet + D flag = 0x%02x", type);
 	rohc_pkt[first_position] = type;
+
+	/* is ROHC buffer large enough for parts 4 and 5 ? */
+	if((rohc_pkt_max_len - counter) < 2)
+	{
+		rohc_comp_warn(context, "ROHC packet is too small for profile ID and "
+		               "CRC bytes");
+		goto error;
+	}
 
 	/* part 4 */
 	rohc_comp_debug(context, "profile ID = 0x%02x", context->profile->id);
@@ -1743,7 +1763,14 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	/* part 8: IR remainder header */
 	if(g_context->code_ir_remainder != NULL)
 	{
-		counter = g_context->code_ir_remainder(context, rohc_pkt, counter);
+		ret = g_context->code_ir_remainder(context, rohc_pkt, rohc_pkt_max_len,
+		                                   counter);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to code IR remainder");
+			goto error;
+		}
+		counter = ret;
 	}
 
 	/* part 5 */
@@ -1753,8 +1780,10 @@ static int code_IR_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
-error:
 	return counter;
+
+error:
+	return -1;
 }
 
 
@@ -1823,8 +1852,20 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          rohc_pkt, rohc_pkt_max_len, &first_position);
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
 
 	/* initialize some profile-specific things when building an IR
 	 * or IR-DYN packet */
@@ -1835,6 +1876,14 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 
 	/* part 2 */
 	rohc_pkt[first_position] = 0xf8;
+
+	/* is ROHC buffer large enough for parts 4 and 5 ? */
+	if((rohc_pkt_max_len - counter) < 2)
+	{
+		rohc_comp_warn(context, "ROHC packet is too small for profile ID and "
+		               "CRC bytes");
+		goto error;
+	}
 
 	/* part 4 */
 	rohc_pkt[counter] = context->profile->id;
@@ -1858,7 +1907,14 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	/* part 7: IR-DYN remainder header */
 	if(g_context->code_ir_remainder != NULL)
 	{
-		counter = g_context->code_ir_remainder(context, rohc_pkt, counter);
+		ret = g_context->code_ir_remainder(context, rohc_pkt, rohc_pkt_max_len,
+		                                   counter);
+		if(ret < 0)
+		{
+			rohc_comp_warn(context, "failed to code IR remainder");
+			goto error;
+		}
+		counter = ret;
 	}
 
 	/* part 5 */
@@ -1868,8 +1924,10 @@ static int code_IR_DYN_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "CRC (header length = %zu, crc = 0x%x)",
 	                counter, rohc_pkt[crc_position]);
 
-error:
 	return counter;
+
+error:
+	return -1;
 }
 
 
@@ -2564,6 +2622,7 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	unsigned char f_byte;
 	struct c_generic_context *g_context;
 	uint8_t crc;
+	int ret;
 
 	g_context = (struct c_generic_context *) context->specific;
 
@@ -2573,8 +2632,20 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          rohc_pkt, rohc_pkt_max_len, &first_position);
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
@@ -2597,6 +2668,9 @@ static int code_UO0_packet(struct rohc_comp_ctxt *const context,
 	counter = code_uo_remainder(context, uncomp_pkt, rohc_pkt, counter);
 
 	return counter;
+
+error:
+	return -1;
 }
 
 
@@ -2756,8 +2830,20 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          rohc_pkt, rohc_pkt_max_len, &first_position);
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
@@ -2927,6 +3013,11 @@ static int code_UO1_packet(struct rohc_comp_ctxt *const context,
 	/* part 4: (M / X +) SN + CRC
 	 * TODO: The CRC should be computed only on the CRC-DYNAMIC fields
 	 * if the CRC-STATIC fields did not change */
+	if((rohc_pkt_max_len - counter) < 1)
+	{
+		rohc_comp_warn(context, "ROHC packet is too small for SN/CRC byte");
+		goto error;
+	}
 	crc = compute_uo_crc(g_context, uncomp_pkt, ROHC_CRC_TYPE_3, CRC_INIT_3,
 	                     context->compressor->crc_table_3);
 	s_byte = crc & 0x07;
@@ -3153,8 +3244,8 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	unsigned char t_byte = 0; /* part 5 */
 	size_t counter;
 	size_t first_position;
-	int s_byte_position = 0;
-	int t_byte_position;
+	size_t s_byte_position = 0;
+	size_t t_byte_position;
 	rohc_ext_t extension;
 	struct c_generic_context *g_context;
 	rohc_packet_t packet_type;
@@ -3201,8 +3292,20 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - parts 4/5 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type, context->cid,
-	                          rohc_pkt, rohc_pkt_max_len, &first_position);
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
 
 	/* build the UO head if necessary */
 	if(g_context->code_UO_packet_head != NULL && uncomp_pkt->transport->data != NULL)
@@ -3254,8 +3357,18 @@ static int code_UO2_packet(struct rohc_comp_ctxt *const context,
 	rohc_comp_debug(context, "f_byte = 0x%02x", f_byte);
 	if(is_rtp)
 	{
+		if(s_byte_position >= rohc_pkt_max_len)
+		{
+			rohc_comp_warn(context, "ROHC packet is too small for 2nd byte");
+			goto error;
+		}
 		rohc_pkt[s_byte_position] = s_byte;
 		rohc_comp_debug(context, "s_byte = 0x%02x", s_byte);
+	}
+	if(t_byte_position >= rohc_pkt_max_len)
+	{
+		rohc_comp_warn(context, "ROHC packet is too small for 2nd byte");
+		goto error;
 	}
 	rohc_pkt[t_byte_position] = t_byte;
 	rohc_comp_debug(context, "t_byte = 0x%02x", t_byte);

@@ -44,9 +44,10 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
                           const struct net_pkt *const uncomp_pkt)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
-size_t c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
-	                           unsigned char *const dest,
-	                           const size_t counter)
+int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
+                           unsigned char *const dest,
+                           const size_t dest_max_len,
+                           const size_t counter)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
 #endif

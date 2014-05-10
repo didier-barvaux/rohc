@@ -258,9 +258,10 @@ struct c_generic_context
 
 	/// @brief The handler used to add the IR/IR-DYN remainder header to the
 	///        ROHC pachet
-	size_t (*code_ir_remainder)(const struct rohc_comp_ctxt *const context,
-	                            unsigned char *const dest,
-	                            const size_t counter)
+	int (*code_ir_remainder)(const struct rohc_comp_ctxt *const context,
+	                         unsigned char *const dest,
+	                         const size_t dest_max_len,
+	                         const size_t counter)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
 
 	/// @brief The handler used to add an additional header in the head of the

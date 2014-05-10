@@ -472,14 +472,17 @@ uint32_t c_ip_get_next_sn(const struct rohc_comp_ctxt *const context,
 
 \endverbatim
  *
- * @param context  The compression context
- * @param dest     The rohc-packet-under-build buffer
- * @param counter  The current position in the rohc-packet-under-build buffer
- * @return         The new position in the rohc-packet-under-build buffer
+ * @param context       The compression context
+ * @param dest          The ROHC packet being coded
+ * @param dest_max_len  The maximum length (in bytes) of the ROHC packet
+ * @param counter       The current position in the ROHC buffer
+ * @return              The new position in ROHC buffer in case of success,
+ *                      -1 in case of failure
  */
-size_t c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
-	                           unsigned char *const dest,
-	                           const size_t counter)
+int c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
+                           unsigned char *const dest,
+                           const size_t dest_max_len,
+                           const size_t counter)
 {
 	struct c_generic_context *g_context;
 	uint16_t sn;
@@ -491,6 +494,13 @@ size_t c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
 	g_context = (struct c_generic_context *) context->specific;
 
 	/* part 1 */
+	if((counter + 2) > dest_max_len)
+	{
+		rohc_comp_warn(context, "ROHC packet too small (%zu bytes max) for the "
+		               "2-byte SN in the IR remainder at %zu bytes of the "
+		               "beginning of the packet", dest_max_len, counter);
+		goto error;
+	}
 	sn = g_context->sn & 0xffff;
 	sn = rohc_hton16(sn);
 	memcpy(&dest[counter], &sn, sizeof(uint16_t));
@@ -498,6 +508,9 @@ size_t c_ip_code_ir_remainder(const struct rohc_comp_ctxt *const context,
 	                dest[counter], dest[counter + 1]);
 
 	return counter + 2;
+
+error:
+	return -1;
 }
 
 

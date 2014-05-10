@@ -1447,6 +1447,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 	uint8_t new_context_state;
 #endif
 	size_t i;
+	int ret;
 
 	assert(context != NULL);
 	assert(rohc_pkt != NULL);
@@ -1890,12 +1891,21 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 		 *  - part 2 will be placed at 'first_position'
 		 *  - part 4 will start at 'counter'
 		 */
-		counter = code_cid_values(context->compressor->medium.cid_type,
-		                          context->cid, rohc_pkt, rohc_pkt_max_len,
-		                          &first_position);
-		rohc_comp_debug(context, "counter = %d, first_position = %zu, "
-		                "rohc_pkt[0] = 0x%02x, rohc_pkt[1] = 0x%02x", counter,
-		                first_position, rohc_pkt[0], rohc_pkt[1]);
+		ret = code_cid_values(context->compressor->medium.cid_type,
+		                      context->cid, rohc_pkt, rohc_pkt_max_len,
+		                      &first_position);
+		if(ret < 1)
+		{
+			rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+			               "%zu-byte ROHC buffer is too small",
+			               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+			               "small" : "large", context->cid, rohc_pkt_max_len);
+			goto error;
+		}
+		counter = ret;
+		rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+		                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		                "small" : "large", context->cid, counter - 1);
 
 		/* part 2: type of packet */
 		if((*packet_type) == ROHC_PACKET_IR)
@@ -4140,6 +4150,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	uint8_t protocol;
 	uint8_t crc_computed;
 	int i;
+	int ret;
 
 	assert(context != NULL);
 	assert(context->specific != NULL);
@@ -4264,12 +4275,20 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 	 *  - part 2 will be placed at 'first_position'
 	 *  - part 4 will start at 'counter'
 	 */
-	counter = code_cid_values(context->compressor->medium.cid_type,
-	                          context->cid, rohc_pkt, rohc_pkt_max_len,
-	                          &first_position);
-	rohc_comp_debug(context, "counter = %d, first_position = %zu, "
-	                "rohc_pkt[0] = 0x%02x, rohc_pkt[1] = 0x%02x", counter,
-	                first_position, rohc_pkt[0], rohc_pkt[1]);
+	ret = code_cid_values(context->compressor->medium.cid_type, context->cid,
+	                      rohc_pkt, rohc_pkt_max_len, &first_position);
+	if(ret < 1)
+	{
+		rohc_comp_warn(context, "failed to encode %s CID %zu: maybe the "
+		               "%zu-byte ROHC buffer is too small",
+		               context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+		               "small" : "large", context->cid, rohc_pkt_max_len);
+		goto error;
+	}
+	counter = ret;
+	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
+	                "small" : "large", context->cid, counter - 1);
 
 	/* part 4: dynamic part of outer and inner IP header and dynamic part
 	 * of next header */
