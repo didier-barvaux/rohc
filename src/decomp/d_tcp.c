@@ -30,7 +30,6 @@
 #include "rohc_traces_internal.h"
 #include "rohc_utils.h"
 #include "rohc_debug.h"
-#include "rohc_time.h"
 #include "schemes/rfc4996.h"
 #include "schemes/wlsb.h"
 #include "protocols/tcp.h"

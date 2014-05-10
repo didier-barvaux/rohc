@@ -29,7 +29,7 @@
 
 #include "d_generic.h"
 #include "rohc_traces_internal.h"
-#include "rohc_time.h"
+#include "rohc_time_internal.h"
 #include "rohc_debug.h"
 #include "rohc_packets.h"
 #include "rohc_utils.h"

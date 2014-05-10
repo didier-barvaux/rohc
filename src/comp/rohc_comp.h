@@ -37,6 +37,7 @@ extern "C"
 #include <rohc/rohc.h>
 #include <rohc/rohc_packets.h>
 #include <rohc/rohc_traces.h>
+#include <rohc/rohc_time.h>
 
 #include <stdlib.h>
 #include <stdint.h>

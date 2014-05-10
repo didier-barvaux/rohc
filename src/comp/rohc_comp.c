@@ -44,7 +44,7 @@
 #include "rohc_packets.h"
 #include "rohc_traces.h"
 #include "rohc_traces_internal.h"
-#include "rohc_time.h"
+#include "rohc_time_internal.h"
 #include "rohc_debug.h"
 #include "rohc_utils.h"
 #include "sdvl.h"
