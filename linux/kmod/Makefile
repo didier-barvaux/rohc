@@ -14,14 +14,16 @@ rohc_test_modname = rohc_test
 rohc_common_sources = \
 	../../src/common/protocols/ip_numbers.c \
 	../../src/common/rohc_common.c \
-	../../src/common/rohc_utils.c \
 	../../src/common/rohc_packets.c \
 	../../src/common/rohc_traces_internal.c \
+	../../src/common/rohc_utils.c \
+	../../src/common/rohc_buf.c \
 	../../src/common/crc.c \
 	../../src/common/rohc_add_cid.c \
 	../../src/common/interval.c \
 	../../src/common/sdvl.c \
 	../../src/common/ip.c \
+	../../src/common/net_pkt.c \
 	../../src/common/comp_list.c \
 	../../src/common/rohc_stats.c
 

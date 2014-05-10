@@ -37,6 +37,8 @@ extern "C"
 	#define ROHC_EXPORT
 #endif
 
+#include <stdint.h>
+
 
 /**
  * @brief A timestamp for the ROHC library

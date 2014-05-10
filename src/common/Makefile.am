@@ -16,6 +16,7 @@ sources = \
 	rohc_packets.c \
 	rohc_traces_internal.c \
 	rohc_utils.c \
+	rohc_buf.c \
 	crc.c \
 	rohc_add_cid.c \
 	interval.c \
@@ -29,7 +30,8 @@ public_headers = \
 	rohc.h \
 	rohc_packets.h \
 	rohc_traces.h \
-	rohc_time.h
+	rohc_time.h \
+	rohc_buf.h
 
 # fake public headers installed in $includedir to point
 # to the real public headers in $includedir/$packagename
