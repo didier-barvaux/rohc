@@ -3002,6 +3002,8 @@ static int __rohc_c_context(struct rohc_comp *comp,
  * @param comp     The ROHC compressor
  * @param feedback The feedback data
  * @param size     The length of the feedback packet
+ *
+ * @ingroup rohc_comp
  */
 void c_piggyback_feedback(struct rohc_comp *comp,
                           unsigned char *feedback,
@@ -3021,6 +3023,8 @@ void c_piggyback_feedback(struct rohc_comp *comp,
  * @param feedback The feedback data
  * @param size     The length of the feedback packet
  * @return         true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
  */
 bool rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
                                   const unsigned char *const feedback,
@@ -3088,6 +3092,8 @@ error:
  * @param comp   The ROHC compressor
  * @param packet The feedback data
  * @param size   The length of the feedback packet
+ *
+ * @ingroup rohc_comp
  */
 void c_deliver_feedback(struct rohc_comp *comp,
                         unsigned char *packet,
@@ -3109,6 +3115,8 @@ void c_deliver_feedback(struct rohc_comp *comp,
  * @param comp   The ROHC compressor
  * @param packet The feedback data
  * @param size   The length of the feedback packet
+ *
+ * @ingroup rohc_comp
  */
 bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
                                 const uint8_t *const packet,
