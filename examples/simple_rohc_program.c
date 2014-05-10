@@ -159,8 +159,8 @@ int main(int argc, char **argv)
 	ip_packet[7] = 0;
 	ip_packet[8] = 1; /* TTL */
 	ip_packet[9] = 134; /* Protocol: unassigned number */
-	ip_packet[10] = 0xbe; /* fake Checksum */
-	ip_packet[11] = 0xef;
+	ip_packet[10] = 0xa9; /* IP Checksum */
+	ip_packet[11] = 0x3f;
 	ip_packet[12] = 0x01; /* Source address */
 	ip_packet[13] = 0x02;
 	ip_packet[14] = 0x03;
