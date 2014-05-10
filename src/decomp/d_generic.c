@@ -1440,10 +1440,9 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
 			                 "IR packet");
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			                 ROHC_TRACE_WARNING, "IR headers",
-			                 rohc_packet - add_cid_len,
-			                 rohc_header_len + add_cid_len);
+			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
+			              ROHC_TRACE_WARNING, "IR headers",
+			              rohc_packet - add_cid_len, rohc_header_len + add_cid_len);
 #endif
 			goto error_crc;
 		}
@@ -1512,9 +1511,9 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
 			                 "headers", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			                 ROHC_TRACE_WARNING, "compressed headers",
-			                 rohc_packet, rohc_header_len);
+			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
+			              ROHC_TRACE_WARNING, "compressed headers",
+			              rohc_packet, rohc_header_len);
 #endif
 			goto error;
 		}
@@ -1541,9 +1540,9 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
 				                 "headers CRC failure)", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
-				rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-				                 ROHC_TRACE_WARNING, "compressed headers",
-				                 rohc_packet, rohc_header_len);
+				rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
+				              ROHC_TRACE_WARNING, "compressed headers",
+				              rohc_packet, rohc_header_len);
 #endif
 				goto error_crc;
 			}
@@ -5333,9 +5332,9 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			                 ROHC_TRACE_WARNING, "uncompressed headers",
-			                 outer_ip_hdr, *uncomp_hdrs_len);
+			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
+			              ROHC_TRACE_WARNING, "uncompressed headers",
+			              outer_ip_hdr, *uncomp_hdrs_len);
 #endif
 			goto error_crc;
 		}

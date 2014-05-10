@@ -939,8 +939,8 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 			                 "IP headers as ROHC packet contains");
 			goto error;
 		}
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 	}
 	while(rohc_is_tunneling(protocol));
 
@@ -959,8 +959,8 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	remain_data += read;
 	remain_len -= read;
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 
 	/* dynamic chain (IPv4/IPv6 headers and extension headers) */
 	base_header.uint8 = dest;
@@ -1020,8 +1020,8 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 			                 "headers as ROHC packet contains");
 			goto error;
 		}
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "current IP packet", dest, size);
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "current IP packet", dest, size);
 	}
 	while(rohc_is_tunneling(protocol));
 
@@ -1041,8 +1041,8 @@ static int d_tcp_decode_ir(struct rohc_decomp_ctxt *context,
 	/* add TCP header and TCP options */
 	size += (tcp->data_offset << 2);
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "current IP+TCP packet", dest, size);
 
 	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
 
@@ -1273,8 +1273,8 @@ static int d_tcp_decode_irdyn(struct rohc_decomp_ctxt *context,
 	/* add TCP header and TCP options */
 	size += (tcp->data_offset << 2);
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP+TCP packet", dest, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "current IP+TCP packet", dest, size);
 
 	memcpy(&tcp_context->old_tcphdr, tcp, sizeof(tcphdr_t));
 
@@ -1584,9 +1584,9 @@ static int tcp_decode_static_ipv6_option(struct rohc_decomp_ctxt *const context,
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "IPv6 option static part",
-	                 rohc_packet, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "IPv6 option static part",
+	              rohc_packet, size);
 #endif
 
 	return size;
@@ -1802,9 +1802,9 @@ static int tcp_decode_dynamic_ipv6_option(struct rohc_decomp_ctxt *const context
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "IPv6 option dynamic part",
-	                 rohc_packet, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "IPv6 option dynamic part",
+	              rohc_packet, size);
 #endif
 
 	return size;
@@ -1933,8 +1933,8 @@ static int tcp_decode_static_ip(struct rohc_decomp_ctxt *const context,
 			size = sizeof(ipv6_static2_t);
 		}
 	}
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "IP static part", rohc_packet, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "IP static part", rohc_packet, size);
 
 	return size;
 
@@ -2104,8 +2104,8 @@ static int tcp_decode_dynamic_ip(struct rohc_decomp_ctxt *const context,
 		size = sizeof(ipv6_dynamic_t);
 	}
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "IP dynamic part", rohc_packet, size);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "IP dynamic part", rohc_packet, size);
 
 	return size;
 
@@ -2229,9 +2229,9 @@ static int tcp_decode_irregular_ip(struct rohc_decomp_ctxt *const context,
 	}
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "IP irregular part", rohc_data,
-	                 remain_data - rohc_data);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "IP irregular part", rohc_data,
+	              remain_data - rohc_data);
 #endif
 
 	return (remain_data - rohc_data);
@@ -2274,9 +2274,9 @@ static int tcp_decode_static_tcp(struct rohc_decomp_ctxt *const context,
 		                 rohc_length);
 		goto error;
 	}
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "TCP static part",
-	                 rohc_packet, sizeof(tcp_static_t));
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "TCP static part",
+	              rohc_packet, sizeof(tcp_static_t));
 	tcp_static = (tcp_static_t *) rohc_packet;
 
 	/* TCP source port */
@@ -2919,16 +2919,16 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		assert((opts_full_len % sizeof(uint32_t)) == 0);
 
 		/* print TCP options */
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "decompressed TCP options",
-		                 tcp_options, opts_full_len);
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "decompressed TCP options",
+		              tcp_options, opts_full_len);
 
 		/* update data offset */
 		tcp->data_offset = (sizeof(tcphdr_t) + opts_full_len) >> 2;
 
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "TCP header + options",
-		                 (unsigned char *) tcp, sizeof(tcphdr_t) + opts_full_len);
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "TCP header + options",
+		              (unsigned char *) tcp, sizeof(tcphdr_t) + opts_full_len);
 	}
 	else
 	{
@@ -2938,17 +2938,17 @@ static int tcp_decode_dynamic_tcp(struct rohc_decomp_ctxt *const context,
 		remain_data++;
 		remain_len--;
 
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "TCP header, no options",
-		                 (unsigned char *) tcp, sizeof(tcphdr_t));
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "TCP header, no options",
+		              (unsigned char *) tcp, sizeof(tcphdr_t));
 
 		memset(tcp_context->tcp_opts_list_struct, 0xff, ROHC_TCP_OPTS_MAX);
 	}
 
 	assert(remain_len <= rohc_length);
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "TCP dynamic part",
-	                 (unsigned char *) tcp_dynamic, rohc_length - remain_len);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "TCP dynamic part",
+	              (unsigned char *) tcp_dynamic, rohc_length - remain_len);
 
 	return (rohc_length - remain_len);
 
@@ -3163,9 +3163,9 @@ static int tcp_decode_irregular_tcp(struct rohc_decomp_ctxt *const context,
 	/* update TCP data offset */
 	tcp->data_offset = ((sizeof(tcphdr_t) + tcp_opts_len) >> 2);
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "TCP irregular part", rohc_data,
-	                 remain_data - rohc_data);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "TCP irregular part", rohc_data,
+	              remain_data - rohc_data);
 
 	return (remain_data - rohc_data);
 
@@ -3501,9 +3501,9 @@ static const uint8_t * d_tcp_opt_sack(const struct rohc_decomp_ctxt *const conte
 		                  rohc_ntoh32(sack_block->block_end));
 		sack_block++;
 	}
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "TCP option SACK", options - 2,
-	                 *(options - 1));
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "TCP option SACK", options - 2,
+	              *(options - 1));
 	*pOptions = (uint8_t *) sack_block;
 
 	return ptr;
@@ -4096,10 +4096,10 @@ static const uint8_t * tcp_decompress_tcp_options(struct rohc_decomp_ctxt *const
 	                  tcp->data_offset, tcp->data_offset);
 	if(tcp->data_offset > ( sizeof(tcphdr_t) >> 2 ) )
 	{
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "TCP options",
-		                 (unsigned char *) (tcp + 1),
-		                 (tcp->data_offset << 2) - sizeof(tcphdr_t));
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "TCP options",
+		              (unsigned char *) (tcp + 1),
+		              (tcp->data_offset << 2) - sizeof(tcphdr_t));
 	}
 
 	return compressed_options;
@@ -4178,9 +4178,9 @@ static int tcp_size_decompress_tcp_options(struct rohc_decomp_ctxt *const contex
 		                 "options: at least %zu bytes required", 1 + xi_len);
 		goto error;
 	}
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "XI bytes of compressed list of TCP "
-	                 "options", data, xi_len);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "XI bytes of compressed list of TCP "
+	              "options", data, xi_len);
 	comp_size += xi_len;
 	items = data + xi_len;
 	items_max_len = data_len - comp_size;
@@ -4887,9 +4887,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			goto error;
 		}
 	}
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "ROHC base header", rohc_remain_data,
-	                 rohc_header_len);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "ROHC base header", rohc_remain_data,
+	              rohc_header_len);
 	rohc_remain_data += rohc_header_len;
 	rohc_remain_len -= rohc_header_len;
 
@@ -5010,9 +5010,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 			++ip_context.v6;
 		}
 
-		rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-		                 ROHC_TRACE_DEBUG, "current IP packet", dest,
-		                 uncomp_header_len);
+		rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+		              ROHC_TRACE_DEBUG, "current IP packet", dest,
+		              uncomp_header_len);
 
 		assert(ip_context.uint8 < &tcp_context->ip_context[MAX_IP_CONTEXT_SIZE]);
 	}
@@ -5024,9 +5024,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	/* static TCP part */
 	tcp_copy_static_tcp(context, tcp);
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
-	                 uncomp_header_len + sizeof(tcphdr_t));
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
+	              uncomp_header_len + sizeof(tcphdr_t));
 
 	/* dynamic part */
 	assert(packet_type != ROHC_PACKET_UNKNOWN);
@@ -5683,9 +5683,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		tcp->data_offset = sizeof(tcphdr_t) >> 2;
 	}
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
-	                 uncomp_header_len + sizeof(tcphdr_t));
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
+	              uncomp_header_len + sizeof(tcphdr_t));
 
 	tcp_context->msn = msn;
 
@@ -5899,9 +5899,9 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 	}
 	while(protocol != ROHC_IPPROTO_TCP);
 
-	rohc_dump_packet(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
-	                 ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
-	                 uncomp_header_len);
+	rohc_dump_buf(context->decompressor->trace_callback, ROHC_TRACE_DECOMP,
+	              ROHC_TRACE_DEBUG, "current IP + TCP packet", dest,
+	              uncomp_header_len);
 
 	size = tcp->data_offset << 2;
 	rohc_decomp_debug(context, "TCP header size = %d (0x%x)", size, size);

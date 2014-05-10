@@ -27,13 +27,38 @@
  */
 
 #include "rohc_traces_internal.h"
+#include "rohc_buf.h"
+#include "rohc_utils.h"
 
 #include <stdio.h> /* for snprintf(3) */
 #include <assert.h>
 
 
 /**
- * @brief Dump given packet content
+ * @brief Dump the content of the given packet
+ *
+ * @param trace_cb      The function to log traces
+ * @param trace_entity  The entity that emits the traces
+ * @param trace_level   The priority level for the trace
+ * @param descr         The description of the packet to dump
+ * @param packet        The packet to dump
+ */
+void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
+                      const rohc_trace_entity_t trace_entity,
+                      const rohc_trace_level_t trace_level,
+                      const char *const descr,
+                      const struct rohc_buf packet)
+{
+	assert(descr != NULL);
+	assert(!rohc_buf_is_malformed(packet));
+
+	rohc_dump_buf(trace_cb, trace_entity, trace_level, descr,
+	              rohc_buf_data(packet), rohc_min(packet.len, 100U));
+}
+
+
+/**
+ * @brief Dump the content of the given buffer
  *
  * @param trace_cb      The function to log traces
  * @param trace_entity  The entity that emits the traces
@@ -42,12 +67,12 @@
  * @param packet        The packet to dump
  * @param length        The length (in bytes) of the packet to dump
  */
-void rohc_dump_packet(const rohc_trace_callback_t trace_cb,
-                      const rohc_trace_entity_t trace_entity,
-                      const rohc_trace_level_t trace_level,
-                      const char *const descr,
-                      const unsigned char *const packet,
-                      const size_t length)
+void rohc_dump_buf(const rohc_trace_callback_t trace_cb,
+                   const rohc_trace_entity_t trace_entity,
+                   const rohc_trace_level_t trace_level,
+                   const char *const descr,
+                   const unsigned char *const packet,
+                   const size_t length)
 {
 	assert(descr != NULL);
 	assert(packet != NULL);
