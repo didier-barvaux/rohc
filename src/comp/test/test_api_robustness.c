@@ -213,6 +213,8 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_get_mrru(comp, &mrru) == true);
 		CHECK(mrru == 65535);
 	}
+	/* disable MRRU for next tests */
+	CHECK(rohc_comp_set_mrru(comp, 0) == true);
 
 	/* rohc_comp_get_max_cid() */
 	{
@@ -315,6 +317,50 @@ int main(int argc, char *argv[])
 		CHECK(rohc_compress3(comp, ts, buf1, 1, buf2, 0, &len) == ROHC_ERROR);
 		CHECK(rohc_compress3(comp, ts, buf1, 1, buf2, 1, NULL) == ROHC_ERROR);
 		CHECK(rohc_compress3(comp, ts, buf, sizeof(buf), buf2, sizeof(buf2), &len) == ROHC_OK);
+	}
+
+	/* rohc_compress4() */
+	{
+		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
+		unsigned char buf1[1] = { 0x00 };
+		struct rohc_buf pkt1 = rohc_buf_init_full(buf1, 1, ts);
+		unsigned char buf2[100];
+		struct rohc_buf pkt2 = rohc_buf_init_empty(buf2, 100);
+		unsigned char buf[] =
+		{
+			0x45, 0x00, 0x00, 0x54,  0x00, 0x00, 0x40, 0x00,
+			0x40, 0x01, 0x93, 0x52,  0xc0, 0xa8, 0x13, 0x01,
+			0xc0, 0xa8, 0x13, 0x05,  0x08, 0x00, 0xe9, 0xc2,
+			0x9b, 0x42, 0x00, 0x01,  0x66, 0x15, 0xa6, 0x45,
+			0x77, 0x9b, 0x04, 0x00,  0x08, 0x09, 0x0a, 0x0b,
+			0x0c, 0x0d, 0x0e, 0x0f,  0x10, 0x11, 0x12, 0x13,
+			0x14, 0x15, 0x16, 0x17,  0x18, 0x19, 0x1a, 0x1b,
+			0x1c, 0x1d, 0x1e, 0x1f,  0x20, 0x21, 0x22, 0x23,
+			0x24, 0x25, 0x26, 0x27,  0x28, 0x29, 0x2a, 0x2b,
+			0x2c, 0x2d, 0x2e, 0x2f,  0x30, 0x31, 0x32, 0x33,
+			0x34, 0x35, 0x36, 0x37
+		};
+		struct rohc_buf pkt = rohc_buf_init_full(buf, sizeof(buf), ts);
+		CHECK(rohc_compress4(NULL, pkt1, &pkt2) == ROHC_ERROR);
+		pkt1.len = 0;
+		CHECK(rohc_compress4(comp, pkt1, &pkt2) == ROHC_ERROR);
+		pkt1.len = 1;
+		CHECK(rohc_compress4(comp, pkt1, NULL) == ROHC_ERROR);
+		pkt2.max_len = 0;
+		pkt2.offset = 0;
+		pkt2.len = 0;
+		CHECK(rohc_compress4(comp, pkt1, &pkt2) == ROHC_ERROR);
+		for(size_t i = 0; i <= pkt.len; i++)
+		{
+			pkt2.max_len = i;
+			pkt2.offset = 0;
+			pkt2.len = 0;
+			CHECK(rohc_compress4(comp, pkt, &pkt2) == ROHC_ERROR);
+		}
+		pkt2.max_len = pkt.len + 1;
+		pkt2.offset = 0;
+		pkt2.len = 0;
+		CHECK(rohc_compress4(comp, pkt, &pkt2) == ROHC_OK);
 	}
 
 	/* rohc_comp_get_last_packet_info2() */

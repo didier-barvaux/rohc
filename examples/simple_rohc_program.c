@@ -76,22 +76,16 @@ static int gen_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char **argv)
 {
-//! [define arrival time]
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-//! [define arrival time]
-
 //! [define ROHC compressor]
 	struct rohc_comp *compressor;           /* the ROHC compressor */
 //! [define ROHC compressor]
 //! [define IP and ROHC packets]
-	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
-	                                           the IPv4 packet to compress */
-	size_t ip_packet_len;                   /* the length (in bytes) of the
-	                                           IPv4 packet */
-	unsigned char rohc_packet[BUFFER_SIZE]; /* the buffer that will contain
-	                                           the resulting ROHC packet */
-	size_t rohc_packet_len;                 /* the length (in bytes) of the
-	                                           resulting ROHC packet */
+	/* the buffer that will contain the IPv4 packet to compress */
+	unsigned char ip_buffer[BUFFER_SIZE];
+	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, BUFFER_SIZE);
+	/* the buffer that will contain the resulting ROHC packet */
+	unsigned char rohc_buffer[BUFFER_SIZE];
+	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
 //! [define IP and ROHC packets]
 	unsigned int seed;
 	size_t i;
@@ -147,36 +141,37 @@ int main(int argc, char **argv)
 
 	/* create a fake IP packet for the purpose of this simple program */
 	printf("\nbuild a fake IP packet\n");
-	ip_packet[0] = 4 << 4; /* IP version 4 */
-	ip_packet[0] |= 5; /* IHL: minimal IPv4 header length (in 32-bit words) */
-	ip_packet[1] = 0; /* TOS */
-	ip_packet_len = 5 * 4 + strlen(FAKE_PAYLOAD);
-	ip_packet[2] = (ip_packet_len >> 8) & 0xff; /* Total Length */
-	ip_packet[3] = ip_packet_len & 0xff;
-	ip_packet[4] = 0; /* IP-ID */
-	ip_packet[5] = 0;
-	ip_packet[6] = 0; /* Fragment Offset and IP flags */
-	ip_packet[7] = 0;
-	ip_packet[8] = 1; /* TTL */
-	ip_packet[9] = 134; /* Protocol: unassigned number */
-	ip_packet[10] = 0xa9; /* IP Checksum */
-	ip_packet[11] = 0x3f;
-	ip_packet[12] = 0x01; /* Source address */
-	ip_packet[13] = 0x02;
-	ip_packet[14] = 0x03;
-	ip_packet[15] = 0x04;
-	ip_packet[16] = 0x05; /* Destination address */
-	ip_packet[17] = 0x06;
-	ip_packet[18] = 0x07;
-	ip_packet[19] = 0x08;
+	rohc_buf_byte_at(ip_packet, 0) = 4 << 4; /* IP version 4 */
+	rohc_buf_byte_at(ip_packet, 0) |= 5; /* IHL: min. IPv4 header length
+	                                        (in 32-bit words) */
+	rohc_buf_byte_at(ip_packet, 1) = 0; /* TOS */
+	ip_packet.len = 5 * 4 + strlen(FAKE_PAYLOAD);
+	rohc_buf_byte_at(ip_packet, 2) = (ip_packet.len >> 8) & 0xff; /* Total Length */
+	rohc_buf_byte_at(ip_packet, 3) = ip_packet.len & 0xff;
+	rohc_buf_byte_at(ip_packet, 4) = 0; /* IP-ID */
+	rohc_buf_byte_at(ip_packet, 5) = 0;
+	rohc_buf_byte_at(ip_packet, 6) = 0; /* Fragment Offset and IP flags */
+	rohc_buf_byte_at(ip_packet, 7) = 0;
+	rohc_buf_byte_at(ip_packet, 8) = 1; /* TTL */
+	rohc_buf_byte_at(ip_packet, 9) = 134; /* Protocol: unassigned number */
+	rohc_buf_byte_at(ip_packet, 10) = 0xa9; /* IP Checksum */
+	rohc_buf_byte_at(ip_packet, 11) = 0x3f;
+	rohc_buf_byte_at(ip_packet, 12) = 0x01; /* Source address */
+	rohc_buf_byte_at(ip_packet, 13) = 0x02;
+	rohc_buf_byte_at(ip_packet, 14) = 0x03;
+	rohc_buf_byte_at(ip_packet, 15) = 0x04;
+	rohc_buf_byte_at(ip_packet, 16) = 0x05; /* Destination address */
+	rohc_buf_byte_at(ip_packet, 17) = 0x06;
+	rohc_buf_byte_at(ip_packet, 18) = 0x07;
+	rohc_buf_byte_at(ip_packet, 19) = 0x08;
 
 	/* copy the payload just after the IP header */
-	memcpy(ip_packet + 5 * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
+	memcpy(rohc_buf_data_at(ip_packet, 5 * 4), FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
 
 	/* dump the newly-created IP packet on terminal */
-	for(i = 0; i < ip_packet_len; i++)
+	for(i = 0; i < ip_packet.len; i++)
 	{
-		printf("0x%02x ", ip_packet[i]);
+		printf("0x%02x ", rohc_buf_byte_at(ip_packet, i));
 		if(i != 0 && ((i + 1) % 8) == 0)
 		{
 			printf("\n");
@@ -191,8 +186,7 @@ int main(int argc, char **argv)
 	/* Now, compress this fake IP packet */
 	printf("\ncompress the fake IP packet\n");
 //! [compress IP packet #1]
-	ret = rohc_compress3(compressor, arrival_time, ip_packet, ip_packet_len,
-	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
+	ret = rohc_compress4(compressor, ip_packet, &rohc_packet);
 	if(ret == ROHC_NEED_SEGMENT)
 	{
 		/* success: compression succeeded, but resulting ROHC packet was too
@@ -213,9 +207,9 @@ int main(int argc, char **argv)
 
 		/* dump the ROHC packet on terminal */
 		printf("\nROHC packet resulting from the ROHC compression:\n");
-		for(i = 0; i < rohc_packet_len; i++)
+		for(i = 0; i < rohc_packet.len; i++)
 		{
-			printf("0x%02x ", rohc_packet[i]);
+			printf("0x%02x ", rohc_buf_byte_at(rohc_packet, i));
 			if(i != 0 && ((i + 1) % 8) == 0)
 			{
 				printf("\n");

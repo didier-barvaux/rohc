@@ -34,7 +34,6 @@
  *
  * @param[out] packet     The parsed packet
  * @param data            The data to parse
- * @param data_len        The length of the data to parse
  * @param trace_callback  The function to call for printing traces
  * @param trace_entity    The entity that emits the traces
  * @return                true if the packet was successfully parsed,
@@ -42,13 +41,12 @@
  *                        not considered as an error)
  */
 bool net_pkt_parse(struct net_pkt *const packet,
-                   const uint8_t *const data,
-                   const size_t data_len,
+                   const struct rohc_buf data,
                    rohc_trace_callback_t trace_callback,
                    rohc_trace_entity_t trace_entity)
 {
-	packet->data = data;
-	packet->len = data_len;
+	packet->data = rohc_buf_data(data);
+	packet->len = data.len;
 	packet->ip_hdr_nr = 0;
 	packet->key = 0;
 
@@ -56,7 +54,7 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	packet->trace_callback = trace_callback;
 
 	/* create the outer IP packet from raw data */
-	if(!ip_create(&packet->outer_ip, data, data_len))
+	if(!ip_create(&packet->outer_ip, rohc_buf_data(data), data.len))
 	{
 		rohc_warning(packet, trace_entity, ROHC_PROFILE_GENERAL,
 		             "cannot create the outer IP header");

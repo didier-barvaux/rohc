@@ -22,6 +22,7 @@ rohc_comp_disable_profiles
 rohc_compress
 rohc_compress2
 rohc_compress3
+rohc_compress4
 rohc_comp_deliver_feedback
 rohc_comp_piggyback_feedback
 rohc_feedback_flush

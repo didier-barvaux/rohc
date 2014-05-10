@@ -26,6 +26,7 @@
 #ifndef ROHC_COMMON_NET_PKT_H
 #define ROHC_COMMON_NET_PKT_H
 
+#include "rohc_buf.h"
 #include "ip.h"
 #include "rohc_traces.h"
 
@@ -56,11 +57,10 @@ struct net_pkt
 
 
 bool ROHC_EXPORT net_pkt_parse(struct net_pkt *const packet,
-                               const uint8_t *const data,
-                               const size_t data_len,
+                               const struct rohc_buf data,
                                rohc_trace_callback_t trace_callback,
                                rohc_trace_entity_t trace_entity)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+	__attribute__((warn_unused_result, nonnull(1)));
 
 size_t ROHC_EXPORT net_pkt_get_payload_offset(const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1)));

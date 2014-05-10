@@ -38,6 +38,7 @@ extern "C"
 #include <rohc/rohc_packets.h>
 #include <rohc/rohc_traces.h>
 #include <rohc/rohc_time.h>
+#include <rohc/rohc_buf.h>
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -386,7 +387,7 @@ int ROHC_EXPORT rohc_compress(struct rohc_comp *comp,
                               unsigned char *obuf,
                               int osize)
 	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_compress3() instead");
+	                "use rohc_compress4() instead");
 
 int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
                                const unsigned char *const uncomp_packet,
@@ -396,7 +397,7 @@ int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
                                size_t *const rohc_packet_len)
 	__attribute__((warn_unused_result))
 	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_compress3() instead");
+	                "use rohc_compress4() instead");
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
@@ -407,6 +408,11 @@ int ROHC_EXPORT rohc_compress3(struct rohc_comp *const comp,
                                unsigned char *const rohc_packet,
                                const size_t rohc_packet_max_len,
                                size_t *const rohc_packet_len)
+	__attribute__((warn_unused_result));
+
+int ROHC_EXPORT rohc_compress4(struct rohc_comp *const comp,
+                               const struct rohc_buf uncomp_packet,
+                               struct rohc_buf *const rohc_packet)
 	__attribute__((warn_unused_result));
 
 int ROHC_EXPORT rohc_comp_get_segment(struct rohc_comp *const comp,
