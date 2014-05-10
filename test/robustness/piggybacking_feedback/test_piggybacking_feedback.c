@@ -348,10 +348,9 @@ static int test_comp_and_decomp(void)
 	ip_header->frag_off = 0;
 	ip_header->ttl = 1;
 	ip_header->protocol = 134; /* unassigned number according to /etc/protocols */
-	ip_header->check = 0; /* set to 0 for checksum computation */
+	ip_header->check = htons(0xa93f); /* IP checksum */
 	ip_header->saddr = htonl(0x01020304);
 	ip_header->daddr = htonl(0x05060708);
-	ip_header->check = 0xbeef; /* fake IP checksum */
 	memcpy(ip_packet + ip_header->ihl * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
 	fprintf(stderr, "IP packet successfully built\n");
 
