@@ -824,6 +824,11 @@ int rohc_compress2(struct rohc_comp *const comp,
 		rohc_buf_init_empty(rohc_packet, rohc_packet_max_len);
 	int code;
 
+	if(rohc_packet_len == NULL)
+	{
+		return ROHC_ERROR;
+	}
+
 	code = rohc_compress4(comp, __uncomp_packet, &__rohc_packet);
 	if(code == ROHC_OK)
 	{
@@ -914,6 +919,11 @@ int rohc_compress3(struct rohc_comp *const comp,
 	struct rohc_buf __rohc_packet =
 		rohc_buf_init_empty(rohc_packet, rohc_packet_max_len);
 	int code;
+
+	if(rohc_packet_len == NULL)
+	{
+		return ROHC_ERROR;
+	}
 
 	code = rohc_compress4(comp, __uncomp_packet, &__rohc_packet);
 	if(code == ROHC_OK)
