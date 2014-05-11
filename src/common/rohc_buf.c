@@ -37,7 +37,9 @@
  */
 bool rohc_buf_is_malformed(const struct rohc_buf buf)
 {
-	return (buf.data == NULL || (buf.offset + buf.len) > buf.max_len);
+	return (buf.data == NULL ||
+	        buf.max_len == 0 ||
+	        (buf.offset + buf.len) > buf.max_len);
 }
 
 

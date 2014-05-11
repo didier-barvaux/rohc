@@ -9,6 +9,7 @@ rohc_decomp_set_features
 rohc_decompress
 rohc_decompress_both
 rohc_decompress2
+rohc_decompress3
 rohc_decomp_enable_profile
 rohc_decomp_enable_profiles
 rohc_decomp_disable_profile

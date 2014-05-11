@@ -291,6 +291,11 @@ int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *const decomp,
                                  size_t *const uncomp_packet_len)
 	__attribute__((warn_unused_result));
 
+int ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
+                                 const struct rohc_buf rohc_packet,
+                                 struct rohc_buf *const uncomp_packet)
+	__attribute__((warn_unused_result));
+
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      unsigned char *ibuf,

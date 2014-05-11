@@ -56,22 +56,16 @@
  */
 int main(int argc, char **argv)
 {
-//! [define arrival time]
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-//! [define arrival time]
-
 //! [define ROHC decompressor]
 	struct rohc_decomp *decompressor;       /* the ROHC decompressor */
 //! [define ROHC decompressor]
 //! [define IP and ROHC packets]
-	unsigned char rohc_packet[BUFFER_SIZE]; /* the buffer that will contain
-	                                           the ROHC packet to decompress */
-	size_t rohc_packet_len;                 /* the length (in bytes) of the
-	                                           ROHC packet */
-	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
-	                                           the decompressed IPv4 packet */
-	size_t ip_packet_len;                   /* the length (in bytes) of the
-	                                           decompressed IPv4 packet */
+	/* the buffer that will contain the ROHC packet to decompress */
+	unsigned char rohc_buffer[BUFFER_SIZE];
+	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
+	/* the buffer that will contain the resulting IP packet */
+	unsigned char ip_buffer[BUFFER_SIZE];
+	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, BUFFER_SIZE);
 //! [define IP and ROHC packets]
 	size_t i;
 	int ret;
@@ -121,38 +115,39 @@ int main(int argc, char **argv)
 
 	/* create a fake ROHC packet for the purpose of this program */
 	printf("\nbuild a fake ROHC packet\n");
-	rohc_packet_len = 0;
-	rohc_packet[rohc_packet_len++] = 0xfd;
-	rohc_packet[rohc_packet_len++] = 0x00;
-	rohc_packet[rohc_packet_len++] = 0x04;
-	rohc_packet[rohc_packet_len++] = 0xf7;
-	rohc_packet[rohc_packet_len++] = 0x40;
-	rohc_packet[rohc_packet_len++] = 0x02;
-	rohc_packet[rohc_packet_len++] = 0xc0;
-	rohc_packet[rohc_packet_len++] = 0xa8;
-	rohc_packet[rohc_packet_len++] = 0x13;
-	rohc_packet[rohc_packet_len++] = 0x01;
-	rohc_packet[rohc_packet_len++] = 0xc0;
-	rohc_packet[rohc_packet_len++] = 0xa8;
-	rohc_packet[rohc_packet_len++] = 0x13;
-	rohc_packet[rohc_packet_len++] = 0x05;
-	rohc_packet[rohc_packet_len++] = 0x00;
-	rohc_packet[rohc_packet_len++] = 0x40;
-	rohc_packet[rohc_packet_len++] = 0x00;
-	rohc_packet[rohc_packet_len++] = 0x00;
-	rohc_packet[rohc_packet_len++] = 0xa0;
-	rohc_packet[rohc_packet_len++] = 0x00;
-	rohc_packet[rohc_packet_len++] = 0x00;
-	rohc_packet[rohc_packet_len++] = 0x01;
+	rohc_packet.len = 0;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xfd;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x00;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x04;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xf7;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x40;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x02;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xc0;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xa8;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x13;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x01;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xc0;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xa8;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x13;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x05;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x00;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x40;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x00;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x00;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0xa0;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x00;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x00;
+	rohc_buf_byte_at(rohc_packet, rohc_packet.len++) = 0x01;
 
 	/* copy the payload just after the IP header */
-	memcpy(rohc_packet + rohc_packet_len, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
-	rohc_packet_len += strlen(FAKE_PAYLOAD);
+	memcpy(rohc_buf_data_at(rohc_packet, rohc_packet.len), FAKE_PAYLOAD,
+	       strlen(FAKE_PAYLOAD));
+	rohc_packet.len += strlen(FAKE_PAYLOAD);
 
 	/* dump the newly-created ROHC packet on terminal */
-	for(i = 0; i < rohc_packet_len; i++)
+	for(i = 0; i < rohc_packet.len; i++)
 	{
-		printf("0x%02x ", rohc_packet[i]);
+		printf("0x%02x ", rohc_buf_byte_at(rohc_packet,i));
 		if(i != 0 && ((i + 1) % 8) == 0)
 		{
 			printf("\n");
@@ -167,9 +162,9 @@ int main(int argc, char **argv)
 	/* Now, decompress this fake ROHC packet */
 	printf("\ndecompress the fake ROHC packet\n");
 //! [decompress ROHC packet #1]
-	ret = rohc_decompress2(decompressor, arrival_time,
-	                       rohc_packet, rohc_packet_len,
-	                       ip_packet, BUFFER_SIZE, &ip_packet_len);
+	ret = rohc_decompress3(decompressor, rohc_packet, &ip_packet);
+//! [decompress ROHC packet #1]
+//! [decompress ROHC packet #2]
 	if(ret == ROHC_FEEDBACK_ONLY)
 	{
 		/* success: no decompressed IP data available in ip_packet because
@@ -185,12 +180,12 @@ int main(int argc, char **argv)
 	{
 		/* success: ip_packet_len bytes of decompressed IP data available in
 		 * ip_packet */
-//! [decompress ROHC packet #1]
+//! [decompress ROHC packet #2]
 		/* dump the ROHC packet on terminal (if any) */
 		printf("\nIP packet resulting from the ROHC decompression:\n");
-		for(i = 0; i < ip_packet_len; i++)
+		for(i = 0; i < ip_packet.len; i++)
 		{
-			printf("0x%02x ", ip_packet[i]);
+			printf("0x%02x ", rohc_buf_byte_at(ip_packet, i));
 			if(i != 0 && ((i + 1) % 8) == 0)
 			{
 				printf("\n");
@@ -200,17 +195,17 @@ int main(int argc, char **argv)
 		{
 			printf("\n");
 		}
-//! [decompress ROHC packet #2]
+//! [decompress ROHC packet #3]
 	}
 	else
 	{
 		/* failure: decompressor failed to decompress the ROHC packet */
-//! [decompress ROHC packet #2]
+//! [decompress ROHC packet #3]
 		fprintf(stderr, "decompression of fake ROHC packet failed\n");
 		goto release_decompressor;
-//! [decompress ROHC packet #3]
+//! [decompress ROHC packet #4]
 	}
-//! [decompress ROHC packet #3]
+//! [decompress ROHC packet #4]
 
 
 	/* Release the ROHC decompressor when you do not need it anymore */

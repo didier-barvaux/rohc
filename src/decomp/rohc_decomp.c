@@ -577,7 +577,7 @@ error:
  * \snippet example_rohc_decomp.c destroy ROHC decompressor
  *
  * @see rohc_decomp_free
- * @see rohc_decompress2
+ * @see rohc_decompress3
  * @see rohc_decomp_set_traces_cb
  * @see rohc_decomp_enable_profiles
  * @see rohc_decomp_enable_profile
@@ -801,10 +801,10 @@ error:
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
- * @brief Decompress a ROHC packet.
+ * @brief Decompress the given ROHC packet into one uncompressed packet
  *
  * @deprecated do not use this function anymore,
- *             use rohc_decompress2() instead
+ *             use rohc_decompress3() instead
  *
  * @param decomp The ROHC decompressor
  * @param ibuf   The ROHC packet to decompress
@@ -845,15 +845,16 @@ int rohc_decompress(struct rohc_decomp *decomp,
                     int osize)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	size_t uncomp_len;
+	const struct rohc_buf __rohc_packet =
+		rohc_buf_init_full(ibuf, isize, arrival_time);
+	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
 	int code;
 
-	code = rohc_decompress2(decomp, arrival_time, ibuf, isize,
-	                        obuf, osize, &uncomp_len);
+	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet);
 	if(code == ROHC_OK)
 	{
 		/* decompression succeeded */
-		code = uncomp_len;
+		code = __uncomp_packet.len;
 	}
 
 	return code;
@@ -863,7 +864,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 
 
 /**
- * @brief Decompress the given ROHC packet into one IP packet
+ * @brief Decompress the given ROHC packet into one uncompressed packet
  *
  * The function may succeed in three different ways:
  *  \li return \ref ROHC_OK and a decompressed IP packet,
@@ -909,22 +910,34 @@ int rohc_decompress(struct rohc_decomp *decomp,
  *
  * \par Example #1:
  * \snippet example_rohc_decomp.c define ROHC decompressor
- * \snippet example_rohc_decomp.c define arrival time
- * \snippet example_rohc_decomp.c define IP and ROHC packets
  * \code
-        ...
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	unsigned char rohc_packet[BUFFER_SIZE]; // the buffer that will contain
+	                                        // the ROHC packet to decompress
+	size_t rohc_packet_len;                 // the length (in bytes) of the
+	                                        // ROHC packet
+	unsigned char ip_packet[BUFFER_SIZE];   // the buffer that will contain
+	                                        // the decompressed IPv4 packet
+	size_t ip_packet_len;                   // the length (in bytes) of the
+	                                        // decompressed IPv4 packet
+	...
 \endcode
- * \snippet example_rohc_decomp.c decompress ROHC packet #1
  * \code
-                ...
+	ret = rohc_decompress2(decompressor, arrival_time,
+	                       rohc_packet, rohc_packet_len,
+	                       ip_packet, BUFFER_SIZE, &ip_packet_len);
 \endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #2
  * \code
-                ...
+		...
 \endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #3
  * \code
-        ...
+		...
+\endcode
+ * \snippet example_rohc_decomp.c decompress ROHC packet #4
+ * \code
+	...
 \endcode
  *
  * @see rohc_decomp_set_mrru
@@ -937,35 +950,155 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
                      const size_t uncomp_packet_max_len,
                      size_t *const uncomp_packet_len)
 {
+	const struct rohc_buf __rohc_packet =
+		rohc_buf_init_full((uint8_t *) rohc_packet, rohc_packet_len,
+		                   arrival_time);
+	struct rohc_buf __uncomp_packet =
+		rohc_buf_init_empty(uncomp_packet, uncomp_packet_max_len);
+	int code;
+
+	if(uncomp_packet_len == NULL)
+	{
+		return ROHC_ERROR;
+	}
+
+	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet);
+	if(code == ROHC_OK ||
+	   code == ROHC_FEEDBACK_ONLY ||
+	   code == ROHC_NON_FINAL_SEGMENT)
+	{
+		*uncomp_packet_len = __uncomp_packet.len;
+	}
+
+	return code;
+}
+
+
+/**
+ * @brief Decompress the given ROHC packet into one uncompressed packet
+ *
+ * Decompress the given ROHC packet into an uncompressed packet. The
+ * decompression may succeed into three different ways:
+ *  \li return \ref ROHC_OK and a decompressed IP packet,
+ *  \li return \ref ROHC_FEEDBACK_ONLY and no decompressed IP packet if the
+ *      ROHC packet contains only feedback information,
+ *  \li return \ref ROHC_NON_FINAL_SEGMENT and no decompressed IP packet if
+ *      the ROHC packet is a non-final ROHC segment, ie. the ROHC packet is
+ *      not the last segment of a larger, segmented ROHC packet.
+ *
+ * \par Time-related features in the ROHC protocol:
+ * Set the \e rohc_packet.time parameter to 0 if arrival time of the ROHC
+ * packet is unknown or to disable the time-related features in the ROHC
+ * protocol.
+ *
+ * @param decomp                  The ROHC decompressor
+ * @param rohc_packet             The compressed packet to decompress
+ * @param[out] uncomp_packet      The resulting uncompressed packet
+ * @return                        Possible return values:
+ *                                \li \ref ROHC_OK if a decompressed packet is
+ *                                    returned
+ *                                \li \ref ROHC_FEEDBACK_ONLY if the ROHC
+ *                                    packet contains only feedback data
+ *                                \li \ref ROHC_NON_FINAL_SEGMENT if the given
+ *                                    ROHC packet is a partial segment of a
+ *                                    larger ROHC packet
+ *                                \li \ref ROHC_ERROR_NO_CONTEXT if no
+ *                                    decompression context matches the CID
+ *                                    stored in the given ROHC packet and the
+ *                                    ROHC packet is not an IR packet
+ *                                \li \ref ROHC_ERROR_PACKET_FAILED if the
+ *                                    decompression failed because the ROHC
+ *                                    packet is unexpected and/or malformed
+ *                                \li \ref ROHC_ERROR_CRC if the CRC detected
+ *                                    a transmission or decompression problem
+ *                                \li \ref ROHC_ERROR if another problem
+ *                                    occurred
+ *
+ * @ingroup rohc_decomp
+ *
+ * \par Example #1:
+ * \snippet example_rohc_decomp.c define ROHC decompressor
+ * \snippet example_rohc_decomp.c define IP and ROHC packets
+ * \code
+	...
+\endcode
+ * \snippet example_rohc_decomp.c decompress ROHC packet #1
+ * \snippet example_rohc_decomp.c decompress ROHC packet #2
+ * \code
+		...
+\endcode
+ * \snippet example_rohc_decomp.c decompress ROHC packet #3
+ * \code
+		...
+\endcode
+ * \snippet example_rohc_decomp.c decompress ROHC packet #4
+ * \code
+	...
+\endcode
+ *
+ * @see rohc_decomp_set_mrru
+ */
+int rohc_decompress3(struct rohc_decomp *const decomp,
+                     const struct rohc_buf rohc_packet,
+                     struct rohc_buf *const uncomp_packet)
+{
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
 	rohc_packet_t packet_type;
 	int status = ROHC_ERROR; /* error status by default */
 
 	/* check inputs validity */
-	if(decomp == NULL ||
-	   rohc_packet == NULL || rohc_packet_len <= 0 ||
-	   uncomp_packet == NULL || uncomp_packet_max_len <= 0 ||
-		uncomp_packet_len == NULL)
+	if(decomp == NULL)
 	{
+		goto error;
+	}
+	if(rohc_buf_is_malformed(rohc_packet))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_packet is malformed");
+		goto error;
+	}
+	if(rohc_buf_is_empty(rohc_packet))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_packet is empty");
+		goto error;
+	}
+	if(uncomp_packet == NULL)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "given uncomp_packet is NULL");
+		goto error;
+	}
+	if(rohc_buf_is_malformed(*uncomp_packet))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "given uncomp_packet is malformed");
+		goto error;
+	}
+	if(!rohc_buf_is_empty(*uncomp_packet))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "given uncomp_packet is not empty");
 		goto error;
 	}
 
 	decomp->stats.received++;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "decompress the %zu-byte packet #%lu",
-	           rohc_packet_len, decomp->stats.received);
+	           "decompress the %zu-byte packet #%lu", rohc_packet.len,
+	           decomp->stats.received);
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
-	rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
-	              "compressed data, max 100 bytes",
-	              rohc_packet, rohc_min(rohc_packet_len, 100));
+	rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
+	                 "compressed data, max 100 bytes", rohc_packet);
 #endif
 
 	/* decode ROHC header */
-	status = d_decode_header(decomp, arrival_time, rohc_packet,
-	                         rohc_packet_len, uncomp_packet,
-	                         uncomp_packet_max_len, &ddata, &packet_type);
+	status = d_decode_header(decomp, rohc_packet.time,
+	                         rohc_buf_data(rohc_packet), rohc_packet.len,
+	                         rohc_buf_data(*uncomp_packet),
+	                         rohc_buf_avail_len(*uncomp_packet),
+	                         &ddata, &packet_type);
 	if(ddata.active == NULL &&
 	   (status == ROHC_ERROR_PACKET_FAILED ||
 	    status == ROHC_ERROR ||
@@ -984,17 +1117,17 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 	if(status >= 0)
 	{
 		/* ROHC packet was successfully decompressed, update statistics */
-		*uncomp_packet_len = status;
+		uncomp_packet->len = status;
 		status = ROHC_OK;
 		assert(ddata.active != NULL);
 		ddata.active->packet_type = packet_type;
-		ddata.active->total_uncompressed_size += *uncomp_packet_len;
-		ddata.active->total_compressed_size += rohc_packet_len;
-		decomp->stats.total_uncompressed_size += *uncomp_packet_len;
-		decomp->stats.total_compressed_size += rohc_packet_len;
+		ddata.active->total_uncompressed_size += uncomp_packet->len;
+		ddata.active->total_compressed_size += rohc_packet.len;
+		decomp->stats.total_uncompressed_size += uncomp_packet->len;
+		decomp->stats.total_compressed_size += rohc_packet.len;
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-		rohc_stats_add(&ddata.active->total_16_uncompressed, *uncomp_packet_len);
-		rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet_len);
+		rohc_stats_add(&ddata.active->total_16_uncompressed, uncomp_packet->len);
+		rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet.len);
 #endif
 	}
 	else if(ddata.active)
@@ -1117,7 +1250,7 @@ error:
  * @brief Decompress both large and small CID packets.
  *
  * @deprecated do not use this function anymore, use rohc_decomp_new() and
- *             rohc_decompress2() instead
+ *             rohc_decompress3() instead
  *
  * @param decomp The ROHC decompressor
  * @param ibuf   The ROHC packet to decompress
@@ -1135,7 +1268,9 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
                          int large)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	size_t uncomp_len;
+	const struct rohc_buf __rohc_packet =
+		rohc_buf_init_full(ibuf, isize, arrival_time);
+	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
 	bool is_ok;
 	int code;
 
@@ -1148,12 +1283,11 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	}
 
 	/* decompress the packet with the new CID type */
-	code = rohc_decompress2(decomp, arrival_time, ibuf, isize,
-	                        obuf, osize, &uncomp_len);
+	code = rohc_decompress3(decomp,  __rohc_packet, &__uncomp_packet);
 	if(code == ROHC_OK)
 	{
 		/* decompression succeeded */
-		code = uncomp_len;
+		code = __uncomp_packet.len;
 	}
 
 	return code;
@@ -2533,7 +2667,7 @@ error:
  * on the channel. Every received segment will be dropped.
  *
  * If segmentation is enabled and used by the compressor, the function
- * \ref rohc_decompress2 will return \ref ROHC_NON_FINAL_SEGMENT as status
+ * \ref rohc_decompress3 will return \ref ROHC_NON_FINAL_SEGMENT as status
  * code (and no decompressed data) until the final ROHC segment is received
  * (decompressed data will be returned at that time).
  *
@@ -2557,8 +2691,11 @@ error:
         ...
 \endcode
  *
- * @see rohc_comp_set_mrru
+ * @see rohc_decomp_get_mrru
+ * @see rohc_decompress3
  * @see ROHC_NON_FINAL_SEGMENT
+ * @see rohc_comp_set_mrru
+ * @see rohc_comp_get_mrru
  */
 bool rohc_decomp_set_mrru(struct rohc_decomp *const decomp,
                           const size_t mrru)
@@ -2607,7 +2744,7 @@ error:
  * If MRRU value is 0, segmentation is disabled.
  *
  * If segmentation is enabled and used by the compressor, the function
- * \ref rohc_decompress2 will return ROHC_NON_FINAL_SEGMENT upon decompression
+ * \ref rohc_decompress3 will return ROHC_NON_FINAL_SEGMENT upon decompression
  * until the last segment is received (or a non-segment is received).
  *
  * @param decomp     The ROHC decompressor
@@ -2617,7 +2754,8 @@ error:
  * @ingroup rohc_decomp
  *
  * @see rohc_decomp_set_mrru
- * @see rohc_decompress2
+ * @see rohc_decompress3
+ * @see ROHC_NON_FINAL_SEGMENT
  * @see rohc_comp_set_mrru
  * @see rohc_comp_get_mrru
  */
