@@ -309,7 +309,7 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
  * @see rohc_comp_free
- * @see rohc_compress3
+ * @see rohc_compress4
  * @see rohc_comp_set_traces_cb
  * @see rohc_comp_set_random_cb
  * @see rohc_comp_enable_profiles
@@ -740,7 +740,7 @@ static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
  * @brief Compress the given uncompressed packet into a ROHC packet
  *
  * @deprecated do not use this function anymore,
- *             use rohc_compress3() instead
+ *             use rohc_compress4() instead
  *
  * @param comp   The ROHC compressor
  * @param ibuf   The uncompressed packet to compress
@@ -793,7 +793,7 @@ error:
  * rohc_comp_get_segment function to retrieve next ROHC segments.
  *
  * @deprecated do not use this function anymore,
- *             use rohc_compress3() instead
+ *             use rohc_compress4() instead
  *
  * @param comp                 The ROHC compressor
  * @param uncomp_packet        The uncompressed packet to compress
@@ -1279,7 +1279,7 @@ error:
  * Get the next ROHC segment if any.
  *
  * To get all the segments of one ROHC packet, call this function until
- * \ref ROHC_OK is returned.
+ * \ref ROHC_OK or \ref ROHC_ERROR is returned.
  *
  * @param comp      The ROHC compressor
  * @param segment   The buffer where to store the ROHC segment
@@ -1298,6 +1298,7 @@ error:
  * \par Example:
  * \snippet test_segment.c define ROHC compressor
  * \code
+        ...
         // compress the IP packet with a small ROHC buffer
 \endcode
  * \snippet test_segment.c segment ROHC packet #1
@@ -1305,42 +1306,142 @@ error:
  * \code
                         ...
                         // decompress the ROHC segment here, the function
-                        // rohc_decompress2 shall return
+                        // rohc_decompress4 shall return
                         // ROHC_NON_FINAL_SEGMENT
                         ...
 \endcode
  * \snippet test_segment.c segment ROHC packet #3
  * \code
                 // decompress the final ROHC segment here, the function
-                // rohc_decompress2 shall return ROHC_OK
+                // rohc_decompress4 shall return ROHC_OK
 \endcode
  * \snippet test_segment.c segment ROHC packet #4
  * \code
+                // handle compression error here
                 ...
 \endcode
  *
  * @see rohc_comp_get_mrru
  * @see rohc_comp_set_mrru
- * @see rohc_compress3
+ * @see rohc_compress4
  */
 int rohc_comp_get_segment(struct rohc_comp *const comp,
                           unsigned char *const segment,
                           const size_t max_len,
                           size_t *const len)
 {
-	const size_t segment_type_len = 1; /* segment type byte */
-	int feedback_size;
-	size_t max_data_len;
-	int status;
+	struct rohc_buf __segment = rohc_buf_init_empty(segment, max_len);
+	int ret;
 
-	/* check input parameters */
-	if(comp == NULL || segment == NULL || max_len <= 0 || len == NULL)
+	/* check input parameters
+	 * (other parameters checked in rohc_comp_get_segment2) */
+	if(len == NULL)
 	{
 		goto error;
 	}
 
 	/* no segment yet */
 	*len = 0;
+
+	/* use function from new API */
+	ret = rohc_comp_get_segment2(comp, &__segment);
+	if(ret == ROHC_NEED_SEGMENT || ret == ROHC_OK)
+	{
+		*len = __segment.len;
+	}
+
+	return ret;
+
+error:
+	return ROHC_ERROR;
+}
+
+
+/**
+ * @brief Get the next ROHC segment if any
+ *
+ * Get the next ROHC segment if any.
+ *
+ * To get all the segments of one ROHC packet, call this function until
+ * \ref ROHC_OK or \ref ROHC_ERROR is returned.
+ *
+ * @param comp          The ROHC compressor
+ * @param[out] segment  The buffer where to store the ROHC segment
+ * @return              Possible return values:
+ *                       \li \ref ROHC_NEED_SEGMENT if a ROHC segment is
+ *                           returned and more segments are available,
+ *                       \li \ref ROHC_OK if a ROHC segment is returned
+ *                           and no more ROHC segment is available
+ *                       \li \ref ROHC_ERROR if an error occurred
+ *
+ * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet test_segment.c define ROHC compressor
+ * \code
+        ...
+        // compress the IP packet with a small ROHC buffer
+\endcode
+ * \snippet test_segment.c segment ROHC packet #1
+ * \snippet test_segment.c segment ROHC packet #2
+ * \code
+                        ...
+                        // decompress the ROHC segment here, the function
+                        // rohc_decompress4 shall return
+                        // ROHC_NON_FINAL_SEGMENT
+                        ...
+\endcode
+ * \snippet test_segment.c segment ROHC packet #3
+ * \code
+                // decompress the final ROHC segment here, the function
+                // rohc_decompress4 shall return ROHC_OK
+\endcode
+ * \snippet test_segment.c segment ROHC packet #4
+ * \code
+                // handle compression error here
+                ...
+\endcode
+ *
+ * @see rohc_comp_get_mrru
+ * @see rohc_comp_set_mrru
+ * @see rohc_compress4
+ */
+int rohc_comp_get_segment2(struct rohc_comp *const comp,
+                           struct rohc_buf *const segment)
+
+{
+	const size_t segment_type_len = 1; /* segment type byte */
+	size_t feedbacks_size;
+	int feedback_size;
+	size_t max_data_len;
+	int status;
+
+	/* check input parameters */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+	if(segment == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given segment cannot be NULL");
+		goto error;
+	}
+	if(rohc_buf_is_malformed(*segment))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given segment is malformed");
+		goto error;
+	}
+	if(!rohc_buf_is_empty(*segment))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given segment is not empty");
+		goto error;
+	}
+
+	/* no segment yet */
+	segment->len = 0;
 
 	/* abort if no RRU is available in the compressor */
 	if(comp->rru_len <= 0)
@@ -1351,7 +1452,7 @@ int rohc_comp_get_segment(struct rohc_comp *const comp,
 	}
 
 	/* abort is the given output buffer is too small for RRU */
-	if(max_len <= segment_type_len)
+	if(rohc_buf_avail_len(*segment) <= segment_type_len)
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "output buffer is too small for RRU, more than %zd bytes "
@@ -1360,21 +1461,24 @@ int rohc_comp_get_segment(struct rohc_comp *const comp,
 	}
 
 	/* add feedbacks if some are available */
+	feedbacks_size = 0;
 	do
 	{
-		feedback_size = rohc_feedback_get(comp, segment + (*len),
-		                                  max_len - (*len));
+		feedback_size = rohc_feedback_get(comp, rohc_buf_data(*segment),
+		                                  rohc_buf_avail_len(*segment));
 		if(feedback_size > 0)
 		{
-			*len += feedback_size;
+			segment->len += feedback_size;
+			rohc_buf_shift(segment, feedback_size);
+			feedbacks_size += feedback_size;
 		}
 	}
 	while(feedback_size > 0);
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "%zd bytes of feedback(s) added to ROHC packet", *len);
+	           "%zu bytes of feedback added to ROHC packet", feedbacks_size);
 
 	/* how many bytes of ROHC packet can we put in that new segment? */
-	max_data_len = rohc_min(max_len - (*len) - segment_type_len,
+	max_data_len = rohc_min(rohc_buf_avail_len(*segment) - segment_type_len,
 	                        comp->rru_len);
 	assert(max_data_len > 0);
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1382,12 +1486,14 @@ int rohc_comp_get_segment(struct rohc_comp *const comp,
 	           "CRC in the segment", max_data_len, comp->rru_len);
 
 	/* set segment type with F bit set only for last segment */
-	segment[0] = 0xfe | (max_data_len == comp->rru_len);
-	(*len)++;
+	rohc_buf_byte_at(*segment, 0) = 0xfe | (max_data_len == comp->rru_len);
+	segment->len++;
+	rohc_buf_shift(segment, 1);
 
 	/* copy remaining ROHC data (CRC included) */
-	memcpy(segment + (*len), comp->rru + comp->rru_off, max_data_len);
-	*len += max_data_len;
+	memcpy(rohc_buf_data(*segment), comp->rru + comp->rru_off, max_data_len);
+	segment->len += max_data_len;
+	rohc_buf_shift(segment, max_data_len);
 	comp->rru_off += max_data_len;
 	comp->rru_len -= max_data_len;
 
@@ -1404,6 +1510,9 @@ int rohc_comp_get_segment(struct rohc_comp *const comp,
 		/* non-final segment, more segments to available */
 		status = ROHC_NEED_SEGMENT;
 	}
+
+	/* shift backward the RRU data, header and the feedback data */
+	rohc_buf_shift(segment, -(max_data_len + 1 + feedbacks_size));
 
 	return status;
 

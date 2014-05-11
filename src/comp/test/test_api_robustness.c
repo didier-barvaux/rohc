@@ -168,6 +168,26 @@ int main(int argc, char *argv[])
 		CHECK(rohc_comp_get_segment(comp, buf1, 1, NULL) == ROHC_ERROR);
 	}
 
+	/* rohc_comp_get_segment2() */
+	{
+		unsigned char buf1[1];
+		struct rohc_buf pkt1 = rohc_buf_init_empty(buf1, 1);
+		CHECK(rohc_comp_get_segment2(NULL, &pkt1) == ROHC_ERROR);
+		CHECK(rohc_comp_get_segment2(comp, NULL) == ROHC_ERROR);
+		pkt1.max_len = 0;
+		pkt1.offset = 0;
+		pkt1.len = 0;
+		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_ERROR);
+		pkt1.max_len = 1;
+		pkt1.offset = 0;
+		pkt1.len = 0;
+		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_ERROR);
+		pkt1.max_len = 2;
+		pkt1.offset = 0;
+		pkt1.len = 0;
+		CHECK(rohc_comp_get_segment2(comp, &pkt1) == ROHC_ERROR);
+	}
+
 	/* rohc_comp_force_contexts_reinit() */
 	CHECK(rohc_comp_force_contexts_reinit(NULL) == false);
 	CHECK(rohc_comp_force_contexts_reinit(comp) == true);

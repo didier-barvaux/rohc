@@ -31,6 +31,7 @@ rohc_feedback_avail_bytes
 rohc_feedback_unlock
 rohc_feedback_avail_bytes
 rohc_comp_get_segment
+rohc_comp_get_segment2
 rohc_comp_get_general_info
 rohc_comp_get_last_packet_info
 rohc_comp_get_last_packet_info2
