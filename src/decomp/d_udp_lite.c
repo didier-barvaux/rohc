@@ -346,29 +346,33 @@ error:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp         The ROHC decompressor
- * @param context        The decompression context
- * @param arrival_time   The time at which packet was received (0 if unknown,
- *                       or to disable time-related features in ROHC protocol)
- * @param rohc_packet    The ROHC packet to decode
- * @param rohc_length    The length of the ROHC packet
- * @param add_cid_len    The length of the optional Add-CID field
- * @param large_cid_len  The length of the optional large CID field
- * @param dest           The decoded IP packet
- * @param packet_type    IN:  The type of the ROHC packet to parse
- *                       OUT: The type of the parsed ROHC packet
- * @return               The length of the uncompressed IP packet
- *                       or ROHC_ERROR if an error occurs
+ * @param decomp                 The ROHC decompressor
+ * @param context                The decompression context
+ * @param arrival_time           The time at which packet was received (0 if
+ *                               unknown, or to disable time-related features
+ *                               in ROHC protocol)
+ * @param rohc_packet            The ROHC packet to decode
+ * @param rohc_length            The length of the ROHC packet
+ * @param add_cid_len            The length of the optional Add-CID field
+ * @param large_cid_len          The length of the optional large CID field
+ * @param[out] dest              The uncompressed packet
+ * @param uncomp_packet_max_len  The max length of the uncompressed packet
+ * @param packet_type            IN:  The type of the ROHC packet to parse
+ *                               OUT: The type of the parsed ROHC packet
+ * @return                       The length of the uncompressed IP packet
+ *                               or ROHC_ERROR_CRC if a CRC error occurs
+ *                               or ROHC_ERROR if an error occurs
  */
-int d_udp_lite_decode(struct rohc_decomp *const decomp,
-                      struct rohc_decomp_ctxt *const context,
-                      const struct rohc_ts arrival_time,
-                      const unsigned char *const rohc_packet,
-                      const size_t rohc_length,
-                      const size_t add_cid_len,
-                      const size_t large_cid_len,
-                      unsigned char *const dest,
-                      rohc_packet_t *const packet_type)
+static int d_udp_lite_decode(struct rohc_decomp *const decomp,
+                             struct rohc_decomp_ctxt *const context,
+                             const struct rohc_ts arrival_time,
+                             const unsigned char *const rohc_packet,
+                             const size_t rohc_length,
+                             const size_t add_cid_len,
+                             const size_t large_cid_len,
+                             unsigned char *const dest,
+                             const size_t uncomp_packet_max_len,
+                             rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *g_context = context->specific;
 	struct d_udp_lite_context *udp_lite_context = g_context->specific;
@@ -403,7 +407,8 @@ int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	 * (with a fake length for the large CID field eventually) */
 	return d_generic_decode(decomp, context, arrival_time,
 	                        rohc_remain_data, rohc_remain_len,
-	                        add_cid_len, new_large_cid_len, dest, packet_type);
+	                        add_cid_len, new_large_cid_len,
+	                        dest, uncomp_packet_max_len, packet_type);
 
 error:
 	return ROHC_ERROR;

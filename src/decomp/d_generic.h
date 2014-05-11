@@ -481,6 +481,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
                      const size_t add_cid_len,
                      const size_t large_cid_len,
                      unsigned char *uncomp_packet,
+                     const size_t uncomp_packet_max_len,
                      rohc_packet_t *const packet_type);
 
 uint32_t d_generic_get_sn(const struct rohc_decomp_ctxt *const context);

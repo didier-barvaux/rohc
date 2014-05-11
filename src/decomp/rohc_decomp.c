@@ -1513,7 +1513,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	/* decode the packet thanks to the profile-specific routines */
 	status = profile->decode(decomp, ddata->active, arrival_time, walk,
 	                         remain_len, ddata->addcidUsed,
-	                         ddata->large_cid_size, obuf, packet_type);
+	                         ddata->large_cid_size, obuf, osize, packet_type);
 	if(status < 0)
 	{
 		/* decompression failed, free ressources if necessary */

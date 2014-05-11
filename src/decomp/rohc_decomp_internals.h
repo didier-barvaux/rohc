@@ -264,6 +264,7 @@ struct rohc_decomp_profile
 	              const size_t add_cid_len,
 	              const size_t large_cid_len,
 	              unsigned char *const dest,
+	              const size_t uncomp_packet_max_len,
 	              rohc_packet_t *const packet_type);
 
 	/** The handler used to detect the type of the ROHC packet */

@@ -54,6 +54,7 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
                          const size_t add_cid_len,
                          const size_t large_cid_len,
                          unsigned char *const dest,
+                         const size_t uncomp_packet_max_len,
                          rohc_packet_t *const packet_type);
 
 static int uncomp_decode_ir(struct rohc_decomp *const decomp,
@@ -143,20 +144,22 @@ static rohc_packet_t uncomp_detect_pkt_type(const struct rohc_decomp_ctxt *const
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp         The ROHC decompressor
- * @param context        The decompression context
- * @param arrival_time   The time at which packet was received (0 if unknown,
- *                       or to disable time-related features in ROHC protocol)
- * @param rohc_packet    The ROHC packet to decode
- * @param rohc_length    The length of the ROHC packet to decode
- * @param add_cid_len    The length of the optional Add-CID field
- * @param large_cid_len  The length of the large CID field
- * @param dest           The decoded IP packet
- * @param packet_type    IN:  The type of the ROHC packet to parse
- *                       OUT: The type of the parsed ROHC packet
- * @return               The length of the uncompressed IP packet
- *                       or ROHC_ERROR_CRC if CRC on IR header is wrong
- *                       or ROHC_ERROR if an error occurs
+ * @param decomp                 The ROHC decompressor
+ * @param context                The decompression context
+ * @param arrival_time           The time at which packet was received (0 if
+ *                               unknown, or to disable time-related features
+ *                               in ROHC protocol)
+ * @param rohc_packet            The ROHC packet to decode
+ * @param rohc_length            The length of the ROHC packet to decode
+ * @param add_cid_len            The length of the optional Add-CID field
+ * @param large_cid_len          The length of the large CID field
+ * @param[out] dest              The uncompressed packet
+ * @param uncomp_packet_max_len  The max length of the uncompressed packet
+ * @param packet_type            IN:  The type of the ROHC packet to parse
+ *                               OUT: The type of the parsed ROHC packet
+ * @return                       The length of the uncompressed IP packet
+ *                               or ROHC_ERROR_CRC if a CRC error occurs
+ *                               or ROHC_ERROR if an error occurs
  */
 static int uncomp_decode(struct rohc_decomp *const decomp,
                          struct rohc_decomp_ctxt *const context,
@@ -166,17 +169,20 @@ static int uncomp_decode(struct rohc_decomp *const decomp,
                          const size_t add_cid_len,
                          const size_t large_cid_len,
                          unsigned char *const dest,
+                         const size_t uncomp_packet_max_len __attribute__((unused)),
                          rohc_packet_t *const packet_type)
 {
 	int status;
 
 	if((*packet_type) == ROHC_PACKET_IR)
 	{
+		/* TODO: check dest max size */
 		status = uncomp_decode_ir(decomp, context, rohc_packet, rohc_length,
 		                          add_cid_len, large_cid_len, dest);
 	}
 	else if((*packet_type) == ROHC_PACKET_NORMAL)
 	{
+		/* TODO: check dest max size */
 		status = uncomp_decode_normal(context, rohc_packet, rohc_length,
 		                              add_cid_len, large_cid_len, dest);
 	}
