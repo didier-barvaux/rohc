@@ -187,6 +187,8 @@ int main(int argc, char **argv)
 	printf("\ncompress the fake IP packet\n");
 //! [compress IP packet #1]
 	ret = rohc_compress4(compressor, ip_packet, &rohc_packet);
+//! [compress IP packet #1]
+//! [compress IP packet #2]
 	if(ret == ROHC_NEED_SEGMENT)
 	{
 		/* success: compression succeeded, but resulting ROHC packet was too
@@ -194,8 +196,8 @@ int main(int argc, char **argv)
 		 * with \ref rohc_comp_set_mrru, the rohc_packet buffer contains the
 		 * first ROHC segment of rohc_packet_len bytes and
 		 * \ref rohc_comp_get_segment can be used to retrieve the next ones. */
-//! [compress IP packet #1]
 //! [compress IP packet #2]
+//! [compress IP packet #3]
 	}
 	else if(ret == ROHC_OK)
 	{
@@ -203,7 +205,7 @@ int main(int argc, char **argv)
 		 * Maximum Reconstructed Reception Unit (MRRU) configured with
 		 * \ref rohc_comp_set_mrru, the rohc_packet buffer contains the
 		 * rohc_packet_len bytes of the ROHC packet */
-//! [compress IP packet #2]
+//! [compress IP packet #3]
 
 		/* dump the ROHC packet on terminal */
 		printf("\nROHC packet resulting from the ROHC compression:\n");
@@ -219,17 +221,17 @@ int main(int argc, char **argv)
 		{
 			printf("\n");
 		}
-//! [compress IP packet #3]
+//! [compress IP packet #4]
 	}
 	else
 	{
 		/* compressor failed to compress the IP packet */
-//! [compress IP packet #3]
+//! [compress IP packet #4]
 		fprintf(stderr, "compression of fake IP packet failed\n");
 		goto release_compressor;
-//! [compress IP packet #4]
+//! [compress IP packet #5]
 	}
-//! [compress IP packet #4]
+//! [compress IP packet #5]
 
 
 

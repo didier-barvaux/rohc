@@ -879,27 +879,38 @@ int rohc_compress2(struct rohc_comp *const comp,
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
  * \code
-  const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 \endcode
- * \snippet simple_rohc_program.c define IP and ROHC packets
  * \code
-        ...
+	unsigned char ip_packet[BUFFER_SIZE];   // the buffer that will contain
+	                                        // the IPv4 packet to compress
+	size_t ip_packet_len;                   // the length (in bytes) of the
+	                                        // IPv4 packet
+	unsigned char rohc_packet[BUFFER_SIZE]; // the buffer that will contain
+	                                        // the resulting ROHC packet
+	size_t rohc_packet_len;                 // the length (in bytes) of the
+	                                        // resulting ROHC packet
+	...
 \endcode
- * \snippet simple_rohc_program.c compress IP packet #1
  * \code
-                ...
+	ret = rohc_compress3(compressor, arrival_time, ip_packet, ip_packet_len,
+	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
 \endcode
  * \snippet simple_rohc_program.c compress IP packet #2
  * \code
-                ...
+		...
 \endcode
  * \snippet simple_rohc_program.c compress IP packet #3
  * \code
-                ...
+		...
 \endcode
  * \snippet simple_rohc_program.c compress IP packet #4
  * \code
-        ...
+		...
+\endcode
+ * \snippet simple_rohc_program.c compress IP packet #5
+ * \code
+	...
 \endcode
  *
  * @see rohc_comp_set_mrru
@@ -974,23 +985,24 @@ int rohc_compress3(struct rohc_comp *const comp,
  * \snippet simple_rohc_program.c define ROHC compressor
  * \snippet simple_rohc_program.c define IP and ROHC packets
  * \code
-        ...
+	...
 \endcode
  * \snippet simple_rohc_program.c compress IP packet #1
- * \code
-                ...
-\endcode
  * \snippet simple_rohc_program.c compress IP packet #2
  * \code
-                ...
+		...
 \endcode
  * \snippet simple_rohc_program.c compress IP packet #3
  * \code
-                ...
+		...
 \endcode
  * \snippet simple_rohc_program.c compress IP packet #4
  * \code
-        ...
+		...
+\endcode
+ * \snippet simple_rohc_program.c compress IP packet #5
+ * \code
+	...
 \endcode
  *
  * @see rohc_comp_set_mrru
