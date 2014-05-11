@@ -80,7 +80,7 @@ bool rohc_buf_is_empty(const struct rohc_buf buf)
  *
  * @ingroup rohc
  */
-void rohc_buf_shift(struct rohc_buf *const buf, const ssize_t offset)
+void rohc_buf_shift(struct rohc_buf *const buf, const int offset)
 {
 	if(offset > 0)
 	{

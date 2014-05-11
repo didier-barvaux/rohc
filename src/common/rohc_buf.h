@@ -188,7 +188,7 @@ bool rohc_buf_is_malformed(const struct rohc_buf buf)
 bool rohc_buf_is_empty(const struct rohc_buf buf)
 	__attribute__((warn_unused_result));
 
-void rohc_buf_shift(struct rohc_buf *const buf, const ssize_t added_offset)
+void rohc_buf_shift(struct rohc_buf *const buf, const int added_offset)
 	__attribute__((nonnull(1)));
 
 size_t rohc_buf_avail_len(const struct rohc_buf buf)
