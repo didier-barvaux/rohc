@@ -1902,7 +1902,7 @@ static int c_tcp_encode(struct rohc_comp_ctxt *const context,
 			goto error;
 		}
 		counter = ret;
-		rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+		rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
 		                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 		                "small" : "large", context->cid, counter - 1);
 
@@ -4282,7 +4282,7 @@ static int code_CO_packet(struct rohc_comp_ctxt *const context,
 		goto error;
 	}
 	counter = ret;
-	rohc_comp_debug(context, "%s CID %zu encoded on %zu byte(s)",
+	rohc_comp_debug(context, "%s CID %zu encoded on %d byte(s)",
 	                context->compressor->medium.cid_type == ROHC_SMALL_CID ?
 	                "small" : "large", context->cid, counter - 1);
 

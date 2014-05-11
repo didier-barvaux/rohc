@@ -1156,7 +1156,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "%s ROHC packet cannot be segmented: too large (%zu + "
-			             "%zu + %zu + %u = %zu bytes) for MRRU (%zu bytes)\n",
+			             "%d + %zu + %u = %zu bytes) for MRRU (%zu bytes)\n",
 			             rohc_get_packet_descr(packet_type), feedbacks_size,
 			             rohc_hdr_size, payload_size, CRC_FCS32_LEN,
 			             feedbacks_size + rohc_hdr_size + payload_size +
