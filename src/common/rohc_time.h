@@ -61,6 +61,9 @@ struct rohc_ts
 	uint64_t nsec;  /**< The nanoseconds part of the timestamp */
 };
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ROHC_TIME_H */
 
