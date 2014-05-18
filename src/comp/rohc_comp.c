@@ -1145,7 +1145,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 		          "%s ROHC packet is too large for the given output buffer, "
 		          "try to segment it (input size = %zd, maximum output "
 		          "size = %zd, required output size = %zd + %d + %zd = %zd, "
-		          "MRRU = %zd)\n", rohc_get_packet_descr(packet_type),
+		          "MRRU = %zd)", rohc_get_packet_descr(packet_type),
 		          uncomp_packet.len, max_rohc_buf_len, feedbacks_size,
 		          rohc_hdr_size, payload_size, feedbacks_size +
 		          rohc_hdr_size + payload_size, comp->mrru);
@@ -1156,7 +1156,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "%s ROHC packet cannot be segmented: too large (%zu + "
-			             "%d + %zu + %u = %zu bytes) for MRRU (%zu bytes)\n",
+			             "%d + %zu + %u = %zu bytes) for MRRU (%zu bytes)",
 			             rohc_get_packet_descr(packet_type), feedbacks_size,
 			             rohc_hdr_size, payload_size, CRC_FCS32_LEN,
 			             feedbacks_size + rohc_hdr_size + payload_size +
@@ -1240,7 +1240,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 	rohc_buf_shift(rohc_packet, -feedbacks_size);
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "ROHC size = %zd bytes (feedback = %zd, header = %d, "
-	           "payload = %zu), output buffer size = %zu\n", rohc_packet->len,
+	           "payload = %zu), output buffer size = %zu", rohc_packet->len,
 	           feedbacks_size, rohc_hdr_size, payload_size,
 	           rohc_buf_avail_len(*rohc_packet));
 

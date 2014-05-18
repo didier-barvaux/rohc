@@ -388,7 +388,7 @@ bool ts_decode_scaled_bits(struct ts_sc_decomp *const ts_sc,
 	if(effective_ts_stride == 0)
 	{
 		ts_debug(ts_sc, "cannot decode TS_SCALED because TS_STRIDE is not "
-		         "initialized or 0\n");
+		         "initialized or 0");
 		goto error;
 	}
 

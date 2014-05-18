@@ -108,7 +108,7 @@ static bool check_ip6_item(const struct list_decomp *const decomp,
 {
 	if(index_table > ROHC_LIST_MAX_ITEM)
 	{
-		rd_list_debug(decomp, "no item in based table at position %zu\n",
+		rd_list_debug(decomp, "no item in based table at position %zu",
 		              index_table);
 		goto error;
 	}
@@ -194,7 +194,7 @@ static bool create_ip6_item(const unsigned char *const data,
 	{
 		rd_list_warn(decomp, "packet too small for Next Header and Length "
 		             "fields: only %zu bytes available while at least 2 bytes "
-		             "are required\n", length);
+		             "are required", length);
 		goto error;
 	}
 	item_type = data[0];
@@ -205,7 +205,7 @@ static bool create_ip6_item(const unsigned char *const data,
 	if(ret < 0)
 	{
 		rd_list_warn(decomp, "failed to update the list item #%zu in "
-		             "translation table\n", index_table);
+		             "translation table", index_table);
 		goto error;
 	}
 
@@ -266,7 +266,7 @@ static size_t rohc_build_ip6_extension(const struct list_decomp *const decomp,
 		size += size_data;
 
 		rd_list_debug(decomp, "build one %zu-byte IPv6 extension header with "
-		              "Next Header 0x%02x\n", size_data, nh_type);
+		              "Next Header 0x%02x", size_data, nh_type);
 	}
 
 	return size;

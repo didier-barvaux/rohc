@@ -75,7 +75,7 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	if(ts_sc->ts_scaled_wlsb == NULL)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "cannot create a W-LSB window for TS_SCALED\n");
+		           "cannot create a W-LSB window for TS_SCALED");
 		goto error;
 	}
 
@@ -85,7 +85,7 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	if(ts_sc->ts_unscaled_wlsb == NULL)
 	{
 		rohc_error(ts_sc, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		           "cannot create a W-LSB window for unscaled TS\n");
+		           "cannot create a W-LSB window for unscaled TS");
 		goto free_ts_scaled_wlsb;
 	}
 
@@ -128,7 +128,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 
 	assert(ts_sc != NULL);
 
-	ts_debug(ts_sc, "Timestamp = %u\n", ts);
+	ts_debug(ts_sc, "Timestamp = %u", ts);
 
 	/* consider that TS bits are not deducible by default */
 	ts_sc->is_deducible = false;
@@ -145,7 +145,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	if(!ts_sc->are_old_val_init)
 	{
 		assert(ts_sc->state == INIT_TS);
-		ts_debug(ts_sc, "TS_STRIDE cannot be computed, stay in INIT_TS state\n");
+		ts_debug(ts_sc, "TS_STRIDE cannot be computed, stay in INIT_TS state");
 		ts_sc->are_old_val_init = true;
 		return;
 	}
@@ -160,7 +160,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	{
 		sn_delta = ts_sc->old_sn - ts_sc->sn;
 	}
-	ts_debug(ts_sc, "SN delta = %u\n", sn_delta);
+	ts_debug(ts_sc, "SN delta = %u", sn_delta);
 
 	/* compute the absolute delta between new and old TS */
 	/* abs() on unsigned 32-bit values seems to be a problem sometimes */
@@ -172,12 +172,12 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	{
 		ts_sc->ts_delta = ts_sc->old_ts - ts_sc->ts;
 	}
-	ts_debug(ts_sc, "TS delta = %u\n", ts_sc->ts_delta);
+	ts_debug(ts_sc, "TS delta = %u", ts_sc->ts_delta);
 
 	/* go back to INIT_TS state if TS is constant */
 	if(ts_sc->ts_delta == 0)
 	{
-		ts_debug(ts_sc, "TS is constant, go in INIT_TS state\n");
+		ts_debug(ts_sc, "TS is constant, go in INIT_TS state");
 		ts_sc->state = INIT_TS;
 		return;
 	}
@@ -187,7 +187,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	{
 		/* TS_STRIDE is too large for SDVL encoding */
 		ts_debug(ts_sc, "TS_STRIDE is too large for SDVL encoding, "
-		         "go in INIT_TS state\n");
+		         "go in INIT_TS state");
 		ts_sc->state = INIT_TS;
 		return;
 	}
@@ -195,7 +195,7 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	/* TS_STRIDE can be computed, so leave INIT_TS state */
 	if(ts_sc->state == INIT_TS)
 	{
-		ts_debug(ts_sc, "TS_STRIDE can be computed, go to INIT_STRIDE state\n");
+		ts_debug(ts_sc, "TS_STRIDE can be computed, go to INIT_STRIDE state");
 		ts_sc->state = INIT_STRIDE;
 		ts_sc->nr_init_stride_packets = 0;
 	}
@@ -204,26 +204,26 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 	{
 		/* TS is changing and TS_STRIDE can be computed but TS_STRIDE was
 		 * not transmitted enough times to the decompressor to be used */
-		ts_debug(ts_sc, "state INIT_STRIDE\n");
+		ts_debug(ts_sc, "state INIT_STRIDE");
 
 		/* reset INIT_STRIDE counter if TS_STRIDE/TS_OFFSET changed */
 		if(ts_sc->ts_delta != ts_sc->ts_stride ||
 		   (ts_sc->ts % ts_sc->ts_delta) != ts_sc->ts_offset)
 		{
-			ts_debug(ts_sc, "TS_STRIDE and/or TS_OFFSET changed\n");
+			ts_debug(ts_sc, "TS_STRIDE and/or TS_OFFSET changed");
 			ts_sc->nr_init_stride_packets = 0;
 		}
 
 		/* compute TS_STRIDE, TS_OFFSET and TS_SCALED */
 		ts_sc->ts_stride = ts_sc->ts_delta;
-		ts_debug(ts_sc, "TS_STRIDE = %u\n", ts_sc->ts_stride);
+		ts_debug(ts_sc, "TS_STRIDE = %u", ts_sc->ts_stride);
 		assert(ts_sc->ts_stride != 0);
 		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
-		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u\n",
+		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u",
 		         ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
 		assert(ts_sc->ts_stride != 0);
 		ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
-		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u\n", ts_sc->ts,
+		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u", ts_sc->ts,
 		         ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
 	}
 	else if(ts_sc->state == SEND_SCALED)
@@ -233,11 +233,11 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 
 		/* TS is changing, TS_STRIDE can be computed, and TS_STRIDE was
 		 * transmitted enough times to the decompressor to be used */
-		ts_debug(ts_sc, "state SEND_SCALED\n");
+		ts_debug(ts_sc, "state SEND_SCALED");
 
 		/* does TS_STRIDE changed? */
-		ts_debug(ts_sc, "TS_STRIDE calculated = %u\n", ts_sc->ts_delta);
-		ts_debug(ts_sc, "previous TS_STRIDE = %u\n", ts_sc->ts_stride);
+		ts_debug(ts_sc, "TS_STRIDE calculated = %u", ts_sc->ts_delta);
+		ts_debug(ts_sc, "previous TS_STRIDE = %u", ts_sc->ts_stride);
 		if(ts_sc->ts_delta != ts_sc->ts_stride)
 		{
 			assert(ts_sc->ts_stride != 0);
@@ -249,10 +249,10 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 				ts_debug(ts_sc, "/!\\ TS_STRIDE changed and is not a multiple "
 				         "of previous TS_STRIDE, so change TS_STRIDE and "
 				         "transmit it several times along all TS bits "
-				         "(probably a clock resync at source)\n");
+				         "(probably a clock resync at source)");
 				ts_sc->state = INIT_STRIDE;
 				ts_sc->nr_init_stride_packets = 0;
-				ts_debug(ts_sc, "state -> INIT_STRIDE\n");
+				ts_debug(ts_sc, "state -> INIT_STRIDE");
 				ts_sc->ts_stride = ts_sc->ts_delta;
 			}
 			else if((ts_sc->ts_delta / ts_sc->ts_stride) != sn_delta)
@@ -263,31 +263,31 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 				ts_debug(ts_sc, "/!\\ TS delta changed but is a multiple of "
 				         "previous TS_STRIDE, so do not change TS_STRIDE, but "
 				         "retransmit it several times along all TS bits "
-				         "(probably a RTP TS jump at source)\n");
+				         "(probably a RTP TS jump at source)");
 				ts_sc->state = INIT_STRIDE;
 				ts_sc->nr_init_stride_packets = 0;
-				ts_debug(ts_sc, "state -> INIT_STRIDE\n");
+				ts_debug(ts_sc, "state -> INIT_STRIDE");
 			}
 			else
 			{
 				/* do not change TS_STRIDE, probably a packet loss */
 				ts_debug(ts_sc, "/!\\ TS delta changed, is a multiple of "
 				         "previous TS_STRIDE and follows SN changes, so do "
-				         "not change TS_STRIDE (probably a packet loss)\n");
+				         "not change TS_STRIDE (probably a packet loss)");
 			}
 		}
-		ts_debug(ts_sc, "TS_STRIDE = %u\n", ts_sc->ts_stride);
+		ts_debug(ts_sc, "TS_STRIDE = %u", ts_sc->ts_stride);
 
 		/* update TS_OFFSET is needed */
 		assert(ts_sc->ts_stride != 0);
 		ts_sc->ts_offset = ts_sc->ts % ts_sc->ts_stride;
-		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u\n",
+		ts_debug(ts_sc, "TS_OFFSET = %u modulo %u = %u",
 		         ts_sc->ts, ts_sc->ts_stride, ts_sc->ts_offset);
 
 		/* compute TS_SCALED */
 		assert(ts_sc->ts_stride != 0);
 		ts_sc->ts_scaled = (ts_sc->ts - ts_sc->ts_offset) / ts_sc->ts_stride;
-		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u\n", ts_sc->ts,
+		ts_debug(ts_sc, "TS_SCALED = (%u - %u) / %u = %u", ts_sc->ts,
 		         ts_sc->ts_offset, ts_sc->ts_stride, ts_sc->ts_scaled);
 
 		/* could TS_SCALED be deduced from SN? */
@@ -330,14 +330,14 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		if(ts_sc->is_deducible)
 		{
 			ts_debug(ts_sc, "TS can be deducted from SN (old TS_SCALED = %u, "
-			         "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
+			         "new TS_SCALED = %u, old SN = %u, new SN = %u)",
 			         old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
 			ts_sc->is_deducible = 1;
 		}
 		else
 		{
 			ts_debug(ts_sc, "TS can not be deducted from SN (old TS_SCALED = %u, "
-			         "new TS_SCALED = %u, old SN = %u, new SN = %u)\n",
+			         "new TS_SCALED = %u, old SN = %u, new SN = %u)",
 			         old_scaled, ts_sc->ts_scaled, ts_sc->old_sn, ts_sc->sn);
 			ts_sc->is_deducible = 0;
 		}
@@ -345,23 +345,23 @@ void c_add_ts(struct ts_sc_comp *const ts_sc,
 		/* Wraparound (See RFC 4815 Section 4.4.3) */
 		if(ts_sc->ts < ts_sc->old_ts)
 		{
-			ts_debug(ts_sc, "TS wraparound detected\n");
+			ts_debug(ts_sc, "TS wraparound detected");
 			if(old_offset != ts_sc->ts_offset)
 			{
-				ts_debug(ts_sc, "TS_OFFSET changed, re-initialize TS_STRIDE\n");
+				ts_debug(ts_sc, "TS_OFFSET changed, re-initialize TS_STRIDE");
 				ts_sc->state = INIT_STRIDE;
 				ts_sc->nr_init_stride_packets = 0;
 			}
 			else
 			{
-				ts_debug(ts_sc, "TS_OFFSET is unchanged\n");
+				ts_debug(ts_sc, "TS_OFFSET is unchanged");
 			}
 		}
 	}
 	else
 	{
 		/* invalid state, should not happen */
-		ts_debug(ts_sc, "invalid state (%d), should not happen\n", ts_sc->state);
+		ts_debug(ts_sc, "invalid state (%d), should not happen", ts_sc->state);
 		assert(0);
 		return;
 	}
