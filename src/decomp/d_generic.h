@@ -475,14 +475,12 @@ void d_generic_destroy(void *const context)
 
 int d_generic_decode(struct rohc_decomp *const decomp,
                      struct rohc_decomp_ctxt *const context,
-                     const struct rohc_ts arrival_time,
-                     const unsigned char *const rohc_packet,
-                     const size_t rohc_length,
+                     const struct rohc_buf rohc_packet,
                      const size_t add_cid_len,
                      const size_t large_cid_len,
-                     unsigned char *uncomp_packet,
-                     const size_t uncomp_packet_max_len,
-                     rohc_packet_t *const packet_type);
+                     struct rohc_buf *const uncomp_packet,
+                     rohc_packet_t *const packet_type)
+	__attribute__((warn_unused_result, nonnull(1, 2, 6, 7)));
 
 uint32_t d_generic_get_sn(const struct rohc_decomp_ctxt *const context);
 

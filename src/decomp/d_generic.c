@@ -1353,32 +1353,25 @@ error:
  * Steps C and D may be repeated if packet or context repair is attempted
  * upon CRC failure.
  *
- * @param decomp                 The ROHC decompressor
- * @param context                The decompression context
- * @param arrival_time           The time at which packet was received (0 if
- *                               unknown, or to disable time-related features
- *                               in ROHC protocol)
- * @param rohc_packet            The ROHC packet to decode
- * @param rohc_length            The length of the ROHC packet
- * @param add_cid_len            The length of the optional Add-CID field
- * @param large_cid_len          The length of the optional large CID field
- * @param[out] uncomp_packet     The uncompressed packet
- * @param uncomp_packet_max_len  The max length of the uncompressed packet
- * @param packet_type            IN:  The type of the ROHC packet to parse
- *                               OUT: The type of the parsed ROHC packet
- * @return                       The length of the uncompressed packet
- *                               or ROHC_ERROR_CRC if a CRC error occurs
- *                               or ROHC_ERROR if an error occurs
+ * @param decomp              The ROHC decompressor
+ * @param context             The decompression context
+ * @param rohc_packet         The ROHC packet to decode
+ * @param add_cid_len         The length of the optional Add-CID field
+ * @param large_cid_len       The length of the optional large CID field
+ * @param[out] uncomp_packet  The uncompressed packet
+ * @param packet_type         IN:  The type of the ROHC packet to parse
+ *                            OUT: The type of the parsed ROHC packet
+ * @return                    ROHC_OK if packet is successfully decoded,
+ *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
+ *                            ROHC_ERROR_CRC if a CRC error occurs,
+ *                            ROHC_ERROR if an error occurs
  */
 int d_generic_decode(struct rohc_decomp *const decomp,
                      struct rohc_decomp_ctxt *const context,
-                     const struct rohc_ts arrival_time,
-                     const unsigned char *const rohc_packet,
-                     const size_t rohc_length,
+                     const struct rohc_buf rohc_packet,
                      const size_t add_cid_len,
                      const size_t large_cid_len,
-                     unsigned char *uncomp_packet,
-                     const size_t uncomp_packet_max_len,
+                     struct rohc_buf *const uncomp_packet,
                      rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *const g_context = context->specific;
@@ -1408,26 +1401,26 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 	/* remember the arrival time of the packet (used for repair upon CRC
 	 * failure for example) */
-	g_context->cur_arrival_time = arrival_time;
+	g_context->cur_arrival_time = rohc_packet.time;
 
 
 	/* A. Parsing of ROHC base header, extension header and tail of header */
 
 	/* let's parse the packet! */
-	parsing_ok = parse_packet(decomp, context,
-	                          rohc_packet, rohc_length, large_cid_len,
-	                          packet_type, &bits, &rohc_header_len);
+	parsing_ok = parse_packet(decomp, context, rohc_buf_data(rohc_packet),
+	                          rohc_packet.len, large_cid_len, packet_type,
+	                          &bits, &rohc_header_len);
 	if(!parsing_ok)
 	{
 		rohc_decomp_warn(context, "failed to parse the %s header",
 		                 rohc_get_packet_descr(*packet_type));
-		goto error;
+		goto error_malformed;
 	}
 
 	/* ROHC base header and its optional extension is now fully parsed,
 	 * remaining data is the payload */
-	payload_data = rohc_packet + rohc_header_len;
-	payload_len = rohc_length - rohc_header_len;
+	payload_data = rohc_buf_data(rohc_packet) + rohc_header_len;
+	payload_len = rohc_packet.len - rohc_header_len;
 	rohc_decomp_debug(context, "ROHC payload (length = %zd bytes) starts at "
 	                  "offset %zd", payload_len, rohc_header_len);
 
@@ -1442,7 +1435,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	if((*packet_type) == ROHC_PACKET_IR || (*packet_type) == ROHC_PACKET_IR_DYN)
 	{
 		const bool crc_ok = check_ir_crc(decomp, context,
-		                                 rohc_packet - add_cid_len,
+		                                 rohc_buf_data(rohc_packet) - add_cid_len,
 		                                 add_cid_len + rohc_header_len,
 		                                 large_cid_len, add_cid_len, bits.crc);
 		if(!crc_ok)
@@ -1452,7 +1445,8 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 #if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			              ROHC_TRACE_WARNING, "IR headers",
-			              rohc_packet - add_cid_len, rohc_header_len + add_cid_len);
+			              rohc_buf_data(rohc_packet) - add_cid_len,
+			              rohc_header_len + add_cid_len);
 #endif
 			goto error_crc;
 		}
@@ -1497,13 +1491,15 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 		/* build the uncompressed headers */
 		build_ret = build_uncomp_hdrs(decomp, context, *packet_type, decoded,
 		                              payload_len, bits.crc_type, bits.crc,
-		                              uncomp_packet, uncomp_packet_max_len,
+		                              rohc_buf_data(*uncomp_packet),
+		                              rohc_buf_avail_len(*uncomp_packet),
 		                              &uncomp_header_len);
 		if(build_ret == ROHC_OK)
 		{
 			/* uncompressed headers successfully built and CRC is correct,
 			 * no need to try decoding with different values */
-			uncomp_packet += uncomp_header_len;
+			uncomp_packet->len += uncomp_header_len;
+			rohc_buf_shift(uncomp_packet, uncomp_header_len);
 
 			if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
 			{
@@ -1524,7 +1520,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 #if ROHC_EXTRA_DEBUG == 1
 			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
 			              ROHC_TRACE_WARNING, "compressed headers",
-			              rohc_packet, rohc_header_len);
+			              rohc_buf_data(rohc_packet), rohc_header_len);
 #endif
 			goto error;
 		}
@@ -1553,7 +1549,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 #if ROHC_EXTRA_DEBUG == 1
 				rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
 				              ROHC_TRACE_WARNING, "compressed headers",
-				              rohc_packet, rohc_header_len);
+				              rohc_buf_data(rohc_packet), rohc_header_len);
 #endif
 				goto error_crc;
 			}
@@ -1607,27 +1603,31 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 	/* E. Copy the payload (if any) */
 
-	if((rohc_header_len + payload_len) != rohc_length)
+	if((rohc_header_len + payload_len) != rohc_packet.len)
 	{
 		rohc_decomp_warn(context, "ROHC %s header (%zu bytes) and payload "
 		                 "(%zu bytes) do not match the full ROHC packet "
 		                 "(%zu bytes)", rohc_get_packet_descr(*packet_type),
-		                 rohc_header_len, payload_len, rohc_length);
+		                 rohc_header_len, payload_len, rohc_packet.len);
 		goto error;
 	}
-	if(uncomp_packet_max_len < (uncomp_header_len + payload_len))
+	if(rohc_buf_avail_len(*uncomp_packet) < payload_len)
 	{
 		rohc_decomp_warn(context, "uncompressed packet too small (%zu bytes "
 		                 "max) for the %zu-byte payload",
-		                 uncomp_packet_max_len - uncomp_header_len, payload_len);
+		                 rohc_buf_avail_len(*uncomp_packet), payload_len);
 		goto error;
 	}
 	if(payload_len != 0)
 	{
-		memcpy(uncomp_packet, payload_data, payload_len);
+		memcpy(rohc_buf_data(*uncomp_packet), payload_data, payload_len);
+		uncomp_packet->len += payload_len;
+		rohc_buf_shift(uncomp_packet, payload_len);
 	}
+	/* shift backward the uncompressed headers and payload */
+	rohc_buf_shift(uncomp_packet, -(uncomp_header_len + payload_len));
 	rohc_decomp_debug(context, "uncompressed packet length = %zu bytes",
-	                  uncomp_header_len + payload_len);
+	                  uncomp_packet->len);
 
 
 	/* F. Update the compression context
@@ -1659,17 +1659,18 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	/* update context with decoded values */
 	update_context(context, decoded);
 
-
 	/* update statistics */
 	stats_add_decomp_success(context, rohc_header_len, uncomp_header_len);
 
-	/* decompression is successful, return length of uncompressed packet */
-	return (uncomp_header_len + payload_len);
+	/* decompression is successful */
+	return ROHC_OK;
 
 error:
 	return ROHC_ERROR;
 error_crc:
 	return ROHC_ERROR_CRC;
+error_malformed:
+	return ROHC_ERROR_PACKET_FAILED;
 }
 
 

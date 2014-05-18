@@ -346,32 +346,25 @@ error:
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param decomp                 The ROHC decompressor
- * @param context                The decompression context
- * @param arrival_time           The time at which packet was received (0 if
- *                               unknown, or to disable time-related features
- *                               in ROHC protocol)
- * @param rohc_packet            The ROHC packet to decode
- * @param rohc_length            The length of the ROHC packet
- * @param add_cid_len            The length of the optional Add-CID field
- * @param large_cid_len          The length of the optional large CID field
- * @param[out] dest              The uncompressed packet
- * @param uncomp_packet_max_len  The max length of the uncompressed packet
- * @param packet_type            IN:  The type of the ROHC packet to parse
- *                               OUT: The type of the parsed ROHC packet
- * @return                       The length of the uncompressed IP packet
- *                               or ROHC_ERROR_CRC if a CRC error occurs
- *                               or ROHC_ERROR if an error occurs
+ * @param decomp              The ROHC decompressor
+ * @param context             The decompression context
+ * @param rohc_packet         The ROHC packet to decode
+ * @param add_cid_len         The length of the optional Add-CID field
+ * @param large_cid_len       The length of the optional large CID field
+ * @param[out] uncomp_packet  The uncompressed packet
+ * @param packet_type         IN:  The type of the ROHC packet to parse
+ *                            OUT: The type of the parsed ROHC packet
+ * @return                    ROHC_OK if packet is successfully decoded,
+ *                            ROHC_ERROR_PACKET_FAILED if packet is malformed,
+ *                            ROHC_ERROR_CRC if a CRC error occurs,
+ *                            ROHC_ERROR if an error occurs
  */
 static int d_udp_lite_decode(struct rohc_decomp *const decomp,
                              struct rohc_decomp_ctxt *const context,
-                             const struct rohc_ts arrival_time,
-                             const unsigned char *const rohc_packet,
-                             const size_t rohc_length,
+                             const struct rohc_buf rohc_packet,
                              const size_t add_cid_len,
                              const size_t large_cid_len,
-                             unsigned char *const dest,
-                             const size_t uncomp_packet_max_len,
+                             struct rohc_buf *const uncomp_packet,
                              rohc_packet_t *const packet_type)
 {
 	struct d_generic_context *g_context = context->specific;
@@ -379,23 +372,21 @@ static int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	size_t new_large_cid_len;
 
 	/* remaining ROHC data not parsed yet */
-	const unsigned char *rohc_remain_data = rohc_packet;
-	unsigned int rohc_remain_len = rohc_length;
+	struct rohc_buf rohc_remain_data = rohc_packet;
 
 	/* check if the ROHC packet is large enough to read the first byte */
-	if(rohc_remain_len < (1 + large_cid_len))
+	if(rohc_remain_data.len < (1 + large_cid_len))
 	{
-		rohc_decomp_warn(context, "ROHC packet too small (len = %u)",
-		                 rohc_remain_len);
-		goto error;
+		rohc_decomp_warn(context, "ROHC packet too small (len = %zu bytes)",
+		                 rohc_remain_data.len);
+		goto error_malformed;
 	}
 
 	/* if the CE extension is present, skip the CCE byte type (and the
 	 * optional large CID field) */
 	if(udp_lite_context->cce_packet)
 	{
-		rohc_remain_data += 1 + large_cid_len;
-		rohc_remain_len -= 1 + large_cid_len;
+		rohc_buf_shift(&rohc_remain_data, 1 + large_cid_len);
 		new_large_cid_len = 0;
 	}
 	else
@@ -405,13 +396,11 @@ static int d_udp_lite_decode(struct rohc_decomp *const decomp,
 
 	/* decode the remaining part of the part as a normal IP-based packet
 	 * (with a fake length for the large CID field eventually) */
-	return d_generic_decode(decomp, context, arrival_time,
-	                        rohc_remain_data, rohc_remain_len,
-	                        add_cid_len, new_large_cid_len,
-	                        dest, uncomp_packet_max_len, packet_type);
+	return d_generic_decode(decomp, context, rohc_remain_data, add_cid_len,
+	                        new_large_cid_len, uncomp_packet, packet_type);
 
-error:
-	return ROHC_ERROR;
+error_malformed:
+	return ROHC_ERROR_PACKET_FAILED;
 }
 
 
