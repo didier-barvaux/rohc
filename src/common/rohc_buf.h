@@ -182,6 +182,19 @@ struct rohc_buf
 	((__buf).data)[(__buf).offset + (__offset)]
 
 
+/**
+ * @brief Get the next byte in the given network buffer
+ *
+ * @param __buf  The network buffer to get the next byte from
+ * @return       The next byte stored in the network buffer
+ *
+ * @ingroup rohc
+ */
+#define rohc_buf_byte(__buf) \
+	rohc_buf_byte_at((__buf), 0)
+
+
+
 bool rohc_buf_is_malformed(const struct rohc_buf buf)
 	__attribute__((warn_unused_result));
 
