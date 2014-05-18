@@ -4579,20 +4579,12 @@ static int co_baseheader(struct rohc_comp_ctxt *const context,
 	                encoded_seq_len, c_base_header.co_common->seq_indicator);
 
 	/* ack_number */
-	if(tcp->ack_flag == 0 && tcp->ack_num == 0)
-	{
-		encoded_ack_len = 0;
-		indicator = 0;
-	}
-	else
-	{
-		encoded_ack_len =
-			variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_num),
-			                       rohc_ntoh32(tcp->ack_num),
-			                       tcp_context->tmp.nr_ack_bits_63,
-			                       tcp_context->tmp.nr_ack_bits_16383,
-			                       mptr.uint8, &indicator);
-	}
+	encoded_ack_len =
+		variable_length_32_enc(rohc_ntoh32(tcp_context->old_tcphdr.ack_num),
+		                       rohc_ntoh32(tcp->ack_num),
+		                       tcp_context->tmp.nr_ack_bits_63,
+		                       tcp_context->tmp.nr_ack_bits_16383,
+		                       mptr.uint8, &indicator);
 	c_base_header.co_common->ack_indicator = indicator;
 	mptr.uint8 += encoded_ack_len;
 	rohc_comp_debug(context, "encode ACK number 0x%08x on %zu bytes with "
@@ -6221,112 +6213,95 @@ static bool tcp_encode_uncomp_fields(struct rohc_comp_ctxt *const context,
 	}
 
 	/* how many bits are required to encode the new ACK number? */
-	if(tcp->ack_flag == 0 && tcp->ack_num == 0)
+	tcp_context->tmp.tcp_ack_num_changed =
+		(tcp->ack_num != tcp_context->old_tcphdr.ack_num);
+	if(context->state == ROHC_COMP_STATE_IR)
 	{
-		/* send no bit if ACK flag is not set */
-		tcp_context->tmp.tcp_ack_num_changed = false;
-		tcp_context->tmp.nr_ack_bits_65535 = 0;
-		tcp_context->tmp.nr_ack_bits_32767 = 0;
-		tcp_context->tmp.nr_ack_bits_16383 = 0;
-		tcp_context->tmp.nr_ack_bits_8191 = 0;
-		tcp_context->tmp.nr_ack_bits_63 = 0;
-		tcp_context->tmp.nr_ack_scaled_bits = 0;
-		rohc_comp_debug(context, "no bit required to encode new ACK number "
-		                "since the ACK flag is not set");
+		/* send all bits in IR state */
+		tcp_context->tmp.nr_ack_bits_65535 = 32;
+		tcp_context->tmp.nr_ack_bits_32767 = 32;
+		tcp_context->tmp.nr_ack_bits_16383 = 32;
+		tcp_context->tmp.nr_ack_bits_8191 = 32;
+		tcp_context->tmp.nr_ack_bits_63 = 32;
+		tcp_context->tmp.nr_ack_scaled_bits = 32;
+		rohc_comp_debug(context, "IR state: force using 32 bits to encode new "
+		                "ACK number");
 	}
 	else
 	{
-		tcp_context->tmp.tcp_ack_num_changed =
-			(tcp->ack_num != tcp_context->old_tcphdr.ack_num);
-
-		if(context->state == ROHC_COMP_STATE_IR)
+		/* send only required bits in FO or SO states */
+		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 65535,
+		                       &tcp_context->tmp.nr_ack_bits_65535))
 		{
-			/* send all bits in IR state */
-			tcp_context->tmp.nr_ack_bits_65535 = 32;
-			tcp_context->tmp.nr_ack_bits_32767 = 32;
-			tcp_context->tmp.nr_ack_bits_16383 = 32;
-			tcp_context->tmp.nr_ack_bits_8191 = 32;
-			tcp_context->tmp.nr_ack_bits_63 = 32;
-			tcp_context->tmp.nr_ack_scaled_bits = 32;
-			rohc_comp_debug(context, "IR state: force using 32 bits to encode "
-			                "new ACK number");
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for ACK number 0x%08x and p = 65535",
+			               ack_num_hbo);
+			goto error;
 		}
-		else
+		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+		                "number 0x%08x with p = 65535",
+		                tcp_context->tmp.nr_ack_bits_65535, ack_num_hbo);
+		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 32767,
+		                       &tcp_context->tmp.nr_ack_bits_32767))
 		{
-			/* send only required bits in FO or SO states */
-			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 65535,
-			                       &tcp_context->tmp.nr_ack_bits_65535))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 65535",
-				               ack_num_hbo);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 65535",
-			                tcp_context->tmp.nr_ack_bits_65535, ack_num_hbo);
-			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 32767,
-			                       &tcp_context->tmp.nr_ack_bits_32767))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 32767",
-				               ack_num_hbo);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 32767",
-			                tcp_context->tmp.nr_ack_bits_32767, ack_num_hbo);
-			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 16383,
-			                       &tcp_context->tmp.nr_ack_bits_16383))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 16383",
-				               ack_num_hbo);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 16383",
-			                tcp_context->tmp.nr_ack_bits_16383, ack_num_hbo);
-			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 8191,
-			                       &tcp_context->tmp.nr_ack_bits_8191))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 8191",
-				               ack_num_hbo);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 8191",
-			                tcp_context->tmp.nr_ack_bits_8191, ack_num_hbo);
-			if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 63,
-			                       &tcp_context->tmp.nr_ack_bits_63))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for ACK number 0x%08x and p = 63",
-				               ack_num_hbo);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zd bits are required to encode new ACK "
-			                "number 0x%08x with p = 63",
-			                tcp_context->tmp.nr_ack_bits_63, ack_num_hbo);
-			if(!wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb,
-			                      tcp_context->ack_num_scaled,
-			                      &tcp_context->tmp.nr_ack_scaled_bits))
-			{
-				rohc_comp_warn(context, "failed to find the minimal number of "
-				               "bits required for scaled ACK number 0x%08x",
-				               tcp_context->ack_num_scaled);
-				goto error;
-			}
-			rohc_comp_debug(context, "%zu bits are required to encode new scaled "
-			                "ACK number 0x%08x",
-			                tcp_context->tmp.nr_ack_scaled_bits,
-			                tcp_context->ack_num_scaled);
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for ACK number 0x%08x and p = 32767",
+			               ack_num_hbo);
+			goto error;
 		}
-		c_add_wlsb(tcp_context->ack_wlsb, g_context->sn, ack_num_hbo);
-		c_add_wlsb(tcp_context->ack_scaled_wlsb, g_context->sn,
-		           tcp_context->ack_num_scaled);
+		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+		                "number 0x%08x with p = 32767",
+		                tcp_context->tmp.nr_ack_bits_32767, ack_num_hbo);
+		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 16383,
+		                       &tcp_context->tmp.nr_ack_bits_16383))
+		{
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for ACK number 0x%08x and p = 16383",
+			               ack_num_hbo);
+			goto error;
+		}
+		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+		                "number 0x%08x with p = 16383",
+		                tcp_context->tmp.nr_ack_bits_16383, ack_num_hbo);
+		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 8191,
+		                       &tcp_context->tmp.nr_ack_bits_8191))
+		{
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for ACK number 0x%08x and p = 8191",
+			               ack_num_hbo);
+			goto error;
+		}
+		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+		                "number 0x%08x with p = 8191",
+		                tcp_context->tmp.nr_ack_bits_8191, ack_num_hbo);
+		if(!wlsb_get_kp_32bits(tcp_context->ack_wlsb, ack_num_hbo, 63,
+		                       &tcp_context->tmp.nr_ack_bits_63))
+		{
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for ACK number 0x%08x and p = 63",
+			               ack_num_hbo);
+			goto error;
+		}
+		rohc_comp_debug(context, "%zd bits are required to encode new ACK "
+		                "number 0x%08x with p = 63",
+		                tcp_context->tmp.nr_ack_bits_63, ack_num_hbo);
+		if(!wlsb_get_k_32bits(tcp_context->ack_scaled_wlsb,
+		                      tcp_context->ack_num_scaled,
+		                      &tcp_context->tmp.nr_ack_scaled_bits))
+		{
+			rohc_comp_warn(context, "failed to find the minimal number of bits "
+			               "required for scaled ACK number 0x%08x",
+			               tcp_context->ack_num_scaled);
+			goto error;
+		}
+		rohc_comp_debug(context, "%zu bits are required to encode new scaled "
+		                "ACK number 0x%08x",
+		                tcp_context->tmp.nr_ack_scaled_bits,
+		                tcp_context->ack_num_scaled);
 	}
+	c_add_wlsb(tcp_context->ack_wlsb, g_context->sn, ack_num_hbo);
+	c_add_wlsb(tcp_context->ack_scaled_wlsb, g_context->sn,
+	           tcp_context->ack_num_scaled);
 
 	/* how many bits are required to encode the new timestamp echo request and
 	 * timestamp echo reply? */

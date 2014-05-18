@@ -5070,28 +5070,19 @@ static int d_tcp_decode_CO(struct rohc_decomp *decomp,
 		rohc_opts_data += ret;
 
 		/* ACK number */
-		if(tcp->ack_flag == 0 && co_common->ack_indicator == 0)
+		if(co_common->ack_indicator != 0)
 		{
-			tcp->ack_num = 0;
-			ret = 0;
+			rohc_decomp_debug(context, "ACK flag not set, but indicator for "
+			                  "ACK number is %u instead of 0",
+			                  co_common->ack_indicator);
 		}
-		else
+		ret = variable_length_32_dec(tcp_context->ack_lsb_ctxt, context,
+		                             rohc_opts_data, co_common->ack_indicator,
+		                             &tcp->ack_num);
+		if(ret < 0)
 		{
-			if(co_common->ack_indicator != 0)
-			{
-				rohc_decomp_debug(context, "ACK flag not set, but indicator for "
-				                  "ACK number is %u instead of 0",
-				                  co_common->ack_indicator);
-			}
-
-			ret = variable_length_32_dec(tcp_context->ack_lsb_ctxt, context,
-			                             rohc_opts_data, co_common->ack_indicator,
-			                             &tcp->ack_num);
-			if(ret < 0)
-			{
-				rohc_decomp_warn(context, "variable_length_32(ack_number) failed");
-				goto error;
-			}
+			rohc_decomp_warn(context, "variable_length_32(ack_number) failed");
+			goto error;
 		}
 		rohc_decomp_debug(context, "ack_number = 0x%x (%d bytes in packet)",
 		                  rohc_ntoh32(tcp->ack_num), ret);
