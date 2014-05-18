@@ -84,14 +84,14 @@ void rohc_buf_shift(struct rohc_buf *const buf, const int offset)
 {
 	if(offset > 0)
 	{
-		size_t offset_s = offset;
-		assert((buf->offset + offset_s) <= buf->max_len);
-		assert(buf->len >= offset_s);
+		size_t offset_abs = offset;
+		assert((buf->offset + offset_abs) <= buf->max_len);
+		assert(buf->len >= offset_abs);
 	}
 	else
 	{
-		size_t offset_s = -offset;
-		assert(buf->offset >= offset_s);
+		size_t offset_abs = -offset;
+		assert(buf->offset >= offset_abs);
 	}
 
 	buf->offset += offset;
