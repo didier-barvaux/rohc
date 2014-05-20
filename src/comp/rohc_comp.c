@@ -388,19 +388,6 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	comp->total_uncompressed_size = 0;
 	comp->last_context = NULL;
 
-	/* set default callback for traces */
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-	/* keep same behaviour as previous 1.x.y versions: traces on by default */
-	is_fine = rohc_comp_set_traces_cb(comp, rohc_comp_print_trace_default);
-#else
-	/* no behaviour compatibility with previous 1.x.y versions: no trace */
-	is_fine = rohc_comp_set_traces_cb(comp, NULL);
-#endif
-	if(is_fine != true)
-	{
-		goto destroy_comp;
-	}
-
 	/* set the default W-LSB window width */
 	is_fine = rohc_comp_set_wlsb_window_width(comp, wlsb_width);
 	if(is_fine != true)
@@ -483,6 +470,16 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	{
 		goto destroy_comp;
 	}
+
+	/* set default callback for traces */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	/* keep same behaviour as previous 1.x.y versions: traces on by default */
+	is_fine = rohc_comp_set_traces_cb(comp, rohc_comp_print_trace_default);
+	if(is_fine != true)
+	{
+		goto destroy_comp;
+	}
+#endif
 
 	return comp;
 
@@ -634,7 +631,7 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attri
 	/* display a warning with the first message */
 	if(first_time)
 	{
-		printf("please define a callback for compressor traces");
+		printf("please define a callback for compressor traces\n");
 		first_time = false;
 	}
 #endif
