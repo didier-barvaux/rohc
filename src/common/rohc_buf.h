@@ -128,8 +128,7 @@ struct rohc_buf
  */
 #define rohc_buf_init_empty(__data, __max_len) \
 	{ \
-		.time.sec = 0, \
-		.time.nsec = 0, \
+		.time = { .sec = 0, .nsec = 0, }, \
 		.data = (__data), \
 		.max_len = (__max_len), \
 		.offset = 0, \
