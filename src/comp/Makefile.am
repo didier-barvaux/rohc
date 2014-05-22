@@ -5,7 +5,13 @@
 # Description: create the ROHC compression library
 ################################################################################
 
-SUBDIRS = schemes . test
+if ROHC_TESTS
+COMP_TESTS_DIR = test
+else
+COMP_TESTS_DIR = 
+endif
+
+SUBDIRS = schemes . $(COMP_TESTS_DIR)
 
 
 lib_LTLIBRARIES = librohc_comp.la

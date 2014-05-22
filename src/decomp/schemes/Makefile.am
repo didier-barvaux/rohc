@@ -4,7 +4,13 @@
 # Description: build the decoding schemes for the ROHC decompression library
 ################################################################################
 
-SUBDIRS = . test
+if ROHC_TESTS
+DECOMP_SCHEMES_TESTS_DIR = test
+else
+DECOMP_SCHEMES_TESTS_DIR = 
+endif
+
+SUBDIRS = . $(DECOMP_SCHEMES_TESTS_DIR)
 
 noinst_LTLIBRARIES = librohc_decomp_schemes.la
 

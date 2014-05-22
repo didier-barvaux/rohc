@@ -4,7 +4,13 @@
 # Description: build the encoding schemes for the ROHC compression library
 ################################################################################
 
-SUBDIRS = . test
+if ROHC_TESTS
+COMP_SCHEMES_TESTS_DIR = test
+else
+COMP_SCHEMES_TESTS_DIR = 
+endif
+
+SUBDIRS = . $(COMP_SCHEMES_TESTS_DIR)
 
 noinst_LTLIBRARIES = librohc_comp_schemes.la
 

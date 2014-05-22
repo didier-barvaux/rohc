@@ -5,7 +5,13 @@
 # Description: create the ROHC decompression library
 ################################################################################
 
-SUBDIRS = schemes . test
+if ROHC_TESTS
+DECOMP_TESTS_DIR = test
+else
+DECOMP_TESTS_DIR = 
+endif
+
+SUBDIRS = schemes . $(DECOMP_TESTS_DIR)
 
 
 lib_LTLIBRARIES = librohc_decomp.la
