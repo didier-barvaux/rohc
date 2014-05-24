@@ -555,6 +555,9 @@ bool ROHC_EXPORT rohc_comp_deliver_feedback(struct rohc_comp *const comp,
                                             const uint8_t *const feedback,
                                             const size_t size)
 	__attribute__((warn_unused_result));
+bool ROHC_EXPORT rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
+                                             const struct rohc_buf feedback)
+	__attribute__((warn_unused_result));
 int ROHC_EXPORT rohc_feedback_flush(struct rohc_comp *comp,
                                     unsigned char *obuf,
                                     int osize);

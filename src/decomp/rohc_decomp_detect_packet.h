@@ -48,10 +48,6 @@ bool ROHC_EXPORT rohc_decomp_packet_is_segment(const uint8_t *const data)
 bool ROHC_EXPORT rohc_decomp_packet_is_padding(const uint8_t *const data)
 	__attribute__((warn_unused_result, nonnull(1), pure));
 
-/* ROHC feedback */
-bool ROHC_EXPORT rohc_decomp_packet_is_feedback(const uint8_t *const data)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
 /* IR packet */
 bool ROHC_EXPORT rohc_decomp_packet_is_ir(const uint8_t *const data,
                                           const size_t len)

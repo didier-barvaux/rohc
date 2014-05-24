@@ -88,3 +88,5 @@ crc_table_7
 crc_table_8
 crc_get_polynom
 crc_init_table
+rohc_packet_is_feedback
+rohc_feedback_get_size

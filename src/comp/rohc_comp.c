@@ -53,6 +53,7 @@
 #include "crc.h"
 #include "protocols/udp.h"
 #include "protocols/ip_numbers.h"
+#include "feedback_parse.h"
 
 #include "config.h" /* for PACKAGE_(NAME|URL|VERSION) */
 
@@ -3339,6 +3340,8 @@ void c_deliver_feedback(struct rohc_comp *comp,
  * @param comp   The ROHC compressor
  * @param packet The feedback data
  * @param size   The length of the feedback packet
+ * @return       true if the feedback was successfully taken into account,
+ *               false if the feedback could not be taken into account
  *
  * @ingroup rohc_comp
  */
@@ -3352,19 +3355,28 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 	const uint8_t *p;
 	bool is_success = false;
 
-	/* sanity check */
-	if(packet == NULL || size <= 0)
-	{
-		goto error;
-	}
-	p = packet;
-
 	/* if decompressor is not associated with a compressor, we cannot deliver
 	 * feedback */
 	if(comp == NULL)
 	{
 		goto ignore;
 	}
+
+	/* sanity check */
+	if(packet == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to deliver feedback: packet is NULL");
+		goto error;
+	}
+	if(size <= 0)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to deliver feedback: size is %zu", size);
+		goto error;
+	}
+
+	p = packet;
 
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "deliver %zu byte(s) of feedback to the right context", size);
@@ -3465,6 +3477,106 @@ error:
 
 ignore:
 	return true;
+}
+
+
+/**
+ * @brief Deliver a feedback packet to the compressor
+ *
+ * When feedback is received by the decompressor, this function is called and
+ * delivers the feedback to the right profile/context of the compressor.
+ *
+ * @param comp      The ROHC compressor
+ * @param feedback  The feedback data
+ * @return          true if the feedback was successfully taken into account,
+ *                  false if the feedback could not be taken into account
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
+                                 const struct rohc_buf feedback)
+
+{
+	struct rohc_buf remain_data = feedback;
+	size_t feedbacks_nr = 0;
+	size_t nr_failures = 0;
+
+	/* sanity checks */
+	if(comp == NULL)
+	{
+		goto error;
+	}
+	if(rohc_buf_is_malformed(remain_data))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to deliver feedback: feedback is malformed");
+		goto error;
+	}
+
+	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+	           "deliver %zu byte(s) of feedback to the right context",
+	           remain_data.len);
+
+	/* there is nothing for compressor if feedback contains no byte at all */
+	if(rohc_buf_is_empty(remain_data))
+	{
+		goto ignore;
+	}
+
+	/* parse as much feedback data as possible */
+	while(remain_data.len > 0 &&
+	      rohc_packet_is_feedback(rohc_buf_byte(remain_data)))
+	{
+		size_t feedback_hdr_len;
+		size_t feedback_data_len;
+		size_t feedback_len;
+
+		feedbacks_nr++;
+
+		if(!rohc_feedback_get_size(remain_data, &feedback_hdr_len,
+		                              &feedback_data_len))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to parse a feedback item");
+			goto error;
+		}
+		feedback_len = feedback_hdr_len + feedback_data_len;
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "feedback found (header = %zu bytes, data = %zu bytes)",
+		           feedback_hdr_len, feedback_data_len);
+
+		/* reject feedback item if it doesn't fit in the available data */
+		if(feedback_len > remain_data.len)
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "the %zu-byte feedback is too large for the %zu-byte "
+			             "remaining ROHC data", feedback_len, remain_data.len);
+			goto error;
+		}
+
+		/* skip the feedback header */
+		rohc_buf_shift(&remain_data, feedback_hdr_len);
+
+		/* deliver the feedback data to the compressor */
+		if(!rohc_comp_deliver_feedback(comp, rohc_buf_data(remain_data),
+		                               feedback_data_len))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to deliver feedback item #%zu", feedbacks_nr);
+			nr_failures++;
+		}
+
+		/* skip the feedback data */
+		rohc_buf_shift(&remain_data, feedback_data_len);
+	}
+
+	return (nr_failures == 0);
+
+ignore:
+	return true;
+
+error:
+	return false;
 }
 
 

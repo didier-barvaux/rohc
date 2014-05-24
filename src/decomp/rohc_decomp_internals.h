@@ -88,6 +88,9 @@ struct rohc_decomp
 {
 	/** The compressor associated with the decompressor */
 	struct rohc_comp *compressor;
+	/** Whether to handle feedback delivery internally for compatibility with
+	 *  pre-1.7.0 versions */
+	bool do_auto_feedback_delivery;
 
 	/** The medium associated with the decompressor */
 	struct rohc_medium medium;

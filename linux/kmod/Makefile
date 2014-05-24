@@ -25,7 +25,8 @@ rohc_common_sources = \
 	../../src/common/ip.c \
 	../../src/common/net_pkt.c \
 	../../src/common/comp_list.c \
-	../../src/common/rohc_stats.c
+	../../src/common/rohc_stats.c \
+	../../src/common/feedback_parse.c
 
 rohc_comp_sources = \
 	../../src/comp/schemes/cid.c \
@@ -53,7 +54,7 @@ rohc_decomp_sources = \
 	../../src/decomp/schemes/rfc4996.c \
 	../../src/decomp/rohc_decomp_detect_packet.c \
 	../../src/decomp/rohc_decomp.c \
-	../../src/decomp/feedback.c \
+	../../src/decomp/feedback_create.c \
 	../../src/decomp/d_uncompressed.c \
 	../../src/decomp/d_generic.c \
 	../../src/decomp/d_ip.c \

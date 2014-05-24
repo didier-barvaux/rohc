@@ -47,6 +47,10 @@
 #define FAKE_PAYLOAD "hello, ROHC world!"
 
 
+/* dump the given network packet on standard output */
+static void dump_packet(const struct rohc_buf packet);
+
+
 /**
  * @brief The main entry point for the program
  *
@@ -59,14 +63,22 @@ int main(int argc, char **argv)
 //! [define ROHC decompressor]
 	struct rohc_decomp *decompressor;       /* the ROHC decompressor */
 //! [define ROHC decompressor]
+
 //! [define IP and ROHC packets]
 	/* the buffer that will contain the ROHC packet to decompress */
 	unsigned char rohc_buffer[BUFFER_SIZE];
 	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
+
 	/* the buffer that will contain the resulting IP packet */
 	unsigned char ip_buffer[BUFFER_SIZE];
 	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, BUFFER_SIZE);
+
+	/* the buffer that will contain the received feedback data */
+	unsigned char feedback_buffer[BUFFER_SIZE];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(feedback_buffer, BUFFER_SIZE);
 //! [define IP and ROHC packets]
+
 	size_t i;
 	int ret;
 
@@ -162,50 +174,45 @@ int main(int argc, char **argv)
 	/* Now, decompress this fake ROHC packet */
 	printf("\ndecompress the fake ROHC packet\n");
 //! [decompress ROHC packet #1]
-	ret = rohc_decompress3(decompressor, rohc_packet, &ip_packet);
+	ret = rohc_decompress3(decompressor, rohc_packet, &ip_packet, &rcvd_feedback);
 //! [decompress ROHC packet #1]
+	printf("\n");
 //! [decompress ROHC packet #2]
-	if(ret == ROHC_FEEDBACK_ONLY)
+	if(ret == ROHC_OK)
 	{
-		/* success: no decompressed IP data available in ip_packet because
-		 * the ROHC packet contained only feedback data */
-	}
-	else if(ret == ROHC_NON_FINAL_SEGMENT)
-	{
-		/* success: no decompressed IP data available in ip_packet because the
-		 * ROHC packet was a non-final segment (at least another segment is
-		 * required to be able to decompress the full ROHC packet) */
-	}
-	else if(ret == ROHC_OK)
-	{
-		/* success: ip_packet_len bytes of decompressed IP data available in
-		 * ip_packet */
-//! [decompress ROHC packet #2]
-		/* dump the ROHC packet on terminal (if any) */
-		printf("\nIP packet resulting from the ROHC decompression:\n");
-		for(i = 0; i < ip_packet.len; i++)
+		/* decompression is successful */
+		if(!rohc_buf_is_empty(ip_packet))
 		{
-			printf("0x%02x ", rohc_buf_byte_at(ip_packet, i));
-			if(i != 0 && ((i + 1) % 8) == 0)
-			{
-				printf("\n");
-			}
+			/* ip_packet.len bytes of decompressed IP data available in
+			 * ip_packet: dump the IP packet on the standard output */
+			printf("IP packet resulting from the ROHC decompression:\n");
+			dump_packet(ip_packet);
 		}
-		if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
+		else if(!rohc_buf_is_empty(rcvd_feedback))
 		{
-			printf("\n");
+			/* no IP packet was decompressed because of ROHC segmentation: the
+			 * ROHC packet was a non-final segment, so at least another ROHC
+			 * segment is required to be able to decompress the full ROHC
+			 * packet */
 		}
-//! [decompress ROHC packet #3]
+		else
+		{
+			/* no IP packet was decompressed because the ROHC packet was a
+			 * feedback-only packet: it contained only feedback information */
+			printf("no IP packet decompressed");
+			/* do something here with the rcvd_feedback.len bytes of feedback
+			 * information */
+		}
 	}
 	else
 	{
 		/* failure: decompressor failed to decompress the ROHC packet */
-//! [decompress ROHC packet #3]
 		fprintf(stderr, "decompression of fake ROHC packet failed\n");
+//! [decompress ROHC packet #2]
 		goto release_decompressor;
-//! [decompress ROHC packet #4]
+//! [decompress ROHC packet #3]
 	}
-//! [decompress ROHC packet #4]
+//! [decompress ROHC packet #3]
 
 
 	/* Release the ROHC decompressor when you do not need it anymore */
@@ -225,5 +232,29 @@ error:
 	fprintf(stderr, "an error occured during program execution, "
 	        "abort program\n");
 	return 1;
+}
+
+
+/**
+ * @brief Dump the given network packet on standard output
+ *
+ * @param packet  The packet to dump
+ */
+static void dump_packet(const struct rohc_buf packet)
+{
+	size_t i;
+
+	for(i = 0; i < packet.len; i++)
+	{
+		printf("0x%02x ", rohc_buf_byte_at(packet, i));
+		if(i != 0 && ((i + 1) % 8) == 0)
+		{
+			printf("\n");
+		}
+	}
+	if(i != 0 && ((i + 1) % 8) != 0) /* be sure to go to the line */
+	{
+		printf("\n");
+	}
 }
 

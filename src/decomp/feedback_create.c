@@ -1,5 +1,5 @@
 /*
- * Copyright 2010,2011,2012,2013 Didier Barvaux
+ * Copyright 2010,2011,2012,2013,2014 Didier Barvaux
  * Copyright 2007,2009,2010,2012,2013 Viveris Technologies
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,13 @@
  */
 
 /**
- * @file feedback.c
- * @brief ROHC feedback routines.
+ * @file   feedback_create.c
+ * @brief  Functions to create ROHC feedback
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#include "feedback.h"
+#include "feedback_create.h"
 #include "crc.h"
 #include "rohc_debug.h"
 #include "rohc_bit_ops.h"
@@ -47,68 +47,6 @@ static bool f_append_cid(struct d_feedback *const feedback,
                          const uint16_t cid,
                          const rohc_cid_type_t cid_type)
 	__attribute__((warn_unused_result, nonnull(1)));
-
-
-/**
- * @brief Find out the size of the feedback
- *
- * See 5.2.2 in the RFC 3095 for details.
- *
- * @param data The feedback header
- * @return     The size of the feedback
- */
-size_t rohc_decomp_feedback_size(const uint8_t *const data)
-{
-	uint8_t code;
-	size_t size;
-
-	/* extract the code field */
-	code = GET_BIT_0_2(data);
-
-	/* code:
-	 *  - 0 indicates that a size field is present just after the code field
-	 *  - 1-7 indicates the size of the feedback data field in octets. */
-	if(code != 0)
-	{
-		size = code;
-	}
-	else
-	{
-		/* extract the size octet */
-		size = GET_BIT_0_7(data + 1);
-	}
-
-	return size;
-}
-
-
-/**
- * @brief Find out the size of the feedback header
- *
- * See 5.2.2 in the RFC 3095 for details.
- *
- * @param data The feedback header
- * @return     The size of the feedback header (1 or 2 bytes)
- */
-size_t rohc_decomp_feedback_headersize(const uint8_t *const data)
-{
-	uint8_t code;
-	size_t size;
-
-	/* extract the code field */
-	code = GET_BIT_0_2(data);
-
-	if(code == 0)
-	{
-		size = 2; /* a size field is present */
-	}
-	else
-	{
-		size = 1; /* no size field is present */
-	}
-
-	return size;
-}
 
 
 /**

@@ -34,9 +34,6 @@
 /** The magic byte to find out whether a field is a padding field or not */
 #define D_PADDING        0xe0
 
-/** The magic bits to find out whether a ROHC packet is a feedback packet */
-#define D_FEEDBACK       (0xf0 >> 3)
-
 /** The magic bits to find out whether a ROHC packet is an IR packet or not */
 #define D_IR_PACKET      (0xfc >> 1)
 
@@ -65,18 +62,6 @@ bool rohc_decomp_packet_is_segment(const uint8_t *const data)
 bool rohc_decomp_packet_is_padding(const uint8_t *const data)
 {
 	return (GET_BIT_0_7(data) == D_PADDING);
-}
-
-
-/**
- * @brief Find out whether a ROHC packet is a Feedback packet or not
- *
- * @param data The ROHC packet to analyze
- * @return     Whether the ROHC packet is a Feedback packet or not
- */
-bool rohc_decomp_packet_is_feedback(const uint8_t *const data)
-{
-	return (GET_BIT_3_7(data) == D_FEEDBACK);
 }
 
 

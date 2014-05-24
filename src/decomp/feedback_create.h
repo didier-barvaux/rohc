@@ -1,5 +1,5 @@
 /*
- * Copyright 2011,2013 Didier Barvaux
+ * Copyright 2011,2013,2014 Didier Barvaux
  * Copyright 2007,2009,2010,2012 Viveris Technologies
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,16 +18,17 @@
  */
 
 /**
- * @file feedback.h
- * @brief ROHC feedback routines.
+ * @file   feedback_create.h
+ * @brief  Functions to create ROHC feedback
  * @author Didier Barvaux <didier.barvaux@toulouse.viveris.com>
  * @author Didier Barvaux <didier@barvaux.org>
  */
 
-#ifndef ROHC_DECOMP_FEEDBACK_H
-#define ROHC_DECOMP_FEEDBACK_H
+#ifndef ROHC_DECOMP_FEEDBACK_CREATE_H
+#define ROHC_DECOMP_FEEDBACK_CREATE_H
 
-#include "rohc.h"
+#include <rohc/rohc.h>
+#include <rohc/rohc_buf.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -97,11 +98,10 @@ struct d_feedback
  * Prototypes of public functions.
  */
 
-size_t ROHC_EXPORT rohc_decomp_feedback_size(const uint8_t *const data)
-	__attribute__((warn_unused_result, nonnull(1), pure));
-
-size_t ROHC_EXPORT rohc_decomp_feedback_headersize(const uint8_t *const data)
-	__attribute__((warn_unused_result, nonnull(1), pure));
+bool ROHC_EXPORT rohc_decomp_feedback_size(const struct rohc_buf rohc_data,
+                                           size_t *const feedback_hdr_len,
+                                           size_t *const feedback_data_len)
+	__attribute__((warn_unused_result, nonnull(2, 3)));
 
 void f_feedback1(const uint32_t sn, struct d_feedback *const feedback)
 	__attribute__((nonnull(2)));

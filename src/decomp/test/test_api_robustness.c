@@ -274,22 +274,27 @@ int main(int argc, char *argv[])
 			0x32, 0x33, 0x34, 0x35,  0x36, 0x37
 		};
 		struct rohc_buf pkt = rohc_buf_init_full(buf, sizeof(buf), ts);
-		CHECK(rohc_decompress3(NULL, pkt1, &pkt2) == ROHC_ERROR);
+		CHECK(rohc_decompress3(NULL, pkt1, &pkt2, NULL) == ROHC_ERROR);
+		CHECK(pkt2.len == 0);
 		pkt1.len = 0;
-		CHECK(rohc_decompress3(decomp, pkt1, &pkt2) == ROHC_ERROR);
+		CHECK(rohc_decompress3(decomp, pkt1, &pkt2, NULL) == ROHC_ERROR);
+		CHECK(pkt2.len == 0);
 		pkt1.len = 1;
-		CHECK(rohc_decompress3(decomp, pkt1, NULL) == ROHC_ERROR);
+		CHECK(rohc_decompress3(decomp, pkt1, NULL, NULL) == ROHC_ERROR);
+		CHECK(pkt2.len == 0);
 		for(size_t i = 0; i < (pkt.len - 2); i++)
 		{
 			pkt2.max_len = i;
 			pkt2.offset = 0;
 			pkt2.len = 0;
-			CHECK(rohc_decompress3(decomp, pkt, &pkt2) == ROHC_ERROR);
+			CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL) == ROHC_ERROR);
+			CHECK(pkt2.len == 0);
 		}
 		pkt2.max_len = pkt.len - 2;
 		pkt2.offset = 0;
 		pkt2.len = 0;
-		CHECK(rohc_decompress3(decomp, pkt, &pkt2) == ROHC_OK);
+		CHECK(rohc_decompress3(decomp, pkt, &pkt2, NULL) == ROHC_OK);
+		CHECK(pkt2.len > 0);
 	}
 
 	/* rohc_decomp_get_last_packet_info() */

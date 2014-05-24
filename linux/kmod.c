@@ -65,6 +65,8 @@ EXPORT_SYMBOL_GPL(rohc_comp_force_contexts_reinit);
 EXPORT_SYMBOL_GPL(rohc_comp_get_segment);
 
 /* feedback */
+EXPORT_SYMBOL_GPL(rohc_comp_deliver_feedback);
+EXPORT_SYMBOL_GPL(rohc_comp_deliver_feedback2);
 EXPORT_SYMBOL_GPL(rohc_feedback_flush);
 EXPORT_SYMBOL_GPL(rohc_comp_piggyback_feedback);
 EXPORT_SYMBOL_GPL(rohc_feedback_remove_locked);

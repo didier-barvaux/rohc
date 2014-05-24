@@ -44,7 +44,8 @@
 #include "rohc_utils.h"
 #include "rohc_bit_ops.h"
 #include "rohc_debug.h"
-#include "feedback.h"
+#include "feedback_create.h"
+#include "feedback_parse.h"
 #include "sdvl.h"
 #include "rohc_add_cid.h"
 #include "rohc_decomp_detect_packet.h"
@@ -122,9 +123,10 @@ static bool rohc_decomp_create_contexts(struct rohc_decomp *const decomp,
 static int d_decode_header(struct rohc_decomp *decomp,
                            const struct rohc_buf rohc_packet,
                            struct rohc_buf *const uncomp_packet,
+                           struct rohc_buf *const rcvd_feedback,
                            struct d_decode_data *ddata,
                            rohc_packet_t *const packet_type)
-	__attribute__((nonnull(1, 3, 4, 5), warn_unused_result));
+	__attribute__((nonnull(1, 3, 5, 6), warn_unused_result));
 
 static const struct rohc_decomp_profile *
 	find_profile(const struct rohc_decomp *const decomp,
@@ -168,15 +170,14 @@ static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
 	__attribute__((nonnull(1, 2)));
 
 /* feedback-related functions */
-static int d_decode_feedback_first(struct rohc_decomp *decomp,
-                                   const unsigned char *packet,
-                                   unsigned int size,
-                                   unsigned int *parsed_size);
-static int d_decode_feedback(struct rohc_decomp *const decomp,
-                             const unsigned char *const packet,
-                             const size_t len,
-                             size_t *const feedback_size)
-	__attribute__((warn_unused_result, nonnull(1, 2, 4)));
+static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
+                                        struct rohc_buf *const rohc_data,
+                                        struct rohc_buf *const feedbacks)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
+static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
+                                       struct rohc_buf *const rohc_data,
+                                       struct rohc_buf *const feedback)
+	__attribute__((warn_unused_result, nonnull(1, 2)));
 static void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                       int rohc_status,
                                       const uint16_t cid,
@@ -683,6 +684,7 @@ struct rohc_decomp * rohc_decomp_new(const rohc_cid_type_t cid_type,
 	/* no associated ROHC compressor by default, ie. no feedback channel by
 	 * default */
 	decomp->compressor = comp;
+	decomp->do_auto_feedback_delivery = false;
 
 	/* initialize the array of decompression contexts to its minimal value */
 	decomp->contexts = NULL;
@@ -850,13 +852,44 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	const struct rohc_buf __rohc_packet =
 		rohc_buf_init_full(ibuf, isize, arrival_time);
 	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
+	const size_t feedback_max_len = 100;
+	uint8_t feedback_data[feedback_max_len];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(feedback_data, feedback_max_len);
 	int code;
 
-	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet);
+	if(decomp == NULL)
+	{
+		return ROHC_ERROR;
+	}
+
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "use compatibility mode for rohc_decompress()");
+	decomp->do_auto_feedback_delivery = true;
+
+	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
+	                        &rcvd_feedback);
 	if(code == ROHC_OK)
 	{
 		/* decompression succeeded */
-		code = __uncomp_packet.len;
+		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "ROHC_OK + empty packet + non-empty RRU buffer "
+			           "=> ROHC_NON_FINAL_SEGMENT");
+			code = ROHC_NON_FINAL_SEGMENT;
+		}
+		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "ROHC_OK + empty packet + non-empty received feedback "
+			           "=> ROHC_FEEDBACK_ONLY");
+			code = ROHC_FEEDBACK_ONLY;
+		}
+		else
+		{
+			code = __uncomp_packet.len;
+		}
 	}
 
 	return code;
@@ -928,18 +961,27 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	ret = rohc_decompress2(decompressor, arrival_time,
 	                       rohc_packet, rohc_packet_len,
 	                       ip_packet, BUFFER_SIZE, &ip_packet_len);
-\endcode
- * \snippet example_rohc_decomp.c decompress ROHC packet #2
- * \code
-		...
-\endcode
- * \snippet example_rohc_decomp.c decompress ROHC packet #3
- * \code
-		...
-\endcode
- * \snippet example_rohc_decomp.c decompress ROHC packet #4
- * \code
-	...
+	if(ret == ROHC_FEEDBACK_ONLY)
+	{
+		// success: no decompressed IP data available in ip_packet because
+		// the ROHC packet contained only feedback data
+	}
+	else if(ret == ROHC_NON_FINAL_SEGMENT)
+	{
+		// success: no decompressed IP data available in ip_packet because the
+		// ROHC packet was a non-final segment (at least another segment is
+		// required to be able to decompress the full ROHC packet)
+	}
+	else if(ret == ROHC_OK)
+	{
+		// success: ip_packet_len bytes of decompressed IP data available in
+		// ip_packet
+	}
+	else
+	{
+		// failure: decompressor failed to decompress the ROHC packet
+		fprintf(stderr, "decompression of fake ROHC packet failed\n");
+	}
 \endcode
  *
  * @see rohc_decomp_set_mrru
@@ -957,19 +999,41 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 		                   arrival_time);
 	struct rohc_buf __uncomp_packet =
 		rohc_buf_init_empty(uncomp_packet, uncomp_packet_max_len);
+	const size_t feedback_max_len = 100;
+	uint8_t feedback_data[feedback_max_len];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(feedback_data, feedback_max_len);
 	int code;
 
-	if(uncomp_packet_len == NULL)
+	if(decomp == NULL || uncomp_packet_len == NULL)
 	{
 		return ROHC_ERROR;
 	}
 
-	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet);
-	if(code == ROHC_OK ||
-	   code == ROHC_FEEDBACK_ONLY ||
-	   code == ROHC_NON_FINAL_SEGMENT)
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "use compatibility mode for rohc_decompress2()");
+	decomp->do_auto_feedback_delivery = true;
+
+	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
+	                        &rcvd_feedback);
+	if(code == ROHC_OK)
 	{
 		*uncomp_packet_len = __uncomp_packet.len;
+
+		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "ROHC_OK + empty packet + non-empty RRU buffer "
+			           "=> ROHC_NON_FINAL_SEGMENT");
+			code = ROHC_NON_FINAL_SEGMENT;
+		}
+		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "ROHC_OK + empty packet + non-empty received feedback "
+			           "=> ROHC_FEEDBACK_ONLY");
+			code = ROHC_FEEDBACK_ONLY;
+		}
 	}
 
 	return code;
@@ -980,41 +1044,41 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  * @brief Decompress the given ROHC packet into one uncompressed packet
  *
  * Decompress the given ROHC packet into an uncompressed packet. The
- * decompression may succeed into three different ways:
- *  \li return \ref ROHC_OK and a decompressed IP packet,
- *  \li return \ref ROHC_FEEDBACK_ONLY and no decompressed IP packet if the
- *      ROHC packet contains only feedback information,
- *  \li return \ref ROHC_NON_FINAL_SEGMENT and no decompressed IP packet if
- *      the ROHC packet is a non-final ROHC segment, ie. the ROHC packet is
- *      not the last segment of a larger, segmented ROHC packet.
+ * decompression always returns ROHC_OK in case of success. The caller shall
+ * however be ready to handle several cases:
+ *  \li the uncompressed packet \e uncomp_packet might be empty if the ROHC
+ *      packet contained only feedback data or if the ROHC packet was not a
+ *      final segment
+ *  \li the received feedback \e rcvd_feedback might be empty if the ROHC
+ *      packet doesn't contain at least one feedback item
  *
  * \par Time-related features in the ROHC protocol:
  * Set the \e rohc_packet.time parameter to 0 if arrival time of the ROHC
  * packet is unknown or to disable the time-related features in the ROHC
  * protocol.
  *
- * @param decomp                  The ROHC decompressor
- * @param rohc_packet             The compressed packet to decompress
- * @param[out] uncomp_packet      The resulting uncompressed packet
- * @return                        Possible return values:
- *                                \li \ref ROHC_OK if a decompressed packet is
- *                                    returned
- *                                \li \ref ROHC_FEEDBACK_ONLY if the ROHC
- *                                    packet contains only feedback data
- *                                \li \ref ROHC_NON_FINAL_SEGMENT if the given
- *                                    ROHC packet is a partial segment of a
- *                                    larger ROHC packet
- *                                \li \ref ROHC_ERROR_NO_CONTEXT if no
- *                                    decompression context matches the CID
- *                                    stored in the given ROHC packet and the
- *                                    ROHC packet is not an IR packet
- *                                \li \ref ROHC_ERROR_PACKET_FAILED if the
- *                                    decompression failed because the ROHC
- *                                    packet is unexpected and/or malformed
- *                                \li \ref ROHC_ERROR_CRC if the CRC detected
- *                                    a transmission or decompression problem
- *                                \li \ref ROHC_ERROR if another problem
- *                                    occurred
+ * @param decomp              The ROHC decompressor
+ * @param rohc_packet         The compressed packet to decompress
+ * @param[out] uncomp_packet  The resulting uncompressed packet
+ * @param[out] rcvd_feedback  The feedback received from the remote peer for
+ *                            the same-side associated ROHC compressor through
+ *                            the feedback channel:
+ *                            \li If NULL, ignore the received feedback data
+ *                            \li If not NULL, store the received feedback in
+ *                                at the given address
+ * @return                    Possible return values:
+ *                            \li \ref ROHC_OK if a decompressed packet is
+ *                                returned
+ *                            \li \ref ROHC_ERROR_NO_CONTEXT if no
+ *                                 decompression context matches the CID
+ *                                 stored in the given ROHC packet and the
+ *                                 ROHC packet is not an IR packet
+ *                            \li \ref ROHC_ERROR_PACKET_FAILED if the
+ *                                decompression failed because the ROHC packet
+ *                                is unexpected and/or malformed
+ *                            \li \ref ROHC_ERROR_CRC if the CRC detected
+ *                                a transmission or decompression problem
+ *                            \li \ref ROHC_ERROR if another problem occurred
  *
  * @ingroup rohc_decomp
  *
@@ -1026,23 +1090,14 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 \endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #1
  * \snippet example_rohc_decomp.c decompress ROHC packet #2
- * \code
-		...
-\endcode
  * \snippet example_rohc_decomp.c decompress ROHC packet #3
- * \code
-		...
-\endcode
- * \snippet example_rohc_decomp.c decompress ROHC packet #4
- * \code
-	...
-\endcode
  *
  * @see rohc_decomp_set_mrru
  */
 int rohc_decompress3(struct rohc_decomp *const decomp,
                      const struct rohc_buf rohc_packet,
-                     struct rohc_buf *const uncomp_packet)
+                     struct rohc_buf *const uncomp_packet,
+                     struct rohc_buf *const rcvd_feedback)
 {
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
 	rohc_packet_t packet_type;
@@ -1083,6 +1138,21 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 		             "given uncomp_packet is not empty");
 		goto error;
 	}
+	if(rcvd_feedback != NULL)
+	{
+		if(rohc_buf_is_malformed(*rcvd_feedback))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "given rcvd_feedback is malformed");
+			goto error;
+		}
+		if(!rohc_buf_is_empty(*rcvd_feedback))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "given rcvd_feedback is not empty");
+			goto error;
+		}
+	}
 
 	decomp->stats.received++;
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -1096,7 +1166,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 #endif
 
 	/* decode ROHC header */
-	status = d_decode_header(decomp, rohc_packet, uncomp_packet,
+	status = d_decode_header(decomp, rohc_packet, uncomp_packet, rcvd_feedback,
 	                         &ddata, &packet_type);
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 	           "d_decode_header returned code %d", status);
@@ -1166,27 +1236,6 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 			break;
 		}
 
-		case ROHC_FEEDBACK_ONLY:
-		{
-			assert(ddata.active == NULL);
-
-			/* no feedback to send at all */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "packet contains only feedback data, no compressed data");
-			break;
-		}
-
-		case ROHC_NON_FINAL_SEGMENT:
-		{
-			assert(ddata.active == NULL);
-
-			/* no feedback to send at all */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "packet contains a non-final segment, no data to "
-			           "decompress yet");
-			break;
-		}
-
 		case ROHC_ERROR_CRC:
 		{
 			/* active context may be NULL if IR packet created a new context then
@@ -1224,44 +1273,47 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 
 		case ROHC_OK:
 		{
-			assert(ddata.active != NULL);
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "packet decompression succeeded");
 
 			/* update statistics */
-			ddata.active->num_recv_packets++;
-			ddata.active->packet_type = packet_type;
-			ddata.active->total_uncompressed_size += uncomp_packet->len;
-			ddata.active->total_compressed_size += rohc_packet.len;
-			decomp->stats.total_uncompressed_size += uncomp_packet->len;
-			decomp->stats.total_compressed_size += rohc_packet.len;
+			if(uncomp_packet->len > 0)
+			{
+				assert(ddata.active != NULL);
+				ddata.active->num_recv_packets++;
+				ddata.active->packet_type = packet_type;
+				ddata.active->total_uncompressed_size += uncomp_packet->len;
+				ddata.active->total_compressed_size += rohc_packet.len;
+				decomp->stats.total_uncompressed_size += uncomp_packet->len;
+				decomp->stats.total_compressed_size += rohc_packet.len;
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-			rohc_stats_add(&ddata.active->total_16_uncompressed, uncomp_packet->len);
-			rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet.len);
+				rohc_stats_add(&ddata.active->total_16_uncompressed, uncomp_packet->len);
+				rohc_stats_add(&ddata.active->total_16_compressed, rohc_packet.len);
 #endif
 
-			/* feedback rate-limiting */
-			decomp->curval -= decomp->okval; /* framework (S-NACK) */
-			ddata.active->curval -= decomp->okval; /* context (NACK) */
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "feedback curr %d", ddata.active->curval);
-			if(decomp->curval < 0)
-			{
-				decomp->curval = 0;
-			}
-			if(ddata.active->curval < 0)
-			{
-				ddata.active->curval = 0;
-			}
-			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			           "feedback curr %d", ddata.active->curval);
-			if(decomp->compressor != NULL && ddata.active->mode == ROHC_U_MODE)
-			{
-				/* switch active context to O-mode */
-				ddata.active->mode = ROHC_O_MODE;
-				d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
-				                          decomp->medium.cid_type,
-				                          ddata.active->mode, ddata.active);
+				/* feedback rate-limiting */
+				decomp->curval -= decomp->okval; /* framework (S-NACK) */
+				ddata.active->curval -= decomp->okval; /* context (NACK) */
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				           "feedback curr %d", ddata.active->curval);
+				if(decomp->curval < 0)
+				{
+					decomp->curval = 0;
+				}
+				if(ddata.active->curval < 0)
+				{
+					ddata.active->curval = 0;
+				}
+				rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				           "feedback curr %d", ddata.active->curval);
+				if(decomp->compressor != NULL && ddata.active->mode == ROHC_U_MODE)
+				{
+					/* switch active context to O-mode */
+					ddata.active->mode = ROHC_O_MODE;
+					d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
+					                          decomp->medium.cid_type,
+					                          ddata.active->mode, ddata.active);
+				}
 			}
 			break;
 		}
@@ -1305,8 +1357,21 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	const struct rohc_buf __rohc_packet =
 		rohc_buf_init_full(ibuf, isize, arrival_time);
 	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
+	const size_t feedback_max_len = 100;
+	uint8_t feedback_data[feedback_max_len];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(feedback_data, feedback_max_len);
 	bool is_ok;
 	int code;
+
+	if(decomp == NULL)
+	{
+		return ROHC_ERROR;
+	}
+
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "use compatibility mode for rohc_decompress_both()");
+	decomp->do_auto_feedback_delivery = true;
 
 	/* change CID type on the fly */
 	is_ok = __rohc_decomp_set_cid_type(decomp, large ? ROHC_LARGE_CID :
@@ -1317,11 +1382,29 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	}
 
 	/* decompress the packet with the new CID type */
-	code = rohc_decompress3(decomp,  __rohc_packet, &__uncomp_packet);
+	code = rohc_decompress3(decomp,  __rohc_packet, &__uncomp_packet,
+	                        &rcvd_feedback);
 	if(code == ROHC_OK)
 	{
 		/* decompression succeeded */
-		code = __uncomp_packet.len;
+		if(__uncomp_packet.len == 0 && decomp->rru_len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "ROHC_OK + empty packet + non-empty RRU buffer "
+			           "=> ROHC_NON_FINAL_SEGMENT");
+			code = ROHC_NON_FINAL_SEGMENT;
+		}
+		else if(__uncomp_packet.len == 0 && rcvd_feedback.len > 0)
+		{
+			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			           "ROHC_OK + empty packet + non-empty received feedback "
+			           "=> ROHC_FEEDBACK_ONLY");
+			code = ROHC_FEEDBACK_ONLY;
+		}
+		else
+		{
+			code = __uncomp_packet.len;
+		}
 	}
 
 	return code;
@@ -1336,6 +1419,12 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
  * @param decomp              The ROHC decompressor
  * @param rohc_packet         The ROHC packet to decode
  * @param[out] uncomp_packet  The uncompressed packet
+ * @param[out] rcvd_feedback  The feedback received from the remote peer for
+ *                            the same-side associated ROHC compressor through
+ *                            the feedback channel:
+ *                            \li If NULL, ignore the received feedback data
+ *                            \li If not NULL, store the received feedback in
+ *                                at the given address
  * @param[out] ddata          Decompression-related data (e.g. the context)
  * @param[out] packet_type    The type of the decompressed ROHC packet
  * @return                    ROHC_OK if packet is successfully decoded,
@@ -1352,6 +1441,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 static int d_decode_header(struct rohc_decomp *decomp,
                            const struct rohc_buf rohc_packet,
                            struct rohc_buf *const uncomp_packet,
+                           struct rohc_buf *const rcvd_feedback,
                            struct d_decode_data *ddata,
                            rohc_packet_t *const packet_type)
 {
@@ -1360,7 +1450,6 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	const uint8_t *walk = rohc_buf_data(rohc_packet);
 	size_t remain_len = rohc_packet.len;
 	struct rohc_buf remain_rohc_data = rohc_packet;
-	unsigned int feedback_size;
 	int status;
 
 	assert(decomp != NULL);
@@ -1377,38 +1466,39 @@ static int d_decode_header(struct rohc_decomp *decomp,
 
 	/* skip padding bits if some are present */
 	rohc_decomp_parse_padding(decomp, &remain_rohc_data);
-	walk = rohc_buf_data(remain_rohc_data);
-	remain_len = remain_rohc_data.len;
 
 	/* padding-only packets are not allowed according to RFC 3095, §5.2:
 	 *   Padding is any number (zero or more) of padding octets.  Either of
 	 *   Feedback or Header must be present. */
-	if(remain_len == 0)
+	if(remain_rohc_data.len == 0)
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		           "padding-only packet are not allowed");
+		           "padding-only packet is not allowed");
 		goto error_malformed;
 	}
 
-	/* decode feedback if present */
-	status = d_decode_feedback_first(decomp, walk, remain_len, &feedback_size);
-	if(status != ROHC_OK)
+	/* extract feedback items if present */
+	if(!rohc_decomp_parse_feedbacks(decomp, &remain_rohc_data, rcvd_feedback))
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "failed to decode feedback at the beginning of the packet");
-		goto error;
+		             "failed to decode feedback items at the beginning of the "
+		             "ROHC packet");
+		goto error_malformed;
 	}
-	assert(feedback_size <= remain_len);
-	walk += feedback_size;
-	remain_len -= feedback_size;
-	rohc_buf_shift(&remain_rohc_data, feedback_size);
+	if(rcvd_feedback != NULL)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "decompressor received %zu bytes of feedback for the "
+		           "same-side associated compressor", rcvd_feedback->len);
+	}
+	walk = rohc_buf_data(remain_rohc_data);
+	remain_len = remain_rohc_data.len;
 
 	/* is there some data after feedback? */
-	if(remain_len == 0)
+	if(remain_rohc_data.len == 0)
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "feedback-only packet, stop decompression");
-		status = ROHC_FEEDBACK_ONLY;
 		goto skip;
 	}
 
@@ -1451,7 +1541,6 @@ static int d_decode_header(struct rohc_decomp *decomp,
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "%zd bytes of RRU already received, wait for more "
 			           "segments before decompressing RRU", decomp->rru_len);
-			status = ROHC_NON_FINAL_SEGMENT;
 			goto skip;
 		}
 
@@ -1704,9 +1793,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	status = profile->decode(decomp, ddata->active, remain_rohc_data,
 	                         ddata->addcidUsed, ddata->large_cid_size,
 	                         uncomp_packet, packet_type);
-	if(status != ROHC_OK &&
-	   status != ROHC_FEEDBACK_ONLY &&
-	   status != ROHC_NON_FINAL_SEGMENT)
+	if(status != ROHC_OK)
 	{
 		/* decompression failed, free ressources if necessary */
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, profile->id,
@@ -1732,7 +1819,10 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	}
 
 skip:
+	return ROHC_OK;
+
 error:
+	decomp->last_context = NULL;
 	return status;
 
 error_crc:
@@ -2724,9 +2814,9 @@ error:
  * on the channel. Every received segment will be dropped.
  *
  * If segmentation is enabled and used by the compressor, the function
- * \ref rohc_decompress3 will return \ref ROHC_NON_FINAL_SEGMENT as status
- * code (and no decompressed data) until the final ROHC segment is received
- * (decompressed data will be returned at that time).
+ * \ref rohc_decompress3 will return ROHC_OK and one empty uncompressed packet
+ * upon decompression until the last segment is received (or a non-segment is
+ * received). Decompressed data will be returned at that time.
  *
  * @warning Changing the MRRU value while library is used may lead to
  *          destruction of the current RRU.
@@ -2750,7 +2840,6 @@ error:
  *
  * @see rohc_decomp_get_mrru
  * @see rohc_decompress3
- * @see ROHC_NON_FINAL_SEGMENT
  * @see rohc_comp_set_mrru
  * @see rohc_comp_get_mrru
  */
@@ -2801,8 +2890,9 @@ error:
  * If MRRU value is 0, segmentation is disabled.
  *
  * If segmentation is enabled and used by the compressor, the function
- * \ref rohc_decompress3 will return ROHC_NON_FINAL_SEGMENT upon decompression
- * until the last segment is received (or a non-segment is received).
+ * \ref rohc_decompress3 will return ROHC_OK and one empty uncompressed packet
+ * upon decompression until the last segment is received (or a non-segment is
+ * received). Decompressed data will be returned at that time.
  *
  * @param decomp     The ROHC decompressor
  * @param[out] mrru  The current MRRU value (in bytes)
@@ -2812,7 +2902,6 @@ error:
  *
  * @see rohc_decomp_set_mrru
  * @see rohc_decompress3
- * @see ROHC_NON_FINAL_SEGMENT
  * @see rohc_comp_set_mrru
  * @see rohc_comp_get_mrru
  */
@@ -3409,117 +3498,137 @@ static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
 
 
 /**
- * @brief Decode zero or more feedback packets if present
+ * @brief Parse zero or more feedback items from the given ROHC data
  *
- * @param decomp       The ROHC decompressor
- * @param packet       The ROHC packet to decompress
- * @param size         The size of the ROHC packet
- * @param parsed_size  OUT: The size (in bytes) of the padding and feedback
- *                          parsed in case of success, undefined otherwise
- * @return             ROHC_OK in case of success, ROHC_ERROR in case of failure
+ * @param decomp              The ROHC decompressor
+ * @param rohc_data           The ROHC data to parse for feedback items
+ * @param[out] feedbacks      The parsed feedback items, may be NULL if one
+ *                            don't want to retrieve the feedback items
+ * @return                    true if parsing of feedback items is successful,
+ *                            false if at least one feedback is malformed
  */
-static int d_decode_feedback_first(struct rohc_decomp *decomp,
-                                   const unsigned char *packet,
-                                   unsigned int size,
-                                   unsigned int *parsed_size)
+static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
+                                        struct rohc_buf *const rohc_data,
+                                        struct rohc_buf *const feedbacks)
 {
-	/* nothing parsed for the moment */
-	*parsed_size = 0;
+	size_t feedbacks_nr = 0;
+	size_t feedbacks_len = 0;
+
+	/* no feedback parsed for the moment */
+	assert(feedbacks == NULL || rohc_buf_is_empty(*feedbacks));
 
 	/* parse as much feedback data as possible */
-	while(size > 0 && rohc_decomp_packet_is_feedback(packet))
+	while(rohc_data->len > 0 &&
+	      rohc_packet_is_feedback(rohc_buf_byte(*rohc_data)))
 	{
-		size_t feedback_size;
-		int ret;
+		feedbacks_nr++;
 
 		/* decode one feedback packet */
-		ret = d_decode_feedback(decomp, packet, size, &feedback_size);
-		if(ret != ROHC_OK)
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "parse feedback item #%zu at offset %zu in ROHC packet",
+		           feedbacks_nr, feedbacks_len);
+		if(!rohc_decomp_parse_feedback(decomp, rohc_data, feedbacks))
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "failed to decode feedback in packet");
+			             "failed to parse feedback item #%zu at offset %zu in "
+			             "ROHC packet", feedbacks_nr, feedbacks_len);
 			goto error;
 		}
-		packet += feedback_size;
-		size -= feedback_size;
-		(*parsed_size) += feedback_size;
+
+		/* shift forward the beginning of the buffer to get the next feedback */
+		if(feedbacks != NULL)
+		{
+			feedbacks_len += feedbacks->len;
+			rohc_buf_shift(feedbacks, feedbacks->len);
+		}
 	}
 
-	return ROHC_OK;
+	/* shift backward the beginning of the buffer to unhide all feedbacks */
+	if(feedbacks != NULL)
+	{
+		rohc_buf_shift(feedbacks, -(feedbacks_len));
+	}
+
+	return true;
 
 error:
-	return ROHC_ERROR;
+	return false;
 }
 
 
 /**
- * @brief Decode the feedback packet and deliver it to the associated compressor
+ * @brief Parse a feedback item from the given ROHC data
  *
  * @param decomp         The ROHC decompressor
- * @param packet         The ROHC packet starting with feedback info
- * @param len            The length of the ROHC packet
- * @param feedback_size  OUT: The feedback size (including the feedback header)
- *                            in case of success, undefined otherwise
- * @return               ROHC_OK in case of success, ROHC_ERROR in case of failure
+ * @param rohc_data      The ROHC data to parse for one feedback item
+ * @param[out] feedback  The retrieved feedback (header and data included),
+ *                       may be NULL if one don't want to retrieve the
+ *                       feedback item
+ * @return               true if feedback parsing was successful,
+ *                       false if feedback is malformed
  */
-static int d_decode_feedback(struct rohc_decomp *const decomp,
-                             const unsigned char *const packet,
-                             const size_t len,
-                             size_t *const feedback_size)
+static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
+                                       struct rohc_buf *const rohc_data,
+                                       struct rohc_buf *const feedback)
 {
-	size_t header_size;
-	size_t data_size;
+	size_t feedback_hdr_len;
+	size_t feedback_data_len;
+	size_t feedback_len;
 	bool is_ok;
 
-	/* feedback info is at least 2 byte with the header */
-	if(len < 2)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "packet too short to contain feedback");
-		goto error;
-	}
-
-	/* extract the size of the feedback */
-	data_size = rohc_decomp_feedback_size(packet);
-	if(data_size > len)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "packet too short to contain one %zu-byte feedback "
-		             "(feedback header not included)", data_size);
-		goto error;
-	}
-
-	/* extract the size of the feedback header */
-	header_size = rohc_decomp_feedback_headersize(packet);
-	if((header_size + data_size) > len)
-	{
-		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "packet too short to contain one %zu-byte feedback "
-		             "(feedback header included)", header_size + data_size);
-		goto error;
-	}
-
-	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "feedback present (header = %zu bytes, data = %zu bytes)",
-	           header_size, data_size);
-
-	/* deliver the feedback data to the associated compressor */
-	is_ok = rohc_comp_deliver_feedback(decomp->compressor,
-	                                   packet + header_size, data_size);
+	/* compute the length of the feedback item */
+	is_ok = rohc_feedback_get_size(*rohc_data, &feedback_hdr_len,
+	                               &feedback_data_len);
 	if(!is_ok)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-		             "failed to deliver feedback to associated compressor");
-		/* not a fatal error */
+		             "failed to parse a feedback item");
+		goto error;
+	}
+	feedback_len = feedback_hdr_len + feedback_data_len;
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "feedback found (header = %zu bytes, data = %zu bytes)",
+	           feedback_hdr_len, feedback_data_len);
+
+	/* reject feedback item if it doesn't fit in the available ROHC data */
+	if(feedback_len > rohc_data->len)
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "the %zu-byte feedback is too large for the %zu-byte "
+		             "remaining ROHC data", feedback_len, rohc_data->len);
+		goto error;
 	}
 
-	/* return the total size to caller */
-	*feedback_size = header_size + data_size;
+	if(decomp->do_auto_feedback_delivery)
+	{
+		/* automatically deliver the feedback data to the associated compressor
+		 * to keep the same behavior as before 1.7.0 version */
+		is_ok = rohc_comp_deliver_feedback(decomp->compressor,
+		                                   rohc_buf_data_at(*rohc_data, feedback_hdr_len),
+		                                   feedback_data_len);
+		if(!is_ok)
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "failed to deliver feedback to associated compressor");
+			/* not a fatal error */
+		}
+	}
 
-	return ROHC_OK;
+	/* copy the feedback item in order to return it user if he/she asked for */
+	if(feedback != NULL)
+	{
+		memcpy(rohc_buf_data(*feedback), rohc_buf_data(*rohc_data),
+		       feedback_len);
+		feedback->len += feedback_len;
+	}
+
+	/* skip the feedback item in the ROHC packet */
+	rohc_buf_shift(rohc_data, feedback_len);
+
+	return true;
 
 error:
-	return ROHC_ERROR;
+	return false;
 }
 
 

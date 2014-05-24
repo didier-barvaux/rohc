@@ -19,7 +19,7 @@ lib_LTLIBRARIES = librohc_decomp.la
 librohc_decomp_la_SOURCES = \
 	rohc_decomp_detect_packet.c \
 	rohc_decomp.c \
-	feedback.c \
+	feedback_create.c \
 	d_uncompressed.c \
 	d_generic.c \
 	d_ip.c \
@@ -65,7 +65,7 @@ pkginclude_HEADERS = rohc_decomp.h
 noinst_HEADERS = \
 	rohc_decomp_internals.h \
 	rohc_decomp_detect_packet.h \
-	feedback.h \
+	feedback_create.h \
 	d_generic.h \
 	d_ip.h \
 	d_udp.h
