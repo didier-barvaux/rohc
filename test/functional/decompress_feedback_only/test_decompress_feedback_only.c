@@ -19,10 +19,10 @@
 
 /**
  * @file   test_decompress_feedback_only.c
- * @brief  Check that FEEDBACK-2 packets are generated as expected
+ * @brief  Check that decompression of ROHC feedback-only packets is fine
  * @author Didier Barvaux <didier@barvaux.org>
  *
- * The application decompresses ROHC feedback-only packets successfully.
+ * The application shall decompress ROHC feedback-only packets successfully.
  */
 
 #include "test.h"
