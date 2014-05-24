@@ -1166,9 +1166,6 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 		{
 			assert(ddata.active == NULL);
 
-			/* update statistics */
-			decomp->stats.feedbacks++;
-
 			/* no feedback to send at all */
 			rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			           "packet contains only feedback data, no compressed data");
@@ -2071,7 +2068,6 @@ static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
 	decomp->stats.failed_crc = 0;
 	decomp->stats.failed_no_context = 0;
 	decomp->stats.failed_decomp = 0;
-	decomp->stats.feedbacks = 0;
 	decomp->stats.total_compressed_size = 0;
 	decomp->stats.total_uncompressed_size = 0;
 }

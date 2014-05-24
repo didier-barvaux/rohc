@@ -73,8 +73,6 @@ struct d_statistics
 	unsigned long failed_no_context;
 	/* The number of bad decompressions */
 	unsigned long failed_decomp;
-	/* The number of feedback packets sent to the associated compressor */
-	unsigned long feedbacks;
 
 	/** The cumulative size of the compressed packets */
 	unsigned long total_compressed_size;
