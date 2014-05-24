@@ -20,7 +20,7 @@ echo "done." >&2
 
 # generate one HTML report from the collected data
 echo -n "Generate HTML report about code coverage... " >&2
-LANG=C LC_ALL=C zcov-genhtml output.zcov coverage-report/ || exit 1
+LANG=C LC_ALL=C zcov-genhtml --root="${PWD}" output.zcov coverage-report/ || exit 1
 echo "done." >&2
 
 echo "" >&2
