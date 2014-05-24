@@ -69,6 +69,8 @@ test_*.sh.trs
 ./test/functional/feedback2/test_feedback2.exe
 ./test/functional/feedback_ring/test_feedback_ring
 ./test/functional/feedback_ring/test_feedback_ring.exe
+./test/functional/decompress_padding/test_decompress_padding
+./test/functional/decompress_padding/test_decompress_padding.exe
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only
 ./test/functional/decompress_feedback_only/test_decompress_feedback_only.exe
 ./test/functional/context_reuse/test_context_reuse

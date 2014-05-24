@@ -163,6 +163,10 @@ static bool __rohc_decomp_set_max_cid(struct rohc_decomp *const decomp,
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
+static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
+                                      struct rohc_buf *const packet)
+	__attribute__((nonnull(1, 2)));
+
 /* feedback-related functions */
 static int d_decode_feedback_first(struct rohc_decomp *decomp,
                                    const unsigned char *packet,
@@ -1368,6 +1372,21 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet too small (len = %zu, at least 1 byte "
 		             "required)", remain_len);
+		goto error_malformed;
+	}
+
+	/* skip padding bits if some are present */
+	rohc_decomp_parse_padding(decomp, &remain_rohc_data);
+	walk = rohc_buf_data(remain_rohc_data);
+	remain_len = remain_rohc_data.len;
+
+	/* padding-only packets are not allowed according to RFC 3095, §5.2:
+	 *   Padding is any number (zero or more) of padding octets.  Either of
+	 *   Feedback or Header must be present. */
+	if(remain_len == 0)
+	{
+		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		           "padding-only packet are not allowed");
 		goto error_malformed;
 	}
 
@@ -3367,6 +3386,29 @@ error:
 
 
 /**
+ * @brief Parse padding bits if some are present
+ *
+ * @param decomp       The ROHC decompressor
+ * @param packet       The ROHC packet to parse
+ */
+static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
+                                      struct rohc_buf *const packet)
+{
+	size_t padding_length = 0;
+
+	/* remove all padded bytes */
+	while(packet->len > 0 &&
+	      rohc_decomp_packet_is_padding(rohc_buf_data(*packet)))
+	{
+		rohc_buf_shift(packet, 1);
+		padding_length++;
+	}
+	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+	           "skip %zu byte(s) of padding", padding_length);
+}
+
+
+/**
  * @brief Decode zero or more feedback packets if present
  *
  * @param decomp       The ROHC decompressor
@@ -3383,16 +3425,6 @@ static int d_decode_feedback_first(struct rohc_decomp *decomp,
 {
 	/* nothing parsed for the moment */
 	*parsed_size = 0;
-
-	/* remove all padded bytes */
-	while(size > 0 && rohc_decomp_packet_is_padding(packet))
-	{
-		packet++;
-		size--;
-		(*parsed_size)++;
-	}
-	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-	           "skip %u byte(s) of padding", *parsed_size);
 
 	/* parse as much feedback data as possible */
 	while(size > 0 && rohc_decomp_packet_is_feedback(packet))
