@@ -1447,20 +1447,20 @@ static int d_decode_header(struct rohc_decomp *decomp,
 {
 	bool is_new_context = false;
 	const struct rohc_decomp_profile *profile;
-	const uint8_t *walk = rohc_buf_data(rohc_packet);
-	size_t remain_len = rohc_packet.len;
 	struct rohc_buf remain_rohc_data = rohc_packet;
+	const uint8_t *walk;
+	size_t remain_len;
 	int status;
 
 	assert(decomp != NULL);
 	assert(ddata != NULL);
 	assert(packet_type != NULL);
 
-	if(remain_len < 1)
+	if(remain_rohc_data.len < 1)
 	{
 		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		             "ROHC packet too small (len = %zu, at least 1 byte "
-		             "required)", remain_len);
+		             "required)", remain_rohc_data.len);
 		goto error_malformed;
 	}
 
