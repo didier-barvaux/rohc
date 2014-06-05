@@ -183,12 +183,14 @@ static void d_operation_mode_feedback(struct rohc_decomp *decomp,
                                       const uint16_t cid,
                                       const rohc_cid_type_t cid_type,
                                       int mode,
-                                      struct rohc_decomp_ctxt *context);
+                                      struct rohc_decomp_ctxt *context,
+                                      struct rohc_buf *const feedback_send);
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   int rohc_status,
                                   const rohc_cid_t cid,
                                   const rohc_cid_type_t cid_type,
-                                  struct rohc_decomp_ctxt *context);
+                                  struct rohc_decomp_ctxt *context,
+                                  struct rohc_buf *const feedback_send);
 
 /* statistics-related functions */
 static void rohc_decomp_reset_stats(struct rohc_decomp *const decomp)
@@ -852,10 +854,17 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	const struct rohc_buf __rohc_packet =
 		rohc_buf_init_full(ibuf, isize, arrival_time);
 	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
-	const size_t feedback_max_len = 100;
-	uint8_t feedback_data[feedback_max_len];
+
+	const size_t rcvd_feedback_max_len = 100;
+	uint8_t rcvd_feedback_data[rcvd_feedback_max_len];
 	struct rohc_buf rcvd_feedback =
-		rohc_buf_init_empty(feedback_data, feedback_max_len);
+		rohc_buf_init_empty(rcvd_feedback_data, rcvd_feedback_max_len);
+
+	const size_t feedback_send_max_len = 100;
+	uint8_t feedback_send_data[feedback_send_max_len];
+	struct rohc_buf feedback_send =
+		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
+
 	int code;
 
 	if(decomp == NULL)
@@ -868,7 +877,7 @@ int rohc_decompress(struct rohc_decomp *decomp,
 	decomp->do_auto_feedback_delivery = true;
 
 	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
-	                        &rcvd_feedback);
+	                        &rcvd_feedback, &feedback_send);
 	if(code == ROHC_OK)
 	{
 		/* decompression succeeded */
@@ -890,6 +899,16 @@ int rohc_decompress(struct rohc_decomp *decomp,
 		{
 			code = __uncomp_packet.len;
 		}
+	}
+
+	/* send the feedback via the compressor associated with the decompressor */
+	if(feedback_send.len > 0 &&
+	   !rohc_comp_piggyback_feedback(decomp->compressor,
+	                                 rohc_buf_data(feedback_send),
+	                                 feedback_send.len))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "failed to piggyback the feedback");
 	}
 
 	return code;
@@ -999,10 +1018,17 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 		                   arrival_time);
 	struct rohc_buf __uncomp_packet =
 		rohc_buf_init_empty(uncomp_packet, uncomp_packet_max_len);
+
 	const size_t feedback_max_len = 100;
 	uint8_t feedback_data[feedback_max_len];
 	struct rohc_buf rcvd_feedback =
 		rohc_buf_init_empty(feedback_data, feedback_max_len);
+
+	const size_t feedback_send_max_len = 100;
+	uint8_t feedback_send_data[feedback_send_max_len];
+	struct rohc_buf feedback_send =
+		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
+
 	int code;
 
 	if(decomp == NULL || uncomp_packet_len == NULL)
@@ -1015,7 +1041,7 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 	decomp->do_auto_feedback_delivery = true;
 
 	code = rohc_decompress3(decomp, __rohc_packet, &__uncomp_packet,
-	                        &rcvd_feedback);
+	                        &rcvd_feedback, &feedback_send);
 	if(code == ROHC_OK)
 	{
 		*uncomp_packet_len = __uncomp_packet.len;
@@ -1036,6 +1062,16 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 		}
 	}
 
+	/* send the feedback via the compressor associated with the decompressor */
+	if(feedback_send.len > 0 &&
+	   !rohc_comp_piggyback_feedback(decomp->compressor,
+	                                 rohc_buf_data(feedback_send),
+	                                 feedback_send.len))
+	{
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "failed to piggyback the feedback");
+	}
+
 	return code;
 }
 
@@ -1052,6 +1088,10 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  *  \li the received feedback \e rcvd_feedback might be empty if the ROHC
  *      packet doesn't contain at least one feedback item
  *
+ * If \e feedback_send is not NULL, the decompression may return some feedback
+ * information on it. In such a case, the caller is responsible to send it to
+ * the compressor through any feedback channel.
+ *
  * \par Time-related features in the ROHC protocol:
  * Set the \e rohc_packet.time parameter to 0 if arrival time of the ROHC
  * packet is unknown or to disable the time-related features in the ROHC
@@ -1066,6 +1106,12 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
  *                            \li If NULL, ignore the received feedback data
  *                            \li If not NULL, store the received feedback in
  *                                at the given address
+ * @param[out] feedback_send  The feedback to be transmitted to the remote
+ *                            compressor through the feedback channel:
+ *                            \li If NULL, the decompression won't generate
+ *                                feedback information for its compressor
+ *                            \li If not NULL, may store the generated
+ *                                feedback at the given address
  * @return                    Possible return values:
  *                            \li \ref ROHC_OK if a decompressed packet is
  *                                returned
@@ -1097,7 +1143,8 @@ int rohc_decompress2(struct rohc_decomp *const decomp,
 int rohc_decompress3(struct rohc_decomp *const decomp,
                      const struct rohc_buf rohc_packet,
                      struct rohc_buf *const uncomp_packet,
-                     struct rohc_buf *const rcvd_feedback)
+                     struct rohc_buf *const rcvd_feedback,
+                     struct rohc_buf *const feedback_send)
 {
 	struct d_decode_data ddata = { 0, 0, 0, NULL };
 	rohc_packet_t packet_type;
@@ -1150,6 +1197,21 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 		{
 			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 			             "given rcvd_feedback is not empty");
+			goto error;
+		}
+	}
+	if(feedback_send != NULL)
+	{
+		if(rohc_buf_is_malformed(*feedback_send))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "given feedback_send is malformed");
+			goto error;
+		}
+		if(!rohc_buf_is_empty(*feedback_send))
+		{
+			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+			             "given feedback_send is not empty");
 			goto error;
 		}
 	}
@@ -1207,7 +1269,8 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 					ddata.active->curval = 0;
 					d_operation_mode_feedback(decomp, ROHC_ERROR_PACKET_FAILED,
 					                          ddata.cid, decomp->medium.cid_type,
-					                          ddata.active->mode, ddata.active);
+					                          ddata.active->mode, ddata.active,
+					                          feedback_send);
 				}
 			}
 			break;
@@ -1231,7 +1294,7 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 				decomp->curval = 0;
 				d_operation_mode_feedback(decomp, ROHC_ERROR_NO_CONTEXT,
 				                          ddata.cid, decomp->medium.cid_type,
-				                          ROHC_O_MODE, NULL);
+				                          ROHC_O_MODE, NULL, feedback_send);
 			}
 			break;
 		}
@@ -1265,7 +1328,8 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 					ddata.active->curval = 0;
 					d_operation_mode_feedback(decomp, ROHC_ERROR_CRC, ddata.cid,
 					                          decomp->medium.cid_type,
-					                          ddata.active->mode, ddata.active);
+					                          ddata.active->mode, ddata.active,
+					                          feedback_send);
 				}
 			}
 			break;
@@ -1312,7 +1376,8 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 					ddata.active->mode = ROHC_O_MODE;
 					d_operation_mode_feedback(decomp, ROHC_OK, ddata.cid,
 					                          decomp->medium.cid_type,
-					                          ddata.active->mode, ddata.active);
+					                          ddata.active->mode, ddata.active,
+					                          feedback_send);
 				}
 			}
 			break;
@@ -1357,10 +1422,17 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 	const struct rohc_buf __rohc_packet =
 		rohc_buf_init_full(ibuf, isize, arrival_time);
 	struct rohc_buf __uncomp_packet = rohc_buf_init_empty(obuf, osize);
+
 	const size_t feedback_max_len = 100;
 	uint8_t feedback_data[feedback_max_len];
 	struct rohc_buf rcvd_feedback =
 		rohc_buf_init_empty(feedback_data, feedback_max_len);
+
+	const size_t feedback_send_max_len = 100;
+	uint8_t feedback_send_data[feedback_send_max_len];
+	struct rohc_buf feedback_send =
+		rohc_buf_init_empty(feedback_send_data, feedback_send_max_len);
+
 	bool is_ok;
 	int code;
 
@@ -1383,7 +1455,7 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 
 	/* decompress the packet with the new CID type */
 	code = rohc_decompress3(decomp,  __rohc_packet, &__uncomp_packet,
-	                        &rcvd_feedback);
+	                        &rcvd_feedback, &feedback_send);
 	if(code == ROHC_OK)
 	{
 		/* decompression succeeded */
@@ -1404,6 +1476,17 @@ int rohc_decompress_both(struct rohc_decomp *decomp,
 		else
 		{
 			code = __uncomp_packet.len;
+
+			/* send the feedback via the compressor associated with the
+			 * decompressor */
+			if(feedback_send.len > 0 &&
+			   !rohc_comp_piggyback_feedback(decomp->compressor,
+			                                 rohc_buf_data(feedback_send),
+			                                 feedback_send.len))
+			{
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "failed to piggyback the STATIC-NACK feedback");
+			}
 		}
 	}
 
@@ -1848,12 +1931,19 @@ error_no_context:
  * @param cid          The Context ID (CID) to which the feedback is related
  * @param cid_type     The type of CID used for the feedback
  * @param context      The context to which the feedback is related
+ * @param[out] feedback_send  The feedback to be transmitted to the remote
+ *                            compressor through the feedback channel:
+ *                            \li If NULL, the decompression won't generate
+ *                                feedback information for its compressor
+ *                            \li If not NULL, may store the generated
+ *                                feedback at the given address
  */
 static void d_optimistic_feedback(struct rohc_decomp *decomp,
                                   int rohc_status,
                                   const rohc_cid_t cid,
                                   const rohc_cid_type_t cid_type,
-                                  struct rohc_decomp_ctxt *context)
+                                  struct rohc_decomp_ctxt *context,
+                                  struct rohc_buf *const feedback_send)
 {
 	struct d_feedback sfeedback;
 	uint8_t *feedback;
@@ -1861,7 +1951,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 	int ret;
 
 	/* check associated compressor availability */
-	if(decomp->compressor == NULL)
+	if(context != NULL && context->mode == ROHC_U_MODE)
 	{
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "no associated compressor, do not sent feedback");
@@ -1939,14 +2029,34 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 
-			/* send the feedback via the compressor associated
-			 * with the decompressor */
 			context->num_sent_feedbacks++;
-			if(!rohc_comp_piggyback_feedback(decomp->compressor,
-			                                 feedback, feedbacksize))
+			if(feedback_send != NULL)
 			{
-				rohc_decomp_warn(context, "failed to piggyback the ACK feedback");
-				return;
+				size_t hdr_len;
+				if(!decomp->do_auto_feedback_delivery)
+				{
+					hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
+				}
+				else
+				{
+					hdr_len = 0;
+				}
+				if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
+				{
+					if(feedbacksize < 8)
+					{
+						rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
+					}
+					else
+					{
+						rohc_buf_byte(*feedback_send) = 0xf0;
+						rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+					}
+					feedback_send->len += hdr_len;
+					memcpy(rohc_buf_data_at(*feedback_send, hdr_len), feedback,
+					       feedbacksize);
+					feedback_send->len += feedbacksize;
+				}
 			}
 
 			/* destroy the feedback */
@@ -1983,15 +2093,33 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 				return;
 			}
 
-			/* send the feedback via the compressor associated
-			 * with the decompressor */
-			//context->num_sent_feedbacks++;
-			if(!rohc_comp_piggyback_feedback(decomp->compressor,
-			                                 feedback, feedbacksize))
+			if(feedback_send != NULL)
 			{
-				rohc_decomp_warn(context, "failed to piggyback the STATIC-NACK "
-				                 "feedback");
-				return;
+				size_t hdr_len;
+				if(!decomp->do_auto_feedback_delivery)
+				{
+					hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
+				}
+				else
+				{
+					hdr_len = 0;
+				}
+				if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
+				{
+					if(feedbacksize < 8)
+					{
+						rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
+					}
+					else
+					{
+						rohc_buf_byte(*feedback_send) = 0xf0;
+						rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+					}
+					feedback_send->len += hdr_len;
+					memcpy(rohc_buf_data_at(*feedback_send, hdr_len), feedback,
+					       feedbacksize);
+					feedback_send->len += feedbacksize;
+				}
 			}
 
 			/* destroy the feedback */
@@ -2025,14 +2153,33 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 						return;
 					}
 
-					/* send the feedback via the compressor associated
-					 * with the decompressor */
-					if(!rohc_comp_piggyback_feedback(decomp->compressor,
-					                                 feedback, feedbacksize))
+					if(feedback_send != NULL)
 					{
-						rohc_decomp_warn(context, "failed to piggyback the "
-						                 "STATIC-NACK feedback");
-						return;
+						size_t hdr_len;
+						if(!decomp->do_auto_feedback_delivery)
+						{
+							hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
+						}
+						else
+						{
+							hdr_len = 0;
+						}
+						if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
+						{
+							if(feedbacksize < 8)
+							{
+								rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
+							}
+							else
+							{
+								rohc_buf_byte(*feedback_send) = 0xf0;
+								rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+							}
+							feedback_send->len += hdr_len;
+							memcpy(rohc_buf_data_at(*feedback_send, hdr_len),
+							       feedback, feedbacksize);
+							feedback_send->len += feedbacksize;
+						}
 					}
 
 					/* destroy the feedback */
@@ -2061,14 +2208,33 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 						return;
 					}
 
-					/* send the feedback via the compressor associated
-					 * with the decompressor */
-					if(!rohc_comp_piggyback_feedback(decomp->compressor,
-					                                 feedback, feedbacksize))
+					if(feedback_send != NULL)
 					{
-						rohc_decomp_warn(context, "failed to piggyback the NACK "
-						                 "feedback");
-						return;
+						size_t hdr_len;
+						if(!decomp->do_auto_feedback_delivery)
+						{
+							hdr_len = 1 + (feedbacksize < 8 ? 0 : 1);
+						}
+						else
+						{
+							hdr_len = 0;
+						}
+						if((hdr_len + feedbacksize) <= rohc_buf_avail_len(*feedback_send))
+						{
+							if(feedbacksize < 8)
+							{
+								rohc_buf_byte(*feedback_send) = 0xf0 | feedbacksize;
+							}
+							else
+							{
+								rohc_buf_byte(*feedback_send) = 0xf0;
+								rohc_buf_byte_at(*feedback_send, 1) = feedbacksize;
+							}
+							feedback_send->len += hdr_len;
+							memcpy(rohc_buf_data_at(*feedback_send, hdr_len),
+							       feedback, feedbacksize);
+							feedback_send->len += feedbacksize;
+						}
 					}
 
 					/* change state */
@@ -2118,13 +2284,20 @@ skip:
  * @param mode         The mode in which the ROHC decompressor operates:
  *                     ROHC_U_MODE, ROHC_O_MODE or ROHC_R_MODE
  * @param context      The context to which the feedback is related
+ * @param[out] feedback_send  The feedback to be transmitted to the remote
+ *                            compressor through the feedback channel:
+ *                            \li If NULL, the decompression won't generate
+ *                                feedback information for its compressor
+ *                            \li If not NULL, may store the generated
+ *                                feedback at the given address
  */
-void d_operation_mode_feedback(struct rohc_decomp *decomp,
-                               int rohc_status,
-                               const uint16_t cid,
-                               const rohc_cid_type_t cid_type,
-                               int mode,
-                               struct rohc_decomp_ctxt *context)
+static void d_operation_mode_feedback(struct rohc_decomp *decomp,
+                                      int rohc_status,
+                                      const uint16_t cid,
+                                      const rohc_cid_type_t cid_type,
+                                      int mode,
+                                      struct rohc_decomp_ctxt *context,
+                                      struct rohc_buf *const feedback_send)
 {
 	switch(mode)
 	{
@@ -2133,7 +2306,8 @@ void d_operation_mode_feedback(struct rohc_decomp *decomp,
 			//break;
 
 		case ROHC_O_MODE:
-			d_optimistic_feedback(decomp, rohc_status, cid, cid_type, context);
+			d_optimistic_feedback(decomp, rohc_status, cid, cid_type, context,
+			                      feedback_send);
 			break;
 
 		case ROHC_R_MODE:

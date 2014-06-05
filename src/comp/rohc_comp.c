@@ -760,20 +760,59 @@ int rohc_compress(struct rohc_comp *comp,
 	const struct rohc_buf uncomp_packet =
 		rohc_buf_init_full(ibuf, isize, arrival_time);
 	struct rohc_buf rohc_packet = rohc_buf_init_empty(obuf, osize);
+
+	int feedback_size;
+	size_t feedbacks_size;
+
 	int code;
 
-	if(ibuf == NULL || isize <= 0 || obuf == NULL || osize <= 0)
+	if(comp == NULL ||
+	   ibuf == NULL || isize <= 0 ||
+	   obuf == NULL || osize <= 0)
 	{
 		goto error;
 	}
 
-	/* use the new function to keep API compatibility */
+	/* retrieve feedback items and pack them at the very beginning of the
+	 * ROHC packet */
+	feedbacks_size = 0;
+	do
+	{
+		feedback_size =
+			rohc_feedback_get(comp, rohc_buf_data(rohc_packet),
+			                  rohc_buf_avail_len(rohc_packet));
+		if(feedback_size > 0)
+		{
+			rohc_packet.len += feedback_size;
+			rohc_buf_shift(&rohc_packet, feedback_size);
+			feedbacks_size += feedback_size;
+		}
+	}
+	while(feedback_size > 0 && feedbacks_size <= 500);
+
+	/* call the new API */
 	code = rohc_compress4(comp, uncomp_packet, &rohc_packet);
 	if(code != ROHC_OK)
 	{
-		/* compression failed */
+		/* compression error or segments: unlock feedbacks */
+		if(!rohc_feedback_unlock(comp))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to unlock feedbacks");
+		}
 		goto error;
 	}
+
+	/* remove locked feedbacks since compression is successful */
+	if(!rohc_feedback_remove_locked(comp))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "failed to remove locked feedbacks");
+		goto error;
+	}
+
+	/* unshift the feedback items */
+	rohc_buf_shift(&rohc_packet, -(feedbacks_size));
 
 	/* compression succeeded */
 	return rohc_packet.len;
@@ -820,17 +859,57 @@ int rohc_compress2(struct rohc_comp *const comp,
 		                   arrival_time);
 	struct rohc_buf __rohc_packet =
 		rohc_buf_init_empty(rohc_packet, rohc_packet_max_len);
+
+	int feedback_size;
+	size_t feedbacks_size;
+
 	int code;
 
-	if(rohc_packet_len == NULL)
+	if(comp == NULL || rohc_packet == NULL || rohc_packet_len == NULL)
 	{
 		return ROHC_ERROR;
 	}
 
+	/* retrieve feedback items and pack them into one rohc_buf */
+	feedbacks_size = 0;
+	do
+	{
+		feedback_size =
+			rohc_feedback_get(comp, rohc_buf_data(__rohc_packet),
+			                  rohc_buf_avail_len(__rohc_packet));
+		if(feedback_size > 0)
+		{
+			__rohc_packet.len += feedback_size;
+			rohc_buf_shift(&__rohc_packet, feedback_size);
+			feedbacks_size += feedback_size;
+		}
+	}
+	while(feedback_size > 0 && feedbacks_size <= 500);
+
+	/* call the new API */
 	code = rohc_compress4(comp, __uncomp_packet, &__rohc_packet);
 	if(code == ROHC_OK)
 	{
+		/* remove locked feedbacks since compression is successful */
+		if(!rohc_feedback_remove_locked(comp))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to remove locked feedbacks");
+		}
+
+		/* unshift the feedback items */
+		rohc_buf_shift(&__rohc_packet, -(feedbacks_size));
+
 		*rohc_packet_len = __rohc_packet.len;
+	}
+	else
+	{
+		/* compression error or segments: unlock feedbacks */
+		if(!rohc_feedback_unlock(comp))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to unlock feedbacks");
+		}
 	}
 
 	return code;
@@ -927,17 +1006,57 @@ int rohc_compress3(struct rohc_comp *const comp,
 		                   arrival_time);
 	struct rohc_buf __rohc_packet =
 		rohc_buf_init_empty(rohc_packet, rohc_packet_max_len);
+
+	int feedback_size;
+	size_t feedbacks_size;
+
 	int code;
 
-	if(rohc_packet_len == NULL)
+	if(comp == NULL || rohc_packet == NULL || rohc_packet_len == NULL)
 	{
 		return ROHC_ERROR;
 	}
 
+	/* retrieve feedback items and pack them into one rohc_buf */
+	feedbacks_size = 0;
+	do
+	{
+		feedback_size =
+			rohc_feedback_get(comp, rohc_buf_data(__rohc_packet),
+			                  rohc_buf_avail_len(__rohc_packet));
+		if(feedback_size > 0)
+		{
+			__rohc_packet.len += feedback_size;
+			rohc_buf_shift(&__rohc_packet, feedback_size);
+			feedbacks_size += feedback_size;
+		}
+	}
+	while(feedback_size > 0 && feedbacks_size <= 500);
+
+	/* call the new API */
 	code = rohc_compress4(comp, __uncomp_packet, &__rohc_packet);
 	if(code == ROHC_OK)
 	{
+		/* remove locked feedbacks since compression is successful */
+		if(!rohc_feedback_remove_locked(comp))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to remove locked feedbacks");
+		}
+
+		/* unshift the feedback items */
+		rohc_buf_shift(&__rohc_packet, -(feedbacks_size));
+
 		*rohc_packet_len = __rohc_packet.len;
+	}
+	else
+	{
+		/* compression error or segments: unlock feedbacks */
+		if(!rohc_feedback_unlock(comp))
+		{
+			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+			             "failed to unlock feedbacks");
+		}
 	}
 
 	return code;
@@ -1013,8 +1132,6 @@ int rohc_compress4(struct rohc_comp *const comp,
 	struct net_pkt ip_pkt;
 	struct rohc_comp_ctxt *c;
 	rohc_packet_t packet_type;
-	size_t feedbacks_size;
-	int feedback_size;
 	int rohc_hdr_size;
 	size_t payload_size;
 	size_t payload_offset;
@@ -1060,25 +1177,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 	/* create the ROHC packet: */
 	rohc_packet->len = 0;
 
-	/* 1. add feedback */
-	feedbacks_size = 0;
-	do
-	{
-		feedback_size =
-			rohc_feedback_get(comp, rohc_buf_data_at(*rohc_packet, feedbacks_size),
-			                  rohc_buf_avail_len(*rohc_packet));
-		if(feedback_size > 0)
-		{
-			feedbacks_size += feedback_size;
-		}
-	}
-	while(feedback_size > 0 && feedbacks_size <= 500);
-	rohc_packet->len += feedbacks_size;
-
-	/* the ROHC header starts after the feedbacks, skip them */
-	rohc_buf_shift(rohc_packet, feedbacks_size);
-
-	/* 2. use profile to compress packet */
+	/* use profile to compress packet */
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 	           "compress the packet #%d", comp->num_packets + 1);
 	rohc_hdr_size =
@@ -1109,7 +1208,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to find a matching Uncompressed context or to "
 			             "create a new Uncompressed context");
-			goto error_unlock_feedbacks;
+			goto error;
 		}
 
 		/* use the Uncompressed profile to compress the packet */
@@ -1135,30 +1234,28 @@ int rohc_compress4(struct rohc_comp *const comp,
 	if(payload_size > rohc_buf_avail_len(*rohc_packet))
 	{
 		const size_t max_rohc_buf_len =
-			rohc_buf_avail_len(*rohc_packet) + feedbacks_size + rohc_hdr_size;
+			rohc_buf_avail_len(*rohc_packet) + rohc_hdr_size;
 		uint32_t rru_crc;
 
 		/* resulting ROHC packet too large, segmentation may be a solution */
 		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		          "%s ROHC packet is too large for the given output buffer, "
 		          "try to segment it (input size = %zd, maximum output "
-		          "size = %zd, required output size = %zd + %d + %zd = %zd, "
+		          "size = %zd, required output size = %d + %zd = %zd, "
 		          "MRRU = %zd)", rohc_get_packet_descr(packet_type),
-		          uncomp_packet.len, max_rohc_buf_len, feedbacks_size,
-		          rohc_hdr_size, payload_size, feedbacks_size +
-		          rohc_hdr_size + payload_size, comp->mrru);
+		          uncomp_packet.len, max_rohc_buf_len, rohc_hdr_size,
+		          payload_size, rohc_hdr_size + payload_size, comp->mrru);
 
 		/* in order to be segmented, a ROHC packet shall be <= MRRU
 		 * (remember that MRRU includes the CRC length) */
 		if((payload_size + CRC_FCS32_LEN) > comp->mrru)
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "%s ROHC packet cannot be segmented: too large (%zu + "
-			             "%d + %zu + %u = %zu bytes) for MRRU (%zu bytes)",
-			             rohc_get_packet_descr(packet_type), feedbacks_size,
-			             rohc_hdr_size, payload_size, CRC_FCS32_LEN,
-			             feedbacks_size + rohc_hdr_size + payload_size +
-			             CRC_FCS32_LEN, comp->mrru);
+			             "%s ROHC packet cannot be segmented: too large (%d + "
+			             "%zu + %u = %zu bytes) for MRRU (%zu bytes)",
+			             rohc_get_packet_descr(packet_type), rohc_hdr_size,
+			             payload_size, CRC_FCS32_LEN, rohc_hdr_size +
+			             payload_size + CRC_FCS32_LEN, comp->mrru);
 			goto error_free_new_context;
 		}
 		rohc_info(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -1201,14 +1298,6 @@ int rohc_compress4(struct rohc_comp *const comp,
 		/* computed RRU must be <= MRRU */
 		assert(comp->rru_len <= comp->mrru);
 
-		/* release locked feedbacks since there are not used for the moment */
-		if(rohc_feedback_unlock(comp) != true)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "failed to remove locked feedbacks");
-			goto error_free_new_context;
-		}
-
 		/* report to users that segmentation is possible */
 		status = ROHC_NEED_SEGMENT;
 	}
@@ -1221,26 +1310,16 @@ int rohc_compress4(struct rohc_comp *const comp,
 		       rohc_buf_data_at(uncomp_packet, payload_offset), payload_size);
 		rohc_packet->len += payload_size;
 
-		/* remove locked feedbacks since compression is successful */
-		if(rohc_feedback_remove_locked(comp) != true)
-		{
-			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-			             "failed to remove locked feedbacks");
-			goto error_free_new_context;
-		}
-
 		/* report to user that compression was successful */
 		status = ROHC_OK;
 	}
 
-	/* shift back the ROHC header and feedback data */
-	rohc_buf_shift(rohc_packet, -rohc_hdr_size);
-	rohc_buf_shift(rohc_packet, -feedbacks_size);
+	/* shift back the ROHC header */
+	rohc_buf_shift(rohc_packet, -(rohc_hdr_size));
 	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "ROHC size = %zd bytes (feedback = %zd, header = %d, "
-	           "payload = %zu), output buffer size = %zu", rohc_packet->len,
-	           feedbacks_size, rohc_hdr_size, payload_size,
-	           rohc_buf_avail_len(*rohc_packet));
+	           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
+	           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
+	           payload_size, rohc_buf_avail_len(*rohc_packet));
 
 	/* update some statistics:
 	 *  - compressor statistics
@@ -1281,12 +1360,6 @@ error_free_new_context:
 		c->used = 0;
 		assert(comp->num_contexts_used > 0);
 		comp->num_contexts_used--;
-	}
-error_unlock_feedbacks:
-	if(rohc_feedback_unlock(comp) != true)
-	{
-		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-		             "failed to unlock feedbacks");
 	}
 error:
 	return ROHC_ERROR;

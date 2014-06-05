@@ -68,15 +68,12 @@ int main(int argc, char **argv)
 	/* the buffer that will contain the ROHC packet to decompress */
 	unsigned char rohc_buffer[BUFFER_SIZE];
 	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
-
 	/* the buffer that will contain the resulting IP packet */
 	unsigned char ip_buffer[BUFFER_SIZE];
 	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, BUFFER_SIZE);
-
-	/* the buffer that will contain the received feedback data */
-	unsigned char feedback_buffer[BUFFER_SIZE];
-	struct rohc_buf rcvd_feedback =
-		rohc_buf_init_empty(feedback_buffer, BUFFER_SIZE);
+	/* we do not want to handle feedback in this simple example */
+	struct rohc_buf *rcvd_feedback = NULL;
+	struct rohc_buf *feedback_send = NULL;
 //! [define IP and ROHC packets]
 
 	size_t i;
@@ -174,7 +171,8 @@ int main(int argc, char **argv)
 	/* Now, decompress this fake ROHC packet */
 	printf("\ndecompress the fake ROHC packet\n");
 //! [decompress ROHC packet #1]
-	ret = rohc_decompress3(decompressor, rohc_packet, &ip_packet, &rcvd_feedback);
+	ret = rohc_decompress3(decompressor, rohc_packet, &ip_packet,
+	                       rcvd_feedback, feedback_send);
 //! [decompress ROHC packet #1]
 	printf("\n");
 //! [decompress ROHC packet #2]
@@ -188,20 +186,16 @@ int main(int argc, char **argv)
 			printf("IP packet resulting from the ROHC decompression:\n");
 			dump_packet(ip_packet);
 		}
-		else if(!rohc_buf_is_empty(rcvd_feedback))
-		{
-			/* no IP packet was decompressed because of ROHC segmentation: the
-			 * ROHC packet was a non-final segment, so at least another ROHC
-			 * segment is required to be able to decompress the full ROHC
-			 * packet */
-		}
 		else
 		{
-			/* no IP packet was decompressed because the ROHC packet was a
-			 * feedback-only packet: it contained only feedback information */
+			/* no IP packet was decompressed because of ROHC segmentation or
+			 * feedback-only packet:
+			 *  - the ROHC packet was a non-final segment, so at least another
+			 *    ROHC segment is required to be able to decompress the full
+			 *    ROHC packet
+			 *  - the ROHC packet was a feedback-only packet, it contained only
+			 *    feedback information, so there was nothing to decompress */
 			printf("no IP packet decompressed");
-			/* do something here with the rcvd_feedback.len bytes of feedback
-			 * information */
 		}
 	}
 	else

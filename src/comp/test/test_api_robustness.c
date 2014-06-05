@@ -306,6 +306,7 @@ int main(int argc, char *argv[])
 		for(int i = 0; i < 1000; i++)
 		{
 			CHECK(rohc_feedback_flush(comp, buf, buflen) > 0);
+			CHECK(rohc_feedback_remove_locked(comp));
 		}
 		CHECK(rohc_feedback_flush(comp, buf, buflen) == 0); /* empty */
 	}
