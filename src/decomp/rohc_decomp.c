@@ -1950,6 +1950,11 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 	size_t feedbacksize;
 	int ret;
 
+	if(context == NULL)
+	{
+		rohc_status = ROHC_ERROR_NO_CONTEXT;
+	}
+
 	/* check associated compressor availability */
 	if(context != NULL && context->mode == ROHC_U_MODE)
 	{
@@ -1995,16 +2000,13 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 		return;
 	}
 
-	/* check CID wrt MAX_CID if context was found */
-	if(rohc_status != ROHC_ERROR_NO_CONTEXT)
+	/* check CID wrt MAX_CID */
+	if(cid > decomp->medium.max_cid)
 	{
-		if(cid > decomp->medium.max_cid)
-		{
-			rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
-			             "unexpected CID %zu: not in range [0, %zu]", cid,
-			             decomp->medium.max_cid);
-			return;
-		}
+		rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+		             "unexpected CID %zu: not in range [0, %zu]", cid,
+		             decomp->medium.max_cid);
+		return;
 	}
 
 	switch(rohc_status)
@@ -2089,7 +2091,8 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 			                           decomp->crc_table_8, &feedbacksize);
 			if(feedback == NULL)
 			{
-				rohc_decomp_warn(context, "failed to wrap the STATIC-NACK feedback");
+				rohc_warning(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
+				             "failed to wrap the STATIC-NACK feedback");
 				return;
 			}
 
