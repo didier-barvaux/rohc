@@ -339,7 +339,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* print performance statistics */
-	fprintf(stderr, "total time elapsed               =  %lu * %lu + %lu ns\n",
+	fprintf(stderr, "total time elapsed               =  %lu * %lu + %lu units of time\n",
 	        0xffffffffUL, overflows, (unsigned long) time_elapsed);
 	fprintf(stderr, "total number of packets          =  %lu packets\n",
 	        packet_count);
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
 	{
 		average = 0;
 	}
-	fprintf(stderr, "average elapsed time per packet  =  %lu ns/packet\n",
+	fprintf(stderr, "average elapsed time per packet  =  %lu units of time / packet\n",
 	        average);
 
 	/* everything went fine */
