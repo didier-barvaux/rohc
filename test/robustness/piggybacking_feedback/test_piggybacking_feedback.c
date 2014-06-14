@@ -189,7 +189,8 @@ static int test_comp_and_decomp(void)
 	srand(time(NULL));
 
 	/* create the ROHC compressor A with small CID */
-	compA = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	compA = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                       gen_random_num, NULL);
 	if(compA == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor A\n");
@@ -214,14 +215,6 @@ static int test_comp_and_decomp(void)
 		goto destroy_compA;
 	}
 
-	/* set the callback for random numbers on compressor A */
-	if(!rohc_comp_set_random_cb(compA, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers on "
-		        "compressor A\n");
-		goto destroy_compA;
-	}
-
 	/* set UDP ports dedicated to RTP traffic */
 	if(!rohc_comp_set_rtp_detection_cb(compA, rohc_comp_rtp_cb, NULL))
 	{
@@ -230,7 +223,8 @@ static int test_comp_and_decomp(void)
 	}
 
 	/* create the ROHC compressor B with small CID */
-	compB = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	compB = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                       gen_random_num, NULL);
 	if(compB == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor B\n");
@@ -252,14 +246,6 @@ static int test_comp_and_decomp(void)
 	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the profiles on compressor B\n");
-		goto destroy_compB;
-	}
-
-	/* set the callback for random numbers on compressor B */
-	if(!rohc_comp_set_random_cb(compB, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers on "
-		        "compressor B\n");
 		goto destroy_compB;
 	}
 

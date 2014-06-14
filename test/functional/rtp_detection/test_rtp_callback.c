@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #if HAVE_WINSOCK2_H == 1
 #  include <winsock2.h> /* for ntohs() on Windows */
 #endif
@@ -85,6 +86,9 @@ static void print_rohc_traces(const rohc_trace_level_t level,
                               const int profile,
                               const char *const format, ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+	__attribute__((warn_unused_result));
 
 static int compress_and_check(struct rohc_comp *comp,
                               struct pcap_pkthdr header,
@@ -219,6 +223,7 @@ static int test_rtp_callback(const char *const do_detect,
 	int counter;
 	int expected_profile;
 	int success_expected;
+	unsigned int seed;
 	int is_failure = 1;
 	int ret;
 
@@ -255,8 +260,13 @@ static int test_rtp_callback(const char *const do_detect,
 		link_len = 0;
 	}
 
+	/* initialize the random generator */
+	seed = time(NULL);
+	srand(seed);
+
 	/* create the ROHC compressor with small CID */
-	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                      gen_random_num, NULL);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC compressor\n");
@@ -571,5 +581,19 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 		vfprintf(stdout, format, args);
 		va_end(args);
 	}
+}
+
+
+/**
+ * @brief Generate a random number
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              A random number
+ */
+static int gen_random_num(const struct rohc_comp *const comp,
+                          void *const user_context)
+{
+	return rand();
 }
 

@@ -56,7 +56,7 @@ EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
  */
 
 /* general */
-EXPORT_SYMBOL_GPL(rohc_comp_new);
+EXPORT_SYMBOL_GPL(rohc_comp_new2);
 EXPORT_SYMBOL_GPL(rohc_comp_free);
 EXPORT_SYMBOL_GPL(rohc_compress4);
 EXPORT_SYMBOL_GPL(rohc_comp_force_contexts_reinit);
@@ -85,7 +85,6 @@ EXPORT_SYMBOL_GPL(rohc_comp_get_cid_type);
 EXPORT_SYMBOL_GPL(rohc_comp_set_wlsb_window_width);
 EXPORT_SYMBOL_GPL(rohc_comp_set_periodic_refreshes);
 EXPORT_SYMBOL_GPL(rohc_comp_set_traces_cb);
-EXPORT_SYMBOL_GPL(rohc_comp_set_random_cb);
 EXPORT_SYMBOL_GPL(rohc_comp_set_features);
 
 /* RTP-specific configuration */

@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 	srand(rand_seed);
 
 	/* create the ROHC compressor (large CID, MAX_CID = 450) */
-	comp = rohc_comp_new(ROHC_LARGE_CID, 450);
+	comp = rohc_comp_new2(ROHC_LARGE_CID, 450, gen_false_random_num, NULL);
 	assert(comp != NULL);
 	/* set the callback for traces on compressor */
 	assert(rohc_comp_set_traces_cb(comp, print_rohc_traces));
@@ -184,8 +184,6 @@ int main(int argc, char *argv[])
 	assert(rohc_comp_enable_profile(comp, ROHC_PROFILE_RTP));
 	/* set the WLSB window width on compressor */
 	assert(rohc_comp_set_wlsb_window_width(comp, 4));
-	/* set the callback for random numbers on compressor */
-	assert(rohc_comp_set_random_cb(comp, gen_false_random_num, NULL));
 	/* set the callback for RTP stream detection */
 	assert(rohc_comp_set_rtp_detection_cb(comp, rtp_detect_cb, NULL));
 

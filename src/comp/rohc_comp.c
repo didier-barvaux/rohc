@@ -204,7 +204,7 @@ static int __rohc_c_context(struct rohc_comp *comp,
 /**
  * @brief Create one ROHC compressor
  *
- * @deprecated do not use this function anymore, use rohc_comp_new() instead
+ * @deprecated do not use this function anymore, use rohc_comp_new2() instead
  *
  * @param max_cid     The maximal CID value the compressor should use for contexts
  * @param jam_use     not used anymore, must be 0
@@ -252,7 +252,8 @@ struct rohc_comp * rohc_alloc_compressor(int max_cid,
 		goto error;
 	}
 
-	return rohc_comp_new(ROHC_SMALL_CID, max_cid);
+	return rohc_comp_new2(ROHC_SMALL_CID, max_cid,
+	                      rohc_comp_get_random_default, NULL);
 
 error:
 	return NULL;
@@ -293,6 +294,8 @@ void rohc_free_compressor(struct rohc_comp *comp)
  * @brief Create a new ROHC compressor
  *
  * Create a new ROHC compressor with the given type of CIDs and MAX_CID.
+ *
+ * @deprecated do not use this function anymore, use rohc_comp_new2() instead
  *
  * @param cid_type  The type of Context IDs (CID) that the ROHC compressor
  *                  shall operate with.
@@ -345,6 +348,72 @@ void rohc_free_compressor(struct rohc_comp *comp)
 struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
                                  const rohc_cid_t max_cid)
 {
+	return rohc_comp_new2(cid_type, max_cid, rohc_comp_get_random_default, NULL);
+}
+
+
+/**
+ * @brief Create a new ROHC compressor
+ *
+ * Create a new ROHC compressor with the given type of CIDs and MAX_CID.
+ *
+ * The user-defined callback for random numbers is called by the ROHC library
+ * every time a new random number is required. It currently happens only to
+ * initiate the Sequence Number (SN) of new IP-only, IP/UDP, or IP/UDP-Lite
+ * streams to a random value as defined by RFC 3095.
+ *
+ * @param cid_type  The type of Context IDs (CID) that the ROHC compressor
+ *                  shall operate with.
+ *                  Accepted values are:
+ *                    \li \ref ROHC_SMALL_CID for small CIDs
+ *                    \li \ref ROHC_LARGE_CID for large CIDs
+ * @param max_cid   The maximum value that the ROHC compressor should use for
+ *                  context IDs (CID). As CIDs starts with value 0, the number
+ *                  of contexts is \e max_cid + 1. \n
+ *                  Accepted values are:
+ *                    \li [0, \ref ROHC_SMALL_CID_MAX] if \e cid_type is
+ *                        \ref ROHC_SMALL_CID
+ *                    \li [0, \ref ROHC_LARGE_CID_MAX] if \e cid_type is
+ *                        \ref ROHC_LARGE_CID
+ * @param rand_cb   The random callback to set
+ * @param rand_priv Private data that will be given to the callback, may be
+ *                  used as a context by user
+ * @return          The created compressor if successful,
+ *                  NULL if creation failed
+ *
+ * @warning Don't forget to free compressor memory with \ref rohc_comp_free
+ *          if \e rohc_comp_new2 succeeded
+ *
+ * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
+ * @see rohc_comp_free
+ * @see rohc_compress4
+ * @see rohc_comp_set_traces_cb
+ * @see rohc_comp_enable_profiles
+ * @see rohc_comp_enable_profile
+ * @see rohc_comp_disable_profiles
+ * @see rohc_comp_disable_profile
+ * @see rohc_comp_set_mrru
+ * @see rohc_comp_set_wlsb_window_width
+ * @see rohc_comp_set_periodic_refreshes
+ * @see rohc_comp_set_rtp_detection_cb
+ */
+struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
+                                  const rohc_cid_t max_cid,
+                                  const rohc_comp_random_cb_t rand_cb,
+                                  void *const rand_priv)
+{
 	const size_t wlsb_width = 4; /* default window width for W-LSB encoding */
 	struct rohc_comp *comp;
 	bool is_fine;
@@ -372,6 +441,10 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 		/* unexpected CID type */
 		goto error;
 	}
+	if(rand_cb == NULL)
+	{
+		return NULL;
+	}
 
 	/* allocate memory for the ROHC compressor */
 	comp = malloc(sizeof(struct rohc_comp));
@@ -387,6 +460,8 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	comp->medium.cid_type = cid_type;
 	comp->medium.max_cid = max_cid;
 	comp->mrru = 0; /* no segmentation by default */
+	comp->random_cb = rand_cb;
+	comp->random_cb_ctxt = rand_priv;
 
 	/* all compression profiles are disabled by default */
 	for(i = 0; i < C_NUM_PROFILES; i++)
@@ -425,13 +500,6 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	/* set the default number of uncompressed transmissions for list
 	 * compression */
 	is_fine = rohc_comp_set_list_trans_nr(comp, ROHC_LIST_DEFAULT_L);
-	if(is_fine != true)
-	{
-		goto destroy_comp;
-	}
-
-	/* set default callback for random numbers */
-	is_fine = rohc_comp_set_random_cb(comp, rohc_comp_get_random_default, NULL);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -504,7 +572,7 @@ error:
  * @brief Destroy the given ROHC compressor
  *
  * Destroy a ROHC compressor that was successfully created with
- * \ref rohc_comp_new
+ * \ref rohc_comp_new2
  *
  * @param comp  The ROHC compressor to destroy
  *
@@ -521,7 +589,7 @@ error:
 \endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
- * @see rohc_comp_new
+ * @see rohc_comp_new2
  */
 void rohc_comp_free(struct rohc_comp *const comp)
 {
@@ -668,6 +736,8 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attri
  * If no callback is defined, an internal one that always returns 0 will be
  * defined for compatibility reasons.
  *
+ * @deprecated do not use this function anymore, use rohc_comp_new2() instead
+ *
  * @param comp          The ROHC compressor to set the random callback for
  * @param callback      The random callback to set
  * @param user_context  Private data that will be given to the callback, may
@@ -692,9 +762,15 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attri
  * \code
         ...
 \endcode
- * \snippet rtp_detection.c set random callback
  * \code
-        ...
+	// set the callback for random numbers
+	if(!rohc_comp_set_random_cb(compressor, gen_random_num, NULL))
+	{
+		fprintf(stderr, "failed to set the callback for random numbers\n");
+		goto release_compressor;
+	}
+
+	...
 \endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
@@ -2485,7 +2561,7 @@ error:
  * @brief Set the maximal CID value the compressor should use
  *
  * @deprecated please do not use this function anymore, use the parameter
- *             max_cid of rohc_comp_new() instead
+ *             max_cid of rohc_comp_new2() instead
  *
  * @param comp  The ROHC compressor
  * @param value The new maximal CID value
@@ -2535,7 +2611,7 @@ error:
  * @brief Tell the compressor to use large CIDs
  *
  * @deprecated please do not use this function anymore, use the parameter
- *             cid_type of rohc_comp_new() instead
+ *             cid_type of rohc_comp_new2() instead
  *
  * @param comp      The ROHC compressor
  * @param large_cid Whether to use large CIDs or not

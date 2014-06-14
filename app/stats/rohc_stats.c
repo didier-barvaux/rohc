@@ -331,7 +331,7 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 	srand(time(NULL));
 
 	/* create the ROHC compressor */
-	comp = rohc_comp_new(cid_type, max_contexts - 1);
+	comp = rohc_comp_new2(cid_type, max_contexts - 1, gen_random_num, NULL);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -353,13 +353,6 @@ static int generate_comp_stats_all(const rohc_cid_type_t cid_type,
 	                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
-		goto destroy_comp;
-	}
-
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers\n");
 		goto destroy_comp;
 	}
 

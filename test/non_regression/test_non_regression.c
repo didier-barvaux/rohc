@@ -1440,7 +1440,8 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 	struct rohc_comp *comp;
 
 	/* create the compressor */
-	comp = rohc_comp_new(cid_type, max_contexts - 1);
+	comp = rohc_comp_new2(cid_type, max_contexts - 1,
+	                      gen_false_random_num, NULL);
 	if(comp == NULL)
 	{
 		printf("failed to create compressor\n");
@@ -1466,13 +1467,6 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 	if(!no_tcp && !rohc_comp_enable_profile(comp, ROHC_PROFILE_TCP))
 	{
 		printf("failed to enable the TCP compression profile\n");
-		goto destroy_comp;
-	}
-
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
-	{
-		printf("failed to set the callback for random numbers\n");
 		goto destroy_comp;
 	}
 

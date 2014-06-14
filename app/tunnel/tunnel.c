@@ -760,8 +760,12 @@ int main(int argc, char *argv[])
 	 * ROHC part:
 	 */
 
+	/* initialize the random generator */
+	seed = time(NULL);
+	srand(seed);
+
 	/* create the compressor and activate profiles */
-	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, gen_random_num, NULL);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -783,17 +787,6 @@ int main(int argc, char *argv[])
 	                              ROHC_PROFILE_ESP, -1))
 	{
 		fprintf(stderr, "failed to enable the compression profiles\n");
-		goto destroy_comp;
-	}
-
-	/* initialize the random generator */
-	seed = time(NULL);
-	srand(seed);
-
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers\n");
 		goto destroy_comp;
 	}
 

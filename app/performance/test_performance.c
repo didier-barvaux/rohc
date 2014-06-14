@@ -548,7 +548,7 @@ static int test_compression_perfs(char *filename,
 	}
 
 	/* create ROHC compressor */
-	comp = rohc_comp_new(cid_type, max_contexts - 1);
+	comp = rohc_comp_new2(cid_type, max_contexts - 1, gen_false_random_num, NULL);
 	if(comp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC compressor\n");
@@ -559,13 +559,6 @@ static int test_compression_perfs(char *filename,
 	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
 	{
 		fprintf(stderr, "failed to set the callback for traces\n");
-		goto free_compresssor;
-	}
-
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers\n");
 		goto free_compresssor;
 	}
 

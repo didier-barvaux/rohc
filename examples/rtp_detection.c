@@ -158,7 +158,8 @@ static struct rohc_comp * create_compressor(void)
 	struct rohc_comp *compressor;
 
 	/* create the ROHC compressor */
-	compressor = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	compressor = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                            gen_random_num, NULL);
 	if(compressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC compressor\n");
@@ -174,15 +175,6 @@ static struct rohc_comp * create_compressor(void)
 		goto release_compressor;
 	}
 //! [set compression traces callback]
-
-//! [set random callback]
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(compressor, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers\n");
-		goto release_compressor;
-	}
-//! [set random callback]
 
 	/* enable the RTP compression profile */
 	printf("\nenable the ROHC RTP compression profile\n");

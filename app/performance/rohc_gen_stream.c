@@ -363,7 +363,7 @@ static bool build_stream(const char *const filename,
 	if(strcmp(stream_type, "comp") == 0)
 	{
 		/* create the compressor */
-		comp = rohc_comp_new(cid_type, max_contexts - 1);
+		comp = rohc_comp_new2(cid_type, max_contexts - 1, gen_false_random_num, NULL);
 		if(comp == NULL)
 		{
 			fprintf(stderr, "cannot create the compressor\n");
@@ -385,14 +385,6 @@ static bool build_stream(const char *const filename,
 		                              ROHC_PROFILE_ESP, ROHC_PROFILE_TCP, -1))
 		{
 			fprintf(stderr, "failed to enable the compression profiles\n");
-			goto destroy_comp;
-		}
-
-		/* set the callback for random numbers on compressor */
-		if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
-		{
-			fprintf(stderr, "failed to set the callback for random numbers on "
-			        "compressor\n");
 			goto destroy_comp;
 		}
 

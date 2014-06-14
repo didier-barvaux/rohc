@@ -99,20 +99,14 @@ int main(int argc, char **argv)
 	 * possible for small CIDs */
 	printf("\ncreate the ROHC compressor\n");
 //! [create ROHC compressor]
-	compressor = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	compressor = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                            gen_random_num, NULL);
 	if(compressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC compressor\n");
 		goto error;
 	}
 //! [create ROHC compressor]
-
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(compressor, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers\n");
-		goto release_compressor;
-	}
 
 	/* Enable the compression profiles you need */
 	printf("\nenable several ROHC compression profiles\n");

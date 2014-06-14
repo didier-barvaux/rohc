@@ -48,6 +48,11 @@
 	} while(0)
 
 
+static int random_cb(const struct rohc_comp *const comp,
+                     void *const user_context)
+	__attribute__((warn_unused_result));
+
+
 /**
  * @brief Test the robustness of the compression API
  *
@@ -80,24 +85,32 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* rohc_comp_new() */
-	CHECK(rohc_comp_new(-1, ROHC_SMALL_CID_MAX) == NULL);
-	CHECK(rohc_comp_new(ROHC_SMALL_CID + 1, ROHC_SMALL_CID_MAX) == NULL);
-	comp = rohc_comp_new(ROHC_SMALL_CID, 0);
+	/* rohc_comp_new2() */
+	CHECK(rohc_comp_new2(-1, ROHC_SMALL_CID_MAX, random_cb, NULL) == NULL);
+	CHECK(rohc_comp_new2(ROHC_SMALL_CID + 1, ROHC_SMALL_CID_MAX,
+	                     random_cb, NULL) == NULL);
+	comp = rohc_comp_new2(ROHC_SMALL_CID, 0, random_cb, NULL);
 	CHECK(comp != NULL);
 	rohc_comp_free(comp);
-	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                      random_cb, NULL);
 	CHECK(comp != NULL);
 	rohc_comp_free(comp);
-	CHECK(rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX + 1) == NULL);
-	comp = rohc_comp_new(ROHC_LARGE_CID, 0);
+	CHECK(rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX + 1,
+	                     random_cb, NULL) == NULL);
+	comp = rohc_comp_new2(ROHC_LARGE_CID, 0, random_cb, NULL);
 	CHECK(comp != NULL);
 	rohc_comp_free(comp);
-	comp = rohc_comp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX);
+	comp = rohc_comp_new2(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX,
+	                      random_cb, NULL);
 	CHECK(comp != NULL);
 	rohc_comp_free(comp);
-	CHECK(rohc_comp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX + 1) == NULL);
-	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	CHECK(rohc_comp_new2(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX + 1,
+	                     random_cb, NULL) == NULL);
+	CHECK(rohc_comp_new2(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX,
+	                     NULL, NULL) == NULL);
+	comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                      random_cb, NULL);
 	CHECK(comp != NULL);
 
 	/* rohc_comp_set_traces_cb() */
@@ -105,13 +118,6 @@ int main(int argc, char *argv[])
 		rohc_trace_callback_t fct = (rohc_trace_callback_t) NULL;
 		CHECK(rohc_comp_set_traces_cb(NULL, fct) == false);
 		CHECK(rohc_comp_set_traces_cb(comp, fct) == true);
-	}
-
-	/* rohc_comp_set_random_cb() */
-	{
-		rohc_comp_random_cb_t fct = (rohc_comp_random_cb_t) NULL;
-		CHECK(rohc_comp_set_random_cb(NULL, fct, NULL) == false);
-		CHECK(rohc_comp_set_random_cb(comp, fct, NULL) == false);
 	}
 
 	/* rohc_comp_profile_enabled() */
@@ -351,5 +357,19 @@ int main(int argc, char *argv[])
 
 error:
 	return is_failure;
+}
+
+
+/**
+ * @brief Fake random callback: always send 0
+ *
+ * @param comp          The compressor
+ * @param user_context  Private data
+ * @return              Always 0
+ */
+static int random_cb(const struct rohc_comp *const comp __attribute__((unused)),
+                     void *const user_context __attribute__((unused)))
+{
+	return 0; /* fake */
 }
 

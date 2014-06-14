@@ -924,7 +924,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the ROHC compressor */
-	comp = rohc_comp_new(cid_type, max_contexts - 1);
+	comp = rohc_comp_new2(cid_type, max_contexts - 1, gen_false_random_num, NULL);
 	if(comp == NULL)
 	{
 		SNIFFER_LOG(LOG_WARNING, "failed to create the ROHC compressor");
@@ -954,14 +954,6 @@ static bool sniff(const rohc_cid_type_t cid_type,
 			            "0x%04x", i);
 			goto destroy_comp;
 		}
-	}
-
-	/* set the callback for random numbers on compressor */
-	if(!rohc_comp_set_random_cb(comp, gen_false_random_num, NULL))
-	{
-		SNIFFER_LOG(LOG_WARNING, "failed to set the random numbers callback "
-		            "for compressor");
-		goto destroy_comp;
 	}
 
 	/* set the callback for RTP stream detection */

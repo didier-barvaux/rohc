@@ -1,4 +1,5 @@
 rohc_comp_new
+rohc_comp_new2
 rohc_comp_free
 rohc_comp_get_max_cid
 rohc_comp_get_cid_type
