@@ -192,10 +192,12 @@ struct rohc_comp
 
 	/* variables related to RTP detection */
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /** The maximal number of RTP ports (shall be > 2) */
 #define MAX_RTP_PORTS 15U
 	/** The RTP ports table */
 	unsigned int rtp_ports[MAX_RTP_PORTS];
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/** The callback function used to detect RTP packet */
 	rohc_rtp_detection_callback_t rtp_callback;

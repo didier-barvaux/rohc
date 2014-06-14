@@ -186,8 +186,6 @@ int main(int argc, char *argv[])
 	assert(rohc_comp_set_wlsb_window_width(comp, 4));
 	/* set the callback for random numbers on compressor */
 	assert(rohc_comp_set_random_cb(comp, gen_false_random_num, NULL));
-	/* reset list of RTP ports for compressor */
-	assert(rohc_comp_reset_rtp_ports(comp));
 	/* set the callback for RTP stream detection */
 	assert(rohc_comp_set_rtp_detection_cb(comp, rtp_detect_cb, NULL));
 

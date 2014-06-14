@@ -244,35 +244,6 @@ int main(int argc, char *argv[])
 		CHECK(cid_type == ROHC_SMALL_CID);
 	}
 
-	/* rohc_comp_add_rtp_port() */
-	CHECK(rohc_comp_add_rtp_port(NULL, 1) == false);
-	CHECK(rohc_comp_add_rtp_port(comp, 0) == false);
-	CHECK(rohc_comp_add_rtp_port(comp, 0xffff + 1) == false);
-	CHECK(rohc_comp_add_rtp_port(comp, 1) == true);
-	CHECK(rohc_comp_add_rtp_port(comp, 1) == false); /* not twice in list */
-	for(int i = 2; i <= 15; i++)
-	{
-		CHECK(rohc_comp_add_rtp_port(comp, i) == true);
-	}
-	CHECK(rohc_comp_add_rtp_port(comp, 16) == false);
-
-	/* rohc_comp_remove_rtp_port() */
-	CHECK(rohc_comp_remove_rtp_port(NULL, 1) == false);
-	CHECK(rohc_comp_remove_rtp_port(comp, 0) == false);
-	CHECK(rohc_comp_remove_rtp_port(comp, 0xffff + 1) == false);
-	CHECK(rohc_comp_remove_rtp_port(comp, 16) == false); /* not in list */
-	CHECK(rohc_comp_remove_rtp_port(comp, 15) == true); /* remove last */
-	CHECK(rohc_comp_remove_rtp_port(comp, 16) == false); /* not in list (2) */
-	for(int i = 1; i < 15; i++)
-	{
-		CHECK(rohc_comp_remove_rtp_port(comp, i) == true);
-	}
-	CHECK(rohc_comp_remove_rtp_port(comp, 16) == false); /* empty list */
-
-	/* rohc_comp_reset_rtp_ports() */
-	CHECK(rohc_comp_reset_rtp_ports(NULL) == false);
-	CHECK(rohc_comp_reset_rtp_ports(comp) == true);
-
 	/* rohc_compress4() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };

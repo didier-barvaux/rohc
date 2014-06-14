@@ -132,6 +132,50 @@ static void rohc_print_traces(const rohc_trace_level_t level,
 
 
 /**
+ * @brief The RTP detection callback
+ *
+ * @param ip           The innermost IP packet
+ * @param udp          The UDP header of the packet
+ * @param payload      The UDP payload of the packet
+ * @param payload_size The size of the UDP payload (in bytes)
+ * @return             true if the packet is an RTP packet, false otherwise
+ */
+bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused)),
+                      const unsigned char *const udp,
+                      const unsigned char *const payload __attribute__((unused)),
+                      const unsigned int payload_size __attribute__((unused)),
+                      void *const rtp_private __attribute__((unused)))
+{
+	const size_t default_rtp_ports_nr = 5;
+	unsigned int default_rtp_ports[] = { 1234, 36780, 33238, 5020, 5002 };
+	uint16_t udp_dport;
+	bool is_rtp = false;
+	size_t i;
+
+	if(udp == NULL)
+	{
+		return false;
+	}
+
+	/* get the UDP destination port */
+	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
+
+	/* is the UDP destination port in the list of ports reserved for RTP
+	 * traffic by default (for compatibility reasons) */
+	for(i = 0; i < default_rtp_ports_nr; i++)
+	{
+		if(ntohs(udp_dport) == default_rtp_ports[i])
+		{
+			is_rtp = true;
+			break;
+		}
+	}
+
+	return is_rtp;
+}
+
+
+/**
  * @brief Init a ROHC couple (part 1)
  *
  * In part 1, only the compressor is initialized.
@@ -142,11 +186,7 @@ static void rohc_print_traces(const rohc_trace_level_t level,
  */
 int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 {
-#define NB_RTP_PORTS 5
-	unsigned int rtp_ports[NB_RTP_PORTS] =
-		{ 1234, 36780, 33238, 5020, 5002 };
 	bool is_ok;
-	int i;
 
 	pr_info("[%s] init ROHC couple #%d (phase 1)\n",
 	        THIS_MODULE->name, index + 1);
@@ -190,24 +230,10 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	        "enabled for ROHC compressor successfully set\n",
 	        THIS_MODULE->name);
 
-	/* reset list of RTP ports */
-	is_ok = rohc_comp_reset_rtp_ports(couple->comp);
-	if(!is_ok)
+	/* set UDP ports dedicated to RTP traffic */
+	if(!rohc_comp_set_rtp_detection_cb(couple->comp, rohc_comp_rtp_cb, NULL))
 	{
-		pr_err("[%s] \t failed to reset list of RTP ports\n", THIS_MODULE->name);
 		goto free_compressor;
-	}
-
-	/* add some ports to the list of RTP ports */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		is_ok = rohc_comp_add_rtp_port(couple->comp, rtp_ports[i]);
-		if(!is_ok)
-		{
-			pr_err("[%s] \t failed to enable RTP port %u\n",
-			       THIS_MODULE->name, rtp_ports[i]);
-			goto free_compressor;
-		}
 	}
 	pr_info("[%s] \t RTP ports successfully configured for ROHC compressor\n",
 	        THIS_MODULE->name);

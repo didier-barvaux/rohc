@@ -89,6 +89,12 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
+static bool rohc_comp_rtp_cb(const unsigned char *const ip,
+                             const unsigned char *const udp,
+                             const unsigned char *const payload,
+                             const unsigned int payload_size,
+                             void *const rtp_private)
+	__attribute__((warn_unused_result));
 
 
 /**
@@ -173,11 +179,6 @@ static int test_comp_and_decomp(void)
 	/* information about the last compressed packet */
 	rohc_comp_last_packet_info2_t last_packet_info;
 
-#define NB_RTP_PORTS 5
-	const unsigned int rtp_ports[NB_RTP_PORTS] =
-		{ 1234, 36780, 33238, 5020, 5002 };
-
-	unsigned int i;
 	int is_failure = 1;
 	int ret;
 
@@ -221,22 +222,11 @@ static int test_comp_and_decomp(void)
 		goto destroy_compA;
 	}
 
-	/* reset list of RTP ports on compressor A */
-	if(!rohc_comp_reset_rtp_ports(compA))
+	/* set UDP ports dedicated to RTP traffic */
+	if(!rohc_comp_set_rtp_detection_cb(compA, rohc_comp_rtp_cb, NULL))
 	{
-		fprintf(stderr, "failed to reset list of RTP ports on compressor A\n");
+		fprintf(stderr, "failed to set the callback RTP detection\n");
 		goto destroy_compA;
-	}
-
-	/* add some ports to the list of RTP ports on compressor A */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		if(!rohc_comp_add_rtp_port(compA, rtp_ports[i]))
-		{
-			fprintf(stderr, "failed to enable RTP port %u on compressor A\n",
-			        rtp_ports[i]);
-			goto destroy_compA;
-		}
 	}
 
 	/* create the ROHC compressor B with small CID */
@@ -273,22 +263,11 @@ static int test_comp_and_decomp(void)
 		goto destroy_compB;
 	}
 
-	/* reset list of RTP ports on compressor B */
-	if(!rohc_comp_reset_rtp_ports(compB))
+	/* set UDP ports dedicated to RTP traffic */
+	if(!rohc_comp_set_rtp_detection_cb(compB, rohc_comp_rtp_cb, NULL))
 	{
-		fprintf(stderr, "failed to reset list of RTP ports on compressor B\n");
+		fprintf(stderr, "failed to set the callback RTP detection\n");
 		goto destroy_compB;
-	}
-
-	/* add some ports to the list of RTP ports on compressor B */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		if(!rohc_comp_add_rtp_port(compB, rtp_ports[i]))
-		{
-			fprintf(stderr, "failed to enable RTP port %u on compressor B\n",
-			        rtp_ports[i]);
-			goto destroy_compB;
-		}
 	}
 
 	/* create the ROHC decompressor A with associated compressor B for its
@@ -528,5 +507,50 @@ static int gen_random_num(const struct rohc_comp *const comp,
 	assert(comp != NULL);
 	assert(user_context == NULL);
 	return rand();
+}
+
+
+/**
+ * @brief The RTP detection callback
+ *
+ * @param ip           The innermost IP packet
+ * @param udp          The UDP header of the packet
+ * @param payload      The UDP payload of the packet
+ * @param payload_size The size of the UDP payload (in bytes)
+ * @param rtp_private  An optional private context
+ * @return             true if the packet is an RTP packet, false otherwise
+ */
+static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused)),
+                             const unsigned char *const udp,
+                             const unsigned char *const payload __attribute__((unused)),
+                             const unsigned int payload_size __attribute__((unused)),
+                             void *const rtp_private __attribute__((unused)))
+{
+	const size_t default_rtp_ports_nr = 5;
+	unsigned int default_rtp_ports[] = { 1234, 36780, 33238, 5020, 5002 };
+	uint16_t udp_dport;
+	bool is_rtp = false;
+	size_t i;
+
+	if(udp == NULL)
+	{
+		return false;
+	}
+
+	/* get the UDP destination port */
+	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
+
+	/* is the UDP destination port in the list of ports reserved for RTP
+	 * traffic by default (for compatibility reasons) */
+	for(i = 0; i < default_rtp_ports_nr; i++)
+	{
+		if(ntohs(udp_dport) == default_rtp_ports[i])
+		{
+			is_rtp = true;
+			break;
+		}
+	}
+
+	return is_rtp;
 }
 

@@ -516,12 +516,18 @@ void ROHC_EXPORT rohc_c_set_enable(struct rohc_comp *compressor, int value)
 /* RTP stream detection through UDP ports */
 bool ROHC_EXPORT rohc_comp_add_rtp_port(struct rohc_comp *const comp,
                                         const unsigned int port)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("do not use this function anymore, "
+	                "use rohc_comp_set_rtp_detection_cb() instead");
 bool ROHC_EXPORT rohc_comp_remove_rtp_port(struct rohc_comp *const comp,
                                            const unsigned int port)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("do not use this function anymore, "
+	                "use rohc_comp_set_rtp_detection_cb() instead");
 bool ROHC_EXPORT rohc_comp_reset_rtp_ports(struct rohc_comp *const comp)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("do not use this function anymore, "
+	                "use rohc_comp_set_rtp_detection_cb() instead");
 
 /* RTP stream detection through callback */
 bool ROHC_EXPORT rohc_comp_set_rtp_detection_cb(struct rohc_comp *const comp,

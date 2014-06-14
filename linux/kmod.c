@@ -89,9 +89,6 @@ EXPORT_SYMBOL_GPL(rohc_comp_set_random_cb);
 EXPORT_SYMBOL_GPL(rohc_comp_set_features);
 
 /* RTP-specific configuration */
-EXPORT_SYMBOL_GPL(rohc_comp_add_rtp_port);
-EXPORT_SYMBOL_GPL(rohc_comp_remove_rtp_port);
-EXPORT_SYMBOL_GPL(rohc_comp_reset_rtp_ports);
 EXPORT_SYMBOL_GPL(rohc_comp_set_rtp_detection_cb);
 
 

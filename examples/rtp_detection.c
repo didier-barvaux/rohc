@@ -65,10 +65,6 @@ static struct rohc_comp * create_compressor(void)
 
 static void create_packet(struct rohc_buf *const packet);
 
-static bool compress_with_rtp_ports(struct rohc_comp *const compressor,
-                                    const struct rohc_buf packet)
-	__attribute__((warn_unused_result, nonnull(1)));
-
 static bool compress_with_callback(struct rohc_comp *const compressor,
                                    const struct rohc_buf packet)
 	__attribute__((warn_unused_result, nonnull(1)));
@@ -129,16 +125,8 @@ int main(int argc, char **argv)
 	printf("\nbuild a fake IP/UDP/RTP packet\n");
 	create_packet(&ip_packet);
 
-	/* compress the RTP packet with a list of UDP ports to detect the RTP
-	 * packets */
-	if(!compress_with_rtp_ports(compressor, ip_packet))
-	{
-		fprintf(stderr, "compression with detection by UDP ports failed\n");
-		goto release_compressor;
-	}
-
-	/* now, let's do the same with a user-defined callback to detect the
-	 * RTP packets */
+	/* compress the RTP packet with a user-defined callback to detect the
+	 * RTP packets among the UDP packets */
 	if(!compress_with_callback(compressor, ip_packet))
 	{
 		fprintf(stderr, "compression with detection by UDP ports failed\n");
@@ -275,84 +263,6 @@ static void create_packet(struct rohc_buf *const packet)
 
 
 /**
- * @brief Compress one IP/UDP/RTP packet (detection with UDP ports)
- *
- * @param compressor     The ROHC compressor
- * @param uncomp_packet  The IP/UDP/RTP packet to compress
- * @return               true if the compression is successful,
- *                       false if the compression failed
- */
-static bool compress_with_rtp_ports(struct rohc_comp *const compressor,
-                                    const struct rohc_buf uncomp_packet)
-{
-	uint8_t rohc_buffer[BUFFER_SIZE];
-	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
-	int ret;
-
-	/* reset list of UDP ports dedicated to RTP streams */
-	printf("\nreset the list of UDP ports dedicated to RTP streams\n");
-//! [reset RTP ports]
-	if(!rohc_comp_reset_rtp_ports(compressor))
-	{
-		fprintf(stderr, "failed to reset list of RTP ports\n");
-		goto error;
-	}
-//! [reset RTP ports]
-
-	/* add UDP ports 1234 and 10042 to the list of RTP ports */
-	printf("\nadd ports 1234 and 10042 to the list of UDP ports dedicated "
-	       "to RTP streams\n");
-//! [add RTP port]
-	if(!rohc_comp_add_rtp_port(compressor, 1234))
-	{
-		fprintf(stderr, "failed to enable RTP port 1234\n");
-		goto error;
-	}
-	if(!rohc_comp_add_rtp_port(compressor, 10042))
-	{
-		fprintf(stderr, "failed to enable RTP port 10042\n");
-		goto error;
-	}
-//! [add RTP port]
-
-	/* remove UDP port 1234 (for example purposes) */
-	printf("\nremove port 1234 from the list of UDP ports dedicated "
-	       "to RTP streams\n");
-//! [remove RTP port]
-	if(!rohc_comp_remove_rtp_port(compressor, 1234))
-	{
-		fprintf(stderr, "failed to remove RTP port 1234\n");
-		goto error;
-	}
-//! [remove RTP port]
-
-	/* now, compress this fake IP/UDP/RTP packet with the RTP profile */
-	printf("\ncompress the fake IP/UDP/RTP packet\n");
-	ret = rohc_compress4(compressor, uncomp_packet, &rohc_packet);
-	if(ret == ROHC_NEED_SEGMENT)
-	{
-		fprintf(stderr, "unexpected ROHC segment\n");
-		goto error;
-	}
-	else if(ret == ROHC_OK)
-	{
-		printf("\nIP/UDP/RTP packet successfully compressed\n");
-	}
-	else
-	{
-		/* compressor failed to compress the IP packet */
-		fprintf(stderr, "compression of fake IP/UDP/RTP packet failed\n");
-		goto error;
-	}
-
-	return true;
-
-error:
-	return false;
-}
-
-
-/**
  * @brief Compress one IP/UDP/RTP packet (detection with callback)
  *
  * @param compressor     The ROHC compressor
@@ -366,14 +276,6 @@ static bool compress_with_callback(struct rohc_comp *const compressor,
 	uint8_t rohc_buffer[BUFFER_SIZE];
 	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
 	int ret;
-
-	/* reset the list of UDP ports dedicated to RTP streams */
-	printf("\nreset the list of UDP ports dedicated to RTP streams\n");
-	if(!rohc_comp_reset_rtp_ports(compressor))
-	{
-		fprintf(stderr, "failed to reset list of RTP ports\n");
-		goto error;
-	}
 
 	/* define the user-defined function that the ROHC compressor shall
 	 * call for every UDP packet in order to detect RTP packets */

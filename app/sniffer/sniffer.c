@@ -964,14 +964,6 @@ static bool sniff(const rohc_cid_type_t cid_type,
 		goto destroy_comp;
 	}
 
-	/* reset list of RTP ports for compressor */
-	if(!rohc_comp_reset_rtp_ports(comp))
-	{
-		SNIFFER_LOG(LOG_WARNING, "failed to reset list of RTP ports for "
-		            "compressor");
-		goto destroy_comp;
-	}
-
 	/* set the callback for RTP stream detection */
 	if(!rohc_comp_set_rtp_detection_cb(comp, rtp_detect_cb, NULL))
 	{

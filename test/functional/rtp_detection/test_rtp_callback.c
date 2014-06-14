@@ -281,13 +281,6 @@ static int test_rtp_callback(const char *const do_detect,
 		goto destroy_comp;
 	}
 
-	/* reset list of RTP ports */
-	if(!rohc_comp_reset_rtp_ports(comp))
-	{
-		fprintf(stderr, "failed to reset list of RTP ports\n");
-		goto destroy_comp;
-	}
-
 	/* enable the RTP detection callback */
 	if(strcmp(do_detect, "detect") == 0)
 	{
@@ -301,14 +294,6 @@ static int test_rtp_callback(const char *const do_detect,
 	}
 	else
 	{
-		/* add the RTP port to the list,
-		 * if the callback is activated it should not have any effect */
-		if(!rohc_comp_add_rtp_port(comp, 1234))
-		{
-			fprintf(stderr, "failed to add RTP port\n");
-			goto destroy_comp;
-		}
-
 		if(!rohc_comp_set_rtp_detection_cb(comp, callback_ignore, NULL))
 		{
 			fprintf(stderr, "failed to set RTP detection callback\n");

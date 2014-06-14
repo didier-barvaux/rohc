@@ -56,8 +56,8 @@ for ./configure ? If yes, check configure output and config.log"
 #include <rohc_comp.h>
 #include <rohc_decomp.h>
 #include <rohc_packets.h>
-#include <rohc_comp_internals.h> /* to gain access to feedbacks in struct rohc_comp */
 #include <sdvl.h> /* to gain access to d_sdvalue_size() */
+#include <rohc_utils.h>
 
 
 /* prototypes of private functions */
@@ -76,6 +76,12 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
 	__attribute__((nonnull(1)));
+static bool rohc_comp_rtp_cb(const unsigned char *const ip,
+                             const unsigned char *const udp,
+                             const unsigned char *const payload,
+                             const unsigned int payload_size,
+                             void *const rtp_private)
+	__attribute__((warn_unused_result));
 
 
 /**
@@ -240,12 +246,7 @@ static int test_comp_and_decomp(const char *filename,
 	unsigned char *packet;
 	unsigned int counter;
 
-#define NB_RTP_PORTS 5
-	const unsigned int rtp_ports[NB_RTP_PORTS] =
-		{ 1234, 36780, 33238, 5020, 5002 };
-
 	int is_failure = 1;
-	unsigned int i;
 
 	/* open the source dump file */
 	handle = pcap_open_offline(filename, errbuf);
@@ -317,21 +318,11 @@ static int test_comp_and_decomp(const char *filename,
 		goto destroy_comp;
 	}
 
-	/* reset list of RTP ports for compressor */
-	if(!rohc_comp_reset_rtp_ports(comp))
+	/* set UDP ports dedicated to RTP traffic */
+	if(!rohc_comp_set_rtp_detection_cb(comp, rohc_comp_rtp_cb, NULL))
 	{
-		fprintf(stderr, "failed to reset list of RTP ports\n");
+		fprintf(stderr, "failed to set the callback RTP detection\n");
 		goto destroy_comp;
-	}
-
-	/* add some ports to the list of RTP ports */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
-		{
-			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
-			goto destroy_comp;
-		}
 	}
 
 
@@ -692,5 +683,50 @@ static int gen_random_num(const struct rohc_comp *const comp,
 	assert(comp != NULL);
 	assert(user_context == NULL);
 	return rand();
+}
+
+
+/**
+ * @brief The RTP detection callback
+ *
+ * @param ip           The innermost IP packet
+ * @param udp          The UDP header of the packet
+ * @param payload      The UDP payload of the packet
+ * @param payload_size The size of the UDP payload (in bytes)
+ * @param rtp_private  An optional private context
+ * @return             true if the packet is an RTP packet, false otherwise
+ */
+static bool rohc_comp_rtp_cb(const unsigned char *const ip __attribute__((unused)),
+                             const unsigned char *const udp,
+                             const unsigned char *const payload __attribute__((unused)),
+                             const unsigned int payload_size __attribute__((unused)),
+                             void *const rtp_private __attribute__((unused)))
+{
+	const size_t default_rtp_ports_nr = 5;
+	unsigned int default_rtp_ports[] = { 1234, 36780, 33238, 5020, 5002 };
+	uint16_t udp_dport;
+	bool is_rtp = false;
+	size_t i;
+
+	if(udp == NULL)
+	{
+		return false;
+	}
+
+	/* get the UDP destination port */
+	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
+
+	/* is the UDP destination port in the list of ports reserved for RTP
+	 * traffic by default (for compatibility reasons) */
+	for(i = 0; i < default_rtp_ports_nr; i++)
+	{
+		if(rohc_ntoh16(udp_dport) == default_rtp_ports[i])
+		{
+			is_rtp = true;
+			break;
+		}
+	}
+
+	return is_rtp;
 }
 

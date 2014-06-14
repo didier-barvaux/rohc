@@ -173,6 +173,13 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
 
 static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value);
 
+static bool rohc_comp_default_rtp_cb(const unsigned char *const ip,
+                                     const unsigned char *const udp,
+                                     const unsigned char *const payload,
+                                     const unsigned int payload_size,
+                                     void *const rtp_private)
+	__attribute__((warn_unused_result));
+
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 static int rohc_comp_get_random_default(const struct rohc_comp *const comp,
@@ -432,19 +439,9 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* set default UDP ports dedicated to RTP traffic (for compatibility) */
+	if(!rohc_comp_set_rtp_detection_cb(comp, rohc_comp_default_rtp_cb, NULL))
 	{
-		const size_t default_rtp_ports_nr = 5;
-		unsigned int default_rtp_ports[] =
-			{ 1234, 36780, 33238, 5020, 5002 };
-
-		/* add default ports to the list of RTP ports */
-		for(i = 0; i < default_rtp_ports_nr; i++)
-		{
-			if(!rohc_comp_add_rtp_port(comp, default_rtp_ports[i]))
-			{
-				goto destroy_comp;
-			}
-		}
+		goto destroy_comp;
 	}
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
@@ -2604,6 +2601,8 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Add a port to the list of UDP ports dedicated for RTP traffic
  *
@@ -2612,6 +2611,9 @@ error:
  *
  * This function allows to update the list by adding the given UDP port to the
  * list of UDP ports dedicated for RTP traffic.
+ *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_set_rtp_detection_cb() instead
  *
  * @param comp  The ROHC compressor
  * @param port  The UDP port to add in the list
@@ -2622,17 +2624,36 @@ error:
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
  * \code
-        ...
+	...
 \endcode
  * \snippet simple_rohc_program.c create ROHC compressor
  * \code
-        ...
-\endcode
- * \snippet rtp_detection.c reset RTP ports
- * \snippet rtp_detection.c add RTP port
- * \snippet rtp_detection.c remove RTP port
- * \code
-        ...
+	...
+
+	if(!rohc_comp_reset_rtp_ports(compressor))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto error;
+	}
+
+	if(!rohc_comp_add_rtp_port(compressor, 1234))
+	{
+		fprintf(stderr, "failed to enable RTP port 1234\n");
+		goto error;
+	}
+	if(!rohc_comp_add_rtp_port(compressor, 10042))
+	{
+		fprintf(stderr, "failed to enable RTP port 10042\n");
+		goto error;
+	}
+
+	if(!rohc_comp_remove_rtp_port(compressor, 1234))
+	{
+		fprintf(stderr, "failed to remove RTP port 1234\n");
+		goto error;
+	}
+
+	...
 \endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
@@ -2727,6 +2748,9 @@ error:
  * This function allows to update the list by removing the given UDP port to
  * the list of UDP ports dedicated for RTP traffic.
  *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_set_rtp_detection_cb() instead
+ *
  * @param comp  The ROHC compressor
  * @param port  The UDP port to remove
  * @return      true on success, false otherwise
@@ -2736,17 +2760,36 @@ error:
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
  * \code
-        ...
+	...
 \endcode
  * \snippet simple_rohc_program.c create ROHC compressor
  * \code
-        ...
-\endcode
- * \snippet rtp_detection.c reset RTP ports
- * \snippet rtp_detection.c add RTP port
- * \snippet rtp_detection.c remove RTP port
- * \code
-        ...
+	...
+
+	if(!rohc_comp_reset_rtp_ports(compressor))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto error;
+	}
+
+	if(!rohc_comp_add_rtp_port(compressor, 1234))
+	{
+		fprintf(stderr, "failed to enable RTP port 1234\n");
+		goto error;
+	}
+	if(!rohc_comp_add_rtp_port(compressor, 10042))
+	{
+		fprintf(stderr, "failed to enable RTP port 10042\n");
+		goto error;
+	}
+
+	if(!rohc_comp_remove_rtp_port(compressor, 1234))
+	{
+		fprintf(stderr, "failed to remove RTP port 1234\n");
+		goto error;
+	}
+
+	...
 \endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
@@ -2861,6 +2904,9 @@ error:
  * This function allows to update the list by emptying the list of UDP ports
  * dedicated for RTP traffic.
  *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_set_rtp_detection_cb() instead
+ *
  * @param comp  The ROHC compressor
  * @return      true on success, false otherwise
  *
@@ -2869,17 +2915,36 @@ error:
  * \par Example:
  * \snippet simple_rohc_program.c define ROHC compressor
  * \code
-        ...
+	...
 \endcode
  * \snippet simple_rohc_program.c create ROHC compressor
  * \code
-        ...
-\endcode
- * \snippet rtp_detection.c reset RTP ports
- * \snippet rtp_detection.c add RTP port
- * \snippet rtp_detection.c remove RTP port
- * \code
-        ...
+	...
+
+	if(!rohc_comp_reset_rtp_ports(compressor))
+	{
+		fprintf(stderr, "failed to reset list of RTP ports\n");
+		goto error;
+	}
+
+	if(!rohc_comp_add_rtp_port(compressor, 1234))
+	{
+		fprintf(stderr, "failed to enable RTP port 1234\n");
+		goto error;
+	}
+	if(!rohc_comp_add_rtp_port(compressor, 10042))
+	{
+		fprintf(stderr, "failed to enable RTP port 10042\n");
+		goto error;
+	}
+
+	if(!rohc_comp_remove_rtp_port(compressor, 1234))
+	{
+		fprintf(stderr, "failed to remove RTP port 1234\n");
+		goto error;
+	}
+
+	...
 \endcode
  * \snippet simple_rohc_program.c destroy ROHC compressor
  *
@@ -2910,6 +2975,8 @@ bool rohc_comp_reset_rtp_ports(struct rohc_comp *const comp)
 error:
 	return false;
 }
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -4912,6 +4979,51 @@ static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value)
 
 error:
 	return;
+}
+
+
+/**
+ * @brief The default RTP detection callback to keep compatibility
+ *
+ * @param ip           The innermost IP packet
+ * @param udp          The UDP header of the packet
+ * @param payload      The UDP payload of the packet
+ * @param payload_size The size of the UDP payload (in bytes)
+ * @param rtp_private  An optional private context
+ * @return             true if the packet is an RTP packet, false otherwise
+ */
+static bool rohc_comp_default_rtp_cb(const unsigned char *const ip __attribute__((unused)),
+                                     const unsigned char *const udp,
+                                     const unsigned char *const payload __attribute__((unused)),
+                                     const unsigned int payload_size __attribute__((unused)),
+                                     void *const rtp_private __attribute__((unused)))
+{
+	const size_t default_rtp_ports_nr = 5;
+	unsigned int default_rtp_ports[] = { 1234, 36780, 33238, 5020, 5002 };
+	uint16_t udp_dport;
+	bool is_rtp = false;
+	size_t i;
+
+	if(udp == NULL)
+	{
+		return false;
+	}
+
+	/* get the UDP destination port */
+	memcpy(&udp_dport, udp + 2, sizeof(uint16_t));
+
+	/* is the UDP destination port in the list of ports reserved for RTP
+	 * traffic by default (for compatibility reasons) */
+	for(i = 0; i < default_rtp_ports_nr; i++)
+	{
+		if(rohc_ntoh16(udp_dport) == default_rtp_ports[i])
+		{
+			is_rtp = true;
+			break;
+		}
+	}
+
+	return is_rtp;
 }
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
