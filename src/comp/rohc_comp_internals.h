@@ -108,6 +108,7 @@ struct rohc_comp_ctxt;
  */
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /**
  * @brief Information on ROHC feedback data
  */
@@ -120,6 +121,7 @@ struct rohc_feedback
 	/** Whether the feedback data was locked during packet build? */
 	bool is_locked;
 };
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -161,6 +163,7 @@ struct rohc_comp
 	unsigned char crc_table_8[256];
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* feedback-related variables: */
 
 	/** The ring of outgoing feedbacks */
@@ -171,6 +174,7 @@ struct rohc_comp
 	size_t feedbacks_first_unlocked;
 	/** @brief The index of the next empty location in the feedback ring */
 	size_t feedbacks_next;
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 	/* segment-related variables */

@@ -169,17 +169,15 @@ static int compress_decompress(struct rohc_comp *comp,
                                size_t link_len_src,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
+                               struct rohc_buf *const feedback_send,
                                unsigned int *const cid,
                                struct sniffer_stats *stats);
 
-static int compare_packets(const unsigned char *const pkt1,
-                           const size_t pkt1_size,
-                           const unsigned char *const pkt2,
-                           const size_t pkt2_size)
-	__attribute__((warn_unused_result, nonnull(1, 3)));
-static size_t get_tcp_opt_padding(const unsigned char *const packet,
-                                  const size_t length)
-	__attribute__((warn_unused_result, nonnull(1)));
+static int compare_packets(const struct rohc_buf pkt1,
+                           const struct rohc_buf pkt2)
+	__attribute__((warn_unused_result));
+static size_t get_tcp_opt_padding(const struct rohc_buf packet)
+	__attribute__((warn_unused_result));
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -871,6 +869,10 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
 
+	uint8_t feedback_send_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf feedback_send =
+		rohc_buf_init_empty(feedback_send_buffer, MAX_ROHC_SIZE);
+
 	int ret;
 	unsigned int i;
 
@@ -979,7 +981,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor (bi-directional mode) */
-	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp);
+	decomp = rohc_decomp_new2(cid_type, max_contexts - 1, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		SNIFFER_LOG(LOG_WARNING, "failed to create the decompressor");
@@ -1048,7 +1050,8 @@ static bool sniff(const rohc_cid_type_t cid_type,
 
 		/* compress & decompress from compressor to decompressor */
 		ret = compress_decompress(comp, decomp, header, packet,
-		                          link_len_src, handle, dumpers, &cid, &stats);
+		                          link_len_src, handle, dumpers,
+		                          &feedback_send, &cid, &stats);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -1145,19 +1148,30 @@ static int compress_decompress(struct rohc_comp *comp,
                                size_t link_len_src,
                                pcap_t *handle,
                                pcap_dumper_t *dumpers[],
+                               struct rohc_buf *const feedback_send,
                                unsigned int *const cid,
                                struct sniffer_stats *stats)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	unsigned char *ip_packet;
-	size_t ip_size;
-	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
-	unsigned char *rohc_packet;
-	size_t rohc_size;
+	struct rohc_buf ip_packet =
+		rohc_buf_init_full(packet, header.caplen, arrival_time);
+
+	const size_t output_packet_max_len =
+		max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE;
+	uint8_t output_packet[output_packet_max_len];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_empty(output_packet, output_packet_max_len);
+
+	uint8_t decomp_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf decomp_packet =
+		rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
+
+	uint8_t rcvd_feedback_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(rcvd_feedback_buffer, MAX_ROHC_SIZE);
+
 	rohc_comp_last_packet_info2_t comp_last_packet_info;
 	rohc_decomp_last_packet_info_t decomp_last_packet_info;
-	static unsigned char decomp_packet[MAX_ROHC_SIZE];
-	size_t decomp_size;
 	unsigned long possible_unit;
 	int ret;
 
@@ -1173,9 +1187,10 @@ static int compress_decompress(struct rohc_comp *comp,
 		goto error;
 	}
 
-	ip_packet = packet + link_len_src;
-	ip_size = header.len - link_len_src;
-	rohc_packet = output_packet + link_len_src;
+	/* skip the link layer header */
+	rohc_buf_shift(&ip_packet, link_len_src);
+	rohc_packet.len += link_len_src;
+	rohc_buf_shift(&rohc_packet, link_len_src);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -1183,51 +1198,58 @@ static int compress_decompress(struct rohc_comp *comp,
 		int version;
 		uint16_t tot_len;
 
-		version = (ip_packet[0] >> 4) & 0x0f;
-
+		version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
 		if(version == 4)
 		{
-			memcpy(&tot_len, ip_packet + 2, sizeof(uint16_t));
+			memcpy(&tot_len, rohc_buf_data_at(ip_packet, 2), sizeof(uint16_t));
 			tot_len = ntohs(tot_len);
 		}
 		else
 		{
 			const size_t ipv6_header_len = 40;
-			memcpy(&tot_len, ip_packet + 4, sizeof(uint16_t));
+			memcpy(&tot_len, rohc_buf_data_at(ip_packet, 4), sizeof(uint16_t));
 			tot_len = ipv6_header_len + ntohs(tot_len);
 		}
 
-		if(tot_len < ip_size)
+		if(tot_len < ip_packet.len)
 		{
 			if(is_verbose)
 			{
 				SNIFFER_LOG(LOG_INFO, "the Ethernet frame has %zd bytes of "
 				            "padding after the %u byte IP packet!",
-				            ip_size - tot_len, tot_len);
+				            ip_packet.len - tot_len, tot_len);
 			}
-			ip_size = tot_len;
+			ip_packet.len = tot_len;
 		}
 	}
 
 	/* fix IPv4 packets with non-standard-compliant 0xffff checksums instead
 	 * of 0x0000 (Windows Vista seems to be faulty for the latter), to avoid
 	 * false comparison failures after decompression */
-	if(((ip_packet[0] >> 4) & 0x0f) == 4 && ip_size >= 20 &&
-	   ip_packet[10] == 0xff && ip_packet[11] == 0xff)
+	if(((rohc_buf_byte_at(ip_packet, 0) >> 4) & 0x0f) == 4 &&
+	   ip_packet.len >= 20 &&
+	   rohc_buf_byte_at(ip_packet, 10) == 0xff &&
+	   rohc_buf_byte_at(ip_packet, 11) == 0xff)
 	{
-		ip_packet[10] = 0x00;
-		ip_packet[11] = 0x00;
+		rohc_buf_byte_at(ip_packet, 10) = 0x00;
+		rohc_buf_byte_at(ip_packet, 11) = 0x00;
 	}
 
+	/* piggyback the feedback */
+	memcpy(rohc_buf_data(rohc_packet), rohc_buf_data(*feedback_send),
+	       feedback_send->len);
+	rohc_packet.len += feedback_send->len;
+	rohc_buf_shift(&rohc_packet, feedback_send->len);
+
 	/* compress the IP packet */
-	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 	if(ret != ROHC_OK)
 	{
 		pcap_dumper_t *dumper;
 
 		SNIFFER_LOG(LOG_WARNING, "compression failed");
 		ret = -1;
+		rohc_buf_shift(&ip_packet, -(link_len_src));
 
 		/* open the new dumper */
 		dumper = pcap_dump_open(handle, "./dump_stream_default.pcap");
@@ -1259,8 +1281,8 @@ static int compress_decompress(struct rohc_comp *comp,
 		ret = -4;
 		goto error;
 	}
-	stats->comp_pre_nr_bytes += ip_size;
-	stats->comp_post_nr_bytes += rohc_size;
+	stats->comp_pre_nr_bytes += ip_packet.len;
+	stats->comp_post_nr_bytes += rohc_packet.len;
 	possible_unit = stats->comp_unit_size;
 	if(stats->comp_unit_size == 1)
 	{
@@ -1359,15 +1381,21 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* dump the IP packet */
+	rohc_buf_shift(&ip_packet, -(link_len_src));
 	pcap_dump((u_char *) dumpers[comp_last_packet_info.context_id],
 	          &header, packet);
+	rohc_buf_shift(&ip_packet, link_len_src);
 
 	/* record the CID */
 	*cid = comp_last_packet_info.context_id;
 
+	/* reset the feedback buffer */
+	feedback_send->data -= feedback_send->offset;
+	feedback_send->len = 0;
+
 	/* decompress the ROHC packet */
-	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-	                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+	ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
+	                       &rcvd_feedback, feedback_send);
 	if(ret != ROHC_OK)
 	{
 		SNIFFER_LOG(LOG_WARNING, "decompression failed");
@@ -1404,8 +1432,16 @@ static int compress_decompress(struct rohc_comp *comp,
 		stats->nr_duplicated_packets++;
 	}
 
+	/* deliver any received feedback data to the associated compressor */
+	if(!rohc_comp_deliver_feedback2(comp, rcvd_feedback))
+	{
+		SNIFFER_LOG(LOG_WARNING, "failed to deliver feedback");
+		ret = -4;
+		goto error;
+	}
+
 	/* compare the decompressed packet with the original one */
-	if(!compare_packets(ip_packet, ip_size, decomp_packet, decomp_size))
+	if(!compare_packets(ip_packet, decomp_packet))
 	{
 		SNIFFER_LOG(LOG_WARNING, "comparison with original packet failed");
 		ret = 0;
@@ -1425,15 +1461,11 @@ error:
  * @brief Compare two network packets and print differences if any
  *
  * @param pkt1      The first packet
- * @param pkt1_size The size of the first packet
  * @param pkt2      The second packet
- * @param pkt2_size The size of the second packet
  * @return          Whether the packets are equal or not
  */
-static int compare_packets(const unsigned char *const pkt1,
-                           const size_t pkt1_size,
-                           const unsigned char *const pkt2,
-                           const size_t pkt2_size)
+static int compare_packets(const struct rohc_buf pkt1,
+                           const struct rohc_buf pkt2)
 {
 	int valid = 1;
 	size_t min_size;
@@ -1443,19 +1475,20 @@ static int compare_packets(const unsigned char *const pkt1,
 	size_t tcp_padding_bytes;
 
 	/* do not compare more than the shortest of the 2 packets */
-	min_size = min(pkt1_size, pkt2_size);
+	min_size = min(pkt1.len, pkt2.len);
 
 	/* do not compare more than 180 bytes to avoid huge output */
 	min_size = min(180, min_size);
 
 	/* if packets are equal, do not print the packets */
-	if(pkt1_size == pkt2_size && memcmp(pkt1, pkt2, pkt1_size) == 0)
+	if(pkt1.len == pkt2.len &&
+	   memcmp(rohc_buf_data(pkt1), rohc_buf_data(pkt2), pkt1.len) == 0)
 	{
 		goto skip;
 	}
 	/* packets seem different, double check for extra padding of TCP options:
 	 * packets with extra padding at the end of TCP options cannot be compared */
-	tcp_padding_bytes = get_tcp_opt_padding(pkt1, pkt1_size);
+	tcp_padding_bytes = get_tcp_opt_padding(pkt1);
 	if(tcp_padding_bytes >= 4)
 	{
 		fprintf(stderr, "unexpected padding at the end of TCP options: "
@@ -1469,17 +1502,17 @@ static int compare_packets(const unsigned char *const pkt1,
 	SNIFFER_LOG(LOG_WARNING, "------------------------------ Compare ------------------------------");
 	SNIFFER_LOG(LOG_WARNING, "--------- reference ----------         ----------- new --------------");
 
-	if(pkt1_size != pkt2_size)
+	if(pkt1.len != pkt2.len)
 	{
 		SNIFFER_LOG(LOG_WARNING, "packets have different sizes (%zd != %zd), "
 		            "compare only the %zd first bytes",
-		            pkt1_size, pkt2_size, min_size);
+		            pkt1.len, pkt2.len, min_size);
 	}
 
 	j = 0;
 	for(i = 0; i < min_size; i++)
 	{
-		if(pkt1[i] != pkt2[i])
+		if(rohc_buf_byte_at(pkt1, i) != rohc_buf_byte_at(pkt2, i))
 		{
 			sep1 = '#';
 			sep2 = '#';
@@ -1490,8 +1523,8 @@ static int compare_packets(const unsigned char *const pkt1,
 			sep2 = ']';
 		}
 
-		sprintf(str1[j], "%c0x%.2x%c", sep1, pkt1[i], sep2);
-		sprintf(str2[j], "%c0x%.2x%c", sep1, pkt2[i], sep2);
+		sprintf(str1[j], "%c0x%.2x%c", sep1, rohc_buf_byte_at(pkt1, i), sep2);
+		sprintf(str2[j], "%c0x%.2x%c", sep1, rohc_buf_byte_at(pkt2, i), sep2);
 
 		/* make the output human readable */
 		if(j >= 3 || (i + 1) >= min_size)
@@ -1540,11 +1573,9 @@ skip:
  * padding bytes.
  *
  * @param packet  The packet to check for padding
- * @param length  The length (in bytes) of the packet to check
  * @return        The number of padding bytes found after TCP options
  */
-static size_t get_tcp_opt_padding(const unsigned char *const packet,
-                                  const size_t length)
+static size_t get_tcp_opt_padding(const struct rohc_buf packet)
 {
 	struct tcphdr *tcp;
 	size_t opt_len;
@@ -1553,26 +1584,26 @@ static size_t get_tcp_opt_padding(const unsigned char *const packet,
 	size_t i;
 
 	/* check IP version */
-	if(length < 1)
+	if(packet.len < 1)
 	{
 		goto too_short;
 	}
-	if((packet[0] & 0xf0) == 0x40)
+	if((rohc_buf_byte(packet) & 0xf0) == 0x40)
 	{
 		/* IPv4 */
-		struct iphdr *ip = (struct iphdr *) packet;
+		struct iphdr *ip = (struct iphdr *) rohc_buf_data(packet);
 		ip_len = ip->ihl * 4;
-		if(length <= ip_len || ip->protocol != 6)
+		if(packet.len <= ip_len || ip->protocol != 6)
 		{
 			goto not_tcp;
 		}
 	}
-	else if((packet[0] & 0xf0) == 0x60)
+	else if((rohc_buf_byte(packet) & 0xf0) == 0x60)
 	{
 		/* IPv6 */
-		struct ip6_hdr *ip = (struct ip6_hdr *) packet;
+		struct ip6_hdr *ip = (struct ip6_hdr *) rohc_buf_data(packet);
 		ip_len = sizeof(struct ip6_hdr);
-		if(length <= ip_len || ip->ip6_nxt != 6)
+		if(packet.len <= ip_len || ip->ip6_nxt != 6)
 		{
 			goto not_tcp;
 		}
@@ -1583,14 +1614,14 @@ static size_t get_tcp_opt_padding(const unsigned char *const packet,
 	}
 
 	/* enough room for IP and TCP base header? */
-	if(length < (ip_len + sizeof(struct tcphdr)))
+	if(packet.len < (ip_len + sizeof(struct tcphdr)))
 	{
 		goto malformed;
 	}
 
 	/* enough room for TCP options? */
-	tcp = (struct tcphdr *) (packet + ip_len);
-	if(length < (ip_len + tcp->doff * 4))
+	tcp = (struct tcphdr *) rohc_buf_data_at(packet, ip_len);
+	if(packet.len < (ip_len + tcp->doff * 4))
 	{
 		goto malformed;
 	}
@@ -1601,7 +1632,7 @@ static size_t get_tcp_opt_padding(const unsigned char *const packet,
 	    i < (ip_len + tcp->doff * 4);
 	    i += opt_len)
 	{
-		switch(packet[i])
+		switch(rohc_buf_byte_at(packet, i))
 		{
 			case 0x01: /* NOP */
 				opt_len = 1;
@@ -1611,12 +1642,12 @@ static size_t get_tcp_opt_padding(const unsigned char *const packet,
 				nr_eol_found++;
 				break;
 			default: /* long option TLV */
-				if(length <= (i + 1))
+				if(packet.len <= (i + 1))
 				{
 					goto malformed;
 				}
-				opt_len = packet[i + 1];
-				if(length <= (i + opt_len))
+				opt_len = rohc_buf_byte_at(packet, i + 1);
+				if(packet.len <= (i + opt_len))
 				{
 					goto malformed;
 				}

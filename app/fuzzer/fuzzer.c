@@ -148,8 +148,7 @@ int main(int argc, char *argv[])
 	srand(rand_seed);
 
 	/* create ROHC decompressor */
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                         ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	assert(decomp != NULL);
 
 	/* set the callback for traces on ROHC decompressor */
@@ -164,11 +163,12 @@ int main(int argc, char *argv[])
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
 	{
-		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-		unsigned char rohc_packet[PACKET_MAX_SIZE];
-		size_t rohc_len;
-		unsigned char ip_packet[PACKET_MAX_SIZE];
-		size_t ip_size;
+		uint8_t rohc_buffer[PACKET_MAX_SIZE];
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_empty(rohc_buffer, PACKET_MAX_SIZE);
+		uint8_t ip_buffer[PACKET_MAX_SIZE];
+		struct rohc_buf ip_packet =
+			rohc_buf_init_empty(ip_buffer, PACKET_MAX_SIZE);
 		int ret __attribute__((unused));
 		size_t i;
 
@@ -184,15 +184,14 @@ int main(int argc, char *argv[])
 		}
 
 		/* create one crazy ROHC packet */
-		rohc_len = rand() % PACKET_MAX_SIZE;
-		for(i = 0; i < rohc_len; i++)
+		rohc_packet.len = rand() % PACKET_MAX_SIZE;
+		for(i = 0; i < rohc_packet.len; i++)
 		{
-			rohc_packet[i] = rand() % 0xff;
+			rohc_buf_byte_at(rohc_packet, i) = rand() % 0xff;
 		}
 
 		/* decompress the crazy ROHC packet */
-		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_len,
-		                       ip_packet, PACKET_MAX_SIZE, &ip_size);
+		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
 		/* do not check for result, only robustness is checked */
 	}
 

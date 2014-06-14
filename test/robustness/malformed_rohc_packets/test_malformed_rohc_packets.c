@@ -198,8 +198,7 @@ static int test_decomp(const char *const filename,
 	}
 
 	/* create the decompressor */
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                         ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the decompressor\n");
@@ -221,10 +220,11 @@ static int test_decomp(const char *const filename,
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-		unsigned char *rohc_packet;
-		int rohc_size;
-		static unsigned char ip_packet[MAX_ROHC_SIZE];
-		size_t ip_size;
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_full(packet, header.caplen, arrival_time);
+		uint8_t ip_buffer[MAX_ROHC_SIZE];
+		struct rohc_buf ip_packet =
+			rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
 		int ret;
 
 		counter++;
@@ -237,14 +237,13 @@ static int test_decomp(const char *const filename,
 			goto destroy_decomp;
 		}
 
-		rohc_packet = packet + link_len;
-		rohc_size = header.len - link_len;
+		/* skip the link layer header */
+		rohc_buf_shift(&rohc_packet, link_len);
 
 		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
 
 		/* decompress the ROHC packet */
-		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-		                       ip_packet, MAX_ROHC_SIZE, &ip_size);
+		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
 		if(ret == ROHC_OK)
 		{
 			if(counter >= failure_start)

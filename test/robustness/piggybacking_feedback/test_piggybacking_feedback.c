@@ -145,8 +145,6 @@ static void usage(void)
  */
 static int test_comp_and_decomp(void)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-
 	/* compressors and decompressors used during the test */
 	struct rohc_comp *compA;
 	struct rohc_decomp *decompA;
@@ -155,12 +153,22 @@ static int test_comp_and_decomp(void)
 
 	/* original IP packet, ROHC packet and decompressed IP packet */
 	struct ipv4_hdr *ip_header;
-	unsigned char ip_packet[MAX_ROHC_SIZE];
-	size_t ip_size;
-	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	size_t rohc_size;
-	static unsigned char decomp_packet[MAX_ROHC_SIZE];
-	size_t decomp_size;
+	uint8_t ip_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
+	uint8_t rohc_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
+	uint8_t decomp_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf decomp_packet =
+		rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
+
+	/* feedback data */
+	uint8_t rcvd_feedback_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(rcvd_feedback_buffer, MAX_ROHC_SIZE);
+	uint8_t feedback_send_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf feedback_send =
+		rohc_buf_init_empty(feedback_send_buffer, MAX_ROHC_SIZE);
 
 	/* information about the last compressed packet */
 	rohc_comp_last_packet_info2_t last_packet_info;
@@ -285,8 +293,7 @@ static int test_comp_and_decomp(void)
 
 	/* create the ROHC decompressor A with associated compressor B for its
 	 * feedback channel */
-	decompA = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                          ROHC_O_MODE, compB);
+	decompA = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	if(decompA == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor A\n");
@@ -312,8 +319,7 @@ static int test_comp_and_decomp(void)
 
 	/* create the ROHC decompressor B with associated compressor A for its
 	 * feedback channel */
-	decompB = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                          ROHC_O_MODE, compA);
+	decompB = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	if(decompB == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor B\n");
@@ -338,12 +344,12 @@ static int test_comp_and_decomp(void)
 	}
 
 	/* create a fake IP packet for the purpose of the test*/
-	ip_header = (struct ipv4_hdr *) ip_packet;
+	ip_packet.len = sizeof(struct ipv4_hdr) + strlen(FAKE_PAYLOAD);
+	ip_header = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 	ip_header->version = 4; /* we create an IPv4 header */
 	ip_header->ihl = 5; /* minimal IPv4 header length (in 32-bit words) */
 	ip_header->tos = 0;
-	ip_size = ip_header->ihl * 4 + strlen(FAKE_PAYLOAD);
-	ip_header->tot_len = htons(ip_size);
+	ip_header->tot_len = htons(ip_packet.len);
 	ip_header->id = 0;
 	ip_header->frag_off = 0;
 	ip_header->ttl = 1;
@@ -351,12 +357,12 @@ static int test_comp_and_decomp(void)
 	ip_header->check = htons(0xa93f); /* IP checksum */
 	ip_header->saddr = htonl(0x01020304);
 	ip_header->daddr = htonl(0x05060708);
-	memcpy(ip_packet + ip_header->ihl * 4, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
+	memcpy(rohc_buf_data_at(ip_packet, ip_header->ihl * 4), FAKE_PAYLOAD,
+	       strlen(FAKE_PAYLOAD));
 	fprintf(stderr, "IP packet successfully built\n");
 
 	/* compress the IP packet with the ROHC compressor A */
-	ret = rohc_compress3(compA, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	ret = rohc_compress4(compA, ip_packet, &rohc_packet);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor A\n");
@@ -366,32 +372,46 @@ static int test_comp_and_decomp(void)
 
 	/* decompress the generated ROHC packet with the ROHC decompressor A:
 	 * feedback data shall be delivered to compressor B */
-	ret = rohc_decompress2(decompA, arrival_time, rohc_packet, rohc_size,
-	                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+	ret = rohc_decompress3(decompA, rohc_packet, &decomp_packet,
+	                       &rcvd_feedback, &feedback_send);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to decompress ROHC packet with decompressor A\n");
 		goto destroy_decompB;
 	}
 	fprintf(stderr, "decompression with decompressor A is successful\n");
+	rohc_packet.len = 0; /* ROHC packet was correctly decompressed */
+	decomp_packet.len = 0; /* drop the decompressed packet */
+
+	/* no feedback expected to be received */
+	assert(rcvd_feedback.len == 0);
+	/* some feedback expected to be ready to be sent */
+	fprintf(stderr, "%zu-byte feedback to be sent\n", feedback_send.len);
+	assert(feedback_send.len > 0);
+
+	/* piggyback the feedback to send along the ROHC packet that compressor B
+	 * is going to generate */
+	memcpy(rohc_buf_data(rohc_packet), rohc_buf_data(feedback_send),
+	       feedback_send.len);
+	rohc_packet.len += feedback_send.len;
+	rohc_buf_shift(&rohc_packet, feedback_send.len);
 
 	/* fail to compress the IP packet with the ROHC compressor B: compressor B
-	 * shall try to put in the ROHC packet the feedback data delivered by
-	 * decompressor A but it shall not lose feedback data when the compression
-	 * fails */
-	ret = rohc_compress3(compB, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, 1, &rohc_size);
+	 * shall not change the piggybacked feedback data */
+	rohc_packet.max_len = feedback_send.len + 1; /* cause compression error */
+	ret = rohc_compress4(compB, ip_packet, &rohc_packet);
 	if(ret == ROHC_OK)
 	{
 		fprintf(stderr, "succeeded to compress IP packet with compressor B\n");
+		feedback_send.len = 0; /* feedback was correctly piggybacked */
 		goto destroy_decompB;
 	}
 	fprintf(stderr, "compression with compressor B failed as expected\n");
+	rohc_packet.max_len = MAX_ROHC_SIZE; /* revert */
 
 	/* compress the IP packet with the ROHC compressor B: feedback data
-	 * delivered by decompressor A shall be piggybacked */
-	ret = rohc_compress3(compB, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	 * shall be piggybacked */
+	ret = rohc_compress4(compB, ip_packet, &rohc_packet);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to compress IP packet with compressor B\n");
@@ -399,16 +419,32 @@ static int test_comp_and_decomp(void)
 	}
 	fprintf(stderr, "compression with compressor B is successful\n");
 
+	/* feedback was correctly piggybacked */
+	rohc_buf_shift(&rohc_packet, -(feedback_send.len));
+	feedback_send.len = 0;
+
 	/* decompress the generated ROHC packet with the ROHC decompressor B:
-	 * feedback data shall be delivered to compressor A */
-	ret = rohc_decompress2(decompB, arrival_time, rohc_packet, rohc_size,
-	                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+	 * feedback data shall be received for compressor A */
+	ret = rohc_decompress3(decompB, rohc_packet, &decomp_packet,
+	                       &rcvd_feedback, &feedback_send);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to decompress ROHC packet with decompressor B\n");
 		goto destroy_decompB;
 	}
 	fprintf(stderr, "decompression with decompressor B is successful\n");
+	rohc_packet.len = 0; /* ROHC packet was correctly decompressed */
+
+	/* some feedback expected to be received */
+	assert(rcvd_feedback.len > 0);
+
+	/* deliver the received feedback data to compressor A */
+	if(!rohc_comp_deliver_feedback2(compA, rcvd_feedback))
+	{
+		fprintf(stderr, "failed to deliver the received feedback data to "
+		        "compressor A\n");
+		goto destroy_decompB;
+	}
 
 	/* get packet statistics and remember the context mode */
 	last_packet_info.version_major = 0;

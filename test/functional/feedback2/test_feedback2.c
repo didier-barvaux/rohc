@@ -336,7 +336,7 @@ static int test_comp_and_decomp(const char *filename,
 
 
 	/* create the ROHC decompressor in bi-directional mode */
-	decomp = rohc_decomp_new(cid_type, max_cid, ROHC_O_MODE, comp);
+	decomp = rohc_decomp_new2(cid_type, max_cid, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
@@ -365,15 +365,22 @@ static int test_comp_and_decomp(const char *filename,
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-		unsigned char *rohc_packet;
-		size_t rohc_size;
-		static unsigned char ip_packet[MAX_ROHC_SIZE];
-		size_t ip_size;
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_full(packet, header.caplen, arrival_time);
 
-		unsigned char *feedback_data;
-		size_t feedback_size;
-		unsigned int feedback_type;
-		unsigned int feedback_data_pos = 0;
+		uint8_t ip_buffer[MAX_ROHC_SIZE];
+		struct rohc_buf ip_packet =
+			rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
+
+		uint8_t feedback_buf[MAX_ROHC_SIZE];
+		struct rohc_buf feedback_send =
+			rohc_buf_init_empty(feedback_buf, MAX_ROHC_SIZE);
+
+		uint8_t feedback_code;
+		uint8_t feedback_full_len;
+		uint8_t feedback_data_len;
+		uint8_t feedback_type;
+
 		uint16_t sn;
 		unsigned int i;
 		unsigned int opt_len;
@@ -393,12 +400,11 @@ static int test_comp_and_decomp(const char *filename,
 		}
 
 		/* skip the link layer header */
-		rohc_packet = packet + link_len;
-		rohc_size = header.len - link_len;
+		rohc_buf_shift(&rohc_packet, link_len);
 
 		/* decompress the ROHC packet with the ROHC decompressor */
-		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-		                       ip_packet, MAX_ROHC_SIZE, &ip_size);
+		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet,
+		                       NULL, &feedback_send);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");
@@ -406,20 +412,50 @@ static int test_comp_and_decomp(const char *filename,
 		}
 		fprintf(stderr, "\tdecompression is successful\n");
 
-		if(comp->feedbacks_first == 0 &&
-		   comp->feedbacks[comp->feedbacks_first].length == 0)
+		/* the decompressor should have generated one feedback */
+		if(rohc_buf_is_empty(feedback_send))
 		{
 			fprintf(stderr, "\tno feedback generated while one was expected\n");
 			goto destroy_decomp;
 		}
+		fprintf(stderr, "\t%zu-byte feedback generated\n", feedback_send.len);
 
-		/* retrieve feedback data */
-		feedback_data = comp->feedbacks[comp->feedbacks_first].data;
-		feedback_size = comp->feedbacks[comp->feedbacks_first].length;
-		fprintf(stderr, "\t%zd-byte feedback generated\n", feedback_size);
+		/* feedback header starts with 0b11110 */
+		if((rohc_buf_byte(feedback_send) & 0xf8) != 0xf0)
+		{
+			fprintf(stderr, "\tfeedback should start with the bits 0b11110\n");
+			goto destroy_decomp;
+		}
+		fprintf(stderr, "\tmagic number 0b11110 found\n");
 
-		/* if feedback length is one octet, the feedback is a FEEDBACK-1 */
-		if(feedback_size < 2)
+		feedback_code = rohc_buf_byte(feedback_send) & 0x07;
+		if(feedback_code > 0)
+		{
+			feedback_data_len = feedback_code;
+			feedback_full_len = 1 + feedback_data_len;
+		}
+		else
+		{
+			fprintf(stderr, "\tadditional Size octet found\n");
+			if(feedback_send.len < 2)
+			{
+				fprintf(stderr, "\tfeedback is not large enough for the Size "
+				        "octet\n");
+				goto destroy_decomp;
+			}
+			feedback_data_len = rohc_buf_byte_at(feedback_send, 1);
+			feedback_full_len = 1 + 1 + feedback_data_len;
+		}
+		if(feedback_full_len != feedback_send.len)
+		{
+			fprintf(stderr, "\tadditional data found at the end of feedback\n");
+			goto destroy_decomp;
+		}
+		rohc_buf_shift(&feedback_send, feedback_full_len - feedback_data_len);
+
+		/* if feedback length is 2 bytes (1-byte header + 1-byte feedback), the
+		 * feedback is a FEEDBACK-1 */
+		if(feedback_send.len == 2)
 		{
 			fprintf(stderr, "\tFEEDBACK-2 should be at least 2 byte long\n");
 			goto destroy_decomp;
@@ -433,8 +469,8 @@ static int test_comp_and_decomp(const char *filename,
 			size_t cid_bits_nr;
 
 			/* determine the size of the SDVL-encoded large CID */
-			sdvl_size = sdvl_decode(feedback_data, feedback_size,
-			                        &cid, &cid_bits_nr);
+			sdvl_size = sdvl_decode(rohc_buf_data(feedback_send),
+			                        feedback_send.len, &cid, &cid_bits_nr);
 			if(sdvl_size <= 0 || sdvl_size > 4)
 			{
 				fprintf(stderr, "\tinvalid SDVL-encoded value for large CID\n");
@@ -442,20 +478,20 @@ static int test_comp_and_decomp(const char *filename,
 			}
 
 			fprintf(stderr, "\tlarge CID found\n");
-			feedback_data_pos += sdvl_size;
+			rohc_buf_shift(&feedback_send, sdvl_size);
 		}
 		else
 		{
-			if(((feedback_data[0] & 0xc0) >> 6) == 3)
+			if(((rohc_buf_byte(feedback_send) & 0xc0) >> 6) == 3)
 			{
 				/* skip Add-CID */
 				fprintf(stderr, "\tAdd-CID found\n");
-				feedback_data_pos++;
+				rohc_buf_shift(&feedback_send, 1);
 			}
 		}
 
 		/* check feedback type */
-		feedback_type = (feedback_data[feedback_data_pos] & 0xc0) >> 6;
+		feedback_type = (rohc_buf_byte(feedback_send) & 0xc0) >> 6;
 		switch(feedback_type)
 		{
 			case 0:
@@ -493,13 +529,14 @@ static int test_comp_and_decomp(const char *filename,
 		fprintf(stderr, "\tFEEDBACK-2 is a %s feedback as expected\n",
 		        expected_type);
 
-		sn = ((feedback_data[feedback_data_pos] & 0x0f) << 8) +
-		     (feedback_data[feedback_data_pos + 1] & 0xff);
+		sn = ((rohc_buf_byte(feedback_send) & 0x0f) << 8) +
+		     (rohc_buf_byte_at(feedback_send, 1) & 0xff);
 		fprintf(stderr, "\tSN (or a part of it) = 0x%04x\n", sn);
+		rohc_buf_shift(&feedback_send, 2);
 
 		/* parse every feedback options found in the packet */
 		expected_opt_pos = 0;
-		for(i = feedback_data_pos + 2; i < feedback_size; i += opt_len)
+		for(i = 0; i < feedback_send.len; i += opt_len)
 		{
 			/* is another feedback option expected? */
 			if(expected_opt_pos >= expected_options_nr)
@@ -509,10 +546,10 @@ static int test_comp_and_decomp(const char *filename,
 			}
 
 			/* get option length (1 byte of header + variable data) */
-			opt_len = 1 + (feedback_data[i] & 0x0f);
+			opt_len = 1 + (rohc_buf_byte_at(feedback_send, i) & 0x0f);
 
 			/* check option type */
-			switch((feedback_data[i] & 0xf0) >> 4)
+			switch((rohc_buf_byte_at(feedback_send, i) & 0xf0) >> 4)
 			{
 				case 1:
 					/* CRC */
@@ -594,17 +631,13 @@ static int test_comp_and_decomp(const char *filename,
 				default:
 					/* unknown option: RFC 3095 says to ignore unknown options */
 					fprintf(stderr, "\tIgnore unknown %u-byte option of type %u\n",
-					        opt_len, (feedback_data[i] & 0xf0) >> 4);
+					        opt_len, (rohc_buf_byte_at(feedback_send, i) & 0xf0) >> 4);
 					break;
 			}
 		}
 
-		free(comp->feedbacks[comp->feedbacks_first].data);
-		comp->feedbacks[comp->feedbacks_first].length = 0;
-		comp->feedbacks[comp->feedbacks_first].is_locked = false;
-		comp->feedbacks_first = 0;
-		comp->feedbacks_first_unlocked = 0;
-		comp->feedbacks_next = 0;
+		feedback_send.data -= feedback_send.offset;
+		feedback_send.len = 0;
 	}
 
 	/* everything went fine */

@@ -192,8 +192,8 @@ int main(int argc, char *argv[])
 	assert(rohc_comp_set_rtp_detection_cb(comp, rtp_detect_cb, NULL));
 
 	/* create the ROHC decompressor
-	 * (large CID, MAX_CID = 450, U-mode, no feedback channel) */
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, 450, ROHC_U_MODE, NULL);
+	 * (large CID, MAX_CID = 450, U-mode) */
+	decomp = rohc_decomp_new2(ROHC_LARGE_CID, 450, ROHC_U_MODE);
 	assert(decomp != NULL);
 	/* set the callback for traces on ROHC decompressor */
 	assert(rohc_decomp_set_traces_cb(decomp, print_rohc_traces));
@@ -203,21 +203,23 @@ int main(int argc, char *argv[])
 	/* decompress many random packets in a row */
 	for(cur_iter = 1; cur_iter <= max_iter; cur_iter++)
 	{
-		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 		const size_t payload_len = 20;
 
-		unsigned char rohc_packet[PACKET_MAX_SIZE];
-		size_t rohc_len;
+		uint8_t rohc_buffer[PACKET_MAX_SIZE];
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_empty(rohc_buffer, PACKET_MAX_SIZE);
 
-		unsigned char ip_packet[PACKET_MAX_SIZE];
-		size_t ip_size;
+		uint8_t ip_buffer[PACKET_MAX_SIZE];
+		struct rohc_buf ip_packet =
+			rohc_buf_init_empty(ip_buffer, PACKET_MAX_SIZE);
 
 		struct ipv4_hdr *ipv4;
 		struct udphdr *udp;
 		struct rtphdr *rtp;
 
-		unsigned char ip_packet2[PACKET_MAX_SIZE];
-		size_t ip_size2;
+		uint8_t ip_buffer2[PACKET_MAX_SIZE];
+		struct rohc_buf ip_packet2 =
+			rohc_buf_init_empty(ip_buffer2, PACKET_MAX_SIZE);
 
 		int ret;
 
@@ -233,14 +235,14 @@ int main(int argc, char *argv[])
 		}
 
 		/* create one IP/UDP/RTP packet */
-		ip_size = sizeof(struct ipv4_hdr) + sizeof(struct udphdr) +
-		          sizeof(struct rtphdr) + payload_len;
+		ip_packet.len = sizeof(struct ipv4_hdr) + sizeof(struct udphdr) +
+		                sizeof(struct rtphdr) + payload_len;
 		/* build IPv4 header */
-		ipv4 = (struct ipv4_hdr *) ip_packet;
+		ipv4 = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 		ipv4->version = 4;
 		ipv4->ihl = 5;
 		ipv4->tos = 0 + add_sometimes(10000, 3);
-		ipv4->tot_len = htons(ip_size);
+		ipv4->tot_len = htons(ip_packet.len);
 		ipv4->id = htons(42 + cur_iter + add_sometimes(10, 100));
 		ipv4->frag_off = 0;
 		ipv4->ttl = 64 + add_sometimes(10000, 5);
@@ -251,14 +253,16 @@ int main(int argc, char *argv[])
 		ipv4->check = ip_fast_csum((uint8_t *) ipv4, ipv4->ihl);
 
 		/* build UDP header */
-		udp = (struct udphdr *) (ip_packet + sizeof(struct ipv4_hdr));
+		udp = (struct udphdr *) (rohc_buf_data(ip_packet) +
+		                         sizeof(struct ipv4_hdr));
 		udp->source = htons(1234 + add_sometimes(10, 10000) / 2 * 2);
 		udp->dest = htons(1234 + add_sometimes(15, 20000) / 2 * 2);
-		udp->len = htons(ip_size - sizeof(struct ipv4_hdr));
+		udp->len = htons(ip_packet.len - sizeof(struct ipv4_hdr));
 		udp->check = 0; /* UDP checksum disabled */
 
 		/* build RTP header */
-		rtp = (struct rtphdr *) (ip_packet + sizeof(struct ipv4_hdr) +
+		rtp = (struct rtphdr *) (rohc_buf_data(ip_packet) +
+		                         sizeof(struct ipv4_hdr) +
 		                         sizeof(struct udphdr));
 		rtp->version = 2;
 		rtp->padding = 0;
@@ -272,8 +276,7 @@ int main(int argc, char *argv[])
 		rtp->ssrc = htonl(0x42424242 + add_sometimes(100, 0x2894729));
 
 		/* compress the IP/UDP/RTP packet */
-		ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-		                     rohc_packet, PACKET_MAX_SIZE, &rohc_len);
+		ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\nfailed to compress packet\n");
@@ -282,8 +285,7 @@ int main(int argc, char *argv[])
 		}
 
 		/* decompress the ROHC packet */
-		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_len,
-		                       ip_packet2, PACKET_MAX_SIZE, &ip_size2);
+		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet2, NULL, NULL);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\nfailed to decompress packet\n");
@@ -292,7 +294,9 @@ int main(int argc, char *argv[])
 		}
 
 		/* compare IP packets */
-		if(ip_size != ip_size2 || memcmp(ip_packet, ip_packet2, ip_size) != 0)
+		if(ip_packet.len != ip_packet2.len ||
+		   memcmp(rohc_buf_data(ip_packet), rohc_buf_data(ip_packet2),
+		          ip_packet.len) != 0)
 		{
 			fprintf(stderr, "\ndecompressed IP packet does not match original "
 			        "IP packet\n");

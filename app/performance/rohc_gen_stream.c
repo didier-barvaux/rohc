@@ -422,32 +422,38 @@ static bool build_stream(const char *const filename,
 	/* build the stream, and save it in the PCAP dump */
 	for(counter = 1; counter <= max_packets; counter++)
 	{
-		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 		const size_t payload_len = 20;
 		const size_t packet_len = sizeof(struct ipv4_hdr) +
 		                          sizeof(struct udphdr) +
 		                          sizeof(struct rtphdr) +
 		                          payload_len;
-		size_t packet_offset = 0;
-		uint8_t packet[ETHER_HDR_LEN + packet_len];
+		uint8_t buffer[ETHER_HDR_LEN + packet_len];
+		struct rohc_buf packet =
+			rohc_buf_init_empty(buffer, ETHER_HDR_LEN + packet_len);
 
 		const size_t rohc_max_len = packet_len * 2;
 		uint8_t output[ETHER_HDR_LEN + rohc_max_len];
-		uint8_t *const rohc_packet = output + ETHER_HDR_LEN;
-		size_t rohc_len;
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_empty(output, ETHER_HDR_LEN + rohc_max_len);
 
 		struct pcap_pkthdr header = { .ts = { .tv_sec = 0, .tv_usec = 0 } };
 		struct ipv4_hdr *ipv4;
 		struct udphdr *udp;
 		struct rtphdr *rtp;
 
+		/* skip the Ethernet header, it will be written later */
+		packet.len += ETHER_HDR_LEN;
+		rohc_buf_shift(&packet, ETHER_HDR_LEN);
+		rohc_packet.len += ETHER_HDR_LEN;
+		rohc_buf_shift(&rohc_packet, ETHER_HDR_LEN);
+
 		/* build IPv4 header */
-		packet_offset += ETHER_HDR_LEN;
-		ipv4 = (struct ipv4_hdr *) (packet + packet_offset);
+		packet.len += sizeof(struct ipv4_hdr);
+		ipv4 = (struct ipv4_hdr *) rohc_buf_data(packet);
 		ipv4->version = 4;
 		ipv4->ihl = 5;
 		ipv4->tos = 0;
-		ipv4->tot_len = htons(packet_len);
+		ipv4->tot_len = htons(packet.len);
 		ipv4->id = htons(42 + counter);
 		ipv4->frag_off = 0;
 		ipv4->ttl = 64;
@@ -456,18 +462,20 @@ static bool build_stream(const char *const filename,
 		ipv4->saddr = htonl(0xc0a80001);
 		ipv4->daddr = htonl(0xc0a80002);
 		ipv4->check = ip_fast_csum((uint8_t *) ipv4, ipv4->ihl);
+		rohc_buf_shift(&packet, sizeof(struct ipv4_hdr));
 
 		/* build UDP header */
-		packet_offset += sizeof(struct ipv4_hdr);
-		udp = (struct udphdr *) (packet + packet_offset);
+		packet.len += sizeof(struct udphdr);
+		udp = (struct udphdr *) rohc_buf_data(packet);
 		udp->source = htons(1234);
 		udp->dest = htons(1234);
-		udp->len = htons(packet_len - sizeof(struct ipv4_hdr));
+		udp->len = htons(packet.len);
 		udp->check = 0; /* UDP checksum disabled */
+		rohc_buf_shift(&packet, sizeof(struct udphdr));
 
 		/* build RTP header */
-		packet_offset += sizeof(struct udphdr);
-		rtp = (struct rtphdr *) (packet + packet_offset);
+		packet.len += sizeof(struct rtphdr);
+		rtp = (struct rtphdr *) rohc_buf_data(packet);
 		rtp->version = 2;
 		rtp->padding = 0;
 		rtp->extension = 0;
@@ -477,20 +485,22 @@ static bool build_stream(const char *const filename,
 		rtp->sn = htons(counter);
 		rtp->timestamp = htonl(500000 + counter * 160);
 		rtp->ssrc = htonl(0x42424242);
+		rohc_buf_shift(&packet, sizeof(struct rtphdr));
 
 		/* build RTP payload */
-		packet_offset += sizeof(struct rtphdr);
 		for(size_t i = 0; i < payload_len; i++)
 		{
-			packet[packet_offset + i] = i % 0xff;
+			rohc_buf_byte_at(packet, i) = i % 0xff;
 		}
+		packet.len += payload_len;
+		rohc_buf_shift(&packet, payload_len);
+
+		rohc_buf_shift(&packet, -(packet_len));
 
 		if(strcmp(stream_type, "comp") == 0)
 		{
 			/* compress packet */
-			ret = rohc_compress3(comp, arrival_time,
-			                     (unsigned char *) ipv4, packet_len,
-			                     rohc_packet, rohc_max_len, &rohc_len);
+			ret = rohc_compress4(comp, packet, &rohc_packet);
 			if(ret != ROHC_OK)
 			{
 				fprintf(stderr, "failed to compress packet #%lu\n", counter);
@@ -498,26 +508,30 @@ static bool build_stream(const char *const filename,
 			}
 
 			/* build Linux cooked header */
-			memset(output, 0, ETHER_HDR_LEN);
-			output[ETHER_HDR_LEN - 2] = ROHC_ETHERTYPE & 0xff;
-			output[ETHER_HDR_LEN - 1] = (ROHC_ETHERTYPE >> 8) & 0xff;
+			rohc_buf_shift(&rohc_packet, -(ETHER_HDR_LEN));
+			memset(rohc_buf_data(rohc_packet), 0, ETHER_HDR_LEN);
+			rohc_buf_byte_at(rohc_packet, ETHER_HDR_LEN - 2) =
+				ROHC_ETHERTYPE & 0xff;
+			rohc_buf_byte_at(rohc_packet, ETHER_HDR_LEN - 1) =
+				(ROHC_ETHERTYPE >> 8) & 0xff;
 
 			/* write the packet in the PCAP dump */
-			header.caplen = ETHER_HDR_LEN + rohc_len,
-			header.len = ETHER_HDR_LEN + rohc_len,
-			pcap_dump((u_char *) dumper, &header, output);
+			header.caplen = rohc_packet.len;
+			header.len = rohc_packet.len;
+			pcap_dump((u_char *) dumper, &header, rohc_buf_data(rohc_packet));
 		}
 		else
 		{
 			/* build Linux cooked header */
-			memset(packet, 0, ETHER_HDR_LEN);
-			packet[ETHER_HDR_LEN - 2] = 0x08;
-			packet[ETHER_HDR_LEN - 1] = 0x00;
+			rohc_buf_shift(&packet, -(ETHER_HDR_LEN));
+			memset(rohc_buf_data(packet), 0, ETHER_HDR_LEN);
+			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 2) = 0x80;
+			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 1) = 0x00;
 
 			/* write the packet in the PCAP dump */
-			header.caplen = ETHER_HDR_LEN + packet_len,
-			header.len = ETHER_HDR_LEN + packet_len,
-			pcap_dump((u_char *) dumper, &header, packet);
+			header.caplen = packet.len;
+			header.len = packet.len;
+			pcap_dump((u_char *) dumper, &header, rohc_buf_data(packet));
 		}
 	}
 

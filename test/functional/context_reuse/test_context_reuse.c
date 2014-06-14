@@ -277,8 +277,7 @@ static int test_comp_and_decomp(const char *filename)
 	}
 
 	/* create the ROHC decompressor in bi-directional mode */
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                         ROHC_O_MODE, comp);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
@@ -307,12 +306,14 @@ static int test_comp_and_decomp(const char *filename)
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
 		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-		unsigned char *ip_packet;
-		size_t ip_size;
-		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		size_t rohc_size;
-		static unsigned char decomp_packet[MAX_ROHC_SIZE];
-		size_t decomp_size;
+		struct rohc_buf ip_packet =
+			rohc_buf_init_full(packet, header.caplen, arrival_time);
+		uint8_t rohc_buffer[MAX_ROHC_SIZE];
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
+		uint8_t decomp_buffer[MAX_ROHC_SIZE];
+		struct rohc_buf decomp_packet =
+			rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
 		int ret;
 
 		counter++;
@@ -328,8 +329,7 @@ static int test_comp_and_decomp(const char *filename)
 		}
 
 		/* skip the link layer header */
-		ip_packet = packet + link_len;
-		ip_size = header.len - link_len;
+		rohc_buf_shift(&ip_packet, link_len);
 
 		/* check for padding after the IP packet in the Ethernet payload */
 		if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -337,31 +337,29 @@ static int test_comp_and_decomp(const char *filename)
 			int version;
 			size_t tot_len;
 
-			version = (ip_packet[0] >> 4) & 0x0f;
-
+			version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
 			if(version == 4)
 			{
-				struct ipv4_hdr *ip = (struct ipv4_hdr *) ip_packet;
+				struct ipv4_hdr *ip = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 				tot_len = ntohs(ip->tot_len);
 			}
 			else
 			{
-				struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
+				struct ipv6_hdr *ip = (struct ipv6_hdr *) rohc_buf_data(ip_packet);
 				tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 			}
 
-			if(tot_len < ip_size)
+			if(tot_len < ip_packet.len)
 			{
 				fprintf(stderr, "the Ethernet frame has %zd bytes of padding "
-				        "after the %zd byte IP packet!\n", ip_size - tot_len,
-				        tot_len);
-				ip_size = tot_len;
+				        "after the %zu byte IP packet!\n",
+				        ip_packet.len - tot_len, tot_len);
+				ip_packet.len = tot_len;
 			}
 		}
 
 		/* compress the IP packet */
-		ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
@@ -370,8 +368,7 @@ static int test_comp_and_decomp(const char *filename)
 		fprintf(stderr, "\tcompression is successful\n");
 
 		/* decompress the ROHC packet with the ROHC decompressor */
-		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-		                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+		ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet, NULL, NULL);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");

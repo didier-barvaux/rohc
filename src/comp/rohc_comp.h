@@ -399,8 +399,6 @@ int ROHC_EXPORT rohc_compress2(struct rohc_comp *const comp,
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_compress4() instead");
 
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
-
 int ROHC_EXPORT rohc_compress3(struct rohc_comp *const comp,
                                const struct rohc_ts arrival_time,
                                const unsigned char *const uncomp_packet,
@@ -408,18 +406,26 @@ int ROHC_EXPORT rohc_compress3(struct rohc_comp *const comp,
                                unsigned char *const rohc_packet,
                                const size_t rohc_packet_max_len,
                                size_t *const rohc_packet_len)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_compress4() instead");
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 int ROHC_EXPORT rohc_compress4(struct rohc_comp *const comp,
                                const struct rohc_buf uncomp_packet,
                                struct rohc_buf *const rohc_packet)
 	__attribute__((warn_unused_result));
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_comp_get_segment(struct rohc_comp *const comp,
                                       unsigned char *const segment,
                                       const size_t max_len,
                                       size_t *const len)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_get_segment2() instead");
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 int ROHC_EXPORT rohc_comp_get_segment2(struct rohc_comp *const comp,
                                        struct rohc_buf *const segment)
@@ -537,36 +543,56 @@ bool ROHC_EXPORT rohc_comp_set_features(struct rohc_comp *const comp,
 void ROHC_EXPORT c_piggyback_feedback(struct rohc_comp *comp,
                                       unsigned char *packet,
                                       int size)
-	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_comp_piggyback_feedback() instead");
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+	ROHC_DEPRECATED("please do not use this function anymore, instead use "
+	                "rohc_decompress3() and prepend feedback data yourself");
+bool ROHC_EXPORT __rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
+                                                const unsigned char *const feedback,
+                                                const size_t size)
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
                                               const unsigned char *const feedback,
                                               const size_t size)
-	__attribute__((warn_unused_result));
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, instead use "
+	                "rohc_decompress3() and prepend feedback data yourself");
 void ROHC_EXPORT c_deliver_feedback(struct rohc_comp *comp,
                                     unsigned char *feedback,
                                     int size)
 	ROHC_DEPRECATED("please do not use this function anymore, "
-	                "use rohc_comp_deliver_feedback() instead");
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
+	                "use rohc_comp_deliver_feedback2() instead");
+bool ROHC_EXPORT __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                              const uint8_t *const feedback,
+                                              const size_t size)
+	__attribute__((warn_unused_result));
 bool ROHC_EXPORT rohc_comp_deliver_feedback(struct rohc_comp *const comp,
                                             const uint8_t *const feedback,
                                             const size_t size)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_comp_deliver_feedback2() instead");
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 bool ROHC_EXPORT rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
                                              const struct rohc_buf feedback)
 	__attribute__((warn_unused_result));
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 int ROHC_EXPORT rohc_feedback_flush(struct rohc_comp *comp,
                                     unsigned char *obuf,
-                                    int osize);
+                                    int osize)
+	ROHC_DEPRECATED("please do not use this function anymore, instead use "
+	                "rohc_decompress3() and send feedback data yourself");
 size_t ROHC_EXPORT rohc_feedback_avail_bytes(const struct rohc_comp *const comp)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, instead use "
+	                "rohc_decompress3() and handle feedback data yourself");
 bool ROHC_EXPORT rohc_feedback_remove_locked(struct rohc_comp *const comp)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, instead use "
+	                "rohc_decompress3() and handle feedback data yourself");
 bool ROHC_EXPORT rohc_feedback_unlock(struct rohc_comp *const comp)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, instead use "
+	                "rohc_decompress3() and handle feedback data yourself");
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /*

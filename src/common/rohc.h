@@ -81,43 +81,61 @@ extern "C"
  * @ingroup rohc
  */
 #define ROHC_OK                     1
+
 /**
  * @brief Return code: the action failed because no context is defined
  * @ingroup rohc
  */
 #define ROHC_ERROR_NO_CONTEXT      -1
+
 /**
  * @brief Return code: the action failed due to an unattended or malformed packet
  * @ingroup rohc
  */
 #define ROHC_ERROR_PACKET_FAILED   -2
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /**
  * @brief Return code: the action failed because the packet only contains feedback info
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_FEEDBACK_ONLY         -3
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
 /**
  * @brief Return code: the action failed due to a CRC failure
  * @ingroup rohc
  */
 #define ROHC_ERROR_CRC             -4
+
 /**
  * @brief Return code: the action encountered a problem
  * @ingroup rohc
  */
 #define ROHC_ERROR                 -5
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /// Return code: the packet needs to be parsed again
 #define ROHC_NEED_REPARSE          -6
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
 /**
  * @brief Return code: the action succeeded but packet needs to be segmented
  * @ingroup rohc
  */
 #define ROHC_NEED_SEGMENT          -7
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 /**
  * @brief Return code: the action succeeded but packet is a non-final segment
  * @ingroup rohc
+ * @deprecated please do not use this constant anymore,
+ *             use rohc_compress4() instead
  */
 #define ROHC_NON_FINAL_SEGMENT     -8
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1

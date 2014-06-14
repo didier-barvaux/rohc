@@ -140,6 +140,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
                                 const char *rohc_size_ofilename);
 static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_decomp *decomp,
+                               struct rohc_comp *const comp_associated,
                                int num_comp,
                                int num_packet,
                                struct pcap_pkthdr header,
@@ -152,7 +153,9 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *cmp_packet,
                                int cmp_size,
                                int link_len_cmp,
-                               FILE *size_output_file);
+                               FILE *size_output_file,
+                               const struct rohc_buf feedback_send_by_me,
+                               struct rohc_buf *const feedback_send_by_other);
 
 static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
                                             const size_t wlsb_width,
@@ -163,9 +166,8 @@ static struct rohc_comp * create_compressor(const rohc_cid_type_t cid_type,
 static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
                                                 const size_t max_contexts,
                                                 const bool compat_1_6_x,
-                                                const bool no_tcp,
-                                                struct rohc_comp *const comp)
-	__attribute__((warn_unused_result, nonnull(5)));
+                                                const bool no_tcp)
+	__attribute__((warn_unused_result));
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -728,6 +730,9 @@ static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
  *
  * @param comp             The compressor to use to compress the IP packet
  * @param decomp           The decompressor to use to decompress the IP packet
+ * @param comp_associated  The same-side compressor associated to the
+ *                         decompressor, this is the destination of feedback
+ *                         received from the decompressor
  * @param num_comp         The ID of the compressor/decompressor
  * @param num_packet       A number affected to the IP packet to compress/decompress
  * @param header           The PCAP header for the packet
@@ -752,6 +757,7 @@ static void show_rohc_decomp_profile(const struct rohc_decomp *const decomp,
  */
 static int compress_decompress(struct rohc_comp *comp,
                                struct rohc_decomp *decomp,
+                               struct rohc_comp *const comp_associated,
                                int num_comp,
                                int num_packet,
                                struct pcap_pkthdr header,
@@ -764,17 +770,36 @@ static int compress_decompress(struct rohc_comp *comp,
                                unsigned char *cmp_packet,
                                int cmp_size,
                                int link_len_cmp,
-                               FILE *size_output_file)
+                               FILE *size_output_file,
+                               const struct rohc_buf feedback_send_by_me,
+                               struct rohc_buf *const feedback_send_by_other)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	unsigned char *ip_packet;
-	size_t ip_size;
-	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
-	unsigned char *rohc_packet;
-	size_t rohc_size;
-	static unsigned char decomp_packet[MAX_ROHC_SIZE];
-	size_t decomp_size;
+	/* the layer 2 header */
+	size_t l2_hdr_max_len = max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN);
 	struct ether_header *eth_header;
+
+	/* the buffer that will contain the initial uncompressed packet */
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	struct rohc_buf ip_packet =
+		rohc_buf_init_full(packet, header.caplen, arrival_time);
+
+	/* the buffer that will contain the compressed ROHC packet */
+	uint8_t rohc_buffer[l2_hdr_max_len + MAX_ROHC_SIZE];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_empty(rohc_buffer, l2_hdr_max_len + MAX_ROHC_SIZE);
+
+	/* the buffer that will contain the uncompressed packet */
+	uint8_t decomp_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf decomp_packet =
+		rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
+
+	/* the buffer that will contain the feedback data received by the
+	 * decompressor from the remote peer for the same-side associated ROHC
+	 * compressor through the feedback channel */
+	uint8_t rcvd_feedback_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf rcvd_feedback =
+		rohc_buf_init_empty(rcvd_feedback_buffer, MAX_ROHC_SIZE);
+
 	int status = 1;
 	int ret;
 
@@ -789,9 +814,11 @@ static int compress_decompress(struct rohc_comp *comp,
 		goto exit;
 	}
 
-	ip_packet = packet + link_len_src;
-	ip_size = header.len - link_len_src;
-	rohc_packet = output_packet + link_len_src;
+	/* copy the layer 2 header before the ROHC packet, then skip it */
+	memcpy(rohc_buf_data(rohc_packet), packet, link_len_src);
+	rohc_packet.len += link_len_src;
+	rohc_buf_shift(&ip_packet, link_len_src);
+	rohc_buf_shift(&rohc_packet, link_len_src);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -799,43 +826,62 @@ static int compress_decompress(struct rohc_comp *comp,
 		int version;
 		size_t tot_len;
 
-		version = (ip_packet[0] >> 4) & 0x0f;
+		version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
 
 		if(version == 4)
 		{
-			struct ipv4_hdr *ip = (struct ipv4_hdr *) ip_packet;
+			struct ipv4_hdr *ip = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 			tot_len = ntohs(ip->tot_len);
 		}
 		else
 		{
-			struct ipv6_hdr *ip = (struct ipv6_hdr *) ip_packet;
+			struct ipv6_hdr *ip = (struct ipv6_hdr *) rohc_buf_data(ip_packet);
 			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 		}
 
-		if(tot_len < ip_size)
+		if(tot_len < ip_packet.len)
 		{
 			printf("The Ethernet frame has %zd bytes of padding after the "
-			       "%zd byte IP packet!\n", ip_size - tot_len, tot_len);
-			ip_size = tot_len;
+			       "%zd byte IP packet!\n", ip_packet.len - tot_len, tot_len);
+			ip_packet.len = tot_len;
 		}
 	}
 
 	/* fix IPv4 packets with non-standard-compliant 0xffff checksums instead
 	 * of 0x0000 (Windows Vista seems to be faulty for the latter), to avoid
 	 * false comparison failures after decompression) */
-	if(((ip_packet[0] >> 4) & 0x0f) == 4 &&
-	   ip_size >= sizeof(struct ipv4_hdr) &&
-	   ip_packet[10] == 0xff && ip_packet[11] == 0xff)
+	if(((rohc_buf_byte(ip_packet) >> 4) & 0x0f) == 4 &&
+	   ip_packet.len >= sizeof(struct ipv4_hdr) &&
+	   rohc_buf_byte_at(ip_packet, 10) == 0xff &&
+	   rohc_buf_byte_at(ip_packet, 11) == 0xff)
 	{
 		printf("fix IPv4 packet with 0xffff IP checksum\n");
-		ip_packet[10] = 0x00;
-		ip_packet[11] = 0x00;
+		rohc_buf_byte_at(ip_packet, 10) = 0x00;
+		rohc_buf_byte_at(ip_packet, 11) = 0x00;
 	}
 
-	/* compress the IP packet */
+	/* copy the feedback data that needs to be piggybacked along the ROHC
+	 * packet */
+	printf("=== ROHC piggybacked feedback: start\n");
+	if(feedback_send_by_me.len > rohc_buf_avail_len(rohc_packet))
+	{
+		printf("ROHC buffer is too small for %zu bytes of feedback data\n",
+		       feedback_send_by_me.len);
+		printf("=== ROHC piggybacked feedback: failure\n");
+		status = -1;
+		goto exit;
+	}
+	printf("copy %zu bytes of feedback data before ROHC packet\n",
+	       feedback_send_by_me.len);
+	memcpy(rohc_buf_data(rohc_packet), rohc_buf_data(feedback_send_by_me),
+	       feedback_send_by_me.len);
+	rohc_packet.len += feedback_send_by_me.len;
+	rohc_buf_shift(&rohc_packet, feedback_send_by_me.len); /* skip feedback */
+	printf("=== ROHC piggybacked feedback: success\n");
+
+	/* compress the IP packet into a ROHC packet */
 	printf("=== ROHC compression: start\n");
-	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 	if(ret != ROHC_OK)
 	{
 		printf("=== ROHC compression: failure\n");
@@ -844,26 +890,35 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 	printf("=== ROHC compression: success\n");
 
+	/* unhide feedback data */
+	rohc_buf_shift(&rohc_packet, -(feedback_send_by_me.len));
+
 	/* output the ROHC packet to the PCAP dump file if asked */
 	if(dumper != NULL)
 	{
-		header.len = link_len_src + rohc_size;
+		header.len = link_len_src + rohc_packet.len;
 		header.caplen = header.len;
 		if(link_len_src != 0)
 		{
-			memcpy(output_packet, packet, link_len_src); /* add the link layer header */
+			/* prepend the link layer header */
+			rohc_buf_shift(&rohc_packet, -(link_len_src));
+			memcpy(rohc_buf_data(rohc_packet), packet, link_len_src);
 			if(link_len_src == ETHER_HDR_LEN) /* Ethernet only */
 			{
-				eth_header = (struct ether_header *) output_packet;
+				eth_header = (struct ether_header *) rohc_buf_data(rohc_packet);
 				eth_header->ether_type = htons(ROHC_ETHERTYPE); /* ROHC Ethertype */
 			}
 			else if(link_len_src == LINUX_COOKED_HDR_LEN) /* Linux Cooked Sockets only */
 			{
-				output_packet[LINUX_COOKED_HDR_LEN - 2] = ROHC_ETHERTYPE & 0xff;
-				output_packet[LINUX_COOKED_HDR_LEN - 1] = (ROHC_ETHERTYPE >> 8) & 0xff;
+				rohc_buf_byte_at(rohc_packet, LINUX_COOKED_HDR_LEN - 2) =
+					ROHC_ETHERTYPE & 0xff;
+				rohc_buf_byte_at(rohc_packet, LINUX_COOKED_HDR_LEN - 1) =
+					(ROHC_ETHERTYPE >> 8) & 0xff;
 			}
 		}
-		pcap_dump((u_char *) dumper, &header, output_packet);
+		pcap_dump((u_char *) dumper, &header, rohc_buf_data(rohc_packet));
+		/* skip the link layer header again */
+		rohc_buf_shift(&rohc_packet, link_len_src);
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */
@@ -883,7 +938,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		fprintf(size_output_file, "compressor_num = %d\tpacket_num = %d\t"
 		        "rohc_size = %zd\tpacket_type = %d\n", num_comp, num_packet,
-		        rohc_size, last_packet_info.packet_type);
+		        rohc_packet.len, last_packet_info.packet_type);
 	}
 
 	/* compare the ROHC packets with the ones given by the user if asked */
@@ -891,7 +946,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	if(cmp_packet != NULL && cmp_size > link_len_cmp)
 	{
 		if(!compare_packets(cmp_packet + link_len_cmp, cmp_size - link_len_cmp,
-		                    rohc_packet, rohc_size))
+		                    rohc_buf_data(rohc_packet), rohc_packet.len))
 		{
 			printf("=== ROHC comparison: failure\n");
 			status = 0;
@@ -912,15 +967,15 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	/* decompress the ROHC packet */
 	printf("=== ROHC decompression: start\n");
-	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-	                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+	ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet,
+	                       &rcvd_feedback, feedback_send_by_other);
 	if(ret != ROHC_OK)
 	{
 		size_t i;
 
 		printf("=== ROHC decompression: failure\n");
-		printf("=== original %zd-byte non-compressed packet:\n", ip_size);
-		for(i = 0; i < ip_size; i++)
+		printf("=== original %zu-byte non-compressed packet:\n", ip_packet.len);
+		for(i = 0; i < ip_packet.len; i++)
 		{
 			if(i > 0 && (i % 16) == 0)
 			{
@@ -930,7 +985,7 @@ static int compress_decompress(struct rohc_comp *comp,
 			{
 				printf("  ");
 			}
-			printf("%02x ", ip_packet[i]);
+			printf("%02x ", rohc_buf_byte_at(ip_packet, i));
 		}
 		printf("\n");
 		status = -2;
@@ -940,15 +995,50 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	/* compare the decompressed packet with the original one */
 	printf("=== IP comparison: start\n");
-	if(!compare_packets(ip_packet, ip_size, decomp_packet, decomp_size))
+	if(!compare_packets(rohc_buf_data(ip_packet), ip_packet.len,
+	                    rohc_buf_data(decomp_packet), decomp_packet.len))
 	{
 		printf("=== IP comparison: failure\n");
 		status = 0;
+		goto exit;
 	}
 	else
 	{
 		printf("=== IP comparison: success\n");
 	}
+
+	/* deliver any received feedback data to the associated compressor: the
+	 * compressor will take it into account and update the mode/state of the
+	 * related compression contexts in consequence */
+	printf("=== deliver received feedback to compressor: start\n");
+	if(!rohc_comp_deliver_feedback2(comp_associated, rcvd_feedback))
+	{
+		printf("=== deliver received feedback to compressor: failure\n");
+		status = -2;
+		goto exit;
+	}
+	else
+	{
+		printf("=== deliver received feedback to compressor: success\n");
+	}
+
+#if 0
+	/* piggyback the feedback to be sent */
+	printf("=== piggyback feedback with compressor: start\n");
+	if(feedback_send.len > 0 &&
+	   !rohc_comp_piggyback_feedback(comp_associated,
+	                                 rohc_buf_data(feedback_send),
+	                                 feedback_send.len))
+	{
+		printf("=== piggyback feedback with compressor: failure\n");
+		status = -2;
+		goto exit;
+	}
+	else
+	{
+		printf("=== piggyback feedback with compressor: success\n");
+	}
+#endif
 
 exit:
 	printf("\n");
@@ -1012,6 +1102,15 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 
 	struct rohc_decomp *decomp1;
 	struct rohc_decomp *decomp2;
+
+	/* the buffer that will contain the feedback packet of #1 */
+	uint8_t feedback1_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf feedback1_data =
+		rohc_buf_init_empty(feedback1_buffer, MAX_ROHC_SIZE);
+	/* the buffer that will contain the feedback packet of #2 */
+	uint8_t feedback2_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf feedback2_data =
+		rohc_buf_init_empty(feedback2_buffer, MAX_ROHC_SIZE);
 
 	int ret;
 	int nb_bad = 0, nb_ok = 0, err_comp = 0, err_decomp = 0, nb_ref = 0;
@@ -1154,8 +1253,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 1 */
-	decomp1 = create_decompressor(cid_type, max_contexts, compat_1_6_x, no_tcp,
-	                              comp2);
+	decomp1 = create_decompressor(cid_type, max_contexts, compat_1_6_x, no_tcp);
 	if(decomp1 == NULL)
 	{
 		printf("failed to create the decompressor 1\n");
@@ -1163,8 +1261,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 	}
 
 	/* create the decompressor 2 */
-	decomp2 = create_decompressor(cid_type, max_contexts, compat_1_6_x, no_tcp,
-	                              comp1);
+	decomp2 = create_decompressor(cid_type, max_contexts, compat_1_6_x, no_tcp);
 	if(decomp2 == NULL)
 	{
 		printf("failed to create the decompressor 2\n");
@@ -1191,11 +1288,13 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		}
 
 		/* compress & decompress from compressor 1 to decompressor 1 */
-		ret = compress_decompress(comp1, decomp1, 1, counter, header, packet,
-		                          link_len_src, compat_1_6_x, no_comparison,
-		                          ignore_malformed, dumper,
+		ret = compress_decompress(comp1, decomp1, comp2, 1, counter,
+		                          header, packet, link_len_src,
+		                          compat_1_6_x, no_comparison, ignore_malformed,
+		                          dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
-		                          rohc_size_output_file);
+		                          rohc_size_output_file,
+		                          feedback2_data, &feedback1_data);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -1218,6 +1317,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		{
 			nb_bad++;
 		}
+		/* reset feedback for comp/decomp #2 since it was just piggybacked */
+		feedback2_data.len = 0;
 
 		/* get next ROHC packet from the comparison dump file if asked */
 		if(cmp_handle != NULL)
@@ -1231,11 +1332,13 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		}
 
 		/* compress & decompress from compressor 2 to decompressor 2 */
-		ret = compress_decompress(comp2, decomp2, 2, counter, header, packet,
-		                          link_len_src, compat_1_6_x, no_comparison,
-		                          ignore_malformed, dumper,
+		ret = compress_decompress(comp2, decomp2, comp1, 2, counter,
+		                          header, packet, link_len_src,
+		                          compat_1_6_x, no_comparison, ignore_malformed,
+		                          dumper,
 		                          cmp_packet, cmp_header.caplen, link_len_cmp,
-		                          rohc_size_output_file);
+		                          rohc_size_output_file,
+		                          feedback1_data, &feedback2_data);
 		if(ret == -1)
 		{
 			err_comp++;
@@ -1258,6 +1361,8 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 		{
 			nb_bad++;
 		}
+		/* reset feedback for comp/decomp #1 since it was just piggybacked */
+		feedback1_data.len = 0;
 	}
 
 	/* show the compression/decompression results */
@@ -1420,19 +1525,17 @@ error:
  * @param compat_1_6_x  Whether the ROHC decompressor shall be compatible with
  *                      older 1.6.x versions or not
  * @param no_tcp        Whether to disable the TCP profile or not
- * @param comp          The ROHC compressor to associate to the decompressor
  * @return              The new ROHC decompressor
  */
 static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
                                                 const size_t max_contexts,
                                                 const bool compat_1_6_x,
-                                                const bool no_tcp,
-                                                struct rohc_comp *const comp)
+                                                const bool no_tcp)
 {
 	struct rohc_decomp *decomp;
 
 	/* create the decompressor */
-	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_O_MODE, comp);
+	decomp = rohc_decomp_new2(cid_type, max_contexts - 1, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		printf("failed to create decompressor\n");

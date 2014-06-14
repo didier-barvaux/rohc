@@ -34,7 +34,12 @@ extern "C"
 #endif
 
 #include <rohc/rohc.h>
-#include <rohc/rohc_comp.h>
+#include <rohc/rohc_packets.h>
+#include <rohc/rohc_traces.h>
+#include <rohc/rohc_buf.h>
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+#  include <rohc/rohc_comp.h>
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /** Macro that handles DLL export declarations gracefully */
@@ -263,12 +268,18 @@ struct rohc_decomp * ROHC_EXPORT rohc_alloc_decompressor(struct rohc_comp *compr
 void ROHC_EXPORT rohc_free_decompressor(struct rohc_decomp *decomp)
 	ROHC_DEPRECATED("please do not use this function anymore, "
 	                "use rohc_decomp_free() instead");
-#endif
 
 struct rohc_decomp * ROHC_EXPORT rohc_decomp_new(const rohc_cid_type_t cid_type,
                                                  const rohc_cid_t max_cid,
                                                  const rohc_mode_t mode,
                                                  struct rohc_comp *const comp)
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, "
+	                "use rohc_decomp_new2() instead");
+#endif
+struct rohc_decomp * ROHC_EXPORT rohc_decomp_new2(const rohc_cid_type_t cid_type,
+                                                  const rohc_cid_t max_cid,
+                                                  const rohc_mode_t mode)
 	__attribute__((warn_unused_result));
 void ROHC_EXPORT rohc_decomp_free(struct rohc_decomp *const decomp);
 
@@ -279,8 +290,7 @@ int ROHC_EXPORT rohc_decompress(struct rohc_decomp *decomp,
                                 unsigned char *obuf,
                                 int osize)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decompress2() instead");
-#endif
+	                "rohc_decompress3() instead");
 
 int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *const decomp,
                                  const struct rohc_ts arrival_time,
@@ -289,7 +299,10 @@ int ROHC_EXPORT rohc_decompress2(struct rohc_decomp *const decomp,
                                  unsigned char *const uncomp_packet,
                                  const size_t uncom_packet_max_len,
                                  size_t *const uncomp_packet_len)
-	__attribute__((warn_unused_result));
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("please do not use this function anymore, use "
+	                "rohc_decompress3() instead");
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 int ROHC_EXPORT rohc_decompress3(struct rohc_decomp *const decomp,
                                  const struct rohc_buf rohc_packet,
@@ -306,7 +319,7 @@ int ROHC_EXPORT rohc_decompress_both(struct rohc_decomp *decomp,
                                      int osize,
                                      int large)
 	ROHC_DEPRECATED("please do not use this function anymore, use "
-	                "rohc_decomp_new() and rohc_decompress2() instead");
+	                "rohc_decomp_new() and rohc_decompress3() instead");
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 

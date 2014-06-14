@@ -36,7 +36,6 @@
 
 /* includes required to use the decompression part of the ROHC library */
 #include <rohc/rohc.h>
-#include <rohc/rohc_comp.h>
 #include <rohc/rohc_decomp.h>
 
 
@@ -83,13 +82,12 @@ int main(int argc, char **argv)
 	/* Create a ROHC decompressor to operate:
 	 *  - with large CIDs,
 	 *  - with the maximum of 5 streams (MAX_CID = 4),
-	 *  - in Unidirectional mode (U-mode),
-	 *  - with no feedback channel.
+	 *  - in Unidirectional mode (U-mode).
 	 */
 //! [create ROHC decompressor #1]
 	printf("\ncreate the ROHC decompressor\n");
 //! [create ROHC decompressor #2]
-	decompressor = rohc_decomp_new(ROHC_LARGE_CID, 4, ROHC_U_MODE, NULL);
+	decompressor = rohc_decomp_new2(ROHC_LARGE_CID, 4, ROHC_U_MODE);
 	if(decompressor == NULL)
 	{
 		fprintf(stderr, "failed create the ROHC decompressor\n");

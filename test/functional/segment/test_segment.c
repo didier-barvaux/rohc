@@ -179,8 +179,6 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
                                 const bool is_comp_expected_ok,
                                 const size_t expected_segments_nr)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-
 //! [define ROHC compressor]
 	struct rohc_comp *comp;
 //! [define ROHC compressor]
@@ -189,13 +187,17 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 //! [define ROHC decompressor]
 
 	struct ipv4_hdr *ip_header;
-	unsigned char ip_packet[TEST_MAX_ROHC_SIZE * 3];
+	uint8_t ip_buffer[TEST_MAX_ROHC_SIZE * 3];
+	struct rohc_buf ip_packet =
+		rohc_buf_init_empty(ip_buffer, TEST_MAX_ROHC_SIZE * 3);
 
-	unsigned char rohc_packet[TEST_MAX_ROHC_SIZE];
-	size_t rohc_packet_len;
+	uint8_t rohc_buffer[TEST_MAX_ROHC_SIZE];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_empty(rohc_buffer, TEST_MAX_ROHC_SIZE);
 
-	unsigned char uncomp_packet[TEST_MAX_ROHC_SIZE * 3];
-	size_t uncomp_packet_len;
+	uint8_t uncomp_buffer[TEST_MAX_ROHC_SIZE * 3];
+	struct rohc_buf uncomp_packet =
+		rohc_buf_init_empty(uncomp_buffer, TEST_MAX_ROHC_SIZE * 3);
 
 	size_t segments_nr;
 
@@ -259,8 +261,7 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 //! [set compressor MRRU]
 
 	/* create the ROHC decompressor in uni-directional mode */
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                         ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
@@ -295,7 +296,8 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	}
 
 	/* generate the IP packet of the given length */
-	ip_header = (struct ipv4_hdr *) ip_packet;
+	ip_packet.len = ip_packet_len;
+	ip_header = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 	ip_header->version = 4; /* we create an IPv4 header */
 	ip_header->ihl = 5; /* minimal IPv4 header length (in 32-bit words) */
 	ip_header->tos = 0;
@@ -326,43 +328,47 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	}
 	for(i = sizeof(struct ipv4_hdr); i < ip_packet_len; i++)
 	{
-		ip_packet[i] = i & 0xff;
+		rohc_buf_byte_at(ip_packet, i) = i & 0xff;
 	}
 
 	/* compress the IP packet */
 	segments_nr = 0;
 //! [segment ROHC packet #1]
-	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_packet_len,
-	                     rohc_packet, TEST_MAX_ROHC_SIZE, &rohc_packet_len);
+	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 	if(ret == ROHC_NEED_SEGMENT)
 	{
 		/* ROHC segmentation is required to compress the IP packet */
 //! [segment ROHC packet #1]
 		fprintf(stderr, "\tROHC segments are required to compress the IP "
 		        "packet\n");
+		assert(rohc_packet.len == 0);
 
 //! [segment ROHC packet #2]
 		/* get the segments */
-		while((ret = rohc_comp_get_segment(comp, rohc_packet, TEST_MAX_ROHC_SIZE,
-		                                   &rohc_packet_len)) == ROHC_NEED_SEGMENT)
+		while((ret = rohc_comp_get_segment2(comp, &rohc_packet)) == ROHC_NEED_SEGMENT)
 		{
 			/* new ROHC segment retrieved */
 //! [segment ROHC packet #2]
 			fprintf(stderr, "\t%zd-byte ROHC segment generated\n",
-			        rohc_packet_len);
+			        rohc_packet.len);
 			segments_nr++;
 
 			/* decompress segment */
-			ret = rohc_decompress2(decomp, arrival_time,
-			                       rohc_packet, rohc_packet_len,
-			                       uncomp_packet, TEST_MAX_ROHC_SIZE * 3,
-			                       &uncomp_packet_len);
-			if(ret != ROHC_NON_FINAL_SEGMENT)
+			ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet,
+			                       NULL, NULL);
+			if(ret != ROHC_OK)
 			{
 				fprintf(stderr, "\tfailed to decompress ROHC segment packet\n");
 				goto destroy_decomp;
 			}
 //! [segment ROHC packet #3]
+			if(uncomp_packet.len > 0)
+			{
+				fprintf(stderr, "\tdecompression of ROHC segment succeeded while "
+				        "it should have not\n");
+				goto destroy_decomp;
+			}
+			rohc_packet.len = 0;
 		}
 		if(ret != ROHC_OK)
 		{
@@ -372,20 +378,23 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 		/* final ROHC segment retrieved */
 //! [segment ROHC packet #3]
 		fprintf(stderr, "\t%zd-byte final ROHC segment generated\n",
-		        rohc_packet_len);
+		        rohc_packet.len);
 		segments_nr++;
 
 		/* decompress last segment */
-		ret = rohc_decompress2(decomp, arrival_time,
-		                       rohc_packet, rohc_packet_len,
-		                       uncomp_packet, TEST_MAX_ROHC_SIZE * 3,
-		                       &uncomp_packet_len);
+		ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC segments\n");
 			goto destroy_decomp;
 		}
 //! [segment ROHC packet #4]
+		if(uncomp_packet.len == 0)
+		{
+			fprintf(stderr, "\tdecompression of ROHC segment failed while it "
+			        "should have succeeded\n");
+			goto destroy_decomp;
+		}
 	}
 	else if(ret != ROHC_OK)
 	{
@@ -396,7 +405,6 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 			goto destroy_decomp;
 		}
 		fprintf(stderr, "\texpected failure to compress packet\n");
-		uncomp_packet_len = 0; /* decompression not possible */
 	}
 	else if(!is_comp_expected_ok)
 	{
@@ -405,13 +413,10 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	}
 	else
 	{
-		fprintf(stderr, "\t%zd-byte ROHC packet generated\n", rohc_packet_len);
+		fprintf(stderr, "\t%zu-byte ROHC packet generated\n", rohc_packet.len);
 
 		/* decompress ROHC packet */
-		ret = rohc_decompress2(decomp, arrival_time,
-		                       rohc_packet, rohc_packet_len,
-		                       uncomp_packet, TEST_MAX_ROHC_SIZE * 3,
-		                       &uncomp_packet_len);
+		ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to decompress ROHC packet\n");
@@ -422,8 +427,9 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	/* check the number of generated segments */
 	if(expected_segments_nr != segments_nr)
 	{
-		fprintf(stderr, "\tunexpected number of segment(s): %zd segment(s) generated "
-		        "while %zd expected\n", segments_nr, expected_segments_nr);
+		fprintf(stderr, "\tunexpected number of segment(s): %zd segment(s) "
+		        "generated while %zu expected\n", segments_nr,
+		        expected_segments_nr);
 		goto destroy_decomp;
 	}
 	fprintf(stderr, "\t%zd segment(s) generated as expected\n", segments_nr);
@@ -431,21 +437,23 @@ static int test_comp_and_decomp(const size_t ip_packet_len,
 	/* check that decompressed packet matches the original IP packet */
 	if(is_comp_expected_ok)
 	{
-		if(ip_packet_len != uncomp_packet_len)
+		if(ip_packet.len != uncomp_packet.len)
 		{
-			fprintf(stderr, "\t%zu-byte decompressed packet does not match original "
-			        "%zd-byte IP packet: different lengths\n", uncomp_packet_len,
-			        ip_packet_len);
+			fprintf(stderr, "\t%zu-byte decompressed packet does not match "
+			        "original %zu-byte IP packet: different lengths\n",
+			        uncomp_packet.len, ip_packet.len);
 			goto destroy_decomp;
 		}
-		if(memcmp(ip_packet, uncomp_packet, ip_packet_len) != 0)
+		if(memcmp(rohc_buf_data(ip_packet), rohc_buf_data(uncomp_packet),
+		          ip_packet.len) != 0)
 		{
-			fprintf(stderr, "\t%zu-byte decompressed packet does not match original "
-			        "%zd-byte IP packet\n", uncomp_packet_len, ip_packet_len);
+			fprintf(stderr, "\t%zu-byte decompressed packet does not match "
+			        "original %zu-byte IP packet\n", uncomp_packet.len,
+			        ip_packet.len);
 			goto destroy_decomp;
 		}
-		fprintf(stderr, "\tdecompressed ROHC packet/segments match the original "
-		        "IP packet\n");
+		fprintf(stderr, "\tdecompressed ROHC packet/segments match the "
+		        "original IP packet\n");
 	}
 
 	/* everything went fine */

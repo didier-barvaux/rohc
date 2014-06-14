@@ -158,16 +158,6 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_TCP) == false);
 	CHECK(rohc_comp_profile_enabled(comp, ROHC_PROFILE_UDPLITE) == false);
 
-	/* rohc_comp_get_segment() */
-	{
-		unsigned char buf1[1];
-		size_t len;
-		CHECK(rohc_comp_get_segment(NULL, buf1, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_comp_get_segment(comp, NULL, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_comp_get_segment(comp, buf1, 0, &len) == ROHC_ERROR);
-		CHECK(rohc_comp_get_segment(comp, buf1, 1, NULL) == ROHC_ERROR);
-	}
-
 	/* rohc_comp_get_segment2() */
 	{
 		unsigned char buf1[1];
@@ -283,63 +273,6 @@ int main(int argc, char *argv[])
 	CHECK(rohc_comp_reset_rtp_ports(NULL) == false);
 	CHECK(rohc_comp_reset_rtp_ports(comp) == true);
 
-	/* rohc_comp_piggyback_feedback() */
-	{
-		unsigned char buf[1];
-		CHECK(rohc_comp_piggyback_feedback(NULL, buf, 1) == false);
-		CHECK(rohc_comp_piggyback_feedback(comp, NULL, 1) == false);
-		CHECK(rohc_comp_piggyback_feedback(comp, buf, 0) == false);
-		for(int i = 0; i < 1000; i++)
-		{
-			CHECK(rohc_comp_piggyback_feedback(comp, buf, 1) == true);
-		}
-		CHECK(rohc_comp_piggyback_feedback(comp, buf, 1) == false); /* full */
-	}
-
-	/* rohc_feedback_flush() */
-	{
-		const size_t buflen = 2;
-		unsigned char buf[buflen];
-		CHECK(rohc_feedback_flush(NULL, buf, buflen) == 0);
-		CHECK(rohc_feedback_flush(comp, NULL, buflen) == 0);
-		CHECK(rohc_feedback_flush(comp, buf, 0) == 0);
-		for(int i = 0; i < 1000; i++)
-		{
-			CHECK(rohc_feedback_flush(comp, buf, buflen) > 0);
-			CHECK(rohc_feedback_remove_locked(comp));
-		}
-		CHECK(rohc_feedback_flush(comp, buf, buflen) == 0); /* empty */
-	}
-
-	/* rohc_compress3() */
-	{
-		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
-		unsigned char buf1[1];
-		unsigned char buf2[100];
-		unsigned char buf[] =
-		{
-			0x45, 0x00, 0x00, 0x54,  0x00, 0x00, 0x40, 0x00,
-			0x40, 0x01, 0x93, 0x52,  0xc0, 0xa8, 0x13, 0x01,
-			0xc0, 0xa8, 0x13, 0x05,  0x08, 0x00, 0xe9, 0xc2,
-			0x9b, 0x42, 0x00, 0x01,  0x66, 0x15, 0xa6, 0x45,
-			0x77, 0x9b, 0x04, 0x00,  0x08, 0x09, 0x0a, 0x0b,
-			0x0c, 0x0d, 0x0e, 0x0f,  0x10, 0x11, 0x12, 0x13,
-			0x14, 0x15, 0x16, 0x17,  0x18, 0x19, 0x1a, 0x1b,
-			0x1c, 0x1d, 0x1e, 0x1f,  0x20, 0x21, 0x22, 0x23,
-			0x24, 0x25, 0x26, 0x27,  0x28, 0x29, 0x2a, 0x2b,
-			0x2c, 0x2d, 0x2e, 0x2f,  0x30, 0x31, 0x32, 0x33,
-			0x34, 0x35, 0x36, 0x37
-		};
-		size_t len;
-		CHECK(rohc_compress3(NULL, ts, buf1, 1, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, ts, NULL, 1, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, ts, buf1, 0, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, ts, buf1, 1, NULL, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, ts, buf1, 1, buf2, 0, &len) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, ts, buf1, 1, buf2, 1, NULL) == ROHC_ERROR);
-		CHECK(rohc_compress3(comp, ts, buf, sizeof(buf), buf2, sizeof(buf2), &len) == ROHC_OK);
-	}
-
 	/* rohc_compress4() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
@@ -422,43 +355,19 @@ int main(int argc, char *argv[])
 	/* rohc_comp_force_contexts_reinit() with some contexts init'ed */
 	CHECK(rohc_comp_force_contexts_reinit(comp) == true);
 
-	/* rohc_feedback_remove_locked() */
-	CHECK(rohc_feedback_remove_locked(NULL) == false);
-	CHECK(rohc_feedback_remove_locked(comp) == true);
-
-	/* rohc_feedback_avail_bytes() */
+	/* rohc_comp_deliver_feedback2() */
 	{
-		const size_t buflen = 12;
-		unsigned char buf[buflen];
-		unsigned char buf1[1];
-		unsigned char buf2[8];
-		CHECK(rohc_feedback_avail_bytes(NULL) == 0);
-		CHECK(rohc_feedback_avail_bytes(comp) == 0);
-		CHECK(rohc_comp_piggyback_feedback(comp, buf1, 1) == true);
-		CHECK(rohc_feedback_avail_bytes(comp) == 2);
-		CHECK(rohc_comp_piggyback_feedback(comp, buf2, 8) == true);
-		CHECK(rohc_feedback_avail_bytes(comp) == 12);
-		CHECK(rohc_feedback_flush(comp, buf, buflen) == 12);
-		CHECK(rohc_feedback_avail_bytes(comp) == 0);
-	}
+		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
+		uint8_t buf[] = { 0xf4, 0x20, 0x01, 0x11, 0x39 };
+		struct rohc_buf pkt = rohc_buf_init_full(buf, 5, ts);
 
-	/* rohc_feedback_unlock() */
-	CHECK(rohc_feedback_unlock(NULL) == false);
-	CHECK(rohc_feedback_unlock(comp) == true);
-	CHECK(rohc_feedback_avail_bytes(comp) == 12);
-
-	/* rohc_comp_deliver_feedback() */
-	{
-		const unsigned char buf[] = { 0x20, 0x01, 0x11, 0x39 };
-
-		CHECK(rohc_comp_deliver_feedback(NULL, buf, 4) == true);
-		CHECK(rohc_comp_deliver_feedback(comp, NULL, 4) == false);
-		CHECK(rohc_comp_deliver_feedback(comp, buf, -1) == false);
-		CHECK(rohc_comp_deliver_feedback(comp, buf, 0) == false);
-		CHECK(rohc_comp_deliver_feedback(comp, buf, 1) == true); /* valid FEEDBACK-1 */
-		CHECK(rohc_comp_deliver_feedback(comp, buf, 2) == true); /* valid FEEDBACK-1 without option */
-		CHECK(rohc_comp_deliver_feedback(comp, buf, 3) == false);
-		CHECK(rohc_comp_deliver_feedback(comp, buf, 4) == true);  /* valid FEEDBACK-2 with CRC option */
+		CHECK(rohc_comp_deliver_feedback2(NULL, pkt) == false);
+		pkt.len = 0; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == true);
+		pkt.len = 1; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == false);
+		pkt.len = 2; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == false);
+		pkt.len = 3; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == false);
+		pkt.len = 4; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == false);
+		pkt.len = 5; CHECK(rohc_comp_deliver_feedback2(comp, pkt) == true);
 	}
 
 	/* rohc_comp_free() */

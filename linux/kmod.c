@@ -58,19 +58,14 @@ EXPORT_SYMBOL_GPL(rohc_get_ext_descr);
 /* general */
 EXPORT_SYMBOL_GPL(rohc_comp_new);
 EXPORT_SYMBOL_GPL(rohc_comp_free);
-EXPORT_SYMBOL_GPL(rohc_compress3);
+EXPORT_SYMBOL_GPL(rohc_compress4);
 EXPORT_SYMBOL_GPL(rohc_comp_force_contexts_reinit);
 
 /* segment */
-EXPORT_SYMBOL_GPL(rohc_comp_get_segment);
+EXPORT_SYMBOL_GPL(rohc_comp_get_segment2);
 
 /* feedback */
-EXPORT_SYMBOL_GPL(rohc_comp_deliver_feedback);
 EXPORT_SYMBOL_GPL(rohc_comp_deliver_feedback2);
-EXPORT_SYMBOL_GPL(rohc_feedback_flush);
-EXPORT_SYMBOL_GPL(rohc_comp_piggyback_feedback);
-EXPORT_SYMBOL_GPL(rohc_feedback_remove_locked);
-EXPORT_SYMBOL_GPL(rohc_feedback_unlock);
 
 /* statistics */
 EXPORT_SYMBOL_GPL(rohc_comp_get_state_descr);
@@ -105,9 +100,9 @@ EXPORT_SYMBOL_GPL(rohc_comp_set_rtp_detection_cb);
  */
 
 /* general */
-EXPORT_SYMBOL_GPL(rohc_decomp_new);
+EXPORT_SYMBOL_GPL(rohc_decomp_new2);
 EXPORT_SYMBOL_GPL(rohc_decomp_free);
-EXPORT_SYMBOL_GPL(rohc_decompress2);
+EXPORT_SYMBOL_GPL(rohc_decompress3);
 
 /* statistics */
 EXPORT_SYMBOL_GPL(rohc_decomp_get_state_descr);

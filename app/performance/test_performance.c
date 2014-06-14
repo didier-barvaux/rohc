@@ -674,11 +674,16 @@ static int time_compress_packet(struct rohc_comp *comp,
                                 size_t link_len,
                                 unsigned long long *time_elapsed)
 {
+	/* the buffer that will contain the initial uncompressed packet */
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	unsigned char *ip_packet;
-	size_t ip_size;
-	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	size_t rohc_size;
+	struct rohc_buf ip_packet =
+		rohc_buf_init_full(packet, header.caplen, arrival_time);
+
+	/* the buffer that will contain the compressed ROHC packet */
+	uint8_t rohc_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
+
 	struct timespec start_tics;
 	struct timespec end_tics;
 	int is_failure = 1;
@@ -694,8 +699,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* skip the link layer header */
-	ip_packet = packet + link_len;
-	ip_size = header.len - link_len;
+	rohc_buf_shift(&ip_packet, link_len);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -704,19 +708,19 @@ static int time_compress_packet(struct rohc_comp *comp,
 		uint16_t tot_len;
 
 		/* determine the total length of the IP packet */
-		ip_version = (ip_packet[0] >> 4) & 0x0f;
+		ip_version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
 		if(ip_version == 4) /* IPv4 */
 		{
 			struct ipv4_hdr *ip;
 
-			ip = (struct ipv4_hdr *) ip_packet;
+			ip = (struct ipv4_hdr *) rohc_buf_data(ip_packet);
 			tot_len = ntohs(ip->tot_len);
 		}
 		else if(ip_version == 6) /* IPv6 */
 		{
 			struct ipv6_hdr *ip;
 
-			ip = (struct ipv6_hdr *) ip_packet;
+			ip = (struct ipv6_hdr *) rohc_buf_data(ip_packet);
 			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 		}
 		else /* unknown IP version */
@@ -727,12 +731,12 @@ static int time_compress_packet(struct rohc_comp *comp,
 		}
 
 		/* update the length of the IP packet if padding is present */
-		if(tot_len < ip_size)
+		if(tot_len < ip_packet.len)
 		{
 			fprintf(stderr, "packet %lu: the Ethernet frame has %zd "
 			        "bytes of padding after the %u-byte IP packet!\n",
-			        num_packet, ip_size - tot_len, tot_len);
-			ip_size = tot_len;
+			        num_packet, ip_packet.len - tot_len, tot_len);
+			ip_packet.len = tot_len;
 		}
 	}
 
@@ -740,8 +744,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
 
 	/* compress the packet */
-	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 
 	/* get CPU tics after compression */
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);
@@ -832,7 +835,7 @@ static int test_decompression_perfs(char *filename,
 	}
 
 	/* create ROHC decompressor */
-	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(cid_type, max_contexts - 1, ROHC_U_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "cannot create the ROHC decompressor\n");
@@ -930,10 +933,14 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   const struct rohc_ts arrival_time,
                                   unsigned long long *time_elapsed)
 {
-	unsigned char *rohc_packet;
-	unsigned int rohc_size;
-	static unsigned char ip_packet[MAX_ROHC_SIZE];
-	size_t ip_size;
+	/* the buffer that will contain the compressed ROHC packet */
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_full(packet, header.caplen, arrival_time);
+
+	/* the buffer that will contain the uncompressed packet */
+	uint8_t ip_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
+
 	struct timespec start_tics;
 	struct timespec end_tics;
 	int is_failure = 1;
@@ -949,15 +956,13 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	}
 
 	/* skip the link layer header */
-	rohc_packet = packet + link_len;
-	rohc_size = header.len - link_len;
+	rohc_buf_shift(&rohc_packet, link_len);
 
 	/* get CPU tics before compression */
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
 
 	/* decompress the packet */
-	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-	                       ip_packet, MAX_ROHC_SIZE, &ip_size);
+	ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
 
 	/* get CPU tics after compression */
 	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);

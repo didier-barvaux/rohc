@@ -86,11 +86,13 @@ struct d_statistics
  */
 struct rohc_decomp
 {
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/** The compressor associated with the decompressor */
 	struct rohc_comp *compressor;
 	/** Whether to handle feedback delivery internally for compatibility with
 	 *  pre-1.7.0 versions */
 	bool do_auto_feedback_delivery;
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/** The medium associated with the decompressor */
 	struct rohc_medium medium;
@@ -175,6 +177,9 @@ struct rohc_decomp_ctxt
 	rohc_mode_t mode;
 	/** The operation state in which the context operates */
 	rohc_decomp_state_t state;
+
+	/** Whether the operation modes at compressor and decompressor mismatch */
+	bool do_change_mode;
 
 	/** Usage timestamp */
 	unsigned int latest_used;
@@ -276,15 +281,6 @@ struct rohc_decomp_profile
 	/* The handler used to retrieve the Sequence Number (SN) */
 	uint32_t (*get_sn)(const struct rohc_decomp_ctxt *const context);
 };
-
-
-
-/*
- * Prototypes of library-private functions
- */
-
-void d_change_mode_feedback(const struct rohc_decomp *const decomp,
-                            const struct rohc_decomp_ctxt *const context);
 
 
 #endif

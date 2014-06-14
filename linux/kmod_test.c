@@ -229,15 +229,12 @@ error:
  *
  * In part 2, the decompressor and the buffers are initialized.
  *
- * @param couple           The couple of ROHC compressor/decompressor to
- *                         initialize
- * @param index            The index of the couple: 0 or 1
- * @param associated_comp  The compressor to associate with the decompressor
- * @return                 0 in case of success, non-zero otherwise
+ * @param couple  The couple of ROHC compressor/decompressor to initialize
+ * @param index   The index of the couple: 0 or 1
+ * @return        0 in case of success, non-zero otherwise
  */
 int rohc_couple_init_phase2(struct rohc_couple *couple,
-                            int index,
-                            struct rohc_comp *associated_comp)
+                            int index)
 {
 	bool is_ok;
 
@@ -246,8 +243,8 @@ int rohc_couple_init_phase2(struct rohc_couple *couple,
 
 	/* create the decompressor and associate it with the compressor
 	   of the other ROHC couple */
-	couple->decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                                 ROHC_O_MODE, associated_comp);
+	couple->decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                                  ROHC_O_MODE);
 	if(couple->decomp == NULL)
 	{
 		pr_err("[%s] \t cannot create the ROHC decompressor\n",
@@ -407,7 +404,7 @@ static int rohc_proc_open(struct inode *inode, struct file *file)
 		}
 
 		/* phase 2: initialize the rest of the 1st ROHC couple */
-		ret = rohc_couple_init_phase2(&couples[0], 0, couples[1].comp);
+		ret = rohc_couple_init_phase2(&couples[0], 0);
 		if(ret != 0)
 		{
 			pr_err("[%s] failed to init ROHC couple #1 (phase 2)\n", THIS_MODULE->name);
@@ -415,7 +412,7 @@ static int rohc_proc_open(struct inode *inode, struct file *file)
 		}
 
 		/* phase 2: initialize the rest of the 2nd ROHC couple */
-		ret = rohc_couple_init_phase2(&couples[1], 1, couples[0].comp);
+		ret = rohc_couple_init_phase2(&couples[1], 1);
 		if(ret != 0)
 		{
 			pr_err("[%s] failed to init ROHC couple #2 (phase 2)\n", THIS_MODULE->name);
@@ -523,19 +520,22 @@ ssize_t rohc_proc_comp_write(struct file *file,
 	if(couple->ip_size_current_in == couple->ip_size_total_in)
 	{
 		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+		struct rohc_buf ip_packet =
+			rohc_buf_init_full(couple->ip_packet_in, couple->ip_size_total_in,
+			                   arrival_time);
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_empty(couple->rohc_packet_out, MAX_ROHC_SIZE);
 
 		pr_info("[%s] IP packet is complete, compress it now\n",
 		        THIS_MODULE->name);
 
-		ret = rohc_compress3(couple->comp, arrival_time,
-									couple->ip_packet_in, couple->ip_size_total_in,
-									couple->rohc_packet_out, MAX_ROHC_SIZE,
-									&(couple->rohc_size_out));
+		ret = rohc_compress4(couple->comp, ip_packet, &rohc_packet);
 		if(ret != ROHC_OK)
 		{
 			pr_err("[%s] failed to compress the IP packet\n", THIS_MODULE->name);
 			goto error;
 		}
+		couple->rohc_size_out = rohc_packet.len;
 
 		pr_info("[%s] IP packet successfully compressed\n", THIS_MODULE->name);
 
@@ -642,18 +642,22 @@ ssize_t rohc_proc_decomp_write(struct file *file,
 	if(couple->rohc_size_current_in == couple->rohc_size_total_in)
 	{
 		const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_full(couple->rohc_packet_in,
+			                   couple->rohc_size_total_in, arrival_time);
+		struct rohc_buf ip_packet =
+			rohc_buf_init_empty(couple->ip_packet_out, MAX_ROHC_SIZE);
 
 		pr_info("[%s] ROHC packet is complete, decompress it now\n", THIS_MODULE->name);
 
-		ret = rohc_decompress2(couple->decomp, arrival_time,
-		                       couple->rohc_packet_in, couple->rohc_size_total_in,
-		                       couple->ip_packet_out, MAX_ROHC_SIZE,
-		                       &(couple->ip_size_out));
+		ret = rohc_decompress3(couple->decomp, rohc_packet, &ip_packet,
+		                       NULL, NULL);
 		if(ret != ROHC_OK)
 		{
 			pr_err("[%s] failed to decompress the ROHC packet\n", THIS_MODULE->name);
 			goto error;
 		}
+		couple->ip_size_out = ip_packet.len;
 
 		pr_info("[%s] ROHC packet successfully decompressed\n", THIS_MODULE->name);
 

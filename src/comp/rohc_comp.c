@@ -139,14 +139,24 @@ static struct rohc_comp_ctxt *
 	__attribute__((nonnull(1), warn_unused_result));
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /*
  * Prototypes of private functions related to ROHC feedback
  */
+
+static bool __rohc_feedback_remove_locked(struct rohc_comp *const comp)
+	__attribute__((warn_unused_result));
+static bool __rohc_feedback_unlock(struct rohc_comp *const comp)
+	__attribute__((warn_unused_result));
 
 static void rohc_feedback_destroy(struct rohc_comp *const comp);
 static int rohc_feedback_get(struct rohc_comp *const comp,
                              unsigned char *const buffer,
                              const unsigned int max);
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
 
 
 /*
@@ -455,6 +465,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 		goto destroy_comp;
 	}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* init the ring of feedbacks */
 	for(i = 0; i < FEEDBACK_RING_SIZE; i++)
 	{
@@ -465,6 +476,7 @@ struct rohc_comp * rohc_comp_new(const rohc_cid_type_t cid_type,
 	comp->feedbacks_first = 0;
 	comp->feedbacks_first_unlocked = 0;
 	comp->feedbacks_next = 0;
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/* create the MAX_CID + 1 contexts */
 	if(!c_create_contexts(comp))
@@ -524,8 +536,10 @@ void rohc_comp_free(struct rohc_comp *const comp)
 		/* free memory used by contexts */
 		c_destroy_contexts(comp);
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 		/* destroy unsent piggybacked feedback */
 		rohc_feedback_destroy(comp);
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 		/* free the compressor */
 		free(comp);
@@ -795,7 +809,7 @@ int rohc_compress(struct rohc_comp *comp,
 	if(code != ROHC_OK)
 	{
 		/* compression error or segments: unlock feedbacks */
-		if(!rohc_feedback_unlock(comp))
+		if(!__rohc_feedback_unlock(comp))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to unlock feedbacks");
@@ -804,7 +818,7 @@ int rohc_compress(struct rohc_comp *comp,
 	}
 
 	/* remove locked feedbacks since compression is successful */
-	if(!rohc_feedback_remove_locked(comp))
+	if(!__rohc_feedback_remove_locked(comp))
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		             "failed to remove locked feedbacks");
@@ -891,7 +905,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	if(code == ROHC_OK)
 	{
 		/* remove locked feedbacks since compression is successful */
-		if(!rohc_feedback_remove_locked(comp))
+		if(!__rohc_feedback_remove_locked(comp))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to remove locked feedbacks");
@@ -905,7 +919,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 	else
 	{
 		/* compression error or segments: unlock feedbacks */
-		if(!rohc_feedback_unlock(comp))
+		if(!__rohc_feedback_unlock(comp))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to unlock feedbacks");
@@ -914,8 +928,6 @@ int rohc_compress2(struct rohc_comp *const comp,
 
 	return code;
 }
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -933,6 +945,9 @@ int rohc_compress2(struct rohc_comp *const comp,
  * \ref rohc_comp_set_mrru was not exceeded. If ROHC segmentation is used, one
  * may use the \ref rohc_comp_get_segment function to retrieve all the ROHC
  * segments one by one.
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_compress4() instead
  *
  * @param comp                  The ROHC compressor
  * @param arrival_time          The time at which packet was received
@@ -1038,7 +1053,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 	if(code == ROHC_OK)
 	{
 		/* remove locked feedbacks since compression is successful */
-		if(!rohc_feedback_remove_locked(comp))
+		if(!__rohc_feedback_remove_locked(comp))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to remove locked feedbacks");
@@ -1052,7 +1067,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 	else
 	{
 		/* compression error or segments: unlock feedbacks */
-		if(!rohc_feedback_unlock(comp))
+		if(!__rohc_feedback_unlock(comp))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to unlock feedbacks");
@@ -1061,6 +1076,8 @@ int rohc_compress3(struct rohc_comp *const comp,
 
 	return code;
 }
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -1139,13 +1156,38 @@ int rohc_compress4(struct rohc_comp *const comp,
 	int status = ROHC_ERROR; /* error status by default */
 
 	/* check inputs validity */
-	if(comp == NULL ||
-	   rohc_buf_is_malformed(uncomp_packet) ||
-	   rohc_buf_is_empty(uncomp_packet) ||
-	   rohc_packet == NULL ||
-	   rohc_buf_is_malformed(*rohc_packet) ||
-	   !rohc_buf_is_empty(*rohc_packet))
+	if(comp == NULL)
 	{
+		goto error;
+	}
+	if(rohc_buf_is_malformed(uncomp_packet))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given uncomp_packet is malformed");
+		goto error;
+	}
+	if(rohc_buf_is_empty(uncomp_packet))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given uncomp_packet is empty");
+		goto error;
+	}
+	if(rohc_packet == NULL)
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_packet is NULL");
+		goto error;
+	}
+	if(rohc_buf_is_malformed(*rohc_packet))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_packet is malformed");
+		goto error;
+	}
+	if(!rohc_buf_is_empty(*rohc_packet))
+	{
+		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		             "given rohc_packet is not empty");
 		goto error;
 	}
 
@@ -1281,7 +1323,6 @@ int rohc_compress4(struct rohc_comp *const comp,
 		memcpy(comp->rru + comp->rru_off, rohc_buf_data(*rohc_packet),
 		       rohc_hdr_size);
 		comp->rru_len += rohc_hdr_size;
-		rohc_buf_shift(rohc_packet, rohc_hdr_size);
 		/* ROHC payload */
 		memcpy(comp->rru + comp->rru_off + comp->rru_len,
 		       rohc_buf_data_at(uncomp_packet, payload_offset), payload_size);
@@ -1298,6 +1339,9 @@ int rohc_compress4(struct rohc_comp *const comp,
 		/* computed RRU must be <= MRRU */
 		assert(comp->rru_len <= comp->mrru);
 
+		/* reset the length of the ROHC packet: it shall be 0 for users */
+		rohc_packet->len = 0;
+
 		/* report to users that segmentation is possible */
 		status = ROHC_NEED_SEGMENT;
 	}
@@ -1310,16 +1354,16 @@ int rohc_compress4(struct rohc_comp *const comp,
 		       rohc_buf_data_at(uncomp_packet, payload_offset), payload_size);
 		rohc_packet->len += payload_size;
 
+		/* shift back the ROHC header */
+		rohc_buf_shift(rohc_packet, -(rohc_hdr_size));
+		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
+		           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
+		           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
+		           payload_size, rohc_buf_avail_len(*rohc_packet));
+
 		/* report to user that compression was successful */
 		status = ROHC_OK;
 	}
-
-	/* shift back the ROHC header */
-	rohc_buf_shift(rohc_packet, -(rohc_hdr_size));
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
-	           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
-	           payload_size, rohc_buf_avail_len(*rohc_packet));
 
 	/* update some statistics:
 	 *  - compressor statistics
@@ -1366,6 +1410,8 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Get the next ROHC segment if any
  *
@@ -1373,6 +1419,9 @@ error:
  *
  * To get all the segments of one ROHC packet, call this function until
  * \ref ROHC_OK or \ref ROHC_ERROR is returned.
+ *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_get_segment2() instead
  *
  * @param comp      The ROHC compressor
  * @param segment   The buffer where to store the ROHC segment
@@ -1449,6 +1498,8 @@ error:
 	return ROHC_ERROR;
 }
 
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
 
 /**
  * @brief Get the next ROHC segment if any
@@ -1504,8 +1555,6 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 
 {
 	const size_t segment_type_len = 1; /* segment type byte */
-	size_t feedbacks_size;
-	int feedback_size;
 	size_t max_data_len;
 	int status;
 
@@ -1553,23 +1602,6 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 		goto error;
 	}
 
-	/* add feedbacks if some are available */
-	feedbacks_size = 0;
-	do
-	{
-		feedback_size = rohc_feedback_get(comp, rohc_buf_data(*segment),
-		                                  rohc_buf_avail_len(*segment));
-		if(feedback_size > 0)
-		{
-			segment->len += feedback_size;
-			rohc_buf_shift(segment, feedback_size);
-			feedbacks_size += feedback_size;
-		}
-	}
-	while(feedback_size > 0);
-	rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
-	           "%zu bytes of feedback added to ROHC packet", feedbacks_size);
-
 	/* how many bytes of ROHC packet can we put in that new segment? */
 	max_data_len = rohc_min(rohc_buf_avail_len(*segment) - segment_type_len,
 	                        comp->rru_len);
@@ -1605,7 +1637,7 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 	}
 
 	/* shift backward the RRU data, header and the feedback data */
-	rohc_buf_shift(segment, -(max_data_len + 1 + feedbacks_size));
+	rohc_buf_shift(segment, -(max_data_len + 1));
 
 	return status;
 
@@ -3294,8 +3326,8 @@ static int __rohc_c_context(struct rohc_comp *comp,
 /**
  * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
  *
- * @deprecated do not use this function anymore,
- *             use rohc_comp_piggyback_feedback() instead
+ * @deprecated please do not use this function anymore, instead use
+ *             rohc_decompress3() and prepend feedback data yourself
  *
  * @param comp     The ROHC compressor
  * @param feedback The feedback data
@@ -3308,10 +3340,8 @@ void c_piggyback_feedback(struct rohc_comp *comp,
                           int size)
 {
 	bool __attribute__((unused)) ret; /* avoid warn_unused_result */
-	ret = rohc_comp_piggyback_feedback(comp, feedback, size);
+	ret = __rohc_comp_piggyback_feedback(comp, feedback, size);
 }
-
-#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -3321,13 +3351,10 @@ void c_piggyback_feedback(struct rohc_comp *comp,
  * @param feedback The feedback data
  * @param size     The length of the feedback packet
  * @return         true in case of success, false otherwise
- *
- * @ingroup rohc_comp
  */
-bool rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
-                                  const unsigned char *const feedback,
-                                  const size_t size)
-
+bool __rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
+                                    const unsigned char *const feedback,
+                                    const size_t size)
 {
 	/* ignore feedback if no valid compressor nor feedback is provided */
 	if(comp == NULL || feedback == NULL || size <= 0)
@@ -3378,7 +3405,27 @@ error:
 }
 
 
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+/**
+ * @brief Add a feedback packet to the next outgoing ROHC packet (piggybacking)
+ *
+ * @deprecated please do not use this function anymore, instead use
+ *             rohc_decompress3() and prepend feedback data yourself
+ *
+ * @param comp     The ROHC compressor
+ * @param feedback The feedback data
+ * @param size     The length of the feedback packet
+ * @return         true in case of success, false otherwise
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_piggyback_feedback(struct rohc_comp *const comp,
+                                  const unsigned char *const feedback,
+                                  const size_t size)
+
+{
+	return __rohc_comp_piggyback_feedback(comp, feedback, size);
+}
+
 
 /**
  * @brief Callback called by a decompressor to deliver a feedback packet to the
@@ -3386,6 +3433,9 @@ error:
  *
  * When feedback is received by the decompressor, this function is called and
  * delivers the feedback to the right profile/context of the compressor.
+ *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_deliver_feedback2() instead
  *
  * @param comp   The ROHC compressor
  * @param packet The feedback data
@@ -3398,7 +3448,7 @@ void c_deliver_feedback(struct rohc_comp *comp,
                         int size)
 {
 	const bool is_ok __attribute__((unused)) =
-		rohc_comp_deliver_feedback(comp, packet, size);
+		__rohc_comp_deliver_feedback(comp, packet, size);
 }
 
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
@@ -3415,13 +3465,10 @@ void c_deliver_feedback(struct rohc_comp *comp,
  * @param size   The length of the feedback packet
  * @return       true if the feedback was successfully taken into account,
  *               false if the feedback could not be taken into account
- *
- * @ingroup rohc_comp
  */
-bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
-                                const uint8_t *const packet,
-                                const size_t size)
-
+bool __rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                  const uint8_t *const packet,
+                                  const size_t size)
 {
 	struct rohc_comp_ctxt *c;
 	struct c_feedback feedback;
@@ -3527,7 +3574,7 @@ bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	c->num_recv_feedbacks++;
-#endif
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 	/* deliver feedback to profile with the context */
 	if(!c->profile->feedback(c, &feedback))
@@ -3551,6 +3598,42 @@ error:
 ignore:
 	return true;
 }
+
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
+/**
+ * @brief Deliver a feedback packet to the compressor
+ *
+ * When feedback is received by the decompressor, this function is called and
+ * delivers the feedback to the right profile/context of the compressor.
+ *
+ * @deprecated please do not use this function anymore,
+ *             use rohc_comp_deliver_feedback2() instead
+ *
+ * @param comp   The ROHC compressor
+ * @param packet The feedback data
+ * @param size   The length of the feedback packet
+ * @return       true if the feedback was successfully taken into account,
+ *               false if the feedback could not be taken into account
+ *
+ * @ingroup rohc_comp
+ */
+bool rohc_comp_deliver_feedback(struct rohc_comp *const comp,
+                                const uint8_t *const packet,
+                                const size_t size)
+{
+	/* silently ignore errors about feedback delivery if there is no same-side
+	 * associated compressor */
+	if(comp == NULL)
+	{
+		return true;
+	}
+	/* call the new API for compatibility */
+	return __rohc_comp_deliver_feedback(comp, packet, size);
+}
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /**
@@ -3631,8 +3714,8 @@ bool rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
 		rohc_buf_shift(&remain_data, feedback_hdr_len);
 
 		/* deliver the feedback data to the compressor */
-		if(!rohc_comp_deliver_feedback(comp, rohc_buf_data(remain_data),
-		                               feedback_data_len))
+		if(!__rohc_comp_deliver_feedback(comp, rohc_buf_data(remain_data),
+		                                 feedback_data_len))
 		{
 			rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 			             "failed to deliver feedback item #%zu", feedbacks_nr);
@@ -3652,6 +3735,8 @@ error:
 	return false;
 }
 
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Send as much feedback data as possible
@@ -3675,6 +3760,9 @@ error:
  * The \ref rohc_feedback_avail_bytes function might be useful to flush only
  * when a given amount of unsent feedback data is reached. It might be useful
  * to correctly size the buffer given to \e rohc_feedback_flush.
+ *
+ * @deprecated please do not use this function anymore, instead use
+ *             rohc_decompress3() and send feedback data yourself
  *
  * @param comp       The ROHC compressor
  * @param[out] obuf  The buffer where to store the feedback-only packet
@@ -3728,6 +3816,9 @@ int rohc_feedback_flush(struct rohc_comp *comp,
  * might be useful to know how many feedback data is waiting to be sent before
  * flushing them with the \ref rohc_feedback_flush function.
  *
+ * @deprecated please do not use this function anymore, instead use
+ *             rohc_decompress3() and handle feedback data yourself
+ *
  * @param comp  The ROHC compressor
  * @return      The number of bytes of unsent feedback data,
  *              0 if no unsent feedback data is available
@@ -3778,8 +3869,6 @@ error:
 	return 0;
 }
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Get some information about the last compressed packet
@@ -4017,6 +4106,8 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Remove all feedbacks locked during the packet build
  *
@@ -4034,12 +4125,10 @@ const char * rohc_comp_get_state_descr(const rohc_comp_state_t state)
  * @param comp  The ROHC compressor
  * @return      true if action succeeded, false in case of error
  *
- * @ingroup rohc_comp
- *
  * @see rohc_feedback_unlock
  * @see rohc_feedback_flush
  */
-bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
+static bool __rohc_feedback_remove_locked(struct rohc_comp *const comp)
 {
 	unsigned int removed_nr = 0;
 
@@ -4077,6 +4166,37 @@ error:
 
 
 /**
+ * @brief Remove all feedbacks locked during the packet build
+ *
+ * Remove all feedbacks locked during the packet build from the compressor's
+ * context. A call to function \e rohc_feedback_remove_locked closes the
+ * transaction started by the function \ref rohc_feedback_flush. It frees
+ * the compressor's internal memory related to feedback data once the feedback
+ * data was sent for sure.
+ *
+ * If the feedback data failed to be sent correctly (eg. temporary network
+ * problem), then the feedback data shall not be removed but only unlocked
+ * with the \ref rohc_feedback_unlock function. This way, feedback data could
+ * be sent again later.
+ *
+ * @deprecated please do not use this function anymore, instead use
+ *             rohc_decompress3() and handle feedback data yourself
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_feedback_unlock
+ * @see rohc_feedback_flush
+ */
+bool rohc_feedback_remove_locked(struct rohc_comp *const comp)
+{
+	return __rohc_feedback_remove_locked(comp);
+}
+
+
+/**
  * @brief Unlock all feedbacks locked during the packet build
  *
  * Unlock all feedbacks locked during the packet build, but do not remove them
@@ -4092,12 +4212,10 @@ error:
  * @param comp  The ROHC compressor
  * @return      true if action succeeded, false in case of error
  *
- * @ingroup rohc_comp
- *
  * @see rohc_feedback_remove_locked
  * @see rohc_feedback_flush
  */
-bool rohc_feedback_unlock(struct rohc_comp *const comp)
+static bool __rohc_feedback_unlock(struct rohc_comp *const comp)
 {
 	size_t i;
 
@@ -4126,6 +4244,38 @@ bool rohc_feedback_unlock(struct rohc_comp *const comp)
 error:
 	return false;
 }
+
+
+/**
+ * @brief Unlock all feedbacks locked during the packet build
+ *
+ * Unlock all feedbacks locked during the packet build, but do not remove them
+ * from the compressor's context. A call to function \e rohc_feedback_unlock
+ * closes the transaction started by the function \ref rohc_feedback_flush. It
+ * allows the compressor to send the unlocked feedback bytes again after the
+ * the program failed to send them correctly (eg. temporary network problem).
+ *
+ * If the feedback data was sent successfully, then the feedback data shall
+ * not be unlocked, but removed with the \ref rohc_feedback_remove_locked
+ * function. This way, feedback data will not be sent again later.
+ *
+ * @deprecated please do not use this function anymore, instead use
+ *             rohc_decompress3() and handle feedback data yourself
+ *
+ * @param comp  The ROHC compressor
+ * @return      true if action succeeded, false in case of error
+ *
+ * @ingroup rohc_comp
+ *
+ * @see rohc_feedback_remove_locked
+ * @see rohc_feedback_flush
+ */
+bool rohc_feedback_unlock(struct rohc_comp *const comp)
+{
+	return __rohc_feedback_unlock(comp);
+}
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
 
 
 /*
@@ -4566,6 +4716,8 @@ static void c_destroy_contexts(struct rohc_comp *const comp)
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Retrieve one feedback packet and store it in the given buffer
  *
@@ -4713,8 +4865,6 @@ static void rohc_feedback_destroy(struct rohc_comp *const comp)
 	comp->feedbacks_next = 0;
 }
 
-
-#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Set the maximal CID value the compressor should use

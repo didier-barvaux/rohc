@@ -54,6 +54,11 @@
  * Definitions of private constants and macros
  */
 
+#if defined(ROHC_ENABLE_DEPRECATED_API) && ROHC_ENABLE_DEPRECATED_API == 0
+/** The packet needs to be parsed again */
+#  define ROHC_NEED_REPARSE          -6
+#endif /* ROHC_ENABLE_DEPRECATED_API */
+
 
 /*
  * Private function prototypes for parsing the static and dynamic parts
@@ -1545,7 +1550,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				/* uncompressed headers successfully built, CRC is incorrect, repair
 				 * was disabled or attempted without any success, so give up */
 				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
-				                 "headers CRC failure)", context->cid);
+				                 "headers (CRC failure)", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
 				rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
 				              ROHC_TRACE_WARNING, "compressed headers",
@@ -1649,11 +1654,18 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 
 	/* tell compressor about the current decompressor's operating mode
 	 * if they are different */
-	if(bits.mode_nr > 0 && bits.mode != context->mode)
+	if(bits.mode_nr > 0)
 	{
-		rohc_decomp_debug(context, "mode different in compressor (%d) and "
-		                  "decompressor (%d)", bits.mode, context->mode);
-		d_change_mode_feedback(decomp, context);
+		if(bits.mode != context->mode)
+		{
+			rohc_decomp_debug(context, "mode different in compressor (%d) and "
+			                  "decompressor (%d)", bits.mode, context->mode);
+			context->do_change_mode = true;
+		}
+		else
+		{
+			context->do_change_mode = false;
+		}
 	}
 
 	/* update context with decoded values */

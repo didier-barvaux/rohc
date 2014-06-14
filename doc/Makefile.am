@@ -124,7 +124,6 @@ rohc_all_sources = \
 	$(top_srcdir)/test/functional/context_reuse/*.c \
 	$(top_srcdir)/test/functional/decompress_feedback_only/*.c \
 	$(top_srcdir)/test/functional/feedback2/*.c \
-	$(top_srcdir)/test/functional/feedback_ring/*.c \
 	$(top_srcdir)/test/functional/rtp_detection/*.c \
 	$(top_srcdir)/test/functional/rtp_uo_disambiguation/*.c \
 	$(top_srcdir)/test/functional/segment/*.c \

@@ -1,4 +1,5 @@
 rohc_decomp_new
+rohc_decomp_new2
 rohc_decomp_free
 rohc_decomp_get_mrru
 rohc_decomp_set_mrru

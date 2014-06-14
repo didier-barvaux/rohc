@@ -63,18 +63,15 @@
 static struct rohc_comp * create_compressor(void)
 	__attribute__((warn_unused_result));
 
-static void create_packet(uint8_t *const packet, size_t *const length)
-	__attribute__((nonnull(1, 2)));
+static void create_packet(struct rohc_buf *const packet);
 
 static bool compress_with_rtp_ports(struct rohc_comp *const compressor,
-                                    const uint8_t *const packet,
-                                    const size_t length)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                    const struct rohc_buf packet)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 static bool compress_with_callback(struct rohc_comp *const compressor,
-                                   const uint8_t *const packet,
-                                   const size_t length)
-	__attribute__((warn_unused_result, nonnull(1, 2)));
+                                   const struct rohc_buf packet)
+	__attribute__((warn_unused_result, nonnull(1)));
 
 /* user-defined function callbacks for the ROHC library */
 static void print_rohc_traces(const rohc_trace_level_t level,
@@ -104,11 +101,12 @@ static bool rtp_detect(const unsigned char *const ip,
  */
 int main(int argc, char **argv)
 {
-	struct rohc_comp *compressor;           /* the ROHC compressor */
-	unsigned char ip_packet[BUFFER_SIZE];   /* the buffer that will contain
-	                                           the IPv4 packet to compress */
-	size_t ip_packet_len;                   /* the length (in bytes) of the
-	                                           IPv4 packet */
+	struct rohc_comp *compressor;  /* the ROHC compressor */
+
+	/* the buffer that will contain the IPv4 packet to compress */
+	uint8_t ip_buffer[BUFFER_SIZE];
+	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, BUFFER_SIZE);
+
 //! [define random callback 1]
 	unsigned int seed;
 
@@ -129,11 +127,11 @@ int main(int argc, char **argv)
 
 	/* create a fake IP packet for the purpose of this example program */
 	printf("\nbuild a fake IP/UDP/RTP packet\n");
-	create_packet(ip_packet, &ip_packet_len);
+	create_packet(&ip_packet);
 
 	/* compress the RTP packet with a list of UDP ports to detect the RTP
 	 * packets */
-	if(!compress_with_rtp_ports(compressor, ip_packet, ip_packet_len))
+	if(!compress_with_rtp_ports(compressor, ip_packet))
 	{
 		fprintf(stderr, "compression with detection by UDP ports failed\n");
 		goto release_compressor;
@@ -141,7 +139,7 @@ int main(int argc, char **argv)
 
 	/* now, let's do the same with a user-defined callback to detect the
 	 * RTP packets */
-	if(!compress_with_callback(compressor, ip_packet, ip_packet_len))
+	if(!compress_with_callback(compressor, ip_packet))
 	{
 		fprintf(stderr, "compression with detection by UDP ports failed\n");
 		goto release_compressor;
@@ -219,79 +217,76 @@ error:
  * @brief Create a fake IP/UDP/RTP packet for testing purposes
  *
  * @param packet  The IP/UDP/RTP packet
- * @param length  The length (in bytes) of the IP/UDP/RTP packet
  */
-static void create_packet(uint8_t *const packet, size_t *const length)
+static void create_packet(struct rohc_buf *const packet)
 {
+	packet->len = 5 * 4 + 8 + 12 + strlen(FAKE_PAYLOAD);
+
 	/* IPv4 header */
-	packet[0] = 4 << 4; /* IP version 4 */
-	packet[0] |= 5; /* IHL: minimal IPv4 header length (in 32-bit words) */
-	packet[1] = 0; /* TOS */
-	*length = 5 * 4 + 8 + 12 + strlen(FAKE_PAYLOAD);
-	packet[2] = ((*length) >> 8) & 0xff; /* Total Length */
-	packet[3] = (*length) & 0xff;
-	packet[4] = 0; /* IP-ID */
-	packet[5] = 0;
-	packet[6] = 0; /* Fragment Offset and IP flags */
-	packet[7] = 0;
-	packet[8] = 1; /* TTL */
-	packet[9] = 17; /* Protocol: UDP */
-	packet[10] = 0xbe; /* fake Checksum */
-	packet[11] = 0xef;
-	packet[12] = 0x01; /* Source address */
-	packet[13] = 0x02;
-	packet[14] = 0x03;
-	packet[15] = 0x04;
-	packet[16] = 0x05; /* Destination address */
-	packet[17] = 0x06;
-	packet[18] = 0x07;
-	packet[19] = 0x08;
+	rohc_buf_byte_at(*packet, 0) = 4 << 4; /* IP version 4 */
+	rohc_buf_byte_at(*packet, 0) |= 5; /* IHL: minimal IPv4 header length (in 32-bit words) */
+	rohc_buf_byte_at(*packet, 1) = 0; /* TOS */
+	rohc_buf_byte_at(*packet, 2) = (packet->len >> 8) & 0xff; /* Total Length */
+	rohc_buf_byte_at(*packet, 3) = packet->len & 0xff;
+	rohc_buf_byte_at(*packet, 4) = 0; /* IP-ID */
+	rohc_buf_byte_at(*packet, 5) = 0;
+	rohc_buf_byte_at(*packet, 6) = 0; /* Fragment Offset and IP flags */
+	rohc_buf_byte_at(*packet, 7) = 0;
+	rohc_buf_byte_at(*packet, 8) = 1; /* TTL */
+	rohc_buf_byte_at(*packet, 9) = 17; /* Protocol: UDP */
+	rohc_buf_byte_at(*packet, 10) = 0xa9; /* fake Checksum */
+	rohc_buf_byte_at(*packet, 11) = 0xa0;
+	rohc_buf_byte_at(*packet, 12) = 0x01; /* Source address */
+	rohc_buf_byte_at(*packet, 13) = 0x02;
+	rohc_buf_byte_at(*packet, 14) = 0x03;
+	rohc_buf_byte_at(*packet, 15) = 0x04;
+	rohc_buf_byte_at(*packet, 16) = 0x05; /* Destination address */
+	rohc_buf_byte_at(*packet, 17) = 0x06;
+	rohc_buf_byte_at(*packet, 18) = 0x07;
+	rohc_buf_byte_at(*packet, 19) = 0x08;
 
 	/* UDP header */
-	packet[20] = 0x42; /* source port */
-	packet[21] = 0x42;
-	packet[22] = 0x27; /* destination port = 10042 */
-	packet[23] = 0x3a;
-	packet[24] = 0x00; /* UDP length */
-	packet[25] = 8 + 12 + strlen(FAKE_PAYLOAD);
-	packet[26] = 0x00; /* UDP checksum = 0 */
-	packet[27] = 0x00;
+	rohc_buf_byte_at(*packet, 20) = 0x42; /* source port */
+	rohc_buf_byte_at(*packet, 21) = 0x42;
+	rohc_buf_byte_at(*packet, 22) = 0x27; /* destination port = 10042 */
+	rohc_buf_byte_at(*packet, 23) = 0x3a;
+	rohc_buf_byte_at(*packet, 24) = 0x00; /* UDP length */
+	rohc_buf_byte_at(*packet, 25) = 8 + 12 + strlen(FAKE_PAYLOAD);
+	rohc_buf_byte_at(*packet, 26) = 0x00; /* UDP checksum = 0 */
+	rohc_buf_byte_at(*packet, 27) = 0x00;
 
 	/* RTP header */
-	packet[28] = 0x80;
-	packet[29] = 0x00;
-	packet[30] = 0x00;
-	packet[31] = 0x2d;
-	packet[32] = 0x00;
-	packet[33] = 0x00;
-	packet[34] = 0x01;
-	packet[35] = 0x2c;
-	packet[36] = 0x00;
-	packet[37] = 0x00;
-	packet[38] = 0x00;
-	packet[39] = 0x00;
+	rohc_buf_byte_at(*packet, 28) = 0x80;
+	rohc_buf_byte_at(*packet, 29) = 0x00;
+	rohc_buf_byte_at(*packet, 30) = 0x00;
+	rohc_buf_byte_at(*packet, 31) = 0x2d;
+	rohc_buf_byte_at(*packet, 32) = 0x00;
+	rohc_buf_byte_at(*packet, 33) = 0x00;
+	rohc_buf_byte_at(*packet, 34) = 0x01;
+	rohc_buf_byte_at(*packet, 35) = 0x2c;
+	rohc_buf_byte_at(*packet, 36) = 0x00;
+	rohc_buf_byte_at(*packet, 37) = 0x00;
+	rohc_buf_byte_at(*packet, 38) = 0x00;
+	rohc_buf_byte_at(*packet, 39) = 0x00;
 
 	/* copy the payload just after the IP/UDP/RTP headers */
-	memcpy(packet + 40, FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
+	memcpy(rohc_buf_data_at(*packet, 40), FAKE_PAYLOAD, strlen(FAKE_PAYLOAD));
 }
 
 
 /**
  * @brief Compress one IP/UDP/RTP packet (detection with UDP ports)
  *
- * @param compressor         The ROHC compressor
- * @param uncomp_packet      The IP/UDP/RTP packet to compress
- * @param uncomp_packet_len  The length (in bytes) of the IP/UDP/RTP packet
- * @return                   true if the compression is successful,
- *                           false if the compression failed
+ * @param compressor     The ROHC compressor
+ * @param uncomp_packet  The IP/UDP/RTP packet to compress
+ * @return               true if the compression is successful,
+ *                       false if the compression failed
  */
 static bool compress_with_rtp_ports(struct rohc_comp *const compressor,
-                                    const uint8_t *const uncomp_packet,
-                                    const size_t uncomp_packet_len)
+                                    const struct rohc_buf uncomp_packet)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	unsigned char rohc_packet[BUFFER_SIZE];
-	size_t rohc_packet_len;
+	uint8_t rohc_buffer[BUFFER_SIZE];
+	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
 	int ret;
 
 	/* reset list of UDP ports dedicated to RTP streams */
@@ -333,9 +328,7 @@ static bool compress_with_rtp_ports(struct rohc_comp *const compressor,
 
 	/* now, compress this fake IP/UDP/RTP packet with the RTP profile */
 	printf("\ncompress the fake IP/UDP/RTP packet\n");
-	ret = rohc_compress3(compressor, arrival_time,
-	                     uncomp_packet, uncomp_packet_len,
-	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
+	ret = rohc_compress4(compressor, uncomp_packet, &rohc_packet);
 	if(ret == ROHC_NEED_SEGMENT)
 	{
 		fprintf(stderr, "unexpected ROHC segment\n");
@@ -362,19 +355,16 @@ error:
 /**
  * @brief Compress one IP/UDP/RTP packet (detection with callback)
  *
- * @param compressor         The ROHC compressor
- * @param uncomp_packet      The IP/UDP/RTP packet to compress
- * @param uncomp_packet_len  The length (in bytes) of the IP/UDP/RTP packet
- * @return                   true if the compression is successful,
- *                           false if the compression failed
+ * @param compressor     The ROHC compressor
+ * @param uncomp_packet  The IP/UDP/RTP packet to compress
+ * @return               true if the compression is successful,
+ *                       false if the compression failed
  */
 static bool compress_with_callback(struct rohc_comp *const compressor,
-                                   const uint8_t *const uncomp_packet,
-                                   const size_t uncomp_packet_len)
+                                   const struct rohc_buf uncomp_packet)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	unsigned char rohc_packet[BUFFER_SIZE];
-	size_t rohc_packet_len;
+	uint8_t rohc_buffer[BUFFER_SIZE];
+	struct rohc_buf rohc_packet = rohc_buf_init_empty(rohc_buffer, BUFFER_SIZE);
 	int ret;
 
 	/* reset the list of UDP ports dedicated to RTP streams */
@@ -398,9 +388,7 @@ static bool compress_with_callback(struct rohc_comp *const compressor,
 
 	/* then, compress the fake IP/UDP/RTP packet with the RTP profile */
 	printf("\ncompress the fake IP/UDP/RTP packet\n");
-	ret = rohc_compress3(compressor, arrival_time,
-	                     uncomp_packet, uncomp_packet_len,
-	                     rohc_packet, BUFFER_SIZE, &rohc_packet_len);
+	ret = rohc_compress4(compressor, uncomp_packet, &rohc_packet);
 	if(ret == ROHC_NEED_SEGMENT)
 	{
 		fprintf(stderr, "unexpected ROHC segment\n");
@@ -490,7 +478,7 @@ static bool rtp_detect(const unsigned char *const ip,
 	if(ntohs(udp_dport) == 10042)
 	{
 		/* we think that the UDP packet is a RTP packet */
-		fprintf(stderr, "RTP packet detected (expect UDP port)\n");
+		fprintf(stderr, "RTP packet detected (expected UDP port)\n");
 		is_rtp = true;
 	}
 	else

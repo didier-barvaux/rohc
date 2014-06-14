@@ -56,7 +56,6 @@
  */
 int main(int argc, char *argv[])
 {
-	struct rohc_comp *comp; /* used for some tests */
 	struct rohc_decomp *decomp;
 	bool verbose; /* whether to run in verbose mode or not */
 	int is_failure = 1; /* test fails by default */
@@ -80,43 +79,28 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* rohc_decomp_new() */
-	CHECK(rohc_decomp_new(-1, ROHC_SMALL_CID_MAX, ROHC_U_MODE, NULL) == NULL);
-	CHECK(rohc_decomp_new(ROHC_SMALL_CID + 1, ROHC_SMALL_CID_MAX, ROHC_U_MODE, NULL) == NULL);
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, 0, ROHC_U_MODE, NULL);
+	/* rohc_decomp_new2() */
+	CHECK(rohc_decomp_new2(-1, ROHC_SMALL_CID_MAX, ROHC_U_MODE) == NULL);
+	CHECK(rohc_decomp_new2(ROHC_SMALL_CID + 1, ROHC_SMALL_CID_MAX, ROHC_U_MODE) == NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, 0, ROHC_U_MODE);
 	CHECK(decomp != NULL);
 	rohc_decomp_free(decomp);
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	CHECK(decomp != NULL);
 	rohc_decomp_free(decomp);
-	CHECK(rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX + 1, ROHC_U_MODE, NULL) == NULL);
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, 0, ROHC_U_MODE, NULL);
+	CHECK(rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX + 1, ROHC_U_MODE) == NULL);
+	decomp = rohc_decomp_new2(ROHC_LARGE_CID, 0, ROHC_U_MODE);
 	CHECK(decomp != NULL);
 	rohc_decomp_free(decomp);
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_U_MODE);
 	CHECK(decomp != NULL);
 	rohc_decomp_free(decomp);
-	CHECK(rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX + 1, ROHC_U_MODE, NULL) == NULL);
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE, NULL);
+	CHECK(rohc_decomp_new2(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX + 1, ROHC_U_MODE) == NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	CHECK(decomp != NULL);
 	rohc_decomp_free(decomp);
 
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_U_MODE, NULL);
-	CHECK(decomp != NULL);
-	rohc_decomp_free(decomp);
-	comp = rohc_comp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX);
-	CHECK(comp != NULL);
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_U_MODE, comp);
-	CHECK(decomp != NULL);
-	rohc_decomp_free(decomp);
-	CHECK(rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_O_MODE, NULL) == NULL);
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_O_MODE, comp);
-	CHECK(decomp != NULL);
-	rohc_decomp_free(decomp);
-	CHECK(rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_R_MODE, NULL) == NULL);
-	CHECK(rohc_decomp_new(ROHC_LARGE_CID, ROHC_LARGE_CID_MAX, ROHC_R_MODE, comp) == NULL);
-
-	decomp = rohc_decomp_new(ROHC_LARGE_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE, comp);
+	decomp = rohc_decomp_new2(ROHC_LARGE_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	CHECK(decomp != NULL);
 
 	/* rohc_decomp_set_traces_cb() */
@@ -223,35 +207,6 @@ int main(int argc, char *argv[])
 		CHECK(cid_type == ROHC_LARGE_CID);
 	}
 
-	/* rohc_decompress2() */
-	{
-		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
-		unsigned char buf1[1];
-		unsigned char buf2[100];
-		unsigned char buf[] =
-		{
-			0xfd, 0x00, 0x04, 0xce,  0x40, 0x01, 0xc0, 0xa8,
-			0x13, 0x01, 0xc0, 0xa8,  0x13, 0x05, 0x00, 0x40,
-			0x00, 0x00, 0xa0, 0x00,  0x00, 0x01, 0x08, 0x00,
-			0xe9, 0xc2, 0x9b, 0x42,  0x00, 0x01, 0x66, 0x15,
-			0xa6, 0x45, 0x77, 0x9b,  0x04, 0x00, 0x08, 0x09,
-			0x0a, 0x0b, 0x0c, 0x0d,  0x0e, 0x0f, 0x10, 0x11,
-			0x12, 0x13, 0x14, 0x15,  0x16, 0x17, 0x18, 0x19,
-			0x1a, 0x1b, 0x1c, 0x1d,  0x1e, 0x1f, 0x20, 0x21,
-			0x22, 0x23, 0x24, 0x25,  0x26, 0x27, 0x28, 0x29,
-			0x2a, 0x2b, 0x2c, 0x2d,  0x2e, 0x2f, 0x30, 0x31,
-			0x32, 0x33, 0x34, 0x35,  0x36, 0x37
-		};
-		size_t len;
-		CHECK(rohc_decompress2(NULL, ts, buf1, 1, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_decompress2(decomp, ts, NULL, 1, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_decompress2(decomp, ts, buf1, 0, buf2, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_decompress2(decomp, ts, buf1, 1, NULL, 1, &len) == ROHC_ERROR);
-		CHECK(rohc_decompress2(decomp, ts, buf1, 1, buf2, 0, &len) == ROHC_ERROR);
-		CHECK(rohc_decompress2(decomp, ts, buf1, 1, buf2, 1, NULL) == ROHC_ERROR);
-		CHECK(rohc_decompress2(decomp, ts, buf, sizeof(buf), buf2, sizeof(buf2), &len) == ROHC_OK);
-	}
-
 	/* rohc_decompress3() */
 	{
 		const struct rohc_ts ts = { .sec = 0, .nsec = 0 };
@@ -336,9 +291,6 @@ int main(int argc, char *argv[])
 	/* rohc_decomp_free() */
 	rohc_decomp_free(NULL);
 	rohc_decomp_free(decomp);
-
-	/* free compressor used for tests */
-	rohc_comp_free(comp);
 
 	/* test succeeds */
 	trace(verbose, "all tests are successful\n");

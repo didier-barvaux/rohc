@@ -363,8 +363,7 @@ static int test_comp_and_decomp(const char *const filename,
 	}
 
 	/* create the ROHC decompressor in unidirectional mode */
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                         ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_U_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
@@ -402,12 +401,14 @@ static int test_comp_and_decomp(const char *const filename,
 	counter = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		unsigned char *ip_packet;
-		size_t ip_size;
-		static unsigned char rohc_packet[MAX_ROHC_SIZE];
-		size_t rohc_size;
-		static unsigned char decomp_packet[MAX_ROHC_SIZE];
-		size_t decomp_size;
+		struct rohc_buf ip_packet =
+			rohc_buf_init_full(packet, header.caplen, arrival_time);
+		uint8_t rohc_buffer[MAX_ROHC_SIZE];
+		struct rohc_buf rohc_packet =
+			rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
+		uint8_t decomp_buffer[MAX_ROHC_SIZE];
+		struct rohc_buf decomp_packet =
+			rohc_buf_init_empty(decomp_buffer, MAX_ROHC_SIZE);
 		int ret;
 
 		counter++;
@@ -416,6 +417,9 @@ static int test_comp_and_decomp(const char *const filename,
 		/* avoid overflow of tv_nsec */
 		arrival_time.sec += arrival_time.nsec / (unsigned long) 1e9;
 		arrival_time.nsec %= (unsigned long) 1e9;
+
+		ip_packet.time.sec = arrival_time.sec;
+		ip_packet.time.nsec = arrival_time.nsec;
 
 		fprintf(stderr, "packet #%u:\n", counter);
 
@@ -428,8 +432,7 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 
 		/* skip the link layer header */
-		ip_packet = packet + link_len;
-		ip_size = header.len - link_len;
+		rohc_buf_shift(&ip_packet, link_len);
 
 		/* check for padding after the IP packet in the Ethernet payload */
 		if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -438,33 +441,34 @@ static int test_comp_and_decomp(const char *const filename,
 			uint16_t tot_len;
 
 			/* get IP version */
-			version = (ip_packet[0] >> 4) & 0x0f;
+			version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
 
 			/* get IP total length depending on IP version */
 			if(version == 4)
 			{
-				const struct ipv4_hdr *const ip = (struct ipv4_hdr *) ip_packet;
+				const struct ipv4_hdr *const ip =
+					(struct ipv4_hdr *) rohc_buf_data(ip_packet);
 				tot_len = ntohs(ip->tot_len);
 			}
 			else
 			{
-				const struct ipv6_hdr *const ip = (struct ipv6_hdr *) ip_packet;
+				const struct ipv6_hdr *const ip =
+					(struct ipv6_hdr *) rohc_buf_data(ip_packet);
 				tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 			}
 
 			/* determine if there is Ethernet padding after IP packet */
-			if(tot_len < ip_size)
+			if(tot_len < ip_packet.len)
 			{
 				/* there is Ethernet padding, ignore these bits because there are
 				 * not part of the IP packet */
-				ip_size = tot_len;
+				ip_packet.len = tot_len;
 			}
 		}
 		fprintf(stderr, "\tpacket is valid\n");
 
 		/* compress the IP packet with the ROHC compressor */
-		ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-		                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+		ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 		if(ret != ROHC_OK)
 		{
 			fprintf(stderr, "\tfailed to compress IP packet\n");
@@ -479,9 +483,11 @@ static int test_comp_and_decomp(const char *const filename,
 			continue;
 		}
 
+		rohc_packet.time.sec = arrival_time.sec;
+		rohc_packet.time.nsec = arrival_time.nsec;
+
 		/* decompress the generated ROHC packet with the ROHC decompressor */
-		ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-		                       decomp_packet, MAX_ROHC_SIZE, &decomp_size);
+		ret = rohc_decompress3(decomp, rohc_packet, &decomp_packet, NULL, NULL);
 		if(ret != ROHC_OK)
 		{
 			if(counter > last_packet_to_lose && counter <= last_packet_in_error)

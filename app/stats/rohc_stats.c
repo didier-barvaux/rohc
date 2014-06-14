@@ -441,11 +441,12 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
                                    const unsigned char *packet,
                                    const int link_len)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	const unsigned char *ip_packet;
-	size_t ip_size;
-	static unsigned char rohc_packet[MAX_ROHC_SIZE];
-	size_t rohc_size;
+	struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+	struct rohc_buf ip_packet =
+		rohc_buf_init_full((unsigned char *) packet, header.caplen, arrival_time);
+	uint8_t rohc_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 	rohc_comp_last_packet_info2_t last_packet_info;
 	int ret;
 
@@ -458,8 +459,7 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 	}
 
 	/* skip the link layer header */
-	ip_packet = packet + link_len;
-	ip_size = header.len - link_len;
+	rohc_buf_shift(&ip_packet, link_len);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -467,28 +467,29 @@ static int generate_comp_stats_one(struct rohc_comp *comp,
 		uint8_t version;
 		uint16_t tot_len;
 
-		version = (ip_packet[0] >> 4) & 0x0f;
+		version = (rohc_buf_byte(ip_packet) >> 4) & 0x0f;
 		if(version == 4)
 		{
-			const struct ipv4_hdr *const ip = (struct ipv4_hdr *) ip_packet;
+			const struct ipv4_hdr *const ip =
+				(struct ipv4_hdr *) rohc_buf_data(ip_packet);
 			tot_len = ntohs(ip->tot_len);
 		}
 		else
 		{
-			const struct ipv6_hdr *const ip = (struct ipv6_hdr *) ip_packet;
+			const struct ipv6_hdr *const ip =
+				(struct ipv6_hdr *) rohc_buf_data(ip_packet);
 			tot_len = sizeof(struct ipv6_hdr) + ntohs(ip->ip6_plen);
 		}
 
-		if(tot_len < ip_size)
+		if(tot_len < ip_packet.len)
 		{
 			/* the Ethernet frame has some bytes of padding after the IP packet */
-			ip_size = tot_len;
+			ip_packet.len = tot_len;
 		}
 	}
 
 	/* compress the IP packet */
-	ret = rohc_compress3(comp, arrival_time, ip_packet, ip_size,
-	                     rohc_packet, MAX_ROHC_SIZE, &rohc_size);
+	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "packet #%lu: compression failed\n", num_packet);

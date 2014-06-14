@@ -33,7 +33,6 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#include <time.h> /* for time(2) */
 #include <stdarg.h>
 
 /* ROHC includes */
@@ -43,18 +42,14 @@
 
 /* prototypes of private functions */
 static void usage(void);
-static int test_decomp(const uint8_t *const rohc_pkt,
-                       const size_t rohc_pkt_len)
-	__attribute__((warn_unused_result, nonnull(1)));
+static int test_decomp(const struct rohc_buf rohc_pkt)
+	__attribute__((warn_unused_result));
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
                               const char *const format,
                               ...)
 	__attribute__((format(printf, 4, 5), nonnull(4)));
-static int gen_random_num(const struct rohc_comp *const comp,
-                          void *const user_context)
-	__attribute__((nonnull(1)));
 
 
 /**
@@ -69,8 +64,10 @@ static int gen_random_num(const struct rohc_comp *const comp,
  */
 int main(int argc, char *argv[])
 {
+	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
+
 	/* a ROHC IR packet with 1-byte padding prepended */
-	const unsigned char rohc_ir_padded1[] = {
+	uint8_t rohc_ir_padded1[] = {
 		0xe0, 0xfc, 0x00, 0xb7, 0x55, 0x00, 0x00, 0x54,
 		0x00, 0x00, 0x40, 0x00, 0x40, 0x01, 0x83, 0x52,
 		0xc0, 0xa8, 0x13, 0x01, 0xc0, 0xa8, 0x13, 0x05,
@@ -83,17 +80,26 @@ int main(int argc, char *argv[])
 		0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
 		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37 };
 	const size_t rohc_ir_padded1_len = 11 * 8;
+	const struct rohc_buf rohc_ir_padded1_pkt =
+		rohc_buf_init_full(rohc_ir_padded1, rohc_ir_padded1_len, arrival_time);
 
 	/* a ROHC feedback-only packet with 1-byte padding prepended */
-	const unsigned char rohc_feedback_padded1[] = { 0xe0, 0xf4, 0x20, 0x00, 0x11, 0xe9 };
+	uint8_t rohc_feedback_padded1[] = { 0xe0, 0xf4, 0x20, 0x00, 0x11, 0xe9 };
 	const size_t rohc_feedback_padded1_len = 6;
+	const struct rohc_buf rohc_feedback_padded1_pkt =
+		rohc_buf_init_full(rohc_feedback_padded1, rohc_feedback_padded1_len,
+		                   arrival_time);
 
 	/* a ROHC feedback-only packet with 2-byte padding prepended */
-	const unsigned char rohc_feedback_padded2[] = { 0xe0, 0xe0, 0xf4, 0x20, 0x00, 0x11, 0xe9 };
+	uint8_t rohc_feedback_padded2[] = {
+		0xe0, 0xe0, 0xf4, 0x20, 0x00, 0x11, 0xe9 };
 	const size_t rohc_feedback_padded2_len = 7;
+	const struct rohc_buf rohc_feedback_padded2_pkt =
+		rohc_buf_init_full(rohc_feedback_padded2, rohc_feedback_padded2_len,
+		                   arrival_time);
 
 	/* a ROHC IR packet with 1-byte padding prepended and feedback data */
-	const unsigned char rohc_ir_feedback_padded1[] = {
+	uint8_t rohc_ir_feedback_padded1[] = {
 		0xe0, 0xf4, 0x20, 0x00, 0x11, 0xe9,
 		0xfc, 0x00, 0xb7, 0x55, 0x00, 0x00, 0x54,
 		0x00, 0x00, 0x40, 0x00, 0x40, 0x01, 0x83, 0x52,
@@ -107,10 +113,17 @@ int main(int argc, char *argv[])
 		0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
 		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37 };
 	const size_t rohc_ir_feedback_padded1_len = 11 * 8 + 5;
+	const struct rohc_buf rohc_ir_feedback_padded1_pkt =
+		rohc_buf_init_full(rohc_ir_feedback_padded1,
+		                   rohc_ir_feedback_padded1_len,
+		                   arrival_time);
 
 	/* a ROHC padding-only packet */
-	const unsigned char rohc_padding_only[] = { 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0 };
+	uint8_t rohc_padding_only[] = { 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0 };
 	const size_t rohc_padding_only_len = 6;
+	const struct rohc_buf rohc_padding_only_pkt =
+		rohc_buf_init_full(rohc_padding_only, rohc_padding_only_len,
+		                   arrival_time);
 
 	int status = 1;
 
@@ -124,23 +137,23 @@ int main(int argc, char *argv[])
 	/* ROHC packets with padding bytes and followed by feedback and/or header
 	 * shall be successfully decompressed */
 	fprintf(stderr, "decompress rohc_ir_padded1\n");
-	status = test_decomp(rohc_ir_padded1, rohc_ir_padded1_len);
+	status = test_decomp(rohc_ir_padded1_pkt);
 	assert(status == 0);
 	fprintf(stderr, "decompress rohc_feedback_padded1\n");
-	status = test_decomp(rohc_feedback_padded1, rohc_feedback_padded1_len);
+	status = test_decomp(rohc_feedback_padded1_pkt);
 	assert(status == 0);
 	fprintf(stderr, "decompress rohc_feedback_padded2\n");
-	status = test_decomp(rohc_feedback_padded2, rohc_feedback_padded2_len);
+	status = test_decomp(rohc_feedback_padded2_pkt);
 	assert(status == 0);
 	fprintf(stderr, "decompress rohc_ir_feedback_padded1\n");
-	status = test_decomp(rohc_ir_feedback_padded1, rohc_ir_feedback_padded1_len);
+	status = test_decomp(rohc_ir_feedback_padded1_pkt);
 	assert(status == 0);
 
 	/* ROHC packet with only padding bytes is not allowed. RFC 3095 reads:
 	 *   Padding is any number (zero or more) of padding octets.  Either of
 	 *   Feedback or Header must be present. */
 	fprintf(stderr, "decompress rohc_padding_only\n");
-	status = test_decomp(rohc_padding_only, rohc_padding_only_len);
+	status = test_decomp(rohc_padding_only_pkt);
 	assert(status != 0);
 
 	/* everything went fine */
@@ -170,79 +183,25 @@ static void usage(void)
  * @brief Test the ROHC library with the given ROHC padded packet
  *
  * @param rohc_pkt      The ROHC packet
- * @param rohc_pkt_len  The length (in bytes) of the ROHC packet
  * @return              0 in case of success,
  *                      1 in case of failure
  */
-static int test_decomp(const uint8_t *const rohc_pkt,
-                       const size_t rohc_pkt_len)
+static int test_decomp(const struct rohc_buf rohc_pkt)
 {
-	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-
-	struct rohc_comp *comp;
 	struct rohc_decomp *decomp;
 
-	unsigned char ip_packet[MAX_ROHC_SIZE];
-	size_t ip_size;
+	uint8_t ip_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
 
-#define NB_RTP_PORTS 5
-	const unsigned int rtp_ports[NB_RTP_PORTS] =
-		{ 1234, 36780, 33238, 5020, 5002 };
-
-	unsigned int i;
 	int is_failure = 1;
 	int ret;
 
-	/* create the ROHC compressor with small CID */
-	comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
-	if(comp == NULL)
-	{
-		fprintf(stderr, "failed to create the ROHC compressor\n");
-		goto error;
-	}
-
-	/* set the callback for traces on compressor */
-	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
-	{
-		fprintf(stderr, "failed to set the callback for traces on "
-		        "compressor\n");
-		goto destroy_comp;
-	}
-
-	/* initialize the random generator */
-	srand(time(NULL));
-
-	/* set the callback for random numbers */
-	if(!rohc_comp_set_random_cb(comp, gen_random_num, NULL))
-	{
-		fprintf(stderr, "failed to set the callback for random numbers\n");
-		goto destroy_comp;
-	}
-
-	/* reset list of RTP ports for compressor */
-	if(!rohc_comp_reset_rtp_ports(comp))
-	{
-		fprintf(stderr, "failed to reset list of RTP ports\n");
-		goto destroy_comp;
-	}
-
-	/* add some ports to the list of RTP ports */
-	for(i = 0; i < NB_RTP_PORTS; i++)
-	{
-		if(!rohc_comp_add_rtp_port(comp, rtp_ports[i]))
-		{
-			fprintf(stderr, "failed to enable RTP port %u\n", rtp_ports[i]);
-			goto destroy_comp;
-		}
-	}
-
 	/* create the ROHC decompressor in bi-directional mode */
-	decomp = rohc_decomp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
-	                         ROHC_O_MODE, comp);
+	decomp = rohc_decomp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	if(decomp == NULL)
 	{
 		fprintf(stderr, "failed to create the ROHC decompressor\n");
-		goto destroy_comp;
+		goto error;
 	}
 
 	/* set the callback for traces on decompressor */
@@ -252,10 +211,19 @@ static int test_decomp(const uint8_t *const rohc_pkt,
 		goto destroy_decomp;
 	}
 
+	/* enable all profiles */
+	if(!rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
+	                                ROHC_PROFILE_IP, ROHC_PROFILE_UDP,
+	                                ROHC_PROFILE_UDPLITE, ROHC_PROFILE_RTP,
+	                                ROHC_PROFILE_TCP, -1))
+	{
+		fprintf(stderr, "cannot enable all decompression profiles\n");
+		goto destroy_decomp;
+	}
+
 	/* decompress the ROHC packet with the ROHC decompressor */
-	ret = rohc_decompress2(decomp, arrival_time, rohc_pkt, rohc_pkt_len,
-	                       ip_packet, MAX_ROHC_SIZE, &ip_size);
-	if(ret != ROHC_OK && ret != ROHC_FEEDBACK_ONLY)
+	ret = rohc_decompress3(decomp, rohc_pkt, &ip_packet, NULL, NULL);
+	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "failed to decompress ROHC packet\n");
 		goto destroy_decomp;
@@ -267,8 +235,6 @@ static int test_decomp(const uint8_t *const rohc_pkt,
 
 destroy_decomp:
 	rohc_decomp_free(decomp);
-destroy_comp:
-	rohc_comp_free(comp);
 error:
 	return is_failure;
 }
@@ -296,21 +262,5 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 	va_start(args, format);
 	vfprintf(stdout, format, args);
 	va_end(args);
-}
-
-
-/**
- * @brief Generate a random number
- *
- * @param comp          The ROHC compressor
- * @param user_context  Should always be NULL
- * @return              A random number
- */
-static int gen_random_num(const struct rohc_comp *const comp,
-                          void *const user_context)
-{
-	assert(comp != NULL);
-	assert(user_context == NULL);
-	return rand();
 }
 

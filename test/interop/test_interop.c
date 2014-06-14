@@ -437,11 +437,11 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
                            const size_t link_len_cmp)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
-	const unsigned char *rohc_packet;
-	size_t rohc_size;
-	unsigned char *uncomp_packet;
-	size_t uncomp_size;
-	static unsigned char output_packet[max(ETHER_HDR_LEN, LINUX_COOKED_HDR_LEN) + MAX_ROHC_SIZE];
+	struct rohc_buf rohc_packet =
+		rohc_buf_init_full((uint8_t *) packet, header.caplen, arrival_time);
+	uint8_t uncomp_buffer[MAX_ROHC_SIZE];
+	struct rohc_buf uncomp_packet =
+		rohc_buf_init_empty(uncomp_buffer, MAX_ROHC_SIZE);
 	int ret;
 
 	printf("=== decompressor packet #%zu:\n", num_packet);
@@ -459,21 +459,19 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 		goto error_fmt;
 	}
 
-	rohc_packet = packet + link_len_src;
-	rohc_size = header.len - link_len_src;
-	uncomp_packet = output_packet + link_len_src;
+	/* skip the link layer header */
+	rohc_buf_shift(&rohc_packet, link_len_src);
 
 	/* decompress the ROHC packet */
 	printf("=== ROHC decompression: start\n");
-	ret = rohc_decompress2(decomp, arrival_time, rohc_packet, rohc_size,
-	                       uncomp_packet, MAX_ROHC_SIZE, &uncomp_size);
+	ret = rohc_decompress3(decomp, rohc_packet, &uncomp_packet, NULL, NULL);
 	if(ret != ROHC_OK)
 	{
 		size_t i;
 
 		printf("=== ROHC decompression: failure\n");
-		printf("=== original %zu-byte compressed packet:\n", rohc_size);
-		for(i = 0; i < rohc_size; i++)
+		printf("=== original %zu-byte compressed packet:\n", rohc_packet.len);
+		for(i = 0; i < rohc_packet.len; i++)
 		{
 			if(i > 0 && (i % 16) == 0)
 			{
@@ -483,7 +481,7 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 			{
 				printf("  ");
 			}
-			printf("%02x ", rohc_packet[i]);
+			printf("%02x ", rohc_buf_byte_at(rohc_packet, i));
 		}
 		printf("\n\n");
 		goto error_decomp;
@@ -492,7 +490,8 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 
 	/* compare the decompressed packet with the original one */
 	printf("=== uncompressed packet comparison: start\n");
-	if(cmp_packet && !compare_packets(uncomp_packet, uncomp_size,
+	if(cmp_packet && !compare_packets(rohc_buf_data(uncomp_packet),
+	                                  uncomp_packet.len,
 	                                  cmp_packet + link_len_cmp,
 	                                  cmp_size - link_len_cmp))
 	{
@@ -749,7 +748,7 @@ static struct rohc_decomp * create_decompressor(const rohc_cid_type_t cid_type,
 	struct rohc_decomp *decomp;
 
 	/* create the decompressor */
-	decomp = rohc_decomp_new(cid_type, max_contexts - 1, ROHC_U_MODE, NULL);
+	decomp = rohc_decomp_new2(cid_type, max_contexts - 1, ROHC_U_MODE);
 	if(decomp == NULL)
 	{
 		printf("failed to create decompressor\n");
