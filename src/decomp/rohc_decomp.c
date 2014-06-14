@@ -2150,9 +2150,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 					}
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
-					memcpy(rohc_buf_data_at(*feedback_send, hdr_len), feedback,
-					       feedbacksize);
-					feedback_send->len += feedbacksize;
+					rohc_buf_append(feedback_send, feedback, feedbacksize);
 				}
 			}
 
@@ -2225,9 +2223,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 					}
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
-					memcpy(rohc_buf_data_at(*feedback_send, hdr_len), feedback,
-					       feedbacksize);
-					feedback_send->len += feedbacksize;
+					rohc_buf_append(feedback_send, feedback, feedbacksize);
 				}
 			}
 
@@ -2296,9 +2292,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 							}
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
 							feedback_send->len += hdr_len;
-							memcpy(rohc_buf_data_at(*feedback_send, hdr_len),
-							       feedback, feedbacksize);
-							feedback_send->len += feedbacksize;
+							rohc_buf_append(feedback_send, feedback, feedbacksize);
 						}
 					}
 
@@ -2362,9 +2356,7 @@ static void d_optimistic_feedback(struct rohc_decomp *decomp,
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 							}
 #endif /* !ROHC_ENABLE_DEPRECATED_API */
-							memcpy(rohc_buf_data_at(*feedback_send, hdr_len),
-							       feedback, feedbacksize);
-							feedback_send->len += feedbacksize;
+							rohc_buf_append(feedback_send, feedback, feedbacksize);
 						}
 					}
 
@@ -3853,9 +3845,7 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
 	/* copy the feedback item in order to return it user if he/she asked for */
 	if(feedback != NULL)
 	{
-		memcpy(rohc_buf_data(*feedback), rohc_buf_data(*rohc_data),
-		       feedback_len);
-		feedback->len += feedback_len;
+		rohc_buf_append(feedback, rohc_buf_data(*rohc_data), feedback_len);
 	}
 
 	/* skip the feedback item in the ROHC packet */

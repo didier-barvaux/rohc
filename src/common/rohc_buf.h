@@ -211,6 +211,21 @@ uint8_t * rohc_buf_data_at(const struct rohc_buf buf, const size_t offset)
 uint8_t * rohc_buf_data(const struct rohc_buf buf)
 	__attribute__((warn_unused_result));
 
+void rohc_buf_prepend(struct rohc_buf *const buf,
+                      const uint8_t *const data,
+                      const size_t len)
+	__attribute__((nonnull(1, 2)));
+void rohc_buf_append(struct rohc_buf *const buf,
+                     const uint8_t *const data,
+                     const size_t len)
+	__attribute__((nonnull(1, 2)));
+void rohc_buf_append_buf(struct rohc_buf *const dst,
+                         const struct rohc_buf src)
+	__attribute__((nonnull(1)));
+
+void rohc_buf_reset(struct rohc_buf *const buf)
+	__attribute__((nonnull(1)));
+
 
 #undef ROHC_EXPORT /* do not pollute outside this header */
 

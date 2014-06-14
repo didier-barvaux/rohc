@@ -815,8 +815,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* copy the layer 2 header before the ROHC packet, then skip it */
-	memcpy(rohc_buf_data(rohc_packet), packet, link_len_src);
-	rohc_packet.len += link_len_src;
+	rohc_buf_append(&rohc_packet, packet, link_len_src);
 	rohc_buf_shift(&ip_packet, link_len_src);
 	rohc_buf_shift(&rohc_packet, link_len_src);
 
@@ -873,9 +872,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 	printf("copy %zu bytes of feedback data before ROHC packet\n",
 	       feedback_send_by_me.len);
-	memcpy(rohc_buf_data(rohc_packet), rohc_buf_data(feedback_send_by_me),
-	       feedback_send_by_me.len);
-	rohc_packet.len += feedback_send_by_me.len;
+	rohc_buf_append_buf(&rohc_packet, feedback_send_by_me);
 	rohc_buf_shift(&rohc_packet, feedback_send_by_me.len); /* skip feedback */
 	printf("=== ROHC piggybacked feedback: success\n");
 
@@ -901,8 +898,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		if(link_len_src != 0)
 		{
 			/* prepend the link layer header */
-			rohc_buf_shift(&rohc_packet, -(link_len_src));
-			memcpy(rohc_buf_data(rohc_packet), packet, link_len_src);
+			rohc_buf_prepend(&rohc_packet, packet, link_len_src);
 			if(link_len_src == ETHER_HDR_LEN) /* Ethernet only */
 			{
 				eth_header = (struct ether_header *) rohc_buf_data(rohc_packet);
@@ -1318,7 +1314,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 			nb_bad++;
 		}
 		/* reset feedback for comp/decomp #2 since it was just piggybacked */
-		feedback2_data.len = 0;
+		rohc_buf_reset(&feedback2_data);
 
 		/* get next ROHC packet from the comparison dump file if asked */
 		if(cmp_handle != NULL)
@@ -1362,7 +1358,7 @@ static int test_comp_and_decomp(const rohc_cid_type_t cid_type,
 			nb_bad++;
 		}
 		/* reset feedback for comp/decomp #1 since it was just piggybacked */
-		feedback1_data.len = 0;
+		rohc_buf_reset(&feedback1_data);
 	}
 
 	/* show the compression/decompression results */

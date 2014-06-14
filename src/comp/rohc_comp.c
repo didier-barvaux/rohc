@@ -1350,9 +1350,9 @@ int rohc_compress4(struct rohc_comp *const comp,
 		/* copy full payload after ROHC header */
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "copy full %zd-byte payload", payload_size);
-		memcpy(rohc_buf_data(*rohc_packet),
-		       rohc_buf_data_at(uncomp_packet, payload_offset), payload_size);
-		rohc_packet->len += payload_size;
+		rohc_buf_append(rohc_packet,
+		                rohc_buf_data_at(uncomp_packet, payload_offset),
+		                payload_size);
 
 		/* shift back the ROHC header */
 		rohc_buf_shift(rohc_packet, -(rohc_hdr_size));
@@ -1616,8 +1616,7 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 	rohc_buf_shift(segment, 1);
 
 	/* copy remaining ROHC data (CRC included) */
-	memcpy(rohc_buf_data(*segment), comp->rru + comp->rru_off, max_data_len);
-	segment->len += max_data_len;
+	rohc_buf_append(segment, comp->rru + comp->rru_off, max_data_len);
 	rohc_buf_shift(segment, max_data_len);
 	comp->rru_off += max_data_len;
 	comp->rru_len -= max_data_len;

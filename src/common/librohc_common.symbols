@@ -34,6 +34,10 @@ rohc_buf_shift
 rohc_buf_avail_len
 rohc_buf_data_at
 rohc_buf_data
+rohc_buf_prepend
+rohc_buf_append
+rohc_buf_append_buf
+rohc_buf_reset
 net_pkt_get_payload_offset
 net_pkt_parse
 rohc_add_cid_decode

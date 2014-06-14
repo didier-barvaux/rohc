@@ -24,6 +24,9 @@
 
 #include "rohc_buf.h"
 
+#ifndef __KERNEL__
+#  include <string.h>
+#endif
 #include <assert.h>
 
 
@@ -144,5 +147,73 @@ uint8_t * rohc_buf_data(const struct rohc_buf buf)
 uint8_t * rohc_buf_data_at(const struct rohc_buf buf, const size_t offset)
 {
 	return (buf.data + buf.offset + offset);
+}
+
+
+/**
+ * @brief Add data at the beginning of the given network buffer
+ *
+ * @param buf   The network buffer to prepend data to
+ * @param data  The data to prepend
+ * @param len   The length (in bytes) of the data to prepend
+ *
+ * @ingroup rohc
+ */
+void rohc_buf_prepend(struct rohc_buf *const buf,
+                      const uint8_t *const data,
+                      const size_t len)
+{
+	const int shift = -(len);
+	rohc_buf_shift(buf, shift);
+	memcpy(rohc_buf_data(*buf), data, len);
+}
+
+
+/**
+ * @brief Add data at the end of the given network buffer
+ *
+ * @param buf   The network buffer to append data to
+ * @param data  The data to append
+ * @param len   The length (in bytes) of the data to append
+ *
+ * @ingroup rohc
+ */
+void rohc_buf_append(struct rohc_buf *const buf,
+                     const uint8_t *const data,
+                     const size_t len)
+{
+	assert((buf->len + len) <= rohc_buf_avail_len(*buf));
+	memcpy(rohc_buf_data_at(*buf, buf->len), data, len);
+	buf->len += len;
+}
+
+
+/**
+ * @brief Add a network buffer at the end of the given network buffer
+ *
+ * @param dst  The network buffer to append data to
+ * @param src  The network buffer to append data from
+ *
+ * @ingroup rohc
+ */
+void rohc_buf_append_buf(struct rohc_buf *const dst,
+                         const struct rohc_buf src)
+{
+	assert((dst->len + src.len) <= rohc_buf_avail_len(*dst));
+	memcpy(rohc_buf_data_at(*dst, dst->len), rohc_buf_data(src), src.len);
+	dst->len += src.len;
+}
+
+
+/**
+ * @brief Reset the given network buffer
+ *
+ * @param buf  The network buffer to remove all data from
+ *
+ * @ingroup rohc
+ */
+void rohc_buf_reset(struct rohc_buf *const buf)
+{
+	buf->len = 0;
 }
 
