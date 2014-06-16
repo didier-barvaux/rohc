@@ -107,6 +107,20 @@ static int couples_initialized = 0;
 
 
 /**
+ * @brief Generate a false random number for testing the ROHC library
+ *
+ * @param comp          The ROHC compressor
+ * @param user_context  Should always be NULL
+ * @return              Always 0
+ */
+static int gen_false_random_num(const struct rohc_comp *const comp,
+                                void *const user_context)
+{
+	return 0;
+}
+
+
+/**
  * @brief Print traces emitted by the ROHC library
  *
  * @param level    The priority level of the trace
@@ -194,7 +208,8 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	memset(couple, 0, sizeof(struct rohc_couple));
 
 	/* create the compressor */
-	couple->comp = rohc_comp_new(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX);
+	couple->comp = rohc_comp_new2(ROHC_SMALL_CID, ROHC_SMALL_CID_MAX,
+	                              gen_false_random_num, NULL);
 	if(couple->comp == NULL)
 	{
 		pr_err("[%s] \t cannot create the ROHC compressor\n",
