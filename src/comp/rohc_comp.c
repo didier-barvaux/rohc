@@ -469,11 +469,13 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 		comp->enabled_profiles[i] = false;
 	}
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* reset the list of UDP ports for RTP */
 	for(i = 0; i < MAX_RTP_PORTS; i++)
 	{
 		comp->rtp_ports[i] = 0;
 	}
+#endif
 
 	/* reset statistics */
 	comp->num_packets = 0;

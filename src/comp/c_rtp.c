@@ -60,8 +60,10 @@ static void c_rtp_destroy(struct rohc_comp_ctxt *const context)
 static bool c_rtp_check_profile(const struct rohc_comp *const comp,
                                 const struct net_pkt *const packet)
 		__attribute__((warn_unused_result, nonnull(1, 2)));
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
                                     const uint16_t port);
+#endif
 static bool c_rtp_use_udp_port(const struct rohc_comp_ctxt *const context,
                                const unsigned int port);
 
@@ -332,6 +334,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "RTP packet detected by the RTP callback");
 	}
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	else if(comp->rtp_ports[0] != 0)
 	{
 		/* check if the UDP destination port belongs to the list of RTP
@@ -354,6 +357,7 @@ static bool c_rtp_check_profile(const struct rohc_comp *const comp,
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "UDP destination port is in the list of RTP ports");
 	}
+#endif
 	else
 	{
 		/* no callback for advanced RTP stream detection and no UDP
@@ -368,6 +372,8 @@ bad_profile:
 	return false;
 }
 
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
 /**
  * @brief Check whether the given UDP port is reserved for RTP traffic
@@ -402,6 +408,8 @@ static bool rtp_is_udp_port_for_rtp(const struct rohc_comp *const comp,
 
 	return match;
 }
+
+#endif
 
 
 /**
