@@ -13,8 +13,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 /**
@@ -57,15 +57,9 @@
  * number of (de)compressed packets and the average elapsed time per packet.
  */
 
-#include "config.h" /* for HAVE_*_H and SCHED_SETSCHEDULER_PARAMS */
+#include "config.h" /* for HAVE_*_H */
 
 /* system includes */
-#if HAVE_SCHED_H == 1
-#  include <sched.h>
-#endif
-#if HAVE_SYS_MMAN_H == 1
-#  include <sys/mman.h>
-#endif
 #include <unistd.h>
 #if HAVE_WINSOCK2_H == 1
 #  include <winsock2.h> /* for ntohs() on Windows */
@@ -121,35 +115,27 @@ static int is_verbose;
 
 static void usage(void);
 
-static int tune_env_for_perfs(void);
-
 static int test_compression_perfs(char *filename,
                                   const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const unsigned int max_contexts,
-                                  unsigned long *packet_count,
-                                  unsigned long *overflows,
-                                  unsigned long long *time_elapsed);
+                                  unsigned long *packet_count);
 static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long num_packet,
                                 struct pcap_pkthdr header,
                                 unsigned char *packet,
-                                size_t link_len,
-                                unsigned long long *time_elapsed);
+                                size_t link_len);
 
 static int test_decompression_perfs(char *filename,
                                     const rohc_cid_type_t cid_type,
                                     const unsigned int max_contexts,
-                                    unsigned long *packet_count,
-                                    unsigned long *overflows,
-                                    unsigned long long *time_elapsed);
+                                    unsigned long *packet_count);
 static int time_decompress_packet(struct rohc_decomp *decomp,
                                   unsigned long num_packet,
                                   struct pcap_pkthdr header,
                                   unsigned char *packet,
                                   size_t link_len,
-                                  const struct rohc_ts arrival_time,
-                                  unsigned long long *time_elapsed);
+                                  const struct rohc_ts arrival_time);
 
 static void print_rohc_traces(const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
@@ -188,11 +174,8 @@ int main(int argc, char *argv[])
 	char *filename = NULL; /* the name of the PCAP capture used as input */
 	rohc_cid_type_t cid_type;
 	unsigned long packet_count = 0;
-	unsigned long overflows = 0;
-	unsigned long long time_elapsed = 0;
-	int ret;
-	unsigned long average;
 	int status = 1;
+	int ret;
 
 	/* set to quiet mode by default */
 	is_verbose = 0;
@@ -311,26 +294,17 @@ int main(int argc, char *argv[])
 		goto error;
 	}
 
-	/* tune environment for performance
-	   (realtime priority, disable swapping...) */
-	ret = tune_env_for_perfs();
-	if(ret != 0)
-	{
-		fprintf(stderr, "failed to tune environment for performance\n");
-		goto error;
-	}
-
 	if(strcmp(test_type, "comp") == 0)
 	{
 		/* test ROHC compression with the packets from the capture */
 		ret = test_compression_perfs(filename, cid_type, wlsb_width, max_contexts,
-		                             &packet_count, &overflows, &time_elapsed);
+		                             &packet_count);
 	}
 	else if(strcmp(test_type, "decomp") == 0)
 	{
 		/* test ROHC decompression with the packets from the capture */
 		ret = test_decompression_perfs(filename, cid_type, max_contexts,
-		                               &packet_count, &overflows, &time_elapsed);
+		                               &packet_count);
 	}
 	else
 	{
@@ -346,26 +320,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* print performance statistics */
-	fprintf(stderr, "total time elapsed               =  %lu * %lu + %lu units of time\n",
-	        0xffffffffUL, overflows, (unsigned long) time_elapsed);
-	fprintf(stderr, "total number of packets          =  %lu packets\n",
-	        packet_count);
-	if(packet_count != 0)
-	{
-		unsigned long i;
-
-		average = time_elapsed / packet_count;
-		for(i = 0; i < overflows; i++)
-		{
-			average += 0xffffffffUL / packet_count;
-		}
-	}
-	else
-	{
-		average = 0;
-	}
-	fprintf(stderr, "average elapsed time per packet  =  %lu units of time / packet\n",
-	        average);
+	fprintf(stderr, "%scompression: %lu packets\n",
+	        (strcmp(test_type, "comp") == 0 ? "" : "de"), packet_count);
 
 	/* everything went fine */
 	status = 0;
@@ -382,8 +338,6 @@ static void usage(void)
 {
 	printf(
 		"Test the performance of the ROHC library.\n"
-		"\n"
-		"You need to be root to run the ROHC performance application.\n"
 		"\n"
 		"Usage: rohc_test_performance [General options]\n"
 		"   or: rohc_test_performance [ROHC options] ACTION CID_TYPE FLOW\n"
@@ -414,73 +368,6 @@ static void usage(void)
 
 
 /**
- * @brief Tune environment for performance
- *
- * Set high realtime priority.
- * Disable swapping.
- * Initialize CPU tics to nanoseconds coefficient.
- *
- * @return              0 in case of success, 1 otherwise
- */
-static int tune_env_for_perfs(void)
-{
-#if HAVE_SCHED_H == 1 && SCHED_SETSCHEDULER_PARAMS == 3
-	struct sched_param param;
-#endif
-#if HAVE_SCHED_H == 1 || HAVE_SYS_MMAN_H == 1
-	int ret;
-#endif
-
-#if HAVE_SCHED_H == 1 && SCHED_SETSCHEDULER_PARAMS > 0
-	/* set the process to realtime priority */
-#if SCHED_SETSCHEDULER_PARAMS == 3
-	memset(&param, 0, sizeof(struct sched_param));
-	param.sched_priority = sched_get_priority_max(SCHED_FIFO);
-	if(param.sched_priority == -1)
-	{
-		fprintf(stderr, "failed to get maximum scheduler priority: "
-		        "%s (%d)\n", strerror(errno), errno);
-		goto error;
-	}
-	ret = sched_setscheduler(0, SCHED_FIFO, &param);
-#else /* SCHED_SETSCHEDULER_PARAMS != 3 */
-	ret = sched_setscheduler(0, SCHED_FIFO);
-#endif
-	if(ret != 0)
-	{
-		fprintf(stderr, "failed to set high scheduler priority: %s (%d)\n",
-		        strerror(errno), errno);
-		goto error;
-	}
-#else
-	fprintf(stderr, "do not set maximum scheduler priority: not implemented "
-	        "for the platform yet\n");
-#endif
-
-#if HAVE_SYS_MMAN_H == 1
-	/* avoid swapping */
-	ret = mlockall(MCL_CURRENT | MCL_FUTURE);
-	if(ret != 0)
-	{
-		fprintf(stderr, "failed to disable swapping: %s (%d)\n",
-		        strerror(errno), errno);
-		goto error;
-	}
-#else
-	fprintf(stderr, "do not lock memory to avoid swapping: not implemented "
-	        "for the platform yet\n");
-#endif
-
-	return 0;
-
-#if HAVE_SCHED_H == 1 || HAVE_SYS_MMAN_H == 1
-error:
-	return 1;
-#endif
-}
-
-
-/**
  * @brief Test the compression performance of the ROHC library
  *        with a flow of IP packets
  *
@@ -490,17 +377,13 @@ error:
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param packet_count  OUT: the number of compressed packets, undefined if
  *                      compression failed
- * @param time_elapsed  OUT: the time elapsed for compression (in nanoseconds),
- *                      unchanged if compression failed
  * @return              0 in case of success, 1 otherwise
  */
 static int test_compression_perfs(char *filename,
                                   const rohc_cid_type_t cid_type,
                                   const size_t wlsb_width,
                                   const unsigned int max_contexts,
-                                  unsigned long *packet_count,
-                                  unsigned long *overflows,
-                                  unsigned long long *time_elapsed)
+                                  unsigned long *packet_count)
 {
 	pcap_t *handle;
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -590,39 +473,23 @@ static int test_compression_perfs(char *filename,
 
 	/* for each packet in the dump */
 	*packet_count = 0;
-	*time_elapsed = 0;
-	*overflows = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		unsigned long long packet_time_elapsed = 0;
-
 		(*packet_count)++;
-		if((*packet_count) != 0 && ((*packet_count) % 50000) == 0)
+		if((*packet_count) != 0 && ((*packet_count) % 100000) == 0)
 		{
-			fprintf(stderr, "packet #%lu\n", *packet_count);
+			fprintf(stderr, "compression: packet #%lu\r", *packet_count);
 			fflush(stderr);
 		}
 
 		/* compress the IP packet */
 		ret = time_compress_packet(comp, *packet_count,
-		                           header, packet, link_len,
-		                           &packet_time_elapsed);
+		                           header, packet, link_len);
 		if(ret != 0)
 		{
 			fprintf(stderr, "packet %lu: performance test failed\n",
 			        *packet_count);
 			goto free_compresssor;
-		}
-
-		if((*time_elapsed) > (0xffffffff - packet_time_elapsed))
-		{
-			(*overflows)++;
-			packet_time_elapsed -= 0xffffffff - (*time_elapsed);
-			*time_elapsed = packet_time_elapsed;
-		}
-		else
-		{
-			*time_elapsed += packet_time_elapsed;
 		}
 	}
 
@@ -648,16 +515,13 @@ exit:
  * @param header        The PCAP header for the packet
  * @param packet        The packet to compress (link layer included)
  * @param link_len      The length of the link layer header before IP data
- * @param time_elapsed  OUT: the time elapsed for compression (in nanoseconds),
- *                      unchanged if compression failed
  * @return              0 if compression is successful, 1 otherwise
  */
 static int time_compress_packet(struct rohc_comp *comp,
                                 unsigned long num_packet,
                                 struct pcap_pkthdr header,
                                 unsigned char *packet,
-                                size_t link_len,
-                                unsigned long long *time_elapsed)
+                                size_t link_len)
 {
 	/* the buffer that will contain the initial uncompressed packet */
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
@@ -669,8 +533,6 @@ static int time_compress_packet(struct rohc_comp *comp,
 	struct rohc_buf rohc_packet =
 		rohc_buf_init_empty(rohc_buffer, MAX_ROHC_SIZE);
 
-	struct timespec start_tics;
-	struct timespec end_tics;
 	int is_failure = 1;
 	int ret;
 
@@ -725,25 +587,13 @@ static int time_compress_packet(struct rohc_comp *comp,
 		}
 	}
 
-	/* get CPU tics before compression */
-	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
-
 	/* compress the packet */
 	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
-
-	/* get CPU tics after compression */
-	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);
-
-	/* stop performance test if compression failed */
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "packet %lu: compression failed\n", num_packet);
 		goto error;
 	}
-
-	/* compute the time elapsed during the compression process */
-	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 1e9 +
-	                end_tics.tv_nsec - start_tics.tv_nsec;
 
 	/* everything went fine */
 	is_failure = 0;
@@ -762,16 +612,12 @@ error:
  * @param max_contexts  The maximum number of ROHC contexts to use
  * @param packet_count  OUT: the number of decompressed packets, undefined if
  *                      decompression failed
- * @param time_elapsed  OUT: the time elapsed for decompression (in nanoseconds),
- *                      unchanged if decompression failed
  * @return              0 in case of success, 1 otherwise
  */
 static int test_decompression_perfs(char *filename,
                                     const rohc_cid_type_t cid_type,
                                     const unsigned int max_contexts,
-                                    unsigned long *packet_count,
-                                    unsigned long *overflows,
-                                    unsigned long long *time_elapsed)
+                                    unsigned long *packet_count)
 {
 	const struct rohc_ts arrival_time = { .sec = 0, .nsec = 0 };
 	pcap_t *handle;
@@ -848,39 +694,23 @@ static int test_decompression_perfs(char *filename,
 
 	/* for each packet in the dump */
 	*packet_count = 0;
-	*time_elapsed = 0;
-	*overflows = 0;
 	while((packet = (unsigned char *) pcap_next(handle, &header)) != NULL)
 	{
-		unsigned long long packet_time_elapsed = 0;
-
 		(*packet_count)++;
-		if((*packet_count) != 0 && ((*packet_count) % 50000) == 0)
+		if((*packet_count) != 0 && ((*packet_count) % 100000) == 0)
 		{
-			fprintf(stderr, "packet #%lu\n", *packet_count);
+			fprintf(stderr, "decompression: packet #%lu\r", *packet_count);
 			fflush(stderr);
 		}
 
 		/* decompress the ROHC packet */
 		ret = time_decompress_packet(decomp, *packet_count,
-		                             header, packet, link_len, arrival_time,
-		                             &packet_time_elapsed);
+		                             header, packet, link_len, arrival_time);
 		if(ret != 0)
 		{
 			fprintf(stderr, "packet %lu: performance test failed\n",
 			        *packet_count);
 			goto free_decompressor;
-		}
-
-		if((*time_elapsed) > (0xffffffff - packet_time_elapsed))
-		{
-			(*overflows)++;
-			packet_time_elapsed -= 0xffffffff - (*time_elapsed);
-			*time_elapsed = packet_time_elapsed;
-		}
-		else
-		{
-			*time_elapsed += packet_time_elapsed;
 		}
 	}
 
@@ -906,8 +736,6 @@ exit:
  * @param header        The PCAP header for the packet
  * @param packet        The packet to decompress (link layer included)
  * @param link_len      The length of the link layer header before ROHC data
- * @param time_elapsed  OUT: the time elapsed for decompression (in nanoseconds),
- *                      unchanged if decompression failed
  * @return              0 if decompression is successful, 1 otherwise
  */
 static int time_decompress_packet(struct rohc_decomp *decomp,
@@ -915,8 +743,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
                                   struct pcap_pkthdr header,
                                   unsigned char *packet,
                                   size_t link_len,
-                                  const struct rohc_ts arrival_time,
-                                  unsigned long long *time_elapsed)
+                                  const struct rohc_ts arrival_time)
 {
 	/* the buffer that will contain the compressed ROHC packet */
 	struct rohc_buf rohc_packet =
@@ -926,8 +753,6 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	uint8_t ip_buffer[MAX_ROHC_SIZE];
 	struct rohc_buf ip_packet = rohc_buf_init_empty(ip_buffer, MAX_ROHC_SIZE);
 
-	struct timespec start_tics;
-	struct timespec end_tics;
 	int is_failure = 1;
 	int ret;
 
@@ -943,25 +768,13 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	/* skip the link layer header */
 	rohc_buf_shift(&rohc_packet, link_len);
 
-	/* get CPU tics before compression */
-	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &start_tics) == 0);
-
 	/* decompress the packet */
 	ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);
-
-	/* get CPU tics after compression */
-	assert(clock_gettime(CLOCK_MONOTONIC_RAW, &end_tics) == 0);
-
-	/* stop performance test if decompression failed */
 	if(ret != ROHC_OK)
 	{
 		fprintf(stderr, "packet %lu: decompression failed\n", num_packet);
 		goto error;
 	}
-
-	/* compute the time elapsed during the decompression process */
-	*time_elapsed = (end_tics.tv_sec - start_tics.tv_sec) * 1e9 +
-	                end_tics.tv_nsec - start_tics.tv_nsec;
 
 	/* everything went fine */
 	is_failure = 0;

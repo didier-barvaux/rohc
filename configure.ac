@@ -105,8 +105,6 @@ AC_CHECK_HEADERS([arpa/inet.h]) # ntohl, htonl, ntohs, htons on Linux
 AC_CHECK_HEADERS([winsock2.h])  # ntohl, htonl, ntohs, htons on Windows
 AC_CHECK_HEADERS([sys/types.h]) # ntohl, htonl, ntohs, htons on OpenBSD
 AC_CHECK_HEADERS([linux/if_tun.h]) # TUN/TAP support on Linux
-AC_CHECK_HEADERS([sched.h]) # scheduling priority on Linux
-AC_CHECK_HEADERS([sys/mman.h]) # memory management on Linux
 
 # Handle library flags according to the platform
 if test "x$ac_cv_header_winsock2_h" = "xyes" ; then
@@ -133,32 +131,6 @@ fi
 # Checks for library functions.
 AC_CHECK_FUNCS([malloc calloc free memcpy memcmp])
 AC_CHECK_FUNCS([ntohl htonl ntohs htons])
-
-# If sched.h is present, check sched_setscheduler() availability & usage
-if test "x$ac_cv_header_sched_h" = "xyes" ; then
-	# Check if sched_setscheduler() is available without external library then with libpthread
-	AC_CHECK_FUNC([sched_setscheduler], sched_lib="",
-	              [AC_CHECK_LIB([pthread], sched_setscheduler,
-	                            sched_lib="-lpthread", sched_lib="not found")])
-	AC_SUBST([sched_lib], [$sched_lib])
-	if test "x$sched_lib" != "xnot found" ; then
-		# Check whether sched_setscheduler() takes 2 or 3 arguments
-		AC_MSG_CHECKING([how many arguments sched_setscheduler takes])
-		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>
-		                                     #include <string.h>
-		                                     struct sched_param param;]],
-		                                   [[memset(&param, 0, sizeof(struct sched_param));
-		                                     sched_setscheduler(0, SCHED_FIFO, &param);]])],
-		                  [sched_setscheduler_params=3],
-		                  [sched_setscheduler_params=2])
-		AC_MSG_RESULT([$sched_setscheduler_params])
-	else
-		sched_setscheduler_params=0
-	fi
-	AC_DEFINE_UNQUOTED([SCHED_SETSCHEDULER_PARAMS],
-	                   [$sched_setscheduler_params],
-	                   [Define the number of arguments that sched_setscheduler takes])
-fi
 
 # Define uint*_t and u_int*_t if not defined on target platform
 AC_TYPE_UINT8_T
