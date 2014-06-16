@@ -230,13 +230,13 @@ static int uncomp_decode_ir(struct rohc_decomp *const decomp,
 	context->state = ROHC_DECOMP_STATE_FC;
 
 	/* skip the IR type, optional large CID bytes, and Profile ID */
-	rohc_buf_shift(&rohc_remain_data, large_cid_len + 2);
+	rohc_buf_pull(&rohc_remain_data, large_cid_len + 2);
 
 	/* parse CRC */
 	crc_packet = GET_BIT_0_7(rohc_buf_data(rohc_remain_data));
 	rohc_debug(context->decompressor, ROHC_TRACE_DECOMP, context->profile->id,
 	           "CRC-8 found in packet = 0x%02x", crc_packet);
-	rohc_buf_shift(&rohc_remain_data, 1);
+	rohc_buf_pull(&rohc_remain_data, 1);
 
 	/* ROHC header is now fully decoded */
 	payload_data = rohc_buf_data(rohc_remain_data);
@@ -318,11 +318,11 @@ static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
 	/* copy the first byte of the ROHC packet to the decompressed packet */
 	rohc_buf_byte(*uncomp_packet) = GET_BIT_0_7(rohc_buf_data(rohc_remain_data));
 	uncomp_packet->len++;
-	rohc_buf_shift(uncomp_packet, 1);
-	rohc_buf_shift(&rohc_remain_data, 1);
+	rohc_buf_pull(uncomp_packet, 1);
+	rohc_buf_pull(&rohc_remain_data, 1);
 
 	/* skip the optional large CID field */
-	rohc_buf_shift(&rohc_remain_data, large_cid_len);
+	rohc_buf_pull(&rohc_remain_data, large_cid_len);
 
 	/* copy the second byte and the following bytes of the ROHC packet
 	 * to the decompressed packet */
@@ -331,11 +331,11 @@ static int uncomp_decode_normal(struct rohc_decomp_ctxt *context,
 		memcpy(rohc_buf_data(*uncomp_packet), rohc_buf_data(rohc_remain_data),
 		       rohc_remain_data.len);
 		uncomp_packet->len += rohc_remain_data.len;
-		rohc_buf_shift(&rohc_remain_data, rohc_remain_data.len);
-		rohc_buf_shift(uncomp_packet, rohc_remain_data.len);
+		rohc_buf_pull(&rohc_remain_data, rohc_remain_data.len);
+		rohc_buf_pull(uncomp_packet, rohc_remain_data.len);
 	}
 
-	rohc_buf_shift(uncomp_packet, -(1 + rohc_remain_data.len));
+	rohc_buf_push(uncomp_packet, 1 + rohc_remain_data.len);
 
 	return ROHC_OK;
 

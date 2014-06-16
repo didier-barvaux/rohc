@@ -823,8 +823,8 @@ static int compress_decompress(struct rohc_comp *comp,
 
 	/* copy the layer 2 header before the ROHC packet, then skip it */
 	rohc_buf_append(&rohc_packet, packet, link_len_src);
-	rohc_buf_shift(&ip_packet, link_len_src);
-	rohc_buf_shift(&rohc_packet, link_len_src);
+	rohc_buf_pull(&ip_packet, link_len_src);
+	rohc_buf_pull(&rohc_packet, link_len_src);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -880,7 +880,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	printf("copy %zu bytes of feedback data before ROHC packet\n",
 	       feedback_send_by_me.len);
 	rohc_buf_append_buf(&rohc_packet, feedback_send_by_me);
-	rohc_buf_shift(&rohc_packet, feedback_send_by_me.len); /* skip feedback */
+	rohc_buf_pull(&rohc_packet, feedback_send_by_me.len); /* skip feedback */
 	printf("=== ROHC piggybacked feedback: success\n");
 
 	/* compress the IP packet into a ROHC packet */
@@ -895,7 +895,7 @@ static int compress_decompress(struct rohc_comp *comp,
 	printf("=== ROHC compression: success\n");
 
 	/* unhide feedback data */
-	rohc_buf_shift(&rohc_packet, -(feedback_send_by_me.len));
+	rohc_buf_push(&rohc_packet, feedback_send_by_me.len);
 
 	/* output the ROHC packet to the PCAP dump file if asked */
 	if(dumper != NULL)
@@ -921,7 +921,7 @@ static int compress_decompress(struct rohc_comp *comp,
 		}
 		pcap_dump((u_char *) dumper, &header, rohc_buf_data(rohc_packet));
 		/* skip the link layer header again */
-		rohc_buf_shift(&rohc_packet, link_len_src);
+		rohc_buf_pull(&rohc_packet, link_len_src);
 	}
 
 	/* output the size of the ROHC packet to the output file if asked */

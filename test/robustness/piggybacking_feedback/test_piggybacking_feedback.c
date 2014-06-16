@@ -356,10 +356,8 @@ static int test_comp_and_decomp(void)
 
 	/* piggyback the feedback to send along the ROHC packet that compressor B
 	 * is going to generate */
-	memcpy(rohc_buf_data(rohc_packet), rohc_buf_data(feedback_send),
-	       feedback_send.len);
-	rohc_packet.len += feedback_send.len;
-	rohc_buf_shift(&rohc_packet, feedback_send.len);
+	rohc_buf_append_buf(&rohc_packet, feedback_send);
+	rohc_buf_pull(&rohc_packet, feedback_send.len);
 
 	/* fail to compress the IP packet with the ROHC compressor B: compressor B
 	 * shall not change the piggybacked feedback data */
@@ -385,7 +383,7 @@ static int test_comp_and_decomp(void)
 	fprintf(stderr, "compression with compressor B is successful\n");
 
 	/* feedback was correctly piggybacked */
-	rohc_buf_shift(&rohc_packet, -(feedback_send.len));
+	rohc_buf_push(&rohc_packet, feedback_send.len);
 	feedback_send.len = 0;
 
 	/* decompress the generated ROHC packet with the ROHC decompressor B:

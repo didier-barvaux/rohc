@@ -384,7 +384,7 @@ static int test_comp_and_decomp(const char *filename,
 		}
 
 		/* skip the link layer header */
-		rohc_buf_shift(&rohc_packet, link_len);
+		rohc_buf_pull(&rohc_packet, link_len);
 
 		/* decompress the ROHC packet with the ROHC decompressor */
 		ret = rohc_decompress3(decomp, rohc_packet, &ip_packet,
@@ -435,7 +435,7 @@ static int test_comp_and_decomp(const char *filename,
 			fprintf(stderr, "\tadditional data found at the end of feedback\n");
 			goto destroy_decomp;
 		}
-		rohc_buf_shift(&feedback_send, feedback_full_len - feedback_data_len);
+		rohc_buf_pull(&feedback_send, feedback_full_len - feedback_data_len);
 
 		/* if feedback length is 2 bytes (1-byte header + 1-byte feedback), the
 		 * feedback is a FEEDBACK-1 */
@@ -462,7 +462,7 @@ static int test_comp_and_decomp(const char *filename,
 			}
 
 			fprintf(stderr, "\tlarge CID found\n");
-			rohc_buf_shift(&feedback_send, sdvl_size);
+			rohc_buf_pull(&feedback_send, sdvl_size);
 		}
 		else
 		{
@@ -470,7 +470,7 @@ static int test_comp_and_decomp(const char *filename,
 			{
 				/* skip Add-CID */
 				fprintf(stderr, "\tAdd-CID found\n");
-				rohc_buf_shift(&feedback_send, 1);
+				rohc_buf_pull(&feedback_send, 1);
 			}
 		}
 
@@ -516,7 +516,7 @@ static int test_comp_and_decomp(const char *filename,
 		sn = ((rohc_buf_byte(feedback_send) & 0x0f) << 8) +
 		     (rohc_buf_byte_at(feedback_send, 1) & 0xff);
 		fprintf(stderr, "\tSN (or a part of it) = 0x%04x\n", sn);
-		rohc_buf_shift(&feedback_send, 2);
+		rohc_buf_pull(&feedback_send, 2);
 
 		/* parse every feedback options found in the packet */
 		expected_opt_pos = 0;

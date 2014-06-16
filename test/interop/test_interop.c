@@ -460,7 +460,7 @@ static int test_decomp_one(struct rohc_decomp *const decomp,
 	}
 
 	/* skip the link layer header */
-	rohc_buf_shift(&rohc_packet, link_len_src);
+	rohc_buf_pull(&rohc_packet, link_len_src);
 
 	/* decompress the ROHC packet */
 	printf("=== ROHC decompression: start\n");

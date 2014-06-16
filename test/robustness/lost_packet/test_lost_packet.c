@@ -417,7 +417,7 @@ static int test_comp_and_decomp(const char *const filename,
 		}
 
 		/* skip the link layer header */
-		rohc_buf_shift(&ip_packet, link_len);
+		rohc_buf_pull(&ip_packet, link_len);
 
 		/* check for padding after the IP packet in the Ethernet payload */
 		if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)

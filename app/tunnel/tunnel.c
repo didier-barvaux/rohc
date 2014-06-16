@@ -1193,7 +1193,7 @@ int write_to_udp(int sock,
 	addr.sin_port = htons(port);
 
 	/* write the tunnel sequence number at the beginning of packet */
-	rohc_buf_shift(&packet, 2);
+	rohc_buf_pull(&packet, 2);
 	rohc_buf_byte_at(packet, 0) = (htons(seq) >> 8) & 0xff;
 	rohc_buf_byte_at(packet, 1) = htons(seq) & 0xff;
 
@@ -1347,7 +1347,7 @@ static int write_to_raw(const int sock,
 	memcpy(addr.sll_addr, raddr, ETH_ALEN);
 
 	/* write the tunnel sequence number at the beginning of packet */
-	rohc_buf_shift(&packet, 3);
+	rohc_buf_pull(&packet, 3);
 	if(packet.len <= 3 || packet.len > 255)
 	{
 		fprintf(stderr, "write_to_raw: bad length %zu\n", packet.len);
@@ -1478,11 +1478,11 @@ int tun2wan(struct rohc_comp *comp,
 	}
 
 	/* skip the TUN header */
-	rohc_buf_shift(&uncomp_packet, 4);
+	rohc_buf_pull(&uncomp_packet, 4);
 
 	/* skip the tunnel header */
 	rohc_packet.len += 3;
-	rohc_buf_shift(&rohc_packet, 3);
+	rohc_buf_pull(&rohc_packet, 3);
 
 	/* increment the tunnel sequence number */
 	seq++;
@@ -1735,7 +1735,7 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 	 * the current length is extracted from the third byte */
 	if(tunnel->type == ROHC_TUNNEL_UDP)
 	{
-		rohc_buf_shift(&packet, 2);
+		rohc_buf_pull(&packet, 2);
 	}
 	else /* ROHC_TUNNEL_ETHERNET */
 	{
@@ -1746,13 +1746,13 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 			        "greater thant the full Ethernet frame\n");
 			goto error;
 		}
-		rohc_buf_shift(&packet, 3);
+		rohc_buf_pull(&packet, 3);
 		packet.len = rohc_pkt_len;
 	}
 
 	/* skip the TUN header */
 	decomp_packet.len += 4;
-	rohc_buf_shift(&decomp_packet, 4);
+	rohc_buf_pull(&decomp_packet, 4);
 
 	/* decompress the ROHC packet */
 #if DEBUG
@@ -1780,7 +1780,7 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 	}
 
 	/* build the TUN header */
-	rohc_buf_shift(&decomp_packet, -4);
+	rohc_buf_push(&decomp_packet, 4);
 	rohc_buf_byte_at(decomp_packet, 0) = 0;
 	rohc_buf_byte_at(decomp_packet, 1) = 0;
 	switch((rohc_buf_byte_at(decomp_packet, 4) >> 4) & 0x0f)
@@ -1797,7 +1797,7 @@ int wan2tun(struct rohc_tunnel *const tunnel,
 			fprintf(stderr, "bad IP version (%d)\n",
 			        (rohc_buf_byte_at(decomp_packet, 4) >> 4) & 0x0f);
 			dump_packet("ROHC packet", packet);
-			rohc_buf_shift(&decomp_packet, 4);
+			rohc_buf_pull(&decomp_packet, 4);
 			dump_packet("Decompressed packet", decomp_packet);
 			goto drop;
 	}
@@ -1855,14 +1855,14 @@ int flush_feedback(const int to,
 		/* write the ROHC packet in the tunnel */
 		if(tunnel->type == ROHC_TUNNEL_UDP)
 		{
-			rohc_buf_shift(&(tunnel->feedback_send), -2);
+			rohc_buf_push(&(tunnel->feedback_send), 2);
 			ret = write_to_udp(to, tunnel->params.udp.raddr,
 			                   tunnel->params.udp.port,
 			                   tunnel->feedback_send);
 		}
 		else
 		{
-			rohc_buf_shift(&(tunnel->feedback_send), -3);
+			rohc_buf_push(&(tunnel->feedback_send), 3);
 			ret = write_to_raw(to, tunnel->params.ethernet.raddr,
 			                   tunnel->params.ethernet.itf_index,
 			                   tunnel->feedback_send);

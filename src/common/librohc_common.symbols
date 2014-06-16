@@ -30,7 +30,8 @@ ipv6_get_saddr
 ipv6_set_flow_label
 rohc_buf_is_malformed
 rohc_buf_is_empty
-rohc_buf_shift
+rohc_buf_pull
+rohc_buf_push
 rohc_buf_avail_len
 rohc_buf_data_at
 rohc_buf_data

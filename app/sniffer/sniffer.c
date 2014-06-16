@@ -1172,9 +1172,9 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* skip the link layer header */
-	rohc_buf_shift(&ip_packet, link_len_src);
+	rohc_buf_pull(&ip_packet, link_len_src);
 	rohc_packet.len += link_len_src;
-	rohc_buf_shift(&rohc_packet, link_len_src);
+	rohc_buf_pull(&rohc_packet, link_len_src);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len_src == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -1220,10 +1220,8 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* piggyback the feedback */
-	memcpy(rohc_buf_data(rohc_packet), rohc_buf_data(*feedback_send),
-	       feedback_send->len);
-	rohc_packet.len += feedback_send->len;
-	rohc_buf_shift(&rohc_packet, feedback_send->len);
+	rohc_buf_append_buf(&rohc_packet, *feedback_send);
+	rohc_buf_pull(&rohc_packet, feedback_send->len);
 
 	/* compress the IP packet */
 	ret = rohc_compress4(comp, ip_packet, &rohc_packet);
@@ -1233,7 +1231,7 @@ static int compress_decompress(struct rohc_comp *comp,
 
 		SNIFFER_LOG(LOG_WARNING, "compression failed");
 		ret = -1;
-		rohc_buf_shift(&ip_packet, -(link_len_src));
+		rohc_buf_push(&ip_packet, link_len_src);
 
 		/* open the new dumper */
 		dumper = pcap_dump_open(handle, "./dump_stream_default.pcap");
@@ -1365,10 +1363,10 @@ static int compress_decompress(struct rohc_comp *comp,
 	}
 
 	/* dump the IP packet */
-	rohc_buf_shift(&ip_packet, -(link_len_src));
+	rohc_buf_push(&ip_packet, link_len_src);
 	pcap_dump((u_char *) dumpers[comp_last_packet_info.context_id],
 	          &header, packet);
-	rohc_buf_shift(&ip_packet, link_len_src);
+	rohc_buf_pull(&ip_packet, link_len_src);
 
 	/* record the CID */
 	*cid = comp_last_packet_info.context_id;

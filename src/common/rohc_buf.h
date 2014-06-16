@@ -57,10 +57,10 @@ extern "C"
  * unused space at the beginning of the buffer may be used to prepend a
  * network header at the very end of the packet handling.
  *
- * The beginning of the network buffer may also be shifted forward and
- * backward with the \ref rohc_buf_shift function. This is useful when
- * parsing a network packet (once bytes are read, shift them forward) for
- * example.
+ * The beginning of the network buffer may also be shifted forward with the
+ * \ref rohc_buf_pull function or shifted backward with the \ref rohc_buf_push
+ * function. This is useful when parsing a network packet (once bytes are
+ * read, shift them forward) for example.
  *
  * The network buffer may be initialized manually (see below) or with the
  * helper functions \ref rohc_buf_init_empty or \ref rohc_buf_init_full.
@@ -200,7 +200,9 @@ bool rohc_buf_is_malformed(const struct rohc_buf buf)
 bool rohc_buf_is_empty(const struct rohc_buf buf)
 	__attribute__((warn_unused_result));
 
-void rohc_buf_shift(struct rohc_buf *const buf, const int added_offset)
+void rohc_buf_pull(struct rohc_buf *const buf, const size_t offset)
+	__attribute__((nonnull(1)));
+void rohc_buf_push(struct rohc_buf *const buf, const size_t offset)
 	__attribute__((nonnull(1)));
 
 size_t rohc_buf_avail_len(const struct rohc_buf buf)

@@ -63,42 +63,44 @@ bool rohc_buf_is_empty(const struct rohc_buf buf)
 
 
 /**
- * @brief Shift forward or backward the beginning of the given network buffer
+ * @brief Pull the beginning of the given network buffer
  *
- * If \e offset is positive, shift the beginning of the buffer forward.
- * If \e offset is negative, shift the beginning of the buffer backward.
- * If \e offset is 0, do nothing.
+ * Pulling the beginning of the buffer increases the space at the beginning
+ * of the buffer. This is useful when parsing a network packet (once bytes
+ * are read, pull them) for example.
  *
- * Shifting the beginning of the buffer increases (shift forward) or decreases
- * (shift backward) the unused space at the beginning of the buffer. This is
- * useful when parsing a network packet (once bytes are read, shift them
- * forward) for example.
- *
- * The unused space at the beginning of the buffer may also be used to prepend
- * a network header at the very end of the packet handling.
- *
- * @param buf    The network buffer to check for
- * @param offset  The offset to shift the beginning of the buffer of
- * @return     true if the given network is empty, false if not
+ * @param buf     The network buffer to check for
+ * @param offset  The offset to pull the beginning of the buffer of
  *
  * @ingroup rohc
  */
-void rohc_buf_shift(struct rohc_buf *const buf, const int offset)
+void rohc_buf_pull(struct rohc_buf *const buf, const size_t offset)
 {
-	if(offset > 0)
-	{
-		size_t offset_abs = offset;
-		assert((buf->offset + offset_abs) <= buf->max_len);
-		assert(buf->len >= offset_abs);
-	}
-	else
-	{
-		size_t offset_abs = -offset;
-		assert(buf->offset >= offset_abs);
-	}
-
+	assert((buf->offset + offset) <= buf->max_len);
+	assert(buf->len >= offset);
 	buf->offset += offset;
 	buf->len -= offset;
+}
+
+
+/**
+ * @brief Push the beginning of the given network buffer
+ *
+ * Pushing the beginning of the buffer decreases the space at the beginning
+ * of the buffer. This is useful to prepend a network header before the
+ * network buffer.
+ *
+ * @param buf     The network buffer to check for
+ * @param offset  The offset to push the beginning of the buffer of
+ *
+ * @ingroup rohc
+ */
+void rohc_buf_push(struct rohc_buf *const buf, const size_t offset)
+{
+	assert(buf->offset >= offset);
+	assert((buf->len + offset) <= buf->max_len);
+	buf->offset -= offset;
+	buf->len += offset;
 }
 
 
@@ -163,8 +165,7 @@ void rohc_buf_prepend(struct rohc_buf *const buf,
                       const uint8_t *const data,
                       const size_t len)
 {
-	const int shift = -(len);
-	rohc_buf_shift(buf, shift);
+	rohc_buf_push(buf, len);
 	memcpy(rohc_buf_data(*buf), data, len);
 }
 

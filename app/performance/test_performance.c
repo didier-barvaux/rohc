@@ -546,7 +546,7 @@ static int time_compress_packet(struct rohc_comp *comp,
 	}
 
 	/* skip the link layer header */
-	rohc_buf_shift(&ip_packet, link_len);
+	rohc_buf_pull(&ip_packet, link_len);
 
 	/* check for padding after the IP packet in the Ethernet payload */
 	if(link_len == ETHER_HDR_LEN && header.len == ETHER_FRAME_MIN_LEN)
@@ -766,7 +766,7 @@ static int time_decompress_packet(struct rohc_decomp *decomp,
 	}
 
 	/* skip the link layer header */
-	rohc_buf_shift(&rohc_packet, link_len);
+	rohc_buf_pull(&rohc_packet, link_len);
 
 	/* decompress the packet */
 	ret = rohc_decompress3(decomp, rohc_packet, &ip_packet, NULL, NULL);

@@ -1504,7 +1504,7 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			/* uncompressed headers successfully built and CRC is correct,
 			 * no need to try decoding with different values */
 			uncomp_packet->len += uncomp_header_len;
-			rohc_buf_shift(uncomp_packet, uncomp_header_len);
+			rohc_buf_pull(uncomp_packet, uncomp_header_len);
 
 			if(g_context->crc_corr == ROHC_DECOMP_CRC_CORR_SN_NONE)
 			{
@@ -1625,12 +1625,11 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 	}
 	if(payload_len != 0)
 	{
-		memcpy(rohc_buf_data(*uncomp_packet), payload_data, payload_len);
-		uncomp_packet->len += payload_len;
-		rohc_buf_shift(uncomp_packet, payload_len);
+		rohc_buf_append(uncomp_packet, payload_data, payload_len);
+		rohc_buf_pull(uncomp_packet, payload_len);
 	}
-	/* shift backward the uncompressed headers and payload */
-	rohc_buf_shift(uncomp_packet, -(uncomp_header_len + payload_len));
+	/* unhide the uncompressed headers and payload */
+	rohc_buf_push(uncomp_packet, uncomp_header_len + payload_len);
 	rohc_decomp_debug(context, "uncompressed packet length = %zu bytes",
 	                  uncomp_packet->len);
 

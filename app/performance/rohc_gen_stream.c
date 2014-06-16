@@ -427,9 +427,9 @@ static bool build_stream(const char *const filename,
 
 		/* skip the Ethernet header, it will be written later */
 		packet.len += ETHER_HDR_LEN;
-		rohc_buf_shift(&packet, ETHER_HDR_LEN);
+		rohc_buf_pull(&packet, ETHER_HDR_LEN);
 		rohc_packet.len += ETHER_HDR_LEN;
-		rohc_buf_shift(&rohc_packet, ETHER_HDR_LEN);
+		rohc_buf_pull(&rohc_packet, ETHER_HDR_LEN);
 
 		/* build IPv4 header */
 		packet.len += sizeof(struct ipv4_hdr);
@@ -446,7 +446,7 @@ static bool build_stream(const char *const filename,
 		ipv4->saddr = htonl(0xc0a80001);
 		ipv4->daddr = htonl(0xc0a80002);
 		ipv4->check = ip_fast_csum((uint8_t *) ipv4, ipv4->ihl);
-		rohc_buf_shift(&packet, sizeof(struct ipv4_hdr));
+		rohc_buf_pull(&packet, sizeof(struct ipv4_hdr));
 
 		/* build UDP header */
 		packet.len += sizeof(struct udphdr);
@@ -455,7 +455,7 @@ static bool build_stream(const char *const filename,
 		udp->dest = htons(1234);
 		udp->len = htons(packet.len);
 		udp->check = 0; /* UDP checksum disabled */
-		rohc_buf_shift(&packet, sizeof(struct udphdr));
+		rohc_buf_pull(&packet, sizeof(struct udphdr));
 
 		/* build RTP header */
 		packet.len += sizeof(struct rtphdr);
@@ -469,7 +469,7 @@ static bool build_stream(const char *const filename,
 		rtp->sn = htons(counter);
 		rtp->timestamp = htonl(500000 + counter * 160);
 		rtp->ssrc = htonl(0x42424242);
-		rohc_buf_shift(&packet, sizeof(struct rtphdr));
+		rohc_buf_pull(&packet, sizeof(struct rtphdr));
 
 		/* build RTP payload */
 		for(size_t i = 0; i < payload_len; i++)
@@ -477,9 +477,9 @@ static bool build_stream(const char *const filename,
 			rohc_buf_byte_at(packet, i) = i % 0xff;
 		}
 		packet.len += payload_len;
-		rohc_buf_shift(&packet, payload_len);
+		rohc_buf_pull(&packet, payload_len);
 
-		rohc_buf_shift(&packet, -(packet_len));
+		rohc_buf_push(&packet, packet_len);
 
 		if(strcmp(stream_type, "comp") == 0)
 		{
@@ -492,7 +492,7 @@ static bool build_stream(const char *const filename,
 			}
 
 			/* build Linux cooked header */
-			rohc_buf_shift(&rohc_packet, -(ETHER_HDR_LEN));
+			rohc_buf_push(&rohc_packet, ETHER_HDR_LEN);
 			memset(rohc_buf_data(rohc_packet), 0, ETHER_HDR_LEN);
 			rohc_buf_byte_at(rohc_packet, ETHER_HDR_LEN - 2) =
 				ROHC_ETHERTYPE & 0xff;
@@ -507,7 +507,7 @@ static bool build_stream(const char *const filename,
 		else
 		{
 			/* build Linux cooked header */
-			rohc_buf_shift(&packet, -(ETHER_HDR_LEN));
+			rohc_buf_push(&packet, ETHER_HDR_LEN);
 			memset(rohc_buf_data(packet), 0, ETHER_HDR_LEN);
 			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 2) = 0x80;
 			rohc_buf_byte_at(packet, ETHER_HDR_LEN - 1) = 0x00;

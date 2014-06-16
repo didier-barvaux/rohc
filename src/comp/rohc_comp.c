@@ -873,7 +873,7 @@ int rohc_compress(struct rohc_comp *comp,
 		if(feedback_size > 0)
 		{
 			rohc_packet.len += feedback_size;
-			rohc_buf_shift(&rohc_packet, feedback_size);
+			rohc_buf_pull(&rohc_packet, feedback_size);
 			feedbacks_size += feedback_size;
 		}
 	}
@@ -900,8 +900,8 @@ int rohc_compress(struct rohc_comp *comp,
 		goto error;
 	}
 
-	/* unshift the feedback items */
-	rohc_buf_shift(&rohc_packet, -(feedbacks_size));
+	/* unhide the feedback items */
+	rohc_buf_push(&rohc_packet, feedbacks_size);
 
 	/* compression succeeded */
 	return rohc_packet.len;
@@ -969,7 +969,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		if(feedback_size > 0)
 		{
 			__rohc_packet.len += feedback_size;
-			rohc_buf_shift(&__rohc_packet, feedback_size);
+			rohc_buf_pull(&__rohc_packet, feedback_size);
 			feedbacks_size += feedback_size;
 		}
 	}
@@ -987,7 +987,7 @@ int rohc_compress2(struct rohc_comp *const comp,
 		}
 
 		/* unshift the feedback items */
-		rohc_buf_shift(&__rohc_packet, -(feedbacks_size));
+		rohc_buf_push(&__rohc_packet, feedbacks_size);
 
 		*rohc_packet_len = __rohc_packet.len;
 	}
@@ -1117,7 +1117,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 		if(feedback_size > 0)
 		{
 			__rohc_packet.len += feedback_size;
-			rohc_buf_shift(&__rohc_packet, feedback_size);
+			rohc_buf_pull(&__rohc_packet, feedback_size);
 			feedbacks_size += feedback_size;
 		}
 	}
@@ -1135,7 +1135,7 @@ int rohc_compress3(struct rohc_comp *const comp,
 		}
 
 		/* unshift the feedback items */
-		rohc_buf_shift(&__rohc_packet, -(feedbacks_size));
+		rohc_buf_push(&__rohc_packet, feedbacks_size);
 
 		*rohc_packet_len = __rohc_packet.len;
 	}
@@ -1344,7 +1344,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 	rohc_packet->len += rohc_hdr_size;
 
 	/* the payload starts after the header, skip it */
-	rohc_buf_shift(rohc_packet, rohc_hdr_size);
+	rohc_buf_pull(rohc_packet, rohc_hdr_size);
 	payload_size = ip_pkt.len - payload_offset;
 
 	/* is packet too large for output buffer? */
@@ -1394,7 +1394,7 @@ int rohc_compress4(struct rohc_comp *const comp,
 		comp->rru_len = 0;
 		comp->rru_off = 0;
 		/* ROHC header */
-		rohc_buf_shift(rohc_packet, -rohc_hdr_size);
+		rohc_buf_push(rohc_packet, rohc_hdr_size);
 		memcpy(comp->rru + comp->rru_off, rohc_buf_data(*rohc_packet),
 		       rohc_hdr_size);
 		comp->rru_len += rohc_hdr_size;
@@ -1429,8 +1429,8 @@ int rohc_compress4(struct rohc_comp *const comp,
 		                rohc_buf_data_at(uncomp_packet, payload_offset),
 		                payload_size);
 
-		/* shift back the ROHC header */
-		rohc_buf_shift(rohc_packet, -(rohc_hdr_size));
+		/* unhide the ROHC header */
+		rohc_buf_push(rohc_packet, rohc_hdr_size);
 		rohc_debug(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
 		           "ROHC size = %zd bytes (header = %d, payload = %zu), output "
 		           "buffer size = %zu", rohc_packet->len, rohc_hdr_size,
@@ -1688,11 +1688,11 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 	/* set segment type with F bit set only for last segment */
 	rohc_buf_byte_at(*segment, 0) = 0xfe | (max_data_len == comp->rru_len);
 	segment->len++;
-	rohc_buf_shift(segment, 1);
+	rohc_buf_pull(segment, 1);
 
 	/* copy remaining ROHC data (CRC included) */
 	rohc_buf_append(segment, comp->rru + comp->rru_off, max_data_len);
-	rohc_buf_shift(segment, max_data_len);
+	rohc_buf_pull(segment, max_data_len);
 	comp->rru_off += max_data_len;
 	comp->rru_len -= max_data_len;
 
@@ -1711,7 +1711,7 @@ int rohc_comp_get_segment2(struct rohc_comp *const comp,
 	}
 
 	/* shift backward the RRU data, header and the feedback data */
-	rohc_buf_shift(segment, -(max_data_len + 1));
+	rohc_buf_push(segment, max_data_len + 1);
 
 	return status;
 
@@ -3855,7 +3855,7 @@ bool rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
 		}
 
 		/* skip the feedback header */
-		rohc_buf_shift(&remain_data, feedback_hdr_len);
+		rohc_buf_pull(&remain_data, feedback_hdr_len);
 
 		/* deliver the feedback data to the compressor */
 		if(!__rohc_comp_deliver_feedback(comp, rohc_buf_data(remain_data),
@@ -3867,7 +3867,7 @@ bool rohc_comp_deliver_feedback2(struct rohc_comp *const comp,
 		}
 
 		/* skip the feedback data */
-		rohc_buf_shift(&remain_data, feedback_data_len);
+		rohc_buf_pull(&remain_data, feedback_data_len);
 	}
 
 	return (nr_failures == 0);

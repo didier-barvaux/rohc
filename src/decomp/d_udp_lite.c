@@ -386,7 +386,7 @@ static int d_udp_lite_decode(struct rohc_decomp *const decomp,
 	 * optional large CID field) */
 	if(udp_lite_context->cce_packet)
 	{
-		rohc_buf_shift(&rohc_remain_data, 1 + large_cid_len);
+		rohc_buf_pull(&rohc_remain_data, 1 + large_cid_len);
 		new_large_cid_len = 0;
 	}
 	else

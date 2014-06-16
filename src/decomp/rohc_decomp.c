@@ -1678,7 +1678,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 		/* skip the segment type byte */
 		walk++;
 		remain_len--;
-		rohc_buf_shift(&remain_rohc_data, 1);
+		rohc_buf_pull(&remain_rohc_data, 1);
 
 		rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
 		           "ROHC packet is a %zu-byte %s segment", remain_len,
@@ -1778,7 +1778,7 @@ static int d_decode_header(struct rohc_decomp *decomp,
 	{
 		walk++;
 		remain_len--;
-		rohc_buf_shift(&remain_rohc_data, 1);
+		rohc_buf_pull(&remain_rohc_data, 1);
 	}
 
 	/* we need at least 1 byte for packet type */
@@ -3715,7 +3715,7 @@ static void rohc_decomp_parse_padding(const struct rohc_decomp *const decomp,
 	while(packet->len > 0 &&
 	      rohc_decomp_packet_is_padding(rohc_buf_data(*packet)))
 	{
-		rohc_buf_shift(packet, 1);
+		rohc_buf_pull(packet, 1);
 		padding_length++;
 	}
 	rohc_debug(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL,
@@ -3761,18 +3761,18 @@ static bool rohc_decomp_parse_feedbacks(struct rohc_decomp *const decomp,
 			goto error;
 		}
 
-		/* shift forward the beginning of the buffer to get the next feedback */
+		/* hide the feedback */
 		if(feedbacks != NULL)
 		{
 			feedbacks_len += feedbacks->len;
-			rohc_buf_shift(feedbacks, feedbacks->len);
+			rohc_buf_pull(feedbacks, feedbacks->len);
 		}
 	}
 
-	/* shift backward the beginning of the buffer to unhide all feedbacks */
+	/* unhide all feedbacks */
 	if(feedbacks != NULL)
 	{
-		rohc_buf_shift(feedbacks, -(feedbacks_len));
+		rohc_buf_push(feedbacks, feedbacks_len);
 	}
 
 	return true;
@@ -3849,7 +3849,7 @@ static bool rohc_decomp_parse_feedback(struct rohc_decomp *const decomp,
 	}
 
 	/* skip the feedback item in the ROHC packet */
-	rohc_buf_shift(rohc_data, feedback_len);
+	rohc_buf_pull(rohc_data, feedback_len);
 
 	return true;
 

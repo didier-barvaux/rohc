@@ -238,7 +238,7 @@ static int test_decomp(const char *const filename,
 		}
 
 		/* skip the link layer header */
-		rohc_buf_shift(&rohc_packet, link_len);
+		rohc_buf_pull(&rohc_packet, link_len);
 
 		fprintf(stderr, "decompress malformed packet #%u:\n", counter);
 
