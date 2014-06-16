@@ -5,7 +5,7 @@
 # Description: create the ROHC performance application
 ################################################################################
 
-sbin_PROGRAMS = \
+bin_PROGRAMS = \
 	rohc_test_performance \
 	rohc_gen_stream
 
