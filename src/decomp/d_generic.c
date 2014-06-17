@@ -392,13 +392,19 @@ static void reset_extr_bits(const struct d_generic_context *const g_context,
  * This function is one of the functions that must exist in one profile for the
  * framework to work.
  *
- * @param context         The decompression context
- * @param trace_callback  The function to call for printing traces
- * @param profile_id      The ID of the associated decompression profile
- * @return                The newly-created generic decompression context
+ * @param context        The decompression context
+ * @param trace_cb       The old function to call for printing traces
+ * @param trace_cb2      The new function to call for printing traces
+ * @param trace_cb_priv  An optional private context, may be NULL
+ * @param profile_id     The ID of the associated decompression profile
+ * @return               The newly-created generic decompression context
  */
 void * d_generic_create(const struct rohc_decomp_ctxt *const context,
-                        rohc_trace_callback_t trace_callback,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                        rohc_trace_callback_t trace_cb,
+#endif
+                        rohc_trace_callback2_t trace_cb2,
+                        void *const trace_cb_priv,
                         const int profile_id)
 {
 	struct d_generic_context *g_context;
@@ -453,10 +459,16 @@ void * d_generic_create(const struct rohc_decomp_ctxt *const context,
 
 	/* init the context used to compress the list of IPv6 extension headers
 	 * for the outer and inner IP headers */
-	rohc_decomp_list_ipv6_new(&g_context->list_decomp1, trace_callback,
-	                          profile_id);
-	rohc_decomp_list_ipv6_new(&g_context->list_decomp2, trace_callback,
-	                          profile_id);
+	rohc_decomp_list_ipv6_new(&g_context->list_decomp1,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	                          trace_cb,
+#endif
+	                          trace_cb2, trace_cb_priv, profile_id);
+	rohc_decomp_list_ipv6_new(&g_context->list_decomp2,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	                          trace_cb,
+#endif
+	                          trace_cb2, trace_cb_priv, profile_id);
 
 	/* no default next header */
 	g_context->next_header_proto = 0;
@@ -1448,8 +1460,12 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CRC detected a transmission failure for "
 			                 "IR packet");
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			              ROHC_TRACE_WARNING, "IR headers",
+			rohc_dump_buf(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+			              decomp->trace_callback,
+#endif
+			              decomp->trace_callback2, decomp->trace_callback_priv,
+			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING, "IR headers",
 			              rohc_buf_data(rohc_packet) - add_cid_len,
 			              rohc_header_len + add_cid_len);
 #endif
@@ -1523,8 +1539,13 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 			rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
 			                 "headers", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
-			              ROHC_TRACE_WARNING, "compressed headers",
+			rohc_dump_buf(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+			              decomp->trace_callback,
+#endif
+			              decomp->trace_callback2, decomp->trace_callback_priv,
+			              ROHC_TRACE_DECOMP, ROHC_TRACE_WARNING,
+			              "compressed headers",
 			              rohc_buf_data(rohc_packet), rohc_header_len);
 #endif
 			goto error;
@@ -1552,7 +1573,12 @@ int d_generic_decode(struct rohc_decomp *const decomp,
 				rohc_decomp_warn(context, "CID %zu: failed to build uncompressed "
 				                 "headers (CRC failure)", context->cid);
 #if ROHC_EXTRA_DEBUG == 1
-				rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
+				rohc_dump_buf(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+				              decomp->trace_callback,
+#endif
+				              decomp->trace_callback2,
+				              decomp->trace_callback_priv, ROHC_TRACE_DECOMP,
 				              ROHC_TRACE_WARNING, "compressed headers",
 				              rohc_buf_data(rohc_packet), rohc_header_len);
 #endif
@@ -5386,7 +5412,12 @@ static int build_uncomp_hdrs(const struct rohc_decomp *const decomp,
 			                 rohc_decomp_get_state_descr(context->state),
 			                 rohc_get_mode_descr(context->mode));
 #if ROHC_EXTRA_DEBUG == 1
-			rohc_dump_buf(decomp->trace_callback, ROHC_TRACE_DECOMP,
+			rohc_dump_buf(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+			              decomp->trace_callback,
+#endif
+			              decomp->trace_callback2,
+			              decomp->trace_callback_priv, ROHC_TRACE_DECOMP,
 			              ROHC_TRACE_WARNING, "uncompressed headers",
 			              outer_ip_hdr, *uncomp_hdrs_len);
 #endif

@@ -103,11 +103,12 @@ int main(int argc, char *argv[])
 	decomp = rohc_decomp_new2(ROHC_LARGE_CID, ROHC_SMALL_CID_MAX, ROHC_O_MODE);
 	CHECK(decomp != NULL);
 
-	/* rohc_decomp_set_traces_cb() */
+	/* rohc_decomp_set_traces_cb2() */
 	{
-		rohc_trace_callback_t fct = (rohc_trace_callback_t) NULL;
-		CHECK(rohc_decomp_set_traces_cb(NULL, fct) == false);
-		CHECK(rohc_decomp_set_traces_cb(decomp, fct) == true);
+		rohc_trace_callback2_t fct = (rohc_trace_callback2_t) NULL;
+		CHECK(rohc_decomp_set_traces_cb2(NULL, fct, NULL) == false);
+		CHECK(rohc_decomp_set_traces_cb2(decomp, fct, NULL) == true);
+		CHECK(rohc_decomp_set_traces_cb2(decomp, fct, decomp) == true);
 	}
 
 	/* rohc_decomp_profile_enabled() */

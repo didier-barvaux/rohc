@@ -32,17 +32,23 @@
 /**
  * @brief Parse a network packet
  *
- * @param[out] packet     The parsed packet
- * @param data            The data to parse
- * @param trace_callback  The function to call for printing traces
- * @param trace_entity    The entity that emits the traces
- * @return                true if the packet was successfully parsed,
- *                        false if a problem occurred (a malformed packet is
- *                        not considered as an error)
+ * @param[out] packet    The parsed packet
+ * @param data           The data to parse
+ * @param trace_cb       The old function to call for printing traces
+ * @param trace_cb2      The new function to call for printing traces
+ * @param trace_cb_priv  An optional private context, may be NULL
+ * @param trace_entity   The entity that emits the traces
+ * @return               true if the packet was successfully parsed,
+ *                       false if a problem occurred (a malformed packet is
+ *                       not considered as an error)
  */
 bool net_pkt_parse(struct net_pkt *const packet,
                    const struct rohc_buf data,
-                   rohc_trace_callback_t trace_callback,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                   rohc_trace_callback_t trace_cb,
+#endif
+                   rohc_trace_callback2_t trace_cb2,
+                   void *const trace_cb_priv,
                    rohc_trace_entity_t trace_entity)
 {
 	packet->data = rohc_buf_data(data);
@@ -51,7 +57,11 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	packet->key = 0;
 
 	/* traces */
-	packet->trace_callback = trace_callback;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	packet->trace_callback = trace_cb;
+#endif
+	packet->trace_callback2 = trace_cb2;
+	packet->trace_callback_priv = trace_cb_priv;
 
 	/* create the outer IP packet from raw data */
 	if(!ip_create(&packet->outer_ip, rohc_buf_data(data), data.len))

@@ -123,15 +123,17 @@ static int gen_false_random_num(const struct rohc_comp *const comp,
 /**
  * @brief Print traces emitted by the ROHC library
  *
- * @param level    The priority level of the trace
- * @param entity   The entity that emitted the trace among:
- *                  \li ROHC_TRACE_COMP
- *                  \li ROHC_TRACE_DECOMP
- * @param profile  The ID of the ROHC compression/decompression profile
- *                 the trace is related to
- * @param format   The format string of the trace
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @param level      The priority level of the trace
+ * @param entity     The entity that emitted the trace among:
+ *                    \li ROHC_TRACE_COMP
+ *                    \li ROHC_TRACE_DECOMP
+ * @param profile    The ID of the ROHC compression/decompression profile
+ *                   the trace is related to
+ * @param format     The format string of the trace
  */
-static void rohc_print_traces(const rohc_trace_level_t level,
+static void rohc_print_traces(void *const priv_ctxt __attribute__((unused)),
+                              const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
                               const char *const format,
@@ -220,7 +222,7 @@ int rohc_couple_init_phase1(struct rohc_couple *couple, int index)
 	        THIS_MODULE->name);
 
 	/* link the compressor to the appropriate log function */
-	is_ok = rohc_comp_set_traces_cb(couple->comp, rohc_print_traces);
+	is_ok = rohc_comp_set_traces_cb2(couple->comp, rohc_print_traces, NULL);
 	if(!is_ok)
 	{
 		pr_err("[%s] \t cannot set trace callback for compressor\n",
@@ -296,7 +298,7 @@ int rohc_couple_init_phase2(struct rohc_couple *couple,
 	        THIS_MODULE->name);
 
 	/* link the decompressor to the appropriate log function */
-	is_ok = rohc_decomp_set_traces_cb(couple->decomp, rohc_print_traces);
+	is_ok = rohc_decomp_set_traces_cb2(couple->decomp, rohc_print_traces, NULL);
 	if(!is_ok)
 	{
 		pr_err("[%s] \t cannot set trace callback for decompressor\n",

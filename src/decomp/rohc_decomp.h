@@ -423,8 +423,19 @@ bool ROHC_EXPORT rohc_decomp_disable_profiles(struct rohc_decomp *const decomp,
  * Functions related to traces
  */
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 bool ROHC_EXPORT rohc_decomp_set_traces_cb(struct rohc_decomp *const decomp,
                                            rohc_trace_callback_t callback)
+	__attribute__((warn_unused_result))
+	ROHC_DEPRECATED("do not use this function anymore, "
+	                "use rohc_decomp_set_traces_cb2() instead");
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
+bool ROHC_EXPORT rohc_decomp_set_traces_cb2(struct rohc_decomp *const decomp,
+                                            rohc_trace_callback2_t callback,
+                                            void *const priv_ctxt)
 	__attribute__((warn_unused_result));
 
 

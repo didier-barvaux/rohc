@@ -255,12 +255,13 @@ int is_timeout(struct timeval first,
                struct timeval second,
                unsigned int max);
 
-static void print_rohc_traces(const rohc_trace_level_t level,
+static void print_rohc_traces(void *const priv_ctxt,
+                              const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
                               const char *const format,
                               ...)
-	__attribute__((format(printf, 4, 5), nonnull(4)));
+	__attribute__((format(printf, 5, 6), nonnull(5)));
 
 static int gen_random_num(const struct rohc_comp *const comp,
                           void *const user_context)
@@ -773,7 +774,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* set trace callback for compressor */
-	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, NULL))
 	{
 		fprintf(stderr, "cannot set trace callback for the compressor\n");
 		goto destroy_comp;
@@ -799,7 +800,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* set trace callback for decompressor */
-	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
 	{
 		fprintf(stderr, "cannot set trace callback for the decompressor\n");
 		goto destroy_decomp;
@@ -2008,15 +2009,17 @@ int is_timeout(struct timeval first,
 /**
  * @brief Print traces emitted by the ROHC library
  *
- * @param level    The priority level of the trace
- * @param entity   The entity that emitted the trace among:
- *                  \li ROHC_TRACE_COMP
- *                  \li ROHC_TRACE_DECOMP
- * @param profile  The ID of the ROHC compression/decompression profile
- *                 the trace is related to
- * @param format   The format string of the trace
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @param level      The priority level of the trace
+ * @param entity     The entity that emitted the trace among:
+ *                    \li ROHC_TRACE_COMP
+ *                    \li ROHC_TRACE_DECOMP
+ * @param profile    The ID of the ROHC compression/decompression profile
+ *                   the trace is related to
+ * @param format     The format string of the trace
  */
-static void print_rohc_traces(const rohc_trace_level_t level __attribute__((unused)),
+static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
+                              const rohc_trace_level_t level __attribute__((unused)),
                               const rohc_trace_entity_t entity __attribute__((unused)),
                               const int profile __attribute__((unused)),
                               const char *const format,

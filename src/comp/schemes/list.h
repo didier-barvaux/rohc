@@ -73,8 +73,14 @@ struct list_comp
 
 	/* Traces */
 
-	/** The callback function used to manage traces */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	/** The old callback function used to manage traces */
 	rohc_trace_callback_t trace_callback;
+#endif
+	/** The new callback function used to manage traces */
+	rohc_trace_callback2_t trace_callback2;
+	/** The private context of the callback function used to manage traces */
+	void *trace_callback_priv;
 	/** The profile ID the compression list was created for */
 	int profile_id;
 };

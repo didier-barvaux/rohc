@@ -179,12 +179,13 @@ static int compare_packets(const struct rohc_buf pkt1,
 static size_t get_tcp_opt_padding(const struct rohc_buf packet)
 	__attribute__((warn_unused_result));
 
-static void print_rohc_traces(const rohc_trace_level_t level,
+static void print_rohc_traces(void *const priv_ctxt,
+                              const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
                               const char *const format,
                               ...)
-	__attribute__((format(printf, 4, 5), nonnull(4)));
+	__attribute__((format(printf, 5, 6), nonnull(5)));
 static int gen_false_random_num(const struct rohc_comp *const comp,
                                 void *const user_context)
 	__attribute__((nonnull(1)));
@@ -932,7 +933,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* set the callback for traces on compressor */
-	if(!rohc_comp_set_traces_cb(comp, print_rohc_traces))
+	if(!rohc_comp_set_traces_cb2(comp, print_rohc_traces, NULL))
 	{
 		SNIFFER_LOG(LOG_WARNING, "failed to set the trace callback for the "
 		            "compressor");
@@ -973,7 +974,7 @@ static bool sniff(const rohc_cid_type_t cid_type,
 	}
 
 	/* set the callback for traces on decompressor */
-	if(!rohc_decomp_set_traces_cb(decomp, print_rohc_traces))
+	if(!rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL))
 	{
 		SNIFFER_LOG(LOG_WARNING, "failed to set trace callback for "
 		            "decompressor");
@@ -1650,15 +1651,17 @@ too_short:
 /**
  * @brief Callback to print traces of the ROHC library
  *
- * @param level    The priority level of the trace
- * @param entity   The entity that emitted the trace among:
- *                  \li ROHC_TRACE_COMP
- *                  \li ROHC_TRACE_DECOMP
- * @param profile  The ID of the ROHC compression/decompression profile
- *                 the trace is related to
- * @param format   The format string of the trace
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @param level      The priority level of the trace
+ * @param entity     The entity that emitted the trace among:
+ *                    \li ROHC_TRACE_COMP
+ *                    \li ROHC_TRACE_DECOMP
+ * @param profile    The ID of the ROHC compression/decompression profile
+ *                   the trace is related to
+ * @param format     The format string of the trace
  */
-static void print_rohc_traces(const rohc_trace_level_t level,
+static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
+                              const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity __attribute__((unused)),
                               const int profile __attribute__((unused)),
                               const char *format, ...)

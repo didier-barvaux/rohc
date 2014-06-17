@@ -45,12 +45,19 @@
  * @param ts_sc              The ts_sc_comp object to create
  * @param wlsb_window_width  The width of the W-LSB sliding window to use
  *                           for TS_STRIDE (must be > 0)
- * @param callback           The trace callback
+ * @param trace_cb           The old trace callback
+ * @param trace_cb2          The new trace callback
+ * @param trace_cb_priv      An optional private context for the trace
+ *                           callback, may be NULL
  * @return                   true if creation is successful, false otherwise
  */
 bool c_create_sc(struct ts_sc_comp *const ts_sc,
                  const size_t wlsb_window_width,
-                 rohc_trace_callback_t callback)
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                 rohc_trace_callback_t trace_cb,
+#endif
+                 rohc_trace_callback2_t trace_cb2,
+                 void *const trace_cb_priv)
 {
 	assert(ts_sc != NULL);
 	assert(wlsb_window_width > 0);
@@ -67,7 +74,12 @@ bool c_create_sc(struct ts_sc_comp *const ts_sc,
 	ts_sc->state = INIT_TS;
 	ts_sc->are_old_val_init = false;
 	ts_sc->nr_init_stride_packets = 0;
-	ts_sc->trace_callback = callback;
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	ts_sc->trace_callback = trace_cb;
+#endif
+	ts_sc->trace_callback2 = trace_cb2;
+	ts_sc->trace_callback_priv = trace_cb_priv;
 
 	/* W-LSB context for TS_SCALED */
 	ts_sc->ts_scaled_wlsb = c_create_wlsb(32, wlsb_window_width,

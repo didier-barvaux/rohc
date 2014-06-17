@@ -113,11 +113,12 @@ int main(int argc, char *argv[])
 	                      random_cb, NULL);
 	CHECK(comp != NULL);
 
-	/* rohc_comp_set_traces_cb() */
+	/* rohc_comp_set_traces_cb2() */
 	{
-		rohc_trace_callback_t fct = (rohc_trace_callback_t) NULL;
-		CHECK(rohc_comp_set_traces_cb(NULL, fct) == false);
-		CHECK(rohc_comp_set_traces_cb(comp, fct) == true);
+		rohc_trace_callback2_t fct = (rohc_trace_callback2_t) NULL;
+		CHECK(rohc_comp_set_traces_cb2(NULL, fct, NULL) == false);
+		CHECK(rohc_comp_set_traces_cb2(comp, fct, NULL) == true);
+		CHECK(rohc_comp_set_traces_cb2(comp, fct, comp) == true);
 	}
 
 	/* rohc_comp_profile_enabled() */

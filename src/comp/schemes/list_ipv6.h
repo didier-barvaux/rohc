@@ -31,7 +31,11 @@
 
 void ROHC_EXPORT rohc_comp_list_ipv6_new(struct list_comp *const comp,
                                          const size_t list_trans_nr,
-                                         rohc_trace_callback_t trace_callback,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                                         rohc_trace_callback_t trace_cb,
+#endif
+                                         rohc_trace_callback2_t trace_cb2,
+                                         void *const trace_cb_priv,
                                          const int profile_id)
 	__attribute__((nonnull(1)));
 

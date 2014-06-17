@@ -42,6 +42,8 @@
 
 #include "dllexport.h"
 
+#include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
+
 
 /**
  * @brief State of scaled RTP Timestamp encoding
@@ -104,8 +106,14 @@ struct ts_sc_comp
 	/// The difference between old and current TS
 	uint32_t ts_delta;
 
-	/// The callback function used to get log messages
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	/** The old callback function used to manage traces */
 	rohc_trace_callback_t trace_callback;
+#endif
+	/** The new callback function used to manage traces */
+	rohc_trace_callback2_t trace_callback2;
+	/** The private context of the callback function used to manage traces */
+	void *trace_callback_priv;
 };
 
 
@@ -116,7 +124,11 @@ struct ts_sc_comp
 
 bool ROHC_EXPORT c_create_sc(struct ts_sc_comp *const ts_sc,
                              const size_t wlsb_window_width,
-                             rohc_trace_callback_t callback)
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                             rohc_trace_callback_t trace_cb,
+#endif
+                             rohc_trace_callback2_t trace_cb2,
+                             void *const trace_cb_priv)
 	__attribute__((warn_unused_result));
 void ROHC_EXPORT c_destroy_sc(struct ts_sc_comp *const ts_sc);
 

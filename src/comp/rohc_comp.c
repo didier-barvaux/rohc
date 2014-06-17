@@ -164,12 +164,13 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
  */
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
-static void rohc_comp_print_trace_default(const rohc_trace_level_t level,
+static void rohc_comp_print_trace_default(void *const priv_ctxt,
+                                          const rohc_trace_level_t level,
                                           const rohc_trace_entity_t entity,
                                           const int profile,
                                           const char *const format,
                                           ...)
-	__attribute__((format(printf, 4, 5), nonnull(4)));
+	__attribute__((format(printf, 5, 6), nonnull(5)));
 
 static void __rohc_c_set_max_cid(struct rohc_comp *comp, int value);
 
@@ -554,7 +555,7 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	/* set default callback for traces */
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
-	is_fine = rohc_comp_set_traces_cb(comp, rohc_comp_print_trace_default);
+	is_fine = rohc_comp_set_traces_cb2(comp, rohc_comp_print_trace_default, NULL);
 	if(is_fine != true)
 	{
 		goto destroy_comp;
@@ -614,6 +615,8 @@ void rohc_comp_free(struct rohc_comp *const comp)
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the callback function used to manage traces in compressor
  *
@@ -628,6 +631,12 @@ void rohc_comp_free(struct rohc_comp *const comp)
  *
  * @warning The callback can not be modified after library initialization
  *
+ * @warning The callback set by this function is ignored if another callback
+ *          is set with \ref rohc_comp_set_traces_cb2
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_comp_set_traces_cb2() instead
+ *
  * @param comp     The ROHC compressor
  * @param callback Two possible cases:
  *                   \li The callback function used to manage traces
@@ -635,26 +644,6 @@ void rohc_comp_free(struct rohc_comp *const comp)
  * @return         true on success, false otherwise
  *
  * @ingroup rohc_comp
- *
- * \par Example:
- * \snippet rtp_detection.c define compression traces callback
- * \code
-        ...
-\endcode
- * \snippet simple_rohc_program.c define ROHC compressor
- * \code
-        ...
-\endcode
- * \snippet simple_rohc_program.c create ROHC compressor
- * \code
-        ...
-\endcode
- * \snippet rtp_detection.c set compression traces callback
- * \code
-        ...
-\endcode
- * \snippet simple_rohc_program.c destroy ROHC compressor
- *
  */
 bool rohc_comp_set_traces_cb(struct rohc_comp *const comp,
                              rohc_trace_callback_t callback)
@@ -683,6 +672,87 @@ error:
 	return false;
 }
 
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
+
+/**
+ * @brief Set the callback function used to manage traces in compressor
+ *
+ * Set the user-defined callback function used to manage traces in the
+ * compressor.
+ *
+ * The function will be called by the ROHC library every time it wants to
+ * print something related to compression, from errors to debug. User may
+ * thus decide what traces are interesting (filter on \e level, source
+ * \e entity, or \e profile) and what to do with them (print on console,
+ * storage in file, syslog...).
+ *
+ * @warning The callback can not be modified after library initialization
+ *
+ * @warning The callback set by this function will remove any callback set
+ *          set with \ref rohc_comp_set_traces_cb
+ *
+ * @param comp       The ROHC compressor
+ * @param callback   Two possible cases:
+ *                     \li The callback function used to manage traces
+ *                     \li NULL to remove the previous callback
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @return           true on success, false otherwise
+ *
+ * @ingroup rohc_comp
+ *
+ * \par Example:
+ * \snippet rtp_detection.c define compression traces callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c define ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c create ROHC compressor
+ * \code
+        ...
+\endcode
+ * \snippet rtp_detection.c set compression traces callback
+ * \code
+        ...
+\endcode
+ * \snippet simple_rohc_program.c destroy ROHC compressor
+ *
+ */
+bool rohc_comp_set_traces_cb2(struct rohc_comp *const comp,
+                              rohc_trace_callback2_t callback,
+                              void *const priv_ctxt)
+{
+	/* check compressor validity */
+	if(comp == NULL)
+	{
+		/* cannot print a trace without a valid compressor */
+		goto error;
+	}
+
+	/* refuse to set a new trace callback if compressor is in use */
+	if(comp->num_packets > 0)
+	{
+		rohc_error(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL, "unable to "
+		           "modify the trace callback after initialization");
+		goto error;
+	}
+
+	/* replace current trace callback by the new one */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	comp->trace_callback = NULL;
+#endif
+	comp->trace_callback2 = callback;
+	comp->trace_callback_priv = priv_ctxt;
+
+	return true;
+
+error:
+	return false;
+}
+
 
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 
@@ -693,13 +763,15 @@ error:
  * compatibility with previous releases. That could be changed for the 2.0.0
  * release.
  *
- * @param level    The level of the message
- * @param entity   The entity concerned by the traces
- * @param profile  The number of the profile concerned by the message
- * @param format   The format string for the trace message
- * @param ...      The arguments related to the format string
+ * @param priv_ctxt  The private context is not used, shall be NULL
+ * @param level      The level of the message
+ * @param entity     The entity concerned by the traces
+ * @param profile    The number of the profile concerned by the message
+ * @param format     The format string for the trace message
+ * @param ...        The arguments related to the format string
  */
-static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attribute__((unused)),
+static void rohc_comp_print_trace_default(void *const priv_ctxt,
+                                          const rohc_trace_level_t level __attribute__((unused)),
                                           const rohc_trace_entity_t entity __attribute__((unused)),
                                           const int profile __attribute__((unused)),
                                           const char *const format,
@@ -717,6 +789,7 @@ static void rohc_comp_print_trace_default(const rohc_trace_level_t level __attri
 		first_time = false;
 	}
 #endif
+	assert(priv_ctxt == NULL);
 
 	va_start(args, format);
 	vfprintf(stdout, format, args);
@@ -1268,12 +1341,21 @@ int rohc_compress4(struct rohc_comp *const comp,
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print uncompressed bytes */
-	rohc_dump_packet(comp->trace_callback, ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+	rohc_dump_packet(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	                 comp->trace_callback,
+#endif
+	                 comp->trace_callback2, comp->trace_callback_priv,
+	                 ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	                 "uncompressed data, max 100 bytes", uncomp_packet);
 #endif
 
 	/* parse the uncompressed packet */
-	if(!net_pkt_parse(&ip_pkt, uncomp_packet, comp->trace_callback,
+	if(!net_pkt_parse(&ip_pkt, uncomp_packet,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	                  comp->trace_callback,
+#endif
+	                  comp->trace_callback2, comp->trace_callback_priv,
 	                  ROHC_TRACE_COMP))
 	{
 		rohc_warning(comp, ROHC_TRACE_COMP, ROHC_PROFILE_GENERAL,
@@ -4972,7 +5054,13 @@ static int rohc_feedback_get(struct rohc_comp *const comp,
 	           "add %zd byte(s) of feedback data", feedback_length);
 
 #if ROHC_EXTRA_DEBUG == 1
-	rohc_dump_buf(comp->trace_callback, ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
+	rohc_dump_buf(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	              comp->trace_callback,
+#endif
+	              comp->trace_callback2,
+	              comp->trace_callback_priv,
+	              ROHC_TRACE_COMP, ROHC_TRACE_DEBUG,
 	              "feedback data added", buffer + pos, feedback_length);
 #endif
 

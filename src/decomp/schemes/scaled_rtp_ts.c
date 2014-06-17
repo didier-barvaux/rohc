@@ -85,8 +85,14 @@ struct ts_sc_decomp
 	/// The last computed or received TS_OFFSET value (not validated by CRC)
 	uint32_t new_ts_offset;
 
-	/** The callback function used to get log messages */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	/** The old callback function used to manage traces */
 	rohc_trace_callback_t trace_callback;
+#endif
+	/** The new callback function used to manage traces */
+	rohc_trace_callback2_t trace_callback2;
+	/** The private context of the callback function used to manage traces */
+	void *trace_callback_priv;
 };
 
 
@@ -98,11 +104,18 @@ struct ts_sc_decomp
 /**
  * @brief Create the scaled RTP Timestamp decoding context
  *
- * @param callback  The trace callback
- * @return          The scaled RTP Timestamp decoding context in case of
- *                  success, NULL otherwise
+ * @param trace_cb       The old trace callback
+ * @param trace_cb2      The new trace callback
+ * @param trace_cb_priv  An optional private context for the trace
+ * @return               The scaled RTP Timestamp decoding context in case of
+ *                       success, NULL otherwise
  */
-struct ts_sc_decomp * d_create_sc(rohc_trace_callback_t callback)
+struct ts_sc_decomp * d_create_sc(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                                  rohc_trace_callback_t trace_cb,
+#endif
+                                  rohc_trace_callback2_t trace_cb2,
+                                  void *const trace_cb_priv)
 {
 	struct ts_sc_decomp *ts_sc;
 
@@ -137,7 +150,11 @@ struct ts_sc_decomp * d_create_sc(rohc_trace_callback_t callback)
 		goto free_lsb_ts_scaled;
 	}
 
-	ts_sc->trace_callback = callback;
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	ts_sc->trace_callback = trace_cb;
+#endif
+	ts_sc->trace_callback2 = trace_cb2;
+	ts_sc->trace_callback_priv = trace_cb_priv;
 
 	return ts_sc;
 

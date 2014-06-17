@@ -32,6 +32,8 @@
 
 #include "dllexport.h"
 
+#include "config.h" /* for ROHC_ENABLE_DEPRECATED_API */
+
 
 /** The key to help identify (not quaranted unique) a compression context */
 typedef uint32_t rohc_ctxt_key_t;
@@ -51,14 +53,24 @@ struct net_pkt
 
 	rohc_ctxt_key_t key;         /**< The hash key of the packet */
 
-	/** The callback function used to manage traces */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	/** The old callback function used to manage traces */
 	rohc_trace_callback_t trace_callback;
+#endif
+	/** The new callback function used to manage traces */
+	rohc_trace_callback2_t trace_callback2;
+	/** The private context of the callback function used to manage traces */
+	void *trace_callback_priv;
 };
 
 
 bool ROHC_EXPORT net_pkt_parse(struct net_pkt *const packet,
                                const struct rohc_buf data,
-                               rohc_trace_callback_t trace_callback,
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+                               rohc_trace_callback_t trace_cb,
+#endif
+                               rohc_trace_callback2_t trace_cb2,
+                               void *const trace_cb_priv,
                                rohc_trace_entity_t trace_entity)
 	__attribute__((warn_unused_result, nonnull(1)));
 

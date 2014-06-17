@@ -383,7 +383,11 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 	}
 
 	/* no trace callback during decompressor creation */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	decomp->trace_callback = NULL;
+#endif
+	decomp->trace_callback2 = NULL;
+	decomp->trace_callback_priv = NULL;
 
 	/* default feature set (empty for the moment) */
 	decomp->features = ROHC_DECOMP_FEATURE_NONE;
@@ -460,9 +464,6 @@ struct rohc_decomp * rohc_alloc_decompressor(struct rohc_comp *compressor)
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
-#else
-	/* no behaviour compatibility with previous 1.x.y versions: no trace */
-	decomp->trace_callback = NULL;
 #endif
 
 	return decomp;
@@ -737,7 +738,11 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 	}
 
 	/* no trace callback during decompressor creation */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	decomp->trace_callback = NULL;
+#endif
+	decomp->trace_callback2 = NULL;
+	decomp->trace_callback_priv = NULL;
 
 	/* default feature set (empty for the moment) */
 	decomp->features = ROHC_DECOMP_FEATURE_NONE;
@@ -815,9 +820,6 @@ struct rohc_decomp * rohc_decomp_new2(const rohc_cid_type_t cid_type,
 #if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
 	/* keep same behaviour as previous 1.x.y versions: traces on by default */
 	decomp->trace_callback = rohc_decomp_print_trace_default;
-#else
-	/* no behaviour compatibility with previous 1.x.y versions: no trace */
-	decomp->trace_callback = NULL;
 #endif
 
 	return decomp;
@@ -1301,7 +1303,12 @@ int rohc_decompress3(struct rohc_decomp *const decomp,
 
 #if ROHC_EXTRA_DEBUG == 1
 	/* print compressed bytes */
-	rohc_dump_packet(decomp->trace_callback, ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
+	rohc_dump_packet(
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	                 decomp->trace_callback,
+#endif
+	                 decomp->trace_callback2, decomp->trace_callback_priv,
+	                 ROHC_TRACE_DECOMP, ROHC_TRACE_DEBUG,
 	                 "compressed data, max 100 bytes", rohc_packet);
 #endif
 
@@ -3514,6 +3521,8 @@ error:
 }
 
 
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+
 /**
  * @brief Set the callback function used to manage traces in decompressor
  *
@@ -3527,6 +3536,12 @@ error:
  * storage in file, syslog...).
  *
  * @warning The callback can not be modified after library initialization
+ *
+ * @warning The callback set by this function is ignored if another callback
+ *          is set with \ref rohc_decomp_set_traces_cb2
+ *
+ * @deprecated do not use this function anymore,
+ *             use rohc_decomp_set_traces_cb2() instead
  *
  * @param decomp   The ROHC decompressor
  * @param callback Two possible cases:
@@ -3556,6 +3571,67 @@ bool rohc_decomp_set_traces_cb(struct rohc_decomp *decomp,
 
 	/* replace current trace callback by the new one */
 	decomp->trace_callback = callback;
+
+	return true;
+
+error:
+	return false;
+}
+
+#endif /* !ROHC_ENABLE_DEPRECATED_API */
+
+
+/**
+ * @brief Set the callback function used to manage traces in decompressor
+ *
+ * Set the user-defined callback function used to manage traces in the
+ * decompressor.
+ *
+ * The function will be called by the ROHC library every time it wants to
+ * print something related to decompression, from errors to debug. User may
+ * thus decide what traces are interesting (filter on \e level, source
+ * \e entity, or \e profile) and what to do with them (print on console,
+ * storage in file, syslog...).
+ *
+ * @warning The callback can not be modified after library initialization
+ *
+ * @warning The callback set by this function will remove any callback set
+ *          set with \ref rohc_decomp_set_traces_cb
+ *
+ * @param decomp     The ROHC decompressor
+ * @param callback   Two possible cases:
+ *                     \li The callback function used to manage traces
+ *                     \li NULL to remove the previous callback
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @return           true on success, false otherwise
+ *
+ * @ingroup rohc_decomp
+ */
+bool rohc_decomp_set_traces_cb2(struct rohc_decomp *decomp,
+                                rohc_trace_callback2_t callback,
+                                void *const priv_ctxt)
+{
+	/* check decompressor validity */
+	if(decomp == NULL)
+	{
+		/* cannot print a trace without a valid decompressor */
+		goto error;
+	}
+
+	/* refuse to set a new trace callback if decompressor is in use */
+	if(decomp->stats.received > 0)
+	{
+		rohc_error(decomp, ROHC_TRACE_DECOMP, ROHC_PROFILE_GENERAL, "unable to "
+		           "modify the trace callback after initialization");
+		goto error;
+	}
+
+	/* replace current trace callback by the new one */
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	decomp->trace_callback = NULL;
+#endif
+	decomp->trace_callback2 = callback;
+	decomp->trace_callback_priv = priv_ctxt;
 
 	return true;
 

@@ -45,12 +45,13 @@
 
 /* prototypes of private functions */
 static void usage(void);
-static void print_rohc_traces(const rohc_trace_level_t level,
+static void print_rohc_traces(void *const priv_ctxt,
+                              const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
                               const char *const format,
                               ...)
-	__attribute__((format(printf, 4, 5), nonnull(4)));
+	__attribute__((format(printf, 5, 6), nonnull(5)));
 
 
 /** The maximum number of traces to keep */
@@ -152,7 +153,7 @@ int main(int argc, char *argv[])
 	assert(decomp != NULL);
 
 	/* set the callback for traces on ROHC decompressor */
-	assert(rohc_decomp_set_traces_cb(decomp, print_rohc_traces));
+	assert(rohc_decomp_set_traces_cb2(decomp, print_rohc_traces, NULL));
 
 	/* activate all the decompression profiles */
 	assert(rohc_decomp_enable_profiles(decomp, ROHC_PROFILE_UNCOMPRESSED,
@@ -231,15 +232,17 @@ static void usage(void)
 /**
  * @brief Callback to print traces of the ROHC library
  *
- * @param level    The priority level of the trace
- * @param entity   The entity that emitted the trace among:
- *                  \li ROHC_TRACE_COMP
- *                  \li ROHC_TRACE_DECOMP
- * @param profile  The ID of the ROHC compression/decompression profile
- *                 the trace is related to
- * @param format   The format string of the trace
+ * @param priv_ctxt  An optional private context, may be NULL
+ * @param level      The priority level of the trace
+ * @param entity     The entity that emitted the trace among:
+ *                    \li ROHC_TRACE_COMP
+ *                    \li ROHC_TRACE_DECOMP
+ * @param profile    The ID of the ROHC compression/decompression profile
+ *                   the trace is related to
+ * @param format     The format string of the trace
  */
-static void print_rohc_traces(const rohc_trace_level_t level,
+static void print_rohc_traces(void *const priv_ctxt __attribute__((unused)),
+                              const rohc_trace_level_t level,
                               const rohc_trace_entity_t entity,
                               const int profile,
                               const char *format, ...)
@@ -274,7 +277,8 @@ static void print_rohc_traces(const rohc_trace_level_t level,
 	/* if trace was truncated, mention it */
 	if(ret > MAX_TRACE_LEN)
 	{
-		print_rohc_traces(level, entity, profile, "previous trace truncated\n");
+		print_rohc_traces(priv_ctxt, level, entity, profile,
+		                  "previous trace truncated\n");
 	}
 }
 

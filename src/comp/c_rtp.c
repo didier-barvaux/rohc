@@ -172,7 +172,11 @@ static bool c_rtp_create(struct rohc_comp_ctxt *const context,
 	memcpy(&rtp_context->old_rtp, rtp, sizeof(struct rtphdr));
 	if(!c_create_sc(&rtp_context->ts_sc,
 	                context->compressor->wlsb_window_width,
-	                context->compressor->trace_callback))
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+	                context->compressor->trace_callback,
+#endif
+	                context->compressor->trace_callback2,
+	                context->compressor->trace_callback_priv))
 	{
 		rohc_comp_warn(context, "cannot create scaled RTP Timestamp encoding");
 		goto clean;
